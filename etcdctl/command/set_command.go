@@ -18,43 +18,42 @@ import (
 	"errors"
 	"os"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 // NewSetCommand returns the CLI command for "set".
-func NewSetCommand() cli.Command {
-	return cli.Command{
-		Name:  "set",
-		Usage: "set the value of a key",
-		Flags: []cli.Flag{
-			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
-			cli.StringFlag{Name: "swap-with-value", Value: "", Usage: "previous value"},
-			cli.IntFlag{Name: "swap-with-index", Value: 0, Usage: "previous index"},
-		},
-		Action: func(c *cli.Context) {
-			handleKey(c, setCommandFunc)
+func NewSetCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "set",
+		Short: "set the value of a key",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleKey(cmd, args, setCommandFunc)
 		},
 	}
+	cmd.Flags().Uint64("ttl", 0, "key time-to-live")
+	cmd.Flags().String("swap-with-value", "", "previous value")
+	cmd.Flags().Uint64("swap-with-index", 0, "previous index")
+	return cmd
 }
 
 // setCommandFunc executes the "set" command.
-func setCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	if len(c.Args()) == 0 {
-		return nil, errors.New("key required")
+func setCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
+	if len(args) == 0 {
+		return nil, errors.New("Key required")
 	}
-	key := c.Args()[0]
-	value, err := argOrStdin(c.Args(), os.Stdin, 1)
+	key := args[0]
+	value, err := argOrStdin(args, os.Stdin, 1)
 	if err != nil {
 		return nil, errors.New("value required")
 	}
 
-	ttl := c.Int("ttl")
-	prevValue := c.String("swap-with-value")
-	prevIndex := c.Int("swap-with-index")
+	ttl, _ := cmd.Flags().GetUint64("ttl")
+	prevValue, _ := cmd.Flags().GetString("swap-with-value")
+	prevIndex, _ := cmd.Flags().GetUint64("swap-with-index")
 
 	if prevValue == "" && prevIndex == 0 {
-		return client.Set(key, value, uint64(ttl))
+		return client.Set(key, value, ttl)
 	}
-	return client.CompareAndSwap(key, value, uint64(ttl), prevValue, uint64(prevIndex))
+	return client.CompareAndSwap(key, value, ttl, prevValue, prevIndex)
 }

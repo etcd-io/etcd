@@ -21,13 +21,13 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
-type handlerFunc func(*cli.Context, *etcd.Client) (*etcd.Response, error)
+type handlerFunc func(*cobra.Command, []string, *etcd.Client) (*etcd.Response, error)
 type printFunc func(*etcd.Response, string)
-type contextualPrintFunc func(*cli.Context, *etcd.Response, string)
+type contextualPrintFunc func(*cobra.Command, *etcd.Response, string)
 
 // dumpCURL blindly dumps all curl output to os.Stderr
 func dumpCURL(client *etcd.Client) {
@@ -64,13 +64,13 @@ func prepAuth(client *etcd.Client, usernameFlag string) error {
 
 // rawhandle wraps the command function handlers and sets up the
 // environment but performs no output formatting.
-func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
-	endpoints, err := getEndpoints(c)
+func rawhandle(cmd *cobra.Command, args []string, fn handlerFunc) (*etcd.Response, error) {
+	endpoints, err := getEndpoints(cmd)
 	if err != nil {
 		return nil, err
 	}
 
-	tr, err := getTransport(c)
+	tr, err := getTransport(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
 	client := etcd.NewClient(endpoints)
 	client.SetTransport(tr)
 
-	username := c.GlobalString("username")
+	username, _ := cmd.Flags().GetString("username")
 	if username != "" {
 		err := prepAuth(client, username)
 		if err != nil {
@@ -86,29 +86,30 @@ func rawhandle(c *cli.Context, fn handlerFunc) (*etcd.Response, error) {
 		}
 	}
 
-	if c.GlobalBool("debug") {
+	d, _ := cmd.Flags().GetBool("debug")
+	if d {
 		go dumpCURL(client)
 	}
 
 	// Sync cluster.
-	if !c.GlobalBool("no-sync") {
+	if nosync, _ := cmd.Flags().GetBool("no-sync"); !nosync {
 		if ok := client.SyncCluster(); !ok {
 			handleError(ExitBadConnection, errors.New("cannot sync with the cluster using endpoints "+strings.Join(endpoints, ", ")))
 		}
 	}
 
-	if c.GlobalBool("debug") {
+	if d {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(client.GetCluster(), ", "))
 	}
 
 	// Execute handler function.
-	return fn(c, client)
+	return fn(cmd, args, client)
 }
 
 // handlePrint wraps the command function handlers to parse global flags
 // into a client and to properly format the response objects.
-func handlePrint(c *cli.Context, fn handlerFunc, pFn printFunc) {
-	resp, err := rawhandle(c, fn)
+func handlePrint(cmd *cobra.Command, args []string, fn handlerFunc, pFn printFunc) {
+	resp, err := rawhandle(cmd, args, fn)
 
 	// Print error and exit, if necessary.
 	if err != nil {
@@ -116,34 +117,36 @@ func handlePrint(c *cli.Context, fn handlerFunc, pFn printFunc) {
 	}
 
 	if resp != nil && pFn != nil {
-		pFn(resp, c.GlobalString("output"))
+		output, _ := cmd.Flags().GetString("output")
+		pFn(resp, output)
 	}
 }
 
 // Just like handlePrint but also passed the context of the command
-func handleContextualPrint(c *cli.Context, fn handlerFunc, pFn contextualPrintFunc) {
-	resp, err := rawhandle(c, fn)
+func handleContextualPrint(cmd *cobra.Command, args []string, fn handlerFunc, pFn contextualPrintFunc) {
+	resp, err := rawhandle(cmd, args, fn)
 
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
 
 	if resp != nil && pFn != nil {
-		pFn(c, resp, c.GlobalString("output"))
+		output, _ := cmd.Flags().GetString("output")
+		pFn(cmd, resp, output)
 	}
 }
 
 // handleDir handles a request that wants to do operations on a single dir.
 // Dir cannot be printed out, so we set NIL print function here.
-func handleDir(c *cli.Context, fn handlerFunc) {
-	handlePrint(c, fn, nil)
+func handleDir(cmd *cobra.Command, args []string, fn handlerFunc) {
+	handlePrint(cmd, args, fn, nil)
 }
 
 // handleKey handles a request that wants to do operations on a single key.
-func handleKey(c *cli.Context, fn handlerFunc) {
-	handlePrint(c, fn, printKey)
+func handleKey(cmd *cobra.Command, args []string, fn handlerFunc) {
+	handlePrint(cmd, args, fn, printKey)
 }
 
-func handleAll(c *cli.Context, fn handlerFunc) {
-	handlePrint(c, fn, printAll)
+func handleAll(cmd *cobra.Command, args []string, fn handlerFunc) {
+	handlePrint(cmd, args, fn, printAll)
 }

@@ -19,54 +19,59 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
-func NewAuthCommands() cli.Command {
-	return cli.Command{
-		Name:  "auth",
-		Usage: "overall auth controls",
-		Subcommands: []cli.Command{
-			cli.Command{
-				Name:   "enable",
-				Usage:  "enable auth access controls",
-				Action: actionAuthEnable,
-			},
-			cli.Command{
-				Name:   "disable",
-				Usage:  "disable auth access controls",
-				Action: actionAuthDisable,
-			},
-		},
+func NewAuthCommands() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "auth",
+		Short: "overall auth controls",
+		Run:   handleBackup,
 	}
+
+	enable := &cobra.Command{
+		Use:   "enable",
+		Short: "enable auth access controls",
+		Run:   actionAuthEnable,
+	}
+
+	disable := &cobra.Command{
+		Use:   "disable",
+		Short: "disable auth access controls",
+		Run:   actionAuthDisable,
+	}
+
+	cmd.AddCommand(enable, disable)
+	return cmd
 }
 
-func actionAuthEnable(c *cli.Context) {
-	authEnableDisable(c, true)
+func actionAuthEnable(cmd *cobra.Command, args []string) {
+
+	authEnableDisable(cmd, args, true)
 }
 
-func actionAuthDisable(c *cli.Context) {
-	authEnableDisable(c, false)
+func actionAuthDisable(cmd *cobra.Command, args []string) {
+	authEnableDisable(cmd, args, false)
 }
 
-func mustNewAuthAPI(c *cli.Context) client.AuthAPI {
-	hc := mustNewClient(c)
+func mustNewAuthAPI(cmd *cobra.Command) client.AuthAPI {
+	hc := mustNewClient(cmd)
 
-	if c.GlobalBool("debug") {
+	if d, _ := cmd.Flags().GetBool("debug"); d {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
 	}
 
 	return client.NewAuthAPI(hc)
 }
 
-func authEnableDisable(c *cli.Context, enable bool) {
-	if len(c.Args()) != 0 {
+func authEnableDisable(cmd *cobra.Command, args []string, enable bool) {
+	if len(args) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
 	}
-	s := mustNewAuthAPI(c)
+	s := mustNewAuthAPI(cmd)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	var err error
 	if enable {

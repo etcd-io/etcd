@@ -16,48 +16,47 @@ package main
 
 import (
 	"os"
+	"path"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/etcdctl/command"
-	"github.com/coreos/etcd/version"
 )
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "etcdctl"
-	app.Version = version.Version
-	app.Usage = "A simple command line client for etcd."
-	app.Flags = []cli.Flag{
-		cli.BoolFlag{Name: "debug", Usage: "output cURL commands which can be used to reproduce the request"},
-		cli.BoolFlag{Name: "no-sync", Usage: "don't synchronize cluster information before sending request"},
-		cli.StringFlag{Name: "output, o", Value: "simple", Usage: "output response in the given format (`simple`, `extended` or `json`)"},
-		cli.StringFlag{Name: "peers, C", Value: "", Usage: "a comma-delimited list of machine addresses in the cluster (default: \"127.0.0.1:4001,127.0.0.1:2379\")"},
-		cli.StringFlag{Name: "cert-file", Value: "", Usage: "identify HTTPS client using this SSL certificate file"},
-		cli.StringFlag{Name: "key-file", Value: "", Usage: "identify HTTPS client using this SSL key file"},
-		cli.StringFlag{Name: "ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled servers using this CA bundle"},
-		cli.StringFlag{Name: "username, u", Value: "", Usage: "provide username[:password] and prompt if password is not supplied."},
+	cmd := &cobra.Command{
+		Use:   path.Base(os.Args[0]),
+		Short: "A simple command line client for etcd.",
+		BashCompletionFunction: command.BashCompletionFunction,
 	}
-	app.Commands = []cli.Command{
-		command.NewBackupCommand(),
-		command.NewClusterHealthCommand(),
-		command.NewMakeCommand(),
-		command.NewMakeDirCommand(),
-		command.NewRemoveCommand(),
-		command.NewRemoveDirCommand(),
-		command.NewGetCommand(),
-		command.NewLsCommand(),
-		command.NewSetCommand(),
-		command.NewSetDirCommand(),
-		command.NewUpdateCommand(),
-		command.NewUpdateDirCommand(),
-		command.NewWatchCommand(),
-		command.NewExecWatchCommand(),
-		command.NewMemberCommand(),
-		command.NewImportSnapCommand(),
-		command.NewUserCommands(),
-		command.NewRoleCommands(),
-		command.NewAuthCommands(),
-	}
+	_ = cmd.PersistentFlags().Bool("debug", false, "output cURL commands which can be used to reproduce the request")
+	_ = cmd.PersistentFlags().Bool("no-sync", false, "don't synchronize cluster information before sending request")
+	_ = cmd.PersistentFlags().StringP("output", "o", "simple", "output response in the given format (`simple`, `extended` or `json`)")
+	_ = cmd.PersistentFlags().StringP("peers", "C", "", "a comma-delimited list of machine addresses in the cluster (default: \"127.0.0.1:4001,127.0.0.1:2379\")")
+	_ = cmd.PersistentFlags().String("cert-file", "", "identify HTTPS client using this SSL certificate file")
+	_ = cmd.PersistentFlags().String("key-file", "", "identify HTTPS client using this SSL key file")
+	_ = cmd.PersistentFlags().String("ca-file", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+	_ = cmd.PersistentFlags().StringP("username", "u", "", "provide username[:password] and prompt if password is not supplied.")
 
-	app.Run(os.Args)
+	cmd.AddCommand(command.NewBackupCommand())
+	cmd.AddCommand(command.NewClusterHealthCommand())
+	cmd.AddCommand(command.NewMakeCommand())
+	cmd.AddCommand(command.NewMakeDirCommand())
+	cmd.AddCommand(command.NewRemoveCommand())
+	cmd.AddCommand(command.NewRemoveDirCommand())
+	cmd.AddCommand(command.NewGetCommand())
+	cmd.AddCommand(command.NewLsCommand())
+	cmd.AddCommand(command.NewSetCommand())
+	cmd.AddCommand(command.NewSetDirCommand())
+	cmd.AddCommand(command.NewUpdateCommand())
+	cmd.AddCommand(command.NewUpdateDirCommand())
+	cmd.AddCommand(command.NewWatchCommand())
+	cmd.AddCommand(command.NewExecWatchCommand())
+	cmd.AddCommand(command.NewMemberCommand())
+	cmd.AddCommand(command.NewImportSnapCommand())
+	cmd.AddCommand(command.NewUserCommands())
+	cmd.AddCommand(command.NewRoleCommands())
+	cmd.AddCommand(command.NewAuthCommands())
+	cmd.AddCommand(command.NewGenerateBashCompletionsCommand())
+
+	cmd.Execute()
 }

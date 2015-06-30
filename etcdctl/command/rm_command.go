@@ -17,40 +17,39 @@ package command
 import (
 	"errors"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 // NewRemoveCommand returns the CLI command for "rm".
-func NewRemoveCommand() cli.Command {
-	return cli.Command{
-		Name:  "rm",
-		Usage: "remove a key",
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "dir", Usage: "removes the key if it is an empty directory or a key-value pair"},
-			cli.BoolFlag{Name: "recursive", Usage: "removes the key and all child keys(if it is a directory)"},
-			cli.StringFlag{Name: "with-value", Value: "", Usage: "previous value"},
-			cli.IntFlag{Name: "with-index", Value: 0, Usage: "previous index"},
-		},
-		Action: func(c *cli.Context) {
-			handleAll(c, removeCommandFunc)
+func NewRemoveCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "rm",
+		Short: "remove a key",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleAll(cmd, args, removeCommandFunc)
 		},
 	}
+	cmd.Flags().Bool("dir", false, "removes the key if it is an empty directory or a key-value pair")
+	cmd.Flags().Bool("recursive", false, "removes the key and all child keys(if it is a directory)")
+	cmd.Flags().String("with-value", "", "previous value")
+	cmd.Flags().Uint64("with-index", 0, "previous index")
+	return cmd
 }
 
 // removeCommandFunc executes the "rm" command.
-func removeCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	if len(c.Args()) == 0 {
-		return nil, errors.New("key required")
+func removeCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
+	if len(args) == 0 {
+		return nil, errors.New("Key required")
 	}
-	key := c.Args()[0]
-	recursive := c.Bool("recursive")
-	dir := c.Bool("dir")
+	key := args[0]
+	recursive, _ := cmd.Flags().GetBool("recursive")
+	dir, _ := cmd.Flags().GetBool("dir")
 
 	// TODO: distinguish with flag is not set and empty flag
 	// the cli pkg need to provide this feature
-	prevValue := c.String("with-value")
-	prevIndex := uint64(c.Int("with-index"))
+	prevValue, _ := cmd.Flags().GetString("with-value")
+	prevIndex, _ := cmd.Flags().GetUint64("with-index")
 
 	if prevValue != "" || prevIndex != 0 {
 		return client.CompareAndDelete(key, prevValue, prevIndex)

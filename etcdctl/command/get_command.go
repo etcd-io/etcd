@@ -19,27 +19,26 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 // NewGetCommand returns the CLI command for "get".
-func NewGetCommand() cli.Command {
-	return cli.Command{
-		Name:  "get",
-		Usage: "retrieve the value of a key",
-		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
-		},
-		Action: func(c *cli.Context) {
-			handleGet(c, getCommandFunc)
+func NewGetCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get",
+		Short: "retrieve the value of a key",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleGet(cmd, args, getCommandFunc)
 		},
 	}
+	cmd.Flags().Bool("sort", false, "returns result in sorted order")
+	return cmd
 }
 
 // handleGet handles a request that intends to do get-like operations.
-func handleGet(c *cli.Context, fn handlerFunc) {
-	handlePrint(c, fn, printGet)
+func handleGet(cmd *cobra.Command, args []string, fn handlerFunc) {
+	handlePrint(cmd, args, fn, printGet)
 }
 
 // printGet writes error message when getting the value of a directory.
@@ -53,12 +52,12 @@ func printGet(resp *etcd.Response, format string) {
 }
 
 // getCommandFunc executes the "get" command.
-func getCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	if len(c.Args()) == 0 {
-		return nil, errors.New("key required")
+func getCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
+	if len(args) == 0 {
+		return nil, errors.New("Key required")
 	}
-	key := c.Args()[0]
-	sorted := c.Bool("sort")
+	key := args[0]
+	sorted, _ := cmd.Flags().GetBool("sort")
 
 	// Retrieve the value from the server.
 	return client.Get(key, sorted, false)

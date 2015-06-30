@@ -21,7 +21,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -30,24 +30,28 @@ import (
 	"github.com/coreos/etcd/wal/walpb"
 )
 
-func NewBackupCommand() cli.Command {
-	return cli.Command{
-		Name:  "backup",
-		Usage: "backup an etcd directory",
-		Flags: []cli.Flag{
-			cli.StringFlag{Name: "data-dir", Value: "", Usage: "Path to the etcd data dir"},
-			cli.StringFlag{Name: "backup-dir", Value: "", Usage: "Path to the backup dir"},
-		},
-		Action: handleBackup,
+func NewBackupCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "backup",
+		Short: "backup an etcd directory",
+		Run:   handleBackup,
 	}
+	_ = cmd.Flags().String("data-dir", "", "Path to the etcd data dir")
+	_ = cmd.Flags().String("backup-dir", "", "Path to the backup dir")
+
+	return cmd
 }
 
 // handleBackup handles a request that intends to do a backup.
-func handleBackup(c *cli.Context) {
-	srcSnap := path.Join(c.String("data-dir"), "member", "snap")
-	destSnap := path.Join(c.String("backup-dir"), "member", "snap")
-	srcWAL := path.Join(c.String("data-dir"), "member", "wal")
-	destWAL := path.Join(c.String("backup-dir"), "member", "wal")
+func handleBackup(cmd *cobra.Command, args []string) {
+	dataDir, _ := cmd.Flags().GetString("data-dar")
+	srcSnap := path.Join(dataDir, "member", "snap")
+
+	backupDir, _ := cmd.Flags().GetString("backup-dir")
+	destSnap := path.Join(backupDir, "member", "snap")
+
+	srcWAL := path.Join(dataDir, "member", "wal")
+	destWAL := path.Join(backupDir, "member", "wal")
 
 	if err := os.MkdirAll(destSnap, 0700); err != nil {
 		log.Fatalf("failed creating backup snapshot dir %v: %v", destSnap, err)

@@ -22,73 +22,81 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
-func NewUserCommands() cli.Command {
-	return cli.Command{
-		Name:  "user",
-		Usage: "user add, grant and revoke subcommands",
-		Subcommands: []cli.Command{
-			cli.Command{
-				Name:   "add",
-				Usage:  "add a new user for the etcd cluster",
-				Action: actionUserAdd,
-			},
-			cli.Command{
-				Name:   "get",
-				Usage:  "get details for a user",
-				Action: actionUserGet,
-			},
-			cli.Command{
-				Name:   "list",
-				Usage:  "list all current users",
-				Action: actionUserList,
-			},
-			cli.Command{
-				Name:   "remove",
-				Usage:  "remove a user for the etcd cluster",
-				Action: actionUserRemove,
-			},
-			cli.Command{
-				Name:   "grant",
-				Usage:  "grant roles to an etcd user",
-				Flags:  []cli.Flag{cli.StringSliceFlag{Name: "roles", Value: new(cli.StringSlice), Usage: "List of roles to grant or revoke"}},
-				Action: actionUserGrant,
-			},
-			cli.Command{
-				Name:   "revoke",
-				Usage:  "revoke roles for an etcd user",
-				Flags:  []cli.Flag{cli.StringSliceFlag{Name: "roles", Value: new(cli.StringSlice), Usage: "List of roles to grant or revoke"}},
-				Action: actionUserRevoke,
-			},
-			cli.Command{
-				Name:   "passwd",
-				Usage:  "change password for a user",
-				Action: actionUserPasswd,
-			},
-		},
+func NewUserCommands() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "user",
+		Short: "user add, grant and revoke subcommands",
 	}
+
+	add := &cobra.Command{
+		Use:   "add",
+		Short: "add a new user for the etcd cluster",
+		Run:   actionUserAdd,
+	}
+
+	get := &cobra.Command{
+		Use:   "get",
+		Short: "get details for a user",
+		Run:   actionUserGet,
+	}
+
+	list := &cobra.Command{
+		Use:   "list",
+		Short: "list all current users",
+		Run:   actionUserList,
+	}
+
+	remove := &cobra.Command{
+		Use:   "remove",
+		Short: "remove a user for the etcd cluster",
+		Run:   actionUserRemove,
+	}
+
+	grant := &cobra.Command{
+		Use:   "grant",
+		Short: "grant roles to an etcd user",
+		Run:   actionUserGrant,
+	}
+	_ = grant.Flags().StringSlice("roles", []string{}, "List of roles to grant")
+
+	revoke := &cobra.Command{
+		Use:   "revoke",
+		Short: "revoke roles for an etcd user",
+		Run:   actionUserRevoke,
+	}
+	_ = revoke.Flags().StringSlice("roles", []string{}, "List of roles to revoke")
+
+	passwd := &cobra.Command{
+		Use:   "passwd",
+		Short: "change password for a user",
+		Run:   actionUserPasswd,
+	}
+
+	cmd.AddCommand(add, get, list, remove, grant, revoke, passwd)
+	return cmd
 }
 
-func mustNewAuthUserAPI(c *cli.Context) client.AuthUserAPI {
-	hc := mustNewClient(c)
+func mustNewAuthUserAPI(cmd *cobra.Command) client.AuthUserAPI {
+	hc := mustNewClient(cmd)
 
-	if c.GlobalBool("debug") {
+	if d, _ := cmd.Flags().GetBool("debug"); d {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
 	}
 
 	return client.NewAuthUserAPI(hc)
 }
 
-func actionUserList(c *cli.Context) {
-	if len(c.Args()) != 0 {
+func actionUserList(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
 	}
-	u := mustNewAuthUserAPI(c)
+	u := mustNewAuthUserAPI(cmd)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	users, err := u.ListUsers(ctx)
 	cancel()
@@ -102,8 +110,8 @@ func actionUserList(c *cli.Context) {
 	}
 }
 
-func actionUserAdd(c *cli.Context) {
-	api, user := mustUserAPIAndName(c)
+func actionUserAdd(cmd *cobra.Command, args []string) {
+	api, user := mustUserAPIAndName(cmd, args)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	currentUser, err := api.GetUser(ctx, user)
 	cancel()
@@ -127,8 +135,8 @@ func actionUserAdd(c *cli.Context) {
 	fmt.Printf("User %s created\n", user)
 }
 
-func actionUserRemove(c *cli.Context) {
-	api, user := mustUserAPIAndName(c)
+func actionUserRemove(cmd *cobra.Command, args []string) {
+	api, user := mustUserAPIAndName(cmd, args)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	err := api.RemoveUser(ctx, user)
 	cancel()
@@ -140,8 +148,8 @@ func actionUserRemove(c *cli.Context) {
 	fmt.Printf("User %s removed\n", user)
 }
 
-func actionUserPasswd(c *cli.Context) {
-	api, user := mustUserAPIAndName(c)
+func actionUserPasswd(cmd *cobra.Command, args []string) {
+	api, user := mustUserAPIAndName(cmd, args)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	currentUser, err := api.GetUser(ctx, user)
 	cancel()
@@ -166,22 +174,22 @@ func actionUserPasswd(c *cli.Context) {
 	fmt.Printf("Password updated\n")
 }
 
-func actionUserGrant(c *cli.Context) {
-	userGrantRevoke(c, true)
+func actionUserGrant(cmd *cobra.Command, args []string) {
+	userGrantRevoke(cmd, args, true)
 }
 
-func actionUserRevoke(c *cli.Context) {
-	userGrantRevoke(c, false)
+func actionUserRevoke(cmd *cobra.Command, args []string) {
+	userGrantRevoke(cmd, args, false)
 }
 
-func userGrantRevoke(c *cli.Context, grant bool) {
-	roles := c.StringSlice("roles")
+func userGrantRevoke(cmd *cobra.Command, args []string, grant bool) {
+	roles, _ := cmd.Flags().GetStringSlice("roles")
 	if len(roles) == 0 {
 		fmt.Fprintln(os.Stderr, "No roles specified; please use `-roles`")
 		os.Exit(1)
 	}
 
-	api, user := mustUserAPIAndName(c)
+	api, user := mustUserAPIAndName(cmd, args)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	currentUser, err := api.GetUser(ctx, user)
 	cancel()
@@ -215,8 +223,8 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 	fmt.Printf("User %s updated\n", user)
 }
 
-func actionUserGet(c *cli.Context) {
-	api, username := mustUserAPIAndName(c)
+func actionUserGet(cmd *cobra.Command, args []string) {
+	api, username := mustUserAPIAndName(cmd, args)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	user, err := api.GetUser(ctx, username)
 	cancel()
@@ -229,14 +237,13 @@ func actionUserGet(c *cli.Context) {
 
 }
 
-func mustUserAPIAndName(c *cli.Context) (client.AuthUserAPI, string) {
-	args := c.Args()
+func mustUserAPIAndName(cmd *cobra.Command, args []string) (client.AuthUserAPI, string) {
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "Please provide a username")
 		os.Exit(1)
 	}
 
-	api := mustNewAuthUserAPI(c)
+	api := mustNewAuthUserAPI(cmd)
 	username := args[0]
 	return api, username
 }

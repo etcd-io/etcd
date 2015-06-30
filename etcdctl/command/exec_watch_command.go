@@ -22,30 +22,28 @@ import (
 	"os/exec"
 	"os/signal"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 // NewExecWatchCommand returns the CLI command for "exec-watch".
-func NewExecWatchCommand() cli.Command {
-	return cli.Command{
-		Name:  "exec-watch",
-		Usage: "watch a key for changes and exec an executable",
-		Flags: []cli.Flag{
-			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
-			cli.BoolFlag{Name: "recursive", Usage: "watch all values for key and child keys"},
-		},
-		Action: func(c *cli.Context) {
-			handleKey(c, execWatchCommandFunc)
+func NewExecWatchCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "exec-watch",
+		Short: "watch a key for changes and exec an executable",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleKey(cmd, args, execWatchCommandFunc)
 		},
 	}
+	cmd.Flags().Uint64("after-index", 0, "watch after the given index")
+	cmd.Flags().Bool("recursive", false, "watch all values for key and child keys")
+	return cmd
 }
 
 // execWatchCommandFunc executes the "exec-watch" command.
-func execWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+func execWatchCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
 	_ = io.Copy
 	_ = exec.Command
-	args := c.Args()
 	argsLen := len(args)
 
 	if argsLen < 2 {
@@ -55,14 +53,14 @@ func execWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, 
 	key := args[argsLen-1]
 	cmdArgs := args[:argsLen-1]
 
-	index := 0
-	if c.Int("after-index") != 0 {
-		index = c.Int("after-index") + 1
+	index, _ := cmd.Flags().GetUint64("after-index")
+	if index != 0 {
+		index = index + 1
 		key = args[0]
 		cmdArgs = args[2:]
 	}
 
-	recursive := c.Bool("recursive")
+	recursive, _ := cmd.Flags().GetBool("recursive")
 	if recursive != false {
 		key = args[0]
 		cmdArgs = args[2:]
@@ -79,7 +77,7 @@ func execWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, 
 	}()
 
 	receiver := make(chan *etcd.Response)
-	go client.Watch(key, uint64(index), recursive, receiver, stop)
+	go client.Watch(key, index, recursive, receiver, stop)
 
 	for {
 		resp := <-receiver

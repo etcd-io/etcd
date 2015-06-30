@@ -18,36 +18,35 @@ import (
 	"errors"
 	"os"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
 // NewUpdateCommand returns the CLI command for "update".
-func NewUpdateCommand() cli.Command {
-	return cli.Command{
-		Name:  "update",
-		Usage: "update an existing key with a given value",
-		Flags: []cli.Flag{
-			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
-		},
-		Action: func(c *cli.Context) {
-			handleKey(c, updateCommandFunc)
+func NewUpdateCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "update an existing key with a given value",
+		Run: func(cmd *cobra.Command, args []string) {
+			handleKey(cmd, args, updateCommandFunc)
 		},
 	}
+	cmd.Flags().Uint64("ttl", 0, "key time-to-live")
+	return cmd
 }
 
 // updateCommandFunc executes the "update" command.
-func updateCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	if len(c.Args()) == 0 {
+func updateCommandFunc(cmd *cobra.Command, args []string, client *etcd.Client) (*etcd.Response, error) {
+	if len(args) == 0 {
 		return nil, errors.New("Key required")
 	}
-	key := c.Args()[0]
-	value, err := argOrStdin(c.Args(), os.Stdin, 1)
+	key := args[0]
+	value, err := argOrStdin(args, os.Stdin, 1)
 	if err != nil {
 		return nil, errors.New("Value required")
 	}
 
-	ttl := c.Int("ttl")
+	ttl, _ := cmd.Flags().GetUint64("ttl")
 
-	return client.Update(key, value, uint64(ttl))
+	return client.Update(key, value, ttl)
 }

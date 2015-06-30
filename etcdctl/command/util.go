@@ -24,7 +24,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/transport"
 )
@@ -56,8 +56,8 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 	return string(bytes), nil
 }
 
-func getPeersFlagValue(c *cli.Context) []string {
-	peerstr := c.GlobalString("peers")
+func getPeersFlagValue(cmd *cobra.Command) []string {
+	peerstr, _ := cmd.Flags().GetString("peers")
 
 	// Use an environment variable if nothing was supplied on the
 	// command line
@@ -73,8 +73,8 @@ func getPeersFlagValue(c *cli.Context) []string {
 	return strings.Split(peerstr, ",")
 }
 
-func getEndpoints(c *cli.Context) ([]string, error) {
-	eps := getPeersFlagValue(c)
+func getEndpoints(cmd *cobra.Command) ([]string, error) {
+	eps := getPeersFlagValue(cmd)
 	for i, ep := range eps {
 		u, err := url.Parse(ep)
 		if err != nil {
@@ -90,10 +90,10 @@ func getEndpoints(c *cli.Context) ([]string, error) {
 	return eps, nil
 }
 
-func getTransport(c *cli.Context) (*http.Transport, error) {
-	cafile := c.GlobalString("ca-file")
-	certfile := c.GlobalString("cert-file")
-	keyfile := c.GlobalString("key-file")
+func getTransport(cmd *cobra.Command) (*http.Transport, error) {
+	cafile, _ := cmd.Flags().GetString("ca-file")
+	certfile, _ := cmd.Flags().GetString("cert-file")
+	keyfile, _ := cmd.Flags().GetString("key-file")
 
 	// Use an environment variable if nothing was supplied on the
 	// command line
@@ -115,14 +115,14 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 	return transport.NewTransport(tls)
 }
 
-func mustNewClient(c *cli.Context) client.Client {
-	eps, err := getEndpoints(c)
+func mustNewClient(cmd *cobra.Command) client.Client {
+	eps, err := getEndpoints(cmd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	tr, err := getTransport(c)
+	tr, err := getTransport(cmd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -133,7 +133,7 @@ func mustNewClient(c *cli.Context) client.Client {
 		Endpoints: eps,
 	}
 
-	uFlag := c.GlobalString("username")
+	uFlag, _ := cmd.Flags().GetString("username")
 	if uFlag != "" {
 		username, password, err := getUsernamePasswordFromFlag(uFlag)
 		if err != nil {

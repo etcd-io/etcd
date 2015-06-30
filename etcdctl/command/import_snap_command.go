@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/store"
 )
 
@@ -20,26 +20,26 @@ type set struct {
 	ttl   int64
 }
 
-func NewImportSnapCommand() cli.Command {
-	return cli.Command{
-		Name:  "import",
-		Usage: "import a snapshot to a cluster",
-		Flags: []cli.Flag{
-			cli.StringFlag{Name: "snap", Value: "", Usage: "Path to the vaild etcd 0.4.x snapshot."},
-			cli.StringSliceFlag{Name: "hidden", Value: new(cli.StringSlice), Usage: "Hidden key spaces to import from snapshot"},
-			cli.IntFlag{Name: "c", Value: 10, Usage: "Number of concurrent clients to import the data"},
-		},
-		Action: handleImportSnap,
+func NewImportSnapCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "import",
+		Short: "import a snapshot to a cluster",
+		Run:   handleImportSnap,
 	}
+	cmd.Flags().StringSlice("hidden", []string{}, "Hidden key spaces to import from snapshot")
+	cmd.Flags().String("snap", "", "Path to the vaild etcd 0.4.x snapshot.")
+	cmd.Flags().Int("c", 10, "Number of concurrent clients to import the data")
+	return cmd
 }
 
-func handleImportSnap(c *cli.Context) {
-	d, err := ioutil.ReadFile(c.String("snap"))
+func handleImportSnap(cmd *cobra.Command, _ []string) {
+	snap, _ := cmd.Flags().GetString("snap")
+	d, err := ioutil.ReadFile(snap)
 	if err != nil {
-		if c.String("snap") == "" {
+		if snap == "" {
 			fmt.Printf("no snapshot file provided (use --snap)\n")
 		} else {
-			fmt.Printf("cannot read snapshot file %s\n", c.String("snap"))
+			fmt.Printf("cannot read snapshot file %s\n", snap)
 		}
 		os.Exit(1)
 	}
@@ -51,24 +51,24 @@ func handleImportSnap(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	endpoints, err := getEndpoints(c)
+	endpoints, err := getEndpoints(cmd)
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
-	tr, err := getTransport(c)
+	tr, err := getTransport(cmd)
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
 
 	wg := &sync.WaitGroup{}
 	setc := make(chan set)
-	concurrent := c.Int("c")
-	fmt.Printf("starting to import snapshot %s with %d clients\n", c.String("snap"), concurrent)
+	concurrent, _ := cmd.Flags().GetInt("c")
+	fmt.Printf("starting to import snapshot %s with %d clients\n", snap, concurrent)
 	for i := 0; i < concurrent; i++ {
 		client := etcd.NewClient(endpoints)
 		client.SetTransport(tr)
 
-		if c.GlobalBool("debug") {
+		if b, _ := cmd.Flags().GetBool("debug"); b {
 			go dumpCURL(client)
 		}
 
@@ -85,7 +85,7 @@ func handleImportSnap(c *cli.Context) {
 	}
 	n := copyKeys(all.Node, setc)
 
-	hiddens := c.StringSlice("hidden")
+	hiddens, _ := cmd.Flags().GetStringSlice("hidden")
 	for _, h := range hiddens {
 		allh, err := st.Get(h, true, true)
 		if err != nil {

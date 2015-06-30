@@ -20,78 +20,82 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
-func NewRoleCommands() cli.Command {
-	return cli.Command{
-		Name:  "role",
-		Usage: "role add, grant and revoke subcommands",
-		Subcommands: []cli.Command{
-			cli.Command{
-				Name:   "add",
-				Usage:  "add a new role for the etcd cluster",
-				Action: actionRoleAdd,
-			},
-			cli.Command{
-				Name:   "get",
-				Usage:  "get details for a role",
-				Action: actionRoleGet,
-			},
-			cli.Command{
-				Name:   "list",
-				Usage:  "list all roles",
-				Action: actionRoleList,
-			},
-			cli.Command{
-				Name:   "remove",
-				Usage:  "remove a role from the etcd cluster",
-				Action: actionRoleRemove,
-			},
-			cli.Command{
-				Name:  "grant",
-				Usage: "grant path matches to an etcd role",
-				Flags: []cli.Flag{
-					cli.StringFlag{Name: "path", Value: "", Usage: "Path granted for the role to access"},
-					cli.BoolFlag{Name: "read", Usage: "Grant read-only access"},
-					cli.BoolFlag{Name: "write", Usage: "Grant write-only access"},
-					cli.BoolFlag{Name: "readwrite", Usage: "Grant read-write access"},
-				},
-				Action: actionRoleGrant,
-			},
-			cli.Command{
-				Name:  "revoke",
-				Usage: "revoke path matches for an etcd role",
-				Flags: []cli.Flag{
-					cli.StringFlag{Name: "path", Value: "", Usage: "Path revoked for the role to access"},
-					cli.BoolFlag{Name: "read", Usage: "Revoke read access"},
-					cli.BoolFlag{Name: "write", Usage: "Revoke write access"},
-					cli.BoolFlag{Name: "readwrite", Usage: "Revoke read-write access"},
-				},
-				Action: actionRoleRevoke,
-			},
-		},
+func NewRoleCommands() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "role",
+		Short: "role add, grant and revoke subcommands",
 	}
+
+	add := &cobra.Command{
+		Use:   "add",
+		Short: "add a new role for the etcd cluster",
+		Run:   actionRoleAdd,
+	}
+
+	get := &cobra.Command{
+		Use:   "get",
+		Short: "get details for a role",
+		Run:   actionRoleGet,
+	}
+
+	list := &cobra.Command{
+		Use:   "list",
+		Short: "list all roles",
+		Run:   actionRoleList,
+	}
+
+	remove := &cobra.Command{
+		Use:   "remove",
+		Short: "remove a role from the etcd cluster",
+		Run:   actionRoleRemove,
+	}
+
+	grant := &cobra.Command{
+		Use:   "grant",
+		Short: "grant path matches to an etcd role",
+		Run:   actionRoleGrant,
+	}
+	_ = grant.Flags().String("path", "", "Path granted for the role to access")
+	_ = grant.Flags().Bool("read", false, "Grant read-only access")
+	_ = grant.Flags().Bool("write", false, "Grant write-only access")
+	_ = grant.Flags().Bool("readwrite", false, "Grant read-write access")
+
+	revoke := &cobra.Command{
+		Use:   "revoke",
+		Short: "revoke path matches for an etcd role",
+		Run:   actionRoleRevoke,
+	}
+	_ = revoke.Flags().String("path", "", "Path granted for the role to access")
+	_ = revoke.Flags().Bool("read", false, "Grant read-only access")
+	_ = revoke.Flags().Bool("write", false, "Grant write-only access")
+	_ = revoke.Flags().Bool("readwrite", false, "Grant read-write access")
+
+	cmd.AddCommand(add, get, list, remove, grant, revoke)
+
+	return cmd
 }
 
-func mustNewAuthRoleAPI(c *cli.Context) client.AuthRoleAPI {
-	hc := mustNewClient(c)
+func mustNewAuthRoleAPI(cmd *cobra.Command) client.AuthRoleAPI {
+	hc := mustNewClient(cmd)
 
-	if c.GlobalBool("debug") {
+	if d, _ := cmd.Flags().GetBool("debug"); d {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
 	}
 
 	return client.NewAuthRoleAPI(hc)
 }
 
-func actionRoleList(c *cli.Context) {
-	if len(c.Args()) != 0 {
+func actionRoleList(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
 	}
-	r := mustNewAuthRoleAPI(c)
+	r := mustNewAuthRoleAPI(cmd)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	roles, err := r.ListRoles(ctx)
 	cancel()
@@ -105,8 +109,8 @@ func actionRoleList(c *cli.Context) {
 	}
 }
 
-func actionRoleAdd(c *cli.Context) {
-	api, role := mustRoleAPIAndName(c)
+func actionRoleAdd(cmd *cobra.Command, args []string) {
+	api, role := mustRoleAPIAndName(cmd, args)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	currentRole, err := api.GetRole(ctx, role)
 	cancel()
@@ -125,8 +129,8 @@ func actionRoleAdd(c *cli.Context) {
 	fmt.Printf("Role %s created\n", role)
 }
 
-func actionRoleRemove(c *cli.Context) {
-	api, role := mustRoleAPIAndName(c)
+func actionRoleRemove(cmd *cobra.Command, args []string) {
+	api, role := mustRoleAPIAndName(cmd, args)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	err := api.RemoveRole(ctx, role)
 	cancel()
@@ -138,24 +142,24 @@ func actionRoleRemove(c *cli.Context) {
 	fmt.Printf("Role %s removed\n", role)
 }
 
-func actionRoleGrant(c *cli.Context) {
-	roleGrantRevoke(c, true)
+func actionRoleGrant(cmd *cobra.Command, args []string) {
+	roleGrantRevoke(cmd, args, true)
 }
 
-func actionRoleRevoke(c *cli.Context) {
-	roleGrantRevoke(c, false)
+func actionRoleRevoke(cmd *cobra.Command, args []string) {
+	roleGrantRevoke(cmd, args, false)
 }
 
-func roleGrantRevoke(c *cli.Context, grant bool) {
-	path := c.String("path")
+func roleGrantRevoke(cmd *cobra.Command, args []string, grant bool) {
+	path, _ := cmd.Flags().GetString("path")
 	if path == "" {
 		fmt.Fprintln(os.Stderr, "No path specified; please use `-path`")
 		os.Exit(1)
 	}
 
-	read := c.Bool("read")
-	write := c.Bool("write")
-	rw := c.Bool("readwrite")
+	read, _ := cmd.Flags().GetBool("read")
+	write, _ := cmd.Flags().GetBool("write")
+	rw, _ := cmd.Flags().GetBool("readwrite")
 	permcount := 0
 	for _, v := range []bool{read, write, rw} {
 		if v {
@@ -176,7 +180,7 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 		permType = client.ReadWritePermission
 	}
 
-	api, role := mustRoleAPIAndName(c)
+	api, role := mustRoleAPIAndName(cmd, args)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	currentRole, err := api.GetRole(ctx, role)
 	cancel()
@@ -207,8 +211,8 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 	fmt.Printf("Role %s updated\n", role)
 }
 
-func actionRoleGet(c *cli.Context) {
-	api, rolename := mustRoleAPIAndName(c)
+func actionRoleGet(cmd *cobra.Command, args []string) {
+	api, rolename := mustRoleAPIAndName(cmd, args)
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	role, err := api.GetRole(ctx, rolename)
@@ -228,14 +232,13 @@ func actionRoleGet(c *cli.Context) {
 	}
 }
 
-func mustRoleAPIAndName(c *cli.Context) (client.AuthRoleAPI, string) {
-	args := c.Args()
+func mustRoleAPIAndName(cmd *cobra.Command, args []string) (client.AuthRoleAPI, string) {
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "Please provide a role name")
 		os.Exit(1)
 	}
 
 	name := args[0]
-	api := mustNewAuthRoleAPI(c)
+	api := mustNewAuthRoleAPI(cmd)
 	return api, name
 }
