@@ -28,7 +28,7 @@ export PATH="${GOBIN}:${PATH}"
 
 for dir in ${DIRS}; do
 	pushd ${dir}
-		protoc --gogofast_out=. -I=.:${GOPATH}/src/github.com/gogo/protobuf/protobuf:${GOPATH}/src *.proto
+		protoc --gogofast_out=plugins=grpc:. -I=.:${GOPATH}/src/github.com/gogo/protobuf/protobuf:${GOPATH}/src *.proto
 		sed -i".bak" -e "s|github.com/gogo/protobuf/proto|${PREFIX}/github.com/gogo/protobuf/proto|" *.go
 		rm -f *.bak
 	popd

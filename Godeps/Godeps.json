@@ -24,6 +24,10 @@
 			"Rev": "71f28eaecbebd00604d87bb1de0dae8fcfa54bbd"
 		},
 		{
+			"ImportPath": "github.com/bradfitz/http2",
+			"Rev": "3e36af6d3af0e56fa3da71099f864933dea3d9fb"
+		},
+		{
 			"ImportPath": "github.com/codegangsta/cli",
 			"Comment": "1.2.0-26-gf7ebb76",
 			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"
@@ -44,6 +48,10 @@
 		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
 			"Rev": "64f27bf06efee53589314a6e5a4af34cdd85adf6"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
@@ -104,6 +112,22 @@
 		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "7dbad50ab5b31073856416cdcfeb2796d682f844"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "3046bc76d6dfd7d3707f6640f85e42d9c4050f50"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud/compute/metadata",
+			"Rev": "f20d6dcccb44ed49de45ae3703312cb46e627db1"
+		},
+		{
+			"ImportPath": "google.golang.org/cloud/internal",
+			"Rev": "f20d6dcccb44ed49de45ae3703312cb46e627db1"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc",
+			"Rev": "f5ebd86be717593ab029545492c93ddf8914832b"
 		}
 	]
 }
