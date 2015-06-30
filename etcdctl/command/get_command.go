@@ -20,7 +20,8 @@ import (
 	"os"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 // NewGetCommand returns the CLI command for "get".
@@ -32,34 +33,30 @@ func NewGetCommand() cli.Command {
 			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
 		},
 		Action: func(c *cli.Context) {
-			handleGet(c, getCommandFunc)
+			getCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
-// handleGet handles a request that intends to do get-like operations.
-func handleGet(c *cli.Context, fn handlerFunc) {
-	handlePrint(c, fn, printGet)
-}
+// getCommandFunc executes the "get" command.
+func getCommandFunc(c *cli.Context, ki client.KeysAPI) {
+	if len(c.Args()) == 0 {
+		handleError(ExitBadArgs, errors.New("key required"))
+	}
 
-// printGet writes error message when getting the value of a directory.
-func printGet(resp *etcd.Response, format string) {
+	key := c.Args()[0]
+	sorted := c.Bool("sort")
+
+	// TODO: handle transport timeout
+	resp, err := ki.Get(context.TODO(), key, &client.GetOptions{Sort: sorted})
+	if err != nil {
+		handleError(ExitServerError, err)
+	}
+
 	if resp.Node.Dir {
 		fmt.Fprintln(os.Stderr, fmt.Sprintf("%s: is a directory", resp.Node.Key))
 		os.Exit(1)
 	}
 
-	printKey(resp, format)
-}
-
-// getCommandFunc executes the "get" command.
-func getCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	if len(c.Args()) == 0 {
-		return nil, errors.New("key required")
-	}
-	key := c.Args()[0]
-	sorted := c.Bool("sort")
-
-	// Retrieve the value from the server.
-	return client.Get(key, sorted, false)
+	printResponseKey(resp, c.GlobalString("output"))
 }

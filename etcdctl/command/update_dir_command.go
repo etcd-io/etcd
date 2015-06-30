@@ -16,12 +16,15 @@ package command
 
 import (
 	"errors"
+	"os"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
-// NewUpdateDirCommand returns the CLI command for "updateDir".
+// NewUpdateDirCommand returns the CLI command for "updatedir".
 func NewUpdateDirCommand() cli.Command {
 	return cli.Command{
 		Name:  "updatedir",
@@ -30,18 +33,27 @@ func NewUpdateDirCommand() cli.Command {
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
 		Action: func(c *cli.Context) {
-			handleDir(c, updateDirCommandFunc)
+			updatedirCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
-// updateDirCommandFunc executes the "updateDir" command.
-func updateDirCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+// updatedirCommandFunc executes the "updatedir" command.
+func updatedirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("Key required")
+		handleError(ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
+	value, err := argOrStdin(c.Args(), os.Stdin, 1)
+	if err != nil {
+		handleError(ExitBadArgs, errors.New("value required"))
+	}
+
 	ttl := c.Int("ttl")
 
-	return client.UpdateDir(key, uint64(ttl))
+	// TODO: handle transport timeout
+	_, err = ki.Set(context.TODO(), key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: client.PrevExist})
+	if err != nil {
+		handleError(ExitServerError, err)
+	}
 }

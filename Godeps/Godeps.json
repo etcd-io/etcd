@@ -33,11 +33,6 @@
 			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"
 		},
 		{
-			"ImportPath": "github.com/coreos/go-etcd/etcd",
-			"Comment": "v2.0.0-13-g4cceaf7",
-			"Rev": "4cceaf7283b76f27c4a732b20730dcdb61053bf5"
-		},
-		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
 			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
 		},
@@ -96,10 +91,6 @@
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Rev": "9cc77fa25329013ce07362c7742952ff887361f2"
-		},
-		{
-			"ImportPath": "github.com/ugorji/go/codec",
-			"Rev": "821cda7e48749cacf7cad2c6ed01e96457ca7e9d"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",

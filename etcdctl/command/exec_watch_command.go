@@ -23,7 +23,8 @@ import (
 	"os/signal"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 // NewExecWatchCommand returns the CLI command for "exec-watch".
@@ -36,24 +37,22 @@ func NewExecWatchCommand() cli.Command {
 			cli.BoolFlag{Name: "recursive", Usage: "watch all values for key and child keys"},
 		},
 		Action: func(c *cli.Context) {
-			handleKey(c, execWatchCommandFunc)
+			execWatchCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
 // execWatchCommandFunc executes the "exec-watch" command.
-func execWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
-	_ = io.Copy
-	_ = exec.Command
+func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	args := c.Args()
-	argsLen := len(args)
+	argslen := len(args)
 
-	if argsLen < 2 {
-		return nil, errors.New("Key and command to exec required")
+	if argslen < 2 {
+		handleError(ExitBadArgs, errors.New("key and command to exec required"))
 	}
 
-	key := args[argsLen-1]
-	cmdArgs := args[:argsLen-1]
+	key := args[argslen-1]
+	cmdArgs := args[:argslen-1]
 
 	index := 0
 	if c.Int("after-index") != 0 {
@@ -70,19 +69,24 @@ func execWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, 
 
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt)
-	stop := make(chan bool)
 
 	go func() {
 		<-sigch
-		stop <- true
 		os.Exit(0)
 	}()
 
-	receiver := make(chan *etcd.Response)
-	go client.Watch(key, uint64(index), recursive, receiver, stop)
+	w := ki.Watcher(key, &client.WatcherOptions{AfterIndex: uint64(index), Recursive: recursive})
 
 	for {
-		resp := <-receiver
+		resp, err := w.Next(context.TODO())
+		if err != nil {
+			handleError(ExitServerError, err)
+		}
+		if resp.Node.Dir {
+			fmt.Fprintf(os.Stderr, "Ignored dir %s change", resp.Node.Key)
+			continue
+		}
+
 		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 		cmd.Env = environResponse(resp, os.Environ())
 
@@ -96,18 +100,21 @@ func execWatchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, 
 			fmt.Fprintf(os.Stderr, err.Error())
 			os.Exit(1)
 		}
-		err = cmd.Start()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, err.Error())
-			os.Exit(1)
-		}
-		go io.Copy(os.Stdout, stdout)
-		go io.Copy(os.Stderr, stderr)
-		cmd.Wait()
+
+		go func() {
+			err := cmd.Start()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, err.Error())
+				os.Exit(1)
+			}
+			go io.Copy(os.Stdout, stdout)
+			go io.Copy(os.Stderr, stderr)
+			cmd.Wait()
+		}()
 	}
 }
 
-func environResponse(resp *etcd.Response, env []string) []string {
+func environResponse(resp *client.Response, env []string) []string {
 	env = append(env, "ETCD_WATCH_ACTION="+resp.Action)
 	env = append(env, "ETCD_WATCH_MODIFIED_INDEX="+fmt.Sprintf("%d", resp.Node.ModifiedIndex))
 	env = append(env, "ETCD_WATCH_KEY="+resp.Node.Key)

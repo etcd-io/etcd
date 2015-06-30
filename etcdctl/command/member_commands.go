@@ -48,27 +48,6 @@ func NewMemberCommand() cli.Command {
 	}
 }
 
-func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
-
-	hc := mustNewClient(c)
-
-	if !c.GlobalBool("no-sync") {
-		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-		err := hc.Sync(ctx)
-		cancel()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
-		}
-	}
-
-	if c.GlobalBool("debug") {
-		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
-	}
-
-	return client.NewMembersAPI(hc)
-}
-
 func actionMemberList(c *cli.Context) {
 	if len(c.Args()) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")

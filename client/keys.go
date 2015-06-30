@@ -212,6 +212,9 @@ type DeleteOptions struct {
 	// or explicitly set to false, only a single Node will be
 	// deleted.
 	Recursive bool
+
+	// Dir specifies whether or not this Node should be removed as a directory.
+	Dir bool
 }
 
 type Watcher interface {
@@ -349,6 +352,7 @@ func (k *httpKeysAPI) Delete(ctx context.Context, key string, opts *DeleteOption
 	if opts != nil {
 		act.PrevValue = opts.PrevValue
 		act.PrevIndex = opts.PrevIndex
+		act.Dir = opts.Dir
 		act.Recursive = opts.Recursive
 	}
 
@@ -520,6 +524,7 @@ type deleteAction struct {
 	Key       string
 	PrevValue string
 	PrevIndex uint64
+	Dir       bool
 	Recursive bool
 }
 
@@ -532,6 +537,9 @@ func (a *deleteAction) HTTPRequest(ep url.URL) *http.Request {
 	}
 	if a.PrevIndex != 0 {
 		params.Set("prevIndex", strconv.FormatUint(a.PrevIndex, 10))
+	}
+	if a.Dir {
+		params.Set("dir", "true")
 	}
 	if a.Recursive {
 		params.Set("recursive", "true")
