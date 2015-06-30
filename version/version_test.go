@@ -29,7 +29,6 @@ func TestDetectDataDir(t *testing.T) {
 	}{
 		{[]string{"member/", "member/wal/", "member/wal/1", "member/snap/"}, DataDir2_0_1},
 		{[]string{"snap/", "wal/", "wal/1"}, DataDir2_0},
-		{[]string{"snapshot/", "conf", "log"}, DataDir0_4},
 		{[]string{"weird"}, DataDirUnknown},
 		{[]string{"snap/", "wal/"}, DataDirUnknown},
 	}
