@@ -1,0 +1,157 @@
+syntax = "proto3";
+package etcdserverpb;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/coreos/etcd/storage/storagepb/kv.proto";
+
+// Interface exported by the server.
+service etcd {
+  // Range gets the keys in the range from the store.
+  rpc Range(RangeRequest) returns (RangeResponse) {}
+
+  // Put puts the given key into the store.
+  // A put request increases the index of the store,
+  // and generates one event in the event history.
+  rpc Put(PutRequest) returns (PutResponse) {}
+
+  // Delete deletes the given range from the store.
+  // A delete request increase the index of the store,
+  // and generates one event in the event history.
+  rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
+
+  // Tnx processes all the requests in one transaction.
+  // A tnx request increases the index of the store,
+  // and generates events with the same index in the event history.
+  rpc Tnx(TnxRequest) returns (TnxResponse) {}
+
+  // Compact compacts the event history in etcd. User should compact the
+  // event history periodically, or it will grow infinitely.
+  rpc Compact(CompactionRequest) returns (CompactionResponse) {}
+}
+
+message ResponseHeader {
+  // an error type message?
+  string error = 1;
+  uint64 cluster_id = 2;
+  uint64 member_id = 3;
+  // index of the store when the request was applied.
+  int64 index = 4;
+  // term of raft when the request was applied.
+  uint64 raft_term = 5;
+}
+
+message RangeRequest {
+  // if the range_end is not given, the request returns the key.
+  bytes key = 1;
+  // if the range_end is given, it gets the keys in range [key, range_end).
+  bytes range_end = 2;
+  // limit the number of keys returned.
+  int64 limit = 3;
+  // the response will be consistent with previous request with same token if the token is 
+  // given and is vaild.
+  bytes consistent_token = 4;
+}
+
+message RangeResponse {
+  ResponseHeader header = 1;
+  repeated storagepb.KeyValue kvs = 2;
+  bytes consistent_token = 3;
+}
+
+message PutRequest {
+  bytes key = 1;
+  bytes value = 2;
+}
+
+message PutResponse {
+  ResponseHeader header = 1;
+}
+
+message DeleteRangeRequest {
+  // if the range_end is not given, the request deletes the key.
+  bytes key = 1;
+  // if the range_end is given, it deletes the keys in range [key, range_end).
+  bytes range_end = 2;
+}
+
+message DeleteRangeResponse {
+  ResponseHeader header = 1;
+}
+
+message RequestUnion {
+  oneof request {
+    RangeRequest request_range = 1;
+    PutRequest request_put = 2;
+    DeleteRangeRequest request_delete_range = 3;
+  }
+}
+
+message ResponseUnion {
+  oneof response {
+    RangeResponse reponse_range = 1;
+    PutResponse response_put = 2;
+    DeleteRangeResponse response_delete_range = 3;
+  }
+}
+
+message Compare {
+  enum CompareType {
+    EQUAL = 0;
+    GREATER = 1;
+    LESS = 2;
+  }
+  CompareType type = 1;
+  // key path
+  bytes key = 2;
+  oneof target {
+    // version of the given key
+    int64 version = 3;
+    // create index of the given key
+    int64 create_index = 4;
+    // last modified index of the given key
+    int64 mod_index = 5;
+    // value of the given key
+    bytes value = 6;
+  }
+}
+
+// First all the compare requests are processed.
+// If all the compare succeed, all the success
+// requests will be processed.
+// Or all the failure requests will be processed and
+// all the errors in the comparison will be returned.
+
+// From google paxosdb paper:
+// Our implementation hinges around a powerful primitive which we call MultiOp. All other database
+// operations except for iteration are implemented as a single call to MultiOp. A MultiOp is applied atomically
+// and consists of three components:
+// 1. A list of tests called guard. Each test in guard checks a single entry in the database. It may check
+// for the absence or presence of a value, or compare with a given value. Two different tests in the guard
+// may apply to the same or different entries in the database. All tests in the guard are applied and
+// MultiOp returns the results. If all tests are true, MultiOp executes t op (see item 2 below), otherwise
+// it executes f op (see item 3 below).
+// 2. A list of database operations called t op. Each operation in the list is either an insert, delete, or
+// lookup operation, and applies to a single database entry. Two different operations in the list may apply
+// to the same or different entries in the database. These operations are executed
+// if guard evaluates to
+// true.
+// 3. A list of database operations called f op. Like t op, but executed if guard evaluates to false.
+message TnxRequest {
+  repeated Compare compare = 1;
+  repeated RequestUnion success = 2;
+  repeated RequestUnion failure = 3;
+}
+
+message TnxResponse {
+  ResponseHeader header = 1;
+  bool succeeded = 2;
+  repeated ResponseUnion responses = 3;
+}
+
+message CompactionRequest {
+  int64 index = 1;
+}
+
+message CompactionResponse {
+  ResponseHeader header = 1;
+}
