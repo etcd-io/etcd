@@ -7,6 +7,7 @@
 
 	It is generated from these files:
 		etcdserver.proto
+		rpc.proto
 
 	It has these top-level messages:
 		Request
