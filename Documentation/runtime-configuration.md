@@ -111,6 +111,7 @@ Now start the new etcd process with the relevant flags for the new member:
 $ export ETCD_NAME="infra3"
 $ export ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra3=http://10.0.1.13:2380"
 $ export ETCD_INITIAL_CLUSTER_STATE=existing
+$ export ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster" # this must be changed to your own cluster's token, ignore this if you didn't set the cluster-token value
 $ etcd -listen-client-urls http://10.0.1.13:2379 -advertise-client-urls http://10.0.1.13:2379  -listen-peer-urls http://10.0.1.13:2380 -initial-advertise-peer-urls http://10.0.1.13:2380
 ```
 
