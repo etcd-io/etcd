@@ -5,7 +5,7 @@
 #
 
 PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
-DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./migrate/etcd4pb ./storage/storagepb"
+DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb"
 
 SHA="64f27bf06efee53589314a6e5a4af34cdd85adf6"
 

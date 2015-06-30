@@ -20,7 +20,6 @@ import (
 	"path"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/migrate"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -109,14 +108,6 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 // It must ensure that, after upgrading, the most recent version is present.
 func upgradeDataDir(baseDataDir string, name string, ver version.DataDirVersion) error {
 	switch ver {
-	case version.DataDir0_4:
-		plog.Infof("converting v0.4 log to v2.0")
-		err := migrate.Migrate4To2(baseDataDir, name)
-		if err != nil {
-			plog.Fatalf("failed to migrate data-dir (%v)", err)
-			return err
-		}
-		fallthrough
 	case version.DataDir2_0:
 		err := makeMemberDir(baseDataDir)
 		if err != nil {
