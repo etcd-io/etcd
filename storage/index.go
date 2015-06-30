@@ -11,6 +11,7 @@ type index interface {
 	Get(key []byte, atRev int64) (rev, created reversion, ver int64, err error)
 	Range(key, end []byte, atRev int64) ([][]byte, []reversion)
 	Put(key []byte, rev reversion)
+	Restore(key []byte, created, modified reversion, ver int64)
 	Tombstone(key []byte, rev reversion) error
 	Compact(rev int64) map[reversion]struct{}
 	Equal(b index) bool
@@ -40,6 +41,21 @@ func (ti *treeIndex) Put(key []byte, rev reversion) {
 	}
 	okeyi := item.(*keyIndex)
 	okeyi.put(rev.main, rev.sub)
+}
+
+func (ti *treeIndex) Restore(key []byte, created, modified reversion, ver int64) {
+	keyi := &keyIndex{key: key}
+
+	ti.Lock()
+	defer ti.Unlock()
+	item := ti.tree.Get(keyi)
+	if item == nil {
+		keyi.restore(created, modified, ver)
+		ti.tree.ReplaceOrInsert(keyi)
+		return
+	}
+	okeyi := item.(*keyIndex)
+	okeyi.put(modified.main, modified.sub)
 }
 
 func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created reversion, ver int64, err error) {
