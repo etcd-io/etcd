@@ -44,6 +44,10 @@ type store struct {
 	stopc chan struct{}
 }
 
+func New(path string) KV {
+	return newStore(path)
+}
+
 func newStore(path string) *store {
 	s := &store{
 		b:              backend.New(path, batchInterval, batchLimit),
@@ -285,7 +289,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
 		if e.Type == storagepb.PUT {
-			kvs = append(kvs, e.Kv)
+			kvs = append(kvs, *e.Kv)
 		}
 		if limit > 0 && len(kvs) >= int(limit) {
 			break
@@ -309,7 +313,7 @@ func (s *store) put(key, value []byte, rev int64) {
 	ver = ver + 1
 	event := storagepb.Event{
 		Type: storagepb.PUT,
-		Kv: storagepb.KeyValue{
+		Kv: &storagepb.KeyValue{
 			Key:         key,
 			Value:       value,
 			CreateIndex: c,
@@ -388,7 +392,7 @@ func (s *store) delete(key []byte, mainrev int64) bool {
 
 	event := storagepb.Event{
 		Type: storagepb.DELETE,
-		Kv: storagepb.KeyValue{
+		Kv: &storagepb.KeyValue{
 			Key: key,
 		},
 	}
