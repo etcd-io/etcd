@@ -1,3 +1,4 @@
+syntax = "proto2";
 package snappb;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
