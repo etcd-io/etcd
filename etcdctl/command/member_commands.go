@@ -44,6 +44,11 @@ func NewMemberCommand() cli.Command {
 				Usage:  "remove an existing member from the etcd cluster",
 				Action: actionMemberRemove,
 			},
+			cli.Command{
+				Name:   "update",
+				Usage:  "update an existing member in the etcd cluster",
+				Action: actionMemberUpdate,
+			},
 		},
 	}
 }
@@ -162,4 +167,26 @@ func actionMemberRemove(c *cli.Context) {
 	}
 
 	fmt.Printf("Removed member %s from cluster\n", removalID)
+}
+
+func actionMemberUpdate(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 2 {
+		fmt.Fprintln(os.Stderr, "Provide an ID and a list of comma separated peerURL (0xabcd http://example.com,http://example1.com)")
+		os.Exit(1)
+	}
+
+	mAPI := mustNewMembersAPI(c)
+
+	mid := args[0]
+	urls := args[1]
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	err := mAPI.Update(ctx, mid, strings.Split(urls, ","))
+	cancel()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Printf("Updated member with ID %s in cluster\n", mid)
 }
