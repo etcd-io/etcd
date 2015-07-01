@@ -70,6 +70,33 @@ func TestMembersAPIActionAdd(t *testing.T) {
 	}
 }
 
+func TestMembersAPIActionUpdate(t *testing.T) {
+	ep := url.URL{Scheme: "http", Host: "example.com"}
+	act := &membersAPIActionUpdate{
+		memberID: "0xabcd",
+		peerURLs: types.URLs([]url.URL{
+			url.URL{Scheme: "https", Host: "127.0.0.1:8081"},
+			url.URL{Scheme: "http", Host: "127.0.0.1:8080"},
+		}),
+	}
+
+	wantURL := &url.URL{
+		Scheme: "http",
+		Host:   "example.com",
+		Path:   "/v2/members/0xabcd",
+	}
+	wantHeader := http.Header{
+		"Content-Type": []string{"application/json"},
+	}
+	wantBody := []byte(`{"peerURLs":["https://127.0.0.1:8081","http://127.0.0.1:8080"]}`)
+
+	got := *act.HTTPRequest(ep)
+	err := assertRequest(got, "PUT", wantURL, wantHeader, wantBody)
+	if err != nil {
+		t.Error(err.Error())
+	}
+}
+
 func TestMembersAPIActionRemove(t *testing.T) {
 	ep := url.URL{Scheme: "http", Host: "example.com"}
 	act := &membersAPIActionRemove{memberID: "XXX"}
@@ -260,7 +287,7 @@ func TestMemberCollectionUnmarshal(t *testing.T) {
 }
 
 func TestMemberCreateRequestMarshal(t *testing.T) {
-	req := memberCreateRequest{
+	req := memberCreateOrUpdateRequest{
 		PeerURLs: types.URLs([]url.URL{
 			url.URL{Scheme: "http", Host: "127.0.0.1:8081"},
 			url.URL{Scheme: "https", Host: "127.0.0.1:8080"},
