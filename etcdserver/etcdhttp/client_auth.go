@@ -27,18 +27,18 @@ import (
 )
 
 type authHandler struct {
-	sec     *auth.Store
+	sec     auth.Store
 	cluster etcdserver.Cluster
 }
 
-func hasWriteRootAccess(sec *auth.Store, r *http.Request) bool {
+func hasWriteRootAccess(sec auth.Store, r *http.Request) bool {
 	if r.Method == "GET" || r.Method == "HEAD" {
 		return true
 	}
 	return hasRootAccess(sec, r)
 }
 
-func hasRootAccess(sec *auth.Store, r *http.Request) bool {
+func hasRootAccess(sec auth.Store, r *http.Request) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
 		return true
@@ -68,7 +68,7 @@ func hasRootAccess(sec *auth.Store, r *http.Request) bool {
 	return false
 }
 
-func hasKeyPrefixAccess(sec *auth.Store, r *http.Request, key string, recursive bool) bool {
+func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive bool) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
 		return true
@@ -105,7 +105,7 @@ func hasKeyPrefixAccess(sec *auth.Store, r *http.Request, key string, recursive 
 	return false
 }
 
-func hasGuestAccess(sec *auth.Store, r *http.Request, key string) bool {
+func hasGuestAccess(sec auth.Store, r *http.Request, key string) bool {
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
 	role, err := sec.GetRole(auth.GuestRoleName)
 	if err != nil {

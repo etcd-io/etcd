@@ -111,7 +111,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 }
 
 type keysHandler struct {
-	sec     *auth.Store
+	sec     auth.Store
 	server  etcdserver.Server
 	cluster etcdserver.Cluster
 	timer   etcdserver.RaftTimer
@@ -173,7 +173,7 @@ func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 }
 
 type membersHandler struct {
-	sec     *auth.Store
+	sec     auth.Store
 	server  etcdserver.Server
 	cluster etcdserver.Cluster
 	clock   clockwork.Clock
