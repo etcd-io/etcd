@@ -16,6 +16,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 
@@ -72,6 +73,10 @@ func watchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 		if resp.Node.Dir {
 			continue
 		}
+		if recursive {
+			fmt.Printf("[%s] %s\n", resp.Action, resp.Node.Key)
+		}
+
 		printResponseKey(resp, c.GlobalString("output"))
 
 		if !forever {
