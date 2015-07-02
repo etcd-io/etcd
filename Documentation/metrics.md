@@ -30,45 +30,6 @@ Pending proposal (`pending_proposal_total`) gives you an idea about how many pro
 
 Failed proposals (`proposal_failed_total`) are normally related to two issues: temporary failures related to a leader election or longer duration downtime caused by a loss of quorum in the cluster.
 
-
-### store
-
-These metrics describe the accesses into the data store of etcd members that exist in the cluster. They 
-are useful to count what kind of actions are taken by users. It is also useful to see and whether all etcd members 
-"see" the same set of data mutations, and whether reads and watches (which are local) are equally distributed.
-
-All these metrics are prefixed with `etcd_store_`. 
-
-| Name                      | Description                                                                          | Type                   |
-|---------------------------|------------------------------------------------------------------------------------------|--------------------|
-| reads_total               | Total number of reads from store, should differ among etcd members (local reads).    | Counter(action)        |
-| writes_total              | Total number of writes to store, should be same among all etcd members.              | Counter(action)        |
-| reads_failed_total        | Number of failed reads from store (e.g. key missing) on local reads.                 | Counter(action)        |
-| writes_failed_total     | Number of failed writes to store (e.g. failed compare and swap).                       | Counter(action)        |
-| expires_total             | Total number of expired keys (due to TTL).                                           | Counter                |
-| watch_requests_totals     | Total number of incoming watch requests to this etcd member (local watches).         | Counter                | 
-| watchers                  | Current count of active watchers on this etcd member.                                | Gauge                  |
-
-Both `reads_total` and `writes_total` count both successful and failed requests. `reads_failed_total` and 
-`writes_failed_total` count failed requests. A lot of failed writes indicate possible contentions on keys (e.g. when 
-doing  `compareAndSet`), and read failures indicate that some clients try to access keys that don't exist.
-
-Example Prometheus queries that may be useful from these metrics (across all etcd members):
-
- *  `sum(rate(etcd_store_reads_total{job="etcd"}[1m])) by (action)`
-    `max(rate(etcd_store_writes_total{job="etcd"}[1m])) by (action)`
-    
-    Rate of reads and writes by action, across all servers across a time window of `1m`. The reason why `max` is used
-     for writes as opposed to `sum` for reads is because all of etcd nodes in the cluster apply all writes to their stores.
-    Shows the rate of successful readonly/write queries across all servers, across a time window of `1m`.
- * `sum(rate(etcd_store_watch_requests_total{job="etcd"}[1m]))`
-    
-    Shows rate of new watch requests per second. Likely driven by how often watched keys change. 
- * `sum(etcd_store_watchers{job="etcd"})`
-    
-    Number of active watchers across all etcd servers.        
-
-
 ### wal
 
 | Name                               | Description                                      | Type    |
@@ -77,6 +38,38 @@ Example Prometheus queries that may be useful from these metrics (across all etc
 | last_index_saved                   | The index of the last entry saved by wal         | Gauge   |
 
 Abnormally high fsync duration (`fsync_durations_microseconds`) indicates disk issues and might cause the cluster to be unstable.
+
+
+### http requests
+
+These metrics describe the serving of requests (non-watch events) served by etcd members in non-proxy mode: total 
+incoming requests, request failures and processing latency (inc. raft rounds for storage). They are useful for tracking
+ user-generated traffic hitting the etcd cluster . 
+
+All these metrics are prefixed with `etcd_http_`
+
+| Name                           | Description                                                                         | Type                   |
+|--------------------------------|-----------------------------------------------------------------------------------------|--------------------|
+| received_total                 | Total number of events after parsing and auth.                                      | Counter(method)        |
+| failed_total                   | Total number of failed events.                                                      | Counter(method,error)  |
+| successful_duration_second     |  Bucketed handling times of the requests, including raft rounds for writes.          | Histogram(method)      |
+
+
+Example Prometheus queries that may be useful from these metrics (across all etcd members):
+ 
+ * `sum(rate(etcd_http_failed_total{job="etcd"}[1m]) by (method) / sum(rate(etcd_http_events_received_total{job="etcd"})[1m]) by (method)` 
+    
+    Shows the fraction of events that failed by HTTP method across all members, across a time window of `1m`.
+ 
+ * `sum(rate(etcd_http_received_total{job="etcd",method="GET})[1m]) by (method)`
+   `sum(rate(etcd_http_received_total{job="etcd",method~="GET})[1m]) by (method)`
+    
+    Shows the rate of successful readonly/write queries across all servers, across a time window of `1m`.
+    
+ * `histogram_quantile(0.9, sum(increase(etcd_http_successful_processing_seconds{job="etcd",method="GET"}[5m]) ) by (le))`
+   `histogram_quantile(0.9, sum(increase(etcd_http_successful_processing_seconds{job="etcd",method!="GET"}[5m]) ) by (le))`
+    
+    Show the 0.90-tile latency (in seconds) of read/write (respectively) event handling across all members, with a window of `5m`.      
 
 ### snapshot
 
