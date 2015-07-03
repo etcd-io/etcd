@@ -42,6 +42,7 @@ var (
 	ErrSizeNotFound   = errors.New("discovery: size key not found")
 	ErrTokenNotFound  = errors.New("discovery: token not found")
 	ErrDuplicateID    = errors.New("discovery: found duplicate id")
+	ErrDuplicateName  = errors.New("discovery: found duplicate name")
 	ErrFullCluster    = errors.New("discovery: cluster is full")
 	ErrTooManyRetries = errors.New("discovery: too many retries")
 )
@@ -170,14 +171,14 @@ func (d *discovery) joinCluster(config string) (string, error) {
 		return "", err
 	}
 
-	return nodesToCluster(all), nil
+	return nodesToCluster(all, size)
 }
 
 func (d *discovery) getCluster() (string, error) {
 	nodes, size, index, err := d.checkCluster()
 	if err != nil {
 		if err == ErrFullCluster {
-			return nodesToCluster(nodes), nil
+			return nodesToCluster(nodes, size)
 		}
 		return "", err
 	}
@@ -186,7 +187,7 @@ func (d *discovery) getCluster() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return nodesToCluster(all), nil
+	return nodesToCluster(all, size)
 }
 
 func (d *discovery) createSelf(contents string) error {
@@ -322,12 +323,20 @@ func (d *discovery) selfKey() string {
 	return path.Join("/", d.cluster, d.id.String())
 }
 
-func nodesToCluster(ns []*client.Node) string {
+func nodesToCluster(ns []*client.Node, size int) (string, error) {
 	s := make([]string, len(ns))
 	for i, n := range ns {
 		s[i] = n.Value
 	}
-	return strings.Join(s, ",")
+	us := strings.Join(s, ",")
+	m, err := types.NewURLsMap(us)
+	if err != nil {
+		return us, ErrInvalidURL
+	}
+	if m.Len() != size {
+		return us, ErrDuplicateName
+	}
+	return us, nil
 }
 
 type sortableNodes struct{ Nodes []*client.Node }
