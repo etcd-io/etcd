@@ -248,13 +248,13 @@ func startProxy(cfg *config) error {
 		}
 	}
 
-	pt, err := transport.NewTransport(cfg.clientTLSInfo)
+	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, time.Duration(cfg.proxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyWriteTimeoutMs)*time.Millisecond)
 	pt.MaxIdleConnsPerHost = proxy.DefaultMaxIdleConnsPerHost
 	if err != nil {
 		return err
 	}
 
-	tr, err := transport.NewTransport(cfg.peerTLSInfo)
+	tr, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, time.Duration(cfg.proxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
 		return err
 	}
@@ -323,7 +323,7 @@ func startProxy(cfg *config) error {
 
 		return clientURLs
 	}
-	ph := proxy.NewHandler(pt, uf)
+	ph := proxy.NewHandler(pt, uf, time.Duration(cfg.proxyFailureWaitMs)*time.Millisecond, time.Duration(cfg.proxyRefreshIntervalMs)*time.Millisecond)
 	ph = &cors.CORSHandler{
 		Handler: ph,
 		Info:    cfg.corsInfo,

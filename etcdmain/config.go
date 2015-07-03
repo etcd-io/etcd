@@ -92,7 +92,12 @@ type config struct {
 	initialClusterToken string
 
 	// proxy
-	proxy *flags.StringsFlag
+	proxy                  *flags.StringsFlag
+	proxyFailureWaitMs     uint
+	proxyRefreshIntervalMs uint
+	proxyDialTimeoutMs     uint
+	proxyWriteTimeoutMs    uint
+	proxyReadTimeoutMs     uint
 
 	// security
 	clientTLSInfo, peerTLSInfo transport.TLSInfo
@@ -172,6 +177,11 @@ func NewConfig() *config {
 		// Should never happen.
 		plog.Panicf("unexpected error setting up proxyFlag: %v", err)
 	}
+	fs.UintVar(&cfg.proxyFailureWaitMs, "proxy-failure-wait", 5000, "Time (in milliseconds) an endpoint will be held in a failed state.")
+	fs.UintVar(&cfg.proxyRefreshIntervalMs, "proxy-refresh-interval", 30000, "Time (in milliseconds) of the endpoints refresh interval.")
+	fs.UintVar(&cfg.proxyDialTimeoutMs, "proxy-dial-timeout", 1000, "Time (in milliseconds) for a dial to timeout.")
+	fs.UintVar(&cfg.proxyWriteTimeoutMs, "proxy-write-timeout", 5000, "Time (in milliseconds) for a write to timeout.")
+	fs.UintVar(&cfg.proxyReadTimeoutMs, "proxy-read-timeout", 0, "Time (in milliseconds) for a read to timeout.")
 
 	// security
 	fs.StringVar(&cfg.clientTLSInfo.CAFile, "ca-file", "", "DEPRECATED: Path to the client server TLS CA file.")
