@@ -344,16 +344,52 @@ func TestCreateSelf(t *testing.T) {
 }
 
 func TestNodesToCluster(t *testing.T) {
-	nodes := []*client.Node{
-		0: {Key: "/1000/1", Value: "1=1.1.1.1", CreatedIndex: 1},
-		1: {Key: "/1000/2", Value: "2=2.2.2.2", CreatedIndex: 2},
-		2: {Key: "/1000/3", Value: "3=3.3.3.3", CreatedIndex: 3},
+	tests := []struct {
+		nodes    []*client.Node
+		size     int
+		wcluster string
+		werr     error
+	}{
+		{
+			[]*client.Node{
+				0: {Key: "/1000/1", Value: "1=http://1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "3=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=http://1.1.1.1:2380,2=http://2.2.2.2:2380,3=http://3.3.3.3:2380",
+			nil,
+		},
+		{
+			[]*client.Node{
+				0: {Key: "/1000/1", Value: "1=http://1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "2=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=http://1.1.1.1:2380,2=http://2.2.2.2:2380,2=http://3.3.3.3:2380",
+			ErrDuplicateName,
+		},
+		{
+			[]*client.Node{
+				0: {Key: "/1000/1", Value: "1=1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "2=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=1.1.1.1:2380,2=http://2.2.2.2:2380,2=http://3.3.3.3:2380",
+			ErrInvalidURL,
+		},
 	}
-	w := "1=1.1.1.1,2=2.2.2.2,3=3.3.3.3"
 
-	cluster := nodesToCluster(nodes)
-	if !reflect.DeepEqual(cluster, w) {
-		t.Errorf("cluster = %v, want %v", cluster, w)
+	for i, tt := range tests {
+		cluster, err := nodesToCluster(tt.nodes, tt.size)
+		if err != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+		}
+		if !reflect.DeepEqual(cluster, tt.wcluster) {
+			t.Errorf("#%d: cluster = %v, want %v", i, cluster, tt.wcluster)
+		}
 	}
 }
 
