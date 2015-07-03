@@ -110,10 +110,14 @@ func Main() {
 		switch err {
 		case discovery.ErrDuplicateID:
 			plog.Errorf("member %q has previously registered with discovery service token (%s).", cfg.name, cfg.durl)
-			plog.Errorf("But etcd could not find vaild cluster configuration in the given data dir (%s).", cfg.dir)
+			plog.Errorf("But etcd could not find valid cluster configuration in the given data dir (%s).", cfg.dir)
 			plog.Infof("Please check the given data dir path if the previous bootstrap succeeded")
 			plog.Infof("or use a new discovery token if the previous bootstrap failed.")
 			os.Exit(1)
+		case discovery.ErrDuplicateName:
+			plog.Errorf("member with duplicated name has registered with discovery service token(%s).", cfg.durl)
+			plog.Errorf("please check (cURL) the discovery token for more information.")
+			plog.Errorf("please do not reuse the discovery token and generate a new one to bootstrap the cluster.")
 		default:
 			plog.Fatalf("%v", err)
 		}
