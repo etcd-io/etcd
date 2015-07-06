@@ -16,6 +16,8 @@ package store
 
 import (
 	"testing"
+
+	"github.com/coreos/etcd/pkg/types"
 )
 
 // TestEventQueue tests a queue with capacity = 100
@@ -48,34 +50,57 @@ func TestEventQueue(t *testing.T) {
 func TestScanHistory(t *testing.T) {
 	eh := newEventHistory(100)
 
+	newEvents := []*Event{
+		newEvent(Create, "/foo", 1, 1),
+		newEvent(Create, "/foo/bar", 2, 2),
+		newEvent(Create, "/foo/foo", 3, 3),
+		newEvent(Create, "/foo/bar/bar", 4, 4),
+		newEvent(Create, "/foo/foo/foo", 5, 5),
+	}
 	// Add
-	eh.addEvent(newEvent(Create, "/foo", 1, 1))
-	eh.addEvent(newEvent(Create, "/foo/bar", 2, 2))
-	eh.addEvent(newEvent(Create, "/foo/foo", 3, 3))
-	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4, 4))
-	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5, 5))
+	eh.addEvent(newEvents[0])
+	eh.addEvent(newEvents[1])
+	eh.addEvent(newEvents[2])
+	eh.addEvent(newEvents[3])
+	eh.addEvent(newEvents[4])
 
-	e, err := eh.scan("/foo", false, 1)
-	if err != nil || e.Index() != 1 {
-		t.Fatalf("scan error [/foo] [1] %v", e.Index)
+	e, err := eh.scan("/foo", false, 1, false)
+	if err != nil || len(e) > 1 || e[0].Index() != 1 {
+		t.Fatalf("scan error [/foo] [1] %v", e[0].Index)
 	}
 
-	e, err = eh.scan("/foo/bar", false, 1)
+	e, err = eh.scan("/foo/bar", false, 1, false)
 
-	if err != nil || e.Index() != 2 {
-		t.Fatalf("scan error [/foo/bar] [2] %v", e.Index)
+	if err != nil || len(e) > 1 || e[0].Index() != 2 {
+		t.Fatalf("scan error [/foo/bar] [2] %v", e[0].Index)
 	}
 
-	e, err = eh.scan("/foo/bar", true, 3)
+	e, err = eh.scan("/foo/bar", true, 3, false)
 
-	if err != nil || e.Index() != 4 {
-		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e.Index)
+	if err != nil || len(e) > 1 || e[0].Index() != 4 {
+		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e[0].Index)
 	}
 
-	e, err = eh.scan("/foo/bar", true, 6)
+	e, err = eh.scan("/foo/bar", true, 6, false)
 
-	if e != nil {
-		t.Fatalf("bad index shoud reuturn nil")
+	if len(e) > 0 {
+		t.Fatalf("bad index shoud reuturn an empty list")
+	}
+
+	expected := types.NewUnsafeSet()
+	for _, event := range newEvents {
+		expected.Add(event.Node.Key)
+	}
+
+	e, err = eh.scan("/", true, 1, true)
+	if err != nil || len(e) != expected.Length() {
+		t.Fatalf("scan error [/] [1], got events %v, expected %v", e, expected)
+	}
+
+	for _, event := range e {
+		if !expected.Contains(event.Node.Key) {
+			t.Fatalf("scan returned unexpected event %v", event)
+		}
 	}
 }
 
@@ -90,9 +115,9 @@ func TestFullEventQueue(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		ce := newEvent(Create, "/foo", uint64(i), uint64(i))
 		eh.addEvent(ce)
-		e, err := eh.scan("/foo", true, uint64(i-1))
+		e, err := eh.scan("/foo", true, uint64(i-1), false)
 		if i > 0 {
-			if e == nil || err != nil {
+			if len(e) == 0 || err != nil {
 				t.Fatalf("scan error [/foo] [%v] %v", i-1, i)
 			}
 		}

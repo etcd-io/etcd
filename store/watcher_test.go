@@ -90,3 +90,44 @@ func TestWatcher(t *testing.T) {
 	}
 
 }
+
+func TestStreamWatcher(t *testing.T) {
+	s := newStore()
+	wh := s.WatcherHub
+	w, err := wh.watch("/foo", true, true, 1, 1)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	c := w.EventChan()
+	createEvent := newEvent(Create, "/foo/bar", 1, 1)
+
+	// event after stream watch
+	wh.notify(createEvent)
+
+	re := <-c
+
+	if createEvent != re {
+		t.Fatal("recv != send")
+	}
+	w.Remove()
+
+	setEvent := newEvent(Set, "/foo/bar", 2, 1)
+	wh.notify(setEvent)
+
+	// stream watch with outdated index
+	w, err = wh.watch("/foo", true, true, 1, 1)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	c = w.EventChan()
+	// stream returns events in order
+	re = <-c
+	if createEvent != re {
+		t.Fatal("recv != send")
+	}
+	re = <-c
+	if setEvent != re {
+		t.Fatal("recv != send")
+	}
+
+}
