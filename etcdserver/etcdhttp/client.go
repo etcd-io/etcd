@@ -124,8 +124,9 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
-
-	rr, err := parseKeyRequest(r, clockwork.NewRealClock())
+	clock := clockwork.NewRealClock()
+	startTime := clock.Now()
+	rr, err := parseKeyRequest(r, clock)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -135,15 +136,19 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeNoAuth(w)
 		return
 	}
-
+	if !rr.Wait {
+		ReportIncomingEvent(rr)
+	}
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
 		err = trimErrorPrefix(err, etcdserver.StoreKeysPrefix)
 		writeError(w, err)
+		ReportFailedEvent(rr, err)
 		return
 	}
 	switch {
 	case resp.Event != nil:
+		ReportSuccessfulEvent(rr, resp, startTime)
 		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
 			// Should never be reached
 			plog.Errorf("error writing event (%v)", err)
