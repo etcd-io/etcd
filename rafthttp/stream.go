@@ -391,7 +391,7 @@ func (cr *streamReader) stop() {
 	cr.cancelRequest()
 	cr.close()
 	cr.mu.Unlock()
-	<-cr.done
+	// TODO: wait for cr.done when it can always cancel in-flight connection
 }
 
 func (cr *streamReader) isWorking() bool {
