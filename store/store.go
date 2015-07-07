@@ -121,6 +121,11 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 
 	if err != nil {
 		s.Stats.Inc(GetFail)
+		if recursive {
+			reportReadFailure(GetRecursive)
+		} else {
+			reportReadFailure(Get)
+		}
 		return nil, err
 	}
 
@@ -129,6 +134,11 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 	e.Node.loadInternalNode(n, recursive, sorted, s.clock)
 
 	s.Stats.Inc(GetSuccess)
+	if recursive {
+		reportReadSuccess(GetRecursive)
+	} else {
+		reportReadSuccess(Get)
+	}
 
 	return e, nil
 }
@@ -145,8 +155,10 @@ func (s *store) Create(nodePath string, dir bool, value string, unique bool, exp
 		e.EtcdIndex = s.CurrentIndex
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(CreateSuccess)
+		reportWriteSuccess(Create)
 	} else {
 		s.Stats.Inc(CreateFail)
+		reportWriteFailure(Create)
 	}
 
 	return e, err
@@ -162,8 +174,10 @@ func (s *store) Set(nodePath string, dir bool, value string, expireTime time.Tim
 	defer func() {
 		if err == nil {
 			s.Stats.Inc(SetSuccess)
+			reportWriteSuccess(Set)
 		} else {
 			s.Stats.Inc(SetFail)
+			reportWriteFailure(Set)
 		}
 	}()
 
@@ -221,11 +235,13 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 
 	if err != nil {
 		s.Stats.Inc(CompareAndSwapFail)
+		reportWriteFailure(CompareAndSwap)
 		return nil, err
 	}
 
 	if n.IsDir() { // can only compare and swap file
 		s.Stats.Inc(CompareAndSwapFail)
+		reportWriteFailure(CompareAndSwap)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
 	}
 
@@ -234,6 +250,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	if ok, which := n.Compare(prevValue, prevIndex); !ok {
 		cause := getCompareFailCause(n, which, prevValue, prevIndex)
 		s.Stats.Inc(CompareAndSwapFail)
+		reportWriteFailure(CompareAndSwap)
 		return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, s.CurrentIndex)
 	}
 
@@ -256,6 +273,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(CompareAndSwapSuccess)
+	reportWriteSuccess(CompareAndSwap)
 
 	return e, nil
 }
@@ -281,6 +299,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(DeleteFail)
+		reportWriteFailure(Delete)
 		return nil, err
 	}
 
@@ -303,6 +322,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	if err != nil {
 		s.Stats.Inc(DeleteFail)
+		reportWriteFailure(Delete)
 		return nil, err
 	}
 
@@ -312,6 +332,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	s.WatcherHub.notify(e)
 
 	s.Stats.Inc(DeleteSuccess)
+	reportWriteSuccess(Delete)
 
 	return e, nil
 }
@@ -326,11 +347,13 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(CompareAndDeleteFail)
+		reportWriteFailure(CompareAndDelete)
 		return nil, err
 	}
 
 	if n.IsDir() { // can only compare and delete file
 		s.Stats.Inc(CompareAndSwapFail)
+		reportWriteFailure(CompareAndDelete)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
 	}
 
@@ -339,6 +362,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	if ok, which := n.Compare(prevValue, prevIndex); !ok {
 		cause := getCompareFailCause(n, which, prevValue, prevIndex)
 		s.Stats.Inc(CompareAndDeleteFail)
+		reportWriteFailure(CompareAndDelete)
 		return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, s.CurrentIndex)
 	}
 
@@ -361,6 +385,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(CompareAndDeleteSuccess)
+	reportWriteSuccess(CompareAndDelete)
 
 	return e, nil
 }
@@ -423,6 +448,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(UpdateFail)
+		reportWriteFailure(Update)
 		return nil, err
 	}
 
@@ -434,6 +460,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	if n.IsDir() && len(newValue) != 0 {
 		// if the node is a directory, we cannot update value to non-empty
 		s.Stats.Inc(UpdateFail)
+		reportWriteFailure(Update)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 	}
 
@@ -455,6 +482,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	s.WatcherHub.notify(e)
 
 	s.Stats.Inc(UpdateSuccess)
+	reportWriteSuccess(Update)
 
 	s.CurrentIndex = nextIndex
 
@@ -490,6 +518,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 
 	if err != nil {
 		s.Stats.Inc(SetFail)
+		reportWriteFailure(action)
 		err.Index = currIndex
 		return nil, err
 	}
@@ -592,6 +621,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 		s.ttlKeyHeap.pop()
 		node.Remove(true, true, callback)
 
+		reportExpiredKey()
 		s.Stats.Inc(ExpireCount)
 
 		s.WatcherHub.notify(e)
