@@ -182,7 +182,10 @@ func TestV2CreateUpdate(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		resp, _ := tc.PutForm(fmt.Sprintf("%s%s", u, tt.relativeURL), tt.value)
+		resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, tt.relativeURL), tt.value)
+		if err != nil {
+			t.Fatalf("#%d: put err = %v, want nil", i, err)
+		}
 		if resp.StatusCode != tt.wStatus {
 			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
 		}
@@ -307,7 +310,10 @@ func TestV2CAS(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		resp, _ := tc.PutForm(fmt.Sprintf("%s%s", u, tt.relativeURL), tt.value)
+		resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, tt.relativeURL), tt.value)
+		if err != nil {
+			t.Fatalf("#%d: put err = %v, want nil", i, err)
+		}
 		if resp.StatusCode != tt.wStatus {
 			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
 		}
@@ -403,7 +409,10 @@ func TestV2Delete(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		resp, _ := tc.DeleteForm(fmt.Sprintf("%s%s", u, tt.relativeURL), nil)
+		resp, err := tc.DeleteForm(fmt.Sprintf("%s%s", u, tt.relativeURL), nil)
+		if err != nil {
+			t.Fatalf("#%d: delete err = %v, want nil", i, err)
+		}
 		if resp.StatusCode != tt.wStatus {
 			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
 		}
@@ -499,7 +508,10 @@ func TestV2CAD(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		resp, _ := tc.DeleteForm(fmt.Sprintf("%s%s", u, tt.relativeURL), nil)
+		resp, err := tc.DeleteForm(fmt.Sprintf("%s%s", u, tt.relativeURL), nil)
+		if err != nil {
+			t.Fatalf("#%d: delete err = %v, want nil", i, err)
+		}
 		if resp.StatusCode != tt.wStatus {
 			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
 		}
@@ -562,7 +574,10 @@ func TestV2Unique(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		resp, _ := tc.PostForm(fmt.Sprintf("%s%s", u, tt.relativeURL), tt.value)
+		resp, err := tc.PostForm(fmt.Sprintf("%s%s", u, tt.relativeURL), tt.value)
+		if err != nil {
+			t.Fatalf("#%d: post err = %v, want nil", i, err)
+		}
 		if resp.StatusCode != tt.wStatus {
 			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
 		}
@@ -653,7 +668,10 @@ func TestV2Get(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, tt.relativeURL))
+		resp, err := tc.Get(fmt.Sprintf("%s%s", u, tt.relativeURL))
+		if err != nil {
+			t.Fatalf("#%d: get err = %v, want nil", i, err)
+		}
 		if resp.StatusCode != tt.wStatus {
 			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
 		}
@@ -747,7 +765,10 @@ func TestV2QuorumGet(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, tt.relativeURL))
+		resp, err := tc.Get(fmt.Sprintf("%s%s", u, tt.relativeURL))
+		if err != nil {
+			t.Fatalf("#%d: get err = %v, want nil", i, err)
+		}
 		if resp.StatusCode != tt.wStatus {
 			t.Errorf("#%d: status = %d, want %d", i, resp.StatusCode, tt.wStatus)
 		}
@@ -768,12 +789,18 @@ func TestV2Watch(t *testing.T) {
 	u := cl.URL(0)
 	tc := NewTestClient()
 
-	watchResp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true"))
+	watchResp, err := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true"))
+	if err != nil {
+		t.Fatalf("watch err = %v, want nil", err)
+	}
 
 	// Set a value.
 	v := url.Values{}
 	v.Set("value", "XXX")
-	resp, _ := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar"), v)
+	resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar"), v)
+	if err != nil {
+		t.Fatalf("put err = %v, want nil", err)
+	}
 	resp.Body.Close()
 
 	body := tc.ReadBodyJSON(watchResp)
@@ -802,7 +829,10 @@ func TestV2WatchWithIndex(t *testing.T) {
 	var body map[string]interface{}
 	c := make(chan bool, 1)
 	go func() {
-		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true&waitIndex=5"))
+		resp, err := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar?wait=true&waitIndex=5"))
+		if err != nil {
+			t.Fatalf("watch err = %v, want nil", err)
+		}
 		body = tc.ReadBodyJSON(resp)
 		c <- true
 	}()
@@ -816,7 +846,10 @@ func TestV2WatchWithIndex(t *testing.T) {
 	// Set a value (before given index).
 	v := url.Values{}
 	v.Set("value", "XXX")
-	resp, _ := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar"), v)
+	resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar"), v)
+	if err != nil {
+		t.Fatalf("put err = %v, want nil", err)
+	}
 	resp.Body.Close()
 
 	select {
@@ -826,7 +859,10 @@ func TestV2WatchWithIndex(t *testing.T) {
 	}
 
 	// Set a value (before given index).
-	resp, _ = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar"), v)
+	resp, err = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar"), v)
+	if err != nil {
+		t.Fatalf("put err = %v, want nil", err)
+	}
 	resp.Body.Close()
 
 	select {
@@ -863,18 +899,27 @@ func TestV2WatchKeyInDir(t *testing.T) {
 	v := url.Values{}
 	v.Set("dir", "true")
 	v.Set("ttl", "1")
-	resp, _ := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/keyindir"), v)
+	resp, err := tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/keyindir"), v)
+	if err != nil {
+		t.Fatalf("put err = %v, want nil", err)
+	}
 	resp.Body.Close()
 
 	// Create a permanent node within the directory
 	v = url.Values{}
 	v.Set("value", "XXX")
-	resp, _ = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/keyindir/bar"), v)
+	resp, err = tc.PutForm(fmt.Sprintf("%s%s", u, "/v2/keys/keyindir/bar"), v)
+	if err != nil {
+		t.Fatalf("put err = %v, want nil", err)
+	}
 	resp.Body.Close()
 
 	go func() {
 		// Expect a notification when watching the node
-		resp, _ := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/keyindir/bar?wait=true"))
+		resp, err := tc.Get(fmt.Sprintf("%s%s", u, "/v2/keys/keyindir/bar?wait=true"))
+		if err != nil {
+			t.Fatalf("watch err = %v, want nil", err)
+		}
 		body = tc.ReadBodyJSON(resp)
 		c <- true
 	}()
@@ -910,7 +955,10 @@ func TestV2Head(t *testing.T) {
 	v := url.Values{}
 	v.Set("value", "XXX")
 	fullURL := fmt.Sprintf("%s%s", u, "/v2/keys/foo/bar")
-	resp, _ := tc.Head(fullURL)
+	resp, err := tc.Head(fullURL)
+	if err != nil {
+		t.Fatalf("head err = %v, want nil", err)
+	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
@@ -919,10 +967,16 @@ func TestV2Head(t *testing.T) {
 		t.Errorf("ContentLength = %d, want > 0", resp.ContentLength)
 	}
 
-	resp, _ = tc.PutForm(fullURL, v)
+	resp, err = tc.PutForm(fullURL, v)
+	if err != nil {
+		t.Fatalf("put err = %v, want nil", err)
+	}
 	resp.Body.Close()
 
-	resp, _ = tc.Head(fullURL)
+	resp, err = tc.Head(fullURL)
+	if err != nil {
+		t.Fatalf("head err = %v, want nil", err)
+	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusOK)
