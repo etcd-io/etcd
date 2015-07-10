@@ -41,18 +41,17 @@ func TestNetworkDelay(t *testing.T) {
 	delay := time.Millisecond
 	delayrate := 0.1
 	nt := newRaftNetwork(1, 2)
-
 	nt.delay(1, 2, delay, delayrate)
-	var total time.Duration
+
+	msg := raftpb.Message{From: 1, To: 2}
+	start := time.Now()
 	for i := 0; i < sent; i++ {
-		s := time.Now()
-		nt.send(raftpb.Message{From: 1, To: 2})
-		total += time.Since(s)
+		nt.send(msg)
 	}
+	total := time.Since(start)
 
 	w := time.Duration(float64(sent)*delayrate/2) * delay
-	// there are pretty overhead in the send call, since it genarete random numbers.
-	if total < w+10*delay {
+	if total < w {
 		t.Errorf("total = %v, want > %v", total, w)
 	}
 }
