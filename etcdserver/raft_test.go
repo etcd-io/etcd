@@ -152,6 +152,8 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 		storage:     &storageRecorder{},
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   &nopTransporter{},
+		stopped:     make(chan struct{}),
+		done:        make(chan struct{}),
 	}
 	r.s = &EtcdServer{r: r}
 	go r.run()

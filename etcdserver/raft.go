@@ -109,9 +109,6 @@ type raftNode struct {
 }
 
 func (r *raftNode) run() {
-	r.stopped = make(chan struct{})
-	r.done = make(chan struct{})
-
 	var syncC <-chan time.Time
 
 	defer r.stop()
