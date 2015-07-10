@@ -524,11 +524,17 @@ func stepLeader(r *raft, m pb.Message) {
 		if m.Reject {
 			raftLogger.Debugf("%x received msgApp rejection(lastindex: %d) from %x for index %d",
 				r.id, m.RejectHint, m.From, m.Index)
-			if pr.maybeDecrTo(m.Index, m.RejectHint) {
+			decreased := pr.maybeDecrTo(m.Index, m.RejectHint)
+			if decreased {
 				raftLogger.Debugf("%x decreased progress of %x to [%s]", r.id, m.From, pr)
 				if pr.State == ProgressStateReplicate {
 					pr.becomeProbe()
 				}
+			}
+			// In the event that an empty append sent to advance the commit index was
+			// rejected, maybeDecrTo will return false but the append should still be
+			// resent.
+			if decreased || m.Index == pr.Match {
 				r.sendAppend(m.From)
 			}
 		} else {
