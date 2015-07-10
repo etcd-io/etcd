@@ -239,16 +239,6 @@ func startProxy(cfg *config) error {
 		return fmt.Errorf("error setting up initial cluster: %v", err)
 	}
 
-	if cfg.durl != "" {
-		s, err := discovery.GetCluster(cfg.durl, cfg.dproxy)
-		if err != nil {
-			return err
-		}
-		if urlsmap, err = types.NewURLsMap(s); err != nil {
-			return err
-		}
-	}
-
 	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, time.Duration(cfg.proxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyWriteTimeoutMs)*time.Millisecond)
 	pt.MaxIdleConnsPerHost = proxy.DefaultMaxIdleConnsPerHost
 	if err != nil {
@@ -272,6 +262,9 @@ func startProxy(cfg *config) error {
 	b, err := ioutil.ReadFile(clusterfile)
 	switch {
 	case err == nil:
+		if cfg.durl != "" {
+			plog.Warningf("discovery token ignored since the proxy has already been initialized. Valid cluster file found at ./%s", clusterfile)
+		}
 		urls := struct{ PeerURLs []string }{}
 		err := json.Unmarshal(b, &urls)
 		if err != nil {
@@ -280,6 +273,15 @@ func startProxy(cfg *config) error {
 		peerURLs = urls.PeerURLs
 		plog.Infof("proxy: using peer urls %v from cluster file ./%s", peerURLs, clusterfile)
 	case os.IsNotExist(err):
+		if cfg.durl != "" {
+			s, err := discovery.GetCluster(cfg.durl, cfg.dproxy)
+			if err != nil {
+				return err
+			}
+			if urlsmap, err = types.NewURLsMap(s); err != nil {
+				return err
+			}
+		}
 		peerURLs = urlsmap.URLs()
 		plog.Infof("proxy: using peer urls %v ", peerURLs)
 	default:
