@@ -108,67 +108,77 @@ type raftNode struct {
 	done    chan struct{}
 }
 
-func (r *raftNode) run() {
-	var syncC <-chan time.Time
+// start prepares and starts raftNode in a new goroutine. It is no longer safe
+// to modify the fields after it has been started.
+// TODO: Ideally raftNode should get rid of the passed in server structure.
+func (r *raftNode) start(s *EtcdServer) {
+	r.s = s
+	r.applyc = make(chan apply)
+	r.stopped = make(chan struct{})
+	r.done = make(chan struct{})
 
-	defer r.stop()
-	for {
-		select {
-		case <-r.ticker:
-			r.Tick()
-		case rd := <-r.Ready():
-			if rd.SoftState != nil {
-				atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
-				if rd.RaftState == raft.StateLeader {
-					syncC = r.s.SyncTicker
-					// TODO: remove the nil checking
-					// current test utility does not provide the stats
-					if r.s.stats != nil {
-						r.s.stats.BecomeLeader()
+	go func() {
+		var syncC <-chan time.Time
+
+		defer r.onStop()
+		for {
+			select {
+			case <-r.ticker:
+				r.Tick()
+			case rd := <-r.Ready():
+				if rd.SoftState != nil {
+					atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
+					if rd.RaftState == raft.StateLeader {
+						syncC = r.s.SyncTicker
+						// TODO: remove the nil checking
+						// current test utility does not provide the stats
+						if r.s.stats != nil {
+							r.s.stats.BecomeLeader()
+						}
+					} else {
+						syncC = nil
 					}
-				} else {
-					syncC = nil
 				}
-			}
 
-			apply := apply{
-				entries:  rd.CommittedEntries,
-				snapshot: rd.Snapshot,
-				done:     make(chan struct{}),
-			}
+				apply := apply{
+					entries:  rd.CommittedEntries,
+					snapshot: rd.Snapshot,
+					done:     make(chan struct{}),
+				}
 
-			select {
-			case r.applyc <- apply:
+				select {
+				case r.applyc <- apply:
+				case <-r.stopped:
+					return
+				}
+
+				if !raft.IsEmptySnap(rd.Snapshot) {
+					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
+						plog.Fatalf("raft save snapshot error: %v", err)
+					}
+					r.raftStorage.ApplySnapshot(rd.Snapshot)
+					plog.Infof("raft applied incoming snapshot at index %d", rd.Snapshot.Metadata.Index)
+				}
+				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+					plog.Fatalf("raft save state and entries error: %v", err)
+				}
+				r.raftStorage.Append(rd.Entries)
+
+				r.s.send(rd.Messages)
+
+				select {
+				case <-apply.done:
+				case <-r.stopped:
+					return
+				}
+				r.Advance()
+			case <-syncC:
+				r.s.sync(defaultSyncTimeout)
 			case <-r.stopped:
 				return
 			}
-
-			if !raft.IsEmptySnap(rd.Snapshot) {
-				if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
-					plog.Fatalf("raft save snapshot error: %v", err)
-				}
-				r.raftStorage.ApplySnapshot(rd.Snapshot)
-				plog.Infof("raft applied incoming snapshot at index %d", rd.Snapshot.Metadata.Index)
-			}
-			if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
-				plog.Fatalf("raft save state and entries error: %v", err)
-			}
-			r.raftStorage.Append(rd.Entries)
-
-			r.s.send(rd.Messages)
-
-			select {
-			case <-apply.done:
-			case <-r.stopped:
-				return
-			}
-			r.Advance()
-		case <-syncC:
-			r.s.sync(defaultSyncTimeout)
-		case <-r.stopped:
-			return
 		}
-	}
+	}()
 }
 
 func (r *raftNode) apply() chan apply {
@@ -176,6 +186,11 @@ func (r *raftNode) apply() chan apply {
 }
 
 func (r *raftNode) stop() {
+	r.stopped <- struct{}{}
+	<-r.done
+}
+
+func (r *raftNode) onStop() {
 	r.Stop()
 	r.transport.Stop()
 	if err := r.storage.Close(); err != nil {

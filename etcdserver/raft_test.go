@@ -148,15 +148,11 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	n := newReadyNode()
 	r := raftNode{
 		Node:        n,
-		applyc:      make(chan apply),
 		storage:     &storageRecorder{},
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   &nopTransporter{},
-		stopped:     make(chan struct{}),
-		done:        make(chan struct{}),
 	}
-	r.s = &EtcdServer{r: r}
-	go r.run()
+	r.start(&EtcdServer{r: r})
 	n.readyc <- raft.Ready{}
 	select {
 	case <-r.applyc:
