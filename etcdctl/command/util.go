@@ -75,8 +75,40 @@ func getPeersFlagValue(c *cli.Context) []string {
 	return strings.Split(peerstr, ",")
 }
 
+func getDomainDiscoveryFlagValue(c *cli.Context) ([]string, error) {
+	domainstr := c.GlobalString("discovery-srv")
+
+	// Use an environment variable if nothing was supplied on the
+	// command line
+	if domainstr == "" {
+		domainstr = os.Getenv("ETCDCTL_DISCOVERY_SRV")
+	}
+
+	// If we still don't have domain discovery, return nothing
+	if domainstr == "" {
+		return []string{}, nil
+	}
+
+	discoverer := client.NewSRVDiscover()
+	eps, err := discoverer.Discover(domainstr)
+	if err != nil {
+		return nil, err
+	}
+
+	return eps, err
+}
+
 func getEndpoints(c *cli.Context) ([]string, error) {
-	eps := getPeersFlagValue(c)
+	eps, err := getDomainDiscoveryFlagValue(c)
+	if err != nil {
+		return nil, err
+	}
+
+	// If domain discovery returns no endpoints, check peer flag
+	if len(eps) == 0 {
+		eps = getPeersFlagValue(c)
+	}
+
 	for i, ep := range eps {
 		u, err := url.Parse(ep)
 		if err != nil {
@@ -89,6 +121,7 @@ func getEndpoints(c *cli.Context) ([]string, error) {
 
 		eps[i] = u.String()
 	}
+
 	return eps, nil
 }
 
