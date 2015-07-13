@@ -25,8 +25,8 @@ The election timeout should be set based on the heartbeat interval and your netw
 Election timeouts should be at least 10 times your ping time so it can account for variance in your network.
 For example, if the ping time between your nodes is 10ms then you should have at least a 100ms election timeout.
 
-You should also set your election timeout to at least 4 to 5 times your heartbeat interval to account for variance in leader replication.
-For a heartbeat interval of 50ms you should set your election timeout to at least 200ms - 250ms.
+You should also set your election timeout to at least 5 to 10 times your heartbeat interval to account for variance in leader replication.
+For a heartbeat interval of 50ms you should set your election timeout to at least 250ms - 500ms.
 
 You can override the default values on the command line:
 
@@ -61,14 +61,4 @@ $ etcd -snapshot-count=5000
 
 # Environment variables:
 $ ETCD_SNAPSHOT_COUNT=5000 etcd
-```
-
-You can also disable snapshotting by adding the following to your command line:
-
-```sh
-# Command line arguments:
-$ etcd -snapshot false
-
-# Environment variables:
-$ ETCD_SNAPSHOT=false etcd
 ```
