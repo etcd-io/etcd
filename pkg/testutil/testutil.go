@@ -22,7 +22,7 @@ import (
 
 // TODO: improve this when we are able to know the schedule or status of target go-routine.
 func WaitSchedule() {
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 }
 
 func MustNewURLs(t *testing.T, urls []string) []url.URL {
