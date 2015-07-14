@@ -127,8 +127,8 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).Dial,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ResponseHeaderTimeout: 5 * time.Second,
+			TLSHandshakeTimeout: 10 * time.Second,
+			// TODO: add ResponseHeaderTimeout back when watch on discovery service writes header early
 		},
 		Endpoints: []string{u.String()},
 	}
