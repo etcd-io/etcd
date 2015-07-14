@@ -60,7 +60,7 @@ var (
 		"vv",
 	}
 
-	ErrConflictBootstrapFlags = fmt.Errorf("multiple discovery or bootstrap flags are set" +
+	ErrConflictBootstrapFlags = fmt.Errorf("multiple discovery or bootstrap flags are set. " +
 		"Choose one of \"initial-cluster\", \"discovery\" or \"discovery-srv\"")
 	errUnsetAdvertiseClientURLsFlag = fmt.Errorf("-advertise-client-urls is required when -listen-client-urls is set explicitly")
 )
