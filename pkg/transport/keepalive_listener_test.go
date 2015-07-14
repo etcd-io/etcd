@@ -62,3 +62,10 @@ func TestNewKeepAliveListener(t *testing.T) {
 	conn.Close()
 	tlsln.Close()
 }
+
+func TestNewKeepAliveListenerTLSEmptyInfo(t *testing.T) {
+	_, err := NewListener("127.0.0.1:0", "https", TLSInfo{})
+	if err == nil {
+		t.Errorf("err = nil, want not presented error")
+	}
+}
