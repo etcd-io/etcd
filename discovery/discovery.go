@@ -37,14 +37,15 @@ import (
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "discovery")
 
-	ErrInvalidURL     = errors.New("discovery: invalid URL")
-	ErrBadSizeKey     = errors.New("discovery: size key is bad")
-	ErrSizeNotFound   = errors.New("discovery: size key not found")
-	ErrTokenNotFound  = errors.New("discovery: token not found")
-	ErrDuplicateID    = errors.New("discovery: found duplicate id")
-	ErrDuplicateName  = errors.New("discovery: found duplicate name")
-	ErrFullCluster    = errors.New("discovery: cluster is full")
-	ErrTooManyRetries = errors.New("discovery: too many retries")
+	ErrInvalidURL           = errors.New("discovery: invalid URL")
+	ErrBadSizeKey           = errors.New("discovery: size key is bad")
+	ErrSizeNotFound         = errors.New("discovery: size key not found")
+	ErrTokenNotFound        = errors.New("discovery: token not found")
+	ErrDuplicateID          = errors.New("discovery: found duplicate id")
+	ErrDuplicateName        = errors.New("discovery: found duplicate name")
+	ErrFullCluster          = errors.New("discovery: cluster is full")
+	ErrTooManyRetries       = errors.New("discovery: too many retries")
+	ErrBadDiscoveryEndpoint = errors.New("discovery: bad discovery endpoint")
 )
 
 var (
@@ -216,6 +217,9 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	if err != nil {
 		if eerr, ok := err.(*client.Error); ok && eerr.Code == client.ErrorCodeKeyNotFound {
 			return nil, 0, 0, ErrSizeNotFound
+		}
+		if err == client.ErrInvalidJSON {
+			return nil, 0, 0, ErrBadDiscoveryEndpoint
 		}
 		if err == context.DeadlineExceeded {
 			return d.checkClusterRetry()
