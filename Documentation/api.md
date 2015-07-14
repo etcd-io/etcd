@@ -78,7 +78,7 @@ X-Raft-Index: 5398
 X-Raft-Term: 1
 ```
 
-- `X-Etcd-Index` is the current etcd index as explained above.
+- `X-Etcd-Index` is the current etcd index as explained above. When request is a watch on key space, `X-Etcd-Index` is the current etcd index when the watch starts, which means that the watched event may happen after `X-Etcd-Index`.
 - `X-Raft-Index` is similar to the etcd index but is for the underlying raft protocol
 - `X-Raft-Term` is an integer that will increase whenever an etcd master election happens in the cluster. If this number is increasing rapidly, you may need to tune the election timeout. See the [tuning][tuning] section for details.
 
@@ -277,7 +277,7 @@ The first terminal should get the notification and return with the same response
 However, the watch command can do more than this.
 Using the index, we can watch for commands that have happened in the past.
 This is useful for ensuring you don't miss events between watch commands. 
-Typically, we watch again from the `modifiedIndex + 1` of the node we got.
+Typically, we watch again from the `modifiedIndex` + 1 of the node we got.
 
 Let's try to watch for the set command of index 7 again:
 
@@ -300,11 +300,13 @@ key between 8 and the current index will be returned.
 It is recommended to send the response to another thread to process immediately
 instead of blocking the watch while processing the result. 
 
-If we miss all the 1000 events, we need to recover the current state of the 
-watching key space. First, We do a get and then start to watch from the
-`X-Etcd-Index + 1`.
+#### Watch from cleared event index
 
-For example, we set `/foo="bar"` for 2000 times and tries to wait from index 8.
+If we miss all the 1000 events, we need to recover the current state of the 
+watching key space through a get and then start to watch from the
+`X-Etcd-Index` + 1.
+
+For example, we set `/other="bar"` for 2000 times and try to wait from index 8.
 
 ```sh
 curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=8'
@@ -313,7 +315,7 @@ curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=8'
 We get the index is outdated response, since we miss the 1000 events kept in etcd.
 
 ```
-{"errorCode":401,"message":"The event in requested index is outdated and cleared","cause":"the requested history has been cleared [1003/7]","index":2002}
+{"errorCode":401,"message":"The event in requested index is outdated and cleared","cause":"the requested history has been cleared [1008/8]","index":2007}
 ```
 
 To start watch, first we need to fetch the current state of key `/foo`:
@@ -326,25 +328,33 @@ curl 'http://127.0.0.1:2379/v2/keys/foo' -vv
 < HTTP/1.1 200 OK
 < Content-Type: application/json
 < X-Etcd-Cluster-Id: 7e27652122e8b2ae
-< X-Etcd-Index: 2002
+< X-Etcd-Index: 2007
 < X-Raft-Index: 2615
 < X-Raft-Term: 2
 < Date: Mon, 05 Jan 2015 18:54:43 GMT
 < Transfer-Encoding: chunked
 < 
-{"action":"get","node":{"key":"/foo","value":"","modifiedIndex":2002,"createdIndex":2002}}
+{"action":"get","node":{"key":"/foo","value":"bar","modifiedIndex":7,"createdIndex":7}}
 ```
 
-Unlike watches we use the `X-Etcd-Index + 1` of the response as a `waitIndex`
-instead of the node's `modifiedIndex` for two reasons:
+Unlike watches we use the `X-Etcd-Index` + 1 of the response as a `waitIndex`
+instead of the node's `modifiedIndex` + 1 for two reasons:
 
-1. The `X-Etcd-Index` will be greater than or equal to the `modifiedIndex`
-2. If it is greater than the `modifiedIndex`, none of those indexes will be
-   related to the key being fetched.
+1. The `X-Etcd-Index` is always greater than or equal to the `modifiedIndex` when
+   getting a key because `X-Etcd-Index` is the current etcd index, and the `modifiedIndex`
+   is the index of an event already stored in etcd.
+2. None of the events represented by indexes between `modifiedIndex` and
+   `X-Etcd-Index` will be related to the key being fetched.
 
-Using the `modifiedIndex` will be functionally equivalent for subsequent
-watches, but since it might be smaller than the `Etcd-Index` we may receive a
-`401` error more quickly than if we used the `Etcd-Index`.
+Using the `modifiedIndex` + 1 is functionally equivalent for subsequent
+watches, but since it is smaller than the `X-Etcd-Index` + 1, we may receive a
+`401 EventIndexCleared` error immediately.
+
+So the first watch after the get should be:
+
+```sh
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=2008'
+```
 
 ### Atomically Creating In-Order Keys
 
