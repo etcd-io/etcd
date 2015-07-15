@@ -1,0 +1,503 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package client
+
+import (
+	"errors"
+	"math"
+	"math/rand"
+	"reflect"
+	"sort"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+)
+
+const (
+	maxRetryInTest = 3
+)
+
+func TestCheckCluster(t *testing.T) {
+	cluster := "/prefix/1000"
+	self := "/1000/1"
+
+	tests := []struct {
+		nodes []*Node
+		index uint64
+		werr  error
+		wsize int
+	}{
+		{
+			// self is in the size range
+			[]*Node{
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
+				{Key: self, CreatedIndex: 2},
+				{Key: "/1000/2", CreatedIndex: 3},
+				{Key: "/1000/3", CreatedIndex: 4},
+				{Key: "/1000/4", CreatedIndex: 5},
+			},
+			5,
+			nil,
+			3,
+		},
+		{
+			// self is in the size range
+			[]*Node{
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
+				{Key: "/1000/2", CreatedIndex: 2},
+				{Key: "/1000/3", CreatedIndex: 3},
+				{Key: self, CreatedIndex: 4},
+				{Key: "/1000/4", CreatedIndex: 5},
+			},
+			5,
+			nil,
+			3,
+		},
+		{
+			// self is out of the size range
+			[]*Node{
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
+				{Key: "/1000/2", CreatedIndex: 2},
+				{Key: "/1000/3", CreatedIndex: 3},
+				{Key: "/1000/4", CreatedIndex: 4},
+				{Key: self, CreatedIndex: 5},
+			},
+			5,
+			ErrFullCluster,
+			3,
+		},
+		{
+			// self is not in the cluster
+			[]*Node{
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
+				{Key: "/1000/2", CreatedIndex: 2},
+				{Key: "/1000/3", CreatedIndex: 3},
+			},
+			3,
+			nil,
+			3,
+		},
+		{
+			[]*Node{
+				{Key: "/1000/_config/size", Value: "3", CreatedIndex: 1},
+				{Key: "/1000/_config/"},
+				{Key: "/1000/2", CreatedIndex: 2},
+				{Key: "/1000/3", CreatedIndex: 3},
+				{Key: "/1000/4", CreatedIndex: 4},
+			},
+			3,
+			ErrFullCluster,
+			3,
+		},
+		{
+			// bad size key
+			[]*Node{
+				{Key: "/1000/_config/size", Value: "bad", CreatedIndex: 1},
+			},
+			0,
+			ErrBadSizeKey,
+			0,
+		},
+		{
+			// no size key
+			[]*Node{},
+			0,
+			ErrSizeNotFound,
+			0,
+		},
+	}
+
+	for i, tt := range tests {
+		rs := make([]*Response, 0)
+		if len(tt.nodes) > 0 {
+			rs = append(rs, &Response{Node: tt.nodes[0], Index: tt.index})
+			rs = append(rs, &Response{
+				Node: &Node{
+					Key:   cluster,
+					Nodes: tt.nodes[1:],
+				},
+				Index: tt.index,
+			})
+		}
+		c := &clientWithResp{rs: rs}
+		dBase := discovery{cluster: cluster, id: 1, c: c}
+
+		cRetry := &clientWithRetry{failTimes: 3}
+		cRetry.rs = rs
+		fc := clockwork.NewFakeClock()
+		dRetry := discovery{cluster: cluster, id: 1, c: cRetry, clock: fc}
+
+		for _, d := range []discovery{dBase, dRetry} {
+			go func() {
+				for i := uint(1); i <= maxRetryInTest; i++ {
+					fc.BlockUntil(1)
+					fc.Advance(time.Second * (0x1 << i))
+				}
+			}()
+			ns, size, index, err := d.checkCluster()
+			if err != tt.werr {
+				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+			}
+			if reflect.DeepEqual(ns, tt.nodes) {
+				t.Errorf("#%d: nodes = %v, want %v", i, ns, tt.nodes)
+			}
+			if size != tt.wsize {
+				t.Errorf("#%d: size = %v, want %d", i, size, tt.wsize)
+			}
+			if index != tt.index {
+				t.Errorf("#%d: index = %v, want %d", i, index, tt.index)
+			}
+		}
+	}
+}
+
+func TestWaitNodes(t *testing.T) {
+	all := []*Node{
+		0: {Key: "/1000/1", CreatedIndex: 2},
+		1: {Key: "/1000/2", CreatedIndex: 3},
+		2: {Key: "/1000/3", CreatedIndex: 4},
+	}
+
+	tests := []struct {
+		nodes []*Node
+		rs    []*Response
+	}{
+		{
+			all,
+			[]*Response{},
+		},
+		{
+			all[:1],
+			[]*Response{
+				{Node: &Node{Key: "/1000/2", CreatedIndex: 3}},
+				{Node: &Node{Key: "/1000/3", CreatedIndex: 4}},
+			},
+		},
+		{
+			all[:2],
+			[]*Response{
+				{Node: &Node{Key: "/1000/3", CreatedIndex: 4}},
+			},
+		},
+		{
+			append(all, &Node{Key: "/1000/4", CreatedIndex: 5}),
+			[]*Response{
+				{Node: &Node{Key: "/1000/3", CreatedIndex: 4}},
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		// Basic case
+		c := &clientWithResp{rs: nil, w: &watcherWithResp{rs: tt.rs}}
+		dBase := &discovery{cluster: "1000", c: c}
+
+		// Retry case
+		retryScanResp := make([]*Response, 0)
+		if len(tt.nodes) > 0 {
+			retryScanResp = append(retryScanResp, &Response{
+				Node: &Node{
+					Key:   "1000",
+					Value: strconv.Itoa(3),
+				},
+			})
+			retryScanResp = append(retryScanResp, &Response{
+				Node: &Node{
+					Nodes: tt.nodes,
+				},
+			})
+		}
+		cRetry := &clientWithResp{
+			rs: retryScanResp,
+			w:  &watcherWithRetry{rs: tt.rs, failTimes: 2},
+		}
+		fc := clockwork.NewFakeClock()
+		dRetry := &discovery{
+			cluster: "1000",
+			c:       cRetry,
+			clock:   fc,
+		}
+
+		for _, d := range []*discovery{dBase, dRetry} {
+			go func() {
+				for i := uint(1); i <= maxRetryInTest; i++ {
+					fc.BlockUntil(1)
+					fc.Advance(time.Second * (0x1 << i))
+				}
+			}()
+			g, err := d.waitNodes(tt.nodes, 3, 0) // we do not care about index in this test
+			if err != nil {
+				t.Errorf("#%d: err = %v, want %v", i, err, nil)
+			}
+			if !reflect.DeepEqual(g, all) {
+				t.Errorf("#%d: all = %v, want %v", i, g, all)
+			}
+		}
+	}
+}
+
+func TestCreateSelf(t *testing.T) {
+	rs := []*Response{{Node: &Node{Key: "1000/1", CreatedIndex: 2}}}
+
+	w := &watcherWithResp{rs: rs}
+	errw := &watcherWithErr{err: errors.New("watch err")}
+
+	c := &clientWithResp{rs: rs, w: w}
+	errc := &clientWithErr{err: errors.New("create err"), w: w}
+	errdupc := &clientWithErr{err: Error{Code: ErrorCodeNodeExist}}
+	errwc := &clientWithResp{rs: rs, w: errw}
+
+	tests := []struct {
+		c    KeysAPI
+		werr error
+	}{
+		// no error
+		{c, nil},
+		// client.create returns an error
+		{errc, errc.err},
+		// watcher.next retuens an error
+		{errwc, errw.err},
+		// parse key exist error to duplciate ID error
+		{errdupc, ErrDuplicateID},
+	}
+
+	for i, tt := range tests {
+		d := discovery{cluster: "1000", c: tt.c}
+		if err := d.createSelf(""); err != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, err, nil)
+		}
+	}
+}
+
+func TestNodesToCluster(t *testing.T) {
+	tests := []struct {
+		nodes    []*Node
+		size     int
+		wcluster string
+		werr     error
+	}{
+		{
+			[]*Node{
+				0: {Key: "/1000/1", Value: "1=http://1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "3=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=http://1.1.1.1:2380,2=http://2.2.2.2:2380,3=http://3.3.3.3:2380",
+			nil,
+		},
+		{
+			[]*Node{
+				0: {Key: "/1000/1", Value: "1=http://1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "2=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=http://1.1.1.1:2380,2=http://2.2.2.2:2380,2=http://3.3.3.3:2380",
+			ErrDuplicateName,
+		},
+		{
+			[]*Node{
+				0: {Key: "/1000/1", Value: "1=1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "2=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=1.1.1.1:2380,2=http://2.2.2.2:2380,2=http://3.3.3.3:2380",
+			ErrInvalidURL,
+		},
+	}
+
+	for i, tt := range tests {
+		cluster, err := nodesToCluster(tt.nodes, tt.size)
+		if err != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+		}
+		if !reflect.DeepEqual(cluster, tt.wcluster) {
+			t.Errorf("#%d: cluster = %v, want %v", i, cluster, tt.wcluster)
+		}
+	}
+}
+
+func TestSortableNodes(t *testing.T) {
+	ns := []*Node{
+		0: {CreatedIndex: 5},
+		1: {CreatedIndex: 1},
+		2: {CreatedIndex: 3},
+		3: {CreatedIndex: 4},
+	}
+	// add some randomness
+	for i := 0; i < 10000; i++ {
+		ns = append(ns, &Node{CreatedIndex: uint64(rand.Int31())})
+	}
+	sns := sortableNodes{ns}
+	sort.Sort(sns)
+	cis := make([]int, 0)
+	for _, n := range sns.Nodes {
+		cis = append(cis, int(n.CreatedIndex))
+	}
+	if sort.IntsAreSorted(cis) != true {
+		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
+	}
+	cis = make([]int, 0)
+	for _, n := range ns {
+		cis = append(cis, int(n.CreatedIndex))
+	}
+	if sort.IntsAreSorted(cis) != true {
+		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
+	}
+}
+
+func TestRetryFailure(t *testing.T) {
+	nRetries = maxRetryInTest
+	defer func() { nRetries = math.MaxUint32 }()
+
+	cluster := "1000"
+	c := &clientWithRetry{failTimes: 4}
+	fc := clockwork.NewFakeClock()
+	d := discovery{
+		cluster: cluster,
+		id:      1,
+		c:       c,
+		clock:   fc,
+	}
+	go func() {
+		for i := uint(1); i <= maxRetryInTest; i++ {
+			fc.BlockUntil(1)
+			fc.Advance(time.Second * (0x1 << i))
+		}
+	}()
+	if _, _, _, err := d.checkCluster(); err != ErrTooManyRetries {
+		t.Errorf("err = %v, want %v", err, ErrTooManyRetries)
+	}
+}
+
+type clientWithResp struct {
+	rs []*Response
+	w  Watcher
+	KeysAPI
+}
+
+func (c *clientWithResp) Create(ctx context.Context, key string, value string) (*Response, error) {
+	if len(c.rs) == 0 {
+		return &Response{}, nil
+	}
+	r := c.rs[0]
+	c.rs = c.rs[1:]
+	return r, nil
+}
+
+func (c *clientWithResp) Get(ctx context.Context, key string, opts *GetOptions) (*Response, error) {
+	if len(c.rs) == 0 {
+		return &Response{}, &Error{Code: ErrorCodeKeyNotFound}
+	}
+	r := c.rs[0]
+	c.rs = append(c.rs[1:], r)
+	return r, nil
+}
+
+func (c *clientWithResp) Watcher(key string, opts *WatcherOptions) Watcher {
+	return c.w
+}
+
+type clientWithErr struct {
+	err error
+	w   Watcher
+	KeysAPI
+}
+
+func (c *clientWithErr) Create(ctx context.Context, key string, value string) (*Response, error) {
+	return &Response{}, c.err
+}
+
+func (c *clientWithErr) Get(ctx context.Context, key string, opts *GetOptions) (*Response, error) {
+	return &Response{}, c.err
+}
+
+func (c *clientWithErr) Watcher(key string, opts *WatcherOptions) Watcher {
+	return c.w
+}
+
+type watcherWithResp struct {
+	KeysAPI
+	rs []*Response
+}
+
+func (w *watcherWithResp) Next(context.Context) (*Response, error) {
+	if len(w.rs) == 0 {
+		return &Response{}, nil
+	}
+	r := w.rs[0]
+	w.rs = w.rs[1:]
+	return r, nil
+}
+
+type watcherWithErr struct {
+	err error
+}
+
+func (w *watcherWithErr) Next(context.Context) (*Response, error) {
+	return &Response{}, w.err
+}
+
+// clientWithRetry will timeout all requests up to failTimes
+type clientWithRetry struct {
+	clientWithResp
+	failCount int
+	failTimes int
+}
+
+func (c *clientWithRetry) Create(ctx context.Context, key string, value string) (*Response, error) {
+	if c.failCount < c.failTimes {
+		c.failCount++
+		return nil, context.DeadlineExceeded
+	}
+	return c.clientWithResp.Create(ctx, key, value)
+}
+
+func (c *clientWithRetry) Get(ctx context.Context, key string, opts *GetOptions) (*Response, error) {
+	if c.failCount < c.failTimes {
+		c.failCount++
+		return nil, context.DeadlineExceeded
+	}
+	return c.clientWithResp.Get(ctx, key, opts)
+}
+
+// watcherWithRetry will timeout all requests up to failTimes
+type watcherWithRetry struct {
+	rs        []*Response
+	failCount int
+	failTimes int
+}
+
+func (w *watcherWithRetry) Next(context.Context) (*Response, error) {
+	if w.failCount < w.failTimes {
+		w.failCount++
+		return nil, context.DeadlineExceeded
+	}
+	if len(w.rs) == 0 {
+		return &Response{}, nil
+	}
+	r := w.rs[0]
+	w.rs = w.rs[1:]
+	return r, nil
+}
