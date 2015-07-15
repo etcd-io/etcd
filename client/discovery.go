@@ -18,7 +18,6 @@ import (
 	"errors"
 	"log"
 	"math"
-	"net/url"
 	"path"
 	"sort"
 	"strconv"
@@ -47,12 +46,11 @@ var (
 	nRetries = uint(math.MaxUint32)
 )
 
-func NewDiscoveryService(c Client, token string, id types.ID, url *url.URL) DiscoveryService {
+func NewDiscoveryService(c Client, token string, id types.ID) DiscoveryService {
 	return &discovery{
 		cluster: token,
 		c:       &httpKeysAPI{client: c},
 		id:      id,
-		url:     url,
 		clock:   clockwork.NewRealClock(),
 	}
 }
@@ -67,7 +65,6 @@ type discovery struct {
 	id      types.ID
 	c       KeysAPI
 	retries uint
-	url     *url.URL
 
 	clock clockwork.Clock
 }
@@ -190,7 +187,7 @@ func (d *discovery) checkCluster() ([]*Node, int, uint64, error) {
 func (d *discovery) logAndBackoffForRetry(step string) {
 	d.retries++
 	retryTime := time.Second * (0x1 << d.retries)
-	log.Printf("%s: connection to %s timed out, retrying in %s", step, d.url, retryTime)
+	log.Printf("%s: connection to discovery service timed out, retrying in %s", step, retryTime)
 	d.clock.Sleep(retryTime)
 }
 

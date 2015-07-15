@@ -106,5 +106,5 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (client.DiscoveryService,
 	if err != nil {
 		return nil, err
 	}
-	return client.NewDiscoveryService(c, token, id, u), nil
+	return client.NewDiscoveryService(c, token, id), nil
 }
