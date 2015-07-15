@@ -16,6 +16,7 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -59,6 +60,10 @@ type Error struct {
 func (e Error) Error() string {
 	return fmt.Sprintf("%v: %v (%v) [%v]", e.Code, e.Message, e.Cause, e.Index)
 }
+
+var (
+	ErrInvalidJSON = errors.New("client: response is invalid json. The endpoint is probably not valid etcd cluster endpoint.")
+)
 
 // PrevExistType is used to define an existence condition when setting
 // or deleting Nodes.
@@ -589,7 +594,7 @@ func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response
 	var res Response
 	err := json.Unmarshal(body, &res)
 	if err != nil {
-		return nil, err
+		return nil, ErrInvalidJSON
 	}
 	if header.Get("X-Etcd-Index") != "" {
 		res.Index, err = strconv.ParseUint(header.Get("X-Etcd-Index"), 10, 64)
@@ -603,7 +608,7 @@ func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response
 func unmarshalFailedKeysResponse(body []byte) error {
 	var etcdErr Error
 	if err := json.Unmarshal(body, &etcdErr); err != nil {
-		return err
+		return ErrInvalidJSON
 	}
 	return etcdErr
 }
