@@ -146,6 +146,9 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 	plns := make([]net.Listener, 0)
 	for _, u := range cfg.lpurls {
+		if u.Scheme == "http" && !cfg.peerTLSInfo.Empty() {
+			plog.Warningf("The scheme of peer url %s is http while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
+		}
 		var l net.Listener
 		l, err = transport.NewTimeoutListener(u.Host, u.Scheme, cfg.peerTLSInfo, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
 		if err != nil {
@@ -168,6 +171,9 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 	clns := make([]net.Listener, 0)
 	for _, u := range cfg.lcurls {
+		if u.Scheme == "http" && !cfg.clientTLSInfo.Empty() {
+			plog.Warningf("The scheme of client url %s is http while client key/cert files are presented. Ignored client key/cert files.", u.String())
+		}
 		var l net.Listener
 		l, err = transport.NewKeepAliveListener(u.Host, u.Scheme, cfg.clientTLSInfo)
 		if err != nil {
