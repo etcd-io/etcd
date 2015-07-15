@@ -16,6 +16,7 @@ package client
 
 import (
 	"errors"
+	"log"
 	"math"
 	"net/url"
 	"path"
@@ -24,15 +25,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/pkg/types"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "client")
-
 	ErrInvalidURL           = errors.New("discovery: invalid URL")
 	ErrBadSizeKey           = errors.New("discovery: size key is bad")
 	ErrSizeNotFound         = errors.New("discovery: size key not found")
@@ -192,7 +190,7 @@ func (d *discovery) checkCluster() ([]*Node, int, uint64, error) {
 func (d *discovery) logAndBackoffForRetry(step string) {
 	d.retries++
 	retryTime := time.Second * (0x1 << d.retries)
-	plog.Infof("%s: connection to %s timed out, retrying in %s", step, d.url, retryTime)
+	log.Printf("%s: connection to %s timed out, retrying in %s", step, d.url, retryTime)
 	d.clock.Sleep(retryTime)
 }
 
@@ -226,15 +224,15 @@ func (d *discovery) waitNodes(nodes []*Node, size int, index uint64) ([]*Node, e
 	copy(all, nodes)
 	for _, n := range all {
 		if path.Base(n.Key) == path.Base(d.selfKey()) {
-			plog.Noticef("found self %s in the cluster", path.Base(d.selfKey()))
+			log.Printf("found self %s in the cluster", path.Base(d.selfKey()))
 		} else {
-			plog.Noticef("found peer %s in the cluster", path.Base(n.Key))
+			log.Printf("found peer %s in the cluster", path.Base(n.Key))
 		}
 	}
 
 	// wait for others
 	for len(all) < size {
-		plog.Noticef("found %d peer(s), waiting for %d more", len(all), size-len(all))
+		log.Printf("found %d peer(s), waiting for %d more", len(all), size-len(all))
 		resp, err := w.Next(context.Background())
 		if err != nil {
 			if err == context.DeadlineExceeded {
@@ -242,10 +240,10 @@ func (d *discovery) waitNodes(nodes []*Node, size int, index uint64) ([]*Node, e
 			}
 			return nil, err
 		}
-		plog.Noticef("found peer %s in the cluster", path.Base(resp.Node.Key))
+		log.Printf("found peer %s in the cluster", path.Base(resp.Node.Key))
 		all = append(all, resp.Node)
 	}
-	plog.Noticef("found %d needed peer(s)", len(all))
+	log.Printf("found %d needed peer(s)", len(all))
 	return all, nil
 }
 
