@@ -91,7 +91,7 @@ Now it's time to dig into the full etcd API and other guides.
 ## Contact
 
 - Mailing list: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
-- IRC: #[coreos](irc://irc.freenode.org:6667/#coreos) on freenode.org
+- IRC: #[etcd](irc://irc.freenode.org:6667/#etcd) on freenode.org
 - Planning/Roadmap: [milestones](https://github.com/coreos/etcd/milestones)
 - Bugs: [issues](https://github.com/coreos/etcd/issues)
 
