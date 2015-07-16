@@ -75,7 +75,7 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 		return err
 	}
 	err = ioutil.WriteFile(path.Join(s.dir, fname), d, 0666)
-	if err != nil {
+	if err == nil {
 		saveDurations.Observe(float64(time.Since(start).Nanoseconds() / int64(time.Microsecond)))
 	}
 	return err
