@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -131,6 +132,7 @@ type Client interface {
 func New(cfg Config) (Client, error) {
 	c := &httpClusterClient{
 		clientFactory: newHTTPClientFactory(cfg.transport(), cfg.checkRedirect()),
+		rand:          rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
 	}
 	if cfg.Username != "" {
 		c.credentials = &credentials{
@@ -174,8 +176,10 @@ type httpAction interface {
 type httpClusterClient struct {
 	clientFactory httpClientFactory
 	endpoints     []url.URL
+	pinned        int
 	credentials   *credentials
 	sync.RWMutex
+	rand *rand.Rand
 }
 
 func (c *httpClusterClient) reset(eps []string) error {
@@ -192,7 +196,9 @@ func (c *httpClusterClient) reset(eps []string) error {
 		neps[i] = *u
 	}
 
-	c.endpoints = neps
+	c.endpoints = shuffleEndpoints(c.rand, neps)
+	// TODO: pin old endpoint if possible, and rebalance when new endpoint appears
+	c.pinned = 0
 
 	return nil
 }
@@ -203,6 +209,7 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 	leps := len(c.endpoints)
 	eps := make([]url.URL, leps)
 	n := copy(eps, c.endpoints)
+	pinned := c.pinned
 
 	if c.credentials != nil {
 		action = &authedAction{
@@ -224,8 +231,9 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 	var body []byte
 	var err error
 
-	for _, ep := range eps {
-		hc := c.clientFactory(ep)
+	for i := pinned; i < leps+pinned; i++ {
+		k := i % leps
+		hc := c.clientFactory(eps[k])
 		resp, body, err = hc.Do(ctx, action)
 		if err != nil {
 			if err == context.DeadlineExceeded || err == context.Canceled {
@@ -235,6 +243,11 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 		}
 		if resp.StatusCode/100 == 5 {
 			continue
+		}
+		if k != pinned {
+			c.Lock()
+			c.pinned = k
+			c.Unlock()
 		}
 		break
 	}
@@ -400,4 +413,13 @@ func (r *redirectedHTTPAction) HTTPRequest(ep url.URL) *http.Request {
 	orig := r.action.HTTPRequest(ep)
 	orig.URL = &r.location
 	return orig
+}
+
+func shuffleEndpoints(r *rand.Rand, eps []url.URL) []url.URL {
+	p := r.Perm(len(eps))
+	neps := make([]url.URL, len(eps))
+	for i, k := range p {
+		neps[i] = eps[k]
+	}
+	return neps
 }
