@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -131,6 +132,7 @@ type Client interface {
 func New(cfg Config) (Client, error) {
 	c := &httpClusterClient{
 		clientFactory: newHTTPClientFactory(cfg.transport(), cfg.checkRedirect()),
+		rand:          rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
 	}
 	if cfg.Username != "" {
 		c.credentials = &credentials{
@@ -174,8 +176,10 @@ type httpAction interface {
 type httpClusterClient struct {
 	clientFactory httpClientFactory
 	endpoints     []url.URL
+	pinned        int
 	credentials   *credentials
 	sync.RWMutex
+	rand *rand.Rand
 }
 
 func (c *httpClusterClient) reset(eps []string) error {
@@ -192,7 +196,17 @@ func (c *httpClusterClient) reset(eps []string) error {
 		neps[i] = *u
 	}
 
+	// TODO: rebalance when new endpoint appears
+	npinned := -1
+	if len(c.endpoints) > 0 {
+		npinned = urlIndex(neps, c.endpoints[c.pinned])
+	}
+	if npinned == -1 {
+		npinned = rand.Intn(len(eps))
+	}
+
 	c.endpoints = neps
+	c.pinned = npinned
 
 	return nil
 }
@@ -203,6 +217,7 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 	leps := len(c.endpoints)
 	eps := make([]url.URL, leps)
 	n := copy(eps, c.endpoints)
+	pinned := c.pinned
 
 	if c.credentials != nil {
 		action = &authedAction{
@@ -224,8 +239,8 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 	var body []byte
 	var err error
 
-	for _, ep := range eps {
-		hc := c.clientFactory(ep)
+	for _, k := range randPermStartWithX(c.rand, leps, pinned) {
+		hc := c.clientFactory(eps[k])
 		resp, body, err = hc.Do(ctx, action)
 		if err != nil {
 			if err == context.DeadlineExceeded || err == context.Canceled {
@@ -235,6 +250,14 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 		}
 		if resp.StatusCode/100 == 5 {
 			continue
+		}
+		if k != pinned {
+			c.Lock()
+			// update pinned if it has not been updated yet
+			if c.pinned == pinned {
+				c.pinned = k
+			}
+			c.Unlock()
 		}
 		break
 	}
@@ -400,4 +423,27 @@ func (r *redirectedHTTPAction) HTTPRequest(ep url.URL) *http.Request {
 	orig := r.action.HTTPRequest(ep)
 	orig.URL = &r.location
 	return orig
+}
+
+// randPermStartWithX returns, as a slice of n ints, a pseudo-random permutation
+// of the integers [0,n), which starts with x.
+func randPermStartWithX(r *rand.Rand, n, x int) []int {
+	p := r.Perm(n)
+	for i, k := range p {
+		if k == x {
+			p[0], p[i] = p[i], p[0]
+			break
+		}
+	}
+	return p
+}
+
+// index returns the index of u in us, or -1 if u is not present in us.
+func urlIndex(us []url.URL, u url.URL) int {
+	for i, v := range us {
+		if v == u {
+			return i
+		}
+	}
+	return -1
 }
