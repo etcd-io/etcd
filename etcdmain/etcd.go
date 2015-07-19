@@ -93,19 +93,28 @@ func Main() {
 	which := identifyDataDirOrDie(cfg.dir)
 	if which != dirEmpty {
 		plog.Noticef("the server is already initialized as %v before, starting as etcd %v...", which, which)
-	}
-
-	shouldProxy := cfg.isProxy() || which == dirProxy
-	if !shouldProxy {
-		stopped, err = startEtcd(cfg)
-		if err == discovery.ErrFullCluster && cfg.shouldFallbackToProxy() {
-			plog.Noticef("discovery cluster full, falling back to %s", fallbackFlagProxy)
-			shouldProxy = true
+		switch which {
+		case dirMember:
+			stopped, err = startEtcd(cfg)
+		case dirProxy:
+			err = startProxy(cfg)
+		default:
+			plog.Panicf("unhandled dir type %v", which)
+		}
+	} else {
+		shouldProxy := cfg.isProxy()
+		if !shouldProxy {
+			stopped, err = startEtcd(cfg)
+			if err == discovery.ErrFullCluster && cfg.shouldFallbackToProxy() {
+				plog.Noticef("discovery cluster full, falling back to %s", fallbackFlagProxy)
+				shouldProxy = true
+			}
+		}
+		if shouldProxy {
+			err = startProxy(cfg)
 		}
 	}
-	if shouldProxy {
-		err = startProxy(cfg)
-	}
+
 	if err != nil {
 		switch err {
 		case discovery.ErrDuplicateID:
