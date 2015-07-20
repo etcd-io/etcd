@@ -1,8 +1,9 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Generate coverage HTML for a package
 # e.g. PKG=./unit ./cover
 #
+set -e
 
 if [ -z "$PKG" ]; then
 	echo "cover only works with a single package, sorry"

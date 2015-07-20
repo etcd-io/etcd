@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 tar cv --files-from /dev/null | docker import - scratch
 
 cat <<DF > Dockerfile

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # A non-installed actool can be used, for example:
 # ACTOOL=../../appc/spec/bin/actool

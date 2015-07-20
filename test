@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Run all etcd tests
 # ./test
@@ -8,6 +8,7 @@
 #
 # PKG=./wal ./test
 # PKG=snap ./test
+set -e
 
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
