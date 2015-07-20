@@ -16,7 +16,6 @@ package client
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -778,7 +777,7 @@ func TestHTTPClusterClientResetPinRandom(t *testing.T) {
 	round := 2000
 	pinNum := 0
 	for i := 0; i < round; i++ {
-		hc := &httpClusterClient{rand: rand.New(rand.NewSource(0))}
+		hc := &httpClusterClient{rand: rand.New(rand.NewSource(int64(i)))}
 		err := hc.reset([]string{"http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"})
 		if err != nil {
 			t.Fatalf("#%d: reset error (%v)", i, err)
@@ -795,57 +794,24 @@ func TestHTTPClusterClientResetPinRandom(t *testing.T) {
 	}
 }
 
-// TestHTTPClusterClientResetKeepPinned tests that reset will stick on old
-// pinned endpoint if it is one of the new endpoints.
-func TestHTTPClusterClientResetKeepPinned(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		hc := &httpClusterClient{rand: rand.New(rand.NewSource(0))}
-		ep := fmt.Sprintf("http://127.0.0.1:%d", 4001+rand.Intn(3))
-		err := hc.reset([]string{ep})
-		if err != nil {
-			t.Fatalf("#%d: reset error (%v)", i, err)
-		}
-		err = hc.reset([]string{"http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"})
-		if err != nil {
-			t.Fatalf("#%d: reset again error (%v)", i, err)
-		}
-
-		if g := hc.endpoints[hc.pinned]; g.String() != ep {
-			t.Errorf("#%d: pinned endpoint = %s, want %s", i, g.String(), ep)
-		}
-	}
-}
-
-func TestRandPermStartWithX(t *testing.T) {
-	r := rand.New(rand.NewSource(0))
-	for i := 0; i < 100; i++ {
-		p := randPermStartWithX(r, 10, 5)
-		if p[0] != 5 {
-			t.Errorf("#%d: perm start = %d, want %d", i, p[0], 5)
-		}
-	}
-}
-
-func TestURLIndex(t *testing.T) {
-	us := []url.URL{
-		{Scheme: "http", Host: "127.0.0.1:4001"},
-		{Scheme: "http", Host: "127.0.0.1:4002"},
-		{Scheme: "http", Host: "127.0.0.1:4003"},
-	}
+func TestSwitchToFirst(t *testing.T) {
+	a := []int{1, 2, 3, 4, 5}
 	tests := []struct {
-		u  url.URL
-		wi int
+		n  int
+		wa []int
 	}{
-		{url.URL{}, -1},
-		{url.URL{Scheme: "http"}, -1},
-		{us[0], 0},
-		{us[1], 1},
-		{us[2], 2},
+		{1, []int{1, 2, 3, 4, 5}},
+		{2, []int{2, 1, 3, 4, 5}},
+		{3, []int{3, 2, 1, 4, 5}},
+		{4, []int{4, 2, 3, 1, 5}},
+		{5, []int{5, 2, 3, 4, 1}},
 	}
 	for i, tt := range tests {
-		idx := urlIndex(us, tt.u)
-		if idx != tt.wi {
-			t.Errorf("#%d: index = %d, want %d", i, idx, tt.wi)
+		aa := make([]int, 5)
+		copy(aa, a)
+		switchToFirst(aa, tt.n)
+		if !reflect.DeepEqual(aa, tt.wa) {
+			t.Errorf("#%d: array = %v, want %v", i, aa, tt.wa)
 		}
 	}
 }
