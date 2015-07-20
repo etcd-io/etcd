@@ -30,6 +30,7 @@ import (
 var (
 	ErrNoEndpoints           = errors.New("client: no endpoints available")
 	ErrTooManyRedirects      = errors.New("client: too many redirects")
+	ErrClusterUnavailable    = errors.New("client: etcd cluster is unavailable or misconfigured")
 	errTooManyRedirectChecks = errors.New("client: too many redirect checks")
 )
 
@@ -223,23 +224,27 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 	var resp *http.Response
 	var body []byte
 	var err error
+	cerr := &ClusterError{}
 
 	for _, ep := range eps {
 		hc := c.clientFactory(ep)
 		resp, body, err = hc.Do(ctx, action)
 		if err != nil {
+			cerr.Errors = append(cerr.Errors, err)
 			if err == context.DeadlineExceeded || err == context.Canceled {
-				return nil, nil, err
+				return nil, nil, cerr
 			}
 			continue
 		}
 		if resp.StatusCode/100 == 5 {
+			// TODO: make sure this is a no leader response
+			cerr.Errors = append(cerr.Errors, fmt.Errorf("client: etcd member %s has no leader", ep.String()))
 			continue
 		}
-		break
+		return resp, body, nil
 	}
 
-	return resp, body, err
+	return nil, nil, cerr
 }
 
 func (c *httpClusterClient) Endpoints() []string {

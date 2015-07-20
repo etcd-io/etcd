@@ -342,7 +342,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 					},
 				),
 			},
-			wantErr: context.DeadlineExceeded,
+			wantErr: &ClusterError{Errors: []error{context.DeadlineExceeded}},
 		},
 
 		// context.Canceled short-circuits Do
@@ -356,7 +356,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 					},
 				),
 			},
-			wantErr: context.Canceled,
+			wantErr: &ClusterError{Errors: []error{context.Canceled}},
 		},
 
 		// return err if there are no endpoints
@@ -379,7 +379,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 					},
 				),
 			},
-			wantErr: fakeErr,
+			wantErr: &ClusterError{Errors: []error{fakeErr, fakeErr}},
 		},
 
 		// 500-level errors cause Do to fallthrough to next endpoint
