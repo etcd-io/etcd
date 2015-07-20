@@ -220,16 +220,36 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 		return nil, nil, errors.New("unable to pick endpoint: copy failed")
 	}
 
-	var resp *http.Response
-	var body []byte
-	var err error
+	var (
+		resp     *http.Response
+		body     []byte
+		err      error
+		epctx    context.Context
+		epcancel context.CancelFunc
+	)
+
+	var timeoutPerEndpoint time.Duration
+	deadline, ok := ctx.Deadline()
+	if ok {
+		timeoutPerEndpoint = time.Duration(int(deadline.Sub(time.Now())) / len(eps))
+	}
 
 	for _, ep := range eps {
+		if timeoutPerEndpoint != 0 {
+			epctx, epcancel = context.WithTimeout(ctx, timeoutPerEndpoint)
+		} else {
+			epctx = ctx
+			epcancel = nil
+		}
 		hc := c.clientFactory(ep)
-		resp, body, err = hc.Do(ctx, action)
+		resp, body, err = hc.Do(epctx, action)
 		if err != nil {
-			if err == context.DeadlineExceeded || err == context.Canceled {
+			// return if the original context is timed out or any of the context is canceled.
+			if (ctx.Err() == context.DeadlineExceeded) || err == context.Canceled {
 				return nil, nil, err
+			}
+			if epcancel != nil {
+				epcancel()
 			}
 			continue
 		}
