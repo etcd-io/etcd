@@ -221,7 +221,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 		if err == client.ErrInvalidJSON {
 			return nil, 0, 0, ErrBadDiscoveryEndpoint
 		}
-		if err == context.DeadlineExceeded {
+		if _, ok := err.(*client.ClusterError); ok {
 			return d.checkClusterRetry()
 		}
 		return nil, 0, 0, err
@@ -235,7 +235,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	resp, err = d.c.Get(ctx, d.cluster, nil)
 	cancel()
 	if err != nil {
-		if err == context.DeadlineExceeded {
+		if _, ok := err.(*client.ClusterError); ok {
 			return d.checkClusterRetry()
 		}
 		return nil, 0, 0, err
@@ -311,7 +311,7 @@ func (d *discovery) waitNodes(nodes []*client.Node, size int, index uint64) ([]*
 		plog.Noticef("found %d peer(s), waiting for %d more", len(all), size-len(all))
 		resp, err := w.Next(context.Background())
 		if err != nil {
-			if err == context.DeadlineExceeded {
+			if _, ok := err.(*client.ClusterError); ok {
 				return d.waitNodesRetry()
 			}
 			return nil, err
