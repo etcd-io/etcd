@@ -1186,6 +1186,7 @@ func TestLeaderAppResp(t *testing.T) {
 		wcommitted uint64
 	}{
 		{3, true, 0, 3, 0, 0, 0},  // stale resp; no replies
+		{0, true, 0, 3, 1, 2, 0},  // empty append was rejected; retry so the commit index is advanced
 		{2, true, 0, 2, 1, 1, 0},  // denied resp; leader does not commit; decrease next and send probing msg
 		{2, false, 2, 4, 2, 2, 2}, // accept resp; leader commits; broadcast with commit index
 		{0, false, 0, 3, 0, 0, 0}, // ignore heartbeat replies
