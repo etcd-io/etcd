@@ -99,6 +99,10 @@ Now it's time to dig into the full etcd API and other guides.
 
 See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
 
+## Reporting bugs
+
+See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issue you may encounter..
+
 ## Project Details
 
 ### Versioning
