@@ -102,27 +102,38 @@ func TestGetAction(t *testing.T) {
 	tests := []struct {
 		recursive bool
 		sorted    bool
+		quorum    bool
 		wantQuery string
 	}{
 		{
 			recursive: false,
 			sorted:    false,
-			wantQuery: "recursive=false&sorted=false",
+			quorum:    false,
+			wantQuery: "quorum=false&recursive=false&sorted=false",
 		},
 		{
 			recursive: true,
 			sorted:    false,
-			wantQuery: "recursive=true&sorted=false",
+			quorum:    false,
+			wantQuery: "quorum=false&recursive=true&sorted=false",
 		},
 		{
 			recursive: false,
 			sorted:    true,
-			wantQuery: "recursive=false&sorted=true",
+			quorum:    false,
+			wantQuery: "quorum=false&recursive=false&sorted=true",
 		},
 		{
 			recursive: true,
 			sorted:    true,
-			wantQuery: "recursive=true&sorted=true",
+			quorum:    false,
+			wantQuery: "quorum=false&recursive=true&sorted=true",
+		},
+		{
+			recursive: false,
+			sorted:    false,
+			quorum:    true,
+			wantQuery: "quorum=true&recursive=false&sorted=false",
 		},
 	}
 
@@ -131,6 +142,7 @@ func TestGetAction(t *testing.T) {
 			Key:       "/foo/bar",
 			Recursive: tt.recursive,
 			Sorted:    tt.sorted,
+			Quorum:    tt.quorum,
 		}
 		got := *f.HTTPRequest(ep)
 
@@ -1120,11 +1132,13 @@ func TestHTTPKeysAPIGetAction(t *testing.T) {
 			opts: &GetOptions{
 				Sort:      true,
 				Recursive: true,
+				Quorum:    true,
 			},
 			wantAction: &getAction{
 				Key:       "/foo",
 				Sorted:    true,
 				Recursive: true,
+				Quorum:    true,
 			},
 		},
 	}
