@@ -1,5 +1,7 @@
 # Authentication Guide
 
+**NOTE: The authentication feature is considered experimental. We may change workflow without warning in future releases.**
+
 ## Overview
 
 Authentication -- having users and roles in etcd -- was added in etcd 2.1. This guide will help you set up basic authentication in etcd.
