@@ -194,6 +194,11 @@ type GetOptions struct {
 	// not be sorted and the ordering used should not be considered
 	// predictable.
 	Sort bool
+
+	// Quorum specifies whether it gets the latest committed value that
+	// has been applied in quorum of members, which ensures external
+	// consistency (or linearizability).
+	Quorum bool
 }
 
 type DeleteOptions struct {
@@ -378,6 +383,7 @@ func (k *httpKeysAPI) Get(ctx context.Context, key string, opts *GetOptions) (*R
 	if opts != nil {
 		act.Recursive = opts.Recursive
 		act.Sorted = opts.Sort
+		act.Quorum = opts.Quorum
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -442,6 +448,7 @@ type getAction struct {
 	Key       string
 	Recursive bool
 	Sorted    bool
+	Quorum    bool
 }
 
 func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
@@ -450,6 +457,7 @@ func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 	params := u.Query()
 	params.Set("recursive", strconv.FormatBool(g.Recursive))
 	params.Set("sorted", strconv.FormatBool(g.Sorted))
+	params.Set("quorum", strconv.FormatBool(g.Quorum))
 	u.RawQuery = params.Encode()
 
 	req, _ := http.NewRequest("GET", u.String(), nil)
