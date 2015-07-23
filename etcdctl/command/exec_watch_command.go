@@ -51,21 +51,15 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 		handleError(ExitBadArgs, errors.New("key and command to exec required"))
 	}
 
-	key := args[argslen-1]
-	cmdArgs := args[:argslen-1]
+	key := args[0]
+	cmdArgs := args[1:]
 
 	index := 0
 	if c.Int("after-index") != 0 {
 		index = c.Int("after-index") + 1
-		key = args[0]
-		cmdArgs = args[2:]
 	}
 
 	recursive := c.Bool("recursive")
-	if recursive != false {
-		key = args[0]
-		cmdArgs = args[2:]
-	}
 
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt)
