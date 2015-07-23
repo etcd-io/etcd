@@ -41,6 +41,10 @@ const (
 	clusterStateFlagExisting = "existing"
 
 	defaultName = "default"
+
+	// maxElectionMs specifies the maximum value of election timeout.
+	// More details are listed in ../Documentation/tuning.md#time-parameters.
+	maxElectionMs = 50000
 )
 
 var (
@@ -292,6 +296,9 @@ func (cfg *config) Parse(arguments []string) error {
 
 	if 5*cfg.TickMs > cfg.ElectionMs {
 		return fmt.Errorf("-election-timeout[%vms] should be at least as 5 times as -heartbeat-interval[%vms]", cfg.ElectionMs, cfg.TickMs)
+	}
+	if cfg.ElectionMs > maxElectionMs {
+		return fmt.Errorf("-election-timeout[%vms] is too long, and should be set less than %vms", cfg.ElectionMs, maxElectionMs)
 	}
 
 	return nil

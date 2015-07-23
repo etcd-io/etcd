@@ -28,7 +28,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: "100"
 
 ##### -election-timeout
-+ Time (in milliseconds) for an election to timeout.
++ Time (in milliseconds) for an election to timeout. See [Documentation/tuning.md](tuning.md#time-parameters) for details.
 + default: "1000"
 
 ##### -listen-peer-urls
