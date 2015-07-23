@@ -55,7 +55,7 @@ const (
 	defaultSyncTimeout = time.Second
 	DefaultSnapCount   = 10000
 	// TODO: calculate based on heartbeat interval
-	defaultPublishRetryInterval = 5 * time.Second
+	defaultPublishTimeout = 5 * time.Second
 
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
@@ -335,7 +335,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 // It also starts a goroutine to publish its server information.
 func (s *EtcdServer) Start() {
 	s.start()
-	go s.publish(defaultPublishRetryInterval)
+	go s.publish(defaultPublishTimeout)
 	go s.purgeFile()
 	go monitorFileDescriptor(s.done)
 	go s.monitorVersions()
@@ -689,7 +689,7 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // static clientURLs of the server.
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
-func (s *EtcdServer) publish(retryInterval time.Duration) {
+func (s *EtcdServer) publish(timeout time.Duration) {
 	b, err := json.Marshal(s.attributes)
 	if err != nil {
 		plog.Panicf("json marshal error: %v", err)
@@ -702,7 +702,7 @@ func (s *EtcdServer) publish(retryInterval time.Duration) {
 	}
 
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), retryInterval)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		_, err := s.Do(ctx, req)
 		cancel()
 		switch err {
