@@ -11,7 +11,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/etcdserver/stats"
 )
 
 func NewClusterHealthCommand() cli.Command {
@@ -42,7 +41,7 @@ func handleClusterHealth(c *cli.Context) {
 
 	// check the /health endpoint of all members first
 
-	ep, ls0, err := getLeaderStats(tr, cl)
+	ep, rs0, err := getLeaderStatus(tr, cl)
 	if err != nil {
 		fmt.Println("cluster may be unhealthy: failed to connect", cl)
 		os.Exit(1)
@@ -51,27 +50,31 @@ func handleClusterHealth(c *cli.Context) {
 	time.Sleep(time.Second)
 
 	// are all the members makeing progress?
-	_, ls1, err := getLeaderStats(tr, []string{ep})
+	_, rs1, err := getLeaderStatus(tr, []string{ep})
 	if err != nil {
 		fmt.Println("cluster is unhealthy")
 		os.Exit(1)
 	}
 
-	fmt.Println("cluster is healthy")
-	// self is healthy
+	if rs1.Commit > rs0.Commit {
+		fmt.Printf("cluster is healthy: raft is making progress [commit index: %v->%v]\n", rs0.Commit, rs1.Commit)
+	} else {
+		fmt.Printf("cluster is unhealthy: raft is not making progress [commit index: %v]\n", rs0.Commit)
+	}
+	fmt.Printf("leader is %v\n", rs0.Lead)
+
 	var prints []string
 
-	prints = append(prints, fmt.Sprintf("member %s is healthy\n", ls1.Leader))
-	for name, fs0 := range ls0.Followers {
-		fs1, ok := ls1.Followers[name]
+	for id, pr0 := range rs0.Progress {
+		pr1, ok := rs1.Progress[id]
 		if !ok {
 			fmt.Println("Cluster configuration changed during health checking. Please retry.")
 			os.Exit(1)
 		}
-		if fs1.Counts.Success <= fs0.Counts.Success {
-			prints = append(prints, fmt.Sprintf("member %s is unhealthy\n", name))
+		if pr1.Match <= pr0.Match {
+			prints = append(prints, fmt.Sprintf("member %s is unhealthy: raft is not making progress [match: %v->%v]\n", id, pr0.Match, pr1.Match))
 		} else {
-			prints = append(prints, fmt.Sprintf("member %s is healthy\n", name))
+			prints = append(prints, fmt.Sprintf("member %s is healthy: raft is making progress [match: %v->%v]\n", id, pr0.Match, pr1.Match))
 		}
 	}
 
@@ -82,15 +85,32 @@ func handleClusterHealth(c *cli.Context) {
 	os.Exit(0)
 }
 
-func getLeaderStats(tr *http.Transport, endpoints []string) (string, *stats.LeaderStats, error) {
-	// go-etcd does not support cluster stats, use http client for now
-	// TODO: use new etcd client with new member/stats endpoint
+type raftStatus struct {
+	ID        string `json:"id"`
+	Term      uint64 `json:"term"`
+	Vote      string `json:"vote"`
+	Commit    uint64 `json:"commit"`
+	Lead      string `json:"lead"`
+	RaftState string `json:"raftState"`
+	Progress  map[string]struct {
+		Match uint64 `json:"match"`
+		Next  uint64 `json:"next"`
+		State string `json:"state"`
+	} `json:"progress"`
+}
+
+type vars struct {
+	RaftStatus raftStatus `json:"raft.status"`
+}
+
+func getLeaderStatus(tr *http.Transport, endpoints []string) (string, raftStatus, error) {
+	// TODO: use new etcd client
 	httpclient := http.Client{
 		Transport: tr,
 	}
 
 	for _, ep := range endpoints {
-		resp, err := httpclient.Get(ep + "/v2/stats/leader")
+		resp, err := httpclient.Get(ep + "/debug/vars")
 		if err != nil {
 			continue
 		}
@@ -99,13 +119,16 @@ func getLeaderStats(tr *http.Transport, endpoints []string) (string, *stats.Lead
 			continue
 		}
 
-		ls := &stats.LeaderStats{}
+		vs := &vars{}
 		d := json.NewDecoder(resp.Body)
-		err = d.Decode(ls)
+		err = d.Decode(vs)
 		if err != nil {
 			continue
 		}
-		return ep, ls, nil
+		if vs.RaftStatus.Lead != vs.RaftStatus.ID {
+			continue
+		}
+		return ep, vs.RaftStatus, nil
 	}
-	return "", nil, errors.New("no leader")
+	return "", raftStatus{}, errors.New("no leader")
 }
