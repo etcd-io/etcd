@@ -22,7 +22,7 @@ var (
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
-	ErrTnxIDMismatch = errors.New("storage: tnx id mismatch")
+	ErrTxnIDMismatch = errors.New("storage: txn id mismatch")
 	ErrCompacted     = errors.New("storage: required reversion has been compacted")
 	ErrFutureRev     = errors.New("storage: required reversion is a future reversion")
 )
@@ -37,8 +37,8 @@ type store struct {
 	// the main reversion of the last compaction
 	compactMainRev int64
 
-	tmu   sync.Mutex // protect the tnxID field
-	tnxID int64      // tracks the current tnxID to verify tnx operations
+	tmu   sync.Mutex // protect the txnID field
+	txnID int64      // tracks the current txnID to verify txn operations
 
 	wg    sync.WaitGroup
 	stopc chan struct{}
@@ -68,44 +68,44 @@ func newStore(path string) *store {
 }
 
 func (s *store) Put(key, value []byte) int64 {
-	id := s.TnxBegin()
+	id := s.TxnBegin()
 	s.put(key, value, s.currentRev.main+1)
-	s.TnxEnd(id)
+	s.TxnEnd(id)
 
 	return int64(s.currentRev.main)
 }
 
 func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
-	id := s.TnxBegin()
+	id := s.TxnBegin()
 	kvs, rev, err = s.rangeKeys(key, end, limit, rangeRev)
-	s.TnxEnd(id)
+	s.TxnEnd(id)
 
 	return kvs, rev, err
 }
 
 func (s *store) DeleteRange(key, end []byte) (n, rev int64) {
-	id := s.TnxBegin()
+	id := s.TxnBegin()
 	n = s.deleteRange(key, end, s.currentRev.main+1)
-	s.TnxEnd(id)
+	s.TxnEnd(id)
 
 	return n, int64(s.currentRev.main)
 }
 
-func (s *store) TnxBegin() int64 {
+func (s *store) TxnBegin() int64 {
 	s.mu.Lock()
 	s.currentRev.sub = 0
 
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
-	s.tnxID = rand.Int63()
-	return s.tnxID
+	s.txnID = rand.Int63()
+	return s.txnID
 }
 
-func (s *store) TnxEnd(tnxID int64) error {
+func (s *store) TxnEnd(txnID int64) error {
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
-	if tnxID != s.tnxID {
-		return ErrTnxIDMismatch
+	if txnID != s.txnID {
+		return ErrTxnIDMismatch
 	}
 
 	if s.currentRev.sub != 0 {
@@ -116,31 +116,31 @@ func (s *store) TnxEnd(tnxID int64) error {
 	return nil
 }
 
-func (s *store) TnxRange(tnxID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
+func (s *store) TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
-	if tnxID != s.tnxID {
-		return nil, 0, ErrTnxIDMismatch
+	if txnID != s.txnID {
+		return nil, 0, ErrTxnIDMismatch
 	}
 	return s.rangeKeys(key, end, limit, rangeRev)
 }
 
-func (s *store) TnxPut(tnxID int64, key, value []byte) (rev int64, err error) {
+func (s *store) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
-	if tnxID != s.tnxID {
-		return 0, ErrTnxIDMismatch
+	if txnID != s.txnID {
+		return 0, ErrTxnIDMismatch
 	}
 
 	s.put(key, value, s.currentRev.main+1)
 	return int64(s.currentRev.main + 1), nil
 }
 
-func (s *store) TnxDeleteRange(tnxID int64, key, end []byte) (n, rev int64, err error) {
+func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error) {
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
-	if tnxID != s.tnxID {
-		return 0, 0, ErrTnxIDMismatch
+	if txnID != s.txnID {
+		return 0, 0, ErrTxnIDMismatch
 	}
 
 	n = s.deleteRange(key, end, s.currentRev.main+1)

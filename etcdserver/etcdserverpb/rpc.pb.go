@@ -247,55 +247,55 @@ func (*Compare) ProtoMessage()    {}
 // if guard evaluates to
 // true.
 // 3. A list of database operations called f op. Like t op, but executed if guard evaluates to false.
-type TnxRequest struct {
+type TxnRequest struct {
 	Compare []*Compare      `protobuf:"bytes,1,rep,name=compare" json:"compare,omitempty"`
 	Success []*RequestUnion `protobuf:"bytes,2,rep,name=success" json:"success,omitempty"`
 	Failure []*RequestUnion `protobuf:"bytes,3,rep,name=failure" json:"failure,omitempty"`
 }
 
-func (m *TnxRequest) Reset()         { *m = TnxRequest{} }
-func (m *TnxRequest) String() string { return proto.CompactTextString(m) }
-func (*TnxRequest) ProtoMessage()    {}
+func (m *TxnRequest) Reset()         { *m = TxnRequest{} }
+func (m *TxnRequest) String() string { return proto.CompactTextString(m) }
+func (*TxnRequest) ProtoMessage()    {}
 
-func (m *TnxRequest) GetCompare() []*Compare {
+func (m *TxnRequest) GetCompare() []*Compare {
 	if m != nil {
 		return m.Compare
 	}
 	return nil
 }
 
-func (m *TnxRequest) GetSuccess() []*RequestUnion {
+func (m *TxnRequest) GetSuccess() []*RequestUnion {
 	if m != nil {
 		return m.Success
 	}
 	return nil
 }
 
-func (m *TnxRequest) GetFailure() []*RequestUnion {
+func (m *TxnRequest) GetFailure() []*RequestUnion {
 	if m != nil {
 		return m.Failure
 	}
 	return nil
 }
 
-type TnxResponse struct {
+type TxnResponse struct {
 	Header    *ResponseHeader  `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	Succeeded bool             `protobuf:"varint,2,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
 	Responses []*ResponseUnion `protobuf:"bytes,3,rep,name=responses" json:"responses,omitempty"`
 }
 
-func (m *TnxResponse) Reset()         { *m = TnxResponse{} }
-func (m *TnxResponse) String() string { return proto.CompactTextString(m) }
-func (*TnxResponse) ProtoMessage()    {}
+func (m *TxnResponse) Reset()         { *m = TxnResponse{} }
+func (m *TxnResponse) String() string { return proto.CompactTextString(m) }
+func (*TxnResponse) ProtoMessage()    {}
 
-func (m *TnxResponse) GetHeader() *ResponseHeader {
+func (m *TxnResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
 	}
 	return nil
 }
 
-func (m *TnxResponse) GetResponses() []*ResponseUnion {
+func (m *TxnResponse) GetResponses() []*ResponseUnion {
 	if m != nil {
 		return m.Responses
 	}
@@ -1393,7 +1393,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *TnxRequest) Unmarshal(data []byte) error {
+func (m *TxnRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1510,7 +1510,7 @@ func (m *TnxRequest) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *TnxResponse) Unmarshal(data []byte) error {
+func (m *TxnResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -2024,7 +2024,7 @@ func (m *Compare) Size() (n int) {
 	return n
 }
 
-func (m *TnxRequest) Size() (n int) {
+func (m *TxnRequest) Size() (n int) {
 	var l int
 	_ = l
 	if len(m.Compare) > 0 {
@@ -2048,7 +2048,7 @@ func (m *TnxRequest) Size() (n int) {
 	return n
 }
 
-func (m *TnxResponse) Size() (n int) {
+func (m *TxnResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Header != nil {
@@ -2512,7 +2512,7 @@ func (m *Compare) MarshalTo(data []byte) (n int, err error) {
 	return i, nil
 }
 
-func (m *TnxRequest) Marshal() (data []byte, err error) {
+func (m *TxnRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2522,7 +2522,7 @@ func (m *TnxRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *TnxRequest) MarshalTo(data []byte) (n int, err error) {
+func (m *TxnRequest) MarshalTo(data []byte) (n int, err error) {
 	var i int
 	_ = i
 	var l int
@@ -2566,7 +2566,7 @@ func (m *TnxRequest) MarshalTo(data []byte) (n int, err error) {
 	return i, nil
 }
 
-func (m *TnxResponse) Marshal() (data []byte, err error) {
+func (m *TxnResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2576,7 +2576,7 @@ func (m *TnxResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *TnxResponse) MarshalTo(data []byte) (n int, err error) {
+func (m *TxnResponse) MarshalTo(data []byte) (n int, err error) {
 	var i int
 	_ = i
 	var l int
@@ -2708,10 +2708,10 @@ type EtcdClient interface {
 	// A delete request increase the index of the store,
 	// and generates one event in the event history.
 	DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts ...grpc.CallOption) (*DeleteRangeResponse, error)
-	// Tnx processes all the requests in one transaction.
-	// A tnx request increases the index of the store,
+	// Txn processes all the requests in one transaction.
+	// A txn request increases the index of the store,
 	// and generates events with the same index in the event history.
-	Tnx(ctx context.Context, in *TnxRequest, opts ...grpc.CallOption) (*TnxResponse, error)
+	Txn(ctx context.Context, in *TxnRequest, opts ...grpc.CallOption) (*TxnResponse, error)
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
 	Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error)
@@ -2752,9 +2752,9 @@ func (c *etcdClient) DeleteRange(ctx context.Context, in *DeleteRangeRequest, op
 	return out, nil
 }
 
-func (c *etcdClient) Tnx(ctx context.Context, in *TnxRequest, opts ...grpc.CallOption) (*TnxResponse, error) {
-	out := new(TnxResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.etcd/Tnx", in, out, c.cc, opts...)
+func (c *etcdClient) Txn(ctx context.Context, in *TxnRequest, opts ...grpc.CallOption) (*TxnResponse, error) {
+	out := new(TxnResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.etcd/Txn", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2783,10 +2783,10 @@ type EtcdServer interface {
 	// A delete request increase the index of the store,
 	// and generates one event in the event history.
 	DeleteRange(context.Context, *DeleteRangeRequest) (*DeleteRangeResponse, error)
-	// Tnx processes all the requests in one transaction.
-	// A tnx request increases the index of the store,
+	// Txn processes all the requests in one transaction.
+	// A txn request increases the index of the store,
 	// and generates events with the same index in the event history.
-	Tnx(context.Context, *TnxRequest) (*TnxResponse, error)
+	Txn(context.Context, *TxnRequest) (*TxnResponse, error)
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
 	Compact(context.Context, *CompactionRequest) (*CompactionResponse, error)
@@ -2832,12 +2832,12 @@ func _Etcd_DeleteRange_Handler(srv interface{}, ctx context.Context, codec grpc.
 	return out, nil
 }
 
-func _Etcd_Tnx_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(TnxRequest)
+func _Etcd_Txn_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(TxnRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(EtcdServer).Tnx(ctx, in)
+	out, err := srv.(EtcdServer).Txn(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -2873,8 +2873,8 @@ var _Etcd_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Etcd_DeleteRange_Handler,
 		},
 		{
-			MethodName: "Tnx",
-			Handler:    _Etcd_Tnx_Handler,
+			MethodName: "Txn",
+			Handler:    _Etcd_Txn_Handler,
 		},
 		{
 			MethodName: "Compact",

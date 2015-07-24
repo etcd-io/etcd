@@ -14,14 +14,14 @@
     - more efficient/ low cost keep alive
     - a logical group of TTL keys
     
-5. Replace CAS/CAD with multi-object Tnx
+5. Replace CAS/CAD with multi-object Txn
     - MUCH MORE powerful and flexible
     
 6. Support efficient watching with multiple ranges
 
 7. RPC API supports the completed set of APIs. 
     - more efficient than JSON/HTTP
-    - additional tnx/lease support
+    - additional txn/lease support
 
 8. HTTP API supports a subset of APIs.
     - easy for people to try out etcd
@@ -97,9 +97,9 @@ RangeResponse {
 }
 ```
 
-#### Finish a tnx (assume we have foo0=bar0, foo1=bar1)
+#### Finish a txn (assume we have foo0=bar0, foo1=bar1)
 ```
-Tnx(TnxRequest {
+Txn(TxnRequest {
     // mod_index of foo0 is equal to 1, mod_index of foo1 is greater than 1
     compare = {
         {compareType = equal, key = foo0, mod_index = 1}, 
@@ -111,7 +111,7 @@ Tnx(TnxRequest {
     failure = {PutRequest { key = foo2, value = failure }},
 )
 
-TnxResponse {
+TxnResponse {
     cluster_id = 0x1000,
     member_id = 0x1,
     index = 3,

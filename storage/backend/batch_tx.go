@@ -32,7 +32,7 @@ func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	}
 }
 
-// before calling unsafePut, the caller MUST hold the lock on tnx.
+// before calling unsafePut, the caller MUST hold the lock on tx.
 func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
@@ -48,7 +48,7 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	}
 }
 
-// before calling unsafeRange, the caller MUST hold the lock on tnx.
+// before calling unsafeRange, the caller MUST hold the lock on tx.
 func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
@@ -72,7 +72,7 @@ func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64
 	return keys, vs
 }
 
-// before calling unsafeDelete, the caller MUST hold the lock on tnx.
+// before calling unsafeDelete, the caller MUST hold the lock on tx.
 func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {

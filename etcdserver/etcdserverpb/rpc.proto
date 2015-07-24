@@ -19,10 +19,10 @@ service etcd {
   // and generates one event in the event history.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
 
-  // Tnx processes all the requests in one transaction.
-  // A tnx request increases the index of the store,
+  // Txn processes all the requests in one transaction.
+  // A txn request increases the index of the store,
   // and generates events with the same index in the event history.
-  rpc Tnx(TnxRequest) returns (TnxResponse) {}
+  rpc Txn(TxnRequest) returns (TxnResponse) {}
 
   // Compact compacts the event history in etcd. User should compact the
   // event history periodically, or it will grow infinitely.
@@ -136,13 +136,13 @@ message Compare {
 // if guard evaluates to
 // true.
 // 3. A list of database operations called f op. Like t op, but executed if guard evaluates to false.
-message TnxRequest {
+message TxnRequest {
   repeated Compare compare = 1;
   repeated RequestUnion success = 2;
   repeated RequestUnion failure = 3;
 }
 
-message TnxResponse {
+message TxnResponse {
   ResponseHeader header = 1;
   bool succeeded = 2;
   repeated ResponseUnion responses = 3;
