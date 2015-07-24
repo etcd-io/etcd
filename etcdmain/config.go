@@ -137,7 +137,6 @@ func NewConfig() *config {
 	fs := cfg.FlagSet
 	fs.Usage = func() {
 		fmt.Println(usageline)
-		fmt.Println(flagsline)
 	}
 
 	// member
@@ -225,6 +224,7 @@ func (cfg *config) Parse(arguments []string) error {
 	switch perr {
 	case nil:
 	case flag.ErrHelp:
+		fmt.Println(flagsline)
 		os.Exit(0)
 	default:
 		os.Exit(2)
