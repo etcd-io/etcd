@@ -195,6 +195,16 @@ func (r *raftNode) resumeSending() {
 	p.Resume()
 }
 
+// advanceTicksForElection advances ticks to the node for fast election.
+// This reduces the time to wait for first leader election if bootstrapping the whole
+// cluster, while leaving at least 1 heartbeat for possible existing leader
+// to contact it.
+func advanceTicksForElection(n raft.Node, electionTicks int) {
+	for i := 0; i < electionTicks-1; i++ {
+		n.Tick()
+	}
+}
+
 func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
 	var err error
 	member := cl.MemberByName(cfg.Name)
@@ -231,6 +241,7 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 	}
 	n = raft.StartNode(c, peers)
 	raftStatus = n.Status
+	advanceTicksForElection(n, c.ElectionTick)
 	return
 }
 
@@ -260,6 +271,7 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *clust
 	}
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
+	advanceTicksForElection(n, c.ElectionTick)
 	return id, cl, n, s, w
 }
 
