@@ -27,16 +27,16 @@ type KV interface {
 	// if the `end` is not nil, deleteRange deletes the keys in range [key, range_end).
 	DeleteRange(key, end []byte) (n, rev int64)
 
-	// TnxBegin begins a tnx. Only Tnx prefixed operation can be executed, others will be blocked
-	// until tnx ends. Only one on-going tnx is allowed.
-	// TnxBegin returns an int64 tnx ID.
-	// All tnx prefixed operations with same tnx ID will be done with the same rev.
-	TnxBegin() int64
-	// TnxEnd ends the on-going tnx with tnx ID. If the on-going tnx ID is not matched, error is returned.
-	TnxEnd(tnxID int64) error
-	TnxRange(tnxID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
-	TnxPut(tnxID int64, key, value []byte) (rev int64, err error)
-	TnxDeleteRange(tnxID int64, key, end []byte) (n, rev int64, err error)
+	// TxnBegin begins a txn. Only Txn prefixed operation can be executed, others will be blocked
+	// until txn ends. Only one on-going txn is allowed.
+	// TxnBegin returns an int64 txn ID.
+	// All txn prefixed operations with same txn ID will be done with the same rev.
+	TxnBegin() int64
+	// TxnEnd ends the on-going txn with txn ID. If the on-going txn ID is not matched, error is returned.
+	TxnEnd(txnID int64) error
+	TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
+	TxnPut(txnID int64, key, value []byte) (rev int64, err error)
+	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
 
 	Compact(rev int64) error
 

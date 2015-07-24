@@ -15,10 +15,10 @@ service etcd {
   // and generates one event in the event history.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
 
-  // Tnx processes all the requests in one transaction.
-  // A tnx request increases the index of the store,
+  // Txn processes all the requests in one transaction.
+  // A txn request increases the index of the store,
   // and generates events with the same index in the event history.
-  rpc Tnx(TnxRequest) returns (TnxResponse) {}
+  rpc Txn(TxnRequest) returns (TxnResponse) {}
 
   // Watch watches the events happening or happened in etcd. Both input and output
   // are stream. One watch rpc can watch for multiple ranges and get a stream of
@@ -41,10 +41,10 @@ service etcd {
   // LeaseAttach attaches keys with a lease.
   rpc LeaseAttach(LeaseAttachRequest) returns (LeaseAttachResponse) {}
 
-  // LeaseTnx likes Tnx. It has two addition success and failure LeaseAttachRequest list.
-  // If the Tnx is successful, then the success list will be executed. Or the failure list
+  // LeaseTxn likes Txn. It has two addition success and failure LeaseAttachRequest list.
+  // If the Txn is successful, then the success list will be executed. Or the failure list
   // will be executed.
-  rpc LeaseTnx(LeaseTnxRequest) returns (LeaseTnxResponse) {}
+  rpc LeaseTxn(LeaseTxnRequest) returns (LeaseTxnResponse) {}
 
   // KeepAlive keeps the lease alive.
   rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse) {}
@@ -157,13 +157,13 @@ message Compare {
 // if guard evaluates to
 // true.
 // 3. A list of database operations called f op. Like t op, but executed if guard evaluates to false.
-message TnxRequest {
+message TxnRequest {
   repeated Compare compare = 1;
   repeated RequestUnion success = 2;
   repeated RequestUnion failure = 3;
 }
 
-message TnxResponse {
+message TxnResponse {
   optional ResponseHeader header = 1;
   optional bool succeeded = 2;
   repeated ResponseUnion responses = 3;
@@ -240,15 +240,15 @@ message LeaseRevokeResponse {
   optional ResponseHeader header = 1;
 }
 
-message LeaseTnxRequest {
-  optional TnxRequest request = 1;
+message LeaseTxnRequest {
+  optional TxnRequest request = 1;
   repeated LeaseAttachRequest success = 2;
   repeated LeaseAttachRequest failure = 3;
 }
 
-message LeaseTnxResponse {
+message LeaseTxnResponse {
   optional ResponseHeader header = 1;
-  optional TnxResponse response = 2;
+  optional TxnResponse response = 2;
   repeated LeaseAttachResponse attach_responses = 3;
 }
 

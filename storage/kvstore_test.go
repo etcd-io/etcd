@@ -238,18 +238,18 @@ func TestRangeInSequence(t *testing.T) {
 	}
 }
 
-func TestOneTnx(t *testing.T) {
+func TestOneTxn(t *testing.T) {
 	s := newStore("test")
 	defer os.Remove("test")
 
-	id := s.TnxBegin()
+	id := s.TxnBegin()
 	for i := 0; i < 3; i++ {
-		s.TnxPut(id, []byte("foo"), []byte("bar"))
-		s.TnxPut(id, []byte("foo1"), []byte("bar1"))
-		s.TnxPut(id, []byte("foo2"), []byte("bar2"))
+		s.TxnPut(id, []byte("foo"), []byte("bar"))
+		s.TxnPut(id, []byte("foo1"), []byte("bar1"))
+		s.TxnPut(id, []byte("foo2"), []byte("bar2"))
 
 		// remove foo
-		n, rev, err := s.TnxDeleteRange(id, []byte("foo"), nil)
+		n, rev, err := s.TxnDeleteRange(id, []byte("foo"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -257,7 +257,7 @@ func TestOneTnx(t *testing.T) {
 			t.Fatalf("n = %d, rev = %d, want (%d, %d)", n, rev, 1, 1)
 		}
 
-		kvs, rev, err := s.TnxRange(id, []byte("foo"), []byte("foo3"), 0, 0)
+		kvs, rev, err := s.TxnRange(id, []byte("foo"), []byte("foo3"), 0, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -266,7 +266,7 @@ func TestOneTnx(t *testing.T) {
 		}
 
 		// remove again -> expect nothing
-		n, rev, err = s.TnxDeleteRange(id, []byte("foo"), nil)
+		n, rev, err = s.TxnDeleteRange(id, []byte("foo"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -275,7 +275,7 @@ func TestOneTnx(t *testing.T) {
 		}
 
 		// remove foo1
-		n, rev, err = s.TnxDeleteRange(id, []byte("foo"), []byte("foo2"))
+		n, rev, err = s.TxnDeleteRange(id, []byte("foo"), []byte("foo2"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -284,7 +284,7 @@ func TestOneTnx(t *testing.T) {
 		}
 
 		// after removal foo1
-		kvs, rev, err = s.TnxRange(id, []byte("foo"), []byte("foo3"), 0, 0)
+		kvs, rev, err = s.TxnRange(id, []byte("foo"), []byte("foo3"), 0, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -293,7 +293,7 @@ func TestOneTnx(t *testing.T) {
 		}
 
 		// remove foo2
-		n, rev, err = s.TnxDeleteRange(id, []byte("foo2"), []byte("foo3"))
+		n, rev, err = s.TxnDeleteRange(id, []byte("foo2"), []byte("foo3"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -302,7 +302,7 @@ func TestOneTnx(t *testing.T) {
 		}
 
 		// after removal foo2
-		kvs, rev, err = s.TnxRange(id, []byte("foo"), []byte("foo3"), 0, 0)
+		kvs, rev, err = s.TxnRange(id, []byte("foo"), []byte("foo3"), 0, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -310,12 +310,12 @@ func TestOneTnx(t *testing.T) {
 			t.Fatalf("len(kvs) = %d, want %d", len(kvs), 0)
 		}
 	}
-	err := s.TnxEnd(id)
+	err := s.TxnEnd(id)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// After tnx
+	// After txn
 	kvs, rev, err := s.Range([]byte("foo"), []byte("foo3"), 0, 1)
 	if err != nil {
 		t.Fatal(err)

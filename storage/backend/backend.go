@@ -50,7 +50,7 @@ func New(path string, d time.Duration, limit int) Backend {
 	return b
 }
 
-// BatchTnx returns the current batch tx in coalescer. The tx can be used for read and
+// BatchTx returns the current batch tx in coalescer. The tx can be used for read and
 // write operations. The write result can be retrieved within the same tx immediately.
 // The write result is isolated with other txs until the current one get committed.
 func (b *backend) BatchTx() BatchTx {
