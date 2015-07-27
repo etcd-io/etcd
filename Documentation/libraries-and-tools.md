@@ -45,6 +45,7 @@
 **C libraries**
 
 - [jdarcy/etcd-api](https://github.com/jdarcy/etcd-api) - Supports v2
+- [shafreeck/cetcd](https://github.com/shafreeck/cetcd) - Supports v2
 
 **C++ libraries**
 - [edwardcapriolo/etcdcpp](https://github.com/edwardcapriolo/etcdcpp) - Supports v2
