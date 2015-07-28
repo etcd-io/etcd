@@ -25,6 +25,8 @@ The election timeout should be set based on the heartbeat interval and your netw
 Election timeouts should be at least 10 times your ping time so it can account for variance in your network.
 For example, if the ping time between your nodes is 10ms then you should have at least a 100ms election timeout.
 
+The upper limit of election timeout is 50000ms, which should only be used when deploying global etcd cluster. First, 5s is the upper limit of average global round-trip time. A reasonable round-trip time for the continental united states is 130ms, and the time between US and japan is around 350-400ms. Because package gets delayed a lot, and network situation may be terrible, 5s is a safe value for it. Then, because election timeout should be an order of magnitude bigger than broadcast time, 50s becomes its maximum.
+
 You should also set your election timeout to at least 5 to 10 times your heartbeat interval to account for variance in leader replication.
 For a heartbeat interval of 50ms you should set your election timeout to at least 250ms - 500ms.
 
