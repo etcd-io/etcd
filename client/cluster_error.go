@@ -14,10 +14,20 @@
 
 package client
 
+import "fmt"
+
 type ClusterError struct {
 	Errors []error
 }
 
 func (ce *ClusterError) Error() string {
 	return ErrClusterUnavailable.Error()
+}
+
+func (ce *ClusterError) Detail() string {
+	s := ""
+	for i, e := range ce.Errors {
+		s += fmt.Sprintf("error #%d: %s\n", i, e)
+	}
+	return s
 }

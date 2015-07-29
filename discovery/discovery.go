@@ -216,7 +216,8 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 		if eerr, ok := err.(*client.Error); ok && eerr.Code == client.ErrorCodeKeyNotFound {
 			return nil, 0, 0, ErrSizeNotFound
 		}
-		if _, ok := err.(*client.ClusterError); ok {
+		if ce, ok := err.(*client.ClusterError); ok {
+			plog.Error(ce.Detail())
 			return d.checkClusterRetry()
 		}
 		return nil, 0, 0, err
@@ -230,7 +231,8 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	resp, err = d.c.Get(ctx, d.cluster, nil)
 	cancel()
 	if err != nil {
-		if _, ok := err.(*client.ClusterError); ok {
+		if ce, ok := err.(*client.ClusterError); ok {
+			plog.Error(ce.Detail())
 			return d.checkClusterRetry()
 		}
 		return nil, 0, 0, err
@@ -261,7 +263,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 func (d *discovery) logAndBackoffForRetry(step string) {
 	d.retries++
 	retryTime := time.Second * (0x1 << d.retries)
-	plog.Infof("%s: connection to %s timed out, retrying in %s", step, d.url, retryTime)
+	plog.Infof("%s: error connecting to %s, retrying in %s", step, d.url, retryTime)
 	d.clock.Sleep(retryTime)
 }
 
@@ -306,7 +308,8 @@ func (d *discovery) waitNodes(nodes []*client.Node, size int, index uint64) ([]*
 		plog.Noticef("found %d peer(s), waiting for %d more", len(all), size-len(all))
 		resp, err := w.Next(context.Background())
 		if err != nil {
-			if _, ok := err.(*client.ClusterError); ok {
+			if ce, ok := err.(*client.ClusterError); ok {
+				plog.Error(ce.Detail())
 				return d.waitNodesRetry()
 			}
 			return nil, err
