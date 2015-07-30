@@ -419,18 +419,25 @@ type httpWatcher struct {
 }
 
 func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
-	httpresp, body, err := hw.client.Do(ctx, &hw.nextWait)
-	if err != nil {
-		return nil, err
-	}
+	for {
+		httpresp, body, err := hw.client.Do(ctx, &hw.nextWait)
+		if err != nil {
+			return nil, err
+		}
 
-	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, httpresp.Header, body)
-	if err != nil {
-		return nil, err
-	}
+		if len(body) == 0 {
+			// This occurs when http long polls time out
+			continue
+		}
 
-	hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
-	return resp, nil
+		resp, err := unmarshalHTTPResponse(httpresp.StatusCode, httpresp.Header, body)
+		if err != nil {
+			return nil, err
+		}
+
+		hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
+		return resp, nil
+	}
 }
 
 // v2KeysURL forms a URL representing the location of a key.
