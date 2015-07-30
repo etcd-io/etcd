@@ -63,6 +63,7 @@ func (e Error) Error() string {
 
 var (
 	ErrInvalidJSON = errors.New("client: response is invalid json. The endpoint is probably not valid etcd cluster endpoint.")
+	ErrEmptyBody   = errors.New("client: response body is empty")
 )
 
 // PrevExistType is used to define an existence condition when setting
@@ -419,18 +420,23 @@ type httpWatcher struct {
 }
 
 func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
-	httpresp, body, err := hw.client.Do(ctx, &hw.nextWait)
-	if err != nil {
-		return nil, err
-	}
+	for {
+		httpresp, body, err := hw.client.Do(ctx, &hw.nextWait)
+		if err != nil {
+			return nil, err
+		}
 
-	resp, err := unmarshalHTTPResponse(httpresp.StatusCode, httpresp.Header, body)
-	if err != nil {
-		return nil, err
-	}
+		resp, err := unmarshalHTTPResponse(httpresp.StatusCode, httpresp.Header, body)
+		if err != nil {
+			if err == ErrEmptyBody {
+				continue
+			}
+			return nil, err
+		}
 
-	hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
-	return resp, nil
+		hw.nextWait.WaitIndex = resp.Node.ModifiedIndex + 1
+		return resp, nil
+	}
 }
 
 // v2KeysURL forms a URL representing the location of a key.
@@ -590,6 +596,9 @@ func (a *createInOrderAction) HTTPRequest(ep url.URL) *http.Request {
 func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Response, err error) {
 	switch code {
 	case http.StatusOK, http.StatusCreated:
+		if len(body) == 0 {
+			return nil, ErrEmptyBody
+		}
 		res, err = unmarshalSuccessfulKeysResponse(header, body)
 	default:
 		err = unmarshalFailedKeysResponse(body)
