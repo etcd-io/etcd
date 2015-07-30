@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-func (s *Store) ensureAuthDirectories() error {
+func (s *store) ensureAuthDirectories() error {
 	if s.ensuredOnce {
 		return nil
 	}
@@ -72,16 +72,16 @@ func (s *Store) ensureAuthDirectories() error {
 	return nil
 }
 
-func (s *Store) enableAuth() error {
+func (s *store) enableAuth() error {
 	_, err := s.updateResource("/enabled", true)
 	return err
 }
-func (s *Store) disableAuth() error {
+func (s *store) disableAuth() error {
 	_, err := s.updateResource("/enabled", false)
 	return err
 }
 
-func (s *Store) detectAuth() bool {
+func (s *store) detectAuth() bool {
 	if s.server == nil {
 		return false
 	}
@@ -105,7 +105,7 @@ func (s *Store) detectAuth() bool {
 	return u
 }
 
-func (s *Store) requestResource(res string, dir bool) (etcdserver.Response, error) {
+func (s *store) requestResource(res string, dir bool) (etcdserver.Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 	p := path.Join(StorePermsPrefix, res)
@@ -117,13 +117,13 @@ func (s *Store) requestResource(res string, dir bool) (etcdserver.Response, erro
 	return s.server.Do(ctx, rr)
 }
 
-func (s *Store) updateResource(res string, value interface{}) (etcdserver.Response, error) {
+func (s *store) updateResource(res string, value interface{}) (etcdserver.Response, error) {
 	return s.setResource(res, value, true)
 }
-func (s *Store) createResource(res string, value interface{}) (etcdserver.Response, error) {
+func (s *store) createResource(res string, value interface{}) (etcdserver.Response, error) {
 	return s.setResource(res, value, false)
 }
-func (s *Store) setResource(res string, value interface{}, prevexist bool) (etcdserver.Response, error) {
+func (s *store) setResource(res string, value interface{}, prevexist bool) (etcdserver.Response, error) {
 	err := s.ensureAuthDirectories()
 	if err != nil {
 		return etcdserver.Response{}, err
@@ -144,7 +144,7 @@ func (s *Store) setResource(res string, value interface{}, prevexist bool) (etcd
 	return s.server.Do(ctx, rr)
 }
 
-func (s *Store) deleteResource(res string) (etcdserver.Response, error) {
+func (s *store) deleteResource(res string) (etcdserver.Response, error) {
 	err := s.ensureAuthDirectories()
 	if err != nil {
 		return etcdserver.Response{}, err
