@@ -27,6 +27,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -52,6 +53,7 @@ const (
 	metricsPath              = "/metrics"
 	healthPath               = "/health"
 	versionPath              = "/version"
+	configPath               = "/config"
 )
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
@@ -98,6 +100,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
 	mux.HandleFunc(varsPath, serveVars)
+	mux.HandleFunc(configPath+"/local/log", logHandleFunc)
 	mux.Handle(metricsPath, prometheus.Handler())
 	mux.Handle(membersPrefix, mh)
 	mux.Handle(membersPrefix+"/", mh)
@@ -381,6 +384,30 @@ func serveVersion(w http.ResponseWriter, r *http.Request, clusterV string) {
 		plog.Panicf("cannot marshal versions to json (%v)", err)
 	}
 	w.Write(b)
+}
+
+func logHandleFunc(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "PUT") {
+		return
+	}
+
+	in := struct{ Level string }{}
+
+	d := json.NewDecoder(r.Body)
+	if err := d.Decode(&in); err != nil {
+		writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid json body"))
+		return
+	}
+
+	logl, err := capnslog.ParseLevel(strings.ToUpper(in.Level))
+	if err != nil {
+		writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid log level "+in.Level))
+		return
+	}
+
+	plog.Noticef("globalLogLevel set to %q", logl.String())
+	capnslog.SetGlobalLogLevel(logl)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // parseKeyRequest converts a received http.Request on keysPrefix to
