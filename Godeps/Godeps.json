@@ -37,6 +37,16 @@
 			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
 		},
 		{
+			"ImportPath": "github.com/coreos/go-systemd/daemon",
+			"Comment": "v3-6-gcea488b",
+			"Rev": "cea488b4e6855fee89b6c22a811e3c5baca861b6"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-systemd/util",
+			"Comment": "v3-6-gcea488b",
+			"Rev": "cea488b4e6855fee89b6c22a811e3c5baca861b6"
+		},
+		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
 			"Rev": "99f6e6b8f8ea30b0f82769c1411691c44a66d015"
 		},
