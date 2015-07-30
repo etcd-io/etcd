@@ -49,10 +49,7 @@ func watchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	key := c.Args()[0]
 	recursive := c.Bool("recursive")
 	forever := c.Bool("forever")
-	index := 0
-	if c.Int("after-index") != 0 {
-		index = c.Int("after-index") + 1
-	}
+	index := c.Int("after-index")
 
 	stop := false
 	w := ki.Watcher(key, &client.WatcherOptions{AfterIndex: uint64(index), Recursive: recursive})
