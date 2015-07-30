@@ -524,7 +524,7 @@ type clientWithRetry struct {
 func (c *clientWithRetry) Create(ctx context.Context, key string, value string) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
-		return nil, context.DeadlineExceeded
+		return nil, &client.ClusterError{Errors: []error{context.DeadlineExceeded}}
 	}
 	return c.clientWithResp.Create(ctx, key, value)
 }
@@ -532,7 +532,7 @@ func (c *clientWithRetry) Create(ctx context.Context, key string, value string) 
 func (c *clientWithRetry) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
-		return nil, context.DeadlineExceeded
+		return nil, &client.ClusterError{Errors: []error{context.DeadlineExceeded}}
 	}
 	return c.clientWithResp.Get(ctx, key, opts)
 }
@@ -547,7 +547,7 @@ type watcherWithRetry struct {
 func (w *watcherWithRetry) Next(context.Context) (*client.Response, error) {
 	if w.failCount < w.failTimes {
 		w.failCount++
-		return nil, context.DeadlineExceeded
+		return nil, &client.ClusterError{Errors: []error{context.DeadlineExceeded}}
 	}
 	if len(w.rs) == 0 {
 		return &client.Response{}, nil
