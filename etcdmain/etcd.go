@@ -27,6 +27,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/daemon"
+	systemdutil "github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/util"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
@@ -37,9 +41,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/rafthttp"
-
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 )
 
 type dirType string
@@ -133,6 +134,19 @@ func Main() {
 	}
 
 	osutil.HandleInterrupts()
+
+	if systemdutil.IsRunningSystemd() {
+		// At this point, the initialization of etcd is done.
+		// The listeners are listening on the TCP ports and ready
+		// for accepting connections.
+		// The http server is probably ready for serving incoming
+		// connections. If it is not, the connection might be pending
+		// for less than one second.
+		err := daemon.SdNotify("READY=1")
+		if err != nil {
+			plog.Errorf("failed to notify systemd for readiness")
+		}
+	}
 
 	<-stopped
 	osutil.Exit(0)
