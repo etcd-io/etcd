@@ -144,6 +144,8 @@ If you bootstrap an etcd cluster using discovery service with more than the expe
 
 The URL you will use in this case will be `https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83` and the etcd members will use the `https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83` directory for registration as they start.
 
+Each member must have a different name flag specified. Or discovery will fail due to duplicated name.
+
 Now we start etcd with those relevant flags for each member:
 
 ```
@@ -193,6 +195,8 @@ ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573d
 ```
 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
+
+Each member must have a different name flag specified. Or discovery will fail due to duplicated name.
 
 Now we start etcd with those relevant flags for each member:
 
