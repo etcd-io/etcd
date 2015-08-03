@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/xiang90/probing"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
@@ -73,6 +74,7 @@ func TestTransportAdd(t *testing.T) {
 		leaderStats:  ls,
 		term:         term,
 		peers:        make(map[types.ID]Peer),
+		prober:       probing.NewProber(),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
 
@@ -104,6 +106,7 @@ func TestTransportRemove(t *testing.T) {
 		roundTripper: &roundTripperRecorder{},
 		leaderStats:  stats.NewLeaderStats(""),
 		peers:        make(map[types.ID]Peer),
+		prober:       probing.NewProber(),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
 	tr.RemovePeer(types.ID(1))
@@ -117,7 +120,8 @@ func TestTransportRemove(t *testing.T) {
 func TestTransportUpdate(t *testing.T) {
 	peer := newFakePeer()
 	tr := &transport{
-		peers: map[types.ID]Peer{types.ID(1): peer},
+		peers:  map[types.ID]Peer{types.ID(1): peer},
+		prober: probing.NewProber(),
 	}
 	u := "http://localhost:2380"
 	tr.UpdatePeer(types.ID(1), []string{u})
@@ -133,6 +137,7 @@ func TestTransportErrorc(t *testing.T) {
 		roundTripper: newRespRoundTripper(http.StatusForbidden, nil),
 		leaderStats:  stats.NewLeaderStats(""),
 		peers:        make(map[types.ID]Peer),
+		prober:       probing.NewProber(),
 		errorc:       errorc,
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})

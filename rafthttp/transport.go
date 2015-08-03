@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/xiang90/probing"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
@@ -83,7 +84,9 @@ type transport struct {
 	term    uint64               // the latest term that has been observed
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
 	peers   map[types.ID]Peer    // peers map
-	errorc  chan error
+
+	prober probing.Prober
+	errorc chan error
 }
 
 func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan error, ss *stats.ServerStats, ls *stats.LeaderStats) Transporter {
@@ -96,7 +99,9 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan 
 		leaderStats:  ls,
 		remotes:      make(map[types.ID]*remote),
 		peers:        make(map[types.ID]Peer),
-		errorc:       errorc,
+
+		prober: probing.NewProber(),
+		errorc: errorc,
 	}
 }
 
@@ -106,6 +111,7 @@ func (t *transport) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle(RaftPrefix, pipelineHandler)
 	mux.Handle(RaftStreamPrefix+"/", streamHandler)
+	mux.Handle(ProbingPrefix, probing.NewHandler())
 	return mux
 }
 
@@ -195,6 +201,7 @@ func (t *transport) AddPeer(id types.ID, us []string) {
 	}
 	fs := t.leaderStats.Follower(id.String())
 	t.peers[id] = startPeer(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, fs, t.errorc, t.term)
+	addPeerToProber(t.prober, id.String(), us)
 }
 
 func (t *transport) RemovePeer(id types.ID) {
@@ -220,6 +227,7 @@ func (t *transport) removePeer(id types.ID) {
 	}
 	delete(t.peers, id)
 	delete(t.leaderStats.Followers, id.String())
+	t.prober.Remove(id.String())
 }
 
 func (t *transport) UpdatePeer(id types.ID, us []string) {
@@ -234,6 +242,9 @@ func (t *transport) UpdatePeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	t.peers[id].Update(urls)
+
+	t.prober.Remove(id.String())
+	addPeerToProber(t.prober, id.String(), us)
 }
 
 type Pausable interface {

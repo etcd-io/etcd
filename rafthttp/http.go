@@ -33,6 +33,7 @@ const (
 
 var (
 	RaftPrefix       = "/raft"
+	ProbingPrefix    = path.Join(RaftPrefix, "probing")
 	RaftStreamPrefix = path.Join(RaftPrefix, "stream")
 
 	errIncompatibleVersion = errors.New("incompatible version")
