@@ -349,11 +349,9 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 
 	select {
 	case <-ctx.Done():
-		err = resp.Body.Close()
+		resp.Body.Close()
 		<-done
-		if err == nil {
-			err = ctx.Err()
-		}
+		return nil, nil, ctx.Err()
 	case <-done:
 	}
 
