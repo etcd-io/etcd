@@ -103,6 +103,10 @@
 			"Rev": "9cc77fa25329013ce07362c7742952ff887361f2"
 		},
 		{
+			"ImportPath": "github.com/xiang90/probing",
+			"Rev": "e8a0407769cb84c61c2ddf8f1d9cdae9fb489b9b"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
 			"Rev": "1351f936d976c60a0a48d728281922cf63eafb8d"
 		},
