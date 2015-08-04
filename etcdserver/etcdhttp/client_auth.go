@@ -97,9 +97,12 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive b
 			continue
 		}
 		if recursive {
-			return role.HasRecursiveAccess(key, writeAccess)
+			if role.HasRecursiveAccess(key, writeAccess) {
+				return true
+			}
+		} else if role.HasKeyAccess(key, writeAccess) {
+			return true
 		}
-		return role.HasKeyAccess(key, writeAccess)
 	}
 	plog.Warningf("auth: invalid access for user %s on key %s.", username, key)
 	return false
