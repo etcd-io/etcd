@@ -16,6 +16,7 @@ var (
 type Prober interface {
 	AddHTTP(id string, probingInterval time.Duration, endpoints []string) error
 	Remove(id string) error
+	RemoveAll()
 	Reset(id string) error
 	Status(id string) (Status, error)
 }
@@ -86,6 +87,16 @@ func (p *prober) Remove(id string) error {
 	close(s.stopC)
 	delete(p.targets, id)
 	return nil
+}
+
+func (p *prober) RemoveAll() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for _, s := range p.targets {
+		close(s.stopC)
+	}
+	p.targets = make(map[string]*status)
 }
 
 func (p *prober) Reset(id string) error {
