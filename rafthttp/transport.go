@@ -171,6 +171,7 @@ func (t *transport) Stop() {
 	for _, p := range t.peers {
 		p.Stop()
 	}
+	t.prober.RemoveAll()
 	if tr, ok := t.roundTripper.(*http.Transport); ok {
 		tr.CloseIdleConnections()
 	}
