@@ -982,10 +982,11 @@ func TestPublish(t *testing.T) {
 		t.Fatalf("action = %s, want Propose", action[0].Name)
 	}
 	data := action[0].Params[0].([]byte)
-	var r pb.Request
-	if err := r.Unmarshal(data); err != nil {
+	var rr pb.InternalRaftRequest
+	if err := rr.Unmarshal(data); err != nil {
 		t.Fatalf("unmarshal request error: %v", err)
 	}
+	r := rr.V2
 	if r.Method != "PUT" {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}
@@ -1062,10 +1063,11 @@ func TestUpdateVersion(t *testing.T) {
 		t.Fatalf("action = %s, want Propose", action[0].Name)
 	}
 	data := action[0].Params[0].([]byte)
-	var r pb.Request
-	if err := r.Unmarshal(data); err != nil {
+	var rr pb.InternalRaftRequest
+	if err := rr.Unmarshal(data); err != nil {
 		t.Fatalf("unmarshal request error: %v", err)
 	}
+	r := rr.V2
 	if r.Method != "PUT" {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}

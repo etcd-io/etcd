@@ -31,3 +31,12 @@ message Metadata {
 	optional uint64 NodeID    = 1 [(gogoproto.nullable) = false];
 	optional uint64 ClusterID = 2 [(gogoproto.nullable) = false];
 }
+
+// An InternalRaftRequest is the union of all requests which can be
+// sent via raft.
+message InternalRaftRequest {
+  option (gogoproto.onlyone) = true;
+  oneof value {
+    Request v2 = 1;
+  }
+}
