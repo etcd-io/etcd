@@ -15,7 +15,6 @@
 package command
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
@@ -40,11 +39,11 @@ func NewLsCommand() cli.Command {
 
 // lsCommandFunc executes the "ls" command.
 func lsCommandFunc(c *cli.Context, ki client.KeysAPI) {
-	if len(c.Args()) == 0 {
-		handleError(ExitBadArgs, errors.New("key required"))
+	key := "/"
+	if len(c.Args()) != 0 {
+		key = c.Args()[0]
 	}
 
-	key := c.Args()[0]
 	sort := c.Bool("sort")
 	recursive := c.Bool("recursive")
 
