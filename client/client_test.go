@@ -364,7 +364,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 				),
 				rand: rand.New(rand.NewSource(0)),
 			},
-			wantErr: &ClusterError{Errors: []error{context.Canceled}},
+			wantErr: context.Canceled,
 		},
 
 		// return err if there are no endpoints
