@@ -449,9 +449,14 @@ func (w *WAL) Close() error {
 		}
 	}
 	for _, l := range w.locks {
-		// TODO: log the error
-		l.Unlock()
-		l.Destroy()
+		err := l.Unlock()
+		if err != nil {
+			plog.Errorf("failed to unlock during closing wal: %s", err)
+		}
+		err = l.Destroy()
+		if err != nil {
+			plog.Errorf("failed to destroy lock during closing wal: %s", err)
+		}
 	}
 	return nil
 }
