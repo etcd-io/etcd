@@ -237,8 +237,13 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 			continue
 		}
 		if resp.StatusCode/100 == 5 {
-			// TODO: make sure this is a no leader response
-			cerr.Errors = append(cerr.Errors, fmt.Errorf("client: etcd member %s has no leader", ep.String()))
+			switch resp.StatusCode {
+			case http.StatusInternalServerError, http.StatusServiceUnavailable:
+				// TODO: make sure this is a no leader response
+				cerr.Errors = append(cerr.Errors, fmt.Errorf("client: etcd member %s has no leader", ep.String()))
+			default:
+				cerr.Errors = append(cerr.Errors, fmt.Errorf("client: etcd member %s returns server error [%s]", ep.String(), http.StatusText(resp.StatusCode)))
+			}
 			continue
 		}
 		return resp, body, nil
