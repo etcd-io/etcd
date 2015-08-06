@@ -403,6 +403,9 @@ func getPeerURLsMapAndToken(cfg *config) (urlsmap types.URLsMap, token string, e
 			return nil, "", err
 		}
 		urlsmap, err = types.NewURLsMap(clusterStr)
+		if _, ok := urlsmap[cfg.name]; !ok {
+			return nil, "", fmt.Errorf("cannot find local etcd member %q in SRV records", cfg.name)
+		}
 	default:
 		// We're statically configured, and cluster has appropriately been set.
 		urlsmap, err = types.NewURLsMap(cfg.initialCluster)
