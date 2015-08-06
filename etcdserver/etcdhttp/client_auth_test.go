@@ -38,7 +38,7 @@ func mustJSONRequest(t *testing.T, method string, p string, body string) *http.R
 
 type mockAuthStore struct {
 	user    *auth.User
-	role    *auth.Role
+	roles   map[string]*auth.Role
 	err     error
 	enabled bool
 }
@@ -59,13 +59,15 @@ func (s *mockAuthStore) UpdateUser(user auth.User) (auth.User, error) { return *
 func (s *mockAuthStore) AllRoles() ([]string, error) {
 	return []string{"awesome", "guest", "root"}, s.err
 }
-func (s *mockAuthStore) GetRole(name string) (auth.Role, error)       { return *s.role, s.err }
-func (s *mockAuthStore) CreateRole(role auth.Role) error              { return s.err }
-func (s *mockAuthStore) DeleteRole(name string) error                 { return s.err }
-func (s *mockAuthStore) UpdateRole(role auth.Role) (auth.Role, error) { return *s.role, s.err }
-func (s *mockAuthStore) AuthEnabled() bool                            { return s.enabled }
-func (s *mockAuthStore) EnableAuth() error                            { return s.err }
-func (s *mockAuthStore) DisableAuth() error                           { return s.err }
+func (s *mockAuthStore) GetRole(name string) (auth.Role, error) { return *s.roles[name], s.err }
+func (s *mockAuthStore) CreateRole(role auth.Role) error        { return s.err }
+func (s *mockAuthStore) DeleteRole(name string) error           { return s.err }
+func (s *mockAuthStore) UpdateRole(role auth.Role) (auth.Role, error) {
+	return *s.roles[role.Role], s.err
+}
+func (s *mockAuthStore) AuthEnabled() bool  { return s.enabled }
+func (s *mockAuthStore) EnableAuth() error  { return s.err }
+func (s *mockAuthStore) DisableAuth() error { return s.err }
 
 func TestAuthFlow(t *testing.T) {
 	enableMapMu.Lock()
@@ -159,8 +161,10 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "roles/manager", ""),
 			store: mockAuthStore{
-				role: &auth.Role{
-					Role: "manager",
+				roles: map[string]*auth.Role{
+					"manager": {
+						Role: "manager",
+					},
 				},
 			},
 			wcode: http.StatusOK,
@@ -181,8 +185,10 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "PUT", "roles/manager", `{"role":"manager","revoke":{"kv":{"read":["foo"],"write":[]}}}`),
 			store: mockAuthStore{
-				role: &auth.Role{
-					Role: "manager",
+				roles: map[string]*auth.Role{
+					"manager": {
+						Role: "manager",
+					},
 				},
 			},
 			wcode: http.StatusOK,
@@ -223,8 +229,10 @@ func TestAuthFlow(t *testing.T) {
 					Password: goodPassword,
 					Roles:    []string{"root"},
 				},
-				role: &auth.Role{
-					Role: "root",
+				roles: map[string]*auth.Role{
+					"root": {
+						Role: "root",
+					},
 				},
 			},
 			wcode: http.StatusOK,
@@ -279,8 +287,10 @@ func TestPrefixAccess(t *testing.T) {
 					Password: goodPassword,
 					Roles:    []string{"root"},
 				},
-				role: &auth.Role{
-					Role: "root",
+				roles: map[string]*auth.Role{
+					"root": {
+						Role: "root",
+					},
 				},
 				enabled: true,
 			},
@@ -297,12 +307,14 @@ func TestPrefixAccess(t *testing.T) {
 					Password: goodPassword,
 					Roles:    []string{"foorole"},
 				},
-				role: &auth.Role{
-					Role: "foorole",
-					Permissions: auth.Permissions{
-						KV: auth.RWPermission{
-							Read:  []string{"/foo"},
-							Write: []string{"/foo"},
+				roles: map[string]*auth.Role{
+					"foorole": {
+						Role: "foorole",
+						Permissions: auth.Permissions{
+							KV: auth.RWPermission{
+								Read:  []string{"/foo"},
+								Write: []string{"/foo"},
+							},
 						},
 					},
 				},
@@ -321,12 +333,14 @@ func TestPrefixAccess(t *testing.T) {
 					Password: goodPassword,
 					Roles:    []string{"foorole"},
 				},
-				role: &auth.Role{
-					Role: "foorole",
-					Permissions: auth.Permissions{
-						KV: auth.RWPermission{
-							Read:  []string{"/foo*"},
-							Write: []string{"/foo*"},
+				roles: map[string]*auth.Role{
+					"foorole": {
+						Role: "foorole",
+						Permissions: auth.Permissions{
+							KV: auth.RWPermission{
+								Read:  []string{"/foo*"},
+								Write: []string{"/foo*"},
+							},
 						},
 					},
 				},
@@ -345,12 +359,14 @@ func TestPrefixAccess(t *testing.T) {
 					Password: goodPassword,
 					Roles:    []string{"foorole"},
 				},
-				role: &auth.Role{
-					Role: "foorole",
-					Permissions: auth.Permissions{
-						KV: auth.RWPermission{
-							Read:  []string{"/foo*"},
-							Write: []string{"/foo*"},
+				roles: map[string]*auth.Role{
+					"foorole": {
+						Role: "foorole",
+						Permissions: auth.Permissions{
+							KV: auth.RWPermission{
+								Read:  []string{"/foo*"},
+								Write: []string{"/foo*"},
+							},
 						},
 					},
 				},
@@ -381,12 +397,14 @@ func TestPrefixAccess(t *testing.T) {
 					Password: goodPassword,
 					Roles:    []string{"foorole"},
 				},
-				role: &auth.Role{
-					Role: "guest",
-					Permissions: auth.Permissions{
-						KV: auth.RWPermission{
-							Read:  []string{"/foo*"},
-							Write: []string{"/foo*"},
+				roles: map[string]*auth.Role{
+					"guest": {
+						Role: "guest",
+						Permissions: auth.Permissions{
+							KV: auth.RWPermission{
+								Read:  []string{"/foo*"},
+								Write: []string{"/foo*"},
+							},
 						},
 					},
 				},
@@ -405,12 +423,14 @@ func TestPrefixAccess(t *testing.T) {
 					Password: goodPassword,
 					Roles:    []string{"foorole"},
 				},
-				role: &auth.Role{
-					Role: "guest",
-					Permissions: auth.Permissions{
-						KV: auth.RWPermission{
-							Read:  []string{"/foo*"},
-							Write: []string{"/foo*"},
+				roles: map[string]*auth.Role{
+					"guest": {
+						Role: "guest",
+						Permissions: auth.Permissions{
+							KV: auth.RWPermission{
+								Read:  []string{"/foo*"},
+								Write: []string{"/foo*"},
+							},
 						},
 					},
 				},
@@ -418,6 +438,36 @@ func TestPrefixAccess(t *testing.T) {
 			},
 			hasRoot:            false,
 			hasKeyPrefixAccess: false,
+			hasRecursiveAccess: false,
+		},
+		// check access for multiple roles
+		{
+			key: "/foo",
+			req: mustAuthRequest("GET", "user", "good"),
+			store: &mockAuthStore{
+				user: &auth.User{
+					User:     "user",
+					Password: goodPassword,
+					Roles:    []string{"role1", "role2"},
+				},
+				roles: map[string]*auth.Role{
+					"role1": {
+						Role: "role1",
+					},
+					"role2": {
+						Role: "role2",
+						Permissions: auth.Permissions{
+							KV: auth.RWPermission{
+								Read:  []string{"/foo"},
+								Write: []string{"/foo"},
+							},
+						},
+					},
+				},
+				enabled: true,
+			},
+			hasRoot:            false,
+			hasKeyPrefixAccess: true,
 			hasRecursiveAccess: false,
 		},
 	}
