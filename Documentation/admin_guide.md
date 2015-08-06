@@ -92,21 +92,21 @@ bc1083c870280d44: name=infra2 peerURLs=http://10.0.1.12:2380 clientURLs=http://1
 #### Stop the member etcd process
 
 ```
-$ ssh core@10.0.1.11
+$ ssh 10.0.1.11
 ```
 
 ```
-$ sudo systemctl stop etcd
+$ kill `pgrep etcd`
 ```
 
 #### Copy the data directory of the now-idle member to the new machine
 
 ```
-$ tar -cvzf node1.etcd.tar.gz /var/lib/etcd/node1.etcd
+$ tar -cvzf infra1.etcd.tar.gz %data_dir%
 ```
 
 ```
-$ scp node1.etcd.tar.gz core@10.0.1.13:~/
+$ scp infra1.etcd.tar.gz 10.0.1.13:~/
 ```
 
 #### Update the peer URLs for that member to reflect the new machine
@@ -119,15 +119,15 @@ $ curl http://10.0.1.10:2379/v2/members/b4db3bf5e495e255 -XPUT \
 #### Start etcd on the new machine, using the same configuration and the copy of the data directory
 
 ```
-$ ssh core@10.0.1.13
+$ ssh 10.0.1.13
 ```
 
 ```
-$ tar -xzvf node1.etcd.tar.gz -C /var/lib/etcd
+$ tar -xzvf infra1.etcd.tar.gz -C %data_dir%
 ```
 
 ```
-etcd -name node1 \
+etcd -name infra1 \
 -listen-peer-urls http://10.0.1.13:2380 \
 -listen-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379 \
 -advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
@@ -149,8 +149,8 @@ The first step of the recovery is to backup the data directory on a functioning 
 
 ```sh
     etcdctl backup \
-      --data-dir /var/lib/etcd \
-      --backup-dir /tmp/etcd_backup
+      --data-dir %data_dir% \
+      --backup-dir %backup_data_dir%
 ```
 
 This command will rewrite some of the metadata contained in the backup (specifically, the node ID and cluster ID), which means that the node will lose its former identity. In order to recreate a cluster from the backup, you will need to start a new, single-node cluster. The metadata is rewritten to prevent the new node from inadvertently being joined onto an existing cluster.
@@ -161,7 +161,7 @@ To restore a backup using the procedure created above, start etcd with the `-for
 
 ```sh
     etcd \
-      -data-dir=/tmp/etcd_backup \
+      -data-dir=%backup_data_dir% \
       -force-new-cluster \
       ...
 ```
@@ -172,10 +172,10 @@ Once you have verified that etcd has started successfully, shut it down and move
 
 ```sh
     pkill etcd
-    rm -fr /var/lib/etcd
-    mv /tmp/etcd_backup /var/lib/etcd
+    rm -fr %data_dir%
+    mv %backup_data_dir% %data_dir%
     etcd \
-      -data-dir=/var/lib/etcd \
+      -data-dir=%data_dir% \
       ...
 ```
 
