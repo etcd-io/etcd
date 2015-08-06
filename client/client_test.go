@@ -757,6 +757,51 @@ func TestHTTPClusterClientSyncFail(t *testing.T) {
 	}
 }
 
+func TestHTTPClusterClientAutoSyncCancelContext(t *testing.T) {
+	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
+		staticHTTPResponse{
+			resp: http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": []string{"application/json"}}},
+			body: []byte(`{"members":[{"id":"2745e2525fce8fe","peerURLs":["http://127.0.0.1:7003"],"name":"node3","clientURLs":["http://127.0.0.1:4003"]},{"id":"42134f434382925","peerURLs":["http://127.0.0.1:2380","http://127.0.0.1:7001"],"name":"node1","clientURLs":["http://127.0.0.1:2379","http://127.0.0.1:4001"]},{"id":"94088180e21eb87b","peerURLs":["http://127.0.0.1:7002"],"name":"node2","clientURLs":["http://127.0.0.1:4002"]}]}`),
+		},
+	})
+
+	hc := &httpClusterClient{
+		clientFactory: cf,
+		rand:          rand.New(rand.NewSource(0)),
+	}
+	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	if err != nil {
+		t.Fatalf("unexpected error during setup: %#v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err = hc.AutoSync(ctx, time.Hour)
+	if err != context.Canceled {
+		t.Fatalf("incorrect error value: want=%v got=%v", context.Canceled, err)
+	}
+}
+
+func TestHTTPClusterClientAutoSyncFail(t *testing.T) {
+	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
+		staticHTTPResponse{err: errors.New("fail!")},
+	})
+
+	hc := &httpClusterClient{
+		clientFactory: cf,
+		rand:          rand.New(rand.NewSource(0)),
+	}
+	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	if err != nil {
+		t.Fatalf("unexpected error during setup: %#v", err)
+	}
+
+	err = hc.AutoSync(context.Background(), time.Hour)
+	if err.Error() != ErrClusterUnavailable.Error() {
+		t.Fatalf("incorrect error value: want=%v got=%v", ErrClusterUnavailable, err)
+	}
+}
+
 func TestHTTPClusterClientResetFail(t *testing.T) {
 	tests := [][]string{
 		// need at least one endpoint

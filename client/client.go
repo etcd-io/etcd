@@ -122,6 +122,22 @@ type Client interface {
 	// Sync updates the internal cache of the etcd cluster's membership.
 	Sync(context.Context) error
 
+	// AutoSync periodically calls Sync() every given interval.
+	// The recommended sync interval is 10 seconds to 1 minute, which does
+	// not bring too much overhead to server and makes client catch up the
+	// cluster change in time.
+	//
+	// The example to use it:
+	//
+	//  for {
+	//      err := client.AutoSync(ctx, 10*time.Second)
+	//      if err == context.DeadlineExceeded || err == context.Canceled {
+	//          break
+	//      }
+	//      log.Print(err)
+	//  }
+	AutoSync(context.Context, time.Duration) error
+
 	// Endpoints returns a copy of the current set of API endpoints used
 	// by Client to resolve HTTP requests. If Sync has ever been called,
 	// this may differ from the initial Endpoints provided in the Config.
@@ -288,6 +304,22 @@ func (c *httpClusterClient) Sync(ctx context.Context) error {
 	}
 
 	return c.reset(eps)
+}
+
+func (c *httpClusterClient) AutoSync(ctx context.Context, interval time.Duration) error {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		err := c.Sync(ctx)
+		if err != nil {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
 }
 
 type roundTripResponse struct {
