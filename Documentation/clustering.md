@@ -300,6 +300,8 @@ infra2.example.com.	300	IN	A	10.0.1.12
 
 etcd cluster members can listen on domain names or IP address, the bootstrap process will resolve DNS A records.
 
+The resolved address in `-initial-advertise-peer-urls` *must match* one of the resolved addresses in the SRV targets. The etcd member reads the resolved address to find out if it belongs to the cluster defined in the SRV records.
+
 ```
 $ etcd -name infra0 \
 -discovery-srv example.com \
@@ -375,6 +377,10 @@ DNS SRV records can also be used to configure the list of peers for an etcd serv
 ```
 $ etcd --proxy on -discovery-srv example.com
 ```
+
+#### Error Cases
+
+You might see the an error like `cannot find local etcd $name from SRV records.`. That means the etcd member fails to find itself from the cluster defined in SRV records. The resolved address in `-initial-advertise-peer-urls` *must match* one of the resolved addresses in the SRV targets.
 
 # 0.4 to 2.0+ Migration Guide
 
