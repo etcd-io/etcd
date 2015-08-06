@@ -257,8 +257,8 @@ func TestSimpleHTTPClientDoCancelContextResponseBodyClosedWithBlockingBody(t *te
 	}()
 
 	_, _, err := c.Do(ctx, &fakeAction{})
-	if err == nil {
-		t.Fatalf("expected non-nil error, got nil")
+	if err != context.Canceled {
+		t.Fatalf("expected %+v, got %+v", context.Canceled, err)
 	}
 
 	if !body.closed {
