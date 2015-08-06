@@ -100,7 +100,7 @@ func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan 
 		remotes:      make(map[types.ID]*remote),
 		peers:        make(map[types.ID]Peer),
 
-		prober: probing.NewProber(),
+		prober: probing.NewProber(rt),
 		errorc: errorc,
 	}
 }

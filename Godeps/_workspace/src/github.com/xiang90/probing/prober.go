@@ -24,10 +24,17 @@ type Prober interface {
 type prober struct {
 	mu      sync.Mutex
 	targets map[string]*status
+	tr      http.RoundTripper
 }
 
-func NewProber() Prober {
-	return &prober{targets: make(map[string]*status)}
+func NewProber(tr http.RoundTripper) Prober {
+	p := &prober{targets: make(map[string]*status)}
+	if tr == nil {
+		p.tr = http.DefaultTransport
+	} else {
+		p.tr = tr
+	}
+	return p
 }
 
 func (p *prober) AddHTTP(id string, probingInterval time.Duration, endpoints []string) error {
@@ -48,7 +55,11 @@ func (p *prober) AddHTTP(id string, probingInterval time.Duration, endpoints []s
 			select {
 			case <-ticker.C:
 				start := time.Now()
-				resp, err := http.Get(endpoints[pinned])
+				req, err := http.NewRequest("GET", endpoints[pinned], nil)
+				if err != nil {
+					panic(err)
+				}
+				resp, err := p.tr.RoundTrip(req)
 				if err != nil {
 					s.recordFailure()
 					pinned = (pinned + 1) % len(endpoints)
