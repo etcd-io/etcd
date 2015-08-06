@@ -22,6 +22,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
+	"sort"
 	"sync"
 	"time"
 
@@ -312,6 +314,18 @@ func (c *httpClusterClient) Sync(ctx context.Context) error {
 	eps := make([]string, 0)
 	for _, m := range ms {
 		eps = append(eps, m.ClientURLs...)
+	}
+	sort.Sort(sort.StringSlice(eps))
+
+	ceps := make([]string, len(c.endpoints))
+	for i, cep := range c.endpoints {
+		ceps[i] = cep.String()
+	}
+	sort.Sort(sort.StringSlice(ceps))
+	// fast path if no change happens
+	// this helps client to pin the endpoint when no cluster change
+	if reflect.DeepEqual(eps, ceps) {
+		return nil
 	}
 
 	return c.reset(eps)
