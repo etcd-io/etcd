@@ -37,6 +37,7 @@ import (
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/osutil"
+	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
@@ -50,6 +51,18 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdmain")
 const (
 	// the owner can make/remove files inside the directory
 	privateDirMode = 0700
+
+	// internal fd usage includes disk usage and transport usage.
+	// To read/write snapshot, snap pkg needs 1. In normal case, wal pkg needs
+	// at most 2 to read/lock/write WALs. One case that it needs to 2 is to
+	// read all logs after some snapshot index, which locates at the end of
+	// the second last and the head of the last. For purging, it needs to read
+	// directory, so it needs 1. For fd monitor, it needs 1.
+	// For transport, rafthttp builds two long-polling connections and at most
+	// four temporary connections with each member. There are at most 9 members
+	// in a cluster, so it should reserve 96.
+	// For the safety, we set the total reserved number to 150.
+	reservedInternalFDNum = 150
 )
 
 var (
@@ -201,6 +214,12 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		l, err = transport.NewKeepAliveListener(u.Host, u.Scheme, cfg.clientTLSInfo)
 		if err != nil {
 			return nil, err
+		}
+		if fdLimit, err := runtimeutil.FDLimit(); err == nil {
+			if fdLimit <= reservedInternalFDNum {
+				plog.Fatalf("file descriptor limit[%d] of etcd process is too low, and should be set higher than %d to ensure internal usage", fdLimit, reservedInternalFDNum)
+			}
+			l = &transport.LimitedConnListener{Listener: l, RuntimeFDLimit: fdLimit - reservedInternalFDNum}
 		}
 
 		urlStr := u.String()
