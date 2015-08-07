@@ -13,7 +13,7 @@ var (
 func TestProbe(t *testing.T) {
 	s := httptest.NewServer(NewHandler())
 
-	p := NewProber()
+	p := NewProber(nil)
 	p.AddHTTP(testID, time.Millisecond, []string{s.URL})
 	defer p.Remove(testID)
 
@@ -48,7 +48,7 @@ func TestProbeReset(t *testing.T) {
 	s := httptest.NewServer(NewHandler())
 	defer s.Close()
 
-	p := NewProber()
+	p := NewProber(nil)
 	p.AddHTTP(testID, time.Millisecond, []string{s.URL})
 	defer p.Remove(testID)
 
@@ -79,7 +79,7 @@ func TestProbeRemove(t *testing.T) {
 	s := httptest.NewServer(NewHandler())
 	defer s.Close()
 
-	p := NewProber()
+	p := NewProber(nil)
 	p.AddHTTP(testID, time.Millisecond, []string{s.URL})
 
 	p.Remove(testID)
