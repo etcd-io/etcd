@@ -52,11 +52,11 @@ type Transporter interface {
 	// AddRemote adds a remote with given peer urls into the transport.
 	// A remote helps newly joined member to catch up the progress of cluster,
 	// and will not be used after that.
-	// It is the caller's responsibility to ensure the urls are all vaild,
+	// It is the caller's responsibility to ensure the urls are all valid,
 	// or it panics.
 	AddRemote(id types.ID, urls []string)
 	// AddPeer adds a peer with given peer urls into the transport.
-	// It is the caller's responsibility to ensure the urls are all vaild,
+	// It is the caller's responsibility to ensure the urls are all valid,
 	// or it panics.
 	// Peer urls are used to connect to the remote peer.
 	AddPeer(id types.ID, urls []string)
@@ -65,7 +65,7 @@ type Transporter interface {
 	// RemoveAllPeers removes all the existing peers in the transport.
 	RemoveAllPeers()
 	// UpdatePeer updates the peer urls of the peer with the given id.
-	// It is the caller's responsibility to ensure the urls are all vaild,
+	// It is the caller's responsibility to ensure the urls are all valid,
 	// or it panics.
 	UpdatePeer(id types.ID, urls []string)
 	// Stop closes the connections and stops the transporter.

@@ -70,7 +70,7 @@ type RangeRequest struct {
 	// limit the number of keys returned.
 	Limit int64 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// the response will be consistent with previous request with same token if the token is
-	// given and is vaild.
+	// given and is valid.
 	ConsistentToken []byte `protobuf:"bytes,4,opt,name=consistent_token,proto3" json:"consistent_token,omitempty"`
 }
 

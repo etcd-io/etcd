@@ -25,7 +25,7 @@ func NewImportSnapCommand() cli.Command {
 		Name:  "import",
 		Usage: "import a snapshot to a cluster",
 		Flags: []cli.Flag{
-			cli.StringFlag{Name: "snap", Value: "", Usage: "Path to the vaild etcd 0.4.x snapshot."},
+			cli.StringFlag{Name: "snap", Value: "", Usage: "Path to the valid etcd 0.4.x snapshot."},
 			cli.StringSliceFlag{Name: "hidden", Value: new(cli.StringSlice), Usage: "Hidden key spaces to import from snapshot"},
 			cli.IntFlag{Name: "c", Value: 10, Usage: "Number of concurrent clients to import the data"},
 		},

@@ -69,7 +69,7 @@ message RangeRequest {
   // limit the number of keys returned.
   optional int64 limit = 3;
   // the response will be consistent with previous request with same token if the token is 
-  // given and is vaild.
+  // given and is valid.
   optional bytes consistent_token = 4;
 }
 
