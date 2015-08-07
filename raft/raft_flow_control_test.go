@@ -57,7 +57,7 @@ func TestMsgAppFlowControlFull(t *testing.T) {
 
 // TestMsgAppFlowControlMoveForward ensures msgAppResp can move
 // forward the sending window correctly:
-// 1. vaild msgAppResp.index moves the windows to pass all smaller or equal index.
+// 1. valid msgAppResp.index moves the windows to pass all smaller or equal index.
 // 2. out-of-dated msgAppResp has no effect on the silding window.
 func TestMsgAppFlowControlMoveForward(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())

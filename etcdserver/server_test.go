@@ -1146,7 +1146,7 @@ func TestGetOtherPeerURLs(t *testing.T) {
 
 // storeRecorder records all the methods it receives.
 // storeRecorder DOES NOT work as a actual store.
-// It always returns invaild empty response and no error.
+// It always returns invalid empty response and no error.
 type storeRecorder struct{ testutil.Recorder }
 
 func (s *storeRecorder) Version() int  { return 0 }
