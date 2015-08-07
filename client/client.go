@@ -87,6 +87,23 @@ type Config struct {
 	// Password is the password for the specified user to add as an authorization header
 	// to the request.
 	Password string
+
+	// HeaderTimeoutPerRequest specifies the time limit to wait for response
+	// header in a single request made by the Client. The timeout includes
+	// connection time, any redirects, and header wait time.
+	//
+	// For non-watch GET request, server returns the response body immediately.
+	// For PUT/POST/DELETE request, server will attempt to commit request
+	// before responding, which is expected to take `100ms + 2 * RTT`.
+	// For watch request, server returns the header immediately to notify Client
+	// watch start. But if server is behind some kind of proxy, the response
+	// header may be cached at proxy, and Client cannot rely on this behavior.
+	//
+	// One API call may send multiple requests to different etcd servers until it
+	// succeeds. Use context of the API to specify the overall timeout.
+	//
+	// A HeaderTimeoutPerRequest of zero means no timeout.
+	HeaderTimeoutPerRequest time.Duration
 }
 
 func (cfg *Config) transport() CancelableTransport {
@@ -150,7 +167,7 @@ type Client interface {
 
 func New(cfg Config) (Client, error) {
 	c := &httpClusterClient{
-		clientFactory: newHTTPClientFactory(cfg.transport(), cfg.checkRedirect()),
+		clientFactory: newHTTPClientFactory(cfg.transport(), cfg.checkRedirect(), cfg.HeaderTimeoutPerRequest),
 		rand:          rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
 	}
 	if cfg.Username != "" {
@@ -169,13 +186,14 @@ type httpClient interface {
 	Do(context.Context, httpAction) (*http.Response, []byte, error)
 }
 
-func newHTTPClientFactory(tr CancelableTransport, cr CheckRedirectFunc) httpClientFactory {
+func newHTTPClientFactory(tr CancelableTransport, cr CheckRedirectFunc, headerTimeout time.Duration) httpClientFactory {
 	return func(ep url.URL) httpClient {
 		return &redirectFollowingHTTPClient{
 			checkRedirect: cr,
 			client: &simpleHTTPClient{
-				transport: tr,
-				endpoint:  ep,
+				transport:     tr,
+				endpoint:      ep,
+				headerTimeout: headerTimeout,
 			},
 		}
 	}
@@ -353,8 +371,9 @@ type roundTripResponse struct {
 }
 
 type simpleHTTPClient struct {
-	transport CancelableTransport
-	endpoint  url.URL
+	transport     CancelableTransport
+	endpoint      url.URL
+	headerTimeout time.Duration
 }
 
 func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Response, []byte, error) {
@@ -363,6 +382,12 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 	if err := printcURL(req); err != nil {
 		return nil, nil, err
 	}
+
+	hctx, hcancel := context.WithCancel(ctx)
+	if c.headerTimeout > 0 {
+		hctx, hcancel = context.WithTimeout(ctx, c.headerTimeout)
+	}
+	defer hcancel()
 
 	rtchan := make(chan roundTripResponse, 1)
 	go func() {
@@ -377,12 +402,19 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 	select {
 	case rtresp := <-rtchan:
 		resp, err = rtresp.resp, rtresp.err
-	case <-ctx.Done():
+	case <-hctx.Done():
 		// cancel and wait for request to actually exit before continuing
 		c.transport.CancelRequest(req)
 		rtresp := <-rtchan
 		resp = rtresp.resp
-		err = ctx.Err()
+		switch {
+		case ctx.Err() != nil:
+			err = ctx.Err()
+		case hctx.Err() != nil:
+			err = fmt.Errorf("client: endpoint %s exceeded header timeout", c.endpoint)
+		default:
+			panic("failed to get error from context")
+		}
 	}
 
 	// always check for resp nil-ness to deal with possible
