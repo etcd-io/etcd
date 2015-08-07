@@ -58,7 +58,7 @@ func handleClusterHealth(c *cli.Context) {
 	client.SetTransport(tr)
 	resp, err := client.Get("/", false, false)
 	if err != nil {
-		fmt.Println("cluster is unhealthy")
+		fmt.Printf("cluster may be unhealthy: failed to get key at endpoint %s (%v)\n", ep, err)
 		os.Exit(1)
 	}
 	rt0, ri0 := resp.RaftTerm, resp.RaftIndex
