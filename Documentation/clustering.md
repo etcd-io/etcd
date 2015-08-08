@@ -381,18 +381,3 @@ $ etcd --proxy on -discovery-srv example.com
 #### Error Cases
 
 You might see the an error like `cannot find local etcd $name from SRV records.`. That means the etcd member fails to find itself from the cluster defined in SRV records. The resolved address in `-initial-advertise-peer-urls` *must match* one of the resolved addresses in the SRV targets.
-
-# 0.4 to 2.0+ Migration Guide
-
-In etcd 2.0 we introduced the ability to listen on more than one address and to advertise multiple addresses. This makes using etcd easier when you have complex networking, such as private and public networks on various cloud providers.
-
-To make understanding this feature easier, we changed the naming of some flags, but we support the old flags to make the migration from the old to new version easier.
-
-|Old Flag		|New Flag		|Migration Behavior									|
-|-----------------------|-----------------------|---------------------------------------------------------------------------------------|
-|-peer-addr		|-initial-advertise-peer-urls 	|If specified, peer-addr will be used as the only peer URL. Error if both flags specified.|
-|-addr			|-advertise-client-urls	|If specified, addr will be used as the only client URL. Error if both flags specified.|
-|-peer-bind-addr	|-listen-peer-urls	|If specified, peer-bind-addr will be used as the only peer bind URL. Error if both flags specified.|
-|-bind-addr		|-listen-client-urls	|If specified, bind-addr will be used as the only client bind URL. Error if both flags specified.|
-|-peers			|none			|Deprecated. The -initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
-|-peers-file		|none			|Deprecated. The -initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
