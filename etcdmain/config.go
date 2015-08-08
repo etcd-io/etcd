@@ -115,6 +115,8 @@ type config struct {
 
 	printVersion bool
 
+	v3demo bool
+
 	ignored []string
 }
 
@@ -207,6 +209,9 @@ func NewConfig() *config {
 
 	// version
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit")
+
+	// demo flag
+	fs.BoolVar(&cfg.v3demo, "v3demo", false, "Enable v3 demo")
 
 	// backwards-compatibility with v0.4.6
 	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use -advertise-client-urls instead.")
