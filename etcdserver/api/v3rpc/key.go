@@ -21,10 +21,10 @@ import (
 )
 
 type handler struct {
-	server etcdserver.Server
+	server etcdserver.V3DemoServer
 }
 
-func New(s etcdserver.Server) pb.EtcdServer {
+func New(s etcdserver.V3DemoServer) pb.EtcdServer {
 	return &handler{s}
 }
 

@@ -20,6 +20,10 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
+type V3DemoServer interface {
+	V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) proto.Message
+}
+
 func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) proto.Message {
 	switch {
 	case r.Range != nil:
@@ -55,5 +59,4 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) pro
 	default:
 		panic("not implemented")
 	}
-	return nil
 }
