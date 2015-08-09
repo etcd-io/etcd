@@ -1,8 +1,9 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Generate all etcd protobuf bindings.
 # Run from repository root.
 #
+set -e
 
 PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb"
@@ -27,7 +28,7 @@ popd
 export PATH="${GOBIN}:${PATH}"
 
 # copy all proto dependencies inside etcd to gopath
-for dir in ${DIRS}; do 
+for dir in ${DIRS}; do
 	mkdir -p ${GOPATH}/src/github.com/coreos/etcd/${dir}
 	pushd ${dir}
 		cp *.proto ${GOPATH}/src/github.com/coreos/etcd/${dir}
