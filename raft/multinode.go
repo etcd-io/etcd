@@ -180,6 +180,7 @@ func (mn *multiNode) run() {
 		select {
 		case gc := <-mn.groupc:
 			gc.config.ID = mn.id
+			gc.config.groupID = gc.id
 			r := newRaft(gc.config)
 			group = &groupState{
 				id:   gc.id,
