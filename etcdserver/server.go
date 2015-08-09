@@ -141,10 +141,12 @@ type Server interface {
 
 // EtcdServer is the production implementation of the Server interface
 type EtcdServer struct {
+	// r must be the first element to keep 64-bit alignment for atomic
+	// access to fields
+	r raftNode
+
 	cfg       *ServerConfig
 	snapCount uint64
-
-	r raftNode
 
 	w          wait.Wait
 	stop       chan struct{}
