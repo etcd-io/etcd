@@ -45,7 +45,13 @@ split=(${NO_RACE_TEST// / })
 NO_RACE_TEST=${split[@]/#/${REPO_PATH}/}
 
 echo "Running tests..."
-go test -timeout 3m ${COVER} $@ ${TEST} --race -cpu 1,2,4
+
+MACHINE_TYPE=$(uname -m)
+if [ $MACHINE_TYPE != "armv7l" ]; then
+  RACE="--race"
+fi
+
+go test -timeout 3m ${COVER} $@ ${TEST} ${RACE} -cpu 1,2,4
 go test -timeout 3m ${COVER} $@ ${NO_RACE_TEST} -cpu 1,2,4
 
 if [ -n "$INTEGRATION" ]; then

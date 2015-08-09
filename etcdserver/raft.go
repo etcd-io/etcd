@@ -79,6 +79,13 @@ type apply struct {
 }
 
 type raftNode struct {
+	// Cache of the latest raft index and raft term the server has seen.
+	// These three unit64 fields must be the first elements to keep 64-bit
+	// alignment for atomic access to the fields.
+	index uint64
+	term  uint64
+	lead  uint64
+
 	raft.Node
 
 	// a chan to send out apply
@@ -98,11 +105,6 @@ type raftNode struct {
 	// clients should timeout and reissue their messages.
 	// If transport is nil, server will panic.
 	transport rafthttp.Transporter
-
-	// Cache of the latest raft index and raft term the server has seen
-	index uint64
-	term  uint64
-	lead  uint64
 
 	stopped chan struct{}
 	done    chan struct{}
