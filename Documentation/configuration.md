@@ -196,7 +196,7 @@ Follow the instructions when using these flags.
 ### Experimental Flags
 
 ##### -experimental-v3demo
-+ Enable experimental v3 demo API
++ Enable experimental [v3 demo API](rfc/v3api.proto).
 + default: false
 
 ### Miscellaneous Flags
