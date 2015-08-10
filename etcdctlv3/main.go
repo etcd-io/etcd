@@ -18,13 +18,13 @@ import (
 	"os"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/v3etcdctl/command"
+	"github.com/coreos/etcd/etcdctlv3/command"
 	"github.com/coreos/etcd/version"
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "v3etcdctl"
+	app.Name = "etcdctlv3"
 	app.Version = version.Version
 	app.Usage = "A simple command line client for etcd3."
 	app.Commands = []cli.Command{
