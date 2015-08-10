@@ -31,9 +31,12 @@ import (
 	systemdutil "github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/util"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/osutil"
@@ -232,6 +235,15 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		clns = append(clns, l)
 	}
 
+	var v3l net.Listener
+	if cfg.v3demo {
+		v3l, err = net.Listen("tcp", "127.0.0.1:12379")
+		if err != nil {
+			plog.Fatal(err)
+		}
+		plog.Infof("listening for client rpc on 127.0.0.1:12379")
+	}
+
 	srvcfg := &etcdserver.ServerConfig{
 		Name:                cfg.name,
 		ClientURLs:          cfg.acurls,
@@ -249,6 +261,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		Transport:           pt,
 		TickMs:              cfg.TickMs,
 		ElectionTicks:       cfg.electionTicks(),
+		V3demo:              cfg.v3demo,
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(srvcfg)
@@ -280,6 +293,14 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 			plog.Fatal(serveHTTP(l, ch, 0))
 		}(l)
 	}
+
+	if cfg.v3demo {
+		// set up v3 demo rpc
+		grpcServer := grpc.NewServer()
+		etcdserverpb.RegisterEtcdServer(grpcServer, v3rpc.New(s))
+		go plog.Fatal(grpcServer.Serve(v3l))
+	}
+
 	return s.StopNotify(), nil
 }
 

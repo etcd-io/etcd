@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"path"
 	"regexp"
 	"sync/atomic"
@@ -43,6 +44,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/snap"
+	dstorage "github.com/coreos/etcd/storage"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
@@ -158,6 +160,7 @@ type EtcdServer struct {
 	cluster *cluster
 
 	store store.Store
+	kv    dstorage.KV
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -313,6 +316,13 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		SyncTicker:    time.Tick(500 * time.Millisecond),
 		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
 		forceVersionC: make(chan struct{}),
+	}
+
+	if cfg.V3demo {
+		srv.kv = dstorage.New(path.Join(cfg.DataDir, "member", "v3demo"))
+	} else {
+		// we do not care about the error of the removal
+		os.RemoveAll(path.Join(cfg.DataDir, "member", "v3demo"))
 	}
 
 	// TODO: move transport initialization near the definition of remote

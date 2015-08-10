@@ -121,5 +121,11 @@ given by the consensus protocol.
 
 	--force-new-cluster 'false'
 		force to create a new one-member cluster.
+
+
+experimental flags:
+
+	--experimental-v3demo 'false'
+		enable experimental v3 demo API
 `
 )

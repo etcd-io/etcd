@@ -43,6 +43,8 @@ type ServerConfig struct {
 
 	TickMs        uint
 	ElectionTicks int
+
+	V3demo bool
 }
 
 // VerifyBootstrapConfig sanity-checks the initial config for bootstrap case

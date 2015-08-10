@@ -193,6 +193,12 @@ Follow the instructions when using these flags.
 + Force to create a new one-member cluster. It commits configuration changes in force to remove all existing members in the cluster and add itself. It needs to be set to [restore a backup][restore].
 + default: false
 
+### Experimental Flags
+
+##### -experimental-v3demo
++ Enable experimental [v3 demo API](rfc/v3api.proto).
++ default: false
+
 ### Miscellaneous Flags
 
 ##### -version
