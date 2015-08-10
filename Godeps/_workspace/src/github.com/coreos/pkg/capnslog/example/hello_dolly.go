@@ -17,7 +17,6 @@ package main
 import (
 	"flag"
 	oldlog "log"
-	"os"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
@@ -32,7 +31,6 @@ func init() {
 
 func main() {
 	rl := capnslog.MustRepoLogger("github.com/coreos/pkg/capnslog/cmd")
-	capnslog.SetFormatter(capnslog.NewStringFormatter(os.Stderr))
 
 	// We can parse the log level configs from the command line
 	flag.Parse()

@@ -24,7 +24,7 @@ type PackageLogger struct {
 	level LogLevel
 }
 
-const calldepth = 3
+const calldepth = 2
 
 func (p *PackageLogger) internalLog(depth int, inLevel LogLevel, entries ...interface{}) {
 	if inLevel != CRITICAL && p.level < inLevel {
