@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -38,26 +39,68 @@ type StringFormatter struct {
 }
 
 func (s *StringFormatter) Format(pkg string, l LogLevel, i int, entries ...interface{}) {
-	now := time.Now()
-	y, m, d := now.Date()
-	h, min, sec := now.Clock()
-	s.w.WriteString(fmt.Sprintf("%d/%02d/%d %02d:%02d:%02d ", y, m, d, h, min, sec))
-	s.writeEntries(pkg, l, i, entries...)
+	now := time.Now().UTC()
+	s.w.WriteString(now.Format(time.RFC3339))
+	s.w.WriteByte(' ')
+	writeEntries(s.w, pkg, l, i, entries...)
+	s.Flush()
 }
 
-func (s *StringFormatter) writeEntries(pkg string, _ LogLevel, _ int, entries ...interface{}) {
+func writeEntries(w *bufio.Writer, pkg string, _ LogLevel, _ int, entries ...interface{}) {
 	if pkg != "" {
-		s.w.WriteString(pkg + ": ")
+		w.WriteString(pkg + ": ")
 	}
 	str := fmt.Sprint(entries...)
 	endsInNL := strings.HasSuffix(str, "\n")
-	s.w.WriteString(str)
+	w.WriteString(str)
 	if !endsInNL {
-		s.w.WriteString("\n")
+		w.WriteString("\n")
 	}
-	s.Flush()
 }
 
 func (s *StringFormatter) Flush() {
 	s.w.Flush()
+}
+
+func NewPrettyFormatter(w io.Writer, debug bool) Formatter {
+	return &PrettyFormatter{
+		w:     bufio.NewWriter(w),
+		debug: debug,
+	}
+}
+
+type PrettyFormatter struct {
+	w     *bufio.Writer
+	debug bool
+}
+
+func (c *PrettyFormatter) Format(pkg string, l LogLevel, depth int, entries ...interface{}) {
+	now := time.Now()
+	ts := now.Format("2006-01-02 15:04:05")
+	c.w.WriteString(ts)
+	ms := now.Nanosecond() / 1000
+	c.w.WriteString(fmt.Sprintf(".%06d", ms))
+	if c.debug {
+		_, file, line, ok := runtime.Caller(depth) // It's always the same number of frames to the user's call.
+		if !ok {
+			file = "???"
+			line = 1
+		} else {
+			slash := strings.LastIndex(file, "/")
+			if slash >= 0 {
+				file = file[slash+1:]
+			}
+		}
+		if line < 0 {
+			line = 0 // not a real line number
+		}
+		c.w.WriteString(fmt.Sprintf(" [%s:%d]", file, line))
+	}
+	c.w.WriteString(fmt.Sprint(" ", l.Char(), " | "))
+	writeEntries(c.w, pkg, l, depth, entries...)
+	c.Flush()
+}
+
+func (c *PrettyFormatter) Flush() {
+	c.w.Flush()
 }

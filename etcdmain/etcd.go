@@ -72,7 +72,6 @@ var (
 )
 
 func Main() {
-	capnslog.SetFormatter(capnslog.NewStringFormatter(os.Stderr))
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
 	if err != nil {
