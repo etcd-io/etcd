@@ -459,9 +459,8 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 
 	select {
 	case err := <-errc:
-		werr := &ClusterError{Errors: []error{context.DeadlineExceeded}}
-		if !reflect.DeepEqual(err, werr) {
-			t.Errorf("err = %+v, want %+v", err, werr)
+		if err != context.DeadlineExceeded {
+			t.Errorf("err = %+v, want %+v", err, context.DeadlineExceeded)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("unexpected timeout when waitting for request to deadline exceed")
