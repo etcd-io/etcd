@@ -297,6 +297,27 @@ func TestSimpleHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSimpleHTTPClientDoHeaderTimeout(t *testing.T) {
+	tr := newFakeTransport()
+	tr.finishCancel <- struct{}{}
+	c := &simpleHTTPClient{transport: tr, headerTimeout: time.Millisecond}
+
+	errc := make(chan error)
+	go func() {
+		_, _, err := c.Do(context.Background(), &fakeAction{})
+		errc <- err
+	}()
+
+	select {
+	case err := <-errc:
+		if err == nil {
+			t.Fatalf("expected non-nil error, got nil")
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected timeout when waitting for the test to finish")
+	}
+}
+
 func TestHTTPClusterClientDo(t *testing.T) {
 	fakeErr := errors.New("fake!")
 	fakeURL := url.URL{}
@@ -337,21 +358,6 @@ func TestHTTPClusterClientDo(t *testing.T) {
 			wantPinned: 1,
 		},
 
-		// context.DeadlineExceeded short-circuits Do
-		{
-			client: &httpClusterClient{
-				endpoints: []url.URL{fakeURL, fakeURL},
-				clientFactory: newStaticHTTPClientFactory(
-					[]staticHTTPResponse{
-						staticHTTPResponse{err: context.DeadlineExceeded},
-						staticHTTPResponse{resp: http.Response{StatusCode: http.StatusTeapot}},
-					},
-				),
-				rand: rand.New(rand.NewSource(0)),
-			},
-			wantErr: &ClusterError{Errors: []error{context.DeadlineExceeded}},
-		},
-
 		// context.Canceled short-circuits Do
 		{
 			client: &httpClusterClient{
@@ -371,7 +377,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		{
 			client: &httpClusterClient{
 				endpoints:     []url.URL{},
-				clientFactory: newHTTPClientFactory(nil, nil),
+				clientFactory: newHTTPClientFactory(nil, nil, 0),
 				rand:          rand.New(rand.NewSource(0)),
 			},
 			wantErr: ErrNoEndpoints,
@@ -431,6 +437,34 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		if tt.client.pinned != tt.wantPinned {
 			t.Errorf("#%d: pinned=%d, want=%d", i, tt.client.pinned, tt.wantPinned)
 		}
+	}
+}
+
+func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
+	fakeURL := url.URL{}
+	tr := newFakeTransport()
+	tr.finishCancel <- struct{}{}
+	c := &httpClusterClient{
+		clientFactory: newHTTPClientFactory(tr, DefaultCheckRedirect, 0),
+		endpoints:     []url.URL{fakeURL},
+	}
+
+	errc := make(chan error)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+		defer cancel()
+		_, _, err := c.Do(ctx, &fakeAction{})
+		errc <- err
+	}()
+
+	select {
+	case err := <-errc:
+		werr := &ClusterError{Errors: []error{context.DeadlineExceeded}}
+		if !reflect.DeepEqual(err, werr) {
+			t.Errorf("err = %+v, want %+v", err, werr)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected timeout when waitting for request to deadline exceed")
 	}
 }
 
