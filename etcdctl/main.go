@@ -16,6 +16,7 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/etcdctl/command"
@@ -37,6 +38,7 @@ func main() {
 		cli.StringFlag{Name: "key-file", Value: "", Usage: "identify HTTPS client using this SSL key file"},
 		cli.StringFlag{Name: "ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled servers using this CA bundle"},
 		cli.StringFlag{Name: "username, u", Value: "", Usage: "provide username[:password] and prompt if password is not supplied."},
+		cli.DurationFlag{Name: "timeout", Value: time.Second, Usage: "connection timeout per request"},
 	}
 	app.Commands = []cli.Command{
 		command.NewBackupCommand(),

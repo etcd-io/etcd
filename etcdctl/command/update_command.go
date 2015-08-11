@@ -51,7 +51,6 @@ func updateCommandFunc(c *cli.Context, ki client.KeysAPI) {
 
 	ttl := c.Int("ttl")
 
-	// TODO: handle transport timeout
 	resp, err := ki.Set(context.TODO(), key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevExist})
 	if err != nil {
 		handleError(ExitServerError, err)

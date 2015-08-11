@@ -47,7 +47,6 @@ func lsCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	sort := c.Bool("sort")
 	recursive := c.Bool("recursive")
 
-	// TODO: handle transport timeout
 	resp, err := ki.Get(context.TODO(), key, &client.GetOptions{Sort: sort, Recursive: recursive})
 	if err != nil {
 		handleError(ExitServerError, err)
