@@ -55,7 +55,6 @@ func setCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	prevValue := c.String("swap-with-value")
 	prevIndex := c.Int("swap-with-index")
 
-	// TODO: handle transport timeout
 	resp, err := ki.Set(context.TODO(), key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevIndex: uint64(prevIndex), PrevValue: prevValue})
 	if err != nil {
 		handleError(ExitServerError, err)

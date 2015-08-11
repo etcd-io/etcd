@@ -46,7 +46,6 @@ func mkdirCommandFunc(c *cli.Context, ki client.KeysAPI, prevExist client.PrevEx
 	key := c.Args()[0]
 	ttl := c.Int("ttl")
 
-	// TODO: handle transport timeout
 	_, err := ki.Set(context.TODO(), key, "", &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: prevExist})
 	if err != nil {
 		handleError(ExitServerError, err)

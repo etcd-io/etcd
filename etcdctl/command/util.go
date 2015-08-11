@@ -188,8 +188,9 @@ func mustNewClient(c *cli.Context) client.Client {
 	}
 
 	cfg := client.Config{
-		Transport: tr,
-		Endpoints: eps,
+		Transport:               tr,
+		Endpoints:               eps,
+		HeaderTimeoutPerRequest: c.GlobalDuration("timeout"),
 	}
 
 	uFlag := c.GlobalString("username")

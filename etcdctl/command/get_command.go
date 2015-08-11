@@ -47,7 +47,6 @@ func getCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	key := c.Args()[0]
 	sorted := c.Bool("sort")
 
-	// TODO: handle transport timeout
 	resp, err := ki.Get(context.TODO(), key, &client.GetOptions{Sort: sorted})
 	if err != nil {
 		handleError(ExitServerError, err)

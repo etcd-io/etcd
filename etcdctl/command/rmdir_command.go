@@ -40,7 +40,6 @@ func rmdirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	}
 	key := c.Args()[0]
 
-	// TODO: handle transport timeout
 	resp, err := ki.Delete(context.TODO(), key, &client.DeleteOptions{Dir: true})
 	if err != nil {
 		handleError(ExitServerError, err)

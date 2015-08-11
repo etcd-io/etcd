@@ -50,7 +50,6 @@ func rmCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	prevValue := c.String("with-value")
 	prevIndex := c.Int("with-index")
 
-	// TODO: handle transport timeout
 	resp, err := ki.Delete(context.TODO(), key, &client.DeleteOptions{PrevIndex: uint64(prevIndex), PrevValue: prevValue, Dir: dir, Recursive: recursive})
 	if err != nil {
 		handleError(ExitServerError, err)
