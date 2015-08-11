@@ -275,14 +275,9 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 		resp, body, err = hc.Do(ctx, action)
 		if err != nil {
 			cerr.Errors = append(cerr.Errors, err)
-			// mask previous errors with canceled error if the user explicitly canceled the request
-			if err == context.Canceled {
-				return nil, nil, context.Canceled
-			}
-
-			// TODO: deal with deadline error when we improve the deadline handling.
-			if err == context.DeadlineExceeded {
-				return nil, nil, cerr
+			// mask previous errors with context error, which is controlled by user
+			if err == context.Canceled || err == context.DeadlineExceeded {
+				return nil, nil, err
 			}
 			continue
 		}
