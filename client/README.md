@@ -1,5 +1,7 @@
 # etcd/client
 
+etcd/client is the Go client library for etcd.
+
 [![GoDoc](https://godoc.org/github.com/coreos/etcd/client?status.png)](https://godoc.org/github.com/coreos/etcd/client)
 
 ## Install
@@ -46,11 +48,11 @@ etcd client might return three types of errors.
 
 - context error
 
-Each API call has its first parameter as `context`. A context can be canceled or attached a deadline with. If the context is canceled or reaches its deadline, the responding context error will be returned no matter what internal errors the API call has already encountered.
+Each API call has its first parameter as `context`. A context can be canceled or have an attached deadline. If the context is canceled or reaches its deadline, the responding context error will be returned no matter what internal errors the API call has already encountered.
 
 - cluster error
 
-Each API call tries to send request to the cluster endpoints one by one until it successfully gets a response. If a requests to an endpoints fails due to exceeding per request timeout or connection issues, the error will be added into a list of errors. If all possible endpoints fail, a cluster error that includes all encountered errors will be returned.
+Each API call tries to send request to the cluster endpoints one by one until it successfully gets a response. If a requests to an endpoint fails, due to exceeding per request timeout or connection issues, the error will be added into a list of errors. If all possible endpoints fail, a cluster error that includes all encountered errors will be returned.
 
 - response error
 
@@ -83,10 +85,10 @@ if err != nil {
 
 ## Caveat
 
-1. etcd/client always talks to the same endpoint if it works well. This saves socket resources, and improves efficiency for both client and server side. It doesn't hurt the consistent view of the client because each etcd member has data replication.
+1. etcd/client prefers to use the same endpoint as long as the endpoint continues to work well. This saves socket resources, and improves efficiency for both client and server side. This preference doesn't remove consistency from the data consumed by the client because data replicated to each etcd member has already passed through the consensus process.
 
-2. etcd/client does round-robin rotation on other available endpoints when it fails to talk to the endpoint in use. For example, if the member that etcd/client connects to is hard killed, etcd/client will fail on the first attempt with the killed member, and succeed on the second attempt with another member. If it fails to talk to all available endpoints, it will return the last error happened.
+2. etcd/client does round-robin rotation on other available endpoints if the preferred endpoint isn't functioning properly. For example, if the member that etcd/client connects to is hard killed, etcd/client will fail on the first attempt with the killed member, and succeed on the second attempt with another member. If it fails to talk to all available endpoints, it will return all errors happened.
 
-3. Default etcd/client cannot handle the case that the remote server is SIGSTOPed now. TCP keepalive mechanism doesn't help in this scenario because operating system may still send TCP keep-alive packets. We will improve it, but it is not in high priority because we don't see a solid real-life case which server is stopped but connection is alive.
+3. Default etcd/client cannot handle the case that the remote server is SIGSTOPed now. TCP keepalive mechanism doesn't help in this scenario because operating system may still send TCP keep-alive packets. Over time we'd like to improve this functionality, but solving this issue isn't high priority because a real-life case in which a server is stopped, but the connection is kept alive, hasn't been brought to our attention.
 
-4. etcd/client cannot detect whether the member in use is healthy when doing read requests. If the member is isolated from the cluster, etcd/client may retrieve outdated data. We will improve this.
+4. etcd/client cannot detect whether the member in use is healthy when doing read requests. If the member is isolated from the cluster, etcd/client may retrieve outdated data. As a workaround, users could monitor experimental /health endpoint for member healthy information. We are improving it at [#3265](https://github.com/coreos/etcd/issues/3265).
