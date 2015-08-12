@@ -122,6 +122,8 @@ There two methods that can be used for discovery:
 
 ### etcd Discovery
 
+To better understand the design about discovery service protocol, we suggest you read [this](./discovery_protocol.md).
+
 #### Lifetime of a Discovery URL
 
 A discovery URL identifies a unique etcd cluster. Instead of reusing a discovery URL, you should always create discovery URLs for new clusters.
