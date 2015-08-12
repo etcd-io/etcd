@@ -215,7 +215,7 @@ func mustNewClient(c *cli.Context) client.Client {
 		err := hc.Sync(ctx)
 		cancel()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
+			handleError(ExitServerError, err)
 			os.Exit(1)
 		}
 	}
