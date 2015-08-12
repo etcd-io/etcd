@@ -57,17 +57,17 @@ const (
 )
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
-func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
+func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http.Handler {
 	go capabilityLoop(server)
 
-	sec := auth.NewStore(server, defaultServerTimeout)
+	sec := auth.NewStore(server, timeout)
 
 	kh := &keysHandler{
 		sec:     sec,
 		server:  server,
 		cluster: server.Cluster(),
 		timer:   server,
-		timeout: defaultServerTimeout,
+		timeout: timeout,
 	}
 
 	sh := &statsHandler{
@@ -78,6 +78,7 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 		sec:     sec,
 		server:  server,
 		cluster: server.Cluster(),
+		timeout: timeout,
 		clock:   clockwork.NewRealClock(),
 	}
 
@@ -176,6 +177,7 @@ type membersHandler struct {
 	sec     auth.Store
 	server  etcdserver.Server
 	cluster etcdserver.Cluster
+	timeout time.Duration
 	clock   clockwork.Clock
 }
 
@@ -189,7 +191,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
 	switch r.Method {

@@ -111,6 +111,13 @@ func (c *ServerConfig) SnapDir() string { return path.Join(c.MemberDir(), "snap"
 
 func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 
+// ReqTimeout returns timeout for request to finish.
+func (c *ServerConfig) ReqTimeout() time.Duration {
+	// CommitTimeout
+	// + 2 * election timeout for possible leader election
+	return c.CommitTimeout() + 2*time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
+}
+
 // CommitTimeout returns commit timeout under normal case.
 func (c *ServerConfig) CommitTimeout() time.Duration {
 	// We assume that heartbeat >= TTL.

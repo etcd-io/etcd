@@ -28,12 +28,6 @@ import (
 )
 
 const (
-	// time to wait for response from EtcdServer requests
-	// 5s for disk and network delay + 10*heartbeat for commit and possible
-	// leader switch
-	// TODO: use heartbeat set in etcdserver
-	defaultServerTimeout = 5*time.Second + 10*(100*time.Millisecond)
-
 	// time to wait for a Watch request
 	defaultWatchTimeout = time.Duration(math.MaxInt64)
 )
