@@ -275,7 +275,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		plog.Infof("cors = %s", cfg.corsInfo)
 	}
 	ch := &cors.CORSHandler{
-		Handler: etcdhttp.NewClientHandler(s),
+		Handler: etcdhttp.NewClientHandler(s, srvcfg.ReqTimeout()),
 		Info:    cfg.corsInfo,
 	}
 	ph := etcdhttp.NewPeerHandler(s.Cluster(), s.RaftHandler())
