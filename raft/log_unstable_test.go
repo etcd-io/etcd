@@ -55,6 +55,7 @@ func TestUnstableMaybeFirstIndex(t *testing.T) {
 			entries:  tt.entries,
 			offset:   tt.offset,
 			snapshot: tt.snap,
+			logger:   raftLogger,
 		}
 		index, ok := u.maybeFirstIndex()
 		if ok != tt.wok {
@@ -101,6 +102,7 @@ func TestMaybeLastIndex(t *testing.T) {
 			entries:  tt.entries,
 			offset:   tt.offset,
 			snapshot: tt.snap,
+			logger:   raftLogger,
 		}
 		index, ok := u.maybeLastIndex()
 		if ok != tt.wok {
@@ -176,6 +178,7 @@ func TestUnstableMaybeTerm(t *testing.T) {
 			entries:  tt.entries,
 			offset:   tt.offset,
 			snapshot: tt.snap,
+			logger:   raftLogger,
 		}
 		term, ok := u.maybeTerm(tt.index)
 		if ok != tt.wok {
@@ -192,6 +195,7 @@ func TestUnstableRestore(t *testing.T) {
 		entries:  []pb.Entry{{Index: 5, Term: 1}},
 		offset:   5,
 		snapshot: &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+		logger:   raftLogger,
 	}
 	s := pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 6, Term: 2}}
 	u.restore(s)
@@ -280,6 +284,7 @@ func TestUnstableStableTo(t *testing.T) {
 			entries:  tt.entries,
 			offset:   tt.offset,
 			snapshot: tt.snap,
+			logger:   raftLogger,
 		}
 		u.stableTo(tt.index, tt.term)
 		if u.offset != tt.woffset {
@@ -336,6 +341,7 @@ func TestUnstableTruncateAndAppend(t *testing.T) {
 			entries:  tt.entries,
 			offset:   tt.offset,
 			snapshot: tt.snap,
+			logger:   raftLogger,
 		}
 		u.truncateAndAppend(tt.toappend)
 		if u.offset != tt.woffset {
