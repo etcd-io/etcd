@@ -20,6 +20,7 @@ import (
 	"path"
 	"reflect"
 	"sort"
+	"time"
 
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -109,6 +110,14 @@ func (c *ServerConfig) WALDir() string { return path.Join(c.MemberDir(), "wal") 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.MemberDir(), "snap") }
 
 func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
+
+// CommitTimeout returns commit timeout under normal case.
+func (c *ServerConfig) CommitTimeout() time.Duration {
+	// We assume that heartbeat >= TTL.
+	// 5s for queue waiting, computation and disk IO delay
+	// + 2 * heartbeat(TTL) for expected time between proposal by follower and commit at the follower
+	return 5*time.Second + 2*time.Duration(c.TickMs)*time.Millisecond
+}
 
 func (c *ServerConfig) PrintWithInitial() { c.print(true) }
 

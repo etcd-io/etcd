@@ -175,7 +175,7 @@ func (r *raftNode) start(s *EtcdServer) {
 				}
 				r.Advance()
 			case <-syncC:
-				r.s.sync(defaultSyncTimeout)
+				r.s.sync(r.s.cfg.CommitTimeout())
 			case <-r.stopped:
 				return
 			}
