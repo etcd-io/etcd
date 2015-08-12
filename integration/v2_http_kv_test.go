@@ -541,7 +541,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/foo/4",
+					"key":   "/foo/00000000000000000004",
 					"value": "XXX",
 				},
 				"action": "create",
@@ -553,7 +553,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/foo/5",
+					"key":   "/foo/00000000000000000005",
 					"value": "XXX",
 				},
 				"action": "create",
@@ -565,7 +565,7 @@ func TestV2Unique(t *testing.T) {
 			http.StatusCreated,
 			map[string]interface{}{
 				"node": map[string]interface{}{
-					"key":   "/bar/6",
+					"key":   "/bar/00000000000000000006",
 					"value": "XXX",
 				},
 				"action": "create",

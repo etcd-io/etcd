@@ -380,7 +380,7 @@ curl http://127.0.0.1:2379/v2/keys/queue -XPOST -d value=Job1
     "action": "create",
     "node": {
         "createdIndex": 6,
-        "key": "/queue/6",
+        "key": "/queue/00000000000000000006",
         "modifiedIndex": 6,
         "value": "Job1"
     }
@@ -399,7 +399,7 @@ curl http://127.0.0.1:2379/v2/keys/queue -XPOST -d value=Job2
     "action": "create",
     "node": {
         "createdIndex": 29,
-        "key": "/queue/29",
+        "key": "/queue/00000000000000000029",
         "modifiedIndex": 29,
         "value": "Job2"
     }
@@ -423,13 +423,13 @@ curl -s 'http://127.0.0.1:2379/v2/keys/queue?recursive=true&sorted=true'
         "nodes": [
             {
                 "createdIndex": 2,
-                "key": "/queue/2",
+                "key": "/queue/00000000000000000002",
                 "modifiedIndex": 2,
                 "value": "Job1"
             },
             {
                 "createdIndex": 3,
-                "key": "/queue/3",
+                "key": "/queue/00000000000000000003",
                 "modifiedIndex": 3,
                 "value": "Job2"
             }
