@@ -553,7 +553,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 		case <-ctx.Done():
 			proposeFailed.Inc()
 			s.w.Trigger(r.ID, nil) // GC wait
-			return Response{}, parseCtxErr(ctx.Err())
+			return Response{}, s.parseProposeCtxErr(ctx.Err(), start)
 		case <-s.done:
 			return Response{}, ErrStopped
 		}
@@ -648,6 +648,7 @@ func (s *EtcdServer) Leader() types.ID { return types.ID(s.Lead()) }
 func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
 	cc.ID = s.reqIDGen.Next()
 	ch := s.w.Register(cc.ID)
+	start := time.Now()
 	if err := s.r.ProposeConfChange(ctx, cc); err != nil {
 		s.w.Trigger(cc.ID, nil)
 		return err
@@ -663,7 +664,7 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error 
 		return nil
 	case <-ctx.Done():
 		s.w.Trigger(cc.ID, nil) // GC wait
-		return parseCtxErr(ctx.Err())
+		return s.parseProposeCtxErr(ctx.Err(), start)
 	case <-s.done:
 		return ErrStopped
 	}
@@ -1012,5 +1013,21 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 		return
 	default:
 		plog.Errorf("error updating cluster version (%v)", err)
+	}
+}
+
+func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
+	switch err {
+	case context.Canceled:
+		return ErrCanceled
+	case context.DeadlineExceeded:
+		curLeadElected := s.r.leadElectedTime()
+		prevLeadLost := curLeadElected.Add(-2 * time.Duration(s.cfg.ElectionTicks) * time.Duration(s.cfg.TickMs) * time.Millisecond)
+		if start.After(prevLeadLost) && start.Before(curLeadElected) {
+			return ErrTimeoutDueToLeaderLost
+		}
+		return ErrTimeout
+	default:
+		return err
 	}
 }

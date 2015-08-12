@@ -19,6 +19,7 @@ import (
 	"expvar"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -86,6 +87,10 @@ type raftNode struct {
 	term  uint64
 	lead  uint64
 
+	mu sync.Mutex
+	// last lead elected time
+	lt time.Time
+
 	raft.Node
 
 	// a chan to send out apply
@@ -129,6 +134,11 @@ func (r *raftNode) start(s *EtcdServer) {
 				r.Tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
+					if lead := atomic.LoadUint64(&r.lead); rd.SoftState.Lead != raft.None && lead != rd.SoftState.Lead {
+						r.mu.Lock()
+						r.lt = time.Now()
+						r.mu.Unlock()
+					}
 					atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
 					if rd.RaftState == raft.StateLeader {
 						syncC = r.s.SyncTicker
@@ -185,6 +195,12 @@ func (r *raftNode) start(s *EtcdServer) {
 
 func (r *raftNode) apply() chan apply {
 	return r.applyc
+}
+
+func (r *raftNode) leadElectedTime() time.Time {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.lt
 }
 
 func (r *raftNode) stop() {
