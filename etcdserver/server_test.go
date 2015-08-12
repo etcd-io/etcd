@@ -566,6 +566,7 @@ func TestDoProposalCancelled(t *testing.T) {
 
 func TestDoProposalTimeout(t *testing.T) {
 	srv := &EtcdServer{
+		cfg:      &ServerConfig{TickMs: 1},
 		r:        raftNode{Node: &nodeRecorder{}},
 		w:        &waitRecorder{},
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -1023,6 +1024,7 @@ func TestPublishStopped(t *testing.T) {
 func TestPublishRetry(t *testing.T) {
 	n := &nodeRecorder{}
 	srv := &EtcdServer{
+		cfg:      &ServerConfig{TickMs: 1},
 		r:        raftNode{Node: n},
 		w:        &waitRecorder{},
 		done:     make(chan struct{}),
