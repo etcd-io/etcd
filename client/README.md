@@ -74,7 +74,7 @@ if err != nil {
 		// ctx is canceled by another routine
 	} else if err == context.DeadlineExceeded {
 		// ctx is attached with a deadline and it exceeded
-	} else if cerr, ok := err.(ClusterError); ok {
+	} else if cerr, ok := err.(*client.ClusterError); ok {
 		// process (cerr.Errors)
 	} else {
 		// bad cluster endpoints, which are not etcd servers
