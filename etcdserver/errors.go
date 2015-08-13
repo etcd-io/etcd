@@ -18,31 +18,19 @@ import (
 	"errors"
 
 	etcdErr "github.com/coreos/etcd/error"
-
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 var (
-	ErrUnknownMethod = errors.New("etcdserver: unknown method")
-	ErrStopped       = errors.New("etcdserver: server stopped")
-	ErrIDRemoved     = errors.New("etcdserver: ID removed")
-	ErrIDExists      = errors.New("etcdserver: ID exists")
-	ErrIDNotFound    = errors.New("etcdserver: ID not found")
-	ErrPeerURLexists = errors.New("etcdserver: peerURL exists")
-	ErrCanceled      = errors.New("etcdserver: request cancelled")
-	ErrTimeout       = errors.New("etcdserver: request timed out")
+	ErrUnknownMethod          = errors.New("etcdserver: unknown method")
+	ErrStopped                = errors.New("etcdserver: server stopped")
+	ErrIDRemoved              = errors.New("etcdserver: ID removed")
+	ErrIDExists               = errors.New("etcdserver: ID exists")
+	ErrIDNotFound             = errors.New("etcdserver: ID not found")
+	ErrPeerURLexists          = errors.New("etcdserver: peerURL exists")
+	ErrCanceled               = errors.New("etcdserver: request cancelled")
+	ErrTimeout                = errors.New("etcdserver: request timed out")
+	ErrTimeoutDueToLeaderLost = errors.New("etcdserver: request timed out, possibly due to leader lost")
 )
-
-func parseCtxErr(err error) error {
-	switch err {
-	case context.Canceled:
-		return ErrCanceled
-	case context.DeadlineExceeded:
-		return ErrTimeout
-	default:
-		return err
-	}
-}
 
 func isKeyNotFound(err error) bool {
 	e, ok := err.(*etcdErr.Error)

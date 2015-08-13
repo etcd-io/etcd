@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
@@ -53,7 +54,11 @@ func writeError(w http.ResponseWriter, err error) {
 		herr := httptypes.NewHTTPError(e.HTTPStatus(), e.Error())
 		herr.WriteTo(w)
 	default:
-		plog.Errorf("got unexpected response error (%v)", err)
+		if err == etcdserver.ErrTimeoutDueToLeaderLost {
+			plog.Error(err)
+		} else {
+			plog.Errorf("got unexpected response error (%v)", err)
+		}
 		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		herr.WriteTo(w)
 	}
