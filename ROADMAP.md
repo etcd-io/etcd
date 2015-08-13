@@ -8,13 +8,6 @@ The dates below should not be considered authoritative, but rather indicative of
 
 etcd 2.0 is our current stable branch. The roadmap below outlines new features that will be added to etcd, and while subject to change, define what future stable will look like.
 
-### etcd 2.1
-- Security
-  - Unix-style permission scheme (roles, users)./
-  - Protect keys based on prefix matching
-- Improved commit latency (sub-milliseconds on light load)
-- Support rolling upgrades of etcd
-
 ### etcd 2.2
 - Improve client libraries
   - Go
