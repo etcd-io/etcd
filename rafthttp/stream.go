@@ -48,6 +48,7 @@ var (
 	supportedStream = map[string][]streamType{
 		"2.0.0": []streamType{streamTypeMsgApp},
 		"2.1.0": []streamType{streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
+		"2.2.0": []streamType{streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
 	}
 )
 
