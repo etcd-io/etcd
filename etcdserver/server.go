@@ -1022,7 +1022,7 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 		curLeadElected := s.r.leadElectedTime()
 		prevLeadLost := curLeadElected.Add(-2 * time.Duration(s.cfg.ElectionTicks) * time.Duration(s.cfg.TickMs) * time.Millisecond)
 		if start.After(prevLeadLost) && start.Before(curLeadElected) {
-			return ErrTimeoutDueToLeaderLost
+			return ErrTimeoutDueToLeaderFail
 		}
 		return ErrTimeout
 	default:
