@@ -495,7 +495,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	currIndex, nextIndex := s.CurrentIndex, s.CurrentIndex+1
 
 	if unique { // append unique item under the node path
-		nodePath += "/" + strconv.FormatUint(nextIndex, 10)
+		nodePath += "/" + fmt.Sprintf("%020s", strconv.FormatUint(nextIndex, 10))
 	}
 
 	nodePath = path.Clean(path.Join("/", nodePath))
