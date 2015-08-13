@@ -29,7 +29,7 @@ var (
 	ErrPeerURLexists          = errors.New("etcdserver: peerURL exists")
 	ErrCanceled               = errors.New("etcdserver: request cancelled")
 	ErrTimeout                = errors.New("etcdserver: request timed out")
-	ErrTimeoutDueToLeaderLost = errors.New("etcdserver: request timed out, possibly due to leader lost")
+	ErrTimeoutDueToLeaderFail = errors.New("etcdserver: request timed out, possibly due to previous leader failure")
 )
 
 func isKeyNotFound(err error) bool {
