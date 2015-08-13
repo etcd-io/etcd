@@ -54,7 +54,7 @@ func writeError(w http.ResponseWriter, err error) {
 		herr := httptypes.NewHTTPError(e.HTTPStatus(), e.Error())
 		herr.WriteTo(w)
 	default:
-		if err == etcdserver.ErrTimeoutDueToLeaderLost {
+		if err == etcdserver.ErrTimeoutDueToLeaderFail {
 			plog.Error(err)
 		} else {
 			plog.Errorf("got unexpected response error (%v)", err)
