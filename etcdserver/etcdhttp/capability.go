@@ -22,6 +22,7 @@ var (
 	// the base capabilities is the set of capability 2.0 supports.
 	capabilityMaps = map[string]map[capability]bool{
 		"2.1.0": {authCapability: true},
+		"2.2.0": {authCapability: true},
 	}
 
 	enableMapMu sync.Mutex
