@@ -529,9 +529,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 	}
 	switch r.Method {
 	case "POST", "PUT", "DELETE", "QGET":
-		var raftReq pb.InternalRaftRequest
-		raftReq.V2 = &r
-		data, err := raftReq.Marshal()
+		data, err := r.Marshal()
 		if err != nil {
 			return Response{}, err
 		}
