@@ -44,8 +44,8 @@ func (h *handler) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*p
 }
 
 func (h *handler) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	panic("not implemented")
-	return nil, nil
+	resp := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Txn: r})
+	return resp.(*pb.TxnResponse), nil
 }
 
 func (h *handler) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
