@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/pkg/pathutil"
 )
 
 const (
@@ -445,7 +445,16 @@ func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
 // provided endpoint's path to the root of the keys API
 // (typically "/v2/keys").
 func v2KeysURL(ep url.URL, prefix, key string) *url.URL {
-	ep.Path = path.Join(ep.Path, prefix, key)
+	// We concatenate all parts together manually. We cannot use
+	// path.Join because it does not reserve trailing slash.
+	// We call CanonicalURLPath to further cleanup the path.
+	if prefix != "" && prefix[0] != '/' {
+		prefix = "/" + prefix
+	}
+	if key != "" && key[0] != '/' {
+		key = "/" + key
+	}
+	ep.Path = pathutil.CanonicalURLPath(ep.Path + prefix + key)
 	return &ep
 }
 

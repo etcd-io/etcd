@@ -80,6 +80,20 @@ func TestV2KeysURLHelper(t *testing.T) {
 			key:      "/baz",
 			want:     url.URL{Scheme: "https", Host: "example.com", Path: "/foo/bar/baz"},
 		},
+		// Prefix is joined to path
+		{
+			endpoint: url.URL{Scheme: "https", Host: "example.com", Path: "/foo"},
+			prefix:   "/bar",
+			key:      "",
+			want:     url.URL{Scheme: "https", Host: "example.com", Path: "/foo/bar"},
+		},
+		// Keep trailing slash
+		{
+			endpoint: url.URL{Scheme: "https", Host: "example.com", Path: "/foo"},
+			prefix:   "/bar",
+			key:      "/baz/",
+			want:     url.URL{Scheme: "https", Host: "example.com", Path: "/foo/bar/baz/"},
+		},
 	}
 
 	for i, tt := range tests {
@@ -269,7 +283,7 @@ func TestSetAction(t *testing.T) {
 			act: setAction{
 				Key: "/foo/",
 			},
-			wantURL:  "http://example.com/foo",
+			wantURL:  "http://example.com/foo/",
 			wantBody: "value=",
 		},
 
@@ -460,7 +474,7 @@ func TestCreateInOrderAction(t *testing.T) {
 			act: createInOrderAction{
 				Dir: "/foo/",
 			},
-			wantURL:  "http://example.com/foo",
+			wantURL:  "http://example.com/foo/",
 			wantBody: "value=",
 		},
 
@@ -555,7 +569,7 @@ func TestDeleteAction(t *testing.T) {
 			act: deleteAction{
 				Key: "/foo/",
 			},
-			wantURL: "http://example.com/foo",
+			wantURL: "http://example.com/foo/",
 		},
 
 		// Recursive set to true
