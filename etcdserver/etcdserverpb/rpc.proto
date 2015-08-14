@@ -4,6 +4,9 @@ package etcdserverpb;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/coreos/etcd/storage/storagepb/kv.proto";
 
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
 // Interface exported by the server.
 service etcd {
   // Range gets the keys in the range from the store.
@@ -88,30 +91,37 @@ message RequestUnion {
 
 message ResponseUnion {
   oneof response {
-    RangeResponse reponse_range = 1;
+    RangeResponse response_range = 1;
     PutResponse response_put = 2;
     DeleteRangeResponse response_delete_range = 3;
   }
 }
 
 message Compare {
-  enum CompareType {
+  enum CompareResult {
     EQUAL = 0;
     GREATER = 1;
     LESS = 2;
   }
-  CompareType type = 1;
+  enum CompareTarget {
+    VERSION = 0;
+    CREATE = 1;
+    MOD = 2;
+    VALUE= 3;
+  }
+  CompareResult result = 1;
+  CompareTarget target = 2;
   // key path
-  bytes key = 2;
-  oneof target {
+  bytes key = 3;
+  oneof target_union {
     // version of the given key
-    int64 version = 3;
+    int64 version = 4;
     // create index of the given key
-    int64 create_index = 4;
+    int64 create_index = 5;
     // last modified index of the given key
-    int64 mod_index = 5;
+    int64 mod_index = 6;
     // value of the given key
-    bytes value = 6;
+    bytes value = 7;
   }
 }
 

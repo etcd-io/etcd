@@ -24,27 +24,53 @@ var _ grpc.ClientConn
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 
-type Compare_CompareType int32
+type Compare_CompareResult int32
 
 const (
-	Compare_EQUAL   Compare_CompareType = 0
-	Compare_GREATER Compare_CompareType = 1
-	Compare_LESS    Compare_CompareType = 2
+	Compare_EQUAL   Compare_CompareResult = 0
+	Compare_GREATER Compare_CompareResult = 1
+	Compare_LESS    Compare_CompareResult = 2
 )
 
-var Compare_CompareType_name = map[int32]string{
+var Compare_CompareResult_name = map[int32]string{
 	0: "EQUAL",
 	1: "GREATER",
 	2: "LESS",
 }
-var Compare_CompareType_value = map[string]int32{
+var Compare_CompareResult_value = map[string]int32{
 	"EQUAL":   0,
 	"GREATER": 1,
 	"LESS":    2,
 }
 
-func (x Compare_CompareType) String() string {
-	return proto.EnumName(Compare_CompareType_name, int32(x))
+func (x Compare_CompareResult) String() string {
+	return proto.EnumName(Compare_CompareResult_name, int32(x))
+}
+
+type Compare_CompareTarget int32
+
+const (
+	Compare_VERSION Compare_CompareTarget = 0
+	Compare_CREATE  Compare_CompareTarget = 1
+	Compare_MOD     Compare_CompareTarget = 2
+	Compare_VALUE   Compare_CompareTarget = 3
+)
+
+var Compare_CompareTarget_name = map[int32]string{
+	0: "VERSION",
+	1: "CREATE",
+	2: "MOD",
+	3: "VALUE",
+}
+var Compare_CompareTarget_value = map[string]int32{
+	"VERSION": 0,
+	"CREATE":  1,
+	"MOD":     2,
+	"VALUE":   3,
+}
+
+func (x Compare_CompareTarget) String() string {
+	return proto.EnumName(Compare_CompareTarget_name, int32(x))
 }
 
 type ResponseHeader struct {
@@ -184,7 +210,7 @@ func (m *RequestUnion) GetRequestDeleteRange() *DeleteRangeRequest {
 }
 
 type ResponseUnion struct {
-	ReponseRange        *RangeResponse       `protobuf:"bytes,1,opt,name=reponse_range" json:"reponse_range,omitempty"`
+	ResponseRange       *RangeResponse       `protobuf:"bytes,1,opt,name=response_range" json:"response_range,omitempty"`
 	ResponsePut         *PutResponse         `protobuf:"bytes,2,opt,name=response_put" json:"response_put,omitempty"`
 	ResponseDeleteRange *DeleteRangeResponse `protobuf:"bytes,3,opt,name=response_delete_range" json:"response_delete_range,omitempty"`
 }
@@ -193,9 +219,9 @@ func (m *ResponseUnion) Reset()         { *m = ResponseUnion{} }
 func (m *ResponseUnion) String() string { return proto.CompactTextString(m) }
 func (*ResponseUnion) ProtoMessage()    {}
 
-func (m *ResponseUnion) GetReponseRange() *RangeResponse {
+func (m *ResponseUnion) GetResponseRange() *RangeResponse {
 	if m != nil {
-		return m.ReponseRange
+		return m.ResponseRange
 	}
 	return nil
 }
@@ -215,17 +241,18 @@ func (m *ResponseUnion) GetResponseDeleteRange() *DeleteRangeResponse {
 }
 
 type Compare struct {
-	Type Compare_CompareType `protobuf:"varint,1,opt,name=type,proto3,enum=etcdserverpb.Compare_CompareType" json:"type,omitempty"`
+	Result Compare_CompareResult `protobuf:"varint,1,opt,name=result,proto3,enum=etcdserverpb.Compare_CompareResult" json:"result,omitempty"`
+	Target Compare_CompareTarget `protobuf:"varint,2,opt,name=target,proto3,enum=etcdserverpb.Compare_CompareTarget" json:"target,omitempty"`
 	// key path
-	Key []byte `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Key []byte `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
 	// version of the given key
-	Version int64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
+	Version int64 `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
 	// create index of the given key
-	CreateIndex int64 `protobuf:"varint,4,opt,name=create_index,proto3" json:"create_index,omitempty"`
+	CreateIndex int64 `protobuf:"varint,5,opt,name=create_index,proto3" json:"create_index,omitempty"`
 	// last modified index of the given key
-	ModIndex int64 `protobuf:"varint,5,opt,name=mod_index,proto3" json:"mod_index,omitempty"`
+	ModIndex int64 `protobuf:"varint,6,opt,name=mod_index,proto3" json:"mod_index,omitempty"`
 	// value of the given key
-	Value []byte `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
+	Value []byte `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
 }
 
 func (m *Compare) Reset()         { *m = Compare{} }
@@ -326,7 +353,8 @@ func (m *CompactionResponse) GetHeader() *ResponseHeader {
 }
 
 func init() {
-	proto.RegisterEnum("etcdserverpb.Compare_CompareType", Compare_CompareType_name, Compare_CompareType_value)
+	proto.RegisterEnum("etcdserverpb.Compare_CompareResult", Compare_CompareResult_name, Compare_CompareResult_value)
+	proto.RegisterEnum("etcdserverpb.Compare_CompareTarget", Compare_CompareTarget_name, Compare_CompareTarget_value)
 }
 func (m *ResponseHeader) Unmarshal(data []byte) error {
 	l := len(data)
@@ -1145,7 +1173,7 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ReponseRange", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ResponseRange", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1163,10 +1191,10 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.ReponseRange == nil {
-				m.ReponseRange = &RangeResponse{}
+			if m.ResponseRange == nil {
+				m.ResponseRange = &RangeResponse{}
 			}
-			if err := m.ReponseRange.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.ResponseRange.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1268,7 +1296,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Result", wireType)
 			}
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
@@ -1276,12 +1304,27 @@ func (m *Compare) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Type |= (Compare_CompareType(b) & 0x7F) << shift
+				m.Result |= (Compare_CompareResult(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Target", wireType)
+			}
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Target |= (Compare_CompareTarget(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
 			}
@@ -1303,7 +1346,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 			}
 			m.Key = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
 			}
@@ -1318,7 +1361,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CreateIndex", wireType)
 			}
@@ -1333,7 +1376,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 5:
+		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ModIndex", wireType)
 			}
@@ -1348,7 +1391,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 6:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
 			}
@@ -1979,8 +2022,8 @@ func (m *RequestUnion) Size() (n int) {
 func (m *ResponseUnion) Size() (n int) {
 	var l int
 	_ = l
-	if m.ReponseRange != nil {
-		l = m.ReponseRange.Size()
+	if m.ResponseRange != nil {
+		l = m.ResponseRange.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
 	if m.ResponsePut != nil {
@@ -1997,8 +2040,11 @@ func (m *ResponseUnion) Size() (n int) {
 func (m *Compare) Size() (n int) {
 	var l int
 	_ = l
-	if m.Type != 0 {
-		n += 1 + sovRpc(uint64(m.Type))
+	if m.Result != 0 {
+		n += 1 + sovRpc(uint64(m.Result))
+	}
+	if m.Target != 0 {
+		n += 1 + sovRpc(uint64(m.Target))
 	}
 	if m.Key != nil {
 		l = len(m.Key)
@@ -2425,11 +2471,11 @@ func (m *ResponseUnion) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
-	if m.ReponseRange != nil {
+	if m.ResponseRange != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ReponseRange.Size()))
-		n7, err := m.ReponseRange.MarshalTo(data[i:])
+		i = encodeVarintRpc(data, i, uint64(m.ResponseRange.Size()))
+		n7, err := m.ResponseRange.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2473,37 +2519,42 @@ func (m *Compare) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Type != 0 {
+	if m.Result != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Type))
+		i = encodeVarintRpc(data, i, uint64(m.Result))
+	}
+	if m.Target != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.Target))
 	}
 	if m.Key != nil {
 		if len(m.Key) > 0 {
-			data[i] = 0x12
+			data[i] = 0x1a
 			i++
 			i = encodeVarintRpc(data, i, uint64(len(m.Key)))
 			i += copy(data[i:], m.Key)
 		}
 	}
 	if m.Version != 0 {
-		data[i] = 0x18
+		data[i] = 0x20
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Version))
 	}
 	if m.CreateIndex != 0 {
-		data[i] = 0x20
+		data[i] = 0x28
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.CreateIndex))
 	}
 	if m.ModIndex != 0 {
-		data[i] = 0x28
+		data[i] = 0x30
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.ModIndex))
 	}
 	if m.Value != nil {
 		if len(m.Value) > 0 {
-			data[i] = 0x32
+			data[i] = 0x3a
 			i++
 			i = encodeVarintRpc(data, i, uint64(len(m.Value)))
 			i += copy(data[i:], m.Value)
