@@ -152,8 +152,8 @@ func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 			return nil
 		}
 		if lv.LessThan(*v) {
-			plog.Warningf("the etcd version %s is not up-to-date", lv.String())
-			plog.Warningf("member %s has a higher version %s", mid, ver)
+			plog.Warningf("the local etcd version %s is not up-to-date", lv.String())
+			plog.Warningf("member %s has a higher version %s", mid, ver.Server)
 		}
 		if cv == nil {
 			cv = v
