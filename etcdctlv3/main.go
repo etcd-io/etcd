@@ -31,6 +31,7 @@ func main() {
 		command.NewRangeCommand(),
 		command.NewPutCommand(),
 		command.NewDeleteRangeCommand(),
+		command.NewTxnCommand(),
 	}
 
 	app.Run(os.Args)
