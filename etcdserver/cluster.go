@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/version"
 )
 
 const (
@@ -358,9 +359,9 @@ func (c *cluster) SetVersion(ver *semver.Version) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
-		plog.Noticef("updated the cluster version from %v to %v", c.version.String(), ver.String())
+		plog.Noticef("updated the cluster version from %v to %v", version.Cluster(c.version.String()), version.Cluster(ver.String()))
 	} else {
-		plog.Noticef("set the initial cluster version to %v", ver.String())
+		plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
 	}
 	c.version = ver
 }
