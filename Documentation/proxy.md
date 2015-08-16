@@ -1,6 +1,6 @@
 ## Proxy
 
-etcd can now run as a transparent proxy. Running etcd as a proxy allows for easily discovery of etcd within your infrastructure, since it can run on each machine as a local service. In this mode, etcd acts as a reverse proxy and forwards client requests to an active etcd cluster. The etcd proxy does not participant in the consensus replication of the etcd cluster, thus it neither increases the resilience nor decreases the write performance of the etcd cluster. 
+etcd can now run as a transparent proxy. Running etcd as a proxy allows for easily discovery of etcd within your infrastructure, since it can run on each machine as a local service. In this mode, etcd acts as a reverse proxy and forwards client requests to an active etcd cluster. The etcd proxy does not participate in the consensus replication of the etcd cluster, thus it neither increases the resilience nor decreases the write performance of the etcd cluster.
 
 etcd currently supports two proxy modes: `readwrite` and `readonly`. The default mode is `readwrite`, which forwards both read and write requests to the etcd cluster. A `readonly` etcd proxy only forwards read requests to the etcd cluster, and returns `HTTP 501` to all write requests. 
 
