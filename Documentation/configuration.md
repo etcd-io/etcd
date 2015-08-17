@@ -82,6 +82,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 ##### -advertise-client-urls
 + List of this member's client URLs to advertise to the rest of the cluster.
 + default: "http://localhost:2379,http://localhost:4001"
++ Be careful if you are advertising URLs such as http://localhost:2379 from a cluster member and are using the proxy feature of etcd. This will cause loops, because the proxy will be forwarding requests to itself until its resources (memory, file descriptors) are eventually depleted.
 
 ##### -discovery
 + Discovery URL used to bootstrap the cluster.
