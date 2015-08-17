@@ -842,7 +842,8 @@ func mustNewHTTPClient(t *testing.T, eps []string) client.Client {
 }
 
 func mustNewTransport(t *testing.T, tlsInfo transport.TLSInfo) *http.Transport {
-	tr, err := transport.NewTimeoutTransport(tlsInfo, rafthttp.DialTimeout, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
+	// tick in integration test is short, so 1s dial timeout could play well.
+	tr, err := transport.NewTimeoutTransport(tlsInfo, time.Second, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
 	if err != nil {
 		t.Fatal(err)
 	}
