@@ -361,7 +361,7 @@ func (s *EtcdServer) start() {
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
 	if s.ClusterVersion() != nil {
-		plog.Infof("starting server... [version: %v, cluster version: %v]", version.Version, s.ClusterVersion())
+		plog.Infof("starting server... [version: %v, cluster version: %v]", version.Version, version.Cluster(s.ClusterVersion().String()))
 	} else {
 		plog.Infof("starting server... [version: %v, cluster version: to_be_decided]", version.Version)
 	}
@@ -991,9 +991,9 @@ func (s *EtcdServer) monitorVersions() {
 
 func (s *EtcdServer) updateClusterVersion(ver string) {
 	if s.cluster.Version() == nil {
-		plog.Infof("setting up the initial cluster version to %v", ver)
+		plog.Infof("setting up the initial cluster version to %s", version.Cluster(ver))
 	} else {
-		plog.Infof("updating the cluster version from %v to %v", s.cluster.Version(), ver)
+		plog.Infof("updating the cluster version from %s to %s", version.Cluster(s.cluster.Version().String()), version.Cluster(ver))
 	}
 	req := pb.Request{
 		Method: "PUT",
