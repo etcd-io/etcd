@@ -131,7 +131,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	rr, err := parseKeyRequest(r, clockwork.NewRealClock())
 	if err != nil {
-		writeError(w, err)
+		writeKeyError(w, err)
 		return
 	}
 	// The path must be valid at this point (we've parsed the request successfully).
@@ -143,7 +143,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
 		err = trimErrorPrefix(err, etcdserver.StoreKeysPrefix)
-		writeError(w, err)
+		writeKeyError(w, err)
 		return
 	}
 	switch {
@@ -157,7 +157,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
 	default:
-		writeError(w, errors.New("received response with no Event/Watcher!"))
+		writeKeyError(w, errors.New("received response with no Event/Watcher!"))
 	}
 }
 
@@ -581,6 +581,26 @@ func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTim
 func writeKeyNoAuth(w http.ResponseWriter) {
 	e := etcdErr.NewError(etcdErr.EcodeUnauthorized, "Insufficient credentials", 0)
 	e.WriteTo(w)
+}
+
+// writeKeyError logs and writes the given Error to the ResponseWriter.
+// If Error is not an etcdErr, the error will be converted to an etcd error.
+func writeKeyError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+	switch e := err.(type) {
+	case *etcdErr.Error:
+		e.WriteTo(w)
+	default:
+		if err == etcdserver.ErrTimeoutDueToLeaderFail {
+			plog.Error(err)
+		} else {
+			plog.Errorf("got unexpected response error (%v)", err)
+		}
+		ee := etcdErr.NewError(etcdErr.EcodeRaftInternal, err.Error(), 0)
+		ee.WriteTo(w)
+	}
 }
 
 func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {

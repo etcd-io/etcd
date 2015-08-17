@@ -1406,7 +1406,7 @@ func TestBadServeKeys(t *testing.T) {
 			},
 
 			http.StatusInternalServerError,
-			`{"message":"Internal Server Error"}`,
+			`{"errorCode":300,"message":"Raft Internal Error","cause":"Internal Server Error","index":0}`,
 		},
 		{
 			// etcdserver.Server etcd error
@@ -1426,7 +1426,7 @@ func TestBadServeKeys(t *testing.T) {
 			},
 
 			http.StatusInternalServerError,
-			`{"message":"Internal Server Error"}`,
+			`{"errorCode":300,"message":"Raft Internal Error","cause":"received response with no Event/Watcher!","index":0}`,
 		},
 	}
 	for i, tt := range testBadCases {
