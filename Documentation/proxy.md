@@ -6,7 +6,7 @@ etcd currently supports two proxy modes: `readwrite` and `readonly`. The default
 
 The proxy will shuffle the list of cluster members periodically to avoid sending all connections to a single member.
 
-The member list used by proxy consists of all client URLs advertised within the cluster, as specified in each members' `-advertise-client-urls` flag. If this flag is set incorrectly, requests sent to the proxy are forwarded to wrong addresses and then fail. The fix for this problem is to restart etcd member with correct `-advertise-client-urls` flag. After client URLs list in proxy is recalculated, which happens every 30 seconds, requests will be forwarded correctly.
+The member list used by proxy consists of all client URLs advertised within the cluster, as specified in each members' `-advertise-client-urls` flag. If this flag is set incorrectly, requests sent to the proxy are forwarded to wrong addresses and then fail. Including URLs in the `-advertise-client-urls` flag that point to the proxy itself, e.g. http://localhost:2379, is even more problematic as it will cause loops, because the proxy keeps trying to forward requests to itself until its resources (memory, file descriptors) are eventually depleted. The fix for this problem is to restart etcd member with correct `-advertise-client-urls` flag. After client URLs list in proxy is recalculated, which happens every 30 seconds, requests will be forwarded correctly.
 
 ### Using an etcd proxy
 To start etcd in proxy mode, you need to provide three flags: `proxy`, `listen-client-urls`, and `initial-cluster` (or `discovery`). 
