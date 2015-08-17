@@ -35,6 +35,7 @@ var errors = map[int]string{
 	EcodeRootROnly:        "Root is read only",
 	EcodeDirNotEmpty:      "Directory not empty",
 	ecodeExistingPeerAddr: "Peer address has existed",
+	EcodeUnauthorized:     "The request requires user authentication",
 
 	// Post form related errors
 	ecodeValueRequired:        "Value is Required in POST form",
@@ -68,6 +69,7 @@ var errorStatus = map[int]int{
 	EcodeKeyNotFound:  http.StatusNotFound,
 	EcodeNotFile:      http.StatusForbidden,
 	EcodeDirNotEmpty:  http.StatusForbidden,
+	EcodeUnauthorized: http.StatusUnauthorized,
 	EcodeTestFailed:   http.StatusPreconditionFailed,
 	EcodeNodeExist:    http.StatusPreconditionFailed,
 	EcodeRaftInternal: http.StatusInternalServerError,
@@ -85,6 +87,7 @@ const (
 	EcodeRootROnly        = 107
 	EcodeDirNotEmpty      = 108
 	ecodeExistingPeerAddr = 109
+	EcodeUnauthorized     = 110
 
 	ecodeValueRequired        = 200
 	EcodePrevValueRequired    = 201

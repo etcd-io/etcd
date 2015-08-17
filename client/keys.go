@@ -29,13 +29,14 @@ import (
 )
 
 const (
-	ErrorCodeKeyNotFound = 100
-	ErrorCodeTestFailed  = 101
-	ErrorCodeNotFile     = 102
-	ErrorCodeNotDir      = 104
-	ErrorCodeNodeExist   = 105
-	ErrorCodeRootROnly   = 107
-	ErrorCodeDirNotEmpty = 108
+	ErrorCodeKeyNotFound  = 100
+	ErrorCodeTestFailed   = 101
+	ErrorCodeNotFile      = 102
+	ErrorCodeNotDir       = 104
+	ErrorCodeNodeExist    = 105
+	ErrorCodeRootROnly    = 107
+	ErrorCodeDirNotEmpty  = 108
+	ErrorCodeUnauthorized = 110
 
 	ErrorCodePrevValueRequired = 201
 	ErrorCodeTTLNaN            = 202

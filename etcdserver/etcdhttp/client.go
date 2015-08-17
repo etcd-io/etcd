@@ -136,7 +136,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// The path must be valid at this point (we've parsed the request successfully).
 	if !hasKeyPrefixAccess(h.sec, r, r.URL.Path[len(keysPrefix):], rr.Recursive) {
-		writeNoAuth(w)
+		writeKeyNoAuth(w)
 		return
 	}
 
@@ -576,6 +576,11 @@ func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTim
 
 	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 	return json.NewEncoder(w).Encode(ev)
+}
+
+func writeKeyNoAuth(w http.ResponseWriter) {
+	e := etcdErr.NewError(etcdErr.EcodeUnauthorized, "Insufficient credentials", 0)
+	e.WriteTo(w)
 }
 
 func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {
