@@ -343,7 +343,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 // It also starts a goroutine to publish its server information.
 func (s *EtcdServer) Start() {
 	s.start()
-	go s.publish(s.cfg.CommitTimeout())
+	go s.publish(s.cfg.ReqTimeout())
 	go s.purgeFile()
 	go monitorFileDescriptor(s.done)
 	go s.monitorVersions()
@@ -1000,7 +1000,7 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 		Path:   path.Join(StoreClusterPrefix, "version"),
 		Val:    ver,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.CommitTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ReqTimeout())
 	_, err := s.Do(ctx, req)
 	cancel()
 	switch err {

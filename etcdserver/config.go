@@ -113,17 +113,9 @@ func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 
 // ReqTimeout returns timeout for request to finish.
 func (c *ServerConfig) ReqTimeout() time.Duration {
-	// CommitTimeout
-	// + 2 * election timeout for possible leader election
-	return c.CommitTimeout() + 2*time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
-}
-
-// CommitTimeout returns commit timeout under normal case.
-func (c *ServerConfig) CommitTimeout() time.Duration {
-	// We assume that heartbeat >= TTL.
 	// 5s for queue waiting, computation and disk IO delay
-	// + 2 * heartbeat(TTL) for expected time between proposal by follower and commit at the follower
-	return 5*time.Second + 2*time.Duration(c.TickMs)*time.Millisecond
+	// + 2 * election timeout for possible leader election
+	return 5*time.Second + 2*time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
 }
 
 func (c *ServerConfig) PrintWithInitial() { c.print(true) }
