@@ -222,6 +222,7 @@ func (c *cluster) SetStore(st store.Store) { c.store = st }
 func (c *cluster) Recover() {
 	c.members, c.removed = membersFromStore(c.store)
 	c.version = clusterVersionFromStore(c.store)
+	MustDetectDowngrade(c.version)
 }
 
 // ValidateConfigurationChange takes a proposed ConfChange and
@@ -364,6 +365,7 @@ func (c *cluster) SetVersion(ver *semver.Version) {
 		plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
 	}
 	c.version = ver
+	MustDetectDowngrade(c.version)
 }
 
 func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {

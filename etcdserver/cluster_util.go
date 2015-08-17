@@ -252,3 +252,12 @@ func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 	}
 	return nil, err
 }
+
+func MustDetectDowngrade(cv *semver.Version) {
+	lv := semver.Must(semver.NewVersion(version.Version))
+	// only keep major.minor version for comparison against cluster version
+	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
+	if cv != nil && lv.LessThan(*cv) {
+		plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+	}
+}
