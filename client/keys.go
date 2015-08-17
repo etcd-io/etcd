@@ -14,6 +14,8 @@
 
 package client
 
+//go:generate codecgen -r "Node|Response" -o keys.generated.go keys.go
+
 import (
 	"encoding/json"
 	"errors"
@@ -26,6 +28,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/ugorji/go/codec"
 )
 
 const (
@@ -609,7 +612,7 @@ func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Resp
 
 func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response, error) {
 	var res Response
-	err := json.Unmarshal(body, &res)
+	err := codec.NewDecoderBytes(body, new(codec.JsonHandle)).Decode(&res)
 	if err != nil {
 		return nil, ErrInvalidJSON
 	}
