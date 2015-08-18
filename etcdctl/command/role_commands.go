@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/pkg/pathutil"
 )
 
 func NewRoleCommands() cli.Command {
@@ -150,6 +151,10 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 	path := c.String("path")
 	if path == "" {
 		fmt.Fprintln(os.Stderr, "No path specified; please use `-path`")
+		os.Exit(1)
+	}
+	if pathutil.CanonicalURLPath(path) != path {
+		fmt.Fprintf(os.Stderr, "Not canonical path; please use `-path=%s`\n", pathutil.CanonicalURLPath(path))
 		os.Exit(1)
 	}
 
