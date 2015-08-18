@@ -253,7 +253,7 @@ type Response struct {
 	Node *Node `json:"node"`
 
 	// PrevNode represents the previous state of the Node. PrevNode is non-nil
-	// only if the Node existed before the action occured and the action
+	// only if the Node existed before the action occurred and the action
 	// caused a change to the Node.
 	PrevNode *Node `json:"prevNode"`
 
