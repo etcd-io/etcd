@@ -137,7 +137,7 @@ type WatcherOptions struct {
 	// index, whatever that may be.
 	AfterIndex uint64
 
-	// Recursive specifices whether or not the Watcher should emit
+	// Recursive specifies whether or not the Watcher should emit
 	// events that occur in children of the given keyspace. If set
 	// to false (default), events will be limited to those that
 	// occur for the exact key.
