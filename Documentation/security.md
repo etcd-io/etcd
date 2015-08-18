@@ -4,7 +4,7 @@ etcd supports SSL/TLS as well as authentication through client certificates, bot
 
 To get up and running you first need to have a CA certificate and a signed key pair for one member. It is recommended to create and sign a new key pair for every member in a cluster.
 
-For convenience the [etcd-ca](https://github.com/coreos/etcd-ca) tool provides an easy interface to certificate generation, alternatively this site provides a good reference on how to generate self-signed key pairs:
+For convenience the [cfssl](https://github.com/cloudflare/cfssl) tool provides an easy interface to certificate generation, and we provide a full example using the tool at [here](../hack/tls-setup). Alternatively this site provides a good reference on how to generate self-signed key pairs:
 
 http://www.g-loaded.eu/2005/11/10/be-your-own-ca/
 
