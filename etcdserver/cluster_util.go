@@ -215,7 +215,6 @@ func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, min
 func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 	cc := &http.Client{
 		Transport: tr,
-		Timeout:   time.Second,
 	}
 	var (
 		err  error

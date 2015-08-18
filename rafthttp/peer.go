@@ -26,7 +26,6 @@ import (
 )
 
 const (
-	DialTimeout = time.Second
 	// ConnRead/WriteTimeout is the i/o timeout set on each connection rafthttp pkg creates.
 	// A 5 seconds timeout is good enough for recycling bad connections. Or we have to wait for
 	// tcp keepalive failing to detect a bad connection, which is at minutes level.
