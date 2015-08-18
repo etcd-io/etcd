@@ -270,10 +270,10 @@ func (r *raft) sendAppend(to uint64) {
 		}
 		m.Snapshot = snapshot
 		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
-		r.logger.Infof("%x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
+		r.logger.Debugf("%x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
 			r.id, r.raftLog.firstIndex(), r.Commit, sindex, sterm, to, pr)
 		pr.becomeSnapshot(sindex)
-		r.logger.Infof("%x paused sending replication messages to %x [%s]", r.id, to, pr)
+		r.logger.Debugf("%x paused sending replication messages to %x [%s]", r.id, to, pr)
 	} else {
 		m.Type = pb.MsgApp
 		m.Index = pr.Next - 1
@@ -550,7 +550,7 @@ func stepLeader(r *raft, m pb.Message) {
 				case pr.State == ProgressStateProbe:
 					pr.becomeReplicate()
 				case pr.State == ProgressStateSnapshot && pr.maybeSnapshotAbort():
-					r.logger.Infof("%x snapshot aborted, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+					r.logger.Debugf("%x snapshot aborted, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 					pr.becomeProbe()
 				case pr.State == ProgressStateReplicate:
 					pr.ins.freeTo(m.Index)
@@ -583,11 +583,11 @@ func stepLeader(r *raft, m pb.Message) {
 		}
 		if !m.Reject {
 			pr.becomeProbe()
-			r.logger.Infof("%x snapshot succeeded, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+			r.logger.Debugf("%x snapshot succeeded, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 		} else {
 			pr.snapshotFailure()
 			pr.becomeProbe()
-			r.logger.Infof("%x snapshot failed, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
+			r.logger.Debugf("%x snapshot failed, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 		}
 		// If snapshot finish, wait for the msgAppResp from the remote node before sending
 		// out the next msgApp.
