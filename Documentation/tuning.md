@@ -10,7 +10,7 @@ The network isn't the only source of latency. Each request and response may be i
 The underlying distributed consensus protocol relies on two separate time parameters to ensure that nodes can handoff leadership if one stalls or goes offline.
 The first parameter is called the *Heartbeat Interval*.
 This is the frequency with which the leader will notify followers that it is still the leader.
-etcd batches commands together for higher throughput so this heartbeat interval is also a delay for how long it takes for commands to be committed.
+For best pratices, the parameter should be set around round-trip time between members.
 By default, etcd uses a `100ms` heartbeat interval.
 
 The second parameter is the *Election Timeout*.
@@ -18,17 +18,21 @@ This timeout is how long a follower node will go without hearing a heartbeat bef
 By default, etcd uses a `1000ms` election timeout.
 
 Adjusting these values is a trade off.
-Lowering the heartbeat interval will cause individual commands to be committed faster but it will lower the overall throughput of etcd.
-If your etcd instances have low utilization then lowering the heartbeat interval can improve your command response time.
+The value of heartbeat interval is recommended to be around the maximum of average round-trip time (RTT) between members, normally around 0.5-1.5x the round-trip time.
+If heartbeat interval is too low, etcd will send unnecessary messages that increase the usage of CPU and network resources.
+On the other side, a too high heartbeat interval leads to high election timeout. Higher election timeout takes longer time to detect a leader failure.
+The easiest way to measure round-trip time (RTT) is to use [PING utility](https://en.wikipedia.org/wiki/Ping_(networking_utility)).
 
-The election timeout should be set based on the heartbeat interval and your network ping time between nodes.
-Election timeouts should be at least 10 times your ping time so it can account for variance in your network.
-For example, if the ping time between your nodes is 10ms then you should have at least a 100ms election timeout.
+The election timeout should be set based on the heartbeat interval and average round-trip time between members.
+Election timeouts must be at least 10 times the round-trip time so it can account for variance in your network.
+For example, if the round-trip time between your members is 10ms then you should have at least a 100ms election timeout.
 
 The upper limit of election timeout is 50000ms, which should only be used when deploying global etcd cluster. First, 5s is the upper limit of average global round-trip time. A reasonable round-trip time for the continental united states is 130ms, and the time between US and japan is around 350-400ms. Because package gets delayed a lot, and network situation may be terrible, 5s is a safe value for it. Then, because election timeout should be an order of magnitude bigger than broadcast time, 50s becomes its maximum.
 
 You should also set your election timeout to at least 5 to 10 times your heartbeat interval to account for variance in leader replication.
 For a heartbeat interval of 50ms you should set your election timeout to at least 250ms - 500ms.
+
+The heartbeat interval and election timeout value should be the same for all members in one cluster. Setting different values for etcd members may disrupt cluster stability.
 
 You can override the default values on the command line:
 
