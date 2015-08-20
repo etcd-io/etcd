@@ -9,20 +9,20 @@ func TestIndexPutAndGet(t *testing.T) {
 	index := newTestTreeIndex()
 
 	tests := []T{
-		{[]byte("foo"), 0, ErrReversionNotFound, 0},
+		{[]byte("foo"), 0, ErrRevisionNotFound, 0},
 		{[]byte("foo"), 1, nil, 1},
 		{[]byte("foo"), 3, nil, 1},
 		{[]byte("foo"), 5, nil, 5},
 		{[]byte("foo"), 6, nil, 5},
 
-		{[]byte("foo1"), 0, ErrReversionNotFound, 0},
-		{[]byte("foo1"), 1, ErrReversionNotFound, 0},
+		{[]byte("foo1"), 0, ErrRevisionNotFound, 0},
+		{[]byte("foo1"), 1, ErrRevisionNotFound, 0},
 		{[]byte("foo1"), 2, nil, 2},
 		{[]byte("foo1"), 5, nil, 2},
 		{[]byte("foo1"), 6, nil, 6},
 
-		{[]byte("foo2"), 0, ErrReversionNotFound, 0},
-		{[]byte("foo2"), 1, ErrReversionNotFound, 0},
+		{[]byte("foo2"), 0, ErrRevisionNotFound, 0},
+		{[]byte("foo2"), 1, ErrRevisionNotFound, 0},
 		{[]byte("foo2"), 3, nil, 3},
 		{[]byte("foo2"), 4, nil, 4},
 		{[]byte("foo2"), 6, nil, 4},
@@ -33,11 +33,11 @@ func TestIndexPutAndGet(t *testing.T) {
 func TestIndexRange(t *testing.T) {
 	atRev := int64(3)
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
-	allRevs := []reversion{{main: 1}, {main: 2}, {main: 3}}
+	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}}
 	tests := []struct {
 		key, end []byte
 		wkeys    [][]byte
-		wrevs    []reversion
+		wrevs    []revision
 	}{
 		// single key that not found
 		{
@@ -87,7 +87,7 @@ func TestIndexRange(t *testing.T) {
 func TestIndexTombstone(t *testing.T) {
 	index := newTestTreeIndex()
 
-	err := index.Tombstone([]byte("foo"), reversion{main: 7})
+	err := index.Tombstone([]byte("foo"), revision{main: 7})
 	if err != nil {
 		t.Errorf("tombstone error = %v, want nil", err)
 	}
@@ -95,9 +95,9 @@ func TestIndexTombstone(t *testing.T) {
 	if err != nil {
 		t.Errorf("get error = %v, want nil", err)
 	}
-	w := reversion{main: 7}
+	w := revision{main: 7}
 	if !reflect.DeepEqual(rev, w) {
-		t.Errorf("get reversion = %+v, want %+v", rev, w)
+		t.Errorf("get revision = %+v, want %+v", rev, w)
 	}
 }
 
@@ -105,26 +105,26 @@ func TestContinuousCompact(t *testing.T) {
 	index := newTestTreeIndex()
 
 	tests := []T{
-		{[]byte("foo"), 0, ErrReversionNotFound, 0},
+		{[]byte("foo"), 0, ErrRevisionNotFound, 0},
 		{[]byte("foo"), 1, nil, 1},
 		{[]byte("foo"), 3, nil, 1},
 		{[]byte("foo"), 5, nil, 5},
 		{[]byte("foo"), 6, nil, 5},
 
-		{[]byte("foo1"), 0, ErrReversionNotFound, 0},
-		{[]byte("foo1"), 1, ErrReversionNotFound, 0},
+		{[]byte("foo1"), 0, ErrRevisionNotFound, 0},
+		{[]byte("foo1"), 1, ErrRevisionNotFound, 0},
 		{[]byte("foo1"), 2, nil, 2},
 		{[]byte("foo1"), 5, nil, 2},
 		{[]byte("foo1"), 6, nil, 6},
 
-		{[]byte("foo2"), 0, ErrReversionNotFound, 0},
-		{[]byte("foo2"), 1, ErrReversionNotFound, 0},
+		{[]byte("foo2"), 0, ErrRevisionNotFound, 0},
+		{[]byte("foo2"), 1, ErrRevisionNotFound, 0},
 		{[]byte("foo2"), 3, nil, 3},
 		{[]byte("foo2"), 4, nil, 4},
 		{[]byte("foo2"), 6, nil, 4},
 	}
-	wa := map[reversion]struct{}{
-		reversion{main: 1}: struct{}{},
+	wa := map[revision]struct{}{
+		revision{main: 1}: struct{}{},
 	}
 	ga := index.Compact(1)
 	if !reflect.DeepEqual(ga, wa) {
@@ -132,9 +132,9 @@ func TestContinuousCompact(t *testing.T) {
 	}
 	verify(t, index, tests)
 
-	wa = map[reversion]struct{}{
-		reversion{main: 1}: struct{}{},
-		reversion{main: 2}: struct{}{},
+	wa = map[revision]struct{}{
+		revision{main: 1}: struct{}{},
+		revision{main: 2}: struct{}{},
 	}
 	ga = index.Compact(2)
 	if !reflect.DeepEqual(ga, wa) {
@@ -142,10 +142,10 @@ func TestContinuousCompact(t *testing.T) {
 	}
 	verify(t, index, tests)
 
-	wa = map[reversion]struct{}{
-		reversion{main: 1}: struct{}{},
-		reversion{main: 2}: struct{}{},
-		reversion{main: 3}: struct{}{},
+	wa = map[revision]struct{}{
+		revision{main: 1}: struct{}{},
+		revision{main: 2}: struct{}{},
+		revision{main: 3}: struct{}{},
 	}
 	ga = index.Compact(3)
 	if !reflect.DeepEqual(ga, wa) {
@@ -153,45 +153,45 @@ func TestContinuousCompact(t *testing.T) {
 	}
 	verify(t, index, tests)
 
-	wa = map[reversion]struct{}{
-		reversion{main: 1}: struct{}{},
-		reversion{main: 2}: struct{}{},
-		reversion{main: 4}: struct{}{},
+	wa = map[revision]struct{}{
+		revision{main: 1}: struct{}{},
+		revision{main: 2}: struct{}{},
+		revision{main: 4}: struct{}{},
 	}
 	ga = index.Compact(4)
-	delete(wa, reversion{main: 3})
-	tests[12] = T{[]byte("foo2"), 3, ErrReversionNotFound, 0}
+	delete(wa, revision{main: 3})
+	tests[12] = T{[]byte("foo2"), 3, ErrRevisionNotFound, 0}
 	if !reflect.DeepEqual(wa, ga) {
 		t.Errorf("a = %v, want %v", ga, wa)
 	}
 	verify(t, index, tests)
 
-	wa = map[reversion]struct{}{
-		reversion{main: 2}: struct{}{},
-		reversion{main: 4}: struct{}{},
-		reversion{main: 5}: struct{}{},
+	wa = map[revision]struct{}{
+		revision{main: 2}: struct{}{},
+		revision{main: 4}: struct{}{},
+		revision{main: 5}: struct{}{},
 	}
 	ga = index.Compact(5)
-	delete(wa, reversion{main: 1})
+	delete(wa, revision{main: 1})
 	if !reflect.DeepEqual(ga, wa) {
 		t.Errorf("a = %v, want %v", ga, wa)
 	}
-	tests[1] = T{[]byte("foo"), 1, ErrReversionNotFound, 0}
-	tests[2] = T{[]byte("foo"), 3, ErrReversionNotFound, 0}
+	tests[1] = T{[]byte("foo"), 1, ErrRevisionNotFound, 0}
+	tests[2] = T{[]byte("foo"), 3, ErrRevisionNotFound, 0}
 	verify(t, index, tests)
 
-	wa = map[reversion]struct{}{
-		reversion{main: 4}: struct{}{},
-		reversion{main: 5}: struct{}{},
-		reversion{main: 6}: struct{}{},
+	wa = map[revision]struct{}{
+		revision{main: 4}: struct{}{},
+		revision{main: 5}: struct{}{},
+		revision{main: 6}: struct{}{},
 	}
 	ga = index.Compact(6)
-	delete(wa, reversion{main: 2})
+	delete(wa, revision{main: 2})
 	if !reflect.DeepEqual(ga, wa) {
 		t.Errorf("a = %v, want %v", ga, wa)
 	}
-	tests[7] = T{[]byte("foo1"), 2, ErrReversionNotFound, 0}
-	tests[8] = T{[]byte("foo1"), 5, ErrReversionNotFound, 0}
+	tests[7] = T{[]byte("foo1"), 2, ErrRevisionNotFound, 0}
+	tests[8] = T{[]byte("foo1"), 5, ErrRevisionNotFound, 0}
 	verify(t, index, tests)
 }
 
@@ -217,11 +217,11 @@ type T struct {
 
 func newTestTreeIndex() index {
 	index := newTreeIndex()
-	index.Put([]byte("foo"), reversion{main: 1})
-	index.Put([]byte("foo1"), reversion{main: 2})
-	index.Put([]byte("foo2"), reversion{main: 3})
-	index.Put([]byte("foo2"), reversion{main: 4})
-	index.Put([]byte("foo"), reversion{main: 5})
-	index.Put([]byte("foo1"), reversion{main: 6})
+	index.Put([]byte("foo"), revision{main: 1})
+	index.Put([]byte("foo1"), revision{main: 2})
+	index.Put([]byte("foo2"), revision{main: 3})
+	index.Put([]byte("foo2"), revision{main: 4})
+	index.Put([]byte("foo"), revision{main: 5})
+	index.Put([]byte("foo1"), revision{main: 6})
 	return index
 }

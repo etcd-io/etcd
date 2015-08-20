@@ -23,8 +23,8 @@ var (
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
 	ErrTxnIDMismatch = errors.New("storage: txn id mismatch")
-	ErrCompacted     = errors.New("storage: required reversion has been compacted")
-	ErrFutureRev     = errors.New("storage: required reversion is a future reversion")
+	ErrCompacted     = errors.New("storage: required revision has been compacted")
+	ErrFutureRev     = errors.New("storage: required revision is a future revision")
 )
 
 type store struct {
@@ -33,8 +33,8 @@ type store struct {
 	b       backend.Backend
 	kvindex index
 
-	currentRev reversion
-	// the main reversion of the last compaction
+	currentRev revision
+	// the main revision of the last compaction
 	compactMainRev int64
 
 	tmu   sync.Mutex // protect the txnID field
@@ -52,7 +52,7 @@ func newStore(path string) *store {
 	s := &store{
 		b:              backend.New(path, batchInterval, batchLimit),
 		kvindex:        newTreeIndex(),
-		currentRev:     reversion{},
+		currentRev:     revision{},
 		compactMainRev: -1,
 		stopc:          make(chan struct{}),
 	}
@@ -160,7 +160,7 @@ func (s *store) Compact(rev int64) error {
 	s.compactMainRev = rev
 
 	rbytes := newRevBytes()
-	revToBytes(reversion{main: rev}, rbytes)
+	revToBytes(revision{main: rev}, rbytes)
 
 	tx := s.b.BatchTx()
 	tx.Lock()
@@ -184,8 +184,8 @@ func (s *store) Restore() error {
 	defer s.mu.Unlock()
 
 	min, max := newRevBytes(), newRevBytes()
-	revToBytes(reversion{}, min)
-	revToBytes(reversion{main: math.MaxInt64, sub: math.MaxInt64}, max)
+	revToBytes(revision{}, min)
+	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, max)
 
 	// restore index
 	tx := s.b.BatchTx()
@@ -209,14 +209,14 @@ func (s *store) Restore() error {
 		// restore index
 		switch e.Type {
 		case storagepb.PUT:
-			s.kvindex.Restore(e.Kv.Key, reversion{e.Kv.CreateIndex, 0}, rev, e.Kv.Version)
+			s.kvindex.Restore(e.Kv.Key, revision{e.Kv.CreateIndex, 0}, rev, e.Kv.Version)
 		case storagepb.DELETE:
 			s.kvindex.Tombstone(e.Kv.Key, rev)
 		default:
 			log.Panicf("storage: unexpected event type %s", e.Type)
 		}
 
-		// update reversion
+		// update revision
 		s.currentRev = rev
 	}
 
@@ -308,7 +308,7 @@ func (s *store) put(key, value []byte, rev int64) {
 	}
 
 	ibytes := newRevBytes()
-	revToBytes(reversion{main: rev, sub: s.currentRev.sub}, ibytes)
+	revToBytes(revision{main: rev, sub: s.currentRev.sub}, ibytes)
 
 	ver = ver + 1
 	event := storagepb.Event{
@@ -331,7 +331,7 @@ func (s *store) put(key, value []byte, rev int64) {
 	tx.Lock()
 	defer tx.Unlock()
 	tx.UnsafePut(keyBucketName, ibytes, d)
-	s.kvindex.Put(key, reversion{main: rev, sub: s.currentRev.sub})
+	s.kvindex.Put(key, revision{main: rev, sub: s.currentRev.sub})
 	s.currentRev.sub += 1
 }
 
@@ -388,7 +388,7 @@ func (s *store) delete(key []byte, mainrev int64) bool {
 	}
 
 	ibytes := newRevBytes()
-	revToBytes(reversion{main: mainrev, sub: s.currentRev.sub}, ibytes)
+	revToBytes(revision{main: mainrev, sub: s.currentRev.sub}, ibytes)
 
 	event := storagepb.Event{
 		Type: storagepb.DELETE,
@@ -403,7 +403,7 @@ func (s *store) delete(key []byte, mainrev int64) bool {
 	}
 
 	tx.UnsafePut(keyBucketName, ibytes, d)
-	err = s.kvindex.Tombstone(key, reversion{main: mainrev, sub: s.currentRev.sub})
+	err = s.kvindex.Tombstone(key, revision{main: mainrev, sub: s.currentRev.sub})
 	if err != nil {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
 	}

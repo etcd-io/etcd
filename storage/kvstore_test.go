@@ -407,9 +407,9 @@ func TestRestore(t *testing.T) {
 	s0.DeleteRange([]byte("foo3"), nil)
 
 	mink := newRevBytes()
-	revToBytes(reversion{main: 0, sub: 0}, mink)
+	revToBytes(revision{main: 0, sub: 0}, mink)
 	maxk := newRevBytes()
-	revToBytes(reversion{main: math.MaxInt64, sub: math.MaxInt64}, maxk)
+	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, maxk)
 	s0kvs, _, err := s0.rangeKeys(mink, maxk, 0, 0)
 	if err != nil {
 		t.Fatalf("rangeKeys on s0 error (%v)", err)
@@ -442,7 +442,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 
 	// write scheduled compaction, but not do compaction
 	rbytes := newRevBytes()
-	revToBytes(reversion{main: 2}, rbytes)
+	revToBytes(revision{main: 2}, rbytes)
 	tx := s0.b.BatchTx()
 	tx.Lock()
 	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
@@ -462,7 +462,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	// check the key in backend is deleted
 	revbytes := newRevBytes()
 	// TODO: compact should delete main=2 key too
-	revToBytes(reversion{main: 1}, revbytes)
+	revToBytes(revision{main: 1}, revbytes)
 	tx = s1.b.BatchTx()
 	tx.Lock()
 	ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
