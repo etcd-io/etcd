@@ -8,12 +8,12 @@ import (
 )
 
 type index interface {
-	Get(key []byte, atRev int64) (rev, created reversion, ver int64, err error)
-	Range(key, end []byte, atRev int64) ([][]byte, []reversion)
-	Put(key []byte, rev reversion)
-	Restore(key []byte, created, modified reversion, ver int64)
-	Tombstone(key []byte, rev reversion) error
-	Compact(rev int64) map[reversion]struct{}
+	Get(key []byte, atRev int64) (rev, created revision, ver int64, err error)
+	Range(key, end []byte, atRev int64) ([][]byte, []revision)
+	Put(key []byte, rev revision)
+	Restore(key []byte, created, modified revision, ver int64)
+	Tombstone(key []byte, rev revision) error
+	Compact(rev int64) map[revision]struct{}
 	Equal(b index) bool
 }
 
@@ -28,7 +28,7 @@ func newTreeIndex() index {
 	}
 }
 
-func (ti *treeIndex) Put(key []byte, rev reversion) {
+func (ti *treeIndex) Put(key []byte, rev revision) {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
@@ -43,7 +43,7 @@ func (ti *treeIndex) Put(key []byte, rev reversion) {
 	okeyi.put(rev.main, rev.sub)
 }
 
-func (ti *treeIndex) Restore(key []byte, created, modified reversion, ver int64) {
+func (ti *treeIndex) Restore(key []byte, created, modified revision, ver int64) {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
@@ -58,27 +58,27 @@ func (ti *treeIndex) Restore(key []byte, created, modified reversion, ver int64)
 	okeyi.put(modified.main, modified.sub)
 }
 
-func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created reversion, ver int64, err error) {
+func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
 	keyi := &keyIndex{key: key}
 
 	ti.RLock()
 	defer ti.RUnlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		return reversion{}, reversion{}, 0, ErrReversionNotFound
+		return revision{}, revision{}, 0, ErrRevisionNotFound
 	}
 
 	keyi = item.(*keyIndex)
 	return keyi.get(atRev)
 }
 
-func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []reversion) {
+func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []revision) {
 	if end == nil {
 		rev, _, _, err := ti.Get(key, atRev)
 		if err != nil {
 			return nil, nil
 		}
-		return [][]byte{key}, []reversion{rev}
+		return [][]byte{key}, []revision{rev}
 	}
 
 	keyi := &keyIndex{key: key}
@@ -104,14 +104,14 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 	return keys, revs
 }
 
-func (ti *treeIndex) Tombstone(key []byte, rev reversion) error {
+func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
 	defer ti.Unlock()
 	item := ti.tree.Get(keyi)
 	if item == nil {
-		return ErrReversionNotFound
+		return ErrRevisionNotFound
 	}
 
 	ki := item.(*keyIndex)
@@ -119,8 +119,8 @@ func (ti *treeIndex) Tombstone(key []byte, rev reversion) error {
 	return nil
 }
 
-func (ti *treeIndex) Compact(rev int64) map[reversion]struct{} {
-	available := make(map[reversion]struct{})
+func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
+	available := make(map[revision]struct{})
 	emptyki := make([]*keyIndex, 0)
 	log.Printf("store.index: compact %d", rev)
 	// TODO: do not hold the lock for long time?
@@ -137,7 +137,7 @@ func (ti *treeIndex) Compact(rev int64) map[reversion]struct{} {
 	return available
 }
 
-func compactIndex(rev int64, available map[reversion]struct{}, emptyki *[]*keyIndex) func(i btree.Item) bool {
+func compactIndex(rev int64, available map[revision]struct{}, emptyki *[]*keyIndex) func(i btree.Item) bool {
 	return func(i btree.Item) bool {
 		keyi := i.(*keyIndex)
 		keyi.compact(rev, available)

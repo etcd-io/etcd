@@ -7,17 +7,17 @@ import (
 	"testing"
 )
 
-// TestReversion tests that reversion could be encoded to and decoded from
+// TestRevision tests that revision could be encoded to and decoded from
 // bytes slice. Moreover, the lexicograph order of its byte slice representation
 // follows the order of (main, sub).
-func TestReversion(t *testing.T) {
-	tests := []reversion{
+func TestRevision(t *testing.T) {
+	tests := []revision{
 		// order in (main, sub)
-		reversion{},
-		reversion{main: 1, sub: 0},
-		reversion{main: 1, sub: 1},
-		reversion{main: 2, sub: 0},
-		reversion{main: math.MaxInt64, sub: math.MaxInt64},
+		revision{},
+		revision{main: 1, sub: 0},
+		revision{main: 1, sub: 1},
+		revision{main: 2, sub: 0},
+		revision{main: math.MaxInt64, sub: math.MaxInt64},
 	}
 
 	bs := make([][]byte, len(tests))
@@ -27,7 +27,7 @@ func TestReversion(t *testing.T) {
 		bs[i] = b
 
 		if grev := bytesToRev(b); !reflect.DeepEqual(grev, tt) {
-			t.Errorf("#%d: reversion = %+v, want %+v", i, grev, tt)
+			t.Errorf("#%d: revision = %+v, want %+v", i, grev, tt)
 		}
 	}
 

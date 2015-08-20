@@ -13,7 +13,7 @@ func TestKeyIndexGet(t *testing.T) {
 	//    {8[1], 10[2], 12(t)[3]}
 	//    {4[2], 6(t)[3]}
 	ki := newTestKeyIndex()
-	ki.compact(4, make(map[reversion]struct{}))
+	ki.compact(4, make(map[revision]struct{}))
 
 	tests := []struct {
 		rev int64
@@ -55,8 +55,8 @@ func TestKeyIndexPut(t *testing.T) {
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
-		modified:    reversion{5, 0},
-		generations: []generation{{created: reversion{5, 0}, ver: 1, revs: []reversion{{main: 5}}}},
+		modified:    revision{5, 0},
+		generations: []generation{{created: revision{5, 0}, ver: 1, revs: []revision{{main: 5}}}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -66,8 +66,8 @@ func TestKeyIndexPut(t *testing.T) {
 
 	wki = &keyIndex{
 		key:         []byte("foo"),
-		modified:    reversion{7, 0},
-		generations: []generation{{created: reversion{5, 0}, ver: 2, revs: []reversion{{main: 5}, {main: 7}}}},
+		modified:    revision{7, 0},
+		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -82,8 +82,8 @@ func TestKeyIndexTombstone(t *testing.T) {
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
-		modified:    reversion{7, 0},
-		generations: []generation{{created: reversion{5, 0}, ver: 2, revs: []reversion{{main: 5}, {main: 7}}}, {}},
+		modified:    revision{7, 0},
+		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}}, {}},
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
@@ -95,10 +95,10 @@ func TestKeyIndexTombstone(t *testing.T) {
 
 	wki = &keyIndex{
 		key:      []byte("foo"),
-		modified: reversion{15, 0},
+		modified: revision{15, 0},
 		generations: []generation{
-			{created: reversion{5, 0}, ver: 2, revs: []reversion{{main: 5}, {main: 7}}},
-			{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 9}, {main: 15}}},
+			{created: revision{5, 0}, ver: 2, revs: []revision{{main: 5}, {main: 7}}},
+			{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 9}, {main: 15}}},
 			{},
 		},
 	}
@@ -112,176 +112,176 @@ func TestKeyIndexCompact(t *testing.T) {
 		compact int64
 
 		wki *keyIndex
-		wam map[reversion]struct{}
+		wam map[revision]struct{}
 	}{
 		{
 			1,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{},
+			map[revision]struct{}{},
 		},
 		{
 			2,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{
-				reversion{main: 2}: struct{}{},
+			map[revision]struct{}{
+				revision{main: 2}: struct{}{},
 			},
 		},
 		{
 			3,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 2}, {main: 4}, {main: 6}}},
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 2}, {main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{
-				reversion{main: 2}: struct{}{},
+			map[revision]struct{}{
+				revision{main: 2}: struct{}{},
 			},
 		},
 		{
 			4,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 4}, {main: 6}}},
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{
-				reversion{main: 4}: struct{}{},
+			map[revision]struct{}{
+				revision{main: 4}: struct{}{},
 			},
 		},
 		{
 			5,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{2, 0}, ver: 3, revs: []reversion{{main: 4}, {main: 6}}},
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{2, 0}, ver: 3, revs: []revision{{main: 4}, {main: 6}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{
-				reversion{main: 4}: struct{}{},
+			map[revision]struct{}{
+				revision{main: 4}: struct{}{},
 			},
 		},
 		{
 			6,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{},
+			map[revision]struct{}{},
 		},
 		{
 			7,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{},
+			map[revision]struct{}{},
 		},
 		{
 			8,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{
-				reversion{main: 8}: struct{}{},
+			map[revision]struct{}{
+				revision{main: 8}: struct{}{},
 			},
 		},
 		{
 			9,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 8}, {main: 10}, {main: 12}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{
-				reversion{main: 8}: struct{}{},
+			map[revision]struct{}{
+				revision{main: 8}: struct{}{},
 			},
 		},
 		{
 			10,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 10}, {main: 12}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{
-				reversion{main: 10}: struct{}{},
+			map[revision]struct{}{
+				revision{main: 10}: struct{}{},
 			},
 		},
 		{
 			11,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: reversion{12, 0},
+				modified: revision{12, 0},
 				generations: []generation{
-					{created: reversion{8, 0}, ver: 3, revs: []reversion{{main: 10}, {main: 12}}},
+					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 10}, {main: 12}}},
 					{},
 				},
 			},
-			map[reversion]struct{}{
-				reversion{main: 10}: struct{}{},
+			map[revision]struct{}{
+				revision{main: 10}: struct{}{},
 			},
 		},
 		{
 			12,
 			&keyIndex{
 				key:         []byte("foo"),
-				modified:    reversion{12, 0},
+				modified:    revision{12, 0},
 				generations: []generation{{}},
 			},
-			map[reversion]struct{}{},
+			map[revision]struct{}{},
 		},
 	}
 
 	// Continous Compaction
 	ki := newTestKeyIndex()
 	for i, tt := range tests {
-		am := make(map[reversion]struct{})
+		am := make(map[revision]struct{})
 		ki.compact(tt.compact, am)
 		if !reflect.DeepEqual(ki, tt.wki) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
@@ -294,7 +294,7 @@ func TestKeyIndexCompact(t *testing.T) {
 	// Jump Compaction
 	for i, tt := range tests {
 		if (i%2 == 0 && i < 6) && (i%2 == 1 && i > 6) {
-			am := make(map[reversion]struct{})
+			am := make(map[revision]struct{})
 			ki.compact(tt.compact, am)
 			if !reflect.DeepEqual(ki, tt.wki) {
 				t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
@@ -308,7 +308,7 @@ func TestKeyIndexCompact(t *testing.T) {
 	// OnceCompaction
 	for i, tt := range tests {
 		ki := newTestKeyIndex()
-		am := make(map[reversion]struct{})
+		am := make(map[revision]struct{})
 		ki.compact(tt.compact, am)
 		if !reflect.DeepEqual(ki, tt.wki) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
