@@ -210,7 +210,7 @@ func TestAllUsers(t *testing.T) {
 	}
 	expected := []string{"cat", "dog"}
 
-	s := store{d, testTimeout, false}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
 	users, err := s.AllUsers()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -238,7 +238,7 @@ func TestGetAndDeleteUser(t *testing.T) {
 	}
 	expected := User{User: "cat", Roles: []string{"animal"}}
 
-	s := store{d, testTimeout, false}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
 	out, err := s.GetUser("cat")
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -275,7 +275,7 @@ func TestAllRoles(t *testing.T) {
 	}
 	expected := []string{"animal", "human", "root"}
 
-	s := store{d, testTimeout, false}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
 	out, err := s.AllRoles()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -303,7 +303,7 @@ func TestGetAndDeleteRole(t *testing.T) {
 	}
 	expected := Role{Role: "animal"}
 
-	s := store{d, testTimeout, false}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
 	out, err := s.GetRole("animal")
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -350,7 +350,7 @@ func TestEnsure(t *testing.T) {
 		},
 	}
 
-	s := store{d, testTimeout, false}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: false}
 	err := s.ensureAuthDirectories()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -410,7 +410,7 @@ func TestCreateAndUpdateUser(t *testing.T) {
 	update := User{User: "cat", Grant: []string{"pet"}}
 	expected := User{User: "cat", Roles: []string{"animal", "pet"}}
 
-	s := store{d, testTimeout, true}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
 	out, created, err := s.CreateOrUpdateUser(user)
 	if created == false {
 		t.Error("Should have created user, instead updated?")
@@ -465,7 +465,7 @@ func TestUpdateRole(t *testing.T) {
 	update := Role{Role: "animal", Grant: &Permissions{KV: RWPermission{Read: []string{}, Write: []string{"/animal"}}}}
 	expected := Role{Role: "animal", Permissions: Permissions{KV: RWPermission{Read: []string{"/animal"}, Write: []string{"/animal"}}}}
 
-	s := store{d, testTimeout, true}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
 	out, err := s.UpdateRole(update)
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -496,7 +496,7 @@ func TestCreateRole(t *testing.T) {
 	}
 	r := Role{Role: "animal", Permissions: Permissions{KV: RWPermission{Read: []string{"/animal"}, Write: []string{}}}}
 
-	s := store{d, testTimeout, true}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
 	err := s.CreateRole(Role{Role: "root"})
 	if err == nil {
 		t.Error("Should error creating root role")
@@ -562,7 +562,7 @@ func TestEnableAuth(t *testing.T) {
 		},
 		explicitlyEnabled: false,
 	}
-	s := store{d, testTimeout, true}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
 	err := s.EnableAuth()
 	if err != nil {
 		t.Error("Unexpected error", err)
@@ -605,11 +605,14 @@ func TestDisableAuth(t *testing.T) {
 		},
 		explicitlyEnabled: false,
 	}
-	s := store{d, testTimeout, true}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
 	err := s.DisableAuth()
 	if err == nil {
 		t.Error("Expected error; already disabled")
 	}
+
+	// clear cache
+	s.enabled = nil
 	err = s.DisableAuth()
 	if err != nil {
 		t.Error("Unexpected error", err)
