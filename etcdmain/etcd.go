@@ -45,6 +45,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/version"
 )
 
 type dirType string
@@ -88,6 +89,11 @@ func Main() {
 	setupLogging(cfg)
 
 	var stopped <-chan struct{}
+
+	plog.Infof("etcd Version: %s\n", version.Version)
+	plog.Infof("Git SHA: %s\n", version.GitSHA)
+	plog.Infof("Go Version: %s\n", runtime.Version())
+	plog.Infof("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 
 	GoMaxProcs := 1
 	if envMaxProcs, err := strconv.Atoi(os.Getenv("GOMAXPROCS")); err == nil {
