@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"reflect"
 	"sort"
 	"time"
 
+	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 )
 
@@ -92,11 +92,12 @@ func (c *ServerConfig) verifyLocalMember(strict bool) error {
 	}
 
 	// Advertised peer URLs must match those in the cluster peer list
+	// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
 	apurls := c.PeerURLs.StringSlice()
 	sort.Strings(apurls)
 	urls.Sort()
 	if strict {
-		if !reflect.DeepEqual(apurls, urls.StringSlice()) {
+		if !netutil.URLStringsEqual(apurls, urls.StringSlice()) {
 			return fmt.Errorf("advertise URLs of %q do not match in --initial-advertise-peer-urls %s and --initial-cluster %s", c.Name, apurls, urls.StringSlice())
 		}
 	}
