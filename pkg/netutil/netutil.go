@@ -85,7 +85,7 @@ func URLStringsEqual(a []string, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	urlsA := make([]url.URL, len(a))
+	urlsA := make([]url.URL, 0)
 	for _, str := range a {
 		u, err := url.Parse(str)
 		if err != nil {
@@ -93,7 +93,7 @@ func URLStringsEqual(a []string, b []string) bool {
 		}
 		urlsA = append(urlsA, *u)
 	}
-	urlsB := make([]url.URL, len(b))
+	urlsB := make([]url.URL, 0)
 	for _, str := range b {
 		u, err := url.Parse(str)
 		if err != nil {
