@@ -19,9 +19,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/pkg/types"
 )
 
 var (
@@ -31,16 +34,25 @@ var (
 	resolveTCPAddr = net.ResolveTCPAddr
 )
 
-// ResolveTCPAddrs is a convenience wrapper for net.ResolveTCPAddr.
-// ResolveTCPAddrs resolves all DNS hostnames in-place for the given set of
-// url.URLs.
-func ResolveTCPAddrs(urls ...[]url.URL) error {
+// resolveTCPAddrs is a convenience wrapper for net.ResolveTCPAddr.
+// resolveTCPAddrs return a new set of url.URLs, in which all DNS hostnames
+// are resolved.
+func resolveTCPAddrs(urls [][]url.URL) ([][]url.URL, error) {
+	newurls := make([][]url.URL, 0)
 	for _, us := range urls {
+		nus := make([]url.URL, len(us))
 		for i, u := range us {
+			nu, err := url.Parse(u.String())
+			if err != nil {
+				return nil, err
+			}
+			nus[i] = *nu
+		}
+		for i, u := range nus {
 			host, _, err := net.SplitHostPort(u.Host)
 			if err != nil {
 				plog.Errorf("could not parse url %s during tcp resolving", u.Host)
-				return err
+				return nil, err
 			}
 			if host == "localhost" {
 				continue
@@ -51,13 +63,60 @@ func ResolveTCPAddrs(urls ...[]url.URL) error {
 			tcpAddr, err := resolveTCPAddr("tcp", u.Host)
 			if err != nil {
 				plog.Errorf("could not resolve host %s", u.Host)
-				return err
+				return nil, err
 			}
 			plog.Infof("resolving %s to %s", u.Host, tcpAddr.String())
-			us[i].Host = tcpAddr.String()
+			nus[i].Host = tcpAddr.String()
+		}
+		newurls = append(newurls, nus)
+	}
+	return newurls, nil
+}
+
+// urlsEqual checks equality of url.URLS between two arrays.
+// This check pass even if an URL is in hostname and opposite is in IP address.
+func urlsEqual(a []url.URL, b []url.URL) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	urls, err := resolveTCPAddrs([][]url.URL{a, b})
+	if err != nil {
+		return false
+	}
+	a, b = urls[0], urls[1]
+	sort.Sort(types.URLs(a))
+	sort.Sort(types.URLs(b))
+	for i := range a {
+		if !reflect.DeepEqual(a[i], b[i]) {
+			return false
 		}
 	}
-	return nil
+
+	return true
+}
+
+func URLStringsEqual(a []string, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	urlsA := make([]url.URL, 0)
+	for _, str := range a {
+		u, err := url.Parse(str)
+		if err != nil {
+			return false
+		}
+		urlsA = append(urlsA, *u)
+	}
+	urlsB := make([]url.URL, 0)
+	for _, str := range b {
+		u, err := url.Parse(str)
+		if err != nil {
+			return false
+		}
+		urlsB = append(urlsB, *u)
+	}
+
+	return urlsEqual(urlsA, urlsB)
 }
 
 // BasicAuth returns the username and password provided in the request's
