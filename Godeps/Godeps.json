@@ -124,6 +124,10 @@
 			"Rev": "7dbad50ab5b31073856416cdcfeb2796d682f844"
 		},
 		{
+			"ImportPath": "golang.org/x/net/netutil",
+			"Rev": "7dbad50ab5b31073856416cdcfeb2796d682f844"
+		},
+		{
 			"ImportPath": "golang.org/x/oauth2",
 			"Rev": "3046bc76d6dfd7d3707f6640f85e42d9c4050f50"
 		},
