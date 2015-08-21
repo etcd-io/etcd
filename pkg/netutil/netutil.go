@@ -20,9 +20,11 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/pkg/types"
 )
 
 var (
@@ -67,15 +69,12 @@ func URLsEqual(a []url.URL, b []url.URL) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i, urlA := range a {
-		urlB := b[i]
-
-		if !reflect.DeepEqual(urlA, urlB) {
-			urls := []url.URL{urlA, urlB}
-			ResolveTCPAddrs(urls)
-			if !reflect.DeepEqual(urls[0], urls[1]) {
-				return false
-			}
+	ResolveTCPAddrs(a, b)
+	sort.Sort(types.URLs(a))
+	sort.Sort(types.URLs(b))
+	for i := range a {
+		if !reflect.DeepEqual(a[i], b[i]) {
+			return false
 		}
 	}
 

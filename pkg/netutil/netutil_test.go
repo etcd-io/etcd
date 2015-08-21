@@ -139,16 +139,21 @@ func TestResolveTCPAddrs(t *testing.T) {
 
 func TestURLsEqual(t *testing.T) {
 	defer func() { resolveTCPAddr = net.ResolveTCPAddr }()
+	hostm := map[string]string{
+		"example.com": "10.0.10.1",
+		"first.com":   "10.0.11.1",
+		"second.com":  "10.0.11.2",
+	}
 	resolveTCPAddr = func(network, addr string) (*net.TCPAddr, error) {
 		host, port, err := net.SplitHostPort(addr)
-		if host != "example.com" {
+		if _, ok := hostm[host]; !ok {
 			return nil, errors.New("cannot resolve host.")
 		}
 		i, err := strconv.Atoi(port)
 		if err != nil {
 			return nil, err
 		}
-		return &net.TCPAddr{IP: net.ParseIP("10.0.10.1"), Port: i, Zone: ""}, nil
+		return &net.TCPAddr{IP: net.ParseIP(hostm[host]), Port: i, Zone: ""}, nil
 	}
 
 	tests := []struct {
@@ -225,6 +230,16 @@ func TestURLsEqual(t *testing.T) {
 			a:      []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}},
 			b:      []url.URL{{Scheme: "http", Host: "10.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: false,
+		},
+		{
+			a:      []url.URL{{Scheme: "http", Host: "first.com:2379"}, {Scheme: "http", Host: "second.com:2380"}},
+			b:      []url.URL{{Scheme: "http", Host: "10.0.11.1:2379"}, {Scheme: "http", Host: "10.0.11.2:2380"}},
+			expect: true,
+		},
+		{
+			a:      []url.URL{{Scheme: "http", Host: "second.com:2380"}, {Scheme: "http", Host: "first.com:2379"}},
+			b:      []url.URL{{Scheme: "http", Host: "10.0.11.1:2379"}, {Scheme: "http", Host: "10.0.11.2:2380"}},
+			expect: true,
 		},
 	}
 
