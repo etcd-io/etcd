@@ -92,7 +92,6 @@ func (c *ServerConfig) verifyLocalMember(strict bool) error {
 	}
 
 	// Advertised peer URLs must match those in the cluster peer list
-	// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
 	apurls := c.PeerURLs.StringSlice()
 	sort.Strings(apurls)
 	urls.Sort()

@@ -424,7 +424,6 @@ func ValidateClusterAndAssignIDs(local *cluster, existing *cluster) error {
 	sort.Sort(MembersByPeerURLs(lms))
 
 	for i := range ems {
-		// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
 		if !netutil.URLStringsEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
 			return fmt.Errorf("unmatched member while checking PeerURLs")
 		}
