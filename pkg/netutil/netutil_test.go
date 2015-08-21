@@ -124,15 +124,15 @@ func TestResolveTCPAddrs(t *testing.T) {
 			}
 			return &net.TCPAddr{IP: net.ParseIP(tt.hostMap[host]), Port: i, Zone: ""}, nil
 		}
-		err := resolveTCPAddrs(tt.urls...)
+		urls, err := resolveTCPAddrs(tt.urls)
 		if tt.hasError {
 			if err == nil {
 				t.Errorf("expected error")
 			}
 			continue
 		}
-		if !reflect.DeepEqual(tt.urls, tt.expected) {
-			t.Errorf("expected: %v, got %v", tt.expected, tt.urls)
+		if !reflect.DeepEqual(urls, tt.expected) {
+			t.Errorf("expected: %v, got %v", tt.expected, urls)
 		}
 	}
 }
