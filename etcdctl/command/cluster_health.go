@@ -73,7 +73,7 @@ func handleClusterHealth(c *cli.Context) {
 
 				checked = true
 				if result.Health == "true" {
-					checked = true
+					health = true
 					fmt.Printf("member %s is healthy: got healthy result from %s\n", m.ID, url)
 				} else {
 					fmt.Printf("member %s is unhealthy: got unhealthy result from %s\n", m.ID, url)
