@@ -34,10 +34,10 @@ var (
 	resolveTCPAddr = net.ResolveTCPAddr
 )
 
-// ResolveTCPAddrs is a convenience wrapper for net.ResolveTCPAddr.
-// ResolveTCPAddrs resolves all DNS hostnames in-place for the given set of
+// resolveTCPAddrs is a convenience wrapper for net.ResolveTCPAddr.
+// resolveTCPAddrs resolves all DNS hostnames in-place for the given set of
 // url.URLs.
-func ResolveTCPAddrs(urls ...[]url.URL) error {
+func resolveTCPAddrs(urls ...[]url.URL) error {
 	for _, us := range urls {
 		for i, u := range us {
 			host, _, err := net.SplitHostPort(u.Host)
@@ -63,13 +63,13 @@ func ResolveTCPAddrs(urls ...[]url.URL) error {
 	return nil
 }
 
-// URLsEqual checks equality of url.URLS between two arrays.
+// urlsEqual checks equality of url.URLS between two arrays.
 // This check pass even if an URL is in hostname and opposite is in IP address.
-func URLsEqual(a []url.URL, b []url.URL) bool {
+func urlsEqual(a []url.URL, b []url.URL) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	ResolveTCPAddrs(a, b)
+	resolveTCPAddrs(a, b)
 	sort.Sort(types.URLs(a))
 	sort.Sort(types.URLs(b))
 	for i := range a {
@@ -102,7 +102,7 @@ func URLStringsEqual(a []string, b []string) bool {
 		urlsB = append(urlsB, *u)
 	}
 
-	return URLsEqual(urlsA, urlsB)
+	return urlsEqual(urlsA, urlsB)
 }
 
 // BasicAuth returns the username and password provided in the request's
