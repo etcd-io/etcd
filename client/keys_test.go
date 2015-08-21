@@ -105,7 +105,7 @@ func TestV2KeysURLHelper(t *testing.T) {
 }
 
 func TestGetAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
+	ep := url.URL{Scheme: "http", Host: "example.com", Path: "/v2/keys"}
 	baseWantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
@@ -171,7 +171,7 @@ func TestGetAction(t *testing.T) {
 }
 
 func TestWaitAction(t *testing.T) {
-	ep := url.URL{Scheme: "http", Host: "example.com/v2/keys"}
+	ep := url.URL{Scheme: "http", Host: "example.com", Path: "/v2/keys"}
 	baseWantURL := &url.URL{
 		Scheme: "http",
 		Host:   "example.com",
