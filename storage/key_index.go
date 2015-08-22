@@ -130,7 +130,7 @@ func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, err
 // If a generation becomes empty during compaction, it will be removed.
 func (ki *keyIndex) compact(atRev int64, available map[revision]struct{}) {
 	if ki.isEmpty() {
-		log.Panic("store.keyindex: unexpected compact on empty keyIndex %s", string(ki.key))
+		log.Panicf("store.keyindex: unexpected compact on empty keyIndex %s", string(ki.key))
 	}
 
 	// walk until reaching the first revision that has an revision smaller or equal to

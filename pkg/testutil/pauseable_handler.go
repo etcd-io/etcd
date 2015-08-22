@@ -35,12 +35,10 @@ func (ph *PauseableHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		hj, ok := w.(http.Hijacker)
 		if !ok {
 			panic("webserver doesn't support hijacking")
-			return
 		}
 		conn, _, err := hj.Hijack()
 		if err != nil {
 			panic(err.Error())
-			return
 		}
 		conn.Close()
 	}
