@@ -171,6 +171,8 @@ func (s *store) Compact(rev int64) error {
 	tx.Lock()
 	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
 	tx.Unlock()
+	// ensure that desired compaction is persisted
+	s.b.ForceCommit()
 
 	keep := s.kvindex.Compact(rev)
 
