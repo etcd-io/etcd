@@ -42,7 +42,7 @@ func TestWorkflow(t *testing.T) {
 		// check existing keys
 		kvs, rev, err := s.Range([]byte("bar"), []byte("bas"), 0, 0)
 		if err != nil {
-			t.Errorf("#%d: range error (%v)", err)
+			t.Errorf("#%d: range error (%v)", i, err)
 		}
 		if len(kvs) != len(wkvs) {
 			t.Fatalf("#%d: len(kvs) = %d, want %d", i, len(kvs), len(wkvs))

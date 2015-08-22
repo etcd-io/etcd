@@ -50,5 +50,4 @@ func (h *handler) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 
 func (h *handler) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	panic("not implemented")
-	return nil, nil
 }

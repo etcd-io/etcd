@@ -293,14 +293,14 @@ func TestKeyIndexCompact(t *testing.T) {
 
 	// Jump Compaction
 	for i, tt := range tests {
-		if (i%2 == 0 && i < 6) && (i%2 == 1 && i > 6) {
+		if (i%2 == 0 && i < 6) || (i%2 == 1 && i > 6) {
 			am := make(map[revision]struct{})
 			ki.compact(tt.compact, am)
 			if !reflect.DeepEqual(ki, tt.wki) {
 				t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
 			}
 			if !reflect.DeepEqual(am, tt.wam) {
-				t.Errorf("#%d: am = %+v, want %+v", am, tt.wam)
+				t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
 			}
 		}
 	}
