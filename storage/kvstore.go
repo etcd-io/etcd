@@ -146,6 +146,8 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	n = s.deleteRange(key, end, s.currentRev.main+1)
 	if n != 0 || s.currentRev.sub != 0 {
 		rev = int64(s.currentRev.main + 1)
+	} else {
+		rev = int64(s.currentRev.main)
 	}
 	return n, rev, nil
 }
