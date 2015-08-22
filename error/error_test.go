@@ -23,7 +23,7 @@ import (
 )
 
 func TestErrorWriteTo(t *testing.T) {
-	for k, _ := range errors {
+	for k := range errors {
 		err := NewError(k, "", 1)
 		rr := httptest.NewRecorder()
 		err.WriteTo(rr)
@@ -38,8 +38,8 @@ func TestErrorWriteTo(t *testing.T) {
 		}
 
 		wheader := http.Header(map[string][]string{
-			"Content-Type": []string{"application/json"},
-			"X-Etcd-Index": []string{"1"},
+			"Content-Type": {"application/json"},
+			"X-Etcd-Index": {"1"},
 		})
 
 		if !reflect.DeepEqual(wheader, rr.HeaderMap) {

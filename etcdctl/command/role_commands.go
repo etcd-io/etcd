@@ -31,27 +31,27 @@ func NewRoleCommands() cli.Command {
 		Name:  "role",
 		Usage: "role add, grant and revoke subcommands",
 		Subcommands: []cli.Command{
-			cli.Command{
+			{
 				Name:   "add",
 				Usage:  "add a new role for the etcd cluster",
 				Action: actionRoleAdd,
 			},
-			cli.Command{
+			{
 				Name:   "get",
 				Usage:  "get details for a role",
 				Action: actionRoleGet,
 			},
-			cli.Command{
+			{
 				Name:   "list",
 				Usage:  "list all roles",
 				Action: actionRoleList,
 			},
-			cli.Command{
+			{
 				Name:   "remove",
 				Usage:  "remove a role from the etcd cluster",
 				Action: actionRoleRemove,
 			},
-			cli.Command{
+			{
 				Name:  "grant",
 				Usage: "grant path matches to an etcd role",
 				Flags: []cli.Flag{
@@ -62,7 +62,7 @@ func NewRoleCommands() cli.Command {
 				},
 				Action: actionRoleGrant,
 			},
-			cli.Command{
+			{
 				Name:  "revoke",
 				Usage: "revoke path matches for an etcd role",
 				Flags: []cli.Flag{

@@ -91,7 +91,7 @@ func (us *unsafeSet) Length() int {
 // Values returns the values of the Set in an unspecified order.
 func (us *unsafeSet) Values() (values []string) {
 	values = make([]string, 0)
-	for val, _ := range us.d {
+	for val := range us.d {
 		values = append(values, val)
 	}
 	return
@@ -100,7 +100,7 @@ func (us *unsafeSet) Values() (values []string) {
 // Copy creates a new Set containing the values of the first
 func (us *unsafeSet) Copy() Set {
 	cp := NewUnsafeSet()
-	for val, _ := range us.d {
+	for val := range us.d {
 		cp.Add(val)
 	}
 

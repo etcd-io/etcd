@@ -196,10 +196,10 @@ func TestAllUsers(t *testing.T) {
 					Action: etcdstore.Get,
 					Node: &etcdstore.NodeExtern{
 						Nodes: etcdstore.NodeExterns([]*etcdstore.NodeExtern{
-							&etcdstore.NodeExtern{
+							{
 								Key: StorePermsPrefix + "/users/cat",
 							},
-							&etcdstore.NodeExtern{
+							{
 								Key: StorePermsPrefix + "/users/dog",
 							},
 						}),
@@ -260,10 +260,10 @@ func TestAllRoles(t *testing.T) {
 					Action: etcdstore.Get,
 					Node: &etcdstore.NodeExtern{
 						Nodes: etcdstore.NodeExterns([]*etcdstore.NodeExtern{
-							&etcdstore.NodeExtern{
+							{
 								Key: StorePermsPrefix + "/roles/animal",
 							},
-							&etcdstore.NodeExtern{
+							{
 								Key: StorePermsPrefix + "/roles/human",
 							},
 						}),

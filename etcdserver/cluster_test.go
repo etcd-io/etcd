@@ -472,19 +472,19 @@ func TestClusterAddMember(t *testing.T) {
 func TestClusterMembers(t *testing.T) {
 	cls := &cluster{
 		members: map[types.ID]*Member{
-			1:   &Member{ID: 1},
-			20:  &Member{ID: 20},
-			100: &Member{ID: 100},
-			5:   &Member{ID: 5},
-			50:  &Member{ID: 50},
+			1:   {ID: 1},
+			20:  {ID: 20},
+			100: {ID: 100},
+			5:   {ID: 5},
+			50:  {ID: 50},
 		},
 	}
 	w := []*Member{
-		&Member{ID: 1},
-		&Member{ID: 5},
-		&Member{ID: 20},
-		&Member{ID: 50},
-		&Member{ID: 100},
+		{ID: 1},
+		{ID: 5},
+		{ID: 20},
+		{ID: 50},
+		{ID: 100},
 	}
 	if g := cls.Members(); !reflect.DeepEqual(g, w) {
 		t.Fatalf("Members()=%#v, want %#v", g, w)

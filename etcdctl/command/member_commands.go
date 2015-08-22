@@ -29,22 +29,22 @@ func NewMemberCommand() cli.Command {
 		Name:  "member",
 		Usage: "member add, remove and list subcommands",
 		Subcommands: []cli.Command{
-			cli.Command{
+			{
 				Name:   "list",
 				Usage:  "enumerate existing cluster members",
 				Action: actionMemberList,
 			},
-			cli.Command{
+			{
 				Name:   "add",
 				Usage:  "add a new member to the etcd cluster",
 				Action: actionMemberAdd,
 			},
-			cli.Command{
+			{
 				Name:   "remove",
 				Usage:  "remove an existing member from the etcd cluster",
 				Action: actionMemberRemove,
 			},
-			cli.Command{
+			{
 				Name:   "update",
 				Usage:  "update an existing member in the etcd cluster",
 				Action: actionMemberUpdate,

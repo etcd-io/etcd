@@ -139,7 +139,7 @@ func TestKeyIndexCompact(t *testing.T) {
 				},
 			},
 			map[revision]struct{}{
-				revision{main: 2}: struct{}{},
+				revision{main: 2}: {},
 			},
 		},
 		{
@@ -154,7 +154,7 @@ func TestKeyIndexCompact(t *testing.T) {
 				},
 			},
 			map[revision]struct{}{
-				revision{main: 2}: struct{}{},
+				revision{main: 2}: {},
 			},
 		},
 		{
@@ -169,7 +169,7 @@ func TestKeyIndexCompact(t *testing.T) {
 				},
 			},
 			map[revision]struct{}{
-				revision{main: 4}: struct{}{},
+				revision{main: 4}: {},
 			},
 		},
 		{
@@ -184,7 +184,7 @@ func TestKeyIndexCompact(t *testing.T) {
 				},
 			},
 			map[revision]struct{}{
-				revision{main: 4}: struct{}{},
+				revision{main: 4}: {},
 			},
 		},
 		{
@@ -222,7 +222,7 @@ func TestKeyIndexCompact(t *testing.T) {
 				},
 			},
 			map[revision]struct{}{
-				revision{main: 8}: struct{}{},
+				revision{main: 8}: {},
 			},
 		},
 		{
@@ -236,7 +236,7 @@ func TestKeyIndexCompact(t *testing.T) {
 				},
 			},
 			map[revision]struct{}{
-				revision{main: 8}: struct{}{},
+				revision{main: 8}: {},
 			},
 		},
 		{
@@ -250,7 +250,7 @@ func TestKeyIndexCompact(t *testing.T) {
 				},
 			},
 			map[revision]struct{}{
-				revision{main: 10}: struct{}{},
+				revision{main: 10}: {},
 			},
 		},
 		{
@@ -264,7 +264,7 @@ func TestKeyIndexCompact(t *testing.T) {
 				},
 			},
 			map[revision]struct{}{
-				revision{main: 10}: struct{}{},
+				revision{main: 10}: {},
 			},
 		},
 		{

@@ -33,45 +33,45 @@ func TestResolveTCPAddrs(t *testing.T) {
 	}{
 		{
 			urls: [][]url.URL{
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "127.0.0.1:4001"},
-					url.URL{Scheme: "http", Host: "127.0.0.1:2379"},
+				{
+					{Scheme: "http", Host: "127.0.0.1:4001"},
+					{Scheme: "http", Host: "127.0.0.1:2379"},
 				},
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "127.0.0.1:7001"},
-					url.URL{Scheme: "http", Host: "127.0.0.1:2380"},
+				{
+					{Scheme: "http", Host: "127.0.0.1:7001"},
+					{Scheme: "http", Host: "127.0.0.1:2380"},
 				},
 			},
 			expected: [][]url.URL{
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "127.0.0.1:4001"},
-					url.URL{Scheme: "http", Host: "127.0.0.1:2379"},
+				{
+					{Scheme: "http", Host: "127.0.0.1:4001"},
+					{Scheme: "http", Host: "127.0.0.1:2379"},
 				},
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "127.0.0.1:7001"},
-					url.URL{Scheme: "http", Host: "127.0.0.1:2380"},
+				{
+					{Scheme: "http", Host: "127.0.0.1:7001"},
+					{Scheme: "http", Host: "127.0.0.1:2380"},
 				},
 			},
 		},
 		{
 			urls: [][]url.URL{
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "infra0.example.com:4001"},
-					url.URL{Scheme: "http", Host: "infra0.example.com:2379"},
+				{
+					{Scheme: "http", Host: "infra0.example.com:4001"},
+					{Scheme: "http", Host: "infra0.example.com:2379"},
 				},
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "infra0.example.com:7001"},
-					url.URL{Scheme: "http", Host: "infra0.example.com:2380"},
+				{
+					{Scheme: "http", Host: "infra0.example.com:7001"},
+					{Scheme: "http", Host: "infra0.example.com:2380"},
 				},
 			},
 			expected: [][]url.URL{
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "10.0.1.10:4001"},
-					url.URL{Scheme: "http", Host: "10.0.1.10:2379"},
+				{
+					{Scheme: "http", Host: "10.0.1.10:4001"},
+					{Scheme: "http", Host: "10.0.1.10:2379"},
 				},
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "10.0.1.10:7001"},
-					url.URL{Scheme: "http", Host: "10.0.1.10:2380"},
+				{
+					{Scheme: "http", Host: "10.0.1.10:7001"},
+					{Scheme: "http", Host: "10.0.1.10:2380"},
 				},
 			},
 			hostMap: map[string]string{
@@ -81,13 +81,13 @@ func TestResolveTCPAddrs(t *testing.T) {
 		},
 		{
 			urls: [][]url.URL{
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "infra0.example.com:4001"},
-					url.URL{Scheme: "http", Host: "infra0.example.com:2379"},
+				{
+					{Scheme: "http", Host: "infra0.example.com:4001"},
+					{Scheme: "http", Host: "infra0.example.com:2379"},
 				},
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "infra0.example.com:7001"},
-					url.URL{Scheme: "http", Host: "infra0.example.com:2380"},
+				{
+					{Scheme: "http", Host: "infra0.example.com:7001"},
+					{Scheme: "http", Host: "infra0.example.com:2380"},
 				},
 			},
 			hostMap: map[string]string{
@@ -97,13 +97,13 @@ func TestResolveTCPAddrs(t *testing.T) {
 		},
 		{
 			urls: [][]url.URL{
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "ssh://infra0.example.com:4001"},
-					url.URL{Scheme: "http", Host: "ssh://infra0.example.com:2379"},
+				{
+					{Scheme: "http", Host: "ssh://infra0.example.com:4001"},
+					{Scheme: "http", Host: "ssh://infra0.example.com:2379"},
 				},
-				[]url.URL{
-					url.URL{Scheme: "http", Host: "ssh://infra0.example.com:7001"},
-					url.URL{Scheme: "http", Host: "ssh://infra0.example.com:2380"},
+				{
+					{Scheme: "http", Host: "ssh://infra0.example.com:7001"},
+					{Scheme: "http", Host: "ssh://infra0.example.com:2380"},
 				},
 			},
 			hasError: true,

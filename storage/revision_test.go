@@ -13,11 +13,11 @@ import (
 func TestRevision(t *testing.T) {
 	tests := []revision{
 		// order in (main, sub)
-		revision{},
-		revision{main: 1, sub: 0},
-		revision{main: 1, sub: 1},
-		revision{main: 2, sub: 0},
-		revision{main: math.MaxInt64, sub: math.MaxInt64},
+		{},
+		{main: 1, sub: 0},
+		{main: 1, sub: 1},
+		{main: 2, sub: 0},
+		{main: math.MaxInt64, sub: math.MaxInt64},
 	}
 
 	bs := make([][]byte, len(tests))

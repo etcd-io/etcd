@@ -480,7 +480,7 @@ func TestDuelingCandidates(t *testing.T) {
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
 	wlog := &raftLog{
-		storage:   &MemoryStorage{ents: []pb.Entry{{}, pb.Entry{Data: nil, Term: 1, Index: 1}}},
+		storage:   &MemoryStorage{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}}},
 		committed: 1,
 		unstable:  unstable{offset: 2},
 	}

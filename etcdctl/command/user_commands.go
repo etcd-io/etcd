@@ -32,39 +32,39 @@ func NewUserCommands() cli.Command {
 		Name:  "user",
 		Usage: "user add, grant and revoke subcommands",
 		Subcommands: []cli.Command{
-			cli.Command{
+			{
 				Name:   "add",
 				Usage:  "add a new user for the etcd cluster",
 				Action: actionUserAdd,
 			},
-			cli.Command{
+			{
 				Name:   "get",
 				Usage:  "get details for a user",
 				Action: actionUserGet,
 			},
-			cli.Command{
+			{
 				Name:   "list",
 				Usage:  "list all current users",
 				Action: actionUserList,
 			},
-			cli.Command{
+			{
 				Name:   "remove",
 				Usage:  "remove a user for the etcd cluster",
 				Action: actionUserRemove,
 			},
-			cli.Command{
+			{
 				Name:   "grant",
 				Usage:  "grant roles to an etcd user",
 				Flags:  []cli.Flag{cli.StringSliceFlag{Name: "roles", Value: new(cli.StringSlice), Usage: "List of roles to grant or revoke"}},
 				Action: actionUserGrant,
 			},
-			cli.Command{
+			{
 				Name:   "revoke",
 				Usage:  "revoke roles for an etcd user",
 				Flags:  []cli.Flag{cli.StringSliceFlag{Name: "roles", Value: new(cli.StringSlice), Usage: "List of roles to grant or revoke"}},
 				Action: actionUserRevoke,
 			},
-			cli.Command{
+			{
 				Name:   "passwd",
 				Usage:  "change password for a user",
 				Action: actionUserPasswd,

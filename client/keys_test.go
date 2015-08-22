@@ -221,7 +221,7 @@ func TestWaitAction(t *testing.T) {
 
 func TestSetAction(t *testing.T) {
 	wantHeader := http.Header(map[string][]string{
-		"Content-Type": []string{"application/x-www-form-urlencoded"},
+		"Content-Type": {"application/x-www-form-urlencoded"},
 	})
 
 	tests := []struct {
@@ -412,7 +412,7 @@ func TestSetAction(t *testing.T) {
 
 func TestCreateInOrderAction(t *testing.T) {
 	wantHeader := http.Header(map[string][]string{
-		"Content-Type": []string{"application/x-www-form-urlencoded"},
+		"Content-Type": {"application/x-www-form-urlencoded"},
 	})
 
 	tests := []struct {
@@ -513,7 +513,7 @@ func TestCreateInOrderAction(t *testing.T) {
 
 func TestDeleteAction(t *testing.T) {
 	wantHeader := http.Header(map[string][]string{
-		"Content-Type": []string{"application/x-www-form-urlencoded"},
+		"Content-Type": {"application/x-www-form-urlencoded"},
 	})
 
 	tests := []struct {
@@ -1213,7 +1213,7 @@ func TestHTTPKeysAPIGetResponse(t *testing.T) {
 		Node: &Node{
 			Key: "/pants/foo/bar",
 			Nodes: []*Node{
-				&Node{Key: "/pants/foo/bar/baz", Value: "snarf", CreatedIndex: 21, ModifiedIndex: 25},
+				{Key: "/pants/foo/bar/baz", Value: "snarf", CreatedIndex: 21, ModifiedIndex: 25},
 			},
 			CreatedIndex:  uint64(19),
 			ModifiedIndex: uint64(25),

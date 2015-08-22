@@ -29,7 +29,7 @@ func TestDecideClusterVersion(t *testing.T) {
 		wdver *semver.Version
 	}{
 		{
-			map[string]*version.Versions{"a": &version.Versions{Server: "2.0.0"}},
+			map[string]*version.Versions{"a": {Server: "2.0.0"}},
 			semver.Must(semver.NewVersion("2.0.0")),
 		},
 		// unknow
@@ -38,15 +38,15 @@ func TestDecideClusterVersion(t *testing.T) {
 			nil,
 		},
 		{
-			map[string]*version.Versions{"a": &version.Versions{Server: "2.0.0"}, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
+			map[string]*version.Versions{"a": {Server: "2.0.0"}, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
 			semver.Must(semver.NewVersion("2.0.0")),
 		},
 		{
-			map[string]*version.Versions{"a": &version.Versions{Server: "2.1.0"}, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
+			map[string]*version.Versions{"a": {Server: "2.1.0"}, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
 			semver.Must(semver.NewVersion("2.1.0")),
 		},
 		{
-			map[string]*version.Versions{"a": nil, "b": &version.Versions{Server: "2.1.0"}, "c": &version.Versions{Server: "2.1.0"}},
+			map[string]*version.Versions{"a": nil, "b": {Server: "2.1.0"}, "c": {Server: "2.1.0"}},
 			nil,
 		},
 	}
@@ -69,9 +69,9 @@ func TestIsCompatibleWithVers(t *testing.T) {
 		// too low
 		{
 			map[string]*version.Versions{
-				"a": &version.Versions{Server: "2.0.0", Cluster: "not_decided"},
-				"b": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
-				"c": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
+				"a": {Server: "2.0.0", Cluster: "not_decided"},
+				"b": {Server: "2.1.0", Cluster: "2.1.0"},
+				"c": {Server: "2.1.0", Cluster: "2.1.0"},
 			},
 			0xa,
 			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.0.0")),
@@ -79,9 +79,9 @@ func TestIsCompatibleWithVers(t *testing.T) {
 		},
 		{
 			map[string]*version.Versions{
-				"a": &version.Versions{Server: "2.1.0", Cluster: "not_decided"},
-				"b": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
-				"c": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
+				"a": {Server: "2.1.0", Cluster: "not_decided"},
+				"b": {Server: "2.1.0", Cluster: "2.1.0"},
+				"c": {Server: "2.1.0", Cluster: "2.1.0"},
 			},
 			0xa,
 			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
@@ -90,9 +90,9 @@ func TestIsCompatibleWithVers(t *testing.T) {
 		// too high
 		{
 			map[string]*version.Versions{
-				"a": &version.Versions{Server: "2.2.0", Cluster: "not_decided"},
-				"b": &version.Versions{Server: "2.0.0", Cluster: "2.0.0"},
-				"c": &version.Versions{Server: "2.0.0", Cluster: "2.0.0"},
+				"a": {Server: "2.2.0", Cluster: "not_decided"},
+				"b": {Server: "2.0.0", Cluster: "2.0.0"},
+				"c": {Server: "2.0.0", Cluster: "2.0.0"},
 			},
 			0xa,
 			semver.Must(semver.NewVersion("2.1.0")), semver.Must(semver.NewVersion("2.2.0")),
@@ -101,9 +101,9 @@ func TestIsCompatibleWithVers(t *testing.T) {
 		// cannot get b's version, expect ok
 		{
 			map[string]*version.Versions{
-				"a": &version.Versions{Server: "2.1.0", Cluster: "not_decided"},
+				"a": {Server: "2.1.0", Cluster: "not_decided"},
 				"b": nil,
-				"c": &version.Versions{Server: "2.1.0", Cluster: "2.1.0"},
+				"c": {Server: "2.1.0", Cluster: "2.1.0"},
 			},
 			0xa,
 			semver.Must(semver.NewVersion("2.0.0")), semver.Must(semver.NewVersion("2.1.0")),
@@ -112,7 +112,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 		// cannot get b and c's version, expect not ok
 		{
 			map[string]*version.Versions{
-				"a": &version.Versions{Server: "2.1.0", Cluster: "not_decided"},
+				"a": {Server: "2.1.0", Cluster: "not_decided"},
 				"b": nil,
 				"c": nil,
 			},

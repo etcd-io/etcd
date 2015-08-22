@@ -198,7 +198,7 @@ func (c *cluster) String() string {
 	}
 	fmt.Fprintf(b, "Members:[%s] ", strings.Join(ms, " "))
 	var ids []string
-	for id, _ := range c.removed {
+	for id := range c.removed {
 		ids = append(ids, fmt.Sprintf("%s", id))
 	}
 	fmt.Fprintf(b, "RemovedMemberIDs:[%s]}", strings.Join(ids, " "))

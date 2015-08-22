@@ -184,19 +184,19 @@ func TestConfigParsingV1Flags(t *testing.T) {
 
 func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 	conflictArgs := [][]string{
-		[]string{
+		{
 			"-initial-cluster=0=localhost:8000",
 			"-discovery=http://example.com/abc",
 		},
-		[]string{
+		{
 			"-discovery-srv=example.com",
 			"-discovery=http://example.com/abc",
 		},
-		[]string{
+		{
 			"-initial-cluster=0=localhost:8000",
 			"-discovery-srv=example.com",
 		},
-		[]string{
+		{
 			"-initial-cluster=0=localhost:8000",
 			"-discovery=http://example.com/abc",
 			"-discovery-srv=example.com",

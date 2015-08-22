@@ -29,12 +29,12 @@ func NewAuthCommands() cli.Command {
 		Name:  "auth",
 		Usage: "overall auth controls",
 		Subcommands: []cli.Command{
-			cli.Command{
+			{
 				Name:   "enable",
 				Usage:  "enable auth access controls",
 				Action: actionAuthEnable,
 			},
-			cli.Command{
+			{
 				Name:   "disable",
 				Usage:  "disable auth access controls",
 				Action: actionAuthDisable,

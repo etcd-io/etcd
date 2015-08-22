@@ -98,17 +98,17 @@ func TestNewTransportTLSInfo(t *testing.T) {
 	defer os.Remove(tmp)
 
 	tests := []TLSInfo{
-		TLSInfo{},
-		TLSInfo{
+		{},
+		{
 			CertFile: tmp,
 			KeyFile:  tmp,
 		},
-		TLSInfo{
+		{
 			CertFile: tmp,
 			KeyFile:  tmp,
 			CAFile:   tmp,
 		},
-		TLSInfo{
+		{
 			CAFile: tmp,
 		},
 	}
@@ -157,10 +157,10 @@ func TestTLSInfoMissingFields(t *testing.T) {
 	defer os.Remove(tmp)
 
 	tests := []TLSInfo{
-		TLSInfo{CertFile: tmp},
-		TLSInfo{KeyFile: tmp},
-		TLSInfo{CertFile: tmp, CAFile: tmp},
-		TLSInfo{KeyFile: tmp, CAFile: tmp},
+		{CertFile: tmp},
+		{KeyFile: tmp},
+		{CertFile: tmp, CAFile: tmp},
+		{KeyFile: tmp, CAFile: tmp},
 	}
 
 	for i, info := range tests {
