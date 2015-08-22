@@ -70,11 +70,11 @@ func TestNewDirectorScheme(t *testing.T) {
 func TestDirectorEndpointsFiltering(t *testing.T) {
 	d := director{
 		ep: []*endpoint{
-			&endpoint{
+			{
 				URL:       url.URL{Scheme: "http", Host: "192.0.2.5:5050"},
 				Available: false,
 			},
-			&endpoint{
+			{
 				URL:       url.URL{Scheme: "http", Host: "192.0.2.4:4000"},
 				Available: true,
 			},
@@ -83,7 +83,7 @@ func TestDirectorEndpointsFiltering(t *testing.T) {
 
 	got := d.endpoints()
 	want := []*endpoint{
-		&endpoint{
+		{
 			URL:       url.URL{Scheme: "http", Host: "192.0.2.4:4000"},
 			Available: true,
 		},

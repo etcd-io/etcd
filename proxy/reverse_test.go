@@ -56,19 +56,19 @@ func TestReverseProxyServe(t *testing.T) {
 
 		// error is returned from one endpoint that should be available
 		{
-			eps:  []*endpoint{&endpoint{URL: u, Available: true}},
+			eps:  []*endpoint{{URL: u, Available: true}},
 			rt:   &staticRoundTripper{err: errors.New("what a bad trip")},
 			want: http.StatusBadGateway,
 		},
 
 		// endpoint is available and returns success
 		{
-			eps: []*endpoint{&endpoint{URL: u, Available: true}},
+			eps: []*endpoint{{URL: u, Available: true}},
 			rt: &staticRoundTripper{
 				res: &http.Response{
 					StatusCode: http.StatusCreated,
 					Body:       ioutil.NopCloser(&bytes.Reader{}),
-					Header:     map[string][]string{"Content-Type": []string{"application/json"}},
+					Header:     map[string][]string{"Content-Type": {"application/json"}},
 				},
 			},
 			want: http.StatusCreated,
@@ -171,25 +171,25 @@ func TestMaybeSetForwardedFor(t *testing.T) {
 func TestRemoveSingleHopHeaders(t *testing.T) {
 	hdr := http.Header(map[string][]string{
 		// single-hop headers that should be removed
-		"Connection":          []string{"close"},
-		"Keep-Alive":          []string{"foo"},
-		"Proxy-Authenticate":  []string{"Basic realm=example.com"},
-		"Proxy-Authorization": []string{"foo"},
-		"Te":                []string{"deflate,gzip"},
-		"Trailers":          []string{"ETag"},
-		"Transfer-Encoding": []string{"chunked"},
-		"Upgrade":           []string{"WebSocket"},
+		"Connection":          {"close"},
+		"Keep-Alive":          {"foo"},
+		"Proxy-Authenticate":  {"Basic realm=example.com"},
+		"Proxy-Authorization": {"foo"},
+		"Te":                {"deflate,gzip"},
+		"Trailers":          {"ETag"},
+		"Transfer-Encoding": {"chunked"},
+		"Upgrade":           {"WebSocket"},
 
 		// headers that should persist
-		"Accept": []string{"application/json"},
-		"X-Foo":  []string{"Bar"},
+		"Accept": {"application/json"},
+		"X-Foo":  {"Bar"},
 	})
 
 	removeSingleHopHeaders(&hdr)
 
 	want := http.Header(map[string][]string{
-		"Accept": []string{"application/json"},
-		"X-Foo":  []string{"Bar"},
+		"Accept": {"application/json"},
+		"X-Foo":  {"Bar"},
 	})
 
 	if !reflect.DeepEqual(want, hdr) {
@@ -205,33 +205,33 @@ func TestCopyHeader(t *testing.T) {
 	}{
 		{
 			src: http.Header(map[string][]string{
-				"Foo": []string{"bar", "baz"},
+				"Foo": {"bar", "baz"},
 			}),
 			dst: http.Header(map[string][]string{}),
 			want: http.Header(map[string][]string{
-				"Foo": []string{"bar", "baz"},
+				"Foo": {"bar", "baz"},
 			}),
 		},
 		{
 			src: http.Header(map[string][]string{
-				"Foo":  []string{"bar"},
-				"Ping": []string{"pong"},
+				"Foo":  {"bar"},
+				"Ping": {"pong"},
 			}),
 			dst: http.Header(map[string][]string{}),
 			want: http.Header(map[string][]string{
-				"Foo":  []string{"bar"},
-				"Ping": []string{"pong"},
+				"Foo":  {"bar"},
+				"Ping": {"pong"},
 			}),
 		},
 		{
 			src: http.Header(map[string][]string{
-				"Foo": []string{"bar", "baz"},
+				"Foo": {"bar", "baz"},
 			}),
 			dst: http.Header(map[string][]string{
-				"Foo": []string{"qux"},
+				"Foo": {"qux"},
 			}),
 			want: http.Header(map[string][]string{
-				"Foo": []string{"qux", "bar", "baz"},
+				"Foo": {"qux", "bar", "baz"},
 			}),
 		},
 	}

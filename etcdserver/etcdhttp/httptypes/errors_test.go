@@ -28,7 +28,7 @@ func TestHTTPErrorWriteTo(t *testing.T) {
 
 	wcode := http.StatusBadRequest
 	wheader := http.Header(map[string][]string{
-		"Content-Type": []string{"application/json"},
+		"Content-Type": {"application/json"},
 	})
 	wbody := `{"message":"what a bad request you made!"}`
 

@@ -124,7 +124,7 @@ func TestContinuousCompact(t *testing.T) {
 		{[]byte("foo2"), 6, nil, 4},
 	}
 	wa := map[revision]struct{}{
-		revision{main: 1}: struct{}{},
+		revision{main: 1}: {},
 	}
 	ga := index.Compact(1)
 	if !reflect.DeepEqual(ga, wa) {
@@ -133,8 +133,8 @@ func TestContinuousCompact(t *testing.T) {
 	verify(t, index, tests)
 
 	wa = map[revision]struct{}{
-		revision{main: 1}: struct{}{},
-		revision{main: 2}: struct{}{},
+		revision{main: 1}: {},
+		revision{main: 2}: {},
 	}
 	ga = index.Compact(2)
 	if !reflect.DeepEqual(ga, wa) {
@@ -143,9 +143,9 @@ func TestContinuousCompact(t *testing.T) {
 	verify(t, index, tests)
 
 	wa = map[revision]struct{}{
-		revision{main: 1}: struct{}{},
-		revision{main: 2}: struct{}{},
-		revision{main: 3}: struct{}{},
+		revision{main: 1}: {},
+		revision{main: 2}: {},
+		revision{main: 3}: {},
 	}
 	ga = index.Compact(3)
 	if !reflect.DeepEqual(ga, wa) {
@@ -154,9 +154,9 @@ func TestContinuousCompact(t *testing.T) {
 	verify(t, index, tests)
 
 	wa = map[revision]struct{}{
-		revision{main: 1}: struct{}{},
-		revision{main: 2}: struct{}{},
-		revision{main: 4}: struct{}{},
+		revision{main: 1}: {},
+		revision{main: 2}: {},
+		revision{main: 4}: {},
 	}
 	ga = index.Compact(4)
 	delete(wa, revision{main: 3})
@@ -167,9 +167,9 @@ func TestContinuousCompact(t *testing.T) {
 	verify(t, index, tests)
 
 	wa = map[revision]struct{}{
-		revision{main: 2}: struct{}{},
-		revision{main: 4}: struct{}{},
-		revision{main: 5}: struct{}{},
+		revision{main: 2}: {},
+		revision{main: 4}: {},
+		revision{main: 5}: {},
 	}
 	ga = index.Compact(5)
 	delete(wa, revision{main: 1})
@@ -181,9 +181,9 @@ func TestContinuousCompact(t *testing.T) {
 	verify(t, index, tests)
 
 	wa = map[revision]struct{}{
-		revision{main: 4}: struct{}{},
-		revision{main: 5}: struct{}{},
-		revision{main: 6}: struct{}{},
+		revision{main: 4}: {},
+		revision{main: 5}: {},
+		revision{main: 6}: {},
 	}
 	ga = index.Compact(6)
 	delete(wa, revision{main: 2})

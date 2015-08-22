@@ -817,7 +817,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader("bad json")),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&resServer{},
 
@@ -829,7 +829,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/bad"}},
+				Header: map[string][]string{"Content-Type": {"application/bad"}},
 			},
 			&errServer{},
 
@@ -841,7 +841,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://a"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{},
 
@@ -853,7 +853,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
 				errors.New("Error while adding a member"),
@@ -867,7 +867,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
 				etcdserver.ErrIDExists,
@@ -881,7 +881,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, membersPrefix),
 				Method: "POST",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
 				etcdserver.ErrPeerURLexists,
@@ -951,7 +951,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
 				Body:   ioutil.NopCloser(strings.NewReader("bad json")),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&resServer{},
 
@@ -963,7 +963,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/bad"}},
+				Header: map[string][]string{"Content-Type": {"application/bad"}},
 			},
 			&errServer{},
 
@@ -975,7 +975,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://a"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{},
 
@@ -987,7 +987,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
 				errors.New("blah"),
@@ -1001,7 +1001,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
 				etcdserver.ErrPeerURLexists,
@@ -1015,7 +1015,7 @@ func TestServeMembersFail(t *testing.T) {
 				URL:    testutil.MustNewURL(t, path.Join(membersPrefix, "0")),
 				Method: "PUT",
 				Body:   ioutil.NopCloser(strings.NewReader(`{"PeerURLs": ["http://127.0.0.1:1"]}`)),
-				Header: map[string][]string{"Content-Type": []string{"application/json"}},
+				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
 				etcdserver.ErrIDNotFound,
@@ -1918,12 +1918,12 @@ func TestTrimPrefix(t *testing.T) {
 
 func TestNewMemberCollection(t *testing.T) {
 	fixture := []*etcdserver.Member{
-		&etcdserver.Member{
+		{
 			ID:             12,
 			Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
 			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
 		},
-		&etcdserver.Member{
+		{
 			ID:             13,
 			Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:9090", "http://localhost:9091"}},
 			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:9092", "http://localhost:9093"}},
@@ -1932,12 +1932,12 @@ func TestNewMemberCollection(t *testing.T) {
 	got := newMemberCollection(fixture)
 
 	want := httptypes.MemberCollection([]httptypes.Member{
-		httptypes.Member{
+		{
 			ID:         "c",
 			ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"},
 			PeerURLs:   []string{"http://localhost:8082", "http://localhost:8083"},
 		},
-		httptypes.Member{
+		{
 			ID:         "d",
 			ClientURLs: []string{"http://localhost:9090", "http://localhost:9091"},
 			PeerURLs:   []string{"http://localhost:9092", "http://localhost:9093"},

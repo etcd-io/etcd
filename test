@@ -61,7 +61,7 @@ if [ -n "$INTEGRATION" ]; then
 fi
 
 echo "Checking gofmt..."
-fmtRes=$(gofmt -l $FMT)
+fmtRes=$(gofmt -l -s $FMT)
 if [ -n "${fmtRes}" ]; then
 	echo -e "gofmt checking failed:\n${fmtRes}"
 	exit 255

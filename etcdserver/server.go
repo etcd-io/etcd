@@ -722,7 +722,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 }
 
 func (s *EtcdServer) send(ms []raftpb.Message) {
-	for i, _ := range ms {
+	for i := range ms {
 		if s.cluster.IsIDRemoved(types.ID(ms[i].To)) {
 			ms[i].To = 0
 		}

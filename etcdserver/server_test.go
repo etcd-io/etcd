@@ -509,10 +509,10 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 func TestDoProposal(t *testing.T) {
 	tests := []pb.Request{
-		pb.Request{Method: "POST", ID: 1},
-		pb.Request{Method: "PUT", ID: 1},
-		pb.Request{Method: "DELETE", ID: 1},
-		pb.Request{Method: "GET", ID: 1, Quorum: true},
+		{Method: "POST", ID: 1},
+		{Method: "PUT", ID: 1},
+		{Method: "DELETE", ID: 1},
+		{Method: "GET", ID: 1, Quorum: true},
 	}
 	for i, tt := range tests {
 		st := &storeRecorder{}

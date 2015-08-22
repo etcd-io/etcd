@@ -46,9 +46,9 @@ var (
 
 	// the key is in string format "major.minor.patch"
 	supportedStream = map[string][]streamType{
-		"2.0.0": []streamType{streamTypeMsgApp},
-		"2.1.0": []streamType{streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
-		"2.2.0": []streamType{streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
+		"2.0.0": {streamTypeMsgApp},
+		"2.1.0": {streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
+		"2.2.0": {streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
 	}
 )
 

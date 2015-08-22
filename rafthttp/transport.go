@@ -214,7 +214,7 @@ func (t *transport) RemovePeer(id types.ID) {
 func (t *transport) RemoveAllPeers() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	for id, _ := range t.peers {
+	for id := range t.peers {
 		t.removePeer(id)
 	}
 }

@@ -417,7 +417,7 @@ func (c *cluster) Launch(t *testing.T) {
 			errc <- m.Launch()
 		}(m)
 	}
-	for _ = range c.Members {
+	for range c.Members {
 		if err := <-errc; err != nil {
 			t.Fatalf("error setting up member: %v", err)
 		}

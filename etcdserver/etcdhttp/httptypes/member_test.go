@@ -97,8 +97,8 @@ func TestMemberCreateRequestUnmarshal(t *testing.T) {
 	body := []byte(`{"peerURLs": ["http://127.0.0.1:8081", "https://127.0.0.1:8080"]}`)
 	want := MemberCreateRequest{
 		PeerURLs: types.URLs([]url.URL{
-			url.URL{Scheme: "http", Host: "127.0.0.1:8081"},
-			url.URL{Scheme: "https", Host: "127.0.0.1:8080"},
+			{Scheme: "http", Host: "127.0.0.1:8081"},
+			{Scheme: "https", Host: "127.0.0.1:8080"},
 		}),
 	}
 
