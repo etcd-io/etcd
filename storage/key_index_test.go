@@ -21,19 +21,19 @@ func TestKeyIndexGet(t *testing.T) {
 		wrev int64
 		werr error
 	}{
-		{13, 12, nil},
-		{13, 12, nil},
+		{13, 0, ErrRevisionNotFound},
+		{13, 0, ErrRevisionNotFound},
 
 		// get on generation 2
-		{12, 12, nil},
+		{12, 0, ErrRevisionNotFound},
 		{11, 10, nil},
 		{10, 10, nil},
 		{9, 8, nil},
 		{8, 8, nil},
-		{7, 6, nil},
+		{7, 0, ErrRevisionNotFound},
 
 		// get on generation 1
-		{6, 6, nil},
+		{6, 0, ErrRevisionNotFound},
 		{5, 4, nil},
 		{4, 4, nil},
 	}
