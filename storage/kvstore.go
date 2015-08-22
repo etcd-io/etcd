@@ -158,6 +158,9 @@ func (s *store) Compact(rev int64) error {
 	if rev <= s.compactMainRev {
 		return ErrCompacted
 	}
+	if rev > s.currentRev.main {
+		return ErrFutureRev
+	}
 
 	s.compactMainRev = rev
 
