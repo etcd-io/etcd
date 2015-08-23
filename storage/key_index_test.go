@@ -291,6 +291,7 @@ func TestKeyIndexCompact(t *testing.T) {
 		}
 	}
 
+	ki = newTestKeyIndex()
 	// Jump Compaction
 	for i, tt := range tests {
 		if (i%2 == 0 && i < 6) || (i%2 == 1 && i > 6) {
