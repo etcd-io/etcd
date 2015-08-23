@@ -259,14 +259,16 @@ func (a *store) Equal(b *store) bool {
 
 // range is a keyword in Go, add Keys suffix.
 func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
-	if rangeRev > s.currentRev.main {
+	curRev := int64(s.currentRev.main)
+	if s.currentRev.sub > 0 {
+		curRev += 1
+	}
+
+	if rangeRev > curRev {
 		return nil, s.currentRev.main, ErrFutureRev
 	}
 	if rangeRev <= 0 {
-		rev = int64(s.currentRev.main)
-		if s.currentRev.sub > 0 {
-			rev += 1
-		}
+		rev = curRev
 	} else {
 		rev = rangeRev
 	}
