@@ -59,6 +59,8 @@ message RangeResponse {
   ResponseHeader header = 1;
   repeated storagepb.KeyValue kvs = 2;
   bytes consistent_token = 3;
+  // more indicates if there are more keys to return in the requested range.
+  bool more = 4;
 }
 
 message PutRequest {
@@ -125,11 +127,10 @@ message Compare {
   }
 }
 
-// First all the compare requests are processed.
-// If all the compare succeed, all the success
-// requests will be processed.
-// Or all the failure requests will be processed and
-// all the errors in the comparison will be returned.
+// If the comparisons succeed, then the success requests will be processed in order, 
+// and the response will contain their respective responses in order.
+// If the comparisons fail, then the failure requests will be processed in order, 
+// and the response will contain their respective responses in order.
 
 // From google paxosdb paper:
 // Our implementation hinges around a powerful primitive which we call MultiOp. All other database
@@ -158,6 +159,10 @@ message TxnResponse {
   repeated ResponseUnion responses = 3;
 }
 
+// Compaction compacts the kv store upto the given index (including). 
+// It removes the old versions of a key. It keeps the newest version of 
+// the key even if its latest modification index is smaller than the given 
+// index.
 message CompactionRequest {
   int64 index = 1;
 }
