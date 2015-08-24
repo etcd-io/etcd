@@ -91,13 +91,9 @@ func TestIndexTombstone(t *testing.T) {
 	if err != nil {
 		t.Errorf("tombstone error = %v, want nil", err)
 	}
-	rev, _, _, err := index.Get([]byte("foo"), 7)
-	if err != nil {
+	_, _, _, err = index.Get([]byte("foo"), 7)
+	if err != ErrRevisionNotFound {
 		t.Errorf("get error = %v, want nil", err)
-	}
-	w := revision{main: 7}
-	if !reflect.DeepEqual(rev, w) {
-		t.Errorf("get revision = %+v, want %+v", rev, w)
 	}
 }
 

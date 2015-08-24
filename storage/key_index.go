@@ -144,18 +144,14 @@ func (ki *keyIndex) compact(atRev int64, available map[revision]struct{}) {
 		return true
 	}
 
-	g := ki.findGeneration(atRev)
-	if g == nil {
-		return
-	}
-
-	i := 0
-	for i <= len(ki.generations)-1 {
-		wg := &ki.generations[i]
-		if wg == g {
+	i, g := 0, &ki.generations[0]
+	// find first generation includes atRev or created after atRev
+	for i < len(ki.generations)-1 {
+		if tomb := g.revs[len(g.revs)-1].main; tomb > atRev {
 			break
 		}
 		i++
+		g = &ki.generations[i]
 	}
 
 	if !g.isEmpty() {
@@ -180,9 +176,11 @@ func (ki *keyIndex) isEmpty() bool {
 }
 
 // findGeneartion finds out the generation of the keyIndex that the
-// given index belongs to.
+// given rev belongs to. If the given rev is at the gap of two generations,
+// which means that the key does not exist at the given rev, it returns nil.
 func (ki *keyIndex) findGeneration(rev int64) *generation {
-	cg := len(ki.generations) - 1
+	lastg := len(ki.generations) - 1
+	cg := lastg
 
 	for cg >= 0 {
 		if len(ki.generations[cg].revs) == 0 {
@@ -190,6 +188,11 @@ func (ki *keyIndex) findGeneration(rev int64) *generation {
 			continue
 		}
 		g := ki.generations[cg]
+		if cg != lastg {
+			if tomb := g.revs[len(g.revs)-1].main; tomb <= rev {
+				return nil
+			}
+		}
 		if g.revs[0].main <= rev {
 			return &ki.generations[cg]
 		}

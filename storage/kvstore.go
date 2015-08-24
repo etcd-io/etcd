@@ -146,6 +146,8 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	n = s.deleteRange(key, end, s.currentRev.main+1)
 	if n != 0 || s.currentRev.sub != 0 {
 		rev = int64(s.currentRev.main + 1)
+	} else {
+		rev = int64(s.currentRev.main)
 	}
 	return n, rev, nil
 }
@@ -155,6 +157,9 @@ func (s *store) Compact(rev int64) error {
 	defer s.mu.Unlock()
 	if rev <= s.compactMainRev {
 		return ErrCompacted
+	}
+	if rev > s.currentRev.main {
+		return ErrFutureRev
 	}
 
 	s.compactMainRev = rev
@@ -166,6 +171,8 @@ func (s *store) Compact(rev int64) error {
 	tx.Lock()
 	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
 	tx.Unlock()
+	// ensure that desired compaction is persisted
+	s.b.ForceCommit()
 
 	keep := s.kvindex.Compact(rev)
 
@@ -252,14 +259,16 @@ func (a *store) Equal(b *store) bool {
 
 // range is a keyword in Go, add Keys suffix.
 func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
-	if rangeRev > s.currentRev.main {
+	curRev := int64(s.currentRev.main)
+	if s.currentRev.sub > 0 {
+		curRev += 1
+	}
+
+	if rangeRev > curRev {
 		return nil, s.currentRev.main, ErrFutureRev
 	}
 	if rangeRev <= 0 {
-		rev = int64(s.currentRev.main)
-		if s.currentRev.sub > 0 {
-			rev += 1
-		}
+		rev = curRev
 	} else {
 		rev = rangeRev
 	}
