@@ -238,6 +238,28 @@ func TestAuthFlow(t *testing.T) {
 			wcode: http.StatusOK,
 			wbody: ``,
 		},
+		{
+			req: (func() *http.Request {
+				req := mustJSONRequest(t, "DELETE", "enable", "")
+				req.SetBasicAuth("root", "bad")
+				return req
+			})(),
+			store: mockAuthStore{
+				enabled: true,
+				user: &auth.User{
+					User:     "root",
+					Password: goodPassword,
+					Roles:    []string{"root"},
+				},
+				roles: map[string]*auth.Role{
+					"root": {
+						Role: "guest",
+					},
+				},
+			},
+			wcode: http.StatusUnauthorized,
+			wbody: `{"message":"Insufficient credentials"}`,
+		},
 	}
 
 	for i, tt := range testCases {
@@ -468,6 +490,36 @@ func TestPrefixAccess(t *testing.T) {
 			},
 			hasRoot:            false,
 			hasKeyPrefixAccess: true,
+			hasRecursiveAccess: false,
+		},
+		{
+			key: "/foo",
+			req: (func() *http.Request {
+				req := mustJSONRequest(t, "GET", "somepath", "")
+				req.Header.Set("Authorization", "malformedencoding")
+				return req
+			})(),
+			store: &mockAuthStore{
+				enabled: true,
+				user: &auth.User{
+					User:     "root",
+					Password: goodPassword,
+					Roles:    []string{"root"},
+				},
+				roles: map[string]*auth.Role{
+					"guest": {
+						Role: "guest",
+						Permissions: auth.Permissions{
+							KV: auth.RWPermission{
+								Read:  []string{"/foo*"},
+								Write: []string{"/foo*"},
+							},
+						},
+					},
+				},
+			},
+			hasRoot:            false,
+			hasKeyPrefixAccess: false,
 			hasRecursiveAccess: false,
 		},
 	}

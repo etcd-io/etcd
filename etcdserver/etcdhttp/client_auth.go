@@ -76,9 +76,14 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive b
 	if !sec.AuthEnabled() {
 		return true
 	}
+	if r.Header.Get("Authorization") == "" {
+		plog.Warningf("auth: no authorization provided, checking guest access")
+		return hasGuestAccess(sec, r, key)
+	}
 	username, password, ok := netutil.BasicAuth(r)
 	if !ok {
-		return hasGuestAccess(sec, r, key)
+		plog.Warningf("auth: malformed basic auth encoding")
+		return false
 	}
 	user, err := sec.GetUser(username)
 	if err != nil {
