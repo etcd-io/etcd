@@ -11,8 +11,8 @@ option (gogoproto.goproto_enum_prefix_all) = false;
 
 message KeyValue {
   bytes key = 1;
-  // mod_index is the last modified index of the key.
   int64 create_index = 2;
+  // mod_index is the last modified index of the key.
   int64 mod_index = 3;
   // version is the version of the key. A deletion resets
   // the version to zero and any modification of the key
