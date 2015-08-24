@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -27,10 +26,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 func init() {
-	log.SetOutput(ioutil.Discard)
+	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
 }
 
 func TestV2Set(t *testing.T) {
