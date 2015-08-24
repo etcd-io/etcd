@@ -26,8 +26,10 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"time"
+
+	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
+	"github.com/coreos/etcd/pkg/httputil"
 )
 
 // Hop-by-hop headers. These are removed when sent to the backend.
@@ -98,17 +100,14 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	var requestClosed int32
 	completeCh := make(chan bool, 1)
 	closeNotifier, ok := rw.(http.CloseNotifier)
+	cancel := httputil.RequestCanceler(p.transport, proxyreq)
 	if ok {
 		go func() {
 			select {
 			case <-closeNotifier.CloseNotify():
 				atomic.StoreInt32(&requestClosed, 1)
 				log.Printf("proxy: client %v closed request prematurely", clientreq.RemoteAddr)
-
-				tp, ok := p.transport.(*http.Transport)
-				if ok {
-					tp.CancelRequest(proxyreq)
-				}
+				cancel()
 			case <-completeCh:
 			}
 		}()
