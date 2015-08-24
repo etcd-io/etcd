@@ -52,51 +52,53 @@ service etcd {
 
 message ResponseHeader {
   // an error type message?
-  optional string error = 1;
-  optional uint64 cluster_id = 2;
-  optional uint64 member_id = 3;
+  string error = 1;
+  uint64 cluster_id = 2;
+  uint64 member_id = 3;
   // index of the store when the request was applied.
-  optional int64 index = 4;
+  int64 index = 4;
   // term of raft when the request was applied.
-  optional uint64 raft_term = 5;
+  uint64 raft_term = 5;
 }
 
 message RangeRequest {
   // if the range_end is not given, the request returns the key.
-  optional bytes key = 1;
+  bytes key = 1;
   // if the range_end is given, it gets the keys in range [key, range_end).
-  optional bytes range_end = 2;
+  bytes range_end = 2;
   // limit the number of keys returned.
-  optional int64 limit = 3;
+  int64 limit = 3;
   // the response will be consistent with previous request with same token if the token is 
   // given and is valid.
-  optional bytes consistent_token = 4;
+  bytes consistent_token = 4;
 }
 
 message RangeResponse {
-  optional ResponseHeader header = 1;
-  repeated KeyValue kvs = 2;
-  optional bytes consistent_token = 3;
+  ResponseHeader header = 1;
+  repeated storagepb.KeyValue kvs = 2;
+  bytes consistent_token = 3;
+  // more indicates if there are more keys to return in the requested range.
+  bool more = 4;
 }
 
 message PutRequest {
-  optional bytes key = 1;
-  optional bytes value = 2;
+  bytes key = 1;
+  bytes value = 2;
 }
 
 message PutResponse {
-  optional ResponseHeader header = 1;
+  ResponseHeader header = 1;
 }
 
 message DeleteRangeRequest {
   // if the range_end is not given, the request deletes the key.
-  optional bytes key = 1;
+  bytes key = 1;
   // if the range_end is given, it deletes the keys in range [key, range_end).
-  optional bytes range_end = 2;
+  bytes range_end = 2;
 }
 
 message DeleteRangeResponse {
-  optional ResponseHeader header = 1;
+  ResponseHeader header = 1;
 }
 
 message RequestUnion {
@@ -109,38 +111,44 @@ message RequestUnion {
 
 message ResponseUnion {
   oneof response {
-    RangeResponse reponse_range = 1;
+    RangeResponse response_range = 1;
     PutResponse response_put = 2;
     DeleteRangeResponse response_delete_range = 3;
   }
 }
 
 message Compare {
-  enum CompareType {
+  enum CompareResult {
     EQUAL = 0;
     GREATER = 1;
     LESS = 2;
   }
-  optional CompareType type = 1;
+  enum CompareTarget {
+    VERSION = 0;
+    CREATE = 1;
+    MOD = 2;
+    VALUE= 3;
+  }
+  CompareResult result = 1;
+  CompareTarget target = 2;
   // key path
-  optional bytes key = 2;
-  oneof target {
+  bytes key = 3;
+  oneof target_union {
     // version of the given key
-    int64 version = 3;
+    int64 version = 4;
     // create index of the given key
-    int64 create_index = 4;
+    int64 create_index = 5;
     // last modified index of the given key
-    int64 mod_index = 5;
+    int64 mod_index = 6;
     // value of the given key
-    bytes value = 6;
+    bytes value = 7;
   }
 }
 
-// First all the compare requests are processed.
-// If all the compare succeed, all the success
-// requests will be processed.
-// Or all the failure requests will be processed and
-// all the errors in the comparison will be returned.
+// If the comparisons succeed, then the success requests will be processed in order, 
+// and the response will contain their respective responses in order.
+// If the comparisons fail, then the failure requests will be processed in order, 
+// and the response will contain their respective responses in order.
 
 // From google paxosdb paper:
 // Our implementation hinges around a powerful primitive which we call MultiOp. All other database
@@ -164,37 +172,37 @@ message TxnRequest {
 }
 
 message TxnResponse {
-  optional ResponseHeader header = 1;
-  optional bool succeeded = 2;
+  ResponseHeader header = 1;
+  bool succeeded = 2;
   repeated ResponseUnion responses = 3;
 }
 
 message KeyValue {
-  optional bytes key = 1;
+  bytes key = 1;
+  int64 create_index = 2;
   // mod_index is the last modified index of the key.
-  optional int64 create_index = 2;
-  optional int64 mod_index = 3;
+  int64 mod_index = 3;
   // version is the version of the key. A deletion resets
   // the version to zero and any modification of the key
   // increases its version.
-  optional int64 version = 4;
-  optional bytes value = 5;
+  int64 version = 4;
+  bytes value = 5;
 }
 
 message WatchRangeRequest {
   // if the range_end is not given, the request returns the key.
-  optional bytes key = 1;
+  bytes key = 1;
   // if the range_end is given, it gets the keys in range [key, range_end).
-  optional bytes range_end = 2;
+  bytes range_end = 2;
   // start_index is an optional index (including) to watch from. No start_index is "now".
-  optional int64 start_index = 3;
+  int64 start_index = 3;
   // end_index is an optional index (excluding) to end watch. No end_index is "forever".
-  optional int64 end_index = 4;
-  optional bool progress_notification = 5;
+  int64 end_index = 4;
+  bool progress_notification = 5;
 }
 
 message WatchRangeResponse {
-  optional ResponseHeader header = 1;
+  ResponseHeader header = 1;
   repeated Event events = 2;
 }
 
@@ -204,69 +212,73 @@ message Event {
     DELETE = 1;
     EXPIRE = 2;
   }
-  optional EventType event_type = 1;
+  EventType event_type = 1;
   // a put event contains the current key-value
   // a delete/expire event contains the previous
   // key-value
-  optional KeyValue kv = 2;
+  KeyValue kv = 2;
 }
 
+// Compaction compacts the kv store upto the given index (including). 
+// It removes the old versions of a key. It keeps the newest version of 
+// the key even if its latest modification index is smaller than the given 
+// index.
 message CompactionRequest {
-  optional int64 index = 1;
+  int64 index = 1;
 }
 
 message CompactionResponse {
-  optional ResponseHeader header = 1;
+  ResponseHeader header = 1;
 }
 
 message LeaseCreateRequest {
   // advisory ttl in seconds
-  optional int64 ttl = 1;
+  int64 ttl = 1;
 }
 
 message LeaseCreateResponse {
-  optional ResponseHeader header = 1;
-  optional int64 lease_id = 2;
+  ResponseHeader header = 1;
+  int64 lease_id = 2;
   // server decided ttl in second
-  optional int64 ttl = 3;
-  optional string error = 4;
+  int64 ttl = 3;
+  string error = 4;
 }
 
 message LeaseRevokeRequest {
-  optional int64 lease_id = 1;
+  int64 lease_id = 1;
 }
 
 message LeaseRevokeResponse {
-  optional ResponseHeader header = 1;
+  ResponseHeader header = 1;
 }
 
 message LeaseTxnRequest {
-  optional TxnRequest request = 1;
+  TxnRequest request = 1;
   repeated LeaseAttachRequest success = 2;
   repeated LeaseAttachRequest failure = 3;
 }
 
 message LeaseTxnResponse {
-  optional ResponseHeader header = 1;
-  optional TxnResponse response = 2;
+  ResponseHeader header = 1;
+  TxnResponse response = 2;
   repeated LeaseAttachResponse attach_responses = 3;
 }
 
 message LeaseAttachRequest {
-  optional int64 lease_id = 1;
-  optional bytes key = 2;
+  int64 lease_id = 1;
+  bytes key = 2;
 }
 
 message LeaseAttachResponse {
-  optional ResponseHeader header = 1;
+  ResponseHeader header = 1;
 }
 
 message LeaseKeepAliveRequest {
-  optional int64 lease_id = 1;
+  int64 lease_id = 1;
 }
 
 message LeaseKeepAliveResponse {
-  optional ResponseHeader header = 1;
-  optional int64 lease_id = 2;
-  optional int64 ttl = 3;
+  ResponseHeader header = 1;
+  int64 lease_id = 2;
+  int64 ttl = 3;
 }
