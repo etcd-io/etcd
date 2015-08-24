@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -42,10 +43,6 @@ const (
 )
 
 var errStopped = errors.New("stopped")
-
-type canceler interface {
-	CancelRequest(*http.Request)
-}
 
 type pipeline struct {
 	from, to types.ID
@@ -149,15 +146,14 @@ func (p *pipeline) post(data []byte) (err error) {
 		}
 	}()
 	done := make(chan struct{}, 1)
+	cancel := httputil.RequestCanceler(p.tr, req)
 	go func() {
 		select {
 		case <-done:
 		case <-p.stopc:
 			waitSchedule()
 			stopped = true
-			if cancel, ok := p.tr.(canceler); ok {
-				cancel.CancelRequest(req)
-			}
+			cancel()
 		}
 	}()
 
