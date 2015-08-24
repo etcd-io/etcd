@@ -384,6 +384,8 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 	}
 	defer hcancel()
 
+	reqcancel := requestCanceler(c.transport, req)
+
 	rtchan := make(chan roundTripResponse, 1)
 	go func() {
 		resp, err := c.transport.RoundTrip(req)
@@ -399,7 +401,7 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 		resp, err = rtresp.resp, rtresp.err
 	case <-hctx.Done():
 		// cancel and wait for request to actually exit before continuing
-		c.transport.CancelRequest(req)
+		reqcancel()
 		rtresp := <-rtchan
 		resp = rtresp.resp
 		switch {
