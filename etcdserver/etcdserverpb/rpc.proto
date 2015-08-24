@@ -59,6 +59,8 @@ message RangeResponse {
   ResponseHeader header = 1;
   repeated storagepb.KeyValue kvs = 2;
   bytes consistent_token = 3;
+  // more indicates if there are more keys to return in the requested range.
+  bool more = 4;
 }
 
 message PutRequest {
