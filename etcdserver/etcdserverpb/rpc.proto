@@ -159,6 +159,10 @@ message TxnResponse {
   repeated ResponseUnion responses = 3;
 }
 
+// Compaction compacts the kv store upto the given index (including). 
+// It removes the old versions of a key. It keeps the newest version of 
+// the key even if its latest modification index is smaller than the given 
+// index.
 message CompactionRequest {
   int64 index = 1;
 }
