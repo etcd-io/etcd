@@ -12,8 +12,8 @@ import (
 
 // TODO: improve to a unit test
 func TestRangeLimitWhenKeyDeleted(t *testing.T) {
-	s := newStore("test")
-	defer os.Remove("test")
+	s := newStore(tmpPath)
+	defer os.Remove(tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"))
 	s.Put([]byte("foo1"), []byte("bar1"))
@@ -46,8 +46,8 @@ func TestRangeLimitWhenKeyDeleted(t *testing.T) {
 }
 
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
-	s0 := newStore("test")
-	defer os.Remove("test")
+	s0 := newStore(tmpPath)
+	defer os.Remove(tmpPath)
 
 	s0.Put([]byte("foo"), []byte("bar"))
 	s0.Put([]byte("foo"), []byte("bar1"))
@@ -63,7 +63,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 
 	s0.Close()
 
-	s1 := newStore("test")
+	s1 := newStore(tmpPath)
 	s1.Restore()
 
 	// wait for scheduled compaction to be finished
@@ -86,8 +86,8 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 }
 
 func BenchmarkStorePut(b *testing.B) {
-	s := newStore("test")
-	defer os.Remove("test")
+	s := newStore(tmpPath)
+	defer os.Remove(tmpPath)
 
 	// prepare keys
 	keys := make([][]byte, b.N)

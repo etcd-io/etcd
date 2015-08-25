@@ -44,7 +44,7 @@ func TestScheduleCompaction(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s := newStore("test")
+		s := newStore(tmpPath)
 		tx := s.b.BatchTx()
 
 		tx.Lock()
@@ -74,6 +74,6 @@ func TestScheduleCompaction(t *testing.T) {
 		}
 		tx.Unlock()
 
-		cleanup(s, "test")
+		cleanup(s, tmpPath)
 	}
 }
