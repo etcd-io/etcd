@@ -252,6 +252,38 @@ func TestTx_DeleteBucket_NotFound(t *testing.T) {
 	})
 }
 
+// Ensure that no error is returned when a tx.ForEach function does not return
+// an error.
+func TestTx_ForEach_NoError(t *testing.T) {
+	db := NewTestDB()
+	defer db.Close()
+	db.Update(func(tx *bolt.Tx) error {
+		tx.CreateBucket([]byte("widgets"))
+		tx.Bucket([]byte("widgets")).Put([]byte("foo"), []byte("bar"))
+
+		equals(t, nil, tx.ForEach(func(name []byte, b *bolt.Bucket) error {
+			return nil
+		}))
+		return nil
+	})
+}
+
+// Ensure that an error is returned when a tx.ForEach function returns an error.
+func TestTx_ForEach_WithError(t *testing.T) {
+	db := NewTestDB()
+	defer db.Close()
+	db.Update(func(tx *bolt.Tx) error {
+		tx.CreateBucket([]byte("widgets"))
+		tx.Bucket([]byte("widgets")).Put([]byte("foo"), []byte("bar"))
+
+		err := errors.New("foo")
+		equals(t, err, tx.ForEach(func(name []byte, b *bolt.Bucket) error {
+			return err
+		}))
+		return nil
+	})
+}
+
 // Ensure that Tx commit handlers are called after a transaction successfully commits.
 func TestTx_OnCommit(t *testing.T) {
 	var x int

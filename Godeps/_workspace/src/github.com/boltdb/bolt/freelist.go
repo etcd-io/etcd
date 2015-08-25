@@ -48,15 +48,14 @@ func (f *freelist) pending_count() int {
 
 // all returns a list of all free ids and all pending ids in one sorted list.
 func (f *freelist) all() []pgid {
-	ids := make([]pgid, len(f.ids))
-	copy(ids, f.ids)
+	m := make(pgids, 0)
 
 	for _, list := range f.pending {
-		ids = append(ids, list...)
+		m = append(m, list...)
 	}
 
-	sort.Sort(pgids(ids))
-	return ids
+	sort.Sort(m)
+	return pgids(f.ids).merge(m)
 }
 
 // allocate returns the starting page id of a contiguous list of pages of a given size.
@@ -127,15 +126,17 @@ func (f *freelist) free(txid txid, p *page) {
 
 // release moves all page ids for a transaction id (or older) to the freelist.
 func (f *freelist) release(txid txid) {
+	m := make(pgids, 0)
 	for tid, ids := range f.pending {
 		if tid <= txid {
 			// Move transaction's pending pages to the available freelist.
 			// Don't remove from the cache since the page is still free.
-			f.ids = append(f.ids, ids...)
+			m = append(m, ids...)
 			delete(f.pending, tid)
 		}
 	}
-	sort.Sort(pgids(f.ids))
+	sort.Sort(m)
+	f.ids = pgids(f.ids).merge(m)
 }
 
 // rollback removes the pages from a given pending tx.

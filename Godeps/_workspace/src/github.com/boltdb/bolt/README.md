@@ -87,6 +87,11 @@ are not thread safe. To work with data in multiple goroutines you must start
 a transaction for each one or use locking to ensure only one goroutine accesses
 a transaction at a time. Creating transaction from the `DB` is thread safe.
 
+Read-only transactions and read-write transactions should not depend on one
+another and generally shouldn't be opened simultaneously in the same goroutine.
+This can cause a deadlock as the read-write transaction needs to periodically
+re-map the data file but it cannot do so while a read-only transaction is open.
+
 
 #### Read-write transactions
 
@@ -446,6 +451,21 @@ It's also useful to pipe these stats to a service such as statsd for monitoring
 or to provide an HTTP endpoint that will perform a fixed-length sample.
 
 
+### Read-Only Mode
+
+Sometimes it is useful to create a shared, read-only Bolt database. To this,
+set the `Options.ReadOnly` flag when opening your database. Read-only mode
+uses a shared lock to allow multiple processes to read from the database but
+it will block any processes from opening the database in read-write mode.
+
+```go
+db, err := bolt.Open("my.db", 0666, &bolt.Options{ReadOnly: true})
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+
 ## Resources
 
 For more information on getting started with Bolt, check out the following articles:
@@ -550,6 +570,11 @@ Here are a few things to note when evaluating and using Bolt:
   However, this is expected and the OS will release memory as needed. Bolt can
   handle databases much larger than the available physical RAM.
 
+* The data structures in the Bolt database are memory mapped so the data file
+  will be endian specific. This means that you cannot copy a Bolt file from a
+  little endian machine to a big endian machine and have it work. For most 
+  users this is not a concern since most modern CPUs are little endian.
+
 * Because of the way pages are laid out on disk, Bolt cannot truncate data files
   and return free pages back to the disk. Instead, Bolt maintains a free list
   of unused pages within its data file. These free pages can be reused by later
@@ -567,7 +592,7 @@ Here are a few things to note when evaluating and using Bolt:
 Below is a list of public, open source projects that use Bolt:
 
 * [Operation Go: A Routine Mission](http://gocode.io) - An online programming game for Golang using Bolt for user accounts and a leaderboard.
-* [Bazil](https://github.com/bazillion/bazil) - A file system that lets your data reside where it is most convenient for it to reside.
+* [Bazil](https://bazil.org/) - A file system that lets your data reside where it is most convenient for it to reside.
 * [DVID](https://github.com/janelia-flyem/dvid) - Added Bolt as optional storage engine and testing it against Basho-tuned leveldb.
 * [Skybox Analytics](https://github.com/skybox/skybox) - A standalone funnel analysis tool for web analytics.
 * [Scuttlebutt](https://github.com/benbjohnson/scuttlebutt) - Uses Bolt to store and process all Twitter mentions of GitHub projects.
@@ -587,5 +612,10 @@ Below is a list of public, open source projects that use Bolt:
 * [SkyDB](https://github.com/skydb/sky) - Behavioral analytics database.
 * [Seaweed File System](https://github.com/chrislusf/weed-fs) - Highly scalable distributed key~file system with O(1) disk read.
 * [InfluxDB](http://influxdb.com) - Scalable datastore for metrics, events, and real-time analytics.
+* [Freehold](http://tshannon.bitbucket.org/freehold/) - An open, secure, and lightweight platform for your files and data.
+* [Prometheus Annotation Server](https://github.com/oliver006/prom_annotation_server) - Annotation server for PromDash & Prometheus service monitoring system.
+* [Consul](https://github.com/hashicorp/consul) - Consul is service discovery and configuration made easy. Distributed, highly available, and datacenter-aware.
+* [Kala](https://github.com/ajvb/kala) - Kala is a modern job scheduler optimized to run on a single node. It is persistant, JSON over HTTP API, ISO 8601 duration notation, and dependent jobs.
+* [drive](https://github.com/odeke-em/drive) - drive is an unofficial Google Drive command line client for \*NIX operating systems.
 
 If you are using Bolt in a project please send a pull request to add it to the list.

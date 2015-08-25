@@ -127,7 +127,8 @@ func (tx *Tx) OnCommit(fn func()) {
 }
 
 // Commit writes all changes to disk and updates the meta page.
-// Returns an error if a disk write error occurs.
+// Returns an error if a disk write error occurs, or if Commit is
+// called on a read-only transaction.
 func (tx *Tx) Commit() error {
 	_assert(!tx.managed, "managed tx commit not allowed")
 	if tx.db == nil {
@@ -203,7 +204,8 @@ func (tx *Tx) Commit() error {
 	return nil
 }
 
-// Rollback closes the transaction and ignores all previous updates.
+// Rollback closes the transaction and ignores all previous updates. Read-only
+// transactions must be rolled back and not committed.
 func (tx *Tx) Rollback() error {
 	_assert(!tx.managed, "managed tx rollback not allowed")
 	if tx.db == nil {
@@ -421,15 +423,39 @@ func (tx *Tx) write() error {
 	// Write pages to disk in order.
 	for _, p := range pages {
 		size := (int(p.overflow) + 1) * tx.db.pageSize
-		buf := (*[maxAllocSize]byte)(unsafe.Pointer(p))[:size]
 		offset := int64(p.id) * int64(tx.db.pageSize)
-		if _, err := tx.db.ops.writeAt(buf, offset); err != nil {
-			return err
-		}
 
-		// Update statistics.
-		tx.stats.Write++
+		// Write out page in "max allocation" sized chunks.
+		ptr := (*[maxAllocSize]byte)(unsafe.Pointer(p))
+		for {
+			// Limit our write to our max allocation size.
+			sz := size
+			if sz > maxAllocSize-1 {
+				sz = maxAllocSize - 1
+			}
+
+			// Write chunk to disk.
+			buf := ptr[:sz]
+			if _, err := tx.db.ops.writeAt(buf, offset); err != nil {
+				return err
+			}
+
+			// Update statistics.
+			tx.stats.Write++
+
+			// Exit inner for loop if we've written all the chunks.
+			size -= sz
+			if size == 0 {
+				break
+			}
+
+			// Otherwise move offset forward and move pointer to next chunk.
+			offset += int64(sz)
+			ptr = (*[maxAllocSize]byte)(unsafe.Pointer(&ptr[sz]))
+		}
 	}
+
+	// Ignore file sync if flag is set on DB.
 	if !tx.db.NoSync || IgnoreNoSync {
 		if err := fdatasync(tx.db); err != nil {
 			return err
