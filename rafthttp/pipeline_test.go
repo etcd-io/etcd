@@ -223,18 +223,6 @@ func newRoundTripperBlocker() *roundTripperBlocker {
 		cancel:   make(map[*http.Request]chan struct{}),
 	}
 }
-func (t *roundTripperBlocker) RoundTrip(req *http.Request) (*http.Response, error) {
-	c := make(chan struct{}, 1)
-	t.mu.Lock()
-	t.cancel[req] = c
-	t.mu.Unlock()
-	select {
-	case <-t.unblockc:
-		return &http.Response{StatusCode: http.StatusNoContent, Body: &nopReadCloser{}}, nil
-	case <-c:
-		return nil, errors.New("request canceled")
-	}
-}
 func (t *roundTripperBlocker) unblock() {
 	close(t.unblockc)
 }

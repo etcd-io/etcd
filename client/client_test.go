@@ -109,25 +109,6 @@ func newFakeTransport() *fakeTransport {
 	}
 }
 
-func (t *fakeTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	select {
-	case resp := <-t.respchan:
-		return resp, nil
-	case err := <-t.errchan:
-		return nil, err
-	case <-t.startCancel:
-		select {
-		// this simulates that the request is finished before cancel effects
-		case resp := <-t.respchan:
-			return resp, nil
-		// wait on finishCancel to simulate taking some amount of
-		// time while calling CancelRequest
-		case <-t.finishCancel:
-			return nil, errors.New("cancelled")
-		}
-	}
-}
-
 func (t *fakeTransport) CancelRequest(*http.Request) {
 	t.startCancel <- struct{}{}
 }

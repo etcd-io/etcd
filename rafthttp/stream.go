@@ -28,6 +28,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
@@ -261,7 +262,7 @@ type streamReader struct {
 
 	mu         sync.Mutex
 	msgAppTerm uint64
-	req        *http.Request
+	cancel     func()
 	closer     io.Closer
 	stopc      chan struct{}
 	done       chan struct{}
@@ -385,11 +386,12 @@ func (cr *streamReader) updateMsgAppTerm(term uint64) {
 	}
 }
 
-// TODO: always cancel in-flight dial and decode
 func (cr *streamReader) stop() {
 	close(cr.stopc)
 	cr.mu.Lock()
-	cr.cancelRequest()
+	if cr.cancel != nil {
+		cr.cancel()
+	}
 	cr.close()
 	cr.mu.Unlock()
 	<-cr.done
@@ -425,7 +427,13 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	}
 
 	cr.mu.Lock()
-	cr.req = req
+	select {
+	case <-cr.stopc:
+		cr.mu.Unlock()
+		return nil, fmt.Errorf("stream reader is stopped")
+	default:
+	}
+	cr.cancel = httputil.RequestCanceler(cr.tr, req)
 	cr.mu.Unlock()
 
 	resp, err := cr.tr.RoundTrip(req)
@@ -477,12 +485,6 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	default:
 		resp.Body.Close()
 		return nil, fmt.Errorf("unhandled http status %d", resp.StatusCode)
-	}
-}
-
-func (cr *streamReader) cancelRequest() {
-	if canceller, ok := cr.tr.(*http.Transport); ok {
-		canceller.CancelRequest(cr.req)
 	}
 }
 
