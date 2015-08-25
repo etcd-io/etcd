@@ -4,7 +4,7 @@
 
 Starting an etcd cluster statically requires that each member knows another in the cluster. In a number of cases, you might not know the IPs of your cluster members ahead of time. In these cases, you can bootstrap an etcd cluster with the help of a discovery service.
 
-Once an etcd cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md).
+Once an etcd cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md). To better understand the design behind runtime reconfiguration, we suggest you read [this](runtime-reconf-design.md).
 
 This guide will cover the following mechanisms for bootstrapping an etcd cluster:
 
@@ -37,6 +37,8 @@ ETCD_INITIAL_CLUSTER_STATE=new
 Note that the URLs specified in `initial-cluster` are the _advertised peer URLs_, i.e. they should match the value of `initial-advertise-peer-urls` on the respective nodes.
 
 If you are spinning up multiple clusters (or creating and destroying a single cluster) with same configuration for testing purpose, it is highly recommended that you specify a unique `initial-cluster-token` for the different clusters. By doing this, etcd can generate unique cluster IDs and member IDs for the clusters even if they otherwise have the exact same configuration. This can protect you from cross-cluster-interaction, which might corrupt your clusters.
+
+etcd listens on [`listen-client-urls`](configuration.md#-listen-client-urls) to accept client traffic. etcd member advertises the URLs specified in [`advertise-client-urls`](configuration.md#-advertise-client-urls) to other members, proxies, clients. Please make sure the `advertise-client-urls` are reachable from intended clients. A common mistake is setting `advertise-client-urls` to localhost or leave it as default when you want the remote clients to reach etcd.
 
 On each machine you would start etcd with these flags:
 
