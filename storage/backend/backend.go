@@ -80,7 +80,7 @@ func (b *backend) run() {
 		select {
 		case <-time.After(b.batchInterval):
 		case <-b.stopc:
-			b.batchTx.Commit()
+			b.batchTx.CommitAndStop()
 			return
 		}
 		b.batchTx.Commit()

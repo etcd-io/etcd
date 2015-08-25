@@ -16,6 +16,7 @@ type BatchTx interface {
 	UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte)
 	UnsafeDelete(bucketName []byte, key []byte)
 	Commit()
+	CommitAndStop()
 }
 
 type batchTx struct {
@@ -43,7 +44,7 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	}
 	t.pending++
 	if t.pending > t.backend.batchLimit {
-		t.commit()
+		t.commit(false)
 		t.pending = 0
 	}
 }
@@ -84,19 +85,26 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 	}
 	t.pending++
 	if t.pending > t.backend.batchLimit {
-		t.commit()
+		t.commit(false)
 		t.pending = 0
 	}
 }
 
-// commitAndBegin commits a previous tx and begins a new writable one.
+// Commit commits a previous tx and begins a new writable one.
 func (t *batchTx) Commit() {
 	t.Lock()
 	defer t.Unlock()
-	t.commit()
+	t.commit(false)
 }
 
-func (t *batchTx) commit() {
+// CommitAndStop commits the previous tx and do not create a new one.
+func (t *batchTx) CommitAndStop() {
+	t.Lock()
+	defer t.Unlock()
+	t.commit(true)
+}
+
+func (t *batchTx) commit(stop bool) {
 	var err error
 	// commit the last tx
 	if t.tx != nil {
@@ -104,6 +112,10 @@ func (t *batchTx) commit() {
 		if err != nil {
 			log.Fatalf("storage: cannot commit tx (%s)", err)
 		}
+	}
+
+	if stop {
+		return
 	}
 
 	// begin a new tx
