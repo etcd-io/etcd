@@ -20,6 +20,9 @@ import (
 // take permanent effect only after a successful return is seen in
 // caller.
 //
+// The maximum batch size and delay can be adjusted with DB.MaxBatchSize
+// and DB.MaxBatchDelay, respectively.
+//
 // Batch is only useful when there are multiple goroutines calling it.
 func (db *DB) Batch(fn func(*Tx) error) error {
 	errCh := make(chan error, 1)

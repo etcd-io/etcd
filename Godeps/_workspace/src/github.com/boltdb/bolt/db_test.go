@@ -42,6 +42,9 @@ func TestOpen_Timeout(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("timeout not supported on windows")
 	}
+	if runtime.GOOS == "solaris" {
+		t.Skip("solaris fcntl locks don't support intra-process locking")
+	}
 
 	path := tempfile()
 	defer os.Remove(path)
@@ -65,6 +68,9 @@ func TestOpen_Timeout(t *testing.T) {
 func TestOpen_Wait(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("timeout not supported on windows")
+	}
+	if runtime.GOOS == "solaris" {
+		t.Skip("solaris fcntl locks don't support intra-process locking")
 	}
 
 	path := tempfile()
@@ -224,6 +230,80 @@ func TestDB_Open_FileTooSmall(t *testing.T) {
 	equals(t, errors.New("file size too small"), err)
 }
 
+// Ensure that a database can be opened in read-only mode by multiple processes
+// and that a database can not be opened in read-write mode and in read-only
+// mode at the same time.
+func TestOpen_ReadOnly(t *testing.T) {
+	if runtime.GOOS == "solaris" {
+		t.Skip("solaris fcntl locks don't support intra-process locking")
+	}
+
+	bucket, key, value := []byte(`bucket`), []byte(`key`), []byte(`value`)
+
+	path := tempfile()
+	defer os.Remove(path)
+
+	// Open in read-write mode.
+	db, err := bolt.Open(path, 0666, nil)
+	ok(t, db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucket(bucket)
+		if err != nil {
+			return err
+		}
+		return b.Put(key, value)
+	}))
+	assert(t, db != nil, "")
+	assert(t, !db.IsReadOnly(), "")
+	ok(t, err)
+	ok(t, db.Close())
+
+	// Open in read-only mode.
+	db0, err := bolt.Open(path, 0666, &bolt.Options{ReadOnly: true})
+	ok(t, err)
+	defer db0.Close()
+
+	// Opening in read-write mode should return an error.
+	_, err = bolt.Open(path, 0666, &bolt.Options{Timeout: time.Millisecond * 100})
+	assert(t, err != nil, "")
+
+	// And again (in read-only mode).
+	db1, err := bolt.Open(path, 0666, &bolt.Options{ReadOnly: true})
+	ok(t, err)
+	defer db1.Close()
+
+	// Verify both read-only databases are accessible.
+	for _, db := range []*bolt.DB{db0, db1} {
+		// Verify is is in read only mode indeed.
+		assert(t, db.IsReadOnly(), "")
+
+		// Read-only databases should not allow updates.
+		assert(t,
+			bolt.ErrDatabaseReadOnly == db.Update(func(*bolt.Tx) error {
+				panic(`should never get here`)
+			}),
+			"")
+
+		// Read-only databases should not allow beginning writable txns.
+		_, err = db.Begin(true)
+		assert(t, bolt.ErrDatabaseReadOnly == err, "")
+
+		// Verify the data.
+		ok(t, db.View(func(tx *bolt.Tx) error {
+			b := tx.Bucket(bucket)
+			if b == nil {
+				return fmt.Errorf("expected bucket `%s`", string(bucket))
+			}
+
+			got := string(b.Get(key))
+			expected := string(value)
+			if got != expected {
+				return fmt.Errorf("expected `%s`, got `%s`", expected, got)
+			}
+			return nil
+		}))
+	}
+}
+
 // TODO(benbjohnson): Test corruption at every byte of the first two pages.
 
 // Ensure that a database cannot open a transaction when it's not open.
@@ -252,6 +332,49 @@ func TestDB_BeginRW_Closed(t *testing.T) {
 	tx, err := db.Begin(true)
 	equals(t, err, bolt.ErrDatabaseNotOpen)
 	assert(t, tx == nil, "")
+}
+
+func TestDB_Close_PendingTx_RW(t *testing.T) { testDB_Close_PendingTx(t, true) }
+func TestDB_Close_PendingTx_RO(t *testing.T) { testDB_Close_PendingTx(t, false) }
+
+// Ensure that a database cannot close while transactions are open.
+func testDB_Close_PendingTx(t *testing.T, writable bool) {
+	db := NewTestDB()
+	defer db.Close()
+
+	// Start transaction.
+	tx, err := db.Begin(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Open update in separate goroutine.
+	done := make(chan struct{})
+	go func() {
+		db.Close()
+		close(done)
+	}()
+
+	// Ensure database hasn't closed.
+	time.Sleep(100 * time.Millisecond)
+	select {
+	case <-done:
+		t.Fatal("database closed too early")
+	default:
+	}
+
+	// Commit transaction.
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Ensure database closed now.
+	time.Sleep(100 * time.Millisecond)
+	select {
+	case <-done:
+	default:
+		t.Fatal("database did not close")
+	}
 }
 
 // Ensure a database can provide a transactional block.
@@ -678,7 +801,7 @@ func (db *TestDB) PrintStats() {
 
 // MustCheck runs a consistency check on the database and panics if any errors are found.
 func (db *TestDB) MustCheck() {
-	db.View(func(tx *bolt.Tx) error {
+	db.Update(func(tx *bolt.Tx) error {
 		// Collect all the errors.
 		var errors []error
 		for err := range tx.Check() {

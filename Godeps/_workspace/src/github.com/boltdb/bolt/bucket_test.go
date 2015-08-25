@@ -640,6 +640,22 @@ func TestBucket_Put_KeyTooLarge(t *testing.T) {
 	})
 }
 
+// Ensure that an error is returned when inserting a value that's too large.
+func TestBucket_Put_ValueTooLarge(t *testing.T) {
+	if os.Getenv("DRONE") == "true" {
+		t.Skip("not enough RAM for test")
+	}
+
+	db := NewTestDB()
+	defer db.Close()
+	db.Update(func(tx *bolt.Tx) error {
+		tx.CreateBucket([]byte("widgets"))
+		err := tx.Bucket([]byte("widgets")).Put([]byte("foo"), make([]byte, bolt.MaxValueSize+1))
+		equals(t, err, bolt.ErrValueTooLarge)
+		return nil
+	})
+}
+
 // Ensure a bucket can calculate stats.
 func TestBucket_Stats(t *testing.T) {
 	db := NewTestDB()
