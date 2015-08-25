@@ -593,9 +593,10 @@ func writeKeyError(w http.ResponseWriter, err error) {
 	case *etcdErr.Error:
 		e.WriteTo(w)
 	default:
-		if err == etcdserver.ErrTimeoutDueToLeaderFail {
+		switch err {
+		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost:
 			plog.Error(err)
-		} else {
+		default:
 			plog.Errorf("got unexpected response error (%v)", err)
 		}
 		ee := etcdErr.NewError(etcdErr.EcodeRaftInternal, err.Error(), 0)

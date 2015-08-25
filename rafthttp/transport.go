@@ -17,6 +17,7 @@ package rafthttp
 import (
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/xiang90/probing"
@@ -68,6 +69,11 @@ type Transporter interface {
 	// It is the caller's responsibility to ensure the urls are all valid,
 	// or it panics.
 	UpdatePeer(id types.ID, urls []string)
+	// ActiveSince returns the time that the connection with the peer
+	// of the given id becomes active.
+	// If the connection is active since peer was added, it returns the adding time.
+	// If the connection is currently inactive, it returns zero time.
+	ActiveSince(id types.ID) time.Time
 	// Stop closes the connections and stops the transporter.
 	Stop()
 }
@@ -246,6 +252,15 @@ func (t *transport) UpdatePeer(id types.ID, us []string) {
 
 	t.prober.Remove(id.String())
 	addPeerToProber(t.prober, id.String(), us)
+}
+
+func (t *transport) ActiveSince(id types.ID) time.Time {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if p, ok := t.peers[id]; ok {
+		return p.activeSince()
+	}
+	return time.Time{}
 }
 
 type Pausable interface {

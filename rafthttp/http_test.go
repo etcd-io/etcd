@@ -366,4 +366,5 @@ func (pr *fakePeer) Send(m raftpb.Message)                 { pr.msgs = append(pr
 func (pr *fakePeer) Update(urls types.URLs)                { pr.urls = urls }
 func (pr *fakePeer) setTerm(term uint64)                   { pr.term = term }
 func (pr *fakePeer) attachOutgoingConn(conn *outgoingConn) { pr.connc <- conn }
+func (pr *fakePeer) activeSince() time.Time                { return time.Time{} }
 func (pr *fakePeer) Stop()                                 {}

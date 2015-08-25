@@ -21,15 +21,16 @@ import (
 )
 
 var (
-	ErrUnknownMethod          = errors.New("etcdserver: unknown method")
-	ErrStopped                = errors.New("etcdserver: server stopped")
-	ErrIDRemoved              = errors.New("etcdserver: ID removed")
-	ErrIDExists               = errors.New("etcdserver: ID exists")
-	ErrIDNotFound             = errors.New("etcdserver: ID not found")
-	ErrPeerURLexists          = errors.New("etcdserver: peerURL exists")
-	ErrCanceled               = errors.New("etcdserver: request cancelled")
-	ErrTimeout                = errors.New("etcdserver: request timed out")
-	ErrTimeoutDueToLeaderFail = errors.New("etcdserver: request timed out, possibly due to previous leader failure")
+	ErrUnknownMethod              = errors.New("etcdserver: unknown method")
+	ErrStopped                    = errors.New("etcdserver: server stopped")
+	ErrIDRemoved                  = errors.New("etcdserver: ID removed")
+	ErrIDExists                   = errors.New("etcdserver: ID exists")
+	ErrIDNotFound                 = errors.New("etcdserver: ID not found")
+	ErrPeerURLexists              = errors.New("etcdserver: peerURL exists")
+	ErrCanceled                   = errors.New("etcdserver: request cancelled")
+	ErrTimeout                    = errors.New("etcdserver: request timed out")
+	ErrTimeoutDueToLeaderFail     = errors.New("etcdserver: request timed out, possibly due to previous leader failure")
+	ErrTimeoutDueToConnectionLost = errors.New("etcdserver: request timed out, possibly due to connection lost")
 )
 
 func isKeyNotFound(err error) bool {
