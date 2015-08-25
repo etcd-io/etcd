@@ -38,6 +38,8 @@ Note that the URLs specified in `initial-cluster` are the _advertised peer URLs_
 
 If you are spinning up multiple clusters (or creating and destroying a single cluster) with same configuration for testing purpose, it is highly recommended that you specify a unique `initial-cluster-token` for the different clusters. By doing this, etcd can generate unique cluster IDs and member IDs for the clusters even if they otherwise have the exact same configuration. This can protect you from cross-cluster-interaction, which might corrupt your clusters.
 
+etcd listens on [`listen-client-urls`](configuration.md#-listen-client-urls) to accept client traffic. etcd member advertises the URLs specified in [`advertise-client-urls`](configuration.md#-advertise-client-urls) to other members, proxies, clients. Please make sure the `advertise-client-urls` are reachable from intended clients. A common mistake is setting `advertise-client-urls` to localhost or leave it as default when you want the remote clients to reach etcd.
+
 On each machine you would start etcd with these flags:
 
 ```
