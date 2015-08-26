@@ -22,20 +22,25 @@ func TestKeyIndexGet(t *testing.T) {
 		werr error
 	}{
 		{13, 0, ErrRevisionNotFound},
-		{13, 0, ErrRevisionNotFound},
+		{12, 0, ErrRevisionNotFound},
 
 		// get on generation 2
-		{12, 0, ErrRevisionNotFound},
 		{11, 10, nil},
 		{10, 10, nil},
 		{9, 8, nil},
 		{8, 8, nil},
+
 		{7, 0, ErrRevisionNotFound},
+		{6, 0, ErrRevisionNotFound},
 
 		// get on generation 1
-		{6, 0, ErrRevisionNotFound},
 		{5, 4, nil},
 		{4, 4, nil},
+
+		{3, 0, ErrRevisionNotFound},
+		{2, 0, ErrRevisionNotFound},
+		{1, 0, ErrRevisionNotFound},
+		{0, 0, ErrRevisionNotFound},
 	}
 
 	for i, tt := range tests {
@@ -74,11 +79,28 @@ func TestKeyIndexPut(t *testing.T) {
 	}
 }
 
+func TestKeyIndexRestore(t *testing.T) {
+	ki := &keyIndex{key: []byte("foo")}
+	ki.restore(revision{5, 0}, revision{7, 0}, 2)
+
+	wki := &keyIndex{
+		key:         []byte("foo"),
+		modified:    revision{7, 0},
+		generations: []generation{{created: revision{5, 0}, ver: 2, revs: []revision{{main: 7}}}},
+	}
+	if !reflect.DeepEqual(ki, wki) {
+		t.Errorf("ki = %+v, want %+v", ki, wki)
+	}
+}
+
 func TestKeyIndexTombstone(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
 	ki.put(5, 0)
 
-	ki.tombstone(7, 0)
+	err := ki.tombstone(7, 0)
+	if err != nil {
+		t.Errorf("unexpected tombstone error: %v", err)
+	}
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
@@ -91,7 +113,10 @@ func TestKeyIndexTombstone(t *testing.T) {
 
 	ki.put(8, 0)
 	ki.put(9, 0)
-	ki.tombstone(15, 0)
+	err = ki.tombstone(15, 0)
+	if err != nil {
+		t.Errorf("unexpected tombstone error: %v", err)
+	}
 
 	wki = &keyIndex{
 		key:      []byte("foo"),
@@ -104,6 +129,11 @@ func TestKeyIndexTombstone(t *testing.T) {
 	}
 	if !reflect.DeepEqual(ki, wki) {
 		t.Errorf("ki = %+v, want %+v", ki, wki)
+	}
+
+	err = ki.tombstone(16, 0)
+	if err != ErrRevisionNotFound {
+		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
 	}
 }
 
@@ -291,8 +321,8 @@ func TestKeyIndexCompact(t *testing.T) {
 		}
 	}
 
-	ki = newTestKeyIndex()
 	// Jump Compaction
+	ki = newTestKeyIndex()
 	for i, tt := range tests {
 		if (i%2 == 0 && i < 6) || (i%2 == 1 && i > 6) {
 			am := make(map[revision]struct{})
@@ -306,7 +336,7 @@ func TestKeyIndexCompact(t *testing.T) {
 		}
 	}
 
-	// OnceCompaction
+	// Once Compaction
 	for i, tt := range tests {
 		ki := newTestKeyIndex()
 		am := make(map[revision]struct{})
@@ -316,6 +346,154 @@ func TestKeyIndexCompact(t *testing.T) {
 		}
 		if !reflect.DeepEqual(am, tt.wam) {
 			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+		}
+	}
+}
+
+// test that compact on version that higher than last modified version works well
+func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
+	ki := &keyIndex{key: []byte("foo")}
+	ki.put(1, 0)
+	ki.put(2, 0)
+	am := make(map[revision]struct{})
+	ki.compact(3, am)
+
+	wki := &keyIndex{
+		key:      []byte("foo"),
+		modified: revision{2, 0},
+		generations: []generation{
+			{created: revision{1, 0}, ver: 2, revs: []revision{{main: 2}}},
+		},
+	}
+	wam := map[revision]struct{}{
+		revision{main: 2}: {},
+	}
+	if !reflect.DeepEqual(ki, wki) {
+		t.Errorf("ki = %+v, want %+v", ki, wki)
+	}
+	if !reflect.DeepEqual(am, wam) {
+		t.Errorf("am = %+v, want %+v", am, wam)
+	}
+}
+
+func TestKeyIndexIsEmpty(t *testing.T) {
+	tests := []struct {
+		ki *keyIndex
+		w  bool
+	}{
+		{
+			&keyIndex{
+				key:         []byte("foo"),
+				generations: []generation{{}},
+			},
+			true,
+		},
+		{
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{2, 0},
+				generations: []generation{
+					{created: revision{1, 0}, ver: 2, revs: []revision{{main: 2}}},
+				},
+			},
+			false,
+		},
+	}
+	for i, tt := range tests {
+		g := tt.ki.isEmpty()
+		if g != tt.w {
+			t.Errorf("#%d: isEmpty = %v, want %v", i, g, tt.w)
+		}
+	}
+}
+
+func TestKeyIndexFindGeneration(t *testing.T) {
+	ki := newTestKeyIndex()
+
+	tests := []struct {
+		rev int64
+		wg  *generation
+	}{
+		{0, nil},
+		{1, nil},
+		{2, &ki.generations[0]},
+		{3, &ki.generations[0]},
+		{4, &ki.generations[0]},
+		{5, &ki.generations[0]},
+		{6, nil},
+		{7, nil},
+		{8, &ki.generations[1]},
+		{9, &ki.generations[1]},
+		{10, &ki.generations[1]},
+		{11, &ki.generations[1]},
+		{12, nil},
+		{13, nil},
+	}
+	for i, tt := range tests {
+		g := ki.findGeneration(tt.rev)
+		if g != tt.wg {
+			t.Errorf("#%d: generation = %+v, want %+v", i, g, tt.wg)
+		}
+	}
+}
+
+func TestKeyIndexLess(t *testing.T) {
+	ki := &keyIndex{key: []byte("foo")}
+
+	tests := []struct {
+		ki *keyIndex
+		w  bool
+	}{
+		{&keyIndex{key: []byte("doo")}, false},
+		{&keyIndex{key: []byte("foo")}, false},
+		{&keyIndex{key: []byte("goo")}, true},
+	}
+	for i, tt := range tests {
+		g := ki.Less(tt.ki)
+		if g != tt.w {
+			t.Errorf("#%d: Less = %v, want %v", i, g, tt.w)
+		}
+	}
+}
+
+func TestGenerationIsEmpty(t *testing.T) {
+	tests := []struct {
+		g *generation
+		w bool
+	}{
+		{nil, true},
+		{&generation{}, true},
+		{&generation{revs: []revision{{main: 1}}}, false},
+	}
+	for i, tt := range tests {
+		g := tt.g.isEmpty()
+		if g != tt.w {
+			t.Errorf("#%d: isEmpty = %v, want %v", i, g, tt.w)
+		}
+	}
+}
+
+func TestGenerationWalk(t *testing.T) {
+	g := &generation{
+		ver:     3,
+		created: revision{2, 0},
+		revs:    []revision{{main: 2}, {main: 4}, {main: 6}},
+	}
+	tests := []struct {
+		f  func(rev revision) bool
+		wi int
+	}{
+		{func(rev revision) bool { return rev.main >= 7 }, 2},
+		{func(rev revision) bool { return rev.main >= 6 }, 1},
+		{func(rev revision) bool { return rev.main >= 5 }, 1},
+		{func(rev revision) bool { return rev.main >= 4 }, 0},
+		{func(rev revision) bool { return rev.main >= 3 }, 0},
+		{func(rev revision) bool { return rev.main >= 2 }, -1},
+	}
+	for i, tt := range tests {
+		idx := g.walk(tt.f)
+		if idx != tt.wi {
+			t.Errorf("#%d: index = %d, want %d", i, idx, tt.wi)
 		}
 	}
 }

@@ -115,8 +115,7 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 	}
 
 	ki := item.(*keyIndex)
-	ki.tombstone(rev.main, rev.sub)
-	return nil
+	return ki.tombstone(rev.main, rev.sub)
 }
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {

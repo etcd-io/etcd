@@ -90,12 +90,17 @@ func (ki *keyIndex) restore(created, modified revision, ver int64) {
 
 // tombstone puts a revision, pointing to a tombstone, to the keyIndex.
 // It also creates a new empty generation in the keyIndex.
-func (ki *keyIndex) tombstone(main int64, sub int64) {
+// It returns ErrRevisionNotFound when tombstone on an empty generation.
+func (ki *keyIndex) tombstone(main int64, sub int64) error {
 	if ki.isEmpty() {
 		log.Panicf("store.keyindex: unexpected tombstone on empty keyIndex %s", string(ki.key))
 	}
+	if ki.generations[len(ki.generations)-1].isEmpty() {
+		return ErrRevisionNotFound
+	}
 	ki.put(main, sub)
 	ki.generations = append(ki.generations, generation{})
+	return nil
 }
 
 // get gets the modified, created revision and version of the key that satisfies the given atRev.
@@ -240,7 +245,7 @@ type generation struct {
 
 func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }
 
-// walk walks through the revisions in the generation in ascending order.
+// walk walks through the revisions in the generation in descending order.
 // It passes the revision to the given function.
 // walk returns until: 1. it finishs walking all pairs 2. the function returns false.
 // walk returns the position at where it stopped. If it stopped after
