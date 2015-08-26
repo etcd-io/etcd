@@ -1024,8 +1024,42 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 		if start.After(prevLeadLost) && start.Before(curLeadElected) {
 			return ErrTimeoutDueToLeaderFail
 		}
+
+		lead := types.ID(atomic.LoadUint64(&s.r.lead))
+		switch lead {
+		case types.ID(raft.None):
+			// TODO: return error to specify it happens because the cluster does not have leader now
+		case s.ID():
+			if !isConnectedToQuorumSince(s.r.transport, start, s.ID(), s.cluster.Members()) {
+				return ErrTimeoutDueToConnectionLost
+			}
+		default:
+			if !isConnectedSince(s.r.transport, start, lead) {
+				return ErrTimeoutDueToConnectionLost
+			}
+		}
+
 		return ErrTimeout
 	default:
 		return err
 	}
+}
+
+// isConnectedToQuorumSince checks whether the local member is connected to the
+// quorum of the cluster since the given time.
+func isConnectedToQuorumSince(transport rafthttp.Transporter, since time.Time, self types.ID, members []*Member) bool {
+	var connectedNum int
+	for _, m := range members {
+		if m.ID == self || isConnectedSince(transport, since, m.ID) {
+			connectedNum++
+		}
+	}
+	return connectedNum >= (len(members)+1)/2
+}
+
+// isConnectedSince checks whether the local member is connected to the
+// remote member since the given time.
+func isConnectedSince(transport rafthttp.Transporter, since time.Time, remote types.ID) bool {
+	t := transport.ActiveSince(remote)
+	return !t.IsZero() && t.Before(since)
 }

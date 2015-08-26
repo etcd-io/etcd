@@ -17,6 +17,7 @@ package rafthttp
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -27,10 +28,11 @@ type failureType struct {
 }
 
 type peerStatus struct {
-	id         types.ID
-	mu         sync.Mutex // protect active and failureMap
-	active     bool
-	failureMap map[failureType]string
+	id          types.ID
+	mu          sync.Mutex // protect variables below
+	active      bool
+	failureMap  map[failureType]string
+	activeSince time.Time
 }
 
 func newPeerStatus(id types.ID) *peerStatus {
@@ -46,6 +48,7 @@ func (s *peerStatus) activate() {
 	if !s.active {
 		plog.Infof("the connection with %s became active", s.id)
 		s.active = true
+		s.activeSince = time.Now()
 		s.failureMap = make(map[failureType]string)
 	}
 }
@@ -56,6 +59,7 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 	if s.active {
 		plog.Infof("the connection with %s became inactive", s.id)
 		s.active = false
+		s.activeSince = time.Time{}
 	}
 	logline := fmt.Sprintf("failed to %s %s on %s (%s)", failure.action, s.id, failure.source, reason)
 	if r, ok := s.failureMap[failure]; ok && r == reason {
