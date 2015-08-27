@@ -9,13 +9,13 @@ GCE n1-highcpu-2 machine type
 
 ## etcd Cluster
 
-3 etcd 2.2.0-alpha.1 members, each runs on a single machine.
+3 etcd 2.2.0-rc members, each runs on a single machine.
 
 Detailed versions:
 
 ```
 etcd Version: 2.2.0-alpha.1+git
-Git SHA: 28b61ac
+Git SHA: 59a5a7e
 Go Version: go1.4.2
 Go OS/Arch: linux/amd64
 ```
@@ -32,38 +32,36 @@ Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyl
 
 | key size in bytes | number of clients | target etcd server | read QPS | 90th Percentile Latency (ms) |
 |-------------------|-------------------|--------------------|----------|---------------|
-| 64                | 1                 | leader only        | 2216 (+5%) | 0.5 (-17%) |
-| 64                | 64                | leader only        | 16038 (-10%) | 6.1 (+0%) |
-| 64                | 256               | leader only        | 15497 (-16%) | 22.4 (+5%) |
-| 256               | 1                 | leader only        | 2115  (-8%) | 0.5 (+0%) |
-| 256               | 64                | leader only        | 16083 (-13%) | 6.1 (+8%) |
-| 256               | 256               | leader only        | 15444 (-17%) | 21.9 (+2%) |
-| 64                | 64                | all servers        | 45101 (-9%) | 2.1 (+5%) |
-| 64                | 256               | all servers        | 50558 (-14%) | 8.0 (+8%) |
-| 256               | 64                | all servers        | 45415 (-8%) | 2.1 (+5%) |
-| 256               | 256               | all servers        | 50531 (-14%) | 8.1 (+20%) |
+| 64                | 1                 | leader only        | 2804 (-5%) | 0.4 (+0%) |
+| 64                | 64                | leader only        | 17816 (+0%) | 5.7 (-6%) |
+| 64                | 256               | leader only        | 18667 (-6%) | 20.4 (+2%) |
+| 256               | 1                 | leader only        | 2181 (-15%) | 0.5 (+25%) |
+| 256               | 64                | leader only        | 17435 (-7%) | 6.0 (+9%) |
+| 256               | 256               | leader only        | 18180 (-8%) | 21.3 (+3%) |
+| 64                | 64                | all servers        | 46965 (-4%) | 2.1 (+0%) |
+| 64                | 256               | all servers        | 55286 (-6%) | 7.4 (+6%) |
+| 256               | 64                | all servers        | 46603 (-6%) | 2.1 (+5%) |
+| 256               | 256               | all servers        | 55291 (-6%) | 7.3 (+4%) |
 
 ### writing one single key
 
 | key size in bytes | number of clients | target etcd server | write QPS | 90th Percentile Latency (ms) |
 |-------------------|-------------------|--------------------|-----------|---------------|
-| 64                | 1                 | leader only        | 61 (+3%)  | 18.0 (-15%) |
-| 64                | 64                | leader only        | 2092 (+14%) | 37.2 (-8%) |
-| 64                | 256               | leader only        | 2407 (-43%) | 71.0 (+2%) |
-| 256               | 1                 | leader only        | 60 (+15%)  | 18.5 (-38%) |
-| 256               | 64                | leader only        | 2186 (+33%) | 37.2 (-16%) |
-| 256               | 256               | leader only        | 2385 (-42%) | 81.9 (+8%) |
-| 64                | 64                | all servers        | 1758 (+72%) | 53.1 (-50%) |
-| 64                | 256               | all servers        | 4547 (+31%) | 86.7 (-31%) |
-| 256               | 64                | all servers        | 1667 (+66%) | 54.7 (-50%) |
-| 256               | 256               | all servers        | 4695 (+33%) | 81.3 (-25%) |
+| 64                | 1                 | leader only        | 76 (+22%)  | 19.4 (-15%) |
+| 64                | 64                | leader only        | 2461 (+45%) | 31.8 (-32%) |
+| 64                | 256               | leader only        | 4275 (+1%) | 69.6 (-10%) |
+| 256               | 1                 | leader only        | 64 (+20%)  | 16.7 (-30%) |
+| 256               | 64                | leader only        | 2385 (+30%) | 31.5 (-19%) |
+| 256               | 256               | leader only        | 4353 (-3%) | 74.0 (+9%) |
+| 64                | 64                | all servers        | 2005 (+81%) | 49.8 (-55%) |
+| 64                | 256               | all servers        | 4868 (+35%) | 81.5 (-40%) |
+| 256               | 64                | all servers        | 1925 (+72%) | 47.7 (-59%) |
+| 256               | 256               | all servers        | 4975 (+36%) | 70.3 (-36%) |
 
 ### performance changes explanation
 
-- read QPS in all scenarios is decreased by 10~20%. One reason is that etcd records store metrics for each store operation. The metrics is important for monitoring and debugging, so this is acceptable. The other reason is that HTTP handler checks key access permission in each request for authentication purpose. We could improve this by skipping the check when authentication feature is disabled.
+- read QPS in most scenarios is decreased by 5~8%. The reason is that etcd records store metrics for each store operation. The metrics is important for monitoring and debugging, so this is acceptable.
 
-- write QPS to leader is increased by 10~20%, except 256-client cases. This is because we decouple raft main loop and entry apply loop, which avoids them blocking each other.
+- write QPS to leader is increased by 20~30%. This is because we decouple raft main loop and entry apply loop, which avoids them blocking each other.
 
-- write QPS to leader using 256 clients is decreased by 40%. This is caused by etcd limiting the number of client connections improperly. We will enhance the method to eliminate this performance downgrade.
-
-- write QPS to all servers is increased by 30~70% because follower could receive latest commit index earlier and commit proposals faster.
+- write QPS to all servers is increased by 30~80% because follower could receive latest commit index earlier and commit proposals faster.
