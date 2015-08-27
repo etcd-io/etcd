@@ -32,7 +32,7 @@ func TestPurgeFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i := 0; i < 5; i++ {
-		_, err := os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -41,7 +41,7 @@ func TestPurgeFile(t *testing.T) {
 	stop := make(chan struct{})
 	errch := PurgeFile(dir, "test", 3, time.Millisecond, stop)
 	for i := 5; i < 10; i++ {
-		_, err := os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +71,7 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i := 0; i < 10; i++ {
-		_, err := os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}

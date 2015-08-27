@@ -379,7 +379,8 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		plog.Panicf("get storeMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
-		m, err := nodeToMember(n)
+		var m *Member
+		m, err = nodeToMember(n)
 		if err != nil {
 			plog.Panicf("nodeToMember should never fail: %v", err)
 		}

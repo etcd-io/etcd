@@ -74,13 +74,18 @@ if [ -n "${vetRes}" ]; then
 	exit 255
 fi
 
-if command -v go-nyet >/dev/null 2>&1; then
-  echo "Checking go-nyet..."
-  nyetRes=$(go-nyet -exitWith 0 $FMT)
-  if [ -n "${nyetRes}" ]; then
-          echo -e "go-nyet checking failed:\n${nyetRes}"
-          exit 255
-  fi
-fi
+echo "Checking govet -shadow..."
+for path in $FMT; do
+	# only check go files under raft dir because
+	# auto generated file in raft/raftpb cannot pass shadow test
+	if [ "${path}" == "raft" ]; then
+		path="raft/*.go"
+	fi
+	vetRes=$(go tool vet -shadow ${path})
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet checking ${path} failed:\n${vetRes}"
+		exit 255
+	fi
+done
 
 echo "Success"

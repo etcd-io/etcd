@@ -283,16 +283,16 @@ func (mn *multiNode) run() {
 
 		case advs := <-advancec:
 			for groupID, rd := range advs {
-				group, ok := groups[groupID]
+				g, ok := groups[groupID]
 				if !ok {
 					continue
 				}
-				group.commitReady(rd)
+				g.commitReady(rd)
 
 				// We've been accumulating new entries in rds which may now be obsolete.
 				// Drop the old Ready object and create a new one if needed.
 				delete(rds, groupID)
-				newRd := group.newReady()
+				newRd := g.newReady()
 				if newRd.containsUpdates() {
 					rds[groupID] = newRd
 				}
@@ -300,8 +300,8 @@ func (mn *multiNode) run() {
 			advancec = nil
 
 		case ms := <-mn.status:
-			if group, ok := groups[ms.group]; ok {
-				s := getStatus(group.raft)
+			if g, ok := groups[ms.group]; ok {
+				s := getStatus(g.raft)
 				ms.ch <- &s
 			} else {
 				ms.ch <- nil

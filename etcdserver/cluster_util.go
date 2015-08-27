@@ -236,7 +236,8 @@ func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 			}, nil
 		}
 
-		b, err := ioutil.ReadAll(resp.Body)
+		var b []byte
+		b, err = ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			plog.Warningf("failed to read out the response body from the peerURL(%s) of member %s (%v)", u, m.ID, err)
