@@ -59,10 +59,16 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 }
 
 func getPeersFlagValue(c *cli.Context) []string {
-	peerstr := c.GlobalString("peers")
+	peerstr := c.GlobalString("endpoint")
 
-	// Use an environment variable if nothing was supplied on the
-	// command line
+	if peerstr == "" {
+		peerstr = os.Getenv("ETCDCTL_ENDPOINT")
+	}
+
+	if peerstr == "" {
+		peerstr = c.GlobalString("peers")
+	}
+
 	if peerstr == "" {
 		peerstr = os.Getenv("ETCDCTL_PEERS")
 	}
