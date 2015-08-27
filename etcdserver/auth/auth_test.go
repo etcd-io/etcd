@@ -15,6 +15,8 @@
 package auth
 
 import (
+	"bytes"
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -29,7 +31,25 @@ import (
 
 const testTimeout = time.Millisecond
 
+func setFakeBcryptFunctions() {
+	GenerateFromPassword = func(password []byte, cost int) ([]byte, error) { return password, nil }
+	CompareHashAndPassword = func(hashed, password []byte) error {
+		if bytes.Compare(hashed, password) != 0 {
+			return errors.New("mismatched hash and password")
+		}
+		return nil
+	}
+}
+
+func unsetFakeBcryptFunctions() {
+	GenerateFromPassword = bcrypt.GenerateFromPassword
+	CompareHashAndPassword = bcrypt.CompareHashAndPassword
+}
+
 func TestMergeUser(t *testing.T) {
+	setFakeBcryptFunctions()
+	defer unsetFakeBcryptFunctions()
+
 	tbl := []struct {
 		input  User
 		merge  User
@@ -86,7 +106,7 @@ func TestMergeUser(t *testing.T) {
 			t.Fatalf("Got unexpected error on item %d", i)
 		}
 		if !tt.iserr {
-			err := bcrypt.CompareHashAndPassword([]byte(out.Password), []byte(tt.merge.Password))
+			err := CompareHashAndPassword([]byte(out.Password), []byte(tt.merge.Password))
 			if err == nil {
 				tt.expect.Password = out.Password
 			}
@@ -358,6 +378,9 @@ func TestEnsure(t *testing.T) {
 }
 
 func TestCreateAndUpdateUser(t *testing.T) {
+	setFakeBcryptFunctions()
+	defer unsetFakeBcryptFunctions()
+
 	olduser := `{"user": "cat", "roles" : ["animal"]}`
 	newuser := `{"user": "cat", "roles" : ["animal", "pet"]}`
 	d := &testDoer{

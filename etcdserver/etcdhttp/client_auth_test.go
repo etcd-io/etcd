@@ -15,6 +15,7 @@
 package etcdhttp
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -22,10 +23,26 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/crypto/bcrypt"
 	"github.com/coreos/etcd/etcdserver/auth"
 )
 
-const goodPassword = "$2a$10$VYdJecHfm6WNodzv8XhmYeIG4n2SsQefdo5V2t6xIq/aWDHNqSUQW"
+const goodPassword = "good"
+
+func setFakeAuthBcryptFunctions() {
+	auth.GenerateFromPassword = func(password []byte, cost int) ([]byte, error) { return password, nil }
+	auth.CompareHashAndPassword = func(hashed, password []byte) error {
+		if bytes.Compare(hashed, password) != 0 {
+			return errors.New("mismatched hash and password")
+		}
+		return nil
+	}
+}
+
+func unsetFakeAuthBcryptFunctions() {
+	auth.GenerateFromPassword = bcrypt.GenerateFromPassword
+	auth.CompareHashAndPassword = bcrypt.CompareHashAndPassword
+}
 
 func mustJSONRequest(t *testing.T, method string, p string, body string) *http.Request {
 	req, err := http.NewRequest(method, path.Join(authPrefix, p), strings.NewReader(body))
@@ -78,6 +95,9 @@ func (s *mockAuthStore) EnableAuth() error  { return s.err }
 func (s *mockAuthStore) DisableAuth() error { return s.err }
 
 func TestAuthFlow(t *testing.T) {
+	setFakeAuthBcryptFunctions()
+	defer unsetFakeAuthBcryptFunctions()
+
 	enableMapMu.Lock()
 	enabledMap = make(map[capability]bool)
 	enabledMap[authCapability] = true
@@ -363,6 +383,9 @@ func mustAuthRequest(method, username, password string) *http.Request {
 }
 
 func TestPrefixAccess(t *testing.T) {
+	setFakeAuthBcryptFunctions()
+	defer unsetFakeAuthBcryptFunctions()
+
 	var table = []struct {
 		key                string
 		req                *http.Request
