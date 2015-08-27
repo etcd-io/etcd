@@ -73,20 +73,45 @@ func SetFlagsFromEnv(fs *flag.FlagSet) error {
 	var err error
 	alreadySet := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
-		alreadySet[f.Name] = true
+		alreadySet[flagToEnv(f.Name)] = true
 	})
+	usedEnvKey := make(map[string]bool)
 	fs.VisitAll(func(f *flag.Flag) {
-		if !alreadySet[f.Name] {
-			key := "ETCD_" + strings.ToUpper(strings.Replace(f.Name, "-", "_", -1))
+		key := flagToEnv(f.Name)
+		if !alreadySet[key] {
 			val := os.Getenv(key)
 			if val != "" {
+				usedEnvKey[key] = true
 				if serr := fs.Set(f.Name, val); serr != nil {
 					err = fmt.Errorf("invalid value %q for %s: %v", val, key, serr)
 				}
+				plog.Infof("recognized and used environment variable %s=%s", key, val)
 			}
 		}
 	})
+
+	for _, env := range os.Environ() {
+		kv := strings.SplitN(env, "=", 2)
+		if len(kv) != 2 {
+			plog.Warningf("found invalid env %s", env)
+		}
+		if usedEnvKey[kv[0]] {
+			continue
+		}
+		if alreadySet[kv[0]] {
+			plog.Infof("recognized environment variable %s, but unused: shadowed by corresponding flag ", kv[0])
+			continue
+		}
+		if strings.HasPrefix(env, "ETCD_") {
+			plog.Warningf("unrecognized environment variable %s", env)
+		}
+	}
+
 	return err
+}
+
+func flagToEnv(name string) string {
+	return "ETCD_" + strings.ToUpper(strings.Replace(name, "-", "_", -1))
 }
 
 // SetBindAddrFromAddr sets the value of bindAddr flag from the value
