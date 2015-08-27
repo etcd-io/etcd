@@ -50,9 +50,9 @@ func TestWriteReadTimeoutListener(t *testing.T) {
 	stop := make(chan struct{})
 
 	blocker := func() {
-		conn, err := net.Dial("tcp", ln.Addr().String())
-		if err != nil {
-			t.Fatalf("unexpected dail error: %v", err)
+		conn, derr := net.Dial("tcp", ln.Addr().String())
+		if derr != nil {
+			t.Fatalf("unexpected dail error: %v", derr)
 		}
 		defer conn.Close()
 		// block the receiver until the writer timeout

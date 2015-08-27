@@ -164,7 +164,7 @@ func TestTLSInfoMissingFields(t *testing.T) {
 	}
 
 	for i, info := range tests {
-		if _, err := info.ServerConfig(); err == nil {
+		if _, err = info.ServerConfig(); err == nil {
 			t.Errorf("#%d: expected non-nil error from ServerConfig()", i)
 		}
 
@@ -184,7 +184,7 @@ func TestTLSInfoParseFuncError(t *testing.T) {
 	info := TLSInfo{CertFile: tmp, KeyFile: tmp, CAFile: tmp}
 	info.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, errors.New("fake"))
 
-	if _, err := info.ServerConfig(); err == nil {
+	if _, err = info.ServerConfig(); err == nil {
 		t.Errorf("expected non-nil error from ServerConfig()")
 	}
 

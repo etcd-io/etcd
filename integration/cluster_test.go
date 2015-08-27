@@ -186,7 +186,7 @@ func TestForceNewCluster(t *testing.T) {
 	cancel()
 	// ensure create has been applied in this machine
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
+	if _, err = kapi.Watcher("/foo", &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(ctx); err != nil {
 		t.Fatalf("unexpected watch error: %v", err)
 	}
 	cancel()

@@ -191,7 +191,7 @@ func (s *store) GetUser(name string) (User, error) {
 func (s *store) CreateOrUpdateUser(user User) (out User, created bool, err error) {
 	_, err = s.GetUser(user.User)
 	if err == nil {
-		out, err := s.UpdateUser(user)
+		out, err = s.UpdateUser(user)
 		return out, false, err
 	}
 	u, err := s.CreateUser(user)

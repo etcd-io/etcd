@@ -47,7 +47,8 @@ func TestReadDir(t *testing.T) {
 	}
 	files := []string{"def", "abc", "xyz", "ghi"}
 	for _, f := range files {
-		fh, err := os.Create(filepath.Join(tmpdir, f))
+		var fh *os.File
+		fh, err = os.Create(filepath.Join(tmpdir, f))
 		if err != nil {
 			t.Fatalf("error creating file: %v", err)
 		}
