@@ -117,6 +117,7 @@ func TestCORSHandler(t *testing.T) {
 		}
 		// it is set by http package, and there is no need to test it
 		rr.HeaderMap.Del("Content-Type")
+		rr.HeaderMap.Del("X-Content-Type-Options")
 		if !reflect.DeepEqual(rr.HeaderMap, tt.wheader) {
 			t.Errorf("#%d: header = %+v, want %+v", i, rr.HeaderMap, tt.wheader)
 		}
