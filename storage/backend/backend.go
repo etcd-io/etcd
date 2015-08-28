@@ -22,9 +22,8 @@ type backend struct {
 	batchLimit    int
 	batchTx       *batchTx
 
-	stopc  chan struct{}
-	startc chan struct{}
-	donec  chan struct{}
+	stopc chan struct{}
+	donec chan struct{}
 }
 
 func New(path string, d time.Duration, limit int) Backend {
@@ -40,13 +39,12 @@ func New(path string, d time.Duration, limit int) Backend {
 		batchLimit:    limit,
 		batchTx:       &batchTx{},
 
-		stopc:  make(chan struct{}),
-		startc: make(chan struct{}),
-		donec:  make(chan struct{}),
+		stopc: make(chan struct{}),
+		donec: make(chan struct{}),
 	}
 	b.batchTx.backend = b
+	b.batchTx.Commit()
 	go b.run()
-	<-b.startc
 	return b
 }
 
@@ -72,9 +70,6 @@ func (b *backend) Snapshot(w io.Writer) (n int64, err error) {
 
 func (b *backend) run() {
 	defer close(b.donec)
-
-	b.batchTx.Commit()
-	b.startc <- struct{}{}
 
 	for {
 		select {
