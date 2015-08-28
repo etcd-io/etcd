@@ -6,7 +6,7 @@ GCE n1-highcpu-2 machine type
 - 1x dedicated slow disk for the OS
 - 1.8 GB memory
 - 2x CPUs
-- etcd version 2.1.0
+- etcd version 2.1.0 alpha
 
 ## etcd Cluster
 
