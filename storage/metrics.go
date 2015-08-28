@@ -94,6 +94,7 @@ func init() {
 	prometheus.MustRegister(rangeCounter)
 	prometheus.MustRegister(putCounter)
 	prometheus.MustRegister(deleteCounter)
+	prometheus.MustRegister(txnCounter)
 	prometheus.MustRegister(keysGauge)
 	prometheus.MustRegister(indexCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionPauseDurations)
