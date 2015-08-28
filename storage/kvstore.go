@@ -70,7 +70,9 @@ func newStore(path string) *store {
 func (s *store) Put(key, value []byte) int64 {
 	id := s.TxnBegin()
 	s.put(key, value, s.currentRev.main+1)
-	s.TxnEnd(id)
+	s.txnEnd(id)
+
+	putCounter.Inc()
 
 	return int64(s.currentRev.main)
 }
@@ -78,7 +80,9 @@ func (s *store) Put(key, value []byte) int64 {
 func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
 	id := s.TxnBegin()
 	kvs, rev, err = s.rangeKeys(key, end, limit, rangeRev)
-	s.TxnEnd(id)
+	s.txnEnd(id)
+
+	rangeCounter.Inc()
 
 	return kvs, rev, err
 }
@@ -86,7 +90,9 @@ func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.K
 func (s *store) DeleteRange(key, end []byte) (n, rev int64) {
 	id := s.TxnBegin()
 	n = s.deleteRange(key, end, s.currentRev.main+1)
-	s.TxnEnd(id)
+	s.txnEnd(id)
+
+	deleteCounter.Inc()
 
 	return n, int64(s.currentRev.main)
 }
@@ -102,6 +108,18 @@ func (s *store) TxnBegin() int64 {
 }
 
 func (s *store) TxnEnd(txnID int64) error {
+	err := s.txnEnd(txnID)
+	if err != nil {
+		return err
+	}
+
+	txnCounter.Inc()
+	return nil
+}
+
+// txnEnd is used for unlocking an internal txn. It does
+// not increase the txnCounter.
+func (s *store) txnEnd(txnID int64) error {
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
 	if txnID != s.txnID {
@@ -162,6 +180,8 @@ func (s *store) Compact(rev int64) error {
 		return ErrFutureRev
 	}
 
+	start := time.Now()
+
 	s.compactMainRev = rev
 
 	rbytes := newRevBytes()
@@ -178,6 +198,8 @@ func (s *store) Compact(rev int64) error {
 
 	s.wg.Add(1)
 	go s.scheduleCompaction(rev, keep)
+
+	indexCompactionPauseDurations.Observe(float64(time.Now().Sub(start) / time.Millisecond))
 	return nil
 }
 
