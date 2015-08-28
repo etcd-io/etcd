@@ -43,7 +43,7 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 		log.Fatalf("storage: cannot put key into bucket (%v)", err)
 	}
 	t.pending++
-	if t.pending > t.backend.batchLimit {
+	if t.pending >= t.backend.batchLimit {
 		t.commit(false)
 		t.pending = 0
 	}
@@ -87,7 +87,7 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 		log.Fatalf("storage: cannot delete key from bucket (%v)", err)
 	}
 	t.pending++
-	if t.pending > t.backend.batchLimit {
+	if t.pending >= t.backend.batchLimit {
 		t.commit(false)
 		t.pending = 0
 	}
