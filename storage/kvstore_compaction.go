@@ -7,6 +7,10 @@ import (
 
 func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) {
 	defer s.wg.Done()
+
+	totalStart := time.Now()
+	defer dbCompactionTotalDurations.Observe(float64(time.Now().Sub(totalStart) / time.Millisecond))
+
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(compactMainRev+1))
 
@@ -15,6 +19,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 	for {
 		var rev revision
 
+		start := time.Now()
 		tx := s.b.BatchTx()
 		tx.Lock()
 
@@ -37,6 +42,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		// update last
 		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
 		tx.Unlock()
+		dbCompactionPauseDurations.Observe(float64(time.Now().Sub(start) / time.Millisecond))
 
 		select {
 		case <-time.After(100 * time.Millisecond):
