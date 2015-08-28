@@ -68,6 +68,9 @@ func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64
 	for ck, cv := c.Seek(key); ck != nil && bytes.Compare(ck, endKey) < 0; ck, cv = c.Next() {
 		vs = append(vs, cv)
 		keys = append(keys, ck)
+		if limit > 0 && limit == int64(len(keys)) {
+			break
+		}
 	}
 
 	return keys, vs
