@@ -206,8 +206,26 @@ func TestMultiNodeProposeConfig(t *testing.T) {
 	}
 }
 
-// TestBlockProposal from node_test.go has no equivalent in multiNode
-// because we cannot block proposals based on individual group leader status.
+// TestProposeUnknownGroup ensures that we gracefully handle proposals
+// for groups we don't know about (which can happen on a former leader
+// that has been removed from the group).
+//
+// It is analogous to TestBlockProposal from node_test.go but in
+// MultiNode we cannot block proposals based on individual group
+// leader status.
+func TestProposeUnknownGroup(t *testing.T) {
+	mn := newMultiNode(1)
+	go mn.run()
+	defer mn.Stop()
+
+	// A nil error from Propose() doesn't mean much. In this case the
+	// proposal will be dropped on the floor because we don't know
+	// anything about group 42. This is a very crude test that mainly
+	// guarantees that we don't panic in this case.
+	if err := mn.Propose(context.TODO(), 42, []byte("somedata")); err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+}
 
 // TestNodeTick from node_test.go has no equivalent in multiNode because
 // it reaches into the raft object which is not exposed.

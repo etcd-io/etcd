@@ -227,8 +227,10 @@ func (mn *multiNode) run() {
 			// We'll have to buffer somewhere on a group-by-group basis, or just let
 			// raft.Step drop any such proposals on the floor.
 			mm.msg.From = mn.id
-			group = groups[mm.group]
-			group.raft.Step(mm.msg)
+			var ok bool
+			if group, ok = groups[mm.group]; ok {
+				group.raft.Step(mm.msg)
+			}
 
 		case mm := <-mn.recvc:
 			group = groups[mm.group]
