@@ -51,6 +51,14 @@ var (
 			Help:      "Total number of txns seen by this member.",
 		})
 
+	keysGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "storage",
+			Name:      "keys_total",
+			Help:      "Total number of keys.",
+		})
+
 	indexCompactionPauseDurations = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: "etcd",
@@ -86,6 +94,7 @@ func init() {
 	prometheus.MustRegister(rangeCounter)
 	prometheus.MustRegister(putCounter)
 	prometheus.MustRegister(deleteCounter)
+	prometheus.MustRegister(keysGauge)
 	prometheus.MustRegister(indexCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionTotalDurations)
