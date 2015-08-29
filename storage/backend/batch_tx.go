@@ -26,6 +26,12 @@ type batchTx struct {
 	pending int
 }
 
+func newBatchTx(backend *backend) *batchTx {
+	tx := &batchTx{backend: backend}
+	tx.Commit()
+	return tx
+}
+
 func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	_, err := t.tx.CreateBucket(name)
 	if err != nil && err != bolt.ErrBucketExists {
