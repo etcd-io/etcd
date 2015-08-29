@@ -78,7 +78,7 @@ Now it's time to dig into the full etcd API and other guides.
 - Find [language bindings and tools][libraries-and-tools].
 - Use TLS to [secure an etcd cluster][security].
 - [Tune etcd][tuning].
-- [Upgrade from 0.4.6 to 2.0.0][upgrade].
+- [Upgrade from 0.4.9+ to 2.2.0][upgrade].
 
 [api]: ./Documentation/api.md
 [clustering]: ./Documentation/clustering.md
@@ -86,7 +86,7 @@ Now it's time to dig into the full etcd API and other guides.
 [libraries-and-tools]: ./Documentation/libraries-and-tools.md
 [security]: ./Documentation/security.md
 [tuning]: ./Documentation/tuning.md
-[upgrade]: ./tools/etcd-migrate/README.md
+[upgrade]: ./Documentation/04_to_2_snapshot_migration.md
 
 ## Contact
 
