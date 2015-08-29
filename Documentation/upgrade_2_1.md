@@ -110,3 +110,78 @@ When all members are upgraded, you will see the cluster is upgraded to 2.1 succe
 $ curl http://127.0.0.1:4001/version
 {"etcdserver":"2.1.x","etcdcluster":"2.1.0"}
 ```
+
+## 0.4 to 2.0+ Migration Guide
+
+In etcd 2.0 we introduced the ability to listen on more than one address and to advertise multiple addresses. This makes using etcd easier when you have complex networking, such as private and public networks on various cloud providers.
+
+To make understanding this feature easier, we changed the naming of some flags, but we support the old flags to make the migration from the old to new version easier.
+
+|Old Flag		|New Flag		|Migration Behavior									|
+|-----------------------|-----------------------|---------------------------------------------------------------------------------------|
+|-peer-addr		|-initial-advertise-peer-urls 	|If specified, peer-addr will be used as the only peer URL. Error if both flags specified.|
+|-addr			|-advertise-client-urls	|If specified, addr will be used as the only client URL. Error if both flags specified.|
+|-peer-bind-addr	|-listen-peer-urls	|If specified, peer-bind-addr will be used as the only peer bind URL. Error if both flags specified.|
+|-bind-addr		|-listen-client-urls	|If specified, bind-addr will be used as the only client bind URL. Error if both flags specified.|
+|-peers			|none			|Deprecated. The -initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
+|-peers-file		|none			|Deprecated. The -initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
+
+### Upgrade to 2.0
+
+#### 1. Check you version and backup data
+
+```
+$ curl http://127.0.0.1:4001/version
+etcd 0.4.6+git
+```
+
+Etcd data dir, you can stop etcd v0.4.6 processes and backup it use `tar`.
+
+```
+$ ls {name}.etcd
+conf  log  snapshot
+$ tar czvf {name}.etcd.tar.gz {name}.etcd
+```
+
+#### 2. Start etcd v2.0+ use previous data dir
+
+You must input the previous etcd name and data dir.
+
+```
+etcd -name '{name}' --data-dir '{name}.etcd/'
+```
+
+You will see similar logging from the etcd processes.
+
+```
+2015/08/08 11:02:51 etcd: found invalid file/dir conf under data dir {name}.etcd/ (Ignore this if you are upgrading etcd)
+2015/08/08 11:02:51 etcd: found invalid file/dir log under data dir {name}.etcd/ (Ignore this if you are upgrading etcd)
+2015/08/08 11:02:51 etcd: found invalid file/dir snapshot under data dir {name}.etcd/ (Ignore this if you are upgrading etcd)
+2015/08/08 11:02:51 etcd: listening for peers on http://localhost:2380
+2015/08/08 11:02:51 etcd: listening for peers on http://localhost:7001
+2015/08/08 11:02:51 etcd: listening for client requests on http://localhost:2379
+2015/08/08 11:02:51 etcd: listening for client requests on http://localhost:4001
+2015/08/08 11:02:51 etcdserver: converting v0.4 log to v2.0
+2015/08/08 11:02:51 Decoding snapshot from {name}.etcd/snapshot/7_9978143.ss
+2015/08/08 11:02:51 Using suggested name {name}
+...
+2015/08/08 11:02:51 Log migration successful
+2015/08/08 11:02:51 Snapshot migration successful
+2015/08/08 11:02:51 etcdserver: datadir is valid for the 2.0.1 format
+```
+
+#### 3. Finish
+
+The etcd data dir will be add member directory and you can remove other files.
+
+```
+$ ls {name}.etcd/
+conf  log  member  snapshot
+$ ls {name}.etcd/member/
+snap  wal
+```
+
+```
+$ curl 127.0.0.1:4001/version
+etcd 2.0.13
+```
