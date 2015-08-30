@@ -13,6 +13,15 @@ eval $(go env)
 
 GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
+IFS=' ' read -a ver <<< "$(go version)"
+IFS='.' read -a ver <<< ${ver[2]}
+IFS=' ' read -a ver <<< ${ver}
+if [[ ver[1] -gt 4 ]]; then
+	LINK_OPERATOR="="
+else 
+	LINK_OPERATOR=" "
+fi
+
 # Static compilation is useful when etcd is run in a container
-CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s -X ${REPO_PATH}/version.GitSHA ${GIT_SHA}" -o bin/etcd ${REPO_PATH}
+CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s -X ${REPO_PATH}/version.GitSHA${LINK_OPERATOR}${GIT_SHA}" -o bin/etcd ${REPO_PATH}
 CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s" -o bin/etcdctl ${REPO_PATH}/etcdctl
