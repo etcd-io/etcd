@@ -124,7 +124,7 @@ The User JSON object is formed as follows:
 
 Password is only passed when necessary.
 
-**Get a list of users**
+**Get a List of Users**
 
 GET/HEAD  /v2/auth/users
 
@@ -137,7 +137,36 @@ GET/HEAD  /v2/auth/users
         Content-type: application/json
     200 Body:
         {
-          "users": ["alice", "bob", "eve"]
+          "users": [
+            {
+              "user": "alice",
+              "roles": [
+                {
+                  "role": "root",
+                  "permissions": {
+                    "kv": {
+                      "read": ["*"],
+                      "write": ["*"]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "user": "bob",
+              "roles": [
+                {
+                  "role": "guest",
+                  "permissions": {
+                    "kv": {
+                      "read": ["*"],
+                      "write": ["*"]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
         }
 
 **Get User Details**
@@ -155,7 +184,26 @@ GET/HEAD  /v2/auth/users/alice
     200 Body:
         {
           "user" : "alice",
-          "roles" : ["fleet", "etcd"]
+          "roles" : [
+            {
+              "role": "fleet",
+              "permissions" : {
+                "kv" : {
+                  "read": [ "/fleet/" ],
+                  "write": [ "/fleet/" ]
+                }
+              }
+            },
+            {
+              "role": "etcd",
+              "permissions" : {
+                "kv" : {
+                  "read": [ "*" ],
+                  "write": [ "*" ]
+                }
+              }
+            }
+          ]
         }
 
 **Create Or Update A User**
@@ -213,22 +261,6 @@ A full role structure may look like this. A Permission List structure is used fo
 }
 ```
 
-**Get a list of Roles**
-
-GET/HEAD  /v2/auth/roles
-
-    Sent Headers:
-        Authorization: Basic <BasicAuthString>
-    Possible Status Codes:
-        200 OK
-        401 Unauthorized
-    200 Headers:
-        Content-type: application/json
-    200 Body:
-        {
-          "roles": ["fleet", "etcd", "quay"]
-        }
-
 **Get Role Details**
 
 GET/HEAD  /v2/auth/roles/fleet
@@ -250,6 +282,50 @@ GET/HEAD  /v2/auth/roles/fleet
               "write": [ "/fleet/" ]
             }
           }
+        }
+
+**Get a list of Roles**
+
+GET/HEAD  /v2/auth/roles
+
+    Sent Headers:
+        Authorization: Basic <BasicAuthString>
+    Possible Status Codes:
+        200 OK
+        401 Unauthorized
+    200 Headers:
+        Content-type: application/json
+    200 Body:
+        {
+          "roles": [
+            {
+              "role": "fleet",
+              "permissions": {
+                "kv": {
+                  "read": ["/fleet/"],
+                  "write": ["/fleet/"]
+                }
+              }
+            },
+            {
+              "role": "etcd",
+              "permissions": {
+                "kv": {
+                  "read": ["*"],
+                  "write": ["*"]
+                }
+              }
+            },
+            {
+              "role": "quay",
+              "permissions": {
+                "kv": {
+                  "read": ["*"],
+                  "write": ["*"]
+                }
+              }
+            }
+          ]
         }
 
 **Create Or Update A Role**
