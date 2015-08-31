@@ -189,6 +189,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, err
 	}
 
+	err = os.MkdirAll(cfg.MemberDir(), privateDirMode)
+	if err != nil && err != os.ErrExist {
+		return nil, err
+	}
+
 	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
@@ -256,6 +261,10 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 		if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
 			return nil, fmt.Errorf("cannot write to member directory: %v", err)
+		}
+
+		if err := fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
+			return nil, fmt.Errorf("cannot write to WAL directory: %v", err)
 		}
 
 		if cfg.ShouldDiscover() {

@@ -27,12 +27,15 @@ import (
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
-	Name                string
-	DiscoveryURL        string
-	DiscoveryProxy      string
-	ClientURLs          types.URLs
-	PeerURLs            types.URLs
-	DataDir             string
+	Name           string
+	DiscoveryURL   string
+	DiscoveryProxy string
+	ClientURLs     types.URLs
+	PeerURLs       types.URLs
+	DataDir        string
+	// DedicatedWALDir config will make the etcd to write the WAL to the WALDir
+	// rather than the dataDir/member/wal.
+	DedicatedWALDir     string
 	SnapCount           uint64
 	MaxSnapFiles        uint
 	MaxWALFiles         uint
@@ -105,7 +108,12 @@ func (c *ServerConfig) verifyLocalMember(strict bool) error {
 
 func (c *ServerConfig) MemberDir() string { return path.Join(c.DataDir, "member") }
 
-func (c *ServerConfig) WALDir() string { return path.Join(c.MemberDir(), "wal") }
+func (c *ServerConfig) WALDir() string {
+	if c.DedicatedWALDir != "" {
+		return c.DedicatedWALDir
+	}
+	return path.Join(c.MemberDir(), "wal")
+}
 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.MemberDir(), "snap") }
 
@@ -129,6 +137,9 @@ func (c *ServerConfig) print(initial bool) {
 	}
 	plog.Infof("data dir = %s", c.DataDir)
 	plog.Infof("member dir = %s", c.MemberDir())
+	if c.DedicatedWALDir != "" {
+		plog.Infof("dedicated WAL dir = %s", c.DedicatedWALDir)
+	}
 	plog.Infof("heartbeat = %dms", c.TickMs)
 	plog.Infof("election = %dms", c.ElectionTicks*int(c.TickMs))
 	plog.Infof("snapshot count = %d", c.SnapCount)

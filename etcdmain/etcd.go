@@ -251,6 +251,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		ClientURLs:          cfg.acurls,
 		PeerURLs:            cfg.apurls,
 		DataDir:             cfg.dir,
+		DedicatedWALDir:     cfg.walDir,
 		SnapCount:           cfg.snapCount,
 		MaxSnapFiles:        cfg.maxSnapFiles,
 		MaxWALFiles:         cfg.maxWalFiles,

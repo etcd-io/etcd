@@ -21,6 +21,11 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: "${name}.etcd"
 + env variable: ETCD_DATA_DIR
 
+##### -wal-dir
++ Path to the dedicated wal directory. If this flag is set, etcd will write the WAL files to the walDir rather than the dataDir. This allows a dedicated disk to be used, and helps avoid io competition between logging and other IO operations.
++ default: ""
++ env variable: ETCD_WAL_DIR
+
 ##### -snapshot-count
 + Number of committed transactions to trigger a snapshot to disk.
 + default: "10000"
