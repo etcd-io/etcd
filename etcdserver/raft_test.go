@@ -32,6 +32,8 @@ func TestGetIDs(t *testing.T) {
 	removecc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
 	removeEntry := raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc)}
 	normalEntry := raftpb.Entry{Type: raftpb.EntryNormal}
+	updatecc := &raftpb.ConfChange{Type: raftpb.ConfChangeUpdateNode, NodeID: 2}
+	updateEntry := raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(updatecc)}
 
 	tests := []struct {
 		confState *raftpb.ConfState
@@ -48,6 +50,8 @@ func TestGetIDs(t *testing.T) {
 			[]raftpb.Entry{addEntry, removeEntry}, []uint64{1}},
 		{&raftpb.ConfState{Nodes: []uint64{1}},
 			[]raftpb.Entry{addEntry, normalEntry}, []uint64{1, 2}},
+		{&raftpb.ConfState{Nodes: []uint64{1}},
+			[]raftpb.Entry{addEntry, normalEntry, updateEntry}, []uint64{1, 2}},
 		{&raftpb.ConfState{Nodes: []uint64{1}},
 			[]raftpb.Entry{addEntry, removeEntry, normalEntry}, []uint64{1}},
 	}
