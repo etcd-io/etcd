@@ -82,7 +82,7 @@ X-Raft-Term: 1
 - `X-Raft-Index` is similar to the etcd index but is for the underlying raft protocol
 - `X-Raft-Term` is an integer that will increase whenever an etcd master election happens in the cluster. If this number is increasing rapidly, you may need to tune the election timeout. See the [tuning][tuning] section for details.
 
-[tuning]: #tuning
+[tuning]: tuning.md
 
 
 ### Get the value of a key
