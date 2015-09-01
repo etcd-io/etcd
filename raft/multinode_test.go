@@ -227,6 +227,54 @@ func TestProposeUnknownGroup(t *testing.T) {
 	}
 }
 
+// TestProposeAfterRemoveLeader ensures that we gracefully handle
+// proposals that are attempted after a leader has been removed from
+// the active configuration, but before that leader has called
+// MultiNode.RemoveGroup.
+func TestProposeAfterRemoveLeader(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mn := newMultiNode(1)
+	go mn.run()
+	defer mn.Stop()
+
+	storage := NewMemoryStorage()
+	if err := mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, storage),
+		[]Peer{{ID: 1}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := mn.Campaign(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mn.ProposeConfChange(ctx, 1, raftpb.ConfChange{
+		Type:   raftpb.ConfChangeRemoveNode,
+		NodeID: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	gs := <-mn.Ready()
+	g := gs[1]
+	if err := storage.Append(g.Entries); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range g.CommittedEntries {
+		if e.Type == raftpb.EntryConfChange {
+			var cc raftpb.ConfChange
+			if err := cc.Unmarshal(e.Data); err != nil {
+				t.Fatal(err)
+			}
+			mn.ApplyConfChange(1, cc)
+		}
+	}
+	mn.Advance(gs)
+
+	if err := mn.Propose(ctx, 1, []byte("somedata")); err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+}
+
 // TestNodeTick from node_test.go has no equivalent in multiNode because
 // it reaches into the raft object which is not exposed.
 

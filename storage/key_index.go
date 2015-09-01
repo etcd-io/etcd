@@ -70,7 +70,8 @@ func (ki *keyIndex) put(main int64, sub int64) {
 		ki.generations = append(ki.generations, generation{})
 	}
 	g := &ki.generations[len(ki.generations)-1]
-	if len(g.revs) == 0 {
+	if len(g.revs) == 0 { // create a new key
+		keysGauge.Inc()
 		g.created = rev
 	}
 	g.revs = append(g.revs, rev)
@@ -86,6 +87,7 @@ func (ki *keyIndex) restore(created, modified revision, ver int64) {
 	ki.modified = modified
 	g := generation{created: created, ver: ver, revs: []revision{modified}}
 	ki.generations = append(ki.generations, g)
+	keysGauge.Inc()
 }
 
 // tombstone puts a revision, pointing to a tombstone, to the keyIndex.
@@ -100,6 +102,7 @@ func (ki *keyIndex) tombstone(main int64, sub int64) error {
 	}
 	ki.put(main, sub)
 	ki.generations = append(ki.generations, generation{})
+	keysGauge.Dec()
 	return nil
 }
 
