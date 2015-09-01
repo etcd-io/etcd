@@ -171,7 +171,7 @@ func Main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd(cfg *config) (<-chan struct{}, error) {
-	urlsmap, token, err := getPeerURLsMapAndToken(cfg)
+	urlsmap, token, err := getPeerURLsMapAndToken(cfg, "etcd")
 	if err != nil {
 		return nil, fmt.Errorf("error setting up initial cluster: %v", err)
 	}
@@ -309,7 +309,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy(cfg *config) error {
-	urlsmap, _, err := getPeerURLsMapAndToken(cfg)
+	urlsmap, _, err := getPeerURLsMapAndToken(cfg, "proxy")
 	if err != nil {
 		return fmt.Errorf("error setting up initial cluster: %v", err)
 	}
@@ -430,7 +430,7 @@ func startProxy(cfg *config) error {
 }
 
 // getPeerURLsMapAndToken sets up an initial peer URLsMap and cluster token for bootstrap or discovery.
-func getPeerURLsMapAndToken(cfg *config) (urlsmap types.URLsMap, token string, err error) {
+func getPeerURLsMapAndToken(cfg *config, which string) (urlsmap types.URLsMap, token string, err error) {
 	switch {
 	case cfg.durl != "":
 		urlsmap = types.URLsMap{}
@@ -445,8 +445,12 @@ func getPeerURLsMapAndToken(cfg *config) (urlsmap types.URLsMap, token string, e
 			return nil, "", err
 		}
 		urlsmap, err = types.NewURLsMap(clusterStr)
-		if _, ok := urlsmap[cfg.name]; !ok {
-			return nil, "", fmt.Errorf("cannot find local etcd member %q in SRV records", cfg.name)
+		// only etcd member must belong to the discovered cluster.
+		// proxy does not need to belong to the discovered cluster.
+		if which == "etcd" {
+			if _, ok := urlsmap[cfg.name]; !ok {
+				return nil, "", fmt.Errorf("cannot find local etcd member %q in SRV records", cfg.name)
+			}
 		}
 	default:
 		// We're statically configured, and cluster has appropriately been set.
