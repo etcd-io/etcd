@@ -430,7 +430,7 @@ func TestKVTxnBlockNonTnxOperations(t *testing.T) {
 		s.TxnEnd(id)
 		select {
 		case <-done:
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(100 * time.Millisecond):
 			t.Fatalf("#%d: operation failed to be unblocked", i)
 		}
 	}
