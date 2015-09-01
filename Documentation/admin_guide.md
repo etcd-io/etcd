@@ -8,6 +8,9 @@ When first started, etcd stores its configuration into a data directory specifie
 Configuration is stored in the write ahead log and includes: the local member ID, cluster ID, and initial cluster configuration.
 The write ahead log and snapshot files are used during member operation and to recover after a restart.
 
+Having a dedicated disk to store wal files can improve the throughput and stabilize the cluster. 
+It is highly recommended to dedicate a wal disk and set `--wal-dir` to point to a directory on that device for a production cluster deployment.
+
 If a member’s data directory is ever lost or corrupted then the user should remove the etcd member from the cluster via the [members API][members-api].
 
 A user should avoid restarting an etcd member with a data directory from an out-of-date backup.
@@ -23,6 +26,8 @@ The data directory has two sub-directories in it:
 
 1. wal: write ahead log files are stored here. For details see the [wal package documentation][wal-pkg]
 2. snap: log snapshots are stored here. For details see the [snap package documentation][snap-pkg]
+
+If `--wal-dir` flag is set, etcd will write the write ahead log files to the specified directory instead of data directory.
 
 [wal-pkg]: http://godoc.org/github.com/coreos/etcd/wal
 [snap-pkg]: http://godoc.org/github.com/coreos/etcd/snap
