@@ -187,7 +187,15 @@ func mustNewClient(c *cli.Context) client.Client {
 		os.Exit(1)
 	}
 
+	debug := c.GlobalBool("debug")
+	if debug {
+		client.EnablecURLDebug()
+	}
+
 	if !c.GlobalBool("no-sync") {
+		if debug {
+			fmt.Fprintf(os.Stderr, "start to sync cluster using endpoints(%s)\n", strings.Join(hc.Endpoints(), ","))
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 		err := hc.Sync(ctx)
 		cancel()
@@ -199,11 +207,13 @@ func mustNewClient(c *cli.Context) client.Client {
 			handleError(ExitServerError, err)
 			os.Exit(1)
 		}
+		if debug {
+			fmt.Fprintf(os.Stderr, "got endpoints(%s) after sync\n", strings.Join(hc.Endpoints(), ","))
+		}
 	}
 
-	if c.GlobalBool("debug") {
+	if debug {
 		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
-		client.EnablecURLDebug()
 	}
 
 	return hc
