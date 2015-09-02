@@ -13,12 +13,11 @@ eval $(go env)
 
 GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
-IFS=' ' read -a ver <<< "$(go version)"
-IFS='.' read -a ver <<< ${ver[2]}
-IFS=' ' read -a ver <<< ${ver}
-if [[ ver[1] -gt 4 ]]; then
+val=$(go version)
+ver=$(echo $val | awk -F ' ' '{print $3}' | awk -F '.' '{print $2}')
+if [ $ver -gt 4 ]; then
 	LINK_OPERATOR="="
-else 
+else
 	LINK_OPERATOR=" "
 fi
 
