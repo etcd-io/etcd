@@ -181,16 +181,58 @@ func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
 }
 
 func mustNewClient(c *cli.Context) client.Client {
-	eps, err := getEndpoints(c)
+	hc, err := newClient(c)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	tr, err := getTransport(c)
+	if !c.GlobalBool("no-sync") {
+		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+		err := hc.Sync(ctx)
+		cancel()
+		if err != nil {
+			if err == client.ErrNoEndpoints {
+				fmt.Fprintf(os.Stderr, "etcd cluster has no published client endpoints.\n")
+				fmt.Fprintf(os.Stderr, "Try '--no-sync' if you want to access non-published client endpoints(%s).\n", strings.Join(hc.Endpoints(), ","))
+			}
+			handleError(ExitServerError, err)
+			os.Exit(1)
+		}
+	}
+
+	if c.GlobalBool("debug") {
+		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
+		client.EnablecURLDebug()
+	}
+
+	return hc
+}
+
+func mustNewClientNoSync(c *cli.Context) client.Client {
+	hc, err := newClient(c)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
+	}
+
+	if c.GlobalBool("debug") {
+		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
+		client.EnablecURLDebug()
+	}
+
+	return hc
+}
+
+func newClient(c *cli.Context) (client.Client, error) {
+	eps, err := getEndpoints(c)
+	if err != nil {
+		return nil, err
+	}
+
+	tr, err := getTransport(c)
+	if err != nil {
+		return nil, err
 	}
 
 	cfg := client.Config{
@@ -203,33 +245,11 @@ func mustNewClient(c *cli.Context) client.Client {
 	if uFlag != "" {
 		username, password, err := getUsernamePasswordFromFlag(uFlag)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
+			return nil, err
 		}
 		cfg.Username = username
 		cfg.Password = password
 	}
 
-	hc, err := client.New(cfg)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-
-	if !c.GlobalBool("no-sync") {
-		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-		err := hc.Sync(ctx)
-		cancel()
-		if err != nil {
-			handleError(ExitServerError, err)
-			os.Exit(1)
-		}
-	}
-
-	if c.GlobalBool("debug") {
-		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
-		client.EnablecURLDebug()
-	}
-
-	return hc
+	return client.New(cfg)
 }

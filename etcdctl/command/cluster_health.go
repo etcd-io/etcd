@@ -10,6 +10,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 func NewClusterHealthCommand() cli.Command {
@@ -44,7 +45,8 @@ func handleClusterHealth(c *cli.Context) {
 		Transport: tr,
 	}
 
-	mi := mustNewMembersAPI(c)
+	cln := mustNewClientNoSync(c)
+	mi := client.NewMembersAPI(cln)
 	ms, err := mi.List(context.TODO())
 	if err != nil {
 		fmt.Println("cluster may be unhealthy: failed to list members")
@@ -54,6 +56,11 @@ func handleClusterHealth(c *cli.Context) {
 	for {
 		health := false
 		for _, m := range ms {
+			if len(m.ClientURLs) == 0 {
+				fmt.Printf("member %s is unreachable: no available published client urls\n", m.ID)
+				continue
+			}
+
 			checked := false
 			for _, url := range m.ClientURLs {
 				resp, err := hc.Get(url + "/health")
