@@ -91,9 +91,11 @@ type RangeRequest struct {
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
 	// limit the number of keys returned.
 	Limit int64 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	// the response will be consistent with previous request with same token if the token is
-	// given and is valid.
-	ConsistentToken []byte `protobuf:"bytes,4,opt,name=consistent_token,proto3" json:"consistent_token,omitempty"`
+	// range over the store at the given revision.
+	// if revision is less or equal to zero, range over the newest store.
+	// if the revision has been compacted, ErrCompaction will be returned in
+	// response.
+	Revision int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
 }
 
 func (m *RangeRequest) Reset()         { *m = RangeRequest{} }
@@ -101,11 +103,10 @@ func (m *RangeRequest) String() string { return proto.CompactTextString(m) }
 func (*RangeRequest) ProtoMessage()    {}
 
 type RangeResponse struct {
-	Header          *ResponseHeader       `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Kvs             []*storagepb.KeyValue `protobuf:"bytes,2,rep,name=kvs" json:"kvs,omitempty"`
-	ConsistentToken []byte                `protobuf:"bytes,3,opt,name=consistent_token,proto3" json:"consistent_token,omitempty"`
+	Header *ResponseHeader       `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Kvs    []*storagepb.KeyValue `protobuf:"bytes,2,rep,name=kvs" json:"kvs,omitempty"`
 	// more indicates if there are more keys to return in the requested range.
-	More bool `protobuf:"varint,4,opt,name=more,proto3" json:"more,omitempty"`
+	More bool `protobuf:"varint,3,opt,name=more,proto3" json:"more,omitempty"`
 }
 
 func (m *RangeResponse) Reset()         { *m = RangeResponse{} }
@@ -632,13 +633,10 @@ func (m *RangeRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Limit))
 	}
-	if m.ConsistentToken != nil {
-		if len(m.ConsistentToken) > 0 {
-			data[i] = 0x22
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.ConsistentToken)))
-			i += copy(data[i:], m.ConsistentToken)
-		}
+	if m.Revision != 0 {
+		data[i] = 0x20
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.Revision))
 	}
 	return i, nil
 }
@@ -680,16 +678,8 @@ func (m *RangeResponse) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
-	if m.ConsistentToken != nil {
-		if len(m.ConsistentToken) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.ConsistentToken)))
-			i += copy(data[i:], m.ConsistentToken)
-		}
-	}
 	if m.More {
-		data[i] = 0x20
+		data[i] = 0x18
 		i++
 		if m.More {
 			data[i] = 1
@@ -1202,11 +1192,8 @@ func (m *RangeRequest) Size() (n int) {
 	if m.Limit != 0 {
 		n += 1 + sovRpc(uint64(m.Limit))
 	}
-	if m.ConsistentToken != nil {
-		l = len(m.ConsistentToken)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	if m.Revision != 0 {
+		n += 1 + sovRpc(uint64(m.Revision))
 	}
 	return n
 }
@@ -1221,12 +1208,6 @@ func (m *RangeResponse) Size() (n int) {
 	if len(m.Kvs) > 0 {
 		for _, e := range m.Kvs {
 			l = e.Size()
-			n += 1 + l + sovRpc(uint64(l))
-		}
-	}
-	if m.ConsistentToken != nil {
-		l = len(m.ConsistentToken)
-		if l > 0 {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
@@ -1657,30 +1638,21 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				}
 			}
 		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ConsistentToken", wireType)
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Revision", wireType)
 			}
-			var byteLen int
+			m.Revision = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
+				m.Revision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if byteLen < 0 {
-				return ErrInvalidLengthRpc
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ConsistentToken = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
 		default:
 			var sizeOfWire int
 			for {
@@ -1785,31 +1757,6 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ConsistentToken", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthRpc
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ConsistentToken = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field More", wireType)
 			}
