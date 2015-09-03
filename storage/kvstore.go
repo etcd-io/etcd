@@ -366,8 +366,7 @@ func (s *store) put(key, value []byte) {
 }
 
 func (s *store) deleteRange(key, end []byte) int64 {
-	rev := s.currentRev.main + 1
-	rrev := rev
+	rrev := s.currentRev.main
 	if s.currentRev.sub > 0 {
 		rrev += 1
 	}
