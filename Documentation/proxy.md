@@ -17,6 +17,7 @@ The proxy will be listening on `listen-client-urls` and forward requests to the 
 
 #### Start an etcd proxy with a static configuration
 To start a proxy that will connect to a statically defined etcd cluster, specify the `initial-cluster` flag:
+
 ```
 etcd -proxy on -listen-client-urls http://127.0.0.1:8080 -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380
 ```
