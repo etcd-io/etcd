@@ -16,7 +16,7 @@ package storagepb
 
 import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 
-// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
+// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto/gogo.pb"
 
 import io "io"
 import fmt "fmt"
@@ -48,10 +48,10 @@ func (x Event_EventType) String() string {
 }
 
 type KeyValue struct {
-	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Key         []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	CreateIndex int64  `protobuf:"varint,2,opt,name=create_index,proto3" json:"create_index,omitempty"`
 	// mod_index is the last modified index of the key.
-	CreateIndex int64 `protobuf:"varint,2,opt,name=create_index,proto3" json:"create_index,omitempty"`
-	ModIndex    int64 `protobuf:"varint,3,opt,name=mod_index,proto3" json:"mod_index,omitempty"`
+	ModIndex int64 `protobuf:"varint,3,opt,name=mod_index,proto3" json:"mod_index,omitempty"`
 	// version is the version of the key. A deletion resets
 	// the version to zero and any modification of the key
 	// increases its version.

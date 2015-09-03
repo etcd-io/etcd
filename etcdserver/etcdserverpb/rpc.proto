@@ -1,8 +1,8 @@
 syntax = "proto3";
 package etcdserverpb;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "github.com/coreos/etcd/storage/storagepb/kv.proto";
+import "gogoproto/gogo.proto";
+import "etcd/storage/storagepb/kv.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;
@@ -50,7 +50,7 @@ message RangeRequest {
   bytes range_end = 2;
   // limit the number of keys returned.
   int64 limit = 3;
-  // the response will be consistent with previous request with same token if the token is 
+  // the response will be consistent with previous request with same token if the token is
   // given and is valid.
   bytes consistent_token = 4;
 }
@@ -127,9 +127,9 @@ message Compare {
   }
 }
 
-// If the comparisons succeed, then the success requests will be processed in order, 
+// If the comparisons succeed, then the success requests will be processed in order,
 // and the response will contain their respective responses in order.
-// If the comparisons fail, then the failure requests will be processed in order, 
+// If the comparisons fail, then the failure requests will be processed in order,
 // and the response will contain their respective responses in order.
 
 // From google paxosdb paper:
@@ -159,9 +159,9 @@ message TxnResponse {
   repeated ResponseUnion responses = 3;
 }
 
-// Compaction compacts the kv store upto the given index (including). 
-// It removes the old versions of a key. It keeps the newest version of 
-// the key even if its latest modification index is smaller than the given 
+// Compaction compacts the kv store upto the given index (including).
+// It removes the old versions of a key. It keeps the newest version of
+// the key even if its latest modification index is smaller than the given
 // index.
 message CompactionRequest {
   int64 index = 1;
