@@ -16,7 +16,7 @@ package storagepb
 
 import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 
-// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto/gogo.pb"
+// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto"
 
 import io "io"
 import fmt "fmt"
@@ -78,6 +78,168 @@ func (*Event) ProtoMessage()    {}
 func init() {
 	proto.RegisterEnum("storagepb.Event_EventType", Event_EventType_name, Event_EventType_value)
 }
+func (m *KeyValue) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *KeyValue) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Key != nil {
+		if len(m.Key) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintKv(data, i, uint64(len(m.Key)))
+			i += copy(data[i:], m.Key)
+		}
+	}
+	if m.CreateIndex != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintKv(data, i, uint64(m.CreateIndex))
+	}
+	if m.ModIndex != 0 {
+		data[i] = 0x18
+		i++
+		i = encodeVarintKv(data, i, uint64(m.ModIndex))
+	}
+	if m.Version != 0 {
+		data[i] = 0x20
+		i++
+		i = encodeVarintKv(data, i, uint64(m.Version))
+	}
+	if m.Value != nil {
+		if len(m.Value) > 0 {
+			data[i] = 0x2a
+			i++
+			i = encodeVarintKv(data, i, uint64(len(m.Value)))
+			i += copy(data[i:], m.Value)
+		}
+	}
+	return i, nil
+}
+
+func (m *Event) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Event) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Type != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintKv(data, i, uint64(m.Type))
+	}
+	if m.Kv != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintKv(data, i, uint64(m.Kv.Size()))
+		n1, err := m.Kv.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	return i, nil
+}
+
+func encodeFixed64Kv(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Kv(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintKv(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func (m *KeyValue) Size() (n int) {
+	var l int
+	_ = l
+	if m.Key != nil {
+		l = len(m.Key)
+		if l > 0 {
+			n += 1 + l + sovKv(uint64(l))
+		}
+	}
+	if m.CreateIndex != 0 {
+		n += 1 + sovKv(uint64(m.CreateIndex))
+	}
+	if m.ModIndex != 0 {
+		n += 1 + sovKv(uint64(m.ModIndex))
+	}
+	if m.Version != 0 {
+		n += 1 + sovKv(uint64(m.Version))
+	}
+	if m.Value != nil {
+		l = len(m.Value)
+		if l > 0 {
+			n += 1 + l + sovKv(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Event) Size() (n int) {
+	var l int
+	_ = l
+	if m.Type != 0 {
+		n += 1 + sovKv(uint64(m.Type))
+	}
+	if m.Kv != nil {
+		l = m.Kv.Size()
+		n += 1 + l + sovKv(uint64(l))
+	}
+	return n
+}
+
+func sovKv(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozKv(x uint64) (n int) {
+	return sovKv(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
 func (m *KeyValue) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -113,6 +275,9 @@ func (m *KeyValue) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthKv
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -123,6 +288,7 @@ func (m *KeyValue) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CreateIndex", wireType)
 			}
+			m.CreateIndex = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -138,6 +304,7 @@ func (m *KeyValue) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ModIndex", wireType)
 			}
+			m.ModIndex = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -153,6 +320,7 @@ func (m *KeyValue) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
 			}
+			m.Version = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -180,6 +348,9 @@ func (m *KeyValue) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthKv
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -199,6 +370,9 @@ func (m *KeyValue) Unmarshal(data []byte) error {
 			skippy, err := skipKv(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthKv
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -232,6 +406,7 @@ func (m *Event) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
 			}
+			m.Type = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -259,6 +434,9 @@ func (m *Event) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if msglen < 0 {
+				return ErrInvalidLengthKv
+			}
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -283,6 +461,9 @@ func (m *Event) Unmarshal(data []byte) error {
 			skippy, err := skipKv(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthKv
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -339,6 +520,9 @@ func skipKv(data []byte) (n int, err error) {
 				}
 			}
 			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthKv
+			}
 			return iNdEx, nil
 		case 3:
 			for {
@@ -377,165 +561,7 @@ func skipKv(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
-func (m *KeyValue) Size() (n int) {
-	var l int
-	_ = l
-	if m.Key != nil {
-		l = len(m.Key)
-		if l > 0 {
-			n += 1 + l + sovKv(uint64(l))
-		}
-	}
-	if m.CreateIndex != 0 {
-		n += 1 + sovKv(uint64(m.CreateIndex))
-	}
-	if m.ModIndex != 0 {
-		n += 1 + sovKv(uint64(m.ModIndex))
-	}
-	if m.Version != 0 {
-		n += 1 + sovKv(uint64(m.Version))
-	}
-	if m.Value != nil {
-		l = len(m.Value)
-		if l > 0 {
-			n += 1 + l + sovKv(uint64(l))
-		}
-	}
-	return n
-}
 
-func (m *Event) Size() (n int) {
-	var l int
-	_ = l
-	if m.Type != 0 {
-		n += 1 + sovKv(uint64(m.Type))
-	}
-	if m.Kv != nil {
-		l = m.Kv.Size()
-		n += 1 + l + sovKv(uint64(l))
-	}
-	return n
-}
-
-func sovKv(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozKv(x uint64) (n int) {
-	return sovKv(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *KeyValue) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *KeyValue) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Key != nil {
-		if len(m.Key) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintKv(data, i, uint64(len(m.Key)))
-			i += copy(data[i:], m.Key)
-		}
-	}
-	if m.CreateIndex != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintKv(data, i, uint64(m.CreateIndex))
-	}
-	if m.ModIndex != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintKv(data, i, uint64(m.ModIndex))
-	}
-	if m.Version != 0 {
-		data[i] = 0x20
-		i++
-		i = encodeVarintKv(data, i, uint64(m.Version))
-	}
-	if m.Value != nil {
-		if len(m.Value) > 0 {
-			data[i] = 0x2a
-			i++
-			i = encodeVarintKv(data, i, uint64(len(m.Value)))
-			i += copy(data[i:], m.Value)
-		}
-	}
-	return i, nil
-}
-
-func (m *Event) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Event) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Type != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintKv(data, i, uint64(m.Type))
-	}
-	if m.Kv != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintKv(data, i, uint64(m.Kv.Size()))
-		n1, err := m.Kv.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	return i, nil
-}
-
-func encodeFixed64Kv(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Kv(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintKv(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
+var (
+	ErrInvalidLengthKv = fmt.Errorf("proto: negative length found during unmarshaling")
+)

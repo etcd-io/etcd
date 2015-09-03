@@ -8,7 +8,7 @@ set -e
 PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb"
 
-SHA="64f27bf06efee53589314a6e5a4af34cdd85adf6"
+SHA="932b70afa8b0bf4a8e167fdf0c3367cebba45903"
 
 if ! protoc --version > /dev/null; then
 	echo "could not find protoc, is it installed + in PATH?"
