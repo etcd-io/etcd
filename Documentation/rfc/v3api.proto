@@ -6,18 +6,18 @@ service etcd {
   rpc Range(RangeRequest) returns (RangeResponse) {}
 
   // Put puts the given key into the store.
-  // A put request increases the index of the store,
+  // A put request increases the revision of the store,
   // and generates one event in the event history.
   rpc Put(PutRequest) returns (PutResponse) {}
 
   // Delete deletes the given range from the store.
-  // A delete request increase the index of the store,
+  // A delete request increase the revision of the store,
   // and generates one event in the event history.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
 
   // Txn processes all the requests in one transaction.
-  // A txn request increases the index of the store,
-  // and generates events with the same index in the event history.
+  // A txn request increases the revision of the store,
+  // and generates events with the same revision in the event history.
   rpc Txn(TxnRequest) returns (TxnResponse) {}
 
   // Watch watches the events happening or happened in etcd. Both input and output
@@ -55,8 +55,8 @@ message ResponseHeader {
   string error = 1;
   uint64 cluster_id = 2;
   uint64 member_id = 3;
-  // index of the store when the request was applied.
-  int64 index = 4;
+  // revision of the store when the request was applied.
+  int64 revision = 4;
   // term of raft when the request was applied.
   uint64 raft_term = 5;
 }
@@ -137,10 +137,10 @@ message Compare {
   oneof target_union {
     // version of the given key
     int64 version = 4;
-    // create index of the given key
-    int64 create_index = 5;
-    // last modified index of the given key
-    int64 mod_index = 6;
+    // create revision of the given key
+    int64 create_revision = 5;
+    // last modified revision of the given key
+    int64 mod_revision = 6;
     // value of the given key
     bytes value = 7;
   }
@@ -180,9 +180,9 @@ message TxnResponse {
 
 message KeyValue {
   bytes key = 1;
-  int64 create_index = 2;
-  // mod_index is the last modified index of the key.
-  int64 mod_index = 3;
+  int64 create_revision = 2;
+  // mod_revision is the last modified revision of the key.
+  int64 mod_revision = 3;
   // version is the version of the key. A deletion resets
   // the version to zero and any modification of the key
   // increases its version.
@@ -195,10 +195,10 @@ message WatchRangeRequest {
   bytes key = 1;
   // if the range_end is given, it gets the keys in range [key, range_end).
   bytes range_end = 2;
-  // start_index is an optional index (including) to watch from. No start_index is "now".
-  int64 start_index = 3;
-  // end_index is an optional index (excluding) to end watch. No end_index is "forever".
-  int64 end_index = 4;
+  // start_revision is an optional revision (including) to watch from. No start_revision is "now".
+  int64 start_revision = 3;
+  // end_revision is an optional revision (excluding) to end watch. No end_revision is "forever".
+  int64 end_revision = 4;
   bool progress_notification = 5;
 }
 
@@ -220,12 +220,12 @@ message Event {
   KeyValue kv = 2;
 }
 
-// Compaction compacts the kv store upto the given index (including). 
+// Compaction compacts the kv store upto the given revision (including). 
 // It removes the old versions of a key. It keeps the newest version of 
-// the key even if its latest modification index is smaller than the given 
-// index.
+// the key even if its latest modification revision is smaller than the given 
+// revision.
 message CompactionRequest {
-  int64 index = 1;
+  int64 revision = 1;
 }
 
 message CompactionResponse {

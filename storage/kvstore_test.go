@@ -32,11 +32,11 @@ func TestStorePut(t *testing.T) {
 			storagepb.Event{
 				Type: storagepb.PUT,
 				Kv: &storagepb.KeyValue{
-					Key:         []byte("foo"),
-					Value:       []byte("bar"),
-					CreateIndex: 2,
-					ModIndex:    2,
-					Version:     1,
+					Key:            []byte("foo"),
+					Value:          []byte("bar"),
+					CreateRevision: 2,
+					ModRevision:    2,
+					Version:        1,
 				},
 			},
 			revision{2, 0},
@@ -48,11 +48,11 @@ func TestStorePut(t *testing.T) {
 			storagepb.Event{
 				Type: storagepb.PUT,
 				Kv: &storagepb.KeyValue{
-					Key:         []byte("foo"),
-					Value:       []byte("bar"),
-					CreateIndex: 2,
-					ModIndex:    2,
-					Version:     2,
+					Key:            []byte("foo"),
+					Value:          []byte("bar"),
+					CreateRevision: 2,
+					ModRevision:    2,
+					Version:        2,
 				},
 			},
 			revision{2, 1},
@@ -64,11 +64,11 @@ func TestStorePut(t *testing.T) {
 			storagepb.Event{
 				Type: storagepb.PUT,
 				Kv: &storagepb.KeyValue{
-					Key:         []byte("foo"),
-					Value:       []byte("bar"),
-					CreateIndex: 2,
-					ModIndex:    3,
-					Version:     3,
+					Key:            []byte("foo"),
+					Value:          []byte("bar"),
+					CreateRevision: 2,
+					ModRevision:    3,
+					Version:        3,
 				},
 			},
 			revision{3, 0},
@@ -108,11 +108,11 @@ func TestStoreRange(t *testing.T) {
 	ev := storagepb.Event{
 		Type: storagepb.PUT,
 		Kv: &storagepb.KeyValue{
-			Key:         []byte("foo"),
-			Value:       []byte("bar"),
-			CreateIndex: 1,
-			ModIndex:    2,
-			Version:     1,
+			Key:            []byte("foo"),
+			Value:          []byte("bar"),
+			CreateRevision: 1,
+			ModRevision:    2,
+			Version:        1,
 		},
 	}
 	evb, err := ev.Marshal()
@@ -269,11 +269,11 @@ func TestStoreRestore(t *testing.T) {
 	putev := storagepb.Event{
 		Type: storagepb.PUT,
 		Kv: &storagepb.KeyValue{
-			Key:         []byte("foo"),
-			Value:       []byte("bar"),
-			CreateIndex: 3,
-			ModIndex:    3,
-			Version:     1,
+			Key:            []byte("foo"),
+			Value:          []byte("bar"),
+			CreateRevision: 3,
+			ModRevision:    3,
+			Version:        1,
 		},
 	}
 	putevb, err := putev.Marshal()

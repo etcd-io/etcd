@@ -42,7 +42,7 @@ Put( PutRequest { key = foo, value = bar } )
 PutResponse { 
     cluster_id = 0x1000,
     member_id = 0x1,
-    index = 1,
+    revision = 1,
     raft_term = 0x1,
 }
 ```
@@ -54,14 +54,14 @@ Get ( RangeRequest { key = foo } )
 RangeResponse {
     cluster_id = 0x1000,
     member_id = 0x1,
-    index = 1,
+    revision = 1,
     raft_term = 0x1,
     kvs = {
       {
           key = foo,
           value = bar,
-          create_index = 1,
-          mod_index = 1,
+          create_revision = 1,
+          mod_revision = 1,
           version = 1;
       },
     },
@@ -75,22 +75,22 @@ Range ( RangeRequest { key = foo, end_key = foo80, limit = 30  } )
 RangeResponse {
     cluster_id = 0x1000,
     member_id = 0x1,
-    index = 100,
+    revision = 100,
     raft_term = 0x1,
     kvs = {
       {
           key = foo0,
           value = bar0,
-          create_index = 1,
-          mod_index = 1,
+          create_revision = 1,
+          mod_revision = 1,
           version = 1;
       },
          ...,
       {
           key = foo30,
           value = bar30,
-          create_index = 30,
-          mod_index = 30,
+          create_revision = 30,
+          mod_revision = 30,
           version = 1;
       },
     },
@@ -100,10 +100,10 @@ RangeResponse {
 #### Finish a txn (assume we have foo0=bar0, foo1=bar1)
 ```
 Txn(TxnRequest {
-    // mod_index of foo0 is equal to 1, mod_index of foo1 is greater than 1
+    // mod_revision of foo0 is equal to 1, mod_revision of foo1 is greater than 1
     compare = {
-        {compareType = equal, key = foo0, mod_index = 1}, 
-        {compareType = greater, key = foo1, mod_index = 1}}
+        {compareType = equal, key = foo0, mod_revision = 1}, 
+        {compareType = greater, key = foo1, mod_revision = 1}}
     },
     // if the comparison succeeds, put foo2 = bar2
     success = {PutRequest { key = foo2, value = success }},
@@ -114,7 +114,7 @@ Txn(TxnRequest {
 TxnResponse {
     cluster_id = 0x1000,
     member_id = 0x1,
-    index = 3,
+    revision = 3,
     raft_term = 0x1,
     succeeded = true,
     responses = {
@@ -122,7 +122,7 @@ TxnResponse {
       {
             cluster_id = 0x1000,
             member_id = 0x1,
-            index = 3,
+            revision = 3,
             raft_term = 0x1,
         }
     }
@@ -135,8 +135,8 @@ TxnResponse {
 Watch( WatchRequest{
            key = foo,
            end_key = fop, // prefix foo
-           start_index = 20,
-           end_index = 10000,
+           start_revision = 20,
+           end_revision = 10000,
            // server decided notification frequency
            progress_notification = true,
        } 
@@ -147,14 +147,14 @@ Watch( WatchRequest{
 WatchResponse {
     cluster_id = 0x1000,
     member_id = 0x1,
-    index = 3,
+    revision = 3,
     raft_term = 0x1,
     event_type = put,
     kv = {
               key = foo0,
               value = bar0,
-              create_index = 1,
-              mod_index = 1,
+              create_revision = 1,
+              mod_revision = 1,
               version = 1;
           },
     }
@@ -164,7 +164,7 @@ WatchResponse {
     WatchResponse {
         cluster_id = 0x1000,
         member_id = 0x1,
-        index = 2000,
+        revision = 2000,
         raft_term = 0x1,
         // nil event as notification
     }
@@ -175,14 +175,14 @@ WatchResponse {
     WatchResponse {
         cluster_id = 0x1000,
         member_id = 0x1,
-        index = 3000,
+        revision = 3000,
         raft_term = 0x1,
         event_type = put,
         kv = {
                 key = foo0,
                 value = bar3000,
-                create_index = 1,
-                mod_index = 3000,
+                create_revision = 1,
+                mod_revision = 3000,
                 version = 2;
           },
     }

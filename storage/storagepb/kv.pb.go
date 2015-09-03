@@ -48,10 +48,10 @@ func (x Event_EventType) String() string {
 }
 
 type KeyValue struct {
-	Key         []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	CreateIndex int64  `protobuf:"varint,2,opt,name=create_index,proto3" json:"create_index,omitempty"`
-	// mod_index is the last modified index of the key.
-	ModIndex int64 `protobuf:"varint,3,opt,name=mod_index,proto3" json:"mod_index,omitempty"`
+	Key            []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	CreateRevision int64  `protobuf:"varint,2,opt,name=create_revision,proto3" json:"create_revision,omitempty"`
+	// mod_revision is the last modified revision of the key.
+	ModRevision int64 `protobuf:"varint,3,opt,name=mod_revision,proto3" json:"mod_revision,omitempty"`
 	// version is the version of the key. A deletion resets
 	// the version to zero and any modification of the key
 	// increases its version.
@@ -101,15 +101,15 @@ func (m *KeyValue) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], m.Key)
 		}
 	}
-	if m.CreateIndex != 0 {
+	if m.CreateRevision != 0 {
 		data[i] = 0x10
 		i++
-		i = encodeVarintKv(data, i, uint64(m.CreateIndex))
+		i = encodeVarintKv(data, i, uint64(m.CreateRevision))
 	}
-	if m.ModIndex != 0 {
+	if m.ModRevision != 0 {
 		data[i] = 0x18
 		i++
-		i = encodeVarintKv(data, i, uint64(m.ModIndex))
+		i = encodeVarintKv(data, i, uint64(m.ModRevision))
 	}
 	if m.Version != 0 {
 		data[i] = 0x20
@@ -196,11 +196,11 @@ func (m *KeyValue) Size() (n int) {
 			n += 1 + l + sovKv(uint64(l))
 		}
 	}
-	if m.CreateIndex != 0 {
-		n += 1 + sovKv(uint64(m.CreateIndex))
+	if m.CreateRevision != 0 {
+		n += 1 + sovKv(uint64(m.CreateRevision))
 	}
-	if m.ModIndex != 0 {
-		n += 1 + sovKv(uint64(m.ModIndex))
+	if m.ModRevision != 0 {
+		n += 1 + sovKv(uint64(m.ModRevision))
 	}
 	if m.Version != 0 {
 		n += 1 + sovKv(uint64(m.Version))
@@ -286,32 +286,32 @@ func (m *KeyValue) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CreateIndex", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field CreateRevision", wireType)
 			}
-			m.CreateIndex = 0
+			m.CreateRevision = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.CreateIndex |= (int64(b) & 0x7F) << shift
+				m.CreateRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ModIndex", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ModRevision", wireType)
 			}
-			m.ModIndex = 0
+			m.ModRevision = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.ModIndex |= (int64(b) & 0x7F) << shift
+				m.ModRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

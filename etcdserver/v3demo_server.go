@@ -36,7 +36,7 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) pro
 	case r.DeleteRange != nil:
 		return doDeleteRange(s.kv, r.DeleteRange)
 	case r.Txn != nil:
-		var index int64
+		var revision int64
 		rt := r.Txn
 
 		ok := true
@@ -46,7 +46,7 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) pro
 				ok = false
 				break
 			}
-			index = rev
+			revision = rev
 			kv := kvs[0]
 
 			// -1 is less, 0 is equal, 1 is greater
@@ -55,9 +55,9 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) pro
 			case pb.Compare_VALUE:
 				result = bytes.Compare(kv.Value, c.Value)
 			case pb.Compare_CREATE:
-				result = compareInt64(kv.CreateIndex, c.CreateIndex)
+				result = compareInt64(kv.CreateRevision, c.CreateRevision)
 			case pb.Compare_MOD:
-				result = compareInt64(kv.ModIndex, c.ModIndex)
+				result = compareInt64(kv.ModRevision, c.ModRevision)
 			case pb.Compare_VERSION:
 				result = compareInt64(kv.Version, c.Version)
 			}
@@ -93,12 +93,12 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) pro
 			resps[i] = doUnion(s.kv, reqs[i])
 		}
 		if len(resps) != 0 {
-			index += 1
+			revision += 1
 		}
 
 		txnResp := &pb.TxnResponse{}
 		txnResp.Header = &pb.ResponseHeader{}
-		txnResp.Header.Index = index
+		txnResp.Header.Revision = revision
 		txnResp.Responses = resps
 		txnResp.Succeeded = ok
 		return txnResp
@@ -122,7 +122,7 @@ func doPut(kv dstorage.KV, p *pb.PutRequest) *pb.PutResponse {
 	resp := &pb.PutResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	rev := kv.Put(p.Key, p.Value)
-	resp.Header.Index = rev
+	resp.Header.Revision = rev
 	return resp
 }
 
@@ -134,7 +134,7 @@ func doRange(kv dstorage.KV, r *pb.RangeRequest) *pb.RangeResponse {
 		panic("not handled error")
 	}
 
-	resp.Header.Index = rev
+	resp.Header.Revision = rev
 	for i := range kvs {
 		resp.Kvs = append(resp.Kvs, &kvs[i])
 	}
@@ -145,7 +145,7 @@ func doDeleteRange(kv dstorage.KV, dr *pb.DeleteRangeRequest) *pb.DeleteRangeRes
 	resp := &pb.DeleteRangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	_, rev := kv.DeleteRange(dr.Key, dr.RangeEnd)
-	resp.Header.Index = rev
+	resp.Header.Revision = rev
 	return resp
 }
 
