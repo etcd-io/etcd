@@ -319,9 +319,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 		if err := e.Unmarshal(vs[0]); err != nil {
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
-		if e.Type == storagepb.PUT {
-			kvs = append(kvs, *e.Kv)
-		}
+		kvs = append(kvs, *e.Kv)
 		if limit > 0 && len(kvs) >= int(limit) {
 			break
 		}
@@ -369,7 +367,6 @@ func (s *store) put(key, value []byte) {
 
 func (s *store) deleteRange(key, end []byte) int64 {
 	rev := s.currentRev.main + 1
-	var n int64
 	rrev := rev
 	if s.currentRev.sub > 0 {
 		rrev += 1
@@ -381,45 +378,17 @@ func (s *store) deleteRange(key, end []byte) int64 {
 	}
 
 	for _, key := range keys {
-		ok := s.delete(key)
-		if ok {
-			n++
-		}
+		s.delete(key)
 	}
-	return n
+	return int64(len(keys))
 }
 
-func (s *store) delete(key []byte) bool {
+func (s *store) delete(key []byte) {
 	mainrev := s.currentRev.main + 1
-	grev := mainrev
-	if s.currentRev.sub > 0 {
-		grev += 1
-	}
-	rev, _, _, err := s.kvindex.Get(key, grev)
-	if err != nil {
-		// key not exist
-		return false
-	}
 
 	tx := s.b.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-
-	revbytes := newRevBytes()
-	revToBytes(rev, revbytes)
-
-	_, vs := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
-	if len(vs) != 1 {
-		log.Fatalf("storage: delete cannot find rev (%d,%d)", rev.main, rev.sub)
-	}
-
-	e := &storagepb.Event{}
-	if err := e.Unmarshal(vs[0]); err != nil {
-		log.Fatalf("storage: cannot unmarshal event: %v", err)
-	}
-	if e.Type == storagepb.DELETE {
-		return false
-	}
 
 	ibytes := newRevBytes()
 	revToBytes(revision{main: mainrev, sub: s.currentRev.sub}, ibytes)
@@ -442,5 +411,4 @@ func (s *store) delete(key []byte) bool {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
 	}
 	s.currentRev.sub += 1
-	return true
 }
