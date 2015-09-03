@@ -6,7 +6,7 @@ package etcdserverpb
 
 import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 
-// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
+// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto/gogo.pb"
 import storagepb "github.com/coreos/etcd/storage/storagepb"
 
 import io "io"
@@ -108,6 +108,8 @@ type RangeResponse struct {
 	Header          *ResponseHeader       `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	Kvs             []*storagepb.KeyValue `protobuf:"bytes,2,rep,name=kvs" json:"kvs,omitempty"`
 	ConsistentToken []byte                `protobuf:"bytes,3,opt,name=consistent_token,proto3" json:"consistent_token,omitempty"`
+	// more indicates if there are more keys to return in the requested range.
+	More bool `protobuf:"varint,4,opt,name=more,proto3" json:"more,omitempty"`
 }
 
 func (m *RangeResponse) Reset()         { *m = RangeResponse{} }
@@ -329,6 +331,10 @@ func (m *TxnResponse) GetResponses() []*ResponseUnion {
 	return nil
 }
 
+// Compaction compacts the kv store upto the given index (including).
+// It removes the old versions of a key. It keeps the newest version of
+// the key even if its latest modification index is smaller than the given
+// index.
 type CompactionRequest struct {
 	Index int64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
 }
@@ -696,6 +702,23 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			}
 			m.ConsistentToken = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field More", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.More = bool(v != 0)
 		default:
 			var sizeOfWire int
 			for {
@@ -1942,6 +1965,9 @@ func (m *RangeResponse) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
+	if m.More {
+		n += 2
+	}
 	return n
 }
 
@@ -2280,6 +2306,16 @@ func (m *RangeResponse) MarshalTo(data []byte) (n int, err error) {
 			i = encodeVarintRpc(data, i, uint64(len(m.ConsistentToken)))
 			i += copy(data[i:], m.ConsistentToken)
 		}
+	}
+	if m.More {
+		data[i] = 0x20
+		i++
+		if m.More {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
 	}
 	return i, nil
 }
