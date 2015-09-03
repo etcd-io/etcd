@@ -69,7 +69,7 @@ func newStore(path string) *store {
 
 func (s *store) Put(key, value []byte) int64 {
 	id := s.TxnBegin()
-	s.put(key, value, s.currentRev.main+1)
+	s.put(key, value)
 	s.txnEnd(id)
 
 	putCounter.Inc()
@@ -89,7 +89,7 @@ func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.K
 
 func (s *store) DeleteRange(key, end []byte) (n, rev int64) {
 	id := s.TxnBegin()
-	n = s.deleteRange(key, end, s.currentRev.main+1)
+	n = s.deleteRange(key, end)
 	s.txnEnd(id)
 
 	deleteCounter.Inc()
@@ -150,7 +150,7 @@ func (s *store) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
 		return 0, ErrTxnIDMismatch
 	}
 
-	s.put(key, value, s.currentRev.main+1)
+	s.put(key, value)
 	return int64(s.currentRev.main + 1), nil
 }
 
@@ -161,7 +161,7 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 		return 0, 0, ErrTxnIDMismatch
 	}
 
-	n = s.deleteRange(key, end, s.currentRev.main+1)
+	n = s.deleteRange(key, end)
 	if n != 0 || s.currentRev.sub != 0 {
 		rev = int64(s.currentRev.main + 1)
 	} else {
@@ -329,7 +329,8 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	return kvs, rev, nil
 }
 
-func (s *store) put(key, value []byte, rev int64) {
+func (s *store) put(key, value []byte) {
+	rev := s.currentRev.main + 1
 	c := rev
 
 	// if the key exists before, use its previous created
@@ -366,7 +367,8 @@ func (s *store) put(key, value []byte, rev int64) {
 	s.currentRev.sub += 1
 }
 
-func (s *store) deleteRange(key, end []byte, rev int64) int64 {
+func (s *store) deleteRange(key, end []byte) int64 {
+	rev := s.currentRev.main + 1
 	var n int64
 	rrev := rev
 	if s.currentRev.sub > 0 {
@@ -379,7 +381,7 @@ func (s *store) deleteRange(key, end []byte, rev int64) int64 {
 	}
 
 	for _, key := range keys {
-		ok := s.delete(key, rev)
+		ok := s.delete(key)
 		if ok {
 			n++
 		}
@@ -387,7 +389,8 @@ func (s *store) deleteRange(key, end []byte, rev int64) int64 {
 	return n
 }
 
-func (s *store) delete(key []byte, mainrev int64) bool {
+func (s *store) delete(key []byte) bool {
+	mainrev := s.currentRev.main + 1
 	grev := mainrev
 	if s.currentRev.sub > 0 {
 		grev += 1
