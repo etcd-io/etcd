@@ -3,6 +3,7 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -70,9 +71,18 @@ func handleClusterHealth(c *cli.Context) {
 				}
 
 				result := struct{ Health string }{}
-				d := json.NewDecoder(resp.Body)
-				err = d.Decode(&result)
+				nresult := struct{ Health bool }{}
+				bytes, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
+					continue
+				}
 				resp.Body.Close()
+
+				err = json.Unmarshal(bytes, &result)
+				if err != nil {
+					err = json.Unmarshal(bytes, &nresult)
+				}
 				if err != nil {
 					fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
 					continue
