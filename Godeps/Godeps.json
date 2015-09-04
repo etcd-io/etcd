@@ -16,7 +16,7 @@
 		},
 		{
 			"ImportPath": "github.com/bgentry/speakeasy",
-			"Rev": "5dfe43257d1f86b96484e760f2f0c4e2559089c7"
+			"Rev": "36e9cfdd690967f4f690c6edcc9ffacd006014a0"
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
@@ -104,6 +104,10 @@
 			"Rev": "ee2372b58cee877abe07cde670d04d3b3bac5ee6"
 		},
 		{
+			"ImportPath": "github.com/rakyll/pb",
+			"Rev": "dc507ad06b7462501281bb4691ee43f0b1d1ec37"
+		},
+		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Rev": "9cc77fa25329013ce07362c7742952ff887361f2"
 		},
@@ -134,6 +138,10 @@
 		{
 			"ImportPath": "golang.org/x/oauth2",
 			"Rev": "3046bc76d6dfd7d3707f6640f85e42d9c4050f50"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "9c60d1c508f5134d1ca726b4641db998f2523357"
 		},
 		{
 			"ImportPath": "google.golang.org/cloud/compute/metadata",

@@ -1,13 +1,12 @@
-
 package bolt
 
 import (
 	"fmt"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/sys/unix"
 	"os"
 	"syscall"
 	"time"
 	"unsafe"
-	"golang.org/x/sys/unix"
 )
 
 // flock acquires an advisory lock on a file descriptor.
