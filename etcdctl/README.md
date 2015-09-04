@@ -231,25 +231,25 @@ The following exit codes can be returned from etcdctl:
 5    500 error from etcd
 ```
 
-## Peers
+## Endpoint
 
 If your etcd cluster isn't available on `http://127.0.0.1:2379` you can specify
-a `--peers` flag or `ETCDCTL_PEERS` environment variable. You can list one peer,
-or a comma-separated list of peers. This option is ignored if the `--discovery-srv`
+a `--endpoint` flag or `ETCDCTL_ENDPOINT` environment variable. You can list one endpoint,
+or a comma-separated list of endpoints. This option is ignored if the `--discovery-srv`
 option is provided.
 
 ```
-ETCDCTL_PEERS="http://10.0.28.1:4002" etcdctl set my-key to-a-value
-ETCDCTL_PEERS="http://10.0.28.1:4002,http://10.0.28.2:4002,http://10.0.28.3:4002" etcdctl set my-key to-a-value
-etcdctl --peers http://10.0.28.1:4002 my-key to-a-value
-etcdctl --peers http://10.0.28.1:4002,http://10.0.28.2:4002,http://10.0.28.3:4002 etcdctl set my-key to-a-value
+ETCDCTL_ENDPOINT="http://10.0.28.1:4002" etcdctl set my-key to-a-value
+ETCDCTL_ENDPOINT="http://10.0.28.1:4002,http://10.0.28.2:4002,http://10.0.28.3:4002" etcdctl set my-key to-a-value
+etcdctl --endpoint http://10.0.28.1:4002 my-key to-a-value
+etcdctl --endpoint http://10.0.28.1:4002,http://10.0.28.2:4002,http://10.0.28.3:4002 etcdctl set my-key to-a-value
 ```
 
 ## DNS Discovery
 
 If you want to discover your etcd cluster through domain SRV records you can specify
 a `--discovery-srv` flag or `ETCDCTL_DISCOVERY_SRV` environment variable. This option takes
-precedence over the `--peers` flag.
+precedence over the `--endpoint` flag.
 
 ```
 ETCDCTL_DISCOVERY_SRV="some-domain" etcdctl set my-key to-a-value
