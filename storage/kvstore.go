@@ -69,7 +69,7 @@ func newStore(path string) *store {
 
 func (s *store) Put(key, value []byte) int64 {
 	id := s.TxnBegin()
-	s.put(key, value, s.currentRev.main+1)
+	s.put(key, value)
 	s.txnEnd(id)
 
 	putCounter.Inc()
@@ -89,7 +89,7 @@ func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.K
 
 func (s *store) DeleteRange(key, end []byte) (n, rev int64) {
 	id := s.TxnBegin()
-	n = s.deleteRange(key, end, s.currentRev.main+1)
+	n = s.deleteRange(key, end)
 	s.txnEnd(id)
 
 	deleteCounter.Inc()
@@ -150,7 +150,7 @@ func (s *store) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
 		return 0, ErrTxnIDMismatch
 	}
 
-	s.put(key, value, s.currentRev.main+1)
+	s.put(key, value)
 	return int64(s.currentRev.main + 1), nil
 }
 
@@ -161,7 +161,7 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 		return 0, 0, ErrTxnIDMismatch
 	}
 
-	n = s.deleteRange(key, end, s.currentRev.main+1)
+	n = s.deleteRange(key, end)
 	if n != 0 || s.currentRev.sub != 0 {
 		rev = int64(s.currentRev.main + 1)
 	} else {
@@ -319,9 +319,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 		if err := e.Unmarshal(vs[0]); err != nil {
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
-		if e.Type == storagepb.PUT {
-			kvs = append(kvs, *e.Kv)
-		}
+		kvs = append(kvs, *e.Kv)
 		if limit > 0 && len(kvs) >= int(limit) {
 			break
 		}
@@ -329,7 +327,8 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	return kvs, rev, nil
 }
 
-func (s *store) put(key, value []byte, rev int64) {
+func (s *store) put(key, value []byte) {
+	rev := s.currentRev.main + 1
 	c := rev
 
 	// if the key exists before, use its previous created
@@ -366,9 +365,8 @@ func (s *store) put(key, value []byte, rev int64) {
 	s.currentRev.sub += 1
 }
 
-func (s *store) deleteRange(key, end []byte, rev int64) int64 {
-	var n int64
-	rrev := rev
+func (s *store) deleteRange(key, end []byte) int64 {
+	rrev := s.currentRev.main
 	if s.currentRev.sub > 0 {
 		rrev += 1
 	}
@@ -379,44 +377,17 @@ func (s *store) deleteRange(key, end []byte, rev int64) int64 {
 	}
 
 	for _, key := range keys {
-		ok := s.delete(key, rev)
-		if ok {
-			n++
-		}
+		s.delete(key)
 	}
-	return n
+	return int64(len(keys))
 }
 
-func (s *store) delete(key []byte, mainrev int64) bool {
-	grev := mainrev
-	if s.currentRev.sub > 0 {
-		grev += 1
-	}
-	rev, _, _, err := s.kvindex.Get(key, grev)
-	if err != nil {
-		// key not exist
-		return false
-	}
+func (s *store) delete(key []byte) {
+	mainrev := s.currentRev.main + 1
 
 	tx := s.b.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
-
-	revbytes := newRevBytes()
-	revToBytes(rev, revbytes)
-
-	_, vs := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
-	if len(vs) != 1 {
-		log.Fatalf("storage: delete cannot find rev (%d,%d)", rev.main, rev.sub)
-	}
-
-	e := &storagepb.Event{}
-	if err := e.Unmarshal(vs[0]); err != nil {
-		log.Fatalf("storage: cannot unmarshal event: %v", err)
-	}
-	if e.Type == storagepb.DELETE {
-		return false
-	}
 
 	ibytes := newRevBytes()
 	revToBytes(revision{main: mainrev, sub: s.currentRev.sub}, ibytes)
@@ -439,5 +410,4 @@ func (s *store) delete(key []byte, mainrev int64) bool {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
 	}
 	s.currentRev.sub += 1
-	return true
 }
