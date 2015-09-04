@@ -76,11 +76,6 @@ fi
 
 echo "Checking govet -shadow..."
 for path in $FMT; do
-	# only check go files under raft dir because
-	# auto generated file in raft/raftpb cannot pass shadow test
-	if [ "${path}" == "raft" ]; then
-		path="raft/*.go"
-	fi
 	vetRes=$(go tool vet -shadow ${path})
 	if [ -n "${vetRes}" ]; then
 		echo -e "govet checking ${path} failed:\n${vetRes}"
