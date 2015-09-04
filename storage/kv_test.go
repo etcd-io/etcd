@@ -82,9 +82,9 @@ func testKVRange(t *testing.T, f rangeFunc) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	wrev := int64(3)
@@ -149,9 +149,9 @@ func testKVRangeRev(t *testing.T, f rangeFunc) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	tests := []struct {
@@ -223,9 +223,9 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	wrev := int64(3)
@@ -276,7 +276,7 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 			t.Fatal(err)
 		}
 		wkvs := []storagepb.KeyValue{
-			{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: base, Version: base},
+			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: base, Version: base},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
@@ -377,7 +377,7 @@ func TestKVOperationInSequence(t *testing.T) {
 			t.Fatal(err)
 		}
 		wkvs := []storagepb.KeyValue{
-			{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: base + 1, ModIndex: base + 1, Version: 1},
+			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
@@ -494,7 +494,7 @@ func TestKVTnxOperationInSequence(t *testing.T) {
 			t.Fatal(err)
 		}
 		wkvs := []storagepb.KeyValue{
-			{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: base + 1, ModIndex: base + 1, Version: 1},
+			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
@@ -545,13 +545,13 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		{
 			0,
 			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar0"), CreateIndex: 1, ModIndex: 1, Version: 1},
+				{Key: []byte("foo"), Value: []byte("bar0"), CreateRevision: 1, ModRevision: 1, Version: 1},
 			},
 		},
 		{
 			1,
 			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar1"), CreateIndex: 1, ModIndex: 2, Version: 2},
+				{Key: []byte("foo"), Value: []byte("bar1"), CreateRevision: 1, ModRevision: 2, Version: 2},
 			},
 		},
 		{
@@ -561,7 +561,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		{
 			3,
 			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar2"), CreateIndex: 4, ModIndex: 4, Version: 1},
+				{Key: []byte("foo"), Value: []byte("bar2"), CreateRevision: 4, ModRevision: 4, Version: 1},
 			},
 		},
 	}
@@ -661,9 +661,9 @@ func TestKVSnapshot(t *testing.T) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	wkvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	f, err := os.Create("new_test")

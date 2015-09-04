@@ -13,18 +13,18 @@ service etcd {
   rpc Range(RangeRequest) returns (RangeResponse) {}
 
   // Put puts the given key into the store.
-  // A put request increases the index of the store,
+  // A put request increases the revision of the store,
   // and generates one event in the event history.
   rpc Put(PutRequest) returns (PutResponse) {}
 
   // Delete deletes the given range from the store.
-  // A delete request increase the index of the store,
+  // A delete request increase the revision of the store,
   // and generates one event in the event history.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
 
   // Txn processes all the requests in one transaction.
-  // A txn request increases the index of the store,
-  // and generates events with the same index in the event history.
+  // A txn request increases the revision of the store,
+  // and generates events with the same revision in the event history.
   rpc Txn(TxnRequest) returns (TxnResponse) {}
 
   // Compact compacts the event history in etcd. User should compact the
@@ -37,8 +37,8 @@ message ResponseHeader {
   string error = 1;
   uint64 cluster_id = 2;
   uint64 member_id = 3;
-  // index of the store when the request was applied.
-  int64 index = 4;
+  // revision of the store when the request was applied.
+  int64 revision = 4;
   // term of raft when the request was applied.
   uint64 raft_term = 5;
 }
@@ -119,10 +119,10 @@ message Compare {
   oneof target_union {
     // version of the given key
     int64 version = 4;
-    // create index of the given key
-    int64 create_index = 5;
-    // last modified index of the given key
-    int64 mod_index = 6;
+    // create revision of the given key
+    int64 create_revision = 5;
+    // last modified revision of the given key
+    int64 mod_revision = 6;
     // value of the given key
     bytes value = 7;
   }
@@ -160,12 +160,12 @@ message TxnResponse {
   repeated ResponseUnion responses = 3;
 }
 
-// Compaction compacts the kv store upto the given index (including).
+// Compaction compacts the kv store upto the given revision (including).
 // It removes the old versions of a key. It keeps the newest version of
-// the key even if its latest modification index is smaller than the given
-// index.
+// the key even if its latest modification revision is smaller than the given
+// revision.
 message CompactionRequest {
-  int64 index = 1;
+  int64 revision = 1;
 }
 
 message CompactionResponse {

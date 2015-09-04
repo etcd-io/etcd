@@ -238,7 +238,7 @@ func (s *store) Restore() error {
 		// restore index
 		switch e.Type {
 		case storagepb.PUT:
-			s.kvindex.Restore(e.Kv.Key, revision{e.Kv.CreateIndex, 0}, rev, e.Kv.Version)
+			s.kvindex.Restore(e.Kv.Key, revision{e.Kv.CreateRevision, 0}, rev, e.Kv.Version)
 		case storagepb.DELETE:
 			s.kvindex.Tombstone(e.Kv.Key, rev)
 		default:
@@ -344,11 +344,11 @@ func (s *store) put(key, value []byte) {
 	event := storagepb.Event{
 		Type: storagepb.PUT,
 		Kv: &storagepb.KeyValue{
-			Key:         key,
-			Value:       value,
-			CreateIndex: c,
-			ModIndex:    rev,
-			Version:     ver,
+			Key:            key,
+			Value:          value,
+			CreateRevision: c,
+			ModRevision:    rev,
+			Version:        ver,
 		},
 	}
 

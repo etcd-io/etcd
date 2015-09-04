@@ -74,8 +74,8 @@ type ResponseHeader struct {
 	Error     string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
 	ClusterId uint64 `protobuf:"varint,2,opt,name=cluster_id,proto3" json:"cluster_id,omitempty"`
 	MemberId  uint64 `protobuf:"varint,3,opt,name=member_id,proto3" json:"member_id,omitempty"`
-	// index of the store when the request was applied.
-	Index int64 `protobuf:"varint,4,opt,name=index,proto3" json:"index,omitempty"`
+	// revision of the store when the request was applied.
+	Revision int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
 	// term of raft when the request was applied.
 	RaftTerm uint64 `protobuf:"varint,5,opt,name=raft_term,proto3" json:"raft_term,omitempty"`
 }
@@ -246,10 +246,10 @@ type Compare struct {
 	Key []byte `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
 	// version of the given key
 	Version int64 `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
-	// create index of the given key
-	CreateIndex int64 `protobuf:"varint,5,opt,name=create_index,proto3" json:"create_index,omitempty"`
-	// last modified index of the given key
-	ModIndex int64 `protobuf:"varint,6,opt,name=mod_index,proto3" json:"mod_index,omitempty"`
+	// create revision of the given key
+	CreateRevision int64 `protobuf:"varint,5,opt,name=create_revision,proto3" json:"create_revision,omitempty"`
+	// last modified revision of the given key
+	ModRevision int64 `protobuf:"varint,6,opt,name=mod_revision,proto3" json:"mod_revision,omitempty"`
 	// value of the given key
 	Value []byte `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
 }
@@ -328,12 +328,12 @@ func (m *TxnResponse) GetResponses() []*ResponseUnion {
 	return nil
 }
 
-// Compaction compacts the kv store upto the given index (including).
+// Compaction compacts the kv store upto the given revision (including).
 // It removes the old versions of a key. It keeps the newest version of
-// the key even if its latest modification index is smaller than the given
-// index.
+// the key even if its latest modification revision is smaller than the given
+// revision.
 type CompactionRequest struct {
-	Index int64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	Revision int64 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
 }
 
 func (m *CompactionRequest) Reset()         { *m = CompactionRequest{} }
@@ -370,16 +370,16 @@ type EtcdClient interface {
 	// Range gets the keys in the range from the store.
 	Range(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (*RangeResponse, error)
 	// Put puts the given key into the store.
-	// A put request increases the index of the store,
+	// A put request increases the revision of the store,
 	// and generates one event in the event history.
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error)
 	// Delete deletes the given range from the store.
-	// A delete request increase the index of the store,
+	// A delete request increase the revision of the store,
 	// and generates one event in the event history.
 	DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts ...grpc.CallOption) (*DeleteRangeResponse, error)
 	// Txn processes all the requests in one transaction.
-	// A txn request increases the index of the store,
-	// and generates events with the same index in the event history.
+	// A txn request increases the revision of the store,
+	// and generates events with the same revision in the event history.
 	Txn(ctx context.Context, in *TxnRequest, opts ...grpc.CallOption) (*TxnResponse, error)
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
@@ -445,16 +445,16 @@ type EtcdServer interface {
 	// Range gets the keys in the range from the store.
 	Range(context.Context, *RangeRequest) (*RangeResponse, error)
 	// Put puts the given key into the store.
-	// A put request increases the index of the store,
+	// A put request increases the revision of the store,
 	// and generates one event in the event history.
 	Put(context.Context, *PutRequest) (*PutResponse, error)
 	// Delete deletes the given range from the store.
-	// A delete request increase the index of the store,
+	// A delete request increase the revision of the store,
 	// and generates one event in the event history.
 	DeleteRange(context.Context, *DeleteRangeRequest) (*DeleteRangeResponse, error)
 	// Txn processes all the requests in one transaction.
-	// A txn request increases the index of the store,
-	// and generates events with the same index in the event history.
+	// A txn request increases the revision of the store,
+	// and generates events with the same revision in the event history.
 	Txn(context.Context, *TxnRequest) (*TxnResponse, error)
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
@@ -584,10 +584,10 @@ func (m *ResponseHeader) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.MemberId))
 	}
-	if m.Index != 0 {
+	if m.Revision != 0 {
 		data[i] = 0x20
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Index))
+		i = encodeVarintRpc(data, i, uint64(m.Revision))
 	}
 	if m.RaftTerm != 0 {
 		data[i] = 0x28
@@ -949,15 +949,15 @@ func (m *Compare) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Version))
 	}
-	if m.CreateIndex != 0 {
+	if m.CreateRevision != 0 {
 		data[i] = 0x28
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.CreateIndex))
+		i = encodeVarintRpc(data, i, uint64(m.CreateRevision))
 	}
-	if m.ModIndex != 0 {
+	if m.ModRevision != 0 {
 		data[i] = 0x30
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ModIndex))
+		i = encodeVarintRpc(data, i, uint64(m.ModRevision))
 	}
 	if m.Value != nil {
 		if len(m.Value) > 0 {
@@ -1089,10 +1089,10 @@ func (m *CompactionRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Index != 0 {
+	if m.Revision != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Index))
+		i = encodeVarintRpc(data, i, uint64(m.Revision))
 	}
 	return i, nil
 }
@@ -1165,8 +1165,8 @@ func (m *ResponseHeader) Size() (n int) {
 	if m.MemberId != 0 {
 		n += 1 + sovRpc(uint64(m.MemberId))
 	}
-	if m.Index != 0 {
-		n += 1 + sovRpc(uint64(m.Index))
+	if m.Revision != 0 {
+		n += 1 + sovRpc(uint64(m.Revision))
 	}
 	if m.RaftTerm != 0 {
 		n += 1 + sovRpc(uint64(m.RaftTerm))
@@ -1327,11 +1327,11 @@ func (m *Compare) Size() (n int) {
 	if m.Version != 0 {
 		n += 1 + sovRpc(uint64(m.Version))
 	}
-	if m.CreateIndex != 0 {
-		n += 1 + sovRpc(uint64(m.CreateIndex))
+	if m.CreateRevision != 0 {
+		n += 1 + sovRpc(uint64(m.CreateRevision))
 	}
-	if m.ModIndex != 0 {
-		n += 1 + sovRpc(uint64(m.ModIndex))
+	if m.ModRevision != 0 {
+		n += 1 + sovRpc(uint64(m.ModRevision))
 	}
 	if m.Value != nil {
 		l = len(m.Value)
@@ -1388,8 +1388,8 @@ func (m *TxnResponse) Size() (n int) {
 func (m *CompactionRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Index != 0 {
-		n += 1 + sovRpc(uint64(m.Index))
+	if m.Revision != 0 {
+		n += 1 + sovRpc(uint64(m.Revision))
 	}
 	return n
 }
@@ -1496,16 +1496,16 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 			}
 		case 4:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Revision", wireType)
 			}
-			m.Index = 0
+			m.Revision = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Index |= (int64(b) & 0x7F) << shift
+				m.Revision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2503,32 +2503,32 @@ func (m *Compare) Unmarshal(data []byte) error {
 			}
 		case 5:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CreateIndex", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field CreateRevision", wireType)
 			}
-			m.CreateIndex = 0
+			m.CreateRevision = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.CreateIndex |= (int64(b) & 0x7F) << shift
+				m.CreateRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 6:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ModIndex", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ModRevision", wireType)
 			}
-			m.ModIndex = 0
+			m.ModRevision = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.ModIndex |= (int64(b) & 0x7F) << shift
+				m.ModRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -2854,16 +2854,16 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Revision", wireType)
 			}
-			m.Index = 0
+			m.Revision = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Index |= (int64(b) & 0x7F) << shift
+				m.Revision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
