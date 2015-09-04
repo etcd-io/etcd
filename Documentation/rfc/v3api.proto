@@ -68,17 +68,18 @@ message RangeRequest {
   bytes range_end = 2;
   // limit the number of keys returned.
   int64 limit = 3;
-  // the response will be consistent with previous request with same token if the token is 
-  // given and is valid.
-  bytes consistent_token = 4;
+  // range over the store at the given revision.
+  // if revision is less or equal to zero, range over the newest store.
+  // if the revision has been compacted, ErrCompaction will be returned in
+  // response.
+  int64 revision = 4;
 }
 
 message RangeResponse {
   ResponseHeader header = 1;
   repeated storagepb.KeyValue kvs = 2;
-  bytes consistent_token = 3;
   // more indicates if there are more keys to return in the requested range.
-  bool more = 4;
+  bool more = 3;
 }
 
 message PutRequest {
