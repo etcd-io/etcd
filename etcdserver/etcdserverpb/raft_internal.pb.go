@@ -23,6 +23,7 @@ type InternalRaftRequest struct {
 	Put         *PutRequest         `protobuf:"bytes,4,opt,name=put" json:"put,omitempty"`
 	DeleteRange *DeleteRangeRequest `protobuf:"bytes,5,opt,name=delete_range" json:"delete_range,omitempty"`
 	Txn         *TxnRequest         `protobuf:"bytes,6,opt,name=txn" json:"txn,omitempty"`
+	Compaction  *CompactionRequest  `protobuf:"bytes,7,opt,name=compaction" json:"compaction,omitempty"`
 }
 
 func (m *InternalRaftRequest) Reset()         { *m = InternalRaftRequest{} }
@@ -106,6 +107,16 @@ func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n5
 	}
+	if m.Compaction != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintRaftInternal(data, i, uint64(m.Compaction.Size()))
+		n6, err := m.Compaction.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
 	return i, nil
 }
 
@@ -178,6 +189,10 @@ func (m *InternalRaftRequest) Size() (n int) {
 	}
 	if m.Txn != nil {
 		l = m.Txn.Size()
+		n += 1 + l + sovRaftInternal(uint64(l))
+	}
+	if m.Compaction != nil {
+		l = m.Compaction.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
 	return n
@@ -384,6 +399,36 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 				m.Txn = &TxnRequest{}
 			}
 			if err := m.Txn.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Compaction", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRaftInternal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Compaction == nil {
+				m.Compaction = &CompactionRequest{}
+			}
+			if err := m.Compaction.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

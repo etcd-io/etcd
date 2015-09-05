@@ -19,6 +19,7 @@ message InternalRaftRequest {
   PutRequest put = 4;
   DeleteRangeRequest delete_range = 5;
   TxnRequest txn = 6;
+  CompactionRequest compaction = 7;
 }
 
 message EmptyResponse {

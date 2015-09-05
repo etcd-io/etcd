@@ -84,7 +84,12 @@ func (h *handler) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 }
 
 func (h *handler) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	panic("not implemented")
+	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Compaction: r})
+	if err != nil {
+		err = togRPCError(err)
+	}
+
+	return resp.(*pb.CompactionResponse), nil
 }
 
 func checkRangeRequest(r *pb.RangeRequest) error {
