@@ -36,85 +36,9 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) pro
 	case r.DeleteRange != nil:
 		return doDeleteRange(s.kv, r.DeleteRange)
 	case r.Txn != nil:
-		var revision int64
-		rt := r.Txn
-
-		ok := true
-		for _, c := range rt.Compare {
-			kvs, rev, err := s.kv.Range(c.Key, nil, 1, 0)
-			if err != nil {
-				ok = false
-				break
-			}
-			revision = rev
-			kv := kvs[0]
-
-			// -1 is less, 0 is equal, 1 is greater
-			var result int
-			switch c.Target {
-			case pb.Compare_VALUE:
-				result = bytes.Compare(kv.Value, c.Value)
-			case pb.Compare_CREATE:
-				result = compareInt64(kv.CreateRevision, c.CreateRevision)
-			case pb.Compare_MOD:
-				result = compareInt64(kv.ModRevision, c.ModRevision)
-			case pb.Compare_VERSION:
-				result = compareInt64(kv.Version, c.Version)
-			}
-
-			switch c.Result {
-			case pb.Compare_EQUAL:
-				if result != 0 {
-					ok = false
-				}
-			case pb.Compare_GREATER:
-				if result != 1 {
-					ok = false
-				}
-			case pb.Compare_LESS:
-				if result != -1 {
-					ok = false
-				}
-			}
-
-			if !ok {
-				break
-			}
-		}
-
-		var reqs []*pb.RequestUnion
-		if ok {
-			reqs = rt.Success
-		} else {
-			reqs = rt.Failure
-		}
-		resps := make([]*pb.ResponseUnion, len(reqs))
-		for i := range reqs {
-			resps[i] = doUnion(s.kv, reqs[i])
-		}
-		if len(resps) != 0 {
-			revision += 1
-		}
-
-		txnResp := &pb.TxnResponse{}
-		txnResp.Header = &pb.ResponseHeader{}
-		txnResp.Header.Revision = revision
-		txnResp.Responses = resps
-		txnResp.Succeeded = ok
-		return txnResp
+		return doTxn(s.kv, r.Txn)
 	default:
 		panic("not implemented")
-	}
-}
-
-func compareInt64(a, b int64) int {
-	switch {
-	case a < b:
-		return -1
-	case a > b:
-		return 1
-	default:
-		return 0
 	}
 }
 
@@ -149,6 +73,38 @@ func doDeleteRange(kv dstorage.KV, dr *pb.DeleteRangeRequest) *pb.DeleteRangeRes
 	return resp
 }
 
+func doTxn(kv dstorage.KV, rt *pb.TxnRequest) *pb.TxnResponse {
+	var revision int64
+
+	ok := true
+	for _, c := range rt.Compare {
+		if revision, ok = doCompare(kv, c); !ok {
+			break
+		}
+	}
+
+	var reqs []*pb.RequestUnion
+	if ok {
+		reqs = rt.Success
+	} else {
+		reqs = rt.Failure
+	}
+	resps := make([]*pb.ResponseUnion, len(reqs))
+	for i := range reqs {
+		resps[i] = doUnion(kv, reqs[i])
+	}
+	if len(resps) != 0 {
+		revision += 1
+	}
+
+	txnResp := &pb.TxnResponse{}
+	txnResp.Header = &pb.ResponseHeader{}
+	txnResp.Header.Revision = revision
+	txnResp.Responses = resps
+	txnResp.Succeeded = ok
+	return txnResp
+}
+
 func doUnion(kv dstorage.KV, union *pb.RequestUnion) *pb.ResponseUnion {
 	switch {
 	case union.RequestRange != nil:
@@ -160,5 +116,54 @@ func doUnion(kv dstorage.KV, union *pb.RequestUnion) *pb.ResponseUnion {
 	default:
 		// empty union
 		return nil
+	}
+}
+
+func doCompare(kv dstorage.KV, c *pb.Compare) (int64, bool) {
+	ckvs, rev, err := kv.Range(c.Key, nil, 1, 0)
+	if err != nil {
+		return rev, false
+	}
+
+	ckv := ckvs[0]
+
+	// -1 is less, 0 is equal, 1 is greater
+	var result int
+	switch c.Target {
+	case pb.Compare_VALUE:
+		result = bytes.Compare(ckv.Value, c.Value)
+	case pb.Compare_CREATE:
+		result = compareInt64(ckv.CreateRevision, c.CreateRevision)
+	case pb.Compare_MOD:
+		result = compareInt64(ckv.ModRevision, c.ModRevision)
+	case pb.Compare_VERSION:
+		result = compareInt64(ckv.Version, c.Version)
+	}
+
+	switch c.Result {
+	case pb.Compare_EQUAL:
+		if result != 0 {
+			return rev, false
+		}
+	case pb.Compare_GREATER:
+		if result != 1 {
+			return rev, false
+		}
+	case pb.Compare_LESS:
+		if result != -1 {
+			return rev, false
+		}
+	}
+	return rev, true
+}
+
+func compareInt64(a, b int64) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	default:
+		return 0
 	}
 }
