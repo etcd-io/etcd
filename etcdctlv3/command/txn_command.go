@@ -190,13 +190,13 @@ func parseCompare(line string) (*pb.Compare, error) {
 		}
 	case "c", "create":
 		c.Target = pb.Compare_CREATE
-		c.CreateIndex, err = strconv.ParseInt(parts[3], 10, 64)
+		c.CreateRevision, err = strconv.ParseInt(parts[3], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid txn compare request: %s", line)
 		}
 	case "m", "mod":
 		c.Target = pb.Compare_MOD
-		c.ModIndex, err = strconv.ParseInt(parts[3], 10, 64)
+		c.ModRevision, err = strconv.ParseInt(parts[3], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid txn compare request: %s", line)
 		}
