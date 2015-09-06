@@ -1,8 +1,8 @@
 syntax = "proto3";
 package etcdserverpb;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "github.com/coreos/etcd/storage/storagepb/kv.proto";
+import "gogoproto/gogo.proto";
+import "etcd/storage/storagepb/kv.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;
@@ -13,18 +13,18 @@ service etcd {
   rpc Range(RangeRequest) returns (RangeResponse) {}
 
   // Put puts the given key into the store.
-  // A put request increases the index of the store,
+  // A put request increases the revision of the store,
   // and generates one event in the event history.
   rpc Put(PutRequest) returns (PutResponse) {}
 
   // Delete deletes the given range from the store.
-  // A delete request increase the index of the store,
+  // A delete request increase the revision of the store,
   // and generates one event in the event history.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
 
   // Txn processes all the requests in one transaction.
-  // A txn request increases the index of the store,
-  // and generates events with the same index in the event history.
+  // A txn request increases the revision of the store,
+  // and generates events with the same revision in the event history.
   rpc Txn(TxnRequest) returns (TxnResponse) {}
 
   // Compact compacts the event history in etcd. User should compact the
@@ -37,8 +37,8 @@ message ResponseHeader {
   string error = 1;
   uint64 cluster_id = 2;
   uint64 member_id = 3;
-  // index of the store when the request was applied.
-  int64 index = 4;
+  // revision of the store when the request was applied.
+  int64 revision = 4;
   // term of raft when the request was applied.
   uint64 raft_term = 5;
 }
@@ -50,17 +50,18 @@ message RangeRequest {
   bytes range_end = 2;
   // limit the number of keys returned.
   int64 limit = 3;
-  // the response will be consistent with previous request with same token if the token is 
-  // given and is valid.
-  bytes consistent_token = 4;
+  // range over the store at the given revision.
+  // if revision is less or equal to zero, range over the newest store.
+  // if the revision has been compacted, ErrCompaction will be returned in
+  // response.
+  int64 revision = 4;
 }
 
 message RangeResponse {
   ResponseHeader header = 1;
   repeated storagepb.KeyValue kvs = 2;
-  bytes consistent_token = 3;
   // more indicates if there are more keys to return in the requested range.
-  bool more = 4;
+  bool more = 3;
 }
 
 message PutRequest {
@@ -118,18 +119,18 @@ message Compare {
   oneof target_union {
     // version of the given key
     int64 version = 4;
-    // create index of the given key
-    int64 create_index = 5;
-    // last modified index of the given key
-    int64 mod_index = 6;
+    // create revision of the given key
+    int64 create_revision = 5;
+    // last modified revision of the given key
+    int64 mod_revision = 6;
     // value of the given key
     bytes value = 7;
   }
 }
 
-// If the comparisons succeed, then the success requests will be processed in order, 
+// If the comparisons succeed, then the success requests will be processed in order,
 // and the response will contain their respective responses in order.
-// If the comparisons fail, then the failure requests will be processed in order, 
+// If the comparisons fail, then the failure requests will be processed in order,
 // and the response will contain their respective responses in order.
 
 // From google paxosdb paper:
@@ -159,12 +160,12 @@ message TxnResponse {
   repeated ResponseUnion responses = 3;
 }
 
-// Compaction compacts the kv store upto the given index (including). 
-// It removes the old versions of a key. It keeps the newest version of 
-// the key even if its latest modification index is smaller than the given 
-// index.
+// Compaction compacts the kv store upto the given revision (including).
+// It removes the old versions of a key. It keeps the newest version of
+// the key even if its latest modification revision is smaller than the given
+// revision.
 message CompactionRequest {
-  int64 index = 1;
+  int64 revision = 1;
 }
 
 message CompactionResponse {

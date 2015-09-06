@@ -39,6 +39,74 @@ If `--wal-dir` flag is set, etcd will write the write ahead log files to the spe
 If you are spinning up multiple clusters for testing it is recommended that you specify a unique initial-cluster-token for the different clusters.
 This can protect you from cluster corruption in case of mis-configuration because two members started with different cluster tokens will refuse members from each other.
 
+#### Monitoring
+
+It is important to monitor your production etcd cluster for healthy information and runtime metrics.
+
+##### Health Monitoring
+
+At lowest level, etcd exposes health information via HTTP at `/health` in JSON format. If it returns `{"health": "true"}`, then the cluster is healthy. Please note the `/health` endpoint is still an experimental one as in etcd 2.2.
+
+```
+$ curl -L http://127.0.0.1:2379/health
+
+{"health": "true"}
+```
+
+You can also use etcdctl to check the cluster-wide health information. It will contact all the members of the cluster and collect the health information for you.
+
+```
+$./etcdctl cluster-health 
+member 8211f1d0f64f3269 is healthy: got healthy result from http://127.0.0.1:12379
+member 91bc3c398fb3c146 is healthy: got healthy result from http://127.0.0.1:22379
+member fd422379fda50e48 is healthy: got healthy result from http://127.0.0.1:32379
+cluster is healthy
+```
+
+##### Runtime Metrics
+
+etcd uses [Prometheus](http://prometheus.io/) for metrics reporting in the server. You can read more through the runtime metrics [doc](metrics.md).
+
+#### Debugging
+
+Debugging a distributed system can be difficult. etcd provides several ways to make debug
+easier.
+
+##### Enabling Debug Logging
+
+When you want to debug etcd without stopping it, you can enable debug logging at runtime.
+etcd exposes logging configuration at `/config/local/log`.
+
+```
+$ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'
+$ # debug logging enabled
+$
+$ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"INFO"}'
+$ # debug logging disabled
+```
+
+##### Debugging Variables
+
+Debug variables are exposed for real-time debugging purposes. Developers who are familiar with etcd can utilize these variables to debug unexpected behavior. etcd exposes debug variables via HTTP at `/debug/vars` in JSON format. The debug variables contains
+`cmdline`, `file_descriptor_limit`, `memstats` and `raft.status`.
+
+`cmdline` is the command line arguments passed into etcd.
+
+`file_descriptor_limit` is the max number of file descriptors etcd can utilize.
+
+`memstats` is well explained [here](http://golang.org/pkg/runtime/#MemStats).
+
+`raft.status` is useful when you want to debug low level raft issues if you are familiar with raft internals. In most cases, you do not need to check `raft.status`.
+
+```json
+{
+"cmdline": ["./etcd"],
+"file_descriptor_limit": 0,
+"memstats": {"Alloc":4105744,"TotalAlloc":42337320,"Sys":12560632,"...":"..."},
+"raft.status": {"id":"ce2a822cea30bfca","term":5,"vote":"ce2a822cea30bfca","commit":23509,"lead":"ce2a822cea30bfca","raftState":"StateLeader","progress":{"ce2a822cea30bfca":{"match":23509,"next":23510,"state":"ProgressStateProbe"}}}
+}
+```
+
 #### Optimal Cluster Size
 
 The recommended etcd cluster size is 3, 5 or 7, which is decided by the fault tolerance requirement. A 7-member cluster can provide enough fault tolerance in most cases. While larger cluster provides better fault tolerance the write performance reduces since data needs to be replicated to more machines.

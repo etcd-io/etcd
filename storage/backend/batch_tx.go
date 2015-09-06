@@ -26,6 +26,12 @@ type batchTx struct {
 	pending int
 }
 
+func newBatchTx(backend *backend) *batchTx {
+	tx := &batchTx{backend: backend}
+	tx.Commit()
+	return tx
+}
+
 func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	_, err := t.tx.CreateBucket(name)
 	if err != nil && err != bolt.ErrBucketExists {
@@ -43,7 +49,7 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 		log.Fatalf("storage: cannot put key into bucket (%v)", err)
 	}
 	t.pending++
-	if t.pending > t.backend.batchLimit {
+	if t.pending >= t.backend.batchLimit {
 		t.commit(false)
 		t.pending = 0
 	}
@@ -68,6 +74,9 @@ func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64
 	for ck, cv := c.Seek(key); ck != nil && bytes.Compare(ck, endKey) < 0; ck, cv = c.Next() {
 		vs = append(vs, cv)
 		keys = append(keys, ck)
+		if limit > 0 && limit == int64(len(keys)) {
+			break
+		}
 	}
 
 	return keys, vs
@@ -84,7 +93,7 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 		log.Fatalf("storage: cannot delete key from bucket (%v)", err)
 	}
 	t.pending++
-	if t.pending > t.backend.batchLimit {
+	if t.pending >= t.backend.batchLimit {
 		t.commit(false)
 		t.pending = 0
 	}

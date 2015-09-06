@@ -8,7 +8,7 @@ set -e
 PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb"
 
-SHA="64f27bf06efee53589314a6e5a4af34cdd85adf6"
+SHA="932b70afa8b0bf4a8e167fdf0c3367cebba45903"
 
 if ! protoc --version > /dev/null; then
 	echo "could not find protoc, is it installed + in PATH?"
@@ -22,7 +22,7 @@ export GOBIN=${PWD}/bin
 go get github.com/gogo/protobuf/{proto,protoc-gen-gogo,gogoproto}
 pushd ${GOPATH}/src/github.com/gogo/protobuf/
 	git reset --hard ${SHA}
-	make
+	make install
 popd
 
 export PATH="${GOBIN}:${PATH}"
@@ -35,10 +35,17 @@ for dir in ${DIRS}; do
 	popd
 done
 
+COREOS_ROOT="${GOPATH}/src/github.com/coreos"
+GOGOPROTO_ROOT="${GOPATH}/src/github.com/gogo/protobuf"
+GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
+
+ESCAPED_PREFIX=$(echo $PREFIX | sed -e 's/[\/&]/\\&/g')
+
 for dir in ${DIRS}; do
 	pushd ${dir}
-		protoc --gogofast_out=plugins=grpc:. -I=.:${GOPATH}/src/github.com/gogo/protobuf/protobuf:${GOPATH}/src *.proto
-		sed -i".bak" -e "s|github.com/gogo/protobuf/proto|${PREFIX}/github.com/gogo/protobuf/proto|" *.go
+		protoc --gogofast_out=plugins=grpc,import_prefix=github.com/coreos/:. -I=.:"${GOGOPROTO_PATH}":"${COREOS_ROOT}" *.proto
+		sed -i.bak -E "s/github\.com\/coreos\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/${ESCAPED_PREFIX}\/\1/g" *.pb.go
+		sed -i.bak -E 's/github\.com\/coreos\/(errors|fmt|io)/\1/g' *.pb.go
 		rm -f *.bak
 	popd
 done

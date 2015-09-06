@@ -3,6 +3,7 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 func NewClusterHealthCommand() cli.Command {
@@ -44,7 +46,8 @@ func handleClusterHealth(c *cli.Context) {
 		Transport: tr,
 	}
 
-	mi := mustNewMembersAPI(c)
+	cln := mustNewClientNoSync(c)
+	mi := client.NewMembersAPI(cln)
 	ms, err := mi.List(context.TODO())
 	if err != nil {
 		fmt.Println("cluster may be unhealthy: failed to list members")
@@ -54,6 +57,11 @@ func handleClusterHealth(c *cli.Context) {
 	for {
 		health := false
 		for _, m := range ms {
+			if len(m.ClientURLs) == 0 {
+				fmt.Printf("member %s is unreachable: no available published client urls\n", m.ID)
+				continue
+			}
+
 			checked := false
 			for _, url := range m.ClientURLs {
 				resp, err := hc.Get(url + "/health")
@@ -63,9 +71,18 @@ func handleClusterHealth(c *cli.Context) {
 				}
 
 				result := struct{ Health string }{}
-				d := json.NewDecoder(resp.Body)
-				err = d.Decode(&result)
+				nresult := struct{ Health bool }{}
+				bytes, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
+					continue
+				}
 				resp.Body.Close()
+
+				err = json.Unmarshal(bytes, &result)
+				if err != nil {
+					err = json.Unmarshal(bytes, &nresult)
+				}
 				if err != nil {
 					fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
 					continue
