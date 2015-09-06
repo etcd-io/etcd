@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
+BINARYDIR=${BINARYDIR:-bin}
+BUILDDIR=${BUILDDIR:-bin}
+
 # A non-installed actool can be used, for example:
 # ACTOOL=../../appc/spec/bin/actool
 ACTOOL=${ACTOOL:-actool}
 
-IMAGEDIR=${IMAGEDIR:-bin/image-aci}
+IMAGEDIR=${IMAGEDIR:-$BUILDDIR/image-aci}
 
 VERSION=$1
 
@@ -13,8 +16,8 @@ if ! command -v $ACTOOL >/dev/null; then
     exit 1
 fi
 
-if [ ! -x bin/etcd ] ; then
-    echo "bin/etcd not found. Is it compiled?"
+if [ ! -x $BINARYDIR/etcd ] ; then
+    echo "$BINARYDIR/etcd not found. Is it compiled?"
     exit 1
 fi
 
@@ -34,7 +37,7 @@ if [ -n "$(ls -A $IMAGEDIR/rootfs)" ]; then
     exit 1
 fi
 
-cp bin/etcd bin/etcdctl $IMAGEDIR/rootfs/
+cp $BINARYDIR/etcd $BINARYDIR/etcdctl $IMAGEDIR/rootfs/
 cp README.md            $IMAGEDIR/rootfs/
 cp etcdctl/README.md    $IMAGEDIR/rootfs/README-etcdctl.md
 cp -r Documentation     $IMAGEDIR/rootfs/
@@ -98,4 +101,4 @@ cat <<DF > $IMAGEDIR/rootfs/etc/hosts
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 DF
 
-$ACTOOL build -overwrite=true $IMAGEDIR bin/etcd-${1}-linux-amd64.aci
+$ACTOOL build -overwrite=true $IMAGEDIR $BUILDDIR/etcd-${1}-linux-amd64.aci
