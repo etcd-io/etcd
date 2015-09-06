@@ -8,7 +8,7 @@ IMAGEDIR=${IMAGEDIR:-bin/image-aci}
 
 VERSION=$1
 
-if [ ! -x "$ACTOOL" ] ; then
+if ! command -v $ACTOOL >/dev/null; then
     echo "actool ($ACTOOL) is not executable"
     exit 1
 fi
