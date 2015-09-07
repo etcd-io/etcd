@@ -77,16 +77,19 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 
 	failCount := 0
 	err := updateNodeMap("etcd-server-ssl", "https://")
+	srvErr := make([]string, 2)
 	if err != nil {
-		plog.Warningf("error querying DNS SRV records for _etcd-server-ssl %s", err)
+		srvErr[0] = fmt.Sprintf("error querying DNS SRV records for _etcd-server-ssl %s", err)
 		failCount += 1
 	}
 	err = updateNodeMap("etcd-server", "http://")
 	if err != nil {
-		plog.Warningf("discovery: error querying DNS SRV records for _etcd-server %s", err)
+		srvErr[1] = fmt.Sprintf("error querying DNS SRV records for _etcd-server %s", err)
 		failCount += 1
 	}
 	if failCount == 2 {
+		plog.Warningf(srvErr[0])
+		plog.Warningf(srvErr[1])
 		plog.Errorf("SRV discovery failed: too many errors querying DNS SRV records")
 		return "", "", err
 	}
