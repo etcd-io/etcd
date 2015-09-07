@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/etcd"
@@ -15,7 +15,8 @@ GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
 val=$(go version)
 ver=$(echo $val | awk -F ' ' '{print $3}' | awk -F '.' '{print $2}')
-if [ $ver -gt 4 ]; then
+ver=${ver:0:1}
+if [[ $ver -gt 4 ]]; then
 	LINK_OPERATOR="="
 else
 	LINK_OPERATOR=" "
