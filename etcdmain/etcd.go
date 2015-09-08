@@ -417,7 +417,7 @@ func startProxy(cfg *config) error {
 			return err
 		}
 
-		host := u.Host
+		host := u.String()
 		go func() {
 			plog.Info("proxy: listening for client requests on ", host)
 			mux := http.NewServeMux()
