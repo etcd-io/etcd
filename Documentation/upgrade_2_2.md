@@ -29,9 +29,7 @@ Internally, etcd members negotiate with each other to determine the overall etcd
 
 #### Limitations
 
-It might take up to 2 minutes for the newly upgraded member to catch up with the existing cluster when the total data size is larger than 50MB (You can check the size of the existing snapshot to know about the rough data size). In other words, it is safest to wait for 2 minutes before upgrading the next member.
-
-If you have even more data, this might take more time. If you have a data size larger than 100MB you should contact us before upgrading, so we can make sure the upgrades work smoothly.
+If you have a data size larger than 100MB you should contact us before upgrading, so we can make sure the upgrades work smoothly.
 
 Every etcd 2.2 member will do health checking across the cluster periodically. etcd 2.1 member does not support health checking. During the upgrade, etcd 2.2 member will log warning about the unhealthy state of etcd 2.1 member. You can ignore the warning. 
 
