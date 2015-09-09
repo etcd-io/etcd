@@ -691,6 +691,109 @@ func TestKVSnapshot(t *testing.T) {
 	}
 }
 
+func TestWatchableKVWatch(t *testing.T) {
+	s := newWatchableStore(tmpPath)
+	defer cleanup(s, tmpPath)
+
+	wa, cancel := s.Watcher([]byte("foo"), true, 0, 0)
+	defer cancel()
+
+	s.Put([]byte("foo"), []byte("bar"))
+	select {
+	case ev := <-wa.Event():
+		wev := storagepb.Event{
+			Type: storagepb.PUT,
+			Kv: &storagepb.KeyValue{
+				Key:            []byte("foo"),
+				Value:          []byte("bar"),
+				CreateRevision: 1,
+				ModRevision:    1,
+				Version:        1,
+			},
+		}
+		if !reflect.DeepEqual(ev, wev) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+	s.Put([]byte("foo1"), []byte("bar1"))
+	select {
+	case ev := <-wa.Event():
+		wev := storagepb.Event{
+			Type: storagepb.PUT,
+			Kv: &storagepb.KeyValue{
+				Key:            []byte("foo1"),
+				Value:          []byte("bar1"),
+				CreateRevision: 2,
+				ModRevision:    2,
+				Version:        1,
+			},
+		}
+		if !reflect.DeepEqual(ev, wev) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+	wa, cancel = s.Watcher([]byte("foo1"), false, 1, 4)
+	defer cancel()
+
+	select {
+	case ev := <-wa.Event():
+		wev := storagepb.Event{
+			Type: storagepb.PUT,
+			Kv: &storagepb.KeyValue{
+				Key:            []byte("foo1"),
+				Value:          []byte("bar1"),
+				CreateRevision: 2,
+				ModRevision:    2,
+				Version:        1,
+			},
+		}
+		if !reflect.DeepEqual(ev, wev) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+	s.Put([]byte("foo1"), []byte("bar11"))
+	select {
+	case ev := <-wa.Event():
+		wev := storagepb.Event{
+			Type: storagepb.PUT,
+			Kv: &storagepb.KeyValue{
+				Key:            []byte("foo1"),
+				Value:          []byte("bar11"),
+				CreateRevision: 2,
+				ModRevision:    3,
+				Version:        2,
+			},
+		}
+		if !reflect.DeepEqual(ev, wev) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+	select {
+	case ev := <-wa.Event():
+		if !reflect.DeepEqual(ev, storagepb.Event{}) {
+			t.Errorf("watched event = %+v, want %+v", ev, storagepb.Event{})
+		}
+		if g := wa.Err(); g != ExceedEnd {
+			t.Errorf("err = %+v, want %+v", g, ExceedEnd)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+}
+
 func cleanup(s KV, path string) {
 	s.Close()
 	os.Remove(path)

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"log"
+	"sort"
 	"sync"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/google/btree"
@@ -13,6 +14,7 @@ type index interface {
 	Put(key []byte, rev revision)
 	Restore(key []byte, created, modified revision, ver int64)
 	Tombstone(key []byte, rev revision) error
+	RangeEvents(key, end []byte, rev int64) []revision
 	Compact(rev int64) map[revision]struct{}
 	Equal(b index) bool
 }
@@ -116,6 +118,38 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 
 	ki := item.(*keyIndex)
 	return ki.tombstone(rev.main, rev.sub)
+}
+
+// RangeEvents returns all revisions from key(including) to end(excluding)
+// at or after the given rev. The returned slice is sorted in the order
+// of revision.
+func (ti *treeIndex) RangeEvents(key, end []byte, rev int64) []revision {
+	ti.RLock()
+	defer ti.RUnlock()
+
+	keyi := &keyIndex{key: key}
+	if end == nil {
+		item := ti.tree.Get(keyi)
+		if item == nil {
+			return nil
+		}
+		keyi = item.(*keyIndex)
+		return keyi.since(rev)
+	}
+
+	endi := &keyIndex{key: end}
+	var revs []revision
+	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
+		if !item.Less(endi) {
+			return false
+		}
+		curKeyi := item.(*keyIndex)
+		revs = append(revs, curKeyi.since(rev)...)
+		return true
+	})
+	sort.Sort(revisions(revs))
+
+	return revs
 }
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
