@@ -11,14 +11,14 @@ The write ahead log and snapshot files are used during member operation and to r
 Having a dedicated disk to store wal files can improve the throughput and stabilize the cluster. 
 It is highly recommended to dedicate a wal disk and set `--wal-dir` to point to a directory on that device for a production cluster deployment.
 
-If a member’s data directory is ever lost or corrupted then the user should remove the etcd member from the cluster via the [members API][members-api].
+If a member’s data directory is ever lost or corrupted then the user should [remove][remove-a-member] the etcd member from the cluster using `etcdctl` tool.
 
 A user should avoid restarting an etcd member with a data directory from an out-of-date backup.
 Using an out-of-date data directory can lead to inconsistency as the member had agreed to store information via raft then re-joins saying it needs that information again.
 For maximum safety, if an etcd member suffers any sort of data corruption or loss, it must be removed from the cluster.
 Once removed the member can be re-added with an empty data directory.
 
-[members-api]: other_apis.md#members-api
+[remove-a-member]: runtime-configuration.md#remove-a-member
 
 #### Contents
 
@@ -130,7 +130,7 @@ As you can see, adding another member to bring the size of cluster up to an odd 
 
 #### Changing Cluster Size
 
-After your cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md), which allows the cluster to be modified without downtime. The `etcdctl` tool has a `member list`, `member add` and `member remove` commands to complete this process.
+After your cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md#cluster-reconfiguration-operations), which allows the cluster to be modified without downtime. The `etcdctl` tool has a `member list`, `member add` and `member remove` commands to complete this process.
 
 ### Member Migration
 
@@ -140,7 +140,7 @@ The data directory contains all the data to recover a member to its point-in-tim
 
 * Stop the member process
 * Copy the data directory of the now-idle member to the new machine
-* Update the peer URLs for that member to reflect the new machine according to the [member api] [change peer url]
+* Update the peer URLs for that member to reflect the new machine according to the [runtime configuration] [change peer url]
 * Start etcd on the new machine, using the same configuration and the copy of the data directory
 
 This example will walk you through the process of migrating the infra1 member to a new machine:
@@ -151,11 +151,11 @@ This example will walk you through the process of migrating the infra1 member to
 |infra1|10.0.1.11:2380|
 |infra2|10.0.1.12:2380|
 
-```
+```sh
 $ export ETCDCTL_PEERS=http://10.0.1.10:2379,http://10.0.1.11:2379,http://10.0.1.12:2379
 ```
 
-```
+```sh
 $ etcdctl member list
 84194f7c5edd8b37: name=infra0 peerURLs=http://10.0.1.10:2380 clientURLs=http://127.0.0.1:2379,http://10.0.1.10:2379
 b4db3bf5e495e255: name=infra1 peerURLs=http://10.0.1.11:2380 clientURLs=http://127.0.0.1:2379,http://10.0.1.11:2379
@@ -164,11 +164,11 @@ bc1083c870280d44: name=infra2 peerURLs=http://10.0.1.12:2380 clientURLs=http://1
 
 #### Stop the member etcd process
 
-```
+```sh
 $ ssh 10.0.1.11
 ```
 
-```
+```sh
 $ kill `pgrep etcd`
 ```
 
@@ -178,24 +178,30 @@ $ kill `pgrep etcd`
 $ tar -cvzf infra1.etcd.tar.gz %data_dir%
 ```
 
-```
+```sh
 $ scp infra1.etcd.tar.gz 10.0.1.13:~/
 ```
 
 #### Update the peer URLs for that member to reflect the new machine
 
-```
+```sh
 $ curl http://10.0.1.10:2379/v2/members/b4db3bf5e495e255 -XPUT \
 -H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.1.13:2380"]}'
 ```
 
+Or use `etcdctl member update` command
+
+```sh
+$ etcdctl member update b4db3bf5e495e255 http://10.0.1.13:2380
+```
+
 #### Start etcd on the new machine, using the same configuration and the copy of the data directory
 
-```
+```sh
 $ ssh 10.0.1.13
 ```
 
-```
+```sh
 $ tar -xzvf infra1.etcd.tar.gz -C %data_dir%
 ```
 
@@ -206,7 +212,7 @@ etcd -name infra1 \
 -advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
 ```
 
-[change peer url]: other_apis.md#change-the-peer-urls-of-a-member
+[change peer url]: runtime-configuration.md#update-a-member
 
 ### Disaster Recovery
 
@@ -254,9 +260,9 @@ Once you have verified that etcd has started successfully, shut it down and move
 
 #### Restoring the cluster
 
-Now that the node is running successfully, you should [change its advertised peer URLs](other_apis.md#change-the-peer-urls-of-a-member), as the `--force-new-cluster` has set the peer URL to the default (listening on localhost).
+Now that if the node is running successfully, you should [change its advertised peer URLs](runtime-configuration.md#update-a-member), as the `--force-new-cluster` has set the peer URL to the default (listening on localhost).
 
-You can then add more nodes to the cluster and restore resiliency. See the [runtime configuration](runtime-configuration.md) guide for more details.
+You can then add more nodes to the cluster and restore resiliency. See the [add a new member](runtime-configuration.md#add-a-new-member) guide for more details. **NB:** If you are trying to restore your cluster using old failed etcd nodes, please make sure you have stopped old etcd instances and removed their old data directories specified by the data-dir configuration parameter.
 
 ### Client Request Timeout
 
