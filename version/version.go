@@ -27,7 +27,7 @@ import (
 var (
 	// MinClusterVersion is the min cluster version this etcd binary is compatible with.
 	MinClusterVersion = "2.1.0"
-	Version           = "2.2.0-rc.0+git"
+	Version           = "2.2.0"
 
 	// Git SHA Value will be set during build
 	GitSHA = "Not provided (use ./build instead of go build)"
