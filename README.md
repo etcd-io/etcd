@@ -3,6 +3,8 @@
 [![Build Status](https://travis-ci.org/coreos/etcd.png?branch=master)](https://travis-ci.org/coreos/etcd)
 [![Docker Repository on Quay.io](https://quay.io/repository/coreos/etcd-git/status "Docker Repository on Quay.io")](https://quay.io/repository/coreos/etcd-git)
 
+**Note**: `master` branch may be in *unstable or even broken state* during development. Please use [releases][github-release] instead of `master` branch to get stable binaries.
+
 ![etcd Logo](logos/etcd-horizontal-color.png)
 
 etcd is a distributed, consistent key-value store for shared configuration and service discovery, with a focus on being:
