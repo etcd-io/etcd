@@ -76,8 +76,8 @@ a8266ecf031671f3: name=node1 peerURLs=http://localhost:23801 clientURLs=http://1
 In this example let's `update` a8266ecf031671f3 member ID and change its peerURLs value to http://10.0.1.10:2380
 
 ```sh
-$ etcdctl member update b4db3bf5e495e255 http://10.0.1.10:2380
-Updated member with ID b4db3bf5e495e255 in cluster
+$ etcdctl member update a8266ecf031671f3 http://10.0.1.10:2380
+Updated member with ID a8266ecf031671f3 in cluster
 ```
 
 ### Remove a Member
