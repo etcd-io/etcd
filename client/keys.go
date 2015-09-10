@@ -14,7 +14,7 @@
 
 package client
 
-//go:generate codecgen -r "Node|Response" -o keys.generated.go keys.go
+//go:generate codecgen -r "Node|Response|Nodes" -o keys.generated.go keys.go
 
 import (
 	"encoding/json"
@@ -279,7 +279,7 @@ type Node struct {
 	// Nodes holds the children of this Node, only if this Node is a directory.
 	// This slice of will be arbitrarily deep (children, grandchildren, great-
 	// grandchildren, etc.) if a recursive Get or Watch request were made.
-	Nodes []*Node `json:"nodes"`
+	Nodes Nodes `json:"nodes"`
 
 	// CreatedIndex is the etcd index at-which this Node was created.
 	CreatedIndex uint64 `json:"createdIndex"`
@@ -302,6 +302,13 @@ func (n *Node) String() string {
 func (n *Node) TTLDuration() time.Duration {
 	return time.Duration(n.TTL) * time.Second
 }
+
+type Nodes []*Node
+
+// interfaces for sorting
+func (ns Nodes) Len() int           { return len(ns) }
+func (ns Nodes) Less(i, j int) bool { return ns[i].Key < ns[j].Key }
+func (ns Nodes) Swap(i, j int)      { ns[i], ns[j] = ns[j], ns[i] }
 
 type httpKeysAPI struct {
 	client httpClient
