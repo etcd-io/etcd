@@ -162,7 +162,7 @@ func actionMemberRemove(c *cli.Context) {
 	err = mAPI.Remove(ctx, removalID)
 	removeCancel()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Recieved an error trying to remove member %s: %s", removalID, err.Error())
+		fmt.Fprintf(os.Stderr, "Received an error trying to remove member %s: %s", removalID, err.Error())
 		os.Exit(1)
 	}
 

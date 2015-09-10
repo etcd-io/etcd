@@ -780,7 +780,7 @@ func TestIsElectionTimeout(t *testing.T) {
 }
 
 // ensure that the Step function ignores the message from old term and does not pass it to the
-// acutal stepX function.
+// actual stepX function.
 func TestStepIgnoreOldTermMsg(t *testing.T) {
 	called := false
 	fakeStep := func(r *raft, m pb.Message) {
