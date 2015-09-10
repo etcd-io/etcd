@@ -265,6 +265,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		TickMs:              cfg.TickMs,
 		ElectionTicks:       cfg.electionTicks(),
 		V3demo:              cfg.v3demo,
+		StrictReconfigCheck: cfg.strictReconfigCheck,
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(srvcfg)

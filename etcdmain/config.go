@@ -95,6 +95,7 @@ type config struct {
 	fallback            *flags.StringsFlag
 	initialCluster      string
 	initialClusterToken string
+	strictReconfigCheck bool
 
 	// proxy
 	proxy                  *flags.StringsFlag
@@ -177,6 +178,7 @@ func NewConfig() *config {
 		// Should never happen.
 		plog.Panicf("unexpected error setting up clusterStateFlag: %v", err)
 	}
+	fs.BoolVar(&cfg.strictReconfigCheck, "strict-reconfig-check", false, "Reject reconfiguration that might cause quorum loss")
 
 	// proxy
 	fs.Var(cfg.proxy, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(cfg.proxy.Values, ", ")))
