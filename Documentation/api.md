@@ -472,7 +472,7 @@ curl http://127.0.0.1:2379/v2/keys/dir -XPUT -d ttl=30 -d dir=true -d prevExist=
 Keys that are under this directory work as usual, but when the directory expires, a watcher on a key under the directory will get an expire event:
 
 ```sh
-curl 'http://127.0.0.1:2379/v2/keys/dir/asdf?wait=true'
+curl 'http://127.0.0.1:2379/v2/keys/dir?wait=true'
 ```
 
 ```json
