@@ -118,7 +118,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Write StatusNoContet header after the message has been processed by
-	// raft, which faciliates the client to report MsgSnap status.
+	// raft, which facilitates the client to report MsgSnap status.
 	w.WriteHeader(http.StatusNoContent)
 }
 

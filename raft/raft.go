@@ -189,7 +189,7 @@ func newRaft(c *Config) *raft {
 		lead:    None,
 		raftLog: raftlog,
 		// 4MB for now and hard code it
-		// TODO(xiang): add a config arguement into newRaft after we add
+		// TODO(xiang): add a config argument into newRaft after we add
 		// the max inflight message field.
 		maxMsgSize:       c.MaxSizePerMsg,
 		maxInflight:      c.MaxInflightMsgs,

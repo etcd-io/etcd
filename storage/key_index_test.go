@@ -308,7 +308,7 @@ func TestKeyIndexCompact(t *testing.T) {
 		},
 	}
 
-	// Continous Compaction
+	// Continuous Compaction
 	ki := newTestKeyIndex()
 	for i, tt := range tests {
 		am := make(map[revision]struct{})
