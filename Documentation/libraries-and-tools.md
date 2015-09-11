@@ -6,6 +6,7 @@
 - [etcd-backup](https://github.com/fanhattan/etcd-backup) - A powerful command line utility for dumping/restoring etcd - Supports v2
 - [etcd-dump](https://npmjs.org/package/etcd-dump) - Command line utility for dumping/restoring etcd.
 - [etcd-fs](https://github.com/xetorthio/etcd-fs) - FUSE filesystem for etcd
+- [etcddir](https://github.com/rekby/etcddir) - Realtime sync ETCD and local directory. Work with windows and linux.
 - [etcd-browser](https://github.com/henszey/etcd-browser) - A web-based key/value editor for etcd using AngularJS
 - [etcd-lock](https://github.com/datawisesystems/etcd-lock) - Master election & distributed r/w lock implementation using etcd - Supports v2
 - [etcd-console](https://github.com/matishsiao/etcd-console) - A web-base key/value editor for etcd using PHP
