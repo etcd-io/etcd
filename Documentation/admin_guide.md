@@ -152,7 +152,7 @@ This example will walk you through the process of migrating the infra1 member to
 |infra2|10.0.1.12:2380|
 
 ```sh
-$ export ETCDCTL_PEERS=http://10.0.1.10:2379,http://10.0.1.11:2379,http://10.0.1.12:2379
+$ export ETCDCTL_ENDPOINT=http://10.0.1.10:2379,http://10.0.1.11:2379,http://10.0.1.12:2379
 ```
 
 ```sh
