@@ -116,7 +116,7 @@ type Server interface {
 	// ErrIDNotFound if member ID is not in the cluster.
 	RemoveMember(ctx context.Context, id uint64) error
 
-	// UpdateMember attempts to update a existing member in the cluster. It will
+	// UpdateMember attempts to update an existing member in the cluster. It will
 	// return ErrIDNotFound if the member ID does not exist.
 	UpdateMember(ctx context.Context, updateMemb Member) error
 
