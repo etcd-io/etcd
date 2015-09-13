@@ -368,6 +368,34 @@ func (c *cluster) SetVersion(ver *semver.Version) {
 	MustDetectDowngrade(c.version)
 }
 
+func (c *cluster) isReadyToAddNewMember() bool {
+	nmembers := 1
+	nstarted := 0
+
+	for _, member := range c.members {
+		if member.IsStarted() {
+			nstarted++
+		}
+		nmembers++
+	}
+
+	if nstarted == 1 && nmembers == 2 {
+		// a case of adding a new node to 1-member cluster for restoring cluster data
+		// https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#restoring-the-cluster
+
+		plog.Debugf("The number of started member is 1. This cluster can accept add member request.")
+		return true
+	}
+
+	nquorum := nmembers/2 + 1
+	if nstarted < nquorum {
+		plog.Warningf("Reject add member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		return false
+	}
+
+	return true
+}
+
 func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {
 	members := make(map[types.ID]*Member)
 	removed := make(map[types.ID]bool)

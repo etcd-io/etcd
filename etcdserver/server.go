@@ -603,6 +603,12 @@ func (s *EtcdServer) LeaderStats() []byte {
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
+	if s.cfg.StrictReconfigCheck && !s.cluster.isReadyToAddNewMember() {
+		// If s.cfg.StrictReconfigCheck is false, it means the option -strict-reconfig-check isn't passed to etcd.
+		// In such a case adding a new member is allowed unconditionally
+		return ErrNotEnoughStartedMembers
+	}
+
 	// TODO: move Member to protobuf type
 	b, err := json.Marshal(memb)
 	if err != nil {

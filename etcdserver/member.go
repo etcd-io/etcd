@@ -105,6 +105,10 @@ func (m *Member) Clone() *Member {
 	return mm
 }
 
+func (m *Member) IsStarted() bool {
+	return len(m.Name) != 0
+}
+
 func memberStoreKey(id types.ID) string {
 	return path.Join(storeMembersPrefix, id.String())
 }

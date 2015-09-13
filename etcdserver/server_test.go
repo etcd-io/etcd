@@ -866,6 +866,7 @@ func TestAddMember(t *testing.T) {
 		store:    st,
 		cluster:  cl,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		cfg:      &ServerConfig{},
 	}
 	s.start()
 	m := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
