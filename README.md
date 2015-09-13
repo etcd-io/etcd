@@ -1,6 +1,6 @@
 # etcd
 
-[![Build Status](https://travis-ci.org/coreos/etcd.png?branch=master)](https://travis-ci.org/coreos/etcd)
+[![Build Status](https://travis-ci.org/coreos/etcd.svg?branch=master)](https://travis-ci.org/coreos/etcd)
 [![Docker Repository on Quay.io](https://quay.io/repository/coreos/etcd-git/status "Docker Repository on Quay.io")](https://quay.io/repository/coreos/etcd-git)
 
 **Note**: `master` branch may be in *unstable or even broken state* during development. Please use [releases][github-release] instead of `master` branch to get stable binaries.
