@@ -51,7 +51,7 @@ func txnCommandFunc(c *cli.Context) {
 		next = next(txn, reader)
 	}
 
-	conn, err := grpc.Dial("127.0.0.1:12379")
+	conn, err := grpc.Dial(c.GlobalString("endpoint"))
 	if err != nil {
 		panic(err)
 	}
