@@ -528,7 +528,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 
 	n, _ := d.GetChild(nodeName)
 
-	// force will try to replace a existing file
+	// force will try to replace an existing file
 	if n != nil {
 		if replace {
 			if n.IsDir() {
