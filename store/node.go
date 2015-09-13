@@ -183,7 +183,7 @@ func (n *node) GetChild(name string) (*node, *etcdErr.Error) {
 
 // Add function adds a node to the receiver node.
 // If the receiver is not a directory, a "Not A Directory" error will be returned.
-// If there is a existing node with the same name under the directory, a "Already Exist"
+// If there is an existing node with the same name under the directory, a "Already Exist"
 // error will be returned
 func (n *node) Add(child *node) *etcdErr.Error {
 	if !n.IsDir() {
