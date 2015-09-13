@@ -623,6 +623,21 @@ func TestIsReadyToAddNewMember(t *testing.T) {
 			},
 			true,
 		},
+		{
+			// 3/4 members ready, should be fine to add one member and retain quorum
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "3", nil),
+				newTestMember(4, nil, "", nil),
+			},
+			true,
+		},
+		{
+			// empty cluster, it is impossible but should fail
+			[]*Member{},
+			false,
+		},
 	}
 	for i, tt := range tests {
 		c := newTestCluster(tt.members)
