@@ -239,11 +239,11 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 
 	var v3l net.Listener
 	if cfg.v3demo {
-		v3l, err = net.Listen("tcp", "127.0.0.1:12379")
+		v3l, err = net.Listen("tcp", cfg.gRPCAddr)
 		if err != nil {
 			plog.Fatal(err)
 		}
-		plog.Infof("listening for client rpc on 127.0.0.1:12379")
+		plog.Infof("listening for client rpc on %s", cfg.gRPCAddr)
 	}
 
 	srvcfg := &etcdserver.ServerConfig{
