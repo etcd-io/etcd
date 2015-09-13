@@ -379,7 +379,7 @@ func (c *cluster) isReadyToAddNewMember() bool {
 		nmembers++
 	}
 
-	if nstarted == 1 {
+	if nstarted == 1 && nmembers == 2 {
 		// a case of adding a new node to 1-member cluster for restoring cluster data
 		// https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#restoring-the-cluster
 

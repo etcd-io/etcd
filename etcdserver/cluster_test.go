@@ -566,3 +566,68 @@ func newTestCluster(membs []*Member) *cluster {
 }
 
 func stringp(s string) *string { return &s }
+
+func TestIsReadyToAddNewMember(t *testing.T) {
+	tests := []struct {
+		members []*Member
+		want    bool
+	}{
+		{
+			// 0/3 members ready, should fail
+			[]*Member{
+				newTestMember(1, nil, "", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMember(3, nil, "", nil),
+			},
+			false,
+		},
+		{
+			// 1/2 members ready, should fail
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+			},
+			false,
+		},
+		{
+			// 1/3 members ready, should fail
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMember(3, nil, "", nil),
+			},
+			false,
+		},
+		{
+			// 1/1 members ready, should succeed (special case of 1-member cluster for recovery)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+			},
+			true,
+		},
+		{
+			// 2/3 members ready, should fail
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+			},
+			false,
+		},
+		{
+			// 3/3 members ready, should be fine to add one member and retain quorum
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "3", nil),
+			},
+			true,
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(tt.members)
+		if got := c.isReadyToAddNewMember(); got != tt.want {
+			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
