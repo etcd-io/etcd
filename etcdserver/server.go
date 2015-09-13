@@ -770,6 +770,8 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 				case raftReq.V2 != nil:
 					req := raftReq.V2
 					s.w.Trigger(req.ID, s.applyRequest(*req))
+				default:
+					s.w.Trigger(raftReq.ID, s.applyV3Request(&raftReq))
 				}
 			}
 		case raftpb.EntryConfChange:
