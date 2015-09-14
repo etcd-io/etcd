@@ -29,23 +29,23 @@ func New(s etcdserver.V3DemoServer) pb.EtcdServer {
 }
 
 func (h *handler) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	resp := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Range: r})
-	return resp.(*pb.RangeResponse), nil
+	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Range: r})
+	return resp.(*pb.RangeResponse), err
 }
 
 func (h *handler) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	resp := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Put: r})
-	return resp.(*pb.PutResponse), nil
+	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Put: r})
+	return resp.(*pb.PutResponse), err
 }
 
 func (h *handler) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	resp := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{DeleteRange: r})
-	return resp.(*pb.DeleteRangeResponse), nil
+	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{DeleteRange: r})
+	return resp.(*pb.DeleteRangeResponse), err
 }
 
 func (h *handler) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	resp := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Txn: r})
-	return resp.(*pb.TxnResponse), nil
+	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Txn: r})
+	return resp.(*pb.TxnResponse), err
 }
 
 func (h *handler) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
