@@ -61,6 +61,7 @@ func main() {
 		command.NewUserCommands(),
 		command.NewRoleCommands(),
 		command.NewAuthCommands(),
+		command.NewFsckCommand(),
 	}
 
 	app.Run(os.Args)
