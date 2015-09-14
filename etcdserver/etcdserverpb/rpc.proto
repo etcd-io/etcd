@@ -33,14 +33,12 @@ service etcd {
 }
 
 message ResponseHeader {
-  // an error type message?
-  string error = 1;
-  uint64 cluster_id = 2;
-  uint64 member_id = 3;
+  uint64 cluster_id = 1;
+  uint64 member_id = 2;
   // revision of the store when the request was applied.
-  int64 revision = 4;
+  int64 revision = 3;
   // term of raft when the request was applied.
-  uint64 raft_term = 5;
+  uint64 raft_term = 4;
 }
 
 message RangeRequest {
