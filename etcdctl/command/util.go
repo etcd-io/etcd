@@ -196,7 +196,7 @@ func mustNewClient(c *cli.Context) client.Client {
 		if debug {
 			fmt.Fprintf(os.Stderr, "start to sync cluster using endpoints(%s)\n", strings.Join(hc.Endpoints(), ","))
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 		err := hc.Sync(ctx)
 		cancel()
 		if err != nil {

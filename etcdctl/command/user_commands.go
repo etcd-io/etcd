@@ -89,7 +89,7 @@ func actionUserList(c *cli.Context) {
 		os.Exit(1)
 	}
 	u := mustNewAuthUserAPI(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	users, err := u.ListUsers(ctx)
 	cancel()
 	if err != nil {
@@ -104,7 +104,7 @@ func actionUserList(c *cli.Context) {
 
 func actionUserAdd(c *cli.Context) {
 	api, user := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	currentUser, err := api.GetUser(ctx, user)
 	cancel()
 	if currentUser != nil {
@@ -116,7 +116,7 @@ func actionUserAdd(c *cli.Context) {
 		fmt.Fprintln(os.Stderr, "Error reading password:", err)
 		os.Exit(1)
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	err = api.AddUser(ctx, user, pass)
 	cancel()
 	if err != nil {
@@ -129,7 +129,7 @@ func actionUserAdd(c *cli.Context) {
 
 func actionUserRemove(c *cli.Context) {
 	api, user := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	err := api.RemoveUser(ctx, user)
 	cancel()
 	if err != nil {
@@ -142,7 +142,7 @@ func actionUserRemove(c *cli.Context) {
 
 func actionUserPasswd(c *cli.Context) {
 	api, user := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	currentUser, err := api.GetUser(ctx, user)
 	cancel()
 	if currentUser == nil {
@@ -155,7 +155,7 @@ func actionUserPasswd(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	_, err = api.ChangePassword(ctx, user, pass)
 	cancel()
 	if err != nil {
@@ -182,7 +182,7 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 	}
 
 	api, user := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	currentUser, err := api.GetUser(ctx, user)
 	cancel()
 	if currentUser == nil {
@@ -190,7 +190,7 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 		os.Exit(1)
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	var newUser *client.User
 	if grant {
 		newUser, err = api.GrantUser(ctx, user, roles)
@@ -217,7 +217,7 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 
 func actionUserGet(c *cli.Context) {
 	api, username := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	user, err := api.GetUser(ctx, username)
 	cancel()
 	if err != nil {

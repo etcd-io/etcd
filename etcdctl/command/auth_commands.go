@@ -67,7 +67,7 @@ func authEnableDisable(c *cli.Context, enable bool) {
 		os.Exit(1)
 	}
 	s := mustNewAuthAPI(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	var err error
 	if enable {
 		err = s.Enable(ctx)
