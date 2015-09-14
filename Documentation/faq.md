@@ -62,19 +62,20 @@ action to determine whether a reconfiguration should happen based on health.
 
 For more information, refer to [Documentation/runtime-reconfiguration.md].
 
-## 6) how does --peers work with etcdctl? 
+## 6) how does --endpoint work with etcdctl? 
 
-The `--peers` flag can specify any number of etcd cluster members in a comma
+The `--endpoint` flag can specify any number of etcd cluster members in a comma
 separated list. This list might be a subset, equal to, or more than the actual
 etcd cluster member list itself. 
 
-If only one peer is specified via the `--peers` flag, the etcdctl discovers the
+If only one peer is specified via the `--endpoint` flag, the etcdctl discovers the
 rest of the cluster via the member list of that one peer, and then it randomly
 chooses a member to use.  Again, the client can use the `quorum=true` flag on
 reads, which will always fail when using a member in the minority. 
 
-If peers from multiple clusters are specified via the `--peers` flag, etcdctl
+If peers from multiple clusters are specified via the `--endpoint` flag, etcdctl
 will randomly choose a peer, and the request will simply get routed to one of
 the clusters. This is probably not what you want. 
 
-
+Note: --peers flag is now deprecated and --endpoint should be used instead, 
+as it might confuse users to give etcdctl a peerURL.
