@@ -70,14 +70,12 @@ func (x Compare_CompareTarget) String() string {
 }
 
 type ResponseHeader struct {
-	// an error type message?
-	Error     string `protobuf:"bytes,1,opt,name=error,proto3" json:"error,omitempty"`
-	ClusterId uint64 `protobuf:"varint,2,opt,name=cluster_id,proto3" json:"cluster_id,omitempty"`
-	MemberId  uint64 `protobuf:"varint,3,opt,name=member_id,proto3" json:"member_id,omitempty"`
+	ClusterId uint64 `protobuf:"varint,1,opt,name=cluster_id,proto3" json:"cluster_id,omitempty"`
+	MemberId  uint64 `protobuf:"varint,2,opt,name=member_id,proto3" json:"member_id,omitempty"`
 	// revision of the store when the request was applied.
-	Revision int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
+	Revision int64 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
 	// term of raft when the request was applied.
-	RaftTerm uint64 `protobuf:"varint,5,opt,name=raft_term,proto3" json:"raft_term,omitempty"`
+	RaftTerm uint64 `protobuf:"varint,4,opt,name=raft_term,proto3" json:"raft_term,omitempty"`
 }
 
 func (m *ResponseHeader) Reset()         { *m = ResponseHeader{} }
@@ -568,29 +566,23 @@ func (m *ResponseHeader) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Error) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Error)))
-		i += copy(data[i:], m.Error)
-	}
 	if m.ClusterId != 0 {
-		data[i] = 0x10
+		data[i] = 0x8
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.ClusterId))
 	}
 	if m.MemberId != 0 {
-		data[i] = 0x18
+		data[i] = 0x10
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.MemberId))
 	}
 	if m.Revision != 0 {
-		data[i] = 0x20
+		data[i] = 0x18
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Revision))
 	}
 	if m.RaftTerm != 0 {
-		data[i] = 0x28
+		data[i] = 0x20
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.RaftTerm))
 	}
@@ -1155,10 +1147,6 @@ func encodeVarintRpc(data []byte, offset int, v uint64) int {
 func (m *ResponseHeader) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.Error)
-	if l > 0 {
-		n += 1 + l + sovRpc(uint64(l))
-	}
 	if m.ClusterId != 0 {
 		n += 1 + sovRpc(uint64(m.ClusterId))
 	}
@@ -1437,32 +1425,6 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthRpc
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Error = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClusterId", wireType)
 			}
@@ -1478,7 +1440,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
+		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MemberId", wireType)
 			}
@@ -1494,7 +1456,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Revision", wireType)
 			}
@@ -1510,7 +1472,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 5:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RaftTerm", wireType)
 			}
