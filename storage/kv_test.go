@@ -608,6 +608,28 @@ func TestKVCompactBad(t *testing.T) {
 	}
 }
 
+func TestKVHash(t *testing.T) {
+	hashes := make([]uint32, 3)
+
+	for i := 0; i < len(hashes); i++ {
+		var err error
+		kv := New(tmpPath)
+		kv.Put([]byte("foo0"), []byte("bar0"))
+		kv.Put([]byte("foo1"), []byte("bar0"))
+		hashes[i], err = kv.Hash()
+		if err != nil {
+			t.Fatalf("failed to get hash: %v", err)
+		}
+		cleanup(kv, tmpPath)
+	}
+
+	for i := 1; i < len(hashes); i++ {
+		if hashes[i-1] != hashes[i] {
+			t.Errorf("hash[%d](%d) != hash[%d](%d)", i-1, hashes[i-1], i, hashes[i])
+		}
+	}
+}
+
 func TestKVRestore(t *testing.T) {
 	tests := []func(kv KV){
 		func(kv KV) {

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"hash/crc32"
 	"io"
 	"log"
 	"math"
@@ -201,6 +202,15 @@ func (s *store) Compact(rev int64) error {
 
 	indexCompactionPauseDurations.Observe(float64(time.Now().Sub(start) / time.Millisecond))
 	return nil
+}
+
+func (s *store) Hash() (uint32, error) {
+	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+	_, err := s.Snapshot(h)
+	if err != nil {
+		return 0, err
+	}
+	return h.Sum32(), nil
 }
 
 func (s *store) Snapshot(w io.Writer) (int64, error) {

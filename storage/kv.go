@@ -40,6 +40,10 @@ type KV interface {
 
 	Compact(rev int64) error
 
+	// Get the hash of KV state.
+	// This method is designed for consistency checking purpose.
+	Hash() (uint32, error)
+
 	// Write a snapshot to the given io writer
 	Snapshot(w io.Writer) (int64, error)
 
