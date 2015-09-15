@@ -22,9 +22,14 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/rakyll/pb"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+)
+
+var (
+	bar     *pb.ProgressBar
+	results chan *result
+	wg      sync.WaitGroup
 )
 
 func main() {
@@ -50,53 +55,32 @@ func main() {
 		rangeEnd = []byte(flag.Args()[2])
 	}
 
-	results := make(chan *result, n)
-	bar := pb.New(n)
+	results = make(chan *result, n)
+	bar = pb.New(n)
 	bar.Format("Bom !")
 	bar.Start()
+
 	start := time.Now()
-	defer func() {
-		bar.Finish()
-		printReport(n, results, time.Now().Sub(start))
-	}()
 
-	var wg sync.WaitGroup
 	wg.Add(c)
-	jobs := make(chan struct{}, n)
+	requests := make(chan struct{}, n)
+	conn, err := grpc.Dial(url)
+	if err != nil {
+		fmt.Errorf("dial error: %v", err)
+		os.Exit(1)
+	}
+
 	for i := 0; i < c; i++ {
-		go func() {
-			defer wg.Done()
-
-			conn, err := grpc.Dial(url)
-			if err != nil {
-				fmt.Errorf("dial error: %v", err)
-				os.Exit(1)
-			}
-			etcd := etcdserverpb.NewEtcdClient(conn)
-			req := &etcdserverpb.RangeRequest{Key: key, RangeEnd: rangeEnd}
-
-			for _ = range jobs {
-				st := time.Now()
-				resp, err := etcd.Range(context.Background(), req)
-
-				var errStr string
-				if err != nil {
-					errStr = err.Error()
-				} else {
-					errStr = resp.Header.Error
-				}
-				results <- &result{
-					errStr:   errStr,
-					duration: time.Now().Sub(st),
-				}
-				bar.Increment()
-			}
-		}()
+		go get(etcdserverpb.NewEtcdClient(conn), key, rangeEnd, requests)
 	}
+
 	for i := 0; i < n; i++ {
-		jobs <- struct{}{}
+		requests <- struct{}{}
 	}
-	close(jobs)
+	close(requests)
 
 	wg.Wait()
+
+	bar.Finish()
+	printReport(n, results, time.Now().Sub(start))
 }
