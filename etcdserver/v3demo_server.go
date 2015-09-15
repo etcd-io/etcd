@@ -60,6 +60,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
 		return applyDeleteRange(s.kv, r.DeleteRange)
 	case r.Txn != nil:
 		return applyTxn(s.kv, r.Txn)
+	case r.Compaction != nil:
+		return applyCompaction(s.kv, r.Compaction)
 	default:
 		panic("not implemented")
 	}
@@ -126,6 +128,18 @@ func applyTxn(kv dstorage.KV, rt *pb.TxnRequest) *pb.TxnResponse {
 	txnResp.Responses = resps
 	txnResp.Succeeded = ok
 	return txnResp
+}
+
+func applyCompaction(kv dstorage.KV, compaction *pb.CompactionRequest) *pb.CompactionResponse {
+	resp := &pb.CompactionResponse{}
+	resp.Header = &pb.ResponseHeader{}
+	err := kv.Compact(compaction.Revision)
+	if err != nil {
+		panic("handle error")
+	}
+	// get the current revision. which key to get is not important.
+	_, resp.Header.Revision, _ = kv.Range([]byte("compaction"), nil, 1, 0)
+	return resp
 }
 
 func applyUnion(kv dstorage.KV, union *pb.RequestUnion) *pb.ResponseUnion {
