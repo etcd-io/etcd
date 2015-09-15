@@ -132,6 +132,41 @@ func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, err
 	return revision{}, revision{}, 0, ErrRevisionNotFound
 }
 
+// since returns revisions since the give rev. Only the revision with the
+// largest sub revision will be returned if multiple revisions have the same
+// main revision.
+func (ki *keyIndex) since(rev int64) []revision {
+	if ki.isEmpty() {
+		log.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
+	}
+	since := revision{rev, 0}
+	var gi int
+	// find the generations to start checking
+	for gi = len(ki.generations) - 1; gi > 0; gi-- {
+		if since.GreaterThan(ki.generations[gi].created) {
+			break
+		}
+	}
+
+	var revs []revision
+	var last int64
+	for ; gi < len(ki.generations); gi++ {
+		for _, r := range ki.generations[gi].revs {
+			if since.GreaterThan(r) {
+				continue
+			}
+			if r.main == last {
+				// replace the revision with a new one that has higher sub value,
+				// because the original one should not be seen by external
+				revs[len(revs)-1] = r
+			}
+			revs = append(revs, r)
+			last = r.main
+		}
+	}
+	return revs
+}
+
 // compact compacts a keyIndex by removing the versions with smaller or equal
 // revision than the given atRev except the largest one (If the largest one is
 // a tombstone, it will not be kept).
