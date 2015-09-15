@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5",
 	"Packages": [
 		"./..."
 	],
@@ -26,6 +26,10 @@
 		{
 			"ImportPath": "github.com/bradfitz/http2",
 			"Rev": "3e36af6d3af0e56fa3da71099f864933dea3d9fb"
+		},
+		{
+			"ImportPath": "github.com/cheggaaa/pb",
+			"Rev": "da1f27ad1d9509b16f65f52fd9d8138b0f2dc7b2"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
@@ -102,10 +106,6 @@
 		{
 			"ImportPath": "github.com/prometheus/procfs",
 			"Rev": "ee2372b58cee877abe07cde670d04d3b3bac5ee6"
-		},
-		{
-			"ImportPath": "github.com/rakyll/pb",
-			"Rev": "dc507ad06b7462501281bb4691ee43f0b1d1ec37"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
