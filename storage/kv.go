@@ -11,6 +11,9 @@ import (
 type CancelFunc func()
 
 type KV interface {
+	// Rev returns the current revision of the KV.
+	Rev() int64
+
 	// Range gets the keys in the range at rangeRev.
 	// If rangeRev <=0, range gets the keys at currentRev.
 	// If `end` is nil, the request returns the key.

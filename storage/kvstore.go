@@ -69,6 +69,13 @@ func newStore(path string) *store {
 	return s
 }
 
+func (s *store) Rev() int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.currentRev.main
+}
+
 func (s *store) Put(key, value []byte) int64 {
 	id := s.TxnBegin()
 	s.put(key, value)
