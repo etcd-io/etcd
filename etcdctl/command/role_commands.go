@@ -93,7 +93,7 @@ func actionRoleList(c *cli.Context) {
 		os.Exit(1)
 	}
 	r := mustNewAuthRoleAPI(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	roles, err := r.ListRoles(ctx)
 	cancel()
 	if err != nil {
@@ -108,14 +108,14 @@ func actionRoleList(c *cli.Context) {
 
 func actionRoleAdd(c *cli.Context) {
 	api, role := mustRoleAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	currentRole, err := api.GetRole(ctx, role)
 	cancel()
 	if currentRole != nil {
 		fmt.Fprintf(os.Stderr, "Role %s already exists\n", role)
 		os.Exit(1)
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	err = api.AddRole(ctx, role)
 	cancel()
 	if err != nil {
@@ -128,7 +128,7 @@ func actionRoleAdd(c *cli.Context) {
 
 func actionRoleRemove(c *cli.Context) {
 	api, role := mustRoleAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	err := api.RemoveRole(ctx, role)
 	cancel()
 	if err != nil {
@@ -182,14 +182,14 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 	}
 
 	api, role := mustRoleAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	currentRole, err := api.GetRole(ctx, role)
 	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	var newRole *client.Role
 	if grant {
 		newRole, err = api.GrantRoleKV(ctx, role, []string{path}, permType)
@@ -215,7 +215,7 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 func actionRoleGet(c *cli.Context) {
 	api, rolename := mustRoleAPIAndName(c)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 	role, err := api.GetRole(ctx, rolename)
 	cancel()
 	if err != nil {
