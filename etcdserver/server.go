@@ -62,6 +62,8 @@ const (
 
 	purgeFileInterval      = 30 * time.Second
 	monitorVersionInterval = 5 * time.Second
+
+	databaseFilename = "db"
 )
 
 var (
@@ -181,8 +183,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var id types.ID
 	var cl *cluster
 
-	demoFile := path.Join(cfg.MemberDir(), "v3demo")
-	if !cfg.V3demo && fileutil.Exist(demoFile) {
+	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.StorageDir(), databaseFilename)) {
 		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
 	}
 
@@ -242,7 +243,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
-			str, err := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
+			var str string
+			var err error
+			str, err = discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
 			if err != nil {
 				return nil, err
 			}
@@ -276,7 +279,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if cfg.ShouldDiscover() {
 			plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
-		snapshot, err := ss.Load()
+		var snapshot *raftpb.Snapshot
+		var err error
+		snapshot, err = ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
 		}
@@ -330,7 +335,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	if cfg.V3demo {
-		srv.kv = dstorage.New(demoFile)
+		err = os.MkdirAll(cfg.StorageDir(), privateDirMode)
+		if err != nil && err != os.ErrExist {
+			return nil, err
+		}
+		srv.kv = dstorage.New(path.Join(cfg.StorageDir(), databaseFilename))
 	}
 
 	// TODO: move transport initialization near the definition of remote
