@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"errors"
 	"expvar"
 	"fmt"
 	"math/rand"
@@ -180,6 +181,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var id types.ID
 	var cl *cluster
 
+	demoFile := path.Join(cfg.MemberDir(), "v3demo")
+	if !cfg.V3demo && fileutil.Exist(demoFile) {
+		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
+	}
+
 	// Run the migrations.
 	dataVer, err := version.DetectDataDir(cfg.DataDir)
 	if err != nil {
@@ -324,10 +330,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	if cfg.V3demo {
-		srv.kv = dstorage.New(path.Join(cfg.DataDir, "member", "v3demo"))
-	} else {
-		// we do not care about the error of the removal
-		os.RemoveAll(path.Join(cfg.DataDir, "member", "v3demo"))
+		srv.kv = dstorage.New(demoFile)
 	}
 
 	// TODO: move transport initialization near the definition of remote

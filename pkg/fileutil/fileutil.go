@@ -55,3 +55,8 @@ func ReadDir(dirpath string) ([]string, error) {
 	sort.Strings(names)
 	return names, nil
 }
+
+func Exist(name string) bool {
+	_, err := os.Stat(name)
+	return err == nil
+}
