@@ -152,7 +152,7 @@ func (c *ServerConfig) print(initial bool) {
 		}
 	}
 	plog.Infof("advertise client URLs = %s", c.ClientURLs)
-	if initial {
+	if initial || c.ForceNewCluster {
 		plog.Infof("initial advertise peer URLs = %s", c.PeerURLs)
 		plog.Infof("initial cluster = %s", c.InitialPeerURLsMap)
 	}

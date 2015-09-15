@@ -325,7 +325,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	}
 
 	// force append the configuration change entries
-	toAppEnts := createConfigChangeEnts(getIDs(snapshot, ents), uint64(id), st.Term, st.Commit)
+	toAppEnts := createConfigChangeEnts(getIDs(snapshot, ents), uint64(id), st.Term, st.Commit, cfg.PeerURLs)
 	ents = append(ents, toAppEnts...)
 
 	// force commit newly appended entries
@@ -401,7 +401,7 @@ func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 // `self` is _not_ removed, even if present in the set.
 // If `self` is not inside the given ids, it creates a Raft entry to add a
 // default member with the given `self`.
-func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
+func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64, peerURLs types.URLs) []raftpb.Entry {
 	ents := make([]raftpb.Entry, 0)
 	next := index + 1
 	found := false
@@ -426,7 +426,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 	if !found {
 		m := Member{
 			ID:             types.ID(self),
-			RaftAttributes: RaftAttributes{PeerURLs: []string{"http://localhost:7001", "http://localhost:2380"}},
+			RaftAttributes: RaftAttributes{PeerURLs: peerURLs.StringSlice()},
 		}
 		ctx, err := json.Marshal(m)
 		if err != nil {

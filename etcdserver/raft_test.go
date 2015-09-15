@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
@@ -73,6 +74,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 		ID:             types.ID(1),
 		RaftAttributes: RaftAttributes{PeerURLs: []string{"http://localhost:7001", "http://localhost:2380"}},
 	}
+	testUrls := types.URLs([]url.URL{{Scheme: "http", Host: "localhost:7001"}, {Scheme: "http", Host: "localhost:2380"}})
 	ctx, err := json.Marshal(m)
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +143,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gents := createConfigChangeEnts(tt.ids, tt.self, tt.term, tt.index)
+		gents := createConfigChangeEnts(tt.ids, tt.self, tt.term, tt.index, testUrls)
 		if !reflect.DeepEqual(gents, tt.wents) {
 			t.Errorf("#%d: ents = %v, want %v", i, gents, tt.wents)
 		}
