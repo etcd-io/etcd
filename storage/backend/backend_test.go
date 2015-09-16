@@ -105,6 +105,8 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 	// give time for batch interval commit to happen
 	time.Sleep(time.Nanosecond)
 	testutil.WaitSchedule()
+	// give time for commit to finish, including possible disk IO
+	time.Sleep(50 * time.Millisecond)
 
 	// check whether put happens via db view
 	b.db.View(func(tx *bolt.Tx) error {
