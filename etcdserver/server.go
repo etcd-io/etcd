@@ -635,6 +635,12 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
+	if s.cfg.StrictReconfigCheck && !s.cluster.isReadyToRemoveMember(id) {
+		// If s.cfg.StrictReconfigCheck is false, it means the option -strict-reconfig-check isn't passed to etcd.
+		// In such a case removing a member is allowed unconditionally
+		return ErrNotEnoughStartedMembers
+	}
+
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: id,

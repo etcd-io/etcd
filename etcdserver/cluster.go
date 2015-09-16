@@ -396,6 +396,30 @@ func (c *cluster) isReadyToAddNewMember() bool {
 	return true
 }
 
+func (c *cluster) isReadyToRemoveMember(id uint64) bool {
+	nmembers := 0
+	nstarted := 0
+
+	for _, member := range c.members {
+		if uint64(member.ID) == id {
+			continue
+		}
+
+		if member.IsStarted() {
+			nstarted++
+		}
+		nmembers++
+	}
+
+	nquorum := nmembers/2 + 1
+	if nstarted < nquorum {
+		plog.Warningf("Reject remove member request: the number of started member (%d) will be less than the quorum number of the cluster (%d)", nstarted, nquorum)
+		return false
+	}
+
+	return true
+}
+
 func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {
 	members := make(map[types.ID]*Member)
 	removed := make(map[types.ID]bool)
