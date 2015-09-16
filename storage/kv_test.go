@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -706,7 +707,8 @@ func TestKVSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = s.Snapshot(f)
+	rc, _ := s.Snapshot()
+	_, err = io.Copy(f, rc)
 	if err != nil {
 		t.Fatal(err)
 	}
