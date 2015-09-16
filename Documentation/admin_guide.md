@@ -293,6 +293,6 @@ If timeout happens several times continuously, administrators should check statu
 
 #### Maximum OS threads
 
-By default, etcd uses the default configuration of the Go 1.4 runtime, which means that at most one operating system thread will be used to execute code simultaneously. (Note that this default behavior [may change in Go 1.5](https://docs.google.com/document/d/1At2Ls5_fhJQ59kDK2DFVhFu3g5mATSXqqV5QrxinasI/edit)).
+By default, etcd uses the default configuration of the Go 1.4 runtime, which means that at most one operating system thread will be used to execute code simultaneously. (Note that this default behavior [has changed in Go 1.5](https://golang.org/doc/go1.5#runtime)).
 
 When using etcd in heavy-load scenarios on machines with multiple cores it will usually be desirable to increase the number of threads that etcd can utilize. To do this, simply set the environment variable `GOMAXPROCS` to the desired number when starting etcd. For more information on this variable, see the Go [runtime](https://golang.org/pkg/runtime) documentation.
