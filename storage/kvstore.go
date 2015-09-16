@@ -16,7 +16,6 @@ package storage
 
 import (
 	"errors"
-	"io"
 	"log"
 	"math"
 	"math/rand"
@@ -292,9 +291,9 @@ func (s *store) Hash() (uint32, error) {
 	return s.b.Hash()
 }
 
-func (s *store) Snapshot(w io.Writer) (int64, error) {
+func (s *store) Snapshot() Snapshot {
 	s.b.ForceCommit()
-	return s.b.Snapshot(w)
+	return s.b.Snapshot()
 }
 
 func (s *store) Restore() error {

@@ -28,16 +28,17 @@ import (
 )
 
 type snapshot struct {
-	r raftpb.Snapshot
+	r  raftpb.Snapshot
+	kv dstorage.Snapshot
 }
 
 func (s *snapshot) raft() raftpb.Snapshot { return s.r }
 
-func (s *snapshot) size() uint64 { return 0 }
+func (s *snapshot) size() int64 { return s.kv.Size() }
 
-func (s *snapshot) writeTo(w io.Writer) (n int64, err error) { return 0, nil }
+func (s *snapshot) writeTo(w io.Writer) (n int64, err error) { return s.kv.WriteTo(w) }
 
-func (s *snapshot) close() {}
+func (s *snapshot) close() error { return s.kv.Close() }
 
 type snapshotStore struct {
 	// dir to save snapshot data
@@ -72,10 +73,12 @@ func (ss *snapshotStore) getSnap() (*snapshot, error) {
 
 	// ask to generate v2 snapshot
 	ss.reqsnapc <- struct{}{}
-	// TODO: generate v3 snapshot at here
+	// generate KV snapshot
+	kvsnap := ss.kv.Snapshot()
 	raftsnap := <-ss.raftsnapc
 	ss.snap = &snapshot{
-		r: raftsnap,
+		r:  raftsnap,
+		kv: kvsnap,
 	}
 	return ss.snap, nil
 }
