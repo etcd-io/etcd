@@ -27,7 +27,7 @@ type MultiNode interface {
 	// CreateGroup adds a new group to the MultiNode. The application must call CreateGroup
 	// on each particpating node with the same group ID; it may create groups on demand as it
 	// receives messages. If the given storage contains existing log entries the list of peers
-	// may be empty. The Config.ID field will be ignored and replaced by the ID passed
+	// may be empty. If Config.ID field is zero it will be replaced by the ID passed
 	// to StartMultiNode.
 	CreateGroup(group uint64, c *Config, peers []Peer) error
 	// RemoveGroup removes a group from the MultiNode.
@@ -62,9 +62,10 @@ type MultiNode interface {
 	Stop()
 }
 
-// StartMultiNode creates a MultiNode and starts its background goroutine.
-// The id identifies this node and will be used as its node ID in all groups.
-// The election and heartbeat timers are in units of ticks.
+// StartMultiNode creates a MultiNode and starts its background
+// goroutine. If id is non-zero it identifies this node and will be
+// used as its node ID in all groups. The election and heartbeat
+// timers are in units of ticks.
 func StartMultiNode(id uint64) MultiNode {
 	mn := newMultiNode(id)
 	go mn.run()
@@ -193,7 +194,12 @@ func (mn *multiNode) run() {
 		var group *groupState
 		select {
 		case gc := <-mn.groupc:
-			gc.config.ID = mn.id
+			if (gc.config.ID != mn.id) && (gc.config.ID != 0 && mn.id != 0) {
+				panic("if gc.config.ID and mn.id differ, one of them must be zero")
+			}
+			if gc.config.ID == 0 {
+				gc.config.ID = mn.id
+			}
 			r := newRaft(gc.config)
 			group = &groupState{
 				id:   gc.id,
@@ -240,9 +246,9 @@ func (mn *multiNode) run() {
 			// has a leader; we can't do that since we have one propc for many groups.
 			// We'll have to buffer somewhere on a group-by-group basis, or just let
 			// raft.Step drop any such proposals on the floor.
-			mm.msg.From = mn.id
 			var ok bool
 			if group, ok = groups[mm.group]; ok {
+				mm.msg.From = group.raft.id
 				group.raft.Step(mm.msg)
 			}
 
