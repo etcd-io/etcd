@@ -38,7 +38,7 @@ func (h *handler) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 
 	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Range: r})
 	if err != nil {
-		err = togRPCError(err)
+		return nil, togRPCError(err)
 	}
 
 	return resp.(*pb.RangeResponse), err
@@ -51,7 +51,7 @@ func (h *handler) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, e
 
 	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
-		err = togRPCError(err)
+		return nil, togRPCError(err)
 	}
 
 	return resp.(*pb.PutResponse), err
@@ -64,7 +64,7 @@ func (h *handler) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*p
 
 	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
-		err = togRPCError(err)
+		return nil, togRPCError(err)
 	}
 
 	return resp.(*pb.DeleteRangeResponse), err
@@ -77,7 +77,7 @@ func (h *handler) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 
 	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
-		err = togRPCError(err)
+		return nil, togRPCError(err)
 	}
 
 	return resp.(*pb.TxnResponse), err
@@ -86,7 +86,7 @@ func (h *handler) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 func (h *handler) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Compaction: r})
 	if err != nil {
-		err = togRPCError(err)
+		return nil, togRPCError(err)
 	}
 
 	return resp.(*pb.CompactionResponse), nil
