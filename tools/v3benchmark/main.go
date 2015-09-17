@@ -18,12 +18,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cheggaaa/pb"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 var (
@@ -33,10 +33,15 @@ var (
 )
 
 func main() {
-	var c, n int
-	var url string
+	var (
+		c, n int
+		url  string
+		size int
+	)
+
 	flag.IntVar(&c, "c", 50, "number of connections")
 	flag.IntVar(&n, "n", 200, "number of requests")
+	flag.IntVar(&size, "s", 128, "size of put request")
 	// TODO: config the number of concurrency in each connection
 	flag.StringVar(&url, "u", "127.0.0.1:12379", "etcd server endpoint")
 	flag.Parse()
@@ -45,14 +50,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	if act := flag.Args()[0]; act != "get" {
-		fmt.Errorf("unsupported action %v", act)
+	var act string
+	if act = flag.Args()[0]; act != "get" && act != "put" {
+		fmt.Printf("unsupported action %v\n", act)
 		os.Exit(1)
 	}
-	var rangeEnd []byte
-	key := []byte(flag.Args()[1])
-	if len(flag.Args()) > 2 {
-		rangeEnd = []byte(flag.Args()[2])
+
+	conn, err := grpc.Dial(url)
+	if err != nil {
+		fmt.Errorf("dial error: %v", err)
+		os.Exit(1)
 	}
 
 	results = make(chan *result, n)
@@ -62,22 +69,22 @@ func main() {
 
 	start := time.Now()
 
-	wg.Add(c)
-	requests := make(chan struct{}, n)
-	conn, err := grpc.Dial(url)
-	if err != nil {
-		fmt.Errorf("dial error: %v", err)
-		os.Exit(1)
+	if act == "get" {
+		var rangeEnd []byte
+		key := []byte(flag.Args()[1])
+		if len(flag.Args()) > 2 {
+			rangeEnd = []byte(flag.Args()[2])
+		}
+		benchGet(conn, key, rangeEnd, n, c)
+	} else if act == "put" {
+		key := []byte(flag.Args()[1])
+		// number of different keys to put into etcd
+		kc, err := strconv.ParseInt(flag.Args()[2], 10, 32)
+		if err != nil {
+			panic(err)
+		}
+		benchPut(conn, key, int(kc), n, c, size)
 	}
-
-	for i := 0; i < c; i++ {
-		go get(etcdserverpb.NewEtcdClient(conn), key, rangeEnd, requests)
-	}
-
-	for i := 0; i < n; i++ {
-		requests <- struct{}{}
-	}
-	close(requests)
 
 	wg.Wait()
 

@@ -15,6 +15,10 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/binary"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -22,27 +26,45 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-func benchGet(conn *grpc.ClientConn, key, rangeEnd []byte, n, c int) {
+func benchPut(conn *grpc.ClientConn, key []byte, kc, n, c, size int) {
 	wg.Add(c)
-	requests := make(chan struct{}, n)
+	requests := make(chan *etcdserverpb.PutRequest, n)
 
-	for i := 0; i < c; i++ {
-		go get(etcdserverpb.NewEtcdClient(conn), key, rangeEnd, requests)
+	v := make([]byte, size)
+	_, err := rand.Read(v)
+	if err != nil {
+		fmt.Printf("failed to generate value: %v\n", err)
+		os.Exit(1)
+		return
 	}
 
+	for i := 0; i < c; i++ {
+		go put(etcdserverpb.NewEtcdClient(conn), requests)
+	}
+
+	suffixb := make([]byte, 8)
+	suffix := 0
 	for i := 0; i < n; i++ {
-		requests <- struct{}{}
+		binary.BigEndian.PutUint64(suffixb, uint64(suffix))
+		r := &etcdserverpb.PutRequest{
+			Key:   append(key, suffixb...),
+			Value: v,
+		}
+		requests <- r
+		if suffix > kc {
+			suffix = 0
+		}
+		suffix++
 	}
 	close(requests)
 }
 
-func get(client etcdserverpb.EtcdClient, key, end []byte, requests <-chan struct{}) {
+func put(client etcdserverpb.EtcdClient, requests <-chan *etcdserverpb.PutRequest) {
 	defer wg.Done()
-	req := &etcdserverpb.RangeRequest{Key: key, RangeEnd: end}
 
-	for _ = range requests {
+	for r := range requests {
 		st := time.Now()
-		_, err := client.Range(context.Background(), req)
+		_, err := client.Put(context.Background(), r)
 
 		var errStr string
 		if err != nil {
