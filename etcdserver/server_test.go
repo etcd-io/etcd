@@ -451,6 +451,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		srv := &EtcdServer{
 			r:       raftNode{Node: n},
 			cluster: cl,
+			cfg:     &ServerConfig{},
 		}
 		_, err := srv.applyConfChange(tt.cc, nil)
 		if err != tt.werr {
@@ -863,10 +864,10 @@ func TestAddMember(t *testing.T) {
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
+		cfg:      &ServerConfig{},
 		store:    st,
 		cluster:  cl,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
-		cfg:      &ServerConfig{},
 	}
 	s.start()
 	m := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
@@ -903,6 +904,7 @@ func TestRemoveMember(t *testing.T) {
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
+		cfg:      &ServerConfig{},
 		store:    st,
 		cluster:  cl,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),

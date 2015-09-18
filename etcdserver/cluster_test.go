@@ -646,3 +646,88 @@ func TestIsReadyToAddNewMember(t *testing.T) {
 		}
 	}
 }
+
+func TestIsReadyToRemoveMember(t *testing.T) {
+	tests := []struct {
+		members  []*Member
+		removeID uint64
+		want     bool
+	}{
+		{
+			// 1/1 members ready, should fail
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+			},
+			1,
+			false,
+		},
+		{
+			// 0/3 members ready, should fail
+			[]*Member{
+				newTestMember(1, nil, "", nil),
+				newTestMember(2, nil, "", nil),
+				newTestMember(3, nil, "", nil),
+			},
+			1,
+			false,
+		},
+		{
+			// 1/2 members ready, should be fine to remove unstarted member
+			// (iReadyToRemoveMember() logic should return success, but operation itself would fail)
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "", nil),
+			},
+			2,
+			true,
+		},
+		{
+			// 2/3 members ready, should fail
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "", nil),
+			},
+			2,
+			false,
+		},
+		{
+			// 3/3 members ready, should be fine to remove one member and retain quorum
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "3", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 3/4 members ready, should be fine to remove one member
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "3", nil),
+				newTestMember(4, nil, "", nil),
+			},
+			3,
+			true,
+		},
+		{
+			// 3/4 members ready, should be fine to remove unstarted member
+			[]*Member{
+				newTestMember(1, nil, "1", nil),
+				newTestMember(2, nil, "2", nil),
+				newTestMember(3, nil, "3", nil),
+				newTestMember(4, nil, "", nil),
+			},
+			4,
+			true,
+		},
+	}
+	for i, tt := range tests {
+		c := newTestCluster(tt.members)
+		if got := c.isReadyToRemoveMember(tt.removeID); got != tt.want {
+			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
+		}
+	}
+}
