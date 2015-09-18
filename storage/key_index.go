@@ -157,7 +157,11 @@ func (ki *keyIndex) since(rev int64) []revision {
 	var gi int
 	// find the generations to start checking
 	for gi = len(ki.generations) - 1; gi > 0; gi-- {
-		if since.GreaterThan(ki.generations[gi].created) {
+		g := ki.generations[gi]
+		if g.isEmpty() {
+			continue
+		}
+		if since.GreaterThan(g.created) {
 			break
 		}
 	}

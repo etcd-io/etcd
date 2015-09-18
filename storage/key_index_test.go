@@ -84,6 +84,29 @@ func TestKeyIndexGet(t *testing.T) {
 	}
 }
 
+func TestKeyIndexSince(t *testing.T) {
+	ki := newTestKeyIndex()
+	ki.compact(4, make(map[revision]struct{}))
+
+	allRevs := []revision{{4, 0}, {6, 0}, {8, 0}, {10, 0}, {12, 0}, {14, 1}, {16, 0}}
+	tests := []struct {
+		rev int64
+
+		wrevs []revision
+	}{
+		{17, nil},
+		{16, allRevs[6:]},
+		{15, allRevs[6:]},
+	}
+
+	for i, tt := range tests {
+		revs := ki.since(tt.rev)
+		if !reflect.DeepEqual(revs, tt.wrevs) {
+			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
+		}
+	}
+}
+
 func TestKeyIndexPut(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
 	ki.put(5, 0)
