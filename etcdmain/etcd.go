@@ -24,6 +24,7 @@ import (
 	"path"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/daemon"
@@ -146,6 +147,19 @@ func Main() {
 			plog.Errorf("please check (cURL) the discovery token for more information.")
 			plog.Errorf("please do not reuse the discovery token and generate a new one to bootstrap the cluster.")
 		default:
+			if strings.Contains(err.Error(), "include") && strings.Contains(err.Error(), "--initial-cluster") {
+				plog.Infof("%v", err)
+				if cfg.initialCluster == initialClusterFromName(cfg.name) {
+					plog.Infof("forgot to set --initial-cluster flag?")
+				}
+				if types.URLs(cfg.apurls).String() == defaultInitialAdvertisePeerURLs {
+					plog.Infof("forgot to set --initial-advertise-peer-urls flag?")
+				}
+				if cfg.initialCluster == initialClusterFromName(cfg.name) && len(cfg.durl) == 0 {
+					plog.Infof("if you want to use discovery service, please set --discovery flag.")
+				}
+				os.Exit(1)
+			}
 			plog.Fatalf("%v", err)
 		}
 	}
