@@ -130,6 +130,11 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: none
 + env variable: ETCD_DISCOVERY_PROXY
 
+##### -strict-reconfig-check
++ Reject reconfiguration requests that would cause quorum loss.
++ default: false
++ env variable: ETCD_STRICT_RECONFIG_CHECK
+
 ### Proxy Flags
 
 `-proxy` prefix flags configures etcd to run in [proxy mode][proxy].

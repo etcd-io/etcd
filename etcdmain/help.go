@@ -68,7 +68,8 @@ clustering flags:
 		HTTP proxy to use for traffic to discovery service.
 	--discovery-srv ''
 		dns srv domain used to bootstrap the cluster.
-
+	--strict-reconfig-check
+		reject reconfiguration requests that would cause quorum loss.
 
 proxy flags:
 
