@@ -97,6 +97,21 @@ func TestKeyIndexSince(t *testing.T) {
 		{17, nil},
 		{16, allRevs[6:]},
 		{15, allRevs[6:]},
+		{14, allRevs[5:]},
+		{13, allRevs[5:]},
+		{12, allRevs[4:]},
+		{11, allRevs[4:]},
+		{10, allRevs[3:]},
+		{9, allRevs[3:]},
+		{8, allRevs[2:]},
+		{7, allRevs[2:]},
+		{6, allRevs[1:]},
+		{5, allRevs[1:]},
+		{4, allRevs},
+		{3, allRevs},
+		{2, allRevs},
+		{1, allRevs},
+		{0, allRevs},
 	}
 
 	for i, tt := range tests {

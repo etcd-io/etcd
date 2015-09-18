@@ -177,6 +177,7 @@ func (ki *keyIndex) since(rev int64) []revision {
 				// replace the revision with a new one that has higher sub value,
 				// because the original one should not be seen by external
 				revs[len(revs)-1] = r
+				continue
 			}
 			revs = append(revs, r)
 			last = r.main
