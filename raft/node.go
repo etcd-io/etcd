@@ -114,8 +114,8 @@ type Node interface {
 	ProposeConfChange(ctx context.Context, cc pb.ConfChange) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
-	// Ready returns a channel that returns the current point-in-time state
-	// Users of the Node must call Advance after applying the state returned by Ready
+	// Ready returns a channel that returns the current point-in-time state.
+	// Users of the Node must call Advance after applying the state returned by Ready.
 	Ready() <-chan Ready
 	// Advance notifies the Node that the application has applied and saved progress up to the last Ready.
 	// It prepares the node to return the next available Ready.
@@ -129,9 +129,9 @@ type Node interface {
 	Status() Status
 	// Report reports the given node is not reachable for the last send.
 	ReportUnreachable(id uint64)
-	// ReportSnapshot reports the stutus of the sent snapshot.
+	// ReportSnapshot reports the status of the sent snapshot.
 	ReportSnapshot(id uint64, status SnapshotStatus)
-	// Stop performs any necessary termination of the Node
+	// Stop performs any necessary termination of the Node.
 	Stop()
 }
 
