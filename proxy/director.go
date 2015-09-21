@@ -126,7 +126,7 @@ func timedUnavailabilityFunc(wait time.Duration) func(*endpoint) {
 	return func(ep *endpoint) {
 		time.AfterFunc(wait, func() {
 			ep.Available = true
-			log.Printf("proxy: marked endpoint %s available", ep.URL.String())
+			log.Printf("proxy: marked endpoint %s available, to retest connectivity", ep.URL.String())
 		})
 	}
 }
