@@ -102,7 +102,7 @@ func (c *ServerConfig) verifyLocalMember(strict bool) error {
 	urls.Sort()
 	if strict {
 		if !netutil.URLStringsEqual(apurls, urls.StringSlice()) {
-			return fmt.Errorf("advertise URLs of %q do not match in --initial-advertise-peer-urls %s and --initial-cluster %s", c.Name, apurls, urls.StringSlice())
+			return fmt.Errorf("--initial-cluster must include %s=%s given --initial-advertise-peer-urls=%s", c.Name, apurls, apurls)
 		}
 	}
 	return nil
