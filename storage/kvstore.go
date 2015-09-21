@@ -193,19 +193,33 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	return n, rev, nil
 }
 
-// RangeEvents gets the events from key to end at or after rangeRev.
-// If rangeRev <=0, rangeEvents returns events from the beginning of the history.
+// RangeEvents gets the events from key to end in [startRev, endRev).
 // If `end` is nil, the request only observes the events on key.
 // If `end` is not nil, it observes the events on key range [key, range_end).
 // Limit limits the number of events returned.
-// If the required rev is compacted, ErrCompacted will be returned.
+// If startRev <=0, rangeEvents returns events from the beginning of uncompacted history.
+// If endRev <=0, it indicates there is no end revision.
+//
+// If the required start rev is compacted, ErrCompacted will be returned.
+// If the required start rev has not happened, ErrFutureRev will be returned.
+//
+// RangeEvents returns events that satisfy the requirement (0 <= n <= limit).
+// If events in the revision range have not all happened, it returns immeidately
+// what is available.
+// It also returns nextRev which indicates the start revision used for the following
+// RangeEvents call. The nextRev could be smaller than the given endRev if the store
+// has not progressed so far or it hits the event limit.
+//
 // TODO: return byte slices instead of events to avoid meaningless encode and decode.
 func (s *store) RangeEvents(key, end []byte, limit, startRev, endRev int64) (evs []storagepb.Event, nextRev int64, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if startRev <= s.compactMainRev {
+	if startRev > 0 && startRev <= s.compactMainRev {
 		return nil, 0, ErrCompacted
+	}
+	if startRev > s.currentRev.main {
+		return nil, 0, ErrFutureRev
 	}
 
 	revs := s.kvindex.RangeEvents(key, end, startRev)
@@ -218,7 +232,7 @@ func (s *store) RangeEvents(key, end []byte, limit, startRev, endRev int64) (evs
 	defer tx.Unlock()
 	// fetch events from the backend using revisions
 	for _, rev := range revs {
-		if rev.main >= endRev {
+		if endRev > 0 && rev.main >= endRev {
 			return evs, rev.main, nil
 		}
 		revbytes := newRevBytes()

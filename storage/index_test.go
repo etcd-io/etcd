@@ -136,6 +136,61 @@ func TestIndexTombstone(t *testing.T) {
 	}
 }
 
+func TestIndexRangeEvents(t *testing.T) {
+	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
+	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}, {main: 4}, {main: 5}, {main: 6}}
+
+	index := newTreeIndex()
+	for i := range allKeys {
+		index.Put(allKeys[i], allRevs[i])
+	}
+
+	atRev := int64(1)
+	tests := []struct {
+		key, end []byte
+		wrevs    []revision
+	}{
+		// single key that not found
+		{
+			[]byte("bar"), nil, nil,
+		},
+		// single key that found
+		{
+			[]byte("foo"), nil, []revision{{main: 1}, {main: 6}},
+		},
+		// range keys, return first member
+		{
+			[]byte("foo"), []byte("foo1"), []revision{{main: 1}, {main: 6}},
+		},
+		// range keys, return first two members
+		{
+			[]byte("foo"), []byte("foo2"), []revision{{main: 1}, {main: 2}, {main: 5}, {main: 6}},
+		},
+		// range keys, return all members
+		{
+			[]byte("foo"), []byte("fop"), allRevs,
+		},
+		// range keys, return last two members
+		{
+			[]byte("foo1"), []byte("fop"), []revision{{main: 2}, {main: 3}, {main: 4}, {main: 5}},
+		},
+		// range keys, return last member
+		{
+			[]byte("foo2"), []byte("fop"), []revision{{main: 3}, {main: 4}},
+		},
+		// range keys, return nothing
+		{
+			[]byte("foo3"), []byte("fop"), nil,
+		},
+	}
+	for i, tt := range tests {
+		revs := index.RangeEvents(tt.key, tt.end, atRev)
+		if !reflect.DeepEqual(revs, tt.wrevs) {
+			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
+		}
+	}
+}
+
 func TestIndexCompact(t *testing.T) {
 	maxRev := int64(20)
 	tests := []struct {
