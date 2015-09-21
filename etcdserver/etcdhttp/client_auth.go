@@ -147,11 +147,10 @@ func (sh *authHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 		writeNoAuth(w)
 		return
 	}
+
 	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
 	w.Header().Set("Content-Type", "application/json")
-	var rolesCollections struct {
-		Roles []string `json:"roles"`
-	}
+
 	roles, err := sh.sec.AllRoles()
 	if err != nil {
 		writeError(w, err)
@@ -161,10 +160,30 @@ func (sh *authHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 		roles = make([]string, 0)
 	}
 
-	rolesCollections.Roles = roles
+	err = r.ParseForm()
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	var rolesCollections struct {
+		Roles []auth.Role `json:"roles"`
+	}
+	for _, roleName := range roles {
+		var role auth.Role
+		role, err = sh.sec.GetRole(roleName)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		rolesCollections.Roles = append(rolesCollections.Roles, role)
+	}
 	err = json.NewEncoder(w).Encode(rolesCollections)
+
 	if err != nil {
 		plog.Warningf("baseRoles error encoding on %s", r.URL)
+		writeError(w, err)
+		return
 	}
 }
 
@@ -259,6 +278,11 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 	}
 }
 
+type userWithRoles struct {
+	User  string      `json:"user"`
+	Roles []auth.Role `json:"roles,omitempty"`
+}
+
 func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
@@ -269,9 +293,7 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", sh.cluster.ID().String())
 	w.Header().Set("Content-Type", "application/json")
-	var usersCollections struct {
-		Users []string `json:"users"`
-	}
+
 	users, err := sh.sec.AllUsers()
 	if err != nil {
 		writeError(w, err)
@@ -281,10 +303,42 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 		users = make([]string, 0)
 	}
 
-	usersCollections.Users = users
+	err = r.ParseForm()
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	var usersCollections struct {
+		Users []userWithRoles `json:"users"`
+	}
+	for _, userName := range users {
+		var user auth.User
+		user, err = sh.sec.GetUser(userName)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+
+		uwr := userWithRoles{User: user.User}
+		for _, roleName := range user.Roles {
+			var role auth.Role
+			role, err = sh.sec.GetRole(roleName)
+			if err != nil {
+				writeError(w, err)
+				return
+			}
+			uwr.Roles = append(uwr.Roles, role)
+		}
+
+		usersCollections.Users = append(usersCollections.Users, uwr)
+	}
 	err = json.NewEncoder(w).Encode(usersCollections)
+
 	if err != nil {
 		plog.Warningf("baseUsers error encoding on %s", r.URL)
+		writeError(w, err)
+		return
 	}
 }
 
@@ -322,9 +376,25 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 			writeError(w, err)
 			return
 		}
-		u.Password = ""
 
-		err = json.NewEncoder(w).Encode(u)
+		err = r.ParseForm()
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+
+		uwr := userWithRoles{User: u.User}
+		for _, roleName := range u.Roles {
+			var role auth.Role
+			role, err = sh.sec.GetRole(roleName)
+			if err != nil {
+				writeError(w, err)
+				return
+			}
+			uwr.Roles = append(uwr.Roles, role)
+		}
+		err = json.NewEncoder(w).Encode(uwr)
+
 		if err != nil {
 			plog.Warningf("forUser error encoding on %s", r.URL)
 			return
