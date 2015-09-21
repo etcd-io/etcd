@@ -38,6 +38,8 @@ func main() {
 	resp, err := kapi.Set(context.Background(), "foo", "bar", nil)
 	if err != nil {
 		log.Fatal(err)
+	} else {
+		log.Print(resp)
 	}
 }
 ```
