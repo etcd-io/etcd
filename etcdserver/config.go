@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"path"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/pkg/netutil"
@@ -102,7 +103,8 @@ func (c *ServerConfig) verifyLocalMember(strict bool) error {
 	urls.Sort()
 	if strict {
 		if !netutil.URLStringsEqual(apurls, urls.StringSlice()) {
-			return fmt.Errorf("--initial-cluster must include %s=%s given --initial-advertise-peer-urls=%s", c.Name, apurls, apurls)
+			umap := map[string]types.URLs{c.Name: c.PeerURLs}
+			return fmt.Errorf("--initial-cluster must include %s given --initial-advertise-peer-urls=%s", types.URLsMap(umap).String(), strings.Join(apurls, ","))
 		}
 	}
 	return nil
