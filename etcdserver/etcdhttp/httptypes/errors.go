@@ -43,7 +43,10 @@ func (e HTTPError) WriteTo(w http.ResponseWriter) {
 	if err != nil {
 		plog.Panicf("marshal HTTPError should never fail (%v)", err)
 	}
-	w.Write(b)
+	if _, err := w.Write(b); err != nil {
+		plog.Errorf("http write errors with HTTPError (%v)", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func NewHTTPError(code int, m string) *HTTPError {
