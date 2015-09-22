@@ -138,7 +138,7 @@ $ etcd -name infra1 -data-dir infra1 \
 
 # member2
 $ etcd -name infra2 -data-dir infra2 \
-  -peer-client-cert-atuh -peer-trusted-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member2.crt -peer-key-file=/path/to/member2.key \
+  -peer-client-cert-auth -peer-trusted-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member2.crt -peer-key-file=/path/to/member2.key \
   -initial-advertise-peer-urls=https://10.0.1.11:2380 -listen-peer-urls=https://10.0.1.11:2380 \
   -discovery ${DISCOVERY_URL}
 ```
