@@ -34,4 +34,79 @@ etcd -proxy on -listen-client-urls http://127.0.0.1:8080 -discovery https://disc
 #### Fallback to proxy mode with discovery service
 If you bootstrap a etcd cluster using [discovery service][discovery-service] with more than the expected number of etcd members, the extra etcd processes will fall back to being `readwrite` proxies by default. They will forward the requests to the cluster as described above. For example, if you create a discovery url with `size=5`, and start ten etcd processes using that same discovery url, the result will be a cluster with five etcd members and five proxies. Note that this behaviour can be disabled with the `proxy-fallback` flag.
 
+### Promote a proxy to a member of etcd cluster
+
+A Proxy is in the part of etcd cluster that does not participant in consensus. A proxy will not promote itself to an etcd member that participants in consensus automtically in any case.
+
+If you want to promote a proxy to an etcd member, there are four steps you need to follow:
+
+- use etcdctl to add the proxy node as an etcd member into the existing cluster
+- stop the etcd proxy process or service
+- remove the existing proxy data directory
+- restart the etcd process with new member configuration
+
+#### Example
+
+We assume you have a one member etcd cluster with one proxy. The cluster information is listed below:
+
+|Name|Address|
+|------|---------|
+|infra0|10.0.1.10|
+|proxy0|10.0.1.11|
+
+This example walks you through a case that you promote one proxy to an etcd member. The cluster will become a two member cluster after finishing the four steps.
+
+### Add a new member into the existing cluster
+
+First, use etcdctl to add the member to the cluster, which will output the environment variables need to correctly configure the new member:
+
+``` bash
+$ etcdctl -endpoint http://10.0.1.10:2379 member add infra1 http://10.0.1.11:2380
+added member 9bf1b35fc7761a23 to cluster
+
+ETCD_NAME="infra1"
+ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380"
+ETCD_INITIAL_CLUSTER_STATE=existing
+```
+
+### Stop the proxy process
+
+Stop the existing proxy so we can wipe it's state on disk and reload it with the new configuration:
+
+``` bash
+px aux | grep etcd
+kill %etcd_proxy_pid%
+```
+
+or (if you are running etcd proxy as etcd service under systemd)
+
+``` bash
+sudo systemctl stop etcd
+```
+
+### Remove the existing proxy data dir
+
+``` bash
+rm -rf %data_dir%/proxy
+```
+
+### Start etcd as a new member
+
+Finally, start the reconfigured member and make sure it joins the cluster correctly:
+
+``` bash
+$ export ETCD_NAME="infra1"
+$ export ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380"
+$ export ETCD_INITIAL_CLUSTER_STATE=existing
+$ etcd -listen-client-urls http://10.0.1.11:2379 -advertise-client-urls http://10.0.1.11:2379  -listen-peer-urls http://10.0.1.11:2380 -initial-advertise-peer-urls http://10.0.1.11:2380 -data-dir %data_dir%
+```
+
+If you are running etcd under systemd, you should modify the service file with correct configuration and restart the service:
+
+``` bash
+sudo systemd restart etcd
+```
+
+If you see an error, you can read the [add member troubleshooting doc](runtime-configuration.md#error-cases).
+
 [discovery-service]: clustering.md#discovery
