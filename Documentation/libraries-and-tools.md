@@ -11,6 +11,7 @@
 - [etcd-lock](https://github.com/datawisesystems/etcd-lock) - Master election & distributed r/w lock implementation using etcd - Supports v2
 - [etcd-console](https://github.com/matishsiao/etcd-console) - A web-base key/value editor for etcd using PHP
 - [etcd-viewer](https://github.com/nikfoundas/etcd-viewer) - An etcd key-value store editor/viewer written in Java
+- [etcd-export](https://github.com/mickep76/etcd-export) - Export/Import etcd directory as JSON/YAML/TOML and Validate directory using JSON schema
 
 **Go libraries**
 
