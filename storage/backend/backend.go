@@ -15,6 +15,8 @@
 package backend
 
 import (
+	"fmt"
+	"hash/crc32"
 	"io"
 	"log"
 	"time"
@@ -25,6 +27,7 @@ import (
 type Backend interface {
 	BatchTx() BatchTx
 	Snapshot(w io.Writer) (n int64, err error)
+	Hash() (uint32, error)
 	ForceCommit()
 	Close() error
 }
@@ -82,6 +85,33 @@ func (b *backend) Snapshot(w io.Writer) (n int64, err error) {
 		return nil
 	})
 	return n, err
+}
+
+func (b *backend) Hash() (uint32, error) {
+	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+
+	err := b.db.View(func(tx *bolt.Tx) error {
+		c := tx.Cursor()
+		for next, _ := c.First(); next != nil; next, _ = c.Next() {
+			b := tx.Bucket(next)
+			if b == nil {
+				return fmt.Errorf("cannot get hash of bucket %s", string(next))
+			}
+			h.Write(next)
+			b.ForEach(func(k, v []byte) error {
+				h.Write(k)
+				h.Write(v)
+				return nil
+			})
+		}
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return h.Sum32(), nil
 }
 
 func (b *backend) run() {
