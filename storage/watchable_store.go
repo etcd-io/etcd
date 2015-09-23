@@ -177,7 +177,7 @@ func (s *watchableStore) Watcher(key []byte, prefix bool, startRev, endRev int64
 
 	cancel := CancelFunc(func() {
 		s.mu.Lock()
-		s.mu.Unlock()
+		defer s.mu.Unlock()
 		wa.stopWithError(ErrCanceled)
 
 		// remove global references of the watcher
