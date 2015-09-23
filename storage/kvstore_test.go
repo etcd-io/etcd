@@ -722,6 +722,7 @@ type fakeBackend struct {
 }
 
 func (b *fakeBackend) BatchTx() backend.BatchTx                  { return b.tx }
+func (b *fakeBackend) Hash() (uint32, error)                     { return 0, nil }
 func (b *fakeBackend) Snapshot(w io.Writer) (n int64, err error) { return 0, errors.New("unsupported") }
 func (b *fakeBackend) ForceCommit()                              {}
 func (b *fakeBackend) Close() error                              { return nil }
