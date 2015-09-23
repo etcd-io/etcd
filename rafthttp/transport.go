@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -35,6 +36,13 @@ type Raft interface {
 	IsIDRemoved(id uint64) bool
 	ReportUnreachable(id uint64)
 	ReportSnapshot(id uint64, status raft.SnapshotStatus)
+}
+
+// SnapshotHub helps to fetch snapshot data of outgoing snapshot message, and
+// save snapshot data of incoming snapshot message.
+type SnapshotHub interface {
+	SnapshotData(raftsnap raftpb.Snapshot) (rc io.ReadCloser, size int64)
+	SaveSnapshotData(raftsnap raftpb.Snapshot, r io.Reader) error
 }
 
 type Transporter interface {
@@ -83,8 +91,10 @@ type transport struct {
 	id           types.ID
 	clusterID    types.ID
 	raft         Raft
+	snaphub      SnapshotHub
 	serverStats  *stats.ServerStats
 	leaderStats  *stats.LeaderStats
+	v3demo       bool
 
 	mu      sync.RWMutex         // protect the term, remote and peer map
 	term    uint64               // the latest term that has been observed
@@ -95,14 +105,16 @@ type transport struct {
 	errorc chan error
 }
 
-func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, errorc chan error, ss *stats.ServerStats, ls *stats.LeaderStats) Transporter {
+func NewTransporter(rt http.RoundTripper, id, cid types.ID, r Raft, snaphub SnapshotHub, errorc chan error, ss *stats.ServerStats, ls *stats.LeaderStats, v3demo bool) Transporter {
 	return &transport{
 		roundTripper: rt,
 		id:           id,
 		clusterID:    cid,
 		raft:         r,
+		snaphub:      snaphub,
 		serverStats:  ss,
 		leaderStats:  ls,
+		v3demo:       v3demo,
 		remotes:      make(map[types.ID]*remote),
 		peers:        make(map[types.ID]Peer),
 
@@ -207,7 +219,7 @@ func (t *transport) AddPeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.leaderStats.Follower(id.String())
-	t.peers[id] = startPeer(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, fs, t.errorc, t.term)
+	t.peers[id] = startPeer(t.roundTripper, urls, t.id, id, t.clusterID, t.raft, t.snaphub, fs, t.errorc, t.term, t.v3demo)
 	addPeerToProber(t.prober, id.String(), us)
 }
 

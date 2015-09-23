@@ -38,6 +38,7 @@ const (
 	streamTypeMessage  streamType = "message"
 	streamTypeMsgAppV2 streamType = "msgappv2"
 	streamTypeMsgApp   streamType = "msgapp"
+	streamTypeMsgSnap  streamType = "msgsnap"
 
 	streamBufSize = 4096
 )
@@ -49,7 +50,8 @@ var (
 	supportedStream = map[string][]streamType{
 		"2.0.0": {streamTypeMsgApp},
 		"2.1.0": {streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
-		"2.2.0": {streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage},
+		// TODO: streamTypeMsgSnap is 2.3.0 feature
+		"2.2.0": {streamTypeMsgApp, streamTypeMsgAppV2, streamTypeMessage, streamTypeMsgSnap},
 	}
 )
 
@@ -63,6 +65,8 @@ func (t streamType) endpoint() string {
 		return path.Join(RaftStreamPrefix, "msgapp")
 	case streamTypeMessage:
 		return path.Join(RaftStreamPrefix, "message")
+	case streamTypeMsgSnap:
+		return path.Join(RaftStreamPrefix, "msgsnap")
 	default:
 		plog.Panicf("unhandled stream type %v", t)
 		return ""
@@ -77,6 +81,8 @@ func (t streamType) String() string {
 		return "stream MsgApp v2"
 	case streamTypeMessage:
 		return "stream Message"
+	case streamTypeMsgSnap:
+		return "stream MsgSnap"
 	default:
 		return "unknown stream"
 	}
@@ -104,10 +110,11 @@ type outgoingConn struct {
 // streamWriter is a long-running go-routine that writes messages into the
 // attached outgoingConn.
 type streamWriter struct {
-	id     types.ID
-	status *peerStatus
-	fs     *stats.FollowerStats
-	r      Raft
+	id      types.ID
+	status  *peerStatus
+	fs      *stats.FollowerStats
+	r       Raft
+	snaphub SnapshotHub
 
 	mu      sync.Mutex // guard field working and closer
 	closer  io.Closer
@@ -119,16 +126,17 @@ type streamWriter struct {
 	done  chan struct{}
 }
 
-func startStreamWriter(id types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft) *streamWriter {
+func startStreamWriter(id types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft, snaphub SnapshotHub) *streamWriter {
 	w := &streamWriter{
-		id:     id,
-		status: status,
-		fs:     fs,
-		r:      r,
-		msgc:   make(chan raftpb.Message, streamBufSize),
-		connc:  make(chan *outgoingConn),
-		stopc:  make(chan struct{}),
-		done:   make(chan struct{}),
+		id:      id,
+		status:  status,
+		fs:      fs,
+		r:       r,
+		snaphub: snaphub,
+		msgc:    make(chan raftpb.Message, streamBufSize),
+		connc:   make(chan *outgoingConn),
+		stopc:   make(chan struct{}),
+		done:    make(chan struct{}),
 	}
 	go w.run()
 	return w
@@ -195,6 +203,8 @@ func (cw *streamWriter) run() {
 				enc = newMsgAppV2Encoder(conn.Writer, cw.fs)
 			case streamTypeMessage:
 				enc = &messageEncoder{w: conn.Writer}
+			case streamTypeMsgSnap:
+				enc = &msgSnapEncoder{w: conn.Writer, snaphub: cw.snaphub}
 			default:
 				plog.Panicf("unhandled stream type %s", conn.t)
 			}
@@ -226,9 +236,7 @@ func (cw *streamWriter) close() {
 		return
 	}
 	cw.closer.Close()
-	if len(cw.msgc) > 0 {
-		cw.r.ReportUnreachable(uint64(cw.id))
-	}
+	handleDroppedMessageChan(cw.msgc, cw.r, cw.snaphub)
 	cw.msgc = make(chan raftpb.Message, streamBufSize)
 	cw.working = false
 }
@@ -256,6 +264,7 @@ type streamReader struct {
 	local, remote types.ID
 	cid           types.ID
 	status        *peerStatus
+	snaphub       SnapshotHub
 	recvc         chan<- raftpb.Message
 	propc         chan<- raftpb.Message
 	errorc        chan<- error
@@ -268,7 +277,7 @@ type streamReader struct {
 	done       chan struct{}
 }
 
-func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, local, remote, cid types.ID, status *peerStatus, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error, term uint64) *streamReader {
+func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, local, remote, cid types.ID, status *peerStatus, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error, term uint64, snaphub SnapshotHub) *streamReader {
 	r := &streamReader{
 		tr:         tr,
 		picker:     picker,
@@ -281,6 +290,7 @@ func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, lo
 		propc:      propc,
 		errorc:     errorc,
 		msgAppTerm: term,
+		snaphub:    snaphub,
 		stopc:      make(chan struct{}),
 		done:       make(chan struct{}),
 	}
@@ -338,6 +348,8 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 		dec = newMsgAppV2Decoder(rc, cr.local, cr.remote)
 	case streamTypeMessage:
 		dec = &messageDecoder{r: rc}
+	case streamTypeMsgSnap:
+		dec = &msgSnapDecoder{r: rc, snaphub: cr.snaphub}
 	default:
 		plog.Panicf("unhandled stream type %s", t)
 	}
