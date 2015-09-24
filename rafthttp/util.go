@@ -21,9 +21,31 @@ import (
 	"net/http"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
 )
+
+func dropMessage(m raftpb.Message, r Raft) {
+	if m.Type == raftpb.MsgProp {
+		r.RetryMsgProp(m)
+	}
+	r.ReportUnreachable(m.To)
+	if isMsgSnap(m) {
+		r.ReportSnapshot(m.To, raft.SnapshotFailure)
+	}
+}
+
+func dropMessageChan(mc <-chan raftpb.Message, r Raft) {
+	for {
+		select {
+		case m := <-mc:
+			dropMessage(m, r)
+		default:
+			return
+		}
+	}
+}
 
 func writeEntryTo(w io.Writer, ent *raftpb.Entry) error {
 	size := ent.Size()

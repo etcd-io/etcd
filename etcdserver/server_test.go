@@ -779,6 +779,7 @@ func TestRecvSnapshot(t *testing.T) {
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
 	s := &EtcdServer{
+		cfg: &ServerConfig{},
 		r: raftNode{
 			Node:        n,
 			transport:   &nopTransporter{},
@@ -814,6 +815,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	cl.SetStore(store.New())
 	storage := raft.NewMemoryStorage()
 	s := &EtcdServer{
+		cfg: &ServerConfig{},
 		r: raftNode{
 			Node:        n,
 			storage:     &storageRecorder{},
@@ -937,6 +939,7 @@ func TestUpdateMember(t *testing.T) {
 	cl.SetStore(st)
 	cl.AddMember(&Member{ID: 1234})
 	s := &EtcdServer{
+		cfg: &ServerConfig{},
 		r: raftNode{
 			Node:        n,
 			raftStorage: raft.NewMemoryStorage(),
@@ -1311,7 +1314,7 @@ func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
 	return nil
 }
 func (n *nodeRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
-	n.Record(testutil.Action{Name: "ProposeConfChange"})
+	n.Record(testutil.Action{Name: "ProposeConfChange", Params: []interface{}{conf}})
 	return nil
 }
 func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {

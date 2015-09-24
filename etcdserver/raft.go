@@ -33,6 +33,7 @@ import (
 	"github.com/coreos/etcd/wal/walpb"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
 
 const (
@@ -49,6 +50,9 @@ const (
 	// Never overflow the rafthttp buffer, which is 4096.
 	// TODO: a better const?
 	maxInflightMsgs = 4096 / 8
+
+	// the number of ticks in no-leader status before stopping retry proposals
+	stopRetryTickNum = 3
 )
 
 var (
@@ -90,6 +94,8 @@ type raftNode struct {
 	mu sync.Mutex
 	// last lead elected time
 	lt time.Time
+	// MsgProps waiting for retry
+	retryMsgProps []raftpb.Message
 
 	raft.Node
 
@@ -191,6 +197,9 @@ func (r *raftNode) start(s *EtcdServer) {
 			}
 		}
 	}()
+
+	retryTick := time.Tick(time.Duration(r.s.cfg.ElectionTicks) * time.Duration(r.s.cfg.TickMs) * time.Millisecond)
+	go r.retryMsgPropLoop(retryTick)
 }
 
 func (r *raftNode) apply() chan apply {
@@ -201,6 +210,67 @@ func (r *raftNode) leadElectedTime() time.Time {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.lt
+}
+
+func (r *raftNode) retryMsgProp(m raftpb.Message) {
+	if m.Type != raftpb.MsgProp {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.retryMsgProps = append(r.retryMsgProps, m)
+}
+
+// the loop holds the proposals waiting for retry, and proposes them
+// when there is chance for them to be committed. If it finds out local raft
+// is isolated from the majority for a long time, it drops buffered proposals
+// because it cannot commit them anyway.
+func (r *raftNode) retryMsgPropLoop(t <-chan time.Time) {
+	// the number of ticks that fails to retry proposals
+	var failedTicks int
+	for {
+		select {
+		case <-t:
+			lead := atomic.LoadUint64(&r.lead)
+			// retry proposal cannot succeed when there is no leader
+			if lead == raft.None {
+				failedTicks++
+				break
+			}
+			failedTicks = 0
+
+			r.mu.Lock()
+			msgs := r.retryMsgProps
+			r.retryMsgProps = nil
+			r.mu.Unlock()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			// propose to raft again
+			for _, m := range msgs {
+				for _, e := range m.Entries {
+					switch e.Type {
+					case raftpb.EntryNormal:
+						r.Propose(ctx, e.Data)
+					case raftpb.EntryConfChange:
+						var cc raftpb.ConfChange
+						pbutil.MustUnmarshal(&cc, e.Data)
+						r.ProposeConfChange(ctx, cc)
+					default:
+						plog.Panicf("unexpected entry type %v", e.Type)
+					}
+				}
+			}
+			cancel()
+		case <-r.done:
+			return
+		}
+
+		// drain the pending proposals if it always fails to retry
+		if failedTicks >= stopRetryTickNum {
+			r.mu.Lock()
+			r.retryMsgProps = nil
+			r.mu.Unlock()
+		}
+	}
 }
 
 func (r *raftNode) stop() {

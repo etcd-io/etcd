@@ -35,6 +35,7 @@ type Raft interface {
 	IsIDRemoved(id uint64) bool
 	ReportUnreachable(id uint64)
 	ReportSnapshot(id uint64, status raft.SnapshotStatus)
+	RetryMsgProp(m raftpb.Message)
 }
 
 type Transporter interface {

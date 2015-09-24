@@ -152,3 +152,5 @@ func (p *fakeRaft) IsIDRemoved(id uint64) bool { return id == p.removedID }
 func (p *fakeRaft) ReportUnreachable(id uint64) {}
 
 func (p *fakeRaft) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
+
+func (p *fakeRaft) RetryMsgProp(m raftpb.Message) {}

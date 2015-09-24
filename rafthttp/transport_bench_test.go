@@ -94,6 +94,8 @@ func (r *countRaft) ReportUnreachable(id uint64) {}
 
 func (r *countRaft) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
 
+func (r *countRaft) RetryMsgProp(m raftpb.Message) {}
+
 func (r *countRaft) count() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -164,7 +164,7 @@ func (cw *streamWriter) run() {
 					cw.close()
 					heartbeatc, msgc = nil, nil
 					// TODO: report to raft at peer level
-					cw.r.ReportUnreachable(m.To)
+					dropMessage(m, cw.r)
 				}
 				continue
 			}
@@ -226,10 +226,7 @@ func (cw *streamWriter) close() {
 		return
 	}
 	cw.closer.Close()
-	if len(cw.msgc) > 0 {
-		cw.r.ReportUnreachable(uint64(cw.id))
-	}
-	cw.msgc = make(chan raftpb.Message, streamBufSize)
+	dropMessageChan(cw.msgc, cw.r)
 	cw.working = false
 }
 
