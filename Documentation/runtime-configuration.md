@@ -161,3 +161,11 @@ $ etcd
 etcd: this member has been permanently removed from the cluster. Exiting.
 exit 1
 ```
+
+#### Strict Reconfiguration Check Mode (`-strict-reconfig-check`)
+
+As described in the above, the best practice of adding new members is to configure a single member at a time and verify it starts correctly before adding more new members. This step by step approach is very important because if newly added members is not configured correctly (for example the peer URLs are incorrect), the cluster can lose quorum. The quorum loss happens since the newly added member are counted in the quorum even if that member is not reachable from other existing members. Also quorum loss might happen if there is a connectivity issue or there are operational issues.
+
+For avoiding this problem, etcd provides an option `-strict-reconfig-check`. If this option is passed to etcd, etcd rejects reconfiguration requests if the number of started members will be less than a quorum of the reconfigured cluster.
+
+It is recommended to enable this option. However, it is disabled by default because of keeping compatibility.
