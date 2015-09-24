@@ -20,8 +20,6 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/client"
 )
 
 func NewMemberCommand() cli.Command {
@@ -59,9 +57,9 @@ func actionMemberList(c *cli.Context) {
 		os.Exit(1)
 	}
 	mAPI := mustNewMembersAPI(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
 	members, err := mAPI.List(ctx)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -86,9 +84,10 @@ func actionMemberAdd(c *cli.Context) {
 	mAPI := mustNewMembersAPI(c)
 
 	url := args[1]
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
+
 	m, err := mAPI.Add(ctx, url)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -98,9 +97,7 @@ func actionMemberAdd(c *cli.Context) {
 	newName := args[0]
 	fmt.Printf("Added member named %s with ID %s to cluster\n", newName, newID)
 
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	members, err := mAPI.List(ctx)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -132,10 +129,11 @@ func actionMemberRemove(c *cli.Context) {
 	removalID := args[0]
 
 	mAPI := mustNewMembersAPI(c)
+
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
 	// Get the list of members.
-	listctx, listCancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	members, err := mAPI.List(listctx)
-	listCancel()
+	members, err := mAPI.List(ctx)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error while verifying ID against known members:", err.Error())
 		os.Exit(1)
@@ -158,9 +156,7 @@ func actionMemberRemove(c *cli.Context) {
 	}
 
 	// Actually attempt to remove the member.
-	ctx, removeCancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	err = mAPI.Remove(ctx, removalID)
-	removeCancel()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Received an error trying to remove member %s: %s", removalID, err.Error())
 		os.Exit(1)
@@ -180,7 +176,7 @@ func actionMemberUpdate(c *cli.Context) {
 
 	mid := args[0]
 	urls := args[1]
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
 	err := mAPI.Update(ctx, mid, strings.Split(urls, ","))
 	cancel()
 	if err != nil {

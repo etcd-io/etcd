@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/pathutil"
 )
@@ -93,7 +92,7 @@ func actionRoleList(c *cli.Context) {
 		os.Exit(1)
 	}
 	r := mustNewAuthRoleAPI(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
 	roles, err := r.ListRoles(ctx)
 	cancel()
 	if err != nil {
@@ -108,16 +107,15 @@ func actionRoleList(c *cli.Context) {
 
 func actionRoleAdd(c *cli.Context) {
 	api, role := mustRoleAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
 	currentRole, err := api.GetRole(ctx, role)
-	cancel()
 	if currentRole != nil {
 		fmt.Fprintf(os.Stderr, "Role %s already exists\n", role)
 		os.Exit(1)
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+
 	err = api.AddRole(ctx, role)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -128,7 +126,7 @@ func actionRoleAdd(c *cli.Context) {
 
 func actionRoleRemove(c *cli.Context) {
 	api, role := mustRoleAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
 	err := api.RemoveRole(ctx, role)
 	cancel()
 	if err != nil {
@@ -182,21 +180,19 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 	}
 
 	api, role := mustRoleAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
 	currentRole, err := api.GetRole(ctx, role)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	var newRole *client.Role
 	if grant {
 		newRole, err = api.GrantRoleKV(ctx, role, []string{path}, permType)
 	} else {
 		newRole, err = api.RevokeRoleKV(ctx, role, []string{path}, permType)
 	}
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -215,7 +211,7 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 func actionRoleGet(c *cli.Context) {
 	api, rolename := mustRoleAPIAndName(c)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
 	role, err := api.GetRole(ctx, rolename)
 	cancel()
 	if err != nil {
