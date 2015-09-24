@@ -434,6 +434,9 @@ func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	s.r.ReportSnapshot(id, status)
 }
 
+// RetryMsgProp attempts to propose the data in given message again.
+func (s *EtcdServer) RetryMsgProp(m raftpb.Message) { s.r.retryMsgProp(m) }
+
 func (s *EtcdServer) run() {
 	snap, err := s.r.raftStorage.Snapshot()
 	if err != nil {

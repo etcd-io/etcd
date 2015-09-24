@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -156,7 +157,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   &nopTransporter{},
 	}
-	r.start(&EtcdServer{r: r})
+	r.start(&EtcdServer{r: r, cfg: &ServerConfig{}})
 	n.readyc <- raft.Ready{}
 	select {
 	case <-r.applyc:
@@ -170,4 +171,80 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("failed to stop raft loop")
 	}
+}
+
+func TestRetryMsgProp(t *testing.T) {
+	n := &nodeRecorder{}
+	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 10}
+	r := raftNode{
+		lead: 1,
+		retryMsgProps: []raftpb.Message{
+			{
+				Type: raftpb.MsgProp,
+				Entries: []raftpb.Entry{
+					{Type: raftpb.EntryNormal, Data: []byte("data")},
+				},
+			},
+			{
+				Type: raftpb.MsgProp,
+				Entries: []raftpb.Entry{
+					{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(&cc)},
+				},
+			},
+		},
+		Node: n,
+		done: make(chan struct{}),
+	}
+	tick := make(chan time.Time)
+	go r.retryMsgPropLoop(tick)
+	defer close(r.done)
+
+	tick <- time.Time{}
+	testutil.WaitSchedule()
+	w := []testutil.Action{
+		{Name: "Propose", Params: []interface{}{[]byte("data")}},
+		{Name: "ProposeConfChange", Params: []interface{}{cc}},
+	}
+	if g := n.Action(); !reflect.DeepEqual(g, w) {
+		t.Errorf("node action = %+v, want %+v", g, w)
+	}
+	r.mu.Lock()
+	if len(r.retryMsgProps) != 0 {
+		t.Errorf("len(retry proposals) = %d, want 0", len(r.retryMsgProps))
+	}
+	r.mu.Unlock()
+}
+
+func TestRetryMsgPropDrop(t *testing.T) {
+	n := &nodeRecorder{}
+	r := raftNode{
+		retryMsgProps: []raftpb.Message{
+			{Type: raftpb.MsgProp},
+		},
+		Node: n,
+		done: make(chan struct{}),
+	}
+	tick := make(chan time.Time)
+	go r.retryMsgPropLoop(tick)
+	defer close(r.done)
+
+	for i := 0; i < stopRetryTickNum; i++ {
+		r.mu.Lock()
+		if len(r.retryMsgProps) != 1 {
+			t.Errorf("len(retry proposals) = %d, want 1", len(r.retryMsgProps))
+		}
+		r.mu.Unlock()
+
+		tick <- time.Time{}
+		testutil.WaitSchedule()
+	}
+
+	if g := n.Action(); len(g) != 0 {
+		t.Errorf("len(node action) = %d, want 0", len(g))
+	}
+	r.mu.Lock()
+	if len(r.retryMsgProps) != 0 {
+		t.Errorf("len(retry proposals) = %d, want 0", len(r.retryMsgProps))
+	}
+	r.mu.Unlock()
 }

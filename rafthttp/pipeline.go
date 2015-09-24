@@ -104,10 +104,7 @@ func (p *pipeline) handle() {
 			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Fail()
 			}
-			p.r.ReportUnreachable(m.To)
-			if isMsgSnap(m) {
-				p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
-			}
+			dropMessage(m, p.r)
 		} else {
 			p.status.activate()
 			if m.Type == raftpb.MsgApp && p.fs != nil {

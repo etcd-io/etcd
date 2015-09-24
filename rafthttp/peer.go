@@ -21,7 +21,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -162,10 +161,7 @@ func startPeer(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r
 				select {
 				case writec <- m:
 				default:
-					p.r.ReportUnreachable(m.To)
-					if isMsgSnap(m) {
-						p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
-					}
+					dropMessage(m, r)
 					if status.isActive() {
 						plog.Warningf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
 					} else {
