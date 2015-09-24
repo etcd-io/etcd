@@ -238,7 +238,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if cfg.ShouldDiscover() {
 			str, err := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
 			if err != nil {
-				return nil, err
+				return nil, &discoveryError{op: "join", err: err}
 			}
 			urlsmap, err := types.NewURLsMap(str)
 			if err != nil {
