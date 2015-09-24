@@ -160,6 +160,12 @@ func Main() {
 				}
 				os.Exit(1)
 			}
+			if etcdserver.IsDiscoveryError(err) {
+				plog.Errorf("%v", err)
+				plog.Infof("discovery token %s was used, but failed to bootstrap the cluster.", cfg.durl)
+				plog.Infof("please generate a new discovery token and try to bootstrap again.")
+				os.Exit(1)
+			}
 			plog.Fatalf("%v", err)
 		}
 	}
