@@ -23,7 +23,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -89,7 +88,7 @@ func actionUserList(c *cli.Context) {
 		os.Exit(1)
 	}
 	u := mustNewAuthUserAPI(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
 	users, err := u.ListUsers(ctx)
 	cancel()
 	if err != nil {
@@ -104,9 +103,9 @@ func actionUserList(c *cli.Context) {
 
 func actionUserAdd(c *cli.Context) {
 	api, user := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
 	currentUser, err := api.GetUser(ctx, user)
-	cancel()
 	if currentUser != nil {
 		fmt.Fprintf(os.Stderr, "User %s already exists\n", user)
 		os.Exit(1)
@@ -116,9 +115,7 @@ func actionUserAdd(c *cli.Context) {
 		fmt.Fprintln(os.Stderr, "Error reading password:", err)
 		os.Exit(1)
 	}
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	err = api.AddUser(ctx, user, pass)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -129,7 +126,7 @@ func actionUserAdd(c *cli.Context) {
 
 func actionUserRemove(c *cli.Context) {
 	api, user := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
 	err := api.RemoveUser(ctx, user)
 	cancel()
 	if err != nil {
@@ -142,9 +139,9 @@ func actionUserRemove(c *cli.Context) {
 
 func actionUserPasswd(c *cli.Context) {
 	api, user := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
 	currentUser, err := api.GetUser(ctx, user)
-	cancel()
 	if currentUser == nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -155,9 +152,7 @@ func actionUserPasswd(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	_, err = api.ChangePassword(ctx, user, pass)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -181,23 +176,22 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 		os.Exit(1)
 	}
 
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
+
 	api, user := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	currentUser, err := api.GetUser(ctx, user)
-	cancel()
 	if currentUser == nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	var newUser *client.User
 	if grant {
 		newUser, err = api.GrantUser(ctx, user, roles)
 	} else {
 		newUser, err = api.RevokeUser(ctx, user, roles)
 	}
-	cancel()
 	sort.Strings(newUser.Roles)
 	sort.Strings(currentUser.Roles)
 	if reflect.DeepEqual(newUser.Roles, currentUser.Roles) {
@@ -217,7 +211,7 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 
 func actionUserGet(c *cli.Context) {
 	api, username := mustUserAPIAndName(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
 	user, err := api.GetUser(ctx, username)
 	cancel()
 	if err != nil {

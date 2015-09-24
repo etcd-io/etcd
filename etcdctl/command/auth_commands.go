@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -67,7 +66,7 @@ func authEnableDisable(c *cli.Context, enable bool) {
 		os.Exit(1)
 	}
 	s := mustNewAuthAPI(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
 	var err error
 	if enable {
 		err = s.Enable(ctx)

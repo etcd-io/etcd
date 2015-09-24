@@ -40,6 +40,7 @@ func main() {
 		cli.StringFlag{Name: "ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled servers using this CA bundle"},
 		cli.StringFlag{Name: "username, u", Value: "", Usage: "provide username[:password] and prompt if password is not supplied."},
 		cli.DurationFlag{Name: "timeout", Value: time.Second, Usage: "connection timeout per request"},
+		cli.DurationFlag{Name: "total-timeout", Value: 5 * time.Second, Usage: "timeout for the command execution (except watch)"},
 	}
 	app.Commands = []cli.Command{
 		command.NewBackupCommand(),

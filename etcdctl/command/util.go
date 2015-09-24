@@ -263,3 +263,7 @@ func newClient(c *cli.Context) (client.Client, error) {
 
 	return client.New(cfg)
 }
+
+func contextWithTotalTimeout(c *cli.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
+}
