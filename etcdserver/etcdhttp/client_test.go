@@ -1341,6 +1341,9 @@ func TestServeVersion(t *testing.T) {
 	if g := rw.Body.String(); g != string(w) {
 		t.Fatalf("body = %q, want %q", g, string(w))
 	}
+	if ct := rw.HeaderMap.Get("Content-Type"); ct != "application/json" {
+		t.Errorf("contet-type header = %s, want %s", ct, "application/json")
+	}
 }
 
 func TestServeVersionFails(t *testing.T) {

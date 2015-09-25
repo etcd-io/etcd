@@ -381,6 +381,7 @@ func serveVersion(w http.ResponseWriter, r *http.Request, clusterV string) {
 		Cluster: clusterV,
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	b, err := json.Marshal(&vs)
 	if err != nil {
 		plog.Panicf("cannot marshal versions to json (%v)", err)
