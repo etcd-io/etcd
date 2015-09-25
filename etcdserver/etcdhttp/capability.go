@@ -84,14 +84,16 @@ func isCapabilityEnabled(c capability) bool {
 func capabilityHandler(c capability, fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !isCapabilityEnabled(c) {
-			notCapable(w, c)
+			notCapable(w, r, c)
 			return
 		}
 		fn(w, r)
 	}
 }
 
-func notCapable(w http.ResponseWriter, c capability) {
+func notCapable(w http.ResponseWriter, r *http.Request, c capability) {
 	herr := httptypes.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Not capable of accessing %s feature during rolling upgrades.", c))
-	herr.WriteTo(w)
+	if err := herr.WriteTo(w); err != nil {
+		plog.Debugf("error writing HTTPError (%v) to %s", err, r.RemoteAddr)
+	}
 }
