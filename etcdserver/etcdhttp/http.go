@@ -41,7 +41,7 @@ var (
 // writeError logs and writes the given Error to the ResponseWriter
 // If Error is an etcdErr, it is rendered to the ResponseWriter
 // Otherwise, it is assumed to be an InternalServerError
-func writeError(w http.ResponseWriter, err error) {
+func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	if err == nil {
 		return
 	}
@@ -49,10 +49,14 @@ func writeError(w http.ResponseWriter, err error) {
 	case *etcdErr.Error:
 		e.WriteTo(w)
 	case *httptypes.HTTPError:
-		e.WriteTo(w)
+		if et := e.WriteTo(w); et != nil {
+			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
+		}
 	case auth.Error:
 		herr := httptypes.NewHTTPError(e.HTTPStatus(), e.Error())
-		herr.WriteTo(w)
+		if et := herr.WriteTo(w); et != nil {
+			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
+		}
 	default:
 		switch err {
 		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost:
@@ -61,7 +65,9 @@ func writeError(w http.ResponseWriter, err error) {
 			plog.Errorf("got unexpected response error (%v)", err)
 		}
 		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-		herr.WriteTo(w)
+		if et := herr.WriteTo(w); et != nil {
+			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
+		}
 	}
 }
 
