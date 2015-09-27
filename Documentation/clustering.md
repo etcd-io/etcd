@@ -124,7 +124,7 @@ There two methods that can be used for discovery:
 
 ### etcd Discovery
 
-To better understand the design about discovery service protocol, we suggest you read [this](./discovery_protocol.md).
+To better understand the design about discovery service protocol, we suggest you read [this](discovery_protocol.md).
 
 #### Lifetime of a Discovery URL
 
