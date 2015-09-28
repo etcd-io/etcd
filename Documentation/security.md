@@ -36,6 +36,10 @@ The peer options work the same way as the client-to-server options:
 
 If either a client-to-server or peer certificate is supplied the key must also be set. All of these configuration options are also available through the environment variables, `ETCD_CA_FILE`, `ETCD_PEER_CA_FILE` and so on.
 
+## Proxy TLS Settings
+
+When running etcd in proxy mode to a cluster with client TLS enabled, the `peer-` TLS settings are applied to the communication between the proxy and the secured cluster, and the `client-` settings are used to secure connections coming into the proxy. See [Example 4](#example-4-proxy-mode-with-client-certificates).
+
 ## Example 1: Client-to-server transport security with HTTPS
 
 For this you need your CA certificate (`ca.crt`) and signed key pair (`server.crt`, `server.key`) ready.
@@ -144,6 +148,27 @@ $ etcd -name infra2 -data-dir infra2 \
 ```
 
 The etcd members will form a cluster and all communication between members in the cluster will be encrypted and authenticated using the client certificates. You will see in the output of etcd that the addresses it connects to use HTTPS.
+
+## Example 4: Proxy mode with client certificates
+
+Start etcd as above with client tls and certificate auth enabled.
+
+```sh
+$ etcd -name infra0 -data-dir infra0 \
+  -client-cert-auth -trusted-ca-file=/path/to/ca.crt -cert-file=/path/to/server.crt -key-file=/path/to/server.key \
+  -advertise-client-urls https://infra0:2379 -listen-client-urls https://0.0.0.0:2379
+```
+
+Start etcd proxy specifying **both** client and peer certificates - peer for communication from proxy to cluster, and client for incoming connections to the proxy.
+
+Note the `http` protocol on the initial cluster arg - it specifies the peer port on the cluster, which in this example is _not secured_.
+
+```sh
+$ etcd -name proxy0 -proxy on -data-dir proxy0 -initial-cluster "infra0=http://infra0:2380" \
+  -peer-client-cert-auth -trusted-peer-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/proxy.crt -peer-key-file=/path/to/proxy.key \
+  -client-cert-auth -trusted-ca-file=/path/to/ca.crt -cert-file=/path/to/proxy.crt -key-file=/path/to/proxy.key \
+  -advertise-client-urls https://proxy0:2379 -listen-client-urls https://0.0.0.0:2379
+```
 
 ## Frequently Asked Questions
 
