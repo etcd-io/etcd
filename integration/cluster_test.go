@@ -45,7 +45,7 @@ import (
 const (
 	tickDuration   = 10 * time.Millisecond
 	clusterName    = "etcd"
-	requestTimeout = 2 * time.Second
+	requestTimeout = 20 * time.Second
 )
 
 var (

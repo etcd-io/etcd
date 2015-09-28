@@ -1,3 +1,17 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package storage
 
 import (
@@ -82,9 +96,9 @@ func testKVRange(t *testing.T, f rangeFunc) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	wrev := int64(3)
@@ -149,9 +163,9 @@ func testKVRangeRev(t *testing.T, f rangeFunc) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	tests := []struct {
@@ -223,9 +237,9 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	wrev := int64(3)
@@ -276,7 +290,7 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 			t.Fatal(err)
 		}
 		wkvs := []storagepb.KeyValue{
-			{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: base, Version: base},
+			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: base, Version: base},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
@@ -377,7 +391,7 @@ func TestKVOperationInSequence(t *testing.T) {
 			t.Fatal(err)
 		}
 		wkvs := []storagepb.KeyValue{
-			{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: base + 1, ModIndex: base + 1, Version: 1},
+			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
@@ -430,7 +444,7 @@ func TestKVTxnBlockNonTnxOperations(t *testing.T) {
 		s.TxnEnd(id)
 		select {
 		case <-done:
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(100 * time.Millisecond):
 			t.Fatalf("#%d: operation failed to be unblocked", i)
 		}
 	}
@@ -494,7 +508,7 @@ func TestKVTnxOperationInSequence(t *testing.T) {
 			t.Fatal(err)
 		}
 		wkvs := []storagepb.KeyValue{
-			{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: base + 1, ModIndex: base + 1, Version: 1},
+			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
@@ -545,13 +559,13 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		{
 			0,
 			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar0"), CreateIndex: 1, ModIndex: 1, Version: 1},
+				{Key: []byte("foo"), Value: []byte("bar0"), CreateRevision: 1, ModRevision: 1, Version: 1},
 			},
 		},
 		{
 			1,
 			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar1"), CreateIndex: 1, ModIndex: 2, Version: 2},
+				{Key: []byte("foo"), Value: []byte("bar1"), CreateRevision: 1, ModRevision: 2, Version: 2},
 			},
 		},
 		{
@@ -561,7 +575,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		{
 			3,
 			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar2"), CreateIndex: 4, ModIndex: 4, Version: 1},
+				{Key: []byte("foo"), Value: []byte("bar2"), CreateRevision: 4, ModRevision: 4, Version: 1},
 			},
 		},
 	}
@@ -604,6 +618,28 @@ func TestKVCompactBad(t *testing.T) {
 		err := s.Compact(tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: compact error = %v, want %v", i, err, tt.werr)
+		}
+	}
+}
+
+func TestKVHash(t *testing.T) {
+	hashes := make([]uint32, 3)
+
+	for i := 0; i < len(hashes); i++ {
+		var err error
+		kv := New(tmpPath)
+		kv.Put([]byte("foo0"), []byte("bar0"))
+		kv.Put([]byte("foo1"), []byte("bar0"))
+		hashes[i], err = kv.Hash()
+		if err != nil {
+			t.Fatalf("failed to get hash: %v", err)
+		}
+		cleanup(kv, tmpPath)
+	}
+
+	for i := 1; i < len(hashes); i++ {
+		if hashes[i-1] != hashes[i] {
+			t.Errorf("hash[%d](%d) != hash[%d](%d)", i-1, hashes[i-1], i, hashes[i])
 		}
 	}
 }
@@ -661,9 +697,9 @@ func TestKVSnapshot(t *testing.T) {
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
 	wkvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateIndex: 1, ModIndex: 1, Version: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateIndex: 2, ModIndex: 2, Version: 1},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateIndex: 3, ModIndex: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	f, err := os.Create("new_test")
@@ -689,6 +725,109 @@ func TestKVSnapshot(t *testing.T) {
 	if rev != 3 {
 		t.Errorf("rev = %d, want %d", rev, 3)
 	}
+}
+
+func TestWatchableKVWatch(t *testing.T) {
+	s := newWatchableStore(tmpPath)
+	defer cleanup(s, tmpPath)
+
+	wa, cancel := s.Watcher([]byte("foo"), true, 0, 0)
+	defer cancel()
+
+	s.Put([]byte("foo"), []byte("bar"))
+	select {
+	case ev := <-wa.Event():
+		wev := storagepb.Event{
+			Type: storagepb.PUT,
+			Kv: &storagepb.KeyValue{
+				Key:            []byte("foo"),
+				Value:          []byte("bar"),
+				CreateRevision: 1,
+				ModRevision:    1,
+				Version:        1,
+			},
+		}
+		if !reflect.DeepEqual(ev, wev) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+	s.Put([]byte("foo1"), []byte("bar1"))
+	select {
+	case ev := <-wa.Event():
+		wev := storagepb.Event{
+			Type: storagepb.PUT,
+			Kv: &storagepb.KeyValue{
+				Key:            []byte("foo1"),
+				Value:          []byte("bar1"),
+				CreateRevision: 2,
+				ModRevision:    2,
+				Version:        1,
+			},
+		}
+		if !reflect.DeepEqual(ev, wev) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+	wa, cancel = s.Watcher([]byte("foo1"), false, 1, 4)
+	defer cancel()
+
+	select {
+	case ev := <-wa.Event():
+		wev := storagepb.Event{
+			Type: storagepb.PUT,
+			Kv: &storagepb.KeyValue{
+				Key:            []byte("foo1"),
+				Value:          []byte("bar1"),
+				CreateRevision: 2,
+				ModRevision:    2,
+				Version:        1,
+			},
+		}
+		if !reflect.DeepEqual(ev, wev) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+	s.Put([]byte("foo1"), []byte("bar11"))
+	select {
+	case ev := <-wa.Event():
+		wev := storagepb.Event{
+			Type: storagepb.PUT,
+			Kv: &storagepb.KeyValue{
+				Key:            []byte("foo1"),
+				Value:          []byte("bar11"),
+				CreateRevision: 2,
+				ModRevision:    3,
+				Version:        2,
+			},
+		}
+		if !reflect.DeepEqual(ev, wev) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
+	select {
+	case ev := <-wa.Event():
+		if !reflect.DeepEqual(ev, storagepb.Event{}) {
+			t.Errorf("watched event = %+v, want %+v", ev, storagepb.Event{})
+		}
+		if g := wa.Err(); g != ExceedEnd {
+			t.Errorf("err = %+v, want %+v", g, ExceedEnd)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("failed to watch the event")
+	}
+
 }
 
 func cleanup(s KV, path string) {

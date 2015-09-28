@@ -4,7 +4,7 @@
 // Original code is based on code by RogerV in the golang-nuts thread:
 // https://groups.google.com/group/golang-nuts/browse_thread/thread/40cc41e9d9fc9247
 
-// +build darwin freebsd linux netbsd openbsd
+// +build darwin freebsd linux netbsd openbsd solaris
 
 package speakeasy
 
@@ -19,9 +19,8 @@ import (
 const sttyArg0 = "/bin/stty"
 
 var (
-	sttyArgvEOff []string           = []string{"stty", "-echo"}
-	sttyArgvEOn  []string           = []string{"stty", "echo"}
-	ws           syscall.WaitStatus = 0
+	sttyArgvEOff = []string{"stty", "-echo"}
+	sttyArgvEOn  = []string{"stty", "echo"}
 )
 
 // getPassword gets input hidden from the terminal from a user. This is
@@ -47,10 +46,11 @@ func getPassword() (password string, err error) {
 	}
 
 	// Turn on the terminal echo and stop listening for signals.
+	defer signal.Stop(sig)
 	defer close(brk)
 	defer echoOn(fd)
 
-	syscall.Wait4(pid, &ws, 0, nil)
+	syscall.Wait4(pid, nil, 0, nil)
 
 	line, err := readline()
 	if err == nil {
@@ -76,7 +76,7 @@ func echoOn(fd []uintptr) {
 	// Turn on the terminal echo.
 	pid, e := syscall.ForkExec(sttyArg0, sttyArgvEOn, &syscall.ProcAttr{Dir: "", Files: fd})
 	if e == nil {
-		syscall.Wait4(pid, &ws, 0, nil)
+		syscall.Wait4(pid, nil, 0, nil)
 	}
 }
 

@@ -1,3 +1,17 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package storage
 
 import (
@@ -119,6 +133,61 @@ func TestIndexTombstone(t *testing.T) {
 	err = index.Tombstone([]byte("foo"), revision{main: 3})
 	if err != ErrRevisionNotFound {
 		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
+	}
+}
+
+func TestIndexRangeEvents(t *testing.T) {
+	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
+	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}, {main: 4}, {main: 5}, {main: 6}}
+
+	index := newTreeIndex()
+	for i := range allKeys {
+		index.Put(allKeys[i], allRevs[i])
+	}
+
+	atRev := int64(1)
+	tests := []struct {
+		key, end []byte
+		wrevs    []revision
+	}{
+		// single key that not found
+		{
+			[]byte("bar"), nil, nil,
+		},
+		// single key that found
+		{
+			[]byte("foo"), nil, []revision{{main: 1}, {main: 6}},
+		},
+		// range keys, return first member
+		{
+			[]byte("foo"), []byte("foo1"), []revision{{main: 1}, {main: 6}},
+		},
+		// range keys, return first two members
+		{
+			[]byte("foo"), []byte("foo2"), []revision{{main: 1}, {main: 2}, {main: 5}, {main: 6}},
+		},
+		// range keys, return all members
+		{
+			[]byte("foo"), []byte("fop"), allRevs,
+		},
+		// range keys, return last two members
+		{
+			[]byte("foo1"), []byte("fop"), []revision{{main: 2}, {main: 3}, {main: 4}, {main: 5}},
+		},
+		// range keys, return last member
+		{
+			[]byte("foo2"), []byte("fop"), []revision{{main: 3}, {main: 4}},
+		},
+		// range keys, return nothing
+		{
+			[]byte("foo3"), []byte("fop"), nil,
+		},
+	}
+	for i, tt := range tests {
+		revs := index.RangeEvents(tt.key, tt.end, atRev)
+		if !reflect.DeepEqual(revs, tt.wrevs) {
+			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
+		}
 	}
 }
 

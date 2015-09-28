@@ -1,3 +1,17 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package storage
 
 import (
@@ -70,7 +84,8 @@ func (ki *keyIndex) put(main int64, sub int64) {
 		ki.generations = append(ki.generations, generation{})
 	}
 	g := &ki.generations[len(ki.generations)-1]
-	if len(g.revs) == 0 {
+	if len(g.revs) == 0 { // create a new key
+		keysGauge.Inc()
 		g.created = rev
 	}
 	g.revs = append(g.revs, rev)
@@ -86,6 +101,7 @@ func (ki *keyIndex) restore(created, modified revision, ver int64) {
 	ki.modified = modified
 	g := generation{created: created, ver: ver, revs: []revision{modified}}
 	ki.generations = append(ki.generations, g)
+	keysGauge.Inc()
 }
 
 // tombstone puts a revision, pointing to a tombstone, to the keyIndex.
@@ -100,6 +116,7 @@ func (ki *keyIndex) tombstone(main int64, sub int64) error {
 	}
 	ki.put(main, sub)
 	ki.generations = append(ki.generations, generation{})
+	keysGauge.Dec()
 	return nil
 }
 
@@ -127,6 +144,46 @@ func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, err
 	}
 
 	return revision{}, revision{}, 0, ErrRevisionNotFound
+}
+
+// since returns revisions since the give rev. Only the revision with the
+// largest sub revision will be returned if multiple revisions have the same
+// main revision.
+func (ki *keyIndex) since(rev int64) []revision {
+	if ki.isEmpty() {
+		log.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
+	}
+	since := revision{rev, 0}
+	var gi int
+	// find the generations to start checking
+	for gi = len(ki.generations) - 1; gi > 0; gi-- {
+		g := ki.generations[gi]
+		if g.isEmpty() {
+			continue
+		}
+		if since.GreaterThan(g.created) {
+			break
+		}
+	}
+
+	var revs []revision
+	var last int64
+	for ; gi < len(ki.generations); gi++ {
+		for _, r := range ki.generations[gi].revs {
+			if since.GreaterThan(r) {
+				continue
+			}
+			if r.main == last {
+				// replace the revision with a new one that has higher sub value,
+				// because the original one should not be seen by external
+				revs[len(revs)-1] = r
+				continue
+			}
+			revs = append(revs, r)
+			last = r.main
+		}
+	}
+	return revs
 }
 
 // compact compacts a keyIndex by removing the versions with smaller or equal

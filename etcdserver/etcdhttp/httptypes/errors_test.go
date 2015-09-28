@@ -24,7 +24,9 @@ import (
 func TestHTTPErrorWriteTo(t *testing.T) {
 	err := NewHTTPError(http.StatusBadRequest, "what a bad request you made!")
 	rr := httptest.NewRecorder()
-	err.WriteTo(rr)
+	if e := err.WriteTo(rr); e != nil {
+		t.Fatalf("HTTPError.WriteTo error (%v)", e)
+	}
 
 	wcode := http.StatusBadRequest
 	wheader := http.Header(map[string][]string{

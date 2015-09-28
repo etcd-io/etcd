@@ -41,7 +41,7 @@ func putCommandFunc(c *cli.Context) {
 
 	key := []byte(c.Args()[0])
 	value := []byte(c.Args()[1])
-	conn, err := grpc.Dial("127.0.0.1:12379")
+	conn, err := grpc.Dial(c.GlobalString("endpoint"))
 	if err != nil {
 		panic(err)
 	}

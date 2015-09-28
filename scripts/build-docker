@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-tar cv --files-from /dev/null | docker import - scratch
 
-cat <<DF > Dockerfile
+BINARYDIR=${BINARYDIR:-.}
+BUILDDIR=${BUILDDIR:-.}
+
+IMAGEDIR=${BUILDDIR}/image-docker
+
+mkdir -p ${IMAGEDIR}
+cp ${BINARYDIR}/etcd ${BINARYDIR}/etcdctl ${IMAGEDIR}
+
+cat <<DF > ${IMAGEDIR}/Dockerfile
 FROM scratch
 ADD etcd /
 ADD etcdctl /
@@ -9,4 +16,4 @@ EXPOSE 4001 7001 2379 2380
 ENTRYPOINT ["/etcd"]
 DF
 
-docker build -t quay.io/coreos/etcd:${1} .
+docker build -t quay.io/coreos/etcd:${1} ${IMAGEDIR}

@@ -8,14 +8,17 @@ When first started, etcd stores its configuration into a data directory specifie
 Configuration is stored in the write ahead log and includes: the local member ID, cluster ID, and initial cluster configuration.
 The write ahead log and snapshot files are used during member operation and to recover after a restart.
 
-If a member’s data directory is ever lost or corrupted then the user should remove the etcd member from the cluster via the [members API][members-api].
+Having a dedicated disk to store wal files can improve the throughput and stabilize the cluster. 
+It is highly recommended to dedicate a wal disk and set `--wal-dir` to point to a directory on that device for a production cluster deployment.
+
+If a member’s data directory is ever lost or corrupted then the user should [remove][remove-a-member] the etcd member from the cluster using `etcdctl` tool.
 
 A user should avoid restarting an etcd member with a data directory from an out-of-date backup.
 Using an out-of-date data directory can lead to inconsistency as the member had agreed to store information via raft then re-joins saying it needs that information again.
 For maximum safety, if an etcd member suffers any sort of data corruption or loss, it must be removed from the cluster.
 Once removed the member can be re-added with an empty data directory.
 
-[members-api]: other_apis.md#members-api
+[remove-a-member]: runtime-configuration.md#remove-a-member
 
 #### Contents
 
@@ -23,6 +26,8 @@ The data directory has two sub-directories in it:
 
 1. wal: write ahead log files are stored here. For details see the [wal package documentation][wal-pkg]
 2. snap: log snapshots are stored here. For details see the [snap package documentation][snap-pkg]
+
+If `--wal-dir` flag is set, etcd will write the write ahead log files to the specified directory instead of data directory.
 
 [wal-pkg]: http://godoc.org/github.com/coreos/etcd/wal
 [snap-pkg]: http://godoc.org/github.com/coreos/etcd/snap
@@ -33,6 +38,74 @@ The data directory has two sub-directories in it:
 
 If you are spinning up multiple clusters for testing it is recommended that you specify a unique initial-cluster-token for the different clusters.
 This can protect you from cluster corruption in case of mis-configuration because two members started with different cluster tokens will refuse members from each other.
+
+#### Monitoring
+
+It is important to monitor your production etcd cluster for healthy information and runtime metrics.
+
+##### Health Monitoring
+
+At lowest level, etcd exposes health information via HTTP at `/health` in JSON format. If it returns `{"health": "true"}`, then the cluster is healthy. Please note the `/health` endpoint is still an experimental one as in etcd 2.2.
+
+```
+$ curl -L http://127.0.0.1:2379/health
+
+{"health": "true"}
+```
+
+You can also use etcdctl to check the cluster-wide health information. It will contact all the members of the cluster and collect the health information for you.
+
+```
+$./etcdctl cluster-health 
+member 8211f1d0f64f3269 is healthy: got healthy result from http://127.0.0.1:12379
+member 91bc3c398fb3c146 is healthy: got healthy result from http://127.0.0.1:22379
+member fd422379fda50e48 is healthy: got healthy result from http://127.0.0.1:32379
+cluster is healthy
+```
+
+##### Runtime Metrics
+
+etcd uses [Prometheus](http://prometheus.io/) for metrics reporting in the server. You can read more through the runtime metrics [doc](metrics.md).
+
+#### Debugging
+
+Debugging a distributed system can be difficult. etcd provides several ways to make debug
+easier.
+
+##### Enabling Debug Logging
+
+When you want to debug etcd without stopping it, you can enable debug logging at runtime.
+etcd exposes logging configuration at `/config/local/log`.
+
+```
+$ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"DEBUG"}'
+$ # debug logging enabled
+$
+$ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"INFO"}'
+$ # debug logging disabled
+```
+
+##### Debugging Variables
+
+Debug variables are exposed for real-time debugging purposes. Developers who are familiar with etcd can utilize these variables to debug unexpected behavior. etcd exposes debug variables via HTTP at `/debug/vars` in JSON format. The debug variables contains
+`cmdline`, `file_descriptor_limit`, `memstats` and `raft.status`.
+
+`cmdline` is the command line arguments passed into etcd.
+
+`file_descriptor_limit` is the max number of file descriptors etcd can utilize.
+
+`memstats` is well explained [here](http://golang.org/pkg/runtime/#MemStats).
+
+`raft.status` is useful when you want to debug low level raft issues if you are familiar with raft internals. In most cases, you do not need to check `raft.status`.
+
+```json
+{
+"cmdline": ["./etcd"],
+"file_descriptor_limit": 0,
+"memstats": {"Alloc":4105744,"TotalAlloc":42337320,"Sys":12560632,"...":"..."},
+"raft.status": {"id":"ce2a822cea30bfca","term":5,"vote":"ce2a822cea30bfca","commit":23509,"lead":"ce2a822cea30bfca","raftState":"StateLeader","progress":{"ce2a822cea30bfca":{"match":23509,"next":23510,"state":"ProgressStateProbe"}}}
+}
+```
 
 #### Optimal Cluster Size
 
@@ -57,7 +130,7 @@ As you can see, adding another member to bring the size of cluster up to an odd 
 
 #### Changing Cluster Size
 
-After your cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md), which allows the cluster to be modified without downtime. The `etcdctl` tool has a `member list`, `member add` and `member remove` commands to complete this process.
+After your cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md#cluster-reconfiguration-operations), which allows the cluster to be modified without downtime. The `etcdctl` tool has a `member list`, `member add` and `member remove` commands to complete this process.
 
 ### Member Migration
 
@@ -67,7 +140,7 @@ The data directory contains all the data to recover a member to its point-in-tim
 
 * Stop the member process
 * Copy the data directory of the now-idle member to the new machine
-* Update the peer URLs for that member to reflect the new machine according to the [member api] [change peer url]
+* Update the peer URLs for that member to reflect the new machine according to the [runtime configuration] [change peer url]
 * Start etcd on the new machine, using the same configuration and the copy of the data directory
 
 This example will walk you through the process of migrating the infra1 member to a new machine:
@@ -78,11 +151,11 @@ This example will walk you through the process of migrating the infra1 member to
 |infra1|10.0.1.11:2380|
 |infra2|10.0.1.12:2380|
 
-```
-$ export ETCDCTL_PEERS=http://10.0.1.10:2379,http://10.0.1.11:2379,http://10.0.1.12:2379
+```sh
+$ export ETCDCTL_ENDPOINT=http://10.0.1.10:2379,http://10.0.1.11:2379,http://10.0.1.12:2379
 ```
 
-```
+```sh
 $ etcdctl member list
 84194f7c5edd8b37: name=infra0 peerURLs=http://10.0.1.10:2380 clientURLs=http://127.0.0.1:2379,http://10.0.1.10:2379
 b4db3bf5e495e255: name=infra1 peerURLs=http://10.0.1.11:2380 clientURLs=http://127.0.0.1:2379,http://10.0.1.11:2379
@@ -91,11 +164,11 @@ bc1083c870280d44: name=infra2 peerURLs=http://10.0.1.12:2380 clientURLs=http://1
 
 #### Stop the member etcd process
 
-```
+```sh
 $ ssh 10.0.1.11
 ```
 
-```
+```sh
 $ kill `pgrep etcd`
 ```
 
@@ -105,24 +178,30 @@ $ kill `pgrep etcd`
 $ tar -cvzf infra1.etcd.tar.gz %data_dir%
 ```
 
-```
+```sh
 $ scp infra1.etcd.tar.gz 10.0.1.13:~/
 ```
 
 #### Update the peer URLs for that member to reflect the new machine
 
-```
+```sh
 $ curl http://10.0.1.10:2379/v2/members/b4db3bf5e495e255 -XPUT \
 -H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.1.13:2380"]}'
 ```
 
+Or use `etcdctl member update` command
+
+```sh
+$ etcdctl member update b4db3bf5e495e255 http://10.0.1.13:2380
+```
+
 #### Start etcd on the new machine, using the same configuration and the copy of the data directory
 
-```
+```sh
 $ ssh 10.0.1.13
 ```
 
-```
+```sh
 $ tar -xzvf infra1.etcd.tar.gz -C %data_dir%
 ```
 
@@ -133,7 +212,7 @@ etcd -name infra1 \
 -advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
 ```
 
-[change peer url]: other_apis.md#change-the-peer-urls-of-a-member
+[change peer url]: runtime-configuration.md#update-a-member
 
 ### Disaster Recovery
 
@@ -181,9 +260,9 @@ Once you have verified that etcd has started successfully, shut it down and move
 
 #### Restoring the cluster
 
-Now that the node is running successfully, you should [change its advertised peer URLs](other_apis.md#change-the-peer-urls-of-a-member), as the `--force-new-cluster` has set the peer URL to the default (listening on localhost).
+Now that if the node is running successfully, you should [change its advertised peer URLs](runtime-configuration.md#update-a-member), as the `--force-new-cluster` has set the peer URL to the default (listening on localhost).
 
-You can then add more nodes to the cluster and restore resiliency. See the [runtime configuration](runtime-configuration.md) guide for more details.
+You can then add more nodes to the cluster and restore resiliency. See the [add a new member](runtime-configuration.md#add-a-new-member) guide for more details. **NB:** If you are trying to restore your cluster using old failed etcd nodes, please make sure you have stopped old etcd instances and removed their old data directories specified by the data-dir configuration parameter.
 
 ### Client Request Timeout
 
@@ -214,6 +293,6 @@ If timeout happens several times continuously, administrators should check statu
 
 #### Maximum OS threads
 
-By default, etcd uses the default configuration of the Go 1.4 runtime, which means that at most one operating system thread will be used to execute code simultaneously. (Note that this default behavior [may change in Go 1.5](https://docs.google.com/document/d/1At2Ls5_fhJQ59kDK2DFVhFu3g5mATSXqqV5QrxinasI/edit)).
+By default, etcd uses the default configuration of the Go 1.4 runtime, which means that at most one operating system thread will be used to execute code simultaneously. (Note that this default behavior [has changed in Go 1.5](https://golang.org/doc/go1.5#runtime)).
 
 When using etcd in heavy-load scenarios on machines with multiple cores it will usually be desirable to increase the number of threads that etcd can utilize. To do this, simply set the environment variable `GOMAXPROCS` to the desired number when starting etcd. For more information on this variable, see the Go [runtime](https://golang.org/pkg/runtime) documentation.

@@ -1,3 +1,17 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package backend
 
 import (
@@ -26,6 +40,12 @@ type batchTx struct {
 	pending int
 }
 
+func newBatchTx(backend *backend) *batchTx {
+	tx := &batchTx{backend: backend}
+	tx.Commit()
+	return tx
+}
+
 func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	_, err := t.tx.CreateBucket(name)
 	if err != nil && err != bolt.ErrBucketExists {
@@ -43,7 +63,7 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 		log.Fatalf("storage: cannot put key into bucket (%v)", err)
 	}
 	t.pending++
-	if t.pending > t.backend.batchLimit {
+	if t.pending >= t.backend.batchLimit {
 		t.commit(false)
 		t.pending = 0
 	}
@@ -68,6 +88,9 @@ func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64
 	for ck, cv := c.Seek(key); ck != nil && bytes.Compare(ck, endKey) < 0; ck, cv = c.Next() {
 		vs = append(vs, cv)
 		keys = append(keys, ck)
+		if limit > 0 && limit == int64(len(keys)) {
+			break
+		}
 	}
 
 	return keys, vs
@@ -84,7 +107,7 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 		log.Fatalf("storage: cannot delete key from bucket (%v)", err)
 	}
 	t.pending++
-	if t.pending > t.backend.batchLimit {
+	if t.pending >= t.backend.batchLimit {
 		t.commit(false)
 		t.pending = 0
 	}

@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"errors"
 	"expvar"
 	"fmt"
 	"math/rand"
@@ -61,6 +62,8 @@ const (
 
 	purgeFileInterval      = 30 * time.Second
 	monitorVersionInterval = 5 * time.Second
+
+	databaseFilename = "db"
 )
 
 var (
@@ -116,7 +119,7 @@ type Server interface {
 	// ErrIDNotFound if member ID is not in the cluster.
 	RemoveMember(ctx context.Context, id uint64) error
 
-	// UpdateMember attempts to update a existing member in the cluster. It will
+	// UpdateMember attempts to update an existing member in the cluster. It will
 	// return ErrIDNotFound if the member ID does not exist.
 	UpdateMember(ctx context.Context, updateMemb Member) error
 
@@ -180,12 +183,21 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var id types.ID
 	var cl *cluster
 
+	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.StorageDir(), databaseFilename)) {
+		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
+	}
+
 	// Run the migrations.
 	dataVer, err := version.DetectDataDir(cfg.DataDir)
 	if err != nil {
 		return nil, err
 	}
 	if err := upgradeDataDir(cfg.DataDir, cfg.Name, dataVer); err != nil {
+		return nil, err
+	}
+
+	err = os.MkdirAll(cfg.MemberDir(), privateDirMode)
+	if err != nil && err != os.ErrExist {
 		return nil, err
 	}
 
@@ -231,7 +243,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
-			str, err := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
+			var str string
+			var err error
+			str, err = discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
 			if err != nil {
 				return nil, err
 			}
@@ -258,10 +272,16 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, fmt.Errorf("cannot write to member directory: %v", err)
 		}
 
+		if err := fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
+			return nil, fmt.Errorf("cannot write to WAL directory: %v", err)
+		}
+
 		if cfg.ShouldDiscover() {
 			plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
-		snapshot, err := ss.Load()
+		var snapshot *raftpb.Snapshot
+		var err error
+		snapshot, err = ss.Load()
 		if err != nil && err != snap.ErrNoSnapshot {
 			return nil, err
 		}
@@ -315,10 +335,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	if cfg.V3demo {
-		srv.kv = dstorage.New(path.Join(cfg.DataDir, "member", "v3demo"))
-	} else {
-		// we do not care about the error of the removal
-		os.RemoveAll(path.Join(cfg.DataDir, "member", "v3demo"))
+		err = os.MkdirAll(cfg.StorageDir(), privateDirMode)
+		if err != nil && err != os.ErrExist {
+			return nil, err
+		}
+		srv.kv = dstorage.New(path.Join(cfg.StorageDir(), databaseFilename))
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -594,6 +615,12 @@ func (s *EtcdServer) LeaderStats() []byte {
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
+	if s.cfg.StrictReconfigCheck && !s.cluster.isReadyToAddNewMember() {
+		// If s.cfg.StrictReconfigCheck is false, it means the option -strict-reconfig-check isn't passed to etcd.
+		// In such a case adding a new member is allowed unconditionally
+		return ErrNotEnoughStartedMembers
+	}
+
 	// TODO: move Member to protobuf type
 	b, err := json.Marshal(memb)
 	if err != nil {
@@ -608,6 +635,12 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
+	if s.cfg.StrictReconfigCheck && !s.cluster.isReadyToRemoveMember(id) {
+		// If s.cfg.StrictReconfigCheck is false, it means the option -strict-reconfig-check isn't passed to etcd.
+		// In such a case removing a member is allowed unconditionally
+		return ErrNotEnoughStartedMembers
+	}
+
 	cc := raftpb.ConfChange{
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: id,
@@ -761,6 +794,8 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 				case raftReq.V2 != nil:
 					req := raftReq.V2
 					s.w.Trigger(req.ID, s.applyRequest(*req))
+				default:
+					s.w.Trigger(raftReq.ID, s.applyV3Request(&raftReq))
 				}
 			}
 		case raftpb.EntryConfChange:

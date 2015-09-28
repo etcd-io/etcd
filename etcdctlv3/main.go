@@ -27,11 +27,15 @@ func main() {
 	app.Name = "etcdctlv3"
 	app.Version = version.Version
 	app.Usage = "A simple command line client for etcd3."
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "endpoint", Value: "127.0.0.1:2378", Usage: "gRPC endpoint"},
+	}
 	app.Commands = []cli.Command{
 		command.NewRangeCommand(),
 		command.NewPutCommand(),
 		command.NewDeleteRangeCommand(),
 		command.NewTxnCommand(),
+		command.NewCompactionCommand(),
 	}
 
 	app.Run(os.Args)

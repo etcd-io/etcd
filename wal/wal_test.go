@@ -420,7 +420,7 @@ func TestOpenForRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// make 10 seperate files
+	// make 10 separate files
 	for i := 0; i < 10; i++ {
 		es := []raftpb.Entry{{Index: uint64(i)}}
 		if err = w.Save(raftpb.HardState{}, es); err != nil {
@@ -434,7 +434,7 @@ func TestOpenForRead(t *testing.T) {
 	unlockIndex := uint64(5)
 	w.ReleaseLockTo(unlockIndex)
 
-	// All are avaliable for read
+	// All are available for read
 	w2, err := OpenForRead(p, walpb.Snapshot{})
 	defer w2.Close()
 	if err != nil {
@@ -475,7 +475,7 @@ func TestReleaseLockTo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// make 10 seperate files
+	// make 10 separate files
 	for i := 0; i < 10; i++ {
 		es := []raftpb.Entry{{Index: uint64(i)}}
 		if err = w.Save(raftpb.HardState{}, es); err != nil {

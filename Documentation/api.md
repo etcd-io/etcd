@@ -359,7 +359,7 @@ curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=2008'
 #### Connection being closed prematurely
 
 The server may close a long polling connection before emitting any events.
-This can happend due to a timeout or the server being shutdown.
+This can happen due to a timeout or the server being shutdown.
 Since the HTTP header is sent immediately upon accepting the connection, the response will be seen as empty: `200 OK` and empty body.
 The clients should be prepared to deal with this scenario and retry the watch.
 
@@ -472,7 +472,7 @@ curl http://127.0.0.1:2379/v2/keys/dir -XPUT -d ttl=30 -d dir=true -d prevExist=
 Keys that are under this directory work as usual, but when the directory expires, a watcher on a key under the directory will get an expire event:
 
 ```sh
-curl 'http://127.0.0.1:2379/v2/keys/dir/asdf?wait=true'
+curl 'http://127.0.0.1:2379/v2/keys/dir?wait=true'
 ```
 
 ```json

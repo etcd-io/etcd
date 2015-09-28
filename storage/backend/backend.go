@@ -1,6 +1,22 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package backend
 
 import (
+	"fmt"
+	"hash/crc32"
 	"io"
 	"log"
 	"time"
@@ -11,6 +27,7 @@ import (
 type Backend interface {
 	BatchTx() BatchTx
 	Snapshot(w io.Writer) (n int64, err error)
+	Hash() (uint32, error)
 	ForceCommit()
 	Close() error
 }
@@ -22,12 +39,15 @@ type backend struct {
 	batchLimit    int
 	batchTx       *batchTx
 
-	stopc  chan struct{}
-	startc chan struct{}
-	donec  chan struct{}
+	stopc chan struct{}
+	donec chan struct{}
 }
 
 func New(path string, d time.Duration, limit int) Backend {
+	return newBackend(path, d, limit)
+}
+
+func newBackend(path string, d time.Duration, limit int) *backend {
 	db, err := bolt.Open(path, 0600, nil)
 	if err != nil {
 		log.Panicf("backend: cannot open database at %s (%v)", path, err)
@@ -38,15 +58,12 @@ func New(path string, d time.Duration, limit int) Backend {
 
 		batchInterval: d,
 		batchLimit:    limit,
-		batchTx:       &batchTx{},
 
-		stopc:  make(chan struct{}),
-		startc: make(chan struct{}),
-		donec:  make(chan struct{}),
+		stopc: make(chan struct{}),
+		donec: make(chan struct{}),
 	}
-	b.batchTx.backend = b
+	b.batchTx = newBatchTx(b)
 	go b.run()
-	<-b.startc
 	return b
 }
 
@@ -70,11 +87,35 @@ func (b *backend) Snapshot(w io.Writer) (n int64, err error) {
 	return n, err
 }
 
+func (b *backend) Hash() (uint32, error) {
+	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+
+	err := b.db.View(func(tx *bolt.Tx) error {
+		c := tx.Cursor()
+		for next, _ := c.First(); next != nil; next, _ = c.Next() {
+			b := tx.Bucket(next)
+			if b == nil {
+				return fmt.Errorf("cannot get hash of bucket %s", string(next))
+			}
+			h.Write(next)
+			b.ForEach(func(k, v []byte) error {
+				h.Write(k)
+				h.Write(v)
+				return nil
+			})
+		}
+		return nil
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	return h.Sum32(), nil
+}
+
 func (b *backend) run() {
 	defer close(b.donec)
-
-	b.batchTx.Commit()
-	b.startc <- struct{}{}
 
 	for {
 		select {

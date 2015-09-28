@@ -14,6 +14,8 @@
 
 package client
 
+//go:generate codecgen -r "Node|Response|Nodes" -o keys.generated.go keys.go
+
 import (
 	"encoding/json"
 	"errors"
@@ -24,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/ugorji/go/codec"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/pkg/pathutil"
 )
@@ -276,7 +279,7 @@ type Node struct {
 	// Nodes holds the children of this Node, only if this Node is a directory.
 	// This slice of will be arbitrarily deep (children, grandchildren, great-
 	// grandchildren, etc.) if a recursive Get or Watch request were made.
-	Nodes []*Node `json:"nodes"`
+	Nodes Nodes `json:"nodes"`
 
 	// CreatedIndex is the etcd index at-which this Node was created.
 	CreatedIndex uint64 `json:"createdIndex"`
@@ -299,6 +302,13 @@ func (n *Node) String() string {
 func (n *Node) TTLDuration() time.Duration {
 	return time.Duration(n.TTL) * time.Second
 }
+
+type Nodes []*Node
+
+// interfaces for sorting
+func (ns Nodes) Len() int           { return len(ns) }
+func (ns Nodes) Less(i, j int) bool { return ns[i].Key < ns[j].Key }
+func (ns Nodes) Swap(i, j int)      { ns[i], ns[j] = ns[j], ns[i] }
 
 type httpKeysAPI struct {
 	client httpClient
@@ -619,7 +629,7 @@ func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Resp
 
 func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response, error) {
 	var res Response
-	err := json.Unmarshal(body, &res)
+	err := codec.NewDecoderBytes(body, new(codec.JsonHandle)).Decode(&res)
 	if err != nil {
 		return nil, ErrInvalidJSON
 	}

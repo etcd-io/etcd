@@ -40,7 +40,8 @@ const (
 	clusterStateFlagNew      = "new"
 	clusterStateFlagExisting = "existing"
 
-	defaultName = "default"
+	defaultName                     = "default"
+	defaultInitialAdvertisePeerURLs = "http://localhost:2380,http://localhost:7001"
 
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
@@ -75,6 +76,7 @@ type config struct {
 	// member
 	corsInfo       *cors.CORSInfo
 	dir            string
+	walDir         string
 	lpurls, lcurls []url.URL
 	maxSnapFiles   uint
 	maxWalFiles    uint
@@ -94,6 +96,7 @@ type config struct {
 	fallback            *flags.StringsFlag
 	initialCluster      string
 	initialClusterToken string
+	strictReconfigCheck bool
 
 	// proxy
 	proxy                  *flags.StringsFlag
@@ -115,7 +118,8 @@ type config struct {
 
 	printVersion bool
 
-	v3demo bool
+	v3demo   bool
+	gRPCAddr string
 
 	ignored []string
 }
@@ -148,6 +152,7 @@ func NewConfig() *config {
 	// member
 	fs.Var(cfg.corsInfo, "cors", "Comma-separated white list of origins for CORS (cross-origin resource sharing).")
 	fs.StringVar(&cfg.dir, "data-dir", "", "Path to the data directory")
+	fs.StringVar(&cfg.walDir, "wal-dir", "", "Path to the dedicated wal directory")
 	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "listen-peer-urls", "List of URLs to listen on for peer traffic")
 	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "listen-client-urls", "List of URLs to listen on for client traffic")
 	fs.UintVar(&cfg.maxSnapFiles, "max-snapshots", defaultMaxSnapshots, "Maximum number of snapshot files to retain (0 is unlimited)")
@@ -158,7 +163,7 @@ func NewConfig() *config {
 	fs.UintVar(&cfg.ElectionMs, "election-timeout", 1000, "Time (in milliseconds) for an election to timeout.")
 
 	// clustering
-	fs.Var(flags.NewURLsValue("http://localhost:2380,http://localhost:7001"), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
+	fs.Var(flags.NewURLsValue(defaultInitialAdvertisePeerURLs), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster")
 	fs.Var(flags.NewURLsValue("http://localhost:2379,http://localhost:4001"), "advertise-client-urls", "List of this member's client URLs to advertise to the rest of the cluster")
 	fs.StringVar(&cfg.durl, "discovery", "", "Discovery service used to bootstrap the initial cluster")
 	fs.Var(cfg.fallback, "discovery-fallback", fmt.Sprintf("Valid values include %s", strings.Join(cfg.fallback.Values, ", ")))
@@ -175,6 +180,7 @@ func NewConfig() *config {
 		// Should never happen.
 		plog.Panicf("unexpected error setting up clusterStateFlag: %v", err)
 	}
+	fs.BoolVar(&cfg.strictReconfigCheck, "strict-reconfig-check", false, "Reject reconfiguration that might cause quorum loss")
 
 	// proxy
 	fs.Var(cfg.proxy, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(cfg.proxy.Values, ", ")))
@@ -212,6 +218,7 @@ func NewConfig() *config {
 
 	// demo flag
 	fs.BoolVar(&cfg.v3demo, "experimental-v3demo", false, "Enable experimental v3 demo API")
+	fs.StringVar(&cfg.gRPCAddr, "experimental-gRPC-addr", "127.0.0.1:2378", "gRPC address for experimental v3 demo API")
 
 	// backwards-compatibility with v0.4.6
 	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use -advertise-client-urls instead.")

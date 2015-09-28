@@ -18,20 +18,30 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cheggaaa/pb"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/rakyll/pb"
+)
+
+var (
+	bar     *pb.ProgressBar
+	results chan *result
+	wg      sync.WaitGroup
 )
 
 func main() {
-	var c, n int
-	var url string
+	var (
+		c, n int
+		url  string
+		size int
+	)
+
 	flag.IntVar(&c, "c", 50, "number of connections")
 	flag.IntVar(&n, "n", 200, "number of requests")
+	flag.IntVar(&size, "s", 128, "size of put request")
 	// TODO: config the number of concurrency in each connection
 	flag.StringVar(&url, "u", "127.0.0.1:12379", "etcd server endpoint")
 	flag.Parse()
@@ -40,63 +50,44 @@ func main() {
 		os.Exit(1)
 	}
 
-	if act := flag.Args()[0]; act != "get" {
-		fmt.Errorf("unsupported action %v", act)
+	var act string
+	if act = flag.Args()[0]; act != "get" && act != "put" {
+		fmt.Printf("unsupported action %v\n", act)
 		os.Exit(1)
 	}
-	var rangeEnd []byte
-	key := []byte(flag.Args()[1])
-	if len(flag.Args()) > 2 {
-		rangeEnd = []byte(flag.Args()[2])
+
+	conn, err := grpc.Dial(url)
+	if err != nil {
+		fmt.Errorf("dial error: %v", err)
+		os.Exit(1)
 	}
 
-	results := make(chan *result, n)
-	bar := pb.New(n)
+	results = make(chan *result, n)
+	bar = pb.New(n)
 	bar.Format("Bom !")
 	bar.Start()
+
 	start := time.Now()
-	defer func() {
-		bar.Finish()
-		printReport(n, results, time.Now().Sub(start))
-	}()
 
-	var wg sync.WaitGroup
-	wg.Add(c)
-	jobs := make(chan struct{}, n)
-	for i := 0; i < c; i++ {
-		go func() {
-			defer wg.Done()
-
-			conn, err := grpc.Dial(url)
-			if err != nil {
-				fmt.Errorf("dial error: %v", err)
-				os.Exit(1)
-			}
-			etcd := etcdserverpb.NewEtcdClient(conn)
-			req := &etcdserverpb.RangeRequest{Key: key, RangeEnd: rangeEnd}
-
-			for _ = range jobs {
-				st := time.Now()
-				resp, err := etcd.Range(context.Background(), req)
-
-				var errStr string
-				if err != nil {
-					errStr = err.Error()
-				} else {
-					errStr = resp.Header.Error
-				}
-				results <- &result{
-					errStr:   errStr,
-					duration: time.Now().Sub(st),
-				}
-				bar.Increment()
-			}
-		}()
+	if act == "get" {
+		var rangeEnd []byte
+		key := []byte(flag.Args()[1])
+		if len(flag.Args()) > 2 {
+			rangeEnd = []byte(flag.Args()[2])
+		}
+		benchGet(conn, key, rangeEnd, n, c)
+	} else if act == "put" {
+		key := []byte(flag.Args()[1])
+		// number of different keys to put into etcd
+		kc, err := strconv.ParseInt(flag.Args()[2], 10, 32)
+		if err != nil {
+			panic(err)
+		}
+		benchPut(conn, key, int(kc), n, c, size)
 	}
-	for i := 0; i < n; i++ {
-		jobs <- struct{}{}
-	}
-	close(jobs)
 
 	wg.Wait()
+
+	bar.Finish()
+	printReport(n, results, time.Now().Sub(start))
 }

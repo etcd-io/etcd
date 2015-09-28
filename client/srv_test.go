@@ -84,7 +84,7 @@ func TestSRVDiscover(t *testing.T) {
 			if service == "etcd-server" {
 				return "", tt.withoutSSL, nil
 			}
-			return "", nil, errors.New("Unkown service in mock")
+			return "", nil, errors.New("Unknown service in mock")
 		}
 
 		d := NewSRVDiscover()

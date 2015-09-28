@@ -227,6 +227,54 @@ func TestProposeUnknownGroup(t *testing.T) {
 	}
 }
 
+// TestProposeAfterRemoveLeader ensures that we gracefully handle
+// proposals that are attempted after a leader has been removed from
+// the active configuration, but before that leader has called
+// MultiNode.RemoveGroup.
+func TestProposeAfterRemoveLeader(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	mn := newMultiNode(1)
+	go mn.run()
+	defer mn.Stop()
+
+	storage := NewMemoryStorage()
+	if err := mn.CreateGroup(1, newTestConfig(1, nil, 10, 1, storage),
+		[]Peer{{ID: 1}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := mn.Campaign(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mn.ProposeConfChange(ctx, 1, raftpb.ConfChange{
+		Type:   raftpb.ConfChangeRemoveNode,
+		NodeID: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	gs := <-mn.Ready()
+	g := gs[1]
+	if err := storage.Append(g.Entries); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range g.CommittedEntries {
+		if e.Type == raftpb.EntryConfChange {
+			var cc raftpb.ConfChange
+			if err := cc.Unmarshal(e.Data); err != nil {
+				t.Fatal(err)
+			}
+			mn.ApplyConfChange(1, cc)
+		}
+	}
+	mn.Advance(gs)
+
+	if err := mn.Propose(ctx, 1, []byte("somedata")); err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+}
+
 // TestNodeTick from node_test.go has no equivalent in multiNode because
 // it reaches into the raft object which is not exposed.
 
@@ -427,4 +475,99 @@ func TestMultiNodeStatus(t *testing.T) {
 	if status != nil {
 		t.Errorf("expected nil status, got %+v", status)
 	}
+}
+
+// TestMultiNodePerGroupID tests that MultiNode may have a different
+// node ID for each group, if and only if the Config.ID field is
+// filled in when calling CreateGroup.
+func TestMultiNodePerGroupID(t *testing.T) {
+	storage := NewMemoryStorage()
+	mn := StartMultiNode(0)
+
+	// Maps group ID to node ID.
+	groups := map[uint64]uint64{
+		1: 10,
+		2: 20,
+	}
+
+	// Create two groups.
+	for g, nodeID := range groups {
+		err := mn.CreateGroup(g, newTestConfig(nodeID, nil, 10, 1, storage),
+			[]Peer{{ID: nodeID}, {ID: nodeID + 1}, {ID: nodeID + 2}})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Campaign on both groups.
+	for g := range groups {
+		err := mn.Campaign(context.Background(), g)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// All outgoing messages (two MsgVotes for each group) should have
+	// the correct From IDs.
+	var rd map[uint64]Ready
+	select {
+	case rd = <-mn.Ready():
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timed out waiting for ready")
+	}
+	for g, nodeID := range groups {
+		if len(rd[g].Messages) != 2 {
+			t.Errorf("expected 2 messages in group %d; got %d", g, len(rd[g].Messages))
+		}
+
+		for _, m := range rd[g].Messages {
+			if m.From != nodeID {
+				t.Errorf("expected %s message in group %d to have From: %d; got %d",
+					m.Type, g, nodeID, m.From)
+			}
+		}
+	}
+	mn.Advance(rd)
+
+	// Become a follower in both groups.
+	for g, nodeID := range groups {
+		err := mn.Step(context.Background(), g, raftpb.Message{
+			Type: raftpb.MsgHeartbeat,
+			To:   nodeID,
+			From: nodeID + 1,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Propose a command on each group (Propose is tested separately
+	// because proposals in follower mode go through a different code path).
+	for g := range groups {
+		err := mn.Propose(context.Background(), g, []byte("foo"))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Validate that all outgoing messages (heartbeat response and
+	// proposal) have the correct From IDs.
+	select {
+	case rd = <-mn.Ready():
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timed out waiting for ready")
+	}
+	for g, nodeID := range groups {
+		if len(rd[g].Messages) != 2 {
+			t.Errorf("expected 2 messages in group %d; got %d", g, len(rd[g].Messages))
+		}
+
+		for _, m := range rd[g].Messages {
+			if m.From != nodeID {
+				t.Errorf("expected %s message in group %d to have From: %d; got %d",
+					m.Type, g, nodeID, m.From)
+			}
+		}
+	}
+	mn.Advance(rd)
 }

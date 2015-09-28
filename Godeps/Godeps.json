@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5",
 	"Packages": [
 		"./..."
 	],
@@ -16,7 +16,7 @@
 		},
 		{
 			"ImportPath": "github.com/bgentry/speakeasy",
-			"Rev": "5dfe43257d1f86b96484e760f2f0c4e2559089c7"
+			"Rev": "36e9cfdd690967f4f690c6edcc9ffacd006014a0"
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
@@ -26,6 +26,10 @@
 		{
 			"ImportPath": "github.com/bradfitz/http2",
 			"Rev": "3e36af6d3af0e56fa3da71099f864933dea3d9fb"
+		},
+		{
+			"ImportPath": "github.com/cheggaaa/pb",
+			"Rev": "da1f27ad1d9509b16f65f52fd9d8138b0f2dc7b2"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
@@ -108,6 +112,10 @@
 			"Rev": "9cc77fa25329013ce07362c7742952ff887361f2"
 		},
 		{
+			"ImportPath": "github.com/ugorji/go/codec",
+			"Rev": "5abd4e96a45c386928ed2ca2a7ef63e2533e18ec"
+		},
+		{
 			"ImportPath": "github.com/xiang90/probing",
 			"Rev": "6a0cc1ae81b4cc11db5e491e030e4b98fba79c19"
 		},
@@ -130,6 +138,10 @@
 		{
 			"ImportPath": "golang.org/x/oauth2",
 			"Rev": "3046bc76d6dfd7d3707f6640f85e42d9c4050f50"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "9c60d1c508f5134d1ca726b4641db998f2523357"
 		},
 		{
 			"ImportPath": "google.golang.org/cloud/compute/metadata",

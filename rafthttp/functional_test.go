@@ -51,7 +51,7 @@ func TestSendMessage(t *testing.T) {
 
 	data := []byte("some data")
 	tests := []raftpb.Message{
-		// these messages are set to send to itself, which faciliates testing.
+		// these messages are set to send to itself, which facilitates testing.
 		{Type: raftpb.MsgProp, From: 1, To: 2, Entries: []raftpb.Entry{{Data: data}}},
 		// TODO: send out MsgApp which fits msgapp stream but the term doesn't match
 		{Type: raftpb.MsgApp, From: 1, To: 2, Term: 1, Index: 3, LogTerm: 0, Entries: []raftpb.Entry{{Index: 4, Term: 1, Data: data}}, Commit: 3},

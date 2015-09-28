@@ -31,6 +31,8 @@ member flags:
 		human-readable name for this member.
 	--data-dir '${name}.etcd'
 		path to the data directory.
+	--wal-dir ''
+		path to the dedicated wal directory.
 	--snapshot-count '10000'
 		number of committed transactions to trigger a snapshot to disk.
 	--heartbeat-interval '100'
@@ -66,7 +68,8 @@ clustering flags:
 		HTTP proxy to use for traffic to discovery service.
 	--discovery-srv ''
 		dns srv domain used to bootstrap the cluster.
-
+	--strict-reconfig-check
+		reject reconfiguration requests that would cause quorum loss.
 
 proxy flags:
 

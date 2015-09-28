@@ -28,23 +28,28 @@ import (
 
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/httputil"
 )
 
-// Hop-by-hop headers. These are removed when sent to the backend.
-// http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
-// This list of headers borrowed from stdlib httputil.ReverseProxy
-var singleHopHeaders = []string{
-	"Connection",
-	"Keep-Alive",
-	"Proxy-Authenticate",
-	"Proxy-Authorization",
-	"Te", // canonicalized version of "TE"
-	"Trailers",
-	"Transfer-Encoding",
-	"Upgrade",
-}
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "proxy")
+
+	// Hop-by-hop headers. These are removed when sent to the backend.
+	// http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
+	// This list of headers borrowed from stdlib httputil.ReverseProxy
+	singleHopHeaders = []string{
+		"Connection",
+		"Keep-Alive",
+		"Proxy-Authenticate",
+		"Proxy-Authorization",
+		"Te", // canonicalized version of "TE"
+		"Trailers",
+		"Transfer-Encoding",
+		"Upgrade",
+	}
+)
 
 func removeSingleHopHeaders(hdrs *http.Header) {
 	for _, h := range singleHopHeaders {
@@ -72,7 +77,9 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		if err != nil {
 			msg := fmt.Sprintf("proxy: failed to read request body: %v", err)
 			e := httptypes.NewHTTPError(http.StatusInternalServerError, msg)
-			e.WriteTo(rw)
+			if we := e.WriteTo(rw); we != nil {
+				plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
+			}
 			return
 		}
 	}
@@ -93,7 +100,9 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		// TODO: limit the rate of the error logging.
 		log.Printf(msg)
 		e := httptypes.NewHTTPError(http.StatusServiceUnavailable, msg)
-		e.WriteTo(rw)
+		if we := e.WriteTo(rw); we != nil {
+			plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
+		}
 		return
 	}
 
@@ -145,7 +154,9 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		reportRequestDropped(clientreq, failedGettingResponse)
 		log.Printf(msg)
 		e := httptypes.NewHTTPError(http.StatusBadGateway, msg)
-		e.WriteTo(rw)
+		if we := e.WriteTo(rw); we != nil {
+			plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
+		}
 		return
 	}
 

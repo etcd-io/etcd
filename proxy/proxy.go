@@ -15,7 +15,9 @@
 package proxy
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -40,10 +42,16 @@ type GetProxyURLs func() []string
 // which will proxy requests to an etcd cluster.
 // The handler will periodically update its view of the cluster.
 func NewHandler(t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler {
-	return &reverseProxy{
+	p := &reverseProxy{
 		director:  newDirector(urlsFunc, failureWait, refreshInterval),
 		transport: t,
 	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", p)
+	mux.HandleFunc("/v2/config/local/proxy", p.configHandler)
+
+	return mux
 }
 
 // NewReadonlyHandler wraps the given HTTP handler to allow only GET requests
@@ -61,4 +69,38 @@ func readonlyHandlerFunc(next http.Handler) func(http.ResponseWriter, *http.Requ
 
 		next.ServeHTTP(w, req)
 	}
+}
+
+func (p *reverseProxy) configHandler(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET") {
+		return
+	}
+
+	eps := p.director.endpoints()
+	epstr := make([]string, len(eps))
+	for i, e := range eps {
+		epstr[i] = e.URL.String()
+	}
+
+	proxyConfig := struct {
+		Endpoints []string `json:"endpoints"`
+	}{
+		Endpoints: epstr,
+	}
+
+	json.NewEncoder(w).Encode(proxyConfig)
+}
+
+// allowMethod verifies that the given method is one of the allowed methods,
+// and if not, it writes an error to w.  A boolean is returned indicating
+// whether or not the method is allowed.
+func allowMethod(w http.ResponseWriter, m string, ms ...string) bool {
+	for _, meth := range ms {
+		if m == meth {
+			return true
+		}
+	}
+	w.Header().Set("Allow", strings.Join(ms, ","))
+	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	return false
 }

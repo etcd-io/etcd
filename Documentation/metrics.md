@@ -60,7 +60,7 @@ Example Prometheus queries that may be useful from these metrics (across all etc
     
     Rate of reads and writes by action, across all servers across a time window of `1m`. The reason why `max` is used
      for writes as opposed to `sum` for reads is because all of etcd nodes in the cluster apply all writes to their stores.
-    Shows the rate of successfull readonly/write queries across all servers, across a time window of `1m`.
+    Shows the rate of successful readonly/write queries across all servers, across a time window of `1m`.
  * `sum(rate(etcd_store_watch_requests_total{job="etcd"}[1m]))`
     
     Shows rate of new watch requests per second. Likely driven by how often watched keys change. 
