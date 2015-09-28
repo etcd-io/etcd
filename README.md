@@ -31,6 +31,7 @@ If you're considering etcd for production use, please see: [production-ready.md]
 The easiest way to get etcd is to install one of the pre-built binaries from the tagged releases: instructions are available on [GitHub][github-release].
 
 For those wanting to try the very latest version, you can build the latest version of etcd from the `master` branch.
+You will first need [*Go*](https://golang.org/) installed on your machine (version 1.4+ is required).
 All development occurs on `master`, including new features and bug fixes.
 Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
 
