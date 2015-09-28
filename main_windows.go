@@ -35,7 +35,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/coreos/etcd/etcdmain"
 	"golang.org/x/sys/windows/svc"
@@ -104,15 +103,8 @@ loop:
 		select {
 		case c := <-r:
 			switch c.Cmd {
-			case svc.Interrogate:
-				changes <- c.CurrentStatus
-				// testing deadlock from https://code.google.com/p/winsvc/issues/detail?id=4
-				time.Sleep(100 * time.Millisecond)
-				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
 				break loop
-			default:
-				m.elog.Error(1, fmt.Sprintf("etcd: unexpected control request #%d", c))
 			}
 		}
 	}
