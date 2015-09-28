@@ -34,6 +34,10 @@ etcd -proxy on -listen-client-urls http://127.0.0.1:8080 -discovery https://disc
 #### Fallback to proxy mode with discovery service
 If you bootstrap a etcd cluster using [discovery service][discovery-service] with more than the expected number of etcd members, the extra etcd processes will fall back to being `readwrite` proxies by default. They will forward the requests to the cluster as described above. For example, if you create a discovery url with `size=5`, and start ten etcd processes using that same discovery url, the result will be a cluster with five etcd members and five proxies. Note that this behaviour can be disabled with the `proxy-fallback` flag.
 
+#### Proxy to TLS enabled etcd
+
+If the destination cluster is secured with client TLS, read about [Proxy TLS](security.md#proxy-tls-settings).
+
 ### Promote a proxy to a member of etcd cluster
 
 A Proxy is in the part of etcd cluster that does not participant in consensus. A proxy will not promote itself to an etcd member that participants in consensus automtically in any case.
