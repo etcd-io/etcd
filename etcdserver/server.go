@@ -340,6 +340,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, err
 		}
 		srv.kv = dstorage.New(path.Join(cfg.StorageDir(), databaseFilename))
+		if err := srv.kv.Restore(); err != nil {
+			plog.Fatalf("v3 storage restore error: %v", err)
+		}
 	}
 
 	// TODO: move transport initialization near the definition of remote
