@@ -18,7 +18,6 @@ import (
 	"errors"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -40,7 +39,9 @@ func rmdirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	}
 	key := c.Args()[0]
 
-	resp, err := ki.Delete(context.TODO(), key, &client.DeleteOptions{Dir: true})
+	ctx, cancel := contextWithTotalTimeout(c)
+	resp, err := ki.Delete(ctx, key, &client.DeleteOptions{Dir: true})
+	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
 	}

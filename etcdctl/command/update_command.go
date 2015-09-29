@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -51,7 +50,9 @@ func updateCommandFunc(c *cli.Context, ki client.KeysAPI) {
 
 	ttl := c.Int("ttl")
 
-	resp, err := ki.Set(context.TODO(), key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevExist})
+	ctx, cancel := contextWithTotalTimeout(c)
+	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevExist})
+	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
