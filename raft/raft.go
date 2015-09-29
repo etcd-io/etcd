@@ -185,12 +185,9 @@ func newRaft(c *Config) *raft {
 		peers = cs.Nodes
 	}
 	r := &raft{
-		id:      c.ID,
-		lead:    None,
-		raftLog: raftlog,
-		// 4MB for now and hard code it
-		// TODO(xiang): add a config argument into newRaft after we add
-		// the max inflight message field.
+		id:               c.ID,
+		lead:             None,
+		raftLog:          raftlog,
 		maxMsgSize:       c.MaxSizePerMsg,
 		maxInflight:      c.MaxInflightMsgs,
 		prs:              make(map[uint64]*Progress),
