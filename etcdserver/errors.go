@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"errors"
+	"fmt"
 
 	etcdErr "github.com/coreos/etcd/error"
 )
@@ -37,4 +38,18 @@ var (
 func isKeyNotFound(err error) bool {
 	e, ok := err.(*etcdErr.Error)
 	return ok && e.ErrorCode == etcdErr.EcodeKeyNotFound
+}
+
+type discoveryError struct {
+	op  string
+	err error
+}
+
+func (e discoveryError) Error() string {
+	return fmt.Sprintf("failed to %s discovery cluster (%v)", e.op, e.err)
+}
+
+func IsDiscoveryError(err error) bool {
+	_, ok := err.(*discoveryError)
+	return ok
 }
