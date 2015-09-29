@@ -31,6 +31,8 @@ const noLimit = math.MaxUint64
 
 var errNoLeader = errors.New("no leader")
 
+var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unavailable")
+
 // Possible values for StateType.
 const (
 	StateFollower StateType = iota
@@ -263,6 +265,10 @@ func (r *raft) sendAppend(to uint64) {
 		m.Type = pb.MsgSnap
 		snapshot, err := r.raftLog.snapshot()
 		if err != nil {
+			if err == ErrSnapshotTemporarilyUnavailable {
+				r.logger.Debugf("%x failed to send snapshot to %x because snapshot is temporarily unavailable", r.id, to)
+				return
+			}
 			panic(err) // TODO(bdarnell)
 		}
 		if IsEmptySnap(snapshot) {
