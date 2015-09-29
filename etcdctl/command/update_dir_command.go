@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -51,7 +50,9 @@ func updatedirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 
 	ttl := c.Int("ttl")
 
-	_, err = ki.Set(context.TODO(), key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: client.PrevExist})
+	ctx, cancel := contextWithTotalTimeout(c)
+	_, err = ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: client.PrevExist})
+	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
 	}

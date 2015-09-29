@@ -20,7 +20,6 @@ import (
 	"os"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -47,7 +46,9 @@ func getCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	key := c.Args()[0]
 	sorted := c.Bool("sort")
 
-	resp, err := ki.Get(context.TODO(), key, &client.GetOptions{Sort: sorted})
+	ctx, cancel := contextWithTotalTimeout(c)
+	resp, err := ki.Get(ctx, key, &client.GetOptions{Sort: sorted})
+	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
 	}

@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -46,7 +45,9 @@ func mkdirCommandFunc(c *cli.Context, ki client.KeysAPI, prevExist client.PrevEx
 	key := c.Args()[0]
 	ttl := c.Int("ttl")
 
-	_, err := ki.Set(context.TODO(), key, "", &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: prevExist})
+	ctx, cancel := contextWithTotalTimeout(c)
+	_, err := ki.Set(ctx, key, "", &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: prevExist})
+	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
