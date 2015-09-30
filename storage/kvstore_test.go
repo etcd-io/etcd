@@ -103,6 +103,7 @@ func TestStorePut(t *testing.T) {
 	for i, tt := range tests {
 		s, b, index := newFakeStore()
 		s.currentRev = tt.rev
+		s.tx = b.BatchTx()
 		index.indexGetRespc <- tt.r
 
 		s.put([]byte("foo"), []byte("bar"))
@@ -164,6 +165,7 @@ func TestStoreRange(t *testing.T) {
 	for i, tt := range tests {
 		s, b, index := newFakeStore()
 		s.currentRev = currev
+		s.tx = b.BatchTx()
 		b.tx.rangeRespc <- tt.r
 		index.indexRangeRespc <- tt.idxr
 
@@ -223,6 +225,7 @@ func TestStoreDeleteRange(t *testing.T) {
 	for i, tt := range tests {
 		s, b, index := newFakeStore()
 		s.currentRev = tt.rev
+		s.tx = b.BatchTx()
 		index.indexRangeRespc <- tt.r
 
 		n := s.deleteRange([]byte("foo"), []byte("goo"))
@@ -649,6 +652,32 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
 	}
 	tx.Unlock()
+}
+
+func TestTxnBlockBackendForceCommit(t *testing.T) {
+	s := newStore(tmpPath)
+	defer os.Remove(tmpPath)
+
+	id := s.TxnBegin()
+
+	done := make(chan struct{})
+	go func() {
+		s.b.ForceCommit()
+		done <- struct{}{}
+	}()
+	select {
+	case <-done:
+		t.Fatalf("failed to block ForceCommit")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	s.TxnEnd(id)
+	select {
+	case <-done:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatalf("failed to execute ForceCommit")
+	}
+
 }
 
 func BenchmarkStorePut(b *testing.B) {
