@@ -67,6 +67,8 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	*proxyreq = *clientreq
 	startTime := time.Now()
 
+	reportIncomingRequest(clientreq)
+
 	var (
 		proxybody []byte
 		err       error
