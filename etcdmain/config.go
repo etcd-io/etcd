@@ -146,7 +146,7 @@ func NewConfig() *config {
 	cfg.FlagSet = flag.NewFlagSet("etcd", flag.ContinueOnError)
 	fs := cfg.FlagSet
 	fs.Usage = func() {
-		fmt.Println(usageline)
+		fmt.Fprintln(os.Stderr, usageline)
 	}
 
 	// member
