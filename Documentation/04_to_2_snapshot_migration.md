@@ -15,7 +15,7 @@ etcdctl --endpoint new_cluster.example.com import --snap backup.snap
 ```
 
 If you have a large amount of data, you can specify more concurrent works to copy data in parallel by using `-c` flag.
-If you have hidden keys to copy, you can use `--hidden` flag to specify.
+If you have hidden keys to copy, you can use `--hidden` flag to specify. For example fleet uses `/_coreos.com/fleet` so to import those keys use `--hidden /_coreos.com`.
 
 And the data will quickly copy into the new cluster:
 
