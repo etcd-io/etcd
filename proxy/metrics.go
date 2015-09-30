@@ -64,6 +64,7 @@ const (
 	zeroEndpoints         forwardingError = "zero_endpoints"
 	failedSendingRequest  forwardingError = "failed_sending_request"
 	failedGettingResponse forwardingError = "failed_getting_response"
+	closedPrematurely     forwardingError = "closed_prematurely"
 )
 
 func init() {

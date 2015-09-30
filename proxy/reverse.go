@@ -115,6 +115,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 			select {
 			case <-closeNotifier.CloseNotify():
 				atomic.StoreInt32(&requestClosed, 1)
+				reportRequestDropped(clientreq, closedPrematurely)
 				log.Printf("proxy: client %v closed request prematurely", clientreq.RemoteAddr)
 				cancel()
 			case <-completeCh:
