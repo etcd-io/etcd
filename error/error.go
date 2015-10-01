@@ -143,7 +143,7 @@ func (e Error) toJsonString() string {
 	return string(b)
 }
 
-func (e Error) statusCode() int {
+func (e Error) StatusCode() int {
 	status, ok := errorStatus[e.ErrorCode]
 	if !ok {
 		status = http.StatusBadRequest
@@ -154,6 +154,6 @@ func (e Error) statusCode() int {
 func (e Error) WriteTo(w http.ResponseWriter) {
 	w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(e.statusCode())
+	w.WriteHeader(e.StatusCode())
 	fmt.Fprintln(w, e.toJsonString())
 }
