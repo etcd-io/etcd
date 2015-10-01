@@ -146,7 +146,7 @@ This approach introduces a problem when you try to remove a member
 from a two-member cluster: If one of the members dies before the
 other one receives the commit of the confchange entry, then the member
 cannot be removed any more since the cluster cannot make progress.
-For this reason it is highly recommened to use three or more nodes in
+For this reason it is highly recommended to use three or more nodes in
 every cluster.
 
 */
