@@ -42,17 +42,21 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 
 	// fill the socket buffer
 	data := make([]byte, 5*1024*1024)
-	timer := time.AfterFunc(d.wtimeoutd*5, func() {
-		t.Fatal("wait timeout")
-	})
-	defer timer.Stop()
+	done := make(chan struct{})
+	go func() {
+		_, err = conn.Write(data)
+		done <- struct{}{}
+	}()
 
-	_, err = conn.Write(data)
+	select {
+	case <-done:
+	case <-time.After(d.wtimeoutd * 5):
+		t.Fatal("wait timeout")
+	}
+
 	if operr, ok := err.(*net.OpError); !ok || operr.Op != "write" || !operr.Timeout() {
 		t.Errorf("err = %v, want write i/o timeout error", err)
 	}
-
-	timer.Reset(d.rdtimeoutd * 5)
 
 	conn, err = d.Dial("tcp", ln.Addr().String())
 	if err != nil {
@@ -61,7 +65,17 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 	defer conn.Close()
 
 	buf := make([]byte, 10)
-	_, err = conn.Read(buf)
+	go func() {
+		_, err = conn.Read(buf)
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(d.rdtimeoutd * 5):
+		t.Fatal("wait timeout")
+	}
+
 	if operr, ok := err.(*net.OpError); !ok || operr.Op != "read" || !operr.Timeout() {
 		t.Errorf("err = %v, want write i/o timeout error", err)
 	}
