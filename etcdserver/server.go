@@ -292,9 +292,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			plog.Infof("recovered store from snapshot at index %d", snapshot.Metadata.Index)
 		}
 		cfg.Print()
-		if snapshot != nil {
-			plog.Infof("loaded cluster information from store: %s", cl)
-		}
 		if !cfg.ForceNewCluster {
 			id, cl, n, s, w = restartNode(cfg, snapshot)
 		} else {
