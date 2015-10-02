@@ -12,6 +12,7 @@
 - [etcd-console](https://github.com/matishsiao/etcd-console) - A web-base key/value editor for etcd using PHP
 - [etcd-viewer](https://github.com/nikfoundas/etcd-viewer) - An etcd key-value store editor/viewer written in Java
 - [etcd-export](https://github.com/mickep76/etcd-export) - Export/Import etcd directory as JSON/YAML/TOML and Validate directory using JSON schema
+- [etcd-rest](https://github.com/mickep76/etcd-rest) - Create generic REST API in Go using etcd as a backend with validation using JSON schema
 
 **Go libraries**
 
