@@ -181,7 +181,10 @@ func Main() {
 		// for less than one second.
 		err := daemon.SdNotify("READY=1")
 		if err != nil {
-			plog.Errorf("failed to notify systemd for readiness")
+			plog.Errorf("failed to notify systemd for readiness: %v", err)
+			if err == daemon.SdNotifyNoSocket {
+				plog.Errorf("forgot to set Type=notify in systemd service file?")
+			}
 		}
 	}
 
