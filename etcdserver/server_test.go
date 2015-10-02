@@ -522,7 +522,7 @@ func TestDoProposal(t *testing.T) {
 			r: raftNode{
 				Node:        newNodeCommitter(),
 				storage:     &storageRecorder{},
-				raftStorage: raft.NewMemoryStorage(),
+				raftStorage: newRaftStorage(),
 				transport:   &nopTransporter{},
 			},
 			store:    st,
@@ -661,7 +661,7 @@ func TestSyncTrigger(t *testing.T) {
 		cfg: &ServerConfig{TickMs: 1},
 		r: raftNode{
 			Node:        n,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			transport:   &nopTransporter{},
 			storage:     &storageRecorder{},
 		},
@@ -700,7 +700,7 @@ func TestSyncTrigger(t *testing.T) {
 
 // snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
-	s := raft.NewMemoryStorage()
+	s := newRaftStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
 	st := &storeRecorder{}
 	p := &storageRecorder{}
@@ -743,7 +743,7 @@ func TestTriggerSnap(t *testing.T) {
 		snapCount: uint64(snapc),
 		r: raftNode{
 			Node:        newNodeCommitter(),
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			storage:     p,
 			transport:   &nopTransporter{},
 		},
@@ -783,7 +783,7 @@ func TestRecvSnapshot(t *testing.T) {
 			Node:        n,
 			transport:   &nopTransporter{},
 			storage:     p,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 		},
 		store:   st,
 		cluster: cl,
@@ -812,7 +812,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	st := &storeRecorder{}
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
-	storage := raft.NewMemoryStorage()
+	storage := newRaftStorage()
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -860,7 +860,7 @@ func TestAddMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
@@ -900,7 +900,7 @@ func TestRemoveMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
@@ -939,7 +939,7 @@ func TestUpdateMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},

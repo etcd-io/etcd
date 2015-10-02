@@ -179,7 +179,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
 	var w *wal.WAL
 	var n raft.Node
-	var s *raft.MemoryStorage
+	var s *raftStorage
 	var id types.ID
 	var cl *cluster
 
@@ -343,6 +343,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := srv.kv.Restore(); err != nil {
 			plog.Fatalf("v3 storage restore error: %v", err)
 		}
+		s.snapStore = newSnapshotStore(cfg.StorageDir(), srv.kv)
 	}
 
 	// TODO: move transport initialization near the definition of remote
