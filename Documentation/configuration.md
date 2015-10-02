@@ -14,7 +14,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + Human-readable name for this member.
 + default: "default"
 + env variable: ETCD_NAME
-+ This value is referenced as this node's own entries listed in the `-initial-cluster` flag (Ex: `default=http://localhost:2380` or `default=http://localhost:2380,default=http://localhost:7001`). This needs to match the key used in the flag if you're using [static bootstrapping](clustering.md#static).
++ This value is referenced as this node's own entries listed in the `-initial-cluster` flag (Ex: `default=http://localhost:2380` or `default=http://localhost:2380,default=http://localhost:7001`). This needs to match the key used in the flag if you're using [static bootstrapping](clustering.md#static). When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
 
 ##### -data-dir
 + Path to the data directory.
