@@ -47,19 +47,19 @@ type snapshotStore struct {
 	// send empty to reqsnapc to notify the channel receiver to send back latest
 	// snapshot to snapc
 	reqsnapc chan struct{}
-	// a chan to receive the requested snapshot
+	// a chan to receive the requested raft snapshot
 	// snapshotStore will receive from the chan immediately after it sends empty to reqsnapc
-	snapc chan raftpb.Snapshot
+	raftsnapc chan raftpb.Snapshot
 
 	snap *snapshot
 }
 
 func newSnapshotStore(dir string, kv dstorage.KV) *snapshotStore {
 	return &snapshotStore{
-		dir:      dir,
-		kv:       kv,
-		reqsnapc: make(chan struct{}),
-		snapc:    make(chan raftpb.Snapshot),
+		dir:       dir,
+		kv:        kv,
+		reqsnapc:  make(chan struct{}),
+		raftsnapc: make(chan raftpb.Snapshot),
 	}
 }
 
@@ -73,7 +73,7 @@ func (ss *snapshotStore) getSnap() (*snapshot, error) {
 	// ask to generate v2 snapshot
 	ss.reqsnapc <- struct{}{}
 	// TODO: generate v3 snapshot at here
-	raftsnap := <-ss.snapc
+	raftsnap := <-ss.raftsnapc
 	ss.snap = &snapshot{
 		r: raftsnap,
 	}

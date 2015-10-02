@@ -19,6 +19,7 @@ import (
 	"errors"
 	"expvar"
 	"fmt"
+	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -509,6 +510,9 @@ func (s *EtcdServer) run() {
 				s.snapshot(appliedi, confState)
 				snapi = appliedi
 			}
+		case <-s.r.raftStorage.reqsnap():
+			s.r.raftStorage.raftsnap() <- s.createRaftSnapshot(appliedi, confState)
+			plog.Infof("requested snapshot created at %d", snapi)
 		case err := <-s.errorc:
 			plog.Errorf("%s", err)
 			plog.Infof("the data-dir used by this member must be removed.")
@@ -926,6 +930,29 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 	}
 	return false, nil
+}
+
+// createRaftSnapshot creates a raft snapshot that includes the state of store for v2 api.
+func (s *EtcdServer) createRaftSnapshot(snapi uint64, confState raftpb.ConfState) raftpb.Snapshot {
+	snapt, err := s.r.raftStorage.Term(snapi)
+	if err != nil {
+		log.Panicf("get term should never fail: %v", err)
+	}
+
+	clone := s.store.Clone()
+	d, err := clone.SaveNoCopy()
+	if err != nil {
+		plog.Panicf("store save should never fail: %v", err)
+	}
+
+	return raftpb.Snapshot{
+		Metadata: raftpb.SnapshotMetadata{
+			Index:     snapi,
+			Term:      snapt,
+			ConfState: confState,
+		},
+		Data: d,
+	}
 }
 
 // TODO: non-blocking snapshot
