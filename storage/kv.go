@@ -65,8 +65,11 @@ type KV interface {
 	// This method is designed for consistency checking purpose.
 	Hash() (uint32, error)
 
-	// Write a snapshot to the given io writer
-	Snapshot(w io.Writer) (int64, error)
+	// Snapshot snapshots the KV store, and returns an io.ReadCloser to
+	// help read the full snapshot bytes. Close closes the returned io.ReadCloser
+	// and the snapshot got from the underlying storage.
+	// The returned size specifies the size of snapshot.
+	Snapshot() (rc io.ReadCloser, size int64)
 
 	Restore() error
 	Close() error

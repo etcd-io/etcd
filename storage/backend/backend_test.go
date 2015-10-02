@@ -15,6 +15,7 @@
 package backend
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -72,8 +73,8 @@ func TestBackendSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = b.Snapshot(f)
-	if err != nil {
+	rc, _ := b.Snapshot()
+	if _, err := io.Copy(f, rc); err != nil {
 		t.Fatal(err)
 	}
 	f.Close()

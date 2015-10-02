@@ -156,7 +156,8 @@ type EtcdServer struct {
 	id         types.ID
 	attributes Attributes
 
-	cluster *cluster
+	cluster     *cluster
+	snapshotHub *snapshotHub
 
 	store store.Store
 	kv    dstorage.KV
@@ -179,7 +180,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
 	var w *wal.WAL
 	var n raft.Node
-	var s *raft.MemoryStorage
+	var s *raftStorage
 	var id types.ID
 	var cl *cluster
 
@@ -306,6 +307,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
 
+	snapshotHub := newSnapshotHub(cfg.StorageDir())
+	if cfg.V3demo {
+		s.hub = snapshotHub
+	}
+
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
 		ID:   id.String(),
@@ -327,6 +333,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		id:            id,
 		attributes:    Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:       cl,
+		snapshotHub:   snapshotHub,
 		stats:         sstats,
 		lstats:        lstats,
 		SyncTicker:    time.Tick(500 * time.Millisecond),
@@ -346,7 +353,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	// TODO: move transport initialization near the definition of remote
-	tr := rafthttp.NewTransporter(cfg.Transport, id, cl.ID(), srv, srv.errorc, sstats, lstats)
+	tr := rafthttp.NewTransporter(cfg.Transport, id, cl.ID(), srv, snapshotHub, srv.errorc, sstats, lstats, cfg.V3demo)
 	// add all remotes into transport
 	for _, m := range remotes {
 		if m.ID != id {
@@ -437,8 +444,10 @@ func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	s.r.ReportSnapshot(id, status)
 }
 
+// run runs an unblocking loop that applies snapshot and entries, and creates
+// latest snapshot.
 func (s *EtcdServer) run() {
-	snap, err := s.r.raftStorage.Snapshot()
+	snap, err := s.r.raftStorage.MemoryStorage.Snapshot()
 	if err != nil {
 		plog.Panicf("get snapshot from raft storage error: %v", err)
 	}
@@ -451,6 +460,7 @@ func (s *EtcdServer) run() {
 		close(s.done)
 	}()
 
+	var done chan<- struct{}
 	var shouldstop bool
 	for {
 		select {
@@ -462,6 +472,17 @@ func (s *EtcdServer) run() {
 						apply.snapshot.Metadata.Index, appliedi)
 				}
 
+				if s.cfg.V3demo {
+					s.kv.Close()
+					fn := path.Join(s.cfg.StorageDir(), databaseFilename)
+					if err := os.Rename(s.snapshotHub.SavedSnapshotFilename(apply.snapshot), fn); err != nil {
+						plog.Panicf("rename error: %v", err)
+					}
+					s.kv = dstorage.New(fn)
+					if err := s.kv.Restore(); err != nil {
+						plog.Panicf("kv restore error: %v", err)
+					}
+				}
 				if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 					plog.Panicf("recovery store error: %v", err)
 				}
@@ -497,16 +518,39 @@ func (s *EtcdServer) run() {
 				}
 			}
 
-			// wait for the raft routine to finish the disk writes before triggering a
-			// snapshot. or applied index might be greater than the last index in raft
+			done = apply.done
+		case done <- struct{}{}:
+			// trigger a snapshot after waiting for the raft routine to finish
+			// the disk writes, or applied index might be greater than the last index in raft
 			// storage, since the raft routine might be slower than apply routine.
-			apply.done <- struct{}{}
-
-			// trigger snapshot
 			if appliedi-snapi > s.snapCount {
 				plog.Infof("start to snapshot (applied: %d, lastsnap: %d)", appliedi, snapi)
 				s.snapshot(appliedi, confState)
 				snapi = appliedi
+			}
+			done = nil
+		case <-s.snapshotHub.reqsnapc:
+			clone := s.store.Clone()
+			// TODO: do this later to return snapshot fast
+			d, err := clone.SaveNoCopy()
+			if err != nil {
+				plog.Panicf("store save should never fail: %v", err)
+			}
+			// TODO: save v2 store into v3 storage and set snapshot.Data field to nil
+			snap, err := s.r.raftStorage.CreateSnapshot(appliedi, &confState, d)
+			// it creates snapshot at the same index with the triggered one
+			if err == raft.ErrSnapOutOfDate {
+				snap, err = s.r.raftStorage.MemoryStorage.Snapshot()
+			}
+			if err != nil {
+				plog.Panicf("unexpected create snapshot error %v", err)
+			}
+			// TODO: do this later to return snapshot fast
+			rc, size := s.kv.Snapshot()
+			s.snapshotHub.snapc <- snapshot{
+				raftsnap: snap,
+				rc:       rc,
+				dataSize: size,
 			}
 		case err := <-s.errorc:
 			plog.Errorf("%s", err)

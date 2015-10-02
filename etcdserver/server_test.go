@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"path"
 	"reflect"
 	"strconv"
@@ -522,11 +523,12 @@ func TestDoProposal(t *testing.T) {
 			r: raftNode{
 				Node:        newNodeCommitter(),
 				storage:     &storageRecorder{},
-				raftStorage: raft.NewMemoryStorage(),
+				raftStorage: newRaftStorage(),
 				transport:   &nopTransporter{},
 			},
-			store:    st,
-			reqIDGen: idutil.NewGenerator(0, time.Time{}),
+			store:       st,
+			snapshotHub: newSnapshotHub(os.TempDir()),
+			reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 		}
 		srv.start()
 		resp, err := srv.Do(context.Background(), tt)
@@ -661,13 +663,14 @@ func TestSyncTrigger(t *testing.T) {
 		cfg: &ServerConfig{TickMs: 1},
 		r: raftNode{
 			Node:        n,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			transport:   &nopTransporter{},
 			storage:     &storageRecorder{},
 		},
-		store:      &storeRecorder{},
-		SyncTicker: st,
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
+		store:       &storeRecorder{},
+		snapshotHub: newSnapshotHub(os.TempDir()),
+		SyncTicker:  st,
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	srv.start()
 	defer srv.Stop()
@@ -700,7 +703,7 @@ func TestSyncTrigger(t *testing.T) {
 
 // snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
-	s := raft.NewMemoryStorage()
+	s := newRaftStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
 	st := &storeRecorder{}
 	p := &storageRecorder{}
@@ -743,12 +746,13 @@ func TestTriggerSnap(t *testing.T) {
 		snapCount: uint64(snapc),
 		r: raftNode{
 			Node:        newNodeCommitter(),
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			storage:     p,
 			transport:   &nopTransporter{},
 		},
-		store:    st,
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		store:       st,
+		snapshotHub: newSnapshotHub(os.TempDir()),
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	srv.start()
 	for i := 0; i < snapc+1; i++ {
@@ -779,14 +783,16 @@ func TestRecvSnapshot(t *testing.T) {
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
 	s := &EtcdServer{
+		cfg: &ServerConfig{},
 		r: raftNode{
 			Node:        n,
 			transport:   &nopTransporter{},
 			storage:     p,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 		},
-		store:   st,
-		cluster: cl,
+		store:       st,
+		cluster:     cl,
+		snapshotHub: newSnapshotHub(os.TempDir()),
 	}
 
 	s.start()
@@ -812,16 +818,18 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	st := &storeRecorder{}
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
-	storage := raft.NewMemoryStorage()
+	storage := newRaftStorage()
 	s := &EtcdServer{
+		cfg: &ServerConfig{},
 		r: raftNode{
 			Node:        n,
 			storage:     &storageRecorder{},
 			raftStorage: storage,
 			transport:   &nopTransporter{},
 		},
-		store:   st,
-		cluster: cl,
+		store:       st,
+		cluster:     cl,
+		snapshotHub: newSnapshotHub(os.TempDir()),
 	}
 
 	s.start()
@@ -860,14 +868,15 @@ func TestAddMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
-		cfg:      &ServerConfig{},
-		store:    st,
-		cluster:  cl,
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		cfg:         &ServerConfig{},
+		store:       st,
+		cluster:     cl,
+		snapshotHub: newSnapshotHub(os.TempDir()),
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
 	m := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
@@ -900,14 +909,15 @@ func TestRemoveMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
-		cfg:      &ServerConfig{},
-		store:    st,
-		cluster:  cl,
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		cfg:         &ServerConfig{},
+		store:       st,
+		cluster:     cl,
+		snapshotHub: newSnapshotHub(os.TempDir()),
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
 	err := s.RemoveMember(context.TODO(), 1234)
@@ -939,13 +949,14 @@ func TestUpdateMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: newRaftStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
-		store:    st,
-		cluster:  cl,
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		store:       st,
+		cluster:     cl,
+		snapshotHub: newSnapshotHub(os.TempDir()),
+		reqIDGen:    idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
 	wm := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}

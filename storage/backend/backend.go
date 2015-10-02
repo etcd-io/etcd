@@ -26,7 +26,7 @@ import (
 
 type Backend interface {
 	BatchTx() BatchTx
-	Snapshot(w io.Writer) (n int64, err error)
+	Snapshot() (rc io.ReadCloser, size int64)
 	Hash() (uint32, error)
 	ForceCommit()
 	Close() error
@@ -79,12 +79,17 @@ func (b *backend) ForceCommit() {
 	b.batchTx.Commit()
 }
 
-func (b *backend) Snapshot(w io.Writer) (n int64, err error) {
-	b.db.View(func(tx *bolt.Tx) error {
-		n, err = tx.WriteTo(w)
+func (b *backend) Snapshot() (io.ReadCloser, int64) {
+	rc, w := io.Pipe()
+	sizec := make(chan int64)
+	go b.db.View(func(tx *bolt.Tx) error {
+		sizec <- tx.Size()
+		_, err := tx.WriteTo(w)
+		w.CloseWithError(err)
 		return nil
 	})
-	return n, err
+	size := <-sizec
+	return rc, size
 }
 
 func (b *backend) Hash() (uint32, error) {

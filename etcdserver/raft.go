@@ -103,7 +103,7 @@ type raftNode struct {
 
 	// utility
 	ticker      <-chan time.Time
-	raftStorage *raft.MemoryStorage
+	raftStorage *raftStorage
 	storage     Storage
 	// transport specifies the transport to send and receive msgs to members.
 	// Sending messages MUST NOT block. It is okay to drop messages, since
@@ -178,6 +178,10 @@ func (r *raftNode) start(s *EtcdServer) {
 
 				r.s.send(rd.Messages)
 
+				// TODO: it may have deadlock here. unsent messages may include
+				// MsgSnap which holds boltdb read-only txn, while apply loop
+				// wants to get write txn to apply entry. boltdb will block in
+				// this case.
 				select {
 				case <-apply.done:
 				case <-r.stopped:
@@ -238,7 +242,7 @@ func advanceTicksForElection(n raft.Node, electionTicks int) {
 	}
 }
 
-func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
+func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n raft.Node, s *raftStorage, w *wal.WAL) {
 	var err error
 	member := cl.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(
@@ -263,7 +267,7 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 	}
 	id = member.ID
 	plog.Infof("starting member %s in cluster %s", id, cl.ID())
-	s = raft.NewMemoryStorage()
+	s = newRaftStorage()
 	c := &raft.Config{
 		ID:              uint64(id),
 		ElectionTick:    cfg.ElectionTicks,
@@ -278,7 +282,7 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 	return
 }
 
-func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *cluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *cluster, raft.Node, *raftStorage, *wal.WAL) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -288,7 +292,7 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *clust
 	plog.Infof("restarting member %s in cluster %s at commit index %d", id, cid, st.Commit)
 	cl := newCluster("")
 	cl.SetID(cid)
-	s := raft.NewMemoryStorage()
+	s := newRaftStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
 	}
@@ -308,7 +312,7 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *clust
 	return id, cl, n, s, w
 }
 
-func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *cluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *cluster, raft.Node, *raftStorage, *wal.WAL) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -340,7 +344,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	plog.Printf("forcing restart of member %s in cluster %s at commit index %d", id, cid, st.Commit)
 	cl := newCluster("")
 	cl.SetID(cid)
-	s := raft.NewMemoryStorage()
+	s := newRaftStorage()
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
 	}

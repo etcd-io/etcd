@@ -21,6 +21,8 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
+// TODO: support to receive snapshot from remote. plan is to always use peer
+// instead of remote, and keep these peers until catch up.
 type remote struct {
 	id       types.ID
 	status   *peerStatus
