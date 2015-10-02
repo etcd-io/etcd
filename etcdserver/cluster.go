@@ -223,6 +223,13 @@ func (c *cluster) Recover() {
 	c.members, c.removed = membersFromStore(c.store)
 	c.version = clusterVersionFromStore(c.store)
 	MustDetectDowngrade(c.version)
+
+	for _, m := range c.members {
+		plog.Infof("added member %s %v to cluster %s from store", m.ID, m.PeerURLs, c.id)
+	}
+	if c.version != nil {
+		plog.Infof("set the cluster version to %v from store", version.Cluster(c.version.String()))
+	}
 }
 
 // ValidateConfigurationChange takes a proposed ConfChange and
