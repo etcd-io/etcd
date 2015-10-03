@@ -26,9 +26,18 @@ import (
 
 type Backend interface {
 	BatchTx() BatchTx
-	Snapshot(w io.Writer) (n int64, err error)
+	Snapshot() Snapshot
 	Hash() (uint32, error)
 	ForceCommit()
+	Close() error
+}
+
+type Snapshot interface {
+	// Size gets the size of the snapshot.
+	Size() int64
+	// WriteTo writes the snapshot into the given writter.
+	WriteTo(w io.Writer) (n int64, err error)
+	// Close closes the snapshot.
 	Close() error
 }
 
@@ -79,12 +88,12 @@ func (b *backend) ForceCommit() {
 	b.batchTx.Commit()
 }
 
-func (b *backend) Snapshot(w io.Writer) (n int64, err error) {
-	b.db.View(func(tx *bolt.Tx) error {
-		n, err = tx.WriteTo(w)
-		return nil
-	})
-	return n, err
+func (b *backend) Snapshot() Snapshot {
+	tx, err := b.db.Begin(false)
+	if err != nil {
+		log.Fatalf("storage: cannot begin tx (%s)", err)
+	}
+	return &snapshot{tx}
 }
 
 func (b *backend) Hash() (uint32, error) {
@@ -133,3 +142,9 @@ func (b *backend) Close() error {
 	<-b.donec
 	return b.db.Close()
 }
+
+type snapshot struct {
+	*bolt.Tx
+}
+
+func (s *snapshot) Close() error { return s.Tx.Rollback() }

@@ -15,14 +15,15 @@
 package storage
 
 import (
-	"io"
-
+	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
 // CancelFunc tells an operation to abandon its work. A CancelFunc does not
 // wait for the work to stop.
 type CancelFunc func()
+
+type Snapshot backend.Snapshot
 
 type KV interface {
 	// Rev returns the current revision of the KV.
@@ -65,8 +66,8 @@ type KV interface {
 	// This method is designed for consistency checking purpose.
 	Hash() (uint32, error)
 
-	// Write a snapshot to the given io writer
-	Snapshot(w io.Writer) (int64, error)
+	// Snapshot snapshots the full KV store.
+	Snapshot() Snapshot
 
 	Restore() error
 	Close() error

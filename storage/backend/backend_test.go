@@ -72,8 +72,9 @@ func TestBackendSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = b.Snapshot(f)
-	if err != nil {
+	snap := b.Snapshot()
+	defer snap.Close()
+	if _, err := snap.WriteTo(f); err != nil {
 		t.Fatal(err)
 	}
 	f.Close()
