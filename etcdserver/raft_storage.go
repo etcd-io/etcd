@@ -32,6 +32,20 @@ func newRaftStorage() *raftStorage {
 	}
 }
 
+func (rs *raftStorage) reqsnap() <-chan struct{} {
+	if rs.snapStore == nil {
+		return nil
+	}
+	return rs.snapStore.reqsnapc
+}
+
+func (rs *raftStorage) raftsnap() chan<- raftpb.Snapshot {
+	if rs.snapStore == nil {
+		return nil
+	}
+	return rs.snapStore.raftsnapc
+}
+
 // Snapshot returns raft snapshot. If snapStore is nil, this method
 // returns snapshot saved in MemoryStorage. If snapStore exists, this method
 // returns snapshot from snapStore.

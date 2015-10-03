@@ -698,6 +698,48 @@ func TestSyncTrigger(t *testing.T) {
 	}
 }
 
+func TestCreateRaftSnapshot(t *testing.T) {
+	s := newRaftStorage()
+	s.Append([]raftpb.Entry{{Index: 1, Term: 1}})
+	st := &storeRecorder{}
+	srv := &EtcdServer{
+		r: raftNode{
+			raftStorage: s,
+		},
+		store: st,
+	}
+
+	snap := srv.createRaftSnapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
+	wdata, err := st.Save()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wsnap := raftpb.Snapshot{
+		Metadata: raftpb.SnapshotMetadata{
+			Index:     1,
+			Term:      1,
+			ConfState: raftpb.ConfState{Nodes: []uint64{1}},
+		},
+		Data: wdata,
+	}
+	if !reflect.DeepEqual(snap, wsnap) {
+		t.Errorf("snap = %+v, want %+v", snap, wsnap)
+	}
+
+	gaction := st.Action()
+	// the third action is store.Save used in testing
+	if len(gaction) != 3 {
+		t.Fatalf("len(action) = %d, want 3", len(gaction))
+	}
+	if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
+		t.Errorf("action = %s, want Clone", gaction[0])
+	}
+	if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
+		t.Errorf("action = %s, want SaveNoCopy", gaction[1])
+	}
+
+}
+
 // snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
 	s := newRaftStorage()
