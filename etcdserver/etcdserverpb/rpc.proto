@@ -172,6 +172,9 @@ message WatchRequest {
   int64 start_revision = 3;
   // end_revision is an optional revision (excluding) to end watch. No end_revision is "forever".
   int64 end_revision = 4;
+  // TODO: support Range watch?
+  // TODO: support notification every time interval or revision increase?
+  // TODO: support cancel watch if the server cannot reach with majority?
 }
 
 message WatchResponse {

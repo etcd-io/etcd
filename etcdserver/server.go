@@ -160,7 +160,7 @@ type EtcdServer struct {
 	cluster *cluster
 
 	store store.Store
-	kv    dstorage.KV
+	kv    dstorage.WatchableKV
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats

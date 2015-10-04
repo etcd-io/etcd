@@ -25,6 +25,7 @@ import (
 
 type V3DemoServer interface {
 	V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error)
+	NewWatcher(r *pb.WatchRequest) (dstorage.Watcher, dstorage.CancelFunc)
 }
 
 type applyResult struct {
@@ -53,6 +54,17 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) (pr
 	case <-s.done:
 		return &pb.EmptyResponse{}, ErrStopped
 	}
+}
+
+func (s *EtcdServer) NewWatcher(r *pb.WatchRequest) (dstorage.Watcher, dstorage.CancelFunc) {
+	var prefix bool
+	toWatch := r.Key
+	if len(r.Key) == 0 {
+		toWatch = r.Prefix
+		prefix = true
+	}
+
+	return s.kv.Watcher(toWatch, prefix, r.StartRevision, r.EndRevision)
 }
 
 func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
