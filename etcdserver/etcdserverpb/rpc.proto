@@ -30,6 +30,11 @@ service etcd {
   // Compact compacts the event history in etcd. User should compact the
   // event history periodically, or it will grow infinitely.
   rpc Compact(CompactionRequest) returns (CompactionResponse) {}
+
+  // Watch watches the events happening or happened in etcd. Both input and output
+  // are stream. One watch rpc can watch for multiple ranges and get a stream of
+  // events. The whole events history can be watched unless compacted.
+  rpc Watch(stream WatchRequest) returns (stream WatchResponse) {}
 }
 
 message ResponseHeader {
@@ -156,6 +161,22 @@ message TxnResponse {
   ResponseHeader header = 1;
   bool succeeded = 2;
   repeated ResponseUnion responses = 3;
+}
+
+message WatchRequest {
+  // the key to be watched
+  bytes key = 1;
+  // the prefix to be watched.
+  bytes prefix = 2;
+  // start_revision is an optional revision (including) to watch from. No start_revision is "now".
+  int64 start_revision = 3;
+  // end_revision is an optional revision (excluding) to end watch. No end_revision is "forever".
+  int64 end_revision = 4;
+}
+
+message WatchResponse {
+  ResponseHeader header = 1;
+  storagepb.Event event = 2;
 }
 
 // Compaction compacts the kv store upto the given revision (including).
