@@ -120,6 +120,7 @@ type raftNode struct {
 // TODO: Ideally raftNode should get rid of the passed in server structure.
 func (r *raftNode) start(s *EtcdServer) {
 	r.s = s
+	r.raftStorage.raftStarted = true
 	r.applyc = make(chan apply)
 	r.stopped = make(chan struct{})
 	r.done = make(chan struct{})
