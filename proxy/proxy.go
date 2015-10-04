@@ -42,6 +42,16 @@ type GetProxyURLs func() []string
 // which will proxy requests to an etcd cluster.
 // The handler will periodically update its view of the cluster.
 func NewHandler(t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler {
+        for _, u := range urlsFunc() {
+                parts, err := url.Parse(u)
+                if err != nil {
+                        panic(fmt.Sprintf("%s is not a valid URL", u))
+                }
+                host, _, _ := net.SplitHostPort(parts.Host)
+                if host == "localhost" || host == "127.0.0.1" {
+                        panic(fmt.Sprintf("%s has a loopback address, cannot start proxy", u))
+                }
+        }
 	p := &reverseProxy{
 		director:  newDirector(urlsFunc, failureWait, refreshInterval),
 		transport: t,
