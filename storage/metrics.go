@@ -59,6 +59,38 @@ var (
 			Help:      "Total number of keys.",
 		})
 
+	watchersGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "storage",
+			Name:      "watchers_total",
+			Help:      "Total number of watchers.",
+		})
+
+	slowWatchersGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "storage",
+			Name:      "slow_watchers_total",
+			Help:      "Total number of unsynced slow watchers.",
+		})
+
+	totalEventsCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "storage",
+			Name:      "events_total",
+			Help:      "Total number of events sent by this member.",
+		})
+
+	pendingEventsGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "storage",
+			Name:      "pending_events_total",
+			Help:      "Total number of pending events to be sent.",
+		})
+
 	indexCompactionPauseDurations = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Namespace: "etcd",
@@ -96,7 +128,19 @@ func init() {
 	prometheus.MustRegister(deleteCounter)
 	prometheus.MustRegister(txnCounter)
 	prometheus.MustRegister(keysGauge)
+	prometheus.MustRegister(watchersGauge)
+	prometheus.MustRegister(totalEventsCounter)
+	prometheus.MustRegister(slowWatchersGauge)
+	prometheus.MustRegister(pendingEventsGauge)
 	prometheus.MustRegister(indexCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionTotalDurations)
+}
+
+// ReportEventReceived reports that an event is received.
+// This function should be called when the external systems received an
+// event from storage.Watcher.
+func ReportEventReceived() {
+	pendingEventsGauge.Dec()
+	totalEventsCounter.Inc()
 }
