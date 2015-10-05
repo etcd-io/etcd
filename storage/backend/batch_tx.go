@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"log"
 	"sync"
+	"sync/atomic"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/boltdb/bolt"
 )
@@ -146,4 +147,5 @@ func (t *batchTx) commit(stop bool) {
 	if err != nil {
 		log.Fatalf("storage: cannot begin tx (%s)", err)
 	}
+	atomic.StoreInt64(&t.backend.size, t.tx.Size())
 }
