@@ -67,3 +67,33 @@ func TestNameURLPairsString(t *testing.T) {
 		t.Fatalf("NameURLPairs.String():\ngot  %#v\nwant %#v", g, w)
 	}
 }
+
+func TestParse(t *testing.T) {
+	tests := []struct {
+		s  string
+		wm map[string][]string
+	}{
+		{
+			"",
+			map[string][]string{},
+		},
+		{
+			"a=b",
+			map[string][]string{"a": {"b"}},
+		},
+		{
+			"a=b,a=c",
+			map[string][]string{"a": {"b", "c"}},
+		},
+		{
+			"a=b,a1=c",
+			map[string][]string{"a": {"b"}, "a1": {"c"}},
+		},
+	}
+	for i, tt := range tests {
+		m := parse(tt.s)
+		if !reflect.DeepEqual(m, tt.wm) {
+			t.Errorf("#%d: m = %+v, want %+v", i, m, tt.wm)
+		}
+	}
+}
