@@ -24,6 +24,9 @@ type raftStorage struct {
 	// snapStore is the place to request snapshot when v3demo is enabled.
 	// If snapStore is nil, it uses the snapshot saved in MemoryStorage.
 	snapStore *snapshotStore
+	// raftStarted indicates whether raft starts to function. If not, it cannot
+	// request snapshot, and should get snapshot from MemoryStorage.
+	raftStarted bool
 }
 
 func newRaftStorage() *raftStorage {
@@ -46,11 +49,11 @@ func (rs *raftStorage) raftsnap() chan<- raftpb.Snapshot {
 	return rs.snapStore.raftsnapc
 }
 
-// Snapshot returns raft snapshot. If snapStore is nil, this method
-// returns snapshot saved in MemoryStorage. If snapStore exists, this method
+// Snapshot returns raft snapshot. If snapStore is nil or raft is not started, this method
+// returns snapshot saved in MemoryStorage. Otherwise, this method
 // returns snapshot from snapStore.
 func (rs *raftStorage) Snapshot() (raftpb.Snapshot, error) {
-	if rs.snapStore == nil {
+	if rs.snapStore == nil || !rs.raftStarted {
 		return rs.MemoryStorage.Snapshot()
 	}
 	snap, err := rs.snapStore.getSnap()
