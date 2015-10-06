@@ -604,11 +604,18 @@ func TestSync(t *testing.T) {
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	// check that sync is non-blocking
-	timer := time.AfterFunc(time.Second, func() {
-		t.Fatalf("sync should be non-blocking but did not return after 1s!")
-	})
-	srv.sync(10 * time.Second)
-	timer.Stop()
+	done := make(chan struct{})
+	go func() {
+		srv.sync(10 * time.Second)
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("sync should be non-blocking but did not return after 1s!")
+	}
+
 	testutil.WaitSchedule()
 
 	action := n.Action()
@@ -637,11 +644,17 @@ func TestSyncTimeout(t *testing.T) {
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	// check that sync is non-blocking
-	timer := time.AfterFunc(time.Second, func() {
-		t.Fatalf("sync should be non-blocking but did not return after 1s!")
-	})
-	srv.sync(0)
-	timer.Stop()
+	done := make(chan struct{})
+	go func() {
+		srv.sync(0)
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("sync should be non-blocking but did not return after 1s!")
+	}
 
 	// give time for goroutine in sync to cancel
 	testutil.WaitSchedule()
