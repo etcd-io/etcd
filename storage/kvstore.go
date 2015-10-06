@@ -151,6 +151,8 @@ func (s *store) txnEnd(txnID int64) error {
 		s.currentRev.main += 1
 	}
 	s.currentRev.sub = 0
+
+	dbTotalSize.Set(float64(s.b.Size()))
 	s.mu.Unlock()
 	return nil
 }

@@ -120,6 +120,13 @@ var (
 			// 100ms -> 800second
 			Buckets: prometheus.ExponentialBuckets(100, 2, 14),
 		})
+
+	dbTotalSize = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "storage",
+		Name:      "db_total_size_in_bytes",
+		Help:      "Total size of the underlying database in bytes.",
+	})
 )
 
 func init() {
@@ -135,6 +142,7 @@ func init() {
 	prometheus.MustRegister(indexCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionTotalDurations)
+	prometheus.MustRegister(dbTotalSize)
 }
 
 // ReportEventReceived reports that an event is received.

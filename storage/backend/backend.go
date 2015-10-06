@@ -19,6 +19,7 @@ import (
 	"hash/crc32"
 	"io"
 	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/boltdb/bolt"
@@ -28,6 +29,8 @@ type Backend interface {
 	BatchTx() BatchTx
 	Snapshot() Snapshot
 	Hash() (uint32, error)
+	// Size returns the current size of the backend.
+	Size() int64
 	ForceCommit()
 	Close() error
 }
@@ -47,6 +50,7 @@ type backend struct {
 	batchInterval time.Duration
 	batchLimit    int
 	batchTx       *batchTx
+	size          int64
 
 	stopc chan struct{}
 	donec chan struct{}
@@ -121,6 +125,10 @@ func (b *backend) Hash() (uint32, error) {
 	}
 
 	return h.Sum32(), nil
+}
+
+func (b *backend) Size() int64 {
+	return atomic.LoadInt64(&b.size)
 }
 
 func (b *backend) run() {
