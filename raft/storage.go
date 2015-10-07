@@ -193,7 +193,7 @@ func (ms *MemoryStorage) CreateSnapshot(i uint64, cs *pb.ConfState, data []byte)
 	return ms.snapshot, nil
 }
 
-// Compact discards all log entries prior to i.
+// Compact discards all log entries prior to compactIndex.
 // It is the application's responsibility to not attempt to compact an index
 // greater than raftLog.applied.
 func (ms *MemoryStorage) Compact(compactIndex uint64) error {
