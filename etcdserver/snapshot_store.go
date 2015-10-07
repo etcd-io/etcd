@@ -20,30 +20,47 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sync"
 
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/rafthttp"
 	dstorage "github.com/coreos/etcd/storage"
 )
 
 type snapshot struct {
 	r  raftpb.Snapshot
 	kv dstorage.Snapshot
+
+	mu     sync.Mutex
+	closed bool
 }
 
 func (s *snapshot) raft() raftpb.Snapshot { return s.r }
 
-func (s *snapshot) size() int64 { return s.kv.Size() }
+func (s *snapshot) WriteTo(w io.Writer) (n int64, err error) {
+	n, err = s.kv.WriteTo(w)
 
-func (s *snapshot) writeTo(w io.Writer) (n int64, err error) { return s.kv.WriteTo(w) }
+	s.kv.Close()
+	s.mu.Lock()
+	s.closed = true
+	s.mu.Unlock()
 
-func (s *snapshot) close() error { return s.kv.Close() }
+	return n, err
+}
+
+func (s *snapshot) isClosed() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.closed
+}
 
 type snapshotStore struct {
 	// dir to save snapshot data
 	dir string
 	kv  dstorage.KV
+	tr  rafthttp.Transporter
 
 	// send empty to reqsnapc to notify the channel receiver to send back latest
 	// snapshot to snapc
@@ -67,7 +84,9 @@ func newSnapshotStore(dir string, kv dstorage.KV) *snapshotStore {
 // getSnap returns a snapshot.
 // If there is no available snapshot, ErrSnapshotTemporarilyUnavaliable will be returned.
 func (ss *snapshotStore) getSnap() (*snapshot, error) {
-	if ss.snap != nil {
+	// If snapshotStore has some snapshot that has not been closed, it cannot
+	// request new snapshot. So it returns ErrSnapshotTemporarilyUnavailable.
+	if ss.snap != nil && !ss.snap.isClosed() {
 		return nil, raft.ErrSnapshotTemporarilyUnavailable
 	}
 
@@ -80,26 +99,29 @@ func (ss *snapshotStore) getSnap() (*snapshot, error) {
 		r:  raftsnap,
 		kv: kvsnap,
 	}
+	// give transporter the generated snapshot that is ready to send out
+	ss.tr.SnapshotReady(raftsnap.Metadata.Index, ss.snap)
 	return ss.snap, nil
 }
 
-// saveSnap saves snapshot into disk.
-//
-// If snapshot has existed in disk, it keeps the original snapshot and returns error.
-// The function guarantees that it always saves either complete snapshot or no snapshot,
-// even if the call is aborted because program is hard killed.
-func (ss *snapshotStore) saveSnap(s *snapshot) error {
+// SaveFrom saves snapshot at the given index from the given reader.
+// If the snapshot with the given index has been saved successfully, it keeps
+// the original saved snapshot and returns error.
+// The function guarantees that SaveFrom always saves either complete
+// snapshot or no snapshot, even if the call is aborted because program
+// is hard killed.
+func (ss *snapshotStore) SaveFrom(r io.Reader, index uint64) error {
 	f, err := ioutil.TempFile(ss.dir, "tmp")
 	if err != nil {
 		return err
 	}
-	_, err = s.writeTo(f)
+	_, err = io.Copy(f, r)
 	f.Close()
 	if err != nil {
 		os.Remove(f.Name())
 		return err
 	}
-	fn := path.Join(ss.dir, fmt.Sprintf("%016x.db", s.raft().Metadata.Index))
+	fn := path.Join(ss.dir, fmt.Sprintf("%016x.db", index))
 	if fileutil.Exist(fn) {
 		os.Remove(f.Name())
 		return fmt.Errorf("snapshot to save has existed")

@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"path"
 	"reflect"
@@ -1455,14 +1456,16 @@ func (n *readyNode) Ready() <-chan raft.Ready { return n.readyc }
 
 type nopTransporter struct{}
 
-func (s *nopTransporter) Handler() http.Handler               { return nil }
-func (s *nopTransporter) Send(m []raftpb.Message)             {}
-func (s *nopTransporter) AddRemote(id types.ID, us []string)  {}
-func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
-func (s *nopTransporter) RemovePeer(id types.ID)              {}
-func (s *nopTransporter) RemoveAllPeers()                     {}
-func (s *nopTransporter) UpdatePeer(id types.ID, us []string) {}
-func (s *nopTransporter) ActiveSince(id types.ID) time.Time   { return time.Time{} }
-func (s *nopTransporter) Stop()                               {}
-func (s *nopTransporter) Pause()                              {}
-func (s *nopTransporter) Resume()                             {}
+func (s *nopTransporter) Handler() http.Handler                     { return nil }
+func (s *nopTransporter) Send(m []raftpb.Message)                   {}
+func (s *nopTransporter) SetLocalPeerURLs(us []string)              {}
+func (s *nopTransporter) AddRemote(id types.ID, us []string)        {}
+func (s *nopTransporter) AddPeer(id types.ID, us []string)          {}
+func (s *nopTransporter) RemovePeer(id types.ID)                    {}
+func (s *nopTransporter) RemoveAllPeers()                           {}
+func (s *nopTransporter) UpdatePeer(id types.ID, us []string)       {}
+func (s *nopTransporter) ActiveSince(id types.ID) time.Time         { return time.Time{} }
+func (s *nopTransporter) SnapshotReady(index uint64, w io.WriterTo) {}
+func (s *nopTransporter) Stop()                                     {}
+func (s *nopTransporter) Pause()                                    {}
+func (s *nopTransporter) Resume()                                   {}
