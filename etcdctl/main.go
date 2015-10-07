@@ -51,6 +51,7 @@ func main() {
 		command.NewRemoveDirCommand(),
 		command.NewGetCommand(),
 		command.NewLsCommand(),
+		command.NewTreeCommand(),
 		command.NewSetCommand(),
 		command.NewSetDirCommand(),
 		command.NewUpdateCommand(),
