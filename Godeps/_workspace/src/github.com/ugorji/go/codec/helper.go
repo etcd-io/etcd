@@ -117,6 +117,7 @@ import (
 
 const (
 	scratchByteArrayLen = 32
+	initCollectionCap   = 32 // 32 is defensive. 16 is preferred.
 
 	// Support encoding.(Binary|Text)(Unm|M)arshaler.
 	// This constant flag will enable or disable it.
@@ -147,6 +148,12 @@ const (
 
 	// if derefForIsEmptyValue, deref pointers and interfaces when checking isEmptyValue
 	derefForIsEmptyValue = false
+
+	// if resetSliceElemToZeroValue, then on decoding a slice, reset the element to a zero value first.
+	// Only concern is that, if the slice already contained some garbage, we will decode into that garbage.
+	// The chances of this are slim, so leave this "optimization".
+	// TODO: should this be true, to ensure that we always decode into a "zero" "empty" value?
+	resetSliceElemToZeroValue bool = false
 )
 
 var oneByteArr = [1]byte{0}
@@ -186,6 +193,14 @@ const (
 
 type seqType uint8
 
+// mirror json.Marshaler and json.Unmarshaler here, so we don't import the encoding/json package
+type jsonMarshaler interface {
+	MarshalJSON() ([]byte, error)
+}
+type jsonUnmarshaler interface {
+	UnmarshalJSON([]byte) error
+}
+
 const (
 	_ seqType = iota
 	seqTypeArray
@@ -216,6 +231,9 @@ var (
 
 	textMarshalerTyp   = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 	textUnmarshalerTyp = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+
+	jsonMarshalerTyp   = reflect.TypeOf((*jsonMarshaler)(nil)).Elem()
+	jsonUnmarshalerTyp = reflect.TypeOf((*jsonUnmarshaler)(nil)).Elem()
 
 	selferTyp = reflect.TypeOf((*Selfer)(nil)).Elem()
 
@@ -298,32 +316,41 @@ type RawExt struct {
 	Value interface{}
 }
 
-// Ext handles custom (de)serialization of custom types / extensions.
-type Ext interface {
+// BytesExt handles custom (de)serialization of types to/from []byte.
+// It is used by codecs (e.g. binc, msgpack, simple) which do custom serialization of the types.
+type BytesExt interface {
 	// WriteExt converts a value to a []byte.
-	// It is used by codecs (e.g. binc, msgpack, simple) which do custom serialization of the types.
 	WriteExt(v interface{}) []byte
 
 	// ReadExt updates a value from a []byte.
-	// It is used by codecs (e.g. binc, msgpack, simple) which do custom serialization of the types.
 	ReadExt(dst interface{}, src []byte)
+}
 
+// InterfaceExt handles custom (de)serialization of types to/from another interface{} value.
+// The Encoder or Decoder will then handle the further (de)serialization of that known type.
+//
+// It is used by codecs (e.g. cbor, json) which use the format to do custom serialization of the types.
+type InterfaceExt interface {
 	// ConvertExt converts a value into a simpler interface for easy encoding e.g. convert time.Time to int64.
-	// It is used by codecs (e.g. cbor) which use the format to do custom serialization of the types.
 	ConvertExt(v interface{}) interface{}
 
 	// UpdateExt updates a value from a simpler interface for easy decoding e.g. convert int64 to time.Time.
-	// It is used by codecs (e.g. cbor) which use the format to do custom serialization of the types.
 	UpdateExt(dst interface{}, src interface{})
 }
 
-// bytesExt is a wrapper implementation to support former AddExt exported method.
-type bytesExt struct {
+// Ext handles custom (de)serialization of custom types / extensions.
+type Ext interface {
+	BytesExt
+	InterfaceExt
+}
+
+// addExtWrapper is a wrapper implementation to support former AddExt exported method.
+type addExtWrapper struct {
 	encFn func(reflect.Value) ([]byte, error)
 	decFn func(reflect.Value, []byte) error
 }
 
-func (x bytesExt) WriteExt(v interface{}) []byte {
+func (x addExtWrapper) WriteExt(v interface{}) []byte {
 	// fmt.Printf(">>>>>>>>>> WriteExt: %T, %v\n", v, v)
 	bs, err := x.encFn(reflect.ValueOf(v))
 	if err != nil {
@@ -332,19 +359,55 @@ func (x bytesExt) WriteExt(v interface{}) []byte {
 	return bs
 }
 
-func (x bytesExt) ReadExt(v interface{}, bs []byte) {
+func (x addExtWrapper) ReadExt(v interface{}, bs []byte) {
 	// fmt.Printf(">>>>>>>>>> ReadExt: %T, %v\n", v, v)
 	if err := x.decFn(reflect.ValueOf(v), bs); err != nil {
 		panic(err)
 	}
 }
 
-func (x bytesExt) ConvertExt(v interface{}) interface{} {
+func (x addExtWrapper) ConvertExt(v interface{}) interface{} {
 	return x.WriteExt(v)
 }
 
-func (x bytesExt) UpdateExt(dest interface{}, v interface{}) {
+func (x addExtWrapper) UpdateExt(dest interface{}, v interface{}) {
 	x.ReadExt(dest, v.([]byte))
+}
+
+type setExtWrapper struct {
+	b BytesExt
+	i InterfaceExt
+}
+
+func (x *setExtWrapper) WriteExt(v interface{}) []byte {
+	if x.b == nil {
+		panic("BytesExt.WriteExt is not supported")
+	}
+	return x.b.WriteExt(v)
+}
+
+func (x *setExtWrapper) ReadExt(v interface{}, bs []byte) {
+	if x.b == nil {
+		panic("BytesExt.WriteExt is not supported")
+
+	}
+	x.b.ReadExt(v, bs)
+}
+
+func (x *setExtWrapper) ConvertExt(v interface{}) interface{} {
+	if x.i == nil {
+		panic("InterfaceExt.ConvertExt is not supported")
+
+	}
+	return x.i.ConvertExt(v)
+}
+
+func (x *setExtWrapper) UpdateExt(dest interface{}, v interface{}) {
+	if x.i == nil {
+		panic("InterfaceExxt.UpdateExt is not supported")
+
+	}
+	x.i.UpdateExt(dest, v)
 }
 
 // type errorString string
@@ -401,7 +464,7 @@ type extTypeTagFn struct {
 
 type extHandle []*extTypeTagFn
 
-// DEPRECATED: AddExt is deprecated in favor of SetExt. It exists for compatibility only.
+// DEPRECATED: Use SetBytesExt or SetInterfaceExt on the Handle instead.
 //
 // AddExt registes an encode and decode function for a reflect.Type.
 // AddExt internally calls SetExt.
@@ -413,10 +476,10 @@ func (o *extHandle) AddExt(
 	if encfn == nil || decfn == nil {
 		return o.SetExt(rt, uint64(tag), nil)
 	}
-	return o.SetExt(rt, uint64(tag), bytesExt{encfn, decfn})
+	return o.SetExt(rt, uint64(tag), addExtWrapper{encfn, decfn})
 }
 
-// SetExt registers a tag and Ext for a reflect.Type.
+// DEPRECATED: Use SetBytesExt or SetInterfaceExt on the Handle instead.
 //
 // Note that the type must be a named type, and specifically not
 // a pointer or Interface. An error is returned if that is not honored.
@@ -471,6 +534,10 @@ type structFieldInfo struct {
 	toArray   bool // if field is _struct, is the toArray set?
 }
 
+// func (si *structFieldInfo) isZero() bool {
+// 	return si.encName == "" && len(si.is) == 0 && si.i == 0 && !si.omitEmpty && !si.toArray
+// }
+
 // rv returns the field of the struct.
 // If anonymous, it returns an Invalid
 func (si *structFieldInfo) field(v reflect.Value, update bool) (rv2 reflect.Value) {
@@ -516,9 +583,9 @@ func (si *structFieldInfo) setToZeroValue(v reflect.Value) {
 }
 
 func parseStructFieldInfo(fname string, stag string) *structFieldInfo {
-	if fname == "" {
-		panic(noFieldNameToStructFieldInfoErr)
-	}
+	// if fname == "" {
+	// 	panic(noFieldNameToStructFieldInfoErr)
+	// }
 	si := structFieldInfo{
 		encName: fname,
 	}
@@ -588,6 +655,11 @@ type typeInfo struct {
 	tunm      bool // base type (T or *T) is a textUnmarshaler
 	tmIndir   int8 // number of indirections to get to textMarshaler type
 	tunmIndir int8 // number of indirections to get to textUnmarshaler type
+
+	jm        bool // base type (T or *T) is a jsonMarshaler
+	junm      bool // base type (T or *T) is a jsonUnmarshaler
+	jmIndir   int8 // number of indirections to get to jsonMarshaler type
+	junmIndir int8 // number of indirections to get to jsonUnmarshaler type
 
 	cs      bool // base type (T or *T) is a Selfer
 	csIndir int8 // number of indirections to get to Selfer type
@@ -664,6 +736,12 @@ func getTypeInfo(rtid uintptr, rt reflect.Type) (pti *typeInfo) {
 	if ok, indir = implementsIntf(rt, textUnmarshalerTyp); ok {
 		ti.tunm, ti.tunmIndir = true, indir
 	}
+	if ok, indir = implementsIntf(rt, jsonMarshalerTyp); ok {
+		ti.jm, ti.jmIndir = true, indir
+	}
+	if ok, indir = implementsIntf(rt, jsonUnmarshalerTyp); ok {
+		ti.junm, ti.junmIndir = true, indir
+	}
 	if ok, indir = implementsIntf(rt, selferTyp); ok {
 		ti.cs, ti.csIndir = true, indir
 	}
@@ -723,8 +801,21 @@ func rgetTypeInfo(rt reflect.Type, indexstack []int, fnameToHastag map[string]bo
 		if r1, _ := utf8.DecodeRuneInString(f.Name); r1 == utf8.RuneError || !unicode.IsUpper(r1) {
 			continue
 		}
-		// if anonymous and there is no struct tag and its a struct (or pointer to struct), inline it.
-		if f.Anonymous && stag == "" {
+		var si *structFieldInfo
+		// if anonymous and there is no struct tag (or it's blank)
+		// and its a struct (or pointer to struct), inline it.
+		var doInline bool
+		if f.Anonymous && f.Type.Kind() != reflect.Interface {
+			doInline = stag == ""
+			if !doInline {
+				si = parseStructFieldInfo("", stag)
+				doInline = si.encName == ""
+				// doInline = si.isZero()
+				// fmt.Printf(">>>> doInline for si.isZero: %s: %v\n", f.Name, doInline)
+			}
+		}
+
+		if doInline {
 			ft := f.Type
 			for ft.Kind() == reflect.Ptr {
 				ft = ft.Elem()
@@ -744,7 +835,14 @@ func rgetTypeInfo(rt reflect.Type, indexstack []int, fnameToHastag map[string]bo
 		if _, ok := fnameToHastag[f.Name]; ok {
 			continue
 		}
-		si := parseStructFieldInfo(f.Name, stag)
+		if f.Name == "" {
+			panic(noFieldNameToStructFieldInfoErr)
+		}
+		if si == nil {
+			si = parseStructFieldInfo(f.Name, stag)
+		} else if si.encName == "" {
+			si.encName = f.Name
+		}
 		// si.ikind = int(f.Type.Kind())
 		if len(indexstack) == 0 {
 			si.i = int16(j)
@@ -779,8 +877,9 @@ func panicToErr(err *error) {
 // 	panic(fmt.Errorf("%s: "+format, params2...))
 // }
 
-func isMutableKind(k reflect.Kind) (v bool) {
-	return k == reflect.Int ||
+func isImmutableKind(k reflect.Kind) (v bool) {
+	return false ||
+		k == reflect.Int ||
 		k == reflect.Int8 ||
 		k == reflect.Int16 ||
 		k == reflect.Int32 ||
@@ -790,6 +889,7 @@ func isMutableKind(k reflect.Kind) (v bool) {
 		k == reflect.Uint16 ||
 		k == reflect.Uint32 ||
 		k == reflect.Uint64 ||
+		k == reflect.Uintptr ||
 		k == reflect.Float32 ||
 		k == reflect.Float64 ||
 		k == reflect.Bool ||

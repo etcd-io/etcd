@@ -113,7 +113,7 @@
 		},
 		{
 			"ImportPath": "github.com/ugorji/go/codec",
-			"Rev": "5abd4e96a45c386928ed2ca2a7ef63e2533e18ec"
+			"Rev": "45ce7596ace4534e47b69051a92aef7b64ec7b3f"
 		},
 		{
 			"ImportPath": "github.com/xiang90/probing",

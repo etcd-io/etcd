@@ -90,8 +90,8 @@ func fastpathEncodeTypeSwitchMap(iv interface{}, e *Encoder) bool { return false
 type fastpathE struct {
 	rtid uintptr
 	rt reflect.Type 
-	encfn func(encFnInfo, reflect.Value)
-	decfn func(decFnInfo, reflect.Value)
+	encfn func(*encFnInfo, reflect.Value)
+	decfn func(*decFnInfo, reflect.Value)
 }
 type fastpathA [0]fastpathE
 func (x fastpathA) index(rtid uintptr) int { return -1 }
@@ -142,9 +142,9 @@ _codegenerators() {
     then
         true && \
             echo "codecgen - !unsafe ... " && \
-            codecgen -rt codecgen -t 'x,codecgen,!unsafe' -o values_codecgen${zsfx} $zfin && \
+            codecgen  -rt codecgen -t 'x,codecgen,!unsafe' -o values_codecgen${zsfx} -d 1978 $zfin && \
             echo "codecgen - unsafe ... " && \
-            codecgen -u -rt codecgen -t 'x,codecgen,unsafe' -o values_codecgen_unsafe${zsfx} $zfin && \
+            codecgen  -u -rt codecgen -t 'x,codecgen,unsafe' -o values_codecgen_unsafe${zsfx} -d 1978 $zfin && \
             echo "msgp ... " && \
             msgp -tests=false -pkg=codec -o=values_msgp${zsfx} -file=$zfin && \
             echo "ffjson ... " && \
