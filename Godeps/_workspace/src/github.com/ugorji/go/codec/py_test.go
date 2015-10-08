@@ -6,7 +6,8 @@
 package codec
 
 // These tests are used to verify msgpack and cbor implementations against their python libraries.
-// If you have the library installed, you can enable the tests back by removing the //+build ignore.
+// If you have the library installed, you can enable the tests back by running: go test -tags=x .
+// Look at test.py for how to setup your environment.
 
 import (
 	"testing"
