@@ -827,6 +827,19 @@ curl http://127.0.0.1:2379/v2/keys/dir?recursive=true -XDELETE
 }
 ```
 
+Otherwise you will get a `102` err code.
+
+```sh
+curl 'http://127.0.0.1:2379/v2/keys/dir' -XDELETE
+```
+```json
+{
+    "errCode": "102",
+    "message": "Not a file",
+    "cause": "/dir",
+    "index": "10"
+}
+```
 
 ### Creating a hidden node
 
