@@ -384,7 +384,7 @@ $ etcd --proxy on -discovery-srv example.com
 
 #### Error Cases
 
-You might see the an error like `cannot find local etcd $name from SRV records.`. That means the etcd member fails to find itself from the cluster defined in SRV records. The resolved address in `-initial-advertise-peer-urls` *must match* one of the resolved addresses in the SRV targets.
+You might see an error like `cannot find local etcd $name from SRV records.`. That means the etcd member fails to find itself from the cluster defined in SRV records. The resolved address in `-initial-advertise-peer-urls` *must match* one of the resolved addresses in the SRV targets.
 
 # 0.4 to 2.0+ Migration Guide
 

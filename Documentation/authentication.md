@@ -134,7 +134,7 @@ $ etcdctl role remove myrolename
 
 ## Enabling authentication
 
-The minimal steps to enabling auth follow. The administrator can set up users and roles before or after enabling authentication, as a matter of preference. 
+The minimal steps to enabling auth are as follows. The administrator can set up users and roles before or after enabling authentication, as a matter of preference. 
 
 Make sure the root user is created:
 

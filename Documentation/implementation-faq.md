@@ -46,7 +46,7 @@ ExecStart=/usr/bin/etcd
 
 There are several error cases:
 
-0) Init has already ran and the data directory is already configured
+0) Init has already run and the data directory is already configured
 1) Discovery fails because of network timeout, etc
 2) Discovery fails because the cluster is already full and etcd needs to fall back to proxy
 3) Static cluster configuration fails because of conflict, misconfiguration or timeout
