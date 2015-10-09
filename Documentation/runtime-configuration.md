@@ -2,7 +2,7 @@
 
 etcd comes with support for incremental runtime reconfiguration, which allows users to update the membership of the cluster at run time.
 
-Reconfiguration requests can only be processed when the the majority of the cluster members are functioning. It is **highly recommended** to always have a cluster size greater than two in production. It is unsafe to remove a member from a two member cluster. The majority of a two member cluster is also two. If there is a failure during the removal process, the cluster might not able to make progress and need to [restart from majority failure][majority failure].
+Reconfiguration requests can only be processed when the majority of the cluster members are functioning. It is **highly recommended** to always have a cluster size greater than two in production. It is unsafe to remove a member from a two member cluster. The majority of a two member cluster is also two. If there is a failure during the removal process, the cluster might not able to make progress and need to [restart from majority failure][majority failure].
 
 To better understand the design behind runtime reconfiguration, we suggest you read [this](runtime-reconf-design.md).
 
@@ -154,7 +154,7 @@ etcdserver: assign ids error: unmatched member while checking PeerURLs
 exit 1
 ```
 
-When we start etcd using the data directory of a removed member, etcd will exit automatically if it connects to any alive member in the cluster:
+When we start etcd using the data directory of a removed member, etcd will exit automatically if it connects to any active member in the cluster:
 
 ```sh
 $ etcd

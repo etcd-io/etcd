@@ -7,9 +7,9 @@ etcd uses [Prometheus](http://prometheus.io/) for metrics reporting in the serve
 The simplest way to see the available metrics is to cURL the metrics endpoint `/metrics` of etcd. The format is described [here](http://prometheus.io/docs/instrumenting/exposition_formats/).
 
 
-You can also follow the doc [here](http://prometheus.io/docs/introduction/getting_started/) to start a Promethus server and monitor etcd metrics.
+You can also follow the doc [here](http://prometheus.io/docs/introduction/getting_started/) to start a Prometheus server and monitor etcd metrics.
 
-The naming of metrics follows the suggested [best practice of Promethus](http://prometheus.io/docs/practices/naming/). A metric name has an `etcd` prefix as its namespace and a subsystem prefix (for example `wal` and `etcdserver`).
+The naming of metrics follows the suggested [best practice of Prometheus](http://prometheus.io/docs/practices/naming/). A metric name has an `etcd` prefix as its namespace and a subsystem prefix (for example `wal` and `etcdserver`).
 
 etcd now exposes the following metrics:
 
@@ -127,4 +127,4 @@ Example Prometheus queries that may be useful from these metrics (across all etc
  * `sum(rate(etcd_proxy_dropped_total{job="etcd"}[1m])) by (proxying_error)`
     
     Number of failed request on the proxy. This should be 0, spikes here indicate connectivity issues to etcd cluster.
-            
+ 

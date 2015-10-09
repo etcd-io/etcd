@@ -37,7 +37,7 @@ timeout.
 
 A proxy is a redirection server to the etcd cluster. The proxy handles the
 redirection of a client to the current configuration of the etcd cluster. A
-typical usecase is to start a proxy on a machine, and on first boot up of the
+typical use case is to start a proxy on a machine, and on first boot up of the
 proxy specify both the `--proxy` flag and the `--initial-cluster` flag. 
 
 From there, any etcdctl client that starts up automatically speaks to the local
@@ -57,7 +57,7 @@ and their integration with the reconfiguration API.
 Thus, a member that is down, even infinitely, will never be automatically
 removed from the etcd cluster member list. 
 
-This makes sense because its usually an application level / administrative
+This makes sense because it's usually an application level / administrative
 action to determine whether a reconfiguration should happen based on health. 
 
 For more information, refer to [Documentation/runtime-reconfiguration.md].

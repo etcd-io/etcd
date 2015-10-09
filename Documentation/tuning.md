@@ -10,7 +10,7 @@ The network isn't the only source of latency. Each request and response may be i
 The underlying distributed consensus protocol relies on two separate time parameters to ensure that nodes can handoff leadership if one stalls or goes offline.
 The first parameter is called the *Heartbeat Interval*.
 This is the frequency with which the leader will notify followers that it is still the leader.
-For best pratices, the parameter should be set around round-trip time between members.
+For best practices, the parameter should be set around round-trip time between members.
 By default, etcd uses a `100ms` heartbeat interval.
 
 The second parameter is the *Election Timeout*.

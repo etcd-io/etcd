@@ -38,7 +38,7 @@ Discovery service is designed for bootstrapping an etcd cluster in the cloud env
 
 It seems that using public discovery service is a convenient way to do runtime reconfiguration, after all discovery service already has all the cluster configuration information. However relying on public discovery service brings troubles: 
 
-1. it introduces a external dependencies for the entire life-cycle of your cluster, not just bootstrap time. If there is a network issue between your cluster and public discover service, your cluster will suffer from it.
+1. it introduces external dependencies for the entire life-cycle of your cluster, not just bootstrap time. If there is a network issue between your cluster and public discovery service, your cluster will suffer from it.
  
 2. public discovery service must reflect correct runtime configuration of your cluster during it life-cycle. It has to provide security mechanism to avoid bad actions, and it is hard. 
 
