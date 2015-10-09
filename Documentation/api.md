@@ -506,7 +506,7 @@ The current comparable conditions are:
 
 2. `prevIndex` - checks the previous modifiedIndex of the key.
 
-3. `prevExist` - checks existence of the key: if `prevExist` is true, it is an `update` request; if prevExist is `false`, it is a `create` request.
+3. `prevExist` - checks existence of the key: if `prevExist` is true, it is an `update` request; if `prevExist` is `false`, it is a `create` request.
 
 Here is a simple example.
 Let's create a key-value pair first: `foo=one`.
