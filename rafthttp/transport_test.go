@@ -71,6 +71,7 @@ func TestTransportAdd(t *testing.T) {
 	term := uint64(10)
 	tr := &transport{
 		roundTripper: &roundTripperRecorder{},
+		local:        newMember(types.ID(2)),
 		leaderStats:  ls,
 		term:         term,
 		peers:        make(map[types.ID]Peer),
@@ -104,6 +105,7 @@ func TestTransportAdd(t *testing.T) {
 func TestTransportRemove(t *testing.T) {
 	tr := &transport{
 		roundTripper: &roundTripperRecorder{},
+		local:        newMember(types.ID(2)),
 		leaderStats:  stats.NewLeaderStats(""),
 		peers:        make(map[types.ID]Peer),
 		prober:       probing.NewProber(nil),
@@ -135,6 +137,7 @@ func TestTransportErrorc(t *testing.T) {
 	errorc := make(chan error, 1)
 	tr := &transport{
 		roundTripper: newRespRoundTripper(http.StatusForbidden, nil),
+		local:        newMember(types.ID(2)),
 		leaderStats:  stats.NewLeaderStats(""),
 		peers:        make(map[types.ID]Peer),
 		prober:       probing.NewProber(nil),

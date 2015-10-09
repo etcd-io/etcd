@@ -45,8 +45,9 @@ const (
 var errStopped = errors.New("stopped")
 
 type pipeline struct {
-	from, to types.ID
-	cid      types.ID
+	local *member
+	to    types.ID
+	cid   types.ID
 
 	tr     http.RoundTripper
 	picker *urlPicker
@@ -54,6 +55,7 @@ type pipeline struct {
 	fs     *stats.FollowerStats
 	r      Raft
 	errorc chan error
+	v3demo bool
 
 	msgc chan raftpb.Message
 	// wait for the handling routines
@@ -61,9 +63,9 @@ type pipeline struct {
 	stopc chan struct{}
 }
 
-func newPipeline(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
+func newPipeline(tr http.RoundTripper, picker *urlPicker, local *member, to, cid types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft, errorc chan error, v3demo bool) *pipeline {
 	p := &pipeline{
-		from:   from,
+		local:  local,
 		to:     to,
 		cid:    cid,
 		tr:     tr,
@@ -72,6 +74,7 @@ func newPipeline(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID
 		fs:     fs,
 		r:      r,
 		errorc: errorc,
+		v3demo: v3demo,
 		stopc:  make(chan struct{}),
 		msgc:   make(chan raftpb.Message, pipelineBufSize),
 	}
@@ -105,7 +108,7 @@ func (p *pipeline) handle() {
 				p.fs.Fail()
 			}
 			p.r.ReportUnreachable(m.To)
-			if isMsgSnap(m) {
+			if !p.v3demo && isMsgSnap(m) {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 			}
 		} else {
@@ -113,7 +116,7 @@ func (p *pipeline) handle() {
 			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Succ(end.Sub(start))
 			}
-			if isMsgSnap(m) {
+			if !p.v3demo && isMsgSnap(m) {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
 			}
 			reportSentDuration(pipelineMsg, m, time.Since(start))
@@ -133,10 +136,11 @@ func (p *pipeline) post(data []byte) (err error) {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/protobuf")
-	req.Header.Set("X-Server-From", p.from.String())
+	req.Header.Set("X-Server-From", p.local.id.String())
 	req.Header.Set("X-Server-Version", version.Version)
 	req.Header.Set("X-Min-Cluster-Version", version.MinClusterVersion)
 	req.Header.Set("X-Etcd-Cluster-ID", p.cid.String())
+	req.Header.Set("X-Request-Peer-URLs", p.local.urls().String())
 
 	var stopped bool
 	defer func() {

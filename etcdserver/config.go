@@ -132,6 +132,12 @@ func (c *ServerConfig) ReqTimeout() time.Duration {
 	return 5*time.Second + 2*time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
 }
 
+// MaxRTT returns maximal round-trip time between etcd members.
+func (c *ServerConfig) MaxRTT() time.Duration {
+	// one RTT is always smaller than one fifth of election timeout
+	return time.Duration(c.ElectionTicks) * time.Duration(c.TickMs) * time.Millisecond / 5
+}
+
 func (c *ServerConfig) PrintWithInitial() { c.print(true) }
 
 func (c *ServerConfig) Print() { c.print(false) }

@@ -345,7 +345,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	// TODO: move transport initialization near the definition of remote
-	tr := rafthttp.NewTransporter(cfg.Transport, id, cl.ID(), srv, srv.errorc, sstats, lstats)
+	tr := rafthttp.NewTransporter(cfg.Transport, id, cl.ID(), srv, s.snapStore, srv.errorc, sstats, lstats, cfg.MaxRTT(), cfg.V3demo)
 	// add all remotes into transport
 	for _, m := range remotes {
 		if m.ID != id {
@@ -358,6 +358,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 	}
 	srv.r.transport = tr
+
+	if cfg.V3demo {
+		s.snapStore.tr = tr
+	}
+
 	return srv, nil
 }
 
@@ -896,6 +901,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 		s.cluster.AddMember(m)
 		if m.ID == s.id {
+			s.r.transport.SetLocalPeerURLs(m.PeerURLs)
 			plog.Noticef("added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.cluster.ID())
 		} else {
 			s.r.transport.AddPeer(m.ID, m.PeerURLs)
@@ -920,6 +926,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 		s.cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes)
 		if m.ID == s.id {
+			s.r.transport.SetLocalPeerURLs(m.PeerURLs)
 			plog.Noticef("update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.cluster.ID())
 		} else {
 			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)

@@ -27,13 +27,13 @@ type remote struct {
 	pipeline *pipeline
 }
 
-func startRemote(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, errorc chan error) *remote {
+func startRemote(tr http.RoundTripper, urls types.URLs, local *member, to, cid types.ID, r Raft, errorc chan error, v3demo bool) *remote {
 	picker := newURLPicker(urls)
 	status := newPeerStatus(to)
 	return &remote{
 		id:       to,
 		status:   status,
-		pipeline: newPipeline(tr, picker, local, to, cid, status, nil, r, errorc),
+		pipeline: newPipeline(tr, picker, local, to, cid, status, nil, r, errorc, v3demo),
 	}
 }
 

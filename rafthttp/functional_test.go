@@ -30,14 +30,14 @@ import (
 
 func TestSendMessage(t *testing.T) {
 	// member 1
-	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), &fakeRaft{}, nil, newServerStats(), stats.NewLeaderStats("1"))
+	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), &fakeRaft{}, nil, nil, newServerStats(), stats.NewLeaderStats("1"), time.Second, false)
 	srv := httptest.NewServer(tr.Handler())
 	defer srv.Close()
 
 	// member 2
 	recvc := make(chan raftpb.Message, 1)
 	p := &fakeRaft{recvc: recvc}
-	tr2 := NewTransporter(&http.Transport{}, types.ID(2), types.ID(1), p, nil, newServerStats(), stats.NewLeaderStats("2"))
+	tr2 := NewTransporter(&http.Transport{}, types.ID(2), types.ID(1), p, nil, nil, newServerStats(), stats.NewLeaderStats("2"), time.Second, false)
 	srv2 := httptest.NewServer(tr2.Handler())
 	defer srv2.Close()
 
@@ -75,14 +75,14 @@ func TestSendMessage(t *testing.T) {
 // remote in a limited time when all underlying connections are broken.
 func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 	// member 1
-	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), &fakeRaft{}, nil, newServerStats(), stats.NewLeaderStats("1"))
+	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), &fakeRaft{}, nil, nil, newServerStats(), stats.NewLeaderStats("1"), time.Second, false)
 	srv := httptest.NewServer(tr.Handler())
 	defer srv.Close()
 
 	// member 2
 	recvc := make(chan raftpb.Message, 1)
 	p := &fakeRaft{recvc: recvc}
-	tr2 := NewTransporter(&http.Transport{}, types.ID(2), types.ID(1), p, nil, newServerStats(), stats.NewLeaderStats("2"))
+	tr2 := NewTransporter(&http.Transport{}, types.ID(2), types.ID(1), p, nil, nil, newServerStats(), stats.NewLeaderStats("2"), time.Second, false)
 	srv2 := httptest.NewServer(tr2.Handler())
 	defer srv2.Close()
 

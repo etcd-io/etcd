@@ -16,13 +16,17 @@ package rafthttp
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path"
+	"strconv"
+	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
 )
@@ -35,15 +39,18 @@ var (
 	RaftPrefix       = "/raft"
 	ProbingPrefix    = path.Join(RaftPrefix, "probing")
 	RaftStreamPrefix = path.Join(RaftPrefix, "stream")
+	RaftSnapPrefix   = path.Join(RaftPrefix, "snap")
 
 	errIncompatibleVersion = errors.New("incompatible version")
 	errClusterIDMismatch   = errors.New("cluster ID mismatch")
 )
 
-func NewHandler(r Raft, cid types.ID) http.Handler {
+func NewHandler(r Raft, snapProcessor *snapshotProcessor, cid types.ID, v3demo bool) http.Handler {
 	return &handler{
-		r:   r,
-		cid: cid,
+		r:             r,
+		snapProcessor: snapProcessor,
+		cid:           cid,
+		v3demo:        v3demo,
 	}
 }
 
@@ -60,13 +67,19 @@ func newStreamHandler(peerGetter peerGetter, r Raft, id, cid types.ID) http.Hand
 	}
 }
 
+func newSnapHandler(snapKeeper *snapshotKeeper, r Raft) http.Handler {
+	return &snapHandler{snapKeeper: snapKeeper, r: r}
+}
+
 type writerToResponse interface {
 	WriteTo(w http.ResponseWriter)
 }
 
 type handler struct {
-	r   Raft
-	cid types.ID
+	r             Raft
+	snapProcessor *snapshotProcessor
+	cid           types.ID
+	v3demo        bool
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +120,18 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error unmarshaling raft message", http.StatusBadRequest)
 		return
 	}
-	if err := h.r.Process(context.TODO(), m); err != nil {
+
+	// process raft snapshot message
+	if h.v3demo && isMsgSnap(m) {
+		// get the peer URLs of the request sender
+		peerURLs, err := types.NewURLs(strings.Split(r.Header.Get("X-Request-Peer-URLs"), ","))
+		if err != nil {
+			plog.Errorf("failed to parse peer urls (%v)", err)
+			http.Error(w, "error parsing peer urls", http.StatusBadRequest)
+			return
+		}
+		go h.snapProcessor.process(m, peerURLs)
+	} else if err := h.r.Process(context.TODO(), m); err != nil {
 		switch v := err.(type) {
 		case writerToResponse:
 			v.WriteTo(w)
@@ -212,6 +236,39 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	p.attachOutgoingConn(conn)
 	<-c.closeNotify()
+}
+
+// snapHandler handles the request for snapshot data.
+// When it receives a request, it parses out the index of target snapshot
+// and retrieves it from snapKeeper. Then it sends snapshot data to
+// the request sender, and reports snapshot sent result.
+type snapHandler struct {
+	snapKeeper *snapshotKeeper
+	r          Raft
+}
+
+func (h *snapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	index, err := strconv.ParseUint(r.Header.Get("X-Raft-Snapshot-Index"), 10, 64)
+	if err != nil {
+		plog.Errorf("failed to parse X-Snapshot-Index header %q (%v)", index, err)
+		http.Error(w, "cannot found valid X-Raft-Snapshot-Index header", http.StatusBadRequest)
+		return
+	}
+	snapw, to, err := h.snapKeeper.release(index)
+	if err != nil {
+		msg := fmt.Sprintf("failed to find snapshot [index: %d] (%v)", index, err)
+		plog.Errorf(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
+		return
+	}
+	if _, err := snapw.WriteTo(w); err != nil {
+		plog.Infof("snapshot [index: %d, to: %s] failed to be sent out (%v)", index, to, err)
+		h.r.ReportSnapshot(uint64(to), raft.SnapshotFailure)
+		return
+	}
+	plog.Infof("snapshot [index: %d, to: %s] sent out successfully", index, to)
+	h.r.ReportSnapshot(uint64(to), raft.SnapshotFinish)
+	return
 }
 
 type closeNotifier struct {
