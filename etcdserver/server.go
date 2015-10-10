@@ -345,7 +345,16 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	// TODO: move transport initialization near the definition of remote
-	tr := rafthttp.NewTransporter(cfg.Transport, id, cl.ID(), srv, srv.errorc, sstats, lstats)
+	tr := &rafthttp.Transport{
+		RoundTripper: cfg.Transport,
+		ID:           id,
+		ClusterID:    cl.ID(),
+		Raft:         srv,
+		ServerStats:  sstats,
+		LeaderStats:  lstats,
+		ErrorC:       srv.errorc,
+	}
+	tr.Start()
 	// add all remotes into transport
 	for _, m := range remotes {
 		if m.ID != id {
