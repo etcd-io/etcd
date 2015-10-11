@@ -15,7 +15,6 @@
 package rafthttp
 
 import (
-	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
@@ -31,12 +30,11 @@ import (
 func BenchmarkSendingMsgApp(b *testing.B) {
 	// member 1
 	tr := &Transport{
-		RoundTripper: &http.Transport{},
-		ID:           types.ID(1),
-		ClusterID:    types.ID(1),
-		Raft:         &fakeRaft{},
-		ServerStats:  newServerStats(),
-		LeaderStats:  stats.NewLeaderStats("1"),
+		ID:          types.ID(1),
+		ClusterID:   types.ID(1),
+		Raft:        &fakeRaft{},
+		ServerStats: newServerStats(),
+		LeaderStats: stats.NewLeaderStats("1"),
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -45,12 +43,11 @@ func BenchmarkSendingMsgApp(b *testing.B) {
 	// member 2
 	r := &countRaft{}
 	tr2 := &Transport{
-		RoundTripper: &http.Transport{},
-		ID:           types.ID(2),
-		ClusterID:    types.ID(1),
-		Raft:         r,
-		ServerStats:  newServerStats(),
-		LeaderStats:  stats.NewLeaderStats("2"),
+		ID:          types.ID(2),
+		ClusterID:   types.ID(1),
+		Raft:        r,
+		ServerStats: newServerStats(),
+		LeaderStats: stats.NewLeaderStats("2"),
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())

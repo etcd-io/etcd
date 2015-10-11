@@ -16,13 +16,13 @@ package etcdserver
 
 import (
 	"fmt"
-	"net/http"
 	"path"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/coreos/etcd/pkg/netutil"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 )
 
@@ -44,7 +44,7 @@ type ServerConfig struct {
 	InitialClusterToken string
 	NewCluster          bool
 	ForceNewCluster     bool
-	Transport           *http.Transport
+	PeerTLSInfo         transport.TLSInfo
 
 	TickMs        uint
 	ElectionTicks int
@@ -130,6 +130,12 @@ func (c *ServerConfig) ReqTimeout() time.Duration {
 	// 5s for queue waiting, computation and disk IO delay
 	// + 2 * election timeout for possible leader election
 	return 5*time.Second + 2*time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
+}
+
+func (c *ServerConfig) peerDialTimeout() time.Duration {
+	// 1s for queue wait and system delay
+	// + one RTT, which is smaller than 1/5 election timeout
+	return time.Second + time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond/5
 }
 
 func (c *ServerConfig) PrintWithInitial() { c.print(true) }

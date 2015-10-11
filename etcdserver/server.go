@@ -40,6 +40,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/timeutil"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
@@ -167,7 +168,9 @@ type EtcdServer struct {
 
 	SyncTicker <-chan time.Time
 
-	reqIDGen *idutil.Generator
+	// versionTr used to send requests for peer version
+	versionTr *http.Transport
+	reqIDGen  *idutil.Generator
 
 	// forceVersionC is used to force the version monitor loop
 	// to detect the cluster version immediately.
@@ -205,6 +208,10 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
+	pt, err := transport.NewTransport(cfg.PeerTLSInfo, cfg.peerDialTimeout())
+	if err != nil {
+		return nil, err
+	}
 	var remotes []*Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
@@ -215,14 +222,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err != nil {
 			return nil, err
 		}
-		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), cfg.Transport)
+		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), pt)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
 		if err := ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, cfg.Transport) {
+		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, pt) {
 			return nil, fmt.Errorf("incomptible with current running cluster")
 		}
 
@@ -240,7 +247,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, err
 		}
 		m := cl.MemberByName(cfg.Name)
-		if isMemberBootstrapped(cl, cfg.Name, cfg.Transport) {
+		if isMemberBootstrapped(cl, cfg.Name, pt) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
@@ -328,6 +335,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		stats:         sstats,
 		lstats:        lstats,
 		SyncTicker:    time.Tick(500 * time.Millisecond),
+		versionTr:     pt,
 		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
 		forceVersionC: make(chan struct{}),
 	}
@@ -346,15 +354,18 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
-		RoundTripper: cfg.Transport,
-		ID:           id,
-		ClusterID:    cl.ID(),
-		Raft:         srv,
-		ServerStats:  sstats,
-		LeaderStats:  lstats,
-		ErrorC:       srv.errorc,
+		TLSInfo:     cfg.PeerTLSInfo,
+		DialTimeout: cfg.peerDialTimeout(),
+		ID:          id,
+		ClusterID:   cl.ID(),
+		Raft:        srv,
+		ServerStats: sstats,
+		LeaderStats: lstats,
+		ErrorC:      srv.errorc,
 	}
-	tr.Start()
+	if err := tr.Start(); err != nil {
+		return nil, err
+	}
 	// add all remotes into transport
 	for _, m := range remotes {
 		if m.ID != id {
@@ -1032,7 +1043,7 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 
-		v := decideClusterVersion(getVersions(s.cluster, s.id, s.cfg.Transport))
+		v := decideClusterVersion(getVersions(s.cluster, s.id, s.versionTr))
 		if v != nil {
 			// only keep major.minor version for comparasion
 			v = &semver.Version{

@@ -688,7 +688,7 @@ func mustNewMember(t *testing.T, name string, usePeerTLS bool) *member {
 	}
 	m.InitialClusterToken = clusterName
 	m.NewCluster = true
-	m.Transport = mustNewTransport(t, m.PeerTLSInfo)
+	m.ServerConfig.PeerTLSInfo = m.PeerTLSInfo
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
 	return m
@@ -720,7 +720,6 @@ func (m *member) Clone(t *testing.T) *member {
 		panic(err)
 	}
 	mm.InitialClusterToken = m.InitialClusterToken
-	mm.Transport = mustNewTransport(t, m.PeerTLSInfo)
 	mm.ElectionTicks = m.ElectionTicks
 	mm.PeerTLSInfo = m.PeerTLSInfo
 	return mm
