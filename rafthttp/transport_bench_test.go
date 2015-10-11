@@ -30,13 +30,29 @@ import (
 
 func BenchmarkSendingMsgApp(b *testing.B) {
 	// member 1
-	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), &fakeRaft{}, nil, newServerStats(), stats.NewLeaderStats("1"))
+	tr := &Transport{
+		RoundTripper: &http.Transport{},
+		ID:           types.ID(1),
+		ClusterID:    types.ID(1),
+		Raft:         &fakeRaft{},
+		ServerStats:  newServerStats(),
+		LeaderStats:  stats.NewLeaderStats("1"),
+	}
+	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
 	defer srv.Close()
 
 	// member 2
 	r := &countRaft{}
-	tr2 := NewTransporter(&http.Transport{}, types.ID(2), types.ID(1), r, nil, newServerStats(), stats.NewLeaderStats("2"))
+	tr2 := &Transport{
+		RoundTripper: &http.Transport{},
+		ID:           types.ID(2),
+		ClusterID:    types.ID(1),
+		Raft:         r,
+		ServerStats:  newServerStats(),
+		LeaderStats:  stats.NewLeaderStats("2"),
+	}
+	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())
 	defer srv2.Close()
 
@@ -44,7 +60,7 @@ func BenchmarkSendingMsgApp(b *testing.B) {
 	defer tr.Stop()
 	tr2.AddPeer(types.ID(1), []string{srv.URL})
 	defer tr2.Stop()
-	if !waitStreamWorking(tr.(*transport).Get(types.ID(2)).(*peer)) {
+	if !waitStreamWorking(tr.Get(types.ID(2)).(*peer)) {
 		b.Fatalf("stream from 1 to 2 is not in work as expected")
 	}
 

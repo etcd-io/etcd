@@ -1468,6 +1468,7 @@ func (n *readyNode) Ready() <-chan raft.Ready { return n.readyc }
 
 type nopTransporter struct{}
 
+func (s *nopTransporter) Start()                              {}
 func (s *nopTransporter) Handler() http.Handler               { return nil }
 func (s *nopTransporter) Send(m []raftpb.Message)             {}
 func (s *nopTransporter) AddRemote(id types.ID, us []string)  {}

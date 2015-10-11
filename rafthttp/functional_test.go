@@ -30,14 +30,30 @@ import (
 
 func TestSendMessage(t *testing.T) {
 	// member 1
-	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), &fakeRaft{}, nil, newServerStats(), stats.NewLeaderStats("1"))
+	tr := &Transport{
+		RoundTripper: &http.Transport{},
+		ID:           types.ID(1),
+		ClusterID:    types.ID(1),
+		Raft:         &fakeRaft{},
+		ServerStats:  newServerStats(),
+		LeaderStats:  stats.NewLeaderStats("1"),
+	}
+	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
 	defer srv.Close()
 
 	// member 2
 	recvc := make(chan raftpb.Message, 1)
 	p := &fakeRaft{recvc: recvc}
-	tr2 := NewTransporter(&http.Transport{}, types.ID(2), types.ID(1), p, nil, newServerStats(), stats.NewLeaderStats("2"))
+	tr2 := &Transport{
+		RoundTripper: &http.Transport{},
+		ID:           types.ID(2),
+		ClusterID:    types.ID(1),
+		Raft:         p,
+		ServerStats:  newServerStats(),
+		LeaderStats:  stats.NewLeaderStats("2"),
+	}
+	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())
 	defer srv2.Close()
 
@@ -45,7 +61,7 @@ func TestSendMessage(t *testing.T) {
 	defer tr.Stop()
 	tr2.AddPeer(types.ID(1), []string{srv.URL})
 	defer tr2.Stop()
-	if !waitStreamWorking(tr.(*transport).Get(types.ID(2)).(*peer)) {
+	if !waitStreamWorking(tr.Get(types.ID(2)).(*peer)) {
 		t.Fatalf("stream from 1 to 2 is not in work as expected")
 	}
 
@@ -75,14 +91,30 @@ func TestSendMessage(t *testing.T) {
 // remote in a limited time when all underlying connections are broken.
 func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 	// member 1
-	tr := NewTransporter(&http.Transport{}, types.ID(1), types.ID(1), &fakeRaft{}, nil, newServerStats(), stats.NewLeaderStats("1"))
+	tr := &Transport{
+		RoundTripper: &http.Transport{},
+		ID:           types.ID(1),
+		ClusterID:    types.ID(1),
+		Raft:         &fakeRaft{},
+		ServerStats:  newServerStats(),
+		LeaderStats:  stats.NewLeaderStats("1"),
+	}
+	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
 	defer srv.Close()
 
 	// member 2
 	recvc := make(chan raftpb.Message, 1)
 	p := &fakeRaft{recvc: recvc}
-	tr2 := NewTransporter(&http.Transport{}, types.ID(2), types.ID(1), p, nil, newServerStats(), stats.NewLeaderStats("2"))
+	tr2 := &Transport{
+		RoundTripper: &http.Transport{},
+		ID:           types.ID(2),
+		ClusterID:    types.ID(1),
+		Raft:         p,
+		ServerStats:  newServerStats(),
+		LeaderStats:  stats.NewLeaderStats("2"),
+	}
+	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())
 	defer srv2.Close()
 
@@ -90,7 +122,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 	defer tr.Stop()
 	tr2.AddPeer(types.ID(1), []string{srv.URL})
 	defer tr2.Stop()
-	if !waitStreamWorking(tr.(*transport).Get(types.ID(2)).(*peer)) {
+	if !waitStreamWorking(tr.Get(types.ID(2)).(*peer)) {
 		t.Fatalf("stream from 1 to 2 is not in work as expected")
 	}
 
