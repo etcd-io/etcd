@@ -24,7 +24,7 @@ import (
 // If read/write on the created connection blocks longer than its time limit,
 // it will return timeout error.
 func NewTimeoutTransport(info TLSInfo, dialtimeoutd, rdtimeoutd, wtimeoutd time.Duration) (*http.Transport, error) {
-	tr, err := NewTransport(info)
+	tr, err := NewTransport(info, dialtimeoutd)
 	if err != nil {
 		return nil, err
 	}
