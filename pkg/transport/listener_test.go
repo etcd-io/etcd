@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 )
 
 func createTempFile(b []byte) (string, error) {
@@ -115,7 +116,7 @@ func TestNewTransportTLSInfo(t *testing.T) {
 
 	for i, tt := range tests {
 		tt.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
-		trans, err := NewTransport(tt)
+		trans, err := NewTransport(tt, time.Second)
 		if err != nil {
 			t.Fatalf("Received unexpected error from NewTransport: %v", err)
 		}

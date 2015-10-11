@@ -46,18 +46,19 @@ func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error)
 	return l, nil
 }
 
-func NewTransport(info TLSInfo) (*http.Transport, error) {
+func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, error) {
 	cfg, err := info.ClientConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	t := &http.Transport{
-		// timeouts taken from http.DefaultTransport
 		Dial: (&net.Dialer{
-			Timeout:   30 * time.Second,
+			Timeout: dialtimeoutd,
+			// value taken from http.DefaultTransport
 			KeepAlive: 30 * time.Second,
 		}).Dial,
+		// value taken from http.DefaultTransport
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     cfg,
 	}

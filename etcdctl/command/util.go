@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
@@ -33,6 +34,10 @@ import (
 
 var (
 	ErrNoAvailSrc = errors.New("no available argument and stdin")
+
+	// the maximum amount of time a dial will wait for a connection to setup.
+	// 30s is long enough for most of the network conditions.
+	defaultDialTimeout = 30 * time.Second
 )
 
 // trimsplit slices s into all substrings separated by sep and returns a
@@ -153,7 +158,7 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		CertFile: certfile,
 		KeyFile:  keyfile,
 	}
-	return transport.NewTransport(tls)
+	return transport.NewTransport(tls, defaultDialTimeout)
 }
 
 func getUsernamePasswordFromFlag(usernameFlag string) (username string, password string, err error) {
