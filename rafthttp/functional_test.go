@@ -15,7 +15,6 @@
 package rafthttp
 
 import (
-	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
@@ -31,12 +30,11 @@ import (
 func TestSendMessage(t *testing.T) {
 	// member 1
 	tr := &Transport{
-		RoundTripper: &http.Transport{},
-		ID:           types.ID(1),
-		ClusterID:    types.ID(1),
-		Raft:         &fakeRaft{},
-		ServerStats:  newServerStats(),
-		LeaderStats:  stats.NewLeaderStats("1"),
+		ID:          types.ID(1),
+		ClusterID:   types.ID(1),
+		Raft:        &fakeRaft{},
+		ServerStats: newServerStats(),
+		LeaderStats: stats.NewLeaderStats("1"),
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -46,12 +44,11 @@ func TestSendMessage(t *testing.T) {
 	recvc := make(chan raftpb.Message, 1)
 	p := &fakeRaft{recvc: recvc}
 	tr2 := &Transport{
-		RoundTripper: &http.Transport{},
-		ID:           types.ID(2),
-		ClusterID:    types.ID(1),
-		Raft:         p,
-		ServerStats:  newServerStats(),
-		LeaderStats:  stats.NewLeaderStats("2"),
+		ID:          types.ID(2),
+		ClusterID:   types.ID(1),
+		Raft:        p,
+		ServerStats: newServerStats(),
+		LeaderStats: stats.NewLeaderStats("2"),
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())
@@ -92,12 +89,11 @@ func TestSendMessage(t *testing.T) {
 func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 	// member 1
 	tr := &Transport{
-		RoundTripper: &http.Transport{},
-		ID:           types.ID(1),
-		ClusterID:    types.ID(1),
-		Raft:         &fakeRaft{},
-		ServerStats:  newServerStats(),
-		LeaderStats:  stats.NewLeaderStats("1"),
+		ID:          types.ID(1),
+		ClusterID:   types.ID(1),
+		Raft:        &fakeRaft{},
+		ServerStats: newServerStats(),
+		LeaderStats: stats.NewLeaderStats("1"),
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -107,12 +103,11 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 	recvc := make(chan raftpb.Message, 1)
 	p := &fakeRaft{recvc: recvc}
 	tr2 := &Transport{
-		RoundTripper: &http.Transport{},
-		ID:           types.ID(2),
-		ClusterID:    types.ID(1),
-		Raft:         p,
-		ServerStats:  newServerStats(),
-		LeaderStats:  stats.NewLeaderStats("2"),
+		ID:          types.ID(2),
+		ClusterID:   types.ID(1),
+		Raft:        p,
+		ServerStats: newServerStats(),
+		LeaderStats: stats.NewLeaderStats("2"),
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())

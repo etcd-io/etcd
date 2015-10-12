@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/xiang90/probing"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -40,7 +41,7 @@ type Raft interface {
 type Transporter interface {
 	// Start starts the given Transporter.
 	// Start MUST be called before calling other functions in the interface.
-	Start()
+	Start() error
 	// Handler returns the HTTP handler of the transporter.
 	// A transporter HTTP handler handles the HTTP requests
 	// from remote peers.
@@ -88,11 +89,13 @@ type Transporter interface {
 // User needs to call Start before calling other functions, and call
 // Stop when the Transport is no longer used.
 type Transport struct {
-	RoundTripper http.RoundTripper  // roundTripper to send requests
-	ID           types.ID           // local member ID
-	ClusterID    types.ID           // raft cluster ID for request validation
-	Raft         Raft               // raft state machine, to which the Transport forwards received messages and reports status
-	ServerStats  *stats.ServerStats // used to record general transportation statistics
+	DialTimeout time.Duration     // maximum duration before timing out dial of the request
+	TLSInfo     transport.TLSInfo // TLS information used when creating connection
+
+	ID          types.ID           // local member ID
+	ClusterID   types.ID           // raft cluster ID for request validation
+	Raft        Raft               // raft state machine, to which the Transport forwards received messages and reports status
+	ServerStats *stats.ServerStats // used to record general transportation statistics
 	// used to record transportation statistics with followers when
 	// performing as leader in raft protocol
 	LeaderStats *stats.LeaderStats
@@ -102,6 +105,9 @@ type Transport struct {
 	// machine and thus stop the Transport.
 	ErrorC chan error
 
+	streamRt   http.RoundTripper // roundTripper used by streams
+	pipelineRt http.RoundTripper // roundTripper used by pipelines
+
 	mu      sync.RWMutex         // protect the term, remote and peer map
 	term    uint64               // the latest term that has been observed
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
@@ -110,10 +116,23 @@ type Transport struct {
 	prober probing.Prober
 }
 
-func (t *Transport) Start() {
+func (t *Transport) Start() error {
+	var err error
+	// Read/write timeout is set for stream roundTripper to promptly
+	// find out broken status, which minimizes the number of messages
+	// sent on broken connection.
+	t.streamRt, err = transport.NewTimeoutTransport(t.TLSInfo, t.DialTimeout, ConnReadTimeout, ConnWriteTimeout)
+	if err != nil {
+		return err
+	}
+	t.pipelineRt, err = transport.NewTransport(t.TLSInfo, t.DialTimeout)
+	if err != nil {
+		return err
+	}
 	t.remotes = make(map[types.ID]*remote)
 	t.peers = make(map[types.ID]Peer)
-	t.prober = probing.NewProber(t.RoundTripper)
+	t.prober = probing.NewProber(t.pipelineRt)
+	return nil
 }
 
 func (t *Transport) Handler() http.Handler {
@@ -183,7 +202,10 @@ func (t *Transport) Stop() {
 		p.Stop()
 	}
 	t.prober.RemoveAll()
-	if tr, ok := t.RoundTripper.(*http.Transport); ok {
+	if tr, ok := t.streamRt.(*http.Transport); ok {
+		tr.CloseIdleConnections()
+	}
+	if tr, ok := t.pipelineRt.(*http.Transport); ok {
 		tr.CloseIdleConnections()
 	}
 }
@@ -198,7 +220,7 @@ func (t *Transport) AddRemote(id types.ID, us []string) {
 	if err != nil {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
-	t.remotes[id] = startRemote(t.RoundTripper, urls, t.ID, id, t.ClusterID, t.Raft, t.ErrorC)
+	t.remotes[id] = startRemote(t.pipelineRt, urls, t.ID, id, t.ClusterID, t.Raft, t.ErrorC)
 }
 
 func (t *Transport) AddPeer(id types.ID, us []string) {
@@ -212,7 +234,7 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.LeaderStats.Follower(id.String())
-	t.peers[id] = startPeer(t.RoundTripper, urls, t.ID, id, t.ClusterID, t.Raft, fs, t.ErrorC, t.term)
+	t.peers[id] = startPeer(t.streamRt, t.pipelineRt, urls, t.ID, id, t.ClusterID, t.Raft, fs, t.ErrorC, t.term)
 	addPeerToProber(t.prober, id.String(), us)
 }
 

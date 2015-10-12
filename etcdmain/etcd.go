@@ -199,11 +199,6 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		return nil, fmt.Errorf("error setting up initial cluster: %v", err)
 	}
 
-	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, peerDialTimeout(cfg.ElectionMs), rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
-	if err != nil {
-		return nil, err
-	}
-
 	if !cfg.peerTLSInfo.Empty() {
 		plog.Infof("peerTLS: %s", cfg.peerTLSInfo)
 	}
@@ -284,7 +279,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		DiscoveryProxy:      cfg.dproxy,
 		NewCluster:          cfg.isNewCluster(),
 		ForceNewCluster:     cfg.forceNewCluster,
-		Transport:           pt,
+		PeerTLSInfo:         cfg.peerTLSInfo,
 		TickMs:              cfg.TickMs,
 		ElectionTicks:       cfg.electionTicks(),
 		V3demo:              cfg.v3demo,
@@ -533,10 +528,4 @@ func setupLogging(cfg *config) {
 		}
 		repoLog.SetLogLevel(settings)
 	}
-}
-
-func peerDialTimeout(electionMs uint) time.Duration {
-	// 1s for queue wait and system delay
-	// + one RTT, which is smaller than 1/5 election timeout
-	return time.Second + time.Duration(electionMs)*time.Millisecond/5
 }
