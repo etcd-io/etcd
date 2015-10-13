@@ -25,7 +25,7 @@ etcd 2.2 is our current stable branch. The roadmap below outlines new features t
 - simple v3 client (maybe)
 
 ### etcd 3.0 (January)
-- v3 API ([see also the issue tag](https://github.com/coreos/etcd/issues?utf8=%E2%9C%93&q=label%3Av3api))
+- v3 API ([see also the issue tag](https://github.com/coreos/etcd/issues?utf8=%E2%9C%93&q=label%3Aarea/v3api))
   - Transactions
   - Leases
   - Binary protocol
