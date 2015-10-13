@@ -117,7 +117,7 @@ exit 1
 
 In a number of cases, you might not know the IPs of your cluster peers ahead of time. This is common when utilizing cloud providers or when your network uses DHCP. In these cases, rather than specifying a static configuration, you can use an existing etcd cluster to bootstrap a new one. We call this process "discovery".
 
-There two methods that can be used for discovery:
+There are two methods that can be used for discovery:
 
 * etcd discovery service
 * DNS SRV records
