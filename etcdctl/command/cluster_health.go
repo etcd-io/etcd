@@ -49,42 +49,14 @@ func handleClusterHealth(c *cli.Context) {
 	cl := client.GetCluster()
 	ep, ls0, err := getLeaderStats(tr, cl)
 	if err != nil {
-		fmt.Println("cluster may be unhealthy: failed to connect", cl)
-		os.Exit(1)
-	}
-
-	// is raft stable and making progress?
-	client = etcd.NewClient([]string{ep})
-	client.SetTransport(tr)
-	resp, err := client.Get("/", false, false)
-	if err != nil {
-		fmt.Println("cluster is unhealthy")
-		os.Exit(1)
-	}
-	rt0, ri0 := resp.RaftTerm, resp.RaftIndex
-	time.Sleep(time.Second)
-
-	resp, err = client.Get("/", false, false)
-	if err != nil {
-		fmt.Println("cluster is unhealthy")
-		os.Exit(1)
-	}
-	rt1, ri1 := resp.RaftTerm, resp.RaftIndex
-
-	if rt0 != rt1 {
-		fmt.Println("cluster is unhealthy")
-		os.Exit(1)
-	}
-
-	if ri1 == ri0 {
-		fmt.Println("cluster is unhealthy")
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
 	// are all the members makeing progress?
 	_, ls1, err := getLeaderStats(tr, []string{ep})
 	if err != nil {
-		fmt.Println("cluster is unhealthy")
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
@@ -120,6 +92,8 @@ func getLeaderStats(tr *http.Transport, endpoints []string) (string, *stats.Lead
 		Transport: tr,
 	}
 
+	inValidNum := 0
+
 	for _, ep := range endpoints {
 		resp, err := httpclient.Get(ep + "/v2/stats/leader")
 		if err != nil {
@@ -136,7 +110,41 @@ func getLeaderStats(tr *http.Transport, endpoints []string) (string, *stats.Lead
 		if err != nil {
 			continue
 		}
-		return ep, ls, nil
+		if isValid(tr, ep) {
+			return ep, ls, nil
+		} else {
+			inValidNum++
+		}
 	}
-	return "", nil, errors.New("no leader")
+	if inValidNum > len(endpoints)/2 {
+		return "", nil, errors.New("cluster is unhealthy")
+	}
+	return "", nil, errors.New("cluster may be unhealthy: no leader")
+}
+
+// check if raft stable and making progress, if not, the leader is isolated from cluster
+func isValid(tr *http.Transport, leader string) bool {
+	client := etcd.NewClient([]string{leader})
+	client.SetTransport(tr)
+	resp, err := client.Get("/", false, false)
+	if err != nil {
+		return false
+	}
+	rt0, ri0 := resp.RaftTerm, resp.RaftIndex
+	time.Sleep(time.Second)
+
+	resp, err = client.Get("/", false, false)
+	if err != nil {
+		return false
+	}
+	rt1, ri1 := resp.RaftTerm, resp.RaftIndex
+
+	if rt0 != rt1 {
+		return false
+	}
+
+	if ri1 == ri0 {
+		return false
+	}
+	return true
 }
