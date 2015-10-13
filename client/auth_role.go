@@ -72,7 +72,7 @@ type AuthRoleAPI interface {
 	RevokeRoleKV(ctx context.Context, role string, prefixes []string, permType PermissionType) (*Role, error)
 
 	// List roles.
-	ListRoles(ctx context.Context) ([]string, error)
+	ListRoles(ctx context.Context) ([]Role, error)
 }
 
 type httpAuthRoleAPI struct {
@@ -110,7 +110,7 @@ func (l *authRoleAPIAction) HTTPRequest(ep url.URL) *http.Request {
 	return req
 }
 
-func (r *httpAuthRoleAPI) ListRoles(ctx context.Context) ([]string, error) {
+func (r *httpAuthRoleAPI) ListRoles(ctx context.Context) ([]Role, error) {
 	resp, body, err := r.client.Do(ctx, &authRoleAPIList{})
 	if err != nil {
 		return nil, err
@@ -118,14 +118,14 @@ func (r *httpAuthRoleAPI) ListRoles(ctx context.Context) ([]string, error) {
 	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		return nil, err
 	}
-	var userList struct {
-		Roles []string `json:"roles"`
+	var roleList struct {
+		Roles []Role `json:"roles"`
 	}
-	err = json.Unmarshal(body, &userList)
+	err = json.Unmarshal(body, &roleList)
 	if err != nil {
 		return nil, err
 	}
-	return userList.Roles, nil
+	return roleList.Roles, nil
 }
 
 func (r *httpAuthRoleAPI) AddRole(ctx context.Context, rolename string) error {
