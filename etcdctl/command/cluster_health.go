@@ -59,7 +59,7 @@ func handleClusterHealth(c *cli.Context) {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-	
+
 	fmt.Println("cluster is healthy")
 	// self is healthy
 	var prints []string
