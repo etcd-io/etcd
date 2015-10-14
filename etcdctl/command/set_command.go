@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -55,7 +54,9 @@ func setCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	prevValue := c.String("swap-with-value")
 	prevIndex := c.Int("swap-with-index")
 
-	resp, err := ki.Set(context.TODO(), key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevIndex: uint64(prevIndex), PrevValue: prevValue})
+	ctx, cancel := contextWithTotalTimeout(c)
+	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevIndex: uint64(prevIndex), PrevValue: prevValue})
+	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
 	}

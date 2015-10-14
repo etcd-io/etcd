@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -47,7 +46,9 @@ func lsCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	sort := c.Bool("sort")
 	recursive := c.Bool("recursive")
 
-	resp, err := ki.Get(context.TODO(), key, &client.GetOptions{Sort: sort, Recursive: recursive})
+	ctx, cancel := contextWithTotalTimeout(c)
+	resp, err := ki.Get(ctx, key, &client.GetOptions{Sort: sort, Recursive: recursive})
+	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
 	}

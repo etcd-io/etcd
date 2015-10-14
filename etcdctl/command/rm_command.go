@@ -18,7 +18,6 @@ import (
 	"errors"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 )
 
@@ -50,7 +49,9 @@ func rmCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	prevValue := c.String("with-value")
 	prevIndex := c.Int("with-index")
 
-	resp, err := ki.Delete(context.TODO(), key, &client.DeleteOptions{PrevIndex: uint64(prevIndex), PrevValue: prevValue, Dir: dir, Recursive: recursive})
+	ctx, cancel := contextWithTotalTimeout(c)
+	resp, err := ki.Delete(ctx, key, &client.DeleteOptions{PrevIndex: uint64(prevIndex), PrevValue: prevValue, Dir: dir, Recursive: recursive})
+	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
