@@ -49,6 +49,7 @@ const (
 	streamAppV2 = "streamMsgAppV2"
 	streamMsg   = "streamMsg"
 	pipelineMsg = "pipeline"
+	sendSnap    = "sendMsgSnap"
 )
 
 type Peer interface {
@@ -87,14 +88,16 @@ type Peer interface {
 // It is only used when the stream has not been established.
 type peer struct {
 	// id of the remote raft peer node
-	id types.ID
-	r  Raft
+	id     types.ID
+	r      Raft
+	v3demo bool
 
 	status *peerStatus
 
 	msgAppWriter *streamWriter
 	writer       *streamWriter
 	pipeline     *pipeline
+	snapSender   *snapshotSender // snapshot sender to send v3 snapshot messages
 	msgAppReader *streamReader
 
 	sendc    chan raftpb.Message
@@ -111,16 +114,18 @@ type peer struct {
 	done  chan struct{}
 }
 
-func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error, term uint64) *peer {
+func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, snapst *snapshotStore, r Raft, fs *stats.FollowerStats, errorc chan error, term uint64, v3demo bool) *peer {
 	picker := newURLPicker(urls)
 	status := newPeerStatus(to)
 	p := &peer{
 		id:           to,
 		r:            r,
+		v3demo:       v3demo,
 		status:       status,
 		msgAppWriter: startStreamWriter(to, status, fs, r),
 		writer:       startStreamWriter(to, status, fs, r),
 		pipeline:     newPipeline(pipelineRt, picker, local, to, cid, status, fs, r, errorc),
+		snapSender:   newSnapshotSender(pipelineRt, picker, local, to, cid, status, snapst, r, errorc),
 		sendc:        make(chan raftpb.Message),
 		recvc:        make(chan raftpb.Message, recvBufSize),
 		propc:        make(chan raftpb.Message, maxPendingProposals),
@@ -158,6 +163,10 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 				if paused {
 					continue
 				}
+				if p.v3demo && isMsgSnap(m) {
+					go p.snapSender.send(m)
+					continue
+				}
 				writec, name := p.pick(m)
 				select {
 				case writec <- m:
@@ -187,6 +196,7 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 				p.msgAppWriter.stop()
 				p.writer.stop()
 				p.pipeline.stop()
+				p.snapSender.stop()
 				p.msgAppReader.stop()
 				reader.stop()
 				close(p.done)

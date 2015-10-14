@@ -359,9 +359,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		ID:          id,
 		ClusterID:   cl.ID(),
 		Raft:        srv,
+		SnapSaver:   s.snapStore,
 		ServerStats: sstats,
 		LeaderStats: lstats,
 		ErrorC:      srv.errorc,
+		V3demo:      cfg.V3demo,
 	}
 	if err := tr.Start(); err != nil {
 		return nil, err
@@ -378,6 +380,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 	}
 	srv.r.transport = tr
+
+	if cfg.V3demo {
+		s.snapStore.tr = tr
+	}
+
 	return srv, nil
 }
 

@@ -19,11 +19,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
 )
+
+var errMemberRemoved = fmt.Errorf("the member has been permanently removed from the cluster")
 
 func writeEntryTo(w io.Writer, ent *raftpb.Entry) error {
 	size := ent.Size()
@@ -48,6 +53,59 @@ func readEntryFrom(r io.Reader, ent *raftpb.Entry) error {
 		return err
 	}
 	return ent.Unmarshal(buf)
+}
+
+// createPostRequest creates a HTTP POST request that sends raft message.
+func createPostRequest(u url.URL, path string, body io.Reader, ct string, from, cid types.ID) *http.Request {
+	uu := u
+	uu.Path = path
+	req, err := http.NewRequest("POST", uu.String(), body)
+	if err != nil {
+		plog.Panicf("unexpected new request error (%v)", err)
+	}
+	req.Header.Set("Content-Type", ct)
+	req.Header.Set("X-Server-From", from.String())
+	req.Header.Set("X-Server-Version", version.Version)
+	req.Header.Set("X-Min-Cluster-Version", version.MinClusterVersion)
+	req.Header.Set("X-Etcd-Cluster-ID", cid.String())
+	return req
+}
+
+// checkPostResponse checks the response of the HTTP POST request that sends
+// raft message.
+func checkPostResponse(resp *http.Response, body []byte, req *http.Request, to types.ID) error {
+	switch resp.StatusCode {
+	case http.StatusPreconditionFailed:
+		switch strings.TrimSuffix(string(body), "\n") {
+		case errIncompatibleVersion.Error():
+			plog.Errorf("request sent was ignored by peer %s (server version incompatible)", to)
+			return errIncompatibleVersion
+		case errClusterIDMismatch.Error():
+			plog.Errorf("request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
+				to, resp.Header.Get("X-Etcd-Cluster-ID"), req.Header.Get("X-Etcd-Cluster-ID"))
+			return errClusterIDMismatch
+		default:
+			return fmt.Errorf("unhandled error %q when precondition failed", string(body))
+		}
+	case http.StatusForbidden:
+		return errMemberRemoved
+	case http.StatusNoContent:
+		return nil
+	default:
+		return fmt.Errorf("unexpected http status %s while posting to %q", http.StatusText(resp.StatusCode), req.URL.String())
+	}
+}
+
+// reportErr reports the given error through sending it into
+// the given error channel.
+// If the error channel is filled up when sending error, it drops the error
+// because the fact that error has happened is reported, which is
+// good enough.
+func reportCriticalError(err error, errc chan<- error) {
+	select {
+	case errc <- err:
+	default:
+	}
 }
 
 // compareMajorMinorVersion returns an integer comparing two versions based on

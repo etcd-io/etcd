@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -36,6 +37,12 @@ type Raft interface {
 	IsIDRemoved(id uint64) bool
 	ReportUnreachable(id uint64)
 	ReportSnapshot(id uint64, status raft.SnapshotStatus)
+}
+
+// SnapshotSaver is the interface that wraps the SaveFrom method.
+type SnapshotSaver interface {
+	// SaveFrom saves the snapshot data at the given index from the given reader.
+	SaveFrom(r io.Reader, index uint64) error
 }
 
 type Transporter interface {
@@ -78,6 +85,10 @@ type Transporter interface {
 	// If the connection is active since peer was added, it returns the adding time.
 	// If the connection is currently inactive, it returns zero time.
 	ActiveSince(id types.ID) time.Time
+	// SnapshotReady accepts a snapshot at the given index that is ready to send out.
+	// SnapshotReady MUST not be called when the snapshot sent result of previous
+	// accepted one has not been reported.
+	SnapshotReady(rc io.ReadCloser, index uint64)
 	// Stop closes the connections and stops the transporter.
 	Stop()
 }
@@ -95,6 +106,7 @@ type Transport struct {
 	ID          types.ID           // local member ID
 	ClusterID   types.ID           // raft cluster ID for request validation
 	Raft        Raft               // raft state machine, to which the Transport forwards received messages and reports status
+	SnapSaver   SnapshotSaver      // used to save snapshot in v3 snapshot messages
 	ServerStats *stats.ServerStats // used to record general transportation statistics
 	// used to record transportation statistics with followers when
 	// performing as leader in raft protocol
@@ -104,6 +116,7 @@ type Transport struct {
 	// When an error is received from ErrorC, user should stop raft state
 	// machine and thus stop the Transport.
 	ErrorC chan error
+	V3demo bool
 
 	streamRt   http.RoundTripper // roundTripper used by streams
 	pipelineRt http.RoundTripper // roundTripper used by pipelines
@@ -112,6 +125,8 @@ type Transport struct {
 	term    uint64               // the latest term that has been observed
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
 	peers   map[types.ID]Peer    // peers map
+
+	snapst *snapshotStore
 
 	prober probing.Prober
 }
@@ -131,6 +146,7 @@ func (t *Transport) Start() error {
 	}
 	t.remotes = make(map[types.ID]*remote)
 	t.peers = make(map[types.ID]Peer)
+	t.snapst = &snapshotStore{}
 	t.prober = probing.NewProber(t.pipelineRt)
 	return nil
 }
@@ -138,9 +154,11 @@ func (t *Transport) Start() error {
 func (t *Transport) Handler() http.Handler {
 	pipelineHandler := NewHandler(t.Raft, t.ClusterID)
 	streamHandler := newStreamHandler(t, t.Raft, t.ID, t.ClusterID)
+	snapHandler := newSnapshotHandler(t.Raft, t.SnapSaver, t.ClusterID)
 	mux := http.NewServeMux()
 	mux.Handle(RaftPrefix, pipelineHandler)
 	mux.Handle(RaftStreamPrefix+"/", streamHandler)
+	mux.Handle(RaftSnapshotPrefix, snapHandler)
 	mux.Handle(ProbingPrefix, probing.NewHandler())
 	return mux
 }
@@ -234,7 +252,7 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.LeaderStats.Follower(id.String())
-	t.peers[id] = startPeer(t.streamRt, t.pipelineRt, urls, t.ID, id, t.ClusterID, t.Raft, fs, t.ErrorC, t.term)
+	t.peers[id] = startPeer(t.streamRt, t.pipelineRt, urls, t.ID, id, t.ClusterID, t.snapst, t.Raft, fs, t.ErrorC, t.term, t.V3demo)
 	addPeerToProber(t.prober, id.String(), us)
 }
 
@@ -290,6 +308,10 @@ func (t *Transport) ActiveSince(id types.ID) time.Time {
 	return time.Time{}
 }
 
+func (t *Transport) SnapshotReady(rc io.ReadCloser, index uint64) {
+	t.snapst.put(rc, index)
+}
+
 type Pausable interface {
 	Pause()
 	Resume()
@@ -306,4 +328,30 @@ func (t *Transport) Resume() {
 	for _, p := range t.peers {
 		p.(Pausable).Resume()
 	}
+}
+
+// snapshotStore is the store of snapshot. Caller could put one
+// snapshot into the store, and get it later.
+// snapshotStore stores at most one snapshot at a time, or it panics.
+type snapshotStore struct {
+	rc io.ReadCloser
+	// index of the stored snapshot
+	// index is 0 if and only if there is no snapshot stored.
+	index uint64
+}
+
+func (s *snapshotStore) put(rc io.ReadCloser, index uint64) {
+	if s.index != 0 {
+		plog.Panicf("unexpected put when there is one snapshot stored")
+	}
+	s.rc, s.index = rc, index
+}
+
+func (s *snapshotStore) get(index uint64) io.ReadCloser {
+	if s.index == index {
+		// set index to 0 to indicate no snapshot stored
+		s.index = 0
+		return s.rc
+	}
+	return nil
 }
