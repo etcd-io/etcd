@@ -84,19 +84,9 @@
 			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
 		},
 		{
-			"ImportPath": "github.com/prometheus/client_golang/model",
-			"Comment": "0.5.0-10-ga842dc1",
-			"Rev": "a842dc11e0621c34a71cab634d1d0190a59802a8"
-		},
-		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
-			"Comment": "0.5.0-10-ga842dc1",
-			"Rev": "a842dc11e0621c34a71cab634d1d0190a59802a8"
-		},
-		{
-			"ImportPath": "github.com/prometheus/client_golang/text",
-			"Comment": "0.5.0-10-ga842dc1",
-			"Rev": "a842dc11e0621c34a71cab634d1d0190a59802a8"
+			"Comment": "0.7.0-52-ge51041b",
+			"Rev": "e51041b3fa41cece0dca035740ba6411905be473"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_model/go",
@@ -104,8 +94,16 @@
 			"Rev": "fa8ad6fec33561be4280a8f0514318c79d7f6cb6"
 		},
 		{
+			"ImportPath": "github.com/prometheus/common/expfmt",
+			"Rev": "ffe929a3f4c4faeaa10f2b9535c2b1be3ad15650"
+		},
+		{
+			"ImportPath": "github.com/prometheus/common/model",
+			"Rev": "ffe929a3f4c4faeaa10f2b9535c2b1be3ad15650"
+		},
+		{
 			"ImportPath": "github.com/prometheus/procfs",
-			"Rev": "ee2372b58cee877abe07cde670d04d3b3bac5ee6"
+			"Rev": "454a56f35412459b5e684fd5ec0f9211b94f002a"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
