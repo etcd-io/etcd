@@ -50,6 +50,10 @@ func TestGoCollector(t *testing.T) {
 					t.Errorf("want 1 new goroutine, got %d", diff)
 				}
 
+				// GoCollector performs two sends per call.
+				// On line 27 we need to receive the second send
+				// to shut down cleanly.
+				<-ch
 				return
 			}
 		case <-time.After(1 * time.Second):
