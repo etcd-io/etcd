@@ -1356,7 +1356,7 @@ func TestHTTPKeysAPICreateAction(t *testing.T) {
 	}
 
 	kAPI := httpKeysAPI{client: &actionAssertingHTTPClient{t: t, act: act}}
-	kAPI.Create(context.Background(), "/foo", "bar")
+	kAPI.Create(context.Background(), "/foo", "bar", nil)
 }
 
 func TestHTTPKeysAPICreateInOrderAction(t *testing.T) {

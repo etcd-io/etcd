@@ -51,7 +51,7 @@ func mkCommandFunc(c *cli.Context, ki client.KeysAPI) {
 
 	ttl := c.Int("ttl")
 
-	resp, err := ki.Set(context.TODO(), key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevIgnore})
+	resp, err := ki.Create(context.TODO(), key, value, &client.CreateOptions{TTL: time.Duration(ttl) * time.Second})
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
