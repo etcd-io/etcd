@@ -86,7 +86,11 @@ type Transporter interface {
 	// If the connection is currently inactive, it returns zero time.
 	ActiveSince(id types.ID) time.Time
 	// SnapshotReady accepts a snapshot at the given index that is ready to send out.
-	// SnapshotReady MUST not be called when the snapshot sent result of previous
+	// It is expected that caller sends a raft snapshot message with
+	// the given index soon, and the accepted snapshot will be sent out
+	// together. After sending, snapshot sent status is reported
+	// through Raft.SnapshotStatus.
+	// SnapshotReady MUST not be called when the snapshot sent status of previous
 	// accepted one has not been reported.
 	SnapshotReady(rc io.ReadCloser, index uint64)
 	// Stop closes the connections and stops the transporter.

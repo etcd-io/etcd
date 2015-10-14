@@ -459,8 +459,13 @@ func (s *EtcdServer) IsIDRemoved(id uint64) bool { return s.cluster.IsIDRemoved(
 
 func (s *EtcdServer) ReportUnreachable(id uint64) { s.r.ReportUnreachable(id) }
 
+// ReportSnapshot reports snapshot sent status to the raft state machine,
+// and clears the used snapshot from the snapshot store.
 func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	s.r.ReportSnapshot(id, status)
+	if s.cfg.V3demo {
+		s.r.raftStorage.snapStore.clearUsedSnap()
+	}
 }
 
 func (s *EtcdServer) run() {
@@ -1019,6 +1024,9 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			plog.Panicf("unexpected compaction error %v", err)
 		}
 		plog.Infof("compacted raft log at %d", compacti)
+		if s.cfg.V3demo && s.r.raftStorage.snapStore.closeSnapBefore(compacti) {
+			plog.Infof("closed snapshot stored due to compaction at %d", compacti)
+		}
 	}()
 }
 
