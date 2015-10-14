@@ -1,18 +1,19 @@
 package procfs
 
 import (
-	"os"
 	"reflect"
 	"sort"
 	"testing"
 )
 
 func TestSelf(t *testing.T) {
-	p1, err := NewProc(os.Getpid())
+	fs := FS("fixtures")
+
+	p1, err := fs.NewProc(26231)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Self()
+	p2, err := fs.Self()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,11 +24,7 @@ func TestSelf(t *testing.T) {
 }
 
 func TestAllProcs(t *testing.T) {
-	fs, err := NewFS("fixtures")
-	if err != nil {
-		t.Fatal(err)
-	}
-	procs, err := fs.AllProcs()
+	procs, err := FS("fixtures").AllProcs()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,33 +90,30 @@ func TestFileDescriptors(t *testing.T) {
 		t.Fatal(err)
 	}
 	sort.Sort(byUintptr(fds))
-	if want := []uintptr{0, 1, 2, 3, 4}; !reflect.DeepEqual(want, fds) {
+	if want := []uintptr{0, 1, 2, 3, 10}; !reflect.DeepEqual(want, fds) {
 		t.Errorf("want fds %v, got %v", want, fds)
 	}
+}
 
-	p2, err := Self()
+func TestFileDescriptorTargets(t *testing.T) {
+	p1, err := testProcess(26231)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	fdsBefore, err := p2.FileDescriptors()
+	fds, err := p1.FileDescriptorTargets()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	s, err := os.Open("fixtures")
-	if err != nil {
-		t.Fatal(err)
+	sort.Strings(fds)
+	var want = []string{
+		"../../symlinktargets/abc",
+		"../../symlinktargets/def",
+		"../../symlinktargets/ghi",
+		"../../symlinktargets/uvw",
+		"../../symlinktargets/xyz",
 	}
-	defer s.Close()
-
-	fdsAfter, err := p2.FileDescriptors()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if len(fdsBefore)+1 != len(fdsAfter) {
-		t.Errorf("want fds %v+1 to equal %v", fdsBefore, fdsAfter)
+	if !reflect.DeepEqual(want, fds) {
+		t.Errorf("want fds %v, got %v", want, fds)
 	}
 }
 
@@ -142,7 +136,6 @@ func testProcess(pid int) (Proc, error) {
 	if err != nil {
 		return Proc{}, err
 	}
-
 	return fs.NewProc(pid)
 }
 
