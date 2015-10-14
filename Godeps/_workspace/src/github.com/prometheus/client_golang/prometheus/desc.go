@@ -9,17 +9,18 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/model"
-
-	dto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_model/go"
-
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	dto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_model/go"
 )
 
 var (
 	metricNameRE = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_:]*$`)
-	labelNameRE  = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+	labelNameRE  = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
 )
+
+// reservedLabelPrefix is a prefix which is not legal in user-supplied
+// label names.
+const reservedLabelPrefix = "__"
 
 // Labels represents a collection of label name -> value mappings. This type is
 // commonly used with the With(Labels) and GetMetricWith(Labels) methods of
@@ -134,7 +135,7 @@ func NewDesc(fqName, help string, variableLabels []string, constLabels Labels) *
 	for _, val := range labelValues {
 		b.Reset()
 		b.WriteString(val)
-		b.WriteByte(model.SeparatorByte)
+		b.WriteByte(separatorByte)
 		h.Write(b.Bytes())
 	}
 	d.id = h.Sum64()
@@ -145,12 +146,12 @@ func NewDesc(fqName, help string, variableLabels []string, constLabels Labels) *
 	h.Reset()
 	b.Reset()
 	b.WriteString(help)
-	b.WriteByte(model.SeparatorByte)
+	b.WriteByte(separatorByte)
 	h.Write(b.Bytes())
 	for _, labelName := range labelNames {
 		b.Reset()
 		b.WriteString(labelName)
-		b.WriteByte(model.SeparatorByte)
+		b.WriteByte(separatorByte)
 		h.Write(b.Bytes())
 	}
 	d.dimHash = h.Sum64()
@@ -195,5 +196,5 @@ func (d *Desc) String() string {
 
 func checkLabelName(l string) bool {
 	return labelNameRE.MatchString(l) &&
-		!strings.HasPrefix(l, model.ReservedLabelPrefix)
+		!strings.HasPrefix(l, reservedLabelPrefix)
 }
