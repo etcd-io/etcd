@@ -21,8 +21,6 @@ import (
 	"sync/atomic"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
-
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/model"
 	dto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_model/go"
 )
 
@@ -49,6 +47,10 @@ type Histogram interface {
 	Observe(float64)
 }
 
+// bucketLabel is used for the label that defines the upper bound of a
+// bucket of a histogram ("le" -> "less or equal").
+const bucketLabel = "le"
+
 var (
 	// DefBuckets are the default Histogram buckets. The default buckets are
 	// tailored to broadly measure the response time (in seconds) of a
@@ -57,7 +59,7 @@ var (
 	DefBuckets = []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}
 
 	errBucketLabelNotAllowed = fmt.Errorf(
-		"%q is not allowed as label name in histograms", model.BucketLabel,
+		"%q is not allowed as label name in histograms", bucketLabel,
 	)
 )
 
@@ -171,12 +173,12 @@ func newHistogram(desc *Desc, opts HistogramOpts, labelValues ...string) Histogr
 	}
 
 	for _, n := range desc.variableLabels {
-		if n == model.BucketLabel {
+		if n == bucketLabel {
 			panic(errBucketLabelNotAllowed)
 		}
 	}
 	for _, lp := range desc.constLabelPairs {
-		if lp.GetName() == model.BucketLabel {
+		if lp.GetName() == bucketLabel {
 			panic(errBucketLabelNotAllowed)
 		}
 	}

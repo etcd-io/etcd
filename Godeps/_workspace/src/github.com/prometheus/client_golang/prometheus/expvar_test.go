@@ -19,9 +19,8 @@ import (
 	"sort"
 	"strings"
 
-	dto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_model/go"
-
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+	dto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_model/go"
 )
 
 func ExampleExpvarCollector() {
