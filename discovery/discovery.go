@@ -193,7 +193,7 @@ func (d *discovery) getCluster() (string, error) {
 
 func (d *discovery) createSelf(contents string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	resp, err := d.c.Create(ctx, d.selfKey(), contents)
+	resp, err := d.c.Create(ctx, d.selfKey(), contents, nil)
 	cancel()
 	if err != nil {
 		if eerr, ok := err.(client.Error); ok && eerr.Code == client.ErrorCodeNodeExist {

@@ -115,7 +115,7 @@ type KeysAPI interface {
 	Delete(ctx context.Context, key string, opts *DeleteOptions) (*Response, error)
 
 	// Create is an alias for Set w/ PrevExist=false
-	Create(ctx context.Context, key, value string) (*Response, error)
+	Create(ctx context.Context, key, value string, opts *CreateOptions) (*Response, error)
 
 	// CreateInOrder is used to atomically create in-order keys within the given directory.
 	CreateInOrder(ctx context.Context, dir, value string, opts *CreateInOrderOptions) (*Response, error)
@@ -145,6 +145,14 @@ type WatcherOptions struct {
 	// to false (default), events will be limited to those that
 	// occur for the exact key.
 	Recursive bool
+}
+
+type CreateOptions struct {
+	// TTL defines a period of time after-which the Node should
+	// expire and no longer exist. Values <= 0 are ignored. Given
+	// that the zero-value is ignored, TTL cannot be used to set
+	// a TTL of 0.
+	TTL time.Duration
 }
 
 type CreateInOrderOptions struct {
@@ -338,7 +346,10 @@ func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts *SetOptions
 	return unmarshalHTTPResponse(resp.StatusCode, resp.Header, body)
 }
 
-func (k *httpKeysAPI) Create(ctx context.Context, key, val string) (*Response, error) {
+func (k *httpKeysAPI) Create(ctx context.Context, key, val string, opts *CreateOptions) (*Response, error) {
+	if opts != nil {
+		return k.Set(ctx, key, val, &SetOptions{TTL: opts.TTL, PrevExist: PrevNoExist})
+	}
 	return k.Set(ctx, key, val, &SetOptions{PrevExist: PrevNoExist})
 }
 
