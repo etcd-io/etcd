@@ -60,7 +60,8 @@ removed from the etcd cluster member list.
 This makes sense because it's usually an application level / administrative
 action to determine whether a reconfiguration should happen based on health. 
 
-For more information, refer to [Documentation/runtime-reconfiguration.md].
+For more information, refer to
+[Documentation/runtime-reconf-design.md](https://github.com/coreos/etcd/blob/master/Documentation/runtime-reconf-design.md).
 
 ## 6) how does --endpoint work with etcdctl? 
 

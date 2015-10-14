@@ -97,7 +97,7 @@ $ curl --cacert /path/to/ca.crt --cert /path/to/client.crt --key /path/to/client
   -L https://127.0.0.1:2379/v2/keys/foo -XPUT -d value=bar -v
 ```
 
-You should able to see:
+You should be able to see:
 
 ```
 ...
@@ -152,7 +152,7 @@ The etcd members will form a cluster and all communication between members in th
 The internal protocol of etcd v2.0.x uses a lot of short-lived HTTP connections.
 So, when enabling TLS you may need to increase the heartbeat interval and election timeouts to reduce internal cluster connection churn.
 A reasonable place to start are these values: ` --heartbeat-interval 500 --election-timeout 2500`.
-This issues is resolved in the etcd v2.1.x series of releases which uses fewer connections.
+These issues are resolved in the etcd v2.1.x series of releases which uses fewer connections.
 
 ### I'm seeing a SSLv3 alert handshake failure when using SSL client authentication?
 
