@@ -86,7 +86,7 @@ The total state machine handling loop will look something like this:
       if !raft.IsEmptySnap(rd.Snapshot) {
         processSnapshot(rd.Snapshot)
       }
-      for entry := range rd.CommittedEntries {
+      for _, entry := range rd.CommittedEntries {
         process(entry)
         if entry.Type == raftpb.EntryConfChange {
           var cc raftpb.ConfChange
