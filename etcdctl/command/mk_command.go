@@ -51,7 +51,11 @@ func mkCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	ttl := c.Int("ttl")
 
 	ctx, cancel := contextWithTotalTimeout(c)
-	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevIgnore})
+	// Since PrevNoExist means that the Node must not exist previously,
+	// this Set method always creates a new key. Therefore, mk command
+	// succeeds only if the key did not previously exist, and the command
+	// prevents one from overwriting values accidentally.
+	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevNoExist})
 	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
