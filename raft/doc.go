@@ -88,7 +88,7 @@ The total state machine handling loop will look something like this:
       }
       for entry := range rd.CommittedEntries {
         process(entry)
-        if entry.Type == raftpb.EntryConfChange:
+        if entry.Type == raftpb.EntryConfChange {
           var cc raftpb.ConfChange
           cc.Unmarshal(entry.Data)
           s.Node.ApplyConfChange(cc)
