@@ -148,6 +148,8 @@ func (r *raftNode) start(s *EtcdServer) {
 						if r.s.stats != nil {
 							r.s.stats.BecomeLeader()
 						}
+						// clear out the historical heartbeat result in detector.
+						r.s.sd.reset()
 					} else {
 						syncC = nil
 					}
