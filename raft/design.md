@@ -37,11 +37,11 @@ receives msgAppResp(rej=true)
                   +--------------------+                                                        
 ```
 
-When in `probe` state, leader sends at most one `replication message` per heartbeat interval. The leader sends `replication message` slowly and probing the actual progress of the follower. A `msgHeartbeatResp` or a `msgAppResp` with reject might trigger the sending of the next `replication message`.
+When the progress of a follower is in `probe` state, leader sends at most one `replication message` per heartbeat interval. The leader sends `replication message` slowly and probing the actual progress of the follower. A `msgHeartbeatResp` or a `msgAppResp` with reject might trigger the sending of the next `replication message`.
 
-When in `replicate` state, leader sends `replication message`, then optimistically increases `next` to the latest entry sent. This is an optimized state for fast replicating log entries to the follower.
+When the progress of a follower is in `replicate` state, leader sends `replication message`, then optimistically increases `next` to the latest entry sent. This is an optimized state for fast replicating log entries to the follower.
 
-When in `snapshot` state, leader stops sending any `replication message`.
+When the progress of a follower is in `snapshot` state, leader stops sending any `replication message`.
 
 A newly elected leader sets the progresses of all the followers to `probe` state with `match` = 0 and `next` = last index. The leader slowly (at most once per heartbeat) sends `replication message` to the follower and probes its progress.
 
@@ -52,6 +52,6 @@ A progress changes from `probe` to `snapshot` when the follower falls very far b
 ### Flow Control
 
 1. limit the max size of message sent per message. Max should be configurable.
-Lower the cost at probing state as we limit the size per message; lower the penalty when aggressively decrease to a too low `next`
+Lower the cost at probing state as we limit the size per message; lower the penalty when aggressively decreased to a too low `next`
 
-2. limit the # of in flight messages < N when in `replicate` state. N should be configurable. Most implementation will have a sending buffer on top of its actual network transport layer (not blocking raft node). We want to make sure raft does not overflow that buffer, which can cause message dropping and triggering a bunch of unnecessary resend in repeatedly. 
+2. limit the # of in flight messages < N when in `replicate` state. N should be configurable. Most implementation will have a sending buffer on top of its actual network transport layer (not blocking raft node). We want to make sure raft does not overflow that buffer, which can cause message dropping and triggering a bunch of unnecessary resending repeatedly. 
