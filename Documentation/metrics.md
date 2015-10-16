@@ -1,6 +1,6 @@
-## Metrics
+# Metrics
 
-**NOTE: The metrics feature is considered as an experimental. We might add/change/remove metrics without warning in the future releases.**
+**NOTE: The metrics feature is considered experimental. We may add/change/remove metrics without warning in future releases.**
 
 etcd uses [Prometheus](http://prometheus.io/) for metrics reporting in the server. The metrics can be used for real-time monitoring and debugging.
 
@@ -13,7 +13,7 @@ The naming of metrics follows the suggested [best practice of Prometheus](http:/
 
 etcd now exposes the following metrics:
 
-### etcdserver
+## etcdserver
 
 | Name                                    | Description                                      | Type    |
 |-----------------------------------------|--------------------------------------------------|---------|
@@ -30,7 +30,7 @@ Pending proposal (`pending_proposal_total`) gives you an idea about how many pro
 
 Failed proposals (`proposal_failed_total`) are normally related to two issues: temporary failures related to a leader election or longer duration downtime caused by a loss of quorum in the cluster.
 
-### wal
+## wal
 
 | Name                               | Description                                      | Type    |
 |------------------------------------|--------------------------------------------------|---------|
@@ -40,7 +40,7 @@ Failed proposals (`proposal_failed_total`) are normally related to two issues: t
 Abnormally high fsync duration (`fsync_durations_microseconds`) indicates disk issues and might cause the cluster to be unstable.
 
 
-### http requests
+## http requests
 
 These metrics describe the serving of requests (non-watch events) served by etcd members in non-proxy mode: total 
 incoming requests, request failures and processing latency (inc. raft rounds for storage). They are useful for tracking
@@ -71,7 +71,7 @@ Example Prometheus queries that may be useful from these metrics (across all etc
     
     Show the 0.90-tile latency (in seconds) of read/write (respectively) event handling across all members, with a window of `5m`.      
 
-### snapshot
+## snapshot
 
 | Name                                       | Description                                                | Type    |
 |--------------------------------------------|------------------------------------------------------------|---------|
@@ -80,7 +80,7 @@ Example Prometheus queries that may be useful from these metrics (across all etc
 Abnormally high snapshot duration (`snapshot_save_total_durations_microseconds`) indicates disk issues and might cause the cluster to be unstable.
 
 
-### rafthttp
+## rafthttp
 
 | Name                              | Description                                | Type    | Labels                         |
 |-----------------------------------|--------------------------------------------|---------|--------------------------------|
@@ -99,7 +99,7 @@ Label `msgType` is the type of raft message. `MsgApp` is log replication message
 Label `remoteID` is the member ID of the message destination.
 
 
-### proxy
+## proxy
 
 etcd members operating in proxy mode do not do store operations. They forward all requests
  to cluster instances.

@@ -1,11 +1,11 @@
-## Tuning
+# Tuning
 
 The default settings in etcd should work well for installations on a local network where the average network latency is low.
 However, when using etcd across multiple data centers or over networks with high latency you may need to tweak the heartbeat interval and election timeout settings.
 
 The network isn't the only source of latency. Each request and response may be impacted by slow disks on both the leader and follower. Each of these timeouts represents the total time from request to successful response from the other machine.
 
-### Time Parameters
+## Time Parameters
 
 The underlying distributed consensus protocol relies on two separate time parameters to ensure that nodes can handoff leadership if one stalls or goes offline.
 The first parameter is called the *Heartbeat Interval*.
@@ -49,7 +49,7 @@ $ ETCD_HEARTBEAT_INTERVAL=100 ETCD_ELECTION_TIMEOUT=500 etcd
 
 The values are specified in milliseconds.
 
-### Snapshots
+## Snapshots
 
 etcd appends all key changes to a log file.
 This log grows forever and is a complete linear history of every change made to the keys.

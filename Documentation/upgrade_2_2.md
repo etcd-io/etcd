@@ -1,4 +1,4 @@
-## Upgrade etcd from 2.1 to 2.2
+# Upgrade etcd from 2.1 to 2.2
 
 In the general case, upgrading from etcd 2.1 to 2.2 can be a zero-downtime, rolling upgrade:
 
@@ -7,33 +7,33 @@ In the general case, upgrading from etcd 2.1 to 2.2 can be a zero-downtime, roll
 
 Before [starting an upgrade](#upgrade-procedure), read through the rest of this guide to prepare.
 
-### Upgrade Checklists
+## Upgrade Checklists
 
-#### Upgrade Requirement
+### Upgrade Requirement
 
 To upgrade an existing etcd deployment to 2.2, you must be running 2.1. If you’re running a version of etcd before 2.1, you must upgrade to [2.1](https://github.com/coreos/etcd/releases/tag/v2.1.2) before upgrading to 2.2.
 
 Also, to ensure a smooth rolling upgrade, your running cluster must be healthy. You can check the health of the cluster by using `etcdctl cluster-health` command. 
 
-#### Preparedness 
+### Preparedness 
 
 Before upgrading etcd, always test the services relying on etcd in a staging environment before deploying the upgrade to the production environment. 
 
 You might also want to [backup your data directory](admin_guide.md#backing-up-the-datastore) for a potential [downgrade](#downgrade).
 
-#### Mixed Versions
+### Mixed Versions
 
 While upgrading, an etcd cluster supports mixed versions of etcd members. The cluster is only considered upgraded once all its members are upgraded to 2.2.
 
 Internally, etcd members negotiate with each other to determine the overall etcd cluster version, which controls the reported cluster version and the supported features.
 
-#### Limitations
+### Limitations
 
 If you have a data size larger than 100MB you should contact us before upgrading, so we can make sure the upgrades work smoothly.
 
 Every etcd 2.2 member will do health checking across the cluster periodically. etcd 2.1 member does not support health checking. During the upgrade, etcd 2.2 member will log warning about the unhealthy state of etcd 2.1 member. You can ignore the warning. 
 
-#### Downgrade
+### Downgrade
 
 If all members have been upgraded to v2.2, the cluster will be upgraded to v2.2, and downgrade is **not possible**. If any member is still v2.1, the cluster will remain in v2.1, and you can go back to use v2.1 binary. 
 
