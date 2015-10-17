@@ -32,12 +32,12 @@ Failed proposals (`proposal_failed_total`) are normally related to two issues: t
 
 ### wal
 
-| Name                               | Description                                      | Type    |
-|------------------------------------|--------------------------------------------------|---------|
-| fsync_durations_microseconds       | The latency distributions of fsync called by wal | Summary |
-| last_index_saved                   | The index of the last entry saved by wal         | Gauge   |
+| Name                               | Description                                      | Type      |
+|------------------------------------|--------------------------------------------------|-----------|
+| fsync_durations_seconds            | The latency distributions of fsync called by wal | Histogram |
+| last_index_saved                   | The index of the last entry saved by wal         | Gauge     |
 
-Abnormally high fsync duration (`fsync_durations_microseconds`) indicates disk issues and might cause the cluster to be unstable.
+Abnormally high fsync duration (`fsync_durations_seconds`) indicates disk issues and might cause the cluster to be unstable.
 
 
 ### http requests

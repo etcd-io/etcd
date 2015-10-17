@@ -403,7 +403,7 @@ func (w *WAL) sync() error {
 	}
 	start := time.Now()
 	err := w.f.Sync()
-	syncDurations.Observe(float64(time.Since(start).Nanoseconds() / int64(time.Microsecond)))
+	syncDurations.Observe(float64(time.Since(start)) / float64(time.Second))
 	return err
 }
 
