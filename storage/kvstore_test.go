@@ -295,7 +295,7 @@ func TestStoreRangeEvents(t *testing.T) {
 		index.indexRangeEventsRespc <- tt.idxr
 		b.tx.rangeRespc <- tt.r
 
-		evs, _, err := s.RangeEvents([]byte("foo"), []byte("goo"), 1, 1, 4)
+		evs, _, err := s.RangeEvents([]byte("foo"), []byte("goo"), 1, 1)
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
@@ -469,7 +469,7 @@ func TestStoreRangeEventsEnd(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		evs, rev, err := s.RangeEvents(tt.key, tt.end, 0, 1, 100)
+		evs, rev, err := s.RangeEvents(tt.key, tt.end, 0, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -507,24 +507,17 @@ func TestStoreRangeEventsRev(t *testing.T) {
 
 	tests := []struct {
 		start int64
-		end   int64
+
 		wevs  []storagepb.Event
 		wnext int64
 	}{
-		{1, 1, nil, 1},
-		{1, 2, evs[:1], 2},
-		{1, 3, evs[:2], 3},
-		{1, 4, evs, 5},
-		{1, 5, evs, 5},
-		{1, 10, evs, 5},
-		{3, 4, evs[2:], 5},
-		{0, 10, evs, 5},
-		{1, 0, evs, 5},
-		{0, 0, evs, 5},
+		{0, evs, 5},
+		{1, evs, 5},
+		{3, evs[2:], 5},
 	}
 
 	for i, tt := range tests {
-		evs, next, err := s.RangeEvents([]byte("foo"), nil, 0, tt.start, tt.end)
+		evs, next, err := s.RangeEvents([]byte("foo"), nil, 0, tt.start)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -559,7 +552,7 @@ func TestStoreRangeEventsBad(t *testing.T) {
 		{10, ErrFutureRev},
 	}
 	for i, tt := range tests {
-		_, _, err := s.RangeEvents([]byte("foo"), nil, 0, tt.rev, 100)
+		_, _, err := s.RangeEvents([]byte("foo"), nil, 0, tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: error = %v, want %v", i, err, tt.werr)
 		}
@@ -602,7 +595,7 @@ func TestStoreRangeEventsLimit(t *testing.T) {
 		{100, evs},
 	}
 	for i, tt := range tests {
-		evs, _, err := s.RangeEvents([]byte("foo"), nil, tt.limit, 1, 100)
+		evs, _, err := s.RangeEvents([]byte("foo"), nil, tt.limit, 1)
 		if err != nil {
 			t.Fatalf("#%d: range error (%v)", i, err)
 		}

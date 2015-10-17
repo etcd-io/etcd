@@ -26,6 +26,6 @@ func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
 	b.ReportAllocs()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		s.Watcher([]byte(fmt.Sprint("foo", i)), false, 0, 0)
+		s.Watcher([]byte(fmt.Sprint("foo", i)), false, 0)
 	}
 }

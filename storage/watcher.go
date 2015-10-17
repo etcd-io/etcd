@@ -24,19 +24,17 @@ type watcher struct {
 	key    []byte
 	prefix bool
 	cur    int64
-	end    int64
 
 	ch  chan storagepb.Event
 	mu  sync.Mutex
 	err error
 }
 
-func newWatcher(key []byte, prefix bool, start, end int64) *watcher {
+func newWatcher(key []byte, prefix bool, start int64) *watcher {
 	return &watcher{
 		key:    key,
 		prefix: prefix,
 		cur:    start,
-		end:    end,
 		ch:     make(chan storagepb.Event, 10),
 	}
 }
