@@ -73,11 +73,11 @@ Example Prometheus queries that may be useful from these metrics (across all etc
 
 ### snapshot
 
-| Name                                       | Description                                                | Type    |
-|--------------------------------------------|------------------------------------------------------------|---------|
-| snapshot_save_total_durations_microseconds | The total latency distributions of save called by snapshot | Summary |
+| Name                                       | Description                                                | Type      |
+|--------------------------------------------|------------------------------------------------------------|-----------|
+| snapshot_save_total_durations_seconds      | The total latency distributions of save called by snapshot | Histogram |
 
-Abnormally high snapshot duration (`snapshot_save_total_durations_microseconds`) indicates disk issues and might cause the cluster to be unstable.
+Abnormally high snapshot duration (`snapshot_save_total_durations_seconds`) indicates disk issues and might cause the cluster to be unstable.
 
 
 ### rafthttp
