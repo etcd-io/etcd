@@ -24,7 +24,7 @@ etcd now exposes the following metrics:
 
 High file descriptors (`file_descriptors_used_total`) usage (near the file descriptors limitation of the process) indicates a potential out of file descriptors issue. That might cause etcd fails to create new WAL files and panics.
 
-[Proposal](glossary.md#proposal) durations (`proposal_durations_seconds`) give you an histogram about the proposal commit latency. Latency can be introduced into this process by network and disk IO.
+[Proposal](glossary.md#proposal) durations (`proposal_durations_seconds`) give you a histogram about the proposal commit latency. Latency can be introduced into this process by network and disk IO.
 
 Pending proposal (`pending_proposal_total`) gives you an idea about how many proposal are in the queue and waiting for commit. An increasing pending number indicates a high client load or an unstable cluster.
 
@@ -82,13 +82,13 @@ Abnormally high snapshot duration (`snapshot_save_total_durations_seconds`) indi
 
 ### rafthttp
 
-| Name                              | Description                                | Type    | Labels                         |
-|-----------------------------------|--------------------------------------------|---------|--------------------------------|
-| message_sent_latency_microseconds | The latency distributions of messages sent | Summary | sendingType, msgType, remoteID |
-| message_sent_failed_total         | The total number of failed messages sent   | Summary | sendingType, msgType, remoteID |
+| Name                              | Description                                | Type         | Labels                         |
+|-----------------------------------|--------------------------------------------|--------------|--------------------------------|
+| message_sent_latency_seconds      | The latency distributions of messages sent | HistogramVec | sendingType, msgType, remoteID |
+| message_sent_failed_total         | The total number of failed messages sent   | Summary      | sendingType, msgType, remoteID |
 
 
-Abnormally high message duration (`message_sent_latency_microseconds`) indicates network issues and might cause the cluster to be unstable.
+Abnormally high message duration (`message_sent_latency_seconds`) indicates network issues and might cause the cluster to be unstable.
 
 An increase in message failures (`message_sent_failed_total`) indicates more severe network issues and might cause the cluster to be unstable.
 
