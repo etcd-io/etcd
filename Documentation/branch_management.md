@@ -1,6 +1,6 @@
-## Branch Management
+# Branch Management
 
-### Guide
+## Guide
 
 - New development occurs on the [master branch](https://github.com/coreos/etcd/tree/master)
 - Master branch should always have a green build!
