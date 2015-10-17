@@ -733,7 +733,7 @@ func TestWatchableKVWatch(t *testing.T) {
 	s := newWatchableStore(tmpPath)
 	defer cleanup(s, tmpPath)
 
-	wa, cancel := s.Watcher([]byte("foo"), true, 0, 0)
+	wa, cancel := s.Watcher([]byte("foo"), true, 0)
 	defer cancel()
 
 	s.Put([]byte("foo"), []byte("bar"))
@@ -776,7 +776,7 @@ func TestWatchableKVWatch(t *testing.T) {
 		t.Fatalf("failed to watch the event")
 	}
 
-	wa, cancel = s.Watcher([]byte("foo1"), false, 1, 4)
+	wa, cancel = s.Watcher([]byte("foo1"), false, 1)
 	defer cancel()
 
 	select {
@@ -817,19 +817,6 @@ func TestWatchableKVWatch(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("failed to watch the event")
 	}
-
-	select {
-	case ev := <-wa.Event():
-		if !reflect.DeepEqual(ev, storagepb.Event{}) {
-			t.Errorf("watched event = %+v, want %+v", ev, storagepb.Event{})
-		}
-		if g := wa.Err(); g != ExceedEnd {
-			t.Errorf("err = %+v, want %+v", g, ExceedEnd)
-		}
-	case <-time.After(time.Second):
-		t.Fatalf("failed to watch the event")
-	}
-
 }
 
 func cleanup(s KV, path string) {
