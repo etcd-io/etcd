@@ -149,7 +149,7 @@ func TestTransportErrorc(t *testing.T) {
 		t.Fatalf("received unexpected from errorc")
 	case <-time.After(10 * time.Millisecond):
 	}
-	tr.peers[1].Send(raftpb.Message{})
+	tr.peers[1].send(raftpb.Message{})
 
 	testutil.WaitSchedule()
 	select {

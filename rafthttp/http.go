@@ -29,7 +29,13 @@ import (
 )
 
 const (
-	ConnReadLimitByte = 64 * 1024
+	// connReadLimitByte limits the number of bytes
+	// a single read can read out.
+	//
+	// 64KB should be large enough for not causing
+	// throughput bottleneck as well as small enough
+	// for not causing a read timeout.
+	connReadLimitByte = 64 * 1024
 )
 
 var (
@@ -42,44 +48,32 @@ var (
 	errClusterIDMismatch   = errors.New("cluster ID mismatch")
 )
 
-func NewHandler(r Raft, cid types.ID) http.Handler {
-	return &handler{
-		r:   r,
-		cid: cid,
-	}
-}
-
-func newSnapshotHandler(r Raft, snapSaver SnapshotSaver, cid types.ID) http.Handler {
-	return &snapshotHandler{
-		r:         r,
-		snapSaver: snapSaver,
-		cid:       cid,
-	}
-}
-
 type peerGetter interface {
 	Get(id types.ID) Peer
-}
-
-func newStreamHandler(peerGetter peerGetter, r Raft, id, cid types.ID) http.Handler {
-	return &streamHandler{
-		peerGetter: peerGetter,
-		r:          r,
-		id:         id,
-		cid:        cid,
-	}
 }
 
 type writerToResponse interface {
 	WriteTo(w http.ResponseWriter)
 }
 
-type handler struct {
+type pipelineHandler struct {
 	r   Raft
 	cid types.ID
 }
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// newPipelineHandler returns a handler for handling raft messages
+// from pipeline for RaftPrefix.
+//
+// The handler reads out the raft message from request body,
+// and forwards it to the given raft state machine for processing.
+func newPipelineHandler(r Raft, cid types.ID) http.Handler {
+	return &pipelineHandler{
+		r:   r,
+		cid: cid,
+	}
+}
+
+func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.Header().Set("Allow", "POST")
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -94,8 +88,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit the data size that could be read from the request body, which ensures that read from
-	// connection will not time out accidentally due to possible block in underlying implementation.
-	limitedr := pioutil.NewLimitedBufferReader(r.Body, ConnReadLimitByte)
+	// connection will not time out accidentally due to possible blocking in underlying implementation.
+	limitedr := pioutil.NewLimitedBufferReader(r.Body, connReadLimitByte)
 	b, err := ioutil.ReadAll(limitedr)
 	if err != nil {
 		plog.Errorf("failed to read raft message (%v)", err)
@@ -127,6 +121,14 @@ type snapshotHandler struct {
 	r         Raft
 	snapSaver SnapshotSaver
 	cid       types.ID
+}
+
+func newSnapshotHandler(r Raft, snapSaver SnapshotSaver, cid types.ID) http.Handler {
+	return &snapshotHandler{
+		r:         r,
+		snapSaver: snapSaver,
+		cid:       cid,
+	}
 }
 
 // ServeHTTP serves HTTP request to receive and process snapshot message.
@@ -198,6 +200,15 @@ type streamHandler struct {
 	r          Raft
 	id         types.ID
 	cid        types.ID
+}
+
+func newStreamHandler(peerGetter peerGetter, r Raft, id, cid types.ID) http.Handler {
+	return &streamHandler{
+		peerGetter: peerGetter,
+		r:          r,
+		id:         id,
+		cid:        cid,
+	}
 }
 
 func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
