@@ -64,10 +64,6 @@ func (t *batchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 		log.Fatalf("storage: cannot put key into bucket (%v)", err)
 	}
 	t.pending++
-	if t.pending >= t.backend.batchLimit {
-		t.commit(false)
-		t.pending = 0
-	}
 }
 
 // before calling unsafeRange, the caller MUST hold the lock on tx.
@@ -108,10 +104,6 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 		log.Fatalf("storage: cannot delete key from bucket (%v)", err)
 	}
 	t.pending++
-	if t.pending >= t.backend.batchLimit {
-		t.commit(false)
-		t.pending = 0
-	}
 }
 
 // Commit commits a previous tx and begins a new writable one.
@@ -126,6 +118,14 @@ func (t *batchTx) CommitAndStop() {
 	t.Lock()
 	defer t.Unlock()
 	t.commit(true)
+}
+
+func (t *batchTx) Unlock() {
+	if t.pending >= t.backend.batchLimit {
+		t.commit(false)
+		t.pending = 0
+	}
+	t.Mutex.Unlock()
 }
 
 func (t *batchTx) commit(stop bool) {
