@@ -183,13 +183,15 @@ func (t *Transport) maybeUpdatePeersTerm(term uint64) {
 
 func (t *Transport) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
-		// intentionally dropped message
 		if m.To == 0 {
+			// ignore intentionally dropped message
 			continue
 		}
 		to := types.ID(m.To)
 
-		if m.Type != raftpb.MsgProp { // proposal message does not have a valid term
+		// update terms for all the peers
+		// ignore MsgProp since it does not have a valid term
+		if m.Type != raftpb.MsgProp {
 			t.maybeUpdatePeersTerm(m.Term)
 		}
 
@@ -198,13 +200,13 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 			if m.Type == raftpb.MsgApp {
 				t.ServerStats.SendAppendReq(m.Size())
 			}
-			p.Send(m)
+			p.send(m)
 			continue
 		}
 
 		g, ok := t.remotes[to]
 		if ok {
-			g.Send(m)
+			g.send(m)
 			continue
 		}
 
@@ -214,10 +216,10 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 
 func (t *Transport) Stop() {
 	for _, r := range t.remotes {
-		r.Stop()
+		r.stop()
 	}
 	for _, p := range t.peers {
-		p.Stop()
+		p.stop()
 	}
 	t.prober.RemoveAll()
 	if tr, ok := t.streamRt.(*http.Transport); ok {
@@ -273,7 +275,7 @@ func (t *Transport) RemoveAllPeers() {
 // the caller of this function must have the peers mutex.
 func (t *Transport) removePeer(id types.ID) {
 	if peer, ok := t.peers[id]; ok {
-		peer.Stop()
+		peer.stop()
 	} else {
 		plog.Panicf("unexpected removal of unknown peer '%d'", id)
 	}
@@ -293,7 +295,7 @@ func (t *Transport) UpdatePeer(id types.ID, us []string) {
 	if err != nil {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
-	t.peers[id].Update(urls)
+	t.peers[id].update(urls)
 
 	t.prober.Remove(id.String())
 	addPeerToProber(t.prober, id.String(), us)
@@ -328,30 +330,4 @@ func (t *Transport) Resume() {
 	for _, p := range t.peers {
 		p.(Pausable).Resume()
 	}
-}
-
-// snapshotStore is the store of snapshot. Caller could put one
-// snapshot into the store, and get it later.
-// snapshotStore stores at most one snapshot at a time, or it panics.
-type snapshotStore struct {
-	rc io.ReadCloser
-	// index of the stored snapshot
-	// index is 0 if and only if there is no snapshot stored.
-	index uint64
-}
-
-func (s *snapshotStore) put(rc io.ReadCloser, index uint64) {
-	if s.index != 0 {
-		plog.Panicf("unexpected put when there is one snapshot stored")
-	}
-	s.rc, s.index = rc, index
-}
-
-func (s *snapshotStore) get(index uint64) io.ReadCloser {
-	if s.index == index {
-		// set index to 0 to indicate no snapshot stored
-		s.index = 0
-		return s.rc
-	}
-	return nil
 }

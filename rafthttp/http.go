@@ -31,7 +31,7 @@ import (
 const (
 	// connReadLimitByte limits the number of bytes
 	// a single read can read out.
-	// 
+	//
 	// 64KB should be large enough for not causing
 	// throughput bottleneck as well as small enough
 	// for not causing a read timeout.
@@ -61,7 +61,7 @@ type pipelineHandler struct {
 	cid types.ID
 }
 
-// newPipelineHandler returns a handler for handling raft messages 
+// newPipelineHandler returns a handler for handling raft messages
 // from pipeline for RaftPrefix.
 //
 // The handler reads out the raft message from request body,
