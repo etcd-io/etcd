@@ -29,7 +29,13 @@ import (
 )
 
 const (
-	ConnReadLimitByte = 64 * 1024
+	// connReadLimitByte limits the number of bytes
+	// a single read can read out.
+	// 
+	// 64KB should be large enough for not causing
+	// throughput bottleneck as well as small enough
+	// for not causing a read timeout.
+	connReadLimitByte = 64 * 1024
 )
 
 var (
@@ -94,8 +100,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Limit the data size that could be read from the request body, which ensures that read from
-	// connection will not time out accidentally due to possible block in underlying implementation.
-	limitedr := pioutil.NewLimitedBufferReader(r.Body, ConnReadLimitByte)
+	// connection will not time out accidentally due to possible blocking in underlying implementation.
+	limitedr := pioutil.NewLimitedBufferReader(r.Body, connReadLimitByte)
 	b, err := ioutil.ReadAll(limitedr)
 	if err != nil {
 		plog.Errorf("failed to read raft message (%v)", err)
