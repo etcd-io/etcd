@@ -48,25 +48,8 @@ var (
 	errClusterIDMismatch   = errors.New("cluster ID mismatch")
 )
 
-func newSnapshotHandler(r Raft, snapSaver SnapshotSaver, cid types.ID) http.Handler {
-	return &snapshotHandler{
-		r:         r,
-		snapSaver: snapSaver,
-		cid:       cid,
-	}
-}
-
 type peerGetter interface {
 	Get(id types.ID) Peer
-}
-
-func newStreamHandler(peerGetter peerGetter, r Raft, id, cid types.ID) http.Handler {
-	return &streamHandler{
-		peerGetter: peerGetter,
-		r:          r,
-		id:         id,
-		cid:        cid,
-	}
 }
 
 type writerToResponse interface {
@@ -140,6 +123,14 @@ type snapshotHandler struct {
 	cid       types.ID
 }
 
+func newSnapshotHandler(r Raft, snapSaver SnapshotSaver, cid types.ID) http.Handler {
+	return &snapshotHandler{
+		r:         r,
+		snapSaver: snapSaver,
+		cid:       cid,
+	}
+}
+
 // ServeHTTP serves HTTP request to receive and process snapshot message.
 //
 // If request sender dies without closing underlying TCP connection,
@@ -209,6 +200,15 @@ type streamHandler struct {
 	r          Raft
 	id         types.ID
 	cid        types.ID
+}
+
+func newStreamHandler(peerGetter peerGetter, r Raft, id, cid types.ID) http.Handler {
+	return &streamHandler{
+		peerGetter: peerGetter,
+		r:          r,
+		id:         id,
+		cid:        cid,
+	}
 }
 
 func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
