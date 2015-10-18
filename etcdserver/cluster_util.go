@@ -104,7 +104,7 @@ func getRemotePeerURLs(cl Cluster, local string) []string {
 		if m.Name == local {
 			continue
 		}
-		us = append(us, m.PeerURLs...)
+		us = append(us, m.PeerURLs.StringSlice()...)
 	}
 	sort.Strings(us)
 	return us
@@ -224,7 +224,7 @@ func getVersion(m *Member, tr *http.Transport) (*version.Versions, error) {
 	)
 
 	for _, u := range m.PeerURLs {
-		resp, err = cc.Get(u + "/version")
+		resp, err = cc.Get(u.String() + "/version")
 		if err != nil {
 			plog.Warningf("failed to reach the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue

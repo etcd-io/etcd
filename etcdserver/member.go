@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math/rand"
 	"path"
-	"sort"
 	"time"
 
 	"github.com/coreos/etcd/pkg/types"
@@ -35,8 +34,7 @@ var (
 
 // RaftAttributes represents the raft related attributes of an etcd member.
 type RaftAttributes struct {
-	// TODO(philips): ensure these are URLs
-	PeerURLs []string `json:"peerURLs"`
+	PeerURLs types.URLs `json:"peerURLs"`
 }
 
 // Attributes represents all the non-raft related attributes of an etcd member.
@@ -55,13 +53,13 @@ type Member struct {
 // name, peer URLs. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
 	m := &Member{
-		RaftAttributes: RaftAttributes{PeerURLs: peerURLs.StringSlice()},
+		RaftAttributes: RaftAttributes{PeerURLs: peerURLs},
 		Attributes:     Attributes{Name: name},
 	}
 
 	var b []byte
-	sort.Strings(m.PeerURLs)
-	for _, p := range m.PeerURLs {
+	m.PeerURLs.Sort()
+	for _, p := range m.PeerURLs.StringSlice() {
 		b = append(b, []byte(p)...)
 	}
 
@@ -81,7 +79,8 @@ func (m *Member) PickPeerURL() string {
 	if len(m.PeerURLs) == 0 {
 		plog.Panicf("member should always have some peer url")
 	}
-	return m.PeerURLs[rand.Intn(len(m.PeerURLs))]
+	us := m.PeerURLs.StringSlice()
+	return us[rand.Intn(len(us))]
 }
 
 func (m *Member) Clone() *Member {
@@ -95,8 +94,11 @@ func (m *Member) Clone() *Member {
 		},
 	}
 	if m.PeerURLs != nil {
-		mm.PeerURLs = make([]string, len(m.PeerURLs))
-		copy(mm.PeerURLs, m.PeerURLs)
+		var err error
+		mm.PeerURLs, err = types.NewURLs(m.PeerURLs.StringSlice())
+		if err != nil {
+			plog.Panicf("unexpected NewURLs error (%v)", err)
+		}
 	}
 	if m.ClientURLs != nil {
 		mm.ClientURLs = make([]string, len(m.ClientURLs))
@@ -169,6 +171,6 @@ type MembersByPeerURLs []*Member
 
 func (ms MembersByPeerURLs) Len() int { return len(ms) }
 func (ms MembersByPeerURLs) Less(i, j int) bool {
-	return ms[i].PeerURLs[0] < ms[j].PeerURLs[0]
+	return ms[i].PeerURLs[0].String() < ms[j].PeerURLs[0].String()
 }
 func (ms MembersByPeerURLs) Swap(i, j int) { ms[i], ms[j] = ms[j], ms[i] }

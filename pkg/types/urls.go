@@ -15,6 +15,7 @@
 package types
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -25,6 +26,15 @@ import (
 
 type URLs []url.URL
 
+// NewURLs creates and initializes a new URLs using the given URL strings
+// as its initial contents.
+// If no URL string is given, it returns error.
+// The given URL string should follow the rules:
+// 1. "http" or "https" scheme
+// 2. network address is in the form "host:port", "[host]:port" or
+// "[ipv6-host%zone]:port"
+// 3. empty URL path
+// The returned URLs are sorted in increasing order of URL strings.
 func NewURLs(strs []string) (URLs, error) {
 	all := make([]url.URL, len(strs))
 	if len(all) == 0 {
@@ -55,6 +65,27 @@ func NewURLs(strs []string) (URLs, error) {
 
 func (us URLs) String() string {
 	return strings.Join(us.StringSlice(), ",")
+}
+
+// MarshalJSON marshals URLs into valid JSON description,
+// which is a JSON array of URL strings.
+func (us URLs) MarshalJSON() ([]byte, error) {
+	return json.Marshal(us.StringSlice())
+}
+
+// UnmarshalJSON unmarshals a JSON description of URLs.
+func (us *URLs) UnmarshalJSON(b []byte) error {
+	var s []string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+	nus, err := NewURLs(s)
+	if err != nil {
+		return err
+	}
+	*us = nus
+	return nil
 }
 
 func (us *URLs) Sort() {

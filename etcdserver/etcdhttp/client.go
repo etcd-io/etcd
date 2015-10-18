@@ -273,7 +273,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		m := etcdserver.Member{
 			ID:             id,
-			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: req.PeerURLs.StringSlice()},
+			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: req.PeerURLs},
 		}
 		err := h.server.UpdateMember(ctx, m)
 		switch {
@@ -766,7 +766,7 @@ func newMember(m *etcdserver.Member) httptypes.Member {
 		ClientURLs: make([]string, len(m.ClientURLs)),
 	}
 
-	copy(tm.PeerURLs, m.PeerURLs)
+	copy(tm.PeerURLs, m.PeerURLs.StringSlice())
 	copy(tm.ClientURLs, m.ClientURLs)
 
 	return tm

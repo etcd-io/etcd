@@ -164,9 +164,7 @@ func (c *cluster) PeerURLs() []string {
 	defer c.Unlock()
 	urls := make([]string, 0)
 	for _, p := range c.members {
-		for _, addr := range p.PeerURLs {
-			urls = append(urls, addr)
-		}
+		urls = append(urls, p.PeerURLs.StringSlice()...)
 	}
 	sort.Strings(urls)
 	return urls
@@ -247,7 +245,7 @@ func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		urls := make(map[string]bool)
 		for _, m := range members {
-			for _, u := range m.PeerURLs {
+			for _, u := range m.PeerURLs.StringSlice() {
 				urls[u] = true
 			}
 		}
@@ -255,7 +253,7 @@ func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		if err := json.Unmarshal(cc.Context, m); err != nil {
 			plog.Panicf("unmarshal member should never fail: %v", err)
 		}
-		for _, u := range m.PeerURLs {
+		for _, u := range m.PeerURLs.StringSlice() {
 			if urls[u] {
 				return ErrPeerURLexists
 			}
@@ -273,7 +271,7 @@ func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			if m.ID == id {
 				continue
 			}
-			for _, u := range m.PeerURLs {
+			for _, u := range m.PeerURLs.StringSlice() {
 				urls[u] = true
 			}
 		}
@@ -281,7 +279,7 @@ func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		if err := json.Unmarshal(cc.Context, m); err != nil {
 			plog.Panicf("unmarshal member should never fail: %v", err)
 		}
-		for _, u := range m.PeerURLs {
+		for _, u := range m.PeerURLs.StringSlice() {
 			if urls[u] {
 				return ErrPeerURLexists
 			}
@@ -484,7 +482,7 @@ func ValidateClusterAndAssignIDs(local *cluster, existing *cluster) error {
 	sort.Sort(MembersByPeerURLs(lms))
 
 	for i := range ems {
-		if !netutil.URLStringsEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
+		if !netutil.URLStringsEqual(ems[i].PeerURLs.StringSlice(), lms[i].PeerURLs.StringSlice()) {
 			return fmt.Errorf("unmatched member while checking PeerURLs")
 		}
 		lms[i].ID = ems[i].ID

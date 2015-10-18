@@ -371,12 +371,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	// add all remotes into transport
 	for _, m := range remotes {
 		if m.ID != id {
-			tr.AddRemote(m.ID, m.PeerURLs)
+			// TODO: we could change Add/Remove/Update Remote/Peer to use
+			// types.URLs
+			tr.AddRemote(m.ID, m.PeerURLs.StringSlice())
 		}
 	}
 	for _, m := range cl.Members() {
 		if m.ID != id {
-			tr.AddPeer(m.ID, m.PeerURLs)
+			tr.AddPeer(m.ID, m.PeerURLs.StringSlice())
 		}
 	}
 	srv.r.transport = tr
@@ -499,7 +501,7 @@ func (s *EtcdServer) run() {
 					if m.ID == s.ID() {
 						continue
 					}
-					s.r.transport.AddPeer(m.ID, m.PeerURLs)
+					s.r.transport.AddPeer(m.ID, m.PeerURLs.StringSlice())
 				}
 
 				appliedi = apply.snapshot.Metadata.Index
@@ -923,10 +925,10 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 		s.cluster.AddMember(m)
 		if m.ID == s.id {
-			plog.Noticef("added local member %s %v to cluster %s", m.ID, m.PeerURLs, s.cluster.ID())
+			plog.Noticef("added local member %s %v to cluster %s", m.ID, m.PeerURLs.StringSlice(), s.cluster.ID())
 		} else {
-			s.r.transport.AddPeer(m.ID, m.PeerURLs)
-			plog.Noticef("added member %s %v to cluster %s", m.ID, m.PeerURLs, s.cluster.ID())
+			s.r.transport.AddPeer(m.ID, m.PeerURLs.StringSlice())
+			plog.Noticef("added member %s %v to cluster %s", m.ID, m.PeerURLs.StringSlice(), s.cluster.ID())
 		}
 	case raftpb.ConfChangeRemoveNode:
 		id := types.ID(cc.NodeID)
@@ -947,10 +949,10 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 		s.cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes)
 		if m.ID == s.id {
-			plog.Noticef("update local member %s %v in cluster %s", m.ID, m.PeerURLs, s.cluster.ID())
+			plog.Noticef("update local member %s %v in cluster %s", m.ID, m.PeerURLs.StringSlice(), s.cluster.ID())
 		} else {
-			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
-			plog.Noticef("update member %s %v in cluster %s", m.ID, m.PeerURLs, s.cluster.ID())
+			s.r.transport.UpdatePeer(m.ID, m.PeerURLs.StringSlice())
+			plog.Noticef("update member %s %v in cluster %s", m.ID, m.PeerURLs.StringSlice(), s.cluster.ID())
 		}
 	}
 	return false, nil

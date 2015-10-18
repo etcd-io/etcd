@@ -61,20 +61,20 @@ func TestMemberPick(t *testing.T) {
 		urls map[string]bool
 	}{
 		{
-			newTestMember(1, []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}, "", nil),
+			newTestMember(1, []string{"http://abc:2380", "http://def:2380", "http://ghi:2380", "http://jkl:2380", "http://mno:2380", "http://pqr:2380", "http://stu:2380"}, "", nil),
 			map[string]bool{
-				"abc": true,
-				"def": true,
-				"ghi": true,
-				"jkl": true,
-				"mno": true,
-				"pqr": true,
-				"stu": true,
+				"http://abc:2380": true,
+				"http://def:2380": true,
+				"http://ghi:2380": true,
+				"http://jkl:2380": true,
+				"http://mno:2380": true,
+				"http://pqr:2380": true,
+				"http://stu:2380": true,
 			},
 		},
 		{
-			newTestMember(2, []string{"xyz"}, "", nil),
-			map[string]bool{"xyz": true},
+			newTestMember(2, []string{"http://xyz:2380"}, "", nil),
+			map[string]bool{"http://xyz:2380": true},
 		},
 	}
 	for i, tt := range tests {
@@ -91,9 +91,9 @@ func TestMemberPick(t *testing.T) {
 func TestMemberClone(t *testing.T) {
 	tests := []*Member{
 		newTestMember(1, nil, "abc", nil),
-		newTestMember(1, []string{"http://a"}, "abc", nil),
+		newTestMember(1, []string{"http://a:2380"}, "abc", nil),
 		newTestMember(1, nil, "abc", []string{"http://b"}),
-		newTestMember(1, []string{"http://a"}, "abc", []string{"http://b"}),
+		newTestMember(1, []string{"http://a:2380"}, "abc", []string{"http://b"}),
 	}
 	for i, tt := range tests {
 		nm := tt.Clone()
@@ -107,9 +107,18 @@ func TestMemberClone(t *testing.T) {
 }
 
 func newTestMember(id uint64, peerURLs []string, name string, clientURLs []string) *Member {
+	var pus types.URLs
+	// empty peerURLs is allowed here to faciliate testing
+	if len(peerURLs) != 0 {
+		var err error
+		pus, err = types.NewURLs(peerURLs)
+		if err != nil {
+			plog.Panic(err)
+		}
+	}
 	return &Member{
 		ID:             types.ID(id),
-		RaftAttributes: RaftAttributes{PeerURLs: peerURLs},
+		RaftAttributes: RaftAttributes{PeerURLs: pus},
 		Attributes:     Attributes{Name: name, ClientURLs: clientURLs},
 	}
 }

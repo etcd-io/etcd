@@ -410,7 +410,7 @@ func TestApplyConfChangeError(t *testing.T) {
 	cl := newCluster("")
 	cl.SetStore(store.New())
 	for i := 1; i <= 4; i++ {
-		cl.AddMember(&Member{ID: types.ID(i)})
+		cl.AddMember(newTestMember(uint64(i), []string{fmt.Sprintf("http://127.0.0.1:%d", i)}, "", nil))
 	}
 	cl.RemoveMember(4)
 
@@ -475,7 +475,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	cl := newCluster("")
 	cl.SetStore(store.New())
 	for i := 1; i <= 3; i++ {
-		cl.AddMember(&Member{ID: types.ID(i)})
+		cl.AddMember(newTestMember(uint64(i), []string{fmt.Sprintf("http://127.0.0.1:%d", i)}, "", nil))
 	}
 	srv := &EtcdServer{
 		id: 1,
@@ -926,8 +926,7 @@ func TestAddMember(t *testing.T) {
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
-	m := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
-	err := s.AddMember(context.TODO(), m)
+	err := s.AddMember(context.TODO(), *newTestMember(1234, []string{"http://127.0.0.1:2380"}, "", nil))
 	gaction := n.Action()
 	s.Stop()
 
@@ -952,7 +951,7 @@ func TestRemoveMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := store.New()
 	cl.SetStore(store.New())
-	cl.AddMember(&Member{ID: 1234})
+	cl.AddMember(newTestMember(1234, []string{"http://127.0.0.1:2380"}, "", nil))
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -991,7 +990,7 @@ func TestUpdateMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := store.New()
 	cl.SetStore(st)
-	cl.AddMember(&Member{ID: 1234})
+	cl.AddMember(newTestMember(1234, []string{"http://127.0.0.1:2380"}, "", nil))
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -1004,7 +1003,7 @@ func TestUpdateMember(t *testing.T) {
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
-	wm := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
+	wm := *newTestMember(1234, []string{"http://127.0.0.1:1"}, "", nil)
 	err := s.UpdateMember(context.TODO(), wm)
 	gaction := n.Action()
 	s.Stop()
@@ -1178,28 +1177,28 @@ func TestGetOtherPeerURLs(t *testing.T) {
 	}{
 		{
 			[]*Member{
-				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
+				newTestMember(1, []string{"http://10.0.0.1:2380"}, "a", nil),
 			},
 			"a",
 			[]string{},
 		},
 		{
 			[]*Member{
-				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
-				newTestMember(2, []string{"http://10.0.0.2"}, "b", nil),
-				newTestMember(3, []string{"http://10.0.0.3"}, "c", nil),
+				newTestMember(1, []string{"http://10.0.0.1:2380"}, "a", nil),
+				newTestMember(2, []string{"http://10.0.0.2:2380"}, "b", nil),
+				newTestMember(3, []string{"http://10.0.0.3:2380"}, "c", nil),
 			},
 			"a",
-			[]string{"http://10.0.0.2", "http://10.0.0.3"},
+			[]string{"http://10.0.0.2:2380", "http://10.0.0.3:2380"},
 		},
 		{
 			[]*Member{
-				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
-				newTestMember(3, []string{"http://10.0.0.3"}, "c", nil),
-				newTestMember(2, []string{"http://10.0.0.2"}, "b", nil),
+				newTestMember(1, []string{"http://10.0.0.1:2380"}, "a", nil),
+				newTestMember(3, []string{"http://10.0.0.3:2380"}, "c", nil),
+				newTestMember(2, []string{"http://10.0.0.2:2380"}, "b", nil),
 			},
 			"a",
-			[]string{"http://10.0.0.2", "http://10.0.0.3"},
+			[]string{"http://10.0.0.2:2380", "http://10.0.0.3:2380"},
 		},
 	}
 	for i, tt := range tests {

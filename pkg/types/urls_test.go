@@ -91,6 +91,43 @@ func TestURLsString(t *testing.T) {
 	}
 }
 
+func TestURLsJSON(t *testing.T) {
+	tests := []struct {
+		us URLs
+		b  []byte
+	}{
+		{
+			testutil.MustNewURLs(t, []string{"http://127.0.0.1:2379"}),
+			[]byte(`["http://127.0.0.1:2379"]`),
+		},
+		{
+			testutil.MustNewURLs(t, []string{
+				"http://127.0.0.1:2379",
+				"http://127.0.0.2:2379",
+			}),
+			[]byte(`["http://127.0.0.1:2379","http://127.0.0.2:2379"]`),
+		},
+	}
+	for i, tt := range tests {
+		b, err := tt.us.MarshalJSON()
+		if err != nil {
+			t.Fatalf("unexpected MarshalJSON error (%v)", err)
+		}
+		if !reflect.DeepEqual(b, tt.b) {
+			t.Errorf("#%d: json = %s, want %s", i, b, tt.b)
+		}
+
+		var us URLs
+		err = us.UnmarshalJSON(tt.b)
+		if err != nil {
+			t.Fatalf("unexpected UnmarshalJSON error (%v)", err)
+		}
+		if !reflect.DeepEqual(us, tt.us) {
+			t.Errorf("#%d: urls = %s, want %s", i, us, tt.us)
+		}
+	}
+}
+
 func TestURLsSort(t *testing.T) {
 	g := testutil.MustNewURLs(t, []string{
 		"http://127.0.0.4:2379",

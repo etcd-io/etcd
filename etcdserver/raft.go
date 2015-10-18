@@ -425,9 +425,13 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 		next++
 	}
 	if !found {
+		us, err := types.NewURLs([]string{"http://localhost:7001", "http://localhost:2380"})
+		if err != nil {
+			plog.Panicf("unexpected NewURLs error (%v)", err)
+		}
 		m := Member{
 			ID:             types.ID(self),
-			RaftAttributes: RaftAttributes{PeerURLs: []string{"http://localhost:7001", "http://localhost:2380"}},
+			RaftAttributes: RaftAttributes{PeerURLs: us},
 		}
 		ctx, err := json.Marshal(m)
 		if err != nil {

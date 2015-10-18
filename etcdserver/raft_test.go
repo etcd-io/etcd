@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/pbutil"
-	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
@@ -69,10 +68,7 @@ func TestGetIDs(t *testing.T) {
 }
 
 func TestCreateConfigChangeEnts(t *testing.T) {
-	m := Member{
-		ID:             types.ID(1),
-		RaftAttributes: RaftAttributes{PeerURLs: []string{"http://localhost:7001", "http://localhost:2380"}},
-	}
+	m := newTestMember(1, []string{"http://localhost:7001", "http://localhost:2380"}, "", nil)
 	ctx, err := json.Marshal(m)
 	if err != nil {
 		t.Fatal(err)

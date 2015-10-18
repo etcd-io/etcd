@@ -701,7 +701,7 @@ func TestServeMembersCreate(t *testing.T) {
 	wm := etcdserver.Member{
 		ID: 3064321551348478165,
 		RaftAttributes: etcdserver.RaftAttributes{
-			PeerURLs: []string{"http://127.0.0.1:1"},
+			PeerURLs: testutil.MustNewURLs(t, []string{"http://127.0.0.1:1"}),
 		},
 	}
 
@@ -776,7 +776,7 @@ func TestServeMembersUpdate(t *testing.T) {
 	wm := etcdserver.Member{
 		ID: 1,
 		RaftAttributes: etcdserver.RaftAttributes{
-			PeerURLs: []string{"http://127.0.0.1:1"},
+			PeerURLs: testutil.MustNewURLs(t, []string{"http://127.0.0.1:1"}),
 		},
 	}
 
@@ -1924,12 +1924,12 @@ func TestNewMemberCollection(t *testing.T) {
 		{
 			ID:             12,
 			Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
-			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
+			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: testutil.MustNewURLs(t, []string{"http://localhost:8082", "http://localhost:8083"})},
 		},
 		{
 			ID:             13,
 			Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:9090", "http://localhost:9091"}},
-			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:9092", "http://localhost:9093"}},
+			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: testutil.MustNewURLs(t, []string{"http://localhost:9092", "http://localhost:9093"})},
 		},
 	}
 	got := newMemberCollection(fixture)
@@ -1956,7 +1956,7 @@ func TestNewMember(t *testing.T) {
 	fixture := &etcdserver.Member{
 		ID:             12,
 		Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
-		RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
+		RaftAttributes: etcdserver.RaftAttributes{PeerURLs: testutil.MustNewURLs(t, []string{"http://localhost:8082", "http://localhost:8083"})},
 	}
 	got := newMember(fixture)
 

@@ -95,14 +95,6 @@ func TestClusterPeerURLs(t *testing.T) {
 		mems  []*Member
 		wurls []string
 	}{
-		// single peer with a single address
-		{
-			mems: []*Member{
-				newTestMember(1, []string{"http://192.0.2.1"}, "", nil),
-			},
-			wurls: []string{"http://192.0.2.1"},
-		},
-
 		// single peer with a single address with a port
 		{
 			mems: []*Member{
@@ -114,11 +106,11 @@ func TestClusterPeerURLs(t *testing.T) {
 		// several members explicitly unsorted
 		{
 			mems: []*Member{
-				newTestMember(2, []string{"http://192.0.2.3", "http://192.0.2.4"}, "", nil),
-				newTestMember(3, []string{"http://192.0.2.5", "http://192.0.2.6"}, "", nil),
-				newTestMember(1, []string{"http://192.0.2.1", "http://192.0.2.2"}, "", nil),
+				newTestMember(2, []string{"http://192.0.2.3:2380", "http://192.0.2.4:2380"}, "", nil),
+				newTestMember(3, []string{"http://192.0.2.5:2380", "http://192.0.2.6:2380"}, "", nil),
+				newTestMember(1, []string{"http://192.0.2.1:2380", "http://192.0.2.2:2380"}, "", nil),
 			},
-			wurls: []string{"http://192.0.2.1", "http://192.0.2.2", "http://192.0.2.3", "http://192.0.2.4", "http://192.0.2.5", "http://192.0.2.6"},
+			wurls: []string{"http://192.0.2.1:2380", "http://192.0.2.2:2380", "http://192.0.2.3:2380", "http://192.0.2.4:2380", "http://192.0.2.5:2380", "http://192.0.2.6:2380"},
 		},
 
 		// no members
@@ -276,30 +268,30 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 	cl := newCluster("")
 	cl.SetStore(store.New())
 	for i := 1; i <= 4; i++ {
-		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
+		attr := RaftAttributes{PeerURLs: testutil.MustNewURLs(t, []string{fmt.Sprintf("http://127.0.0.1:%d", i)})}
 		cl.AddMember(&Member{ID: types.ID(i), RaftAttributes: attr})
 	}
 	cl.RemoveMember(4)
 
-	attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
+	attr := RaftAttributes{PeerURLs: testutil.MustNewURLs(t, []string{fmt.Sprintf("http://127.0.0.1:%d", 1)})}
 	ctx, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
+	attr = RaftAttributes{PeerURLs: testutil.MustNewURLs(t, []string{fmt.Sprintf("http://127.0.0.1:%d", 5)})}
 	ctx5, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 3)}}
+	attr = RaftAttributes{PeerURLs: testutil.MustNewURLs(t, []string{fmt.Sprintf("http://127.0.0.1:%d", 3)})}
 	ctx2to3, err := json.Marshal(&Member{ID: types.ID(2), RaftAttributes: attr})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
+	attr = RaftAttributes{PeerURLs: testutil.MustNewURLs(t, []string{fmt.Sprintf("http://127.0.0.1:%d", 5)})}
 	ctx2to5, err := json.Marshal(&Member{ID: types.ID(2), RaftAttributes: attr})
 	if err != nil {
 		t.Fatal(err)
@@ -450,7 +442,7 @@ func TestClusterAddMember(t *testing.T) {
 	st := &storeRecorder{}
 	c := newTestCluster(nil)
 	c.SetStore(st)
-	c.AddMember(newTestMember(1, nil, "node1", nil))
+	c.AddMember(newTestMember(1, []string{"http://127.0.0.1:2380"}, "node1", nil))
 
 	wactions := []testutil.Action{
 		{
@@ -458,7 +450,7 @@ func TestClusterAddMember(t *testing.T) {
 			Params: []interface{}{
 				path.Join(storeMembersPrefix, "1", "raftAttributes"),
 				false,
-				`{"peerURLs":null}`,
+				`{"peerURLs":["http://127.0.0.1:2380"]}`,
 				false,
 				store.Permanent,
 			},
@@ -545,9 +537,9 @@ func TestClusterUpdateAttributes(t *testing.T) {
 func TestNodeToMember(t *testing.T) {
 	n := &store.NodeExtern{Key: "/1234", Nodes: []*store.NodeExtern{
 		{Key: "/1234/attributes", Value: stringp(`{"name":"node1","clientURLs":null}`)},
-		{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":null}`)},
+		{Key: "/1234/raftAttributes", Value: stringp(`{"peerURLs":["http://127.0.0.1:2380"]}`)},
 	}}
-	wm := &Member{ID: 0x1234, RaftAttributes: RaftAttributes{}, Attributes: Attributes{Name: "node1"}}
+	wm := newTestMember(0x1234, []string{"http://127.0.0.1:2380"}, "node1", nil)
 	m, err := nodeToMember(n)
 	if err != nil {
 		t.Fatalf("unexpected nodeToMember error: %v", err)
