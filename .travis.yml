@@ -4,8 +4,5 @@ go:
   - 1.4
   - 1.5
 
-install:
- - go get github.com/barakmich/go-nyet
-
 script:
  - INTEGRATION=y ./test
