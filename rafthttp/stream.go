@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"path"
 	"strconv"
@@ -29,6 +28,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/httputil"
+	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
@@ -309,10 +309,10 @@ func (cr *streamReader) run() {
 			// all data is read out
 			case err == io.EOF:
 			// connection is closed by the remote
-			case isClosedConnectionError(err):
+			case netutil.IsClosedConnectionError(err):
 			// stream msgapp is only used for etcd 2.0, and etcd 2.0 doesn't
 			// heartbeat on the idle stream, so it is expected to time out.
-			case t == streamTypeMsgApp && isNetworkTimeoutError(err):
+			case t == streamTypeMsgApp && netutil.IsNetworkTimeoutError(err):
 			default:
 				cr.status.deactivate(failureType{source: t.String(), action: "read"}, err.Error())
 			}
@@ -504,11 +504,6 @@ func canUseMsgAppStream(m raftpb.Message) bool {
 	return m.Type == raftpb.MsgApp && m.Term == m.LogTerm
 }
 
-func isClosedConnectionError(err error) bool {
-	operr, ok := err.(*net.OpError)
-	return ok && operr.Err.Error() == "use of closed network connection"
-}
-
 // checkStreamSupport checks whether the stream type is supported in the
 // given version.
 func checkStreamSupport(v *semver.Version, t streamType) bool {
@@ -519,9 +514,4 @@ func checkStreamSupport(v *semver.Version, t streamType) bool {
 		}
 	}
 	return false
-}
-
-func isNetworkTimeoutError(err error) bool {
-	nerr, ok := err.(net.Error)
-	return ok && nerr.Timeout()
 }

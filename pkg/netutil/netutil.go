@@ -115,3 +115,17 @@ func URLStringsEqual(a []string, b []string) bool {
 
 	return urlsEqual(urlsA, urlsB)
 }
+
+// IsNetworkTimetoutError returns true if the error
+// is a network timeout error.
+func IsNetworkTimeoutError(err error) bool {
+	nerr, ok := err.(net.Error)
+	return ok && nerr.Timeout()
+}
+
+// IsClosedConnectionError returns true if the error
+// is caused by connection close.
+func IsClosedConnectionError(err error) bool {
+	operr, ok := err.(*net.OpError)
+	return ok && operr.Err.Error() == "use of closed network connection"
+}
