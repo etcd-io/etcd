@@ -152,7 +152,7 @@ func (t *Transport) Start() error {
 }
 
 func (t *Transport) Handler() http.Handler {
-	pipelineHandler := NewHandler(t.Raft, t.ClusterID)
+	pipelineHandler := newPipelineHandler(t.Raft, t.ClusterID)
 	streamHandler := newStreamHandler(t, t.Raft, t.ID, t.ClusterID)
 	snapHandler := newSnapshotHandler(t.Raft, t.SnapSaver, t.ClusterID)
 	mux := http.NewServeMux()

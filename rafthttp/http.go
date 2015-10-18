@@ -48,13 +48,6 @@ var (
 	errClusterIDMismatch   = errors.New("cluster ID mismatch")
 )
 
-func NewHandler(r Raft, cid types.ID) http.Handler {
-	return &handler{
-		r:   r,
-		cid: cid,
-	}
-}
-
 func newSnapshotHandler(r Raft, snapSaver SnapshotSaver, cid types.ID) http.Handler {
 	return &snapshotHandler{
 		r:         r,
@@ -80,12 +73,24 @@ type writerToResponse interface {
 	WriteTo(w http.ResponseWriter)
 }
 
-type handler struct {
+type pipelineHandler struct {
 	r   Raft
 	cid types.ID
 }
 
-func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// newPipelineHandler returns a handler for handling raft messages 
+// from pipeline for RaftPrefix.
+//
+// The handler reads out the raft message from request body,
+// and forwards it to the given raft state machine for processing.
+func newPipelineHandler(r Raft, cid types.ID) http.Handler {
+	return &pipelineHandler{
+		r:   r,
+		cid: cid,
+	}
+}
+
+func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		w.Header().Set("Allow", "POST")
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
