@@ -35,10 +35,11 @@ etcd -proxy on \
 -discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
-### Fallback to proxy mode with discovery service
+## Fallback to proxy mode with discovery service
+
 If you bootstrap a etcd cluster using [discovery service][discovery-service] with more than the expected number of etcd members, the extra etcd processes will fall back to being `readwrite` proxies by default. They will forward the requests to the cluster as described above. For example, if you create a discovery url with `size=5`, and start ten etcd processes using that same discovery url, the result will be a cluster with five etcd members and five proxies. Note that this behaviour can be disabled with the `proxy-fallback` flag.
 
-### Promote a proxy to a member of etcd cluster
+## Promote a proxy to a member of etcd cluster
 
 A Proxy is in the part of etcd cluster that does not participant in consensus. A proxy will not promote itself to an etcd member that participants in consensus automtically in any case.
 
@@ -49,7 +50,7 @@ If you want to promote a proxy to an etcd member, there are four steps you need 
 - remove the existing proxy data directory
 - restart the etcd process with new member configuration
 
-### Example
+## Example
 
 We assume you have a one member etcd cluster with one proxy. The cluster information is listed below:
 
@@ -60,7 +61,7 @@ We assume you have a one member etcd cluster with one proxy. The cluster informa
 
 This example walks you through a case that you promote one proxy to an etcd member. The cluster will become a two member cluster after finishing the four steps.
 
-#### Add a new member into the existing cluster
+### Add a new member into the existing cluster
 
 First, use etcdctl to add the member to the cluster, which will output the environment variables need to correctly configure the new member:
 
@@ -73,7 +74,7 @@ ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380"
 ETCD_INITIAL_CLUSTER_STATE=existing
 ```
 
-#### Stop the proxy process
+### Stop the proxy process
 
 Stop the existing proxy so we can wipe it's state on disk and reload it with the new configuration:
 
@@ -88,13 +89,13 @@ or (if you are running etcd proxy as etcd service under systemd)
 sudo systemctl stop etcd
 ```
 
-#### Remove the existing proxy data dir
+### Remove the existing proxy data dir
 
 ``` bash
 rm -rf %data_dir%/proxy
 ```
 
-#### Start etcd as a new member
+### Start etcd as a new member
 
 Finally, start the reconfigured member and make sure it joins the cluster correctly:
 

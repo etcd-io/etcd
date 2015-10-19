@@ -131,7 +131,7 @@ The new member will run as a part of the cluster and immediately begin catching 
 If you are adding multiple members the best practice is to configure a single member at a time and verify it starts correctly before adding more new members.
 If you add a new member to a 1-node cluster, the cluster cannot make progress before the new member starts because it needs two members as majority to agree on the consensus. You will only see this behavior between the time `etcdctl member add` informs the cluster about the new member and the new member successfully establishing a connection to the existing one.
 
-### Error Cases
+#### Error Cases When Adding Members
 
 In the following case we have not included our new host in the list of enumerated nodes.
 If this is a new cluster, the node must be added to the list of initial cluster members.
