@@ -346,27 +346,32 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 
 	for {
 		m, err := dec.decode()
-		switch {
-		case err != nil:
+		if err != nil {
 			cr.mu.Lock()
 			cr.close()
 			cr.mu.Unlock()
 			return err
-		case isLinkHeartbeatMessage(m):
-			// do nothing for linkHeartbeatMessage
+		}
+
+		if isLinkHeartbeatMessage(m) {
+			// raft is not interested in link layer
+			// heartbeat message, so we should ignore
+			// it.
+			continue
+		}
+
+		recvc := cr.recvc
+		if m.Type == raftpb.MsgProp {
+			recvc = cr.propc
+		}
+
+		select {
+		case recvc <- m:
 		default:
-			recvc := cr.recvc
-			if m.Type == raftpb.MsgProp {
-				recvc = cr.propc
-			}
-			select {
-			case recvc <- m:
-			default:
-				if cr.status.isActive() {
-					plog.Warningf("dropped %s from %s since receiving buffer is full", m.Type, types.ID(m.From))
-				} else {
-					plog.Debugf("dropped %s from %s since receiving buffer is full", m.Type, types.ID(m.From))
-				}
+			if cr.status.isActive() {
+				plog.Warningf("dropped %s from %s since receiving buffer is full", m.Type, types.ID(m.From))
+			} else {
+				plog.Debugf("dropped %s from %s since receiving buffer is full", m.Type, types.ID(m.From))
 			}
 		}
 	}

@@ -15,17 +15,12 @@
 package storage
 
 import (
-	"errors"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/storage/storagepb"
 )
-
-// ReachEnd is the error returned by Watcher.Err when watcher reaches its end revision and
-// no more event is available.
-var ExceedEnd = errors.New("storage: watcher reaches end revision")
 
 type watchableStore struct {
 	mu sync.Mutex
@@ -38,10 +33,7 @@ type watchableStore struct {
 	// contains all synced watchers that are tracking the events that will happen
 	// The key of the map is the key that the watcher is watching on.
 	synced map[string][]*watcher
-	// contains all synced watchers that have an end revision
-	// The key of the map is the end revision of the watcher.
-	endm map[int64][]*watcher
-	tx   *ongoingTx
+	tx     *ongoingTx
 
 	stopc chan struct{}
 	wg    sync.WaitGroup
@@ -51,7 +43,6 @@ func newWatchableStore(path string) *watchableStore {
 	s := &watchableStore{
 		KV:     newStore(path),
 		synced: make(map[string][]*watcher),
-		endm:   make(map[int64][]*watcher),
 		stopc:  make(chan struct{}),
 	}
 	s.wg.Add(1)
@@ -160,17 +151,14 @@ func (s *watchableStore) Close() error {
 	return s.KV.Close()
 }
 
-func (s *watchableStore) Watcher(key []byte, prefix bool, startRev, endRev int64) (Watcher, CancelFunc) {
+func (s *watchableStore) Watcher(key []byte, prefix bool, startRev int64) (Watcher, CancelFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	wa := newWatcher(key, prefix, startRev, endRev)
+	wa := newWatcher(key, prefix, startRev)
 	k := string(key)
 	if startRev == 0 {
 		s.synced[k] = append(s.synced[k], wa)
-		if endRev != 0 {
-			s.endm[endRev] = append(s.endm[endRev], wa)
-		}
 	} else {
 		slowWatchersGauge.Inc()
 		s.unsynced = append(s.unsynced, wa)
@@ -196,13 +184,6 @@ func (s *watchableStore) Watcher(key []byte, prefix bool, startRev, endRev int64
 			if w == wa {
 				s.synced[k] = append(s.synced[k][:i], s.synced[k][i+1:]...)
 				watchersGauge.Dec()
-			}
-		}
-		if wa.end != 0 {
-			for i, w := range s.endm[wa.end] {
-				if w == wa {
-					s.endm[wa.end] = append(s.endm[wa.end][:i], s.endm[wa.end][i+1:]...)
-				}
 			}
 		}
 		// If we cannot find it, it should have finished watch.
@@ -248,7 +229,7 @@ func (s *watchableStore) syncWatchers() {
 			nws = append(nws, w)
 			continue
 		}
-		evs, nextRev, err := s.KV.(*store).RangeEvents(w.key, end, int64(limit), w.cur, w.end)
+		evs, nextRev, err := s.KV.(*store).RangeEvents(w.key, end, int64(limit), w.cur)
 		if err != nil {
 			w.stopWithError(err)
 			continue
@@ -259,17 +240,9 @@ func (s *watchableStore) syncWatchers() {
 			w.ch <- ev
 			pendingEventsGauge.Inc()
 		}
-		// stop watcher if it reaches the end
-		if w.end > 0 && nextRev >= w.end {
-			w.stopWithError(ExceedEnd)
-			continue
-		}
 		// switch to tracking future events if needed
 		if nextRev > curRev {
 			s.synced[string(w.key)] = append(s.synced[string(w.key)], w)
-			if w.end != 0 {
-				s.endm[w.end] = append(s.endm[w.end], w)
-			}
 			continue
 		}
 		// put it back to try it in the next round
@@ -283,7 +256,6 @@ func (s *watchableStore) syncWatchers() {
 // handle handles the change of the happening event on all watchers.
 func (s *watchableStore) handle(rev int64, ev storagepb.Event) {
 	s.notify(rev, ev)
-	s.stopWatchers(rev)
 }
 
 // notify notifies the fact that given event at the given rev just happened to
@@ -304,14 +276,6 @@ func (s *watchableStore) notify(rev int64, ev storagepb.Event) {
 				pendingEventsGauge.Inc()
 				nws = append(nws, w)
 			default:
-				// put it back to unsynced place
-				if w.end != 0 {
-					for i, ew := range s.endm[w.end] {
-						if ew == w {
-							s.endm[w.end] = append(s.endm[w.end][:i], s.endm[w.end][i+1:]...)
-						}
-					}
-				}
 				w.cur = rev
 				s.unsynced = append(s.unsynced, w)
 				slowWatchersGauge.Inc()
@@ -319,21 +283,6 @@ func (s *watchableStore) notify(rev int64, ev storagepb.Event) {
 		}
 		s.synced[string(ev.Kv.Key[:i])] = nws
 	}
-}
-
-// stopWatchers stops watchers with limit equal to rev.
-func (s *watchableStore) stopWatchers(rev int64) {
-	for i, wa := range s.endm[rev+1] {
-		k := string(wa.key)
-		for _, w := range s.synced[k] {
-			if w == wa {
-				s.synced[k] = append(s.synced[k][:i], s.synced[k][i+1:]...)
-				watchersGauge.Dec()
-			}
-		}
-		wa.stopWithError(ExceedEnd)
-	}
-	delete(s.endm, rev+1)
 }
 
 type ongoingTx struct {

@@ -96,8 +96,9 @@ func (p *pipeline) handle() {
 		end := time.Now()
 
 		if err != nil {
-			reportSentFailure(pipelineMsg, m)
 			p.status.deactivate(failureType{source: pipelineMsg, action: "write"}, err.Error())
+
+			reportSentFailure(pipelineMsg, m)
 			if m.Type == raftpb.MsgApp && p.fs != nil {
 				p.fs.Fail()
 			}
@@ -105,16 +106,17 @@ func (p *pipeline) handle() {
 			if isMsgSnap(m) {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 			}
-		} else {
-			p.status.activate()
-			if m.Type == raftpb.MsgApp && p.fs != nil {
-				p.fs.Succ(end.Sub(start))
-			}
-			if isMsgSnap(m) {
-				p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
-			}
-			reportSentDuration(pipelineMsg, m, time.Since(start))
+			return
 		}
+
+		p.status.activate()
+		if m.Type == raftpb.MsgApp && p.fs != nil {
+			p.fs.Succ(end.Sub(start))
+		}
+		if isMsgSnap(m) {
+			p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
+		}
+		reportSentDuration(pipelineMsg, m, time.Since(start))
 	}
 }
 

@@ -53,13 +53,13 @@ const (
 )
 
 type Peer interface {
-	// Send sends the message to the remote peer. The function is non-blocking
+	// send sends the message to the remote peer. The function is non-blocking
 	// and has no promise that the message will be received by the remote.
 	// When it fails to send message out, it will report the status to underlying
 	// raft.
-	Send(m raftpb.Message)
-	// Update updates the urls of remote peer.
-	Update(urls types.URLs)
+	send(m raftpb.Message)
+	// update updates the urls of remote peer.
+	update(urls types.URLs)
 	// setTerm sets the term of ongoing communication.
 	setTerm(term uint64)
 	// attachOutgoingConn attachs the outgoing connection to the peer for
@@ -70,9 +70,9 @@ type Peer interface {
 	// activeSince returns the time that the connection with the
 	// peer becomes active.
 	activeSince() time.Time
-	// Stop performs any necessary finalization and terminates the peer
+	// stop performs any necessary finalization and terminates the peer
 	// elegantly.
-	Stop()
+	stop()
 }
 
 // peer is the representative of a remote raft node. Local raft node sends
@@ -208,14 +208,14 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 	return p
 }
 
-func (p *peer) Send(m raftpb.Message) {
+func (p *peer) send(m raftpb.Message) {
 	select {
 	case p.sendc <- m:
 	case <-p.done:
 	}
 }
 
-func (p *peer) Update(urls types.URLs) {
+func (p *peer) update(urls types.URLs) {
 	select {
 	case p.newURLsC <- urls:
 	case <-p.done:
@@ -258,7 +258,7 @@ func (p *peer) Resume() {
 	}
 }
 
-func (p *peer) Stop() {
+func (p *peer) stop() {
 	close(p.stopc)
 	<-p.done
 }

@@ -197,12 +197,11 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	return n, rev, nil
 }
 
-// RangeEvents gets the events from key to end in [startRev, endRev).
+// RangeEvents gets the events from key to end starting from startRev.
 // If `end` is nil, the request only observes the events on key.
 // If `end` is not nil, it observes the events on key range [key, range_end).
 // Limit limits the number of events returned.
 // If startRev <=0, rangeEvents returns events from the beginning of uncompacted history.
-// If endRev <=0, it indicates there is no end revision.
 //
 // If the required start rev is compacted, ErrCompacted will be returned.
 // If the required start rev has not happened, ErrFutureRev will be returned.
@@ -215,7 +214,7 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 // has not progressed so far or it hits the event limit.
 //
 // TODO: return byte slices instead of events to avoid meaningless encode and decode.
-func (s *store) RangeEvents(key, end []byte, limit, startRev, endRev int64) (evs []storagepb.Event, nextRev int64, err error) {
+func (s *store) RangeEvents(key, end []byte, limit, startRev int64) (evs []storagepb.Event, nextRev int64, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -236,9 +235,6 @@ func (s *store) RangeEvents(key, end []byte, limit, startRev, endRev int64) (evs
 	defer tx.Unlock()
 	// fetch events from the backend using revisions
 	for _, rev := range revs {
-		if endRev > 0 && rev.main >= endRev {
-			return evs, rev.main, nil
-		}
 		revbytes := newRevBytes()
 		revToBytes(rev, revbytes)
 

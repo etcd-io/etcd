@@ -37,7 +37,7 @@ func startRemote(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID,
 	}
 }
 
-func (g *remote) Send(m raftpb.Message) {
+func (g *remote) send(m raftpb.Message) {
 	select {
 	case g.pipeline.msgc <- m:
 	default:
@@ -49,6 +49,6 @@ func (g *remote) Send(m raftpb.Message) {
 	}
 }
 
-func (g *remote) Stop() {
+func (g *remote) stop() {
 	g.pipeline.stop()
 }
