@@ -32,7 +32,7 @@ If `--wal-dir` flag is set, etcd will write the write ahead log files to the spe
 [wal-pkg]: http://godoc.org/github.com/coreos/etcd/wal
 [snap-pkg]: http://godoc.org/github.com/coreos/etcd/snap
 
-### Cluster Management
+## Cluster Management
 
 ### Lifecycle
 
