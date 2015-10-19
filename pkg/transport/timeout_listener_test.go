@@ -76,7 +76,7 @@ func TestWriteReadTimeoutListener(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(wln.wtimeoutd * 5):
+	case <-time.After(wln.wtimeoutd * 10):
 		t.Fatal("wait timeout")
 	}
 
@@ -100,7 +100,7 @@ func TestWriteReadTimeoutListener(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(wln.rdtimeoutd * 5):
+	case <-time.After(wln.rdtimeoutd * 10):
 		t.Fatal("wait timeout")
 	}
 
