@@ -878,7 +878,10 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 				if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
 					plog.Panicf("unmarshal %s should never fail: %v", r.Val, err)
 				}
-				s.cluster.UpdateAttributes(id, attr)
+				ok := s.cluster.UpdateAttributes(id, attr)
+				if !ok {
+					return Response{}
+				}
 			}
 			if r.Path == path.Join(StoreClusterPrefix, "version") {
 				s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)))

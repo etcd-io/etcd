@@ -324,20 +324,21 @@ func (c *cluster) RemoveMember(id types.ID) {
 	c.removed[id] = true
 }
 
-func (c *cluster) UpdateAttributes(id types.ID, attr Attributes) {
+func (c *cluster) UpdateAttributes(id types.ID, attr Attributes) bool {
 	c.Lock()
 	defer c.Unlock()
 	if m, ok := c.members[id]; ok {
 		m.Attributes = attr
-		return
+		return true
 	}
 	_, ok := c.removed[id]
 	if ok {
-		plog.Debugf("skipped updating attributes of removed member %s", id)
+		plog.Warningf("skipped updating attributes of removed member %s", id)
 	} else {
 		plog.Panicf("error updating attributes of unknown member %s", id)
 	}
 	// TODO: update store in this function
+	return false
 }
 
 func (c *cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
