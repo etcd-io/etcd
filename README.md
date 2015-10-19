@@ -133,4 +133,10 @@ etcd has known issues on 32-bit systems due to a bug in the Go runtime. See #[35
 
 ### License
 
-etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+##License
+
+  The work done has been licensed under Apache License 2.0.The license file can be found
+  [here](https://github.com/coreos/etcd/blob/master/LICENSE).
+  You can find out more about license,at
+  
+    http://www.apache.org/licenses/LICENSE-2.0
