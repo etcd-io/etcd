@@ -1,10 +1,10 @@
-### Design of Runtime Reconfiguration
+# Design of Runtime Reconfiguration
 
 Runtime reconfiguration is one of the hardest and most error prone features in a distributed system, especially in a consensus based system like etcd.
 
 Read on to learn about the design of etcd's runtime reconfiguration commands and how we tackled these problems.
 
-### Two Phase Config Changes Keep you Safe
+## Two Phase Config Changes Keep you Safe
 
 In etcd, every runtime reconfiguration has to go through [two phases](Documentation/runtime-configuration.md#add-a-new-member) for safety reasons. For example, to add a member you need to first inform cluster of new configuration and then start the new member.
 
@@ -22,7 +22,7 @@ Without the explicit workflow around cluster membership etcd would be vulnerable
 
 We think runtime reconfiguration should be a low frequent operation. We made the decision to keep it explicit and user-driven to ensure configuration safety and keep your cluster always running smoothly under your control.
 
-### Permanent Loss of Quorum Requires New Cluster
+## Permanent Loss of Quorum Requires New Cluster
 
 If a cluster permanently loses a majority of its members, a new cluster will need to be started from an old data directory to recover the previous state.
 
@@ -30,7 +30,7 @@ It is entirely possible to force removing the failed members from the existing c
 
 If you have a correct deployment, the possibility of permanent majority lose is very low. But it is a severe enough problem that worth special care. We strongly suggest you to read the [disaster recovery documentation](admin_guide.md#disaster-recovery) and prepare for permanent majority lose before you put etcd into production.
 
-### Do Not Use Public Discovery Service For Runtime Reconfiguration
+## Do Not Use Public Discovery Service For Runtime Reconfiguration
 
 The public discovery service should only be used for bootstrapping a cluster. To join member into an existing cluster, you should use runtime reconfiguration API. 
 

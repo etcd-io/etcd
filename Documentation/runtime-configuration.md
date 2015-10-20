@@ -1,4 +1,4 @@
-## Runtime Reconfiguration
+# Runtime Reconfiguration
 
 etcd comes with support for incremental runtime reconfiguration, which allows users to update the membership of the cluster at run time.
 
@@ -131,7 +131,7 @@ The new member will run as a part of the cluster and immediately begin catching 
 If you are adding multiple members the best practice is to configure a single member at a time and verify it starts correctly before adding more new members.
 If you add a new member to a 1-node cluster, the cluster cannot make progress before the new member starts because it needs two members as majority to agree on the consensus. You will only see this behavior between the time `etcdctl member add` informs the cluster about the new member and the new member successfully establishing a connection to the existing one.
 
-#### Error Cases
+#### Error Cases When Adding Members
 
 In the following case we have not included our new host in the list of enumerated nodes.
 If this is a new cluster, the node must be added to the list of initial cluster members.
@@ -162,7 +162,7 @@ etcd: this member has been permanently removed from the cluster. Exiting.
 exit 1
 ```
 
-#### Strict Reconfiguration Check Mode (`-strict-reconfig-check`)
+### Strict Reconfiguration Check Mode (`-strict-reconfig-check`)
 
 As described in the above, the best practice of adding new members is to configure a single member at a time and verify it starts correctly before adding more new members. This step by step approach is very important because if newly added members is not configured correctly (for example the peer URLs are incorrect), the cluster can lose quorum. The quorum loss happens since the newly added member are counted in the quorum even if that member is not reachable from other existing members. Also quorum loss might happen if there is a connectivity issue or there are operational issues.
 

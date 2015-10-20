@@ -1,4 +1,4 @@
-## Reporting Bugs
+# Reporting Bugs
 
 If you find bugs or documentation mistakes in etcd project, please let us know by [opening an issue](https://github.com/coreos/etcd/issues/new). We treat bugs and mistakes very seriously and believe no issue is too small. Before creating a bug report, please check there that one does not already exist.
 
@@ -20,7 +20,7 @@ We might ask you for further information to locate a bug. A duplicated bug repor
 
 ## Frequently Asked Questions
 
-### How to get stack trace
+### How to get a stack trace
 
 ``` bash
 $ kill -QUIT $PID

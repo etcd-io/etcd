@@ -1,4 +1,4 @@
-## Design
+# Design
 
 1. Flatten binary key-value space
     
@@ -32,9 +32,9 @@
 
 [protobuf](./v3api.proto)
 
-### Examples
+## Examples
 
-#### Put a key (foo=bar)
+### Put a key (foo=bar)
 ```
 // A put is always successful
 Put( PutRequest { key = foo, value = bar } )
@@ -47,7 +47,7 @@ PutResponse {
 }
 ```
 
-#### Get a key (assume we have foo=bar)
+### Get a key (assume we have foo=bar)
 ```
 Get ( RangeRequest { key = foo } )
 
@@ -68,7 +68,7 @@ RangeResponse {
 }
 ```
 
-#### Range over a key space (assume we have foo0=bar0… foo100=bar100)
+### Range over a key space (assume we have foo0=bar0… foo100=bar100)
 ```
 Range ( RangeRequest { key = foo, end_key = foo80, limit = 30  } )
 
@@ -97,7 +97,7 @@ RangeResponse {
 }
 ```
 
-#### Finish a txn (assume we have foo0=bar0, foo1=bar1)
+### Finish a txn (assume we have foo0=bar0, foo1=bar1)
 ```
 Txn(TxnRequest {
     // mod_revision of foo0 is equal to 1, mod_revision of foo1 is greater than 1
@@ -129,7 +129,7 @@ TxnResponse {
 }
 ```
 
-#### Watch on a key/range
+### Watch on a key/range
 
 ```
 Watch( WatchRequest{
