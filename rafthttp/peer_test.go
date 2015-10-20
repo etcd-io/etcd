@@ -75,9 +75,9 @@ func TestPeerPick(t *testing.T) {
 	}
 	for i, tt := range tests {
 		peer := &peer{
-			msgAppWriter: &streamWriter{working: tt.msgappWorking},
-			writer:       &streamWriter{working: tt.messageWorking},
-			pipeline:     &pipeline{},
+			msgAppV2Writer: &streamWriter{working: tt.msgappWorking},
+			writer:         &streamWriter{working: tt.messageWorking},
+			pipeline:       &pipeline{},
 		}
 		_, picked := peer.pick(tt.m)
 		if picked != tt.wpicked {

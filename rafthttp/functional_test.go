@@ -148,7 +148,7 @@ func newServerStats() *stats.ServerStats {
 func waitStreamWorking(p *peer) bool {
 	for i := 0; i < 1000; i++ {
 		time.Sleep(time.Millisecond)
-		if _, ok := p.msgAppWriter.writec(); !ok {
+		if _, ok := p.msgAppV2Writer.writec(); !ok {
 			continue
 		}
 		if _, ok := p.writer.writec(); !ok {
