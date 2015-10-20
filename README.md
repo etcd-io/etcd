@@ -29,7 +29,7 @@ If you're considering etcd for production use, please see: [production-ready.md]
 
 ### Getting etcd
 
-The easiest way to get etcd is to install one of the pre-built binaries from the tagged releases: instructions are available on [GitHub][github-release].
+The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, AppC (ACI), and Docker. Instructions for using these binaries are on the [GitHub releases page][github-release].
 
 For those wanting to try the very latest version, you can build the latest version of etcd from the `master` branch.
 You will first need [*Go*](https://golang.org/) installed on your machine (version 1.4+ is required).
