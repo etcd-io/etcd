@@ -441,10 +441,6 @@ func (cr *streamReader) close() {
 	cr.closer = nil
 }
 
-func canUseMsgAppStream(m raftpb.Message) bool {
-	return m.Type == raftpb.MsgApp && m.Term == m.LogTerm
-}
-
 func isClosedConnectionError(err error) bool {
 	operr, ok := err.(*net.OpError)
 	return ok && operr.Err.Error() == "use of closed network connection"
