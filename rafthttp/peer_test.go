@@ -35,7 +35,7 @@ func TestPeerPick(t *testing.T) {
 		{
 			true, true,
 			raftpb.Message{Type: raftpb.MsgApp, Term: 1, LogTerm: 1},
-			streamApp,
+			streamAppV2,
 		},
 		{
 			true, true,

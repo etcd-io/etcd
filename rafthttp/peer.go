@@ -45,7 +45,6 @@ const (
 	// to hold all proposals.
 	maxPendingProposals = 4096
 
-	streamApp   = "streamMsgApp"
 	streamAppV2 = "streamMsgAppV2"
 	streamMsg   = "streamMsg"
 	pipelineMsg = "pipeline"
@@ -266,7 +265,7 @@ func (p *peer) pick(m raftpb.Message) (writec chan<- raftpb.Message, picked stri
 	if isMsgSnap(m) {
 		return p.pipeline.msgc, pipelineMsg
 	} else if writec, ok = p.msgAppWriter.writec(); ok && canUseMsgAppStream(m) {
-		return writec, streamApp
+		return writec, streamAppV2
 	} else if writec, ok = p.writer.writec(); ok {
 		return writec, streamMsg
 	}
