@@ -68,11 +68,9 @@ func TestTransportSend(t *testing.T) {
 
 func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
-	term := uint64(10)
 	tr := &Transport{
 		LeaderStats: ls,
 		streamRt:    &roundTripperRecorder{},
-		term:        term,
 		peers:       make(map[types.ID]Peer),
 		prober:      probing.NewProber(nil),
 	}
@@ -95,10 +93,6 @@ func TestTransportAdd(t *testing.T) {
 	}
 
 	tr.Stop()
-
-	if g := s.(*peer).msgAppReader.msgAppTerm; g != term {
-		t.Errorf("peer.term = %d, want %d", g, term)
-	}
 }
 
 func TestTransportRemove(t *testing.T) {

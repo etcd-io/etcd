@@ -60,8 +60,6 @@ type Peer interface {
 	send(m raftpb.Message)
 	// update updates the urls of remote peer.
 	update(urls types.URLs)
-	// setTerm sets the term of ongoing communication.
-	setTerm(term uint64)
 	// attachOutgoingConn attachs the outgoing connection to the peer for
 	// stream usage. After the call, the ownership of the outgoing
 	// connection hands over to the peer. The peer will close the connection
@@ -104,7 +102,6 @@ type peer struct {
 	recvc    chan raftpb.Message
 	propc    chan raftpb.Message
 	newURLsC chan types.URLs
-	termc    chan uint64
 
 	// for testing
 	pausec  chan struct{}
@@ -114,7 +111,7 @@ type peer struct {
 	done  chan struct{}
 }
 
-func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, snapst *snapshotStore, r Raft, fs *stats.FollowerStats, errorc chan error, term uint64, v3demo bool) *peer {
+func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, snapst *snapshotStore, r Raft, fs *stats.FollowerStats, errorc chan error, v3demo bool) *peer {
 	picker := newURLPicker(urls)
 	status := newPeerStatus(to)
 	p := &peer{
@@ -130,7 +127,6 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 		recvc:        make(chan raftpb.Message, recvBufSize),
 		propc:        make(chan raftpb.Message, maxPendingProposals),
 		newURLsC:     make(chan types.URLs),
-		termc:        make(chan uint64),
 		pausec:       make(chan struct{}),
 		resumec:      make(chan struct{}),
 		stopc:        make(chan struct{}),
@@ -153,8 +149,8 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 		}
 	}()
 
-	p.msgAppReader = startStreamReader(streamRt, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc, term)
-	reader := startStreamReader(streamRt, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc, term)
+	p.msgAppReader = startStreamReader(streamRt, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc)
+	reader := startStreamReader(streamRt, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
 	go func() {
 		var paused bool
 		for {
@@ -222,12 +218,10 @@ func (p *peer) update(urls types.URLs) {
 	}
 }
 
-func (p *peer) setTerm(term uint64) { p.msgAppReader.updateMsgAppTerm(term) }
-
 func (p *peer) attachOutgoingConn(conn *outgoingConn) {
 	var ok bool
 	switch conn.t {
-	case streamTypeMsgApp, streamTypeMsgAppV2:
+	case streamTypeMsgAppV2:
 		ok = p.msgAppWriter.attach(conn)
 	case streamTypeMessage:
 		ok = p.writer.attach(conn)
