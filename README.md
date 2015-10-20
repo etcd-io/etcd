@@ -105,7 +105,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 ## Reporting bugs
 
-See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issue you may encounter..
+See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issue you may encounter.
 
 ## Project Details
 
