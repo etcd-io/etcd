@@ -761,6 +761,7 @@ func TestSnapshot(t *testing.T) {
 	st := &storeRecorder{}
 	p := &storageRecorder{}
 	srv := &EtcdServer{
+		cfg: &ServerConfig{},
 		r: raftNode{
 			Node:        &nodeRecorder{},
 			raftStorage: s,
