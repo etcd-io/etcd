@@ -23,7 +23,7 @@ func sendMessages(msgs []pb.Message)  {}
 func saveStateToDisk(st pb.HardState) {}
 func saveToDisk(ents []pb.Entry)      {}
 
-func Example_Node() {
+func ExampleNode() {
 	c := &Config{}
 	n := StartNode(c, nil)
 
