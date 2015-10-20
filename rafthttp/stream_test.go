@@ -98,15 +98,14 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 }
 
 func TestStreamReaderDialRequest(t *testing.T) {
-	for i, tt := range []streamType{streamTypeMsgApp, streamTypeMessage, streamTypeMsgAppV2} {
+	for i, tt := range []streamType{streamTypeMessage, streamTypeMsgAppV2} {
 		tr := &roundTripperRecorder{}
 		sr := &streamReader{
-			tr:         tr,
-			picker:     mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:      types.ID(1),
-			remote:     types.ID(2),
-			cid:        types.ID(1),
-			msgAppTerm: 1,
+			tr:     tr,
+			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
+			local:  types.ID(1),
+			remote: types.ID(2),
+			cid:    types.ID(1),
 		}
 		sr.dial(tt)
 
@@ -123,9 +122,6 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		}
 		if g := req.Header.Get("X-Raft-To"); g != "2" {
 			t.Errorf("#%d: header X-Raft-To = %s, want 2", i, g)
-		}
-		if g := req.Header.Get("X-Raft-Term"); tt == streamTypeMsgApp && g != "1" {
-			t.Errorf("#%d: header X-Raft-Term = %s, want 1", i, g)
 		}
 	}
 }
@@ -173,41 +169,6 @@ func TestStreamReaderDialResult(t *testing.T) {
 	}
 }
 
-func TestStreamReaderUpdateMsgAppTerm(t *testing.T) {
-	term := uint64(2)
-	tests := []struct {
-		term   uint64
-		typ    streamType
-		wterm  uint64
-		wclose bool
-	}{
-		// lower term
-		{1, streamTypeMsgApp, 2, false},
-		// unchanged term
-		{2, streamTypeMsgApp, 2, false},
-		// higher term
-		{3, streamTypeMessage, 3, false},
-		{3, streamTypeMsgAppV2, 3, false},
-		// higher term, reset closer
-		{3, streamTypeMsgApp, 3, true},
-	}
-	for i, tt := range tests {
-		closer := &fakeWriteFlushCloser{}
-		cr := &streamReader{
-			msgAppTerm: term,
-			t:          tt.typ,
-			closer:     closer,
-		}
-		cr.updateMsgAppTerm(tt.term)
-		if cr.msgAppTerm != tt.wterm {
-			t.Errorf("#%d: term = %d, want %d", i, cr.msgAppTerm, tt.wterm)
-		}
-		if closer.closed != tt.wclose {
-			t.Errorf("#%d: closed = %v, want %v", i, closer.closed, tt.wclose)
-		}
-	}
-}
-
 // TestStreamReaderDialDetectUnsupport tests that dial func could find
 // out that the stream type is not supported by the remote.
 func TestStreamReaderDialDetectUnsupport(t *testing.T) {
@@ -248,32 +209,22 @@ func TestStream(t *testing.T) {
 	}
 
 	tests := []struct {
-		t    streamType
-		term uint64
-		m    raftpb.Message
-		wc   chan raftpb.Message
+		t  streamType
+		m  raftpb.Message
+		wc chan raftpb.Message
 	}{
 		{
 			streamTypeMessage,
-			0,
 			raftpb.Message{Type: raftpb.MsgProp, To: 2},
 			propc,
 		},
 		{
 			streamTypeMessage,
-			0,
-			msgapp,
-			recvc,
-		},
-		{
-			streamTypeMsgApp,
-			1,
 			msgapp,
 			recvc,
 		},
 		{
 			streamTypeMsgAppV2,
-			0,
 			msgapp,
 			recvc,
 		},
@@ -288,7 +239,7 @@ func TestStream(t *testing.T) {
 		h.sw = sw
 
 		picker := mustNewURLPicker(t, []string{srv.URL})
-		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), newPeerStatus(types.ID(1)), recvc, propc, nil, tt.term)
+		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), newPeerStatus(types.ID(1)), recvc, propc, nil)
 		defer sr.stop()
 		// wait for stream to work
 		var writec chan<- raftpb.Message
@@ -321,27 +272,21 @@ func TestCheckStreamSupport(t *testing.T) {
 	}{
 		// support
 		{
-			semver.Must(semver.NewVersion("2.0.0")),
-			streamTypeMsgApp,
+			semver.Must(semver.NewVersion("2.1.0")),
+			streamTypeMsgAppV2,
 			true,
 		},
 		// ignore patch
 		{
-			semver.Must(semver.NewVersion("2.0.9")),
-			streamTypeMsgApp,
+			semver.Must(semver.NewVersion("2.1.9")),
+			streamTypeMsgAppV2,
 			true,
 		},
 		// ignore prerelease
 		{
-			semver.Must(semver.NewVersion("2.0.0-alpha")),
-			streamTypeMsgApp,
-			true,
-		},
-		// not support
-		{
-			semver.Must(semver.NewVersion("2.0.0")),
+			semver.Must(semver.NewVersion("2.1.0-alpha")),
 			streamTypeMsgAppV2,
-			false,
+			true,
 		},
 	}
 	for i, tt := range tests {
@@ -378,7 +323,6 @@ func (h *fakeStreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := newCloseNotifier()
 	h.sw.attach(&outgoingConn{
 		t:       h.t,
-		termStr: r.Header.Get("X-Raft-Term"),
 		Writer:  w,
 		Flusher: w.(http.Flusher),
 		Closer:  c,

@@ -66,7 +66,6 @@ func TestSendMessage(t *testing.T) {
 	tests := []raftpb.Message{
 		// these messages are set to send to itself, which facilitates testing.
 		{Type: raftpb.MsgProp, From: 1, To: 2, Entries: []raftpb.Entry{{Data: data}}},
-		// TODO: send out MsgApp which fits msgapp stream but the term doesn't match
 		{Type: raftpb.MsgApp, From: 1, To: 2, Term: 1, Index: 3, LogTerm: 0, Entries: []raftpb.Entry{{Index: 4, Term: 1, Data: data}}, Commit: 3},
 		{Type: raftpb.MsgAppResp, From: 1, To: 2, Term: 1, Index: 3},
 		{Type: raftpb.MsgVote, From: 1, To: 2, Term: 1, Index: 3, LogTerm: 0},
@@ -149,7 +148,7 @@ func newServerStats() *stats.ServerStats {
 func waitStreamWorking(p *peer) bool {
 	for i := 0; i < 1000; i++ {
 		time.Sleep(time.Millisecond)
-		if _, ok := p.msgAppWriter.writec(); !ok {
+		if _, ok := p.msgAppV2Writer.writec(); !ok {
 			continue
 		}
 		if _, ok := p.writer.writec(); !ok {

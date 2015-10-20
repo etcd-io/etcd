@@ -228,12 +228,9 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var t streamType
 	switch path.Dir(r.URL.Path) {
-	// backward compatibility
-	case RaftStreamPrefix:
-		t = streamTypeMsgApp
-	case path.Join(RaftStreamPrefix, string(streamTypeMsgApp)):
+	case streamTypeMsgAppV2.endpoint():
 		t = streamTypeMsgAppV2
-	case path.Join(RaftStreamPrefix, string(streamTypeMessage)):
+	case streamTypeMessage.endpoint():
 		t = streamTypeMessage
 	default:
 		plog.Debugf("ignored unexpected streaming request path %s", r.URL.Path)
@@ -278,7 +275,6 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := newCloseNotifier()
 	conn := &outgoingConn{
 		t:       t,
-		termStr: r.Header.Get("X-Raft-Term"),
 		Writer:  w,
 		Flusher: w.(http.Flusher),
 		Closer:  c,

@@ -125,8 +125,7 @@ type Transport struct {
 	streamRt   http.RoundTripper // roundTripper used by streams
 	pipelineRt http.RoundTripper // roundTripper used by pipelines
 
-	mu      sync.RWMutex         // protect the term, remote and peer map
-	term    uint64               // the latest term that has been observed
+	mu      sync.RWMutex         // protect the remote and peer map
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
 	peers   map[types.ID]Peer    // peers map
 
@@ -173,18 +172,6 @@ func (t *Transport) Get(id types.ID) Peer {
 	return t.peers[id]
 }
 
-func (t *Transport) maybeUpdatePeersTerm(term uint64) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.term >= term {
-		return
-	}
-	t.term = term
-	for _, p := range t.peers {
-		p.setTerm(term)
-	}
-}
-
 func (t *Transport) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
 		if m.To == 0 {
@@ -192,12 +179,6 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 		to := types.ID(m.To)
-
-		// update terms for all the peers
-		// ignore MsgProp since it does not have a valid term
-		if m.Type != raftpb.MsgProp {
-			t.maybeUpdatePeersTerm(m.Term)
-		}
 
 		p, ok := t.peers[to]
 		if ok {
@@ -258,7 +239,7 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.LeaderStats.Follower(id.String())
-	t.peers[id] = startPeer(t.streamRt, t.pipelineRt, urls, t.ID, id, t.ClusterID, t.snapst, t.Raft, fs, t.ErrorC, t.term, t.V3demo)
+	t.peers[id] = startPeer(t.streamRt, t.pipelineRt, urls, t.ID, id, t.ClusterID, t.snapst, t.Raft, fs, t.ErrorC, t.V3demo)
 	addPeerToProber(t.prober, id.String(), us)
 }
 

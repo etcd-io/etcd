@@ -45,7 +45,6 @@ const (
 	// to hold all proposals.
 	maxPendingProposals = 4096
 
-	streamApp   = "streamMsgApp"
 	streamAppV2 = "streamMsgAppV2"
 	streamMsg   = "streamMsg"
 	pipelineMsg = "pipeline"
@@ -60,8 +59,6 @@ type Peer interface {
 	send(m raftpb.Message)
 	// update updates the urls of remote peer.
 	update(urls types.URLs)
-	// setTerm sets the term of ongoing communication.
-	setTerm(term uint64)
 	// attachOutgoingConn attachs the outgoing connection to the peer for
 	// stream usage. After the call, the ownership of the outgoing
 	// connection hands over to the peer. The peer will close the connection
@@ -94,17 +91,16 @@ type peer struct {
 
 	status *peerStatus
 
-	msgAppWriter *streamWriter
-	writer       *streamWriter
-	pipeline     *pipeline
-	snapSender   *snapshotSender // snapshot sender to send v3 snapshot messages
-	msgAppReader *streamReader
+	msgAppV2Writer *streamWriter
+	writer         *streamWriter
+	pipeline       *pipeline
+	snapSender     *snapshotSender // snapshot sender to send v3 snapshot messages
+	msgAppV2Reader *streamReader
 
 	sendc    chan raftpb.Message
 	recvc    chan raftpb.Message
 	propc    chan raftpb.Message
 	newURLsC chan types.URLs
-	termc    chan uint64
 
 	// for testing
 	pausec  chan struct{}
@@ -114,27 +110,26 @@ type peer struct {
 	done  chan struct{}
 }
 
-func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, snapst *snapshotStore, r Raft, fs *stats.FollowerStats, errorc chan error, term uint64, v3demo bool) *peer {
+func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, snapst *snapshotStore, r Raft, fs *stats.FollowerStats, errorc chan error, v3demo bool) *peer {
 	picker := newURLPicker(urls)
 	status := newPeerStatus(to)
 	p := &peer{
-		id:           to,
-		r:            r,
-		v3demo:       v3demo,
-		status:       status,
-		msgAppWriter: startStreamWriter(to, status, fs, r),
-		writer:       startStreamWriter(to, status, fs, r),
-		pipeline:     newPipeline(pipelineRt, picker, local, to, cid, status, fs, r, errorc),
-		snapSender:   newSnapshotSender(pipelineRt, picker, local, to, cid, status, snapst, r, errorc),
-		sendc:        make(chan raftpb.Message),
-		recvc:        make(chan raftpb.Message, recvBufSize),
-		propc:        make(chan raftpb.Message, maxPendingProposals),
-		newURLsC:     make(chan types.URLs),
-		termc:        make(chan uint64),
-		pausec:       make(chan struct{}),
-		resumec:      make(chan struct{}),
-		stopc:        make(chan struct{}),
-		done:         make(chan struct{}),
+		id:             to,
+		r:              r,
+		v3demo:         v3demo,
+		status:         status,
+		msgAppV2Writer: startStreamWriter(to, status, fs, r),
+		writer:         startStreamWriter(to, status, fs, r),
+		pipeline:       newPipeline(pipelineRt, picker, local, to, cid, status, fs, r, errorc),
+		snapSender:     newSnapshotSender(pipelineRt, picker, local, to, cid, status, snapst, r, errorc),
+		sendc:          make(chan raftpb.Message),
+		recvc:          make(chan raftpb.Message, recvBufSize),
+		propc:          make(chan raftpb.Message, maxPendingProposals),
+		newURLsC:       make(chan types.URLs),
+		pausec:         make(chan struct{}),
+		resumec:        make(chan struct{}),
+		stopc:          make(chan struct{}),
+		done:           make(chan struct{}),
 	}
 
 	// Use go-routine for process of MsgProp because it is
@@ -153,8 +148,8 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 		}
 	}()
 
-	p.msgAppReader = startStreamReader(streamRt, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc, term)
-	reader := startStreamReader(streamRt, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc, term)
+	p.msgAppV2Reader = startStreamReader(streamRt, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc)
+	reader := startStreamReader(streamRt, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
 	go func() {
 		var paused bool
 		for {
@@ -193,11 +188,11 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 				paused = false
 			case <-p.stopc:
 				cancel()
-				p.msgAppWriter.stop()
+				p.msgAppV2Writer.stop()
 				p.writer.stop()
 				p.pipeline.stop()
 				p.snapSender.stop()
-				p.msgAppReader.stop()
+				p.msgAppV2Reader.stop()
 				reader.stop()
 				close(p.done)
 				return
@@ -222,13 +217,11 @@ func (p *peer) update(urls types.URLs) {
 	}
 }
 
-func (p *peer) setTerm(term uint64) { p.msgAppReader.updateMsgAppTerm(term) }
-
 func (p *peer) attachOutgoingConn(conn *outgoingConn) {
 	var ok bool
 	switch conn.t {
-	case streamTypeMsgApp, streamTypeMsgAppV2:
-		ok = p.msgAppWriter.attach(conn)
+	case streamTypeMsgAppV2:
+		ok = p.msgAppV2Writer.attach(conn)
 	case streamTypeMessage:
 		ok = p.writer.attach(conn)
 	default:
@@ -271,12 +264,14 @@ func (p *peer) pick(m raftpb.Message) (writec chan<- raftpb.Message, picked stri
 	// stream for a long time, only use one of the N pipelines to send MsgSnap.
 	if isMsgSnap(m) {
 		return p.pipeline.msgc, pipelineMsg
-	} else if writec, ok = p.msgAppWriter.writec(); ok && canUseMsgAppStream(m) {
-		return writec, streamApp
+	} else if writec, ok = p.msgAppV2Writer.writec(); ok && isMsgApp(m) {
+		return writec, streamAppV2
 	} else if writec, ok = p.writer.writec(); ok {
 		return writec, streamMsg
 	}
 	return p.pipeline.msgc, pipelineMsg
 }
+
+func isMsgApp(m raftpb.Message) bool { return m.Type == raftpb.MsgApp }
 
 func isMsgSnap(m raftpb.Message) bool { return m.Type == raftpb.MsgSnap }
