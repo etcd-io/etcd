@@ -324,6 +324,10 @@ func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveVars(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET") {
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	fmt.Fprintf(w, "{\n")
 	first := true
