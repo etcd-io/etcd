@@ -10,64 +10,64 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ## Member Flags
 
-#### -name
+### -name
 + Human-readable name for this member.
 + default: "default"
 + env variable: ETCD_NAME
 + This value is referenced as this node's own entries listed in the `-initial-cluster` flag (Ex: `default=http://localhost:2380` or `default=http://localhost:2380,default=http://localhost:7001`). This needs to match the key used in the flag if you're using [static bootstrapping](clustering.md#static). When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
 
-#### -data-dir
+### -data-dir
 + Path to the data directory.
 + default: "${name}.etcd"
 + env variable: ETCD_DATA_DIR
 
-#### -wal-dir
+### -wal-dir
 + Path to the dedicated wal directory. If this flag is set, etcd will write the WAL files to the walDir rather than the dataDir. This allows a dedicated disk to be used, and helps avoid io competition between logging and other IO operations.
 + default: ""
 + env variable: ETCD_WAL_DIR
 
-#### -snapshot-count
+### -snapshot-count
 + Number of committed transactions to trigger a snapshot to disk.
 + default: "10000"
 + env variable: ETCD_SNAPSHOT_COUNT
 
-#### -heartbeat-interval
+### -heartbeat-interval
 + Time (in milliseconds) of a heartbeat interval.
 + default: "100"
 + env variable: ETCD_HEARTBEAT_INTERVAL
 
-#### -election-timeout
+### -election-timeout
 + Time (in milliseconds) for an election to timeout. See [Documentation/tuning.md](tuning.md#time-parameters) for details.
 + default: "1000"
 + env variable: ETCD_ELECTION_TIMEOUT
 
-##### -listen-peer-urls
+### -listen-peer-urls
 + List of URLs to listen on for peer traffic. This flag tells the etcd to accept incoming requests from its peers on the specified scheme://IP:port combinations. Scheme can be either http or https.If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces. If an IP address is given as well as a port, etcd will listen on the given port and interface. Multiple URLs may be used to specify a number of addresses and ports to listen on. The etcd will respond to requests from any of the listed addresses and ports.
 + default: "http://localhost:2380,http://localhost:7001"
 + env variable: ETCD_LISTEN_PEER_URLS
 + example: "http://10.0.0.1:2380"
 + invalid example: "http://example.com:2380" (domain name is invalid for binding)
 
-#### -listen-client-urls
+### -listen-client-urls
 + List of URLs to listen on for client traffic. This flag tells the etcd to accept incoming requests from the clients on the specified scheme://IP:port combinations. Scheme can be either http or https. If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces. If an IP address is given as well as a port, etcd will listen on the given port and interface. Multiple URLs may be used to specify a number of addresses and ports to listen on. The etcd will respond to requests from any of the listed addresses and ports.
 + default: "http://localhost:2379,http://localhost:4001"
 + env variable: ETCD_LISTEN_CLIENT_URLS
 + example: "http://10.0.0.1:2379"
 + invalid example: "http://example.com:2379" (domain name is invalid for binding)
 
-#### -max-snapshots
+### -max-snapshots
 + Maximum number of snapshot files to retain (0 is unlimited)
 + default: 5
 + env variable: ETCD_MAX_SNAPSHOTS
 + The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
 
-#### -max-wals
+### -max-wals
 + Maximum number of wal files to retain (0 is unlimited)
 + default: 5
 + env variable: ETCD_MAX_WALS
 + The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
 
-#### -cors
+### -cors
 + Comma-separated white list of origins for CORS (cross-origin resource sharing).
 + default: none
 + env variable: ETCD_CORS
