@@ -1,8 +1,8 @@
-## Administration
+# Administration
 
-### Data Directory
+## Data Directory
 
-#### Lifecycle
+### Lifecycle
 
 When first started, etcd stores its configuration into a data directory specified by the data-dir configuration parameter.
 Configuration is stored in the write ahead log and includes: the local member ID, cluster ID, and initial cluster configuration.
@@ -20,7 +20,7 @@ Once removed the member can be re-added with an empty data directory.
 
 [remove-a-member]: runtime-configuration.md#remove-a-member
 
-#### Contents
+### Contents
 
 The data directory has two sub-directories in it:
 
@@ -32,18 +32,18 @@ If `--wal-dir` flag is set, etcd will write the write ahead log files to the spe
 [wal-pkg]: http://godoc.org/github.com/coreos/etcd/wal
 [snap-pkg]: http://godoc.org/github.com/coreos/etcd/snap
 
-### Cluster Management
+## Cluster Management
 
-#### Lifecycle
+### Lifecycle
 
 If you are spinning up multiple clusters for testing it is recommended that you specify a unique initial-cluster-token for the different clusters.
 This can protect you from cluster corruption in case of mis-configuration because two members started with different cluster tokens will refuse members from each other.
 
-#### Monitoring
+### Monitoring
 
 It is important to monitor your production etcd cluster for healthy information and runtime metrics.
 
-##### Health Monitoring
+#### Health Monitoring
 
 At lowest level, etcd exposes health information via HTTP at `/health` in JSON format. If it returns `{"health": "true"}`, then the cluster is healthy. Please note the `/health` endpoint is still an experimental one as in etcd 2.2.
 
@@ -63,16 +63,16 @@ member fd422379fda50e48 is healthy: got healthy result from http://127.0.0.1:323
 cluster is healthy
 ```
 
-##### Runtime Metrics
+#### Runtime Metrics
 
 etcd uses [Prometheus](http://prometheus.io/) for metrics reporting in the server. You can read more through the runtime metrics [doc](metrics.md).
 
-#### Debugging
+### Debugging
 
 Debugging a distributed system can be difficult. etcd provides several ways to make debug
 easier.
 
-##### Enabling Debug Logging
+#### Enabling Debug Logging
 
 When you want to debug etcd without stopping it, you can enable debug logging at runtime.
 etcd exposes logging configuration at `/config/local/log`.
@@ -85,7 +85,7 @@ $ curl http://127.0.0.1:2379/config/local/log -XPUT -d '{"Level":"INFO"}'
 $ # debug logging disabled
 ```
 
-##### Debugging Variables
+#### Debugging Variables
 
 Debug variables are exposed for real-time debugging purposes. Developers who are familiar with etcd can utilize these variables to debug unexpected behavior. etcd exposes debug variables via HTTP at `/debug/vars` in JSON format. The debug variables contains
 `cmdline`, `file_descriptor_limit`, `memstats` and `raft.status`.
@@ -107,7 +107,7 @@ Debug variables are exposed for real-time debugging purposes. Developers who are
 }
 ```
 
-#### Optimal Cluster Size
+### Optimal Cluster Size
 
 The recommended etcd cluster size is 3, 5 or 7, which is decided by the fault tolerance requirement. A 7-member cluster can provide enough fault tolerance in most cases. While larger cluster provides better fault tolerance the write performance reduces since data needs to be replicated to more machines.
 
