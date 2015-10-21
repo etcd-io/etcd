@@ -25,6 +25,7 @@ type remote struct {
 	id       types.ID
 	status   *peerStatus
 	pipeline *pipeline
+	dropLog  *aggregateLogger
 }
 
 func startRemote(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, errorc chan error) *remote {
@@ -34,6 +35,7 @@ func startRemote(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID,
 		id:       to,
 		status:   status,
 		pipeline: newPipeline(tr, picker, local, to, cid, status, nil, r, errorc),
+		dropLog:  &aggregateLogger{period: defaultPeriod, logger: plog},
 	}
 }
 
@@ -41,10 +43,9 @@ func (g *remote) send(m raftpb.Message) {
 	select {
 	case g.pipeline.msgc <- m:
 	default:
+		plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
 		if g.status.isActive() {
-			plog.Warningf("dropped %s to %s since sending buffer is full", m.Type, g.id)
-		} else {
-			plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
+			g.dropLog.Warningf("dropped %s to %s since sending buffer is full", m.Type, g.id)
 		}
 	}
 }

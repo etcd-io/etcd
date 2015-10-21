@@ -152,6 +152,7 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 	reader := startStreamReader(streamRt, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
 	go func() {
 		var paused bool
+		dropLog := &aggregateLogger{period: defaultPeriod, logger: plog}
 		for {
 			select {
 			case m := <-p.sendc:
@@ -170,10 +171,9 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 					if isMsgSnap(m) {
 						p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 					}
+					plog.Debugf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
 					if status.isActive() {
-						plog.Warningf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
-					} else {
-						plog.Debugf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
+						dropLog.Warningf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
 					}
 				}
 			case mm := <-p.recvc:
