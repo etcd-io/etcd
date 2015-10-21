@@ -93,8 +93,9 @@ type Watcher interface {
 type WatchableKV interface {
 	KV
 
-	// Watcher watches the events happening or happened in etcd. The whole
-	// event history can be watched unless compacted.
+	// Watcher watches the events happening or happened on the given key
+	// or key prefix from the given startRev.
+	// The whole event history can be watched unless compacted.
 	// If `prefix` is true, watch observes all events whose key prefix could be the given `key`.
 	// If `startRev` <=0, watch observes events after currentRev.
 	//
