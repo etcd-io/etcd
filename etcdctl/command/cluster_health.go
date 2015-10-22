@@ -70,60 +70,18 @@ func handleClusterHealth(c *cli.Context) {
 	}
 
 	for {
-		health := false
-		wait := sync.WaitGroup{}
-		wait.Add(len(ms))
+		var health bool
+		var wg sync.WaitGroup
 		for _, m := range ms {
+			wg.Add(1)
 			go func(m client.Member) {
-				defer wait.Done()
-
-				if len(m.ClientURLs) == 0 {
-					fmt.Printf("member %s is unreachable: no available published client urls\n", m.ID)
-					return
+				if mhealth := checkmemberHealth(hc, m); mhealth {
+					health = true
 				}
-
-				checked := false
-				for _, url := range m.ClientURLs {
-					resp, err := hc.Get(url + "/health")
-					if err != nil {
-						fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
-						continue
-					}
-
-					result := struct{ Health string }{}
-					nresult := struct{ Health bool }{}
-					bytes, err := ioutil.ReadAll(resp.Body)
-					if err != nil {
-						fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
-						continue
-					}
-					resp.Body.Close()
-
-					err = json.Unmarshal(bytes, &result)
-					if err != nil {
-						err = json.Unmarshal(bytes, &nresult)
-					}
-					if err != nil {
-						fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
-						continue
-					}
-
-					checked = true
-					if result.Health == "true" || nresult.Health == true {
-						health = true
-						fmt.Printf("member %s is healthy: got healthy result from %s\n", m.ID, url)
-					} else {
-						fmt.Printf("member %s is unhealthy: got unhealthy result from %s\n", m.ID, url)
-					}
-					break
-				}
-				if !checked {
-					fmt.Printf("member %s is unreachable: %v are all unreachable\n", m.ID, m.ClientURLs)
-				}
+				wg.Done()
 			}(m)
 		}
-
-		wait.Wait()
+		wg.Wait()
 
 		if health {
 			fmt.Println("cluster is healthy")
@@ -134,7 +92,52 @@ func handleClusterHealth(c *cli.Context) {
 		if !forever {
 			break
 		}
+
 		fmt.Printf("\nnext check after 10 second...\n\n")
 		time.Sleep(10 * time.Second)
 	}
+}
+
+func checkmemberHealth(hc http.Client, m client.Member) bool {
+	if len(m.ClientURLs) == 0 {
+		fmt.Printf("member %s is unreachable: no available published client urls\n", m.ID)
+		return false
+	}
+
+	for _, url := range m.ClientURLs {
+		resp, err := hc.Get(url + "/health")
+		if err != nil {
+			fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
+			continue
+		}
+
+		result := struct{ Health string }{}
+		nresult := struct{ Health bool }{}
+		bytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
+			continue
+		}
+		resp.Body.Close()
+
+		err = json.Unmarshal(bytes, &result)
+		if err != nil {
+			err = json.Unmarshal(bytes, &nresult)
+		}
+		if err != nil {
+			fmt.Printf("failed to check the health of member %s on %s: %v\n", m.ID, url, err)
+			continue
+		}
+
+		if result.Health == "true" || nresult.Health == true {
+			fmt.Printf("member %s is healthy: got healthy result from %s\n", m.ID, url)
+			return true
+		} else {
+			fmt.Printf("member %s is unhealthy: got unhealthy result from %s\n", m.ID, url)
+			return false
+		}
+	}
+
+	fmt.Printf("member %s is unreachable: %v are all unreachable\n", m.ID, m.ClientURLs)
+	return false
 }
