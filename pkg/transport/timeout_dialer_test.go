@@ -50,7 +50,8 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(d.wtimeoutd * 10):
+	// It waits 1s more to avoid delay in low-end system.
+	case <-time.After(d.wtimeoutd*10 + time.Second):
 		t.Fatal("wait timeout")
 	}
 
