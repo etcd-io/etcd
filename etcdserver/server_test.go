@@ -836,6 +836,7 @@ func TestRecvSnapshot(t *testing.T) {
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
 	s := &EtcdServer{
+		cfg: &ServerConfig{},
 		r: raftNode{
 			Node:        n,
 			transport:   &nopTransporter{},
@@ -871,6 +872,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	cl.SetStore(store.New())
 	storage := newRaftStorage()
 	s := &EtcdServer{
+		cfg: &ServerConfig{},
 		r: raftNode{
 			Node:        n,
 			storage:     &storageRecorder{},

@@ -493,6 +493,23 @@ func (s *EtcdServer) run() {
 						apply.snapshot.Metadata.Index, appliedi)
 				}
 
+				if s.cfg.V3demo {
+					if err := s.kv.Close(); err != nil {
+						plog.Panicf("close KV error: %v", err)
+					}
+					snapfn, err := s.r.raftStorage.snapStore.getSnapFilePath(apply.snapshot.Metadata.Index)
+					if err != nil {
+						plog.Panicf("get snapshot file path error: %v", err)
+					}
+					fn := path.Join(s.cfg.StorageDir(), databaseFilename)
+					if err := os.Rename(snapfn, fn); err != nil {
+						plog.Panicf("rename snapshot file error: %v", err)
+					}
+					s.kv = dstorage.New(fn)
+					if err := s.kv.Restore(); err != nil {
+						plog.Panicf("restore KV error: %v", err)
+					}
+				}
 				if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 					plog.Panicf("recovery store error: %v", err)
 				}
