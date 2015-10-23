@@ -29,9 +29,26 @@ func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterv
 	}
 	d.refresh()
 	go func() {
+		cn := 0
 		for {
+			// give shorter interval for initial proxy set-up
+			rit := refreshInterval
+			if rit >= 30*time.Second && cn < 5 {
+				epc := 0
+				d.Lock()
+				for _, ep := range d.ep {
+					if ep.Available {
+						epc++
+					}
+				}
+				d.Unlock()
+				if epc == 0 {
+					rit /= 10
+				}
+				cn++
+			}
 			select {
-			case <-time.After(refreshInterval):
+			case <-time.After(rit):
 				d.refresh()
 			}
 		}
