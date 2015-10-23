@@ -326,6 +326,44 @@ func (m *TxnResponse) GetResponses() []*ResponseUnion {
 	return nil
 }
 
+type WatchRequest struct {
+	// the key to be watched
+	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// the prefix to be watched.
+	Prefix []byte `protobuf:"bytes,2,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	// start_revision is an optional revision (including) to watch from. No start_revision is "now".
+	StartRevision int64 `protobuf:"varint,3,opt,name=start_revision,proto3" json:"start_revision,omitempty"`
+	// end_revision is an optional revision (excluding) to end watch. No end_revision is "forever".
+	EndRevision int64 `protobuf:"varint,4,opt,name=end_revision,proto3" json:"end_revision,omitempty"`
+}
+
+func (m *WatchRequest) Reset()         { *m = WatchRequest{} }
+func (m *WatchRequest) String() string { return proto.CompactTextString(m) }
+func (*WatchRequest) ProtoMessage()    {}
+
+type WatchResponse struct {
+	Header *ResponseHeader  `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Event  *storagepb.Event `protobuf:"bytes,2,opt,name=event" json:"event,omitempty"`
+}
+
+func (m *WatchResponse) Reset()         { *m = WatchResponse{} }
+func (m *WatchResponse) String() string { return proto.CompactTextString(m) }
+func (*WatchResponse) ProtoMessage()    {}
+
+func (m *WatchResponse) GetHeader() *ResponseHeader {
+	if m != nil {
+		return m.Header
+	}
+	return nil
+}
+
+func (m *WatchResponse) GetEvent() *storagepb.Event {
+	if m != nil {
+		return m.Event
+	}
+	return nil
+}
+
 // Compaction compacts the kv store upto the given revision (including).
 // It removes the old versions of a key. It keeps the newest version of
 // the key even if its latest modification revision is smaller than the given
@@ -382,6 +420,10 @@ type EtcdClient interface {
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
 	Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error)
+	// Watch watches the events happening or happened in etcd. Both input and output
+	// are stream. One watch rpc can watch for multiple ranges and get a stream of
+	// events. The whole events history can be watched unless compacted.
+	Watch(ctx context.Context, opts ...grpc.CallOption) (Etcd_WatchClient, error)
 }
 
 type etcdClient struct {
@@ -437,6 +479,37 @@ func (c *etcdClient) Compact(ctx context.Context, in *CompactionRequest, opts ..
 	return out, nil
 }
 
+func (c *etcdClient) Watch(ctx context.Context, opts ...grpc.CallOption) (Etcd_WatchClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_Etcd_serviceDesc.Streams[0], c.cc, "/etcdserverpb.etcd/Watch", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &etcdWatchClient{stream}
+	return x, nil
+}
+
+type Etcd_WatchClient interface {
+	Send(*WatchRequest) error
+	Recv() (*WatchResponse, error)
+	grpc.ClientStream
+}
+
+type etcdWatchClient struct {
+	grpc.ClientStream
+}
+
+func (x *etcdWatchClient) Send(m *WatchRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *etcdWatchClient) Recv() (*WatchResponse, error) {
+	m := new(WatchResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Server API for Etcd service
 
 type EtcdServer interface {
@@ -457,6 +530,10 @@ type EtcdServer interface {
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
 	Compact(context.Context, *CompactionRequest) (*CompactionResponse, error)
+	// Watch watches the events happening or happened in etcd. Both input and output
+	// are stream. One watch rpc can watch for multiple ranges and get a stream of
+	// events. The whole events history can be watched unless compacted.
+	Watch(Etcd_WatchServer) error
 }
 
 func RegisterEtcdServer(s *grpc.Server, srv EtcdServer) {
@@ -523,6 +600,32 @@ func _Etcd_Compact_Handler(srv interface{}, ctx context.Context, codec grpc.Code
 	return out, nil
 }
 
+func _Etcd_Watch_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(EtcdServer).Watch(&etcdWatchServer{stream})
+}
+
+type Etcd_WatchServer interface {
+	Send(*WatchResponse) error
+	Recv() (*WatchRequest, error)
+	grpc.ServerStream
+}
+
+type etcdWatchServer struct {
+	grpc.ServerStream
+}
+
+func (x *etcdWatchServer) Send(m *WatchResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *etcdWatchServer) Recv() (*WatchRequest, error) {
+	m := new(WatchRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 var _Etcd_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "etcdserverpb.etcd",
 	HandlerType: (*EtcdServer)(nil),
@@ -548,7 +651,14 @@ var _Etcd_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Etcd_Compact_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Watch",
+			Handler:       _Etcd_Watch_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 }
 
 func (m *ResponseHeader) Marshal() (data []byte, err error) {
@@ -1066,6 +1176,88 @@ func (m *TxnResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *WatchRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *WatchRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Key != nil {
+		if len(m.Key) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintRpc(data, i, uint64(len(m.Key)))
+			i += copy(data[i:], m.Key)
+		}
+	}
+	if m.Prefix != nil {
+		if len(m.Prefix) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintRpc(data, i, uint64(len(m.Prefix)))
+			i += copy(data[i:], m.Prefix)
+		}
+	}
+	if m.StartRevision != 0 {
+		data[i] = 0x18
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.StartRevision))
+	}
+	if m.EndRevision != 0 {
+		data[i] = 0x20
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.EndRevision))
+	}
+	return i, nil
+}
+
+func (m *WatchResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *WatchResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Header != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
+		n11, err := m.Header.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n11
+	}
+	if m.Event != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.Event.Size()))
+		n12, err := m.Event.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n12
+	}
+	return i, nil
+}
+
 func (m *CompactionRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1108,11 +1300,11 @@ func (m *CompactionResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n11, err := m.Header.MarshalTo(data[i:])
+		n13, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n13
 	}
 	return i, nil
 }
@@ -1369,6 +1561,44 @@ func (m *TxnResponse) Size() (n int) {
 			l = e.Size()
 			n += 1 + l + sovRpc(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *WatchRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Key != nil {
+		l = len(m.Key)
+		if l > 0 {
+			n += 1 + l + sovRpc(uint64(l))
+		}
+	}
+	if m.Prefix != nil {
+		l = len(m.Prefix)
+		if l > 0 {
+			n += 1 + l + sovRpc(uint64(l))
+		}
+	}
+	if m.StartRevision != 0 {
+		n += 1 + sovRpc(uint64(m.StartRevision))
+	}
+	if m.EndRevision != 0 {
+		n += 1 + sovRpc(uint64(m.EndRevision))
+	}
+	return n
+}
+
+func (m *WatchResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Header != nil {
+		l = m.Header.Size()
+		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.Event != nil {
+		l = m.Event.Size()
+		n += 1 + l + sovRpc(uint64(l))
 	}
 	return n
 }
@@ -2766,6 +2996,238 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 			}
 			m.Responses = append(m.Responses, &ResponseUnion{})
 			if err := m.Responses[len(m.Responses)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipRpc(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthRpc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *WatchRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthRpc
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Prefix", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthRpc
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Prefix = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StartRevision", wireType)
+			}
+			m.StartRevision = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.StartRevision |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EndRevision", wireType)
+			}
+			m.EndRevision = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.EndRevision |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipRpc(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthRpc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *WatchResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Header", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRpc
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Header == nil {
+				m.Header = &ResponseHeader{}
+			}
+			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Event", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRpc
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Event == nil {
+				m.Event = &storagepb.Event{}
+			}
+			if err := m.Event.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

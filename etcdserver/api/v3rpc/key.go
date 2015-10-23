@@ -15,12 +15,15 @@
 package v3rpc
 
 import (
+	"io"
+
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/storage/storagepb"
 )
 
 type handler struct {
@@ -81,6 +84,69 @@ func (h *handler) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	}
 
 	return resp.(*pb.TxnResponse), err
+}
+
+func (h *handler) Watch(ws pb.Etcd_WatchServer) error {
+	eventc := make(chan storagepb.Event)
+	closec := make(chan struct{})
+	defer close(closec)
+
+	go watchSendLoop(ws, eventc, closec)
+	err := watchRecvLoop(h.server, ws, eventc, closec)
+
+	return err
+}
+
+// watchSendLoop fans in events received from eventc chan
+// and sends them to the stream.
+// watchSendLoop stops when there is an error or the closec
+// chan is closed.
+func watchSendLoop(stream pb.Etcd_WatchServer, eventc chan storagepb.Event, closec chan struct{}) {
+	for {
+		select {
+		case e := <-eventc:
+			err := stream.Send(&pb.WatchResponse{Event: &e})
+			if err != nil {
+				return
+			}
+		case <-closec:
+			return
+		}
+	}
+}
+
+// watchRecvLoop waits for new watch request from stream.
+// For each new watch request, it create a go routine to
+// forward watched event to eventc.
+// watchRecvLoop stops when recv fails.
+//
+// TODO: reduce the number of go routines. We should be able
+// to achieve one routine pre request instead of one routine
+// per watch stream.
+func watchRecvLoop(server etcdserver.V3DemoServer, stream pb.Etcd_WatchServer, eventc chan storagepb.Event, closec chan struct{}) error {
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		watcher, cancel := server.NewWatcher(req)
+
+		go func(storage.Watcher, storage.CancelFunc) {
+			for {
+				select {
+				case e := <-watcher.Event():
+					eventc <- e
+				case <-closec:
+					cancel()
+					return
+				}
+			}
+		}(watcher, cancel)
+	}
 }
 
 func (h *handler) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {

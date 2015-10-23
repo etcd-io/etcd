@@ -36,6 +36,7 @@ func main() {
 		command.NewDeleteRangeCommand(),
 		command.NewTxnCommand(),
 		command.NewCompactionCommand(),
+		command.NewWatchCommand(),
 	}
 
 	app.Run(os.Args)

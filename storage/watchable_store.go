@@ -39,6 +39,10 @@ type watchableStore struct {
 	wg    sync.WaitGroup
 }
 
+func New(path string) WatchableKV {
+	return newWatchableStore(path)
+}
+
 func newWatchableStore(path string) *watchableStore {
 	s := &watchableStore{
 		store:    newStore(path),
