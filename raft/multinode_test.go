@@ -454,7 +454,7 @@ func TestMultiNodeAdvance(t *testing.T) {
 	mn.Advance(rd1)
 	select {
 	case <-mn.Ready():
-	case <-time.After(time.Millisecond):
+	case <-time.After(100 * time.Millisecond):
 		t.Errorf("expect Ready after Advance, but there is no Ready available")
 	}
 }
