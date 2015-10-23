@@ -103,3 +103,13 @@ type WatchableKV interface {
 	// should always call cancel as soon as watch is done.
 	Watcher(key []byte, prefix bool, startRev int64) (Watcher, CancelFunc)
 }
+
+// ConsistentWatchableKV is a WatchableKV that understands the consistency
+// algorithm and consistent index.
+type ConsistentWatchableKV interface {
+	WatchableKV
+
+	// ConsistentIndex returns the index of the last executed entry
+	// by the KV in the consistent replicated log.
+	ConsistentIndex() uint64
+}

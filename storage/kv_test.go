@@ -819,6 +819,25 @@ func TestWatchableKVWatch(t *testing.T) {
 	}
 }
 
+type indexVal uint64
+
+func (v *indexVal) Get() uint64 { return uint64(*v) }
+
+func TestConsistentWatchableKVConsistentIndex(t *testing.T) {
+	var idx indexVal
+	s := newConsistentWatchableStore(tmpPath, &idx)
+	defer cleanup(s, tmpPath)
+
+	tests := []uint64{1, 2, 3, 5, 10}
+	for i, tt := range tests {
+		idx = indexVal(tt)
+		s.Put([]byte("foo"), []byte("bar"))
+		if g := s.ConsistentIndex(); g != tt {
+			t.Errorf("#%d: index = %d, want %d", i, g, tt)
+		}
+	}
+}
+
 func cleanup(s KV, path string) {
 	s.Close()
 	os.Remove(path)
