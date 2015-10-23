@@ -2,7 +2,7 @@
 
 GCE n1-highcpu-2 machine type
 
-- 1x dedicated local SSD mounted under /var/lib/etcd
+- 1x dedicated local SSD mounted as etcd data directory
 - 1x dedicated slow disk for the OS
 - 1.8 GB memory
 - 2x CPUs
