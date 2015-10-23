@@ -821,7 +821,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 type indexVal uint64
 
-func (v *indexVal) Get() uint64 { return uint64(*v) }
+func (v *indexVal) ConsistentIndex() uint64 { return uint64(*v) }
 
 func TestConsistentWatchableKVConsistentIndex(t *testing.T) {
 	var idx indexVal
