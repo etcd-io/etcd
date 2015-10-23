@@ -41,6 +41,10 @@ type consistentWatchableStore struct {
 	ig ConsistentIndexGetter
 }
 
+func New(path string, ig ConsistentIndexGetter) ConsistentWatchableKV {
+	return newConsistentWatchableStore(path, ig)
+}
+
 // newConsistentWatchableStore creates a new consistentWatchableStore
 // using the file at the given path.
 // If the file at the given path does not exist then it will be created automatically.
