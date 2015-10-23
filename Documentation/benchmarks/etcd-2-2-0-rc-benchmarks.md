@@ -24,7 +24,7 @@ Also, we use 3 etcd 2.1.0 alpha-stage members to form cluster to get base perfor
 
 ## Testing
 
-Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyll/boom) to send requests to each etcd member. Check [here](../../hack/benchmark/) for instructions.
+Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyll/boom) with customized patch to send requests to each etcd member. Check [here](../../hack/benchmark/) for instructions.
 
 ## Performance
 
