@@ -161,13 +161,16 @@ type EtcdServer struct {
 	cluster *cluster
 
 	store store.Store
-	kv    dstorage.KV
+	kv    dstorage.ConsistentWatchableKV
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
 
 	SyncTicker <-chan time.Time
 
+	// consistent index used to hold the offset of current executing entry
+	// It is initialized to 0 before executing any entry.
+	consistIndex consistentIndex
 	// versionTr used to send requests for peer version
 	versionTr *http.Transport
 	reqIDGen  *idutil.Generator
@@ -345,7 +348,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err != nil && err != os.ErrExist {
 			return nil, err
 		}
-		srv.kv = dstorage.New(path.Join(cfg.StorageDir(), databaseFilename))
+		srv.kv = dstorage.New(path.Join(cfg.StorageDir(), databaseFilename), &srv.consistIndex)
 		if err := srv.kv.Restore(); err != nil {
 			plog.Fatalf("v3 storage restore error: %v", err)
 		}
@@ -505,7 +508,7 @@ func (s *EtcdServer) run() {
 					if err := os.Rename(snapfn, fn); err != nil {
 						plog.Panicf("rename snapshot file error: %v", err)
 					}
-					s.kv = dstorage.New(fn)
+					s.kv = dstorage.New(fn, &s.consistIndex)
 					if err := s.kv.Restore(); err != nil {
 						plog.Panicf("restore KV error: %v", err)
 					}
@@ -826,6 +829,8 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 	var err error
 	for i := range es {
 		e := es[i]
+		// set the consistent index of current executing entry
+		s.consistIndex.setConsistentIndex(e.Index)
 		switch e.Type {
 		case raftpb.EntryNormal:
 			// raft state machine may generate noop entry when leader confirmation.

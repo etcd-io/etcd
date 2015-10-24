@@ -59,10 +59,6 @@ type store struct {
 	stopc chan struct{}
 }
 
-func New(path string) KV {
-	return newStore(path)
-}
-
 func newStore(path string) *store {
 	s := &store{
 		b:              backend.New(path, batchInterval, batchLimit),

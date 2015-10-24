@@ -26,8 +26,8 @@ var (
 // ConsistentIndexGetter is an interface that wraps the Get method.
 // Consistent index is the offset of an entry in a consistent replicated log.
 type ConsistentIndexGetter interface {
-	// Get gets the consistent index of current executing entry.
-	Get() uint64
+	// ConsistentIndex returns the consistent index of current executing entry.
+	ConsistentIndex() uint64
 }
 
 type consistentWatchableStore struct {
@@ -39,6 +39,10 @@ type consistentWatchableStore struct {
 	// underlying backend. This helps to recover consistent index
 	// when restoring.
 	ig ConsistentIndexGetter
+}
+
+func New(path string, ig ConsistentIndexGetter) ConsistentWatchableKV {
+	return newConsistentWatchableStore(path, ig)
 }
 
 // newConsistentWatchableStore creates a new consistentWatchableStore
@@ -80,7 +84,7 @@ func (s *consistentWatchableStore) TxnBegin() int64 {
 
 	// TODO: avoid this unnecessary allocation
 	bs := make([]byte, 8)
-	binary.BigEndian.PutUint64(bs, s.ig.Get())
+	binary.BigEndian.PutUint64(bs, s.ig.ConsistentIndex())
 	// put the index into the underlying backend
 	// tx has been locked in TxnBegin, so there is no need to lock it again
 	s.watchableStore.store.tx.UnsafePut(metaBucketName, consistentIndexKeyName, bs)
