@@ -52,28 +52,6 @@ func TestPipelineSend(t *testing.T) {
 	}
 }
 
-// TestPipelineKeepSending tests that pipeline could keep sending messages
-// if there are messages in msgc channel.
-func TestPipelineKeepSending(t *testing.T) {
-	tr := &roundTripperRecorder{}
-	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
-	fs := &stats.FollowerStats{}
-	p := newPipeline(tr, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), fs, &fakeRaft{}, nil)
-
-	for i := 0; i < 50; i++ {
-		p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
-	}
-	testutil.WaitSchedule()
-	p.stop()
-
-	// check it sends all messages out successfully
-	fs.Lock()
-	defer fs.Unlock()
-	if fs.Counts.Success != 50 {
-		t.Errorf("success = %d, want 50", fs.Counts.Success)
-	}
-}
-
 func TestPipelineExceedMaximumServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
