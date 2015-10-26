@@ -106,7 +106,7 @@ func (p *pipeline) handle() {
 			if isMsgSnap(m) {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 			}
-			return
+			continue
 		}
 
 		p.status.activate()
