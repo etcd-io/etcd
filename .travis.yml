@@ -5,4 +5,4 @@ go:
   - 1.5
 
 script:
- - INTEGRATION=y ./test
+ - ./test
