@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -49,8 +50,8 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 		sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
 		testutil.WaitSchedule()
 		// previous attached connection should be closed
-		if prevwfc != nil && prevwfc.closed != true {
-			t.Errorf("#%d: close of previous connection = %v, want true", i, prevwfc.closed)
+		if prevwfc != nil && prevwfc.Closed() != true {
+			t.Errorf("#%d: close of previous connection = %v, want true", i, prevwfc.Closed())
 		}
 		// starts working
 		if _, ok := sw.writec(); ok != true {
@@ -63,7 +64,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 		if _, ok := sw.writec(); ok != true {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
-		if wfc.written == 0 {
+		if wfc.Written() == 0 {
 			t.Errorf("#%d: failed to write to the underlying connection", i)
 		}
 	}
@@ -73,7 +74,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 	if _, ok := sw.writec(); ok != false {
 		t.Errorf("working status after stop = %v, want false", ok)
 	}
-	if wfc.closed != true {
+	if wfc.Closed() != true {
 		t.Errorf("failed to close the underlying connection")
 	}
 }
@@ -92,7 +93,7 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 	if _, ok := sw.writec(); ok != false {
 		t.Errorf("working = %v, want false", ok)
 	}
-	if wfc.closed != true {
+	if wfc.Closed() != true {
 		t.Errorf("failed to close the underlying connection")
 	}
 }
@@ -297,19 +298,40 @@ func TestCheckStreamSupport(t *testing.T) {
 }
 
 type fakeWriteFlushCloser struct {
+	mu      sync.Mutex
 	err     error
 	written int
 	closed  bool
 }
 
 func (wfc *fakeWriteFlushCloser) Write(p []byte) (n int, err error) {
+	wfc.mu.Lock()
+	defer wfc.mu.Unlock()
+
 	wfc.written += len(p)
 	return len(p), wfc.err
 }
+
 func (wfc *fakeWriteFlushCloser) Flush() {}
+
 func (wfc *fakeWriteFlushCloser) Close() error {
+	wfc.mu.Lock()
+	defer wfc.mu.Unlock()
+
 	wfc.closed = true
 	return wfc.err
+}
+
+func (wfc *fakeWriteFlushCloser) Written() int {
+	wfc.mu.Lock()
+	defer wfc.mu.Unlock()
+	return wfc.written
+}
+
+func (wfc *fakeWriteFlushCloser) Closed() bool {
+	wfc.mu.Lock()
+	defer wfc.mu.Unlock()
+	return wfc.closed
 }
 
 type fakeStreamHandler struct {
