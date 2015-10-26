@@ -51,7 +51,8 @@ type ServerConfig struct {
 
 	V3demo bool
 
-	StrictReconfigCheck bool
+	StrictReconfigCheck       bool
+	DiscoveryRequestTimeoutMs uint
 }
 
 // VerifyBootstrapConfig sanity-checks the initial config for bootstrap case
