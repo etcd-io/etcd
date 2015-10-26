@@ -1,5 +1,4 @@
 language: go
-sudo: false
 go:
   - 1.4
   - 1.5
