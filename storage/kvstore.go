@@ -55,6 +55,9 @@ type store struct {
 	tmu   sync.Mutex // protect the txnID field
 	txnID int64      // tracks the current txnID to verify txn operations
 
+	// txnEvents records the events happened in the latest or on-going txn
+	txnEvents []storagepb.Event
+
 	wg    sync.WaitGroup
 	stopc chan struct{}
 }
@@ -120,6 +123,8 @@ func (s *store) TxnBegin() int64 {
 	s.currentRev.sub = 0
 	s.tx = s.b.BatchTx()
 	s.tx.Lock()
+	// reset txnEvents to record events in the on-going txn
+	s.txnEvents = nil
 
 	s.tmu.Lock()
 	defer s.tmu.Unlock()
@@ -249,6 +254,14 @@ func (s *store) RangeEvents(key, end []byte, limit, startRev int64) (evs []stora
 		}
 	}
 	return evs, s.currentRev.main + 1, nil
+}
+
+// LatestTxnEvents returns events happened in the latest txn.
+func (s *store) LatestTxnEvents() []storagepb.Event {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.txnEvents
 }
 
 func (s *store) Compact(rev int64) error {
@@ -445,6 +458,7 @@ func (s *store) put(key, value []byte) {
 	s.tx.UnsafePut(keyBucketName, ibytes, d)
 	s.kvindex.Put(key, revision{main: rev, sub: s.currentRev.sub})
 	s.currentRev.sub += 1
+	s.txnEvents = append(s.txnEvents, event)
 }
 
 func (s *store) deleteRange(key, end []byte) int64 {
@@ -488,4 +502,5 @@ func (s *store) delete(key []byte) {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
 	}
 	s.currentRev.sub += 1
+	s.txnEvents = append(s.txnEvents, event)
 }
