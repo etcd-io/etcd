@@ -88,15 +88,16 @@ type config struct {
 	ElectionMs uint
 
 	// clustering
-	apurls, acurls      []url.URL
-	clusterState        *flags.StringsFlag
-	dnsCluster          string
-	dproxy              string
-	durl                string
-	fallback            *flags.StringsFlag
-	initialCluster      string
-	initialClusterToken string
-	strictReconfigCheck bool
+	apurls, acurls            []url.URL
+	clusterState              *flags.StringsFlag
+	dnsCluster                string
+	dproxy                    string
+	durl                      string
+	fallback                  *flags.StringsFlag
+	initialCluster            string
+	initialClusterToken       string
+	strictReconfigCheck       bool
+	discoveryRequestTimeoutMs uint
 
 	// proxy
 	proxy                  *flags.StringsFlag
@@ -181,6 +182,7 @@ func NewConfig() *config {
 		plog.Panicf("unexpected error setting up clusterStateFlag: %v", err)
 	}
 	fs.BoolVar(&cfg.strictReconfigCheck, "strict-reconfig-check", false, "Reject reconfiguration that might cause quorum loss")
+	fs.UintVar(&cfg.discoveryRequestTimeoutMs, "discovery-request-timeout", 1000, "Timeout (in milliseconds) of request in discovery process")
 
 	// proxy
 	fs.Var(cfg.proxy, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(cfg.proxy.Values, ", ")))

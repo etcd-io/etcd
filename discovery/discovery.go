@@ -55,8 +55,8 @@ var (
 
 // JoinCluster will connect to the discovery service at the given url, and
 // register the server represented by the given id and config to the cluster
-func JoinCluster(durl, dproxyurl string, id types.ID, config string) (string, error) {
-	d, err := newDiscovery(durl, dproxyurl, id)
+func JoinCluster(durl, dproxyurl string, id types.ID, config string, timeoutMs uint) (string, error) {
+	d, err := newDiscovery(durl, dproxyurl, id, timeoutMs)
 	if err != nil {
 		return "", err
 	}
@@ -65,8 +65,8 @@ func JoinCluster(durl, dproxyurl string, id types.ID, config string) (string, er
 
 // GetCluster will connect to the discovery service at the given url and
 // retrieve a string describing the cluster
-func GetCluster(durl, dproxyurl string) (string, error) {
-	d, err := newDiscovery(durl, dproxyurl, 0)
+func GetCluster(durl, dproxyurl string, timeoutMs uint) (string, error) {
+	d, err := newDiscovery(durl, dproxyurl, 0, timeoutMs)
 	if err != nil {
 		return "", err
 	}
@@ -81,6 +81,8 @@ type discovery struct {
 	url     *url.URL
 
 	clock clockwork.Clock
+
+	perRequestTimeout time.Duration
 }
 
 // newProxyFunc builds a proxy function from the given string, which should
@@ -111,7 +113,7 @@ func newProxyFunc(proxy string) (func(*http.Request) (*url.URL, error), error) {
 	return http.ProxyURL(proxyURL), nil
 }
 
-func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
+func newDiscovery(durl, dproxyurl string, id types.ID, timeoutMs uint) (*discovery, error) {
 	u, err := url.Parse(durl)
 	if err != nil {
 		return nil, err
@@ -140,11 +142,12 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 	}
 	dc := client.NewKeysAPIWithPrefix(c, "")
 	return &discovery{
-		cluster: token,
-		c:       dc,
-		id:      id,
-		url:     u,
-		clock:   clockwork.NewRealClock(),
+		cluster:           token,
+		c:                 dc,
+		id:                id,
+		url:               u,
+		clock:             clockwork.NewRealClock(),
+		perRequestTimeout: time.Duration(timeoutMs) * time.Millisecond,
 	}, nil
 }
 
@@ -192,7 +195,7 @@ func (d *discovery) getCluster() (string, error) {
 }
 
 func (d *discovery) createSelf(contents string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), d.perRequestTimeout)
 	resp, err := d.c.Create(ctx, d.selfKey(), contents)
 	cancel()
 	if err != nil {
@@ -210,7 +213,7 @@ func (d *discovery) createSelf(contents string) error {
 
 func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 	configKey := path.Join("/", d.cluster, "_config")
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), d.perRequestTimeout)
 	// find cluster size
 	resp, err := d.c.Get(ctx, path.Join(configKey, "size"), nil)
 	cancel()
@@ -232,7 +235,7 @@ func (d *discovery) checkCluster() ([]*client.Node, int, uint64, error) {
 		return nil, 0, 0, ErrBadSizeKey
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), d.perRequestTimeout)
 	resp, err = d.c.Get(ctx, d.cluster, nil)
 	cancel()
 	if err != nil {

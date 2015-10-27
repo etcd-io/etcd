@@ -265,25 +265,26 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 
 	srvcfg := &etcdserver.ServerConfig{
-		Name:                cfg.name,
-		ClientURLs:          cfg.acurls,
-		PeerURLs:            cfg.apurls,
-		DataDir:             cfg.dir,
-		DedicatedWALDir:     cfg.walDir,
-		SnapCount:           cfg.snapCount,
-		MaxSnapFiles:        cfg.maxSnapFiles,
-		MaxWALFiles:         cfg.maxWalFiles,
-		InitialPeerURLsMap:  urlsmap,
-		InitialClusterToken: token,
-		DiscoveryURL:        cfg.durl,
-		DiscoveryProxy:      cfg.dproxy,
-		NewCluster:          cfg.isNewCluster(),
-		ForceNewCluster:     cfg.forceNewCluster,
-		PeerTLSInfo:         cfg.peerTLSInfo,
-		TickMs:              cfg.TickMs,
-		ElectionTicks:       cfg.electionTicks(),
-		V3demo:              cfg.v3demo,
-		StrictReconfigCheck: cfg.strictReconfigCheck,
+		Name:                      cfg.name,
+		ClientURLs:                cfg.acurls,
+		PeerURLs:                  cfg.apurls,
+		DataDir:                   cfg.dir,
+		DedicatedWALDir:           cfg.walDir,
+		SnapCount:                 cfg.snapCount,
+		MaxSnapFiles:              cfg.maxSnapFiles,
+		MaxWALFiles:               cfg.maxWalFiles,
+		InitialPeerURLsMap:        urlsmap,
+		InitialClusterToken:       token,
+		DiscoveryURL:              cfg.durl,
+		DiscoveryProxy:            cfg.dproxy,
+		NewCluster:                cfg.isNewCluster(),
+		ForceNewCluster:           cfg.forceNewCluster,
+		PeerTLSInfo:               cfg.peerTLSInfo,
+		TickMs:                    cfg.TickMs,
+		ElectionTicks:             cfg.electionTicks(),
+		V3demo:                    cfg.v3demo,
+		StrictReconfigCheck:       cfg.strictReconfigCheck,
+		DiscoveryRequestTimeoutMs: cfg.discoveryRequestTimeoutMs,
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(srvcfg)
@@ -368,7 +369,7 @@ func startProxy(cfg *config) error {
 		plog.Infof("proxy: using peer urls %v from cluster file %q", peerURLs, clusterfile)
 	case os.IsNotExist(err):
 		if cfg.durl != "" {
-			s, err := discovery.GetCluster(cfg.durl, cfg.dproxy)
+			s, err := discovery.GetCluster(cfg.durl, cfg.dproxy, cfg.discoveryRequestTimeoutMs)
 			if err != nil {
 				return err
 			}
