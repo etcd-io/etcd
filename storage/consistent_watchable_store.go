@@ -17,6 +17,8 @@ package storage
 import (
 	"encoding/binary"
 	"log"
+
+	"github.com/coreos/etcd/storage/storagepb"
 )
 
 var (
@@ -39,6 +41,8 @@ type consistentWatchableStore struct {
 	// underlying backend. This helps to recover consistent index
 	// when restoring.
 	ig ConsistentIndexGetter
+
+	skip bool // indicate whether or not to skip an operation
 }
 
 func New(path string, ig ConsistentIndexGetter) ConsistentWatchableKV {
@@ -82,23 +86,53 @@ func (s *consistentWatchableStore) DeleteRange(key, end []byte) (n, rev int64) {
 func (s *consistentWatchableStore) TxnBegin() int64 {
 	id := s.watchableStore.TxnBegin()
 
-	// TODO: avoid this unnecessary allocation
-	bs := make([]byte, 8)
-	binary.BigEndian.PutUint64(bs, s.ig.ConsistentIndex())
-	// put the index into the underlying backend
-	// tx has been locked in TxnBegin, so there is no need to lock it again
-	s.watchableStore.store.tx.UnsafePut(metaBucketName, consistentIndexKeyName, bs)
+	// If the consistent index of executing entry is not larger than store
+	// consistent index, skip all operations in this txn.
+	s.skip = s.ig.ConsistentIndex() <= s.consistentIndex()
+
+	if !s.skip {
+		// TODO: avoid this unnecessary allocation
+		bs := make([]byte, 8)
+		binary.BigEndian.PutUint64(bs, s.ig.ConsistentIndex())
+		// put the index into the underlying backend
+		// tx has been locked in TxnBegin, so there is no need to lock it again
+		s.watchableStore.store.tx.UnsafePut(metaBucketName, consistentIndexKeyName, bs)
+	}
 
 	return id
 }
 
-func (s *consistentWatchableStore) ConsistentIndex() uint64 {
-	tx := s.watchableStore.store.b.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+func (s *consistentWatchableStore) TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
+	if s.skip {
+		return nil, 0, nil
+	}
+	return s.watchableStore.TxnRange(txnID, key, end, limit, rangeRev)
+}
 
+func (s *consistentWatchableStore) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
+	if s.skip {
+		return 0, nil
+	}
+	return s.watchableStore.TxnPut(txnID, key, value)
+}
+
+func (s *consistentWatchableStore) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error) {
+	if s.skip {
+		return 0, 0, nil
+	}
+	return s.watchableStore.TxnDeleteRange(txnID, key, end)
+}
+
+func (s *consistentWatchableStore) TxnEnd(txnID int64) error {
+	// reset skip var
+	s.skip = false
+	return s.watchableStore.TxnEnd(txnID)
+}
+
+func (s *consistentWatchableStore) consistentIndex() uint64 {
 	// get the index
-	_, vs := tx.UnsafeRange(metaBucketName, consistentIndexKeyName, nil, 0)
+	// tx has been locked in TxnBegin, so there is no need to lock it again
+	_, vs := s.watchableStore.store.tx.UnsafeRange(metaBucketName, consistentIndexKeyName, nil, 0)
 	if len(vs) == 0 {
 		return 0
 	}

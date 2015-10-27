@@ -109,10 +109,9 @@ type WatchableKV interface {
 
 // ConsistentWatchableKV is a WatchableKV that understands the consistency
 // algorithm and consistent index.
+// If the consistent index of executing entry is not larger than the
+// consistent index of ConsistentWatchableKV, all operations in
+// this entry are skipped and return empty response.
 type ConsistentWatchableKV interface {
 	WatchableKV
-
-	// ConsistentIndex returns the index of the last executed entry
-	// by the KV in the consistent replicated log.
-	ConsistentIndex() uint64
 }
