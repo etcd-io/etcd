@@ -69,6 +69,9 @@ type KV interface {
 	// Snapshot snapshots the full KV store.
 	Snapshot() Snapshot
 
+	// Commit commits txns into the underlying backend.
+	Commit()
+
 	Restore() error
 	Close() error
 }

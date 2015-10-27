@@ -294,6 +294,8 @@ func (s *store) Snapshot() Snapshot {
 	return s.b.Snapshot()
 }
 
+func (s *store) Commit() { s.b.ForceCommit() }
+
 func (s *store) Restore() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
