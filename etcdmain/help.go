@@ -115,7 +115,7 @@ logging flags
 	--debug 'false'
 		enable debug-level logging for etcd.
 	--log-package-levels ''
-		set individual packages to various log levels (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG')
+		specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
 
 unsafe flags:
 
@@ -129,6 +129,8 @@ given by the consensus protocol.
 experimental flags:
 
 	--experimental-v3demo 'false'
-		enable experimental v3 demo API
+		enable experimental v3 demo API.
+	--experimental-gRPC-addr '127.0.0.1:2378'
+		gRPC address for experimental v3 demo API.
 `
 )
