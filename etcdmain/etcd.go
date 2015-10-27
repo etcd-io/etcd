@@ -124,9 +124,11 @@ func Main() {
 		shouldProxy := cfg.isProxy()
 		if !shouldProxy {
 			stopped, err = startEtcd(cfg)
-			if err == discovery.ErrFullCluster && cfg.shouldFallbackToProxy() {
-				plog.Noticef("discovery cluster full, falling back to %s", fallbackFlagProxy)
-				shouldProxy = true
+			if derr, ok := err.(*etcdserver.DiscoveryError); ok && derr.Err == discovery.ErrFullCluster {
+				if cfg.shouldFallbackToProxy() {
+					plog.Noticef("discovery cluster full, falling back to %s", fallbackFlagProxy)
+					shouldProxy = true
+				}
 			}
 		}
 		if shouldProxy {
@@ -135,39 +137,39 @@ func Main() {
 	}
 
 	if err != nil {
-		switch err {
-		case discovery.ErrDuplicateID:
-			plog.Errorf("member %q has previously registered with discovery service token (%s).", cfg.name, cfg.durl)
-			plog.Errorf("But etcd could not find valid cluster configuration in the given data dir (%s).", cfg.dir)
-			plog.Infof("Please check the given data dir path if the previous bootstrap succeeded")
-			plog.Infof("or use a new discovery token if the previous bootstrap failed.")
-		case discovery.ErrDuplicateName:
-			plog.Errorf("member with duplicated name has registered with discovery service token(%s).", cfg.durl)
-			plog.Errorf("please check (cURL) the discovery token for more information.")
-			plog.Errorf("please do not reuse the discovery token and generate a new one to bootstrap the cluster.")
-		default:
-			if strings.Contains(err.Error(), "include") && strings.Contains(err.Error(), "--initial-cluster") {
-				plog.Infof("%v", err)
-				if cfg.initialCluster == initialClusterFromName(cfg.name) {
-					plog.Infof("forgot to set --initial-cluster flag?")
-				}
-				if types.URLs(cfg.apurls).String() == defaultInitialAdvertisePeerURLs {
-					plog.Infof("forgot to set --initial-advertise-peer-urls flag?")
-				}
-				if cfg.initialCluster == initialClusterFromName(cfg.name) && len(cfg.durl) == 0 {
-					plog.Infof("if you want to use discovery service, please set --discovery flag.")
-				}
-				os.Exit(1)
-			}
-			if etcdserver.IsDiscoveryError(err) {
+		if derr, ok := err.(*etcdserver.DiscoveryError); ok {
+			switch derr.Err {
+			case discovery.ErrDuplicateID:
+				plog.Errorf("member %q has previously registered with discovery service token (%s).", cfg.name, cfg.durl)
+				plog.Errorf("But etcd could not find valid cluster configuration in the given data dir (%s).", cfg.dir)
+				plog.Infof("Please check the given data dir path if the previous bootstrap succeeded")
+				plog.Infof("or use a new discovery token if the previous bootstrap failed.")
+			case discovery.ErrDuplicateName:
+				plog.Errorf("member with duplicated name has registered with discovery service token(%s).", cfg.durl)
+				plog.Errorf("please check (cURL) the discovery token for more information.")
+				plog.Errorf("please do not reuse the discovery token and generate a new one to bootstrap the cluster.")
+			default:
 				plog.Errorf("%v", err)
 				plog.Infof("discovery token %s was used, but failed to bootstrap the cluster.", cfg.durl)
 				plog.Infof("please generate a new discovery token and try to bootstrap again.")
-				os.Exit(1)
 			}
-			plog.Fatalf("%v", err)
+			os.Exit(1)
 		}
-		os.Exit(1)
+
+		if strings.Contains(err.Error(), "include") && strings.Contains(err.Error(), "--initial-cluster") {
+			plog.Infof("%v", err)
+			if cfg.initialCluster == initialClusterFromName(cfg.name) {
+				plog.Infof("forgot to set --initial-cluster flag?")
+			}
+			if types.URLs(cfg.apurls).String() == defaultInitialAdvertisePeerURLs {
+				plog.Infof("forgot to set --initial-advertise-peer-urls flag?")
+			}
+			if cfg.initialCluster == initialClusterFromName(cfg.name) && len(cfg.durl) == 0 {
+				plog.Infof("if you want to use discovery service, please set --discovery flag.")
+			}
+			os.Exit(1)
+		}
+		plog.Fatalf("%v", err)
 	}
 
 	osutil.HandleInterrupts()
