@@ -186,6 +186,7 @@ func (kv *nopKV) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err
 func (kv *nopKV) Compact(rev int64) error     { return nil }
 func (kv *nopKV) Hash() (uint32, error)       { return 0, nil }
 func (kv *nopKV) Snapshot() dstorage.Snapshot { return &fakeSnapshot{} }
+func (kv *nopKV) Commit()                     {}
 func (kv *nopKV) Restore() error              { return nil }
 func (kv *nopKV) Close() error                { return nil }
 

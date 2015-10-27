@@ -1029,6 +1029,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			plog.Panicf("unexpected create snapshot error %v", err)
 		}
+		if s.cfg.V3demo {
+			// commit v3 storage because WAL file before snapshot index
+			// could be removed after SaveSnap.
+			s.kv.Commit()
+		}
+		// SaveSnap saves the snapshot and releases the locked wal files
+		// to the snapshot index.
 		if err := s.r.storage.SaveSnap(snap); err != nil {
 			plog.Fatalf("save snapshot error: %v", err)
 		}
