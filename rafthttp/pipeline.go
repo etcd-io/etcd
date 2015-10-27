@@ -153,14 +153,18 @@ func (p *pipeline) post(data []byte) (err error) {
 	resp.Body.Close()
 
 	err = checkPostResponse(resp, b, req, p.to)
-	// errMemberRemoved is a critical error since a removed member should
-	// always be stopped. So we use reportCriticalError to report it to errorc.
-	if err == errMemberRemoved {
-		reportCriticalError(err, p.errorc)
-		return nil
+	if err != nil {
+		p.picker.unreachable(u)
+		// errMemberRemoved is a critical error since a removed member should
+		// always be stopped. So we use reportCriticalError to report it to errorc.
+		if err == errMemberRemoved {
+			reportCriticalError(err, p.errorc)
+			return nil
+		}
+		return err
 	}
 
-	return err
+	return nil
 }
 
 // waitSchedule waits other goroutines to be scheduled for a while
