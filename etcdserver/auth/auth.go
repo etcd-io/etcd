@@ -69,6 +69,14 @@ var guestRole = Role{
 	},
 }
 
+var (
+	// These variables are functions to generate and check hashed password.
+	// They could be switched to fake one in tests to shorten the testing
+	// period because bcrypt functions are slow.
+	GenerateFromPassword   = bcrypt.GenerateFromPassword
+	CompareHashAndPassword = bcrypt.CompareHashAndPassword
+)
+
 type doer interface {
 	Do(context.Context, etcdserverpb.Request) (etcdserver.Response, error)
 }
@@ -217,7 +225,7 @@ func (s *store) createUserInternal(user User) (User, error) {
 	if user.Password == "" {
 		return user, authErr(http.StatusBadRequest, "Cannot create user %s with an empty password", user.User)
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	hash, err := GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return user, err
 	}
@@ -448,7 +456,7 @@ func (u User) merge(n User) (User, error) {
 	}
 	out.User = u.User
 	if n.Password != "" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(n.Password), bcrypt.DefaultCost)
+		hash, err := GenerateFromPassword([]byte(n.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return User{}, err
 		}
@@ -477,7 +485,7 @@ func (u User) merge(n User) (User, error) {
 }
 
 func (u User) CheckPassword(password string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	err := CompareHashAndPassword([]byte(u.Password), []byte(password))
 	return err == nil
 }
 
