@@ -246,9 +246,11 @@ func newRoundTripperBlocker() *roundTripperBlocker {
 		cancel:   make(map[*http.Request]chan struct{}),
 	}
 }
+
 func (t *roundTripperBlocker) unblock() {
 	close(t.unblockc)
 }
+
 func (t *roundTripperBlocker) CancelRequest(req *http.Request) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
