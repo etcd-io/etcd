@@ -53,7 +53,8 @@ func hasRootAccess(sec auth.Store, r *http.Request) bool {
 	if err != nil {
 		return false
 	}
-	ok = rootUser.CheckPassword(password)
+
+	ok = sec.CheckPassword(rootUser, password)
 	if !ok {
 		plog.Warningf("auth: wrong password for user %s", username)
 		return false
@@ -89,7 +90,7 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive b
 		plog.Warningf("auth: no such user: %s.", username)
 		return false
 	}
-	authAsUser := user.CheckPassword(password)
+	authAsUser := sec.CheckPassword(user, password)
 	if !authAsUser {
 		plog.Warningf("auth: incorrect password for user: %s.", username)
 		return false

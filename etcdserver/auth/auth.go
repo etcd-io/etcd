@@ -88,6 +88,12 @@ type Store interface {
 	AuthEnabled() bool
 	EnableAuth() error
 	DisableAuth() error
+	PasswordStore
+}
+
+type PasswordStore interface {
+	CheckPassword(user User, password string) bool
+	HashPassword(password string) (string, error)
 }
 
 type store struct {
@@ -97,6 +103,8 @@ type store struct {
 
 	mu      sync.Mutex // protect enabled
 	enabled *bool
+
+	PasswordStore
 }
 
 type User struct {
@@ -141,10 +149,24 @@ func authErr(hs int, s string, v ...interface{}) Error {
 
 func NewStore(server doer, timeout time.Duration) Store {
 	s := &store{
-		server:  server,
-		timeout: timeout,
+		server:        server,
+		timeout:       timeout,
+		PasswordStore: passwordStore{},
 	}
 	return s
+}
+
+// passwordStore implements PasswordStore using bcrypt to hash user passwords
+type passwordStore struct{}
+
+func (_ passwordStore) CheckPassword(user User, password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	return err == nil
+}
+
+func (_ passwordStore) HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(hash), err
 }
 
 func (s *store) AllUsers() ([]string, error) {
@@ -217,11 +239,11 @@ func (s *store) createUserInternal(user User) (User, error) {
 	if user.Password == "" {
 		return user, authErr(http.StatusBadRequest, "Cannot create user %s with an empty password", user.User)
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	hash, err := s.HashPassword(user.Password)
 	if err != nil {
 		return user, err
 	}
-	user.Password = string(hash)
+	user.Password = hash
 
 	_, err = s.createResource("/users/"+user.User, user)
 	if err != nil {
@@ -261,6 +283,13 @@ func (s *store) UpdateUser(user User) (User, error) {
 		}
 		return old, err
 	}
+
+	hash, err := s.HashPassword(user.Password)
+	if err != nil {
+		return old, err
+	}
+	user.Password = hash
+
 	newUser, err := old.merge(user)
 	if err != nil {
 		return old, err
@@ -448,11 +477,7 @@ func (u User) merge(n User) (User, error) {
 	}
 	out.User = u.User
 	if n.Password != "" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(n.Password), bcrypt.DefaultCost)
-		if err != nil {
-			return User{}, err
-		}
-		out.Password = string(hash)
+		out.Password = n.Password
 	} else {
 		out.Password = u.Password
 	}
@@ -474,11 +499,6 @@ func (u User) merge(n User) (User, error) {
 	out.Roles = currentRoles.Values()
 	sort.Strings(out.Roles)
 	return out, nil
-}
-
-func (u User) CheckPassword(password string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
-	return err == nil
 }
 
 // merge for a role works the same as User above -- atomic Role application to
