@@ -65,7 +65,7 @@ type CORSHandler struct {
 func (h *CORSHandler) addHeader(w http.ResponseWriter, origin string) {
 	w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Add("Access-Control-Allow-Origin", origin)
-	w.Header().Add("Access-Control-Allow-Headers", "accept, content-type")
+	w.Header().Add("Access-Control-Allow-Headers", "accept, content-type, authorization")
 }
 
 // ServeHTTP adds the correct CORS headers based on the origin and returns immediately
