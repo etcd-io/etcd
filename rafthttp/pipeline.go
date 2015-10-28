@@ -159,7 +159,6 @@ func (p *pipeline) post(data []byte) (err error) {
 		// always be stopped. So we use reportCriticalError to report it to errorc.
 		if err == errMemberRemoved {
 			reportCriticalError(err, p.errorc)
-			return nil
 		}
 		return err
 	}
