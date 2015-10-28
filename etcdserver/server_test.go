@@ -1099,7 +1099,8 @@ func TestPublishRetry(t *testing.T) {
 		done:     make(chan struct{}),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	time.AfterFunc(500*time.Microsecond, func() { close(srv.done) })
+	// TODO: use fakeClockwork
+	time.AfterFunc(10*time.Millisecond, func() { close(srv.done) })
 	srv.publish(10 * time.Nanosecond)
 
 	action := n.Action()
