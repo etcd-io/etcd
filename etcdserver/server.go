@@ -561,7 +561,7 @@ func (s *EtcdServer) run() {
 			}
 		case <-s.r.raftStorage.reqsnap():
 			s.r.raftStorage.raftsnap() <- s.createRaftSnapshot(appliedi, confState)
-			plog.Infof("requested snapshot created at %d", snapi)
+			plog.Debugf("requested snapshot created at %d", appliedi)
 		case err := <-s.errorc:
 			plog.Errorf("%s", err)
 			plog.Infof("the data-dir used by this member must be removed.")
