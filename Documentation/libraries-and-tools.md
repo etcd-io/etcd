@@ -13,6 +13,7 @@
 - [etcd-viewer](https://github.com/nikfoundas/etcd-viewer) - An etcd key-value store editor/viewer written in Java
 - [etcd-export](https://github.com/mickep76/etcd-export) - Export/Import etcd directory as JSON/YAML/TOML and Validate directory using JSON schema
 - [etcd-rest](https://github.com/mickep76/etcd-rest) - Create generic REST API in Go using etcd as a backend with validation using JSON schema
+- [etcdsh](https://github.com/kamilhark/etcdsh) - A command line client with support of command history and tab completion. Supports v2
 
 **Go libraries**
 
