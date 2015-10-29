@@ -15,23 +15,36 @@
 package etcdmain
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	defaultLog "log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 )
 
 // serveHTTP accepts incoming HTTP connections on the listener l,
 // creating a new service goroutine for each. The service goroutines
 // read requests and then call handler to reply to them.
-func serveHTTP(l net.Listener, handler http.Handler, readTimeout time.Duration) error {
-	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
-	// TODO: add debug flag; enable logging when debug flag is set
+func serveHTTP(l net.Listener, handler http.Handler, readTimeout time.Duration, debug bool) error {
 	srv := &http.Server{
 		Handler:     handler,
 		ReadTimeout: readTimeout,
-		ErrorLog:    logger, // do not log user error
 	}
+	var logger *defaultLog.Logger
+	if debug {
+		now := time.Now()
+		pf := new(bytes.Buffer)
+		pf.WriteString(now.Format("2006-01-02 15:04:05"))
+		pf.WriteString(fmt.Sprintf(".%06d", now.Nanosecond()/1000))
+		pf.WriteString(" D | etcdhttp: ")
+		logger = defaultLog.New(os.Stderr, pf.String(), 0)
+	} else {
+		// do not log user error
+		logger = defaultLog.New(ioutil.Discard, "etcdhttp", 0)
+	}
+	srv.ErrorLog = logger
 	return srv.Serve(l)
 }
