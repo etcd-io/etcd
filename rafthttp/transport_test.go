@@ -128,6 +128,7 @@ func TestTransportUpdate(t *testing.T) {
 func TestTransportErrorc(t *testing.T) {
 	errorc := make(chan error, 1)
 	tr := &Transport{
+		Raft:        &fakeRaft{},
 		LeaderStats: stats.NewLeaderStats(""),
 		ErrorC:      errorc,
 		streamRt:    newRespRoundTripper(http.StatusForbidden, nil),
