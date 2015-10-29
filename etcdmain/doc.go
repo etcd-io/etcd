@@ -12,6 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* Package etcd contains the main entry point for the etcd binary. */
-
+// Package etcdmain contains the main entry point for the etcd binary.
 package etcdmain
