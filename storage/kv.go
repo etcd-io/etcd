@@ -76,22 +76,6 @@ type KV interface {
 	Close() error
 }
 
-// Watcher watches on the KV. It will be notified if there is an event
-// happened on the watched key or prefix.
-type Watcher interface {
-	// Event returns a channel that receives observed event that matches the
-	// context of watcher. When watch finishes or is canceled or aborted, the
-	// channel is closed and returns empty event.
-	// Successive calls to Event return the same value.
-	Event() <-chan storagepb.Event
-
-	// Err returns a non-nil error value after Event is closed. Err returns
-	// Compacted if the history was compacted, Canceled if watch is canceled,
-	// or EOF if watch reaches the end revision. No other values for Err are defined.
-	// After Event is closed, successive calls to Err return the same value.
-	Err() error
-}
-
 // WatchableKV is a KV that can be watched.
 type WatchableKV interface {
 	KV
