@@ -41,7 +41,7 @@ etcd 2.2 is our current stable branch. The roadmap below outlines new features t
     - Failure guarantees documented
 -  Simple v3 client (golang)
 
-#### etcd 3.1 (February)
+### etcd 3.1 (February)
 - v3 API
     - Locking
 - Better disk backend
@@ -50,9 +50,9 @@ etcd 2.2 is our current stable branch. The roadmap below outlines new features t
 - Simpler disaster recovery UX
 - Integrated with Kubernetes
 
-#### etcd 3.2 (March)
+### etcd 3.2 (March)
 - API bindings for other languages
 
-#### etcd 3.+ (future)
+### etcd 3.+ (future)
 - Mirroring
 - Horizontally scalable proxy layer
