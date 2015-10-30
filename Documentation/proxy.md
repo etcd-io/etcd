@@ -41,7 +41,7 @@ If you bootstrap a etcd cluster using [discovery service][discovery-service] wit
 
 ## Promote a proxy to a member of etcd cluster
 
-A Proxy is in the part of etcd cluster that does not participant in consensus. A proxy will not promote itself to an etcd member that participants in consensus automtically in any case.
+A Proxy is in the part of etcd cluster that does not participate in consensus. A proxy will not promote itself to an etcd member that participates in consensus automtically in any case.
 
 If you want to promote a proxy to an etcd member, there are four steps you need to follow:
 
