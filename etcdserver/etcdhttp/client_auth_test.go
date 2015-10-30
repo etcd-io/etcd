@@ -25,7 +25,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/auth"
 )
 
-const goodPassword = "$2a$10$VYdJecHfm6WNodzv8XhmYeIG4n2SsQefdo5V2t6xIq/aWDHNqSUQW"
+const goodPassword = "good"
 
 func mustJSONRequest(t *testing.T, method string, p string, body string) *http.Request {
 	req, err := http.NewRequest(method, path.Join(authPrefix, p), strings.NewReader(body))
@@ -76,6 +76,14 @@ func (s *mockAuthStore) UpdateRole(role auth.Role) (auth.Role, error) {
 func (s *mockAuthStore) AuthEnabled() bool  { return s.enabled }
 func (s *mockAuthStore) EnableAuth() error  { return s.err }
 func (s *mockAuthStore) DisableAuth() error { return s.err }
+
+func (s *mockAuthStore) CheckPassword(user auth.User, password string) bool {
+	return user.Password == password
+}
+
+func (s *mockAuthStore) HashPassword(password string) (string, error) {
+	return password, nil
+}
 
 func TestAuthFlow(t *testing.T) {
 	enableMapMu.Lock()

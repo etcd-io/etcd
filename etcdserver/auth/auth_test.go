@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/crypto/bcrypt"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcderr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
@@ -74,7 +73,7 @@ func TestMergeUser(t *testing.T) {
 		},
 		{
 			User{User: "foo"},
-			User{User: "foo", Password: "bar"},
+			User{User: "foo", Password: "$2a$10$aUPOdbOGNawaVSusg3g2wuC3AH6XxIr9/Ms4VgDvzrAVOJPYzZILa"},
 			User{User: "foo", Roles: []string{}, Password: "$2a$10$aUPOdbOGNawaVSusg3g2wuC3AH6XxIr9/Ms4VgDvzrAVOJPYzZILa"},
 			false,
 		},
@@ -86,10 +85,6 @@ func TestMergeUser(t *testing.T) {
 			t.Fatalf("Got unexpected error on item %d", i)
 		}
 		if !tt.iserr {
-			err := bcrypt.CompareHashAndPassword([]byte(out.Password), []byte(tt.merge.Password))
-			if err == nil {
-				tt.expect.Password = out.Password
-			}
 			if !reflect.DeepEqual(out, tt.expect) {
 				t.Errorf("Unequal merge expectation on item %d: got: %#v, expect: %#v", i, out, tt.expect)
 			}
@@ -357,6 +352,15 @@ func TestEnsure(t *testing.T) {
 	}
 }
 
+type fastPasswordStore struct {
+}
+
+func (_ fastPasswordStore) CheckPassword(user User, password string) bool {
+	return user.Password == password
+}
+
+func (_ fastPasswordStore) HashPassword(password string) (string, error) { return password, nil }
+
 func TestCreateAndUpdateUser(t *testing.T) {
 	olduser := `{"user": "cat", "roles" : ["animal"]}`
 	newuser := `{"user": "cat", "roles" : ["animal", "pet"]}`
@@ -410,7 +414,7 @@ func TestCreateAndUpdateUser(t *testing.T) {
 	update := User{User: "cat", Grant: []string{"pet"}}
 	expected := User{User: "cat", Roles: []string{"animal", "pet"}}
 
-	s := store{server: d, timeout: testTimeout, ensuredOnce: true}
+	s := store{server: d, timeout: testTimeout, ensuredOnce: true, PasswordStore: fastPasswordStore{}}
 	out, created, err := s.CreateOrUpdateUser(user)
 	if created == false {
 		t.Error("Should have created user, instead updated?")
