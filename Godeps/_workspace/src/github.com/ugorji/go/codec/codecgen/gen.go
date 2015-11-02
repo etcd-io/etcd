@@ -41,23 +41,12 @@ package {{ $.PackageName }}
 
 import (
 	{{ if not .CodecPkgFiles }}{{ .CodecPkgName }} "{{ .CodecImportPath }}"{{ end }}
-{{/*
-	{{ if .Types }}"{{ .ImportPath }}"{{ end }}
-	"io"
-*/}}
 	"os"
 	"reflect"
 	"bytes"
+	"strings"
 	"go/format"
 )
-
-{{/* This is not used anymore. Remove it.
-func write(w io.Writer, s string) {
-	if _, err := io.WriteString(w, s); err != nil {
-		panic(err)
-	}
-}
-*/}}
 
 func CodecGenTempWrite{{ .RandString }}() {
 	fout, err := os.Create("{{ .OutFile }}")
@@ -72,7 +61,7 @@ func CodecGenTempWrite{{ .RandString }}() {
 	var t{{ $index }} {{ . }}
 	typs = append(typs, reflect.TypeOf(t{{ $index }}))
 {{ end }}
-	{{ if not .CodecPkgFiles }}{{ .CodecPkgName }}.{{ end }}Gen(&out, "{{ .BuildTag }}", "{{ .PackageName }}", "{{ .RandString }}", {{ .UseUnsafe }}, typs...)
+	{{ if not .CodecPkgFiles }}{{ .CodecPkgName }}.{{ end }}Gen(&out, "{{ .BuildTag }}", "{{ .PackageName }}", "{{ .RandString }}", {{ .UseUnsafe }}, {{ if not .CodecPkgFiles }}{{ .CodecPkgName }}.{{ end }}NewTypeInfos(strings.Split("{{ .StructTags }}", ",")), typs...)
 	bout, err := format.Source(out.Bytes())
 	if err != nil {
 		fout.Write(out.Bytes())
@@ -93,7 +82,7 @@ func CodecGenTempWrite{{ .RandString }}() {
 // fout contains Codec(En|De)codeSelf implementations for every type T.
 //
 func Generate(outfile, buildTag, codecPkgPath string, uid int64, useUnsafe bool, goRunTag string,
-	regexName *regexp.Regexp, deleteTempFile bool, infiles ...string) (err error) {
+	st string, regexName *regexp.Regexp, deleteTempFile bool, infiles ...string) (err error) {
 	// For each file, grab AST, find each type, and write a call to it.
 	if len(infiles) == 0 {
 		return
@@ -128,6 +117,7 @@ func Generate(outfile, buildTag, codecPkgPath string, uid int64, useUnsafe bool,
 		PackageName     string
 		RandString      string
 		BuildTag        string
+		StructTags      string
 		Types           []string
 		CodecPkgFiles   bool
 		UseUnsafe       bool
@@ -139,6 +129,7 @@ func Generate(outfile, buildTag, codecPkgPath string, uid int64, useUnsafe bool,
 		BuildTag:        buildTag,
 		UseUnsafe:       useUnsafe,
 		RandString:      strconv.FormatInt(uid, 10),
+		StructTags:      st,
 	}
 	tv.ImportPath = pkg.ImportPath
 	if tv.ImportPath == tv.CodecImportPath {
@@ -269,11 +260,12 @@ func main() {
 	t := flag.String("t", "", "build tag to put in file")
 	r := flag.String("r", ".*", "regex for type name to match")
 	rt := flag.String("rt", "", "tags for go run")
+	st := flag.String("st", "codec,json", "struct tag keys to introspect")
 	x := flag.Bool("x", false, "keep temp file")
 	u := flag.Bool("u", false, "Use unsafe, e.g. to avoid unnecessary allocation on []byte->string")
 	d := flag.Int64("d", 0, "random identifier for use in generated code")
 	flag.Parse()
-	if err := Generate(*o, *t, *c, *d, *u, *rt,
+	if err := Generate(*o, *t, *c, *d, *u, *rt, *st,
 		regexp.MustCompile(*r), !*x, flag.Args()...); err != nil {
 		fmt.Fprintf(os.Stderr, "codecgen error: %v\n", err)
 		os.Exit(1)
