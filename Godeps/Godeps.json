@@ -11,6 +11,10 @@
 			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
 		},
 		{
+			"ImportPath": "github.com/akrennmair/gopcap",
+			"Rev": "00e11033259acb75598ba416495bb708d864a010"
+		},
+		{
 			"ImportPath": "github.com/beorn7/perks/quantile",
 			"Rev": "b965b613227fddccbfffe13eae360ed3fa822f8d"
 		},
@@ -104,6 +108,10 @@
 		{
 			"ImportPath": "github.com/prometheus/procfs",
 			"Rev": "454a56f35412459b5e684fd5ec0f9211b94f002a"
+		},
+		{
+			"ImportPath": "github.com/spacejam/loghisto",
+			"Rev": "323309774dec8b7430187e46cd0793974ccca04a"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
