@@ -4,5 +4,10 @@ go:
   - 1.4
   - 1.5
 
+addons:
+  apt:
+    packages:
+    - libpcap-dev
+
 script:
  - ./test
