@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"net"
 	"net/rpc"
 	"os"
@@ -64,8 +65,11 @@ var (
 	testUseIoEncDec    bool
 	testStructToArray  bool
 	testCanonical      bool
+	testUseReset       bool
 	testWriteNoSymbols bool
 	testSkipIntf       bool
+	testInternStr      bool
+	testUseMust        bool
 
 	skipVerifyVal interface{} = &(struct{}{})
 
@@ -97,7 +101,14 @@ func testInitFlags() {
 	flag.BoolVar(&testStructToArray, "ts", false, "Set StructToArray option")
 	flag.BoolVar(&testWriteNoSymbols, "tn", false, "Set NoSymbols option")
 	flag.BoolVar(&testCanonical, "tc", false, "Set Canonical option")
+	flag.BoolVar(&testInternStr, "te", false, "Set InternStr option")
 	flag.BoolVar(&testSkipIntf, "tf", false, "Skip Interfaces")
+	flag.BoolVar(&testUseReset, "tr", false, "Use Reset")
+	flag.BoolVar(&testUseMust, "tm", true, "Use Must(En|De)code")
+}
+
+func testByteBuf(in []byte) *bytes.Buffer {
+	return bytes.NewBuffer(in)
 }
 
 type TestABC struct {
@@ -120,28 +131,36 @@ func (r *TestRpcInt) Echo123(args []string, res *string) error {
 	return nil
 }
 
-type testUnixNanoTimeExt struct{}
+type testUnixNanoTimeExt struct {
+	// keep timestamp here, so that do not incur interface-conversion costs
+	ts int64
+}
 
-func (x testUnixNanoTimeExt) WriteExt(interface{}) []byte { panic("unsupported") }
-func (x testUnixNanoTimeExt) ReadExt(interface{}, []byte) { panic("unsupported") }
-func (x testUnixNanoTimeExt) ConvertExt(v interface{}) interface{} {
+// func (x *testUnixNanoTimeExt) WriteExt(interface{}) []byte { panic("unsupported") }
+// func (x *testUnixNanoTimeExt) ReadExt(interface{}, []byte) { panic("unsupported") }
+func (x *testUnixNanoTimeExt) ConvertExt(v interface{}) interface{} {
 	switch v2 := v.(type) {
 	case time.Time:
-		return v2.UTC().UnixNano()
+		x.ts = v2.UTC().UnixNano()
 	case *time.Time:
-		return v2.UTC().UnixNano()
+		x.ts = v2.UTC().UnixNano()
 	default:
 		panic(fmt.Sprintf("unsupported format for time conversion: expecting time.Time; got %T", v))
 	}
+	return &x.ts
 }
-func (x testUnixNanoTimeExt) UpdateExt(dest interface{}, v interface{}) {
+func (x *testUnixNanoTimeExt) UpdateExt(dest interface{}, v interface{}) {
 	// fmt.Printf("testUnixNanoTimeExt.UpdateExt: v: %v\n", v)
 	tt := dest.(*time.Time)
 	switch v2 := v.(type) {
 	case int64:
 		*tt = time.Unix(0, v2).UTC()
+	case *int64:
+		*tt = time.Unix(0, *v2).UTC()
 	case uint64:
 		*tt = time.Unix(0, int64(v2)).UTC()
+	case *uint64:
+		*tt = time.Unix(0, int64(*v2)).UTC()
 	//case float64:
 	//case string:
 	default:
@@ -269,52 +288,40 @@ func testInit() {
 		fmt.Printf("====> depth: %v, ts: %#v\n", 2, ts0)
 	}
 
-	testJsonH.Canonical = testCanonical
-	testCborH.Canonical = testCanonical
-	testSimpleH.Canonical = testCanonical
-	testBincH.Canonical = testCanonical
-	testMsgpackH.Canonical = testCanonical
-
-	testJsonH.StructToArray = testStructToArray
-	testCborH.StructToArray = testStructToArray
-	testSimpleH.StructToArray = testStructToArray
-	testBincH.StructToArray = testStructToArray
-	testMsgpackH.StructToArray = testStructToArray
+	for _, v := range testHandles {
+		bh := v.getBasicHandle()
+		bh.InternString = testInternStr
+		bh.Canonical = testCanonical
+		bh.StructToArray = testStructToArray
+		// mostly doing this for binc
+		if testWriteNoSymbols {
+			bh.AsSymbols = AsSymbolNone
+		} else {
+			bh.AsSymbols = AsSymbolAll
+		}
+	}
 
 	testMsgpackH.RawToString = true
-
-	if testWriteNoSymbols {
-		testBincH.AsSymbols = AsSymbolNone
-	} else {
-		testBincH.AsSymbols = AsSymbolAll
-	}
 
 	// testMsgpackH.AddExt(byteSliceTyp, 0, testMsgpackH.BinaryEncodeExt, testMsgpackH.BinaryDecodeExt)
 	// testMsgpackH.AddExt(timeTyp, 1, testMsgpackH.TimeEncodeExt, testMsgpackH.TimeDecodeExt)
 	timeEncExt := func(rv reflect.Value) (bs []byte, err error) {
-		switch v2 := rv.Interface().(type) {
-		case time.Time:
-			bs = encodeTime(v2)
-		case *time.Time:
-			bs = encodeTime(*v2)
-		default:
-			err = fmt.Errorf("unsupported format for time conversion: expecting time.Time; got %T", v2)
-		}
+		defer panicToErr(&err)
+		bs = timeExt{}.WriteExt(rv.Interface())
 		return
 	}
 	timeDecExt := func(rv reflect.Value, bs []byte) (err error) {
-		tt, err := decodeTime(bs)
-		if err == nil {
-			*(rv.Interface().(*time.Time)) = tt
-		}
+		defer panicToErr(&err)
+		timeExt{}.ReadExt(rv.Interface(), bs)
 		return
 	}
 
 	// add extensions for msgpack, simple for time.Time, so we can encode/decode same way.
-	testMsgpackH.AddExt(timeTyp, 1, timeEncExt, timeDecExt)
+	// use different flavors of XXXExt calls, including deprecated ones.
 	testSimpleH.AddExt(timeTyp, 1, timeEncExt, timeDecExt)
-	testCborH.SetExt(timeTyp, 1, &testUnixNanoTimeExt{})
-	testJsonH.SetExt(timeTyp, 1, &testUnixNanoTimeExt{})
+	testMsgpackH.SetBytesExt(timeTyp, 1, timeExt{})
+	testCborH.SetInterfaceExt(timeTyp, 1, &testUnixNanoTimeExt{})
+	testJsonH.SetInterfaceExt(timeTyp, 1, &testUnixNanoTimeExt{})
 
 	primitives := []interface{}{
 		int8(-8),
@@ -429,23 +436,11 @@ func testInit() {
 }
 
 func testUnmarshal(v interface{}, data []byte, h Handle) (err error) {
-	if testUseIoEncDec {
-		NewDecoder(bytes.NewBuffer(data), h).MustDecode(v)
-	} else {
-		NewDecoderBytes(data, h).MustDecode(v)
-	}
-	return
+	return testCodecDecode(data, v, h)
 }
 
 func testMarshal(v interface{}, h Handle) (bs []byte, err error) {
-	if testUseIoEncDec {
-		var buf bytes.Buffer
-		NewEncoder(&buf, h).MustEncode(v)
-		bs = buf.Bytes()
-		return
-	}
-	NewEncoderBytes(&bs, h).MustEncode(v)
-	return
+	return testCodecEncode(v, nil, testByteBuf, h)
 }
 
 func testMarshalErr(v interface{}, h Handle, t *testing.T, name string) (bs []byte, err error) {
@@ -663,6 +658,13 @@ func testCodecMiscOne(t *testing.T, h Handle) {
 	// test both pointer and non-pointer (value)
 	for _, tarr1 := range []interface{}{tarr0, &tarr0} {
 		bs, err = testMarshalErr(tarr1, h, t, "tarr1")
+		if err != nil {
+			logT(t, "Error marshalling: %v", err)
+			t.FailNow()
+		}
+		if _, ok := h.(*JsonHandle); ok {
+			logT(t, "Marshal as: %s", bs)
+		}
 		var tarr2 tarr
 		testUnmarshalErr(&tarr2, bs, h, t, "tarr2")
 		checkEqualT(t, tarr0, tarr2, "tarr0=tarr2")
@@ -898,9 +900,10 @@ func doTestMapEncodeForCanonical(t *testing.T, name string, h Handle) {
 	// encode v1 into b1, decode b1 into v2, encode v2 into b2, compare b1 and b2
 
 	bh := h.getBasicHandle()
-	canonical0 := bh.Canonical
-	bh.Canonical = true
-	defer func() { bh.Canonical = canonical0 }()
+	if !bh.Canonical {
+		bh.Canonical = true
+		defer func() { bh.Canonical = false }()
+	}
 
 	e1 := NewEncoderBytes(&b1, h)
 	e1.MustEncode(v1)
@@ -1019,11 +1022,17 @@ func doTestMsgpackRpcSpecGoClientToPythonSvc(t *testing.T) {
 	if testSkipRPCTests {
 		return
 	}
-	openPort := "6789"
-	cmd := exec.Command("python", "test.py", "rpc-server", openPort, "2")
+	// openPorts are between 6700 and 6800
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	openPort := strconv.FormatInt(6700+r.Int63n(99), 10)
+	// openPort := "6792"
+	cmd := exec.Command("python", "test.py", "rpc-server", openPort, "4")
 	checkErrT(t, cmd.Start())
-	time.Sleep(100 * time.Millisecond) // time for python rpc server to start
 	bs, err2 := net.Dial("tcp", ":"+openPort)
+	for i := 0; i < 10 && err2 != nil; i++ {
+		time.Sleep(50 * time.Millisecond) // time for python rpc server to start
+		bs, err2 = net.Dial("tcp", ":"+openPort)
+	}
 	checkErrT(t, err2)
 	cc := MsgpackSpecRpc.ClientCodec(bs, testMsgpackH)
 	cl := rpc.NewClientWithCodec(cc)
@@ -1034,6 +1043,7 @@ func doTestMsgpackRpcSpecGoClientToPythonSvc(t *testing.T) {
 	var mArgs MsgpackSpecRpcMultiArgs = []interface{}{"A1", "B2", "C3"}
 	checkErrT(t, cl.Call("Echo123", mArgs, &rstr))
 	checkEqualT(t, rstr, "1:A1 2:B2 3:C3", "rstr=")
+	cmd.Process.Kill()
 }
 
 func doTestMsgpackRpcSpecPythonClientToGoSvc(t *testing.T) {
