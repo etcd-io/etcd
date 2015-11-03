@@ -733,12 +733,14 @@ func TestWatchableKVWatch(t *testing.T) {
 	s := WatchableKV(newWatchableStore(tmpPath))
 	defer cleanup(s, tmpPath)
 
-	wa, cancel := s.Watcher([]byte("foo"), true, 0)
+	w := s.NewWatcher()
+
+	cancel := w.Watch([]byte("foo"), true, 0)
 	defer cancel()
 
 	s.Put([]byte("foo"), []byte("bar"))
 	select {
-	case ev := <-wa.Event():
+	case ev := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -758,7 +760,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	s.Put([]byte("foo1"), []byte("bar1"))
 	select {
-	case ev := <-wa.Event():
+	case ev := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -776,11 +778,11 @@ func TestWatchableKVWatch(t *testing.T) {
 		t.Fatalf("failed to watch the event")
 	}
 
-	wa, cancel = s.Watcher([]byte("foo1"), false, 1)
+	cancel = w.Watch([]byte("foo1"), false, 1)
 	defer cancel()
 
 	select {
-	case ev := <-wa.Event():
+	case ev := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -800,7 +802,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	s.Put([]byte("foo1"), []byte("bar11"))
 	select {
-	case ev := <-wa.Event():
+	case ev := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{

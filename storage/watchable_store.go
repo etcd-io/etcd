@@ -22,17 +22,29 @@ import (
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
+const (
+	// chanBufLen is the length of the buffered chan
+	// for sending out watched events.
+	// TODO: find a good buf value. 1024 is just a random one that
+	// seems to be reasonable.
+	chanBufLen = 1024
+)
+
+type watchable interface {
+	watch(key []byte, prefix bool, startRev int64, ch chan<- storagepb.Event) (*watching, CancelFunc)
+}
+
 type watchableStore struct {
 	mu sync.Mutex
 
 	*store
 
-	// contains all unsynced watchers that needs to sync events that have happened
-	unsynced map[*watcher]struct{}
+	// contains all unsynced watching that needs to sync events that have happened
+	unsynced map[*watching]struct{}
 
-	// contains all synced watchers that are tracking the events that will happen
-	// The key of the map is the key that the watcher is watching on.
-	synced map[string][]*watcher
+	// contains all synced watching that are tracking the events that will happen
+	// The key of the map is the key that the watching is watching on.
+	synced map[string][]*watching
 	tx     *ongoingTx
 
 	stopc chan struct{}
@@ -42,12 +54,12 @@ type watchableStore struct {
 func newWatchableStore(path string) *watchableStore {
 	s := &watchableStore{
 		store:    newStore(path),
-		unsynced: make(map[*watcher]struct{}),
-		synced:   make(map[string][]*watcher),
+		unsynced: make(map[*watching]struct{}),
+		synced:   make(map[string][]*watching),
 		stopc:    make(chan struct{}),
 	}
 	s.wg.Add(1)
-	go s.syncWatchersLoop()
+	go s.syncWatchingsLoop()
 	return s
 }
 
@@ -152,11 +164,24 @@ func (s *watchableStore) Close() error {
 	return s.store.Close()
 }
 
-func (s *watchableStore) Watcher(key []byte, prefix bool, startRev int64) (Watcher, CancelFunc) {
+func (s *watchableStore) NewWatcher() Watcher {
+	return &watcher{
+		watchable: s,
+		ch:        make(chan storagepb.Event, chanBufLen),
+	}
+}
+
+func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, ch chan<- storagepb.Event) (*watching, CancelFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	wa := newWatcher(key, prefix, startRev)
+	wa := &watching{
+		key:    key,
+		prefix: prefix,
+		cur:    startRev,
+		ch:     ch,
+	}
+
 	k := string(key)
 	if startRev == 0 {
 		s.synced[k] = append(s.synced[k], wa)
@@ -169,9 +194,7 @@ func (s *watchableStore) Watcher(key []byte, prefix bool, startRev int64) (Watch
 	cancel := CancelFunc(func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		wa.stopWithError(ErrCanceled)
-
-		// remove global references of the watcher
+		// remove global references of the watching
 		if _, ok := s.unsynced[wa]; ok {
 			delete(s.unsynced, wa)
 			slowWatchersGauge.Dec()
@@ -191,13 +214,13 @@ func (s *watchableStore) Watcher(key []byte, prefix bool, startRev int64) (Watch
 	return wa, cancel
 }
 
-// keepSyncWatchers syncs the watchers in the unsyncd map every 100ms.
-func (s *watchableStore) syncWatchersLoop() {
+// syncWatchingsLoop syncs the watching in the unsyncd map every 100ms.
+func (s *watchableStore) syncWatchingsLoop() {
 	defer s.wg.Done()
 
 	for {
 		s.mu.Lock()
-		s.syncWatchers()
+		s.syncWatchings()
 		s.mu.Unlock()
 
 		select {
@@ -208,8 +231,8 @@ func (s *watchableStore) syncWatchersLoop() {
 	}
 }
 
-// syncWatchers syncs the watchers in the unsyncd map.
-func (s *watchableStore) syncWatchers() {
+// syncWatchings syncs the watchings in the unsyncd map.
+func (s *watchableStore) syncWatchings() {
 	_, curRev, _ := s.store.Range(nil, nil, 0, 0)
 	for w := range s.unsynced {
 		var end []byte
@@ -225,7 +248,7 @@ func (s *watchableStore) syncWatchers() {
 		}
 		evs, nextRev, err := s.store.RangeEvents(w.key, end, int64(limit), w.cur)
 		if err != nil {
-			w.stopWithError(err)
+			// TODO: send error event to watching
 			delete(s.unsynced, w)
 			continue
 		}
@@ -247,20 +270,20 @@ func (s *watchableStore) syncWatchers() {
 	slowWatchersGauge.Set(float64(len(s.unsynced)))
 }
 
-// handle handles the change of the happening event on all watchers.
+// handle handles the change of the happening event on all watchings.
 func (s *watchableStore) handle(rev int64, ev storagepb.Event) {
 	s.notify(rev, ev)
 }
 
 // notify notifies the fact that given event at the given rev just happened to
-// watchers that watch on the key of the event.
+// watchings that watch on the key of the event.
 func (s *watchableStore) notify(rev int64, ev storagepb.Event) {
-	// check all prefixes of the key to notify all corresponded watchers
+	// check all prefixes of the key to notify all corresponded watchings
 	for i := 0; i <= len(ev.Kv.Key); i++ {
 		ws := s.synced[string(ev.Kv.Key[:i])]
 		nws := ws[:0]
 		for _, w := range ws {
-			// the watcher needs to be notified when either it watches prefix or
+			// the watching needs to be notified when either it watches prefix or
 			// the key is exactly matched.
 			if !w.prefix && i != len(ev.Kv.Key) {
 				continue
@@ -300,4 +323,20 @@ func (tx *ongoingTx) put(k string) {
 func (tx *ongoingTx) del(k string) {
 	tx.delm[k] = true
 	tx.putm[k] = false
+}
+
+type watching struct {
+	// the watching key
+	key []byte
+	// prefix indicates if watching is on a key or a prefix.
+	// If prefix is true, the watching is on a prefix.
+	prefix bool
+	// cur is the current watching revision.
+	// If cur is behind the current revision of the KV,
+	// watching is unsynced and needs to catch up.
+	cur int64
+
+	// a chan to send out the watched events.
+	// The chan might be shared with other watchings.
+	ch chan<- storagepb.Event
 }

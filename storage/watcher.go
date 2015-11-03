@@ -20,55 +20,56 @@ import (
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
-// Watcher watches on the KV. It will be notified if there is an event
-// happened on the watched key or prefix.
 type Watcher interface {
-	// Event returns a channel that receives observed event that matches the
-	// context of watcher. When watch finishes or is canceled or aborted, the
-	// channel is closed and returns empty event.
-	// Successive calls to Event return the same value.
-	Event() <-chan storagepb.Event
+	// Watch watches the events happening or happened on the given key
+	// or key prefix from the given startRev.
+	// The whole event history can be watched unless compacted.
+	// If `prefix` is true, watch observes all events whose key prefix could be the given `key`.
+	// If `startRev` <=0, watch observes events after currentRev.
+	Watch(key []byte, prefix bool, startRev int64) CancelFunc
 
-	// Err returns a non-nil error value after Event is closed. Err returns
-	// Compacted if the history was compacted, Canceled if watch is canceled,
-	// or EOF if watch reaches the end revision. No other values for Err are defined.
-	// After Event is closed, successive calls to Err return the same value.
-	Err() error
+	// Chan returns a chan. All watched events will be sent to the returned chan.
+	Chan() <-chan storagepb.Event
+
+	// Close closes the WatchChan and release all related resources.
+	Close()
 }
 
+// watcher contains a collection of watching that share
+// one chan to send out watched events and other control events.
 type watcher struct {
-	key    []byte
-	prefix bool
-	cur    int64
+	watchable watchable
+	ch        chan storagepb.Event
 
-	ch  chan storagepb.Event
-	mu  sync.Mutex
-	err error
+	mu      sync.Mutex // guards fields below it
+	closed  bool
+	cancels []CancelFunc
 }
 
-func newWatcher(key []byte, prefix bool, start int64) *watcher {
-	return &watcher{
-		key:    key,
-		prefix: prefix,
-		cur:    start,
-		ch:     make(chan storagepb.Event, 10),
+// TODO: return error if ws is closed?
+func (ws *watcher) Watch(key []byte, prefix bool, startRev int64) CancelFunc {
+	_, c := ws.watchable.watch(key, prefix, startRev, ws.ch)
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	if ws.closed {
+		return nil
 	}
+	// TODO: cancelFunc needs to be removed from the cancels when it is called.
+	ws.cancels = append(ws.cancels, c)
+	return c
 }
 
-func (w *watcher) Event() <-chan storagepb.Event { return w.ch }
-
-func (w *watcher) Err() error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	return w.err
+func (ws *watcher) Chan() <-chan storagepb.Event {
+	return ws.ch
 }
 
-func (w *watcher) stopWithError(err error) {
-	if w.err != nil {
-		return
+func (ws *watcher) Close() {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+
+	for _, cancel := range ws.cancels {
+		cancel()
 	}
-	close(w.ch)
-	w.mu.Lock()
-	w.err = err
-	w.mu.Unlock()
+	ws.closed = true
+	close(ws.ch)
 }
