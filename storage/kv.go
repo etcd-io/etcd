@@ -80,15 +80,9 @@ type KV interface {
 type WatchableKV interface {
 	KV
 
-	// Watcher watches the events happening or happened on the given key
-	// or key prefix from the given startRev.
-	// The whole event history can be watched unless compacted.
-	// If `prefix` is true, watch observes all events whose key prefix could be the given `key`.
-	// If `startRev` <=0, watch observes events after currentRev.
-	//
-	// Canceling the watcher releases resources associated with it, so code
-	// should always call cancel as soon as watch is done.
-	Watcher(key []byte, prefix bool, startRev int64) (Watcher, CancelFunc)
+	// NewWatcher returns a Watcher that can be used to
+	// watch events happened or happending on the KV.
+	NewWatcher() Watcher
 }
 
 // ConsistentWatchableKV is a WatchableKV that understands the consistency

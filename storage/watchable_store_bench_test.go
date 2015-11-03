@@ -37,14 +37,14 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	// in unsynced for this benchmark.
 	s := &watchableStore{
 		store:    newStore(tmpPath),
-		unsynced: make(map[*watcher]struct{}),
+		unsynced: make(map[*watching]struct{}),
 
 		// For previous implementation, use:
-		// unsynced: make([]*watcher, 0),
+		// unsynced: make([]*watching, 0),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
-		synced: make(map[string][]*watcher),
+		synced: make(map[string][]*watching),
 	}
 
 	defer func() {
@@ -60,10 +60,12 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
+	w := s.NewWatcher()
+
 	cancels := make([]CancelFunc, watcherSize)
 	for i := 0; i < watcherSize; i++ {
 		// non-0 value to keep watchers in unsynced
-		_, cancel := s.Watcher(testKey, true, 1)
+		cancel := w.Watch(testKey, true, 1)
 		cancels[i] = cancel
 	}
 

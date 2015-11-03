@@ -20,12 +20,14 @@ import (
 )
 
 func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
-	s := newWatchableStore(tmpPath)
-	defer cleanup(s, tmpPath)
+	watchable := newWatchableStore(tmpPath)
+	defer cleanup(watchable, tmpPath)
+
+	w := watchable.NewWatcher()
 
 	b.ReportAllocs()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		s.Watcher([]byte(fmt.Sprint("foo", i)), false, 0)
+		w.Watch([]byte(fmt.Sprint("foo", i)), false, 0)
 	}
 }
