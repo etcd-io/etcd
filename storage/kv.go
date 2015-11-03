@@ -79,7 +79,11 @@ type KV interface {
 // WatchableKV is a KV that can be watched.
 type WatchableKV interface {
 	KV
+	Watchable
+}
 
+// Watchable is the interface that wraps the NewWatcher function.
+type Watchable interface {
 	// NewWatcher returns a Watcher that can be used to
 	// watch events happened or happending on the KV.
 	NewWatcher() Watcher

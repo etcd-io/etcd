@@ -55,6 +55,11 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) (pr
 	}
 }
 
+// Watcable returns a watchable interface attached to the etcdserver.
+func (s *EtcdServer) Watchable() dstorage.Watchable {
+	return s.kv
+}
+
 func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
 	ar := &applyResult{}
 
