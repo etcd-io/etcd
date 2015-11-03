@@ -143,7 +143,8 @@ func (t *Transport) Start() error {
 	if err != nil {
 		return err
 	}
-	t.pipelineRt, err = transport.NewTransport(t.TLSInfo, t.DialTimeout)
+	// use timeout transport to pair with remote timeout listeners
+	t.pipelineRt, err = transport.NewTimeoutTransport(t.TLSInfo, t.DialTimeout, 0, 0)
 	if err != nil {
 		return err
 	}

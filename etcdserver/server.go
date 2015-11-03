@@ -211,7 +211,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
-	pt, err := transport.NewTransport(cfg.PeerTLSInfo, cfg.peerDialTimeout())
+	// use timeout transport to pair with remote timeout listeners
+	pt, err := transport.NewTimeoutTransport(cfg.PeerTLSInfo, cfg.peerDialTimeout(), 0, 0)
 	if err != nil {
 		return nil, err
 	}
