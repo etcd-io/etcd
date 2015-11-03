@@ -136,15 +136,11 @@ type Transport struct {
 
 func (t *Transport) Start() error {
 	var err error
-	// Read/write timeout is set for stream roundTripper to promptly
-	// find out broken status, which minimizes the number of messages
-	// sent on broken connection.
-	t.streamRt, err = transport.NewTimeoutTransport(t.TLSInfo, t.DialTimeout, ConnReadTimeout, ConnWriteTimeout)
+	t.streamRt, err = newStreamRoundTripper(t.TLSInfo, t.DialTimeout)
 	if err != nil {
 		return err
 	}
-	// use timeout transport to pair with remote timeout listeners
-	t.pipelineRt, err = transport.NewTimeoutTransport(t.TLSInfo, t.DialTimeout, 0, 0)
+	t.pipelineRt, err = NewRoundTripper(t.TLSInfo, t.DialTimeout)
 	if err != nil {
 		return err
 	}

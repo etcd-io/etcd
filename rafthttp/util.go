@@ -18,17 +18,44 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
 )
 
 var errMemberRemoved = fmt.Errorf("the member has been permanently removed from the cluster")
+
+// NewListener returns a listener for raft message transfer between peers.
+// It uses timeout listener to identify broken streams promptly.
+func NewListener(u url.URL, tlsInfo transport.TLSInfo) (net.Listener, error) {
+	return transport.NewTimeoutListener(u.Host, u.Scheme, tlsInfo, ConnReadTimeout, ConnWriteTimeout)
+}
+
+// NewRoundTripper returns a roundTripper used to send requests
+// to rafthttp listener of remote peers.
+func NewRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration) (http.RoundTripper, error) {
+	// It uses timeout transport to pair with remote timeout listeners.
+	// It sets no read/write timeout, because message in requests may
+	// take long time to write out before reading out the response.
+	return transport.NewTimeoutTransport(tlsInfo, dialTimeout, 0, 0)
+}
+
+// newStreamRoundTripper returns a roundTripper used to send stream requests
+// to rafthttp listener of remote peers.
+// Read/write timeout is set for stream roundTripper to promptly
+// find out broken status, which minimizes the number of messages
+// sent on broken connection.
+func newStreamRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration) (http.RoundTripper, error) {
+	return transport.NewTimeoutTransport(tlsInfo, dialTimeout, ConnReadTimeout, ConnWriteTimeout)
+}
 
 func writeEntryTo(w io.Writer, ent *raftpb.Entry) error {
 	size := ent.Size()
