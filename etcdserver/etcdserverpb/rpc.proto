@@ -32,6 +32,14 @@ service etcd {
   rpc Compact(CompactionRequest) returns (CompactionResponse) {}
 }
 
+service watch {
+  // Watch watches the events happening or happened. Both input and output
+  // are stream. One watch rpc can watch for multiple keys or prefixs and
+  // get a stream of events. The whole events history can be watched unless
+  // compacted.
+  rpc Watch(stream WatchRequest) returns (stream WatchResponse) {}
+}
+
 message ResponseHeader {
   uint64 cluster_id = 1;
   uint64 member_id = 2;
@@ -168,4 +176,22 @@ message CompactionRequest {
 
 message CompactionResponse {
   ResponseHeader header = 1;
+}
+
+message WatchRequest {
+  // the key to be watched
+  bytes key = 1;
+  // the prefix to be watched.
+  bytes prefix = 2;
+  // start_revision is an optional revision (including) to watch from. No start_revision is "now".
+  int64 start_revision = 3;
+  // TODO: support Range watch?
+  // TODO: support notification every time interval or revision increase?
+  // TODO: support cancel watch if the server cannot reach with majority?
+}
+
+message WatchResponse {
+  ResponseHeader header = 1;
+  // TODO: support batched events response?
+  storagepb.Event event = 2;
 }

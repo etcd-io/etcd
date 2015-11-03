@@ -20,11 +20,6 @@ service etcd {
   // and generates events with the same revision in the event history.
   rpc Txn(TxnRequest) returns (TxnResponse) {}
 
-  // Watch watches the events happening or happened in etcd. Both input and output
-  // are stream. One watch rpc can watch for multiple ranges and get a stream of
-  // events. The whole events history can be watched unless compacted.
-  rpc WatchRange(stream WatchRangeRequest) returns (stream WatchRangeResponse) {}
-
   // Compact compacts the event history in etcd. User should compact the
   // event history periodically, or it will grow infinitely.
   rpc Compact(CompactionRequest) returns (CompactionResponse) {}
@@ -48,6 +43,14 @@ service etcd {
 
   // KeepAlive keeps the lease alive.
   rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse) {}
+}
+
+service watch {
+  // Watch watches the events happening or happened. Both input and output
+  // are stream. One watch rpc can watch for multiple keys or prefixs and
+  // get a stream of events. The whole events history can be watched unless
+  // compacted.
+  rpc Watch(stream WatchRequest) returns (stream WatchResponse) {}
 }
 
 message ResponseHeader {
@@ -190,21 +193,22 @@ message KeyValue {
   bytes value = 5;
 }
 
-message WatchRangeRequest {
-  // if the range_end is not given, the request returns the key.
+message WatchRequest {
+  // the key to be watched
   bytes key = 1;
-  // if the range_end is given, it gets the keys in range [key, range_end).
-  bytes range_end = 2;
+  // the prefix to be watched.
+  bytes prefix = 2;
   // start_revision is an optional revision (including) to watch from. No start_revision is "now".
   int64 start_revision = 3;
-  // end_revision is an optional revision (excluding) to end watch. No end_revision is "forever".
-  int64 end_revision = 4;
-  bool progress_notification = 5;
+  // TODO: support Range watch?
+  // TODO: support notification every time interval or revision increase?
+  // TODO: support cancel watch if the server cannot reach with majority?
 }
 
-message WatchRangeResponse {
+message WatchResponse {
   ResponseHeader header = 1;
-  repeated Event events = 2;
+  // TODO: support batched events response?
+  storagepb.Event event = 2;
 }
 
 message Event {
