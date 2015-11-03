@@ -59,20 +59,20 @@ var (
 			Help:      "Total number of keys.",
 		})
 
-	watchersGauge = prometheus.NewGauge(
+	watchingGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "etcd",
 			Subsystem: "storage",
-			Name:      "watchers_total",
-			Help:      "Total number of watchers.",
+			Name:      "watching_total",
+			Help:      "Total number of watchings.",
 		})
 
-	slowWatchersGauge = prometheus.NewGauge(
+	slowWatchingGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "etcd",
 			Subsystem: "storage",
-			Name:      "slow_watchers_total",
-			Help:      "Total number of unsynced slow watchers.",
+			Name:      "slow_watching_total",
+			Help:      "Total number of unsynced slow watchings.",
 		})
 
 	totalEventsCounter = prometheus.NewCounter(
@@ -135,9 +135,9 @@ func init() {
 	prometheus.MustRegister(deleteCounter)
 	prometheus.MustRegister(txnCounter)
 	prometheus.MustRegister(keysGauge)
-	prometheus.MustRegister(watchersGauge)
+	prometheus.MustRegister(watchingGauge)
 	prometheus.MustRegister(totalEventsCounter)
-	prometheus.MustRegister(slowWatchersGauge)
+	prometheus.MustRegister(slowWatchingGauge)
 	prometheus.MustRegister(pendingEventsGauge)
 	prometheus.MustRegister(indexCompactionPauseDurations)
 	prometheus.MustRegister(dbCompactionPauseDurations)
