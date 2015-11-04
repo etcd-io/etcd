@@ -42,7 +42,7 @@ func TestWaitTime(t *testing.T) {
 	wt.Trigger(t1)
 	select {
 	case <-ch1:
-	case <-time.After(10 * time.Millisecond):
+	case <-time.After(100 * time.Millisecond):
 		t.Fatalf("cannot receive from ch as expected")
 	}
 
