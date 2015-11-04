@@ -304,26 +304,26 @@ func (s *watchableStore) notify(rev int64, ev storagepb.Event) {
 
 type ongoingTx struct {
 	// keys put/deleted in the ongoing txn
-	putm map[string]bool
-	delm map[string]bool
+	putm map[string]struct{}
+	delm map[string]struct{}
 }
 
 func newOngoingTx() *ongoingTx {
 	return &ongoingTx{
-		putm: make(map[string]bool),
-		delm: make(map[string]bool),
+		putm: make(map[string]struct{}),
+		delm: make(map[string]struct{}),
 	}
 }
 
 func (tx *ongoingTx) put(k string) {
-	tx.putm[k] = true
+	tx.putm[k] = struct{}{}
 	if _, ok := tx.delm[k]; ok {
 		delete(tx.delm, k)
 	}
 }
 
 func (tx *ongoingTx) del(k string) {
-	tx.delm[k] = true
+	tx.delm[k] = struct{}{}
 	if _, ok := tx.putm[k]; ok {
 		delete(tx.putm, k)
 	}
