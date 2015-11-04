@@ -27,7 +27,7 @@ func benchGet(conn *grpc.ClientConn, key, rangeEnd []byte, n, c int) {
 	requests := make(chan struct{}, n)
 
 	for i := 0; i < c; i++ {
-		go get(etcdserverpb.NewEtcdClient(conn), key, rangeEnd, requests)
+		go get(etcdserverpb.NewKVClient(conn), key, rangeEnd, requests)
 	}
 
 	for i := 0; i < n; i++ {
@@ -36,7 +36,7 @@ func benchGet(conn *grpc.ClientConn, key, rangeEnd []byte, n, c int) {
 	close(requests)
 }
 
-func get(client etcdserverpb.EtcdClient, key, end []byte, requests <-chan struct{}) {
+func get(client etcdserverpb.KVClient, key, end []byte, requests <-chan struct{}) {
 	defer wg.Done()
 	req := &etcdserverpb.RangeRequest{Key: key, RangeEnd: end}
 

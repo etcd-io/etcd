@@ -39,7 +39,7 @@ func benchPut(conn *grpc.ClientConn, key []byte, kc, n, c, size int) {
 	}
 
 	for i := 0; i < c; i++ {
-		go put(etcdserverpb.NewEtcdClient(conn), requests)
+		go put(etcdserverpb.NewKVClient(conn), requests)
 	}
 
 	suffixb := make([]byte, 8)
@@ -59,7 +59,7 @@ func benchPut(conn *grpc.ClientConn, key []byte, kc, n, c, size int) {
 	close(requests)
 }
 
-func put(client etcdserverpb.EtcdClient, requests <-chan *etcdserverpb.PutRequest) {
+func put(client etcdserverpb.KVClient, requests <-chan *etcdserverpb.PutRequest) {
 	defer wg.Done()
 
 	for r := range requests {

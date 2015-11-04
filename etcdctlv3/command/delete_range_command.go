@@ -48,10 +48,10 @@ func deleteRangeCommandFunc(c *cli.Context) {
 	if err != nil {
 		panic(err)
 	}
-	etcd := pb.NewEtcdClient(conn)
+	kv := pb.NewKVClient(conn)
 	req := &pb.DeleteRangeRequest{Key: key, RangeEnd: rangeEnd}
 
-	etcd.DeleteRange(context.Background(), req)
+	kv.DeleteRange(context.Background(), req)
 
 	if rangeEnd != nil {
 		fmt.Printf("range [%s, %s) is deleted\n", string(key), string(rangeEnd))

@@ -48,8 +48,8 @@ func compactionCommandFunc(c *cli.Context) {
 	if err != nil {
 		panic(err)
 	}
-	etcd := pb.NewEtcdClient(conn)
+	kv := pb.NewKVClient(conn)
 	req := &pb.CompactionRequest{Revision: rev}
 
-	etcd.Compact(context.Background(), req)
+	kv.Compact(context.Background(), req)
 }
