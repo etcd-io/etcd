@@ -317,12 +317,16 @@ func newOngoingTx() *ongoingTx {
 
 func (tx *ongoingTx) put(k string) {
 	tx.putm[k] = true
-	tx.delm[k] = false
+	if _, ok := tx.delm[k]; ok {
+		delete(tx.delm, k)
+	}
 }
 
 func (tx *ongoingTx) del(k string) {
 	tx.delm[k] = true
-	tx.putm[k] = false
+	if _, ok := tx.putm[k]; ok {
+		delete(tx.putm, k)
+	}
 }
 
 type watching struct {
