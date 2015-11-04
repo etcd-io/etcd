@@ -171,8 +171,8 @@ type EtcdServer struct {
 	// consistent index used to hold the offset of current executing entry
 	// It is initialized to 0 before executing any entry.
 	consistIndex consistentIndex
-	// versionTr used to send requests for peer version
-	versionTr *http.Transport
+	// versionRt used to send requests for peer version
+	versionRt http.RoundTripper
 	reqIDGen  *idutil.Generator
 
 	// forceVersionC is used to force the version monitor loop
@@ -216,6 +216,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	if err != nil {
 		return nil, err
 	}
+	prt := http.RoundTripper(pt)
 	var remotes []*Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
@@ -226,14 +227,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err != nil {
 			return nil, err
 		}
-		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), pt)
+		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), prt)
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
 		if err := ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
-		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, pt) {
+		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, prt) {
 			return nil, fmt.Errorf("incomptible with current running cluster")
 		}
 
@@ -251,7 +252,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			return nil, err
 		}
 		m := cl.MemberByName(cfg.Name)
-		if isMemberBootstrapped(cl, cfg.Name, pt) {
+		if isMemberBootstrapped(cl, cfg.Name, prt) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
@@ -339,7 +340,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		stats:         sstats,
 		lstats:        lstats,
 		SyncTicker:    time.Tick(500 * time.Millisecond),
-		versionTr:     pt,
+		versionRt:     prt,
 		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
 		forceVersionC: make(chan struct{}),
 	}
@@ -1091,7 +1092,7 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 
-		v := decideClusterVersion(getVersions(s.cluster, s.id, s.versionTr))
+		v := decideClusterVersion(getVersions(s.cluster, s.id, s.versionRt))
 		if v != nil {
 			// only keep major.minor version for comparasion
 			v = &semver.Version{
