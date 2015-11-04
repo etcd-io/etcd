@@ -23,8 +23,52 @@ import (
 	dstorage "github.com/coreos/etcd/storage"
 )
 
-type V3DemoServer interface {
-	V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error)
+type RaftKV interface {
+	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
+	Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error)
+	DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
+	Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error)
+	Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error)
+}
+
+func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{Range: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.RangeResponse), result.err
+}
+
+func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
+	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{Put: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.PutResponse), result.err
+}
+
+func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{DeleteRange: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.DeleteRangeResponse), result.err
+}
+
+func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
+	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{Txn: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.TxnResponse), result.err
+}
+
+func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
+	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{Compaction: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.CompactionResponse), result.err
 }
 
 type applyResult struct {
@@ -32,12 +76,12 @@ type applyResult struct {
 	err  error
 }
 
-func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
+func (s *EtcdServer) processInternalRaftReq(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
 	r.ID = s.reqIDGen.Next()
 
 	data, err := r.Marshal()
 	if err != nil {
-		return &pb.EmptyResponse{}, err
+		return nil, err
 	}
 	ch := s.w.Register(r.ID)
 
@@ -45,13 +89,12 @@ func (s *EtcdServer) V3DemoDo(ctx context.Context, r pb.InternalRaftRequest) (pr
 
 	select {
 	case x := <-ch:
-		result := x.(*applyResult)
-		return result.resp, result.err
+		return x.(*applyResult), nil
 	case <-ctx.Done():
 		s.w.Trigger(r.ID, nil) // GC wait
-		return &pb.EmptyResponse{}, ctx.Err()
+		return nil, ctx.Err()
 	case <-s.done:
-		return &pb.EmptyResponse{}, ErrStopped
+		return nil, ErrStopped
 	}
 }
 

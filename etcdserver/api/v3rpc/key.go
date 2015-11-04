@@ -23,73 +23,73 @@ import (
 	"github.com/coreos/etcd/storage"
 )
 
-type handler struct {
-	server etcdserver.V3DemoServer
+type kvServer struct {
+	kv etcdserver.RaftKV
 }
 
-func New(s etcdserver.V3DemoServer) pb.KVServer {
-	return &handler{s}
+func NewKVServer(s etcdserver.RaftKV) pb.KVServer {
+	return &kvServer{s}
 }
 
-func (h *handler) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if err := checkRangeRequest(r); err != nil {
 		return nil, err
 	}
 
-	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Range: r})
+	resp, err := s.kv.Range(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
 
-	return resp.(*pb.RangeResponse), err
+	return resp, err
 }
 
-func (h *handler) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
+func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
 	if err := checkPutRequest(r); err != nil {
 		return nil, err
 	}
 
-	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Put: r})
+	resp, err := s.kv.Put(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
 
-	return resp.(*pb.PutResponse), err
+	return resp, err
 }
 
-func (h *handler) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+func (s *kvServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	if err := checkDeleteRequest(r); err != nil {
 		return nil, err
 	}
 
-	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{DeleteRange: r})
+	resp, err := s.kv.DeleteRange(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
 
-	return resp.(*pb.DeleteRangeResponse), err
+	return resp, err
 }
 
-func (h *handler) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
+func (s *kvServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	if err := checkTxnRequest(r); err != nil {
 		return nil, err
 	}
 
-	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Txn: r})
+	resp, err := s.kv.Txn(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
 
-	return resp.(*pb.TxnResponse), err
+	return resp, err
 }
 
-func (h *handler) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	resp, err := h.server.V3DemoDo(ctx, pb.InternalRaftRequest{Compaction: r})
+func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
+	resp, err := s.kv.Compact(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
 
-	return resp.(*pb.CompactionResponse), nil
+	return resp, nil
 }
 
 func checkRangeRequest(r *pb.RangeRequest) error {
