@@ -463,7 +463,7 @@ func TestNodeAdvance(t *testing.T) {
 	n.Advance()
 	select {
 	case <-n.Ready():
-	case <-time.After(time.Millisecond):
+	case <-time.After(100 * time.Millisecond):
 		t.Errorf("expect Ready after Advance, but there is no Ready available")
 	}
 }
