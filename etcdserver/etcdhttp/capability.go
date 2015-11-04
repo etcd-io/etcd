@@ -37,6 +37,7 @@ var (
 	capabilityMaps = map[string]map[capability]bool{
 		"2.1.0": {authCapability: true},
 		"2.2.0": {authCapability: true},
+		"2.3.0": {authCapability: true},
 	}
 
 	enableMapMu sync.Mutex
