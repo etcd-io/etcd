@@ -55,9 +55,9 @@ func txnCommandFunc(c *cli.Context) {
 	if err != nil {
 		panic(err)
 	}
-	etcd := pb.NewEtcdClient(conn)
+	kv := pb.NewKVClient(conn)
 
-	resp, err := etcd.Txn(context.Background(), txn)
+	resp, err := kv.Txn(context.Background(), txn)
 	if err != nil {
 		fmt.Println(err)
 	}

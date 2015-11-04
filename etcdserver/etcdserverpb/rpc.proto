@@ -7,8 +7,7 @@ import "etcd/storage/storagepb/kv.proto";
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;
 
-// Interface exported by the server.
-service etcd {
+service KV {
   // Range gets the keys in the range from the store.
   rpc Range(RangeRequest) returns (RangeResponse) {}
 

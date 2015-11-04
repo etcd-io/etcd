@@ -27,7 +27,7 @@ type handler struct {
 	server etcdserver.V3DemoServer
 }
 
-func New(s etcdserver.V3DemoServer) pb.EtcdServer {
+func New(s etcdserver.V3DemoServer) pb.KVServer {
 	return &handler{s}
 }
 

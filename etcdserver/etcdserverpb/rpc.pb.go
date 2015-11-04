@@ -399,9 +399,9 @@ func init() {
 var _ context.Context
 var _ grpc.ClientConn
 
-// Client API for Etcd service
+// Client API for KV service
 
-type EtcdClient interface {
+type KVClient interface {
 	// Range gets the keys in the range from the store.
 	Range(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (*RangeResponse, error)
 	// Put puts the given key into the store.
@@ -421,62 +421,62 @@ type EtcdClient interface {
 	Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error)
 }
 
-type etcdClient struct {
+type kVClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewEtcdClient(cc *grpc.ClientConn) EtcdClient {
-	return &etcdClient{cc}
+func NewKVClient(cc *grpc.ClientConn) KVClient {
+	return &kVClient{cc}
 }
 
-func (c *etcdClient) Range(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (*RangeResponse, error) {
+func (c *kVClient) Range(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (*RangeResponse, error) {
 	out := new(RangeResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.etcd/Range", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Range", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *etcdClient) Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error) {
+func (c *kVClient) Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error) {
 	out := new(PutResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.etcd/Put", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Put", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *etcdClient) DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts ...grpc.CallOption) (*DeleteRangeResponse, error) {
+func (c *kVClient) DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts ...grpc.CallOption) (*DeleteRangeResponse, error) {
 	out := new(DeleteRangeResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.etcd/DeleteRange", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/etcdserverpb.KV/DeleteRange", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *etcdClient) Txn(ctx context.Context, in *TxnRequest, opts ...grpc.CallOption) (*TxnResponse, error) {
+func (c *kVClient) Txn(ctx context.Context, in *TxnRequest, opts ...grpc.CallOption) (*TxnResponse, error) {
 	out := new(TxnResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.etcd/Txn", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Txn", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *etcdClient) Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error) {
+func (c *kVClient) Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error) {
 	out := new(CompactionResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.etcd/Compact", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Compact", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for Etcd service
+// Server API for KV service
 
-type EtcdServer interface {
+type KVServer interface {
 	// Range gets the keys in the range from the store.
 	Range(context.Context, *RangeRequest) (*RangeResponse, error)
 	// Put puts the given key into the store.
@@ -496,93 +496,93 @@ type EtcdServer interface {
 	Compact(context.Context, *CompactionRequest) (*CompactionResponse, error)
 }
 
-func RegisterEtcdServer(s *grpc.Server, srv EtcdServer) {
-	s.RegisterService(&_Etcd_serviceDesc, srv)
+func RegisterKVServer(s *grpc.Server, srv KVServer) {
+	s.RegisterService(&_KV_serviceDesc, srv)
 }
 
-func _Etcd_Range_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_Range_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(RangeRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(EtcdServer).Range(ctx, in)
+	out, err := srv.(KVServer).Range(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Etcd_Put_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_Put_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(PutRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(EtcdServer).Put(ctx, in)
+	out, err := srv.(KVServer).Put(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Etcd_DeleteRange_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_DeleteRange_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(DeleteRangeRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(EtcdServer).DeleteRange(ctx, in)
+	out, err := srv.(KVServer).DeleteRange(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Etcd_Txn_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_Txn_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(TxnRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(EtcdServer).Txn(ctx, in)
+	out, err := srv.(KVServer).Txn(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Etcd_Compact_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_Compact_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(CompactionRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(EtcdServer).Compact(ctx, in)
+	out, err := srv.(KVServer).Compact(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-var _Etcd_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "etcdserverpb.etcd",
-	HandlerType: (*EtcdServer)(nil),
+var _KV_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "etcdserverpb.KV",
+	HandlerType: (*KVServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Range",
-			Handler:    _Etcd_Range_Handler,
+			Handler:    _KV_Range_Handler,
 		},
 		{
 			MethodName: "Put",
-			Handler:    _Etcd_Put_Handler,
+			Handler:    _KV_Put_Handler,
 		},
 		{
 			MethodName: "DeleteRange",
-			Handler:    _Etcd_DeleteRange_Handler,
+			Handler:    _KV_DeleteRange_Handler,
 		},
 		{
 			MethodName: "Txn",
-			Handler:    _Etcd_Txn_Handler,
+			Handler:    _KV_Txn_Handler,
 		},
 		{
 			MethodName: "Compact",
-			Handler:    _Etcd_Compact_Handler,
+			Handler:    _KV_Compact_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

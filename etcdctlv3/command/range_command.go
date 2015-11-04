@@ -48,10 +48,10 @@ func rangeCommandFunc(c *cli.Context) {
 	if err != nil {
 		panic(err)
 	}
-	etcd := pb.NewEtcdClient(conn)
+	kv := pb.NewKVClient(conn)
 	req := &pb.RangeRequest{Key: key, RangeEnd: rangeEnd}
 
-	resp, err := etcd.Range(context.Background(), req)
+	resp, err := kv.Range(context.Background(), req)
 	for _, kv := range resp.Kvs {
 		fmt.Printf("%s %s\n", string(kv.Key), string(kv.Value))
 	}

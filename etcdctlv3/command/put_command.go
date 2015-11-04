@@ -45,9 +45,9 @@ func putCommandFunc(c *cli.Context) {
 	if err != nil {
 		panic(err)
 	}
-	etcd := pb.NewEtcdClient(conn)
+	kv := pb.NewKVClient(conn)
 	req := &pb.PutRequest{Key: key, Value: value}
 
-	etcd.Put(context.Background(), req)
+	kv.Put(context.Background(), req)
 	fmt.Printf("%s %s\n", key, value)
 }
