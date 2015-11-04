@@ -56,7 +56,6 @@ func (ws *watcher) Watch(key []byte, prefix bool, startRev int64) CancelFunc {
 	}
 	// TODO: cancelFunc needs to be removed from the cancels when it is called.
 	ws.cancels = append(ws.cancels, c)
-	watcherGauge.Inc()
 	return c
 }
 
