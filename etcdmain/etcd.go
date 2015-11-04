@@ -210,7 +210,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 			plog.Warningf("The scheme of peer url %s is http while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
 		}
 		var l net.Listener
-		l, err = transport.NewTimeoutListener(u.Host, u.Scheme, cfg.peerTLSInfo, rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout)
+		l, err = rafthttp.NewListener(u, cfg.peerTLSInfo)
 		if err != nil {
 			return nil, err
 		}
