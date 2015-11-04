@@ -171,7 +171,7 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 						p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 					}
 					if status.isActive() {
-						plog.Warningf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
+						plog.MergeWarningf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
 					} else {
 						plog.Debugf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
 					}
