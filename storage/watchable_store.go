@@ -165,6 +165,7 @@ func (s *watchableStore) Close() error {
 }
 
 func (s *watchableStore) NewWatcher() Watcher {
+	watcherGauge.Inc()
 	return &watcher{
 		watchable: s,
 		ch:        make(chan storagepb.Event, chanBufLen),
