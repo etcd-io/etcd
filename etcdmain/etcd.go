@@ -322,6 +322,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		// set up v3 demo rpc
 		grpcServer := grpc.NewServer()
 		etcdserverpb.RegisterEtcdServer(grpcServer, v3rpc.New(s))
+		etcdserverpb.RegisterWatchServer(grpcServer, v3rpc.NewWatchServer(s.Watchable()))
 		go plog.Fatal(grpcServer.Serve(v3l))
 	}
 
