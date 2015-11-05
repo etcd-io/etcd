@@ -45,6 +45,7 @@ type Request struct {
 	Quorum           bool   `protobuf:"varint,14,opt" json:"Quorum"`
 	Time             int64  `protobuf:"varint,15,opt" json:"Time"`
 	Stream           bool   `protobuf:"varint,16,opt" json:"Stream"`
+	WaitTimeout      uint64 `protobuf:"varint,17,opt" json:"WaitTimeout"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -168,6 +169,11 @@ func (m *Request) MarshalTo(data []byte) (int, error) {
 		data[i] = 0
 	}
 	i++
+	data[i] = 0x88
+	i++
+	data[i] = 0x1
+	i++
+	i = encodeVarintEtcdserver(data, i, uint64(m.WaitTimeout))
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}
@@ -253,6 +259,7 @@ func (m *Request) Size() (n int) {
 	n += 2
 	n += 1 + sovEtcdserver(uint64(m.Time))
 	n += 3
+	n += 2 + sovEtcdserver(uint64(m.WaitTimeout))
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -606,6 +613,22 @@ func (m *Request) Unmarshal(data []byte) error {
 				}
 			}
 			m.Stream = bool(v != 0)
+		case 17:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field WaitTimeout", wireType)
+			}
+			m.WaitTimeout = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.WaitTimeout |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			var sizeOfWire int
 			for {
