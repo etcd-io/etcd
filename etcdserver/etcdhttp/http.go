@@ -59,7 +59,7 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		}
 	default:
 		switch err {
-		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost:
+		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost, etcdserver.ErrNotEnoughStartedMembers:
 			plog.Error(err)
 		default:
 			plog.Errorf("got unexpected response error (%v)", err)
