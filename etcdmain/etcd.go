@@ -520,6 +520,8 @@ func identifyDataDirOrDie(dir string) dirType {
 func setupLogging(cfg *config) {
 	capnslog.SetGlobalLogLevel(capnslog.INFO)
 	if cfg.debug {
+		formatter := capnslog.NewPrettyFormatter(os.Stdout, true)
+		capnslog.SetFormatter(formatter)
 		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
 	}
 	if cfg.logPkgLevels != "" {
