@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/journal"
 )
@@ -55,7 +56,8 @@ func (j *journaldFormatter) Format(pkg string, l LogLevel, _ int, entries ...int
 	}
 	msg := fmt.Sprint(entries...)
 	tags := map[string]string{
-		"PACKAGE": pkg,
+		"PACKAGE":           pkg,
+		"SYSLOG_IDENTIFIER": filepath.Base(os.Args[0]),
 	}
 	err := journal.Send(msg, pri, tags)
 	if err != nil {
