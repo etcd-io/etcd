@@ -253,7 +253,7 @@ func TestBucket_Delete_FreelistOverflow(t *testing.T) {
 		b := tx.Bucket([]byte("0"))
 		c := b.Cursor()
 		for k, _ := c.First(); k != nil; k, _ = c.Next() {
-			b.Delete(k)
+			c.Delete()
 		}
 		return nil
 	})

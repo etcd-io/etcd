@@ -39,9 +39,6 @@ func TestOpen(t *testing.T) {
 
 // Ensure that opening an already open database file will timeout.
 func TestOpen_Timeout(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("timeout not supported on windows")
-	}
 	if runtime.GOOS == "solaris" {
 		t.Skip("solaris fcntl locks don't support intra-process locking")
 	}
@@ -66,9 +63,6 @@ func TestOpen_Timeout(t *testing.T) {
 
 // Ensure that opening an already open database file will wait until its closed.
 func TestOpen_Wait(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("timeout not supported on windows")
-	}
 	if runtime.GOOS == "solaris" {
 		t.Skip("solaris fcntl locks don't support intra-process locking")
 	}
@@ -622,7 +616,7 @@ func TestDB_Consistency(t *testing.T) {
 	})
 }
 
-// Ensure that DB stats can be substracted from one another.
+// Ensure that DB stats can be subtracted from one another.
 func TestDBStats_Sub(t *testing.T) {
 	var a, b bolt.Stats
 	a.TxStats.PageCount = 3
