@@ -5,6 +5,11 @@
 #
 set -e
 
+if ! [[ "$0" =~ "scripts/genproto.sh" ]]; then
+	echo "must be run from repository root"
+	exit 255
+fi
+
 PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb"
 
