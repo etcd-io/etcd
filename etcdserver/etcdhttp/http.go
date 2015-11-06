@@ -59,12 +59,12 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		}
 	default:
 		switch err {
-		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost:
+		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost, etcdserver.ErrNotEnoughStartedMembers:
 			plog.Error(err)
 		default:
 			plog.Errorf("got unexpected response error (%v)", err)
 		}
-		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		herr := httptypes.NewHTTPError(http.StatusInternalServerError, err.Error())
 		if et := herr.WriteTo(w); et != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
 		}
