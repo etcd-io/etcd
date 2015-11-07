@@ -22,6 +22,10 @@ import (
 	"time"
 )
 
+// defaultRefreshInterval is the default proxyRefreshIntervalMs value
+// as in etcdmain/config.go.
+const defaultRefreshInterval = 30000 * time.Millisecond
+
 func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
 	d := &director{
 		uf:          urlsFunc,
@@ -29,9 +33,19 @@ func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterv
 	}
 	d.refresh()
 	go func() {
+		// In order to prevent missing proxy endpoints in the first try:
+		// when given refresh interval of defaultRefreshInterval or greater
+		// and whenever there is no available proxy endpoints,
+		// give 1-second refreshInterval.
 		for {
+			ri := refreshInterval
+			if ri >= defaultRefreshInterval {
+				if len(d.endpoints()) == 0 {
+					ri = time.Second
+				}
+			}
 			select {
-			case <-time.After(refreshInterval):
+			case <-time.After(ri):
 				d.refresh()
 			}
 		}
