@@ -32,7 +32,7 @@ type RaftKV interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{Range: r})
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Range: r})
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{Put: r})
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{DeleteRange: r})
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{Txn: r})
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 }
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	result, err := s.processInternalRaftReq(ctx, pb.InternalRaftRequest{Compaction: r})
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Compaction: r})
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ type applyResult struct {
 	err  error
 }
 
-func (s *EtcdServer) processInternalRaftReq(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
 	r.ID = s.reqIDGen.Next()
 
 	data, err := r.Marshal()
