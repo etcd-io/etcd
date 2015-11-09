@@ -8,6 +8,8 @@ The proxy will shuffle the list of cluster members periodically to avoid sending
 
 The member list used by proxy consists of all client URLs advertised within the cluster, as specified in each members' `-advertise-client-urls` flag. If this flag is set incorrectly, requests sent to the proxy are forwarded to wrong addresses and then fail. Including URLs in the `-advertise-client-urls` flag that point to the proxy itself, e.g. http://localhost:2379, is even more problematic as it will cause loops, because the proxy keeps trying to forward requests to itself until its resources (memory, file descriptors) are eventually depleted. The fix for this problem is to restart etcd member with correct `-advertise-client-urls` flag. After client URLs list in proxy is recalculated, which happens every 30 seconds, requests will be forwarded correctly.
 
+You should start the cluster machines first and then start the proxy as the proxy gets its list from reachable machines. If the proxy starts and is unable to reach a machine it will refresh aggressively. Once the machine list is non-empty the proxy will refresh at the original duration.
+
 ## Using an etcd proxy
 To start etcd in proxy mode, you need to provide three flags: `proxy`, `listen-client-urls`, and `initial-cluster` (or `discovery`). 
 
