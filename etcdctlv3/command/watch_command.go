@@ -65,7 +65,7 @@ func watchCommandFunc(c *cli.Context) {
 		// TODO: support start and end revision
 		segs := strings.Split(l, " ")
 		if len(segs) != 2 {
-			fmt.Fprintf(os.Stderr, "Invaild watch request format: use watch key or watchprefix prefix\n")
+			fmt.Fprintf(os.Stderr, "Invalid watch request format: use watch key or watchprefix prefix\n")
 			continue
 		}
 
@@ -76,7 +76,7 @@ func watchCommandFunc(c *cli.Context) {
 		case "watchprefix":
 			r = &pb.WatchRequest{Prefix: []byte(segs[1])}
 		default:
-			fmt.Fprintf(os.Stderr, "Invaild watch request format: use watch key or watchprefix prefix\n")
+			fmt.Fprintf(os.Stderr, "Invalid watch request format: use watch key or watchprefix prefix\n")
 			continue
 		}
 
