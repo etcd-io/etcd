@@ -14,7 +14,7 @@ GCE n1-highcpu-2 machine type
 
 ## Testing
 
-Use [etcd v3 benchmark tool](../../hack/v3benchmark/).
+Use [etcd v3 benchmark tool](../../tools/v3benchmark/).
 
 ## Performance
 
