@@ -622,7 +622,7 @@ func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
 
 		select {
 		case x := <-ch:
-			proposeDurations.Observe(float64(time.Since(start).Nanoseconds() / int64(time.Millisecond)))
+			proposeDurations.Observe(float64(time.Since(start)) / float64(time.Second))
 			resp := x.(Response)
 			return resp, resp.err
 		case <-ctx.Done():
