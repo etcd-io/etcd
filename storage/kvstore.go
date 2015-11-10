@@ -231,19 +231,22 @@ func (s *store) RangeEvents(key, end []byte, limit, startRev int64) (evs []stora
 	defer tx.Unlock()
 	// fetch events from the backend using revisions
 	for _, rev := range revs {
-		revbytes := newRevBytes()
-		revToBytes(rev, revbytes)
+		start, end := backendKeyBytesRange(rev)
 
-		_, vs := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		ks, vs := tx.UnsafeRange(keyBucketName, start, end, 0)
 		if len(vs) != 1 {
 			log.Fatalf("storage: range cannot find rev (%d,%d)", rev.main, rev.sub)
 		}
 
-		e := storagepb.Event{}
-		if err := e.Unmarshal(vs[0]); err != nil {
+		key := bytesToBackendKey(ks[0])
+		var kv storagepb.KeyValue
+		if err := kv.Unmarshal(vs[0]); err != nil {
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
-		evs = append(evs, e)
+		evs = append(evs, storagepb.Event{
+			Type: key.t,
+			Kv:   &kv,
+		})
 		if limit > 0 && len(evs) >= int(limit) {
 			return evs, rev.main + 1, nil
 		}
@@ -315,26 +318,26 @@ func (s *store) Restore() error {
 
 	// TODO: limit N to reduce max memory usage
 	keys, vals := tx.UnsafeRange(keyBucketName, min, max, 0)
-	for i, key := range keys {
-		e := &storagepb.Event{}
-		if err := e.Unmarshal(vals[i]); err != nil {
+	for i, keyBytes := range keys {
+		key := bytesToBackendKey(keyBytes)
+
+		var kv storagepb.KeyValue
+		if err := kv.Unmarshal(vals[i]); err != nil {
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
 
-		rev := bytesToRev(key)
-
 		// restore index
-		switch e.Type {
+		switch key.t {
 		case storagepb.PUT:
-			s.kvindex.Restore(e.Kv.Key, revision{e.Kv.CreateRevision, 0}, rev, e.Kv.Version)
+			s.kvindex.Restore(kv.Key, revision{kv.CreateRevision, 0}, key.rev, kv.Version)
 		case storagepb.DELETE:
-			s.kvindex.Tombstone(e.Kv.Key, rev)
+			s.kvindex.Tombstone(kv.Key, key.rev)
 		default:
-			log.Panicf("storage: unexpected event type %s", e.Type)
+			log.Panicf("storage: unexpected event type %s", key.t)
 		}
 
 		// update revision
-		s.currentRev = rev
+		s.currentRev = key.rev
 	}
 
 	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
@@ -392,19 +395,18 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	}
 
 	for _, revpair := range revpairs {
-		revbytes := newRevBytes()
-		revToBytes(revpair, revbytes)
+		start, end := backendKeyBytesRange(revpair)
 
-		_, vs := s.tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		_, vs := s.tx.UnsafeRange(keyBucketName, start, end, 0)
 		if len(vs) != 1 {
 			log.Fatalf("storage: range cannot find rev (%d,%d)", revpair.main, revpair.sub)
 		}
 
-		e := &storagepb.Event{}
-		if err := e.Unmarshal(vs[0]); err != nil {
+		var kv storagepb.KeyValue
+		if err := kv.Unmarshal(vs[0]); err != nil {
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
-		kvs = append(kvs, *e.Kv)
+		kvs = append(kvs, kv)
 		if limit > 0 && len(kvs) >= int(limit) {
 			break
 		}
@@ -422,22 +424,22 @@ func (s *store) put(key, value []byte) {
 		c = created.main
 	}
 
-	ibytes := newRevBytes()
-	revToBytes(revision{main: rev, sub: s.currentRev.sub}, ibytes)
+	ibytes := newBackendKeyBytes()
+	backendKeyToBytes(backendKey{
+		rev: revision{main: rev, sub: s.currentRev.sub},
+		t:   storagepb.PUT,
+	}, ibytes)
 
 	ver = ver + 1
-	event := storagepb.Event{
-		Type: storagepb.PUT,
-		Kv: &storagepb.KeyValue{
-			Key:            key,
-			Value:          value,
-			CreateRevision: c,
-			ModRevision:    rev,
-			Version:        ver,
-		},
+	kv := storagepb.KeyValue{
+		Key:            key,
+		Value:          value,
+		CreateRevision: c,
+		ModRevision:    rev,
+		Version:        ver,
 	}
 
-	d, err := event.Marshal()
+	d, err := kv.Marshal()
 	if err != nil {
 		log.Fatalf("storage: cannot marshal event: %v", err)
 	}
@@ -467,17 +469,17 @@ func (s *store) deleteRange(key, end []byte) int64 {
 func (s *store) delete(key []byte) {
 	mainrev := s.currentRev.main + 1
 
-	ibytes := newRevBytes()
-	revToBytes(revision{main: mainrev, sub: s.currentRev.sub}, ibytes)
+	ibytes := newBackendKeyBytes()
+	backendKeyToBytes(backendKey{
+		rev: revision{main: mainrev, sub: s.currentRev.sub},
+		t:   storagepb.DELETE,
+	}, ibytes)
 
-	event := storagepb.Event{
-		Type: storagepb.DELETE,
-		Kv: &storagepb.KeyValue{
-			Key: key,
-		},
+	kv := storagepb.KeyValue{
+		Key: key,
 	}
 
-	d, err := event.Marshal()
+	d, err := kv.Marshal()
 	if err != nil {
 		log.Fatalf("storage: cannot marshal event: %v", err)
 	}
