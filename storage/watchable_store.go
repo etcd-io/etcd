@@ -247,7 +247,7 @@ func (s *watchableStore) syncWatchings() {
 		if limit == 0 {
 			continue
 		}
-		evs, nextRev, err := s.store.RangeEvents(w.key, end, int64(limit), w.cur)
+		revbs, kvs, nextRev, err := s.store.RangeHistory(w.key, end, int64(limit), w.cur)
 		if err != nil {
 			// TODO: send error event to watching
 			delete(s.unsynced, w)
@@ -255,8 +255,19 @@ func (s *watchableStore) syncWatchings() {
 		}
 
 		// push events to the channel
-		for _, ev := range evs {
-			w.ch <- ev
+		for i, kv := range kvs {
+			var evt storagepb.Event_EventType
+			switch {
+			case isTombstone(revbs[i]):
+				evt = storagepb.DELETE
+			default:
+				evt = storagepb.PUT
+			}
+
+			w.ch <- storagepb.Event{
+				Type: evt,
+				Kv:   &kv,
+			}
 			pendingEventsGauge.Inc()
 		}
 		// switch to tracking future events if needed

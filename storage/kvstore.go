@@ -32,6 +32,13 @@ var (
 	keyBucketName  = []byte("key")
 	metaBucketName = []byte("meta")
 
+	// markedRevBytesLen is the byte length of marked revision.
+	// The first `revBytesLen` bytes represents a normal revision. The last
+	// one byte is the mark.
+	markedRevBytesLen      = revBytesLen + 1
+	markBytePosition       = markedRevBytesLen - 1
+	markTombstone     byte = 't'
+
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
@@ -193,7 +200,7 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	return n, rev, nil
 }
 
-// RangeEvents gets the events from key to end starting from startRev.
+// RangeHistory ranges the history from key to end starting from startRev.
 // If `end` is nil, the request only observes the events on key.
 // If `end` is not nil, it observes the events on key range [key, range_end).
 // Limit limits the number of events returned.
@@ -202,28 +209,29 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 // If the required start rev is compacted, ErrCompacted will be returned.
 // If the required start rev has not happened, ErrFutureRev will be returned.
 //
-// RangeEvents returns events that satisfy the requirement (0 <= n <= limit).
-// If events in the revision range have not all happened, it returns immeidately
+// RangeHistory returns revision bytes slice and key-values that satisfy the requirement (0 <= n <= limit).
+// If history in the revision range has not all happened, it returns immeidately
 // what is available.
 // It also returns nextRev which indicates the start revision used for the following
 // RangeEvents call. The nextRev could be smaller than the given endRev if the store
 // has not progressed so far or it hits the event limit.
 //
-// TODO: return byte slices instead of events to avoid meaningless encode and decode.
-func (s *store) RangeEvents(key, end []byte, limit, startRev int64) (evs []storagepb.Event, nextRev int64, err error) {
+// TODO: return byte slices instead of keyValues to avoid meaningless encode and decode.
+// This also helps to return raw (key, val) pair directly to make API consistent.
+func (s *store) RangeHistory(key, end []byte, limit, startRev int64) (revbs [][]byte, kvs []storagepb.KeyValue, nextRev int64, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if startRev > 0 && startRev <= s.compactMainRev {
-		return nil, 0, ErrCompacted
+		return nil, nil, 0, ErrCompacted
 	}
 	if startRev > s.currentRev.main {
-		return nil, 0, ErrFutureRev
+		return nil, nil, 0, ErrFutureRev
 	}
 
-	revs := s.kvindex.RangeEvents(key, end, startRev)
+	revs := s.kvindex.RangeSince(key, end, startRev)
 	if len(revs) == 0 {
-		return nil, s.currentRev.main + 1, nil
+		return nil, nil, s.currentRev.main + 1, nil
 	}
 
 	tx := s.b.BatchTx()
@@ -231,24 +239,24 @@ func (s *store) RangeEvents(key, end []byte, limit, startRev int64) (evs []stora
 	defer tx.Unlock()
 	// fetch events from the backend using revisions
 	for _, rev := range revs {
-		revbytes := newRevBytes()
-		revToBytes(rev, revbytes)
+		start, end := revBytesRange(rev)
 
-		_, vs := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		ks, vs := tx.UnsafeRange(keyBucketName, start, end, 0)
 		if len(vs) != 1 {
 			log.Fatalf("storage: range cannot find rev (%d,%d)", rev.main, rev.sub)
 		}
 
-		e := storagepb.Event{}
-		if err := e.Unmarshal(vs[0]); err != nil {
+		var kv storagepb.KeyValue
+		if err := kv.Unmarshal(vs[0]); err != nil {
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
-		evs = append(evs, e)
-		if limit > 0 && len(evs) >= int(limit) {
-			return evs, rev.main + 1, nil
+		revbs = append(revbs, ks[0])
+		kvs = append(kvs, kv)
+		if limit > 0 && len(kvs) >= int(limit) {
+			return revbs, kvs, rev.main + 1, nil
 		}
 	}
-	return evs, s.currentRev.main + 1, nil
+	return revbs, kvs, s.currentRev.main + 1, nil
 }
 
 func (s *store) Compact(rev int64) error {
@@ -316,21 +324,19 @@ func (s *store) Restore() error {
 	// TODO: limit N to reduce max memory usage
 	keys, vals := tx.UnsafeRange(keyBucketName, min, max, 0)
 	for i, key := range keys {
-		e := &storagepb.Event{}
-		if err := e.Unmarshal(vals[i]); err != nil {
+		var kv storagepb.KeyValue
+		if err := kv.Unmarshal(vals[i]); err != nil {
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
 
-		rev := bytesToRev(key)
+		rev := bytesToRev(key[:revBytesLen])
 
 		// restore index
-		switch e.Type {
-		case storagepb.PUT:
-			s.kvindex.Restore(e.Kv.Key, revision{e.Kv.CreateRevision, 0}, rev, e.Kv.Version)
-		case storagepb.DELETE:
-			s.kvindex.Tombstone(e.Kv.Key, rev)
+		switch {
+		case isTombstone(key):
+			s.kvindex.Tombstone(kv.Key, rev)
 		default:
-			log.Panicf("storage: unexpected event type %s", e.Type)
+			s.kvindex.Restore(kv.Key, revision{kv.CreateRevision, 0}, rev, kv.Version)
 		}
 
 		// update revision
@@ -392,19 +398,18 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	}
 
 	for _, revpair := range revpairs {
-		revbytes := newRevBytes()
-		revToBytes(revpair, revbytes)
+		start, end := revBytesRange(revpair)
 
-		_, vs := s.tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		_, vs := s.tx.UnsafeRange(keyBucketName, start, end, 0)
 		if len(vs) != 1 {
 			log.Fatalf("storage: range cannot find rev (%d,%d)", revpair.main, revpair.sub)
 		}
 
-		e := &storagepb.Event{}
-		if err := e.Unmarshal(vs[0]); err != nil {
+		var kv storagepb.KeyValue
+		if err := kv.Unmarshal(vs[0]); err != nil {
 			log.Fatalf("storage: cannot unmarshal event: %v", err)
 		}
-		kvs = append(kvs, *e.Kv)
+		kvs = append(kvs, kv)
 		if limit > 0 && len(kvs) >= int(limit) {
 			break
 		}
@@ -426,18 +431,15 @@ func (s *store) put(key, value []byte) {
 	revToBytes(revision{main: rev, sub: s.currentRev.sub}, ibytes)
 
 	ver = ver + 1
-	event := storagepb.Event{
-		Type: storagepb.PUT,
-		Kv: &storagepb.KeyValue{
-			Key:            key,
-			Value:          value,
-			CreateRevision: c,
-			ModRevision:    rev,
-			Version:        ver,
-		},
+	kv := storagepb.KeyValue{
+		Key:            key,
+		Value:          value,
+		CreateRevision: c,
+		ModRevision:    rev,
+		Version:        ver,
 	}
 
-	d, err := event.Marshal()
+	d, err := kv.Marshal()
 	if err != nil {
 		log.Fatalf("storage: cannot marshal event: %v", err)
 	}
@@ -469,15 +471,13 @@ func (s *store) delete(key []byte) {
 
 	ibytes := newRevBytes()
 	revToBytes(revision{main: mainrev, sub: s.currentRev.sub}, ibytes)
+	ibytes = appendMarkTombstone(ibytes)
 
-	event := storagepb.Event{
-		Type: storagepb.DELETE,
-		Kv: &storagepb.KeyValue{
-			Key: key,
-		},
+	kv := storagepb.KeyValue{
+		Key: key,
 	}
 
-	d, err := event.Marshal()
+	d, err := kv.Marshal()
 	if err != nil {
 		log.Fatalf("storage: cannot marshal event: %v", err)
 	}
@@ -488,4 +488,30 @@ func (s *store) delete(key []byte) {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
 	}
 	s.currentRev.sub += 1
+}
+
+// appendMarkTombstone appends tombstone mark to normal revision bytes.
+func appendMarkTombstone(b []byte) []byte {
+	if len(b) != revBytesLen {
+		log.Panicf("cannot append mark to non normal revision bytes")
+	}
+	return append(b, markTombstone)
+}
+
+// isTombstone checks whether the revision bytes is a tombstone.
+func isTombstone(b []byte) bool {
+	return len(b) == markedRevBytesLen && b[markBytePosition] == markTombstone
+}
+
+// revBytesRange returns the range of revision bytes at
+// the given revision.
+func revBytesRange(rev revision) (start, end []byte) {
+	start = newRevBytes()
+	revToBytes(rev, start)
+
+	end = newRevBytes()
+	endRev := revision{main: rev.main, sub: rev.sub + 1}
+	revToBytes(endRev, end)
+
+	return start, end
 }
