@@ -57,6 +57,7 @@ clustering flags:
 		initial cluster state ('new' or 'existing').
 	--initial-cluster-token 'etcd-cluster'
 		initial cluster token for the etcd cluster during bootstrap.
+		Specifying this can protect you from unintended cross-cluster interaction when running multiple clusters.
 	--advertise-client-urls 'http://localhost:2379,http://localhost:4001'
 		list of this member's client URLs to advertise to the public.
 		The client URLs advertised should be accessible to machines that talk to etcd cluster. etcd client libraries parse these URLs to connect to the cluster.
