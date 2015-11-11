@@ -19,6 +19,9 @@ Usage
 
 The primary object in raft is a Node. You either start a Node from scratch
 using raft.StartNode or start a Node from some initial state using raft.RestartNode.
+
+To start a node from scratch:
+
   storage := raft.NewMemoryStorage()
   c := &Config{
     ID:              0x01,
@@ -29,6 +32,29 @@ using raft.StartNode or start a Node from some initial state using raft.RestartN
     MaxInflightMsgs: 256,
   }
   n := raft.StartNode(c, []raft.Peer{{ID: 0x02}, {ID: 0x03}})
+
+To restart a node from previous state:
+
+  storage := raft.NewMemoryStorage()
+
+  // recover the in-memory storage from persistent
+  // snapshot, state and entries.
+  storage.ApplySnapshot(snapshot)
+  storage.SetHardState(state)
+  storage.Append(entries)
+
+  c := &Config{
+    ID:              0x01,
+    ElectionTick:    10,
+    HeartbeatTick:   1,
+    Storage:         storage,
+    MaxSizePerMsg:   4096,
+    MaxInflightMsgs: 256,
+  }
+
+  // restart raft without peer information.
+  // peer information is already included in the storage.
+  n := raft.RestartNode(c)
 
 Now that you are holding onto a Node you have a few responsibilities:
 
