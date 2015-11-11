@@ -15,6 +15,11 @@
 /*
 Package raft provides an implementation of the raft consensus algorithm.
 
+Raft is a protocol by which a cluster of nodes can maintain a replicated state machine.
+The state machine is kept in sync through the use of a replicated log.
+For more details on Raft, you can read In Search of an Understandable Consensus Algorithm
+(https://ramcloud.stanford.edu/raft.pdf) by Diego Ongaro and John Ousterhout.
+
 Usage
 
 The primary object in raft is a Node. You either start a Node from scratch
