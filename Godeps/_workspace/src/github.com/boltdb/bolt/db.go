@@ -63,6 +63,10 @@ type DB struct {
 	// https://github.com/boltdb/bolt/issues/284
 	NoGrowSync bool
 
+	// If you want to read the entire database fast, you can set MmapFlag to
+	// syscall.MAP_POPULATE on Linux 2.6.23+ for sequential read-ahead.
+	MmapFlags int
+
 	// MaxBatchSize is the maximum size of a batch. Default value is
 	// copied from DefaultMaxBatchSize in Open.
 	//
@@ -136,6 +140,7 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 		options = DefaultOptions
 	}
 	db.NoGrowSync = options.NoGrowSync
+	db.MmapFlags = options.MmapFlags
 
 	// Set default values for later DB operations.
 	db.MaxBatchSize = DefaultMaxBatchSize
@@ -672,6 +677,9 @@ type Options struct {
 	// Open database in read-only mode. Uses flock(..., LOCK_SH |LOCK_NB) to
 	// grab a shared lock (UNIX).
 	ReadOnly bool
+
+	// Sets the DB.MmapFlags flag before memory mapping the file.
+	MmapFlags int
 }
 
 // DefaultOptions represent the options used if nil options are passed into Open().
