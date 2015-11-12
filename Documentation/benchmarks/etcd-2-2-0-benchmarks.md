@@ -1,4 +1,4 @@
-## Physical machines
+# Physical Machines
 
 GCE n1-highcpu-2 machine type
 
@@ -7,7 +7,7 @@ GCE n1-highcpu-2 machine type
 - 1.8 GB memory
 - 2x CPUs
 
-## etcd Cluster
+# etcd Cluster
 
 3 etcd 2.2.0 members, each runs on a single machine.
 
@@ -22,13 +22,13 @@ Go OS/Arch: linux/amd64
 
 Also, we use 3 etcd 2.1.0 alpha-stage members to form cluster to get base performance. etcd's commit head is at [c7146bd5](https://github.com/coreos/etcd/commits/c7146bd5f2c73716091262edc638401bb8229144), which is the same as the one that we use in [etcd 2.1 benchmark](./etcd-2-1-0-benchmarks.md).
 
-## Testing
+# Testing
 
 Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyll/boom) with customized patch to send requests to each etcd member. Check [here](../../hack/benchmark/) for instructions.
 
-## Performance
+# Performance
 
-### reading one single key
+## Reading One Single Key
 
 | key size in bytes | number of clients | target etcd server | read QPS | 90th Percentile Latency (ms) |
 |-------------------|-------------------|--------------------|----------|---------------|
@@ -43,7 +43,7 @@ Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyl
 | 256               | 64                | all servers        | 48664 (-3%) | 2.3 (+4%) |
 | 256               | 256               | all servers        | 49914 (-4%) | 9.1 (-2%) |
 
-### writing one single key
+## Writing One Single Key
 
 | key size in bytes | number of clients | target etcd server | write QPS | 90th Percentile Latency (ms) |
 |-------------------|-------------------|--------------------|-----------|---------------|
@@ -58,10 +58,10 @@ Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyl
 | 256               | 64                | all servers        | 1507 (+44%) | 59.5 (-43%) |
 | 256               | 256               | all servers        | 4231 (+15%) | 82.6 (-25%) |
 
-### performance changes explanation
+## Performance Changes Explanation
 
-- read QPS in most scenarios is decreased by 3~7%. The reason is that etcd records store metrics for each store operation. The metrics is important for monitoring and debugging, so this is acceptable.
+- Because etcd now records metrics for each API call, read QPS performance is decreased by approximately 3-7% in most scenarios. This minimal performance impact was judged a reasonable investment for the breadth of monitoring and debugging information returned.
 
-- write QPS to leader is increased up to 14%. This is because we decouple raft main loop and entry apply loop, which avoids them blocking each other.
+- Write QPS to leader is increased up to 14%. This is because we decouple raft main loop and entry apply loop, which avoids them blocking each other.
 
-- write QPS to all servers is increased by 15~62% because follower could receive latest commit index earlier and commit proposals faster.
+- Write QPS to all servers is increased by 15~62% because follower could receive latest commit index earlier and commit proposals faster.
