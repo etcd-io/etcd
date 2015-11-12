@@ -26,6 +26,15 @@ var (
 	minLeaseTerm = 5 * time.Second
 )
 
+// DeleteableRange defines an interface with DeleteRange method.
+// We define this interface only for lessor to limit the number
+// of methods of storage.KV to what lessor actually needs.
+//
+// Having a minimum interface makes testing easy.
+type DeleteableRange interface {
+	DeleteRange(key, end []byte) (int64, int64)
+}
+
 // a lessor is the owner of leases. It can grant, revoke,
 // renew and modify leases for lessee.
 // TODO: persist lease on to stable backend for failure recovery.
@@ -40,12 +49,18 @@ type lessor struct {
 	// FindExpired and Renew should be the most frequent operations.
 	leaseMap map[uint64]*lease
 
+	// A DeleteableRange the lessor operates on.
+	// When a lease expires, the lessor will delete the
+	// leased range (or key) from the DeleteableRange.
+	dr DeleteableRange
+
 	idgen *idutil.Generator
 }
 
-func NewLessor(lessorID uint8) *lessor {
+func NewLessor(lessorID uint8, dr DeleteableRange) *lessor {
 	return &lessor{
 		leaseMap: make(map[uint64]*lease),
+		dr:       dr,
 		idgen:    idutil.NewGenerator(lessorID, time.Now()),
 	}
 }
@@ -62,7 +77,7 @@ func (le *lessor) Grant(expiry time.Time) *lease {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
-	l := &lease{id: id, expiry: expiry}
+	l := &lease{id: id, expiry: expiry, itemSet: make(map[leaseItem]struct{})}
 	if _, ok := le.leaseMap[id]; ok {
 		panic("lease: unexpected duplicate ID!")
 	}
@@ -85,7 +100,10 @@ func (le *lessor) Revoke(id uint64) error {
 
 	delete(le.leaseMap, l.id)
 
-	// TODO: remove attached items
+	for item := range l.itemSet {
+		le.dr.DeleteRange([]byte(item.key), []byte(item.endRange))
+	}
+
 	return nil
 }
 
