@@ -2,11 +2,12 @@ package bolt
 
 import (
 	"fmt"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/sys/unix"
 	"os"
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/sys/unix"
 )
 
 // flock acquires an advisory lock on a file descriptor.
@@ -67,7 +68,7 @@ func mmap(db *DB, sz int) error {
 	}
 
 	// Map the data file to memory.
-	b, err := unix.Mmap(int(db.file.Fd()), 0, sz, syscall.PROT_READ, syscall.MAP_SHARED)
+	b, err := unix.Mmap(int(db.file.Fd()), 0, sz, syscall.PROT_READ, syscall.MAP_SHARED|db.MmapFlags)
 	if err != nil {
 		return err
 	}

@@ -58,7 +58,7 @@ func mmap(db *DB, sz int) error {
 	}
 
 	// Map the data file to memory.
-	b, err := syscall.Mmap(int(db.file.Fd()), 0, sz, syscall.PROT_READ, syscall.MAP_SHARED)
+	b, err := syscall.Mmap(int(db.file.Fd()), 0, sz, syscall.PROT_READ, syscall.MAP_SHARED|db.MmapFlags)
 	if err != nil {
 		return err
 	}
