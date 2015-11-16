@@ -53,8 +53,8 @@ var rootRole = Role{
 	Role: RootRoleName,
 	Permissions: Permissions{
 		KV: RWPermission{
-			Read:  []string{"*"},
-			Write: []string{"*"},
+			Read:  []string{"/*"},
+			Write: []string{"/*"},
 		},
 	},
 }
@@ -63,8 +63,8 @@ var guestRole = Role{
 	Role: GuestRoleName,
 	Permissions: Permissions{
 		KV: RWPermission{
-			Read:  []string{"*"},
-			Write: []string{"*"},
+			Read:  []string{"/*"},
+			Write: []string{"/*"},
 		},
 	},
 }
