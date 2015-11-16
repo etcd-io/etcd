@@ -85,3 +85,25 @@ func TestPeerPick(t *testing.T) {
 		}
 	}
 }
+
+func TestDescribeMsgType(t *testing.T) {
+	ts := map[raftpb.MessageType]string{
+		raftpb.MsgHup:           "MsgHup(candidate requests to start a new election)",
+		raftpb.MsgBeat:          "MsgBeat(leader requests to send a heartbeat)",
+		raftpb.MsgProp:          "MsgProp(proposal to change configurations)",
+		raftpb.MsgApp:           "MsgApp(leader requests to replicate logs)",
+		raftpb.MsgAppResp:       "MsgAppResp(leader handles response to its log replication message)",
+		raftpb.MsgVote:          "MsgVote(follower votes for a new leader)",
+		raftpb.MsgVoteResp:      "MsgVoteResp(candidate receives votes from followers)",
+		raftpb.MsgSnap:          "MsgSnap(leader requests to install a snapshot message)",
+		raftpb.MsgHeartbeat:     "MsgHeartbeat(candidate/follower receives a heartbeat from a leader)",
+		raftpb.MsgHeartbeatResp: "MsgHeartbeatResp(leader handles response to its heartbeat message)",
+		raftpb.MsgUnreachable:   "MsgUnreachable(leader finds out that its request wasn't delivered)",
+		raftpb.MsgSnapStatus:    "MsgSnapStatus(leader handles response to its snapshot install request)",
+	}
+	for k, v := range ts {
+		if rs := describeMsgType(k); rs != v {
+			t.Errorf("expected %s for %s but got %s", v, k, rs)
+		}
+	}
+}
