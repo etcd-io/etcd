@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -171,9 +172,9 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 						p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 					}
 					if status.isActive() {
-						plog.MergeWarningf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
+						plog.MergeWarningf("dropped %s to %s since %s's sending buffer is full", describeMsgType(m.Type), p.id, name)
 					} else {
-						plog.Debugf("dropped %s to %s since %s's sending buffer is full", m.Type, p.id, name)
+						plog.Debugf("dropped %s to %s since %s's sending buffer is full", describeMsgType(m.Type), p.id, name)
 					}
 				}
 			case mm := <-p.recvc:
@@ -275,3 +276,26 @@ func (p *peer) pick(m raftpb.Message) (writec chan<- raftpb.Message, picked stri
 func isMsgApp(m raftpb.Message) bool { return m.Type == raftpb.MsgApp }
 
 func isMsgSnap(m raftpb.Message) bool { return m.Type == raftpb.MsgSnap }
+
+var typeToDesc = map[raftpb.MessageType]string{
+	raftpb.MsgHup:           "candidate requests to start a new election",
+	raftpb.MsgBeat:          "leader requests to send a heartbeat",
+	raftpb.MsgProp:          "proposal to change configurations",
+	raftpb.MsgApp:           "leader requests to replicate logs",
+	raftpb.MsgAppResp:       "leader handles response to its log replication message",
+	raftpb.MsgVote:          "follower votes for a new leader",
+	raftpb.MsgVoteResp:      "candidate receives votes from followers",
+	raftpb.MsgSnap:          "leader requests to install a snapshot message",
+	raftpb.MsgHeartbeat:     "candidate/follower receives a heartbeat from a leader",
+	raftpb.MsgHeartbeatResp: "leader handles response to its heartbeat message",
+	raftpb.MsgUnreachable:   "leader finds out that its request wasn't delivered",
+	raftpb.MsgSnapStatus:    "leader handles response to its snapshot install request",
+}
+
+func describeMsgType(tp raftpb.MessageType) string {
+	ds := tp.String()
+	if v, ok := typeToDesc[tp]; ok {
+		ds = fmt.Sprintf("%s(%s)", tp, v)
+	}
+	return ds
+}
