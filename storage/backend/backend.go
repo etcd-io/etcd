@@ -61,7 +61,7 @@ func New(path string, d time.Duration, limit int) Backend {
 }
 
 func newBackend(path string, d time.Duration, limit int) *backend {
-	db, err := bolt.Open(path, 0600, nil)
+	db, err := bolt.Open(path, 0600, boltOpenOptions)
 	if err != nil {
 		log.Panicf("backend: cannot open database at %s (%v)", path, err)
 	}
