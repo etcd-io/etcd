@@ -189,7 +189,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var id types.ID
 	var cl *cluster
 
-	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.StorageDir(), databaseFilename)) {
+	if !cfg.V3demo && fileutil.Exist(cfg.StorageDir()) {
 		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
 	}
 
