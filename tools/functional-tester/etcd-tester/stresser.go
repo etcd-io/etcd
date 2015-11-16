@@ -75,7 +75,7 @@ func (s *stresser) Stress() error {
 	for i := 0; i < s.N; i++ {
 		go func() {
 			for {
-				setctx, setcancel := context.WithTimeout(ctx, time.Second)
+				setctx, setcancel := context.WithTimeout(ctx, client.DefaultRequestTimeout)
 				key := fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))
 				_, err := kv.Set(setctx, key, randStr(s.KeySize), nil)
 				setcancel()
