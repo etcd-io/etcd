@@ -1751,6 +1751,27 @@ func TestRaftNodes(t *testing.T) {
 	}
 }
 
+func TestCampaignWhileLeader(t *testing.T) {
+	r := newTestRaft(1, []uint64{1}, 5, 1, NewMemoryStorage())
+	if r.state != StateFollower {
+		t.Errorf("expected new node to be follower but got %s", r.state)
+	}
+	// We don't call campaign() directly because it comes after the check
+	// for our current state.
+	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if r.state != StateLeader {
+		t.Errorf("expected single-node election to become leader but got %s", r.state)
+	}
+	term := r.Term
+	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if r.state != StateLeader {
+		t.Errorf("expected to remain leader but got %s", r.state)
+	}
+	if r.Term != term {
+		t.Errorf("expected to remain in term %v but got %v", term, r.Term)
+	}
+}
+
 func ents(terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {

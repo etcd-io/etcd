@@ -485,9 +485,13 @@ func (r *raft) poll(id uint64, v bool) (granted int) {
 
 func (r *raft) Step(m pb.Message) error {
 	if m.Type == pb.MsgHup {
-		r.logger.Infof("%x is starting a new election at term %d", r.id, r.Term)
-		r.campaign()
-		r.Commit = r.raftLog.committed
+		if r.state != StateLeader {
+			r.logger.Infof("%x is starting a new election at term %d", r.id, r.Term)
+			r.campaign()
+			r.Commit = r.raftLog.committed
+		} else {
+			r.logger.Debugf("%x ignoring MsgHup because already leader", r.id)
+		}
 		return nil
 	}
 
