@@ -59,7 +59,7 @@ type Progress struct {
 	// inflights is a sliding window for the inflight messages.
 	// When inflights is full, no more message should be sent.
 	// When a leader sends out a message, the index of the last
-	// entry should be add to inflights. The index MUST be added
+	// entry should be added to inflights. The index MUST be added
 	// into inflights in order.
 	// When a leader receives a reply, the previous inflights should
 	// be freed by calling inflights.freeTo.
