@@ -10,41 +10,42 @@ if ! [[ "$0" =~ "scripts/genproto.sh" ]]; then
 	exit 255
 fi
 
-PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
-DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb"
-
-SHA="932b70afa8b0bf4a8e167fdf0c3367cebba45903"
-
-if ! protoc --version > /dev/null; then
-	echo "could not find protoc, is it installed + in PATH?"
+# for now, be conservative about what version of protoc we expect
+if ! [[ $(protoc --version) =~ "3.0.0" ]]; then
+	echo "could not find protoc 3.0.0, is it installed + in PATH?"
 	exit 255
 fi
 
-# Ensure we have the right version of protoc-gen-gogo by building it every time.
-# TODO(jonboulle): vendor this instead of `go get`ting it.
+PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
+ESCAPED_PREFIX=$(echo $PREFIX | sed -e 's/[\/&]/\\&/g')
+
+# directories containing protos to be built
+DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb"
+
+# exact version of protoc-gen-gogo to build
+SHA="932b70afa8b0bf4a8e167fdf0c3367cebba45903"
+
+# set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath
 export GOBIN=${PWD}/bin
-go get github.com/gogo/protobuf/{proto,protoc-gen-gogo,gogoproto}
-pushd ${GOPATH}/src/github.com/gogo/protobuf/
-	git reset --hard ${SHA}
-	make install
-popd
-
 export PATH="${GOBIN}:${PATH}"
 
-# copy all proto dependencies inside etcd to gopath
-for dir in ${DIRS}; do
-	mkdir -p ${GOPATH}/src/github.com/coreos/etcd/${dir}
-	pushd ${dir}
-		cp *.proto ${GOPATH}/src/github.com/coreos/etcd/${dir}
-	popd
-done
-
 COREOS_ROOT="${GOPATH}/src/github.com/coreos"
+ETCD_ROOT="${COREOS_ROOT}/etcd"
 GOGOPROTO_ROOT="${GOPATH}/src/github.com/gogo/protobuf"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 
-ESCAPED_PREFIX=$(echo $PREFIX | sed -e 's/[\/&]/\\&/g')
+rm -f "${ETCD_ROOT}"
+mkdir -p "${COREOS_ROOT}"
+ln -s "${PWD}" "${ETCD_ROOT}"
+
+# Ensure we have the right version of protoc-gen-gogo by building it every time.
+# TODO(jonboulle): vendor this instead of `go get`ting it.
+go get github.com/gogo/protobuf/{proto,protoc-gen-gogo,gogoproto}
+pushd "${GOGOPROTO_ROOT}"
+	git reset --hard "${SHA}"
+	make install
+popd
 
 for dir in ${DIRS}; do
 	pushd ${dir}
