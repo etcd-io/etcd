@@ -323,7 +323,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		grpcServer := grpc.NewServer()
 		etcdserverpb.RegisterKVServer(grpcServer, v3rpc.NewKVServer(s))
 		etcdserverpb.RegisterWatchServer(grpcServer, v3rpc.NewWatchServer(s.Watchable()))
-		go plog.Fatal(grpcServer.Serve(v3l))
+		go func() { plog.Fatal(grpcServer.Serve(v3l)) }()
 	}
 
 	return s.StopNotify(), nil
