@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package snap stores raft nodes' states with snapshots.
 package snap
 
 import (

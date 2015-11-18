@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// etcdctlv3 is a command line application that utilizes v3 API.
 package main
 
 import (

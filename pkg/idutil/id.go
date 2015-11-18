@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package idutil implements utility functions for generating unique,
+// randomized ids.
 package idutil
 
 import (

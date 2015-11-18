@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// etcdctl is a command line application that controls etcd.
 package main
 
 import (

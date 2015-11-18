@@ -12,17 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package timeutil providese time-related utility functions.
-package timeutil
-
-import "time"
-
-// UnixNanoToTime returns the local time corresponding to the given Unix time in nanoseconds.
-// If the given Unix time is zero, an uninitialized zero time is returned.
-func UnixNanoToTime(ns int64) time.Time {
-	var t time.Time
-	if ns != 0 {
-		t = time.Unix(0, ns)
-	}
-	return t
-}
+// Package etcdserver defines how etcd servers interact and store their states.
+package etcdserver
