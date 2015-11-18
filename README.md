@@ -4,26 +4,30 @@
 [![Build Status](https://semaphoreci.com/api/v1/projects/406f9909-2f4f-4839-b59e-95082cb088f1/575109/badge.svg)](https://semaphoreci.com/coreos/etcd)
 [![Docker Repository on Quay.io](https://quay.io/repository/coreos/etcd-git/status "Docker Repository on Quay.io")](https://quay.io/repository/coreos/etcd-git)
 
-**Note**: `master` branch may be in *unstable or even broken state* during development. Please use [releases][github-release] instead of `master` branch to get stable binaries.
+**Note**: The `master` branch may be in an *unstable or even broken state* during development. Please use [releases][github-release] instead of the `master` branch in order to get stable binaries.
 
 ![etcd Logo](logos/etcd-horizontal-color.png)
 
 etcd is a distributed, consistent key-value store for shared configuration and service discovery, with a focus on being:
 
-* *Simple*: curl'able user facing API (HTTP+JSON)
+* *Simple*: curl'able user-facing API (HTTP+JSON)
 * *Secure*: optional SSL client cert authentication
 * *Fast*: benchmarked 1000s of writes/s per instance
 * *Reliable*: properly distributed using Raft
 
 etcd is written in Go and uses the [Raft][raft] consensus algorithm to manage a highly-available replicated log.
 
+etcd is used in production by many companies, and the development team stands behind it in critical deployment scenarios, where etcd is frequently teamed with applications such as [Kubernetes][k8s], [fleet][fleet], [locksmith][locksmith], [vulcand][vulcand], and many others.
+
 See [etcdctl][etcdctl] for a simple command line client.
-Or feel free to just use curl, as in the examples below.
+Or feel free to just use `curl`, as in the examples below.
 
 [raft]: http://raftconsensus.github.io/
+[k8s]: http://kubernetes.io/
+[fleet]: https://github.com/coreos/fleet
+[locksmith]: https://github.com/coreos/locksmith
+[vulcand]: https://github.com/vulcand/vulcand
 [etcdctl]: https://github.com/coreos/etcd/tree/master/etcdctl
-
-If you're considering etcd for production use, please see: [production-ready.md](./Documentation/production-ready.md)
 
 ## Getting Started
 
