@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package wait provides utility functions for polling, listening using Go
+// channel.
 package wait
 
 import (
