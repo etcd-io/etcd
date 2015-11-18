@@ -42,10 +42,9 @@ func (g *remote) send(m raftpb.Message) {
 	case g.pipeline.msgc <- m:
 	default:
 		if g.status.isActive() {
-			plog.MergeWarningf("dropped %s to %s since sending buffer is full", m.Type, g.id)
-		} else {
-			plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
+			plog.MergeWarningf("dropped internal raft message to %s since sending buffer is full (bad/overloaded network)", g.id)
 		}
+		plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
 	}
 }
 
