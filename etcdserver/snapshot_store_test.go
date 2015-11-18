@@ -32,7 +32,7 @@ func TestSnapshotStoreCreateSnap(t *testing.T) {
 	snap := raftpb.Snapshot{
 		Metadata: raftpb.SnapshotMetadata{Index: 1},
 	}
-	ss := newSnapshotStore("", &nopKV{})
+	ss := newSnapshotStore(&nopKV{})
 	fakeClock := clockwork.NewFakeClock()
 	ss.clock = fakeClock
 	go func() {
@@ -61,7 +61,7 @@ func TestSnapshotStoreGetSnap(t *testing.T) {
 	snap := raftpb.Snapshot{
 		Metadata: raftpb.SnapshotMetadata{Index: 1},
 	}
-	ss := newSnapshotStore("", &nopKV{})
+	ss := newSnapshotStore(&nopKV{})
 	fakeClock := clockwork.NewFakeClock()
 	ss.clock = fakeClock
 	ss.tr = &nopTransporter{}

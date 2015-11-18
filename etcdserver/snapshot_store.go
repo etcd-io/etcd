@@ -15,16 +15,11 @@
 package etcdserver
 
 import (
-	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
-	"path"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
-	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
@@ -74,13 +69,10 @@ func (s *snapshot) isClosed() bool {
 	}
 }
 
-// TODO: remove snapshotStore. getSnap part could be put into memoryStorage,
-// while SaveFrom could be put into another struct, or even put into dstorage package.
+// TODO: remove snapshotStore. getSnap part could be put into memoryStorage.
 type snapshotStore struct {
-	// dir to save snapshot data
-	dir string
-	kv  dstorage.KV
-	tr  rafthttp.Transporter
+	kv dstorage.KV
+	tr rafthttp.Transporter
 
 	// send empty to reqsnapc to notify the channel receiver to send back latest
 	// snapshot to snapc
@@ -98,9 +90,8 @@ type snapshotStore struct {
 	clock clockwork.Clock
 }
 
-func newSnapshotStore(dir string, kv dstorage.KV) *snapshotStore {
+func newSnapshotStore(kv dstorage.KV) *snapshotStore {
 	return &snapshotStore{
-		dir:       dir,
 		kv:        kv,
 		reqsnapc:  make(chan struct{}),
 		raftsnapc: make(chan raftpb.Snapshot),
@@ -211,50 +202,4 @@ func (ss *snapshotStore) clear() {
 	ss.snap = nil
 	ss.inUse = false
 	ss.createOnce = sync.Once{}
-}
-
-// SaveFrom saves snapshot at the given index from the given reader.
-// If the snapshot with the given index has been saved successfully, it keeps
-// the original saved snapshot and returns error.
-// The function guarantees that SaveFrom always saves either complete
-// snapshot or no snapshot, even if the call is aborted because program
-// is hard killed.
-func (ss *snapshotStore) SaveFrom(r io.Reader, index uint64) error {
-	f, err := ioutil.TempFile(ss.dir, "tmp")
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(f, r)
-	f.Close()
-	if err != nil {
-		os.Remove(f.Name())
-		return err
-	}
-	fn := path.Join(ss.dir, fmt.Sprintf("%016x.db", index))
-	if fileutil.Exist(fn) {
-		os.Remove(f.Name())
-		return fmt.Errorf("snapshot to save has existed")
-	}
-	err = os.Rename(f.Name(), fn)
-	if err != nil {
-		os.Remove(f.Name())
-		return err
-	}
-	return nil
-}
-
-// getSnapFilePath returns the file path for the snapshot with given index.
-// If the snapshot does not exist, it returns error.
-func (ss *snapshotStore) getSnapFilePath(index uint64) (string, error) {
-	fns, err := fileutil.ReadDir(ss.dir)
-	if err != nil {
-		return "", err
-	}
-	wfn := fmt.Sprintf("%016x.db", index)
-	for _, fn := range fns {
-		if fn == wfn {
-			return path.Join(ss.dir, fn), nil
-		}
-	}
-	return "", fmt.Errorf("snapshot file doesn't exist")
 }

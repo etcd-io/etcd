@@ -46,7 +46,6 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/snap"
-	dstorage "github.com/coreos/etcd/storage"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
@@ -63,8 +62,6 @@ const (
 
 	purgeFileInterval      = 30 * time.Second
 	monitorVersionInterval = 5 * time.Second
-
-	databaseFilename = "db"
 )
 
 var (
@@ -160,7 +157,7 @@ type EtcdServer struct {
 	cluster *cluster
 
 	store store.Store
-	kv    dstorage.ConsistentWatchableKV
+	kv    *kv
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -189,7 +186,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	var id types.ID
 	var cl *cluster
 
-	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.StorageDir(), databaseFilename)) {
+	if !cfg.V3demo && fileutil.Exist(cfg.StorageDir()) {
 		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
 	}
 
@@ -347,11 +344,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err != nil && err != os.ErrExist {
 			return nil, err
 		}
-		srv.kv = dstorage.New(path.Join(cfg.StorageDir(), databaseFilename), &srv.consistIndex)
-		if err := srv.kv.Restore(); err != nil {
-			plog.Fatalf("v3 storage restore error: %v", err)
+		srv.kv, err = newKV(cfg.StorageDir(), &srv.consistIndex)
+		if err != nil {
+			return nil, err
 		}
-		s.snapStore = newSnapshotStore(cfg.StorageDir(), srv.kv)
+		s.snapStore = newSnapshotStore(srv.kv)
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -361,7 +358,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		ID:          id,
 		ClusterID:   cl.ID(),
 		Raft:        srv,
-		SnapSaver:   s.snapStore,
+		SnapSaver:   srv.kv,
 		ServerStats: sstats,
 		LeaderStats: lstats,
 		ErrorC:      srv.errorc,
@@ -496,20 +493,8 @@ func (s *EtcdServer) run() {
 				}
 
 				if s.cfg.V3demo {
-					if err := s.kv.Close(); err != nil {
-						plog.Panicf("close KV error: %v", err)
-					}
-					snapfn, err := s.r.raftStorage.snapStore.getSnapFilePath(apply.snapshot.Metadata.Index)
-					if err != nil {
-						plog.Panicf("get snapshot file path error: %v", err)
-					}
-					fn := path.Join(s.cfg.StorageDir(), databaseFilename)
-					if err := os.Rename(snapfn, fn); err != nil {
-						plog.Panicf("rename snapshot file error: %v", err)
-					}
-					s.kv = dstorage.New(fn, &s.consistIndex)
-					if err := s.kv.Restore(); err != nil {
-						plog.Panicf("restore KV error: %v", err)
+					if err := s.kv.restore(apply.snapshot.Metadata.Index); err != nil {
+						plog.Panicf("restore storage error: %v", err)
 					}
 				}
 				if err := s.store.Recovery(apply.snapshot.Data); err != nil {
