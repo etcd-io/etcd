@@ -10,7 +10,7 @@ Three related components of etcd watch consume physical memory: each `grpc.Conn`
 Each watch stream is an independent HTTP2 connection which consumes another O(10kb) of memory. 
 Multiple watchings might share one watch stream. 
 
-Watching is the actual struct that tracks the changes on the key-value store. Each watching shold only consume < O(1kb).
+Watching is the actual struct that tracks the changes on the key-value store. Each watching should only consume < O(1kb).
 
 ```
                                           +-------+
