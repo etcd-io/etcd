@@ -37,7 +37,7 @@ func (a revision) GreaterThan(b revision) bool {
 }
 
 func newRevBytes() []byte {
-	return make([]byte, revBytesLen)
+	return make([]byte, revBytesLen, markedRevBytesLen)
 }
 
 func revToBytes(rev revision, bytes []byte) {
