@@ -46,22 +46,21 @@ func TestStorePut(t *testing.T) {
 		r   indexGetResp
 
 		wrev    revision
-		wev     storagepb.Event
+		wkey    []byte
+		wkv     storagepb.KeyValue
 		wputrev revision
 	}{
 		{
 			revision{1, 0},
 			indexGetResp{revision{}, revision{}, 0, ErrRevisionNotFound},
 			revision{1, 1},
-			storagepb.Event{
-				Type: storagepb.PUT,
-				Kv: &storagepb.KeyValue{
-					Key:            []byte("foo"),
-					Value:          []byte("bar"),
-					CreateRevision: 2,
-					ModRevision:    2,
-					Version:        1,
-				},
+			newTestKeyBytes(revision{2, 0}, false),
+			storagepb.KeyValue{
+				Key:            []byte("foo"),
+				Value:          []byte("bar"),
+				CreateRevision: 2,
+				ModRevision:    2,
+				Version:        1,
 			},
 			revision{2, 0},
 		},
@@ -69,15 +68,13 @@ func TestStorePut(t *testing.T) {
 			revision{1, 1},
 			indexGetResp{revision{2, 0}, revision{2, 0}, 1, nil},
 			revision{1, 2},
-			storagepb.Event{
-				Type: storagepb.PUT,
-				Kv: &storagepb.KeyValue{
-					Key:            []byte("foo"),
-					Value:          []byte("bar"),
-					CreateRevision: 2,
-					ModRevision:    2,
-					Version:        2,
-				},
+			newTestKeyBytes(revision{2, 1}, false),
+			storagepb.KeyValue{
+				Key:            []byte("foo"),
+				Value:          []byte("bar"),
+				CreateRevision: 2,
+				ModRevision:    2,
+				Version:        2,
 			},
 			revision{2, 1},
 		},
@@ -85,15 +82,13 @@ func TestStorePut(t *testing.T) {
 			revision{2, 0},
 			indexGetResp{revision{2, 1}, revision{2, 0}, 2, nil},
 			revision{2, 1},
-			storagepb.Event{
-				Type: storagepb.PUT,
-				Kv: &storagepb.KeyValue{
-					Key:            []byte("foo"),
-					Value:          []byte("bar"),
-					CreateRevision: 2,
-					ModRevision:    3,
-					Version:        3,
-				},
+			newTestKeyBytes(revision{3, 0}, false),
+			storagepb.KeyValue{
+				Key:            []byte("foo"),
+				Value:          []byte("bar"),
+				CreateRevision: 2,
+				ModRevision:    3,
+				Version:        3,
 			},
 			revision{3, 0},
 		},
@@ -106,12 +101,12 @@ func TestStorePut(t *testing.T) {
 
 		s.put([]byte("foo"), []byte("bar"))
 
-		data, err := tt.wev.Marshal()
+		data, err := tt.wkv.Marshal()
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
 		wact := []testutil.Action{
-			{"put", []interface{}{keyBucketName, newTestBytes(tt.wputrev), data}},
+			{"put", []interface{}{keyBucketName, tt.wkey, data}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
@@ -130,17 +125,15 @@ func TestStorePut(t *testing.T) {
 }
 
 func TestStoreRange(t *testing.T) {
-	ev := storagepb.Event{
-		Type: storagepb.PUT,
-		Kv: &storagepb.KeyValue{
-			Key:            []byte("foo"),
-			Value:          []byte("bar"),
-			CreateRevision: 1,
-			ModRevision:    2,
-			Version:        1,
-		},
+	key := newTestKeyBytes(revision{2, 0}, false)
+	kv := storagepb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 1,
+		ModRevision:    2,
+		Version:        1,
 	}
-	evb, err := ev.Marshal()
+	kvb, err := kv.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,11 +146,11 @@ func TestStoreRange(t *testing.T) {
 	}{
 		{
 			indexRangeResp{[][]byte{[]byte("foo")}, []revision{{2, 0}}},
-			rangeResp{[][]byte{newTestBytes(revision{2, 0})}, [][]byte{evb}},
+			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 		{
 			indexRangeResp{[][]byte{[]byte("foo"), []byte("foo1")}, []revision{{2, 0}, {3, 0}}},
-			rangeResp{[][]byte{newTestBytes(revision{2, 0})}, [][]byte{evb}},
+			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 	}
 	for i, tt := range tests {
@@ -171,15 +164,16 @@ func TestStoreRange(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
-		if w := []storagepb.KeyValue{*ev.Kv}; !reflect.DeepEqual(kvs, w) {
+		if w := []storagepb.KeyValue{kv}; !reflect.DeepEqual(kvs, w) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, w)
 		}
 		if rev != wrev {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, wrev)
 		}
 
+		wstart, wend := revBytesRange(tt.idxr.revs[0])
 		wact := []testutil.Action{
-			{"range", []interface{}{keyBucketName, newTestBytes(tt.idxr.revs[0]), []byte(nil), int64(0)}},
+			{"range", []interface{}{keyBucketName, wstart, wend, int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
@@ -201,6 +195,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		rev revision
 		r   indexRangeResp
 
+		wkey    []byte
 		wrev    revision
 		wrrev   int64
 		wdelrev revision
@@ -208,6 +203,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		{
 			revision{2, 0},
 			indexRangeResp{[][]byte{[]byte("foo")}, []revision{{2, 0}}},
+			newTestKeyBytes(revision{3, 0}, true),
 			revision{2, 1},
 			2,
 			revision{3, 0},
@@ -215,6 +211,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		{
 			revision{2, 1},
 			indexRangeResp{[][]byte{[]byte("foo")}, []revision{{2, 0}}},
+			newTestKeyBytes(revision{3, 1}, true),
 			revision{2, 2},
 			3,
 			revision{3, 1},
@@ -231,17 +228,14 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: n = %d, want 1", i, n)
 		}
 
-		data, err := (&storagepb.Event{
-			Type: storagepb.DELETE,
-			Kv: &storagepb.KeyValue{
-				Key: []byte("foo"),
-			},
+		data, err := (&storagepb.KeyValue{
+			Key: []byte("foo"),
 		}).Marshal()
 		if err != nil {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
 		wact := []testutil.Action{
-			{"put", []interface{}{keyBucketName, newTestBytes(tt.wdelrev), data}},
+			{"put", []interface{}{keyBucketName, tt.wkey, data}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
@@ -259,18 +253,16 @@ func TestStoreDeleteRange(t *testing.T) {
 	}
 }
 
-func TestStoreRangeEvents(t *testing.T) {
-	ev := storagepb.Event{
-		Type: storagepb.PUT,
-		Kv: &storagepb.KeyValue{
-			Key:            []byte("foo"),
-			Value:          []byte("bar"),
-			CreateRevision: 1,
-			ModRevision:    2,
-			Version:        1,
-		},
+func TestStoreRangeHistory(t *testing.T) {
+	key := newTestKeyBytes(revision{2, 0}, false)
+	kv := storagepb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 1,
+		ModRevision:    2,
+		Version:        1,
 	}
-	evb, err := ev.Marshal()
+	kvb, err := kv.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,11 +274,11 @@ func TestStoreRangeEvents(t *testing.T) {
 	}{
 		{
 			indexRangeEventsResp{[]revision{{2, 0}}},
-			rangeResp{[][]byte{newTestBytes(revision{2, 0})}, [][]byte{evb}},
+			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 		{
 			indexRangeEventsResp{[]revision{{2, 0}, {3, 0}}},
-			rangeResp{[][]byte{newTestBytes(revision{2, 0})}, [][]byte{evb}},
+			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 	}
 	for i, tt := range tests {
@@ -295,12 +287,15 @@ func TestStoreRangeEvents(t *testing.T) {
 		index.indexRangeEventsRespc <- tt.idxr
 		b.tx.rangeRespc <- tt.r
 
-		evs, _, err := s.RangeEvents([]byte("foo"), []byte("goo"), 1, 1)
+		keys, kvs, _, err := s.RangeHistory([]byte("foo"), []byte("goo"), 1, 1)
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
-		if w := []storagepb.Event{ev}; !reflect.DeepEqual(evs, w) {
-			t.Errorf("#%d: evs = %+v, want %+v", i, evs, w)
+		if w := [][]byte{key}; !reflect.DeepEqual(keys, w) {
+			t.Errorf("#%d: keys = %+v, want %+v", i, keys, w)
+		}
+		if w := []storagepb.KeyValue{kv}; !reflect.DeepEqual(kvs, w) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, w)
 		}
 
 		wact := []testutil.Action{
@@ -309,8 +304,9 @@ func TestStoreRangeEvents(t *testing.T) {
 		if g := index.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
 		}
+		wstart, wend := revBytesRange(tt.idxr.revs[0])
 		wact = []testutil.Action{
-			{"range", []interface{}{keyBucketName, newTestBytes(tt.idxr.revs[0]), []byte(nil), int64(0)}},
+			{"range", []interface{}{keyBucketName, wstart, wend, int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
@@ -325,7 +321,9 @@ func TestStoreCompact(t *testing.T) {
 	s, b, index := newFakeStore()
 	s.currentRev = revision{3, 0}
 	index.indexCompactRespc <- map[revision]struct{}{revision{1, 0}: {}}
-	b.tx.rangeRespc <- rangeResp{[][]byte{newTestBytes(revision{1, 0}), newTestBytes(revision{2, 0})}, nil}
+	key1 := newTestKeyBytes(revision{1, 0}, false)
+	key2 := newTestKeyBytes(revision{2, 0}, false)
+	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
 
 	s.Compact(3)
 	s.wg.Wait()
@@ -336,10 +334,10 @@ func TestStoreCompact(t *testing.T) {
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(4))
 	wact := []testutil.Action{
-		{"put", []interface{}{metaBucketName, scheduledCompactKeyName, newTestBytes(revision{3, 0})}},
+		{"put", []interface{}{metaBucketName, scheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
 		{"range", []interface{}{keyBucketName, make([]byte, 17), end, int64(10000)}},
-		{"delete", []interface{}{keyBucketName, newTestBytes(revision{2, 0})}},
-		{"put", []interface{}{metaBucketName, finishedCompactKeyName, newTestBytes(revision{3, 0})}},
+		{"delete", []interface{}{keyBucketName, key2}},
+		{"put", []interface{}{metaBucketName, finishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
@@ -355,33 +353,29 @@ func TestStoreCompact(t *testing.T) {
 func TestStoreRestore(t *testing.T) {
 	s, b, index := newFakeStore()
 
-	putev := storagepb.Event{
-		Type: storagepb.PUT,
-		Kv: &storagepb.KeyValue{
-			Key:            []byte("foo"),
-			Value:          []byte("bar"),
-			CreateRevision: 3,
-			ModRevision:    3,
-			Version:        1,
-		},
+	putkey := newTestKeyBytes(revision{3, 0}, false)
+	putkv := storagepb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 3,
+		ModRevision:    3,
+		Version:        1,
 	}
-	putevb, err := putev.Marshal()
+	putkvb, err := putkv.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	delev := storagepb.Event{
-		Type: storagepb.DELETE,
-		Kv: &storagepb.KeyValue{
-			Key: []byte("foo"),
-		},
+	delkey := newTestKeyBytes(revision{4, 0}, true)
+	delkv := storagepb.KeyValue{
+		Key: []byte("foo"),
 	}
-	delevb, err := delev.Marshal()
+	delkvb, err := delkv.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	b.tx.rangeRespc <- rangeResp{[][]byte{finishedCompactKeyName}, [][]byte{newTestBytes(revision{2, 0})}}
-	b.tx.rangeRespc <- rangeResp{[][]byte{newTestBytes(revision{3, 0}), newTestBytes(revision{4, 0})}, [][]byte{putevb, delevb}}
-	b.tx.rangeRespc <- rangeResp{[][]byte{scheduledCompactKeyName}, [][]byte{newTestBytes(revision{2, 0})}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{finishedCompactKeyName}, [][]byte{newTestRevBytes(revision{2, 0})}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{putkey, delkey}, [][]byte{putkvb, delkvb}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{scheduledCompactKeyName}, [][]byte{newTestRevBytes(revision{2, 0})}}
 
 	s.Restore()
 
@@ -394,7 +388,7 @@ func TestStoreRestore(t *testing.T) {
 	}
 	wact := []testutil.Action{
 		{"range", []interface{}{metaBucketName, finishedCompactKeyName, []byte(nil), int64(0)}},
-		{"range", []interface{}{keyBucketName, newTestBytes(revision{}), newTestBytes(revision{math.MaxInt64, math.MaxInt64}), int64(0)}},
+		{"range", []interface{}{keyBucketName, newTestRevBytes(revision{}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(0)}},
 		{"range", []interface{}{metaBucketName, scheduledCompactKeyName, []byte(nil), int64(0)}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
@@ -410,79 +404,79 @@ func TestStoreRestore(t *testing.T) {
 }
 
 // tests end parameter works well
-func TestStoreRangeEventsEnd(t *testing.T) {
+func TestStoreRangeHistoryEnd(t *testing.T) {
 	s := newStore(tmpPath)
 	defer cleanup(s, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"))
 	s.Put([]byte("foo1"), []byte("bar1"))
 	s.Put([]byte("foo2"), []byte("bar2"))
-	evs := []storagepb.Event{
-		{
-			Type: storagepb.PUT,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
-		},
-		{
-			Type: storagepb.PUT,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
-		},
-		{
-			Type: storagepb.PUT,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
-		},
+	keys := [][]byte{
+		newTestKeyBytes(revision{1, 0}, false),
+		newTestKeyBytes(revision{2, 0}, false),
+		newTestKeyBytes(revision{3, 0}, false),
+	}
+	kvs := []storagepb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	tests := []struct {
 		key, end []byte
-		wevs     []storagepb.Event
+		wkeys    [][]byte
+		wkvs     []storagepb.KeyValue
 	}{
 		// get no keys
 		{
 			[]byte("doo"), []byte("foo"),
-			nil,
+			nil, nil,
 		},
 		// get no keys when key == end
 		{
 			[]byte("foo"), []byte("foo"),
-			nil,
+			nil, nil,
 		},
 		// get no keys when ranging single key
 		{
 			[]byte("doo"), nil,
-			nil,
+			nil, nil,
 		},
 		// get all keys
 		{
 			[]byte("foo"), []byte("foo3"),
-			evs,
+			keys, kvs,
 		},
 		// get partial keys
 		{
 			[]byte("foo"), []byte("foo1"),
-			evs[:1],
+			keys[:1], kvs[:1],
 		},
 		// get single key
 		{
 			[]byte("foo"), nil,
-			evs[:1],
+			keys[:1], kvs[:1],
 		},
 	}
 
 	for i, tt := range tests {
-		evs, rev, err := s.RangeEvents(tt.key, tt.end, 0, 1)
+		keys, kvs, rev, err := s.RangeHistory(tt.key, tt.end, 0, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if rev != 4 {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, 4)
 		}
-		if !reflect.DeepEqual(evs, tt.wevs) {
-			t.Errorf("#%d: evs = %+v, want %+v", i, evs, tt.wevs)
+		if !reflect.DeepEqual(keys, tt.wkeys) {
+			t.Errorf("#%d: actions = %+v, want %+v", i, keys, tt.wkeys)
+		}
+		if !reflect.DeepEqual(kvs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
 		}
 	}
 }
 
-func TestStoreRangeEventsRev(t *testing.T) {
+func TestStoreRangeHistoryRev(t *testing.T) {
 	s := newStore(tmpPath)
 	defer cleanup(s, tmpPath)
 
@@ -490,39 +484,39 @@ func TestStoreRangeEventsRev(t *testing.T) {
 	s.DeleteRange([]byte("foo"), nil)
 	s.Put([]byte("foo"), []byte("bar"))
 	s.Put([]byte("unrelated"), []byte("unrelated"))
-	evs := []storagepb.Event{
-		{
-			Type: storagepb.PUT,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
-		},
-		{
-			Type: storagepb.DELETE,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo")},
-		},
-		{
-			Type: storagepb.PUT,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 3, ModRevision: 3, Version: 1},
-		},
+	keys := [][]byte{
+		newTestKeyBytes(revision{1, 0}, false),
+		newTestKeyBytes(revision{2, 0}, true),
+		newTestKeyBytes(revision{3, 0}, false),
+	}
+	kvs := []storagepb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo")},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	tests := []struct {
 		start int64
 
-		wevs  []storagepb.Event
+		wkeys [][]byte
+		wkvs  []storagepb.KeyValue
 		wnext int64
 	}{
-		{0, evs, 5},
-		{1, evs, 5},
-		{3, evs[2:], 5},
+		{0, keys, kvs, 5},
+		{1, keys, kvs, 5},
+		{3, keys[2:], kvs[2:], 5},
 	}
 
 	for i, tt := range tests {
-		evs, next, err := s.RangeEvents([]byte("foo"), nil, 0, tt.start)
+		keys, kvs, next, err := s.RangeHistory([]byte("foo"), nil, 0, tt.start)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(evs, tt.wevs) {
-			t.Errorf("#%d: evs = %+v, want %+v", i, evs, tt.wevs)
+		if !reflect.DeepEqual(keys, tt.wkeys) {
+			t.Errorf("#%d: acts = %+v, want %+v", i, keys, tt.wkeys)
+		}
+		if !reflect.DeepEqual(kvs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
 		}
 		if next != tt.wnext {
 			t.Errorf("#%d: next = %d, want %d", i, next, tt.wnext)
@@ -530,7 +524,7 @@ func TestStoreRangeEventsRev(t *testing.T) {
 	}
 }
 
-func TestStoreRangeEventsBad(t *testing.T) {
+func TestStoreRangeHistoryBad(t *testing.T) {
 	s := newStore(tmpPath)
 	defer cleanup(s, tmpPath)
 
@@ -552,55 +546,55 @@ func TestStoreRangeEventsBad(t *testing.T) {
 		{10, ErrFutureRev},
 	}
 	for i, tt := range tests {
-		_, _, err := s.RangeEvents([]byte("foo"), nil, 0, tt.rev)
+		_, _, _, err := s.RangeHistory([]byte("foo"), nil, 0, tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: error = %v, want %v", i, err, tt.werr)
 		}
 	}
 }
 
-func TestStoreRangeEventsLimit(t *testing.T) {
+func TestStoreRangeHistoryLimit(t *testing.T) {
 	s := newStore(tmpPath)
 	defer cleanup(s, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"))
 	s.DeleteRange([]byte("foo"), nil)
 	s.Put([]byte("foo"), []byte("bar"))
-	evs := []storagepb.Event{
-		{
-			Type: storagepb.PUT,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
-		},
-		{
-			Type: storagepb.DELETE,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo")},
-		},
-		{
-			Type: storagepb.PUT,
-			Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 3, ModRevision: 3, Version: 1},
-		},
+	keys := [][]byte{
+		newTestKeyBytes(revision{1, 0}, false),
+		newTestKeyBytes(revision{2, 0}, true),
+		newTestKeyBytes(revision{3, 0}, false),
+	}
+	kvs := []storagepb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+		{Key: []byte("foo")},
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 3, ModRevision: 3, Version: 1},
 	}
 
 	tests := []struct {
 		limit int64
-		wevs  []storagepb.Event
+		wkeys [][]byte
+		wkvs  []storagepb.KeyValue
 	}{
 		// no limit
-		{-1, evs},
+		{-1, keys, kvs},
 		// no limit
-		{0, evs},
-		{1, evs[:1]},
-		{2, evs[:2]},
-		{3, evs},
-		{100, evs},
+		{0, keys, kvs},
+		{1, keys[:1], kvs[:1]},
+		{2, keys[:2], kvs[:2]},
+		{3, keys, kvs},
+		{100, keys, kvs},
 	}
 	for i, tt := range tests {
-		evs, _, err := s.RangeEvents([]byte("foo"), nil, tt.limit, 1)
+		keys, kvs, _, err := s.RangeHistory([]byte("foo"), nil, tt.limit, 1)
 		if err != nil {
 			t.Fatalf("#%d: range error (%v)", i, err)
 		}
-		if !reflect.DeepEqual(evs, tt.wevs) {
-			t.Errorf("#%d: evs = %+v, want %+v", i, evs, tt.wevs)
+		if !reflect.DeepEqual(keys, tt.wkeys) {
+			t.Errorf("#%d: acts = %+v, want %+v", i, keys, tt.wkeys)
+		}
+		if !reflect.DeepEqual(kvs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
 		}
 	}
 }
@@ -688,9 +682,18 @@ func BenchmarkStorePut(b *testing.B) {
 	}
 }
 
-func newTestBytes(rev revision) []byte {
+func newTestRevBytes(rev revision) []byte {
 	bytes := newRevBytes()
 	revToBytes(rev, bytes)
+	return bytes
+}
+
+func newTestKeyBytes(rev revision, tombstone bool) []byte {
+	bytes := newRevBytes()
+	revToBytes(rev, bytes)
+	if tombstone {
+		bytes = appendMarkTombstone(bytes)
+	}
 	return bytes
 }
 
@@ -792,7 +795,7 @@ func (i *fakeIndex) Tombstone(key []byte, rev revision) error {
 	i.Recorder.Record(testutil.Action{Name: "tombstone", Params: []interface{}{key, rev}})
 	return nil
 }
-func (i *fakeIndex) RangeEvents(key, end []byte, rev int64) []revision {
+func (i *fakeIndex) RangeSince(key, end []byte, rev int64) []revision {
 	i.Recorder.Record(testutil.Action{Name: "rangeEvents", Params: []interface{}{key, end, rev}})
 	r := <-i.indexRangeEventsRespc
 	return r.revs

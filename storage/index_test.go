@@ -136,7 +136,7 @@ func TestIndexTombstone(t *testing.T) {
 	}
 }
 
-func TestIndexRangeEvents(t *testing.T) {
+func TestIndexRangeSince(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
 	allRevs := []revision{{main: 1}, {main: 2}, {main: 3}, {main: 4}, {main: 5}, {main: 6}}
 
@@ -184,7 +184,7 @@ func TestIndexRangeEvents(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		revs := index.RangeEvents(tt.key, tt.end, atRev)
+		revs := index.RangeSince(tt.key, tt.end, atRev)
 		if !reflect.DeepEqual(revs, tt.wrevs) {
 			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
 		}
