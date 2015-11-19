@@ -15,7 +15,6 @@
 package storage
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -45,7 +44,6 @@ type watchableStore struct {
 	// contains all synced watching that are tracking the events that will happen
 	// The key of the map is the key that the watching is watching on.
 	synced map[string][]*watching
-	tx     *ongoingTx
 
 	stopc chan struct{}
 	wg    sync.WaitGroup
@@ -68,15 +66,7 @@ func (s *watchableStore) Put(key, value []byte) (rev int64) {
 	defer s.mu.Unlock()
 
 	rev = s.store.Put(key, value)
-	// TODO: avoid this range
-	kvs, _, err := s.store.Range(key, nil, 0, rev)
-	if err != nil {
-		log.Panicf("unexpected range error (%v)", err)
-	}
-	s.handle(rev, storagepb.Event{
-		Type: storagepb.PUT,
-		Kv:   &kvs[0],
-	})
+	s.handle(rev, s.store.LatestTxnEvents())
 	return rev
 }
 
@@ -84,49 +74,14 @@ func (s *watchableStore) DeleteRange(key, end []byte) (n, rev int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// TODO: avoid this range
-	kvs, _, err := s.store.Range(key, end, 0, 0)
-	if err != nil {
-		log.Panicf("unexpected range error (%v)", err)
-	}
 	n, rev = s.store.DeleteRange(key, end)
-	for _, kv := range kvs {
-		s.handle(rev, storagepb.Event{
-			Type: storagepb.DELETE,
-			Kv: &storagepb.KeyValue{
-				Key: kv.Key,
-			},
-		})
-	}
+	s.handle(rev, s.store.LatestTxnEvents())
 	return n, rev
 }
 
 func (s *watchableStore) TxnBegin() int64 {
 	s.mu.Lock()
-	s.tx = newOngoingTx()
 	return s.store.TxnBegin()
-}
-
-func (s *watchableStore) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
-	rev, err = s.store.TxnPut(txnID, key, value)
-	if err == nil {
-		s.tx.put(string(key))
-	}
-	return rev, err
-}
-
-func (s *watchableStore) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error) {
-	kvs, _, err := s.store.TxnRange(txnID, key, end, 0, 0)
-	if err != nil {
-		log.Panicf("unexpected range error (%v)", err)
-	}
-	n, rev, err = s.store.TxnDeleteRange(txnID, key, end)
-	if err == nil {
-		for _, kv := range kvs {
-			s.tx.del(string(kv.Key))
-		}
-	}
-	return n, rev, err
 }
 
 func (s *watchableStore) TxnEnd(txnID int64) error {
@@ -135,25 +90,7 @@ func (s *watchableStore) TxnEnd(txnID int64) error {
 		return err
 	}
 
-	_, rev, _ := s.store.Range(nil, nil, 0, 0)
-	for k := range s.tx.putm {
-		kvs, _, err := s.store.Range([]byte(k), nil, 0, 0)
-		if err != nil {
-			log.Panicf("unexpected range error (%v)", err)
-		}
-		s.handle(rev, storagepb.Event{
-			Type: storagepb.PUT,
-			Kv:   &kvs[0],
-		})
-	}
-	for k := range s.tx.delm {
-		s.handle(rev, storagepb.Event{
-			Type: storagepb.DELETE,
-			Kv: &storagepb.KeyValue{
-				Key: []byte(k),
-			},
-		})
-	}
+	s.handle(s.store.Rev(), s.store.LatestTxnEvents())
 	s.mu.Unlock()
 	return nil
 }
@@ -283,8 +220,20 @@ func (s *watchableStore) syncWatchings() {
 }
 
 // handle handles the change of the happening event on all watchings.
-func (s *watchableStore) handle(rev int64, ev storagepb.Event) {
-	s.notify(rev, ev)
+func (s *watchableStore) handle(rev int64, evs []storagepb.Event) {
+	for i, ev := range evs {
+		var modified bool // whether the key is modified in left events
+		for j := i + 1; j < len(evs); j++ {
+			if string(ev.Kv.Key) == string(evs[j].Kv.Key) {
+				modified = true
+			}
+		}
+		// notify the event only if the event key is not modified
+		// any more in this txn
+		if !modified {
+			s.notify(rev, ev)
+		}
+	}
 }
 
 // notify notifies the fact that given event at the given rev just happened to
@@ -311,33 +260,6 @@ func (s *watchableStore) notify(rev int64, ev storagepb.Event) {
 			}
 		}
 		s.synced[string(ev.Kv.Key[:i])] = nws
-	}
-}
-
-type ongoingTx struct {
-	// keys put/deleted in the ongoing txn
-	putm map[string]struct{}
-	delm map[string]struct{}
-}
-
-func newOngoingTx() *ongoingTx {
-	return &ongoingTx{
-		putm: make(map[string]struct{}),
-		delm: make(map[string]struct{}),
-	}
-}
-
-func (tx *ongoingTx) put(k string) {
-	tx.putm[k] = struct{}{}
-	if _, ok := tx.delm[k]; ok {
-		delete(tx.delm, k)
-	}
-}
-
-func (tx *ongoingTx) del(k string) {
-	tx.delm[k] = struct{}{}
-	if _, ok := tx.putm[k]; ok {
-		delete(tx.putm, k)
 	}
 }
 

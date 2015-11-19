@@ -599,6 +599,97 @@ func TestStoreRangeHistoryLimit(t *testing.T) {
 	}
 }
 
+func TestStoreLastTxnEvents(t *testing.T) {
+	initOp := func(s *store) { s.Put([]byte("foo"), []byte("bar")) }
+	tests := []struct {
+		op   func(s *store)
+		wevs []storagepb.Event
+	}{
+		// put event
+		{
+			func(s *store) {
+				s.Put([]byte("foo2"), []byte("bar"))
+			},
+			[]storagepb.Event{
+				{
+					Type: storagepb.PUT,
+					Kv:   &storagepb.KeyValue{Key: []byte("foo2"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
+				},
+			},
+		},
+		// delete event
+		{
+			func(s *store) {
+				s.DeleteRange([]byte("foo"), nil)
+			},
+			[]storagepb.Event{
+				{
+					Type: storagepb.DELETE,
+					Kv:   &storagepb.KeyValue{Key: []byte("foo")},
+				},
+			},
+		},
+		// put event in txn
+		{
+			func(s *store) {
+				id := s.TxnBegin()
+				s.TxnPut(id, []byte("foo2"), []byte("bar"))
+				s.TxnEnd(id)
+			},
+			[]storagepb.Event{
+				{
+					Type: storagepb.PUT,
+					Kv:   &storagepb.KeyValue{Key: []byte("foo2"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
+				},
+			},
+		},
+		// delete event in txn
+		{
+			func(s *store) {
+				id := s.TxnBegin()
+				s.TxnDeleteRange(id, []byte("foo"), nil)
+				s.TxnEnd(id)
+			},
+			[]storagepb.Event{
+				{
+					Type: storagepb.DELETE,
+					Kv:   &storagepb.KeyValue{Key: []byte("foo")},
+				},
+			},
+		},
+		// multiple events in txn
+		{
+			func(s *store) {
+				id := s.TxnBegin()
+				s.TxnPut(id, []byte("foo2"), []byte("bar"))
+				s.TxnDeleteRange(id, []byte("foo2"), nil)
+				s.TxnEnd(id)
+			},
+			[]storagepb.Event{
+				{
+					Type: storagepb.PUT,
+					Kv:   &storagepb.KeyValue{Key: []byte("foo2"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
+				},
+				{
+					Type: storagepb.DELETE,
+					Kv:   &storagepb.KeyValue{Key: []byte("foo2")},
+				},
+			},
+		},
+	}
+	for i, tt := range tests {
+		s := newStore(tmpPath)
+		initOp(s)
+
+		tt.op(s)
+		if evs := s.LatestTxnEvents(); !reflect.DeepEqual(evs, tt.wevs) {
+			t.Errorf("#%d: events = %+v, want %+v", i, evs, tt.wevs)
+		}
+
+		cleanup(s, tmpPath)
+	}
+}
+
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	s0 := newStore(tmpPath)
 	defer os.Remove(tmpPath)
