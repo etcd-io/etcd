@@ -34,6 +34,7 @@ func NewClusterHealthCommand() cli.Command {
 		Usage: "check the health of the etcd cluster",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "forever", Usage: "forever check the health every 10 second until CTRL+C"},
+			cli.BoolFlag{Name: "forever-healthy", Usage: "forever check until cluster is unhealthy"},
 		},
 		Action: handleClusterHealth,
 	}
@@ -41,7 +42,8 @@ func NewClusterHealthCommand() cli.Command {
 
 func handleClusterHealth(c *cli.Context) {
 	forever := c.Bool("forever")
-	if forever {
+	foreverealthy := c.Bool("forever-healthy")
+	if forever || foreverealthy {
 		sigch := make(chan os.Signal, 1)
 		signal.Notify(sigch, os.Interrupt)
 
@@ -119,11 +121,20 @@ func handleClusterHealth(c *cli.Context) {
 			fmt.Println("cluster is healthy")
 		} else {
 			fmt.Println("cluster is unhealthy")
+			if foreverealthy {
+				fmt.Println(time.Now().UTC().Format(time.RFC3339Nano))
+				break
+			}
+		}
+
+		if foreverealthy {
+			goto SLEEP
 		}
 
 		if !forever {
 			break
 		}
+	SLEEP:
 		fmt.Printf("\nnext check after 10 second...\n\n")
 		time.Sleep(10 * time.Second)
 	}
