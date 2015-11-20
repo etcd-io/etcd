@@ -407,6 +407,15 @@ func TestSetAction(t *testing.T) {
 			wantURL:  "http://example.com/foo?dir=true",
 			wantBody: "",
 		},
+		// DataOnFailure is set
+		{
+			act: setAction{
+				Key:             "foo",
+				NoDataOnSuccess: true,
+			},
+			wantURL:  "http://example.com/foo?noDataOnSuccess=true",
+			wantBody: "value=",
+		},
 	}
 
 	for i, tt := range tests {
