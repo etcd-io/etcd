@@ -122,8 +122,13 @@ func handleClusterHealth(c *cli.Context) {
 		}
 
 		if !forever {
-			break
+			if health {
+				os.Exit(ExitSuccess)
+			} else {
+				os.Exit(ExitClusterNotHealthy)
+			}
 		}
+
 		fmt.Printf("\nnext check after 10 second...\n\n")
 		time.Sleep(10 * time.Second)
 	}
