@@ -32,7 +32,7 @@ const (
 )
 
 type watchable interface {
-	watch(key []byte, prefix bool, startRev int64, ch chan<- storagepb.Event) (*watching, CancelFunc)
+	watch(key []byte, prefix bool, startRev, id int64, ch chan<- storagepb.Event) (*watching, CancelFunc)
 }
 
 type watchableStore struct {
@@ -173,7 +173,7 @@ func (s *watchableStore) NewWatcher() Watcher {
 	}
 }
 
-func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, ch chan<- storagepb.Event) (*watching, CancelFunc) {
+func (s *watchableStore) watch(key []byte, prefix bool, startRev, id int64, ch chan<- storagepb.Event) (*watching, CancelFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -181,6 +181,7 @@ func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, ch chan<
 		key:    key,
 		prefix: prefix,
 		cur:    startRev,
+		id:     id,
 		ch:     ch,
 	}
 
@@ -273,8 +274,9 @@ func (s *watchableStore) syncWatchings() {
 			}
 
 			w.ch <- storagepb.Event{
-				Type: evt,
-				Kv:   &kv,
+				Type:    evt,
+				Kv:      &kv,
+				WatchID: w.id,
 			}
 			pendingEventsGauge.Inc()
 		}
@@ -311,6 +313,7 @@ func (s *watchableStore) notify(rev int64, ev storagepb.Event) {
 				if !w.prefix && i != len(ev.Kv.Key) {
 					continue
 				}
+				ev.WatchID = w.id
 				select {
 				case w.ch <- ev:
 					pendingEventsGauge.Inc()
@@ -362,6 +365,7 @@ type watching struct {
 	// If cur is behind the current revision of the KV,
 	// watching is unsynced and needs to catch up.
 	cur int64
+	id  int64
 
 	// a chan to send out the watched events.
 	// The chan might be shared with other watchings.

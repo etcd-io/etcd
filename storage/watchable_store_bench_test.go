@@ -65,7 +65,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	cancels := make([]CancelFunc, watcherSize)
 	for i := 0; i < watcherSize; i++ {
 		// non-0 value to keep watchers in unsynced
-		cancel := w.Watch(testKey, true, 1)
+		_, cancel := w.Watch(testKey, true, 1)
 		cancels[i] = cancel
 	}
 
@@ -102,7 +102,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	cancels := make([]CancelFunc, watcherSize)
 	for i := 0; i < watcherSize; i++ {
 		// 0 for startRev to keep watchers in synced
-		cancel := w.Watch(testKey, true, 0)
+		_, cancel := w.Watch(testKey, true, 0)
 		cancels[i] = cancel
 	}
 
