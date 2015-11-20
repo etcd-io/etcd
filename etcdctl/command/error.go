@@ -27,6 +27,7 @@ const (
 	ExitBadConnection
 	ExitBadAuth
 	ExitServerError
+	ExitClusterNotHealthy
 )
 
 func handleError(code int, err error) {
