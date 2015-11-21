@@ -44,7 +44,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
-		synced: make(map[string][]*watching),
+		synced: make(map[string]map[*watching]struct{}),
 	}
 
 	defer func() {
@@ -78,6 +78,42 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 	// cancel N watchers
 	for _, idx := range ix[:benchSampleSize] {
+		cancels[idx]()
+	}
+}
+
+func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
+	s := newWatchableStore(tmpPath)
+	defer func() {
+		s.store.Close()
+		os.Remove(tmpPath)
+	}()
+
+	// Put a key so that we can spawn watchers on that key
+	testKey := []byte("foo")
+	testValue := []byte("bar")
+	s.Put(testKey, testValue)
+
+	w := s.NewWatcher()
+
+	// put 1 million watchers on the same key
+	const watcherSize = 1000000
+
+	cancels := make([]CancelFunc, watcherSize)
+	for i := 0; i < watcherSize; i++ {
+		// 0 for startRev to keep watchers in synced
+		cancel := w.Watch(testKey, true, 0)
+		cancels[i] = cancel
+	}
+
+	// randomly cancel watchers to make it not biased towards
+	// data structures with an order, such as slice.
+	ix := rand.Perm(watcherSize)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for _, idx := range ix {
 		cancels[idx]()
 	}
 }
