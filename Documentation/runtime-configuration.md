@@ -64,7 +64,20 @@ If you want to use the member API directly you can find the documentation [here]
 
 ### Update a Member
 
-If you would like to update a member IP address (peerURLs), first, we need to find the target member's ID. You can list all members with `etcdctl`:
+#### Update advertise client URLs
+
+If you would like to update the advertise client URLs of a member, you can simply restart
+that member with updated client urls flag (`--advertise-client-urls`) or environment variable
+(`ETCD_ADVERTISE_CLIENT_URLS`). The restarted member will self publish the updated URLs.
+A wrongly updated client URL will not affect the health of the etcd cluster.
+
+#### Update advertise peer URLs
+
+If you would like to update the advertise peer URLs of a member, you have to first update 
+it explicitly via member command and then restart the member. The additional action is required
+since updating peer URLs changes the cluster wide configuration and can affect the health of the etcd cluster. 
+
+To update the peer URLs, first, we need to find the target member's ID. You can list all members with `etcdctl`:
 
 ```sh
 $ etcdctl member list
