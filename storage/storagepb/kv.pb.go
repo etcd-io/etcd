@@ -68,7 +68,8 @@ type Event struct {
 	// a put event contains the current key-value
 	// a delete/expire event contains the previous
 	// key-value
-	Kv *KeyValue `protobuf:"bytes,2,opt,name=kv" json:"kv,omitempty"`
+	Kv      *KeyValue `protobuf:"bytes,2,opt,name=kv" json:"kv,omitempty"`
+	WatchID int64     `protobuf:"varint,3,opt,name=watchID,proto3" json:"watchID,omitempty"`
 }
 
 func (m *Event) Reset()         { *m = Event{} }
@@ -157,6 +158,11 @@ func (m *Event) MarshalTo(data []byte) (int, error) {
 		}
 		i += n1
 	}
+	if m.WatchID != 0 {
+		data[i] = 0x18
+		i++
+		i = encodeVarintKv(data, i, uint64(m.WatchID))
+	}
 	return i, nil
 }
 
@@ -223,6 +229,9 @@ func (m *Event) Size() (n int) {
 	if m.Kv != nil {
 		l = m.Kv.Size()
 		n += 1 + l + sovKv(uint64(l))
+	}
+	if m.WatchID != 0 {
+		n += 1 + sovKv(uint64(m.WatchID))
 	}
 	return n
 }
@@ -448,6 +457,22 @@ func (m *Event) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field WatchID", wireType)
+			}
+			m.WatchID = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.WatchID |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			var sizeOfWire int
 			for {

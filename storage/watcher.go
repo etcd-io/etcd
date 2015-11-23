@@ -26,7 +26,9 @@ type Watcher interface {
 	// The whole event history can be watched unless compacted.
 	// If `prefix` is true, watch observes all events whose key prefix could be the given `key`.
 	// If `startRev` <=0, watch observes events after currentRev.
-	Watch(key []byte, prefix bool, startRev int64) CancelFunc
+	// The returned `id` is the ID of this watching. It appears as WatchID
+	// in events that are sent to this watching.
+	Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc)
 
 	// Chan returns a chan. All watched events will be sent to the returned chan.
 	Chan() <-chan storagepb.Event
@@ -42,21 +44,27 @@ type watcher struct {
 	ch        chan storagepb.Event
 
 	mu      sync.Mutex // guards fields below it
+	nextID  int64      // nextID is the ID allocated for next new watching
 	closed  bool
 	cancels []CancelFunc
 }
 
 // TODO: return error if ws is closed?
-func (ws *watcher) Watch(key []byte, prefix bool, startRev int64) CancelFunc {
-	_, c := ws.watchable.watch(key, prefix, startRev, ws.ch)
+func (ws *watcher) Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc) {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 	if ws.closed {
-		return nil
+		return -1, nil
 	}
+
+	id = ws.nextID
+	ws.nextID++
+
+	_, c := ws.watchable.watch(key, prefix, startRev, id, ws.ch)
+
 	// TODO: cancelFunc needs to be removed from the cancels when it is called.
 	ws.cancels = append(ws.cancels, c)
-	return c
+	return id, c
 }
 
 func (ws *watcher) Chan() <-chan storagepb.Event {

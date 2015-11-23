@@ -735,7 +735,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	w := s.NewWatcher()
 
-	cancel := w.Watch([]byte("foo"), true, 0)
+	wid, cancel := w.Watch([]byte("foo"), true, 0)
 	defer cancel()
 
 	s.Put([]byte("foo"), []byte("bar"))
@@ -750,6 +750,7 @@ func TestWatchableKVWatch(t *testing.T) {
 				ModRevision:    1,
 				Version:        1,
 			},
+			WatchID: wid,
 		}
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
@@ -770,6 +771,7 @@ func TestWatchableKVWatch(t *testing.T) {
 				ModRevision:    2,
 				Version:        1,
 			},
+			WatchID: wid,
 		}
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
@@ -778,7 +780,10 @@ func TestWatchableKVWatch(t *testing.T) {
 		t.Fatalf("failed to watch the event")
 	}
 
-	cancel = w.Watch([]byte("foo1"), false, 1)
+	w.Close()
+
+	w = s.NewWatcher()
+	wid, cancel = w.Watch([]byte("foo1"), false, 1)
 	defer cancel()
 
 	select {
@@ -792,6 +797,7 @@ func TestWatchableKVWatch(t *testing.T) {
 				ModRevision:    2,
 				Version:        1,
 			},
+			WatchID: wid,
 		}
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
@@ -812,6 +818,7 @@ func TestWatchableKVWatch(t *testing.T) {
 				ModRevision:    3,
 				Version:        2,
 			},
+			WatchID: wid,
 		}
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)

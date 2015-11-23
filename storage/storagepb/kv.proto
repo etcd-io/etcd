@@ -32,5 +32,6 @@ message Event {
   // a delete/expire event contains the previous
   // key-value
   KeyValue kv = 2;
+  // watchID is the ID of watching this event is sent to.
+  int64 watchID = 3;
 }
-

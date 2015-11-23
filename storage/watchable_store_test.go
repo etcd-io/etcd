@@ -49,7 +49,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	s.Put(testKey, testValue)
 
 	w := s.NewWatcher()
-	cancel := w.Watch(testKey, true, 0)
+	_, cancel := w.Watch(testKey, true, 0)
 
 	cancel()
 
