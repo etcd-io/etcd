@@ -440,6 +440,14 @@ func mustAuthRequest(method, username, password string) *http.Request {
 	return req
 }
 
+func unauthedRequest(method string) *http.Request {
+	req, err := http.NewRequest(method, "path", strings.NewReader(""))
+	if err != nil {
+		panic("Cannot make request: " + err.Error())
+	}
+	return req
+}
+
 func TestPrefixAccess(t *testing.T) {
 	var table = []struct {
 		key                string
@@ -698,6 +706,69 @@ func TestPrefixAccess(t *testing.T) {
 		}
 		if tt.hasRecursiveAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, true) {
 			t.Errorf("#%d: hasRecursiveAccess doesn't match (expected %v)", i, tt.hasRoot)
+		}
+	}
+}
+
+func TestUserFromBasicAuth(t *testing.T) {
+	sec := &mockAuthStore{
+		users: map[string]*auth.User{
+			"user": {
+				User:     "user",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+		},
+		roles: map[string]*auth.Role{
+			"root": {
+				Role: "root",
+			},
+		},
+	}
+
+	var table = []struct {
+		username   string
+		req        *http.Request
+		userExists bool
+	}{
+		{
+			// valid user, valid pass
+			username:   "user",
+			req:        mustAuthRequest("GET", "user", "password"),
+			userExists: true,
+		},
+		{
+			// valid user, bad pass
+			username:   "user",
+			req:        mustAuthRequest("GET", "user", "badpass"),
+			userExists: false,
+		},
+		{
+			// valid user, no pass
+			username:   "user",
+			req:        mustAuthRequest("GET", "user", ""),
+			userExists: false,
+		},
+		{
+			// missing user
+			username:   "missing",
+			req:        mustAuthRequest("GET", "missing", "badpass"),
+			userExists: false,
+		},
+		{
+			// no basic auth
+			req:        unauthedRequest("GET"),
+			userExists: false,
+		},
+	}
+
+	for i, tt := range table {
+		user := userFromBasicAuth(sec, tt.req)
+		if tt.userExists == (user == nil) {
+			t.Errorf("#%d: userFromBasicAuth doesn't match (expected %v)", i, tt.userExists)
+		}
+		if user != nil && (tt.username != user.User) {
+			t.Errorf("#%d: userFromBasicAuth username doesn't match (expected %s, got %s)", i, tt.username, user.User)
 		}
 	}
 }
