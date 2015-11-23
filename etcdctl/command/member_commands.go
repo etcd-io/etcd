@@ -82,8 +82,14 @@ func actionMemberAdd(c *cli.Context) {
 	}
 
 	mAPI := mustNewMembersAPI(c)
+	var url string
 
-	url := args[1]
+	url, err := getPeerURLsStringFromArg(args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(ExitBadArgs)
+	}
+
 	ctx, cancel := contextWithTotalTimeout(c)
 	defer cancel()
 
@@ -175,9 +181,14 @@ func actionMemberUpdate(c *cli.Context) {
 	mAPI := mustNewMembersAPI(c)
 
 	mid := args[0]
-	urls := args[1]
+	urls, err := getPeerURLsStringFromArg(args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(ExitBadArgs)
+	}
+
 	ctx, cancel := contextWithTotalTimeout(c)
-	err := mAPI.Update(ctx, mid, strings.Split(urls, ","))
+	err = mAPI.Update(ctx, mid, strings.Split(urls, ","))
 	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
@@ -185,4 +196,16 @@ func actionMemberUpdate(c *cli.Context) {
 	}
 
 	fmt.Printf("Updated member with ID %s in cluster\n", mid)
+}
+
+func getPeerURLsStringFromArg(arg string) (string, error) {
+	segs := strings.Split(arg, "=")
+	if len(segs) == 1 {
+		return arg, nil
+	}
+
+	if segs[0] != "peerURLs" {
+		return "", fmt.Errorf("Member peerURL must be of the form 'peerURLs=url'")
+	}
+	return segs[1], nil
 }
