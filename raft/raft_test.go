@@ -762,7 +762,7 @@ func TestIsElectionTimeout(t *testing.T) {
 
 	for i, tt := range tests {
 		sm := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
-		sm.elapsed = tt.elapse
+		sm.electionElapsed = tt.elapse
 		c := 0
 		for j := 0; j < 10000; j++ {
 			if sm.isElectionTimeout() {
@@ -1169,6 +1169,41 @@ func TestAllServerStepdown(t *testing.T) {
 				t.Errorf("#%d, sm.lead = %d, want %d", i, sm.lead, None)
 			}
 		}
+	}
+}
+
+func TestLeaderStepdownWhenQuorumActive(t *testing.T) {
+	sm := newTestRaft(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
+
+	sm.checkQuorum = true
+
+	sm.becomeCandidate()
+	sm.becomeLeader()
+
+	for i := 0; i < sm.electionTimeout+1; i++ {
+		sm.Step(pb.Message{From: 2, Type: pb.MsgHeartbeatResp, Term: sm.Term})
+		sm.tick()
+	}
+
+	if sm.state != StateLeader {
+		t.Errorf("state = %v, want %v", sm.state, StateLeader)
+	}
+}
+
+func TestLeaderStepdownWhenQuorumLost(t *testing.T) {
+	sm := newTestRaft(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
+
+	sm.checkQuorum = true
+
+	sm.becomeCandidate()
+	sm.becomeLeader()
+
+	for i := 0; i < sm.electionTimeout+1; i++ {
+		sm.tick()
+	}
+
+	if sm.state != StateFollower {
+		t.Errorf("state = %v, want %v", sm.state, StateFollower)
 	}
 }
 

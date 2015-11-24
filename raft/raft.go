@@ -99,6 +99,10 @@ type Config struct {
 	// TODO (xiangli): feedback to application to limit the proposal rate?
 	MaxInflightMsgs int
 
+	// CheckQuorum specifies if the leader should check quorum activity. Leader steps down when
+	// quorum is not active for an electionTimeout.
+	CheckQuorum bool
+
 	// logger is the logger used for raft log. For multinode which
 	// can host multiple raft group, each raft group can have its
 	// own logger
@@ -157,7 +161,18 @@ type raft struct {
 	// New configuration is ignored if there exists unapplied configuration.
 	pendingConf bool
 
-	elapsed          int // number of ticks since the last msg
+	// number of ticks since it reached last electionTimeout when it is leader
+	// or candidate.
+	// number of ticks since it reached last electionTimeout or received a
+	// valid message from current leader when it is a follower.
+	electionElapsed int
+
+	// number of ticks since it reached last heartbeatTimeout.
+	// only leader keeps heartbeatElapsed.
+	heartbeatElapsed int
+
+	checkQuorum bool
+
 	heartbeatTimeout int
 	electionTimeout  int
 	rand             *rand.Rand
@@ -196,6 +211,7 @@ func newRaft(c *Config) *raft {
 		electionTimeout:  c.ElectionTick,
 		heartbeatTimeout: c.HeartbeatTick,
 		logger:           c.Logger,
+		checkQuorum:      c.CheckQuorum,
 	}
 	r.rand = rand.New(rand.NewSource(int64(c.ID)))
 	for _, p := range peers {
@@ -356,7 +372,10 @@ func (r *raft) reset(term uint64) {
 		r.Vote = None
 	}
 	r.lead = None
-	r.elapsed = 0
+
+	r.electionElapsed = 0
+	r.heartbeatElapsed = 0
+
 	r.votes = make(map[uint64]bool)
 	for i := range r.prs {
 		r.prs[i] = &Progress{Next: r.raftLog.lastIndex() + 1, ins: newInflights(r.maxInflight)}
@@ -381,21 +400,34 @@ func (r *raft) appendEntry(es ...pb.Entry) {
 // tickElection is run by followers and candidates after r.electionTimeout.
 func (r *raft) tickElection() {
 	if !r.promotable() {
-		r.elapsed = 0
+		r.electionElapsed = 0
 		return
 	}
-	r.elapsed++
+	r.electionElapsed++
 	if r.isElectionTimeout() {
-		r.elapsed = 0
+		r.electionElapsed = 0
 		r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
 	}
 }
 
 // tickHeartbeat is run by leaders to send a MsgBeat after r.heartbeatTimeout.
 func (r *raft) tickHeartbeat() {
-	r.elapsed++
-	if r.elapsed >= r.heartbeatTimeout {
-		r.elapsed = 0
+	r.heartbeatElapsed++
+	r.electionElapsed++
+
+	if r.electionElapsed >= r.electionTimeout {
+		r.electionElapsed = 0
+		if r.checkQuorum {
+			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum})
+		}
+	}
+
+	if r.state != StateLeader {
+		return
+	}
+
+	if r.heartbeatElapsed >= r.heartbeatTimeout {
+		r.heartbeatElapsed = 0
 		r.Step(pb.Message{From: r.id, Type: pb.MsgBeat})
 	}
 }
@@ -525,6 +557,11 @@ func stepLeader(r *raft, m pb.Message) {
 	switch m.Type {
 	case pb.MsgBeat:
 		r.bcastHeartbeat()
+	case pb.MsgCheckQuorum:
+		if !r.checkQuorumActive() {
+			r.logger.Warningf("%x stepped down to follower since quorum is not active", r.id)
+			r.becomeFollower(r.Term, None)
+		}
 	case pb.MsgProp:
 		if len(m.Entries) == 0 {
 			r.logger.Panicf("%x stepped empty MsgProp", r.id)
@@ -546,6 +583,8 @@ func stepLeader(r *raft, m pb.Message) {
 		r.appendEntry(m.Entries...)
 		r.bcastAppend()
 	case pb.MsgAppResp:
+		pr.recentActive = true
+
 		if m.Reject {
 			r.logger.Debugf("%x received msgApp rejection(lastindex: %d) from %x for index %d",
 				r.id, m.RejectHint, m.From, m.Index)
@@ -579,6 +618,8 @@ func stepLeader(r *raft, m pb.Message) {
 			}
 		}
 	case pb.MsgHeartbeatResp:
+		pr.recentActive = true
+
 		// free one slot for the full inflights window to allow progress.
 		if pr.State == ProgressStateReplicate && pr.ins.full() {
 			pr.ins.freeFirstOne()
@@ -657,19 +698,19 @@ func stepFollower(r *raft, m pb.Message) {
 		m.To = r.lead
 		r.send(m)
 	case pb.MsgApp:
-		r.elapsed = 0
+		r.electionElapsed = 0
 		r.lead = m.From
 		r.handleAppendEntries(m)
 	case pb.MsgHeartbeat:
-		r.elapsed = 0
+		r.electionElapsed = 0
 		r.lead = m.From
 		r.handleHeartbeat(m)
 	case pb.MsgSnap:
-		r.elapsed = 0
+		r.electionElapsed = 0
 		r.handleSnapshot(m)
 	case pb.MsgVote:
 		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
-			r.elapsed = 0
+			r.electionElapsed = 0
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] voted for %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 			r.Vote = m.From
@@ -793,9 +834,32 @@ func (r *raft) loadState(state pb.HardState) {
 // randomized election timeout in (electiontimeout, 2 * electiontimeout - 1).
 // Otherwise, it returns false.
 func (r *raft) isElectionTimeout() bool {
-	d := r.elapsed - r.electionTimeout
+	d := r.electionElapsed - r.electionTimeout
 	if d < 0 {
 		return false
 	}
 	return d > r.rand.Int()%r.electionTimeout
+}
+
+// checkQuorumActive returns true if the quorum is active from
+// the view of the local raft state machine. Otherwise, it returns
+// false.
+// checkQuorumActive also reset all recentActive to false.
+func (r *raft) checkQuorumActive() bool {
+	var act int
+
+	for id := range r.prs {
+		if id == r.id { // self is always active
+			act += 1
+			continue
+		}
+
+		if r.prs[id].recentActive {
+			act += 1
+		}
+
+		r.prs[id].recentActive = false
+	}
+
+	return act >= r.q()
 }
