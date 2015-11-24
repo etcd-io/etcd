@@ -56,6 +56,11 @@ type Progress struct {
 	// is reported to be failed.
 	PendingSnapshot uint64
 
+	// recentActive is true if the progress is recently active. Receiving any messages
+	// from the corresponding follower indicates the progress is active.
+	// recentActive can be reset to false after an election timeout.
+	recentActive bool
+
 	// inflights is a sliding window for the inflight messages.
 	// When inflights is full, no more message should be sent.
 	// When a leader sends out a message, the index of the last
@@ -68,6 +73,7 @@ type Progress struct {
 
 func (pr *Progress) resetState(state ProgressStateType) {
 	pr.Paused = false
+	pr.recentActive = false
 	pr.PendingSnapshot = 0
 	pr.State = state
 	pr.ins.reset()

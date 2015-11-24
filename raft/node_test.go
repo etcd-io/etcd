@@ -42,7 +42,7 @@ func TestNodeStep(t *testing.T) {
 				t.Errorf("%d: cannot receive %s on propc chan", msgt, msgn)
 			}
 		} else {
-			if msgt == raftpb.MsgBeat || msgt == raftpb.MsgHup || msgt == raftpb.MsgUnreachable || msgt == raftpb.MsgSnapStatus {
+			if msgt == raftpb.MsgBeat || msgt == raftpb.MsgHup || msgt == raftpb.MsgUnreachable || msgt == raftpb.MsgSnapStatus || msgt == raftpb.MsgCheckQuorum {
 				select {
 				case <-n.recvc:
 					t.Errorf("%d: step should ignore %s", msgt, msgn)
@@ -225,11 +225,11 @@ func TestNodeTick(t *testing.T) {
 	s := NewMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
-	elapsed := r.elapsed
+	elapsed := r.electionElapsed
 	n.Tick()
 	n.Stop()
-	if r.elapsed != elapsed+1 {
-		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	if r.electionElapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
 	}
 }
 
@@ -246,7 +246,7 @@ func TestNodeStop(t *testing.T) {
 		close(donec)
 	}()
 
-	elapsed := r.elapsed
+	elapsed := r.electionElapsed
 	n.Tick()
 	n.Stop()
 
@@ -256,13 +256,13 @@ func TestNodeStop(t *testing.T) {
 		t.Fatalf("timed out waiting for node to stop!")
 	}
 
-	if r.elapsed != elapsed+1 {
-		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	if r.electionElapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
 	}
 	// Further ticks should have no effect, the node is stopped.
 	n.Tick()
-	if r.elapsed != elapsed+1 {
-		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	if r.electionElapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
 	}
 	// Subsequent Stops should have no effect.
 	n.Stop()
