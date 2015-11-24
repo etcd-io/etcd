@@ -15,7 +15,12 @@
 package etcdhttp
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -378,6 +383,24 @@ func unauthedRequest(method string) *http.Request {
 	return req
 }
 
+func tlsAuthedRequest(req *http.Request, certname string) *http.Request {
+	bytes, err := ioutil.ReadFile(fmt.Sprintf("testdata/%s.pem", certname))
+	if err != nil {
+		panic(err)
+	}
+
+	block, _ := pem.Decode(bytes)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	req.TLS = &tls.ConnectionState{
+		VerifiedChains: [][]*x509.Certificate{{cert}},
+	}
+	return req
+}
+
 func TestPrefixAccess(t *testing.T) {
 	var table = []struct {
 		key                string
@@ -640,6 +663,88 @@ func TestPrefixAccess(t *testing.T) {
 	}
 }
 
+func TestUserFromClientCertificate(t *testing.T) {
+	witherror := &mockAuthStore{
+		users: map[string]*auth.User{
+			"user": {
+				User:     "user",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+			"basicauth": {
+				User:     "basicauth",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+		},
+		roles: map[string]*auth.Role{
+			"root": {
+				Role: "root",
+			},
+		},
+		err: errors.New(""),
+	}
+
+	noerror := &mockAuthStore{
+		users: map[string]*auth.User{
+			"user": {
+				User:     "user",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+			"basicauth": {
+				User:     "basicauth",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+		},
+		roles: map[string]*auth.Role{
+			"root": {
+				Role: "root",
+			},
+		},
+	}
+
+	var table = []struct {
+		req        *http.Request
+		userExists bool
+		store      auth.Store
+		username   string
+	}{
+		{
+			// non tls request
+			req:        unauthedRequest("GET"),
+			userExists: false,
+			store:      witherror,
+		},
+		{
+			// cert with cn of existing user
+			req:        tlsAuthedRequest(unauthedRequest("GET"), "user"),
+			userExists: true,
+			username:   "user",
+			store:      noerror,
+		},
+		{
+			// cert with cn of non-existing user
+			req:        tlsAuthedRequest(unauthedRequest("GET"), "otheruser"),
+			userExists: false,
+			store:      witherror,
+		},
+	}
+
+	for i, tt := range table {
+		user := userFromClientCertificate(tt.store, tt.req)
+		userExists := user != nil
+
+		if tt.userExists != userExists {
+			t.Errorf("#%d: userFromClientCertificate doesn't match (expected %v)", i, tt.userExists)
+		}
+		if user != nil && (tt.username != user.User) {
+			t.Errorf("#%d: userFromClientCertificate username doesn't match (expected %s, got %s)", i, tt.username, user.User)
+		}
+	}
+}
+
 func TestUserFromBasicAuth(t *testing.T) {
 	sec := &mockAuthStore{
 		users: map[string]*auth.User{
@@ -694,7 +799,9 @@ func TestUserFromBasicAuth(t *testing.T) {
 
 	for i, tt := range table {
 		user := userFromBasicAuth(sec, tt.req)
-		if tt.userExists == (user == nil) {
+		userExists := user != nil
+
+		if tt.userExists != userExists {
 			t.Errorf("#%d: userFromBasicAuth doesn't match (expected %v)", i, tt.userExists)
 		}
 		if user != nil && (tt.username != user.User) {
