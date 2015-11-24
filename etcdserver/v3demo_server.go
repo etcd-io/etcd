@@ -301,8 +301,19 @@ func applyCompare(txnID int64, kv dstorage.KV, c *pb.Compare) (int64, bool) {
 		}
 		return rev, false
 	}
-
-	ckv := ckvs[0]
+	var ckv storagepb.KeyValue
+	if len(ckvs) != 0 {
+		ckv = ckvs[0]
+	} else {
+		// Use the zero value of ckv normally. However...
+		if c.Target == pb.Compare_VALUE {
+			// Always fail if we're comparing a value on a key that doesn't exist.
+			// We can treat non-existence as the empty set explicitly, such that
+			// even a key with a value of length 0 bytes is still a real key
+			// that was written that way
+			return rev, false
+		}
+	}
 
 	// -1 is less, 0 is equal, 1 is greater
 	var result int
