@@ -93,3 +93,27 @@ func TestDirectorEndpointsFiltering(t *testing.T) {
 		t.Fatalf("directed to incorrect endpoint: want = %#v, got = %#v", want, got)
 	}
 }
+
+func TestBannedEndpoints(t *testing.T) {
+	tests := []struct {
+		endpoints []string
+		banned    string
+	}{
+		{[]string{"http://localhost:8080", "http://127.0.0.1:22379", "http://127.0.0.1:32379"}, "http://localhost:8080"},
+		{[]string{"http://localhost:8080", "http://127.0.0.1:22379", "http://127.0.0.1:32379"}, "http://127.0.0.1:22379"},
+	}
+	for i, tt := range tests {
+		uf := func() []string {
+			return tt.endpoints
+		}
+		d := newDirector(uf, 30*time.Second, 30*time.Second)
+		banned := make(map[string]struct{})
+		banned[tt.banned] = struct{}{}
+		d.bannedEndpoints = banned
+		for j, ep := range d.endpoints() {
+			if ep.URL.String() == tt.banned {
+				t.Errorf("#%d-%d: %s is banned but not removed from endpoints", i, j, tt.banned)
+			}
+		}
+	}
+}

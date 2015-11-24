@@ -17,8 +17,11 @@ package proxy
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/coreos/etcd/pkg/idutil"
 )
 
 const (
@@ -42,9 +45,12 @@ type GetProxyURLs func() []string
 // which will proxy requests to an etcd cluster.
 // The handler will periodically update its view of the cluster.
 func NewHandler(t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler {
+	idgen := idutil.NewGenerator(0, time.Now())
+	proxyID := strconv.FormatUint(idgen.Next(), 10)
 	p := &reverseProxy{
 		director:  newDirector(urlsFunc, failureWait, refreshInterval),
 		transport: t,
+		proxyID:   proxyID,
 	}
 
 	mux := http.NewServeMux()

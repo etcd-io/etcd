@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type staticRoundTripper struct {
@@ -240,6 +241,69 @@ func TestCopyHeader(t *testing.T) {
 		copyHeader(tt.dst, tt.src)
 		if !reflect.DeepEqual(tt.dst, tt.want) {
 			t.Errorf("#%d: unexpected headers: want = %v, got = %v", i, tt.want, tt.dst)
+		}
+	}
+}
+
+func TestCheckProxyLoop(t *testing.T) {
+	tests := []struct {
+		proxyID   string
+		endpoints []string
+		rp        string
+	}{
+		{"testID", []string{"http://localhost:8000", "http://127.0.0.1:22379", "http://127.0.0.1:32379"}, "http://localhost:8000"},
+		{"testID", []string{"http://localhost:8080", "http://127.0.0.1:22379", "http://127.0.0.1:32379"}, "http://localhost:8080"},
+	}
+	for i, tt := range tests {
+		urlsFunc := func() []string {
+			return tt.endpoints
+		}
+		p := &reverseProxy{
+			director:  newDirector(urlsFunc, 30*time.Second, 30*time.Second),
+			transport: http.DefaultTransport,
+		}
+
+		rq := &http.Request{}
+		hm := make(map[string][]string)
+		rq.Header = hm
+
+		for _, ep := range p.director.endpoints() {
+			if tt.rp != ep.URL.String() {
+				continue
+			}
+			recordProxy(rq, tt.proxyID, ep.URL)
+		}
+
+		es, isLoop := checkProxyLoop(rq, tt.proxyID)
+		if !isLoop {
+			// es must be detected as a proxy cycle
+			t.Errorf("#%d: got = %v, want true", i, isLoop)
+		}
+
+		if tt.rp != es {
+			t.Errorf("#%d: %s should have been detected as a proxy loop but got %s", i, tt.rp, es)
+		}
+	}
+}
+
+func TestBanEndpoint(t *testing.T) {
+	tests := []struct {
+		endpoints []string
+		rp        string
+	}{
+		{[]string{"http://localhost:8000", "http://127.0.0.1:22379", "http://127.0.0.1:32379"}, "http://localhost:8000"},
+		{[]string{"http://localhost:8080", "http://127.0.0.1:22379", "http://127.0.0.1:32379"}, "http://localhost:8080"},
+	}
+	for i, tt := range tests {
+		urlsFunc := func() []string {
+			return tt.endpoints
+		}
+		d := newDirector(urlsFunc, 30*time.Second, 30*time.Second)
+		d.banEndpoint(tt.rp)
+		for j, ep := range d.endpoints() {
+			if tt.rp == ep.URL.String() {
+				t.Errorf("#%d-%d: %v should have been banned and removed from endpoints", i, j, ep.URL)
+			}
 		}
 	}
 }

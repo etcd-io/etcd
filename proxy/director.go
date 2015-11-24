@@ -28,8 +28,9 @@ const defaultRefreshInterval = 30000 * time.Millisecond
 
 func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
 	d := &director{
-		uf:          urlsFunc,
-		failureWait: failureWait,
+		bannedEndpoints: make(map[string]struct{}),
+		uf:              urlsFunc,
+		failureWait:     failureWait,
 	}
 	d.refresh()
 	go func() {
@@ -55,7 +56,12 @@ func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterv
 
 type director struct {
 	sync.Mutex
-	ep              []*endpoint
+	ep []*endpoint
+
+	// bannedEndpoints contains banned endpoints that cause proxy loop.
+	// These are to be excluded from refresh and endpoints methods.
+	bannedEndpoints map[string]struct{}
+
 	uf              GetProxyURLs
 	failureWait     time.Duration
 	refreshInterval time.Duration
@@ -70,6 +76,9 @@ func (d *director) refresh() {
 		uu, err := url.Parse(u)
 		if err != nil {
 			log.Printf("proxy: upstream URL invalid: %v", err)
+			continue
+		}
+		if _, ok := d.bannedEndpoints[u]; ok {
 			continue
 		}
 		endpoints = append(endpoints, newEndpoint(*uu, d.failureWait))
@@ -89,12 +98,22 @@ func (d *director) endpoints() []*endpoint {
 	defer d.Unlock()
 	filtered := make([]*endpoint, 0)
 	for _, ep := range d.ep {
+		if _, ok := d.bannedEndpoints[ep.URL.String()]; ok {
+			continue
+		}
 		if ep.Available {
 			filtered = append(filtered, ep)
 		}
 	}
 
 	return filtered
+}
+
+// banEndpoint adds the URL string to bannedEndpoints.
+func (d *director) banEndpoint(v string) {
+	d.Lock()
+	defer d.Unlock()
+	d.bannedEndpoints[v] = struct{}{}
 }
 
 func newEndpoint(u url.URL, failureWait time.Duration) *endpoint {

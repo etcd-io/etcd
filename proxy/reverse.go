@@ -33,6 +33,8 @@ import (
 	"github.com/coreos/etcd/pkg/httputil"
 )
 
+const proxyLoopHeaderKey = "X-Etcd-Proxy-Hop-Seen-By"
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "proxy")
 
@@ -60,9 +62,15 @@ func removeSingleHopHeaders(hdrs *http.Header) {
 type reverseProxy struct {
 	director  *director
 	transport http.RoundTripper
+	proxyID   string
 }
 
 func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request) {
+	if rp, repeated := checkProxyLoop(clientreq, p.proxyID); repeated {
+		plog.Warningf("found proxy loop (%s)", rp)
+		p.director.banEndpoint(rp)
+		return
+	}
 	proxyreq := new(http.Request)
 	*proxyreq = *clientreq
 	startTime := time.Now()
@@ -133,6 +141,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 			proxyreq.Body = ioutil.NopCloser(bytes.NewBuffer(proxybody))
 		}
 		redirectRequest(proxyreq, ep.URL)
+		recordProxy(proxyreq, p.proxyID, ep.URL)
 
 		res, err = p.transport.RoundTrip(proxyreq)
 		if atomic.LoadInt32(&requestClosed) == 1 {
@@ -202,4 +211,33 @@ func maybeSetForwardedFor(req *http.Request) {
 		clientIP = strings.Join(prior, ", ") + ", " + clientIP
 	}
 	req.Header.Set("X-Forwarded-For", clientIP)
+}
+
+// recordProxy records proxyID and an endpoint in HTTP headers,
+// in order to detect a proxy loop.
+func recordProxy(req *http.Request, proxyID string, loc url.URL) {
+	pv := proxyID + "=" + loc.String()
+	if prior, ok := req.Header[proxyLoopHeaderKey]; ok {
+		pv = strings.Join(append(prior, pv), ", ")
+	}
+	req.Header.Set(proxyLoopHeaderKey, pv)
+}
+
+// checkProxyLoop detects a proxy loop by passing around proxyID
+// and endpoints. It returns the repeating endpoint string and
+// true if it finds the loop.
+func checkProxyLoop(req *http.Request, proxyID string) (string, bool) {
+	if prior, ok := req.Header[proxyLoopHeaderKey]; ok {
+		for _, v := range strings.Split(prior[0], ", ") {
+			vs := strings.Split(v, "=")
+			if len(vs) != 2 {
+				plog.Warningf("wrong-format proxy header (%s)", v)
+				continue
+			}
+			if proxyID == vs[0] {
+				return vs[1], true
+			}
+		}
+	}
+	return "", false
 }
