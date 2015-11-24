@@ -56,6 +56,24 @@ func userFromBasicAuth(sec auth.Store, r *http.Request) *auth.User {
 	return &user
 }
 
+func userFromClientCertificate(sec auth.Store, r *http.Request) *auth.User {
+	if r.TLS == nil {
+		return nil
+	}
+
+	for _, chains := range r.TLS.VerifiedChains {
+		for _, chain := range chains {
+			plog.Debugf("auth: found common name %s.\n", chain.Subject.CommonName)
+			user, err := sec.GetUser(chain.Subject.CommonName)
+			if err == nil {
+				plog.Debugf("auth: authenticated user %s by cert common name.", user.User)
+				return &user
+			}
+		}
+	}
+	return nil
+}
+
 func hasRootAccess(sec auth.Store, r *http.Request) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
@@ -65,9 +83,17 @@ func hasRootAccess(sec auth.Store, r *http.Request) bool {
 		return true
 	}
 
-	rootUser := userFromBasicAuth(sec, r)
-	if rootUser == nil {
-		return false
+	var rootUser *auth.User
+	if r.Header.Get("Authorization") == "" {
+		rootUser = userFromClientCertificate(sec, r)
+		if rootUser == nil {
+			return false
+		}
+	} else {
+		rootUser = userFromBasicAuth(sec, r)
+		if rootUser == nil {
+			return false
+		}
 	}
 
 	for _, role := range rootUser.Roles {
@@ -87,14 +113,19 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive b
 	if !sec.AuthEnabled() {
 		return true
 	}
-	if r.Header.Get("Authorization") == "" {
-		plog.Warningf("auth: no authorization provided, checking guest access")
-		return hasGuestAccess(sec, r, key)
-	}
 
-	user := userFromBasicAuth(sec, r)
-	if user == nil {
-		return false
+	var user *auth.User
+	if r.Header.Get("Authorization") == "" {
+		user = userFromClientCertificate(sec, r)
+		if user == nil {
+			plog.Warningf("auth: no authorization provided, checking guest access")
+			return hasGuestAccess(sec, r, key)
+		}
+	} else {
+		user = userFromBasicAuth(sec, r)
+		if user == nil {
+			return false
+		}
 	}
 
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
