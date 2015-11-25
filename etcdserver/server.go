@@ -177,6 +177,8 @@ type EtcdServer struct {
 	// forceVersionC is used to force the version monitor loop
 	// to detect the cluster version immediately.
 	forceVersionC chan struct{}
+
+	sd starvationDetector
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -399,6 +401,10 @@ func (s *EtcdServer) Start() {
 	go s.purgeFile()
 	go monitorFileDescriptor(s.done)
 	go s.monitorVersions()
+
+	// set up starvation detectors for raft heartbeat message.
+	// expect to send a heartbeat within 2 heartbeat intervals.
+	s.sd.set(2*time.Duration(s.cfg.TickMs) * time.Millisecond)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -417,6 +423,7 @@ func (s *EtcdServer) start() {
 	} else {
 		plog.Infof("starting server... [version: %v, cluster version: to_be_decided]", version.Version)
 	}
+
 	// TODO: if this is an empty log, writes all peer infos
 	// into the first entry
 	go s.run()
@@ -827,6 +834,13 @@ func (s *EtcdServer) send(ms []raftpb.Message) {
 	for i := range ms {
 		if s.cluster.IsIDRemoved(types.ID(ms[i].To)) {
 			ms[i].To = 0
+		}
+		if ms[i].Type == raftpb.MsgHeartbeat {
+			ok, exceed := s.sd.observe(ms[i].To)
+			if !ok {
+				plog.Warningf("etcdserver failed to send out heartbeat on time: deadline exceeded for %v", exceed)
+				plog.Warningf("etcdserver is overloaded or the heartbeat invertal is set too short.")
+			}
 		}
 	}
 	s.r.transport.Send(ms)
