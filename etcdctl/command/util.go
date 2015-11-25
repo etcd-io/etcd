@@ -210,7 +210,6 @@ func mustNewClient(c *cli.Context) client.Client {
 				fmt.Fprintf(os.Stderr, "Try '--no-sync' if you want to access non-published client endpoints(%s).\n", strings.Join(hc.Endpoints(), ","))
 			}
 			handleError(ExitServerError, err)
-			os.Exit(1)
 		}
 		if debug {
 			fmt.Fprintf(os.Stderr, "got endpoints(%s) after sync\n", strings.Join(hc.Endpoints(), ","))
