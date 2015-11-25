@@ -387,6 +387,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		s.snapStore.tr = tr
 	}
 
+	cl.SetTransport(tr)
+
 	return srv, nil
 }
 
