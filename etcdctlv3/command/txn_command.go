@@ -21,26 +21,25 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-// NewTxnCommand returns the CLI command for "txn".
-func NewTxnCommand() cli.Command {
-	return cli.Command{
-		Name: "txn",
-		Action: func(c *cli.Context) {
-			txnCommandFunc(c)
-		},
+// NewTxnCommand returns the cobra command for "txn".
+func NewTxnCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "txn",
+		Short: "Txn processes all the requests in one transaction.",
+		Run:   txnCommandFunc,
 	}
 }
 
 // txnCommandFunc executes the "txn" command.
-func txnCommandFunc(c *cli.Context) {
-	if len(c.Args()) != 0 {
-		panic("unexpected args")
+func txnCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("txn command does not accept argument."))
 	}
 
 	reader := bufio.NewReader(os.Stdin)
@@ -51,15 +50,19 @@ func txnCommandFunc(c *cli.Context) {
 		next = next(txn, reader)
 	}
 
-	conn, err := grpc.Dial(c.GlobalString("endpoint"))
+	endpoint, err := cmd.Flags().GetString("endpoint")
 	if err != nil {
-		panic(err)
+		ExitWithError(ExitError, err)
+	}
+	conn, err := grpc.Dial(endpoint)
+	if err != nil {
+		ExitWithError(ExitBadConnection, err)
 	}
 	kv := pb.NewKVClient(conn)
 
 	resp, err := kv.Txn(context.Background(), txn)
 	if err != nil {
-		fmt.Println(err)
+		ExitWithError(ExitError, err)
 	}
 	if resp.Succeeded {
 		fmt.Println("executed success request list")
@@ -75,7 +78,7 @@ func compareState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
 
 	line, err := r.ReadString('\n')
 	if err != nil {
-		os.Exit(1)
+		ExitWithError(ExitInvalidInput, err)
 	}
 
 	if len(line) == 1 {
@@ -86,8 +89,7 @@ func compareState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
 	line = line[:len(line)-1]
 	c, err := parseCompare(line)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		ExitWithError(ExitInvalidInput, err)
 	}
 
 	txn.Compare = append(txn.Compare, c)
@@ -100,7 +102,7 @@ func successState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
 
 	line, err := r.ReadString('\n')
 	if err != nil {
-		os.Exit(1)
+		ExitWithError(ExitInvalidInput, err)
 	}
 
 	if len(line) == 1 {
@@ -111,8 +113,7 @@ func successState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
 	line = line[:len(line)-1]
 	ru, err := parseRequestUnion(line)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		ExitWithError(ExitInvalidInput, err)
 	}
 
 	txn.Success = append(txn.Success, ru)
@@ -125,7 +126,7 @@ func failureState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
 
 	line, err := r.ReadString('\n')
 	if err != nil {
-		os.Exit(1)
+		ExitWithError(ExitInvalidInput, err)
 	}
 
 	if len(line) == 1 {
@@ -136,8 +137,7 @@ func failureState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
 	line = line[:len(line)-1]
 	ru, err := parseRequestUnion(line)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		ExitWithError(ExitInvalidInput, err)
 	}
 
 	txn.Failure = append(txn.Failure, ru)

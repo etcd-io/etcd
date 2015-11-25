@@ -21,33 +21,36 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-// NewWatchCommand returns the CLI command for "watch".
-func NewWatchCommand() cli.Command {
-	return cli.Command{
-		Name: "watch",
-		Action: func(c *cli.Context) {
-			watchCommandFunc(c)
-		},
+// NewWatchCommand returns the cobra command for "watch".
+func NewWatchCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "watch",
+		Short: "Watch watches the events happening or happened.",
+		Run:   watchCommandFunc,
 	}
 }
 
 // watchCommandFunc executes the "watch" command.
-func watchCommandFunc(c *cli.Context) {
-	conn, err := grpc.Dial(c.GlobalString("endpoint"))
+func watchCommandFunc(cmd *cobra.Command, args []string) {
+	endpoint, err := cmd.Flags().GetString("endpoint")
 	if err != nil {
-		panic(err)
+		ExitWithError(ExitInvalidInput, err)
+	}
+	conn, err := grpc.Dial(endpoint)
+	if err != nil {
+		ExitWithError(ExitBadConnection, err)
 	}
 
 	wAPI := pb.NewWatchClient(conn)
 	wStream, err := wAPI.Watch(context.TODO())
 	if err != nil {
-		panic(err)
+		ExitWithError(ExitBadConnection, err)
 	}
 
 	go recvLoop(wStream)
@@ -57,8 +60,7 @@ func watchCommandFunc(c *cli.Context) {
 	for {
 		l, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading watch request line: %v", err)
-			os.Exit(1)
+			ExitWithError(ExitInvalidInput, fmt.Errorf("Error reading watch request line: %v", err))
 		}
 		l = strings.TrimSuffix(l, "\n")
 
@@ -91,10 +93,10 @@ func recvLoop(wStream pb.Watch_WatchClient) {
 	for {
 		resp, err := wStream.Recv()
 		if err == io.EOF {
-			os.Exit(0)
+			os.Exit(ExitSuccess)
 		}
 		if err != nil {
-			panic(err)
+			ExitWithError(ExitError, err)
 		}
 		fmt.Printf("%s: %s %s\n", resp.Event.Type, string(resp.Event.Kv.Key), string(resp.Event.Kv.Value))
 	}
