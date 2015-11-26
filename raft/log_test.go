@@ -338,6 +338,39 @@ func TestCompactionSideEffects(t *testing.T) {
 	}
 }
 
+func TestHasNextEnts(t *testing.T) {
+	snap := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{Term: 1, Index: 3},
+	}
+	ents := []pb.Entry{
+		{Term: 1, Index: 4},
+		{Term: 1, Index: 5},
+		{Term: 1, Index: 6},
+	}
+	tests := []struct {
+		applied uint64
+		hasNext bool
+	}{
+		{0, true},
+		{3, true},
+		{4, true},
+		{5, false},
+	}
+	for i, tt := range tests {
+		storage := NewMemoryStorage()
+		storage.ApplySnapshot(snap)
+		raftLog := newLog(storage, raftLogger)
+		raftLog.append(ents...)
+		raftLog.maybeCommit(5, 1)
+		raftLog.appliedTo(tt.applied)
+
+		hasNext := raftLog.hasNextEnts()
+		if hasNext != tt.hasNext {
+			t.Errorf("#%d: hasNext = %v, want %v", i, hasNext, tt.hasNext)
+		}
+	}
+}
+
 func TestNextEnts(t *testing.T) {
 	snap := pb.Snapshot{
 		Metadata: pb.SnapshotMetadata{Term: 1, Index: 3},
