@@ -17,36 +17,40 @@ package command
 import (
 	"fmt"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-// NewRangeCommand returns the CLI command for "range".
-func NewRangeCommand() cli.Command {
-	return cli.Command{
-		Name: "range",
-		Action: func(c *cli.Context) {
-			rangeCommandFunc(c)
-		},
+// NewRangeCommand returns the cobra command for "range".
+func NewRangeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "range",
+		Short: "Range gets the keys in the range from the store.",
+		Run:   rangeCommandFunc,
 	}
 }
 
 // rangeCommandFunc executes the "range" command.
-func rangeCommandFunc(c *cli.Context) {
-	if len(c.Args()) == 0 {
-		panic("bad arg")
+func rangeCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) == 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("range command needs arguments."))
 	}
 
 	var rangeEnd []byte
-	key := []byte(c.Args()[0])
-	if len(c.Args()) > 1 {
-		rangeEnd = []byte(c.Args()[1])
+	key := []byte(args[0])
+	if len(args) > 1 {
+		rangeEnd = []byte(args[1])
 	}
-	conn, err := grpc.Dial(c.GlobalString("endpoint"))
+
+	endpoint, err := cmd.Flags().GetString("endpoint")
 	if err != nil {
-		panic(err)
+		ExitWithError(ExitError, err)
+	}
+	conn, err := grpc.Dial(endpoint)
+	if err != nil {
+		ExitWithError(ExitBadConnection, err)
 	}
 	kv := pb.NewKVClient(conn)
 	req := &pb.RangeRequest{Key: key, RangeEnd: rangeEnd}

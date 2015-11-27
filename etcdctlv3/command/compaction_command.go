@@ -15,38 +15,42 @@
 package command
 
 import (
+	"fmt"
 	"strconv"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-// NewCompactionCommand returns the CLI command for "compaction".
-func NewCompactionCommand() cli.Command {
-	return cli.Command{
-		Name: "compaction",
-		Action: func(c *cli.Context) {
-			compactionCommandFunc(c)
-		},
+// NewCompactionCommand returns the cobra command for "compaction".
+func NewCompactionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "compaction",
+		Short: "Compaction compacts the event history in etcd.",
+		Run:   compactionCommandFunc,
 	}
 }
 
 // compactionCommandFunc executes the "compaction" command.
-func compactionCommandFunc(c *cli.Context) {
-	if len(c.Args()) != 1 {
-		panic("bad arg")
+func compactionCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("compaction command needs 1 argument."))
 	}
 
-	rev, err := strconv.ParseInt(c.Args()[0], 10, 64)
+	rev, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
-		panic("bad arg")
+		ExitWithError(ExitError, err)
 	}
 
-	conn, err := grpc.Dial(c.GlobalString("endpoint"))
+	endpoint, err := cmd.Flags().GetString("endpoint")
 	if err != nil {
-		panic(err)
+		ExitWithError(ExitError, err)
+	}
+	conn, err := grpc.Dial(endpoint)
+	if err != nil {
+		ExitWithError(ExitBadConnection, err)
 	}
 	kv := pb.NewKVClient(conn)
 	req := &pb.CompactionRequest{Revision: rev}
