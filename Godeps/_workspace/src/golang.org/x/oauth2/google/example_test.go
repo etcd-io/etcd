@@ -15,8 +15,8 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/oauth2"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/oauth2/google"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/oauth2/jwt"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/appengine"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/appengine/urlfetch"
 )
 
 func ExampleDefaultClient() {

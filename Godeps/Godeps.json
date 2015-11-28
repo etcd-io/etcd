@@ -93,8 +93,16 @@
 			"Rev": "72f9bd7c4e0c2a40055ab3d0f09654f730cce982"
 		},
 		{
+			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbtest",
+			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
+		},
+		{
 			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
+		},
+		{
+			"ImportPath": "github.com/olekukonko/ts",
+			"Rev": "ecf753e7c962639ab5a1fb46f7da627d4c0a04b8"
 		},
 		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
@@ -140,6 +148,10 @@
 			"Rev": "08b1a584251b5b62f458943640fc8ebd4d50aaa5"
 		},
 		{
+			"ImportPath": "github.com/spf13/viper",
+			"Rev": "e37b56e207dda4d79b9defe0548e960658ee8b6b"
+		},
+		{
 			"ImportPath": "github.com/stretchr/testify/assert",
 			"Rev": "9cc77fa25329013ce07362c7742952ff887361f2"
 		},
@@ -176,11 +188,11 @@
 			"Rev": "9c60d1c508f5134d1ca726b4641db998f2523357"
 		},
 		{
-			"ImportPath": "google.golang.org/cloud/compute/metadata",
-			"Rev": "f20d6dcccb44ed49de45ae3703312cb46e627db1"
+			"ImportPath": "google.golang.org/appengine",
+			"Rev": "d1a42f52ede0dee193ca4bef13a979eaa9578649"
 		},
 		{
-			"ImportPath": "google.golang.org/cloud/internal",
+			"ImportPath": "google.golang.org/cloud",
 			"Rev": "f20d6dcccb44ed49de45ae3703312cb46e627db1"
 		},
 		{
