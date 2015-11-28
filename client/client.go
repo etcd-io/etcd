@@ -276,8 +276,8 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 		if err != nil {
 			cerr.Errors = append(cerr.Errors, err)
 			// mask previous errors with context error, which is controlled by user
-			if err == context.Canceled || err == context.DeadlineExceeded {
-				return nil, nil, err
+			if ctx.Err() != nil {
+				return nil, nil, ctx.Err()
 			}
 			continue
 		}
