@@ -14,7 +14,7 @@
 
 // the file is borrowed from github.com/rakyll/boom/boomer/print.go
 
-package main
+package cmd
 
 import (
 	"fmt"
