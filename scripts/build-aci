@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 
+set -e
+
 BINARYDIR=${BINARYDIR:-bin}
 BUILDDIR=${BUILDDIR:-bin}
 
-# A non-installed actool can be used, for example:
-# ACTOOL=../../appc/spec/bin/actool
-ACTOOL=${ACTOOL:-actool}
-
-IMAGEDIR=${IMAGEDIR:-$BUILDDIR/image-aci}
+# A non-installed acbuild can be used, for example:
+# ACBUILD=../../appc/acbuild/bin/acbuild
+ACBUILD=${ACBUILD:-acbuild}
 
 VERSION=$1
 
-if ! command -v $ACTOOL >/dev/null; then
-    echo "actool ($ACTOOL) is not executable"
+if ! command -v $ACBUILD >/dev/null; then
+    echo "acbuild ($ACBUILD) is not executable"
     exit 1
 fi
 
@@ -26,79 +26,41 @@ if [ -z "$VERSION" ] ; then
     exit 1
 fi
 
-mkdir -p $IMAGEDIR/rootfs
-if [ ! -d $IMAGEDIR/rootfs -o ! -x $IMAGEDIR/rootfs ]; then
-    echo "$IMAGEDIR/rootfs is not a writeable directory"
-    exit 1
-fi
+acbuild --debug begin
 
-if [ -n "$(ls -A $IMAGEDIR/rootfs)" ]; then
-    echo "$IMAGEDIR/rootfs is not empty"
-    exit 1
-fi
+TMPHOSTS="$(mktemp)"
 
-cp $BINARYDIR/etcd $BINARYDIR/etcdctl $IMAGEDIR/rootfs/
-cp README.md            $IMAGEDIR/rootfs/
-cp etcdctl/README.md    $IMAGEDIR/rootfs/README-etcdctl.md
-cp -r Documentation     $IMAGEDIR/rootfs/
-
-cat <<DF > $IMAGEDIR/manifest
-{
-    "acVersion": "0.5.1",
-    "acKind": "ImageManifest",
-    "name": "coreos.com/etcd",
-    "labels": [
-        {"name": "os", "value": "linux"},
-        {"name": "arch", "value": "amd64"},
-        {"name": "version", "value": "${VERSION}"}
-    ],
-    "app": {
-        "environment": [
-             {
-                    "name": "ETCD_DATA_DIR",
-                    "value": "/data-dir"
-             }
-        ],
-        "exec": [
-             "/etcd"
-        ],
-        "user": "0",
-        "group": "0",
-        "mountPoints": [
-             {
-                    "name": "data-dir",
-                    "path": "/data-dir"
-             }
-        ],
-        "ports": [
-            {
-                "name": "legacy-client",
-                "port": 4001,
-                "protocol": "tcp"
-            },
-            {
-                "name": "client",
-                "port": 2379,
-                "protocol": "tcp"
-            },
-            {
-                "name": "legacy-peer",
-                "port": 7001,
-                "protocol": "tcp"
-            },
-            {
-                "name": "peer",
-                "port": 2380,
-                "protocol": "tcp"
-            }
-        ]
-    }
+acbuildEnd() {
+    rm "$TMPHOSTS"
+    export EXIT=$?
+    acbuild --debug end && exit $EXIT 
 }
-DF
+trap acbuildEnd EXIT
 
-mkdir -p $IMAGEDIR/rootfs/etc/
-cat <<DF > $IMAGEDIR/rootfs/etc/hosts
+cat <<DF > $TMPHOSTS
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 DF
 
-$ACTOOL build -overwrite=true $IMAGEDIR $BUILDDIR/etcd-${1}-linux-amd64.aci
+acbuild --debug set-name coreos.com/etcd
+
+acbuild --debug copy --to-dir $BINARYDIR/etcd $BINARYDIR/etcdctl /
+acbuild --debug copy README.md /README.md
+acbuild --debug copy etcdctl/README.md /README-etcdctl.md
+acbuild --debug copy --to-dir Documentation /
+
+acbuild --debug environment add ETCD_DATA_DIR /data-dir
+
+acbuild --debug label add version "$VERSION"
+
+acbuild --debug set-exec -- /etcd
+
+acbuild --debug mount add data-dir /data-dir
+
+acbuild --debug port add legacy-client tcp 4001
+acbuild --debug port add legacy-peer tcp 7001
+acbuild --debug port add client tcp 2379
+acbuild --debug port add peer tcp 2380
+
+acbuild --debug copy "$TMPHOSTS" /etc/hosts
+
+acbuild --debug write --overwrite $BUILDDIR/etcd-${1}-linux-amd64.aci
