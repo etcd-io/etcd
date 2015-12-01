@@ -53,6 +53,17 @@ func printReport(size int, results chan *result, total time.Duration) {
 		errorDist: make(map[string]int),
 	}
 	r.finalize()
+	r.print()
+}
+
+func printRate(size int, results chan *result, total time.Duration) {
+	r := &report{
+		results:   results,
+		total:     total,
+		errorDist: make(map[string]int),
+	}
+	r.finalize()
+	fmt.Printf(" Requests/sec:\t%4.4f\n", r.rps)
 }
 
 func (r *report) finalize() {
@@ -68,7 +79,6 @@ func (r *report) finalize() {
 		default:
 			r.rps = float64(len(r.lats)) / r.total.Seconds()
 			r.average = r.avgTotal / float64(len(r.lats))
-			r.print()
 			return
 		}
 	}
