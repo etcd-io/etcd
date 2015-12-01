@@ -385,8 +385,9 @@ func unsafeAddWatching(synced *map[string]map[*watching]struct{}, k string, wa *
 		} else {
 			v[wa] = struct{}{}
 		}
-
+		return nil
 	}
+
 	mp[k] = make(map[*watching]struct{})
 	mp[k][wa] = struct{}{}
 	return nil
