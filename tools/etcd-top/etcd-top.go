@@ -166,9 +166,9 @@ func main() {
 
 	ports := []uint16{}
 	for _, p := range strings.Split(*portsArg, ",") {
-		p, err := strconv.Atoi(p)
+		port, err := strconv.Atoi(p)
 		if err == nil {
-			ports = append(ports, uint16(p))
+			ports = append(ports, uint16(port))
 		} else {
 			fmt.Fprintf(os.Stderr, "Failed to parse port \"%s\": %v\n", p, err)
 			os.Exit(1)
