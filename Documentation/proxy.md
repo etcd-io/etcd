@@ -6,9 +6,34 @@ etcd currently supports two proxy modes: `readwrite` and `readonly`. The default
 
 The proxy will shuffle the list of cluster members periodically to avoid sending all connections to a single member.
 
-The member list used by proxy consists of all client URLs advertised within the cluster, as specified in each members' `-advertise-client-urls` flag. If this flag is set incorrectly, requests sent to the proxy are forwarded to wrong addresses and then fail. Including URLs in the `-advertise-client-urls` flag that point to the proxy itself, e.g. http://localhost:2379, is even more problematic as it will cause loops, because the proxy keeps trying to forward requests to itself until its resources (memory, file descriptors) are eventually depleted. The fix for this problem is to restart etcd member with correct `-advertise-client-urls` flag. After client URLs list in proxy is recalculated, which happens every 30 seconds, requests will be forwarded correctly.
+The member list used by an etcd proxy consists of all client URLs advertised in the cluster. These client URLs are specified in each etcd cluster member's `advertise-client-urls` option.
 
-You should start the cluster machines first and then start the proxy as the proxy gets its list from reachable machines. If the proxy starts and is unable to reach a machine it will refresh aggressively. Once the machine list is non-empty the proxy will refresh at the original duration.
+An etcd proxy examines several command-line options to discover its peer URLs. In order of precedence, these options are `discovery`, `discovery-srv`, and `initial-cluster`. The `initial-cluster` option is set to a comma-separated list of one or more etcd peer URLs used temporarily in order to discover the permanent cluster.
+
+After establishing a list of peer URLs in this manner, the proxy retrieves the list of client URLs from the first reachable peer. These client URLs are specified by the `advertise-client-urls` option to etcd peers. The proxy then continues to connect to the first reachable etcd cluster member every thirty seconds to refresh the list of client URLs.
+
+While etcd proxies therefore do not need to be given the `advertise-client-urls` option, as they retrieve this configuration from the cluster, this implies that `initial-cluster` must be set correctly for every proxy, and the `advertise-client-urls` option must be set correctly for every non-proxy, first-order cluster peer. Otherwise, requests to any etcd proxy would be forwarded improperly. Take special care not to set the `advertise-client-urls` option to URLs that point to the proxy itself, as such a configuration will cause the proxy to enter a loop, forwarding requests to itself until resources are exhausted. To correct either case, stop etcd and restart it with the correct URLs. [This example configuration](https://github.com/coreos/etcd/blob/master/Procfile) lists etcd peer and proxy command lines to illustrate starting a cluster with one proxy.
+
+To summarize etcd proxy startup and peer discovery:
+
+1. etcd proxies execute the following steps in order until the cluster *peer-urls* are known:
+	1. If `discovery` is set for the proxy, ask the given discovery service for
+	   the *peer-urls*. The *peer-urls* will be the combined
+	   `initial-advertise-peer-urls` of all first-order, non-proxy cluster
+	   members.
+	2. If `discovery-srv` is set for the proxy, the *peer-urls* are discovered
+	   from DNS.
+	3. If `initial-cluster` is set for the proxy, that will become the value of
+	   *peer-urls*.
+	4. Otherwise use the default value of
+	   `http://localhost:2380,http://localhost:7001`.
+2. These *peer-urls* are used to contact the (non-proxy) members of the cluster
+   to find their *client-urls*. The *client-urls* will thus be the combined
+   `advertise-client-urls` of all cluster members (i.e. non-proxies).
+3. Request of clients of the proxy will be forwarded (proxied) to these
+   *client-urls*.
+
+Always start the first-order etcd cluster members first, then any proxies. A proxy must be able to reach the cluster members to retrieve its configuration, and will attempt connections somewhat aggressively in the absence of such a channel. Starting the members before any proxy ensures the proxy can discover the client URLs when it later starts.
 
 ## Using an etcd proxy
 To start etcd in proxy mode, you need to provide three flags: `proxy`, `listen-client-urls`, and `initial-cluster` (or `discovery`). 
