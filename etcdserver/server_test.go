@@ -849,8 +849,15 @@ func TestRecvSnapshot(t *testing.T) {
 
 	s.start()
 	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
-	// make goroutines move forward to receive snapshot
-	testutil.WaitSchedule()
+
+	// wait for actions happened on the storage
+	for {
+		if len(p.Action()) != 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
 	s.Stop()
 
 	wactions := []testutil.Action{{Name: "Recovery"}}
