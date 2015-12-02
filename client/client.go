@@ -22,8 +22,10 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -176,6 +178,14 @@ func New(cfg Config) (Client, error) {
 			password: cfg.Password,
 		}
 	}
+
+	if len(cfg.Endpoints) == 0 {
+		peerstr := os.Getenv("ETCDCLIENT_PEERS")
+		if peerstr != "" {
+			cfg.Endpoints = strings.Split(peerstr, ",")
+		}
+	}
+
 	if err := c.reset(cfg.Endpoints); err != nil {
 		return nil, err
 	}
