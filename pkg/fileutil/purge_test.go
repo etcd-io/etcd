@@ -39,7 +39,11 @@ func TestPurgeFile(t *testing.T) {
 	}
 
 	stop := make(chan struct{})
+
+	// keep at most 3 most recent files
 	errch := PurgeFile(dir, "test", 3, time.Millisecond, stop)
+
+	// create 5 more files
 	for i := 5; i < 10; i++ {
 		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
@@ -47,14 +51,27 @@ func TestPurgeFile(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	fnames, err := ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
+
+	// purge routine should purge 7 out of 10 files and only keep the
+	// 3 most recent ones.
+	// wait for purging for at most 100ms.
+	var fnames []string
+	for i := 0; i < 10; i++ {
+		fnames, err = ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(fnames) <= 3 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	wnames := []string{"7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
 	}
+
+	// no error should be reported from purge routine
 	select {
 	case err := <-errch:
 		t.Errorf("unexpected purge error %v", err)
