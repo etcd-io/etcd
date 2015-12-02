@@ -69,29 +69,30 @@ func TestUnsafeAddWatching(t *testing.T) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
-	wa := &watching{
-		key:    testKey,
-		prefix: true,
-		cur:    0,
-	}
-
-	if err := unsafeAddWatching(&s.synced, string(testKey), wa); err != nil {
-		t.Error(err)
-	}
-
-	if v, ok := s.synced[string(testKey)]; !ok {
-		// the key must have had entry in synced
-		t.Errorf("existence = %v, want true", ok)
-	} else {
-		if len(v) != 1 {
-			// the key must have ONE entry in its watching map
-			t.Errorf("len(v) = %d, want 1", len(v))
+	size := 10
+	ws := make([]*watching, size)
+	for i := 0; i < size; i++ {
+		ws[i] = &watching{
+			key:    testKey,
+			prefix: true,
+			cur:    0,
 		}
 	}
-
-	if err := unsafeAddWatching(&s.synced, string(testKey), wa); err == nil {
-		// unsafeAddWatching should have returned error
-		// when putting the same watch twice"
-		t.Error(`error = nil, want "put the same watch twice"`)
+	// to test if unsafeAddWatching is correctly updating
+	// synced map when adding new watching.
+	for i, wa := range ws {
+		if err := unsafeAddWatching(&s.synced, string(testKey), wa); err != nil {
+			t.Errorf("#%d: error = %v, want nil", i, err)
+		}
+		if v, ok := s.synced[string(testKey)]; !ok {
+			t.Errorf("#%d: ok = %v, want ok true", i, ok)
+		} else {
+			if len(v) != i+1 {
+				t.Errorf("#%d: len(v) = %d, want %d", i, len(v), i+1)
+			}
+			if _, ok := v[wa]; !ok {
+				t.Errorf("#%d: ok = %v, want ok true", i, ok)
+			}
+		}
 	}
 }
