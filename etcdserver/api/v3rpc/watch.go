@@ -79,7 +79,6 @@ func sendLoop(stream pb.Watch_WatchServer, watcher storage.Watcher, closec chan 
 				}
 				storage.ReportEventReceived()
 			}
-			return
 		}
 	}
 }
