@@ -851,10 +851,7 @@ func TestRecvSnapshot(t *testing.T) {
 	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
 
 	// wait for actions happened on the storage
-	for {
-		if len(p.Action()) != 0 {
-			break
-		}
+	for len(p.Action()) == 0 {
 		time.Sleep(10 * time.Millisecond)
 	}
 
