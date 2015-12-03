@@ -552,16 +552,18 @@ func (r *raft) Step(m pb.Message) error {
 type stepFunc func(r *raft, m pb.Message)
 
 func stepLeader(r *raft, m pb.Message) {
-	pr := r.prs[m.From]
 
+	// These message types do not require any progress for m.From.
 	switch m.Type {
 	case pb.MsgBeat:
 		r.bcastHeartbeat()
+		return
 	case pb.MsgCheckQuorum:
 		if !r.checkQuorumActive() {
 			r.logger.Warningf("%x stepped down to follower since quorum is not active", r.id)
 			r.becomeFollower(r.Term, None)
 		}
+		return
 	case pb.MsgProp:
 		if len(m.Entries) == 0 {
 			r.logger.Panicf("%x stepped empty MsgProp", r.id)
@@ -582,6 +584,21 @@ func stepLeader(r *raft, m pb.Message) {
 		}
 		r.appendEntry(m.Entries...)
 		r.bcastAppend()
+		return
+	case pb.MsgVote:
+		r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
+			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
+		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
+		return
+	}
+
+	// All other message types require a progress for m.From (pr).
+	pr, prOk := r.prs[m.From]
+	if !prOk {
+		r.logger.Debugf("no progress available for %x", m.From)
+		return
+	}
+	switch m.Type {
 	case pb.MsgAppResp:
 		pr.recentActive = true
 
@@ -627,10 +644,6 @@ func stepLeader(r *raft, m pb.Message) {
 		if pr.Match < r.raftLog.lastIndex() {
 			r.sendAppend(m.From)
 		}
-	case pb.MsgVote:
-		r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
-			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 	case pb.MsgSnapStatus:
 		if pr.State != ProgressStateSnapshot {
 			return
