@@ -329,8 +329,29 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	return s.StopNotify(), nil
 }
 
+// existDir returns true if the specified path points to a directory.
+// It returns false and error if the directory does not exist.
+func existDir(fpath string) bool {
+	st, err := os.Stat(fpath)
+	if err != nil {
+		return false
+	}
+	return st.IsDir()
+}
+
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy(cfg *config) error {
+
+	// if it's falling back to proxy
+	// check if there is conflict member directory
+	if cfg.shouldFallbackToProxy() {
+		memDir := path.Join(cfg.dir, "member")
+		if existDir(memDir) {
+			plog.Warningf("proxy: deleting member directory (%s) since it's falling back to proxy", memDir)
+			os.RemoveAll(memDir)
+		}
+	}
+
 	urlsmap, _, err := getPeerURLsMapAndToken(cfg, "proxy")
 	if err != nil {
 		return fmt.Errorf("error setting up initial cluster: %v", err)
