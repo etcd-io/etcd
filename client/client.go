@@ -104,6 +104,9 @@ type Config struct {
 	//
 	// A HeaderTimeoutPerRequest of zero means no timeout.
 	HeaderTimeoutPerRequest time.Duration
+
+	// send requests to leader in default for avoiding forwarding from follower to leader
+	PrioritizeLeader bool
 }
 
 func (cfg *Config) transport() CancelableTransport {
@@ -167,8 +170,9 @@ type Client interface {
 
 func New(cfg Config) (Client, error) {
 	c := &httpClusterClient{
-		clientFactory: newHTTPClientFactory(cfg.transport(), cfg.checkRedirect(), cfg.HeaderTimeoutPerRequest),
-		rand:          rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
+		clientFactory:    newHTTPClientFactory(cfg.transport(), cfg.checkRedirect(), cfg.HeaderTimeoutPerRequest),
+		rand:             rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
+		prioritizeLeader: cfg.PrioritizeLeader,
 	}
 	if cfg.Username != "" {
 		c.credentials = &credentials{
@@ -216,7 +220,18 @@ type httpClusterClient struct {
 	pinned        int
 	credentials   *credentials
 	sync.RWMutex
-	rand *rand.Rand
+	rand             *rand.Rand
+	prioritizeLeader bool
+}
+
+func (c *httpClusterClient) getLeaderEndpoint() (string, error) {
+	mAPI := NewMembersAPI(c)
+	leader, err := mAPI.Leader(context.Background())
+	if err != nil {
+		return "", err
+	}
+
+	return leader.ClientURLs[0], nil // TODO: how to handle multiple client URLs?
 }
 
 func (c *httpClusterClient) reset(eps []string) error {
@@ -233,9 +248,30 @@ func (c *httpClusterClient) reset(eps []string) error {
 		neps[i] = *u
 	}
 
-	c.endpoints = shuffleEndpoints(c.rand, neps)
-	// TODO: pin old endpoint if possible, and rebalance when new endpoint appears
-	c.pinned = 0
+	if !c.prioritizeLeader {
+		// TODO: pin old endpoint if possible, and rebalance when new endpoint appears
+		c.endpoints = shuffleEndpoints(c.rand, neps)
+		c.pinned = 0
+	} else {
+		c.endpoints = neps
+		// TODO: should return ErrNoEndpoints in a case of getting leader fail?
+		lep, err := c.getLeaderEndpoint()
+		if err != nil {
+			return ErrNoEndpoints
+		}
+
+		lu, err := url.Parse(lep)
+		if err != nil {
+			return ErrNoEndpoints
+		}
+
+		for i := range c.endpoints {
+			if c.endpoints[i].String() == lu.String() {
+				c.pinned = i
+				break
+			}
+		}
+	}
 
 	return nil
 }
