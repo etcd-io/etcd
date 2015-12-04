@@ -52,37 +52,97 @@ if [ $MACHINE_TYPE != "armv7l" ]; then
   RACE="--race"
 fi
 
-go test -timeout 3m ${COVER} $@ ${TEST} ${RACE} -cpu 1,2,4
-go test -timeout 3m ${COVER} $@ ${NO_RACE_TEST} -cpu 1,2,4
+TEST_COMMAND="go test -timeout 3m ${COVER} ${RACE} -cpu 1,2,4 $@ ${TEST}"
+printf "\nTEST_COMMAND: ${TEST_COMMAND}\n"
+$TEST_COMMAND
+if [ $? -ne 0 ]; then
+	STATUS=$?
+	echo "[FAILED] TEST_COMMAND"
+	if [ $IS_GO_TIP == false ]; then
+		exit $STATUS
+	fi
+fi
 
-if [ -n "$INTEGRATION" ]; then
-	echo "Running integration tests..."
-	go test -timeout 10m $@ ${REPO_PATH}/integration -v -cpu 1,2,4
+TEST_COMMAND_NO_RACE="go test -timeout 3m ${COVER} -cpu 1,2,4 $@ ${NO_RACE_TEST}"
+printf "\nTEST_COMMAND_NO_RACE: ${TEST_COMMAND_NO_RACE}\n"
+$TEST_COMMAND_NO_RACE
+if [ $? -ne 0 ]; then
+	STATUS=$?
+	echo "[FAILED] TEST_COMMAND_NO_RACE"
+	if [ $IS_GO_TIP == false ]; then
+		exit $STATUS
+	fi
 fi
 
 echo "Checking gofmt..."
-fmtRes=$(gofmt -l -s -d $FMT)
-if [ -n "${fmtRes}" ]; then
-	echo -e "gofmt checking failed:\n${fmtRes}"
-	exit 255
+if [ $IS_GO_TIP == false ]; then
+	fmtRes=$(gofmt -l -s -d $FMT)
+	if [ -n "${fmtRes}" ]; then
+		echo -e "gofmt checking failed:\n${fmtRes}"
+		exit 255
+	else
+		echo "[OK] gofmt passed!"
+	fi
+else
+	GOFMT_COMMAND="gofmt -l -s -d ${FMT}"	
+	$GOFMT_COMMAND || STATUS=$?
+	if [ $STATUS -ne 0 ]; then
+		echo "[FAILED] GOFMT_COMMAND"
+		if [ $IS_GO_TIP == false ]; then
+			exit $STATUS
+		fi
+	else
+		echo "[OK] GOFMT_COMMAND passed!"
+	fi
 fi
 
 echo "Checking govet..."
-vetRes=$(go vet $TEST)
-if [ -n "${vetRes}" ]; then
-	echo -e "govet checking failed:\n${vetRes}"
-	exit 255
+if [ $IS_GO_TIP == false ]; then
+	vetRes=$(go vet $TEST)
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet checking failed:\n${vetRes}"
+		exit 255
+	else
+		echo "[OK] govet passed!"
+	fi
+else
+	GOVET_COMMAND="go vet ${TEST}"	
+	$GOVET_COMMAND || STATUS=$?
+	if [ $STATUS -ne 0 ]; then
+		echo "[FAILED] GOVET_COMMAND"
+		if [ $IS_GO_TIP == false ]; then
+			exit $STATUS
+		fi
+	else
+		echo "[OK] GOVET_COMMAND passed!"
+	fi
 fi
 
 echo "Checking govet -shadow..."
-for path in $FMT; do
-	vetRes=$(go tool vet -shadow ${path})
-	if [ -n "${vetRes}" ]; then
-		echo -e "govet checking ${path} failed:\n${vetRes}"
-		exit 255
-	fi
-done
-
+if [ $IS_GO_TIP == false ]; then
+	for path in $FMT; do
+		vetRes=$(go tool vet -shadow ${path})
+		if [ -n "${vetRes}" ]; then
+			echo -e "govet checking ${path} failed:\n${vetRes}"
+			exit 255
+		else
+			echo "[OK] govet -shadow passed at ${path}"
+		fi
+	done
+else
+	for path in $FMT; do
+		GOVET_SHADOW_COMMAND="go tool vet -shadow ${path}"	
+		$GOVET_SHADOW_COMMAND || STATUS=$?
+		if [ $STATUS -ne 0 ]; then
+			echo "[FAILED] GOVET_SHADOW_COMMAND at ${path}"
+			if [ $IS_GO_TIP == false ]; then
+				exit $STATUS
+			fi
+		else
+			echo "[OK] GOVET_SHADOW_COMMAND passed at ${path}"
+		fi
+	done
+fi
 
 echo "Checking for license header..."
 licRes=$(for file in $(find . -type f -iname '*.go' ! -path './Godeps/*'); do
