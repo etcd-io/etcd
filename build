@@ -14,11 +14,18 @@ eval $(go env)
 GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
 val=$(go version)
-ver=$(echo $val | awk -F ' ' '{print $3}' | awk -F '.' '{print $2}')
-if [ $ver -gt 4 ]; then
+# if 'go version' contains string 'devel', it assumes the go tip branch,
+# which is greater than go 1.5+.
+if [[ $val == *"devel"* ]]
+then
 	LINK_OPERATOR="="
 else
-	LINK_OPERATOR=" "
+	ver=$(echo $val | awk -F ' ' '{print $3}' | awk -F '.' '{print $2}')
+	if [ $ver -gt 4 ]; then
+		LINK_OPERATOR="="
+	else
+		LINK_OPERATOR=" "
+	fi
 fi
 
 # Static compilation is useful when etcd is run in a container
