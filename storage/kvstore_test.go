@@ -630,13 +630,22 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	revbytes := newRevBytes()
 	// TODO: compact should delete main=2 key too
 	revToBytes(revision{main: 1}, revbytes)
-	tx = s1.b.BatchTx()
-	tx.Lock()
-	ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
-	if len(ks) != 0 {
-		t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
+
+	// The disk compaction is done asynchronously and requires more time on slow disk.
+	// try 5 times for CI with slow IO.
+	for i := 0; i < 5; i++ {
+		tx = s1.b.BatchTx()
+		tx.Lock()
+		ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		if len(ks) != 0 {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+		tx.Unlock()
+		return
 	}
-	tx.Unlock()
+
+	t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
 }
 
 func TestTxnBlockBackendForceCommit(t *testing.T) {
