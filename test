@@ -52,12 +52,12 @@ if [ $MACHINE_TYPE != "armv7l" ]; then
   RACE="--race"
 fi
 
-go test -timeout 3m ${COVER} $@ ${TEST} ${RACE} -cpu 1,2,4
-go test -timeout 3m ${COVER} $@ ${NO_RACE_TEST} -cpu 1,2,4
+go test -timeout 3m ${COVER} ${RACE} -cpu 1,2,4 $@ ${TEST}
+go test -timeout 3m ${COVER} -cpu 1,2,4 $@ ${NO_RACE_TEST}
 
 if [ -n "$INTEGRATION" ]; then
 	echo "Running integration tests..."
-	go test -timeout 10m $@ ${REPO_PATH}/integration -v -cpu 1,2,4
+	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration
 fi
 
 echo "Checking gofmt..."
