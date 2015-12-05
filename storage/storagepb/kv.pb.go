@@ -68,8 +68,9 @@ type Event struct {
 	// a put event contains the current key-value
 	// a delete/expire event contains the previous
 	// key-value
-	Kv      *KeyValue `protobuf:"bytes,2,opt,name=kv" json:"kv,omitempty"`
-	WatchID int64     `protobuf:"varint,3,opt,name=watchID,proto3" json:"watchID,omitempty"`
+	Kv *KeyValue `protobuf:"bytes,2,opt,name=kv" json:"kv,omitempty"`
+	// watchID is the ID of watching this event is sent to.
+	WatchID int64 `protobuf:"varint,3,opt,name=watchID,proto3" json:"watchID,omitempty"`
 }
 
 func (m *Event) Reset()         { *m = Event{} }
