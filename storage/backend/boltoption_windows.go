@@ -18,4 +18,4 @@ import "github.com/coreos/etcd/Godeps/_workspace/src/github.com/boltdb/bolt"
 
 // TODO: support syscall.MAP_POPULATE in windows.
 // Need upstream patch from boltdb/bolt.
-var boltOpenOptions *bolt.Option = nil
+var boltOpenOptions *bolt.Options = nil
