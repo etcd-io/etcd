@@ -119,6 +119,7 @@ func (s *store) requestResource(res string, dir bool) (etcdserver.Response, erro
 		Method: "GET",
 		Path:   p,
 		Dir:    dir,
+		Quorum: true,
 	}
 	return s.server.Do(ctx, rr)
 }
