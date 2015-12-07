@@ -93,18 +93,19 @@ type snapshotStore struct {
 	// snap is nil iff there is no snapshot stored
 	snap       *snapshot
 	inUse      bool
-	createOnce sync.Once // ensure at most one snapshot is created when no snapshot stored
+	createOnce *sync.Once // ensure at most one snapshot is created when no snapshot stored
 
 	clock clockwork.Clock
 }
 
 func newSnapshotStore(dir string, kv dstorage.KV) *snapshotStore {
 	return &snapshotStore{
-		dir:       dir,
-		kv:        kv,
-		reqsnapc:  make(chan struct{}),
-		raftsnapc: make(chan raftpb.Snapshot),
-		clock:     clockwork.NewRealClock(),
+		dir:        dir,
+		kv:         kv,
+		reqsnapc:   make(chan struct{}),
+		raftsnapc:  make(chan raftpb.Snapshot),
+		createOnce: new(sync.Once),
+		clock:      clockwork.NewRealClock(),
 	}
 }
 
@@ -210,7 +211,7 @@ func (ss *snapshotStore) clear() {
 	}
 	ss.snap = nil
 	ss.inUse = false
-	ss.createOnce = sync.Once{}
+	ss.createOnce = &sync.Once{}
 }
 
 // SaveFrom saves snapshot at the given index from the given reader.

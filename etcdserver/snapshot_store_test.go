@@ -102,7 +102,7 @@ func TestSnapshotStoreGetSnap(t *testing.T) {
 
 func TestSnapshotStoreClearUsedSnap(t *testing.T) {
 	s := &fakeSnapshot{}
-	var once sync.Once
+	var once *sync.Once
 	once.Do(func() {})
 	ss := &snapshotStore{
 		snap:       newSnapshot(raftpb.Snapshot{}, s),
