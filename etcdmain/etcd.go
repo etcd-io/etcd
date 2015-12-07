@@ -306,7 +306,9 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	// Start the peer server in a goroutine
 	for _, l := range plns {
 		go func(l net.Listener) {
-			plog.Fatal(serveHTTP(l, ph, 5*time.Minute))
+			if err := serveHTTP(l, ph, 5*time.Minute); err != nil {
+				plog.Fatal(err)
+			}
 		}(l)
 	}
 	// Start a client server goroutine for each listen address
@@ -314,7 +316,9 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		go func(l net.Listener) {
 			// read timeout does not work with http close notify
 			// TODO: https://github.com/golang/go/issues/9524
-			plog.Fatal(serveHTTP(l, ch, 0))
+			if err := serveHTTP(l, ch, 0); err != nil {
+				plog.Fatal(err)
+			}
 		}(l)
 	}
 
@@ -323,7 +327,11 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		grpcServer := grpc.NewServer()
 		etcdserverpb.RegisterKVServer(grpcServer, v3rpc.NewKVServer(s))
 		etcdserverpb.RegisterWatchServer(grpcServer, v3rpc.NewWatchServer(s.Watchable()))
-		go func() { plog.Fatal(grpcServer.Serve(v3l)) }()
+		go func() {
+			if err := grpcServer.Serve(v3l); err != nil {
+				plog.Fatal(err)
+			}
+		}()
 	}
 
 	return s.StopNotify(), nil
