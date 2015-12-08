@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
 )
 
 const (
@@ -57,6 +58,11 @@ type Peer interface {
 	// When it fails to send message out, it will report the status to underlying
 	// raft.
 	send(m raftpb.Message)
+
+	// sendSanp sends the merged snapshot message to the remote peer. Its behavior
+	// is similar to send.
+	sendSnap(m snap.Message)
+
 	// update updates the urls of remote peer.
 	update(urls types.URLs)
 	// attachOutgoingConn attachs the outgoing connection to the peer for
@@ -110,7 +116,7 @@ type peer struct {
 	done  chan struct{}
 }
 
-func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, snapst *snapshotStore, r Raft, fs *stats.FollowerStats, errorc chan error, v3demo bool) *peer {
+func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error, v3demo bool) *peer {
 	picker := newURLPicker(urls)
 	status := newPeerStatus(to)
 	p := &peer{
@@ -121,7 +127,7 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 		msgAppV2Writer: startStreamWriter(to, status, fs, r),
 		writer:         startStreamWriter(to, status, fs, r),
 		pipeline:       newPipeline(pipelineRt, picker, local, to, cid, status, fs, r, errorc),
-		snapSender:     newSnapshotSender(pipelineRt, picker, local, to, cid, status, snapst, r, errorc),
+		snapSender:     newSnapshotSender(pipelineRt, picker, local, to, cid, status, r, errorc),
 		sendc:          make(chan raftpb.Message),
 		recvc:          make(chan raftpb.Message, recvBufSize),
 		propc:          make(chan raftpb.Message, maxPendingProposals),
@@ -156,10 +162,6 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 			select {
 			case m := <-p.sendc:
 				if paused {
-					continue
-				}
-				if p.v3demo && isMsgSnap(m) {
-					go p.snapSender.send(m)
 					continue
 				}
 				writec, name := p.pick(m)
@@ -207,6 +209,10 @@ func (p *peer) send(m raftpb.Message) {
 	case p.sendc <- m:
 	case <-p.done:
 	}
+}
+
+func (p *peer) sendSnap(m snap.Message) {
+	go p.snapSender.send(m)
 }
 
 func (p *peer) update(urls types.URLs) {

@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"path"
 	"reflect"
@@ -33,6 +32,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 )
 
@@ -523,7 +523,7 @@ func TestDoProposal(t *testing.T) {
 			r: raftNode{
 				Node:        newNodeCommitter(),
 				storage:     &storageRecorder{},
-				raftStorage: newRaftStorage(),
+				raftStorage: raft.NewMemoryStorage(),
 				transport:   &nopTransporter{},
 			},
 			store:    st,
@@ -675,7 +675,7 @@ func TestSyncTrigger(t *testing.T) {
 		cfg: &ServerConfig{TickMs: 1},
 		r: raftNode{
 			Node:        n,
-			raftStorage: newRaftStorage(),
+			raftStorage: raft.NewMemoryStorage(),
 			transport:   &nopTransporter{},
 			storage:     &storageRecorder{},
 		},
@@ -712,51 +712,9 @@ func TestSyncTrigger(t *testing.T) {
 	}
 }
 
-func TestCreateRaftSnapshot(t *testing.T) {
-	s := newRaftStorage()
-	s.Append([]raftpb.Entry{{Index: 1, Term: 1}})
-	st := &storeRecorder{}
-	srv := &EtcdServer{
-		r: raftNode{
-			raftStorage: s,
-		},
-		store: st,
-	}
-
-	snap := srv.createRaftSnapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
-	wdata, err := st.Save()
-	if err != nil {
-		t.Fatal(err)
-	}
-	wsnap := raftpb.Snapshot{
-		Metadata: raftpb.SnapshotMetadata{
-			Index:     1,
-			Term:      1,
-			ConfState: raftpb.ConfState{Nodes: []uint64{1}},
-		},
-		Data: wdata,
-	}
-	if !reflect.DeepEqual(snap, wsnap) {
-		t.Errorf("snap = %+v, want %+v", snap, wsnap)
-	}
-
-	gaction := st.Action()
-	// the third action is store.Save used in testing
-	if len(gaction) != 3 {
-		t.Fatalf("len(action) = %d, want 3", len(gaction))
-	}
-	if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
-		t.Errorf("action = %s, want Clone", gaction[0])
-	}
-	if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
-		t.Errorf("action = %s, want SaveNoCopy", gaction[1])
-	}
-
-}
-
 // snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
-	s := newRaftStorage()
+	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
 	st := &storeRecorder{}
 	p := &storageRecorder{}
@@ -800,7 +758,7 @@ func TestTriggerSnap(t *testing.T) {
 		snapCount: uint64(snapc),
 		r: raftNode{
 			Node:        newNodeCommitter(),
-			raftStorage: newRaftStorage(),
+			raftStorage: raft.NewMemoryStorage(),
 			storage:     p,
 			transport:   &nopTransporter{},
 		},
@@ -841,7 +799,7 @@ func TestRecvSnapshot(t *testing.T) {
 			Node:        n,
 			transport:   &nopTransporter{},
 			storage:     p,
-			raftStorage: newRaftStorage(),
+			raftStorage: raft.NewMemoryStorage(),
 		},
 		store:   st,
 		cluster: cl,
@@ -874,7 +832,7 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	st := &storeRecorder{}
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
-	storage := newRaftStorage()
+	storage := raft.NewMemoryStorage()
 	s := &EtcdServer{
 		cfg: &ServerConfig{},
 		r: raftNode{
@@ -923,7 +881,7 @@ func TestAddMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: newRaftStorage(),
+			raftStorage: raft.NewMemoryStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
@@ -963,7 +921,7 @@ func TestRemoveMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: newRaftStorage(),
+			raftStorage: raft.NewMemoryStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
@@ -1002,7 +960,7 @@ func TestUpdateMember(t *testing.T) {
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
-			raftStorage: newRaftStorage(),
+			raftStorage: raft.NewMemoryStorage(),
 			storage:     &storageRecorder{},
 			transport:   &nopTransporter{},
 		},
@@ -1355,12 +1313,19 @@ func (p *storageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	p.Record(testutil.Action{Name: "Save"})
 	return nil
 }
+
 func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) error {
 	if !raft.IsEmptySnap(st) {
 		p.Record(testutil.Action{Name: "SaveSnap"})
 	}
 	return nil
 }
+
+func (p *storageRecorder) DBFilePath(id uint64) (string, error) {
+	p.Record(testutil.Action{Name: "DBFilePath"})
+	return fmt.Sprintf("%016x.snap.db", id), nil
+}
+
 func (p *storageRecorder) Close() error { return nil }
 
 type nodeRecorder struct{ testutil.Recorder }
@@ -1477,16 +1442,16 @@ func (n *readyNode) Ready() <-chan raft.Ready { return n.readyc }
 
 type nopTransporter struct{}
 
-func (s *nopTransporter) Start() error                                 { return nil }
-func (s *nopTransporter) Handler() http.Handler                        { return nil }
-func (s *nopTransporter) Send(m []raftpb.Message)                      {}
-func (s *nopTransporter) AddRemote(id types.ID, us []string)           {}
-func (s *nopTransporter) AddPeer(id types.ID, us []string)             {}
-func (s *nopTransporter) RemovePeer(id types.ID)                       {}
-func (s *nopTransporter) RemoveAllPeers()                              {}
-func (s *nopTransporter) UpdatePeer(id types.ID, us []string)          {}
-func (s *nopTransporter) ActiveSince(id types.ID) time.Time            { return time.Time{} }
-func (s *nopTransporter) SnapshotReady(rc io.ReadCloser, index uint64) {}
-func (s *nopTransporter) Stop()                                        {}
-func (s *nopTransporter) Pause()                                       {}
-func (s *nopTransporter) Resume()                                      {}
+func (s *nopTransporter) Start() error                        { return nil }
+func (s *nopTransporter) Handler() http.Handler               { return nil }
+func (s *nopTransporter) Send(m []raftpb.Message)             {}
+func (s *nopTransporter) SendSnapshot(m snap.Message)         {}
+func (s *nopTransporter) AddRemote(id types.ID, us []string)  {}
+func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
+func (s *nopTransporter) RemovePeer(id types.ID)              {}
+func (s *nopTransporter) RemoveAllPeers()                     {}
+func (s *nopTransporter) UpdatePeer(id types.ID, us []string) {}
+func (s *nopTransporter) ActiveSince(id types.ID) time.Time   { return time.Time{} }
+func (s *nopTransporter) Stop()                               {}
+func (s *nopTransporter) Pause()                              {}
+func (s *nopTransporter) Resume()                             {}

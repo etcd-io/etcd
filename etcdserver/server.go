@@ -19,7 +19,6 @@ import (
 	"errors"
 	"expvar"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -65,6 +64,9 @@ const (
 	monitorVersionInterval = 5 * time.Second
 
 	databaseFilename = "db"
+	// max number of in-flight snapshot messages etcdserver allows to have
+	// This number is more than enough for most clusters with 5 machines.
+	maxInFlightMsgSnap = 16
 )
 
 var (
@@ -177,19 +179,23 @@ type EtcdServer struct {
 	// forceVersionC is used to force the version monitor loop
 	// to detect the cluster version immediately.
 	forceVersionC chan struct{}
+
+	msgSnapC chan raftpb.Message
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
-	var w *wal.WAL
-	var n raft.Node
-	var s *raftStorage
-	var id types.ID
-	var cl *cluster
+	var (
+		w  *wal.WAL
+		n  raft.Node
+		s  *raft.MemoryStorage
+		id types.ID
+		cl *cluster
+	)
 
-	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.StorageDir(), databaseFilename)) {
+	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.SnapDir(), databaseFilename)) {
 		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
 	}
 
@@ -340,18 +346,14 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		versionRt:     prt,
 		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
 		forceVersionC: make(chan struct{}),
+		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
 	}
 
 	if cfg.V3demo {
-		err = os.MkdirAll(cfg.StorageDir(), privateDirMode)
-		if err != nil && err != os.ErrExist {
-			return nil, err
-		}
-		srv.kv = dstorage.New(path.Join(cfg.StorageDir(), databaseFilename), &srv.consistIndex)
+		srv.kv = dstorage.New(path.Join(cfg.SnapDir(), databaseFilename), &srv.consistIndex)
 		if err := srv.kv.Restore(); err != nil {
 			plog.Fatalf("v3 storage restore error: %v", err)
 		}
-		s.snapStore = newSnapshotStore(cfg.StorageDir(), srv.kv)
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -361,7 +363,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		ID:          id,
 		ClusterID:   cl.ID(),
 		Raft:        srv,
-		SnapSaver:   s.snapStore,
+		Snapshotter: ss,
 		ServerStats: sstats,
 		LeaderStats: lstats,
 		ErrorC:      srv.errorc,
@@ -382,10 +384,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 	}
 	srv.r.transport = tr
-
-	if cfg.V3demo {
-		s.snapStore.tr = tr
-	}
 
 	return srv, nil
 }
@@ -465,9 +463,6 @@ func (s *EtcdServer) ReportUnreachable(id uint64) { s.r.ReportUnreachable(id) }
 // and clears the used snapshot from the snapshot store.
 func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 	s.r.ReportSnapshot(id, status)
-	if s.cfg.V3demo {
-		s.r.raftStorage.snapStore.clearUsedSnap()
-	}
 }
 
 func (s *EtcdServer) run() {
@@ -496,12 +491,12 @@ func (s *EtcdServer) run() {
 				}
 
 				if s.cfg.V3demo {
-					snapfn, err := s.r.raftStorage.snapStore.getSnapFilePath(apply.snapshot.Metadata.Index)
+					snapfn, err := s.r.storage.DBFilePath(apply.snapshot.Metadata.Index)
 					if err != nil {
-						plog.Panicf("get snapshot file path error: %v", err)
+						plog.Panicf("get database snapshot file path error: %v", err)
 					}
 
-					fn := path.Join(s.cfg.StorageDir(), databaseFilename)
+					fn := path.Join(s.cfg.SnapDir(), databaseFilename)
 					if err := os.Rename(snapfn, fn); err != nil {
 						plog.Panicf("rename snapshot file error: %v", err)
 					}
@@ -514,7 +509,6 @@ func (s *EtcdServer) run() {
 					oldKV := s.kv
 					// TODO: swap the kv pointer atomically
 					s.kv = newKV
-					s.r.raftStorage.snapStore.kv = newKV
 
 					// Closing oldKV might block until all the txns
 					// on the kv are finished.
@@ -571,9 +565,9 @@ func (s *EtcdServer) run() {
 				s.snapshot(appliedi, confState)
 				snapi = appliedi
 			}
-		case <-s.r.raftStorage.reqsnap():
-			s.r.raftStorage.raftsnap() <- s.createRaftSnapshot(appliedi, confState)
-			plog.Infof("requested snapshot created at %d", appliedi)
+		case m := <-s.msgSnapC:
+			merged := s.createMergedSnapshotMessage(m, appliedi, confState)
+			s.r.transport.SendSnapshot(merged)
 		case err := <-s.errorc:
 			plog.Errorf("%s", err)
 			plog.Infof("the data-dir used by this member must be removed.")
@@ -828,7 +822,24 @@ func (s *EtcdServer) send(ms []raftpb.Message) {
 		if s.cluster.IsIDRemoved(types.ID(ms[i].To)) {
 			ms[i].To = 0
 		}
+
+		if s.cfg.V3demo {
+			if ms[i].Type == raftpb.MsgSnap {
+				// There are two separate data store when v3 demo is enabled: the store for v2,
+				// and the KV for v3.
+				// The msgSnap only contains the most recent snapshot of store without KV.
+				// So we need to redirect the msgSnap to etcd server main loop for merging in the
+				// current store snapshot and KV snapshot.
+				select {
+				case s.msgSnapC <- ms[i]:
+				default:
+					// drop msgSnap if the inflight chan if full.
+				}
+				ms[i].To = 0
+			}
+		}
 	}
+
 	s.r.transport.Send(ms)
 }
 
@@ -998,29 +1009,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	return false, nil
 }
 
-// createRaftSnapshot creates a raft snapshot that includes the state of store for v2 api.
-func (s *EtcdServer) createRaftSnapshot(snapi uint64, confState raftpb.ConfState) raftpb.Snapshot {
-	snapt, err := s.r.raftStorage.Term(snapi)
-	if err != nil {
-		log.Panicf("get term should never fail: %v", err)
-	}
-
-	clone := s.store.Clone()
-	d, err := clone.SaveNoCopy()
-	if err != nil {
-		plog.Panicf("store save should never fail: %v", err)
-	}
-
-	return raftpb.Snapshot{
-		Metadata: raftpb.SnapshotMetadata{
-			Index:     snapi,
-			Term:      snapt,
-			ConfState: confState,
-		},
-		Data: d,
-	}
-}
-
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	clone := s.store.Clone()
@@ -1068,9 +1056,6 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			plog.Panicf("unexpected compaction error %v", err)
 		}
 		plog.Infof("compacted raft log at %d", compacti)
-		if s.cfg.V3demo && s.r.raftStorage.snapStore.closeSnapBefore(compacti) {
-			plog.Infof("closed snapshot stored due to compaction at %d", compacti)
-		}
 	}()
 }
 

@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
 )
 
 type snapshotSender struct {
@@ -34,14 +34,13 @@ type snapshotSender struct {
 	tr     http.RoundTripper
 	picker *urlPicker
 	status *peerStatus
-	snapst *snapshotStore
 	r      Raft
 	errorc chan error
 
 	stopc chan struct{}
 }
 
-func newSnapshotSender(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, status *peerStatus, snapst *snapshotStore, r Raft, errorc chan error) *snapshotSender {
+func newSnapshotSender(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, status *peerStatus, r Raft, errorc chan error) *snapshotSender {
 	return &snapshotSender{
 		from:   from,
 		to:     to,
@@ -49,7 +48,6 @@ func newSnapshotSender(tr http.RoundTripper, picker *urlPicker, from, to, cid ty
 		tr:     tr,
 		picker: picker,
 		status: status,
-		snapst: snapst,
 		r:      r,
 		errorc: errorc,
 		stopc:  make(chan struct{}),
@@ -58,10 +56,12 @@ func newSnapshotSender(tr http.RoundTripper, picker *urlPicker, from, to, cid ty
 
 func (s *snapshotSender) stop() { close(s.stopc) }
 
-func (s *snapshotSender) send(m raftpb.Message) {
+func (s *snapshotSender) send(merged snap.Message) {
+	m := merged.Message
+
 	start := time.Now()
 
-	body := createSnapBody(m, s.snapst)
+	body := createSnapBody(merged)
 	defer body.Close()
 
 	u := s.picker.pick()
@@ -142,20 +142,16 @@ type readCloser struct {
 	io.Closer
 }
 
-// createSnapBody creates the request body for the given raft snapshot message.
-// Callers should close body when done reading from it.
-func createSnapBody(m raftpb.Message, snapst *snapshotStore) io.ReadCloser {
+func createSnapBody(merged snap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
 	// encode raft message
-	if err := enc.encode(m); err != nil {
+	if err := enc.encode(merged.Message); err != nil {
 		plog.Panicf("encode message error (%v)", err)
 	}
-	// get snapshot
-	rc := snapst.get(m.Snapshot.Metadata.Index)
 
 	return &readCloser{
-		Reader: io.MultiReader(buf, rc),
-		Closer: rc,
+		Reader: io.MultiReader(buf, merged.ReadCloser),
+		Closer: merged.ReadCloser,
 	}
 }
