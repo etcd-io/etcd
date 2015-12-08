@@ -16,7 +16,7 @@ GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 val=$(go version)
 # if 'go version' contains string 'devel', it assumes the go tip branch,
 # which is greater than go 1.5+.
-if [[ $val == *"devel"* ]]
+if test "${val#*devel}" != "$val" 
 then
 	LINK_OPERATOR="="
 else
