@@ -103,16 +103,23 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 
 	stop := make(chan struct{})
 	errch := PurgeFile(dir, "test", 3, time.Millisecond, stop)
-	time.Sleep(20 * time.Millisecond)
 
-	fnames, err := ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
+	var fnames []string
+	for i := 0; i < 10; i++ {
+		fnames, err = ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(fnames) <= 5 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	wnames := []string{"5.test", "6.test", "7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
 	}
+
 	select {
 	case err := <-errch:
 		t.Errorf("unexpected purge error %v", err)
@@ -129,16 +136,21 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(20 * time.Millisecond)
-
-	fnames, err = ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
+	for i := 0; i < 10; i++ {
+		fnames, err = ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(fnames) <= 3 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	wnames = []string{"7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
 	}
+
 	select {
 	case err := <-errch:
 		t.Errorf("unexpected purge error %v", err)
