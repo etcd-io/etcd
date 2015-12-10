@@ -275,6 +275,11 @@ func (r *raft) sendAppend(to uint64) {
 	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
 
 	if errt != nil || erre != nil { // send snapshot if we failed to get term or entries
+		if !pr.RecentActive {
+			r.logger.Debugf("ignore sending snapshot to %x since it is not recently active", to)
+			return
+		}
+
 		m.Type = pb.MsgSnap
 		snapshot, err := r.raftLog.snapshot()
 		if err != nil {
