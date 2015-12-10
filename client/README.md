@@ -77,7 +77,7 @@ If the response gets from the cluster is invalid, a plain string error will be r
 Here is the example code to handle client errors:
 
 ```go
-cfg := client.Config{Endpoints: []string{"http://etcd1:2379,http://etcd2:2379,http://etcd3:2379"}}
+cfg := client.Config{Endpoints: []string{"http://etcd1:2379","http://etcd2:2379","http://etcd3:2379"}}
 c, err := client.New(cfg)
 if err != nil {
 	log.Fatal(err)
