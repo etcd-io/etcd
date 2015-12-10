@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/version"
 )
 
@@ -340,9 +341,10 @@ type fakePeerGetter struct {
 func (pg *fakePeerGetter) Get(id types.ID) Peer { return pg.peers[id] }
 
 type fakePeer struct {
-	msgs  []raftpb.Message
-	urls  types.URLs
-	connc chan *outgoingConn
+	msgs     []raftpb.Message
+	snapMsgs []snap.Message
+	urls     types.URLs
+	connc    chan *outgoingConn
 }
 
 func newFakePeer() *fakePeer {
@@ -352,6 +354,7 @@ func newFakePeer() *fakePeer {
 }
 
 func (pr *fakePeer) send(m raftpb.Message)                 { pr.msgs = append(pr.msgs, m) }
+func (pr *fakePeer) sendSnap(m snap.Message)               { pr.snapMsgs = append(pr.snapMsgs, m) }
 func (pr *fakePeer) update(urls types.URLs)                { pr.urls = urls }
 func (pr *fakePeer) attachOutgoingConn(conn *outgoingConn) { pr.connc <- conn }
 func (pr *fakePeer) activeSince() time.Time                { return time.Time{} }

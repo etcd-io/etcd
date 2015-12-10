@@ -25,6 +25,7 @@ import (
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/version"
 )
 
@@ -118,16 +119,16 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type snapshotHandler struct {
-	r         Raft
-	snapSaver SnapshotSaver
-	cid       types.ID
+	r           Raft
+	snapshotter *snap.Snapshotter
+	cid         types.ID
 }
 
-func newSnapshotHandler(r Raft, snapSaver SnapshotSaver, cid types.ID) http.Handler {
+func newSnapshotHandler(r Raft, snapshotter *snap.Snapshotter, cid types.ID) http.Handler {
 	return &snapshotHandler{
-		r:         r,
-		snapSaver: snapSaver,
-		cid:       cid,
+		r:           r,
+		snapshotter: snapshotter,
+		cid:         cid,
 	}
 }
 
@@ -168,14 +169,14 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// save snapshot
-	if err := h.snapSaver.SaveFrom(r.Body, m.Snapshot.Metadata.Index); err != nil {
+	// save incoming database snapshot.
+	if err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.Index); err != nil {
 		msg := fmt.Sprintf("failed to save KV snapshot (%v)", err)
 		plog.Error(msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
-	plog.Infof("received and saved snapshot [index: %d, from: %s] successfully", m.Snapshot.Metadata.Index, types.ID(m.From))
+	plog.Infof("received and saved database snapshot [index: %d, from: %s] successfully", m.Snapshot.Metadata.Index, types.ID(m.From))
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
 		switch v := err.(type) {
