@@ -24,12 +24,14 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 )
@@ -69,6 +71,8 @@ type cluster struct {
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
 	removed map[types.ID]bool
+
+	transport *rafthttp.Transport
 }
 
 func newClusterFromURLsMap(token string, urlsmap types.URLsMap) (*cluster, error) {
@@ -218,6 +222,8 @@ func (c *cluster) genID() {
 func (c *cluster) SetID(id types.ID) { c.id = id }
 
 func (c *cluster) SetStore(st store.Store) { c.store = st }
+
+func (c *cluster) SetTransport(t *rafthttp.Transport) { c.transport = t }
 
 func (c *cluster) Recover() {
 	c.Lock()
@@ -384,7 +390,7 @@ func (c *cluster) isReadyToAddNewMember() bool {
 	nstarted := 0
 
 	for _, member := range c.members {
-		if member.IsStarted() {
+		if member.IsStarted() && (member.ID == c.transport.ID || c.transport.ActiveSince(member.ID) != time.Time{}) {
 			nstarted++
 		}
 		nmembers++
