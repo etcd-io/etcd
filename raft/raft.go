@@ -862,7 +862,7 @@ func (r *raft) isElectionTimeout() bool {
 // checkQuorumActive returns true if the quorum is active from
 // the view of the local raft state machine. Otherwise, it returns
 // false.
-// checkQuorumActive also reset all recentActive to false.
+// checkQuorumActive also resets all RecentActive to false.
 func (r *raft) checkQuorumActive() bool {
 	var act int
 

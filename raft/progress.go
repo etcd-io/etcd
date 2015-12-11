@@ -56,9 +56,9 @@ type Progress struct {
 	// is reported to be failed.
 	PendingSnapshot uint64
 
-	// recentActive is true if the progress is recently active. Receiving any messages
+	// RecentActive is true if the progress is recently active. Receiving any messages
 	// from the corresponding follower indicates the progress is active.
-	// recentActive can be reset to false after an election timeout.
+	// RecentActive can be reset to false after an election timeout.
 	RecentActive bool
 
 	// inflights is a sliding window for the inflight messages.
