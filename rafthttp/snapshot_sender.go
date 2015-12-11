@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/httputil"
+	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/snap"
@@ -142,12 +143,6 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	}
 }
 
-// readCloser implements io.ReadCloser interface.
-type readCloser struct {
-	io.Reader
-	io.Closer
-}
-
 func createSnapBody(merged snap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
@@ -156,7 +151,7 @@ func createSnapBody(merged snap.Message) io.ReadCloser {
 		plog.Panicf("encode message error (%v)", err)
 	}
 
-	return &readCloser{
+	return &pioutil.ReaderAndCloser{
 		Reader: io.MultiReader(buf, merged.ReadCloser),
 		Closer: merged.ReadCloser,
 	}
