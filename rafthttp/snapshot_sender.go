@@ -114,9 +114,6 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	result := make(chan responseAndError, 1)
 
 	go func() {
-		// TODO: the snapshot could be large and eat up all resources when writing
-		// it out. Send it block by block and rest some time between to give the
-		// time for main loop to run.
 		resp, err := s.tr.RoundTrip(req)
 		if err != nil {
 			result <- responseAndError{resp, nil, err}
