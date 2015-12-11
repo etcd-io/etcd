@@ -24,6 +24,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -162,7 +163,9 @@ type EtcdServer struct {
 	cluster *cluster
 
 	store store.Store
-	kv    dstorage.ConsistentWatchableKV
+
+	kvMu sync.RWMutex
+	kv   dstorage.ConsistentWatchableKV
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -506,9 +509,7 @@ func (s *EtcdServer) run() {
 						plog.Panicf("restore KV error: %v", err)
 					}
 
-					oldKV := s.kv
-					// TODO: swap the kv pointer atomically
-					s.kv = newKV
+					oldKV := s.swapKV(newKV)
 
 					// Closing oldKV might block until all the txns
 					// on the kv are finished.
@@ -1032,7 +1033,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		if s.cfg.V3demo {
 			// commit v3 storage because WAL file before snapshot index
 			// could be removed after SaveSnap.
-			s.kv.Commit()
+			s.getKV().Commit()
 		}
 		// SaveSnap saves the snapshot and releases the locked wal files
 		// to the snapshot index.
@@ -1170,6 +1171,20 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 	default:
 		return err
 	}
+}
+
+func (s *EtcdServer) getKV() dstorage.ConsistentWatchableKV {
+	s.kvMu.RLock()
+	defer s.kvMu.RUnlock()
+	return s.kv
+}
+
+func (s *EtcdServer) swapKV(kv dstorage.ConsistentWatchableKV) dstorage.ConsistentWatchableKV {
+	s.kvMu.Lock()
+	defer s.kvMu.Unlock()
+	old := s.kv
+	s.kv = kv
+	return old
 }
 
 // isConnectedToQuorumSince checks whether the local member is connected to the

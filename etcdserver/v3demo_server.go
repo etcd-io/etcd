@@ -102,7 +102,7 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 
 // Watcable returns a watchable interface attached to the etcdserver.
 func (s *EtcdServer) Watchable() dstorage.Watchable {
-	return s.kv
+	return s.getKV()
 }
 
 const (
@@ -113,19 +113,21 @@ const (
 )
 
 func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
+	kv := s.getKV()
+
 	ar := &applyResult{}
 
 	switch {
 	case r.Range != nil:
-		ar.resp, ar.err = applyRange(noTxn, s.kv, r.Range)
+		ar.resp, ar.err = applyRange(noTxn, kv, r.Range)
 	case r.Put != nil:
-		ar.resp, ar.err = applyPut(noTxn, s.kv, r.Put)
+		ar.resp, ar.err = applyPut(noTxn, kv, r.Put)
 	case r.DeleteRange != nil:
-		ar.resp, ar.err = applyDeleteRange(noTxn, s.kv, r.DeleteRange)
+		ar.resp, ar.err = applyDeleteRange(noTxn, kv, r.DeleteRange)
 	case r.Txn != nil:
-		ar.resp, ar.err = applyTxn(s.kv, r.Txn)
+		ar.resp, ar.err = applyTxn(kv, r.Txn)
 	case r.Compaction != nil:
-		ar.resp, ar.err = applyCompaction(s.kv, r.Compaction)
+		ar.resp, ar.err = applyCompaction(kv, r.Compaction)
 	default:
 		panic("not implemented")
 	}
