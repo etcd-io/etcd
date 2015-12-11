@@ -27,6 +27,11 @@ import (
 	"github.com/coreos/etcd/snap"
 )
 
+var (
+	// timeout for reading snapshot response body
+	snapResponseReadTimeout = 5 * time.Second
+)
+
 type snapshotSender struct {
 	from, to types.ID
 	cid      types.ID
@@ -108,9 +113,6 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	result := make(chan responseAndError, 1)
 
 	go func() {
-		// TODO: cancel the request if it has waited for a long time(~5s) after
-		// it has write out the full request body, which helps to avoid receiver
-		// dies when sender is waiting for response
 		// TODO: the snapshot could be large and eat up all resources when writing
 		// it out. Send it block by block and rest some time between to give the
 		// time for main loop to run.
@@ -119,8 +121,12 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 			result <- responseAndError{resp, nil, err}
 			return
 		}
+
+		// close the response body when timeouts.
+		// prevents from reading the body forever when the other side dies right after
+		// successfully receives the request body.
+		time.AfterFunc(snapResponseReadTimeout, func() { resp.Body.Close() })
 		body, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
 		result <- responseAndError{resp, body, err}
 	}()
 
