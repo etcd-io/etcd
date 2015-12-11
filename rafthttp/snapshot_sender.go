@@ -22,9 +22,15 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/httputil"
+	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/snap"
+)
+
+var (
+	// timeout for reading snapshot response body
+	snapResponseReadTimeout = 5 * time.Second
 )
 
 type snapshotSender struct {
@@ -108,19 +114,17 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	result := make(chan responseAndError, 1)
 
 	go func() {
-		// TODO: cancel the request if it has waited for a long time(~5s) after
-		// it has write out the full request body, which helps to avoid receiver
-		// dies when sender is waiting for response
-		// TODO: the snapshot could be large and eat up all resources when writing
-		// it out. Send it block by block and rest some time between to give the
-		// time for main loop to run.
 		resp, err := s.tr.RoundTrip(req)
 		if err != nil {
 			result <- responseAndError{resp, nil, err}
 			return
 		}
+
+		// close the response body when timeouts.
+		// prevents from reading the body forever when the other side dies right after
+		// successfully receives the request body.
+		time.AfterFunc(snapResponseReadTimeout, func() { resp.Body.Close() })
 		body, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
 		result <- responseAndError{resp, body, err}
 	}()
 
@@ -136,12 +140,6 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	}
 }
 
-// readCloser implements io.ReadCloser interface.
-type readCloser struct {
-	io.Reader
-	io.Closer
-}
-
 func createSnapBody(merged snap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
@@ -150,7 +148,7 @@ func createSnapBody(merged snap.Message) io.ReadCloser {
 		plog.Panicf("encode message error (%v)", err)
 	}
 
-	return &readCloser{
+	return &pioutil.ReaderAndCloser{
 		Reader: io.MultiReader(buf, merged.ReadCloser),
 		Closer: merged.ReadCloser,
 	}
