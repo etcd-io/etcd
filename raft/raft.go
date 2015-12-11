@@ -275,6 +275,11 @@ func (r *raft) sendAppend(to uint64) {
 	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
 
 	if errt != nil || erre != nil { // send snapshot if we failed to get term or entries
+		if !pr.RecentActive {
+			r.logger.Debugf("ignore sending snapshot to %x since it is not recently active", to)
+			return
+		}
+
 		m.Type = pb.MsgSnap
 		snapshot, err := r.raftLog.snapshot()
 		if err != nil {
@@ -600,7 +605,7 @@ func stepLeader(r *raft, m pb.Message) {
 	}
 	switch m.Type {
 	case pb.MsgAppResp:
-		pr.recentActive = true
+		pr.RecentActive = true
 
 		if m.Reject {
 			r.logger.Debugf("%x received msgApp rejection(lastindex: %d) from %x for index %d",
@@ -635,7 +640,7 @@ func stepLeader(r *raft, m pb.Message) {
 			}
 		}
 	case pb.MsgHeartbeatResp:
-		pr.recentActive = true
+		pr.RecentActive = true
 
 		// free one slot for the full inflights window to allow progress.
 		if pr.State == ProgressStateReplicate && pr.ins.full() {
@@ -867,11 +872,11 @@ func (r *raft) checkQuorumActive() bool {
 			continue
 		}
 
-		if r.prs[id].recentActive {
+		if r.prs[id].RecentActive {
 			act += 1
 		}
 
-		r.prs[id].recentActive = false
+		r.prs[id].RecentActive = false
 	}
 
 	return act >= r.q()
