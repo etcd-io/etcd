@@ -52,7 +52,7 @@ func TestReadDir(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error creating file: %v", err)
 		}
-		if err := fh.Close(); err != nil {
+		if err = fh.Close(); err != nil {
 			t.Fatalf("error closing file: %v", err)
 		}
 	}

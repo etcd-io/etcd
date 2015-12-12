@@ -121,7 +121,7 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 	}
 
 	select {
-	case err := <-errch:
+	case err = <-errch:
 		t.Errorf("unexpected purge error %v", err)
 	case <-time.After(time.Millisecond):
 	}
