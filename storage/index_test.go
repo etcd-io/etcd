@@ -225,17 +225,17 @@ func TestIndexCompact(t *testing.T) {
 	for i := int64(1); i < maxRev; i++ {
 		am := ti.Compact(i)
 
-		windex := newTreeIndex()
+		wti := newTreeIndex()
 		for _, tt := range tests {
 			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
 				if tt.remove {
-					windex.Tombstone(tt.key, tt.rev)
+					wti.Tombstone(tt.key, tt.rev)
 				} else {
-					windex.Restore(tt.key, tt.created, tt.rev, tt.ver)
+					wti.Restore(tt.key, tt.created, tt.rev, tt.ver)
 				}
 			}
 		}
-		if !ti.Equal(windex) {
+		if !ti.Equal(wti) {
 			t.Errorf("#%d: not equal ti", i)
 		}
 	}
@@ -252,17 +252,17 @@ func TestIndexCompact(t *testing.T) {
 		}
 		am := ti.Compact(i)
 
-		windex := newTreeIndex()
+		wti := newTreeIndex()
 		for _, tt := range tests {
 			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
 				if tt.remove {
-					windex.Tombstone(tt.key, tt.rev)
+					wti.Tombstone(tt.key, tt.rev)
 				} else {
-					windex.Restore(tt.key, tt.created, tt.rev, tt.ver)
+					wti.Restore(tt.key, tt.created, tt.rev, tt.ver)
 				}
 			}
 		}
-		if !ti.Equal(windex) {
+		if !ti.Equal(wti) {
 			t.Errorf("#%d: not equal ti", i)
 		}
 	}
