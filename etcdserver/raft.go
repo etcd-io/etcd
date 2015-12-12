@@ -158,14 +158,14 @@ func (r *raftNode) start(s *EtcdServer) {
 					}
 				}
 
-				apply := apply{
+				ap := apply{
 					entries:  rd.CommittedEntries,
 					snapshot: rd.Snapshot,
 					done:     make(chan struct{}),
 				}
 
 				select {
-				case r.applyc <- apply:
+				case r.applyc <- ap:
 				case <-r.stopped:
 					return
 				}
@@ -185,7 +185,7 @@ func (r *raftNode) start(s *EtcdServer) {
 				r.s.send(rd.Messages)
 
 				select {
-				case <-apply.done:
+				case <-ap.done:
 				case <-r.stopped:
 					return
 				}
@@ -253,7 +253,7 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 			ClusterID: uint64(cl.ID()),
 		},
 	)
-	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
+	if err = os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
 		plog.Fatalf("create snapshot directory error: %v", err)
 	}
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
