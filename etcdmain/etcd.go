@@ -363,7 +363,7 @@ func startProxy(cfg *config) error {
 			plog.Warningf("discovery token ignored since the proxy has already been initialized. Valid cluster file found at %q", clusterfile)
 		}
 		urls := struct{ PeerURLs []string }{}
-		err := json.Unmarshal(b, &urls)
+		err = json.Unmarshal(b, &urls)
 		if err != nil {
 			return err
 		}
