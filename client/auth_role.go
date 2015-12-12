@@ -115,14 +115,13 @@ func (r *httpAuthRoleAPI) ListRoles(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
+	if err = assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		return nil, err
 	}
 	var userList struct {
 		Roles []string `json:"roles"`
 	}
-	err = json.Unmarshal(body, &userList)
-	if err != nil {
+	if err = json.Unmarshal(body, &userList); err != nil {
 		return nil, err
 	}
 	return userList.Roles, nil
@@ -218,17 +217,16 @@ func (r *httpAuthRoleAPI) modRole(ctx context.Context, req *authRoleAPIAction) (
 	if err != nil {
 		return nil, err
 	}
-	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
+	if err = assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		var sec authError
-		err := json.Unmarshal(body, &sec)
+		err = json.Unmarshal(body, &sec)
 		if err != nil {
 			return nil, err
 		}
 		return nil, sec
 	}
 	var role Role
-	err = json.Unmarshal(body, &role)
-	if err != nil {
+	if err = json.Unmarshal(body, &role); err != nil {
 		return nil, err
 	}
 	return &role, nil

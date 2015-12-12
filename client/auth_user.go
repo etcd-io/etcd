@@ -78,9 +78,9 @@ func (s *httpAuthAPI) enableDisable(ctx context.Context, req httpAction) error {
 	if err != nil {
 		return err
 	}
-	if err := assertStatusCode(resp.StatusCode, http.StatusOK, http.StatusCreated); err != nil {
+	if err = assertStatusCode(resp.StatusCode, http.StatusOK, http.StatusCreated); err != nil {
 		var sec authError
-		err := json.Unmarshal(body, &sec)
+		err = json.Unmarshal(body, &sec)
 		if err != nil {
 			return err
 		}
@@ -179,9 +179,9 @@ func (u *httpAuthUserAPI) ListUsers(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
+	if err = assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		var sec authError
-		err := json.Unmarshal(body, &sec)
+		err = json.Unmarshal(body, &sec)
 		if err != nil {
 			return nil, err
 		}
@@ -190,8 +190,7 @@ func (u *httpAuthUserAPI) ListUsers(ctx context.Context) ([]string, error) {
 	var userList struct {
 		Users []string `json:"users"`
 	}
-	err = json.Unmarshal(body, &userList)
-	if err != nil {
+	if err = json.Unmarshal(body, &userList); err != nil {
 		return nil, err
 	}
 	return userList.Users, nil
@@ -221,9 +220,9 @@ func (u *httpAuthUserAPI) addRemoveUser(ctx context.Context, req *authUserAPIAct
 	if err != nil {
 		return err
 	}
-	if err := assertStatusCode(resp.StatusCode, http.StatusOK, http.StatusCreated); err != nil {
+	if err = assertStatusCode(resp.StatusCode, http.StatusOK, http.StatusCreated); err != nil {
 		var sec authError
-		err := json.Unmarshal(body, &sec)
+		err = json.Unmarshal(body, &sec)
 		if err != nil {
 			return err
 		}
@@ -280,17 +279,16 @@ func (u *httpAuthUserAPI) modUser(ctx context.Context, req *authUserAPIAction) (
 	if err != nil {
 		return nil, err
 	}
-	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
+	if err = assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		var sec authError
-		err := json.Unmarshal(body, &sec)
+		err = json.Unmarshal(body, &sec)
 		if err != nil {
 			return nil, err
 		}
 		return nil, sec
 	}
 	var user User
-	err = json.Unmarshal(body, &user)
-	if err != nil {
+	if err = json.Unmarshal(body, &user); err != nil {
 		return nil, err
 	}
 	return &user, nil
