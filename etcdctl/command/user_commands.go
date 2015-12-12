@@ -181,20 +181,28 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 
 	api, user := mustUserAPIAndName(c)
 	currentUser, err := api.GetUser(ctx, user)
-	if currentUser == nil {
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
-	var newUser *client.User
+	var newUser *client.UserRoles
 	if grant {
 		newUser, err = api.GrantUser(ctx, user, roles)
 	} else {
 		newUser, err = api.RevokeUser(ctx, user, roles)
 	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
 	sort.Strings(newUser.Roles)
-	sort.Strings(currentUser.Roles)
-	if reflect.DeepEqual(newUser.Roles, currentUser.Roles) {
+	var currentRoleSet []string
+	for _, rl := range currentUser.Roles {
+		currentRoleSet = append(currentRoleSet, rl.Role)
+	}
+	sort.Strings(currentRoleSet)
+	if reflect.DeepEqual(newUser.Roles, currentRoleSet) {
 		if grant {
 			fmt.Printf("User unchanged; roles already granted")
 		} else {
@@ -219,7 +227,11 @@ func actionUserGet(c *cli.Context) {
 		os.Exit(1)
 	}
 	fmt.Printf("User: %s\n", user.User)
-	fmt.Printf("Roles: %s\n", strings.Join(user.Roles, " "))
+	var currentRoleSet []string
+	for _, rl := range user.Roles {
+		currentRoleSet = append(currentRoleSet, rl.Role)
+	}
+	fmt.Printf("Roles: %s\n", strings.Join(currentRoleSet, " "))
 
 }
 

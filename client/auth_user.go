@@ -31,9 +31,14 @@ var (
 type User struct {
 	User     string   `json:"user"`
 	Password string   `json:"password,omitempty"`
-	Roles    []string `json:"roles"`
+	Roles    []Role   `json:"roles"`
 	Grant    []string `json:"grant,omitempty"`
 	Revoke   []string `json:"revoke,omitempty"`
+}
+
+type UserRoles struct {
+	User  string   `json:"user"`
+	Roles []string `json:"roles"`
 }
 
 func v2AuthURL(ep url.URL, action string, name string) *url.URL {
@@ -127,16 +132,16 @@ type AuthUserAPI interface {
 	GetUser(ctx context.Context, username string) (*User, error)
 
 	// Grant a user some permission roles.
-	GrantUser(ctx context.Context, username string, roles []string) (*User, error)
+	GrantUser(ctx context.Context, username string, roles []string) (*UserRoles, error)
 
 	// Revoke some permission roles from a user.
-	RevokeUser(ctx context.Context, username string, roles []string) (*User, error)
+	RevokeUser(ctx context.Context, username string, roles []string) (*UserRoles, error)
 
 	// Change the user's password.
 	ChangePassword(ctx context.Context, username string, password string) (*User, error)
 
 	// List users.
-	ListUsers(ctx context.Context) ([]string, error)
+	ListUsers(ctx context.Context) ([]User, error)
 }
 
 type httpAuthUserAPI struct {
@@ -174,7 +179,7 @@ func (l *authUserAPIAction) HTTPRequest(ep url.URL) *http.Request {
 	return req
 }
 
-func (u *httpAuthUserAPI) ListUsers(ctx context.Context) ([]string, error) {
+func (u *httpAuthUserAPI) ListUsers(ctx context.Context) ([]User, error) {
 	resp, body, err := u.client.Do(ctx, &authUserAPIList{})
 	if err != nil {
 		return nil, err
@@ -188,7 +193,7 @@ func (u *httpAuthUserAPI) ListUsers(ctx context.Context) ([]string, error) {
 		return nil, sec
 	}
 	var userList struct {
-		Users []string `json:"users"`
+		Users []User `json:"users"`
 	}
 	err = json.Unmarshal(body, &userList)
 	if err != nil {
@@ -239,24 +244,24 @@ func (u *httpAuthUserAPI) GetUser(ctx context.Context, username string) (*User, 
 	})
 }
 
-func (u *httpAuthUserAPI) GrantUser(ctx context.Context, username string, roles []string) (*User, error) {
+func (u *httpAuthUserAPI) GrantUser(ctx context.Context, username string, roles []string) (*UserRoles, error) {
 	user := &User{
 		User:  username,
 		Grant: roles,
 	}
-	return u.modUser(ctx, &authUserAPIAction{
+	return u.grantRevokeUser(ctx, &authUserAPIAction{
 		verb:     "PUT",
 		username: username,
 		user:     user,
 	})
 }
 
-func (u *httpAuthUserAPI) RevokeUser(ctx context.Context, username string, roles []string) (*User, error) {
+func (u *httpAuthUserAPI) RevokeUser(ctx context.Context, username string, roles []string) (*UserRoles, error) {
 	user := &User{
 		User:   username,
 		Revoke: roles,
 	}
-	return u.modUser(ctx, &authUserAPIAction{
+	return u.grantRevokeUser(ctx, &authUserAPIAction{
 		verb:     "PUT",
 		username: username,
 		user:     user,
@@ -289,6 +294,27 @@ func (u *httpAuthUserAPI) modUser(ctx context.Context, req *authUserAPIAction) (
 		return nil, sec
 	}
 	var user User
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (u *httpAuthUserAPI) grantRevokeUser(ctx context.Context, req *authUserAPIAction) (*UserRoles, error) {
+	resp, body, err := u.client.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
+		var sec authError
+		err := json.Unmarshal(body, &sec)
+		if err != nil {
+			return nil, err
+		}
+		return nil, sec
+	}
+	var user UserRoles
 	err = json.Unmarshal(body, &user)
 	if err != nil {
 		return nil, err
