@@ -102,8 +102,7 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = l.Lock()
-	if err != nil {
+	if err = l.Lock(); err != nil {
 		return nil, err
 	}
 
@@ -121,7 +120,7 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: metadata}); err != nil {
 		return nil, err
 	}
-	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+	if err := w.SaveSnapshot(walpb.Snapshot{}); err != nil {
 		return nil, err
 	}
 	return w, nil
@@ -339,25 +338,25 @@ func (w *WAL) cut() error {
 	w.f = ft
 	prevCrc := w.encoder.crc.Sum32()
 	w.encoder = newEncoder(w.f, prevCrc)
-	if err := w.saveCrc(prevCrc); err != nil {
+	if err = w.saveCrc(prevCrc); err != nil {
 		return err
 	}
-	if err := w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.metadata}); err != nil {
+	if err = w.encoder.encode(&walpb.Record{Type: metadataType, Data: w.metadata}); err != nil {
 		return err
 	}
-	if err := w.saveState(&w.state); err != nil {
+	if err = w.saveState(&w.state); err != nil {
 		return err
 	}
 	// close temp wal file
-	if err := w.sync(); err != nil {
+	if err = w.sync(); err != nil {
 		return err
 	}
-	if err := w.f.Close(); err != nil {
+	if err = w.f.Close(); err != nil {
 		return err
 	}
 
 	// atomically move temp wal file to wal file
-	if err := os.Rename(ftpath, fpath); err != nil {
+	if err = os.Rename(ftpath, fpath); err != nil {
 		return err
 	}
 
@@ -366,8 +365,7 @@ func (w *WAL) cut() error {
 	if err != nil {
 		return err
 	}
-	err = fileutil.Preallocate(f, segmentSizeBytes)
-	if err != nil {
+	if err = fileutil.Preallocate(f, segmentSizeBytes); err != nil {
 		plog.Errorf("failed to allocate space when creating new wal file (%v)", err)
 		return err
 	}
@@ -382,8 +380,7 @@ func (w *WAL) cut() error {
 		return err
 	}
 
-	err = l.Lock()
-	if err != nil {
+	if err := l.Lock(); err != nil {
 		return err
 	}
 	w.locks = append(w.locks, l)
