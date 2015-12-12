@@ -85,7 +85,7 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 		to = nil
 	}
 	drop := rn.dropmap[conn{m.From, m.To}]
-	delay := rn.delaymap[conn{m.From, m.To}]
+	dl := rn.delaymap[conn{m.From, m.To}]
 	rn.mu.Unlock()
 
 	if to == nil {
@@ -94,9 +94,9 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 	if drop != 0 && rand.Float64() < drop {
 		return
 	}
-	// TODO: shall we delay without blocking the send call?
-	if delay.d != 0 && rand.Float64() < delay.rate {
-		rd := rand.Int63n(int64(delay.d))
+	// TODO: shall we dl without blocking the send call?
+	if dl.d != 0 && rand.Float64() < dl.rate {
+		rd := rand.Int63n(int64(dl.d))
 		time.Sleep(time.Duration(rd))
 	}
 
