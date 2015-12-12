@@ -424,28 +424,26 @@ func (s *store) EnableAuth() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_, err := s.GetUser("root")
-	if err != nil {
+	if _, err := s.GetUser("root"); err != nil {
 		return authErr(http.StatusConflict, "No root user available, please create one")
 	}
-	_, err = s.GetRole(GuestRoleName)
-	if err != nil {
+	if _, err := s.GetRole(GuestRoleName); err != nil {
 		plog.Printf("no guest role access found, creating default")
-		err := s.CreateRole(guestRole)
-		if err != nil {
+		if err := s.CreateRole(guestRole); err != nil {
 			plog.Errorf("error creating guest role. aborting auth enable.")
 			return err
 		}
 	}
-	err = s.enableAuth()
-	if err == nil {
-		b := true
-		s.enabled = &b
-		plog.Noticef("auth: enabled auth")
-	} else {
+
+	if err := s.enableAuth(); err != nil {
 		plog.Errorf("error enabling auth (%v)", err)
+		return err
 	}
-	return err
+
+	b := true
+	s.enabled = &b
+	plog.Noticef("auth: enabled auth")
+	return nil
 }
 
 func (s *store) DisableAuth() error {
