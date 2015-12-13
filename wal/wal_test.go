@@ -153,10 +153,10 @@ func TestCut(t *testing.T) {
 
 	state := raftpb.HardState{Term: 1}
 	// TODO(unihorn): remove this when cut can operate on an empty file
-	if err := w.Save(state, []raftpb.Entry{{}}); err != nil {
+	if err = w.Save(state, []raftpb.Entry{{}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.cut(); err != nil {
+	if err = w.cut(); err != nil {
 		t.Fatal(err)
 	}
 	wname := walName(1, 1)
@@ -165,10 +165,10 @@ func TestCut(t *testing.T) {
 	}
 
 	es := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}}
-	if err := w.Save(raftpb.HardState{}, es); err != nil {
+	if err = w.Save(raftpb.HardState{}, es); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.cut(); err != nil {
+	if err = w.cut(); err != nil {
 		t.Fatal(err)
 	}
 	snap := walpb.Snapshot{Index: 2, Term: 1}
@@ -212,7 +212,7 @@ func TestRecover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
 		t.Fatal(err)
 	}
 	ents := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}, {Index: 2, Term: 2, Data: []byte{2}}}
@@ -385,10 +385,10 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := w.SaveSnapshot(walpb.Snapshot{}); err != nil {
+	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
+	if err = w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
 		t.Fatal(err)
 	}
 	w.Close()
@@ -398,7 +398,7 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	// commit up to index 0, try to read index 1
-	if _, _, _, err := w.ReadAll(); err != nil {
+	if _, _, _, err = w.ReadAll(); err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
 	w.Close()

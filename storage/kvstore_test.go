@@ -94,10 +94,10 @@ func TestStorePut(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s, b, index := newFakeStore()
+		s, b, fi := newFakeStore()
 		s.currentRev = tt.rev
 		s.tx = b.BatchTx()
-		index.indexGetRespc <- tt.r
+		fi.indexGetRespc <- tt.r
 
 		s.put([]byte("foo"), []byte("bar"))
 
@@ -115,7 +115,7 @@ func TestStorePut(t *testing.T) {
 			{"get", []interface{}{[]byte("foo"), tt.wputrev.main}},
 			{"put", []interface{}{[]byte("foo"), tt.wputrev}},
 		}
-		if g := index.Action(); !reflect.DeepEqual(g, wact) {
+		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
 		}
 		if s.currentRev != tt.wrev {
@@ -154,11 +154,11 @@ func TestStoreRange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s, b, index := newFakeStore()
+		s, b, fi := newFakeStore()
 		s.currentRev = currev
 		s.tx = b.BatchTx()
 		b.tx.rangeRespc <- tt.r
-		index.indexRangeRespc <- tt.idxr
+		fi.indexRangeRespc <- tt.idxr
 
 		kvs, rev, err := s.rangeKeys([]byte("foo"), []byte("goo"), 1, 0)
 		if err != nil {
@@ -181,7 +181,7 @@ func TestStoreRange(t *testing.T) {
 		wact = []testutil.Action{
 			{"range", []interface{}{[]byte("foo"), []byte("goo"), wrev}},
 		}
-		if g := index.Action(); !reflect.DeepEqual(g, wact) {
+		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
 		}
 		if s.currentRev != currev {
@@ -218,10 +218,10 @@ func TestStoreDeleteRange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s, b, index := newFakeStore()
+		s, b, fi := newFakeStore()
 		s.currentRev = tt.rev
 		s.tx = b.BatchTx()
-		index.indexRangeRespc <- tt.r
+		fi.indexRangeRespc <- tt.r
 
 		n := s.deleteRange([]byte("foo"), []byte("goo"))
 		if n != 1 {
@@ -244,7 +244,7 @@ func TestStoreDeleteRange(t *testing.T) {
 			{"range", []interface{}{[]byte("foo"), []byte("goo"), tt.wrrev}},
 			{"tombstone", []interface{}{[]byte("foo"), tt.wdelrev}},
 		}
-		if g := index.Action(); !reflect.DeepEqual(g, wact) {
+		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
 		}
 		if s.currentRev != tt.wrev {
@@ -282,9 +282,9 @@ func TestStoreRangeHistory(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s, b, index := newFakeStore()
+		s, b, fi := newFakeStore()
 		s.currentRev = currev
-		index.indexRangeEventsRespc <- tt.idxr
+		fi.indexRangeEventsRespc <- tt.idxr
 		b.tx.rangeRespc <- tt.r
 
 		keys, kvs, _, err := s.RangeHistory([]byte("foo"), []byte("goo"), 1, 1)
@@ -301,7 +301,7 @@ func TestStoreRangeHistory(t *testing.T) {
 		wact := []testutil.Action{
 			{"rangeEvents", []interface{}{[]byte("foo"), []byte("goo"), int64(1)}},
 		}
-		if g := index.Action(); !reflect.DeepEqual(g, wact) {
+		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
 		}
 		wstart, wend := revBytesRange(tt.idxr.revs[0])
@@ -318,9 +318,9 @@ func TestStoreRangeHistory(t *testing.T) {
 }
 
 func TestStoreCompact(t *testing.T) {
-	s, b, index := newFakeStore()
+	s, b, fi := newFakeStore()
 	s.currentRev = revision{3, 0}
-	index.indexCompactRespc <- map[revision]struct{}{revision{1, 0}: {}}
+	fi.indexCompactRespc <- map[revision]struct{}{revision{1, 0}: {}}
 	key1 := newTestKeyBytes(revision{1, 0}, false)
 	key2 := newTestKeyBytes(revision{2, 0}, false)
 	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
@@ -345,13 +345,13 @@ func TestStoreCompact(t *testing.T) {
 	wact = []testutil.Action{
 		{"compact", []interface{}{int64(3)}},
 	}
-	if g := index.Action(); !reflect.DeepEqual(g, wact) {
+	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
 	}
 }
 
 func TestStoreRestore(t *testing.T) {
-	s, b, index := newFakeStore()
+	s, b, fi := newFakeStore()
 
 	putkey := newTestKeyBytes(revision{3, 0}, false)
 	putkv := storagepb.KeyValue{
@@ -398,7 +398,7 @@ func TestStoreRestore(t *testing.T) {
 		{"restore", []interface{}{[]byte("foo"), revision{3, 0}, revision{3, 0}, int64(1)}},
 		{"tombstone", []interface{}{[]byte("foo"), revision{4, 0}}},
 	}
-	if g := index.Action(); !reflect.DeepEqual(g, wact) {
+	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
 	}
 }
@@ -708,7 +708,7 @@ func newTestKeyBytes(rev revision, tombstone bool) []byte {
 
 func newFakeStore() (*store, *fakeBackend, *fakeIndex) {
 	b := &fakeBackend{&fakeBatchTx{rangeRespc: make(chan rangeResp, 5)}}
-	index := &fakeIndex{
+	fi := &fakeIndex{
 		indexGetRespc:         make(chan indexGetResp, 1),
 		indexRangeRespc:       make(chan indexRangeResp, 1),
 		indexRangeEventsRespc: make(chan indexRangeEventsResp, 1),
@@ -716,10 +716,10 @@ func newFakeStore() (*store, *fakeBackend, *fakeIndex) {
 	}
 	return &store{
 		b:              b,
-		kvindex:        index,
+		kvindex:        fi,
 		currentRev:     revision{},
 		compactMainRev: -1,
-	}, b, index
+	}, b, fi
 }
 
 type rangeResp struct {

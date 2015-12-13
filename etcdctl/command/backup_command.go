@@ -61,7 +61,7 @@ func handleBackup(c *cli.Context) {
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 		newss := snap.New(destSnap)
-		if err := newss.SaveSnap(*snapshot); err != nil {
+		if err = newss.SaveSnap(*snapshot); err != nil {
 			log.Fatal(err)
 		}
 	}

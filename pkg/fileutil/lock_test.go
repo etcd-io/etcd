@@ -28,7 +28,7 @@ func TestLockAndUnlock(t *testing.T) {
 	}
 	f.Close()
 	defer func() {
-		err := os.Remove(f.Name())
+		err = os.Remove(f.Name())
 		if err != nil {
 			t.Fatal(err)
 		}

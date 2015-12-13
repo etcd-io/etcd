@@ -1037,7 +1037,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		}
 		// SaveSnap saves the snapshot and releases the locked wal files
 		// to the snapshot index.
-		if err := s.r.storage.SaveSnap(snap); err != nil {
+		if err = s.r.storage.SaveSnap(snap); err != nil {
 			plog.Fatalf("save snapshot error: %v", err)
 		}
 		plog.Infof("saved snapshot at index %d", snap.Metadata.Index)

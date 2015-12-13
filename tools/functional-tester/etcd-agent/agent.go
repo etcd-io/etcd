@@ -106,8 +106,7 @@ func (a *Agent) restart() error {
 }
 
 func (a *Agent) cleanup() error {
-	err := a.stop()
-	if err != nil {
+	if err := a.stop(); err != nil {
 		return err
 	}
 	a.state = stateUninitialized

@@ -78,7 +78,7 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 			continue
 		}
 		var membs []*Member
-		if err := json.Unmarshal(b, &membs); err != nil {
+		if err = json.Unmarshal(b, &membs); err != nil {
 			if logerr {
 				plog.Warningf("could not unmarshal cluster response: %v", err)
 			}
@@ -246,7 +246,7 @@ func getVersion(m *Member, rt http.RoundTripper) (*version.Versions, error) {
 			continue
 		}
 		var vers version.Versions
-		if err := json.Unmarshal(b, &vers); err != nil {
+		if err = json.Unmarshal(b, &vers); err != nil {
 			plog.Warningf("failed to unmarshal the response body got from the peerURL(%s) of member %s (%v)", u, m.ID, err)
 			continue
 		}
