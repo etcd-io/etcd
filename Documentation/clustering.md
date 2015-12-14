@@ -313,8 +313,8 @@ $ etcd -name infra0 \
 -initial-cluster-token etcd-cluster-1 \
 -initial-cluster-state new \
 -advertise-client-urls http://infra0.example.com:2379 \
--listen-client-urls http://infra0.example.com:2379 \
--listen-peer-urls http://infra0.example.com:2380
+-listen-client-urls http://0.0.0.0:2379 \
+-listen-peer-urls http://0.0.0.0:2380
 ```
 
 ```
@@ -324,8 +324,8 @@ $ etcd -name infra1 \
 -initial-cluster-token etcd-cluster-1 \
 -initial-cluster-state new \
 -advertise-client-urls http://infra1.example.com:2379 \
--listen-client-urls http://infra1.example.com:2379 \
--listen-peer-urls http://infra1.example.com:2380
+-listen-client-urls http://0.0.0.0:2379 \
+-listen-peer-urls http://0.0.0.0:2380
 ```
 
 ```
@@ -335,8 +335,8 @@ $ etcd -name infra2 \
 -initial-cluster-token etcd-cluster-1 \
 -initial-cluster-state new \
 -advertise-client-urls http://infra2.example.com:2379 \
--listen-client-urls http://infra2.example.com:2379 \
--listen-peer-urls http://infra2.example.com:2380
+-listen-client-urls http://0.0.0.0:2379 \
+-listen-peer-urls http://0.0.0.0:2380
 ```
 
 You can also bootstrap the cluster using IP addresses instead of domain names:
