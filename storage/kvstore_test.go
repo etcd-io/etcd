@@ -94,7 +94,10 @@ func TestStorePut(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s, b, fi := newFakeStore()
+		s := newFakeStore()
+		b := s.b.(*fakeBackend)
+		fi := s.kvindex.(*fakeIndex)
+
 		s.currentRev = tt.rev
 		s.tx = b.BatchTx()
 		fi.indexGetRespc <- tt.r
@@ -154,7 +157,10 @@ func TestStoreRange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s, b, fi := newFakeStore()
+		s := newFakeStore()
+		b := s.b.(*fakeBackend)
+		fi := s.kvindex.(*fakeIndex)
+
 		s.currentRev = currev
 		s.tx = b.BatchTx()
 		b.tx.rangeRespc <- tt.r
@@ -218,7 +224,10 @@ func TestStoreDeleteRange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s, b, fi := newFakeStore()
+		s := newFakeStore()
+		b := s.b.(*fakeBackend)
+		fi := s.kvindex.(*fakeIndex)
+
 		s.currentRev = tt.rev
 		s.tx = b.BatchTx()
 		fi.indexRangeRespc <- tt.r
@@ -282,7 +291,10 @@ func TestStoreRangeHistory(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s, b, fi := newFakeStore()
+		s := newFakeStore()
+		b := s.b.(*fakeBackend)
+		fi := s.kvindex.(*fakeIndex)
+
 		s.currentRev = currev
 		fi.indexRangeEventsRespc <- tt.idxr
 		b.tx.rangeRespc <- tt.r
@@ -318,7 +330,10 @@ func TestStoreRangeHistory(t *testing.T) {
 }
 
 func TestStoreCompact(t *testing.T) {
-	s, b, fi := newFakeStore()
+	s := newFakeStore()
+	b := s.b.(*fakeBackend)
+	fi := s.kvindex.(*fakeIndex)
+
 	s.currentRev = revision{3, 0}
 	fi.indexCompactRespc <- map[revision]struct{}{revision{1, 0}: {}}
 	key1 := newTestKeyBytes(revision{1, 0}, false)
@@ -351,7 +366,9 @@ func TestStoreCompact(t *testing.T) {
 }
 
 func TestStoreRestore(t *testing.T) {
-	s, b, fi := newFakeStore()
+	s := newFakeStore()
+	b := s.b.(*fakeBackend)
+	fi := s.kvindex.(*fakeIndex)
 
 	putkey := newTestKeyBytes(revision{3, 0}, false)
 	putkv := storagepb.KeyValue{
@@ -706,7 +723,7 @@ func newTestKeyBytes(rev revision, tombstone bool) []byte {
 	return bytes
 }
 
-func newFakeStore() (*store, *fakeBackend, *fakeIndex) {
+func newFakeStore() *store {
 	b := &fakeBackend{&fakeBatchTx{rangeRespc: make(chan rangeResp, 5)}}
 	fi := &fakeIndex{
 		indexGetRespc:         make(chan indexGetResp, 1),
@@ -719,7 +736,7 @@ func newFakeStore() (*store, *fakeBackend, *fakeIndex) {
 		kvindex:        fi,
 		currentRev:     revision{},
 		compactMainRev: -1,
-	}, b, fi
+	}
 }
 
 type rangeResp struct {
