@@ -691,6 +691,7 @@ func mustNewMember(t *testing.T, name string, usePeerTLS bool) *member {
 	m.ServerConfig.PeerTLSInfo = m.PeerTLSInfo
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
+	m.ServerConfig.V3demo = true
 	return m
 }
 
