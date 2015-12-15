@@ -42,25 +42,39 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 		t.Errorf("initial working status = %v, want false", ok)
 	}
 
-	// repeatitive tests to ensure it can use latest connection
+	// repeat tests to ensure streamWriter can use last attached connection
 	var wfc *fakeWriteFlushCloser
 	for i := 0; i < 3; i++ {
 		prevwfc := wfc
 		wfc = &fakeWriteFlushCloser{}
 		sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
-		testutil.WaitSchedule()
+
+		// sw.attach happens asynchronously. Waits for its result in a for loop to make the
+		// test more robust on slow CI.
+		for j := 0; j < 3; j++ {
+			testutil.WaitSchedule()
+			// previous attached connection should be closed
+			if prevwfc != nil && prevwfc.Closed() != true {
+				continue
+			}
+			// write chan is available
+			if _, ok := sw.writec(); ok != true {
+				continue
+			}
+		}
+
 		// previous attached connection should be closed
 		if prevwfc != nil && prevwfc.Closed() != true {
 			t.Errorf("#%d: close of previous connection = %v, want true", i, prevwfc.Closed())
 		}
-		// starts working
+		// write chan is available
 		if _, ok := sw.writec(); ok != true {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
 
 		sw.msgc <- raftpb.Message{}
 		testutil.WaitSchedule()
-		// still working
+		// write chan is available
 		if _, ok := sw.writec(); ok != true {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
@@ -70,7 +84,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 	}
 
 	sw.stop()
-	// no longer in working status now
+	// write chan is unavailable since the writer is stopped.
 	if _, ok := sw.writec(); ok != false {
 		t.Errorf("working status after stop = %v, want false", ok)
 	}
