@@ -13,3 +13,13 @@ This document tracks people and use cases for etcd in production. By creating a 
 - *Backups*: Periodic async to S3
 
 discovery.etcd.io is the longest continuously running etcd backed service that we know about. It is the basis of automatic cluster bootstrap and was launched in Feb. 2014: https://coreos.com/blog/etcd-0.3.0-released/.
+
+## OpenTable
+
+- *Application*: OpenTable internal service discovery and cluster configuration management
+- *Launched*: May 2014
+- *Cluster Size*: 3 members each in 6 independent clusters; approximately 50 nodes reading / writing
+- *Order of Data Size*: 10s of MB
+- *Operator*: OpenTable, Inc; sschlansker@opentable.com
+- *Environment*: AWS, VMWare
+- *Backups*: None, all data can be re-created if necessary.
