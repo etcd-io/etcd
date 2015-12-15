@@ -23,3 +23,15 @@ discovery.etcd.io is the longest continuously running etcd backed service that w
 - *Operator*: OpenTable, Inc; sschlansker@opentable.com
 - *Environment*: AWS, VMWare
 - *Backups*: None, all data can be re-created if necessary.
+
+## cycoresys.com
+
+- *Application*: multiple
+- *Launched*: Jul. 2014
+- *Cluster Size*: 3 members, _n_ proxies
+- *Order of Data Size*: 100s of kilobytes
+- *Operator*: CyCore Systems, Inc, sys@cycoresys.com
+- *Environment*: Baremetal
+- *Backups*: Periodic sync to Ceph RadosGW and DigitalOcean VM
+
+CyCore Systems provides architecture and engineering for computing systems.  This cluster provides microservices, virtual machines, databases, storage clusters to a number of clients.  It is built on CoreOS machines, with each machine in the cluster running etcd as a peer or proxy.
