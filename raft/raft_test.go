@@ -977,7 +977,7 @@ func TestMsgAppRespWaitReset(t *testing.T) {
 		t.Fatalf("expected 1 message, got %d: %+v", len(msgs), msgs)
 	}
 	if msgs[0].Type != pb.MsgApp || msgs[0].To != 2 {
-		t.Errorf("expected MsgApp to node 2, got %s to %d", msgs[0].Type, msgs[0].To)
+		t.Errorf("expected MsgApp to node 2, got %v to %d", msgs[0].Type, msgs[0].To)
 	}
 	if len(msgs[0].Entries) != 1 || msgs[0].Entries[0].Index != 2 {
 		t.Errorf("expected to send entry 2, but got %v", msgs[0].Entries)
@@ -994,7 +994,7 @@ func TestMsgAppRespWaitReset(t *testing.T) {
 		t.Fatalf("expected 1 message, got %d: %+v", len(msgs), msgs)
 	}
 	if msgs[0].Type != pb.MsgApp || msgs[0].To != 3 {
-		t.Errorf("expected MsgApp to node 3, got %s to %d", msgs[0].Type, msgs[0].To)
+		t.Errorf("expected MsgApp to node 3, got %v to %d", msgs[0].Type, msgs[0].To)
 	}
 	if len(msgs[0].Entries) != 1 || msgs[0].Entries[0].Index != 2 {
 		t.Errorf("expected to send entry 2, but got %v", msgs[0].Entries)
@@ -1435,7 +1435,7 @@ func TestSendAppendForProgressProbe(t *testing.T) {
 			t.Errorf("len(msg) = %d, want %d", len(msg), 1)
 		}
 		if msg[0].Type != pb.MsgHeartbeat {
-			t.Errorf("type = %s, want %s", msg[0].Type, pb.MsgHeartbeat)
+			t.Errorf("type = %v, want %v", msg[0].Type, pb.MsgHeartbeat)
 		}
 	}
 }
