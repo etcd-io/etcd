@@ -654,11 +654,11 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 		tx = s1.b.BatchTx()
 		tx.Lock()
 		ks, _ := tx.UnsafeRange(keyBucketName, revbytes, nil, 0)
+		tx.Unlock()
 		if len(ks) != 0 {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
-		tx.Unlock()
 		return
 	}
 
