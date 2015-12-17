@@ -16,11 +16,13 @@ package client
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 
@@ -29,6 +31,7 @@ import (
 
 var (
 	defaultV2MembersPrefix = "/v2/members"
+	defaultV2PeersPrefix   = "/v2/peers"
 )
 
 type Member struct {
@@ -118,6 +121,10 @@ func (m *httpMembersAPI) List(ctx context.Context) ([]Member, error) {
 		return nil, err
 	}
 
+	if resp.StatusCode == http.StatusNotFound {
+		return m.peers(ctx)
+	}
+
 	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
 		return nil, err
 	}
@@ -128,6 +135,33 @@ func (m *httpMembersAPI) List(ctx context.Context) ([]Member, error) {
 	}
 
 	return []Member(mCollection), nil
+}
+
+// peers parses the deprecated peers API used in etcd v0.4. This is a fallback
+// mechanism so this client will work with older etcd servers.
+func (m *httpMembersAPI) peers(ctx context.Context) ([]Member, error) {
+	req := &peersAPIActionList{}
+	resp, body, err := m.client.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := assertStatusCode(resp.StatusCode, http.StatusOK); err != nil {
+		return nil, err
+	}
+
+	// Parse the peers API format: https://github.com/coreos/etcd/blob/v0.4.9/server/server.go#L311
+	list := strings.Split(string(body), ", ")
+	members := []Member{}
+	for _, p := range list {
+		id := fmt.Sprintf("%x", md5.Sum([]byte(p)))
+		members = append(members, Member{
+			ID:         "deprecated-etcd-v04-" + id,
+			Name:       "deprecated-etcd-v04",
+			ClientURLs: []string{p},
+		})
+	}
+	return members, nil
 }
 
 func (m *httpMembersAPI) Add(ctx context.Context, peerURL string) (*Member, error) {
@@ -207,6 +241,14 @@ func (l *membersAPIActionList) HTTPRequest(ep url.URL) *http.Request {
 	return req
 }
 
+type peersAPIActionList struct{}
+
+func (l *peersAPIActionList) HTTPRequest(ep url.URL) *http.Request {
+	u := v2PeersURL(ep)
+	req, _ := http.NewRequest("GET", u.String(), nil)
+	return req
+}
+
 type membersAPIActionRemove struct {
 	memberID string
 }
@@ -259,6 +301,13 @@ func assertStatusCode(got int, want ...int) (err error) {
 // to route requests to the default v2 members API.
 func v2MembersURL(ep url.URL) *url.URL {
 	ep.Path = path.Join(ep.Path, defaultV2MembersPrefix)
+	return &ep
+}
+
+// v2PeersURL add the necessary path to the provided endpoint
+// to route requests to the deprecated v2 peers API.
+func v2PeersURL(ep url.URL) *url.URL {
+	ep.Path = path.Join(ep.Path, defaultV2PeersPrefix)
 	return &ep
 }
 

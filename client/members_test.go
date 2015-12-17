@@ -490,6 +490,49 @@ func TestHTTPMembersAPIListSuccess(t *testing.T) {
 	}
 }
 
+func TestHTTPMembersAPIListSuccessDeprecatedPeers(t *testing.T) {
+	mAPI := &httpMembersAPI{
+		client: &multiStaticHTTPClient{
+			responses: []staticHTTPResponse{
+				{
+					resp: http.Response{
+						StatusCode: http.StatusNotFound,
+					},
+				},
+				{
+					resp: http.Response{
+						StatusCode: http.StatusOK,
+					},
+					body: []byte("http://127.0.0.1:4001, http://127.0.0.1:4002"),
+				},
+			},
+		},
+	}
+
+	wantResponseMembers := []Member{
+		{
+			ID:         "deprecated-etcd-v04-917a4edc6e95a15f037039c58b6e227f",
+			Name:       "deprecated-etcd-v04",
+			ClientURLs: []string{"http://127.0.0.1:4001"},
+			PeerURLs:   nil,
+		},
+		{
+			ID:         "deprecated-etcd-v04-d42ebb0e99a23301fad3dde5cad92553",
+			Name:       "deprecated-etcd-v04",
+			ClientURLs: []string{"http://127.0.0.1:4002"},
+			PeerURLs:   nil,
+		},
+	}
+
+	m, err := mAPI.List(context.Background())
+	if err != nil {
+		t.Errorf("got non-nil err: %#v", err)
+	}
+	if !reflect.DeepEqual(wantResponseMembers, m) {
+		t.Errorf("incorrect Members: want=%#v got=%#v", wantResponseMembers, m)
+	}
+}
+
 func TestHTTPMembersAPIListError(t *testing.T) {
 	tests := []httpClient{
 		// generic httpClient failure
