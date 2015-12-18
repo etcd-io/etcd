@@ -705,7 +705,7 @@ func TestHTTPClusterClientSync(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -728,7 +728,7 @@ func TestHTTPClusterClientSync(t *testing.T) {
 		t.Fatalf("incorrect endpoints post-Sync: want=%#v got=%#v", want, got)
 	}
 
-	err = hc.reset([]string{"http://127.0.0.1:4009"})
+	err = hc.SetEndpoints([]string{"http://127.0.0.1:4009"})
 	if err != nil {
 		t.Fatalf("unexpected error during reset: %#v", err)
 	}
@@ -749,7 +749,7 @@ func TestHTTPClusterClientSyncFail(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -783,7 +783,7 @@ func TestHTTPClusterClientAutoSyncCancelContext(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -805,7 +805,7 @@ func TestHTTPClusterClientAutoSyncFail(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -838,7 +838,7 @@ func TestHTTPClusterClientSyncPinEndpoint(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:4003", "http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:4003", "http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -867,7 +867,7 @@ func TestHTTPClusterClientResetFail(t *testing.T) {
 
 	for i, tt := range tests {
 		hc := &httpClusterClient{rand: rand.New(rand.NewSource(0))}
-		err := hc.reset(tt)
+		err := hc.SetEndpoints(tt)
 		if err == nil {
 			t.Errorf("#%d: expected non-nil error", i)
 		}
@@ -879,7 +879,7 @@ func TestHTTPClusterClientResetPinRandom(t *testing.T) {
 	pinNum := 0
 	for i := 0; i < round; i++ {
 		hc := &httpClusterClient{rand: rand.New(rand.NewSource(int64(i)))}
-		err := hc.reset([]string{"http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"})
+		err := hc.SetEndpoints([]string{"http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"})
 		if err != nil {
 			t.Fatalf("#%d: reset error (%v)", i, err)
 		}

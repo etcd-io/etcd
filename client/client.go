@@ -162,6 +162,11 @@ type Client interface {
 	// this may differ from the initial Endpoints provided in the Config.
 	Endpoints() []string
 
+	// SetEndpoints sets the set of API endpoints used by Client to resolve
+	// HTTP requests. If the given endpoints are not valid, an error will be
+	// returned
+	SetEndpoints(eps []string) error
+
 	httpClient
 }
 
@@ -176,7 +181,7 @@ func New(cfg Config) (Client, error) {
 			password: cfg.Password,
 		}
 	}
-	if err := c.reset(cfg.Endpoints); err != nil {
+	if err := c.SetEndpoints(cfg.Endpoints); err != nil {
 		return nil, err
 	}
 	return c, nil
@@ -219,7 +224,7 @@ type httpClusterClient struct {
 	rand *rand.Rand
 }
 
-func (c *httpClusterClient) reset(eps []string) error {
+func (c *httpClusterClient) SetEndpoints(eps []string) error {
 	if len(eps) == 0 {
 		return ErrNoEndpoints
 	}
@@ -341,7 +346,7 @@ func (c *httpClusterClient) Sync(ctx context.Context) error {
 		return nil
 	}
 
-	return c.reset(eps)
+	return c.SetEndpoints(eps)
 }
 
 func (c *httpClusterClient) AutoSync(ctx context.Context, interval time.Duration) error {
