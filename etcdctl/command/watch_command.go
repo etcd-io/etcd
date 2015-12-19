@@ -28,8 +28,9 @@ import (
 // NewWatchCommand returns the CLI command for "watch".
 func NewWatchCommand() cli.Command {
 	return cli.Command{
-		Name:  "watch",
-		Usage: "watch a key for changes",
+		Name:      "watch",
+		Usage:     "watch a key for changes",
+		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "forever", Usage: "forever watch a key until CTRL+C"},
 			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},

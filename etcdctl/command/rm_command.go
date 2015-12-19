@@ -24,8 +24,9 @@ import (
 // NewRemoveCommand returns the CLI command for "rm".
 func NewRemoveCommand() cli.Command {
 	return cli.Command{
-		Name:  "rm",
-		Usage: "remove a key or a directory",
+		Name:      "rm",
+		Usage:     "remove a key or a directory",
+		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "dir", Usage: "removes the key if it is an empty directory or a key-value pair"},
 			cli.BoolFlag{Name: "recursive", Usage: "removes the key and all child keys(if it is a directory)"},

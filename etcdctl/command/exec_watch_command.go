@@ -30,8 +30,9 @@ import (
 // NewExecWatchCommand returns the CLI command for "exec-watch".
 func NewExecWatchCommand() cli.Command {
 	return cli.Command{
-		Name:  "exec-watch",
-		Usage: "watch a key for changes and exec an executable",
+		Name:      "exec-watch",
+		Usage:     "watch a key for changes and exec an executable",
+		ArgsUsage: "<key> <command> [args...]",
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
 			cli.BoolFlag{Name: "recursive", Usage: "watch all values for key and child keys"},

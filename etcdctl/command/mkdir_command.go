@@ -25,8 +25,9 @@ import (
 // NewMakeDirCommand returns the CLI command for "mkdir".
 func NewMakeDirCommand() cli.Command {
 	return cli.Command{
-		Name:  "mkdir",
-		Usage: "make a new directory",
+		Name:      "mkdir",
+		Usage:     "make a new directory",
+		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
