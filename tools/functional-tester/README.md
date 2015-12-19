@@ -14,4 +14,24 @@ etcd agent is a daemon on each machines. It can start, stop, restart, isolate an
 
 ## etcd tester
 
-etcd functional tester control the progress of the functional tests. It calls the the RPC of the etcd agent to simulate various test cases. For example, it can start a three members cluster by sending three start RPC calls to three different etcd agents. It can make one of the member failed by sending stop RPC call to one etcd agent.
+etcd functional tester control the progress of the functional tests. It calls the RPC of the etcd agent to simulate various test cases. For example, it can start a three members cluster by sending three start RPC calls to three different etcd agents. It can make one of the member failed by sending stop RPC call to one etcd agent.
+
+## with Docker (optionally)
+
+To run the functional tests using Docker, the provided script can be used to set up an environment using Docker Compose. 
+
+Script (on linux):
+```sh
+./tools/functional-tester/test
+```
+
+Running the script requires:
+
+- Docker 1.9+ (with networking support) - to create isolated network
+- docker-compose - to create etcd cluster and tester
+- A multi-arch Go toolchain (OSX)
+
+Notes:
+- Docker image is based on Alpine Linux OS running in privileged mode to allow iptables manipulation.
+- To specify testing parameters (etcd-tester arguments) modify tools/functional-tester/docker/docker-compose.yml or start etcd-tester manually
+- (OSX) make sure that etcd binary is built for linux/amd64 (eg. `rm bin/etcd;GOOS=linux GOARCH=amd64 ./tools/functional-tester/test`) otherwise you get `exec format error`
