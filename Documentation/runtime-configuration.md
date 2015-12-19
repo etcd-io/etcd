@@ -60,7 +60,7 @@ All changes to the cluster are done one at a time:
 * To decrease from 5 to 3 you will make two remove operations
 
 All of these examples will use the `etcdctl` command line tool that ships with etcd.
-If you want to use the member API directly you can find the documentation [here](other_apis.md).
+If you want to use the members API directly you can find the documentation [here](members_api.md).
 
 ### Update a Member
 
@@ -115,7 +115,7 @@ It is safe to remove the leader, however the cluster will be inactive while a ne
 
 Adding a member is a two step process:
 
- * Add the new member to the cluster via the [members API](other_apis.md#post-v2members) or the `etcdctl member add` command.
+ * Add the new member to the cluster via the [members API](members_api.md#post-v2members) or the `etcdctl member add` command.
  * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
 
 Using `etcdctl` let's add the new member to the cluster by specifying its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):

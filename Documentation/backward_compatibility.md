@@ -60,9 +60,9 @@ A size key needs to be provided inside a [discovery token][discoverytoken].
 
 ## HTTP Admin API
 
-`v2/admin` on peer url and `v2/keys/_etcd` are unified under the new [v2/member API][memberapi] to better explain which machines are part of an etcd cluster, and to simplify the keyspace for all your use cases.
+`v2/admin` on peer url and `v2/keys/_etcd` are unified under the new [v2/members API][members-api] to better explain which machines are part of an etcd cluster, and to simplify the keyspace for all your use cases.
 
-[memberapi]: other_apis.md
+[members-api]: members_api.md
 
 ## HTTP Key Value API
 - The follower can now transparently proxy write requests to the leader. Clients will no longer see 307 redirections to the leader from etcd.

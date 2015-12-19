@@ -1077,6 +1077,6 @@ curl http://127.0.0.1:2379/v2/stats/store
 
 ## Cluster Config
 
-See the [other etcd APIs][other-apis] for details on the cluster management.
+See the [members API][members-api] for details on the cluster management.
 
-[other-apis]: other_apis.md
+[members-api]: members_api.md
