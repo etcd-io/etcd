@@ -81,13 +81,22 @@ func afterTest(t *testing.T) {
 	}
 	var bad string
 	badSubstring := map[string]string{
-		").readLoop(":                                  "a Transport",
 		").writeLoop(":                                 "a Transport",
 		"created by net/http/httptest.(*Server).Start": "an httptest.Server",
 		"timeoutHandler":                               "a TimeoutHandler",
 		"net.(*netFD).connect(":                        "a timing out dial",
 		").noteClientGone(":                            "a closenotifier sender",
 	}
+
+	// readLoop was buggy before go1.5:
+	// https://github.com/golang/go/issues/10457
+	var major, minor int
+	var discard string
+	i, err := fmt.Sscanf(runtime.Version(), "go%d.%d%s", &major, &minor, &discard)
+	if err == nil && i == 3 && (major > 1 || major == 1 && minor >= 5) {
+		badSubstring[").readLoop("] = "a Transport"
+	}
+
 	var stacks string
 	for i := 0; i < 6; i++ {
 		bad = ""
