@@ -37,8 +37,8 @@
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
-			"Comment": "1.2.0-26-gf7ebb76",
-			"Rev": "f7ebb761e83e21225d1d8954fde853bf8edd46c4"
+			"Comment": "1.2.0-183-gb5232bb",
+			"Rev": "b5232bb2934f606f9f27a1305f1eea224e8e8b88"
 		},
 		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
