@@ -15,6 +15,15 @@ import (
 	"time"
 )
 
+var atLeastGo15 bool = false
+
+func init() {
+	var major, minor int
+	var discard string
+	i, err := fmt.Sscanf(runtime.Version(), "go%d.%d%s", &major, &minor, &discard)
+	atLeastGo15 = (err == nil && i == 3 && (major > 1 || major == 1 && minor >= 5))
+}
+
 func interestingGoroutines() (gs []string) {
 	buf := make([]byte, 2<<20)
 	buf = buf[:runtime.Stack(buf, true)]
@@ -90,10 +99,7 @@ func afterTest(t *testing.T) {
 
 	// readLoop was buggy before go1.5:
 	// https://github.com/golang/go/issues/10457
-	var major, minor int
-	var discard string
-	i, err := fmt.Sscanf(runtime.Version(), "go%d.%d%s", &major, &minor, &discard)
-	if err == nil && i == 3 && (major > 1 || major == 1 && minor >= 5) {
+	if atLeastGo15 {
 		badSubstring[").readLoop("] = "a Transport"
 	}
 
