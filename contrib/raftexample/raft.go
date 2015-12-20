@@ -184,20 +184,22 @@ func (rc *raftNode) serveChannels() {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
-	// event loop on client proposals and raft updates
+	// send proposals over raft
+	stopc := make(chan struct{}, 1)
+	go func() {
+		for prop := range rc.proposeC {
+			// blocks until accepted by raft state machine
+			rc.node.Propose(context.TODO(), []byte(prop))
+		}
+		// client closed channel; shutdown raft if not already
+		stopc <- struct{}{}
+	}()
+
+	// event loop on raft state machine updates
 	for {
 		select {
 		case <-ticker.C:
 			rc.node.Tick()
-
-		// send proposals over raft
-		case prop, ok := <-rc.proposeC:
-			if !ok {
-				// client closed channel; shut down
-				rc.stop()
-				return
-			}
-			rc.node.Propose(context.TODO(), []byte(prop))
 
 		// store raft entries to wal, then publish over commit channel
 		case rd := <-rc.node.Ready():
@@ -209,6 +211,10 @@ func (rc *raftNode) serveChannels() {
 
 		case err := <-rc.transport.ErrorC:
 			rc.writeError(err)
+			return
+
+		case <-stopc:
+			rc.stop()
 			return
 		}
 	}
