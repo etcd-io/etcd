@@ -5,13 +5,24 @@
 package integration
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"runtime"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 )
+
+var atLeastGo15 bool = false
+
+func init() {
+	var major, minor int
+	var discard string
+	i, err := fmt.Sscanf(runtime.Version(), "go%d.%d%s", &major, &minor, &discard)
+	atLeastGo15 = (err == nil && i == 3 && (major > 1 || major == 1 && minor >= 5))
+}
 
 func interestingGoroutines() (gs []string) {
 	buf := make([]byte, 2<<20)
@@ -26,6 +37,9 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "created by testing.RunTests") ||
 			strings.Contains(stack, "testing.Main(") ||
 			strings.Contains(stack, "runtime.goexit") ||
+			strings.Contains(stack, "github.com/coreos/etcd/integration.interestingGoroutines") ||
+			strings.Contains(stack, "github.com/coreos/etcd/pkg/logutil.(*MergeLogger).outputLoop") ||
+			strings.Contains(stack, "github.com/golang/glog.(*loggingT).flushDaemon") ||
 			strings.Contains(stack, "created by runtime.gc") ||
 			strings.Contains(stack, "runtime.MHeap_Scavenger") {
 			continue
@@ -37,11 +51,18 @@ func interestingGoroutines() (gs []string) {
 }
 
 // Verify the other tests didn't leave any goroutines running.
-// This is in a file named z_last_test.go so it sorts at the end.
-func TestGoroutinesRunning(t *testing.T) {
-	t.Skip("TODO: etcdserver.Sender may still dial closed remote endpoint and need some time to timeout.")
+func TestMain(m *testing.M) {
+	v := m.Run()
+	if v == 0 && goroutineLeaked() {
+		os.Exit(1)
+	}
+	os.Exit(v)
+}
+
+func goroutineLeaked() bool {
 	if testing.Short() {
-		t.Skip("not counting goroutines for leakage in -short mode")
+		// not counting goroutines for leakage in -short mode
+		return false
 	}
 	gs := interestingGoroutines()
 
@@ -52,13 +73,14 @@ func TestGoroutinesRunning(t *testing.T) {
 		n++
 	}
 
-	t.Logf("num goroutines = %d", n)
-	if n > 0 {
-		t.Error("Too many goroutines.")
-		for stack, count := range stackCount {
-			t.Logf("%d instances of:\n%s", count, stack)
-		}
+	if n == 0 {
+		return false
 	}
+	fmt.Fprintf(os.Stderr, "Too many goroutines running after integration test(s).\n")
+	for stack, count := range stackCount {
+		fmt.Fprintf(os.Stderr, "%d instances of:\n%s\n", count, stack)
+	}
+	return true
 }
 
 func afterTest(t *testing.T) {
@@ -68,19 +90,19 @@ func afterTest(t *testing.T) {
 	}
 	var bad string
 	badSubstring := map[string]string{
-		// TODO: there might exist a bug in http package, which will leave
-		// readLoop without writeLoop after close all idle connections.
-		// comment this line until we have time to dig into it.
-		// ").readLoop(":                                  "a Transport",
 		").writeLoop(":                                 "a Transport",
 		"created by net/http/httptest.(*Server).Start": "an httptest.Server",
 		"timeoutHandler":                               "a TimeoutHandler",
-		// TODO: dial goroutines leaks even if the request is cancelled.
-		// It needs to wait dial timeout to recycle the goroutine.
-		// comment this line until we have time to dig into it.
-		"net.(*netFD).connect(": "a timing out dial",
-		").noteClientGone(":     "a closenotifier sender",
+		"net.(*netFD).connect(":                        "a timing out dial",
+		").noteClientGone(":                            "a closenotifier sender",
 	}
+
+	// readLoop was buggy before go1.5:
+	// https://github.com/golang/go/issues/10457
+	if atLeastGo15 {
+		badSubstring[").readLoop("] = "a Transport"
+	}
+
 	var stacks string
 	for i := 0; i < 6; i++ {
 		bad = ""
