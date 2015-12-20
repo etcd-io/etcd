@@ -87,11 +87,15 @@ func TestProposeOnCommit(t *testing.T) {
 		// feedback for "n" committed entries, then update donec
 		go func(pC chan<- string, cC <-chan *string, eC <-chan error) {
 			for n := 0; n < 100; n++ {
+				s, ok := <-cC
+				if !ok {
+					pC = nil
+				}
 				select {
-				case s := <-cC:
-					pC <- *s
+				case pC <- *s:
+					continue
 				case err, _ := <-eC:
-					t.Fatalf("eC closed (%v)", err)
+					t.Fatalf("eC message (%v)", err)
 				}
 			}
 			donec <- struct{}{}

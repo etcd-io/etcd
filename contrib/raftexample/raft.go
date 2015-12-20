@@ -122,12 +122,8 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 }
 
 func (rc *raftNode) writeError(err error) {
-	rc.errorC <- err
-	rc.stop()
-}
-
-func (rc *raftNode) stop() {
 	close(rc.commitC)
+	rc.errorC <- err
 	close(rc.errorC)
 	rc.node.Stop()
 }
@@ -214,7 +210,9 @@ func (rc *raftNode) serveChannels() {
 			return
 
 		case <-stopc:
-			rc.stop()
+			close(rc.commitC)
+			close(rc.errorC)
+			rc.node.Stop()
 			return
 		}
 	}

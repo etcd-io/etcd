@@ -58,25 +58,22 @@ func (s *kvstore) Propose(k string, v string) {
 }
 
 func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
-	for {
-		select {
-		case data := <-commitC:
-			if data == nil {
-				// done replaying log; new data incoming
-				return
-			}
-
-			var data_kv kv
-			dec := gob.NewDecoder(bytes.NewBufferString(*data))
-			if err := dec.Decode(&data_kv); err != nil {
-				log.Fatalf("raftexample: could not decode message (%v)", err)
-			}
-			s.mu.Lock()
-			s.kvStore[data_kv.Key] = data_kv.Val
-			s.mu.Unlock()
-		case err := <-errorC:
-			log.Println(err)
+	for data := range commitC {
+		if data == nil {
+			// done replaying log; new data incoming
 			return
 		}
+
+		var data_kv kv
+		dec := gob.NewDecoder(bytes.NewBufferString(*data))
+		if err := dec.Decode(&data_kv); err != nil {
+			log.Fatalf("raftexample: could not decode message (%v)", err)
+		}
+		s.mu.Lock()
+		s.kvStore[data_kv.Key] = data_kv.Val
+		s.mu.Unlock()
+	}
+	if err, ok := <-errorC; ok {
+		log.Fatal(err)
 	}
 }
