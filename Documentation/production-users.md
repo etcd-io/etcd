@@ -35,3 +35,15 @@ discovery.etcd.io is the longest continuously running etcd backed service that w
 - *Backups*: Periodic sync to Ceph RadosGW and DigitalOcean VM
 
 CyCore Systems provides architecture and engineering for computing systems.  This cluster provides microservices, virtual machines, databases, storage clusters to a number of clients.  It is built on CoreOS machines, with each machine in the cluster running etcd as a peer or proxy.
+
+## Radius Intelligence
+
+- *Application*: multiple internal tools, Kubernetes clusters, bootstrappable system configs
+- *Launched*: June 2015
+- *Cluster Size*: 2 clusters of 5 and 3 members; approximately a dozen nodes read/write
+- *Order of Data Size*: 100s of kilobytes
+- *Operator*: Radius Intelligence; jcderr@radius.com
+- *Environment*: AWS, CoreOS, Kubernetes
+- *Backups*: None, all data can be recreated if necessary.
+
+Radius Intelligence uses Kubernetes running CoreOS to containerize and scale internal toolsets. Examples include running [JetBrains TeamCity](https://www.jetbrains.com/teamcity/) and internal AWS security and cost reporting tools. etcd clusters back these clusters as well as provide some basic environment bootstrapping configuration keys.
