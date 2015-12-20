@@ -281,7 +281,7 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 		base := int64(i + 1)
 
 		rev := f(s, []byte("foo"), []byte("bar"))
-		if wrev := base; rev != wrev {
+		if rev != base {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
 		}
 
