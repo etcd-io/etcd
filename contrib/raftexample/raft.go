@@ -49,13 +49,16 @@ type raftNode struct {
 	raftStorage *raft.MemoryStorage
 	wal         *wal.WAL
 	transport   *rafthttp.Transport
+	stopc       chan struct{} // signals proposal channel closed
+	httpstopc   chan struct{} // signals http server to shutdown
+	httpdonec   chan struct{} // signals http server shutdown complete
 }
 
 // newRaftNode initiates a raft instance and returns a committed log entry
 // channel and error channel. Proposals for log updates are sent over the
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
-// current), then new log entries.
+// current), then new log entries. To shutdown, close proposeC and read errorC.
 func newRaftNode(id int, peers []string, proposeC <-chan string) (<-chan *string, <-chan error) {
 	rc := &raftNode{
 		proposeC:    proposeC,
@@ -65,22 +68,31 @@ func newRaftNode(id int, peers []string, proposeC <-chan string) (<-chan *string
 		peers:       peers,
 		waldir:      fmt.Sprintf("raftexample-%d", id),
 		raftStorage: raft.NewMemoryStorage(),
+		stopc:       make(chan struct{}),
+		httpstopc:   make(chan struct{}),
+		httpdonec:   make(chan struct{}),
 		// rest of structure populated after WAL replay
 	}
 	go rc.startRaft()
 	return rc.commitC, rc.errorC
 }
 
-// publishEntries writes committed log entries to commit channel.
-func (rc *raftNode) publishEntries(ents []raftpb.Entry) {
+// publishEntries writes committed log entries to commit channel and returns
+// whether all entries could be published.
+func (rc *raftNode) publishEntries(ents []raftpb.Entry) bool {
 	for i := range ents {
 		if ents[i].Type != raftpb.EntryNormal || len(ents[i].Data) == 0 {
 			// ignore conf changes and empty messages
 			continue
 		}
 		s := string(ents[i].Data)
-		rc.commitC <- &s
+		select {
+		case rc.commitC <- &s:
+		case <-rc.stopc:
+			return false
+		}
 	}
+	return true
 }
 
 // openWAL returns a WAL ready for reading.
@@ -122,12 +134,9 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 }
 
 func (rc *raftNode) writeError(err error) {
-	rc.errorC <- err
-	rc.stop()
-}
-
-func (rc *raftNode) stop() {
+	rc.stopHTTP()
 	close(rc.commitC)
+	rc.errorC <- err
 	close(rc.errorC)
 	rc.node.Stop()
 }
@@ -178,37 +187,59 @@ func (rc *raftNode) startRaft() {
 	go rc.serveChannels()
 }
 
+// stop closes http, closes all channels, and stops raft.
+func (rc *raftNode) stop() {
+	rc.stopHTTP()
+	close(rc.commitC)
+	close(rc.errorC)
+	rc.node.Stop()
+}
+
+func (rc *raftNode) stopHTTP() {
+	rc.transport.Stop()
+	close(rc.httpstopc)
+	<-rc.httpdonec
+}
+
 func (rc *raftNode) serveChannels() {
 	defer rc.wal.Close()
 
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
-	// event loop on client proposals and raft updates
+	// send proposals over raft
+	go func() {
+		for prop := range rc.proposeC {
+			// blocks until accepted by raft state machine
+			rc.node.Propose(context.TODO(), []byte(prop))
+		}
+		// client closed channel; shutdown raft if not already
+		close(rc.stopc)
+	}()
+
+	// event loop on raft state machine updates
 	for {
 		select {
 		case <-ticker.C:
 			rc.node.Tick()
-
-		// send proposals over raft
-		case prop, ok := <-rc.proposeC:
-			if !ok {
-				// client closed channel; shut down
-				rc.stop()
-				return
-			}
-			rc.node.Propose(context.TODO(), []byte(prop))
 
 		// store raft entries to wal, then publish over commit channel
 		case rd := <-rc.node.Ready():
 			rc.wal.Save(rd.HardState, rd.Entries)
 			rc.raftStorage.Append(rd.Entries)
 			rc.transport.Send(rd.Messages)
-			rc.publishEntries(rd.Entries)
+			if ok := rc.publishEntries(rd.Entries); !ok {
+				rc.stop()
+				return
+			}
 			rc.node.Advance()
 
 		case err := <-rc.transport.ErrorC:
 			rc.writeError(err)
+			return
+
+		case <-rc.stopc:
+			rc.stop()
 			return
 		}
 	}
@@ -220,10 +251,18 @@ func (rc *raftNode) serveRaft() {
 		log.Fatalf("raftexample: Failed parsing URL (%v)", err)
 	}
 
-	srv := http.Server{Addr: url.Host, Handler: rc.transport.Handler()}
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("raftexample: Failed serving rafthttp (%v)", err)
+	ln, err := newStoppableListener(url.Host, rc.httpstopc)
+	if err != nil {
+		log.Fatalf("raftexample: Failed to listen rafthttp (%v)", err)
 	}
+
+	err = (&http.Server{Handler: rc.transport.Handler()}).Serve(ln)
+	select {
+	case <-rc.httpstopc:
+	default:
+		log.Fatalf("raftexample: Failed to serve rafthttp (%v)", err)
+	}
+	close(rc.httpdonec)
 }
 
 func (rc *raftNode) Process(ctx context.Context, m raftpb.Message) error {
