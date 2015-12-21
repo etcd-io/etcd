@@ -108,10 +108,14 @@ func TestProposeOnCommit(t *testing.T) {
 				}
 			}
 			donec <- struct{}{}
+			for range cC {
+				// acknowledge the commits from other nodes so
+				// raft continues to make progress
+			}
 		}(clus.proposeC[i], clus.commitC[i], clus.errorC[i])
 
 		// one message feedback per node
-		go func() { clus.proposeC[i] <- "foo" }()
+		go func(i int) { clus.proposeC[i] <- "foo" }(i)
 	}
 
 	for range clus.peers {
