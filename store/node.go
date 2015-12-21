@@ -166,7 +166,7 @@ func (n *node) List() ([]*node, *etcdErr.Error) {
 }
 
 // GetChild function returns the child node under the directory node.
-// On success, it returns the file node
+// On success, it returns the file or directory node
 func (n *node) GetChild(name string) (*node, *etcdErr.Error) {
 	if !n.IsDir() {
 		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, n.Path, n.store.CurrentIndex)
@@ -217,31 +217,11 @@ func (n *node) Remove(dir, recursive bool, callback func(path string)) *etcdErr.
 			// is not recursive
 			return etcdErr.NewError(etcdErr.EcodeDirNotEmpty, n.Path, n.store.CurrentIndex)
 		}
-	}
 
-	if !n.IsDir() { // key-value pair
-		_, name := path.Split(n.Path)
-
-		// find its parent and remove the node from the map
-		if n.Parent != nil && n.Parent.Children[name] == n {
-			delete(n.Parent.Children, name)
+		for _, child := range n.Children { // delete all children
+			child.Remove(true, true, callback)
 		}
-
-		if callback != nil {
-			callback(n.Path)
-		}
-
-		if !n.IsPermanent() {
-			n.store.ttlKeyHeap.remove(n)
-		}
-
-		return nil
 	}
-
-	for _, child := range n.Children { // delete all children
-		child.Remove(true, true, callback)
-	}
-
 	// delete self
 	_, name := path.Split(n.Path)
 	if n.Parent != nil && n.Parent.Children[name] == n {
