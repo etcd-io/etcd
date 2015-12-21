@@ -26,8 +26,9 @@ import (
 // NewMakeCommand returns the CLI command for "mk".
 func NewMakeCommand() cli.Command {
 	return cli.Command{
-		Name:  "mk",
-		Usage: "make a new key with a given value",
+		Name:      "mk",
+		Usage:     "make a new key with a given value",
+		ArgsUsage: "<key> <value>",
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},

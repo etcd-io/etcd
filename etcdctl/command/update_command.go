@@ -26,8 +26,9 @@ import (
 // NewUpdateCommand returns the CLI command for "update".
 func NewUpdateCommand() cli.Command {
 	return cli.Command{
-		Name:  "update",
-		Usage: "update an existing key with a given value",
+		Name:      "update",
+		Usage:     "update an existing key with a given value",
+		ArgsUsage: "<key> <value>",
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},

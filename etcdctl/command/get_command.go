@@ -26,8 +26,9 @@ import (
 // NewGetCommand returns the CLI command for "get".
 func NewGetCommand() cli.Command {
 	return cli.Command{
-		Name:  "get",
-		Usage: "retrieve the value of a key",
+		Name:      "get",
+		Usage:     "retrieve the value of a key",
+		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
 			cli.BoolFlag{Name: "quorum", Usage: "require quorum for get request"},

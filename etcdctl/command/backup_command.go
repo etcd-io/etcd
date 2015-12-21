@@ -32,8 +32,9 @@ import (
 
 func NewBackupCommand() cli.Command {
 	return cli.Command{
-		Name:  "backup",
-		Usage: "backup an etcd directory",
+		Name:      "backup",
+		Usage:     "backup an etcd directory",
+		ArgsUsage: " ",
 		Flags: []cli.Flag{
 			cli.StringFlag{Name: "data-dir", Value: "", Usage: "Path to the etcd data dir"},
 			cli.StringFlag{Name: "backup-dir", Value: "", Usage: "Path to the backup dir"},

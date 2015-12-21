@@ -36,8 +36,9 @@ type set struct {
 
 func NewImportSnapCommand() cli.Command {
 	return cli.Command{
-		Name:  "import",
-		Usage: "import a snapshot to a cluster",
+		Name:      "import",
+		Usage:     "import a snapshot to a cluster",
+		ArgsUsage: " ",
 		Flags: []cli.Flag{
 			cli.StringFlag{Name: "snap", Value: "", Usage: "Path to the valid etcd 0.4.x snapshot."},
 			cli.StringSliceFlag{Name: "hidden", Value: new(cli.StringSlice), Usage: "Hidden key spaces to import from snapshot"},

@@ -23,8 +23,9 @@ import (
 
 func NewLsCommand() cli.Command {
 	return cli.Command{
-		Name:  "ls",
-		Usage: "retrieve a directory",
+		Name:      "ls",
+		Usage:     "retrieve a directory",
+		ArgsUsage: "[key]",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
 			cli.BoolFlag{Name: "recursive", Usage: "returns all key names recursively for the given path"},

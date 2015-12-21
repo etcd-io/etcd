@@ -30,8 +30,9 @@ import (
 
 func NewClusterHealthCommand() cli.Command {
 	return cli.Command{
-		Name:  "cluster-health",
-		Usage: "check the health of the etcd cluster",
+		Name:      "cluster-health",
+		Usage:     "check the health of the etcd cluster",
+		ArgsUsage: " ",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "forever", Usage: "forever check the health every 10 second until CTRL+C"},
 		},

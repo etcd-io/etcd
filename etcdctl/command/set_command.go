@@ -26,8 +26,9 @@ import (
 // NewSetCommand returns the CLI command for "set".
 func NewSetCommand() cli.Command {
 	return cli.Command{
-		Name:  "set",
-		Usage: "set the value of a key",
+		Name:      "set",
+		Usage:     "set the value of a key",
+		ArgsUsage: "<key> <value>",
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 			cli.StringFlag{Name: "swap-with-value", Value: "", Usage: "previous value"},
