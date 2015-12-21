@@ -49,7 +49,7 @@ var (
 )
 
 type store struct {
-	mu sync.RWMutex
+	mu sync.Mutex // guards the following
 
 	b       backend.Backend
 	kvindex index
@@ -59,8 +59,7 @@ type store struct {
 	compactMainRev int64
 
 	tx    backend.BatchTx
-	tmu   sync.Mutex // protect the txnID field
-	txnID int64      // tracks the current txnID to verify txn operations
+	txnID int64 // tracks the current txnID to verify txn operations
 
 	wg    sync.WaitGroup
 	stopc chan struct{}
@@ -86,8 +85,8 @@ func newStore(path string) *store {
 }
 
 func (s *store) Rev() int64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	return s.currentRev.main
 }
@@ -128,8 +127,6 @@ func (s *store) TxnBegin() int64 {
 	s.tx = s.b.BatchTx()
 	s.tx.Lock()
 
-	s.tmu.Lock()
-	defer s.tmu.Unlock()
 	s.txnID = rand.Int63()
 	return s.txnID
 }
@@ -147,8 +144,6 @@ func (s *store) TxnEnd(txnID int64) error {
 // txnEnd is used for unlocking an internal txn. It does
 // not increase the txnCounter.
 func (s *store) txnEnd(txnID int64) error {
-	s.tmu.Lock()
-	defer s.tmu.Unlock()
 	if txnID != s.txnID {
 		return ErrTxnIDMismatch
 	}
@@ -165,8 +160,6 @@ func (s *store) txnEnd(txnID int64) error {
 }
 
 func (s *store) TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
-	s.tmu.Lock()
-	defer s.tmu.Unlock()
 	if txnID != s.txnID {
 		return nil, 0, ErrTxnIDMismatch
 	}
@@ -174,8 +167,6 @@ func (s *store) TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (k
 }
 
 func (s *store) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
-	s.tmu.Lock()
-	defer s.tmu.Unlock()
 	if txnID != s.txnID {
 		return 0, ErrTxnIDMismatch
 	}
@@ -185,8 +176,6 @@ func (s *store) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
 }
 
 func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error) {
-	s.tmu.Lock()
-	defer s.tmu.Unlock()
 	if txnID != s.txnID {
 		return 0, 0, ErrTxnIDMismatch
 	}

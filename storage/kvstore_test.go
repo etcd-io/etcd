@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"math"
+	mrand "math/rand"
 	"os"
 	"reflect"
 	"testing"
@@ -665,6 +666,32 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	t.Errorf("key for rev %+v still exists, want deleted", bytesToRev(revbytes))
 }
 
+func TestTxnPut(t *testing.T) {
+	// assign arbitrary size
+	bytesN := 30
+	sliceN := 100
+	keys := createBytesSlice(bytesN, sliceN)
+	vals := createBytesSlice(bytesN, sliceN)
+
+	s := newStore(tmpPath)
+	defer cleanup(s, tmpPath)
+
+	for i := 0; i < sliceN; i++ {
+		id := s.TxnBegin()
+		base := int64(i + 1)
+
+		rev, err := s.TxnPut(id, keys[i], vals[i])
+		if err != nil {
+			t.Error("txn put error")
+		}
+		if rev != base {
+			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
+		}
+
+		s.TxnEnd(id)
+	}
+}
+
 func TestTxnBlockBackendForceCommit(t *testing.T) {
 	s := newStore(tmpPath)
 	defer os.Remove(tmpPath)
@@ -689,23 +716,6 @@ func TestTxnBlockBackendForceCommit(t *testing.T) {
 		t.Fatalf("failed to execute ForceCommit")
 	}
 
-}
-
-func BenchmarkStorePut(b *testing.B) {
-	s := newStore(tmpPath)
-	defer os.Remove(tmpPath)
-
-	// prepare keys
-	keys := make([][]byte, b.N)
-	for i := 0; i < b.N; i++ {
-		keys[i] = make([]byte, 64)
-		rand.Read(keys[i])
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		s.Put(keys[i], []byte("foo"))
-	}
 }
 
 func newTestRevBytes(rev revision) []byte {
@@ -831,3 +841,16 @@ func (i *fakeIndex) Compact(rev int64) map[revision]struct{} {
 	return <-i.indexCompactRespc
 }
 func (i *fakeIndex) Equal(b index) bool { return false }
+
+func createBytesSlice(bytesN, sliceN int) [][]byte {
+	rs := [][]byte{}
+	for len(rs) != sliceN {
+		mrand.Seed(time.Now().UnixNano())
+		v := make([]byte, bytesN)
+		if _, err := rand.Read(v); err != nil {
+			panic(err)
+		}
+		rs = append(rs, v)
+	}
+	return rs
+}
