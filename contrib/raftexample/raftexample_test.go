@@ -44,15 +44,20 @@ func newCluster(n int) *cluster {
 		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
 		clus.proposeC[i] = make(chan string, 1)
 		clus.commitC[i], clus.errorC[i] = newRaftNode(i+1, clus.peers, clus.proposeC[i])
-		// replay local log
+	}
+
+	return clus
+}
+
+// sinkReplay reads all commits in each node's local log.
+func (clus *cluster) sinkReplay() {
+	for i := range clus.peers {
 		for s := range clus.commitC[i] {
 			if s == nil {
 				break
 			}
 		}
 	}
-
-	return clus
 }
 
 // Close closes all cluster nodes and returns an error if any failed.
@@ -72,15 +77,19 @@ func (clus *cluster) Close() (err error) {
 	return err
 }
 
+func (clus *cluster) closeNoErrors(t *testing.T) {
+	if err := clus.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestProposeOnCommit starts three nodes and feeds commits back into the proposal
 // channel. The intent is to ensure blocking on a proposal won't block raft progress.
 func TestProposeOnCommit(t *testing.T) {
 	clus := newCluster(3)
-	defer func() {
-		if err := clus.Close(); err != nil {
-			t.Fatal(err)
-		}
-	}()
+	defer clus.closeNoErrors(t)
+
+	clus.sinkReplay()
 
 	donec := make(chan struct{})
 	for i := range clus.peers {
@@ -107,5 +116,32 @@ func TestProposeOnCommit(t *testing.T) {
 
 	for range clus.peers {
 		<-donec
+	}
+}
+
+// TestCloseBeforeReplay tests closing the producer before raft starts.
+func TestCloseProposerBeforeReplay(t *testing.T) {
+	clus := newCluster(1)
+	// close before replay so raft never starts
+	defer clus.closeNoErrors(t)
+}
+
+// TestCloseProposerInflight tests closing the producer while
+// committed messages are being published to the client.
+func TestCloseProposerInflight(t *testing.T) {
+	clus := newCluster(1)
+	defer clus.closeNoErrors(t)
+
+	clus.sinkReplay()
+
+	// some inflight ops
+	go func() {
+		clus.proposeC[0] <- "foo"
+		clus.proposeC[0] <- "bar"
+	}()
+
+	// wait for one message
+	if c, ok := <-clus.commitC[0]; *c != "foo" || !ok {
+		t.Fatalf("Commit failed")
 	}
 }
