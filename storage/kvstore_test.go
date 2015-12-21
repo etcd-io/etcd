@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"math"
+	mrand "math/rand"
 	"os"
 	"reflect"
 	"testing"
@@ -831,3 +832,79 @@ func (i *fakeIndex) Compact(rev int64) map[revision]struct{} {
 	return <-i.indexCompactRespc
 }
 func (i *fakeIndex) Equal(b index) bool { return false }
+
+func TestTxnPut(t *testing.T) {
+	s := newStore(tmpPath)
+	defer cleanup(s, tmpPath)
+
+	for i := 0; i < 10; i++ {
+		id := s.TxnBegin()
+		base := int64(i + 1)
+
+		k := []byte("foo")
+		v := []byte("bar")
+		rev, err := s.TxnPut(id, k, v)
+		if err != nil {
+			t.Error("txn put error")
+		}
+		if rev != base {
+			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
+		}
+
+		s.TxnEnd(id)
+	}
+}
+
+func TestTxnPutRace(t *testing.T) {
+	size := 100
+	keys := createMultiRandomBytes(size, 30)
+	vals := createMultiRandomBytes(size, 30)
+
+	s := newStore(tmpPath)
+	defer cleanup(s, tmpPath)
+
+	id := s.TxnBegin()
+	done := make(chan struct{})
+
+	for i := 0; i < size; i++ {
+		go func(i int) {
+			rev, err := s.TxnPut(id, keys[i], vals[i])
+			if err != nil {
+				t.Error("txn put error")
+			}
+			if rev != 1 {
+				t.Errorf("#%d: rev = %d, want 1", i, rev)
+			}
+			done <- struct{}{}
+		}(i)
+	}
+
+	cn := 0
+	for range done {
+		cn++
+		if cn == size {
+			close(done)
+		}
+	}
+
+	s.TxnEnd(id)
+}
+
+func createMultiRandomBytes(length, size int) [][]byte {
+	p := make(map[string]struct{})
+	rs := [][]byte{}
+	for len(p) != size {
+		mrand.Seed(time.Now().UnixNano())
+		v := make([]byte, length)
+		if _, err := rand.Read(v); err != nil {
+			panic(err)
+		}
+		if _, ok := p[string(v)]; !ok {
+			rs = append(rs, v)
+			p[string(v)] = struct{}{}
+		} else {
+			continue
+		}
+	}
+	return rs
+}
