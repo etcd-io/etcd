@@ -560,7 +560,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
 	// wait for the raft routine to finish the disk writes before triggering a
 	// snapshot. or applied index might be greater than the last index in raft
 	// storage, since the raft routine might be slower than apply routine.
-	apply.done <- struct{}{}
+	<-apply.raftDone
 	s.triggerSnapshot(ep)
 }
 
