@@ -6,7 +6,7 @@
 
 package google
 
-import "google.golang.org/appengine"
+import "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/appengine"
 
 func init() {
 	appengineTokenFunc = appengine.AccessToken

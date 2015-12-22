@@ -3,7 +3,7 @@
 package pb
 
 import (
-	"github.com/olekukonko/ts"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/olekukonko/ts"
 )
 
 func bold(str string) string {
