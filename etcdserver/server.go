@@ -1255,22 +1255,3 @@ func (s *EtcdServer) swapKV(kv dstorage.ConsistentWatchableKV) dstorage.Consiste
 	s.kv = kv
 	return old
 }
-
-// isConnectedToQuorumSince checks whether the local member is connected to the
-// quorum of the cluster since the given time.
-func isConnectedToQuorumSince(transport rafthttp.Transporter, since time.Time, self types.ID, members []*Member) bool {
-	var connectedNum int
-	for _, m := range members {
-		if m.ID == self || isConnectedSince(transport, since, m.ID) {
-			connectedNum++
-		}
-	}
-	return connectedNum >= (len(members)+1)/2
-}
-
-// isConnectedSince checks whether the local member is connected to the
-// remote member since the given time.
-func isConnectedSince(transport rafthttp.Transporter, since time.Time, remote types.ID) bool {
-	t := transport.ActiveSince(remote)
-	return !t.IsZero() && t.Before(since)
-}
