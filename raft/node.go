@@ -114,11 +114,37 @@ type Node interface {
 	ProposeConfChange(ctx context.Context, cc pb.ConfChange) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
+
 	// Ready returns a channel that returns the current point-in-time state.
-	// Users of the Node must call Advance after applying the state returned by Ready.
+	// Users of the Node must call Advance after retrieving the state returned by Ready.
+	//
+	// NOTE: No committed entries from the next Ready may be applied until all committed entries
+	// and snapshots from the previous one have finished.
 	Ready() <-chan Ready
-	// Advance notifies the Node that the application has applied and saved progress up to the last Ready.
+
+	// Advance notifies the Node that the application has saved progress up to the last Ready.
 	// It prepares the node to return the next available Ready.
+	//
+	// The application should generally call Advance after it applies the entries in last Ready.
+	//
+	// However, as an optimization, the application may call Advance while it is applying the
+	// commands. For example. when the last Ready contains a snapshot, the application might take
+	// a long time to apply the snapshot data. To continue receiving Ready without blocking raft
+	// progress, it can call Advance before finish applying the last ready. To make this optimization
+	// work safely, when the application receives a Ready with softState.RaftState equal to Candidate
+	// it MUST apply all pending configuration changes if there is any.
+	//
+	// Here is a simple solution that waiting for ALL pending entries to get applied.
+	// ```
+	// ...
+	// rd := <-n.Ready()
+	// go apply(rd.CommittedEntries) // optimization to apply asynchronously in FIFO order.
+	// if rd.SoftState.RaftState == StateCandidate {
+	//     waitAllApplied()
+	// }
+	// n.Advance()
+	// ...
+	//```
 	Advance()
 	// ApplyConfChange applies config change to the local node.
 	// Returns an opaque ConfState protobuf which must be recorded
