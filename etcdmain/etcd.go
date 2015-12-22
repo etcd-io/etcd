@@ -40,6 +40,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
+	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/osutil"
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
@@ -406,7 +407,7 @@ func startProxy(cfg *config) error {
 			return clientURLs
 		}
 
-		err = ioutil.WriteFile(clusterfile+".bak", b, 0600)
+		err = pkgioutil.WriteAndSyncFile(clusterfile+".bak", b, 0600)
 		if err != nil {
 			plog.Warningf("proxy: error on writing urls %s", err)
 			return clientURLs
