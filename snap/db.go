@@ -32,6 +32,9 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) error {
 		return err
 	}
 	_, err = io.Copy(f, r)
+	if err == nil {
+		err = f.Sync()
+	}
 	f.Close()
 	if err != nil {
 		os.Remove(f.Name())
