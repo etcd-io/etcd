@@ -15,12 +15,13 @@
 /*
 Package raft provides an implementation of the raft consensus algorithm.
 
-Raft is a protocol by which a cluster of nodes can maintain a replicated state machine.
+Raft is a protocol with which a cluster of nodes can maintain a replicated state machine.
 The state machine is kept in sync through the use of a replicated log.
-For more details on Raft, you can read In Search of an Understandable Consensus Algorithm
+For more details on Raft, see "In Search of an Understandable Consensus Algorithm"
 (https://ramcloud.stanford.edu/raft.pdf) by Diego Ongaro and John Ousterhout.
 
-A simple example application called, raftexample, is also avialable to help illustrate how to use this package in practice:
+A simple example application, _raftexample_, is also available to help illustrate
+how to use this package in practice:
 https://github.com/coreos/etcd/tree/master/contrib/raftexample
 
 Usage
