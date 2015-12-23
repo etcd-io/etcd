@@ -571,7 +571,7 @@ func (s *EtcdServer) run() {
 					s.cpMu.Lock()
 					s.compactionPaused = false
 					s.cpMu.Unlock()
-				case <-s.stop:
+				case <-s.done:
 					return
 				}
 			}()
