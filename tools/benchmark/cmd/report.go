@@ -39,49 +39,58 @@ type report struct {
 	average  float64
 	rps      float64
 
-	results chan *result
+	results chan result
 	total   time.Duration
 
 	errorDist map[string]int
 	lats      []float64
 }
 
-func printReport(size int, results chan *result, total time.Duration) {
-	r := &report{
-		results:   results,
-		total:     total,
-		errorDist: make(map[string]int),
-	}
-	r.finalize()
-	r.print()
+func printReport(results chan result) <-chan struct{} {
+	return wrapReport(func() {
+		r := &report{
+			results:   results,
+			errorDist: make(map[string]int),
+		}
+		r.finalize()
+		r.print()
+	})
 }
 
-func printRate(size int, results chan *result, total time.Duration) {
-	r := &report{
-		results:   results,
-		total:     total,
-		errorDist: make(map[string]int),
-	}
-	r.finalize()
-	fmt.Printf(" Requests/sec:\t%4.4f\n", r.rps)
+func printRate(results chan result) <-chan struct{} {
+	return wrapReport(func() {
+		r := &report{
+			results:   results,
+			errorDist: make(map[string]int),
+		}
+		r.finalize()
+		fmt.Printf(" Requests/sec:\t%4.4f\n", r.rps)
+	})
+}
+
+func wrapReport(f func()) <-chan struct{} {
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		f()
+	}()
+	return donec
 }
 
 func (r *report) finalize() {
-	for {
-		select {
-		case res := <-r.results:
-			if res.errStr != "" {
-				r.errorDist[res.errStr]++
-			} else {
-				r.lats = append(r.lats, res.duration.Seconds())
-				r.avgTotal += res.duration.Seconds()
-			}
-		default:
-			r.rps = float64(len(r.lats)) / r.total.Seconds()
-			r.average = r.avgTotal / float64(len(r.lats))
-			return
+	st := time.Now()
+	for res := range r.results {
+		if res.errStr != "" {
+			r.errorDist[res.errStr]++
+		} else {
+			r.lats = append(r.lats, res.duration.Seconds())
+			r.avgTotal += res.duration.Seconds()
 		}
 	}
+	r.total = time.Since(st)
+
+	r.rps = float64(len(r.lats)) / r.total.Seconds()
+	r.average = r.avgTotal / float64(len(r.lats))
 }
 
 func (r *report) print() {

@@ -39,7 +39,7 @@ var (
 	totalClients uint
 
 	bar     *pb.ProgressBar
-	results chan *result
+	results chan result
 	wg      sync.WaitGroup
 )
 
