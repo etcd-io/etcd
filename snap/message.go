@@ -27,8 +27,26 @@ import (
 // Message contains the ReadCloser field for handling large snapshot. This avoid
 // copying the entire snapshot into a byte array, which consumes a lot of memory.
 //
-// User of Message should close the ReadCloser after sending it.
+// User of Message should close the Message after sending it.
 type Message struct {
 	raftpb.Message
 	ReadCloser io.ReadCloser
+	Donec      chan bool
+}
+
+// CloseNotify returns a channel that receives a single value
+// when the message sent is finished. true indicates the sent
+// is successful.
+func (m Message) CloseNotify() <-chan bool {
+	return m.Donec
+}
+
+func (m Message) SucceededAndClose() {
+	m.ReadCloser.Close()
+	m.Donec <- true
+}
+
+func (m Message) FailedAndClose() {
+	m.ReadCloser.Close()
+	m.Donec <- false
 }

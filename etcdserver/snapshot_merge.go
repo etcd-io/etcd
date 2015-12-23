@@ -57,6 +57,7 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapi uint64,
 	return snap.Message{
 		Message:    m,
 		ReadCloser: rc,
+		Donec:      make(chan bool, 1),
 	}
 }
 

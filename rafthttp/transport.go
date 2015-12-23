@@ -285,7 +285,7 @@ func (t *Transport) ActiveSince(id types.ID) time.Time {
 func (t *Transport) SendSnapshot(m snap.Message) {
 	p := t.peers[types.ID(m.To)]
 	if p == nil {
-		m.ReadCloser.Close()
+		m.FailedAndClose()
 		return
 	}
 	p.sendSnap(m)
