@@ -47,8 +47,8 @@ func init() {
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
-	results = make(chan *result, putTotal)
-	requests := make(chan *etcdserverpb.PutRequest, putTotal)
+	results = make(chan result)
+	requests := make(chan etcdserverpb.PutRequest, totalClients)
 	bar = pb.New(putTotal)
 
 	k, v := mustRandBytes(keySize), mustRandBytes(valSize)
@@ -68,40 +68,38 @@ func putFunc(cmd *cobra.Command, args []string) {
 
 	for i := range clients {
 		wg.Add(1)
-		go doPut(clients[i], requests)
+		go doPut(context.Background(), clients[i], requests)
 	}
 
-	start := time.Now()
-	for i := 0; i < putTotal; i++ {
-		r := &etcdserverpb.PutRequest{
-			Key:   k,
-			Value: v,
+	pdoneC := printReport(results)
+
+	go func() {
+		for i := 0; i < putTotal; i++ {
+			requests <- etcdserverpb.PutRequest{Key: k, Value: v}
 		}
-		requests <- r
-	}
-	close(requests)
+		close(requests)
+	}()
 
 	wg.Wait()
 
 	bar.Finish()
-	printReport(putTotal, results, time.Now().Sub(start))
+
+	close(results)
+	<-pdoneC
 }
 
-func doPut(client etcdserverpb.KVClient, requests <-chan *etcdserverpb.PutRequest) {
+func doPut(ctx context.Context, client etcdserverpb.KVClient, requests <-chan etcdserverpb.PutRequest) {
 	defer wg.Done()
 
 	for r := range requests {
 		st := time.Now()
-		_, err := client.Put(context.Background(), r)
+		_, err := client.Put(ctx, &r)
 
 		var errStr string
 		if err != nil {
 			errStr = err.Error()
 		}
-		results <- &result{
-			errStr:   errStr,
-			duration: time.Now().Sub(st),
-		}
+		results <- result{errStr: errStr, duration: time.Since(st)}
 		bar.Increment()
 	}
 }

@@ -70,7 +70,7 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		watched[i] = mustRandBytes(32)
 	}
 
-	requests := make(chan *etcdserverpb.WatchRequest, watchTotal)
+	requests := make(chan etcdserverpb.WatchRequest, totalClients)
 
 	conns := make([]*grpc.ClientConn, totalConns)
 	for i := range conns {
@@ -98,90 +98,88 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	}
 
 	// watching phase
-	results = make(chan *result, watchTotal)
+	results = make(chan result)
 	bar = pb.New(watchTotal)
 
 	bar.Format("Bom !")
 	bar.Start()
 
-	start := time.Now()
-	for i := 0; i < watchTotal; i++ {
-		r := &etcdserverpb.WatchRequest{
-			Key: watched[i%(len(watched))],
+	pdoneC := printRate(results)
+
+	go func() {
+		for i := 0; i < watchTotal; i++ {
+			requests <- etcdserverpb.WatchRequest{
+				Key: watched[i%(len(watched))],
+			}
 		}
-		requests <- r
-	}
-	close(requests)
+		close(requests)
+	}()
 
 	wg.Wait()
 	bar.Finish()
+
 	fmt.Printf("Watch creation summary:\n")
-	printRate(watchTotal, results, time.Now().Sub(start))
+	close(results)
+	<-pdoneC
 
 	// put phase
 	kv := etcdserverpb.NewKVClient(conns[0])
 	// total number of puts * number of watchers on each key
 	eventsTotal := watchPutTotal * (watchTotal / watchedKeyTotal)
 
-	results = make(chan *result, eventsTotal)
+	results = make(chan result)
 	bar = pb.New(eventsTotal)
 
 	bar.Format("Bom !")
 	bar.Start()
 
-	start = time.Now()
+	putreqc := make(chan etcdserverpb.PutRequest)
 
-	// TODO: create multiple clients to do put to increase throughput
-	// TODO: use a real rate-limiter instead of sleep.
 	for i := 0; i < watchPutTotal; i++ {
-		r := &etcdserverpb.PutRequest{
-			Key:   watched[i%(len(watched))],
-			Value: []byte("data"),
-		}
-		_, err := kv.Put(context.TODO(), r)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to put:", err)
-		}
-		time.Sleep(time.Second / time.Duration(watchPutRate))
+		wg.Add(1)
+		go doPut(context.TODO(), kv, putreqc)
 	}
 
-	for {
-		if len(results) == eventsTotal {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+	pdoneC = printRate(results)
 
+	go func() {
+		for i := 0; i < eventsTotal; i++ {
+			putreqc <- etcdserverpb.PutRequest{
+				Key:   watched[i%(len(watched))],
+				Value: []byte("data"),
+			}
+			// TODO: use a real rate-limiter instead of sleep.
+			time.Sleep(time.Second / time.Duration(watchPutRate))
+		}
+		close(putreqc)
+	}()
+
+	wg.Wait()
 	bar.Finish()
 	fmt.Printf("Watch events received summary:\n")
-	printRate(eventsTotal, results, time.Now().Sub(start))
+	close(results)
+	<-pdoneC
 }
 
-func doWatch(stream etcdserverpb.Watch_WatchClient, requests <-chan *etcdserverpb.WatchRequest) {
+func doWatch(stream etcdserverpb.Watch_WatchClient, requests <-chan etcdserverpb.WatchRequest) {
 	for r := range requests {
 		st := time.Now()
-		err := stream.Send(r)
+		err := stream.Send(&r)
 		var errStr string
 		if err != nil {
 			errStr = err.Error()
 		}
-		results <- &result{
-			errStr:   errStr,
-			duration: time.Since(st),
-		}
+		results <- result{errStr: errStr, duration: time.Since(st)}
 		bar.Increment()
 	}
-	wg.Done()
-
 	for {
 		_, err := stream.Recv()
 		var errStr string
 		if err != nil {
 			errStr = err.Error()
 		}
-		results <- &result{
-			errStr: errStr,
-		}
+		results <- result{errStr: errStr}
 		bar.Increment()
 	}
+	wg.Done()
 }

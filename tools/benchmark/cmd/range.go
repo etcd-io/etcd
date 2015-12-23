@@ -55,8 +55,8 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		end = []byte(args[1])
 	}
 
-	results = make(chan *result, rangeTotal)
-	requests := make(chan *etcdserverpb.RangeRequest, rangeTotal)
+	results = make(chan result)
+	requests := make(chan etcdserverpb.RangeRequest, totalClients)
 	bar = pb.New(rangeTotal)
 
 	conns := make([]*grpc.ClientConn, totalConns)
@@ -77,37 +77,37 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		go doRange(clients[i], requests)
 	}
 
-	start := time.Now()
-	for i := 0; i < rangeTotal; i++ {
-		r := &etcdserverpb.RangeRequest{
-			Key:      k,
-			RangeEnd: end,
+	pdoneC := printReport(results)
+
+	go func() {
+		for i := 0; i < rangeTotal; i++ {
+			requests <- etcdserverpb.RangeRequest{
+				Key:      k,
+				RangeEnd: end}
 		}
-		requests <- r
-	}
-	close(requests)
+		close(requests)
+	}()
 
 	wg.Wait()
 
 	bar.Finish()
-	printReport(rangeTotal, results, time.Now().Sub(start))
+
+	close(results)
+	<-pdoneC
 }
 
-func doRange(client etcdserverpb.KVClient, requests <-chan *etcdserverpb.RangeRequest) {
+func doRange(client etcdserverpb.KVClient, requests <-chan etcdserverpb.RangeRequest) {
 	defer wg.Done()
 
 	for req := range requests {
 		st := time.Now()
-		_, err := client.Range(context.Background(), req)
+		_, err := client.Range(context.Background(), &req)
 
 		var errStr string
 		if err != nil {
 			errStr = err.Error()
 		}
-		results <- &result{
-			errStr:   errStr,
-			duration: time.Now().Sub(st),
-		}
+		results <- result{errStr: errStr, duration: time.Since(st)}
 		bar.Increment()
 	}
 }
