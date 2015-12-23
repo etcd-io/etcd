@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
@@ -505,6 +506,43 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 	if shouldStop != true {
+		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
+	}
+}
+
+// TestApplyMultiConfChangeShouldStop ensures that apply will return shouldStop
+// if the local member is removed along with other conf updates.
+func TestApplyMultiConfChangeShouldStop(t *testing.T) {
+	cl := newCluster("")
+	cl.SetStore(store.New())
+	for i := 1; i <= 5; i++ {
+		cl.AddMember(&Member{ID: types.ID(i)})
+	}
+	srv := &EtcdServer{
+		id: 2,
+		r: raftNode{
+			Node:      &nodeRecorder{},
+			transport: &nopTransporter{},
+		},
+		cluster: cl,
+		w:       wait.New(),
+	}
+	ents := []raftpb.Entry{}
+	for i := 1; i <= 4; i++ {
+		ent := raftpb.Entry{
+			Term:  1,
+			Index: uint64(i),
+			Type:  raftpb.EntryConfChange,
+			Data: pbutil.MustMarshal(
+				&raftpb.ConfChange{
+					Type:   raftpb.ConfChangeRemoveNode,
+					NodeID: uint64(i)}),
+		}
+		ents = append(ents, ent)
+	}
+
+	_, shouldStop := srv.apply(ents, &raftpb.ConfState{})
+	if shouldStop == false {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
 	}
 }
