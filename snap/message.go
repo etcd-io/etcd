@@ -31,22 +31,29 @@ import (
 type Message struct {
 	raftpb.Message
 	ReadCloser io.ReadCloser
-	Donec      chan bool
+	closeC     chan bool
+}
+
+func NewMessage(rs raftpb.Message, rc io.ReadCloser) *Message {
+	return &Message{
+		Message:    rs,
+		ReadCloser: rc,
+		closeC:     make(chan bool, 1),
+	}
 }
 
 // CloseNotify returns a channel that receives a single value
 // when the message sent is finished. true indicates the sent
 // is successful.
 func (m Message) CloseNotify() <-chan bool {
-	return m.Donec
+	return m.closeC
 }
 
-func (m Message) SucceededAndClose() {
+func (m Message) CloseWithError(err error) {
 	m.ReadCloser.Close()
-	m.Donec <- true
-}
-
-func (m Message) FailedAndClose() {
-	m.ReadCloser.Close()
-	m.Donec <- false
+	if err == nil {
+		m.closeC <- true
+	} else {
+		m.closeC <- false
+	}
 }

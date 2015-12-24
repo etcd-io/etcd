@@ -74,8 +74,8 @@ func (s *snapshotSender) send(merged snap.Message) {
 	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.from, s.cid)
 
 	err := s.post(req)
+	defer merged.CloseWithError(err)
 	if err != nil {
-		merged.FailedAndClose()
 		// errMemberRemoved is a critical error since a removed member should
 		// always be stopped. So we use reportCriticalError to report it to errorc.
 		if err == errMemberRemoved {
@@ -99,7 +99,6 @@ func (s *snapshotSender) send(merged snap.Message) {
 	reportSentDuration(sendSnap, m, time.Since(start))
 	s.status.activate()
 	s.r.ReportSnapshot(m.To, raft.SnapshotFinish)
-	merged.SucceededAndClose()
 	plog.Infof("snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
 }
 

@@ -31,7 +31,10 @@ import (
 	"github.com/coreos/etcd/version"
 )
 
-var errMemberRemoved = fmt.Errorf("the member has been permanently removed from the cluster")
+var (
+	errMemberRemoved  = fmt.Errorf("the member has been permanently removed from the cluster")
+	errMemberNotFound = fmt.Errorf("member not found")
+)
 
 // NewListener returns a listener for raft message transfer between peers.
 // It uses timeout listener to identify broken streams promptly.
