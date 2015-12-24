@@ -68,6 +68,8 @@ const (
 	// max number of in-flight snapshot messages etcdserver allows to have
 	// This number is more than enough for most clusters with 5 machines.
 	maxInFlightMsgSnap = 16
+
+	releaseDelayAfterSnapshot = 30 * time.Second
 )
 
 var (
@@ -184,6 +186,10 @@ type EtcdServer struct {
 	forceVersionC chan struct{}
 
 	msgSnapC chan raftpb.Message
+
+	// count the number of inflight snapshots.
+	// MUST use atomic operation to access this field.
+	inflightSnapshots int64
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -542,7 +548,7 @@ func (s *EtcdServer) run() {
 		case ep = <-etcdprogc:
 		case m := <-s.msgSnapC:
 			merged := s.createMergedSnapshotMessage(m, ep.appliedi, ep.confState)
-			s.r.transport.SendSnapshot(merged)
+			s.sendMergedSnap(merged)
 		case err := <-s.errorc:
 			plog.Errorf("%s", err)
 			plog.Infof("the data-dir used by this member must be removed.")
@@ -643,6 +649,16 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 	if ep.appliedi-ep.snapi <= s.snapCount {
 		return
 	}
+
+	// When sending a snapshot, etcd will pause compaction.
+	// After receives a snapshot, the slow follower needs to get all the entries right after
+	// the snapshot sent to catch up. If we do not pause compaction, the log entries right after
+	// the snapshot sent might already be compacted. It happens when the snapshot takes long time
+	// to send and save. Pausing compaction avoids triggering a snapshot sending cycle.
+	if atomic.LoadInt64(&s.inflightSnapshots) != 0 {
+		return
+	}
+
 	plog.Infof("start to snapshot (applied: %d, lastsnap: %d)", ep.appliedi, ep.snapi)
 	s.snapshot(ep.appliedi, ep.confState)
 	ep.snapi = ep.appliedi
@@ -911,6 +927,27 @@ func (s *EtcdServer) send(ms []raftpb.Message) {
 	}
 
 	s.r.transport.Send(ms)
+}
+
+func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
+	atomic.AddInt64(&s.inflightSnapshots, 1)
+
+	s.r.transport.SendSnapshot(merged)
+	go func() {
+		select {
+		case ok := <-merged.CloseNotify():
+			// delay releasing inflight snapshot for another 30 seconds to
+			// block log compaction.
+			// If the follower still fails to catch up, it is probably just too slow
+			// to catch up. We cannot avoid the snapshot cycle anyway.
+			if ok {
+				time.Sleep(releaseDelayAfterSnapshot)
+			}
+			atomic.AddInt64(&s.inflightSnapshots, -1)
+		case <-s.done:
+			return
+		}
+	}()
 }
 
 // apply takes entries received from Raft (after it has been committed) and

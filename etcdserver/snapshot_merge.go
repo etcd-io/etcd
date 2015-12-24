@@ -54,10 +54,7 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapi uint64,
 	}
 	m.Snapshot = snapshot
 
-	return snap.Message{
-		Message:    m,
-		ReadCloser: rc,
-	}
+	return *snap.NewMessage(m, rc)
 }
 
 func newSnapshotReaderCloser(snapshot dstorage.Snapshot) io.ReadCloser {
