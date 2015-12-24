@@ -919,7 +919,6 @@ func (s *EtcdServer) send(ms []raftpb.Message) {
 func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint64, bool) {
 	var applied uint64
 	var shouldstop bool
-	var err error
 	for i := range es {
 		e := es[i]
 		// set the consistent index of current executing entry
@@ -953,7 +952,8 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
-			shouldstop, err = s.applyConfChange(cc, confState)
+			removedSelf, err := s.applyConfChange(cc, confState)
+			shouldstop = shouldstop || removedSelf
 			s.w.Trigger(cc.ID, err)
 		default:
 			plog.Panicf("entry type should be either EntryNormal or EntryConfChange")
