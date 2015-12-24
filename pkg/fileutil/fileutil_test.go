@@ -29,10 +29,10 @@ func TestIsDirWriteable(t *testing.T) {
 		t.Fatalf("unexpected ioutil.TempDir error: %v", err)
 	}
 	defer os.RemoveAll(tmpdir)
-	if err := IsDirWriteable(tmpdir); err != nil {
+	if err = IsDirWriteable(tmpdir); err != nil {
 		t.Fatalf("unexpected IsDirWriteable error: %v", err)
 	}
-	if err := os.Chmod(tmpdir, 0444); err != nil {
+	if err = os.Chmod(tmpdir, 0444); err != nil {
 		t.Fatalf("unexpected os.Chmod error: %v", err)
 	}
 	me, err := user.Current()
