@@ -132,7 +132,11 @@ func (t *batchTx) commit(stop bool) {
 	var err error
 	// commit the last tx
 	if t.tx != nil {
+		if t.pending == 0 && !stop {
+			return
+		}
 		err = t.tx.Commit()
+		t.pending = 0
 		if err != nil {
 			log.Fatalf("storage: cannot commit tx (%s)", err)
 		}
