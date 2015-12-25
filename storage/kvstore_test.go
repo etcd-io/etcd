@@ -18,7 +18,6 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"math"
-	mrand "math/rand"
 	"os"
 	"reflect"
 	"testing"
@@ -845,7 +844,6 @@ func (i *fakeIndex) Equal(b index) bool { return false }
 func createBytesSlice(bytesN, sliceN int) [][]byte {
 	rs := [][]byte{}
 	for len(rs) != sliceN {
-		mrand.Seed(time.Now().UnixNano())
 		v := make([]byte, bytesN)
 		if _, err := rand.Read(v); err != nil {
 			panic(err)
