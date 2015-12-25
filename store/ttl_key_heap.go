@@ -18,7 +18,8 @@ import (
 	"container/heap"
 )
 
-// An TTLKeyHeap is a min-heap of TTLKeys order by expiration time
+// ttlKeyHeap is a min-heap of TTLKeys order by expiration time.
+// The node expiring soonest is the first element in the heap.
 type ttlKeyHeap struct {
 	array  []*node
 	keyMap map[*node]int
@@ -61,7 +62,7 @@ func (h *ttlKeyHeap) Pop() interface{} {
 	// This is due to golang GC doesn't support partial recycling:
 	// https://github.com/golang/go/issues/9618
 	old[n-1] = nil
-	h.array = old[0 : n-1]
+	h.array = old[:n-1]
 	delete(h.keyMap, x)
 	return x
 }
@@ -86,8 +87,7 @@ func (h *ttlKeyHeap) push(x interface{}) {
 func (h *ttlKeyHeap) update(n *node) {
 	index, ok := h.keyMap[n]
 	if ok {
-		heap.Remove(h, index)
-		heap.Push(h, n)
+		heap.Fix(h, index)
 	}
 }
 
