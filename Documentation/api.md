@@ -500,6 +500,8 @@ etcd can be used as a centralized coordination service in a cluster, and `Compar
 
 This command will set the value of a key only if the client-provided conditions are equal to the current conditions.
 
+_Note that `CompareAndSwap` does not work with [directories](#listing-a-directory). If an attempt is made to `CompareAndSwap` a directory, a 102 "Not a file" error will be returned._
+
 The current comparable conditions are:
 
 1. `prevValue` - checks the previous value of the key.
@@ -584,6 +586,8 @@ We successfully changed the value from "one" to "two" since we gave the correct 
 ### Atomic Compare-and-Delete
 
 This command will delete a key only if the client-provided conditions are equal to the current conditions.
+
+_Note that `CompareAndDelete` does not work with [directories](#listing-a-directory). If an attempt is made to `CompareAndDelete` a directory, a 102 "Not a file" error will be returned._
 
 The current comparable conditions are:
 
