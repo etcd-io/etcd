@@ -18,12 +18,22 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 )
 
+var (
+	// dialTotal counts the number of mustCreateConn calls so that endpoint
+	// connections can be handed out in round-robin order
+	dialTotal int
+)
+
 func mustCreateConn() *grpc.ClientConn {
-	conn, err := grpc.Dial(endpoints)
+	eps := strings.Split(endpoints, ",")
+	endpoint := eps[dialTotal%len(eps)]
+	dialTotal++
+	conn, err := grpc.Dial(endpoint)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dial error: %v\n", err)
 		os.Exit(1)
