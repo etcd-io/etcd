@@ -28,9 +28,6 @@ import (
 // TODO: k is an arbitrary constant. We need to figure out what factor
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
-	const k int = 2
-	benchSampleSize := b.N
-	watcherSize := k * benchSampleSize
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore periodically calls syncWatchersLoop
 	// method to sync watchers in unsynced map. We want to keep watchers
@@ -38,9 +35,6 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	s := &watchableStore{
 		store:    newStore(tmpPath),
 		unsynced: make(map[*watching]struct{}),
-
-		// For previous implementation, use:
-		// unsynced: make([]*watching, 0),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
@@ -62,8 +56,12 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 	w := s.NewWatcher()
 
-	cancels := make([]CancelFunc, watcherSize)
-	for i := 0; i < watcherSize; i++ {
+	const k int = 2
+	benchSampleN := b.N
+	watcherN := k * benchSampleN
+
+	cancels := make([]CancelFunc, watcherN)
+	for i := 0; i < watcherN; i++ {
 		// non-0 value to keep watchers in unsynced
 		_, cancel := w.Watch(testKey, true, 1)
 		cancels[i] = cancel
@@ -71,13 +69,13 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 	// random-cancel N watchers to make it not biased towards
 	// data structures with an order, such as slice.
-	ix := rand.Perm(watcherSize)
+	ix := rand.Perm(watcherN)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	// cancel N watchers
-	for _, idx := range ix[:benchSampleSize] {
+	for _, idx := range ix[:benchSampleN] {
 		cancels[idx]()
 	}
 }
@@ -97,10 +95,10 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	w := s.NewWatcher()
 
 	// put 1 million watchers on the same key
-	const watcherSize = 1000000
+	const watcherN = 1000000
 
-	cancels := make([]CancelFunc, watcherSize)
-	for i := 0; i < watcherSize; i++ {
+	cancels := make([]CancelFunc, watcherN)
+	for i := 0; i < watcherN; i++ {
 		// 0 for startRev to keep watchers in synced
 		_, cancel := w.Watch(testKey, true, 0)
 		cancels[i] = cancel
@@ -108,7 +106,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 
 	// randomly cancel watchers to make it not biased towards
 	// data structures with an order, such as slice.
-	ix := rand.Perm(watcherSize)
+	ix := rand.Perm(watcherN)
 
 	b.ResetTimer()
 	b.ReportAllocs()

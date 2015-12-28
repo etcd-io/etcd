@@ -89,7 +89,7 @@ func TestCancelUnsynced(t *testing.T) {
 
 	w := s.NewWatcher()
 
-	// arbitrary number for watcher
+	// arbitrary number for watchers
 	watcherN := 100
 
 	// create watcherN of CancelFunc of
@@ -136,7 +136,7 @@ func TestSyncWatchings(t *testing.T) {
 
 	w := s.NewWatcher()
 
-	// arbitrary number for watcher
+	// arbitrary number for watchers
 	watcherN := 100
 
 	for i := 0; i < watcherN; i++ {
