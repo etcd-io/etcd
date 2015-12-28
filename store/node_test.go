@@ -28,7 +28,7 @@ var (
 )
 
 func TestNewKVIs(t *testing.T) {
-	nd := newTestKV()
+	nd := newTestNode()
 
 	if nd.IsHidden() {
 		t.Errorf("nd.Hidden() = %v, want = false", nd.IsHidden())
@@ -44,7 +44,7 @@ func TestNewKVIs(t *testing.T) {
 }
 
 func TestNewKVReadWriteCompare(t *testing.T) {
-	nd := newTestKV()
+	nd := newTestNode()
 
 	if v, err := nd.Read(); v != val || err != nil {
 		t.Errorf("value = %s and err = %v, want value = %s and err = nil", v, err, val)
@@ -71,7 +71,7 @@ func TestNewKVReadWriteCompare(t *testing.T) {
 }
 
 func TestNewKVExpiration(t *testing.T) {
-	nd := newTestKV()
+	nd := newTestNode()
 
 	if _, ttl := nd.expirationAndTTL(clockwork.NewFakeClock()); ttl > expiration.Nanoseconds() {
 		t.Errorf("ttl = %d, want %d < %d", ttl, ttl, expiration.Nanoseconds())
@@ -96,7 +96,7 @@ func TestNewKVExpiration(t *testing.T) {
 }
 
 func TestNewKVListReprCompareClone(t *testing.T) {
-	nd := newTestKV()
+	nd := newTestNode()
 
 	if ns, err := nd.List(); ns != nil || err == nil {
 		t.Errorf("nodes = %v and err = %v, want nodes = nil and err != nil", ns, err)
@@ -120,7 +120,7 @@ func TestNewKVListReprCompareClone(t *testing.T) {
 }
 
 func TestNewKVRemove(t *testing.T) {
-	nd := newTestKV()
+	nd := newTestNode()
 
 	if v, err := nd.Read(); v != val || err != nil {
 		t.Errorf("value = %s and err = %v, want value = %s and err = nil", v, err, val)
@@ -158,7 +158,7 @@ func TestNewKVRemove(t *testing.T) {
 }
 
 func TestNewDirIs(t *testing.T) {
-	nd, _ := newTestDir()
+	nd, _ := newTestNodeDir()
 	if nd.IsHidden() {
 		t.Errorf("nd.Hidden() = %v, want = false", nd.IsHidden())
 	}
@@ -173,7 +173,7 @@ func TestNewDirIs(t *testing.T) {
 }
 
 func TestNewDirReadWriteListReprClone(t *testing.T) {
-	nd, _ := newTestDir()
+	nd, _ := newTestNodeDir()
 
 	if _, err := nd.Read(); err == nil {
 		t.Errorf("err = %v, want err != nil", err)
@@ -199,7 +199,7 @@ func TestNewDirReadWriteListReprClone(t *testing.T) {
 }
 
 func TestNewDirExpirationTTL(t *testing.T) {
-	nd, _ := newTestDir()
+	nd, _ := newTestNodeDir()
 
 	if _, ttl := nd.expirationAndTTL(clockwork.NewFakeClock()); ttl > expiration.Nanoseconds() {
 		t.Errorf("ttl = %d, want %d < %d", ttl, ttl, expiration.Nanoseconds())
@@ -213,7 +213,7 @@ func TestNewDirExpirationTTL(t *testing.T) {
 }
 
 func TestNewDirChild(t *testing.T) {
-	nd, child := newTestDir()
+	nd, child := newTestNodeDir()
 
 	if err := nd.Add(child); err != nil {
 		t.Errorf("nd.Add(child) err = %v, want = nil", err)
@@ -232,13 +232,12 @@ func TestNewDirChild(t *testing.T) {
 	}
 }
 
-func newTestKV() *node {
-	expiration := time.Minute
+func newTestNode() *node {
 	nd := newKV(newStore(), key, val, 0, nil, time.Now().Add(expiration))
 	return nd
 }
 
-func newTestDir() (*node, *node) {
+func newTestNodeDir() (*node, *node) {
 	s := newStore()
 	nd := newDir(s, key, 0, nil, time.Now().Add(expiration))
 	cKey, cVal := "hello", "world"
