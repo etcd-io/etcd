@@ -73,14 +73,19 @@ func (s *snapshotSender) send(merged snap.Message) {
 	u := s.picker.pick()
 	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.from, s.cid)
 
+	plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
+
 	err := s.post(req)
 	defer merged.CloseWithError(err)
 	if err != nil {
+		plog.Warningf("database snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
+
 		// errMemberRemoved is a critical error since a removed member should
 		// always be stopped. So we use reportCriticalError to report it to errorc.
 		if err == errMemberRemoved {
 			reportCriticalError(err, s.errorc)
 		}
+
 		s.picker.unreachable(u)
 		reportSentFailure(sendSnap, m)
 		s.status.deactivate(failureType{source: sendSnap, action: "post"}, err.Error())
@@ -89,17 +94,12 @@ func (s *snapshotSender) send(merged snap.Message) {
 		// machine knows about it, it would pause a while and retry sending
 		// new snapshot message.
 		s.r.ReportSnapshot(m.To, raft.SnapshotFailure)
-		if s.status.isActive() {
-			plog.Warningf("snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
-		} else {
-			plog.Debugf("snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
-		}
 		return
 	}
 	reportSentDuration(sendSnap, m, time.Since(start))
 	s.status.activate()
 	s.r.ReportSnapshot(m.To, raft.SnapshotFinish)
-	plog.Infof("snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
+	plog.Infof("database snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
 }
 
 // post posts the given request.
