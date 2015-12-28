@@ -4,6 +4,8 @@ etcd is configurable through command-line flags and environment variables. Optio
 
 The format of environment variable for flag `-my-flag` is `ETCD_MY_FLAG`. It applies to all  flags.
 
+The [official etcd ports](https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd) are 2379 for client requests, and 2380 for peer communication. Some legacy code and documentation still references ports 4001 and 7001, but all new etcd use and discussion should adopt the assigned ports.
+
 To start etcd automatically using custom settings at startup in Linux, using a [systemd][systemd-intro] unit is highly recommended.
 
 [systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
