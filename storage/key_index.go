@@ -44,9 +44,9 @@ var (
 //    {1.0, 2.0, 3.0(t)}
 //
 // Compact a keyIndex removes the versions with smaller or equal to
-// rev except the largest one. If the generations becomes empty
+// rev except the largest one. If the generation becomes empty
 // during compaction, it will be removed. if all the generations get
-// removed, the keyIndex Should be removed.
+// removed, the keyIndex should be removed.
 
 // For example:
 // compact(2) on the previous example
@@ -294,6 +294,7 @@ func (ki *keyIndex) String() string {
 	return s
 }
 
+// generation contains multiple revisions of a key.
 type generation struct {
 	ver     int64
 	created revision // when the generation is created (put in first revision).
