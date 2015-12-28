@@ -189,65 +189,6 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	return n, rev, nil
 }
 
-// RangeHistory ranges the history from key to end starting from startRev.
-// If `end` is nil, the request only observes the events on key.
-// If `end` is not nil, it observes the events on key range [key, range_end).
-// Limit limits the number of events returned.
-// If startRev <=0, rangeEvents returns events from the beginning of uncompacted history.
-//
-// If the required start rev is compacted, ErrCompacted will be returned.
-// If the required start rev has not happened, ErrFutureRev will be returned.
-//
-// RangeHistory returns revision bytes slice and key-values that satisfy the requirement (0 <= n <= limit).
-// If history in the revision range has not all happened, it returns immeidately
-// what is available.
-// It also returns nextRev which indicates the start revision used for the following
-// RangeEvents call. The nextRev could be smaller than the given endRev if the store
-// has not progressed so far or it hits the event limit.
-//
-// TODO: return byte slices instead of keyValues to avoid meaningless encode and decode.
-// This also helps to return raw (key, val) pair directly to make API consistent.
-func (s *store) RangeHistory(key, end []byte, limit, startRev int64) (revbs [][]byte, kvs []storagepb.KeyValue, nextRev int64, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if startRev > 0 && startRev <= s.compactMainRev {
-		return nil, nil, 0, ErrCompacted
-	}
-	if startRev > s.currentRev.main {
-		return nil, nil, 0, ErrFutureRev
-	}
-
-	revs := s.kvindex.RangeSince(key, end, startRev)
-	if len(revs) == 0 {
-		return nil, nil, s.currentRev.main + 1, nil
-	}
-
-	tx := s.b.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-	// fetch events from the backend using revisions
-	for _, rev := range revs {
-		start, end := revBytesRange(rev)
-
-		ks, vs := tx.UnsafeRange(keyBucketName, start, end, 0)
-		if len(vs) != 1 {
-			log.Fatalf("storage: range cannot find rev (%d,%d)", rev.main, rev.sub)
-		}
-
-		var kv storagepb.KeyValue
-		if err := kv.Unmarshal(vs[0]); err != nil {
-			log.Fatalf("storage: cannot unmarshal event: %v", err)
-		}
-		revbs = append(revbs, ks[0])
-		kvs = append(kvs, kv)
-		if limit > 0 && len(kvs) >= int(limit) {
-			return revbs, kvs, rev.main + 1, nil
-		}
-	}
-	return revbs, kvs, s.currentRev.main + 1, nil
-}
-
 func (s *store) Compact(rev int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
