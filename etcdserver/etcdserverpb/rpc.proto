@@ -90,6 +90,7 @@ message RangeResponse {
 message PutRequest {
   bytes key = 1;
   bytes value = 2;
+  int64 lease = 3;
 }
 
 message PutResponse {

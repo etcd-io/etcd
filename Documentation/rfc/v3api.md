@@ -30,7 +30,9 @@
 
 ## Protobuf Defined API
 
-[protobuf](./v3api.proto)
+[api protobuf](../../etcdserver/etcdserverpb/rpc.proto)
+
+[kv protobuf](../../storage/storagepb/kv.proto)
 
 ## Examples
 
