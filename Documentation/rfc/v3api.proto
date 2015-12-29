@@ -17,12 +17,23 @@ service KV {
   // Txn processes all the requests in one transaction.
   // A txn request increases the revision of the store,
   // and generates events with the same revision in the event history.
+  // It is not allowed to modify the same key several times within one txn.
   rpc Txn(TxnRequest) returns (TxnResponse) {}
 
   // Compact compacts the event history in etcd. User should compact the
   // event history periodically, or it will grow infinitely.
   rpc Compact(CompactionRequest) returns (CompactionResponse) {}
+}
 
+service watch {
+  // Watch watches the events happening or happened. Both input and output
+  // are stream. One watch rpc can watch for multiple keys or prefixs and
+  // get a stream of events. The whole events history can be watched unless
+  // compacted.
+  rpc Watch(stream WatchRequest) returns (stream WatchResponse) {}
+}
+
+service Lease {
   // LeaseCreate creates a lease. A lease has a TTL. The lease will expire if the
   // server does not receive a keepAlive within TTL from the lease holder.
   // All keys attached to the lease will be expired and deleted if the lease expires.
@@ -32,24 +43,11 @@ service KV {
   // LeaseRevoke revokes a lease. All the key attached to the lease will be expired and deleted.
   rpc LeaseRevoke(LeaseRevokeRequest) returns (LeaseRevokeResponse) {}
 
-  // LeaseAttach attaches keys with a lease.
-  rpc LeaseAttach(LeaseAttachRequest) returns (LeaseAttachResponse) {}
-
-  // LeaseTxn likes Txn. It has two addition success and failure LeaseAttachRequest list.
-  // If the Txn is successful, then the success list will be executed. Or the failure list
-  // will be executed.
-  rpc LeaseTxn(LeaseTxnRequest) returns (LeaseTxnResponse) {}
-
   // KeepAlive keeps the lease alive.
   rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse) {}
-}
 
-service watch {
-  // Watch watches the events happening or happened. Both input and output
-  // are stream. One watch rpc can watch for multiple keys or prefixs and
-  // get a stream of events. The whole events history can be watched unless
-  // compacted.
-  rpc Watch(stream WatchRequest) returns (stream WatchResponse) {}
+  // TODO(xiangli) List all existing Leases?
+  // TODO(xiangli) Get details information (expirations, leased keys, etc.) of a lease?
 }
 
 message ResponseHeader {
@@ -87,6 +85,7 @@ message RangeResponse {
 message PutRequest {
   bytes key = 1;
   bytes value = 2;
+  int64 lease = 3;
 }
 
 message PutResponse {
@@ -190,6 +189,9 @@ message KeyValue {
   // increases its version.
   int64 version = 4;
   bytes value = 5;
+  // lease is the ID of the lease that attached to key.
+  // When the attached lease expires, the key will be deleted.
+  int64 lease = 6;
 }
 
 message WatchRequest {

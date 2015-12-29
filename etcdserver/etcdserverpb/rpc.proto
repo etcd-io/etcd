@@ -24,6 +24,7 @@ service KV {
   // Txn processes all the requests in one transaction.
   // A txn request increases the revision of the store,
   // and generates events with the same revision in the event history.
+  // It is not allowed to modify the same key several times within one txn.
   rpc Txn(TxnRequest) returns (TxnResponse) {}
 
   // Compact compacts the event history in etcd. User should compact the
@@ -37,6 +38,23 @@ service watch {
   // get a stream of events. The whole events history can be watched unless
   // compacted.
   rpc Watch(stream WatchRequest) returns (stream WatchResponse) {}
+}
+
+service Lease {
+  // LeaseCreate creates a lease. A lease has a TTL. The lease will expire if the
+  // server does not receive a keepAlive within TTL from the lease holder.
+  // All keys attached to the lease will be expired and deleted if the lease expires.
+  // The key expiration generates an event in event history.
+  rpc LeaseCreate(LeaseCreateRequest) returns (LeaseCreateResponse) {}
+
+  // LeaseRevoke revokes a lease. All the key attached to the lease will be expired and deleted.
+  rpc LeaseRevoke(LeaseRevokeRequest) returns (LeaseRevokeResponse) {}
+
+  // KeepAlive keeps the lease alive.
+  rpc LeaseKeepAlive(stream LeaseKeepAliveRequest) returns (stream LeaseKeepAliveResponse) {}
+
+  // TODO(xiangli) List all existing Leases?
+  // TODO(xiangli) Get details information (expirations, leased keys, etc.) of a lease?
 }
 
 message ResponseHeader {

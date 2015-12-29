@@ -19,6 +19,9 @@ message KeyValue {
   // increases its version.
   int64 version = 4;
   bytes value = 5;
+  // lease is the ID of the lease that attached to key.
+  // When the attached lease expires, the key will be deleted.
+  int64 lease = 6;
 }
 
 message Event {
