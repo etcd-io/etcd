@@ -941,7 +941,10 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 			// If the follower still fails to catch up, it is probably just too slow
 			// to catch up. We cannot avoid the snapshot cycle anyway.
 			if ok {
-				time.Sleep(releaseDelayAfterSnapshot)
+				select {
+				case <-time.After(releaseDelayAfterSnapshot):
+				case <-s.done:
+				}
 			}
 			atomic.AddInt64(&s.inflightSnapshots, -1)
 		case <-s.done:
