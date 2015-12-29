@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
@@ -211,11 +213,19 @@ func mustNewClient(c *cli.Context) client.Client {
 				handleError(ExitServerError, err)
 			}
 
+			if isConnectionError(err) {
+				handleError(ExitBadConnection, err)
+			}
+
 			// fail-back to try sync cluster with peer API. this is for making etcdctl work with etcd 0.4.x.
 			// TODO: remove this when we deprecate the support for etcd 0.4.
 			eps, serr := syncWithPeerAPI(c, ctx, hc.Endpoints())
 			if serr != nil {
-				handleError(ExitServerError, serr)
+				if isConnectionError(serr) {
+					handleError(ExitBadConnection, serr)
+				} else {
+					handleError(ExitServerError, serr)
+				}
 			}
 			err = hc.SetEndpoints(eps)
 			if err != nil {
@@ -232,6 +242,32 @@ func mustNewClient(c *cli.Context) client.Client {
 	}
 
 	return hc
+}
+
+func isConnectionError(err error) bool {
+	switch t := err.(type) {
+	case *client.ClusterError:
+		for _, cerr := range t.Errors {
+			if !isConnectionError(cerr) {
+				return false
+			}
+		}
+		return true
+	case *net.OpError:
+		if t.Op == "dial" || t.Op == "read" {
+			return true
+		}
+		return isConnectionError(t.Err)
+	case net.Error:
+		if t.Timeout() {
+			return true
+		}
+	case syscall.Errno:
+		if t == syscall.ECONNREFUSED {
+			return true
+		}
+	}
+	return false
 }
 
 func mustNewClientNoSync(c *cli.Context) client.Client {
