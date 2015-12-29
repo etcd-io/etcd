@@ -85,6 +85,15 @@ type apply struct {
 	raftDone <-chan struct{} // rx {} after raft has persisted messages
 }
 
+// activeRaft represents an activated raft instance via raft.{Res,S}tartNode
+type activeRaft struct {
+	id types.ID
+	cl *cluster
+	n  raft.Node
+	s  *raft.MemoryStorage
+	w  *wal.WAL
+}
+
 type raftNode struct {
 	// Cache of the latest raft index and raft term the server has seen.
 	// These three unit64 fields must be the first elements to keep 64-bit
@@ -241,8 +250,7 @@ func advanceTicksForElection(n raft.Node, electionTicks int) {
 	}
 }
 
-func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n raft.Node, s *raft.MemoryStorage, w *wal.WAL) {
-	var err error
+func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) *activeRaft {
 	member := cl.MemberByName(cfg.Name)
 	metadata := pbutil.MustMarshal(
 		&pb.Metadata{
@@ -250,10 +258,11 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 			ClusterID: uint64(cl.ID()),
 		},
 	)
-	if err = os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
+	if err := os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
 		plog.Fatalf("create snapshot directory error: %v", err)
 	}
-	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
+	w, err := wal.Create(cfg.WALDir(), metadata)
+	if err != nil {
 		plog.Fatalf("create wal error: %v", err)
 	}
 	peers := make([]raft.Peer, len(ids))
@@ -264,9 +273,9 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 		}
 		peers[i] = raft.Peer{ID: uint64(id), Context: ctx}
 	}
-	id = member.ID
+	id := member.ID
 	plog.Infof("starting member %s in cluster %s", id, cl.ID())
-	s = raft.NewMemoryStorage()
+	s := raft.NewMemoryStorage()
 	c := &raft.Config{
 		ID:              uint64(id),
 		ElectionTick:    cfg.ElectionTicks,
@@ -275,15 +284,15 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 		MaxSizePerMsg:   maxSizePerMsg,
 		MaxInflightMsgs: maxInflightMsgs,
 	}
-	n = raft.StartNode(c, peers)
+	n := raft.StartNode(c, peers)
 	raftStatusMu.Lock()
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
 	advanceTicksForElection(n, c.ElectionTick)
-	return
+	return &activeRaft{id, cl, n, s, w}
 }
 
-func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *cluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) *activeRaft {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -312,10 +321,10 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *clust
 	raftStatus = n.Status
 	raftStatusMu.Unlock()
 	advanceTicksForElection(n, c.ElectionTick)
-	return id, cl, n, s, w
+	return &activeRaft{id, cl, n, s, w}
 }
 
-func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *cluster, raft.Node, *raft.MemoryStorage, *wal.WAL) {
+func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) *activeRaft {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
@@ -363,7 +372,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	}
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
-	return id, cl, n, s, w
+	return &activeRaft{id, cl, n, s, w}
 }
 
 // getIDs returns an ordered set of IDs included in the given snapshot and

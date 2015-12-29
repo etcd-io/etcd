@@ -195,15 +195,6 @@ type EtcdServer struct {
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
-	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
-	var (
-		w  *wal.WAL
-		n  raft.Node
-		s  *raft.MemoryStorage
-		id types.ID
-		cl *cluster
-	)
-
 	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.SnapDir(), databaseFilename)) {
 		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
 	}
@@ -223,137 +214,55 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
-	ss := snap.New(cfg.SnapDir())
 
 	prt, err := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.peerDialTimeout())
 	if err != nil {
 		return nil, err
 	}
+
+	var ar *activeRaft
 	var remotes []*Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
-		if err := cfg.VerifyJoinExisting(); err != nil {
-			return nil, err
-		}
-		cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
-		if err != nil {
-			return nil, err
-		}
-		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), prt)
-		if err != nil {
-			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
-		}
-		if err := ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
-			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
-		}
-		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, prt) {
-			return nil, fmt.Errorf("incomptible with current running cluster")
-		}
-
-		remotes = existingCluster.Members()
-		cl.SetID(existingCluster.id)
-		cl.SetStore(st)
-		cfg.Print()
-		id, n, s, w = startNode(cfg, cl, nil)
+		ar, remotes, err = joinExisting(cfg, prt)
 	case !haveWAL && cfg.NewCluster:
-		if err := cfg.VerifyBootstrap(); err != nil {
-			return nil, err
-		}
-		cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
-		if err != nil {
-			return nil, err
-		}
-		m := cl.MemberByName(cfg.Name)
-		if isMemberBootstrapped(cl, cfg.Name, prt) {
-			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
-		}
-		if cfg.ShouldDiscover() {
-			var str string
-			var err error
-			str, err = discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
-			if err != nil {
-				return nil, &DiscoveryError{Op: "join", Err: err}
-			}
-			urlsmap, err := types.NewURLsMap(str)
-			if err != nil {
-				return nil, err
-			}
-			if checkDuplicateURL(urlsmap) {
-				return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
-			}
-			if cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, urlsmap); err != nil {
-				return nil, err
-			}
-		}
-		cl.SetStore(st)
-		cfg.PrintWithInitial()
-		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
+		ar, err = joinBootstrap(cfg, prt)
 	case haveWAL:
-		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
-			return nil, fmt.Errorf("cannot write to data directory: %v", err)
-		}
-
-		if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
-			return nil, fmt.Errorf("cannot write to member directory: %v", err)
-		}
-
-		if err := fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
-			return nil, fmt.Errorf("cannot write to WAL directory: %v", err)
-		}
-
-		if cfg.ShouldDiscover() {
-			plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
-		}
-		var snapshot *raftpb.Snapshot
-		var err error
-		snapshot, err = ss.Load()
-		if err != nil && err != snap.ErrNoSnapshot {
-			return nil, err
-		}
-		if snapshot != nil {
-			if err := st.Recovery(snapshot.Data); err != nil {
-				plog.Panicf("recovered store from snapshot error: %v", err)
-			}
-			plog.Infof("recovered store from snapshot at index %d", snapshot.Metadata.Index)
-		}
-		cfg.Print()
-		if !cfg.ForceNewCluster {
-			id, cl, n, s, w = restartNode(cfg, snapshot)
-		} else {
-			id, cl, n, s, w = restartAsStandaloneNode(cfg, snapshot)
-		}
-		cl.SetStore(st)
-		cl.Recover()
+		ar, err = joinRecover(cfg, prt)
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
+	if err != nil {
+		return nil, err
+	}
 
+	ss := snap.New(cfg.SnapDir())
 	sstats := &stats.ServerStats{
 		Name: cfg.Name,
-		ID:   id.String(),
+		ID:   ar.id.String(),
 	}
 	sstats.Initialize()
-	lstats := stats.NewLeaderStats(id.String())
+	lstats := stats.NewLeaderStats(ar.id.String())
 
 	srv := &EtcdServer{
 		cfg:       cfg,
 		snapCount: cfg.SnapCount,
 		errorc:    make(chan error, 1),
-		store:     st,
+		store:     ar.cl.store,
 		r: raftNode{
-			Node:        n,
+			Node:        ar.n,
 			ticker:      time.Tick(time.Duration(cfg.TickMs) * time.Millisecond),
-			raftStorage: s,
-			storage:     NewStorage(w, ss),
+			raftStorage: ar.s,
+			storage:     NewStorage(ar.w, ss),
 		},
-		id:            id,
+		id:            ar.id,
 		attributes:    Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:       cl,
+		cluster:       ar.cl,
 		stats:         sstats,
 		lstats:        lstats,
 		SyncTicker:    time.Tick(500 * time.Millisecond),
 		versionRt:     prt,
-		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
+		reqIDGen:      idutil.NewGenerator(uint8(ar.id), time.Now()),
 		forceVersionC: make(chan struct{}),
 		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
 	}
@@ -369,8 +278,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	tr := &rafthttp.Transport{
 		TLSInfo:     cfg.PeerTLSInfo,
 		DialTimeout: cfg.peerDialTimeout(),
-		ID:          id,
-		ClusterID:   cl.ID(),
+		ID:          ar.id,
+		ClusterID:   ar.cl.ID(),
 		Raft:        srv,
 		Snapshotter: ss,
 		ServerStats: sstats,
@@ -383,18 +292,118 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 	// add all remotes into transport
 	for _, m := range remotes {
-		if m.ID != id {
+		if m.ID != ar.id {
 			tr.AddRemote(m.ID, m.PeerURLs)
 		}
 	}
-	for _, m := range cl.Members() {
-		if m.ID != id {
+	for _, m := range ar.cl.Members() {
+		if m.ID != ar.id {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}
 	srv.r.transport = tr
 
 	return srv, nil
+}
+
+func joinExisting(cfg *ServerConfig, prt http.RoundTripper) (*activeRaft, []*Member, error) {
+	if err := cfg.VerifyJoinExisting(); err != nil {
+		return nil, nil, err
+	}
+	cl, err := newClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+	if err != nil {
+		return nil, nil, err
+	}
+	existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), prt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
+	}
+	if err := ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
+		return nil, nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
+	}
+	if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, prt) {
+		return nil, nil, fmt.Errorf("incomptible with current running cluster")
+	}
+
+	cl.SetID(existingCluster.id)
+	cl.SetStore(store.New(StoreClusterPrefix, StoreKeysPrefix))
+	cfg.Print()
+
+	return startNode(cfg, cl, nil), existingCluster.Members(), nil
+}
+
+func joinBootstrap(cfg *ServerConfig, prt http.RoundTripper) (*activeRaft, error) {
+	if err := cfg.VerifyBootstrap(); err != nil {
+		return nil, err
+	}
+	cl, err := newClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+	if err != nil {
+		return nil, err
+	}
+	m := cl.MemberByName(cfg.Name)
+	if isMemberBootstrapped(cl, cfg.Name, prt) {
+		return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
+	}
+	if cfg.ShouldDiscover() {
+		var str string
+		var err error
+		str, err = discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
+		if err != nil {
+			return nil, &DiscoveryError{Op: "join", Err: err}
+		}
+		urlsmap, err := types.NewURLsMap(str)
+		if err != nil {
+			return nil, err
+		}
+		if checkDuplicateURL(urlsmap) {
+			return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
+		}
+		if cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, urlsmap); err != nil {
+			return nil, err
+		}
+	}
+	cl.SetStore(store.New(StoreClusterPrefix, StoreKeysPrefix))
+	cfg.PrintWithInitial()
+	return startNode(cfg, cl, cl.MemberIDs()), nil
+}
+
+func joinRecover(cfg *ServerConfig, prt http.RoundTripper) (ar *activeRaft, err error) {
+	if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
+		return nil, fmt.Errorf("cannot write to data directory: %v", err)
+	}
+
+	if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
+		return nil, fmt.Errorf("cannot write to member directory: %v", err)
+	}
+
+	if err := fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
+		return nil, fmt.Errorf("cannot write to WAL directory: %v", err)
+	}
+
+	if cfg.ShouldDiscover() {
+		plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
+	}
+	var snapshot *raftpb.Snapshot
+	snapshot, err = snap.New(cfg.SnapDir()).Load()
+	if err != nil && err != snap.ErrNoSnapshot {
+		return nil, err
+	}
+	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
+	if snapshot != nil {
+		if err := st.Recovery(snapshot.Data); err != nil {
+			plog.Panicf("recovered store from snapshot error: %v", err)
+		}
+		plog.Infof("recovered store from snapshot at index %d", snapshot.Metadata.Index)
+	}
+	cfg.Print()
+	if !cfg.ForceNewCluster {
+		ar = restartNode(cfg, snapshot)
+	} else {
+		ar = restartAsStandaloneNode(cfg, snapshot)
+	}
+	ar.cl.SetStore(st)
+	ar.cl.Recover()
+	return ar, nil
 }
 
 // Start prepares and starts server in a new goroutine. It is no longer safe to
