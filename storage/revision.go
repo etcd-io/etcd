@@ -21,9 +21,16 @@ import "encoding/binary"
 // is a '_'. The last 8 bytes is the revision.sub in big-endian format.
 const revBytesLen = 8 + 1 + 8
 
+// A revision indicates modification of the key-value space.
+// The set of changes that share same main revision changes the key-value space atomically.
 type revision struct {
+	// main is the main revision of a set of changes that happen atomically.
 	main int64
-	sub  int64
+
+	// sub is the the sub revision of a change in a set of changes that happen
+	// atomically. Each change has different increasing sub revision in that
+	// set.
+	sub int64
 }
 
 func (a revision) GreaterThan(b revision) bool {
