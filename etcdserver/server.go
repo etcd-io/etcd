@@ -194,7 +194,7 @@ type EtcdServer struct {
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
-func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
+func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
 	var (
 		w  *wal.WAL
@@ -213,7 +213,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = upgradeDataDir(cfg.DataDir, cfg.Name, dataVer); err != nil {
+	if err := upgradeDataDir(cfg.DataDir, cfg.Name, dataVer); err != nil {
 		return nil, err
 	}
 
@@ -223,36 +223,27 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
-	if !haveWAL {
-		defer func() {
-			if err != nil {
-				// cleans up member directory if bootstrap fails (including forming or joining a new cluster)
-				os.RemoveAll(cfg.MemberDir())
-			}
-		}()
-	}
 	ss := snap.New(cfg.SnapDir())
 
-	prt, rterr := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.peerDialTimeout())
-	if rterr != nil {
-		return nil, rterr
+	prt, err := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.peerDialTimeout())
+	if err != nil {
+		return nil, err
 	}
-
 	var remotes []*Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
-		if err = cfg.VerifyJoinExisting(); err != nil {
+		if err := cfg.VerifyJoinExisting(); err != nil {
 			return nil, err
 		}
 		cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
 		if err != nil {
 			return nil, err
 		}
-		existingCluster, gcerr := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), prt)
-		if gcerr != nil {
-			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", gcerr)
+		existingCluster, err := GetClusterFromRemotePeers(getRemotePeerURLs(cl, cfg.Name), prt)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
-		if err = ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
+		if err := ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
 		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, prt) {
@@ -265,7 +256,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		cfg.Print()
 		id, n, s, w = startNode(cfg, cl, nil)
 	case !haveWAL && cfg.NewCluster:
-		if err = cfg.VerifyBootstrap(); err != nil {
+		if err := cfg.VerifyBootstrap(); err != nil {
 			return nil, err
 		}
 		cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
@@ -277,13 +268,15 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 			return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 		}
 		if cfg.ShouldDiscover() {
-			str, jerr := discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
-			if jerr != nil {
-				return nil, &DiscoveryError{Op: "join", Err: jerr}
+			var str string
+			var err error
+			str, err = discovery.JoinCluster(cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
+			if err != nil {
+				return nil, &DiscoveryError{Op: "join", Err: err}
 			}
-			urlsmap, uerr := types.NewURLsMap(str)
-			if uerr != nil {
-				return nil, uerr
+			urlsmap, err := types.NewURLsMap(str)
+			if err != nil {
+				return nil, err
 			}
 			if checkDuplicateURL(urlsmap) {
 				return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
@@ -296,27 +289,29 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
 	case haveWAL:
-		if err = fileutil.IsDirWriteable(cfg.DataDir); err != nil {
+		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
 			return nil, fmt.Errorf("cannot write to data directory: %v", err)
 		}
 
-		if err = fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
+		if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
 			return nil, fmt.Errorf("cannot write to member directory: %v", err)
 		}
 
-		if err = fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
+		if err := fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
 			return nil, fmt.Errorf("cannot write to WAL directory: %v", err)
 		}
 
 		if cfg.ShouldDiscover() {
 			plog.Warningf("discovery token ignored since a cluster has already been initialized. Valid log found at %q", cfg.WALDir())
 		}
-		snapshot, lerr := ss.Load()
-		if lerr != nil && lerr != snap.ErrNoSnapshot {
-			return nil, lerr
+		var snapshot *raftpb.Snapshot
+		var err error
+		snapshot, err = ss.Load()
+		if err != nil && err != snap.ErrNoSnapshot {
+			return nil, err
 		}
 		if snapshot != nil {
-			if err = st.Recovery(snapshot.Data); err != nil {
+			if err := st.Recovery(snapshot.Data); err != nil {
 				plog.Panicf("recovered store from snapshot error: %v", err)
 			}
 			plog.Infof("recovered store from snapshot at index %d", snapshot.Metadata.Index)
@@ -340,7 +335,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	sstats.Initialize()
 	lstats := stats.NewLeaderStats(id.String())
 
-	srv = &EtcdServer{
+	srv := &EtcdServer{
 		cfg:       cfg,
 		snapCount: cfg.SnapCount,
 		errorc:    make(chan error, 1),
@@ -383,7 +378,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		ErrorC:      srv.errorc,
 		V3demo:      cfg.V3demo,
 	}
-	if err = tr.Start(); err != nil {
+	if err := tr.Start(); err != nil {
 		return nil, err
 	}
 	// add all remotes into transport
