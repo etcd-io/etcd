@@ -204,6 +204,10 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cl *cluster
 	)
 
+	if terr := fileutil.TouchDirAll(cfg.DataDir); terr != nil {
+		return nil, fmt.Errorf("cannot access data directory: %v", terr)
+	}
+
 	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.SnapDir(), databaseFilename)) {
 		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
 	}
@@ -284,10 +288,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
 	case haveWAL:
-		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
-			return nil, fmt.Errorf("cannot write to data directory: %v", err)
-		}
-
 		if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
 			return nil, fmt.Errorf("cannot write to member directory: %v", err)
 		}
@@ -323,9 +323,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
 
-	err = os.MkdirAll(cfg.MemberDir(), privateDirMode)
-	if err != nil && err != os.ErrExist {
-		return nil, err
+	if terr := fileutil.TouchDirAll(cfg.MemberDir()); terr != nil {
+		return nil, fmt.Errorf("cannot access member directory: %v", terr)
 	}
 
 	sstats := &stats.ServerStats{
