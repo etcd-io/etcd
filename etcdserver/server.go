@@ -222,6 +222,16 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, err
 	}
 
+	isSuccess := false
+	defer func() {
+		if !isSuccess {
+			// It removes member directory when NewServer returns error.
+			// This prevents conflicts with 'proxy' directory when
+			// the node falls back to proxy.
+			os.RemoveAll(cfg.MemberDir())
+		}
+	}()
+
 	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
@@ -394,6 +404,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 	srv.r.transport = tr
 
+	isSuccess = true
 	return srv, nil
 }
 
