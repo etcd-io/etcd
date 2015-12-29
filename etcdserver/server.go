@@ -174,11 +174,16 @@ type EtcdServer struct {
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
+
 	var w *wal.WAL
 	var n raft.Node
 	var s *raft.MemoryStorage
 	var id types.ID
 	var cl *cluster
+
+	if terr := fileutil.TouchDirAll(cfg.DataDir); terr != nil {
+		return nil, fmt.Errorf("cannot access data directory: %v", terr)
+	}
 
 	// Run the migrations.
 	dataVer, err := version.DetectDataDir(cfg.DataDir)
@@ -250,10 +255,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cfg.PrintWithInitial()
 		id, n, s, w = startNode(cfg, cl, cl.MemberIDs())
 	case haveWAL:
-		if err := fileutil.IsDirWriteable(cfg.DataDir); err != nil {
-			return nil, fmt.Errorf("cannot write to data directory: %v", err)
-		}
-
 		if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
 			return nil, fmt.Errorf("cannot write to member directory: %v", err)
 		}
@@ -290,9 +291,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
 
-	err = os.MkdirAll(cfg.MemberDir(), privateDirMode)
-	if err != nil && err != os.ErrExist {
-		return nil, err
+	if terr := fileutil.TouchDirAll(cfg.MemberDir()); terr != nil {
+		return nil, fmt.Errorf("cannot access member directory: %v", terr)
 	}
 
 	sstats := &stats.ServerStats{
