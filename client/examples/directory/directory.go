@@ -26,7 +26,8 @@ func main() {
 	cfg := client.Config{
 		Endpoints: []string{"http://127.0.0.1:2379"},
 		Transport: client.DefaultTransport,
-		// set timeout per request to fail fast when the target endpoint is unavailable
+		// set timeout per request to fail fast when the target endpoint
+		// is unavailable
 		HeaderTimeoutPerRequest: time.Second,
 	}
 
@@ -36,47 +37,37 @@ func main() {
 	}
 	kapi := client.NewKeysAPI(c)
 
-	// create a directory myNodes that will hold many keys
-	log.Print("Setting '/myNodes' to create a directory")
+	log.Print("Setting '/myNodes' to create a directory that will hold some keys")
 	o := client.SetOptions{Dir: true}
 	resp, err := kapi.Set(context.Background(), "/myNodes", "", &o)
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		// print common key info
-		log.Printf("Set is done. Metadata is %q\n", resp)
 	}
+	log.Printf("Set is done. Metadata is %q\n", resp)
 
-	//Setting a coupe of values in previous directory
 	log.Print("Setting '/myNodes/key1' with value 'value1'")
 	resp, err = kapi.Set(context.Background(), "/myNodes/key1", "value1", nil)
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		// print common key info
-		log.Printf("Set is done. Metadata is %q\n", resp)
 	}
+	log.Printf("Set is done. Metadata is %q\n", resp)
 
 	log.Print("Setting '/myNodes/key2' with value 'value2'")
 	resp, err = kapi.Set(context.Background(), "/myNodes/key2", "value2", nil)
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		// print common key info
-		log.Printf("Set is done. Metadata is %q\n", resp)
 	}
+	log.Printf("Set is done. Metadata is %q\n", resp)
 
-	// Getting directory contents for '/myNodes' (key1, key2)
 	log.Print("Getting directory contents for '/myNodes' (key1, key2)")
 	resp, err = kapi.Get(context.Background(), "/myNodes", nil)
 	if err != nil {
 		log.Fatal(err)
-	} else {
-		// print common key info
-		log.Printf("Set is done. Metadata is %q\n", resp)
-		// print directory keys
-		for _, n := range resp.Node.Nodes {
-			log.Printf("Key: %q, Value: %q", n.Key, n.Value)
-		}
 	}
+	log.Printf("Set is done. Metadata is %q\n", resp)
+	// print directory keys
+	for _, n := range resp.Node.Nodes {
+		log.Printf("Key: %q, Value: %q", n.Key, n.Value)
+	}
+
 }
