@@ -189,11 +189,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, err
 	}
 
-	err = os.MkdirAll(cfg.MemberDir(), privateDirMode)
-	if err != nil && err != os.ErrExist {
-		return nil, err
-	}
-
 	haveWAL := wal.Exist(cfg.WALDir())
 	ss := snap.New(cfg.SnapDir())
 
@@ -293,6 +288,11 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		cl.Recover()
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
+	}
+
+	err = os.MkdirAll(cfg.MemberDir(), privateDirMode)
+	if err != nil && err != os.ErrExist {
+		return nil, err
 	}
 
 	sstats := &stats.ServerStats{
