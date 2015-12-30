@@ -24,7 +24,8 @@ import (
 )
 
 var (
-	defaultMergePeriod = time.Second
+	defaultMergePeriod     = time.Second
+	defaultTimeOutputScale = 10 * time.Millisecond
 
 	outputInterval = time.Second
 )
@@ -58,7 +59,9 @@ func (s *status) isInMergePeriod(now time.Time) bool {
 func (s *status) isEmpty() bool { return s.count == 0 }
 
 func (s *status) summary(now time.Time) string {
-	return fmt.Sprintf("[merged %d repeated lines in %s]", s.count, now.Sub(s.start))
+	ts := s.start.Round(defaultTimeOutputScale)
+	took := now.Round(defaultTimeOutputScale).Sub(ts)
+	return fmt.Sprintf("[merged %d repeated lines in %s]", s.count, took)
 }
 
 func (s *status) reset(now time.Time) {
