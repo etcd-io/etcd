@@ -7,34 +7,120 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
 	"strings"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/boltdb/bolt"
 )
 
 var statsFlag = flag.Bool("stats", false, "show performance stats")
 
-// Ensure that opening a database with a bad path returns an error.
-func TestOpen_BadPath(t *testing.T) {
-	db, err := bolt.Open("", 0666, nil)
-	assert(t, err != nil, "err: %s", err)
-	assert(t, db == nil, "")
+// version is the data file format version.
+const version = 2
+
+// magic is the marker value to indicate that a file is a Bolt DB.
+const magic uint32 = 0xED0CDAED
+
+// pageSize is the size of one page in the data file.
+const pageSize = 4096
+
+// pageHeaderSize is the size of a page header.
+const pageHeaderSize = 16
+
+// meta represents a simplified version of a database meta page for testing.
+type meta struct {
+	magic    uint32
+	version  uint32
+	_        uint32
+	_        uint32
+	_        [16]byte
+	_        uint64
+	_        uint64
+	_        uint64
+	checksum uint64
 }
 
 // Ensure that a database can be opened without error.
 func TestOpen(t *testing.T) {
 	path := tempfile()
-	defer os.Remove(path)
 	db, err := bolt.Open(path, 0666, nil)
 	assert(t, db != nil, "")
 	ok(t, err)
 	equals(t, db.Path(), path)
 	ok(t, db.Close())
+}
+
+// Ensure that opening a database with a bad path returns an error.
+func TestOpen_BadPath(t *testing.T) {
+	for _, path := range []string{
+		"",
+		filepath.Join(tempfile(), "youre-not-my-real-parent"),
+	} {
+		t.Logf("path = %q", path)
+		db, err := bolt.Open(path, 0666, nil)
+		assert(t, err != nil, "err: %s", err)
+		equals(t, path, err.(*os.PathError).Path)
+		equals(t, "open", err.(*os.PathError).Op)
+		equals(t, (*bolt.DB)(nil), db)
+	}
+}
+
+// Ensure that opening a file with wrong checksum returns ErrChecksum.
+func TestOpen_ErrChecksum(t *testing.T) {
+	buf := make([]byte, pageSize)
+	meta := (*meta)(unsafe.Pointer(&buf[0]))
+	meta.magic = magic
+	meta.version = version
+	meta.checksum = 123
+
+	path := tempfile()
+	f, err := os.Create(path)
+	equals(t, nil, err)
+	f.WriteAt(buf, pageHeaderSize)
+	f.Close()
+	defer os.Remove(path)
+
+	_, err = bolt.Open(path, 0666, nil)
+	equals(t, bolt.ErrChecksum, err)
+}
+
+// Ensure that opening a file that is not a Bolt database returns ErrInvalid.
+func TestOpen_ErrInvalid(t *testing.T) {
+	path := tempfile()
+
+	f, err := os.Create(path)
+	equals(t, nil, err)
+	fmt.Fprintln(f, "this is not a bolt database")
+	f.Close()
+	defer os.Remove(path)
+
+	_, err = bolt.Open(path, 0666, nil)
+	equals(t, bolt.ErrInvalid, err)
+}
+
+// Ensure that opening a file created with a different version of Bolt returns
+// ErrVersionMismatch.
+func TestOpen_ErrVersionMismatch(t *testing.T) {
+	buf := make([]byte, pageSize)
+	meta := (*meta)(unsafe.Pointer(&buf[0]))
+	meta.magic = magic
+	meta.version = version + 100
+
+	path := tempfile()
+	f, err := os.Create(path)
+	equals(t, nil, err)
+	f.WriteAt(buf, pageHeaderSize)
+	f.Close()
+	defer os.Remove(path)
+
+	_, err = bolt.Open(path, 0666, nil)
+	equals(t, bolt.ErrVersionMismatch, err)
 }
 
 // Ensure that opening an already open database file will timeout.
@@ -44,7 +130,6 @@ func TestOpen_Timeout(t *testing.T) {
 	}
 
 	path := tempfile()
-	defer os.Remove(path)
 
 	// Open a data file.
 	db0, err := bolt.Open(path, 0666, nil)
@@ -68,7 +153,6 @@ func TestOpen_Wait(t *testing.T) {
 	}
 
 	path := tempfile()
-	defer os.Remove(path)
 
 	// Open a data file.
 	db0, err := bolt.Open(path, 0666, nil)
@@ -179,7 +263,6 @@ func TestOpen_Size_Large(t *testing.T) {
 // Ensure that a re-opened database is consistent.
 func TestOpen_Check(t *testing.T) {
 	path := tempfile()
-	defer os.Remove(path)
 
 	db, err := bolt.Open(path, 0666, nil)
 	ok(t, err)
@@ -192,26 +275,14 @@ func TestOpen_Check(t *testing.T) {
 	db.Close()
 }
 
-// Ensure that the database returns an error if the file handle cannot be open.
-func TestDB_Open_FileError(t *testing.T) {
-	path := tempfile()
-	defer os.Remove(path)
-
-	_, err := bolt.Open(path+"/youre-not-my-real-parent", 0666, nil)
-	assert(t, err.(*os.PathError) != nil, "")
-	equals(t, path+"/youre-not-my-real-parent", err.(*os.PathError).Path)
-	equals(t, "open", err.(*os.PathError).Op)
-}
-
 // Ensure that write errors to the meta file handler during initialization are returned.
-func TestDB_Open_MetaInitWriteError(t *testing.T) {
+func TestOpen_MetaInitWriteError(t *testing.T) {
 	t.Skip("pending")
 }
 
 // Ensure that a database that is too small returns an error.
-func TestDB_Open_FileTooSmall(t *testing.T) {
+func TestOpen_FileTooSmall(t *testing.T) {
 	path := tempfile()
-	defer os.Remove(path)
 
 	db, err := bolt.Open(path, 0666, nil)
 	ok(t, err)
@@ -235,7 +306,6 @@ func TestOpen_ReadOnly(t *testing.T) {
 	bucket, key, value := []byte(`bucket`), []byte(`key`), []byte(`value`)
 
 	path := tempfile()
-	defer os.Remove(path)
 
 	// Open in read-write mode.
 	db, err := bolt.Open(path, 0666, nil)
@@ -295,6 +365,51 @@ func TestOpen_ReadOnly(t *testing.T) {
 			}
 			return nil
 		}))
+	}
+}
+
+// TestDB_Open_InitialMmapSize tests if having InitialMmapSize large enough
+// to hold data from concurrent write transaction resolves the issue that
+// read transaction blocks the write transaction and causes deadlock.
+// This is a very hacky test since the mmap size is not exposed.
+func TestDB_Open_InitialMmapSize(t *testing.T) {
+	path := tempfile()
+	defer os.Remove(path)
+
+	initMmapSize := 1 << 31  // 2GB
+	testWriteSize := 1 << 27 // 134MB
+
+	db, err := bolt.Open(path, 0666, &bolt.Options{InitialMmapSize: initMmapSize})
+	assert(t, err == nil, "")
+
+	// create a long-running read transaction
+	// that never gets closed while writing
+	rtx, err := db.Begin(false)
+	assert(t, err == nil, "")
+	defer rtx.Rollback()
+
+	// create a write transaction
+	wtx, err := db.Begin(true)
+	assert(t, err == nil, "")
+
+	b, err := wtx.CreateBucket([]byte("test"))
+	assert(t, err == nil, "")
+
+	// and commit a large write
+	err = b.Put([]byte("foo"), make([]byte, testWriteSize))
+	assert(t, err == nil, "")
+
+	done := make(chan struct{})
+
+	go func() {
+		wtx.Commit()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Errorf("unexpected that the reader blocks writer")
+	case <-done:
 	}
 }
 

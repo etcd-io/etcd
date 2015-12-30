@@ -24,6 +24,46 @@ func TestInfoCommand_Run(t *testing.T) {
 	}
 }
 
+// Ensure the "stats" command executes correctly with an empty database.
+func TestStatsCommand_Run_EmptyDatabase(t *testing.T) {
+	// Ignore
+	if os.Getpagesize() != 4096 {
+		t.Skip("system does not use 4KB page size")
+	}
+
+	db := MustOpen(0666, nil)
+	defer db.Close()
+	db.DB.Close()
+
+	// Generate expected result.
+	exp := "Aggregate statistics for 0 buckets\n\n" +
+		"Page count statistics\n" +
+		"\tNumber of logical branch pages: 0\n" +
+		"\tNumber of physical branch overflow pages: 0\n" +
+		"\tNumber of logical leaf pages: 0\n" +
+		"\tNumber of physical leaf overflow pages: 0\n" +
+		"Tree statistics\n" +
+		"\tNumber of keys/value pairs: 0\n" +
+		"\tNumber of levels in B+tree: 0\n" +
+		"Page size utilization\n" +
+		"\tBytes allocated for physical branch pages: 0\n" +
+		"\tBytes actually used for branch data: 0 (0%)\n" +
+		"\tBytes allocated for physical leaf pages: 0\n" +
+		"\tBytes actually used for leaf data: 0 (0%)\n" +
+		"Bucket statistics\n" +
+		"\tTotal number of buckets: 0\n" +
+		"\tTotal number on inlined buckets: 0 (0%)\n" +
+		"\tBytes used for inlined buckets: 0 (0%)\n"
+
+	// Run the command.
+	m := NewMain()
+	if err := m.Run("stats", db.Path); err != nil {
+		t.Fatal(err)
+	} else if m.Stdout.String() != exp {
+		t.Fatalf("unexpected stdout:\n\n%s", m.Stdout.String())
+	}
+}
+
 // Ensure the "stats" command can execute correctly.
 func TestStatsCommand_Run(t *testing.T) {
 	// Ignore
