@@ -307,8 +307,8 @@ func syncWithPeerAPI(c *cli.Context, ctx context.Context, knownPeers []string) (
 		}
 		body, err = ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
-		if err != nil {
-			continue
+		if err == nil {
+			break
 		}
 	}
 	if err != nil {
