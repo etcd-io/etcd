@@ -479,21 +479,26 @@ type etcdProgress struct {
 	appliedi  uint64
 }
 
-// newApplier buffers apply operations and streams their results over an
-// etcdProgress output channel. This is so raftNode won't block on sending
+// newApplier buffers apply operations so raftNode won't block on sending
 // new applies, timing out (since applies can be slow). The goroutine begins
-// shutdown on close(s.done) and closes the etcdProgress channel when finished.
-func (s *EtcdServer) newApplier(ep etcdProgress) <-chan etcdProgress {
-	etcdprogc := make(chan etcdProgress)
+// shutdown on close(s.done) and closes the returned channel when finished.
+func (s *EtcdServer) startApplier(ep etcdProgress) <-chan struct{} {
+	donec := make(chan struct{})
 	go func() {
-		defer close(etcdprogc)
+		defer close(donec)
 		pending := []apply{}
 		sdonec := s.done
 		apdonec := make(chan struct{})
 		// serialized function
 		f := func(ap apply) {
 			s.applyAll(&ep, &ap)
-			etcdprogc <- ep
+			select {
+			// snapshot requested via send()
+			case m := <-s.msgSnapC:
+				merged := s.createMergedSnapshotMessage(m, ep.appliedi, ep.confState)
+				s.sendMergedSnap(merged)
+			default:
+			}
 			apdonec <- struct{}{}
 		}
 		for sdonec != nil || len(pending) > 0 {
@@ -516,7 +521,7 @@ func (s *EtcdServer) newApplier(ep etcdProgress) <-chan etcdProgress {
 			}
 		}
 	}()
-	return etcdprogc
+	return donec
 }
 
 func (s *EtcdServer) run() {
@@ -527,36 +532,24 @@ func (s *EtcdServer) run() {
 	s.r.start(s)
 
 	// asynchronously accept apply packets, dispatch progress in-order
-	ep := etcdProgress{
+	appdonec := s.startApplier(etcdProgress{
 		confState: snap.Metadata.ConfState,
 		snapi:     snap.Metadata.Index,
 		appliedi:  snap.Metadata.Index,
-	}
-	etcdprogc := s.newApplier(ep)
+	})
 
 	defer func() {
 		s.r.stop()
 		close(s.done)
-		for range etcdprogc {
-			/* wait for outstanding applys */
-		}
+		<-appdonec
 	}()
 
-	for {
-		select {
-		case ep = <-etcdprogc:
-		case m := <-s.msgSnapC:
-			merged := s.createMergedSnapshotMessage(m, ep.appliedi, ep.confState)
-			s.sendMergedSnap(merged)
-		case err := <-s.errorc:
-			plog.Errorf("%s", err)
-			plog.Infof("the data-dir used by this member must be removed.")
-			return
-		case <-s.stop:
-			return
-		}
+	select {
+	case err := <-s.errorc:
+		plog.Errorf("%s", err)
+		plog.Infof("the data-dir used by this member must be removed.")
+	case <-s.stop:
 	}
-
 }
 
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
