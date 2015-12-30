@@ -20,7 +20,7 @@ import (
 )
 
 func BenchmarkStorePut(b *testing.B) {
-	s := newStore(tmpPath)
+	s := newDefaultStore(tmpPath)
 	defer os.Remove(tmpPath)
 
 	// arbitrary number of bytes
@@ -38,7 +38,7 @@ func BenchmarkStorePut(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkStoreTxnPut(b *testing.B) {
-	s := newStore(tmpPath)
+	s := newDefaultStore(tmpPath)
 	defer cleanup(s, tmpPath)
 
 	// arbitrary number of bytes

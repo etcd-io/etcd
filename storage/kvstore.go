@@ -65,7 +65,7 @@ type store struct {
 	stopc chan struct{}
 }
 
-func newStore(path string) *store {
+func NewStore(path string, bachInterval time.Duration, batchLimit int) KV {
 	s := &store{
 		b:              backend.New(path, batchInterval, batchLimit),
 		kvindex:        newTreeIndex(),
@@ -82,6 +82,10 @@ func newStore(path string) *store {
 	s.b.ForceCommit()
 
 	return s
+}
+
+func newDefaultStore(path string) *store {
+	return (NewStore(path, batchInterval, batchLimit)).(*store)
 }
 
 func (s *store) Rev() int64 {

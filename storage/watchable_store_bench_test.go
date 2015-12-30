@@ -33,7 +33,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced for this benchmark.
 	s := &watchableStore{
-		store:    newStore(tmpPath),
+		store:    newDefaultStore(tmpPath),
 		unsynced: make(map[*watching]struct{}),
 
 		// to make the test not crash from assigning to nil map.

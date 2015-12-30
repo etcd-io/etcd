@@ -66,7 +66,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
-		store:    newStore(tmpPath),
+		store:    newDefaultStore(tmpPath),
 		unsynced: make(map[*watching]struct{}),
 
 		// to make the test not crash from assigning to nil map.
@@ -120,7 +120,7 @@ func TestCancelUnsynced(t *testing.T) {
 // watchings to synced.
 func TestSyncWatchings(t *testing.T) {
 	s := &watchableStore{
-		store:    newStore(tmpPath),
+		store:    newDefaultStore(tmpPath),
 		unsynced: make(map[*watching]struct{}),
 		synced:   make(map[string]map[*watching]struct{}),
 	}

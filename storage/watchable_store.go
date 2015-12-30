@@ -55,7 +55,7 @@ type watchableStore struct {
 
 func newWatchableStore(path string) *watchableStore {
 	s := &watchableStore{
-		store:    newStore(path),
+		store:    newDefaultStore(path),
 		unsynced: make(map[*watching]struct{}),
 		synced:   make(map[string]map[*watching]struct{}),
 		stopc:    make(chan struct{}),
