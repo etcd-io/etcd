@@ -24,8 +24,8 @@
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
-			"Comment": "v1.1.0-19-g0b00eff",
-			"Rev": "0b00effdd7a8270ebd91c24297e51643e370dd52"
+			"Comment": "v1.1.0-36-gf115313",
+			"Rev": "f1153131c915b133220c3e2c6c8805ff3984228b"
 		},
 		{
 			"ImportPath": "github.com/bradfitz/http2",
