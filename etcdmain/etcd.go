@@ -210,20 +210,17 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		if u.Scheme == "http" && !cfg.peerTLSInfo.Empty() {
 			plog.Warningf("The scheme of peer url %s is http while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
 		}
-		var l net.Listener
-		l, err = rafthttp.NewListener(u, cfg.peerTLSInfo)
-		if err != nil {
-			return nil, err
-		}
 
 		urlStr := u.String()
 		plog.Info("listening for peers on ", urlStr)
-		defer func() {
-			if err != nil {
-				l.Close()
-				plog.Info("stopping listening for peers on ", urlStr)
-			}
-		}()
+
+		var l net.Listener
+		l, err = rafthttp.NewListener(u, cfg.peerTLSInfo)
+		if err != nil {
+			l.Close()
+			plog.Info("stopping listening for peers on ", urlStr)
+			return nil, err
+		}
 		plns = append(plns, l)
 	}
 
@@ -235,27 +232,25 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		if u.Scheme == "http" && !cfg.clientTLSInfo.Empty() {
 			plog.Warningf("The scheme of client url %s is http while client key/cert files are presented. Ignored client key/cert files.", u.String())
 		}
+
+		urlStr := u.String()
+		plog.Info("listening for client requests on ", urlStr)
+
 		var l net.Listener
 		l, err = transport.NewKeepAliveListener(u.Host, u.Scheme, cfg.clientTLSInfo)
 		if err != nil {
+			l.Close()
+			plog.Info("stopping listening for client requests on ", urlStr)
 			return nil, err
 		}
+		clns = append(clns, l)
+
 		if fdLimit, err := runtimeutil.FDLimit(); err == nil {
 			if fdLimit <= reservedInternalFDNum {
 				plog.Fatalf("file descriptor limit[%d] of etcd process is too low, and should be set higher than %d to ensure internal usage", fdLimit, reservedInternalFDNum)
 			}
 			l = netutil.LimitListener(l, int(fdLimit-reservedInternalFDNum))
 		}
-
-		urlStr := u.String()
-		plog.Info("listening for client requests on ", urlStr)
-		defer func() {
-			if err != nil {
-				l.Close()
-				plog.Info("stopping listening for client requests on ", urlStr)
-			}
-		}()
-		clns = append(clns, l)
 	}
 
 	var v3l net.Listener
