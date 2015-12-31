@@ -1,0 +1,16 @@
+kind: Service
+apiVersion: v1
+metadata: 
+  name: etcd-2
+spec:
+  selector:
+    app: etcd-2
+  ports:
+  - port: 7001 
+    targetPort: 7001
+    protocol: TCP
+    name: peer
+  - port: 4001
+    targetPort: 4001
+    protocol: TCP
+    name: client

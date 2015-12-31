@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: etcd-1
+spec:
+  replicas: 1
+  selector:
+    app: etcd-1
+  template:
+    metadata:
+      labels:
+        app: etcd-1
+        service: etcd
+    spec:
+      containers:
+        - name: etcd
+          image: gcr.io/google_containers/etcd:2.0.12
+          command:
+          - sh
+          - "-c"
+          - |
+            cluster=etcd1=http://${ETCD_1_SERVICE_HOST}:7001,etcd2=http://${ETCD_2_SERVICE_HOST}:7001,etcd3=http://${ETCD_3_SERVICE_HOST}:7001
+            echo "cluster=$cluster"
+            /usr/local/bin/etcd --name etcd1 --listen-peer-urls=http://0.0.0.0:7001 --initial-advertise-peer-urls=http://${ETCD_1_SERVICE_HOST}:7001 --listen-client-urls=http://0.0.0.0:4001 --advertise-client-urls=http://${ETCD_1_SERVICE_HOST}:4001 --data-dir=/home/default --initial-cluster $cluster  --initial-cluster-state=new
+          ports:
+            - containerPort: 4001
+              name: client
+            - containerPort: 7001
+              name: peer
+          volumeMounts:
+          - mountPath: "/home/default/"
+            name: vol1
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+            initialDelaySeconds: 30
+            timeoutSeconds: 1
+      volumes:
+        - name: vol1
+          persistentVolumeClaim:
+            claimName: myclaim-1
+
