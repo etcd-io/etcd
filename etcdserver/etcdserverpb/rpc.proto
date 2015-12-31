@@ -213,3 +213,34 @@ message WatchResponse {
   // TODO: support batched events response?
   storagepb.Event event = 2;
 }
+
+message LeaseCreateRequest {
+  // advisory ttl in seconds
+  int64 ttl = 1;
+}
+
+message LeaseCreateResponse {
+  ResponseHeader header = 1;
+  int64 lease_id = 2;
+  // server decided ttl in second
+  int64 ttl = 3;
+  string error = 4;
+}
+
+message LeaseRevokeRequest {
+  int64 lease_id = 1;
+}
+
+message LeaseRevokeResponse {
+  ResponseHeader header = 1;
+}
+
+message LeaseKeepAliveRequest {
+  int64 lease_id = 1;
+}
+
+message LeaseKeepAliveResponse {
+  ResponseHeader header = 1;
+  int64 lease_id = 2;
+  int64 ttl = 3;
+}
