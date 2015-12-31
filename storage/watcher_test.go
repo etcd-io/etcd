@@ -14,7 +14,10 @@
 
 package storage
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
 // TestWatcherWatchID tests that each watcher provides unique watch ID,
 // and the watched event attaches the correct watch ID.
@@ -28,35 +31,52 @@ func TestWatcherWatchID(t *testing.T) {
 	idm := make(map[int64]struct{})
 
 	// synced watchings
-	for i := 0; i < 10; i++ {
-		id, cancel := w.Watch([]byte("foo"), false, 0)
+	for i := 0; i < testN/2; i++ {
+		id, cancel := w.Watch(testKey, false, 0)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
 		idm[id] = struct{}{}
 
-		s.Put([]byte("foo"), []byte("bar"))
+		s.Put(testKey, testValue)
 
-		ev := <-w.Chan()
-		if ev.WatchID != id {
-			t.Errorf("#%d: watch id in event = %d, want %d", i, ev.WatchID, id)
+		evs := <-w.Chan()
+		for j, ev := range evs {
+			if !bytes.Equal(ev.Kv.Key, testKey) {
+				t.Errorf("#%d: Key got = %s, want = %s", j, ev.Kv.Key, testKey)
+			}
+			if !bytes.Equal(ev.Kv.Value, testValue) {
+				t.Errorf("#%d: Value got = %s, want = %s", j, ev.Kv.Value, testValue)
+			}
+			if ev.WatchID != id {
+				t.Errorf("#%d: watch id in event = %d, want %d", j, ev.WatchID, id)
+			}
 		}
 
 		cancel()
 	}
 
-	s.Put([]byte("foo2"), []byte("bar"))
+	s.Put(testKeys[0], testValues[0])
+
 	// unsynced watchings
-	for i := 10; i < 20; i++ {
-		id, cancel := w.Watch([]byte("foo2"), false, 1)
+	for i := testN / 2; i < testN; i++ {
+		id, cancel := w.Watch(testKeys[0], false, 1)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
 		idm[id] = struct{}{}
 
-		ev := <-w.Chan()
-		if ev.WatchID != id {
-			t.Errorf("#%d: watch id in event = %d, want %d", i, ev.WatchID, id)
+		evs := <-w.Chan()
+		for j, ev := range evs {
+			if !bytes.Equal(ev.Kv.Key, testKeys[0]) {
+				t.Errorf("#%d: Key got = %s, want = %s", j, ev.Kv.Key, testKeys[0])
+			}
+			if !bytes.Equal(ev.Kv.Value, testValues[0]) {
+				t.Errorf("#%d: Value got = %s, want = %s", j, ev.Kv.Value, testValues[0])
+			}
+			if ev.WatchID != id {
+				t.Errorf("#%d: watch id in event = %d, want %d", j, ev.WatchID, id)
+			}
 		}
 
 		cancel()

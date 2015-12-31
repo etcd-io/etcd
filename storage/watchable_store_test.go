@@ -15,47 +15,213 @@
 package storage
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"testing"
 )
 
-func TestWatch(t *testing.T) {
-	s := newWatchableStore(tmpPath)
-	defer func() {
-		s.store.Close()
-		os.Remove(tmpPath)
-	}()
-	testKey := []byte("foo")
-	testValue := []byte("bar")
-	s.Put(testKey, testValue)
+var (
+	testN      = 100
+	testKey    = []byte("Foo")
+	testValue  = []byte("Bar")
+	testKeys   = make([][]byte, testN)
+	testValues = make([][]byte, testN)
+)
 
-	w := s.NewWatcher()
-	w.Watch(testKey, true, 0)
-
-	if _, ok := s.synced[string(testKey)]; !ok {
-		// the key must have had an entry in synced
-		t.Errorf("existence = %v, want true", ok)
+func init() {
+	for i := 0; i < testN; i++ {
+		testKeys[i] = []byte(fmt.Sprintf("%s_%d", testKey, i))
+		testValues[i] = []byte(fmt.Sprintf("%s_%d", testValue, i))
 	}
 }
 
-func TestNewWatcherCancel(t *testing.T) {
+func TestWatchableStoreWatch(t *testing.T) {
 	s := newWatchableStore(tmpPath)
 	defer func() {
 		s.store.Close()
 		os.Remove(tmpPath)
 	}()
-	testKey := []byte("foo")
-	testValue := []byte("bar")
-	s.Put(testKey, testValue)
 
+	var (
+		prefix          = false
+		startRev        = int64(0) // to populate sync
+		watcherToKey    = make(map[Watcher][]byte)
+		watcherToValue  = make(map[Watcher][]byte)
+		watcherToCancel = make(map[Watcher]CancelFunc)
+	)
+	for i := 0; i < testN; i++ {
+		// wa, c := s.watch(testKeys[i], prefix, startRev, id, ch)
+		w := s.NewWatcher()
+		_, c := w.Watch(testKeys[i], prefix, startRev)
+		watcherToKey[w] = testKeys[i]
+		watcherToValue[w] = testValues[i]
+		watcherToCancel[w] = c
+	}
+	if len(s.synced) != testN {
+		t.Errorf("len(s.synced) got = %d, want = %d", len(s.synced), testN)
+	}
+	if len(s.unsynced) != 0 {
+		t.Errorf("len(s.unsynced) got = %d, want = 0", len(s.unsynced))
+	}
+
+	// now start sending events
+	for i := 0; i < testN; i++ {
+		s.Put(testKeys[i], testValues[i])
+	}
+
+	// start receiving from eventsCh
+	for w, cancel := range watcherToCancel {
+		select {
+		case evs := <-w.Chan():
+			if !bytes.Equal(evs[0].Kv.Key, watcherToKey[w]) {
+				t.Errorf("evs[0].Kv.Key got = %s, want = %s", evs[0].Kv.Key, watcherToKey[w])
+			}
+			if !bytes.Equal(evs[0].Kv.Value, watcherToValue[w]) {
+				t.Errorf("evs[0].Kv.Value got = %s, want = %s", evs[0].Kv.Value, watcherToValue[w])
+			}
+		default:
+			t.Errorf("failed to receive from w.Chan() at %s", watcherToKey[w])
+		}
+
+		cancel()
+
+		if _, ok := s.synced[string(watcherToKey[w])]; ok {
+			t.Errorf("s.synced[k] for %s: ok = true, want = false", string(watcherToKey[w]))
+		}
+	}
+
+	if len(s.synced) != 0 {
+		t.Errorf("len(s.synced) got = %d, want = %d", len(s.synced), 0)
+	}
+}
+
+func TestWatchableStoreWatchPrefix(t *testing.T) {
+	s := newWatchableStore(tmpPath)
+	defer func() {
+		s.store.Close()
+		os.Remove(tmpPath)
+	}()
+
+	var (
+		prefix       = true
+		startRev     = int64(0) // to populate sync
+		watchedKey   = testKey
+		watchedValue = testValue
+	)
+	// this will watch all events that has prefix watchedKey
 	w := s.NewWatcher()
-	_, cancel := w.Watch(testKey, true, 0)
+	_, c := w.Watch(watchedKey, prefix, startRev)
 
-	cancel()
+	if len(s.synced) != 1 {
+		t.Errorf("len(s.synced) got = %d, want = %d", len(s.synced), 1)
+	}
+	if len(s.unsynced) != 0 {
+		t.Errorf("len(s.unsynced) got = %d, want = 0", len(s.unsynced))
+	}
+
+	s.Put(watchedKey, watchedValue)
+	for i := 0; i < testN; i++ {
+		s.Put(testKeys[i], testValues[i])
+	}
+
+	for i := -1; i < testN; i++ {
+		select {
+		case evs := <-w.Chan():
+			if i == -1 {
+				if !bytes.Equal(evs[0].Kv.Key, watchedKey) {
+					t.Errorf("evs[0].Kv.Key got = %s, want = %s", evs[0].Kv.Key, watchedKey)
+				}
+				if !bytes.Equal(evs[0].Kv.Value, watchedValue) {
+					t.Errorf("evs[0].Kv.Value got = %s, want = %s", evs[0].Kv.Value, watchedValue)
+				}
+			} else {
+				if !bytes.Equal(evs[0].Kv.Key, testKeys[i]) {
+					t.Errorf("evs[0].Kv.Key got = %s, want = %s", evs[0].Kv.Key, testKeys[i])
+				}
+				if !bytes.Equal(evs[0].Kv.Value, testValues[i]) {
+					t.Errorf("evs[0].Kv.Value got = %s, want = %s", evs[0].Kv.Value, testValues[i])
+				}
+			}
+		default:
+			t.Errorf("#%d: failed to receive from w.Chan()", i)
+		}
+	}
+
+	c()
 
 	if _, ok := s.synced[string(testKey)]; ok {
-		// the key shoud have been deleted
-		t.Errorf("existence = %v, want false", ok)
+		t.Errorf("s.synced[k] for %s: ok = true, want = false", testKey)
+	}
+}
+
+func TestWatchableStoreWatchTxn(t *testing.T) {
+	s := newWatchableStore(tmpPath)
+	defer func() {
+		s.store.Close()
+		os.Remove(tmpPath)
+	}()
+
+	var (
+		prefix          = false
+		startRev        = int64(0) // to populate sync
+		watcherToKey    = make(map[Watcher][]byte)
+		watcherToValue  = make(map[Watcher][]byte)
+		watcherToCancel = make(map[Watcher]CancelFunc)
+	)
+	for i := 0; i < testN; i++ {
+		w := s.NewWatcher()
+		_, c := w.Watch(testKeys[i], prefix, startRev)
+		watcherToKey[w] = testKeys[i]
+		watcherToValue[w] = testValues[i]
+		watcherToCancel[w] = c
+	}
+	if len(s.synced) != testN {
+		t.Errorf("len(s.synced) got = %d, want = %d", len(s.synced), testN)
+	}
+	if len(s.unsynced) != 0 {
+		t.Errorf("len(s.unsynced) got = %d, want = 0", len(s.unsynced))
+	}
+
+	tid := s.TxnBegin()
+	for i := 0; i < testN; i++ {
+		if _, err := s.TxnPut(tid, testKeys[i], testValue); err != nil {
+			t.Error(err)
+		}
+		if _, err := s.TxnPut(tid, testKeys[i], testValues[i]); err != nil {
+			t.Error(err)
+		}
+	}
+	if err := s.TxnEnd(tid); err != nil {
+		t.Error(err)
+	}
+
+	// start receiving from eventsCh
+	for w, cancel := range watcherToCancel {
+		select {
+		case evs := <-w.Chan():
+			if len(evs) == 0 {
+				continue
+			}
+			if !bytes.Equal(evs[0].Kv.Key, watcherToKey[w]) {
+				t.Errorf("evs[0].Kv.Key got = %s, want = %s", evs[0].Kv.Key, watcherToKey[w])
+			}
+			if !bytes.Equal(evs[0].Kv.Value, watcherToValue[w]) {
+				t.Errorf("evs[0].Kv.Value got = %s, want = %s", evs[0].Kv.Value, watcherToValue[w])
+			}
+		default:
+			t.Errorf("failed to receive from w.Chan() at %s", watcherToKey[w])
+		}
+
+		cancel()
+
+		if _, ok := s.synced[string(watcherToKey[w])]; ok {
+			t.Errorf("s.synced[k] for %s: ok = true, want = false", string(watcherToKey[w]))
+		}
+	}
+
+	if len(s.synced) != 0 {
+		t.Errorf("len(s.synced) got = %d, want = %d", len(s.synced), 0)
 	}
 }
 
@@ -83,8 +249,6 @@ func TestCancelUnsynced(t *testing.T) {
 	// (testKey in this test). This increases the rev to 1,
 	// and later we can we set the watcher's startRev to 1,
 	// and force watchers to be in unsynced.
-	testKey := []byte("foo")
-	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
 	w := s.NewWatcher()
@@ -130,8 +294,6 @@ func TestSyncWatchings(t *testing.T) {
 		os.Remove(tmpPath)
 	}()
 
-	testKey := []byte("foo")
-	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
 	w := s.NewWatcher()
@@ -180,9 +342,16 @@ func TestSyncWatchings(t *testing.T) {
 	// All of the watchings actually share one channel
 	// so we only need to check one shared channel
 	// (See watcher.go for more detail).
-	if len(w.(*watcher).ch) != watcherN {
-		t.Errorf("watched event size = %d, want %d", len(w.(*watcher).ch), watcherN)
-	}
+	// evs := <-w.(*watcher).ch
+	// if evs[0].Type != storagepb.PUT {
+	// 	t.Errorf("got = %v, want = %v", evs[0].Type, storagepb.PUT)
+	// }
+	// if !bytes.Equal(evs[0].Kv.Key, testKey) {
+	// 	t.Errorf("got = %s, want = %s", evs[0].Kv.Key, testKey)
+	// }
+	// if !bytes.Equal(evs[0].Kv.Value, testValue) {
+	// 	t.Errorf("got = %s, want = %s", evs[0].Kv.Value, testValue)
+	// }
 }
 
 func TestUnsafeAddWatching(t *testing.T) {
@@ -191,8 +360,7 @@ func TestUnsafeAddWatching(t *testing.T) {
 		s.store.Close()
 		os.Remove(tmpPath)
 	}()
-	testKey := []byte("foo")
-	testValue := []byte("bar")
+
 	s.Put(testKey, testValue)
 
 	size := 10
