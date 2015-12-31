@@ -12,7 +12,7 @@ In order to provide a consistent environment, we create N persistent volumes for
 
 ## Example instructions
 
-These examples assume a single node kubernetes installation and use local storage to define the persistent volumes.  A production environment with multiple nodes need network accessible storage, such as EBS on AWS, or a Persistent Disk on GCE.
+These examples assume a single node kubernetes installation and use local storage to define the persistent volumes.  A production environment with multiple nodes needs network accessible storage, such as EBS on AWS, or a Persistent Disk on GCE.
 
 ### Setup Kubernetes
 
