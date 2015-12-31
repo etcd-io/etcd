@@ -163,7 +163,7 @@ kubectl config use-context test-doc
 
 ### Testing the cluster
 
-1. Monitoring healthy
+1. Monitoring a healthy cluster
 
  using etcd-client service ip
 
@@ -190,7 +190,7 @@ kubectl config use-context test-doc
  cluster is healthy
  ```
 
- wait a moment for the rc to recreate the pod
+ wait a moment for the replication controller to recreate the pod
 
  ```bash
  $ kubectl get pods
@@ -201,6 +201,8 @@ kubectl config use-context test-doc
  etcd-3-hlj3u           1/1       Running   0          6m
  k8s-master-127.0.0.1   3/3       Running   3          2h
  ```
+ 
+ all members of the cluster are healthy
 
  ```bash
  $ etcdctl --peers http://10.0.0.113:4001 cluster-health
