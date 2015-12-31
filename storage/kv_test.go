@@ -752,8 +752,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 			WatchID: wid,
 		}
-		if !reflect.DeepEqual(ev, wev) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		if !reflect.DeepEqual(ev[0], wev) {
+			t.Errorf("watched event = %+v, want %+v", ev[0], wev)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("failed to watch the event")
@@ -773,8 +773,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 			WatchID: wid,
 		}
-		if !reflect.DeepEqual(ev, wev) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		if !reflect.DeepEqual(ev[0], wev) {
+			t.Errorf("watched event = %+v, want %+v", ev[0], wev)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("failed to watch the event")
@@ -799,8 +799,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 			WatchID: wid,
 		}
-		if !reflect.DeepEqual(ev, wev) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		if !reflect.DeepEqual(ev[0], wev) {
+			t.Errorf("watched event = %+v, want %+v", ev[0], wev)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("failed to watch the event")
@@ -820,8 +820,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 			WatchID: wid,
 		}
-		if !reflect.DeepEqual(ev, wev) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		if !reflect.DeepEqual(ev[0], wev) {
+			t.Errorf("watched event = %+v, want %+v", ev[0], wev)
 		}
 	case <-time.After(time.Second):
 		t.Fatalf("failed to watch the event")

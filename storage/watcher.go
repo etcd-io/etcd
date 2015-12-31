@@ -31,7 +31,7 @@ type Watcher interface {
 	Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc)
 
 	// Chan returns a chan. All watched events will be sent to the returned chan.
-	Chan() <-chan storagepb.Event
+	Chan() <-chan []storagepb.Event
 
 	// Close closes the WatchChan and release all related resources.
 	Close()
@@ -41,7 +41,7 @@ type Watcher interface {
 // one chan to send out watched events and other control events.
 type watcher struct {
 	watchable watchable
-	ch        chan storagepb.Event
+	ch        chan []storagepb.Event
 
 	mu      sync.Mutex // guards fields below it
 	nextID  int64      // nextID is the ID allocated for next new watching
@@ -67,7 +67,7 @@ func (ws *watcher) Watch(key []byte, prefix bool, startRev int64) (id int64, can
 	return id, c
 }
 
-func (ws *watcher) Chan() <-chan storagepb.Event {
+func (ws *watcher) Chan() <-chan []storagepb.Event {
 	return ws.ch
 }
 
