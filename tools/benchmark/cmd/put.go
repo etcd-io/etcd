@@ -15,6 +15,10 @@
 package cmd
 
 import (
+	"encoding/binary"
+	"fmt"
+	"math/rand"
+	"os"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cheggaaa/pb"
@@ -37,6 +41,9 @@ var (
 	valSize int
 
 	putTotal int
+
+	keySpaceSize int
+	seqKeys      bool
 )
 
 func init() {
@@ -44,14 +51,21 @@ func init() {
 	putCmd.Flags().IntVar(&keySize, "key-size", 8, "Key size of put request")
 	putCmd.Flags().IntVar(&valSize, "val-size", 8, "Value size of put request")
 	putCmd.Flags().IntVar(&putTotal, "total", 10000, "Total number of put requests")
+	putCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
+	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
+	if keySpaceSize <= 0 {
+		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", keySpaceSize)
+		os.Exit(1)
+	}
+
 	results = make(chan result)
 	requests := make(chan etcdserverpb.PutRequest, totalClients)
 	bar = pb.New(putTotal)
 
-	k, v := mustRandBytes(keySize), mustRandBytes(valSize)
+	k, v := make([]byte, keySize), mustRandBytes(valSize)
 
 	conns := make([]*grpc.ClientConn, totalConns)
 	for i := range conns {
@@ -75,6 +89,11 @@ func putFunc(cmd *cobra.Command, args []string) {
 
 	go func() {
 		for i := 0; i < putTotal; i++ {
+			if seqKeys {
+				binary.PutVarint(k, int64(i%keySpaceSize))
+			} else {
+				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
+			}
 			requests <- etcdserverpb.PutRequest{Key: k, Value: v}
 		}
 		close(requests)
