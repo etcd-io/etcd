@@ -1,26 +1,22 @@
-# Kubernetes managing an etcd2 cluster
+# Managing an etcd cluster with Kubernetes
 
-The goal of this project is to enable Kubernetes to manage an etcd2 cluster and to keep it healthy
-
-It accomplishes this by using persistent storage that will always be available to a given pod even as it is recreated
-
-The example files provided here assume a cluster of size 3, but are generalizable to a any fixed sized cluster
+This project includes guidance and sample files to use Kubernetes for managing and monitoring an etcd cluster. Persistent storage backs each pod as it is created, destroyed, and recreated, in order to provide the reliable state required by etcd. This example constructs an etcd cluster of three nodes, but can be extrapolated to any cluster size.
 
 ## Architecture
 
-In order for an etcd2 cluster to work without any discovery we need to have static IP addresses that are well known for each server instance.  We accomplish that with creating individual kubernetes' services for each replication controller/pod that will be part of our cluster.  Using kubernetes dns or environment variables lets each pod's etcd server know how to connect to the servers in the cluster.  Each of the N replication controller/pod instances will define a label that specifies app=etcd-N and each of the N services will select on app=etcd-N
+In order for an etcd cluster to work without any discovery we need to have static IP addresses that are well known for each server instance.  We accomplish that with creating individual kubernetes services for each replication controller/pod in our cluster.  Using kubernetes DNS or environment variables lets each pod's etcd know how to connect to the servers in the cluster.  Each of the N replication controller/pod instances will define a label that specifies `app=etcd-N` and each of the N services will select on `app=etcd-N`.
 
 In order to provide a consistent endpoint we also provide a global service that selects all of the replication controller/pod instances that make up our cluster and this is what clients should use.
 
-In order to provide a consistent environment, we create N persistent volumes for etcd2 to store it's data with N persistent volumes claims.  Therefore, even if a pod is removed, on recreation, it will still have its data directory available and will come up cleanly.  This will only work if the environment can provide that volume on the different nodes, if for instance the persistent volume is node local storage and the node goes down, it wont help.
+In order to provide a consistent environment, we create N persistent volumes for etcd to store it's data with N persistent volumes claims.  Therefore, even if a pod is removed, on recreation, it will still have its data directory available and will come up cleanly.  This will only work if the environment can provide that volume on the different nodes, if for instance the persistent volume is node local storage and the node goes down, it wont help.
 
 ## Example instructions
 
-These examples assume a single node kubernetes installation and use local storage to define the persistent volumes.  In a production environment with multiple nodes would need a network accessible storage, such as EBS on AWS or a Persistent Disk on GCE.
+These examples assume a single node kubernetes installation and use local storage to define the persistent volumes.  A production environment with multiple nodes need network accessible storage, such as EBS on AWS, or a Persistent Disk on GCE.
 
 ### Setup Kubernetes
 
-1. launch etcd2 for kubernetes
+1. launch etcd for kubernetes
 
   ```bash
 docker run --net=host -d gcr.io/google_containers/etcd:2.0.12 /usr/local/bin/etcd --addr=127.0.0.1:4001 --bind-addr=0.0.0.0:4001 --data-dir=/var/etcd/data
@@ -58,7 +54,7 @@ kubectl config set-context test-doc --cluster=test-doc
 kubectl config use-context test-doc
 ```
 
-### Creating the Kubernetes managed etcd2 cluster
+### Creating the Kubernetes managed etcd cluster
 
 1. Create the persistent volumes
 
@@ -168,6 +164,8 @@ kubectl config use-context test-doc
 ### Testing the cluster
 
 1. Monitoring healthy
+
+ using etcd-client service ip
 
  ```bash
  $ etcdctl --peers http://10.0.0.113:4001 cluster-health
