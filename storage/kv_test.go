@@ -740,7 +740,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	s.Put([]byte("foo"), []byte("bar"))
 	select {
-	case ev := <-w.Chan():
+	case evs := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -752,6 +752,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 			WatchID: wid,
 		}
+		ev := evs[0]
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
@@ -761,7 +762,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	s.Put([]byte("foo1"), []byte("bar1"))
 	select {
-	case ev := <-w.Chan():
+	case evs := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -773,6 +774,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 			WatchID: wid,
 		}
+		ev := evs[0]
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
@@ -787,7 +789,7 @@ func TestWatchableKVWatch(t *testing.T) {
 	defer cancel()
 
 	select {
-	case ev := <-w.Chan():
+	case evs := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -799,6 +801,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 			WatchID: wid,
 		}
+		ev := evs[0]
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
@@ -808,7 +811,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	s.Put([]byte("foo1"), []byte("bar11"))
 	select {
-	case ev := <-w.Chan():
+	case evs := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -820,6 +823,7 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 			WatchID: wid,
 		}
+		ev := evs[0]
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}

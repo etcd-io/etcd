@@ -27,7 +27,6 @@ func TestWatcherWatchID(t *testing.T) {
 
 	idm := make(map[int64]struct{})
 
-	// synced watchings
 	for i := 0; i < 10; i++ {
 		id, cancel := w.Watch([]byte("foo"), false, 0)
 		if _, ok := idm[id]; ok {
@@ -37,15 +36,17 @@ func TestWatcherWatchID(t *testing.T) {
 
 		s.Put([]byte("foo"), []byte("bar"))
 
-		ev := <-w.Chan()
-		if ev.WatchID != id {
-			t.Errorf("#%d: watch id in event = %d, want %d", i, ev.WatchID, id)
+		evs := <-w.Chan()
+		for j, ev := range evs {
+			if ev.WatchID != id {
+				t.Errorf("#%d.%d: watch id in event = %d, want %d", i, j, ev.WatchID, id)
+			}
 		}
-
 		cancel()
 	}
 
 	s.Put([]byte("foo2"), []byte("bar"))
+
 	// unsynced watchings
 	for i := 10; i < 20; i++ {
 		id, cancel := w.Watch([]byte("foo2"), false, 1)
@@ -54,9 +55,11 @@ func TestWatcherWatchID(t *testing.T) {
 		}
 		idm[id] = struct{}{}
 
-		ev := <-w.Chan()
-		if ev.WatchID != id {
-			t.Errorf("#%d: watch id in event = %d, want %d", i, ev.WatchID, id)
+		evs := <-w.Chan()
+		for j, ev := range evs {
+			if ev.WatchID != id {
+				t.Errorf("#%d.%d: watch id in event = %d, want %d", i, j, ev.WatchID, id)
+			}
 		}
 
 		cancel()
