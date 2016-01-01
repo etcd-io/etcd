@@ -4,25 +4,25 @@ This project includes guidance and sample files to use Kubernetes for managing a
 
 ## Architecture
 
-In order for an etcd cluster to work without any discovery we need to have static IP addresses that are well known for each server instance.  We accomplish that with creating individual kubernetes services for each replication controller/pod in our cluster.  Using kubernetes DNS or environment variables lets each pod's etcd know how to connect to the servers in the cluster.  Each of the N replication controller/pod instances will define a label that specifies `app=etcd-N` and each of the N services will select on `app=etcd-N`.
+In order for an etcd cluster to work without any discovery we need to have static IP addresses that are well known for each server instance.  We accomplish that with creating individual Kubernetes services for each replication controller/pod in our cluster.  Using Kubernetes DNS or environment variables lets each pod's etcd know how to connect to the servers in the cluster.  Each of the N replication controller/pod instances will define a label that specifies `app=etcd-N` and each of the N services will select on `app=etcd-N`.
 
 In order to provide a consistent endpoint we also provide a global service that selects all of the replication controller/pod instances that make up our cluster and this is what clients should use.
 
-In order to provide a consistent environment, we create N persistent volumes for etcd to store it's data with N persistent volumes claims.  Therefore, even if a pod is removed, on recreation, it will still have its data directory available and will come up cleanly.  This will only work if the environment can provide that volume on the different nodes, if for instance the persistent volume is node local storage and the node goes down, it wont help.
+In order to provide a consistent environment, we create N persistent volumes for etcd to store it's data with N persistent volumes claims.  Therefore, even if a pod is removed, on recreation, it will still have its data directory available and will come up cleanly.  As replication controllers can recreate pods on different nodes if the initial node disappears, the persistent volumes must be located on network accessible storage in a production environment otherwise the restarted etcd pod will not have access to its data.
 
 ## Example instructions
 
-These examples assume a single node kubernetes installation and use local storage to define the persistent volumes.  A production environment with multiple nodes needs network accessible storage, such as EBS on AWS, or a Persistent Disk on GCE.
+This example assume a single node Kubernetes installation and uses local storage to define the persistent volumes.  A production environment, with multiple nodes, needs the the persistent volumes  be located on network accessible storage, such as EBS on AWS, or a Persistent Disk on GCE.
 
 ### Setup Kubernetes
 
-1. launch etcd for kubernetes
+1. launch etcd for Kubernetes
 
   ```bash
 $ docker run --net=host -d --net=host -d gcr.io/google_containers/etcd:2.2.1 /usr/local/bin/etcd --addr=127.0.0.1:4001 --bind-addr=0.0.0.0:4001 --data-dir=/var/etcd/data
   ```
 
-2. launch kubernetes master
+2. launch Kubernetes master
 
    ```bash
 $ docker run \
@@ -37,7 +37,7 @@ $ docker run \
     --privileged=true \
     -d \
     gcr.io/google_containers/hyperkube:v1.0.1 \
-    /hyperkube kubelet --containerized --hostname-override="127.0.0.1" --address="0.0.0.0" --api-servers=http://localhost:8080 --config=/etc/kubernetes/manifests
+    /hyperkube kubelet --containerized --hostname-override="127.0.0.1" --address="0.0.0.0" --api-servers=http://localhost:8080 --config=/etc/Kubernetes/manifests
 ```
 
 3. launch service proxy
@@ -114,7 +114,7 @@ kubectl config use-context test-doc
 
 3. Create services
 
- This creates the kubernetes services that will be used by each individual pod/replicaiton controller as well as the global service that clients will use to hit the cluster
+ This creates the Kubernetes services that will be used by each individual pod/replicaiton controller as well as the global service that clients will use to hit the cluster
 
  ```bash
  $ kubectl create -f services/
