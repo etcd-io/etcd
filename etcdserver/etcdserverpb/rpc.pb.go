@@ -368,9 +368,8 @@ func (m *WatchRequest) String() string { return proto.CompactTextString(m) }
 func (*WatchRequest) ProtoMessage()    {}
 
 type WatchResponse struct {
-	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	// TODO: support batched events response?
-	Event *storagepb.Event `protobuf:"bytes,2,opt,name=event" json:"event,omitempty"`
+	Header *ResponseHeader    `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Events []*storagepb.Event `protobuf:"bytes,2,rep,name=events" json:"events,omitempty"`
 }
 
 func (m *WatchResponse) Reset()         { *m = WatchResponse{} }
@@ -384,9 +383,9 @@ func (m *WatchResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
-func (m *WatchResponse) GetEvent() *storagepb.Event {
+func (m *WatchResponse) GetEvents() []*storagepb.Event {
 	if m != nil {
-		return m.Event
+		return m.Events
 	}
 	return nil
 }
@@ -1567,15 +1566,17 @@ func (m *WatchResponse) MarshalTo(data []byte) (int, error) {
 		}
 		i += n12
 	}
-	if m.Event != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Event.Size()))
-		n13, err := m.Event.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
+	if len(m.Events) > 0 {
+		for _, msg := range m.Events {
+			data[i] = 0x12
+			i++
+			i = encodeVarintRpc(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
 		}
-		i += n13
 	}
 	return i, nil
 }
@@ -1622,11 +1623,11 @@ func (m *LeaseCreateResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n14, err := m.Header.MarshalTo(data[i:])
+		n13, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n13
 	}
 	if m.LeaseId != 0 {
 		data[i] = 0x10
@@ -1689,11 +1690,11 @@ func (m *LeaseRevokeResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n15, err := m.Header.MarshalTo(data[i:])
+		n14, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n14
 	}
 	return i, nil
 }
@@ -1740,11 +1741,11 @@ func (m *LeaseKeepAliveResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n16, err := m.Header.MarshalTo(data[i:])
+		n15, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n15
 	}
 	if m.LeaseId != 0 {
 		data[i] = 0x10
@@ -2065,9 +2066,11 @@ func (m *WatchResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
-	if m.Event != nil {
-		l = m.Event.Size()
-		n += 1 + l + sovRpc(uint64(l))
+	if len(m.Events) > 0 {
+		for _, e := range m.Events {
+			l = e.Size()
+			n += 1 + l + sovRpc(uint64(l))
+		}
 	}
 	return n
 }
@@ -3862,7 +3865,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Event", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Events", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3883,10 +3886,8 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Event == nil {
-				m.Event = &storagepb.Event{}
-			}
-			if err := m.Event.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			m.Events = append(m.Events, &storagepb.Event{})
+			if err := m.Events[len(m.Events)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

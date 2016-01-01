@@ -210,8 +210,7 @@ message WatchRequest {
 
 message WatchResponse {
   ResponseHeader header = 1;
-  // TODO: support batched events response?
-  storagepb.Event event = 2;
+  repeated storagepb.Event events = 2;
 }
 
 message LeaseCreateRequest {
