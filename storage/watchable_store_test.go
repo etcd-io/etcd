@@ -15,8 +15,12 @@
 package storage
 
 import (
+	"bytes"
 	"os"
+	"reflect"
 	"testing"
+
+	"github.com/coreos/etcd/storage/storagepb"
 )
 
 func TestWatch(t *testing.T) {
@@ -183,6 +187,19 @@ func TestSyncWatchings(t *testing.T) {
 	if len(w.(*watcher).ch) != watcherN {
 		t.Errorf("watched event size = %d, want %d", len(w.(*watcher).ch), watcherN)
 	}
+	evs := <-w.(*watcher).ch
+	if len(evs) != 1 {
+		t.Errorf("len(evs) got = %d, want = 1", len(evs))
+	}
+	if evs[0].Type != storagepb.PUT {
+		t.Errorf("got = %v, want = %v", evs[0].Type, storagepb.PUT)
+	}
+	if !bytes.Equal(evs[0].Kv.Key, testKey) {
+		t.Errorf("got = %s, want = %s", evs[0].Kv.Key, testKey)
+	}
+	if !bytes.Equal(evs[0].Kv.Value, testValue) {
+		t.Errorf("got = %s, want = %s", evs[0].Kv.Value, testValue)
+	}
 }
 
 func TestUnsafeAddWatching(t *testing.T) {
@@ -218,6 +235,108 @@ func TestUnsafeAddWatching(t *testing.T) {
 			}
 			if _, ok := v[wa]; !ok {
 				t.Errorf("#%d: ok = %v, want ok true", i, ok)
+			}
+		}
+	}
+}
+
+func TestNewMapWatchingToEventMap(t *testing.T) {
+	k0, k1, k2 := []byte("foo0"), []byte("foo1"), []byte("foo2")
+	v0, v1, v2 := []byte("bar0"), []byte("bar1"), []byte("bar2")
+
+	ws := []*watching{{key: k0}, {key: k1}, {key: k2}}
+
+	evs := []storagepb.Event{
+		{
+			Type: storagepb.PUT,
+			Kv:   &storagepb.KeyValue{Key: k0, Value: v0},
+		},
+		{
+			Type: storagepb.PUT,
+			Kv:   &storagepb.KeyValue{Key: k1, Value: v1},
+		},
+		{
+			Type: storagepb.PUT,
+			Kv:   &storagepb.KeyValue{Key: k2, Value: v2},
+		},
+	}
+
+	tests := []struct {
+		sync map[string]map[*watching]struct{}
+		evs  []storagepb.Event
+
+		wwe map[*watching][]storagepb.Event
+	}{
+		// no watching in sync, some events should return empty wwe
+		{
+			map[string]map[*watching]struct{}{},
+			evs,
+			map[*watching][]storagepb.Event{},
+		},
+
+		// one watching in sync, one event that does not match the key of that
+		// watching should return empty wwe
+		{
+			map[string]map[*watching]struct{}{
+				string(k2): {ws[2]: struct{}{}},
+			},
+			evs[:1],
+			map[*watching][]storagepb.Event{},
+		},
+
+		// one watching in sync, one event that matches the key of that
+		// watching should return wwe with that matching watching
+		{
+			map[string]map[*watching]struct{}{
+				string(k1): {ws[1]: struct{}{}},
+			},
+			evs[1:2],
+			map[*watching][]storagepb.Event{
+				ws[1]: evs[1:2],
+			},
+		},
+
+		// two watchings in sync that watches two different keys, one event
+		// that matches the key of only one of the watching should return wwe
+		// with the matching watching
+		{
+			map[string]map[*watching]struct{}{
+				string(k0): {ws[0]: struct{}{}},
+				string(k2): {ws[2]: struct{}{}},
+			},
+			evs[2:],
+			map[*watching][]storagepb.Event{
+				ws[2]: evs[2:],
+			},
+		},
+
+		// two watchings in sync that watches the same key, two events that
+		// match the keys should return wwe with those two watchings
+		{
+			map[string]map[*watching]struct{}{
+				string(k0): {ws[0]: struct{}{}},
+				string(k1): {ws[1]: struct{}{}},
+			},
+			evs[:2],
+			map[*watching][]storagepb.Event{
+				ws[0]: evs[:1],
+				ws[1]: evs[1:2],
+			},
+		},
+	}
+
+	for i, tt := range tests {
+		gwe := newWatchingToEventMap(tt.sync, tt.evs)
+		if len(gwe) != len(tt.wwe) {
+			t.Errorf("#%d: len(gwe) got = %d, want = %d", i, len(gwe), len(tt.wwe))
+		}
+		// compare gwe and tt.wwe
+		for w, mevs := range gwe {
+			if len(mevs) != len(tt.wwe[w]) {
+				t.Errorf("#%d: len(mevs) got = %d, want = %d", i, len(mevs), len(tt.wwe[w]))
+			}
+			if !reflect.DeepEqual(mevs, tt.wwe[w]) {
+				t.Errorf("#%d: reflect.DeepEqual events got = %v, want = true", i, false)
 			}
 		}
 	}
