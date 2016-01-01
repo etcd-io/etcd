@@ -6,11 +6,11 @@ spec:
   selector:
     app: etcd-2
   ports:
-  - port: 7001 
-    targetPort: 7001
+  - port: 2380
+    targetPort: 2380
     protocol: TCP
     name: peer
-  - port: 4001
-    targetPort: 4001
+  - port: 2379
+    targetPort: 2379
     protocol: TCP
     name: client

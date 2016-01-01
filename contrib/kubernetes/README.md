@@ -19,13 +19,13 @@ These examples assume a single node kubernetes installation and use local storag
 1. launch etcd for kubernetes
 
   ```bash
-docker run --net=host -d gcr.io/google_containers/etcd:2.0.12 /usr/local/bin/etcd --addr=127.0.0.1:4001 --bind-addr=0.0.0.0:4001 --data-dir=/var/etcd/data
+$ docker run --net=host -d --net=host -d gcr.io/google_containers/etcd:2.2.1 /usr/local/bin/etcd --addr=127.0.0.1:4001 --bind-addr=0.0.0.0:4001 --data-dir=/var/etcd/data
   ```
 
 2. launch kubernetes master
 
    ```bash
-docker run \
+$ docker run \
     --volume=/:/rootfs:ro \
     --volume=/sys:/sys:ro \
     --volume=/dev:/dev \
@@ -43,7 +43,7 @@ docker run \
 3. launch service proxy
 
   ```bash
-docker run -d --net=host --privileged gcr.io/google_containers/hyperkube:v1.0.1 /hyperkube proxy --master=http://127.0.0.1:8080 --v=2
+$ docker run -d --net=host --privileged gcr.io/google_containers/hyperkube:v1.0.1 /hyperkube proxy --master=http://127.0.0.1:8080 --v=2
 ```
 
 4. configure kubectl for this instance
@@ -126,17 +126,17 @@ kubectl config use-context test-doc
  ```
  ```bash
  $ kubectl get services
-
  NAME          LABELS                                    SELECTOR       IP(S)        PORT(S)
- etcd-1        <none>                                    app=etcd-1     10.0.0.192   7001/TCP
-                                                                                    4001/TCP
- etcd-2        <none>                                    app=etcd-2     10.0.0.237   7001/TCP
-                                                                                    4001/TCP
- etcd-3        <none>                                    app=etcd-3     10.0.0.54    7001/TCP
-                                                                                    4001/TCP
- etcd-client   <none>                                    service=etcd   10.0.0.113   7001/TCP
-                                                                                    4001/TCP
+ etcd-1        <none>                                    app=etcd-1     10.0.0.241   2380/TCP
+                                                                                     2379/TCP
+ etcd-2        <none>                                    app=etcd-2     10.0.0.17    2380/TCP
+                                                                                     2379/TCP
+ etcd-3        <none>                                    app=etcd-3     10.0.0.149   2380/TCP
+                                                                                     2379/TCP
+ etcd-client   <none>                                    service=etcd   10.0.0.122   2380/TCP
+                                                                                     2379/TCP
  kubernetes    component=apiserver,provider=kubernetes   <none>         10.0.0.1     443/TCP
+
  ```
 
 4. Create replication controllers / pods
@@ -155,10 +155,10 @@ kubectl config use-context test-doc
  $ kubectl get pods
 
  NAME                   READY     STATUS    RESTARTS   AGE
- etcd-1-2966t           1/1       Running   0          10m
- etcd-2-mf4l9           1/1       Running   0          10m
- etcd-3-knja0           1/1       Running   0          10m
- k8s-master-127.0.0.1   3/3       Running   3          2h
+ etcd-1-r4obe           1/1       Running   0          2m
+ etcd-2-x6kel           1/1       Running   0          5m
+ etcd-3-hku9t           1/1       Running   0          5m
+ k8s-master-127.0.0.1   3/3       Running   6          14m
  ```
 
 ### Testing the cluster
@@ -168,25 +168,25 @@ kubectl config use-context test-doc
  using etcd-client service ip
 
  ```bash
- $ etcdctl --peers http://10.0.0.113:4001 cluster-health
+ $ etcdctl --peers http://10.0.0.122:2379 cluster-health
 
- member 6314a7c82afdad2e is healthy: got healthy result from http://10.0.0.192:4001
- member 8520e7a649bd3f6e is healthy: got healthy result from http://10.0.0.54:4001
- member aa4c88abc01033b5 is healthy: got healthy result from http://10.0.0.237:4001
+ member 57f9d3e3f9ee006 is healthy: got healthy result from http://10.0.0.241:2379
+ member 54f0e7837cf89bc8 is healthy: got healthy result from http://10.0.0.17:2379
+ member 8efc649d6465b98f is healthy: got healthy result from http://10.0.0.149:2379
  cluster is healthy
  ```
 
 2. Delete a pod
 
  ```bash
- $ kubectl delete pod etcd-3-knja0 && etcdctl --peers http://10.0.0.113:4001 cluster-health
+ $ kubectl delete pod etcd-3-hku9t && etcdctl --peers http://10.0.0.122:2379 cluster-health
 
- pods/etcd-3-knja0
+ pods/etcd-3-hku9t
 
- member 6314a7c82afdad2e is healthy: got healthy result from http://10.0.0.192:4001
- failed to check the health of member 8520e7a649bd3f6e on http://10.0.0.54:4001: Get http://10.0.0.54:4001/health: read tcp 10.7.3.187:60956->10.0.0.54:4001: read: connection reset by peer
- member 8520e7a649bd3f6e is unreachable: [http://10.0.0.54:4001] are all unreachable
- member aa4c88abc01033b5 is healthy: got healthy result from http://10.0.0.237:4001
+ member 57f9d3e3f9ee006 is healthy: got healthy result from http://10.0.0.241:2379
+ member 54f0e7837cf89bc8 is healthy: got healthy result from http://10.0.0.17:2379
+ failed to check the health of member 8efc649d6465b98f on http://10.0.0.149:2379: Get http://10.0.0.149:2379/health: read tcp 192.168.0.249:43194->10.0.0.149:2379: read: connection reset by peer
+ member 8efc649d6465b98f is unreachable: [http://10.0.0.149:2379] are all unreachable
  cluster is healthy
  ```
 
@@ -196,19 +196,19 @@ kubectl config use-context test-doc
  $ kubectl get pods
 
  NAME                   READY     STATUS    RESTARTS   AGE
- etcd-1-2966t           1/1       Running   1          19m
- etcd-2-mf4l9           1/1       Running   1          19m
- etcd-3-hlj3u           1/1       Running   0          6m
- k8s-master-127.0.0.1   3/3       Running   3          2h
+ etcd-1-r4obe           1/1       Running   0          5m
+ etcd-2-x6kel           1/1       Running   0          7m
+ etcd-3-exnm7           0/1       Running   0          29s
+ k8s-master-127.0.0.1   3/3       Running   6          16m
  ```
- 
+
  all members of the cluster are healthy
 
  ```bash
- $ etcdctl --peers http://10.0.0.113:4001 cluster-health
+ $ etcdctl --peers http://10.0.0.122:2379 cluster-health
 
- member 6314a7c82afdad2e is healthy: got healthy result from http://10.0.0.192:4001
- member 8520e7a649bd3f6e is healthy: got healthy result from http://10.0.0.54:4001
- member aa4c88abc01033b5 is healthy: got healthy result from http://10.0.0.237:4001
- cluster is healthy
+member 57f9d3e3f9ee006 is healthy: got healthy result from http://10.0.0.241:2379
+member 54f0e7837cf89bc8 is healthy: got healthy result from http://10.0.0.17:2379
+member 8efc649d6465b98f is healthy: got healthy result from http://10.0.0.149:2379
+cluster is healthy
  ```
