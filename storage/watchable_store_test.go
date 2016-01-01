@@ -23,7 +23,8 @@ import (
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
-func TestWatch(t *testing.T) {
+// Tests Watch and cancel operation of watchableStore Watcher.
+func TestWatchableStoreWatchCancel(t *testing.T) {
 	s := newWatchableStore(tmpPath)
 	defer func() {
 		s.store.Close()
@@ -31,29 +32,31 @@ func TestWatch(t *testing.T) {
 	}()
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue)
 
 	w := s.NewWatcher()
-	w.Watch(testKey, true, 0)
+	_, cancel := w.Watch(testKey, true, 0) // 0 to populate synced map
 
 	if _, ok := s.synced[string(testKey)]; !ok {
 		// the key must have had an entry in synced
 		t.Errorf("existence = %v, want true", ok)
 	}
-}
 
-func TestNewWatcherCancel(t *testing.T) {
-	s := newWatchableStore(tmpPath)
-	defer func() {
-		s.store.Close()
-		os.Remove(tmpPath)
-	}()
-	testKey := []byte("foo")
-	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
-	w := s.NewWatcher()
-	_, cancel := w.Watch(testKey, true, 0)
+	select {
+	case evs := <-w.Chan():
+		if len(evs) != 1 {
+			t.Errorf("len(evs) got  = %d, want = 1", len(evs))
+		}
+		if !bytes.Equal(evs[0].Kv.Key, testKey) {
+			t.Errorf("evs[0].Kv.Key got = %s, want = %s", evs[0].Kv.Key, testKey)
+		}
+		if !bytes.Equal(evs[0].Kv.Value, testValue) {
+			t.Errorf("evs[0].Kv.Value got = %s, want = %s", evs[0].Kv.Value, testValue)
+		}
+	default:
+		t.Errorf("failed to receive from w.Chan() for %s", testKey)
+	}
 
 	cancel()
 
