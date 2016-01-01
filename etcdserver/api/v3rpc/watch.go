@@ -48,14 +48,20 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) error {
 			return err
 		}
 
-		var prefix bool
-		toWatch := req.Key
-		if len(req.Key) == 0 {
-			toWatch = req.Prefix
-			prefix = true
+		switch {
+		case req.CreateRequest != nil:
+			creq := req.CreateRequest
+			var prefix bool
+			toWatch := creq.Key
+			if len(creq.Key) == 0 {
+				toWatch = creq.Prefix
+				prefix = true
+			}
+			watcher.Watch(toWatch, prefix, creq.StartRevision)
+		default:
+			// TODO: support cancellation
+			panic("not implemented")
 		}
-		// TODO: support cancellation
-		watcher.Watch(toWatch, prefix, req.StartRevision)
 	}
 }
 

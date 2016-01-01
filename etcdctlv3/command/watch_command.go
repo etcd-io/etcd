@@ -74,9 +74,9 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 		var r *pb.WatchRequest
 		switch segs[0] {
 		case "watch":
-			r = &pb.WatchRequest{Key: []byte(segs[1])}
+			r = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte(segs[1])}}
 		case "watchprefix":
-			r = &pb.WatchRequest{Prefix: []byte(segs[1])}
+			r = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte(segs[1])}}
 		default:
 			fmt.Fprintf(os.Stderr, "Invalid watch request format: use watch key or watchprefix prefix\n")
 			continue
