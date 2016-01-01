@@ -32,7 +32,7 @@ service KV {
   rpc Compact(CompactionRequest) returns (CompactionResponse) {}
 }
 
-service watch {
+service Watch {
   // Watch watches the events happening or happened. Both input and output
   // are stream. One watch rpc can watch for multiple keys or prefixs and
   // get a stream of events. The whole events history can be watched unless
@@ -197,6 +197,13 @@ message CompactionResponse {
 }
 
 message WatchRequest {
+  oneof request_union {
+    WatchCreateRequest create_request = 1;
+    WatchCancelRequest cancel_request = 2;
+  }
+}
+
+message WatchCreateRequest {
   // the key to be watched
   bytes key = 1;
   // the prefix to be watched.
@@ -204,13 +211,34 @@ message WatchRequest {
   // start_revision is an optional revision (including) to watch from. No start_revision is "now".
   int64 start_revision = 3;
   // TODO: support Range watch?
-  // TODO: support notification every time interval or revision increase?
-  // TODO: support cancel watch if the server cannot reach with majority?
+}
+
+message WatchCancelRequest {
+  int64 watch_id = 1;
 }
 
 message WatchResponse {
   ResponseHeader header = 1;
-  repeated storagepb.Event events = 2;
+  // watch_id is the ID of the watching the response sent to.
+  int64 watch_id = 2;
+  // If the response is for a create watch request, created is set to true.
+  // Client should record the watch_id and prepare for receiving events for
+  // that watching from the same stream.
+  // All events sent to the created watching will attach with the same watch_id.
+  bool created = 3;
+  // If the response is for a cancel watch request, cancel is set to true.
+  // No further events will be sent to the canceled watching.
+  bool canceled = 4;
+  // If a watching tries to watch at a compacted index, compacted will be set to true.
+  //
+  // This happens when creating a watching at a compacted revision or the watching cannot
+  // catch up with the progress of the KV.
+  //
+  // Client should treat the watching as canceled and should not try to create any
+  // watching with same start_revision again. 
+  bool compacted = 5;
+
+  repeated storagepb.Event events = 11;
 }
 
 message LeaseCreateRequest {
