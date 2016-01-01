@@ -98,6 +98,9 @@ func recvLoop(wStream pb.Watch_WatchClient) {
 		if err != nil {
 			ExitWithError(ExitError, err)
 		}
-		fmt.Printf("%s: %s %s\n", resp.Event.Type, string(resp.Event.Kv.Key), string(resp.Event.Kv.Value))
+		evs := resp.Events
+		for _, ev := range evs {
+			fmt.Printf("%s: %s %s\n", ev.Type, string(ev.Kv.Key), string(ev.Kv.Value))
+		}
 	}
 }
