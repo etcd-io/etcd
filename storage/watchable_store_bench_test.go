@@ -54,7 +54,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
-	w := s.NewWatcher()
+	w := s.NewWatchStream()
 
 	const k int = 2
 	benchSampleN := b.N
@@ -92,7 +92,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
-	w := s.NewWatcher()
+	w := s.NewWatchStream()
 
 	// put 1 million watchers on the same key
 	const watcherN = 1000000

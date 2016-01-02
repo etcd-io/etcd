@@ -33,7 +33,7 @@ func TestWatch(t *testing.T) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
-	w := s.NewWatcher()
+	w := s.NewWatchStream()
 	w.Watch(testKey, true, 0)
 
 	if _, ok := s.synced[string(testKey)]; !ok {
@@ -52,7 +52,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
-	w := s.NewWatcher()
+	w := s.NewWatchStream()
 	_, cancel := w.Watch(testKey, true, 0)
 
 	cancel()
@@ -91,7 +91,7 @@ func TestCancelUnsynced(t *testing.T) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
-	w := s.NewWatcher()
+	w := s.NewWatchStream()
 
 	// arbitrary number for watchers
 	watcherN := 100
@@ -138,7 +138,7 @@ func TestSyncWatchings(t *testing.T) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue)
 
-	w := s.NewWatcher()
+	w := s.NewWatchStream()
 
 	// arbitrary number for watchers
 	watcherN := 100
@@ -184,10 +184,10 @@ func TestSyncWatchings(t *testing.T) {
 	// All of the watchings actually share one channel
 	// so we only need to check one shared channel
 	// (See watcher.go for more detail).
-	if len(w.(*watcher).ch) != watcherN {
-		t.Errorf("watched event size = %d, want %d", len(w.(*watcher).ch), watcherN)
+	if len(w.(*watchStream).ch) != watcherN {
+		t.Errorf("watched event size = %d, want %d", len(w.(*watchStream).ch), watcherN)
 	}
-	evs := <-w.(*watcher).ch
+	evs := <-w.(*watchStream).ch
 	if len(evs) != 1 {
 		t.Errorf("len(evs) got = %d, want = 1", len(evs))
 	}

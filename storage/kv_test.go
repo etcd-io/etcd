@@ -733,7 +733,7 @@ func TestWatchableKVWatch(t *testing.T) {
 	s := WatchableKV(newWatchableStore(tmpPath))
 	defer cleanup(s, tmpPath)
 
-	w := s.NewWatcher()
+	w := s.NewWatchStream()
 
 	wid, cancel := w.Watch([]byte("foo"), true, 0)
 	defer cancel()
@@ -784,7 +784,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	w.Close()
 
-	w = s.NewWatcher()
+	w = s.NewWatchStream()
 	wid, cancel = w.Watch([]byte("foo1"), false, 1)
 	defer cancel()
 

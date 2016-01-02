@@ -177,9 +177,9 @@ func (s *watchableStore) Close() error {
 	return s.store.Close()
 }
 
-func (s *watchableStore) NewWatcher() Watcher {
-	watcherGauge.Inc()
-	return &watcher{
+func (s *watchableStore) NewWatchStream() WatchStream {
+	watchStreamGauge.Inc()
+	return &watchStream{
 		watchable: s,
 		ch:        make(chan []storagepb.Event, chanBufLen),
 	}

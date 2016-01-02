@@ -20,7 +20,7 @@ import (
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
-type Watcher interface {
+type WatchStream interface {
 	// Watch watches the events happening or happened on the given key
 	// or key prefix from the given startRev.
 	// The whole event history can be watched unless compacted.
@@ -37,9 +37,9 @@ type Watcher interface {
 	Close()
 }
 
-// watcher contains a collection of watching that share
-// one chan to send out watched events and other control events.
-type watcher struct {
+// watchStream contains a collection of watching that share
+// one streaming chan to send out watched events and other control events.
+type watchStream struct {
 	watchable watchable
 	ch        chan []storagepb.Event
 
@@ -50,7 +50,7 @@ type watcher struct {
 }
 
 // TODO: return error if ws is closed?
-func (ws *watcher) Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc) {
+func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc) {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 	if ws.closed {
@@ -67,11 +67,11 @@ func (ws *watcher) Watch(key []byte, prefix bool, startRev int64) (id int64, can
 	return id, c
 }
 
-func (ws *watcher) Chan() <-chan []storagepb.Event {
+func (ws *watchStream) Chan() <-chan []storagepb.Event {
 	return ws.ch
 }
 
-func (ws *watcher) Close() {
+func (ws *watchStream) Close() {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 
@@ -80,5 +80,5 @@ func (ws *watcher) Close() {
 	}
 	ws.closed = true
 	close(ws.ch)
-	watcherGauge.Dec()
+	watchStreamGauge.Dec()
 }
