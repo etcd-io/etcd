@@ -740,7 +740,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	s.Put([]byte("foo"), []byte("bar"))
 	select {
-	case evs := <-w.Chan():
+	case resp := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -750,9 +750,11 @@ func TestWatchableKVWatch(t *testing.T) {
 				ModRevision:    1,
 				Version:        1,
 			},
-			WatchID: wid,
 		}
-		ev := evs[0]
+		if resp.WatchID != wid {
+			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
+		}
+		ev := resp.Events[0]
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
@@ -762,7 +764,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	s.Put([]byte("foo1"), []byte("bar1"))
 	select {
-	case evs := <-w.Chan():
+	case resp := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -772,9 +774,11 @@ func TestWatchableKVWatch(t *testing.T) {
 				ModRevision:    2,
 				Version:        1,
 			},
-			WatchID: wid,
 		}
-		ev := evs[0]
+		if resp.WatchID != wid {
+			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
+		}
+		ev := resp.Events[0]
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
@@ -789,7 +793,7 @@ func TestWatchableKVWatch(t *testing.T) {
 	defer cancel()
 
 	select {
-	case evs := <-w.Chan():
+	case resp := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -799,9 +803,11 @@ func TestWatchableKVWatch(t *testing.T) {
 				ModRevision:    2,
 				Version:        1,
 			},
-			WatchID: wid,
 		}
-		ev := evs[0]
+		if resp.WatchID != wid {
+			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
+		}
+		ev := resp.Events[0]
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
@@ -811,7 +817,7 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	s.Put([]byte("foo1"), []byte("bar11"))
 	select {
-	case evs := <-w.Chan():
+	case resp := <-w.Chan():
 		wev := storagepb.Event{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
@@ -821,9 +827,11 @@ func TestWatchableKVWatch(t *testing.T) {
 				ModRevision:    3,
 				Version:        2,
 			},
-			WatchID: wid,
 		}
-		ev := evs[0]
+		if resp.WatchID != wid {
+			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
+		}
+		ev := resp.Events[0]
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}

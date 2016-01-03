@@ -186,7 +186,8 @@ func TestSyncWatchers(t *testing.T) {
 	if len(w.(*watchStream).ch) != watcherN {
 		t.Errorf("watched event size = %d, want %d", len(w.(*watchStream).ch), watcherN)
 	}
-	evs := <-w.(*watchStream).ch
+	wr := <-w.(*watchStream).ch
+	evs := wr.Events
 	if len(evs) != 1 {
 		t.Errorf("len(evs) got = %d, want = 1", len(evs))
 	}

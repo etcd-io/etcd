@@ -111,7 +111,7 @@ func (sws *serverWatchStream) recvLoop() error {
 func (sws *serverWatchStream) sendLoop() {
 	for {
 		select {
-		case evs, ok := <-sws.watchStream.Chan():
+		case wresp, ok := <-sws.watchStream.Chan():
 			if !ok {
 				return
 			}
@@ -119,12 +119,13 @@ func (sws *serverWatchStream) sendLoop() {
 			// TODO: evs is []storagepb.Event type
 			// either return []*storagepb.Event from storage package
 			// or define protocol buffer with []storagepb.Event.
+			evs := wresp.Events
 			events := make([]*storagepb.Event, len(evs))
 			for i := range evs {
 				events[i] = &evs[i]
 			}
 
-			err := sws.gRPCStream.Send(&pb.WatchResponse{Events: events})
+			err := sws.gRPCStream.Send(&pb.WatchResponse{WatchId: wresp.WatchID, Events: events})
 			storage.ReportEventReceived()
 			if err != nil {
 				return
