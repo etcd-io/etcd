@@ -15,9 +15,14 @@
 package storage
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/coreos/etcd/storage/storagepb"
+)
+
+var (
+	ErrWatcherNotExist = errors.New("storage: watcher does not exist")
 )
 
 type WatchStream interface {
@@ -30,10 +35,16 @@ type WatchStream interface {
 	//
 	// The returned `id` is the ID of this watcher. It appears as WatchID
 	// in events that are sent to the created watcher through stream channel.
+	//
+	// TODO: remove the returned CancelFunc. Always use Cancel.
 	Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc)
 
 	// Chan returns a chan. All watched events will be sent to the returned chan.
 	Chan() <-chan []storagepb.Event
+
+	// Cancel cancels a watcher by giving its ID. If watcher does not exist, an error will be
+	// returned.
+	Cancel(id int64) error
 
 	// Close closes the WatchChan and release all related resources.
 	Close()
@@ -49,7 +60,7 @@ type watchStream struct {
 	// nextID is the ID pre-allocated for next new watcher in this stream
 	nextID  int64
 	closed  bool
-	cancels []CancelFunc
+	cancels map[int64]CancelFunc
 }
 
 // TODO: return error if ws is closed?
@@ -65,13 +76,22 @@ func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) (id int64,
 
 	_, c := ws.watchable.watch(key, prefix, startRev, id, ws.ch)
 
-	// TODO: cancelFunc needs to be removed from the cancels when it is called.
-	ws.cancels = append(ws.cancels, c)
+	ws.cancels[id] = c
 	return id, c
 }
 
 func (ws *watchStream) Chan() <-chan []storagepb.Event {
 	return ws.ch
+}
+
+func (ws *watchStream) Cancel(id int64) error {
+	cancel, ok := ws.cancels[id]
+	if !ok {
+		return ErrWatcherNotExist
+	}
+	cancel()
+	delete(ws.cancels, id)
+	return nil
 }
 
 func (ws *watchStream) Close() {
