@@ -98,9 +98,15 @@ func recvLoop(wStream pb.Watch_WatchClient) {
 		if err != nil {
 			ExitWithError(ExitError, err)
 		}
-		evs := resp.Events
-		for _, ev := range evs {
-			fmt.Printf("%s: %s %s\n", ev.Type, string(ev.Kv.Key), string(ev.Kv.Value))
+
+		switch {
+		// TODO: handle canceled/compacted and other control response types
+		case resp.Created:
+			fmt.Printf("watcher created: id %08x\n", resp.WatchId)
+		default:
+			for _, ev := range resp.Events {
+				fmt.Printf("%s: %s %s\n", ev.Type, string(ev.Kv.Key), string(ev.Kv.Value))
+			}
 		}
 	}
 }
