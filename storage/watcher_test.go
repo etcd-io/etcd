@@ -22,7 +22,7 @@ func TestWatcherWatchID(t *testing.T) {
 	s := WatchableKV(newWatchableStore(tmpPath))
 	defer cleanup(s, tmpPath)
 
-	w := s.NewWatcher()
+	w := s.NewWatchStream()
 	defer w.Close()
 
 	idm := make(map[int64]struct{})

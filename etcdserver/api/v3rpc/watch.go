@@ -34,10 +34,10 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) error {
 	closec := make(chan struct{})
 	defer close(closec)
 
-	watcher := ws.watchable.NewWatcher()
-	defer watcher.Close()
+	watchStream := ws.watchable.NewWatchStream()
+	defer watchStream.Close()
 
-	go sendLoop(stream, watcher, closec)
+	go sendLoop(stream, watchStream, closec)
 
 	for {
 		req, err := stream.Recv()
@@ -57,7 +57,7 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) error {
 				toWatch = creq.Prefix
 				prefix = true
 			}
-			watcher.Watch(toWatch, prefix, creq.StartRevision)
+			watchStream.Watch(toWatch, prefix, creq.StartRevision)
 		default:
 			// TODO: support cancellation
 			panic("not implemented")
@@ -65,10 +65,10 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) error {
 	}
 }
 
-func sendLoop(stream pb.Watch_WatchServer, watcher storage.Watcher, closec chan struct{}) {
+func sendLoop(stream pb.Watch_WatchServer, watchStream storage.WatchStream, closec chan struct{}) {
 	for {
 		select {
-		case evs, ok := <-watcher.Chan():
+		case evs, ok := <-watchStream.Chan():
 			if !ok {
 				return
 			}
@@ -90,7 +90,7 @@ func sendLoop(stream pb.Watch_WatchServer, watcher storage.Watcher, closec chan 
 		case <-closec:
 			// drain the chan to clean up pending events
 			for {
-				_, ok := <-watcher.Chan()
+				_, ok := <-watchStream.Chan()
 				if !ok {
 					return
 				}

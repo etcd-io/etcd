@@ -82,11 +82,11 @@ type WatchableKV interface {
 	Watchable
 }
 
-// Watchable is the interface that wraps the NewWatcher function.
+// Watchable is the interface that wraps the NewWatchStream function.
 type Watchable interface {
-	// NewWatcher returns a Watcher that can be used to
+	// NewWatchStream returns a WatchStream that can be used to
 	// watch events happened or happending on the KV.
-	NewWatcher() Watcher
+	NewWatchStream() WatchStream
 }
 
 // ConsistentWatchableKV is a WatchableKV that understands the consistency

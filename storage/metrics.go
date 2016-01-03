@@ -59,12 +59,12 @@ var (
 			Help:      "Total number of keys.",
 		})
 
-	watcherGauge = prometheus.NewGauge(
+	watchStreamGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "etcd",
 			Subsystem: "storage",
-			Name:      "watcher_total",
-			Help:      "Total number of watchers.",
+			Name:      "watch_stream_total",
+			Help:      "Total number of watch streams.",
 		})
 
 	watchingGauge = prometheus.NewGauge(
@@ -143,7 +143,7 @@ func init() {
 	prometheus.MustRegister(deleteCounter)
 	prometheus.MustRegister(txnCounter)
 	prometheus.MustRegister(keysGauge)
-	prometheus.MustRegister(watcherGauge)
+	prometheus.MustRegister(watchStreamGauge)
 	prometheus.MustRegister(watchingGauge)
 	prometheus.MustRegister(slowWatchingGauge)
 	prometheus.MustRegister(totalEventsCounter)
