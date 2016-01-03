@@ -334,14 +334,21 @@ func (c *cluster) UpdateAttributes(id types.ID, attr Attributes) bool {
 		m.Attributes = attr
 		return true
 	}
+	b, err := json.Marshal(attr)
+	if err != nil {
+		plog.Panicf("marshal attributes should never fail: %v", err)
+	}
+	p := path.Join(memberStoreKey(id), attributesSuffix)
 	_, ok := c.removed[id]
 	if ok {
 		plog.Warningf("skipped updating attributes of removed member %s", id)
+		return false
 	} else {
-		plog.Panicf("error updating attributes of unknown member %s", id)
+		if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
+			plog.Panicf("update Attributes should never fail: %v", err)
+		}
 	}
-	// TODO: update store in this function
-	return false
+	return true
 }
 
 func (c *cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
