@@ -21,13 +21,15 @@ import (
 )
 
 type WatchStream interface {
-	// Watch watches the events happening or happened on the given key
-	// or key prefix from the given startRev.
+	// Watch creates a watcher. The watcher watches the events happening or
+	// happened on the given key or key prefix from the given startRev.
+	//
 	// The whole event history can be watched unless compacted.
 	// If `prefix` is true, watch observes all events whose key prefix could be the given `key`.
 	// If `startRev` <=0, watch observes events after currentRev.
-	// The returned `id` is the ID of this watching. It appears as WatchID
-	// in events that are sent to this watching.
+	//
+	// The returned `id` is the ID of this watcher. It appears as WatchID
+	// in events that are sent to the created watcher through stream channel.
 	Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc)
 
 	// Chan returns a chan. All watched events will be sent to the returned chan.
@@ -37,14 +39,15 @@ type WatchStream interface {
 	Close()
 }
 
-// watchStream contains a collection of watching that share
+// watchStream contains a collection of watchers that share
 // one streaming chan to send out watched events and other control events.
 type watchStream struct {
 	watchable watchable
 	ch        chan []storagepb.Event
 
-	mu      sync.Mutex // guards fields below it
-	nextID  int64      // nextID is the ID allocated for next new watching
+	mu sync.Mutex // guards fields below it
+	// nextID is the ID pre-allocated for next new watcher in this stream
+	nextID  int64
 	closed  bool
 	cancels []CancelFunc
 }
