@@ -67,20 +67,20 @@ var (
 			Help:      "Total number of watch streams.",
 		})
 
-	watchingGauge = prometheus.NewGauge(
+	watcherGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "etcd",
 			Subsystem: "storage",
-			Name:      "watching_total",
-			Help:      "Total number of watchings.",
+			Name:      "watcher_total",
+			Help:      "Total number of watchers.",
 		})
 
-	slowWatchingGauge = prometheus.NewGauge(
+	slowWatcherGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "etcd",
 			Subsystem: "storage",
-			Name:      "slow_watching_total",
-			Help:      "Total number of unsynced slow watchings.",
+			Name:      "slow_watcher_total",
+			Help:      "Total number of unsynced slow watchers.",
 		})
 
 	totalEventsCounter = prometheus.NewCounter(
@@ -144,8 +144,8 @@ func init() {
 	prometheus.MustRegister(txnCounter)
 	prometheus.MustRegister(keysGauge)
 	prometheus.MustRegister(watchStreamGauge)
-	prometheus.MustRegister(watchingGauge)
-	prometheus.MustRegister(slowWatchingGauge)
+	prometheus.MustRegister(watcherGauge)
+	prometheus.MustRegister(slowWatcherGauge)
 	prometheus.MustRegister(totalEventsCounter)
 	prometheus.MustRegister(pendingEventsGauge)
 	prometheus.MustRegister(indexCompactionPauseDurations)

@@ -16,8 +16,8 @@ package storage
 
 import "testing"
 
-// TestWatcherWatchID tests that each watcher provides unique watch ID,
-// and the watched event attaches the correct watch ID.
+// TestWatcherWatchID tests that each watcher provides unique watchID,
+// and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
 	s := WatchableKV(newWatchableStore(tmpPath))
 	defer cleanup(s, tmpPath)
@@ -47,7 +47,7 @@ func TestWatcherWatchID(t *testing.T) {
 
 	s.Put([]byte("foo2"), []byte("bar"))
 
-	// unsynced watchings
+	// unsynced watchers
 	for i := 10; i < 20; i++ {
 		id, cancel := w.Watch([]byte("foo2"), false, 1)
 		if _, ok := idm[id]; ok {

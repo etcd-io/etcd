@@ -63,7 +63,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	}
 }
 
-// TestCancelUnsynced tests if running CancelFunc removes watchings from unsynced.
+// TestCancelUnsynced tests if running CancelFunc removes watchers from unsynced.
 func TestCancelUnsynced(t *testing.T) {
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore automatically calls syncWatchers
@@ -71,11 +71,11 @@ func TestCancelUnsynced(t *testing.T) {
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
 		store:    newDefaultStore(tmpPath),
-		unsynced: make(map[*watching]struct{}),
+		unsynced: make(map[*watcher]struct{}),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
-		synced: make(map[string]map[*watching]struct{}),
+		synced: make(map[string]map[*watcher]struct{}),
 	}
 
 	defer func() {
@@ -112,21 +112,20 @@ func TestCancelUnsynced(t *testing.T) {
 	// After running CancelFunc
 	//
 	// unsynced should be empty
-	// because cancel removes watching from unsynced
+	// because cancel removes watcher from unsynced
 	if len(s.unsynced) != 0 {
 		t.Errorf("unsynced size = %d, want 0", len(s.unsynced))
 	}
 }
 
-// TestSyncWatchings populates unsynced watching map and
-// tests syncWatchings method to see if it correctly sends
-// events to channel of unsynced watchings and moves these
-// watchings to synced.
-func TestSyncWatchings(t *testing.T) {
+// TestSyncWatchers populates unsynced watcher map and tests syncWatchers
+// method to see if it correctly sends events to channel of unsynced watchers
+// and moves these watchers to synced.
+func TestSyncWatchers(t *testing.T) {
 	s := &watchableStore{
 		store:    newDefaultStore(tmpPath),
-		unsynced: make(map[*watching]struct{}),
-		synced:   make(map[string]map[*watching]struct{}),
+		unsynced: make(map[*watcher]struct{}),
+		synced:   make(map[string]map[*watcher]struct{}),
 	}
 
 	defer func() {
@@ -148,7 +147,7 @@ func TestSyncWatchings(t *testing.T) {
 		w.Watch(testKey, true, 1)
 	}
 
-	// Before running s.syncWatchings()
+	// Before running s.syncWatchers()
 	//
 	// synced should be empty
 	// because we manually populate unsynced only
@@ -161,27 +160,27 @@ func TestSyncWatchings(t *testing.T) {
 		t.Errorf("unsynced size = %d, want %d", len(s.unsynced), watcherN)
 	}
 
-	// this should move all unsynced watchings
+	// this should move all unsynced watchers
 	// to synced ones
-	s.syncWatchings()
+	s.syncWatchers()
 
-	// After running s.syncWatchings()
+	// After running s.syncWatchers()
 	//
 	// synced should not be empty
-	// because syncWatchings populates synced
+	// because syncwatchers populates synced
 	// in this test case
 	if len(s.synced[string(testKey)]) == 0 {
 		t.Errorf("synced[string(testKey)] size = 0, want %d", len(s.synced[string(testKey)]))
 	}
 	// unsynced should be empty
-	// because syncWatchings is expected to move
-	// all watchings from unsynced to synced
+	// because syncwatchers is expected to move
+	// all watchers from unsynced to synced
 	// in this test case
 	if len(s.unsynced) != 0 {
 		t.Errorf("unsynced size = %d, want 0", len(s.unsynced))
 	}
 
-	// All of the watchings actually share one channel
+	// All of the watchers actually share one channel
 	// so we only need to check one shared channel
 	// (See watcher.go for more detail).
 	if len(w.(*watchStream).ch) != watcherN {
@@ -202,7 +201,7 @@ func TestSyncWatchings(t *testing.T) {
 	}
 }
 
-func TestUnsafeAddWatching(t *testing.T) {
+func TestUnsafeAddWatcher(t *testing.T) {
 	s := newWatchableStore(tmpPath)
 	defer func() {
 		s.store.Close()
@@ -213,18 +212,18 @@ func TestUnsafeAddWatching(t *testing.T) {
 	s.Put(testKey, testValue)
 
 	size := 10
-	ws := make([]*watching, size)
+	ws := make([]*watcher, size)
 	for i := 0; i < size; i++ {
-		ws[i] = &watching{
+		ws[i] = &watcher{
 			key:    testKey,
 			prefix: true,
 			cur:    0,
 		}
 	}
-	// to test if unsafeAddWatching is correctly updating
-	// synced map when adding new watching.
+	// to test if unsafeAddWatcher is correctly updating
+	// synced map when adding new watcher.
 	for i, wa := range ws {
-		if err := unsafeAddWatching(&s.synced, string(testKey), wa); err != nil {
+		if err := unsafeAddWatcher(&s.synced, string(testKey), wa); err != nil {
 			t.Errorf("#%d: error = %v, want nil", i, err)
 		}
 		if v, ok := s.synced[string(testKey)]; !ok {
@@ -240,11 +239,11 @@ func TestUnsafeAddWatching(t *testing.T) {
 	}
 }
 
-func TestNewMapWatchingToEventMap(t *testing.T) {
+func TestNewMapwatcherToEventMap(t *testing.T) {
 	k0, k1, k2 := []byte("foo0"), []byte("foo1"), []byte("foo2")
 	v0, v1, v2 := []byte("bar0"), []byte("bar1"), []byte("bar2")
 
-	ws := []*watching{{key: k0}, {key: k1}, {key: k2}}
+	ws := []*watcher{{key: k0}, {key: k1}, {key: k2}}
 
 	evs := []storagepb.Event{
 		{
@@ -262,63 +261,63 @@ func TestNewMapWatchingToEventMap(t *testing.T) {
 	}
 
 	tests := []struct {
-		sync map[string]map[*watching]struct{}
+		sync map[string]map[*watcher]struct{}
 		evs  []storagepb.Event
 
-		wwe map[*watching][]storagepb.Event
+		wwe map[*watcher][]storagepb.Event
 	}{
-		// no watching in sync, some events should return empty wwe
+		// no watcher in sync, some events should return empty wwe
 		{
-			map[string]map[*watching]struct{}{},
+			map[string]map[*watcher]struct{}{},
 			evs,
-			map[*watching][]storagepb.Event{},
+			map[*watcher][]storagepb.Event{},
 		},
 
-		// one watching in sync, one event that does not match the key of that
-		// watching should return empty wwe
+		// one watcher in sync, one event that does not match the key of that
+		// watcher should return empty wwe
 		{
-			map[string]map[*watching]struct{}{
+			map[string]map[*watcher]struct{}{
 				string(k2): {ws[2]: struct{}{}},
 			},
 			evs[:1],
-			map[*watching][]storagepb.Event{},
+			map[*watcher][]storagepb.Event{},
 		},
 
-		// one watching in sync, one event that matches the key of that
-		// watching should return wwe with that matching watching
+		// one watcher in sync, one event that matches the key of that
+		// watcher should return wwe with that matching watcher
 		{
-			map[string]map[*watching]struct{}{
+			map[string]map[*watcher]struct{}{
 				string(k1): {ws[1]: struct{}{}},
 			},
 			evs[1:2],
-			map[*watching][]storagepb.Event{
+			map[*watcher][]storagepb.Event{
 				ws[1]: evs[1:2],
 			},
 		},
 
-		// two watchings in sync that watches two different keys, one event
-		// that matches the key of only one of the watching should return wwe
-		// with the matching watching
+		// two watchers in sync that watches two different keys, one event
+		// that matches the key of only one of the watcher should return wwe
+		// with the matching watcher
 		{
-			map[string]map[*watching]struct{}{
+			map[string]map[*watcher]struct{}{
 				string(k0): {ws[0]: struct{}{}},
 				string(k2): {ws[2]: struct{}{}},
 			},
 			evs[2:],
-			map[*watching][]storagepb.Event{
+			map[*watcher][]storagepb.Event{
 				ws[2]: evs[2:],
 			},
 		},
 
-		// two watchings in sync that watches the same key, two events that
-		// match the keys should return wwe with those two watchings
+		// two watchers in sync that watches the same key, two events that
+		// match the keys should return wwe with those two watchers
 		{
-			map[string]map[*watching]struct{}{
+			map[string]map[*watcher]struct{}{
 				string(k0): {ws[0]: struct{}{}},
 				string(k1): {ws[1]: struct{}{}},
 			},
 			evs[:2],
-			map[*watching][]storagepb.Event{
+			map[*watcher][]storagepb.Event{
 				ws[0]: evs[:1],
 				ws[1]: evs[1:2],
 			},
@@ -326,7 +325,7 @@ func TestNewMapWatchingToEventMap(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gwe := newWatchingToEventMap(tt.sync, tt.evs)
+		gwe := newWatcherToEventMap(tt.sync, tt.evs)
 		if len(gwe) != len(tt.wwe) {
 			t.Errorf("#%d: len(gwe) got = %d, want = %d", i, len(gwe), len(tt.wwe))
 		}
