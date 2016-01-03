@@ -65,3 +65,39 @@ func TestWatcherWatchID(t *testing.T) {
 		cancel()
 	}
 }
+
+// TestWatchStreamCancel ensures cancel calls the cancel func of the watcher
+// with given id inside watchStream.
+func TestWatchStreamCancelWatcherByID(t *testing.T) {
+	s := WatchableKV(newWatchableStore(tmpPath))
+	defer cleanup(s, tmpPath)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	id, _ := w.Watch([]byte("foo"), false, 0)
+
+	tests := []struct {
+		cancelID int64
+		werr     error
+	}{
+		// no error should be returned when cancel the created watcher.
+		{id, nil},
+		// not exist error should be returned when cancel again.
+		{id, ErrWatcherNotExist},
+		// not exist error should be returned when cancel a bad id.
+		{id + 1, ErrWatcherNotExist},
+	}
+
+	for i, tt := range tests {
+		gerr := w.Cancel(tt.cancelID)
+
+		if gerr != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, gerr, tt.werr)
+		}
+	}
+
+	if l := len(w.(*watchStream).cancels); l != 0 {
+		t.Errorf("cancels = %d, want 0", l)
+	}
+}

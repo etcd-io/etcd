@@ -182,6 +182,7 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	return &watchStream{
 		watchable: s,
 		ch:        make(chan []storagepb.Event, chanBufLen),
+		cancels:   make(map[int64]CancelFunc),
 	}
 }
 

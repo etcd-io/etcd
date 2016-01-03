@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
@@ -67,7 +68,7 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 		// TODO: support start and end revision
 		segs := strings.Split(l, " ")
 		if len(segs) != 2 {
-			fmt.Fprintf(os.Stderr, "Invalid watch request format: use watch key or watchprefix prefix\n")
+			fmt.Fprintf(os.Stderr, "Invalid watch request format: use \"watch [key]\", \"watchprefix [prefix]\" or \"cancel [watcher ID]\"\n")
 			continue
 		}
 
@@ -77,8 +78,15 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 			r = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte(segs[1])}}
 		case "watchprefix":
 			r = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte(segs[1])}}
+		case "cancel":
+			id, perr := strconv.ParseInt(segs[1], 10, 64)
+			if perr != nil {
+				fmt.Fprintf(os.Stderr, "Invalid cancel ID (%v)\n", perr)
+				continue
+			}
+			r = &pb.WatchRequest{CancelRequest: &pb.WatchCancelRequest{WatchId: id}}
 		default:
-			fmt.Fprintf(os.Stderr, "Invalid watch request format: use watch key or watchprefix prefix\n")
+			fmt.Fprintf(os.Stderr, "Invalid watch request type: use watch, watchprefix or cancel\n")
 			continue
 		}
 
@@ -103,6 +111,8 @@ func recvLoop(wStream pb.Watch_WatchClient) {
 		// TODO: handle canceled/compacted and other control response types
 		case resp.Created:
 			fmt.Printf("watcher created: id %08x\n", resp.WatchId)
+		case resp.Canceled:
+			fmt.Printf("watcher canceled: id %08x\n", resp.WatchId)
 		default:
 			for _, ev := range resp.Events {
 				fmt.Printf("%s: %s %s\n", ev.Type, string(ev.Kv.Key), string(ev.Kv.Value))

@@ -91,8 +91,18 @@ func (sws *serverWatchStream) recvLoop() error {
 				WatchId: id,
 				Created: true,
 			}
+		case req.CancelRequest != nil:
+			id := req.CancelRequest.WatchId
+			err := sws.watchStream.Cancel(id)
+			if err == nil {
+				sws.ctrlStream <- &pb.WatchResponse{
+					// TODO: fill in response header.
+					WatchId:  id,
+					Canceled: true,
+				}
+			}
+			// TODO: do we need to return error back to client?
 		default:
-			// TODO: support cancellation
 			panic("not implemented")
 		}
 	}
