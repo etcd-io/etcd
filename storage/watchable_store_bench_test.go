@@ -52,7 +52,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	// and force watchers to be in unsynced.
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue)
+	s.Put(testKey, testValue, NoLease)
 
 	w := s.NewWatchStream()
 
@@ -90,7 +90,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	// Put a key so that we can spawn watchers on that key
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue)
+	s.Put(testKey, testValue, NoLease)
 
 	w := s.NewWatchStream()
 

@@ -25,6 +25,8 @@ type CancelFunc func()
 
 type Snapshot backend.Snapshot
 
+type LeaseID int64
+
 type KV interface {
 	// Rev returns the current revision of the KV.
 	Rev() int64
@@ -37,9 +39,11 @@ type KV interface {
 	// If the required rev is compacted, ErrCompacted will be returned.
 	Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
 
-	// Put puts the given key,value into the store.
+	// Put puts the given key, value into the store. Put also takes additional argument lease to
+	// attach a lease to a key-value pair as meta-data. KV implementation does not validate the lease
+	// id.
 	// A put also increases the rev of the store, and generates one event in the event history.
-	Put(key, value []byte) (rev int64)
+	Put(key, value []byte, lease LeaseID) (rev int64)
 
 	// DeleteRange deletes the given range from the store.
 	// A deleteRange increases the rev of the store if any key in the range exists.
@@ -57,7 +61,7 @@ type KV interface {
 	// TxnEnd ends the on-going txn with txn ID. If the on-going txn ID is not matched, error is returned.
 	TxnEnd(txnID int64) error
 	TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
-	TxnPut(txnID int64, key, value []byte) (rev int64, err error)
+	TxnPut(txnID int64, key, value []byte, lease LeaseID) (rev int64, err error)
 	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
 
 	Compact(rev int64) error

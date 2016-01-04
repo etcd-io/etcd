@@ -39,6 +39,8 @@ var (
 	markBytePosition       = markedRevBytesLen - 1
 	markTombstone     byte = 't'
 
+	NoLease = LeaseID(0)
+
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
@@ -95,9 +97,9 @@ func (s *store) Rev() int64 {
 	return s.currentRev.main
 }
 
-func (s *store) Put(key, value []byte) int64 {
+func (s *store) Put(key, value []byte, lease LeaseID) int64 {
 	id := s.TxnBegin()
-	s.put(key, value)
+	s.put(key, value, lease)
 	s.txnEnd(id)
 
 	putCounter.Inc()
@@ -170,12 +172,12 @@ func (s *store) TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (k
 	return s.rangeKeys(key, end, limit, rangeRev)
 }
 
-func (s *store) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
+func (s *store) TxnPut(txnID int64, key, value []byte, lease LeaseID) (rev int64, err error) {
 	if txnID != s.txnID {
 		return 0, ErrTxnIDMismatch
 	}
 
-	s.put(key, value)
+	s.put(key, value, lease)
 	return int64(s.currentRev.main + 1), nil
 }
 
@@ -351,7 +353,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	return kvs, rev, nil
 }
 
-func (s *store) put(key, value []byte) {
+func (s *store) put(key, value []byte, lease LeaseID) {
 	rev := s.currentRev.main + 1
 	c := rev
 
@@ -371,6 +373,7 @@ func (s *store) put(key, value []byte) {
 		CreateRevision: c,
 		ModRevision:    rev,
 		Version:        ver,
+		Lease:          int64(lease),
 	}
 
 	d, err := kv.Marshal()

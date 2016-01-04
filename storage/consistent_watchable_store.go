@@ -59,9 +59,9 @@ func newConsistentWatchableStore(path string, ig ConsistentIndexGetter) *consist
 	}
 }
 
-func (s *consistentWatchableStore) Put(key, value []byte) (rev int64) {
+func (s *consistentWatchableStore) Put(key, value []byte, lease LeaseID) (rev int64) {
 	id := s.TxnBegin()
-	rev, err := s.TxnPut(id, key, value)
+	rev, err := s.TxnPut(id, key, value, lease)
 	if err != nil {
 		log.Panicf("unexpected TxnPut error (%v)", err)
 	}
@@ -109,11 +109,11 @@ func (s *consistentWatchableStore) TxnRange(txnID int64, key, end []byte, limit,
 	return s.watchableStore.TxnRange(txnID, key, end, limit, rangeRev)
 }
 
-func (s *consistentWatchableStore) TxnPut(txnID int64, key, value []byte) (rev int64, err error) {
+func (s *consistentWatchableStore) TxnPut(txnID int64, key, value []byte, lease LeaseID) (rev int64, err error) {
 	if s.skip {
 		return 0, nil
 	}
-	return s.watchableStore.TxnPut(txnID, key, value)
+	return s.watchableStore.TxnPut(txnID, key, value, lease)
 }
 
 func (s *consistentWatchableStore) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error) {

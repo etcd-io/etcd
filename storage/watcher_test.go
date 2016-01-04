@@ -34,7 +34,7 @@ func TestWatcherWatchID(t *testing.T) {
 		}
 		idm[id] = struct{}{}
 
-		s.Put([]byte("foo"), []byte("bar"))
+		s.Put([]byte("foo"), []byte("bar"), NoLease)
 
 		resp := <-w.Chan()
 		if resp.WatchID != id {
@@ -44,7 +44,7 @@ func TestWatcherWatchID(t *testing.T) {
 		cancel()
 	}
 
-	s.Put([]byte("foo2"), []byte("bar"))
+	s.Put([]byte("foo2"), []byte("bar"), NoLease)
 
 	// unsynced watchers
 	for i := 10; i < 20; i++ {

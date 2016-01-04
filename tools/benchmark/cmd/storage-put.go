@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/etcd/storage"
 )
 
 // storagePutCmd represents a storage put performance benchmarking tool
@@ -72,13 +73,13 @@ func storagePutFunc(cmd *cobra.Command, args []string) {
 
 		if txn {
 			id := s.TxnBegin()
-			if _, err := s.TxnPut(id, keys[i], vals[i]); err != nil {
+			if _, err := s.TxnPut(id, keys[i], vals[i], storage.NoLease); err != nil {
 				fmt.Errorf("txn put error: %v", err)
 				os.Exit(1)
 			}
 			s.TxnEnd(id)
 		} else {
-			s.Put(keys[i], vals[i])
+			s.Put(keys[i], vals[i], storage.NoLease)
 		}
 
 		end := time.Now()

@@ -33,7 +33,7 @@ func TestStoreRev(t *testing.T) {
 	defer os.Remove(tmpPath)
 
 	for i := 0; i < 3; i++ {
-		s.Put([]byte("foo"), []byte("bar"))
+		s.Put([]byte("foo"), []byte("bar"), NoLease)
 		if r := s.Rev(); r != int64(i+1) {
 			t.Errorf("#%d: rev = %d, want %d", i, r, i+1)
 		}
@@ -61,6 +61,7 @@ func TestStorePut(t *testing.T) {
 				CreateRevision: 2,
 				ModRevision:    2,
 				Version:        1,
+				Lease:          1,
 			},
 			revision{2, 0},
 		},
@@ -75,6 +76,7 @@ func TestStorePut(t *testing.T) {
 				CreateRevision: 2,
 				ModRevision:    2,
 				Version:        2,
+				Lease:          2,
 			},
 			revision{2, 1},
 		},
@@ -89,6 +91,7 @@ func TestStorePut(t *testing.T) {
 				CreateRevision: 2,
 				ModRevision:    3,
 				Version:        3,
+				Lease:          3,
 			},
 			revision{3, 0},
 		},
@@ -102,7 +105,7 @@ func TestStorePut(t *testing.T) {
 		s.tx = b.BatchTx()
 		fi.indexGetRespc <- tt.r
 
-		s.put([]byte("foo"), []byte("bar"))
+		s.put([]byte("foo"), []byte("bar"), LeaseID(i+1))
 
 		data, err := tt.wkv.Marshal()
 		if err != nil {
@@ -357,9 +360,9 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	s0 := newDefaultStore(tmpPath)
 	defer os.Remove(tmpPath)
 
-	s0.Put([]byte("foo"), []byte("bar"))
-	s0.Put([]byte("foo"), []byte("bar1"))
-	s0.Put([]byte("foo"), []byte("bar2"))
+	s0.Put([]byte("foo"), []byte("bar"), NoLease)
+	s0.Put([]byte("foo"), []byte("bar1"), NoLease)
+	s0.Put([]byte("foo"), []byte("bar2"), NoLease)
 
 	// write scheduled compaction, but not do compaction
 	rbytes := newRevBytes()
@@ -416,7 +419,7 @@ func TestTxnPut(t *testing.T) {
 		id := s.TxnBegin()
 		base := int64(i + 1)
 
-		rev, err := s.TxnPut(id, keys[i], vals[i])
+		rev, err := s.TxnPut(id, keys[i], vals[i], NoLease)
 		if err != nil {
 			t.Error("txn put error")
 		}
