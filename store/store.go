@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 )
 
@@ -742,4 +743,127 @@ func (s *store) Recovery(state []byte) error {
 func (s *store) JsonStats() []byte {
 	s.Stats.Watchers = uint64(s.WatcherHub.count)
 	return s.Stats.toJson()
+}
+
+// StoreRecorder provides a Store interface with a testutil.Recorder
+type StoreRecorder struct {
+	Store
+	*testutil.Recorder
+}
+
+// storeRecorder records all the methods it receives.
+// storeRecorder DOES NOT work as a actual store.
+// It always returns invalid empty response and no error.
+type storeRecorder struct {
+	Store
+	testutil.Recorder
+}
+
+func NewNop() Store { return &storeRecorder{} }
+func NewRecorder() *StoreRecorder {
+	sr := &storeRecorder{}
+	return &StoreRecorder{Store: sr, Recorder: &sr.Recorder}
+}
+
+func (s *storeRecorder) Version() int  { return 0 }
+func (s *storeRecorder) Index() uint64 { return 0 }
+func (s *storeRecorder) Get(path string, recursive, sorted bool) (*Event, error) {
+	s.Record(testutil.Action{
+		Name:   "Get",
+		Params: []interface{}{path, recursive, sorted},
+	})
+	return &Event{}, nil
+}
+func (s *storeRecorder) Set(path string, dir bool, val string, expr time.Time) (*Event, error) {
+	s.Record(testutil.Action{
+		Name:   "Set",
+		Params: []interface{}{path, dir, val, expr},
+	})
+	return &Event{}, nil
+}
+func (s *storeRecorder) Update(path, val string, expr time.Time) (*Event, error) {
+	s.Record(testutil.Action{
+		Name:   "Update",
+		Params: []interface{}{path, val, expr},
+	})
+	return &Event{}, nil
+}
+func (s *storeRecorder) Create(path string, dir bool, val string, uniq bool, exp time.Time) (*Event, error) {
+	s.Record(testutil.Action{
+		Name:   "Create",
+		Params: []interface{}{path, dir, val, uniq, exp},
+	})
+	return &Event{}, nil
+}
+func (s *storeRecorder) CompareAndSwap(path, prevVal string, prevIdx uint64, val string, expr time.Time) (*Event, error) {
+	s.Record(testutil.Action{
+		Name:   "CompareAndSwap",
+		Params: []interface{}{path, prevVal, prevIdx, val, expr},
+	})
+	return &Event{}, nil
+}
+func (s *storeRecorder) Delete(path string, dir, recursive bool) (*Event, error) {
+	s.Record(testutil.Action{
+		Name:   "Delete",
+		Params: []interface{}{path, dir, recursive},
+	})
+	return &Event{}, nil
+}
+func (s *storeRecorder) CompareAndDelete(path, prevVal string, prevIdx uint64) (*Event, error) {
+	s.Record(testutil.Action{
+		Name:   "CompareAndDelete",
+		Params: []interface{}{path, prevVal, prevIdx},
+	})
+	return &Event{}, nil
+}
+func (s *storeRecorder) Watch(_ string, _, _ bool, _ uint64) (Watcher, error) {
+	s.Record(testutil.Action{Name: "Watch"})
+	return NewNopWatcher(), nil
+}
+func (s *storeRecorder) Save() ([]byte, error) {
+	s.Record(testutil.Action{Name: "Save"})
+	return nil, nil
+}
+func (s *storeRecorder) Recovery(b []byte) error {
+	s.Record(testutil.Action{Name: "Recovery"})
+	return nil
+}
+
+func (s *storeRecorder) SaveNoCopy() ([]byte, error) {
+	s.Record(testutil.Action{Name: "SaveNoCopy"})
+	return nil, nil
+}
+
+func (s *storeRecorder) Clone() Store {
+	s.Record(testutil.Action{Name: "Clone"})
+	return s
+}
+
+func (s *storeRecorder) JsonStats() []byte { return nil }
+func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
+	s.Record(testutil.Action{
+		Name:   "DeleteExpiredKeys",
+		Params: []interface{}{cutoff},
+	})
+}
+
+// errStoreRecorder is a storeRecorder, but returns the given error on
+// Get, Watch methods.
+type errStoreRecorder struct {
+	storeRecorder
+	err error
+}
+
+func NewErrRecorder(err error) *StoreRecorder {
+	sr := &errStoreRecorder{err: err}
+	return &StoreRecorder{Store: sr, Recorder: &sr.Recorder}
+}
+
+func (s *errStoreRecorder) Get(path string, recursive, sorted bool) (*Event, error) {
+	s.storeRecorder.Get(path, recursive, sorted)
+	return nil, s.err
+}
+func (s *errStoreRecorder) Watch(path string, recursive, sorted bool, index uint64) (Watcher, error) {
+	s.storeRecorder.Watch(path, recursive, sorted, index)
+	return nil, s.err
 }

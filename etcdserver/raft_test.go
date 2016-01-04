@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/rafthttp"
 )
 
 func TestGetIDs(t *testing.T) {
@@ -154,7 +155,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 		Node:        n,
 		storage:     &storageRecorder{},
 		raftStorage: raft.NewMemoryStorage(),
-		transport:   &nopTransporter{},
+		transport:   rafthttp.NewNopTransporter(),
 	}
 	r.start(&EtcdServer{r: r})
 	n.readyc <- raft.Ready{}

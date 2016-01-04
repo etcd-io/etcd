@@ -406,7 +406,7 @@ func TestClusterGenID(t *testing.T) {
 	}
 	previd := cs.ID()
 
-	cs.SetStore(&storeRecorder{})
+	cs.SetStore(store.NewNop())
 	cs.AddMember(newTestMember(3, nil, "", nil))
 	cs.genID()
 	if cs.ID() == previd {
@@ -447,7 +447,7 @@ func TestNodeToMemberBad(t *testing.T) {
 }
 
 func TestClusterAddMember(t *testing.T) {
-	st := &storeRecorder{}
+	st := store.NewRecorder()
 	c := newTestCluster(nil)
 	c.SetStore(st)
 	c.AddMember(newTestMember(1, nil, "node1", nil))
@@ -492,7 +492,7 @@ func TestClusterMembers(t *testing.T) {
 }
 
 func TestClusterRemoveMember(t *testing.T) {
-	st := &storeRecorder{}
+	st := store.NewRecorder()
 	c := newTestCluster(nil)
 	c.SetStore(st)
 	c.RemoveMember(1)
