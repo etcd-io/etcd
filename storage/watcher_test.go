@@ -36,12 +36,11 @@ func TestWatcherWatchID(t *testing.T) {
 
 		s.Put([]byte("foo"), []byte("bar"))
 
-		evs := <-w.Chan()
-		for j, ev := range evs {
-			if ev.WatchID != id {
-				t.Errorf("#%d.%d: watch id in event = %d, want %d", i, j, ev.WatchID, id)
-			}
+		resp := <-w.Chan()
+		if resp.WatchID != id {
+			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
 		}
+
 		cancel()
 	}
 
@@ -55,11 +54,9 @@ func TestWatcherWatchID(t *testing.T) {
 		}
 		idm[id] = struct{}{}
 
-		evs := <-w.Chan()
-		for j, ev := range evs {
-			if ev.WatchID != id {
-				t.Errorf("#%d.%d: watch id in event = %d, want %d", i, j, ev.WatchID, id)
-			}
+		resp := <-w.Chan()
+		if resp.WatchID != id {
+			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
 		}
 
 		cancel()

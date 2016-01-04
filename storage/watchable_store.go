@@ -33,7 +33,7 @@ const (
 )
 
 type watchable interface {
-	watch(key []byte, prefix bool, startRev, id int64, ch chan<- []storagepb.Event) (*watcher, CancelFunc)
+	watch(key []byte, prefix bool, startRev, id int64, ch chan<- WatchResponse) (*watcher, CancelFunc)
 }
 
 type watchableStore struct {
@@ -181,12 +181,12 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	watchStreamGauge.Inc()
 	return &watchStream{
 		watchable: s,
-		ch:        make(chan []storagepb.Event, chanBufLen),
+		ch:        make(chan WatchResponse, chanBufLen),
 		cancels:   make(map[int64]CancelFunc),
 	}
 }
 
-func (s *watchableStore) watch(key []byte, prefix bool, startRev, id int64, ch chan<- []storagepb.Event) (*watcher, CancelFunc) {
+func (s *watchableStore) watch(key []byte, prefix bool, startRev, id int64, ch chan<- WatchResponse) (*watcher, CancelFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -340,8 +340,9 @@ func (s *watchableStore) syncWatchers() {
 	}
 
 	for w, es := range newWatcherToEventMap(keyToUnsynced, evs) {
+		wr := WatchResponse{WatchID: w.id, Events: es}
 		select {
-		case w.ch <- es:
+		case w.ch <- wr:
 			pendingEventsGauge.Add(float64(len(es)))
 		default:
 			// TODO: handle the full unsynced watchers.
@@ -374,8 +375,9 @@ func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 				continue
 			}
 			es := we[w]
+			wr := WatchResponse{WatchID: w.id, Events: es}
 			select {
-			case w.ch <- es:
+			case w.ch <- wr:
 				pendingEventsGauge.Add(float64(len(es)))
 			default:
 				// move slow watcher to unsynced
@@ -427,9 +429,9 @@ type watcher struct {
 	cur int64
 	id  int64
 
-	// a chan to send out the watched events.
+	// a chan to send out the watch response.
 	// The chan might be shared with other watchers.
-	ch chan<- []storagepb.Event
+	ch chan<- WatchResponse
 }
 
 // unsafeAddWatcher puts watcher with key k into watchableStore's synced.
@@ -475,7 +477,6 @@ func newWatcherToEventMap(sm map[string]map[*watcher]struct{}, evs []storagepb.E
 				if !w.prefix && i != len(ev.Kv.Key) {
 					continue
 				}
-				ev.WatchID = w.id
 
 				if _, ok := watcherToEvents[w]; !ok {
 					watcherToEvents[w] = []storagepb.Event{}
