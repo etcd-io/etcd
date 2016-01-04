@@ -468,7 +468,7 @@ func TestApplyConfChangeError(t *testing.T) {
 				Params: []interface{}{cc},
 			},
 		}
-		if g := n.Action(); !reflect.DeepEqual(g, w) {
+		if g, _ := n.Wait(1); !reflect.DeepEqual(g, w) {
 			t.Errorf("#%d: action = %+v, want %+v", i, g, w)
 		}
 	}
@@ -657,9 +657,7 @@ func TestSync(t *testing.T) {
 		t.Fatal("sync should be non-blocking but did not return after 1s!")
 	}
 
-	testutil.WaitSchedule()
-
-	action := n.Action()
+	action, _ := n.Wait(1)
 	if len(action) != 1 {
 		t.Fatalf("len(action) = %d, want 1", len(action))
 	}
@@ -697,10 +695,8 @@ func TestSyncTimeout(t *testing.T) {
 		t.Fatal("sync should be non-blocking but did not return after 1s!")
 	}
 
-	// give time for goroutine in sync to cancel
-	testutil.WaitSchedule()
 	w := []testutil.Action{{Name: "Propose blocked"}}
-	if g := n.Action(); !reflect.DeepEqual(g, w) {
+	if g, _ := n.Wait(1); !reflect.DeepEqual(g, w) {
 		t.Errorf("action = %v, want %v", g, w)
 	}
 }
@@ -723,19 +719,22 @@ func TestSyncTrigger(t *testing.T) {
 		SyncTicker: st,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.start()
-	defer srv.Stop()
-	// trigger the server to become a leader and accept sync requests
-	n.readyc <- raft.Ready{
-		SoftState: &raft.SoftState{
-			RaftState: raft.StateLeader,
-		},
-	}
-	// trigger a sync request
-	st <- time.Time{}
-	testutil.WaitSchedule()
 
-	action := n.Action()
+	// trigger the server to become a leader and accept sync requests
+	go func() {
+		srv.start()
+		n.readyc <- raft.Ready{
+			SoftState: &raft.SoftState{
+				RaftState: raft.StateLeader,
+			},
+		}
+		// trigger a sync request
+		st <- time.Time{}
+	}()
+
+	action, _ := n.Wait(1)
+	go srv.Stop()
+
 	if len(action) != 1 {
 		t.Fatalf("len(action) = %d, want 1", len(action))
 	}
@@ -750,6 +749,9 @@ func TestSyncTrigger(t *testing.T) {
 	if req.Method != "SYNC" {
 		t.Fatalf("unexpected proposed request: %#v", req.Method)
 	}
+
+	// wait on stop message
+	<-n.Chan()
 }
 
 // snapshot should snapshot the store and cut the persistent
@@ -768,8 +770,7 @@ func TestSnapshot(t *testing.T) {
 		store: st,
 	}
 	srv.snapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
-	testutil.WaitSchedule()
-	gaction := st.Action()
+	gaction, _ := st.Wait(2)
 	if len(gaction) != 2 {
 		t.Fatalf("len(action) = %d, want 1", len(gaction))
 	}
@@ -809,14 +810,14 @@ func TestTriggerSnap(t *testing.T) {
 	for i := 0; i < snapc+1; i++ {
 		srv.Do(context.Background(), pb.Request{Method: "PUT"})
 	}
-	srv.Stop()
-	// wait for snapshot goroutine to finish
-	testutil.WaitSchedule()
 
-	gaction := p.Action()
+	wcnt := 2 + snapc
+	gaction, _ := p.Wait(wcnt)
+
+	srv.Stop()
+
 	// each operation is recorded as a Save
 	// (SnapCount+1) * Puts + SaveSnap = (SnapCount+1) * Save + SaveSnap
-	wcnt := 2 + snapc
 	if len(gaction) != wcnt {
 		t.Fatalf("len(action) = %d, want %d", len(gaction), wcnt)
 	}
@@ -832,7 +833,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		// snapshots that may queue up at once without dropping
 		maxInFlightMsgSnap = 16
 	)
-	n := newReadyNode()
+	n := newNopReadyNode()
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
 
@@ -922,7 +923,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 // TestRecvSnapshot tests when it receives a snapshot from raft leader,
 // it should trigger storage.SaveSnap and also store.Recover.
 func TestRecvSnapshot(t *testing.T) {
-	n := newReadyNode()
+	n := newNopReadyNode()
 	st := store.NewRecorder()
 	p := &storageRecorder{}
 	cl := newCluster("abc")
@@ -962,7 +963,7 @@ func TestRecvSnapshot(t *testing.T) {
 // TestApplySnapshotAndCommittedEntries tests that server applies snapshot
 // first and then committed entries.
 func TestApplySnapshotAndCommittedEntries(t *testing.T) {
-	n := newReadyNode()
+	n := newNopReadyNode()
 	st := store.NewRecorder()
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
@@ -988,10 +989,9 @@ func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 		},
 	}
 	// make goroutines move forward to receive snapshot
-	testutil.WaitSchedule()
+	actions, _ := st.Wait(2)
 	s.Stop()
 
-	actions := st.Action()
 	if len(actions) != 2 {
 		t.Fatalf("len(action) = %d, want 2", len(actions))
 	}
@@ -1374,8 +1374,14 @@ type readyNode struct {
 }
 
 func newReadyNode() *readyNode {
+	return &readyNode{
+		nodeRecorder{testutil.NewRecorderStream()},
+		make(chan raft.Ready, 1)}
+}
+func newNopReadyNode() *readyNode {
 	return &readyNode{*newNodeRecorder(), make(chan raft.Ready, 1)}
 }
+
 func (n *readyNode) Ready() <-chan raft.Ready { return n.readyc }
 
 type nodeConfChangeCommitterRecorder struct {
@@ -1384,8 +1390,9 @@ type nodeConfChangeCommitterRecorder struct {
 }
 
 func newNodeConfChangeCommitterRecorder() *nodeConfChangeCommitterRecorder {
-	return &nodeConfChangeCommitterRecorder{*newReadyNode(), 0}
+	return &nodeConfChangeCommitterRecorder{*newNopReadyNode(), 0}
 }
+
 func (n *nodeConfChangeCommitterRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChange) error {
 	data, err := conf.Marshal()
 	if err != nil {
@@ -1411,7 +1418,7 @@ type nodeCommitter struct {
 }
 
 func newNodeCommitter() raft.Node {
-	return &nodeCommitter{*newReadyNode(), 0}
+	return &nodeCommitter{*newNopReadyNode(), 0}
 }
 func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
 	n.index++

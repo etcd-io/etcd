@@ -150,7 +150,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 }
 
 func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
-	n := newReadyNode()
+	n := newNopReadyNode()
 	r := raftNode{
 		Node:        n,
 		storage:     &storageRecorder{},
