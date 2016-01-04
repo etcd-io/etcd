@@ -1313,7 +1313,7 @@ func TestGetOtherPeerURLs(t *testing.T) {
 
 type nodeRecorder struct{ testutil.Recorder }
 
-func newNodeRecorder() *nodeRecorder { return &nodeRecorder{} }
+func newNodeRecorder() *nodeRecorder { return &nodeRecorder{&testutil.RecorderBuffered{}} }
 func newNodeNop() raft.Node          { return newNodeRecorder() }
 
 func (n *nodeRecorder) Tick() { n.Record(testutil.Action{Name: "Tick"}) }

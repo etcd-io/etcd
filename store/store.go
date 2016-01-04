@@ -748,7 +748,7 @@ func (s *store) JsonStats() []byte {
 // StoreRecorder provides a Store interface with a testutil.Recorder
 type StoreRecorder struct {
 	Store
-	*testutil.Recorder
+	testutil.Recorder
 }
 
 // storeRecorder records all the methods it receives.
@@ -756,13 +756,13 @@ type StoreRecorder struct {
 // It always returns invalid empty response and no error.
 type storeRecorder struct {
 	Store
-	testutil.Recorder
+	testutil.RecorderBuffered
 }
 
 func NewNop() Store { return &storeRecorder{} }
 func NewRecorder() *StoreRecorder {
 	sr := &storeRecorder{}
-	return &StoreRecorder{Store: sr, Recorder: &sr.Recorder}
+	return &StoreRecorder{Store: sr, Recorder: sr}
 }
 
 func (s *storeRecorder) Version() int  { return 0 }
@@ -856,7 +856,7 @@ type errStoreRecorder struct {
 
 func NewErrRecorder(err error) *StoreRecorder {
 	sr := &errStoreRecorder{err: err}
-	return &StoreRecorder{Store: sr, Recorder: &sr.Recorder}
+	return &StoreRecorder{Store: sr, Recorder: sr}
 }
 
 func (s *errStoreRecorder) Get(path string, recursive, sorted bool) (*Event, error) {

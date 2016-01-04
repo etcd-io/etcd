@@ -149,7 +149,7 @@ func makeMemberDir(dir string) error {
 }
 
 type storageRecorder struct {
-	testutil.Recorder
+	testutil.RecorderBuffered
 	dbPath string // must have '/' suffix if set
 }
 

@@ -473,8 +473,11 @@ func newTestKeyBytes(rev revision, tombstone bool) []byte {
 }
 
 func newFakeStore() *store {
-	b := &fakeBackend{&fakeBatchTx{rangeRespc: make(chan rangeResp, 5)}}
+	b := &fakeBackend{&fakeBatchTx{
+		Recorder:   &testutil.RecorderBuffered{},
+		rangeRespc: make(chan rangeResp, 5)}}
 	fi := &fakeIndex{
+		Recorder:              &testutil.RecorderBuffered{},
 		indexGetRespc:         make(chan indexGetResp, 1),
 		indexRangeRespc:       make(chan indexRangeResp, 1),
 		indexRangeEventsRespc: make(chan indexRangeEventsResp, 1),

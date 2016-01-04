@@ -60,16 +60,16 @@ func (w *List) Trigger(id uint64, x interface{}) {
 
 type WaitRecorder struct {
 	Wait
-	*testutil.Recorder
+	testutil.Recorder
 }
 
 type waitRecorder struct {
-	testutil.Recorder
+	testutil.RecorderBuffered
 }
 
 func NewRecorder() *WaitRecorder {
 	wr := &waitRecorder{}
-	return &WaitRecorder{Wait: wr, Recorder: &wr.Recorder}
+	return &WaitRecorder{Wait: wr, Recorder: wr}
 }
 func NewNop() Wait { return NewRecorder() }
 
