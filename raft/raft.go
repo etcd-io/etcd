@@ -243,8 +243,8 @@ func (r *raft) q() int { return len(r.prs)/2 + 1 }
 
 func (r *raft) nodes() []uint64 {
 	nodes := make([]uint64, 0, len(r.prs))
-	for k := range r.prs {
-		nodes = append(nodes, k)
+	for id := range r.prs {
+		nodes = append(nodes, id)
 	}
 	sort.Sort(uint64Slice(nodes))
 	return nodes
@@ -341,30 +341,30 @@ func (r *raft) sendHeartbeat(to uint64) {
 // bcastAppend sends RPC, with entries to all peers that are not up-to-date
 // according to the progress recorded in r.prs.
 func (r *raft) bcastAppend() {
-	for i := range r.prs {
-		if i == r.id {
+	for id := range r.prs {
+		if id == r.id {
 			continue
 		}
-		r.sendAppend(i)
+		r.sendAppend(id)
 	}
 }
 
 // bcastHeartbeat sends RPC, without entries to all the peers.
 func (r *raft) bcastHeartbeat() {
-	for i := range r.prs {
-		if i == r.id {
+	for id := range r.prs {
+		if id == r.id {
 			continue
 		}
-		r.sendHeartbeat(i)
-		r.prs[i].resume()
+		r.sendHeartbeat(id)
+		r.prs[id].resume()
 	}
 }
 
 func (r *raft) maybeCommit() bool {
 	// TODO(bmizerany): optimize.. Currently naive
 	mis := make(uint64Slice, 0, len(r.prs))
-	for i := range r.prs {
-		mis = append(mis, r.prs[i].Match)
+	for id := range r.prs {
+		mis = append(mis, r.prs[id].Match)
 	}
 	sort.Sort(sort.Reverse(mis))
 	mci := mis[r.q()-1]
@@ -382,10 +382,10 @@ func (r *raft) reset(term uint64) {
 	r.heartbeatElapsed = 0
 
 	r.votes = make(map[uint64]bool)
-	for i := range r.prs {
-		r.prs[i] = &Progress{Next: r.raftLog.lastIndex() + 1, ins: newInflights(r.maxInflight)}
-		if i == r.id {
-			r.prs[i].Match = r.raftLog.lastIndex()
+	for id := range r.prs {
+		r.prs[id] = &Progress{Next: r.raftLog.lastIndex() + 1, ins: newInflights(r.maxInflight)}
+		if id == r.id {
+			r.prs[id].Match = r.raftLog.lastIndex()
 		}
 	}
 	r.pendingConf = false
@@ -493,13 +493,13 @@ func (r *raft) campaign() {
 		r.becomeLeader()
 		return
 	}
-	for i := range r.prs {
-		if i == r.id {
+	for id := range r.prs {
+		if id == r.id {
 			continue
 		}
 		r.logger.Infof("%x [logterm: %d, index: %d] sent vote request to %x at term %d",
-			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), i, r.Term)
-		r.send(pb.Message{To: i, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
+			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), id, r.Term)
+		r.send(pb.Message{To: id, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
 	}
 }
 
