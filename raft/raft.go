@@ -262,7 +262,7 @@ func (r *raft) send(m pb.Message) {
 	r.msgs = append(r.msgs, m)
 }
 
-// sendAppend sends RRPC, with entries to the given peer.
+// sendAppend sends RPC, with entries to the given peer.
 func (r *raft) sendAppend(to uint64) {
 	pr := r.prs[to]
 	if pr.isPaused() {
@@ -338,7 +338,7 @@ func (r *raft) sendHeartbeat(to uint64) {
 	r.send(m)
 }
 
-// bcastAppend sends RRPC, with entries to all peers that are not up-to-date
+// bcastAppend sends RPC, with entries to all peers that are not up-to-date
 // according to the progress recorded in r.prs.
 func (r *raft) bcastAppend() {
 	for i := range r.prs {
@@ -349,7 +349,7 @@ func (r *raft) bcastAppend() {
 	}
 }
 
-// bcastHeartbeat sends RRPC, without entries to all the peers.
+// bcastHeartbeat sends RPC, without entries to all the peers.
 func (r *raft) bcastHeartbeat() {
 	for i := range r.prs {
 		if i == r.id {
