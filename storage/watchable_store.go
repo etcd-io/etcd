@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
@@ -69,7 +70,7 @@ func newWatchableStore(path string) *watchableStore {
 	return s
 }
 
-func (s *watchableStore) Put(key, value []byte, lease LeaseID) (rev int64) {
+func (s *watchableStore) Put(key, value []byte, lease lease.LeaseID) (rev int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -115,7 +116,7 @@ func (s *watchableStore) TxnBegin() int64 {
 	return s.store.TxnBegin()
 }
 
-func (s *watchableStore) TxnPut(txnID int64, key, value []byte, lease LeaseID) (rev int64, err error) {
+func (s *watchableStore) TxnPut(txnID int64, key, value []byte, lease lease.LeaseID) (rev int64, err error) {
 	rev, err = s.store.TxnPut(txnID, key, value, lease)
 	if err == nil {
 		s.tx.put(string(key))

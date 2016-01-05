@@ -20,7 +20,7 @@ PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
 ESCAPED_PREFIX=$(echo $PREFIX | sed -e 's/[\/&]/\\&/g')
 
 # directories containing protos to be built
-DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb"
+DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb ./lease/leasepb"
 
 # exact version of protoc-gen-gogo to build
 SHA="932b70afa8b0bf4a8e167fdf0c3367cebba45903"

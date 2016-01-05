@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -105,7 +106,7 @@ func TestStorePut(t *testing.T) {
 		s.tx = b.BatchTx()
 		fi.indexGetRespc <- tt.r
 
-		s.put([]byte("foo"), []byte("bar"), LeaseID(i+1))
+		s.put([]byte("foo"), []byte("bar"), lease.LeaseID(i+1))
 
 		data, err := tt.wkv.Marshal()
 		if err != nil {
