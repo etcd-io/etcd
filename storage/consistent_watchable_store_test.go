@@ -28,7 +28,7 @@ func TestConsistentWatchableStoreConsistentIndex(t *testing.T) {
 	tests := []uint64{1, 2, 3, 5, 10}
 	for i, tt := range tests {
 		idx = indexVal(tt)
-		s.Put([]byte("foo"), []byte("bar"))
+		s.Put([]byte("foo"), []byte("bar"), NoLease)
 
 		id := s.TxnBegin()
 		g := s.consistentIndex()
@@ -44,10 +44,10 @@ func TestConsistentWatchableStoreSkip(t *testing.T) {
 	s := newConsistentWatchableStore(tmpPath, &idx)
 	defer cleanup(s, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar"))
+	s.Put([]byte("foo"), []byte("bar"), NoLease)
 
 	// put is skipped
-	rev := s.Put([]byte("foo"), []byte("bar"))
+	rev := s.Put([]byte("foo"), []byte("bar"), NoLease)
 	if rev != 0 {
 		t.Errorf("rev = %d, want 0", rev)
 	}

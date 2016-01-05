@@ -30,7 +30,7 @@ func BenchmarkStorePut(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.Put(keys[i], vals[i])
+		s.Put(keys[i], vals[i], NoLease)
 	}
 }
 
@@ -49,7 +49,7 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		id := s.TxnBegin()
-		if _, err := s.TxnPut(id, keys[i], vals[i]); err != nil {
+		if _, err := s.TxnPut(id, keys[i], vals[i], NoLease); err != nil {
 			log.Fatalf("txn put error: %v", err)
 		}
 		s.TxnEnd(id)

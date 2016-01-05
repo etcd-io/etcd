@@ -143,12 +143,12 @@ func applyPut(txnID int64, kv dstorage.KV, p *pb.PutRequest) (*pb.PutResponse, e
 		err error
 	)
 	if txnID != noTxn {
-		rev, err = kv.TxnPut(txnID, p.Key, p.Value)
+		rev, err = kv.TxnPut(txnID, p.Key, p.Value, dstorage.LeaseID(p.Lease))
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		rev = kv.Put(p.Key, p.Value)
+		rev = kv.Put(p.Key, p.Value, dstorage.LeaseID(p.Lease))
 	}
 	resp.Header.Revision = rev
 	return resp, nil

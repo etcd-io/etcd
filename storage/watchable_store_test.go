@@ -31,7 +31,7 @@ func TestWatch(t *testing.T) {
 	}()
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue)
+	s.Put(testKey, testValue, NoLease)
 
 	w := s.NewWatchStream()
 	w.Watch(testKey, true, 0)
@@ -50,7 +50,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	}()
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue)
+	s.Put(testKey, testValue, NoLease)
 
 	w := s.NewWatchStream()
 	_, cancel := w.Watch(testKey, true, 0)
@@ -89,7 +89,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// and force watchers to be in unsynced.
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue)
+	s.Put(testKey, testValue, NoLease)
 
 	w := s.NewWatchStream()
 
@@ -135,7 +135,7 @@ func TestSyncWatchers(t *testing.T) {
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue)
+	s.Put(testKey, testValue, NoLease)
 
 	w := s.NewWatchStream()
 
@@ -210,7 +210,7 @@ func TestUnsafeAddWatcher(t *testing.T) {
 	}()
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue)
+	s.Put(testKey, testValue, NoLease)
 
 	size := 10
 	ws := make([]*watcher, size)
