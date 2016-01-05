@@ -88,12 +88,12 @@ func (sws *serverWatchStream) recvLoop() error {
 			id := sws.watchStream.Watch(toWatch, prefix, creq.StartRevision)
 			sws.ctrlStream <- &pb.WatchResponse{
 				// TODO: fill in response header.
-				WatchId: id,
+				WatchId: int64(id),
 				Created: true,
 			}
 		case req.CancelRequest != nil:
 			id := req.CancelRequest.WatchId
-			err := sws.watchStream.Cancel(id)
+			err := sws.watchStream.Cancel(storage.WatchID(id))
 			if err == nil {
 				sws.ctrlStream <- &pb.WatchResponse{
 					// TODO: fill in response header.
@@ -125,7 +125,9 @@ func (sws *serverWatchStream) sendLoop() {
 				events[i] = &evs[i]
 			}
 
-			err := sws.gRPCStream.Send(&pb.WatchResponse{WatchId: wresp.WatchID, Events: events})
+			err := sws.gRPCStream.Send(&pb.WatchResponse{
+				WatchId: int64(wresp.WatchID),
+				Events:  events})
 			storage.ReportEventReceived()
 			if err != nil {
 				return

@@ -60,7 +60,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	benchSampleN := b.N
 	watcherN := k * benchSampleN
 
-	watchIDs := make([]int64, watcherN)
+	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// non-0 value to keep watchers in unsynced
 		watchIDs[i] = w.Watch(testKey, true, 1)
@@ -98,7 +98,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	// put 1 million watchers on the same key
 	const watcherN = 1000000
 
-	watchIDs := make([]int64, watcherN)
+	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// 0 for startRev to keep watchers in synced
 		watchIDs[i] = w.Watch(testKey, true, 0)
