@@ -31,6 +31,8 @@ var (
 	leaseBucketName = []byte("lease")
 )
 
+type LeaseID int64
+
 // DeleteableRange defines an interface with DeleteRange method.
 // We define this interface only for lessor to limit the number
 // of methods of storage.KV to what lessor actually needs.
@@ -51,7 +53,7 @@ type lessor struct {
 	// We want to make Grant, Revoke, and FindExpired all O(logN) and
 	// Renew O(1).
 	// FindExpired and Renew should be the most frequent operations.
-	leaseMap map[int64]*lease
+	leaseMap map[LeaseID]*lease
 
 	// A DeleteableRange the lessor operates on.
 	// When a lease expires, the lessor will delete the
@@ -67,7 +69,7 @@ type lessor struct {
 
 func NewLessor(lessorID uint8, b backend.Backend, dr DeleteableRange) *lessor {
 	l := &lessor{
-		leaseMap: make(map[int64]*lease),
+		leaseMap: make(map[LeaseID]*lease),
 		b:        b,
 		dr:       dr,
 		idgen:    idutil.NewGenerator(lessorID, time.Now()),
@@ -92,7 +94,7 @@ func (le *lessor) Grant(ttl int64) *lease {
 	expiry := time.Now().Add(time.Duration(ttl) * time.Second)
 	expiry = minExpiry(time.Now(), expiry)
 
-	id := int64(le.idgen.Next())
+	id := LeaseID(le.idgen.Next())
 
 	le.mu.Lock()
 	defer le.mu.Unlock()
@@ -111,7 +113,7 @@ func (le *lessor) Grant(ttl int64) *lease {
 // Revoke revokes a lease with given ID. The item attached to the
 // given lease will be removed. If the ID does not exist, an error
 // will be returned.
-func (le *lessor) Revoke(id int64) error {
+func (le *lessor) Revoke(id LeaseID) error {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
@@ -133,7 +135,7 @@ func (le *lessor) Revoke(id int64) error {
 // Renew renews an existing lease. If the given lease does not exist or
 // has expired, an error will be returned.
 // TODO: return new TTL?
-func (le *lessor) Renew(id int64) error {
+func (le *lessor) Renew(id LeaseID) error {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
@@ -150,7 +152,7 @@ func (le *lessor) Renew(id int64) error {
 // Attach attaches items to the lease with given ID. When the lease
 // expires, the attached items will be automatically removed.
 // If the given lease does not exist, an error will be returned.
-func (le *lessor) Attach(id int64, items []leaseItem) error {
+func (le *lessor) Attach(id LeaseID, items []leaseItem) error {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
@@ -185,7 +187,7 @@ func (le *lessor) findExpiredLeases() []*lease {
 
 // get gets the lease with given id.
 // get is a helper fucntion for testing, at least for now.
-func (le *lessor) get(id int64) *lease {
+func (le *lessor) get(id LeaseID) *lease {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
@@ -193,7 +195,7 @@ func (le *lessor) get(id int64) *lease {
 }
 
 type lease struct {
-	id  int64
+	id  LeaseID
 	ttl int64 // time to live in seconds
 
 	itemSet map[leaseItem]struct{}
@@ -202,9 +204,9 @@ type lease struct {
 }
 
 func (l lease) persistTo(b backend.Backend) {
-	key := int64ToBytes(l.id)
+	key := int64ToBytes(int64(l.id))
 
-	lpb := leasepb.Lease{ID: l.id, TTL: int64(l.ttl)}
+	lpb := leasepb.Lease{ID: int64(l.id), TTL: int64(l.ttl)}
 	val, err := lpb.Marshal()
 	if err != nil {
 		panic("failed to marshal lease proto item")
@@ -216,7 +218,7 @@ func (l lease) persistTo(b backend.Backend) {
 }
 
 func (l lease) removeFrom(b backend.Backend) {
-	key := int64ToBytes(l.id)
+	key := int64ToBytes(int64(l.id))
 
 	b.BatchTx().Lock()
 	b.BatchTx().UnsafeDelete(leaseBucketName, key)

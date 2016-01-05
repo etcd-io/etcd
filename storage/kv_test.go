@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/storage/storagepb"
 )
@@ -34,7 +35,7 @@ import (
 
 type (
 	rangeFunc       func(kv KV, key, end []byte, limit, rangeRev int64) ([]storagepb.KeyValue, int64, error)
-	putFunc         func(kv KV, key, value []byte, lease LeaseID) int64
+	putFunc         func(kv KV, key, value []byte, lease lease.LeaseID) int64
 	deleteRangeFunc func(kv KV, key, end []byte) (n, rev int64)
 )
 
@@ -48,10 +49,10 @@ var (
 		return kv.TxnRange(id, key, end, limit, rangeRev)
 	}
 
-	normalPutFunc = func(kv KV, key, value []byte, lease LeaseID) int64 {
+	normalPutFunc = func(kv KV, key, value []byte, lease lease.LeaseID) int64 {
 		return kv.Put(key, value, lease)
 	}
-	txnPutFunc = func(kv KV, key, value []byte, lease LeaseID) int64 {
+	txnPutFunc = func(kv KV, key, value []byte, lease lease.LeaseID) int64 {
 		id := kv.TxnBegin()
 		defer kv.TxnEnd(id)
 		rev, err := kv.TxnPut(id, key, value, lease)
@@ -280,7 +281,7 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 	for i := 0; i < 10; i++ {
 		base := int64(i + 1)
 
-		rev := f(s, []byte("foo"), []byte("bar"), LeaseID(base))
+		rev := f(s, []byte("foo"), []byte("bar"), lease.LeaseID(base))
 		if rev != base {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
 		}

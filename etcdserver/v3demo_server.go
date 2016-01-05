@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 	dstorage "github.com/coreos/etcd/storage"
 	"github.com/coreos/etcd/storage/storagepb"
 )
@@ -143,12 +144,12 @@ func applyPut(txnID int64, kv dstorage.KV, p *pb.PutRequest) (*pb.PutResponse, e
 		err error
 	)
 	if txnID != noTxn {
-		rev, err = kv.TxnPut(txnID, p.Key, p.Value, dstorage.LeaseID(p.Lease))
+		rev, err = kv.TxnPut(txnID, p.Key, p.Value, lease.LeaseID(p.Lease))
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		rev = kv.Put(p.Key, p.Value, dstorage.LeaseID(p.Lease))
+		rev = kv.Put(p.Key, p.Value, lease.LeaseID(p.Lease))
 	}
 	resp.Header.Revision = rev
 	return resp, nil
