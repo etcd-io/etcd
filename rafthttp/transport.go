@@ -308,3 +308,42 @@ func (t *Transport) Resume() {
 		p.(Pausable).Resume()
 	}
 }
+
+type nopTransporter struct{}
+
+func NewNopTransporter() Transporter {
+	return &nopTransporter{}
+}
+
+func (s *nopTransporter) Start() error                        { return nil }
+func (s *nopTransporter) Handler() http.Handler               { return nil }
+func (s *nopTransporter) Send(m []raftpb.Message)             {}
+func (s *nopTransporter) SendSnapshot(m snap.Message)         {}
+func (s *nopTransporter) AddRemote(id types.ID, us []string)  {}
+func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
+func (s *nopTransporter) RemovePeer(id types.ID)              {}
+func (s *nopTransporter) RemoveAllPeers()                     {}
+func (s *nopTransporter) UpdatePeer(id types.ID, us []string) {}
+func (s *nopTransporter) ActiveSince(id types.ID) time.Time   { return time.Time{} }
+func (s *nopTransporter) Stop()                               {}
+func (s *nopTransporter) Pause()                              {}
+func (s *nopTransporter) Resume()                             {}
+
+type snapTransporter struct {
+	nopTransporter
+	snapDoneC chan snap.Message
+	snapDir   string
+}
+
+func NewSnapTransporter(snapDir string) (Transporter, <-chan snap.Message) {
+	ch := make(chan snap.Message, 1)
+	tr := &snapTransporter{snapDoneC: ch, snapDir: snapDir}
+	return tr, ch
+}
+
+func (s *snapTransporter) SendSnapshot(m snap.Message) {
+	ss := snap.New(s.snapDir)
+	ss.SaveDBFrom(m.ReadCloser, m.Snapshot.Metadata.Index+1)
+	m.CloseWithError(nil)
+	s.snapDoneC <- m
+}
