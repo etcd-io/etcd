@@ -28,7 +28,7 @@ func TestWatcherWatchID(t *testing.T) {
 	idm := make(map[int64]struct{})
 
 	for i := 0; i < 10; i++ {
-		id, cancel := w.Watch([]byte("foo"), false, 0)
+		id := w.Watch([]byte("foo"), false, 0)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -41,14 +41,16 @@ func TestWatcherWatchID(t *testing.T) {
 			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
 		}
 
-		cancel()
+		if err := w.Cancel(id); err != nil {
+			t.Error(err)
+		}
 	}
 
 	s.Put([]byte("foo2"), []byte("bar"), NoLease)
 
 	// unsynced watchers
 	for i := 10; i < 20; i++ {
-		id, cancel := w.Watch([]byte("foo2"), false, 1)
+		id := w.Watch([]byte("foo2"), false, 1)
 		if _, ok := idm[id]; ok {
 			t.Errorf("#%d: id %d exists", i, id)
 		}
@@ -59,7 +61,9 @@ func TestWatcherWatchID(t *testing.T) {
 			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
 		}
 
-		cancel()
+		if err := w.Cancel(id); err != nil {
+			t.Error(err)
+		}
 	}
 }
 
@@ -72,7 +76,7 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	id, _ := w.Watch([]byte("foo"), false, 0)
+	id := w.Watch([]byte("foo"), false, 0)
 
 	tests := []struct {
 		cancelID int64

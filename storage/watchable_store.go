@@ -33,7 +33,7 @@ const (
 )
 
 type watchable interface {
-	watch(key []byte, prefix bool, startRev, id int64, ch chan<- WatchResponse) (*watcher, CancelFunc)
+	watch(key []byte, prefix bool, startRev, id int64, ch chan<- WatchResponse) (*watcher, cancelFunc)
 }
 
 type watchableStore struct {
@@ -52,6 +52,10 @@ type watchableStore struct {
 	stopc chan struct{}
 	wg    sync.WaitGroup
 }
+
+// cancelFunc updates unsynced and synced maps when running
+// cancel operations.
+type cancelFunc func()
 
 func newWatchableStore(path string) *watchableStore {
 	s := &watchableStore{
@@ -182,11 +186,11 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	return &watchStream{
 		watchable: s,
 		ch:        make(chan WatchResponse, chanBufLen),
-		cancels:   make(map[int64]CancelFunc),
+		cancels:   make(map[int64]cancelFunc),
 	}
 }
 
-func (s *watchableStore) watch(key []byte, prefix bool, startRev, id int64, ch chan<- WatchResponse) (*watcher, CancelFunc) {
+func (s *watchableStore) watch(key []byte, prefix bool, startRev, id int64, ch chan<- WatchResponse) (*watcher, cancelFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -209,7 +213,7 @@ func (s *watchableStore) watch(key []byte, prefix bool, startRev, id int64, ch c
 	}
 	watcherGauge.Inc()
 
-	cancel := CancelFunc(func() {
+	cancel := cancelFunc(func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		// remove global references of the watcher

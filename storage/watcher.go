@@ -36,8 +36,7 @@ type WatchStream interface {
 	// The returned `id` is the ID of this watcher. It appears as WatchID
 	// in events that are sent to the created watcher through stream channel.
 	//
-	// TODO: remove the returned CancelFunc. Always use Cancel.
-	Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc)
+	Watch(key []byte, prefix bool, startRev int64) int64
 
 	// Chan returns a chan. All watch response will be sent to the returned chan.
 	Chan() <-chan WatchResponse
@@ -67,24 +66,24 @@ type watchStream struct {
 	// nextID is the ID pre-allocated for next new watcher in this stream
 	nextID  int64
 	closed  bool
-	cancels map[int64]CancelFunc
+	cancels map[int64]cancelFunc
 }
 
 // TODO: return error if ws is closed?
-func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) (id int64, cancel CancelFunc) {
+func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) int64 {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 	if ws.closed {
-		return -1, nil
+		return -1
 	}
 
-	id = ws.nextID
+	id := ws.nextID
 	ws.nextID++
 
 	_, c := ws.watchable.watch(key, prefix, startRev, id, ws.ch)
 
 	ws.cancels[id] = c
-	return id, c
+	return id
 }
 
 func (ws *watchStream) Chan() <-chan WatchResponse {

@@ -60,11 +60,10 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	benchSampleN := b.N
 	watcherN := k * benchSampleN
 
-	cancels := make([]CancelFunc, watcherN)
+	watchIDs := make([]int64, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// non-0 value to keep watchers in unsynced
-		_, cancel := w.Watch(testKey, true, 1)
-		cancels[i] = cancel
+		watchIDs[i] = w.Watch(testKey, true, 1)
 	}
 
 	// random-cancel N watchers to make it not biased towards
@@ -76,7 +75,9 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 	// cancel N watchers
 	for _, idx := range ix[:benchSampleN] {
-		cancels[idx]()
+		if err := w.Cancel(watchIDs[idx]); err != nil {
+			b.Error(err)
+		}
 	}
 }
 
@@ -97,11 +98,10 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	// put 1 million watchers on the same key
 	const watcherN = 1000000
 
-	cancels := make([]CancelFunc, watcherN)
+	watchIDs := make([]int64, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// 0 for startRev to keep watchers in synced
-		_, cancel := w.Watch(testKey, true, 0)
-		cancels[i] = cancel
+		watchIDs[i] = w.Watch(testKey, true, 0)
 	}
 
 	// randomly cancel watchers to make it not biased towards
@@ -112,6 +112,8 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	b.ReportAllocs()
 
 	for _, idx := range ix {
-		cancels[idx]()
+		if err := w.Cancel(watchIDs[idx]); err != nil {
+			b.Error(err)
+		}
 	}
 }

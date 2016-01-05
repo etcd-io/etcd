@@ -53,9 +53,11 @@ func TestNewWatcherCancel(t *testing.T) {
 	s.Put(testKey, testValue, NoLease)
 
 	w := s.NewWatchStream()
-	_, cancel := w.Watch(testKey, true, 0)
+	wt := w.Watch(testKey, true, 0)
 
-	cancel()
+	if err := w.Cancel(wt); err != nil {
+		t.Error(err)
+	}
 
 	if _, ok := s.synced[string(testKey)]; ok {
 		// the key shoud have been deleted
@@ -96,17 +98,17 @@ func TestCancelUnsynced(t *testing.T) {
 	// arbitrary number for watchers
 	watcherN := 100
 
-	// create watcherN of CancelFunc of
-	// synced and unsynced
-	cancels := make([]CancelFunc, watcherN)
+	// create watcherN of watch ids to cancel
+	watchIDs := make([]int64, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// use 1 to keep watchers in unsynced
-		_, cancel := w.Watch(testKey, true, 1)
-		cancels[i] = cancel
+		watchIDs[i] = w.Watch(testKey, true, 1)
 	}
 
-	for idx := range cancels {
-		cancels[idx]()
+	for _, idx := range watchIDs {
+		if err := w.Cancel(idx); err != nil {
+			t.Error(err)
+		}
 	}
 
 	// After running CancelFunc
