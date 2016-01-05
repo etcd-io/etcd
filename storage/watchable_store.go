@@ -375,10 +375,10 @@ func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 	we := newWatcherToEventMap(s.synced, evs)
 	for _, wm := range s.synced {
 		for w := range wm {
-			if _, ok := we[w]; !ok {
+			es, ok := we[w]
+			if !ok {
 				continue
 			}
-			es := we[w]
 			wr := WatchResponse{WatchID: w.id, Events: es}
 			select {
 			case w.ch <- wr:
