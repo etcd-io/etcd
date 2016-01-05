@@ -51,6 +51,7 @@ func init() {
 		command.NewCompactionCommand(),
 		command.NewWatchCommand(),
 		command.NewVersionCommand(),
+		command.NewLeaseCommand(),
 	)
 }
 

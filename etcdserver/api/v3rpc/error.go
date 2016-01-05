@@ -21,7 +21,8 @@ import (
 )
 
 var (
-	ErrEmptyKey  = grpc.Errorf(codes.InvalidArgument, "key is not provided")
-	ErrCompacted = grpc.Errorf(codes.OutOfRange, storage.ErrCompacted.Error())
-	ErrFutureRev = grpc.Errorf(codes.OutOfRange, storage.ErrFutureRev.Error())
+	ErrEmptyKey      = grpc.Errorf(codes.InvalidArgument, "key is not provided")
+	ErrCompacted     = grpc.Errorf(codes.OutOfRange, storage.ErrCompacted.Error())
+	ErrFutureRev     = grpc.Errorf(codes.OutOfRange, storage.ErrFutureRev.Error())
+	ErrLeaseNotFound = grpc.Errorf(codes.NotFound, "requested lease not found")
 )

@@ -33,10 +33,10 @@ func TestLessorGrant(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := NewLessor(1, be, &fakeDeleteable{})
+	le := newLessor(1, be, &fakeDeleteable{})
 
 	l := le.Grant(1)
-	gl := le.get(l.id)
+	gl := le.get(l.ID)
 
 	if !reflect.DeepEqual(gl, l) {
 		t.Errorf("lease = %v, want %v", gl, l)
@@ -46,12 +46,12 @@ func TestLessorGrant(t *testing.T) {
 	}
 
 	nl := le.Grant(1)
-	if nl.id == l.id {
-		t.Errorf("new lease.id = %x, want != %x", nl.id, l.id)
+	if nl.ID == l.ID {
+		t.Errorf("new lease.id = %x, want != %x", nl.ID, l.ID)
 	}
 
 	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.id)), nil, 0)
+	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
 	if len(vs) != 1 {
 		t.Errorf("len(vs) = %d, want 1", len(vs))
 	}
@@ -69,7 +69,7 @@ func TestLessorRevoke(t *testing.T) {
 
 	fd := &fakeDeleteable{}
 
-	le := NewLessor(1, be, fd)
+	le := newLessor(1, be, fd)
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -80,18 +80,18 @@ func TestLessorRevoke(t *testing.T) {
 		{"bar"},
 	}
 
-	err := le.Attach(l.id, items)
+	err := le.Attach(l.ID, items)
 	if err != nil {
 		t.Fatalf("failed to attach items to the lease: %v", err)
 	}
 
-	err = le.Revoke(l.id)
+	err = le.Revoke(l.ID)
 	if err != nil {
 		t.Fatal("failed to revoke lease:", err)
 	}
 
-	if le.get(l.id) != nil {
-		t.Errorf("got revoked lease %x", l.id)
+	if le.get(l.ID) != nil {
+		t.Errorf("got revoked lease %x", l.ID)
 	}
 
 	wdeleted := []string{"foo_", "bar_"}
@@ -100,7 +100,7 @@ func TestLessorRevoke(t *testing.T) {
 	}
 
 	be.BatchTx().Lock()
-	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.id)), nil, 0)
+	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
 	if len(vs) != 0 {
 		t.Errorf("len(vs) = %d, want 0", len(vs))
 	}
@@ -113,14 +113,14 @@ func TestLessorRenew(t *testing.T) {
 	defer be.Close()
 	defer os.RemoveAll(dir)
 
-	le := NewLessor(1, be, &fakeDeleteable{})
+	le := newLessor(1, be, &fakeDeleteable{})
 	l := le.Grant(5)
 
 	// manually change the ttl field
-	l.ttl = 10
+	l.TTL = 10
 
-	le.Renew(l.id)
-	l = le.get(l.id)
+	le.Renew(l.ID)
+	l = le.get(l.ID)
 
 	if l.expiry.Sub(time.Now()) < 9*time.Second {
 		t.Errorf("failed to renew the lease")
@@ -134,20 +134,20 @@ func TestLessorRecover(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := NewLessor(1, be, &fakeDeleteable{})
+	le := newLessor(1, be, &fakeDeleteable{})
 	l1 := le.Grant(10)
 	l2 := le.Grant(20)
 
 	// Create a new lessor with the same backend
-	nle := NewLessor(1, be, &fakeDeleteable{})
-	nl1 := nle.get(l1.id)
-	if nl1 == nil || nl1.ttl != l1.ttl {
-		t.Errorf("nl1 = %v, want nl1.TTL= %d", l1.ttl)
+	nle := newLessor(1, be, &fakeDeleteable{})
+	nl1 := nle.get(l1.ID)
+	if nl1 == nil || nl1.TTL != l1.TTL {
+		t.Errorf("nl1 = %v, want nl1.TTL= %d", nl1.TTL, l1.TTL)
 	}
 
-	nl2 := nle.get(l2.id)
-	if nl2 == nil || nl2.ttl != l2.ttl {
-		t.Errorf("nl2 = %v, want nl2.TTL= %d", l2.ttl)
+	nl2 := nle.get(l2.ID)
+	if nl2 == nil || nl2.TTL != l2.TTL {
+		t.Errorf("nl2 = %v, want nl2.TTL= %d", nl2.TTL, l2.TTL)
 	}
 }
 
