@@ -127,6 +127,30 @@ func TestLessorRenew(t *testing.T) {
 	}
 }
 
+// TestLessorRecover ensures Lessor recovers leases from
+// persist backend.
+func TestLessorRecover(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := NewLessor(1, be, &fakeDeleteable{})
+	l1 := le.Grant(10)
+	l2 := le.Grant(20)
+
+	// Create a new lessor with the same backend
+	nle := NewLessor(1, be, &fakeDeleteable{})
+	nl1 := nle.get(l1.id)
+	if nl1 == nil || nl1.ttl != l1.ttl {
+		t.Errorf("nl1 = %v, want nl1.TTL= %d", l1.ttl)
+	}
+
+	nl2 := nle.get(l2.id)
+	if nl2 == nil || nl2.ttl != l2.ttl {
+		t.Errorf("nl2 = %v, want nl2.TTL= %d", l2.ttl)
+	}
+}
+
 type fakeDeleteable struct {
 	deleted []string
 }
