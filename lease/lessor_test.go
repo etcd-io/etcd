@@ -15,18 +15,27 @@
 package lease
 
 import (
+	"io/ioutil"
+	"os"
+	"path"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/storage/backend"
 )
 
 // TestLessorGrant ensures Lessor can grant wanted lease.
 // The granted lease should have a unique ID with a term
 // that is greater than minLeaseTerm.
 func TestLessorGrant(t *testing.T) {
-	le := NewLessor(1, &fakeDeleteable{})
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
 
-	l := le.Grant(time.Now().Add(time.Second))
+	le := NewLessor(1, be, &fakeDeleteable{})
+
+	l := le.Grant(1)
 	gl := le.get(l.id)
 
 	if !reflect.DeepEqual(gl, l) {
@@ -36,10 +45,17 @@ func TestLessorGrant(t *testing.T) {
 		t.Errorf("term = %v, want at least %v", l.expiry.Sub(time.Now()), minLeaseTerm-time.Second)
 	}
 
-	nl := le.Grant(time.Now().Add(time.Second))
+	nl := le.Grant(1)
 	if nl.id == l.id {
 		t.Errorf("new lease.id = %x, want != %x", nl.id, l.id)
 	}
+
+	be.BatchTx().Lock()
+	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(l.id), nil, 0)
+	if len(vs) != 1 {
+		t.Errorf("len(vs) = %d, want 1", len(vs))
+	}
+	be.BatchTx().Unlock()
 }
 
 // TestLessorRevoke ensures Lessor can revoke a lease.
@@ -47,16 +63,21 @@ func TestLessorGrant(t *testing.T) {
 // the DeleteableKV.
 // The revoked lease cannot be got from Lessor again.
 func TestLessorRevoke(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
 	fd := &fakeDeleteable{}
-	le := NewLessor(1, fd)
+
+	le := NewLessor(1, be, fd)
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
-	l := le.Grant(time.Now().Add(100 * time.Second))
+	l := le.Grant(100)
 
 	items := []leaseItem{
-		{"foo", ""},
-		{"bar", "zar"},
+		{"foo"},
+		{"bar"},
 	}
 
 	err := le.Attach(l.id, items)
@@ -73,22 +94,36 @@ func TestLessorRevoke(t *testing.T) {
 		t.Errorf("got revoked lease %x", l.id)
 	}
 
-	wdeleted := []string{"foo_", "bar_zar"}
+	wdeleted := []string{"foo_", "bar_"}
 	if !reflect.DeepEqual(fd.deleted, wdeleted) {
 		t.Errorf("deleted= %v, want %v", fd.deleted, wdeleted)
 	}
+
+	be.BatchTx().Lock()
+	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(l.id), nil, 0)
+	if len(vs) != 0 {
+		t.Errorf("len(vs) = %d, want 0", len(vs))
+	}
+	be.BatchTx().Unlock()
 }
 
 // TestLessorRenew ensures Lessor can renew an existing lease.
 func TestLessorRenew(t *testing.T) {
-	le := NewLessor(1, &fakeDeleteable{})
-	l := le.Grant(time.Now().Add(5 * time.Second))
+	dir, be := NewTestBackend(t)
+	defer be.Close()
+	defer os.RemoveAll(dir)
 
-	le.Renew(l.id, time.Now().Add(100*time.Second))
+	le := NewLessor(1, be, &fakeDeleteable{})
+	l := le.Grant(5)
+
+	// manually change the ttl field
+	l.ttl = 10
+
+	le.Renew(l.id)
 	l = le.get(l.id)
 
-	if l.expiry.Sub(time.Now()) < 95*time.Second {
-		t.Errorf("failed to renew the lease for 100 seconds")
+	if l.expiry.Sub(time.Now()) < 9*time.Second {
+		t.Errorf("failed to renew the lease")
 	}
 }
 
@@ -99,4 +134,13 @@ type fakeDeleteable struct {
 func (fd *fakeDeleteable) DeleteRange(key, end []byte) (int64, int64) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
 	return 0, 0
+}
+
+func NewTestBackend(t *testing.T) (string, backend.Backend) {
+	tmpPath, err := ioutil.TempDir("", "lease")
+	if err != nil {
+		t.Fatalf("failed to create tmpdir (%v)", err)
+	}
+
+	return tmpPath, backend.New(path.Join(tmpPath, "be"), time.Second, 10000)
 }
