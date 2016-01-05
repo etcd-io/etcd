@@ -85,7 +85,7 @@ func (sws *serverWatchStream) recvLoop() error {
 				toWatch = creq.Prefix
 				prefix = true
 			}
-			id, _ := sws.watchStream.Watch(toWatch, prefix, creq.StartRevision)
+			id := sws.watchStream.Watch(toWatch, prefix, creq.StartRevision)
 			sws.ctrlStream <- &pb.WatchResponse{
 				// TODO: fill in response header.
 				WatchId: id,

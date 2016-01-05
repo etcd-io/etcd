@@ -734,9 +734,9 @@ func TestWatchableKVWatch(t *testing.T) {
 	defer cleanup(s, tmpPath)
 
 	w := s.NewWatchStream()
+	defer w.Close()
 
-	wid, cancel := w.Watch([]byte("foo"), true, 0)
-	defer cancel()
+	wid := w.Watch([]byte("foo"), true, 0)
 
 	s.Put([]byte("foo"), []byte("bar"), 1)
 	select {
@@ -788,11 +788,8 @@ func TestWatchableKVWatch(t *testing.T) {
 		t.Fatalf("failed to watch the event")
 	}
 
-	w.Close()
-
 	w = s.NewWatchStream()
-	wid, cancel = w.Watch([]byte("foo1"), false, 1)
-	defer cancel()
+	wid = w.Watch([]byte("foo1"), false, 1)
 
 	select {
 	case resp := <-w.Chan():

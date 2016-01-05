@@ -19,10 +19,6 @@ import (
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
-// CancelFunc tells an operation to abandon its work. A CancelFunc does not
-// wait for the work to stop.
-type CancelFunc func()
-
 type Snapshot backend.Snapshot
 
 type LeaseID int64
