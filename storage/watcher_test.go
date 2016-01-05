@@ -25,7 +25,7 @@ func TestWatcherWatchID(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	idm := make(map[int64]struct{})
+	idm := make(map[WatchID]struct{})
 
 	for i := 0; i < 10; i++ {
 		id := w.Watch([]byte("foo"), false, 0)
@@ -79,7 +79,7 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	id := w.Watch([]byte("foo"), false, 0)
 
 	tests := []struct {
-		cancelID int64
+		cancelID WatchID
 		werr     error
 	}{
 		// no error should be returned when cancel the created watcher.

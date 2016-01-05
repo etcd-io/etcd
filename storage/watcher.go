@@ -25,6 +25,8 @@ var (
 	ErrWatcherNotExist = errors.New("storage: watcher does not exist")
 )
 
+type WatchID int64
+
 type WatchStream interface {
 	// Watch creates a watcher. The watcher watches the events happening or
 	// happened on the given key or key prefix from the given startRev.
@@ -36,22 +38,22 @@ type WatchStream interface {
 	// The returned `id` is the ID of this watcher. It appears as WatchID
 	// in events that are sent to the created watcher through stream channel.
 	//
-	Watch(key []byte, prefix bool, startRev int64) int64
+	Watch(key []byte, prefix bool, startRev int64) WatchID
 
 	// Chan returns a chan. All watch response will be sent to the returned chan.
 	Chan() <-chan WatchResponse
 
 	// Cancel cancels a watcher by giving its ID. If watcher does not exist, an error will be
 	// returned.
-	Cancel(id int64) error
+	Cancel(id WatchID) error
 
 	// Close closes the WatchChan and release all related resources.
 	Close()
 }
 
 type WatchResponse struct {
-	// WatchID is the ID of the watcher this response sent to.
-	WatchID int64
+	// WatchID is the WatchID of the watcher this response sent to.
+	WatchID WatchID
 	// Events contains all the events that needs to send.
 	Events []storagepb.Event
 }
@@ -64,13 +66,13 @@ type watchStream struct {
 
 	mu sync.Mutex // guards fields below it
 	// nextID is the ID pre-allocated for next new watcher in this stream
-	nextID  int64
+	nextID  WatchID
 	closed  bool
-	cancels map[int64]cancelFunc
+	cancels map[WatchID]cancelFunc
 }
 
 // TODO: return error if ws is closed?
-func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) int64 {
+func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) WatchID {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 	if ws.closed {
@@ -90,7 +92,7 @@ func (ws *watchStream) Chan() <-chan WatchResponse {
 	return ws.ch
 }
 
-func (ws *watchStream) Cancel(id int64) error {
+func (ws *watchStream) Cancel(id WatchID) error {
 	cancel, ok := ws.cancels[id]
 	if !ok {
 		return ErrWatcherNotExist

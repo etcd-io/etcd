@@ -99,7 +99,7 @@ func TestCancelUnsynced(t *testing.T) {
 	watcherN := 100
 
 	// create watcherN of watch ids to cancel
-	watchIDs := make([]int64, watcherN)
+	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// use 1 to keep watchers in unsynced
 		watchIDs[i] = w.Watch(testKey, true, 1)

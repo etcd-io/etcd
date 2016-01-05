@@ -33,7 +33,7 @@ const (
 )
 
 type watchable interface {
-	watch(key []byte, prefix bool, startRev, id int64, ch chan<- WatchResponse) (*watcher, cancelFunc)
+	watch(key []byte, prefix bool, startRev int64, id WatchID, ch chan<- WatchResponse) (*watcher, cancelFunc)
 }
 
 type watchableStore struct {
@@ -186,11 +186,11 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	return &watchStream{
 		watchable: s,
 		ch:        make(chan WatchResponse, chanBufLen),
-		cancels:   make(map[int64]cancelFunc),
+		cancels:   make(map[WatchID]cancelFunc),
 	}
 }
 
-func (s *watchableStore) watch(key []byte, prefix bool, startRev, id int64, ch chan<- WatchResponse) (*watcher, cancelFunc) {
+func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, id WatchID, ch chan<- WatchResponse) (*watcher, cancelFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -431,7 +431,7 @@ type watcher struct {
 	// If cur is behind the current revision of the KV,
 	// watcher is unsynced and needs to catch up.
 	cur int64
-	id  int64
+	id  WatchID
 
 	// a chan to send out the watch response.
 	// The chan might be shared with other watchers.
