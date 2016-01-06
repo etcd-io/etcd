@@ -108,3 +108,45 @@ if err != nil {
 3. Default etcd/client cannot handle the case that the remote server is SIGSTOPed now. TCP keepalive mechanism doesn't help in this scenario because operating system may still send TCP keep-alive packets. Over time we'd like to improve this functionality, but solving this issue isn't high priority because a real-life case in which a server is stopped, but the connection is kept alive, hasn't been brought to our attention.
 
 4. etcd/client cannot detect whether the member in use is healthy when doing read requests. If the member is isolated from the cluster, etcd/client may retrieve outdated data. As a workaround, users could monitor experimental /health endpoint for member healthy information. We are improving it at [#3265](https://github.com/coreos/etcd/issues/3265).
+
+## Client configuration
+
+For avoiding duplicated mechanisms in etcd client programs, etcd client provides a common mechanism for configuration. The mechanism accepts files and environmental variables as configuration source (file format, names of variables are described below).
+
+Configurable options are 1. Endpoints, 2. Username, 3. Password, 4. Header timeout per request and 5. Selection mode. Detailed description of each option can be found in godoc.
+
+Below is an example of yaml:
+
+```
+endpoints: http://127.0.0.1:12379 http://127.0.0.1:22379 http://127.0.0.1:32379
+username: name
+password: p4ss
+header_timeout_per_request: 0.2s
+selection_mode: PrioritizeLeader
+```
+
+`endpoints` accepts multiple URLs. It assumes the URLs are separated with whilte space. `header_timeout_per_request` accepts a number with suffix `s` (stands for second). `selection_mode` accepts `Random` or `PrioritizeLeader`.
+
+### File based configuration
+
+The function `client.NewWithFile(cfg Config, configPath string)` creates a new client based on configuration provided in a file whose path is `configPath`. The format of the file can be one of JSON, TOML, YAML and HCL (formats accepted by [viper](https://github.com/spf13/viper)).
+
+Like `client.New(cfg Config)`, a program that uses  `client.NewWithFile()` must provide a `Config` object as its parameter for supplying objects e.g. `Transport`.
+
+### Environment variable based configuration
+
+The function `client.NewWithEnv(cfg Config)` creates a new client based on configuration provided with environmental variables.
+
+Like `client.NewWithFile()`, `client.NewWithEnv()` requires a `Config` object as its parameter.
+
+Below is a list of accepted variables:
+
+1. `ETCDCLIENT_ENDPOINTS`
+
+2. `ETCDCLIENT_USERNAME`
+
+3. `ETCDCLIENT_PASSWORD`
+
+4. `ETCDCLIENT_HEADER_TIMEOUT_PER_REQUEST`
+
+5. `ETCDCLIENT_SELECTION_MODE`

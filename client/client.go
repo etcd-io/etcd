@@ -22,6 +22,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strconv"
@@ -29,6 +31,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -217,6 +220,86 @@ func New(cfg Config) (Client, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+func selectionModeFromConf(strMode string) (EndpointSelectionMode, error) {
+	switch strMode {
+	case "Random":
+		return EndpointSelectionRandom, nil
+	case "PrioritizeLeader":
+		return EndpointSelectionPrioritizeLeader, nil
+	default:
+		return 0, errors.New(fmt.Sprintf("invalid endopint selection mode: %s", strMode))
+	}
+}
+
+func overwriteWithViperParams(cfg *Config) error {
+	viperEndpoints := viper.GetStringSlice("endpoints")
+	if len(viperEndpoints) != 0 {
+		cfg.Endpoints = viperEndpoints
+	}
+
+	viperUsername := viper.GetString("username")
+	if len(viperUsername) != 0 {
+		cfg.Username = viperUsername
+	}
+
+	viperPassword := viper.GetString("password")
+	if len(viperPassword) != 0 {
+		cfg.Password = viperPassword
+	}
+
+	viperHeaderTimeoutPerRequest := viper.GetDuration("header_timeout_per_request")
+	if viperHeaderTimeoutPerRequest != time.Duration(0) {
+		cfg.HeaderTimeoutPerRequest = viperHeaderTimeoutPerRequest
+	}
+
+	viperSelectionMode := viper.GetString("selection_mode")
+	if len(viperSelectionMode) != 0 {
+		mode, err := selectionModeFromConf(viperSelectionMode)
+		if err != nil {
+			return err
+		}
+		cfg.SelectionMode = mode
+	}
+
+	return nil
+}
+
+func NewWithEnv(cfg Config) (Client, error) {
+	viper.SetEnvPrefix("etcdclient") // We look at vars start with "ETCDCLIENT_"
+	viper.AutomaticEnv()
+
+	err := overwriteWithViperParams(&cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(cfg)
+}
+
+func NewWithFile(cfg Config, configPath string) (Client, error) {
+	f, err := os.Open(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	ext := filepath.Ext(configPath)
+	if len(ext) != 0 {
+		viper.SetConfigType(ext[1:])
+	}
+
+	err = viper.ReadConfig(f)
+	if err != nil {
+		return nil, err
+	}
+
+	err = overwriteWithViperParams(&cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(cfg)
 }
 
 type httpClient interface {

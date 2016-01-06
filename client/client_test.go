@@ -21,6 +21,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -892,5 +893,134 @@ func TestHTTPClusterClientResetPinRandom(t *testing.T) {
 	max := 1.0/3.0 + 0.05
 	if ratio := float64(pinNum) / float64(round); ratio > max || ratio < min {
 		t.Errorf("pinned ratio = %v, want [%v, %v]", ratio, min, max)
+	}
+}
+
+func TestClientCreationWithFile(t *testing.T) {
+	tests := []struct {
+		config        string
+		ext           string
+		shouldSuccess bool
+	}{
+		{ // correct format
+			`
+{"endpoints": "http://localhost:12379", "username": "user", "password": "pass", "header_timeout_per_request": 1, "selection_mode": "Random"}
+`,
+			"json",
+			true,
+		},
+		{ // wrong format of JSON
+			`
+{"endpoints": "http://localhost:12379", "username": "user", "password": "pass", "header_timeout_per_request": 1, "selection_mode": "Random"
+`,
+			"json",
+			false,
+		},
+		{ // wrong selection mode
+			`
+{"endpoints": "http://localhost:12379", "username": "user", "password": "pass", "header_timeout_per_request": 1, "selection_mode": "Randommmm"}
+`,
+			"json",
+			false,
+		},
+		{ // correct format
+			`
+endpoints: http://localhost:12379
+username: user
+`,
+			"yaml",
+			true,
+		},
+		{ // wrong format
+			`
+endpoints: http://localhost:12379
+usernameuser
+`,
+			"yaml",
+			false,
+		},
+	}
+
+	for i, tt := range tests {
+		path := "test." + tt.ext
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			t.Fatalf("#%d creating config file for test failed (%v)", i, err)
+		}
+		defer os.Remove(path)
+
+		_, werr := f.Write([]byte(tt.config))
+		if werr != nil {
+			t.Fatalf("#%d writing config file for test failed (%v)", i, err)
+		}
+
+		f.Close()
+
+		cfg := Config{}
+		_, cerr := NewWithFile(cfg, path)
+
+		if tt.shouldSuccess && cerr != nil || !tt.shouldSuccess && cerr == nil {
+			t.Fatalf("#%d: test failed, want: %t", i, tt.shouldSuccess)
+		}
+	}
+}
+
+func TestClientCreationWithEnvVars(t *testing.T) {
+	getURL := func(s string) url.URL {
+		u, err := url.Parse(s)
+		if err != nil {
+			t.Fatalf("failed to parse URL: %s (%v)", u, err)
+		}
+		return *u
+	}
+
+	tests := []struct {
+		setVars  map[string]string
+		expected httpClusterClient
+	}{
+		{ // correct format
+			map[string]string{
+				"ETCDCLIENT_ENDPOINTS": "http://127.0.0.1:12389",
+			},
+			httpClusterClient{
+				endpoints: []url.URL{getURL("http://127.0.0.1:12389")},
+			},
+		},
+	}
+
+	for i := range tests {
+		tt := &tests[i] // range copies httpClusterClient.sync.RWMutex and go vet complains
+		for k, v := range tt.setVars {
+			err := os.Setenv(k, v)
+			if err != nil {
+				t.Fatalf("#%d: failed to set environment variable %s (value: %s)", i, k, v)
+			}
+		}
+
+		cfg := Config{}
+		result, cerr := NewWithEnv(cfg)
+		if cerr != nil {
+			t.Fatalf("#%d: test failed (%v)", i, cerr)
+		}
+
+		resultEps := result.Endpoints()
+		expectedEps := tt.expected.Endpoints()
+		if len(resultEps) != len(expectedEps) {
+			t.Fatalf("#%d: length of endpoints (%d) differ from expected (%d)", i, len(resultEps), len(expectedEps))
+		}
+		for i, val := range resultEps {
+			if expectedEps[i] != val {
+				t.Fatalf("#%d: endpoints differ (%s and %s)", i, expectedEps[i], val)
+			}
+		}
+
+		// we cannot check the content of other fields credentials and selectionMode
+		// because the type of the return value of NewWithEnv() is an interface (Client)
+
+		os.Unsetenv("ETCDCLIENT_ENDPOINTS")
+		os.Unsetenv("ETCDCLIENT_USERNAME")
+		os.Unsetenv("ETCDCLIENT_PASSWORD")
+		os.Unsetenv("ETCDCLIENT_HEADER_TIMEOUT_PER_REQUEST")
+		os.Unsetenv("ETCDCLIENT_SELECTION_MODE")
 	}
 }
