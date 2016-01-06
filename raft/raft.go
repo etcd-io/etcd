@@ -239,7 +239,7 @@ func (r *raft) hasLeader() bool { return r.lead != None }
 
 func (r *raft) softState() *SoftState { return &SoftState{Lead: r.lead, RaftState: r.state} }
 
-func (r *raft) q() int { return len(r.prs)/2 + 1 }
+func (r *raft) quorum() int { return len(r.prs)/2 + 1 }
 
 func (r *raft) nodes() []uint64 {
 	nodes := make([]uint64, 0, len(r.prs))
@@ -367,7 +367,7 @@ func (r *raft) maybeCommit() bool {
 		mis = append(mis, r.prs[id].Match)
 	}
 	sort.Sort(sort.Reverse(mis))
-	mci := mis[r.q()-1]
+	mci := mis[r.quorum()-1]
 	return r.raftLog.maybeCommit(mci, r.Term)
 }
 
@@ -489,7 +489,7 @@ func (r *raft) becomeLeader() {
 
 func (r *raft) campaign() {
 	r.becomeCandidate()
-	if r.q() == r.poll(r.id, true) {
+	if r.quorum() == r.poll(r.id, true) {
 		r.becomeLeader()
 		return
 	}
@@ -695,8 +695,8 @@ func stepCandidate(r *raft, m pb.Message) {
 		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 	case pb.MsgVoteResp:
 		gr := r.poll(m.From, !m.Reject)
-		r.logger.Infof("%x [q:%d] has received %d votes and %d vote rejections", r.id, r.q(), gr, len(r.votes)-gr)
-		switch r.q() {
+		r.logger.Infof("%x [quorum:%d] has received %d votes and %d vote rejections", r.id, r.quorum(), gr, len(r.votes)-gr)
+		switch r.quorum() {
 		case gr:
 			r.becomeLeader()
 			r.bcastAppend()
@@ -879,5 +879,5 @@ func (r *raft) checkQuorumActive() bool {
 		r.prs[id].RecentActive = false
 	}
 
-	return act >= r.q()
+	return act >= r.quorum()
 }
