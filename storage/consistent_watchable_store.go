@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
@@ -46,16 +47,15 @@ type consistentWatchableStore struct {
 	skip bool // indicate whether or not to skip an operation
 }
 
-func New(path string, ig ConsistentIndexGetter) ConsistentWatchableKV {
-	return newConsistentWatchableStore(path, ig)
+func New(b backend.Backend, ig ConsistentIndexGetter) ConsistentWatchableKV {
+	return newConsistentWatchableStore(b, ig)
 }
 
-// newConsistentWatchableStore creates a new consistentWatchableStore
-// using the file at the given path.
-// If the file at the given path does not exist then it will be created automatically.
-func newConsistentWatchableStore(path string, ig ConsistentIndexGetter) *consistentWatchableStore {
+// newConsistentWatchableStore creates a new consistentWatchableStore with the give
+// backend.
+func newConsistentWatchableStore(b backend.Backend, ig ConsistentIndexGetter) *consistentWatchableStore {
 	return &consistentWatchableStore{
-		watchableStore: newWatchableStore(path),
+		watchableStore: newWatchableStore(b),
 		ig:             ig,
 	}
 }

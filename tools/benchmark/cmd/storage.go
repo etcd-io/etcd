@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/storage/backend"
 )
 
 var (
@@ -30,7 +31,8 @@ var (
 )
 
 func initStorage() {
-	s = storage.NewStore("storage-bench", time.Duration(batchInterval), batchLimit)
+	be := backend.New("storage-bench", time.Duration(batchInterval), batchLimit)
+	s = storage.NewStore(be)
 	os.Remove("storage-bench") // boltDB has an opened fd, so removing the file is ok
 }
 

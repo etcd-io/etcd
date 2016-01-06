@@ -15,13 +15,15 @@ package storage
 
 import (
 	"log"
-	"os"
 	"testing"
+
+	"github.com/coreos/etcd/storage/backend"
 )
 
 func BenchmarkStorePut(b *testing.B) {
-	s := newDefaultStore(tmpPath)
-	defer os.Remove(tmpPath)
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(be)
+	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
 	bytesN := 64
@@ -38,8 +40,9 @@ func BenchmarkStorePut(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkStoreTxnPut(b *testing.B) {
-	s := newDefaultStore(tmpPath)
-	defer cleanup(s, tmpPath)
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(be)
+	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
 	bytesN := 64

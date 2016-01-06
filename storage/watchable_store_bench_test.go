@@ -18,6 +18,8 @@ import (
 	"math/rand"
 	"os"
 	"testing"
+
+	"github.com/coreos/etcd/storage/backend"
 )
 
 // Benchmarks on cancel function performance for unsynced watchers
@@ -28,12 +30,15 @@ import (
 // TODO: k is an arbitrary constant. We need to figure out what factor
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(be)
+
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore periodically calls syncWatchersLoop
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced for this benchmark.
-	s := &watchableStore{
-		store:    newDefaultStore(tmpPath),
+	ws := &watchableStore{
+		store:    s,
 		unsynced: make(map[*watcher]struct{}),
 
 		// to make the test not crash from assigning to nil map.
@@ -42,7 +47,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	}
 
 	defer func() {
-		s.store.Close()
+		ws.store.Close()
 		os.Remove(tmpPath)
 	}()
 
@@ -54,7 +59,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	testValue := []byte("bar")
 	s.Put(testKey, testValue, NoLease)
 
-	w := s.NewWatchStream()
+	w := ws.NewWatchStream()
 
 	const k int = 2
 	benchSampleN := b.N
@@ -82,7 +87,9 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 }
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
-	s := newWatchableStore(tmpPath)
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(be)
+
 	defer func() {
 		s.store.Close()
 		os.Remove(tmpPath)

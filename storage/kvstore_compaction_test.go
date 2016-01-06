@@ -17,6 +17,8 @@ package storage
 import (
 	"reflect"
 	"testing"
+
+	"github.com/coreos/etcd/storage/backend"
 )
 
 func TestScheduleCompaction(t *testing.T) {
@@ -58,7 +60,8 @@ func TestScheduleCompaction(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		s := newDefaultStore(tmpPath)
+		b, tmpPath := backend.NewDefaultTmpBackend()
+		s := NewStore(b)
 		tx := s.b.BatchTx()
 
 		tx.Lock()
@@ -88,6 +91,6 @@ func TestScheduleCompaction(t *testing.T) {
 		}
 		tx.Unlock()
 
-		cleanup(s, tmpPath)
+		cleanup(s, b, tmpPath)
 	}
 }

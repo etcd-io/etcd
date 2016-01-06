@@ -47,6 +47,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/snap"
 	dstorage "github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
@@ -358,7 +359,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	if cfg.V3demo {
-		srv.kv = dstorage.New(path.Join(cfg.SnapDir(), databaseFilename), &srv.consistIndex)
+		be := backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
+		srv.kv = dstorage.New(be, &srv.consistIndex)
 		if err := srv.kv.Restore(); err != nil {
 			plog.Fatalf("v3 storage restore error: %v", err)
 		}
@@ -583,7 +585,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 			plog.Panicf("rename snapshot file error: %v", err)
 		}
 
-		newKV := dstorage.New(fn, &s.consistIndex)
+		newbe := backend.NewDefaultBackend(fn)
+		newKV := dstorage.New(newbe, &s.consistIndex)
 		if err := newKV.Restore(); err != nil {
 			plog.Panicf("restore KV error: %v", err)
 		}

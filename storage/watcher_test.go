@@ -14,13 +14,18 @@
 
 package storage
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/coreos/etcd/storage/backend"
+)
 
 // TestWatcherWatchID tests that each watcher provides unique watchID,
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
-	s := WatchableKV(newWatchableStore(tmpPath))
-	defer cleanup(s, tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := WatchableKV(newWatchableStore(b))
+	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
 	defer w.Close()
@@ -70,8 +75,9 @@ func TestWatcherWatchID(t *testing.T) {
 // TestWatchStreamCancel ensures cancel calls the cancel func of the watcher
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
-	s := WatchableKV(newWatchableStore(tmpPath))
-	defer cleanup(s, tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := WatchableKV(newWatchableStore(b))
+	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
 	defer w.Close()

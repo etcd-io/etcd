@@ -18,11 +18,19 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"io/ioutil"
 	"log"
+	"os"
+	"path"
 	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/boltdb/bolt"
+)
+
+var (
+	defaultBatchLimit    = 10000
+	defaultBatchInterval = 100 * time.Millisecond
 )
 
 type Backend interface {
@@ -58,6 +66,10 @@ type backend struct {
 
 func New(path string, d time.Duration, limit int) Backend {
 	return newBackend(path, d, limit)
+}
+
+func NewDefaultBackend(path string) Backend {
+	return newBackend(path, defaultBatchInterval, defaultBatchLimit)
 }
 
 func newBackend(path string, d time.Duration, limit int) *backend {
@@ -149,6 +161,20 @@ func (b *backend) Close() error {
 	close(b.stopc)
 	<-b.donec
 	return b.db.Close()
+}
+
+// NewTmpBackend creates a backend implementation for testing.
+func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
+	dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
+	if err != nil {
+		log.Fatal(err)
+	}
+	tmpPath := path.Join(dir, "database")
+	return newBackend(tmpPath, batchInterval, batchLimit), tmpPath
+}
+
+func NewDefaultTmpBackend() (*backend, string) {
+	return NewTmpBackend(defaultBatchInterval, defaultBatchLimit)
 }
 
 type snapshot struct {
