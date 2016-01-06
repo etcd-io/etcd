@@ -26,7 +26,13 @@ import (
 )
 
 func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error) {
-	l, err := net.Listen("tcp", addr)
+	nettype := "tcp"
+	if scheme == "unix" {
+		// unix sockets via unix://laddr
+		nettype = scheme
+	}
+
+	l, err := net.Listen(nettype, addr)
 	if err != nil {
 		return nil, err
 	}
