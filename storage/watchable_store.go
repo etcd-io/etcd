@@ -36,6 +36,7 @@ const (
 
 type watchable interface {
 	watch(key []byte, prefix bool, startRev int64, id WatchID, ch chan<- WatchResponse) (*watcher, cancelFunc)
+	rev() int64
 }
 
 type watchableStore struct {
@@ -346,9 +347,9 @@ func (s *watchableStore) syncWatchers() {
 	}
 
 	for w, es := range newWatcherToEventMap(keyToUnsynced, evs) {
-		wr := WatchResponse{WatchID: w.id, Events: es}
 		select {
-		case w.ch <- wr:
+		// s.store.Rev also uses Lock, so just return directly
+		case w.ch <- WatchResponse{WatchID: w.id, Events: es, Revision: s.store.currentRev.main}:
 			pendingEventsGauge.Add(float64(len(es)))
 		default:
 			// TODO: handle the full unsynced watchers.
@@ -381,9 +382,8 @@ func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 			if !ok {
 				continue
 			}
-			wr := WatchResponse{WatchID: w.id, Events: es}
 			select {
-			case w.ch <- wr:
+			case w.ch <- WatchResponse{WatchID: w.id, Events: es, Revision: s.Rev()}:
 				pendingEventsGauge.Add(float64(len(es)))
 			default:
 				// move slow watcher to unsynced
@@ -395,6 +395,8 @@ func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 		}
 	}
 }
+
+func (s *watchableStore) rev() int64 { return s.store.Rev() }
 
 type ongoingTx struct {
 	// keys put/deleted in the ongoing txn

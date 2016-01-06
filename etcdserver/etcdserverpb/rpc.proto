@@ -235,7 +235,7 @@ message WatchResponse {
   // catch up with the progress of the KV.
   //
   // Client should treat the watching as canceled and should not try to create any
-  // watching with same start_revision again. 
+  // watching with same start_revision again.
   bool compacted = 5;
 
   repeated storagepb.Event events = 11;

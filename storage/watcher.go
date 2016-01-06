@@ -49,13 +49,24 @@ type WatchStream interface {
 
 	// Close closes the WatchChan and release all related resources.
 	Close()
+
+	// Rev returns the current revision of the KV the stream watches on.
+	Rev() int64
 }
 
 type WatchResponse struct {
 	// WatchID is the WatchID of the watcher this response sent to.
 	WatchID WatchID
+
 	// Events contains all the events that needs to send.
 	Events []storagepb.Event
+
+	// Revision is the revision of the KV when the watchResponse is created.
+	// For a normal response, the revision should be the same as the last
+	// modified revision inside Events. For a delayed response to a unsynced
+	// watcher, the revision is greater than the last modified revision
+	// inside Events.
+	Revision int64
 }
 
 // watchStream contains a collection of watchers that share
@@ -112,4 +123,10 @@ func (ws *watchStream) Close() {
 	ws.closed = true
 	close(ws.ch)
 	watchStreamGauge.Dec()
+}
+
+func (ws *watchStream) Rev() int64 {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	return ws.watchable.rev()
 }

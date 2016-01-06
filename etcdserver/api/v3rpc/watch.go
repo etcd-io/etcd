@@ -17,17 +17,26 @@ package v3rpc
 import (
 	"io"
 
+	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/storage"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
 type watchServer struct {
+	clusterID int64
+	memberID  int64
+	raftTimer etcdserver.RaftTimer
 	watchable storage.Watchable
 }
 
-func NewWatchServer(w storage.Watchable) pb.WatchServer {
-	return &watchServer{w}
+func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
+	return &watchServer{
+		clusterID: int64(s.Cluster().ID()),
+		memberID:  int64(s.ID()),
+		raftTimer: s,
+		watchable: s.Watchable(),
+	}
 }
 
 const (
@@ -44,6 +53,10 @@ const (
 // and creates responses that forwarded to gRPC stream.
 // It also forwards control message like watch created and canceled.
 type serverWatchStream struct {
+	clusterID int64
+	memberID  int64
+	raftTimer etcdserver.RaftTimer
+
 	gRPCStream  pb.Watch_WatchServer
 	watchStream storage.WatchStream
 	ctrlStream  chan *pb.WatchResponse
@@ -54,6 +67,9 @@ type serverWatchStream struct {
 
 func (ws *watchServer) Watch(stream pb.Watch_WatchServer) error {
 	sws := serverWatchStream{
+		clusterID:   ws.clusterID,
+		memberID:    ws.memberID,
+		raftTimer:   ws.raftTimer,
 		gRPCStream:  stream,
 		watchStream: ws.watchable.NewWatchStream(),
 		// chan for sending control response like watcher created and canceled.
@@ -87,7 +103,7 @@ func (sws *serverWatchStream) recvLoop() error {
 			}
 			id := sws.watchStream.Watch(toWatch, prefix, creq.StartRevision)
 			sws.ctrlStream <- &pb.WatchResponse{
-				// TODO: fill in response header.
+				Header:  sws.newResponseHeader(sws.watchStream.Rev()),
 				WatchId: int64(id),
 				Created: true,
 			}
@@ -96,7 +112,7 @@ func (sws *serverWatchStream) recvLoop() error {
 			err := sws.watchStream.Cancel(storage.WatchID(id))
 			if err == nil {
 				sws.ctrlStream <- &pb.WatchResponse{
-					// TODO: fill in response header.
+					Header:   sws.newResponseHeader(sws.watchStream.Rev()),
 					WatchId:  id,
 					Canceled: true,
 				}
@@ -126,8 +142,10 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 
 			err := sws.gRPCStream.Send(&pb.WatchResponse{
+				Header:  sws.newResponseHeader(wresp.Revision),
 				WatchId: int64(wresp.WatchID),
-				Events:  events})
+				Events:  events,
+			})
 			storage.ReportEventReceived()
 			if err != nil {
 				return
@@ -159,4 +177,13 @@ func (sws *serverWatchStream) close() {
 	sws.watchStream.Close()
 	close(sws.closec)
 	close(sws.ctrlStream)
+}
+
+func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
+	return &pb.ResponseHeader{
+		ClusterId: uint64(sws.clusterID),
+		MemberId:  uint64(sws.memberID),
+		Revision:  rev,
+		RaftTerm:  sws.raftTimer.Term(),
+	}
 }
