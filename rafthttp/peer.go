@@ -65,7 +65,7 @@ type Peer interface {
 
 	// update updates the urls of remote peer.
 	update(urls types.URLs)
-	// attachOutgoingConn attachs the outgoing connection to the peer for
+	// attachOutgoingConn attaches the outgoing connection to the peer for
 	// stream usage. After the call, the ownership of the outgoing
 	// connection hands over to the peer. The peer will close the connection
 	// when it is no longer used.
@@ -240,7 +240,7 @@ func (p *peer) attachOutgoingConn(conn *outgoingConn) {
 func (p *peer) activeSince() time.Time { return p.status.activeSince }
 
 // Pause pauses the peer. The peer will simply drops all incoming
-// messages without retruning an error.
+// messages without returning an error.
 func (p *peer) Pause() {
 	select {
 	case p.pausec <- struct{}{}:

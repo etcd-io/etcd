@@ -224,7 +224,7 @@ func (cw *streamWriter) stop() {
 }
 
 // streamReader is a long-running go-routine that dials to the remote stream
-// endponit and reads messages from the response body returned.
+// endpoint and reads messages from the response body returned.
 type streamReader struct {
 	tr            http.RoundTripper
 	picker        *urlPicker
