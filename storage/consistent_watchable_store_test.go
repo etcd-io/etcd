@@ -14,7 +14,11 @@
 
 package storage
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/coreos/etcd/storage/backend"
+)
 
 type indexVal uint64
 
@@ -22,8 +26,9 @@ func (v *indexVal) ConsistentIndex() uint64 { return uint64(*v) }
 
 func TestConsistentWatchableStoreConsistentIndex(t *testing.T) {
 	var idx indexVal
-	s := newConsistentWatchableStore(tmpPath, &idx)
-	defer cleanup(s, tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := newConsistentWatchableStore(b, &idx)
+	defer cleanup(s, b, tmpPath)
 
 	tests := []uint64{1, 2, 3, 5, 10}
 	for i, tt := range tests {
@@ -41,8 +46,9 @@ func TestConsistentWatchableStoreConsistentIndex(t *testing.T) {
 
 func TestConsistentWatchableStoreSkip(t *testing.T) {
 	idx := indexVal(5)
-	s := newConsistentWatchableStore(tmpPath, &idx)
-	defer cleanup(s, tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := newConsistentWatchableStore(b, &idx)
+	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), NoLease)
 

@@ -16,9 +16,7 @@ package backend
 
 import (
 	"io/ioutil"
-	"log"
 	"os"
-	"path"
 	"testing"
 	"time"
 
@@ -26,18 +24,8 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
-var tmpPath string
-
-func init() {
-	dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
-	if err != nil {
-		log.Fatal(err)
-	}
-	tmpPath = path.Join(dir, "database")
-}
-
 func TestBackendClose(t *testing.T) {
-	b := newBackend(tmpPath, time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(time.Hour, 10000)
 	defer os.Remove(tmpPath)
 
 	// check close could work
@@ -57,7 +45,7 @@ func TestBackendClose(t *testing.T) {
 }
 
 func TestBackendSnapshot(t *testing.T) {
-	b := New(tmpPath, time.Hour, 10000)
+	b, tmpPath := NewTmpBackend(time.Hour, 10000)
 	defer cleanup(b, tmpPath)
 
 	tx := b.BatchTx()
@@ -93,8 +81,9 @@ func TestBackendSnapshot(t *testing.T) {
 }
 
 func TestBackendBatchIntervalCommit(t *testing.T) {
-	// start backend with super short batch interval
-	b := newBackend(tmpPath, time.Nanosecond, 10000)
+	// start backend with super short batch interval so
+	// we do not need to wait long before commit to happen.
+	b, tmpPath := NewTmpBackend(time.Nanosecond, 10000)
 	defer cleanup(b, tmpPath)
 
 	tx := b.BatchTx()

@@ -20,15 +20,19 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
 func TestWatch(t *testing.T) {
-	s := newWatchableStore(tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(b)
+
 	defer func() {
 		s.store.Close()
 		os.Remove(tmpPath)
 	}()
+
 	testKey := []byte("foo")
 	testValue := []byte("bar")
 	s.Put(testKey, testValue, NoLease)
@@ -43,7 +47,9 @@ func TestWatch(t *testing.T) {
 }
 
 func TestNewWatcherCancel(t *testing.T) {
-	s := newWatchableStore(tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(b)
+
 	defer func() {
 		s.store.Close()
 		os.Remove(tmpPath)
@@ -67,12 +73,14 @@ func TestNewWatcherCancel(t *testing.T) {
 
 // TestCancelUnsynced tests if running CancelFunc removes watchers from unsynced.
 func TestCancelUnsynced(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore automatically calls syncWatchers
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
-		store:    newDefaultStore(tmpPath),
+		store:    NewStore(b),
 		unsynced: make(map[*watcher]struct{}),
 
 		// to make the test not crash from assigning to nil map.
@@ -124,8 +132,10 @@ func TestCancelUnsynced(t *testing.T) {
 // method to see if it correctly sends events to channel of unsynced watchers
 // and moves these watchers to synced.
 func TestSyncWatchers(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+
 	s := &watchableStore{
-		store:    newDefaultStore(tmpPath),
+		store:    NewStore(b),
 		unsynced: make(map[*watcher]struct{}),
 		synced:   make(map[string]map[*watcher]struct{}),
 	}
@@ -205,7 +215,8 @@ func TestSyncWatchers(t *testing.T) {
 }
 
 func TestUnsafeAddWatcher(t *testing.T) {
-	s := newWatchableStore(tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(b)
 	defer func() {
 		s.store.Close()
 		os.Remove(tmpPath)

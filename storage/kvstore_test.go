@@ -30,7 +30,8 @@ import (
 )
 
 func TestStoreRev(t *testing.T) {
-	s := newDefaultStore(tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(b)
 	defer os.Remove(tmpPath)
 
 	for i := 0; i < 3; i++ {
@@ -358,7 +359,8 @@ func TestStoreRestore(t *testing.T) {
 }
 
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
-	s0 := newDefaultStore(tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s0 := NewStore(b)
 	defer os.Remove(tmpPath)
 
 	s0.Put([]byte("foo"), []byte("bar"), NoLease)
@@ -375,7 +377,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 
 	s0.Close()
 
-	s1 := newDefaultStore(tmpPath)
+	s1 := NewStore(b)
 	s1.Restore()
 
 	// wait for scheduled compaction to be finished
@@ -413,8 +415,9 @@ func TestTxnPut(t *testing.T) {
 	keys := createBytesSlice(bytesN, sliceN)
 	vals := createBytesSlice(bytesN, sliceN)
 
-	s := newDefaultStore(tmpPath)
-	defer cleanup(s, tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(b)
+	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < sliceN; i++ {
 		id := s.TxnBegin()
@@ -433,7 +436,8 @@ func TestTxnPut(t *testing.T) {
 }
 
 func TestTxnBlockBackendForceCommit(t *testing.T) {
-	s := newDefaultStore(tmpPath)
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(b)
 	defer os.Remove(tmpPath)
 
 	id := s.TxnBegin()

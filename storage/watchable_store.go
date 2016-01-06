@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
@@ -58,9 +59,9 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func newWatchableStore(path string) *watchableStore {
+func newWatchableStore(b backend.Backend) *watchableStore {
 	s := &watchableStore{
-		store:    newDefaultStore(path),
+		store:    NewStore(b),
 		unsynced: make(map[*watcher]struct{}),
 		synced:   make(map[string]map[*watcher]struct{}),
 		stopc:    make(chan struct{}),

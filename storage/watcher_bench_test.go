@@ -17,11 +17,15 @@ package storage
 import (
 	"fmt"
 	"testing"
+
+	"github.com/coreos/etcd/storage/backend"
 )
 
 func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
-	watchable := newWatchableStore(tmpPath)
-	defer cleanup(watchable, tmpPath)
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	watchable := newWatchableStore(be)
+
+	defer cleanup(watchable, be, tmpPath)
 
 	w := watchable.NewWatchStream()
 

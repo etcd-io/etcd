@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
 	dstorage "github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/store"
 )
 
@@ -864,9 +865,12 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		msgSnapC: make(chan raftpb.Message, maxInFlightMsgSnap),
 	}
 
-	s.kv = dstorage.New(
-		path.Join(testdir, "testdb.db"),
-		&s.consistIndex)
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	defer func() {
+		be.Close()
+		os.RemoveAll(tmpPath)
+	}()
+	s.kv = dstorage.New(be, &s.consistIndex)
 
 	s.start()
 	defer s.Stop()

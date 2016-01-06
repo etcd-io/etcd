@@ -28,8 +28,6 @@ import (
 )
 
 var (
-	batchLimit     = 10000
-	batchInterval  = 100 * time.Millisecond
 	keyBucketName  = []byte("key")
 	metaBucketName = []byte("meta")
 
@@ -68,9 +66,11 @@ type store struct {
 	stopc chan struct{}
 }
 
-func NewStore(path string, bachInterval time.Duration, batchLimit int) KV {
+// NewStore returns a new store. It is useful to create a store inside
+// storage pkg. It should only be used for testing externally.
+func NewStore(b backend.Backend) *store {
 	s := &store{
-		b:              backend.New(path, batchInterval, batchLimit),
+		b:              b,
 		kvindex:        newTreeIndex(),
 		currentRev:     revision{},
 		compactMainRev: -1,
@@ -85,10 +85,6 @@ func NewStore(path string, bachInterval time.Duration, batchLimit int) KV {
 	s.b.ForceCommit()
 
 	return s
-}
-
-func newDefaultStore(path string) *store {
-	return (NewStore(path, batchInterval, batchLimit)).(*store)
 }
 
 func (s *store) Rev() int64 {
@@ -297,7 +293,7 @@ func (s *store) Restore() error {
 func (s *store) Close() error {
 	close(s.stopc)
 	s.wg.Wait()
-	return s.b.Close()
+	return nil
 }
 
 func (a *store) Equal(b *store) bool {
