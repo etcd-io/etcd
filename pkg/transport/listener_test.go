@@ -241,3 +241,11 @@ func TestTLSInfoConfigFuncs(t *testing.T) {
 		}
 	}
 }
+
+func TestNewListenerUnixSocket(t *testing.T) {
+	l, err := NewListener("testsocket", "unix", TLSInfo{})
+	if err != nil {
+		t.Errorf("error listening on unix socket (%v)", err)
+	}
+	l.Close()
+}
