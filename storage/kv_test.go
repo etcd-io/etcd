@@ -707,10 +707,13 @@ func TestKVSnapshot(t *testing.T) {
 		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1, Lease: 3},
 	}
 
-	f, err := os.Create("new_test")
+	newPath := "new_test"
+	f, err := os.Create(newPath)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.Remove(newPath)
+
 	snap := s.Snapshot()
 	defer snap.Close()
 	_, err = snap.WriteTo(f)
