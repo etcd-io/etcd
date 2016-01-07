@@ -263,6 +263,12 @@ Follow the instructions when using these flags.
 + Print the version and exit.
 + default: false
 
+## Profiling flags
+
+### -enable-pprof
++ Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof"
++ default: false
+
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
 [discovery]: clustering.md#discovery
