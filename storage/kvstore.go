@@ -38,8 +38,6 @@ var (
 	markBytePosition       = markedRevBytesLen - 1
 	markTombstone     byte = 't'
 
-	NoLease = lease.LeaseID(0)
-
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 

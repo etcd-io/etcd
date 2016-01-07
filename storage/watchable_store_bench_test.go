@@ -19,6 +19,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/backend"
 )
 
@@ -57,7 +58,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	// and force watchers to be in unsynced.
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, NoLease)
+	s.Put(testKey, testValue, lease.NoLease)
 
 	w := ws.NewWatchStream()
 
@@ -98,7 +99,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	// Put a key so that we can spawn watchers on that key
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, NoLease)
+	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
 

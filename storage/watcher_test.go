@@ -17,6 +17,7 @@ package storage
 import (
 	"testing"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/backend"
 )
 
@@ -39,7 +40,7 @@ func TestWatcherWatchID(t *testing.T) {
 		}
 		idm[id] = struct{}{}
 
-		s.Put([]byte("foo"), []byte("bar"), NoLease)
+		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 
 		resp := <-w.Chan()
 		if resp.WatchID != id {
@@ -51,7 +52,7 @@ func TestWatcherWatchID(t *testing.T) {
 		}
 	}
 
-	s.Put([]byte("foo2"), []byte("bar"), NoLease)
+	s.Put([]byte("foo2"), []byte("bar"), lease.NoLease)
 
 	// unsynced watchers
 	for i := 10; i < 20; i++ {

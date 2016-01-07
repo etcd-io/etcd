@@ -17,6 +17,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/backend"
 )
 
@@ -32,7 +33,7 @@ func BenchmarkStorePut(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.Put(keys[i], vals[i], NoLease)
+		s.Put(keys[i], vals[i], lease.NoLease)
 	}
 }
 
@@ -52,7 +53,7 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		id := s.TxnBegin()
-		if _, err := s.TxnPut(id, keys[i], vals[i], NoLease); err != nil {
+		if _, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease); err != nil {
 			log.Fatalf("txn put error: %v", err)
 		}
 		s.TxnEnd(id)

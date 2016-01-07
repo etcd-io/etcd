@@ -35,7 +35,7 @@ func TestStoreRev(t *testing.T) {
 	defer os.Remove(tmpPath)
 
 	for i := 0; i < 3; i++ {
-		s.Put([]byte("foo"), []byte("bar"), NoLease)
+		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 		if r := s.Rev(); r != int64(i+1) {
 			t.Errorf("#%d: rev = %d, want %d", i, r, i+1)
 		}
@@ -363,9 +363,9 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	s0 := NewStore(b)
 	defer os.Remove(tmpPath)
 
-	s0.Put([]byte("foo"), []byte("bar"), NoLease)
-	s0.Put([]byte("foo"), []byte("bar1"), NoLease)
-	s0.Put([]byte("foo"), []byte("bar2"), NoLease)
+	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
+	s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
 
 	// write scheduled compaction, but not do compaction
 	rbytes := newRevBytes()
@@ -423,7 +423,7 @@ func TestTxnPut(t *testing.T) {
 		id := s.TxnBegin()
 		base := int64(i + 1)
 
-		rev, err := s.TxnPut(id, keys[i], vals[i], NoLease)
+		rev, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease)
 		if err != nil {
 			t.Error("txn put error")
 		}
