@@ -16,7 +16,6 @@ package command
 
 import (
 	"errors"
-	"os"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
@@ -44,15 +43,9 @@ func updatedirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 		handleError(ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
-	value, err := argOrStdin(c.Args(), os.Stdin, 1)
-	if err != nil {
-		handleError(ExitBadArgs, errors.New("value required"))
-	}
-
 	ttl := c.Int("ttl")
-
 	ctx, cancel := contextWithTotalTimeout(c)
-	_, err = ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: client.PrevExist})
+	_, err := ki.Set(ctx, key, "", &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: client.PrevExist})
 	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
