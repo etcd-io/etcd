@@ -191,7 +191,6 @@ func (le *lessor) get(id LeaseID) *lease {
 func (le *lessor) initAndRecover() {
 	tx := le.b.BatchTx()
 	tx.Lock()
-	defer tx.Unlock()
 
 	tx.UnsafeCreateBucket(leaseBucketName)
 	_, vs := tx.UnsafeRange(leaseBucketName, int64ToBytes(0), int64ToBytes(math.MaxInt64), 0)
@@ -200,6 +199,7 @@ func (le *lessor) initAndRecover() {
 		var lpb leasepb.Lease
 		err := lpb.Unmarshal(vs[i])
 		if err != nil {
+			tx.Unlock()
 			panic("failed to unmarshal lease proto item")
 		}
 		id := LeaseID(lpb.ID)
@@ -211,6 +211,8 @@ func (le *lessor) initAndRecover() {
 			expiry: minExpiry(time.Now(), time.Now().Add(time.Second*time.Duration(lpb.TTL))),
 		}
 	}
+	tx.Unlock()
+
 	le.b.ForceCommit()
 }
 
