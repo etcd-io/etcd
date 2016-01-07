@@ -84,6 +84,11 @@ func NewStore(b backend.Backend) *store {
 	tx.Unlock()
 	s.b.ForceCommit()
 
+	if err := s.restore(); err != nil {
+		// TODO: return the error instead of panic here?
+		panic("failed to recover store from backend")
+	}
+
 	return s
 }
 
@@ -237,10 +242,28 @@ func (s *store) Snapshot() Snapshot {
 
 func (s *store) Commit() { s.b.ForceCommit() }
 
-func (s *store) Restore() error {
+func (s *store) Restore(b backend.Backend) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	close(s.stopc)
+	// TODO: restore without waiting for compaction routine to finish.
+	// We need a way to notify that the store is finished using the old
+	// backend though.
+	s.wg.Wait()
+
+	s.b = b
+	s.kvindex = newTreeIndex()
+	s.currentRev = revision{}
+	s.compactMainRev = -1
+	s.tx = b.BatchTx()
+	s.txnID = -1
+	s.stopc = make(chan struct{})
+
+	return s.restore()
+}
+
+func (s *store) restore() error {
 	min, max := newRevBytes(), newRevBytes()
 	revToBytes(revision{}, min)
 	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, max)

@@ -332,7 +332,7 @@ func TestStoreRestore(t *testing.T) {
 	b.tx.rangeRespc <- rangeResp{[][]byte{putkey, delkey}, [][]byte{putkvb, delkvb}}
 	b.tx.rangeRespc <- rangeResp{[][]byte{scheduledCompactKeyName}, [][]byte{newTestRevBytes(revision{2, 0})}}
 
-	s.Restore()
+	s.restore()
 
 	if s.compactMainRev != 2 {
 		t.Errorf("compact rev = %d, want 4", s.compactMainRev)
@@ -378,7 +378,6 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	s0.Close()
 
 	s1 := NewStore(b)
-	s1.Restore()
 
 	// wait for scheduled compaction to be finished
 	time.Sleep(100 * time.Millisecond)

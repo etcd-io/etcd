@@ -71,7 +71,8 @@ type KV interface {
 	// Commit commits txns into the underlying backend.
 	Commit()
 
-	Restore() error
+	// Restore restores the KV store from a backend.
+	Restore(b backend.Backend) error
 	Close() error
 }
 
