@@ -26,6 +26,9 @@ import (
 // creating a new service goroutine for each. The service goroutines
 // read requests and then call handler to reply to them.
 func serveHTTP(l net.Listener, handler http.Handler, readTimeout time.Duration) error {
+	// TODO: assert net.Listener type? Arbitrary listener might break HTTPS server which
+	// expect a TLS Conn type.
+
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 	// TODO: add debug flag; enable logging when debug flag is set
 	srv := &http.Server{

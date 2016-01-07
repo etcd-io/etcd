@@ -22,16 +22,13 @@ import (
 )
 
 // NewKeepAliveListener returns a listener that listens on the given address.
+// Be careful when wrap around KeepAliveListener with another Listener if TLSInfo is not nil.
+// Some pkgs (like go/http) might expect Listener to return TLSConn type to start TLS handshake.
 // http://tldp.org/HOWTO/TCP-Keepalive-HOWTO/overview.html
-func NewKeepAliveListener(addr string, scheme string, info TLSInfo) (net.Listener, error) {
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-
+func NewKeepAliveListener(l net.Listener, scheme string, info TLSInfo) (net.Listener, error) {
 	if scheme == "https" {
 		if info.Empty() {
-			return nil, fmt.Errorf("cannot listen on TLS for %s: KeyFile and CertFile are not presented", scheme+"://"+addr)
+			return nil, fmt.Errorf("cannot listen on TLS for given listener: KeyFile and CertFile are not presented")
 		}
 		cfg, err := info.ServerConfig()
 		if err != nil {

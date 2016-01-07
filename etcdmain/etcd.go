@@ -236,15 +236,23 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 			plog.Warningf("The scheme of client url %s is http while client key/cert files are presented. Ignored client key/cert files.", u.String())
 		}
 		var l net.Listener
-		l, err = transport.NewKeepAliveListener(u.Host, u.Scheme, cfg.clientTLSInfo)
+		l, err = net.Listen("tcp", u.Host)
 		if err != nil {
 			return nil, err
 		}
+
 		if fdLimit, err := runtimeutil.FDLimit(); err == nil {
 			if fdLimit <= reservedInternalFDNum {
 				plog.Fatalf("file descriptor limit[%d] of etcd process is too low, and should be set higher than %d to ensure internal usage", fdLimit, reservedInternalFDNum)
 			}
 			l = netutil.LimitListener(l, int(fdLimit-reservedInternalFDNum))
+		}
+
+		// Do not wrap around this listener if TLS Info is set.
+		// HTTPS server expects TLS Conn created by TLSListener.
+		l, err = transport.NewKeepAliveListener(l, u.Scheme, cfg.clientTLSInfo)
+		if err != nil {
+			return nil, err
 		}
 
 		urlStr := u.String()
