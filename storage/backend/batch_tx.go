@@ -52,6 +52,7 @@ func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	if err != nil && err != bolt.ErrBucketExists {
 		log.Fatalf("storage: cannot create bucket %s (%v)", string(name), err)
 	}
+	t.pending++
 }
 
 // before calling unsafePut, the caller MUST hold the lock on tx.
