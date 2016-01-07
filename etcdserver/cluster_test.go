@@ -460,7 +460,7 @@ func TestClusterAddMember(t *testing.T) {
 				false,
 				`{"peerURLs":null}`,
 				false,
-				store.Permanent,
+				store.TTLOptionSet{ExpireTime: store.Permanent},
 			},
 		},
 	}
@@ -499,7 +499,7 @@ func TestClusterRemoveMember(t *testing.T) {
 
 	wactions := []testutil.Action{
 		{Name: "Delete", Params: []interface{}{memberStoreKey(1), true, true}},
-		{Name: "Create", Params: []interface{}{removedMemberStoreKey(1), false, "", false, store.Permanent}},
+		{Name: "Create", Params: []interface{}{removedMemberStoreKey(1), false, "", false, store.TTLOptionSet{ExpireTime: store.Permanent}}},
 	}
 	if !reflect.DeepEqual(st.Action(), wactions) {
 		t.Errorf("actions = %v, want %v", st.Action(), wactions)

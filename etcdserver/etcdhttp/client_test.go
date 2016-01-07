@@ -172,6 +172,49 @@ func (w *dummyWatcher) EventChan() chan *store.Event {
 func (w *dummyWatcher) StartIndex() uint64 { return w.sidx }
 func (w *dummyWatcher) Remove()            {}
 
+func TestBadRefreshRequest(t *testing.T) {
+	tests := []struct {
+		in    *http.Request
+		wcode int
+	}{
+		{
+			mustNewRequest(t, "foo?refresh=true&value=test"),
+			etcdErr.EcodeRefreshValue,
+		},
+		{
+			mustNewRequest(t, "foo?refresh=true&value=10"),
+			etcdErr.EcodeRefreshValue,
+		},
+		{
+			mustNewRequest(t, "foo?refresh=true"),
+			etcdErr.EcodeRefreshTTLRequired,
+		},
+		{
+			mustNewRequest(t, "foo?refresh=true&ttl="),
+			etcdErr.EcodeRefreshTTLRequired,
+		},
+	}
+	for i, tt := range tests {
+		got, err := parseKeyRequest(tt.in, clockwork.NewFakeClock())
+		if err == nil {
+			t.Errorf("#%d: unexpected nil error!", i)
+			continue
+		}
+		ee, ok := err.(*etcdErr.Error)
+		if !ok {
+			t.Errorf("#%d: err is not etcd.Error!", i)
+			continue
+		}
+		if ee.ErrorCode != tt.wcode {
+			t.Errorf("#%d: code=%d, want %v", i, ee.ErrorCode, tt.wcode)
+			t.Logf("cause: %#v", ee.Cause)
+		}
+		if !reflect.DeepEqual(got, etcdserverpb.Request{}) {
+			t.Errorf("#%d: unexpected non-empty Request: %#v", i, got)
+		}
+	}
+}
+
 func TestBadParseRequest(t *testing.T) {
 	tests := []struct {
 		in    *http.Request

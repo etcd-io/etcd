@@ -184,6 +184,11 @@ type SetOptions struct {
 	// a TTL of 0.
 	TTL time.Duration
 
+	// When refresh is set to true a TTL value can be updated
+	// without firing a watch or changing the node value. A
+	// value must not provided when refreshing a key.
+	Refresh bool
+
 	// Dir specifies whether or not this Node should be created as a directory.
 	Dir bool
 }
@@ -327,6 +332,7 @@ func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts *SetOptions
 		act.PrevIndex = opts.PrevIndex
 		act.PrevExist = opts.PrevExist
 		act.TTL = opts.TTL
+		act.Refresh = opts.Refresh
 		act.Dir = opts.Dir
 	}
 
@@ -518,6 +524,7 @@ type setAction struct {
 	PrevIndex uint64
 	PrevExist PrevExistType
 	TTL       time.Duration
+	Refresh   bool
 	Dir       bool
 }
 
@@ -547,6 +554,10 @@ func (a *setAction) HTTPRequest(ep url.URL) *http.Request {
 	}
 	if a.TTL > 0 {
 		form.Add("ttl", strconv.FormatUint(uint64(a.TTL.Seconds()), 10))
+	}
+
+	if a.Refresh {
+		form.Add("refresh", "true")
 	}
 
 	u.RawQuery = params.Encode()

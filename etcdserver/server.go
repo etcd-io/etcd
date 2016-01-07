@@ -1049,23 +1049,25 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		return Response{Event: ev, err: err}
 	}
 	expr := timeutil.UnixNanoToTime(r.Expiration)
+	refresh, _ := pbutil.GetBool(r.Refresh)
+	ttlOptions := store.TTLOptionSet{ExpireTime: expr, Refresh: refresh}
 	switch r.Method {
 	case "POST":
-		return f(s.store.Create(r.Path, r.Dir, r.Val, true, expr))
+		return f(s.store.Create(r.Path, r.Dir, r.Val, true, ttlOptions))
 	case "PUT":
 		exists, existsSet := pbutil.GetBool(r.PrevExist)
 		switch {
 		case existsSet:
 			if exists {
 				if r.PrevIndex == 0 && r.PrevValue == "" {
-					return f(s.store.Update(r.Path, r.Val, expr))
+					return f(s.store.Update(r.Path, r.Val, ttlOptions))
 				} else {
-					return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
+					return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
 				}
 			}
-			return f(s.store.Create(r.Path, r.Dir, r.Val, false, expr))
+			return f(s.store.Create(r.Path, r.Dir, r.Val, false, ttlOptions))
 		case r.PrevIndex > 0 || r.PrevValue != "":
-			return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, expr))
+			return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
 		default:
 			// TODO (yicheng): cluster should be the owner of cluster prefix store
 			// we should not modify cluster store here.
@@ -1083,7 +1085,7 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 			if r.Path == path.Join(StoreClusterPrefix, "version") {
 				s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)))
 			}
-			return f(s.store.Set(r.Path, r.Dir, r.Val, expr))
+			return f(s.store.Set(r.Path, r.Dir, r.Val, ttlOptions))
 		}
 	case "DELETE":
 		switch {

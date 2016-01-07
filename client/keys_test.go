@@ -356,6 +356,18 @@ func TestSetAction(t *testing.T) {
 			wantURL:  "http://example.com/foo",
 			wantBody: "ttl=180&value=",
 		},
+
+		// Refresh is set
+		{
+			act: setAction{
+				Key:     "foo",
+				TTL:     3 * time.Minute,
+				Refresh: true,
+			},
+			wantURL:  "http://example.com/foo",
+			wantBody: "refresh=true&ttl=180&value=",
+		},
+
 		// Dir is set
 		{
 			act: setAction{

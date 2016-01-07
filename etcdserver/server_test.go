@@ -229,7 +229,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", true, time.Time{}},
+					Params: []interface{}{"", false, "", true, store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -240,7 +240,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", true, time.Unix(0, 1337)},
+					Params: []interface{}{"", false, "", true, store.TTLOptionSet{ExpireTime: time.Unix(0, 1337)}},
 				},
 			},
 		},
@@ -251,7 +251,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", true, "", true, time.Time{}},
+					Params: []interface{}{"", true, "", true, store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -262,7 +262,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Set",
-					Params: []interface{}{"", false, "", time.Time{}},
+					Params: []interface{}{"", false, "", store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -273,7 +273,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Set",
-					Params: []interface{}{"", true, "", time.Time{}},
+					Params: []interface{}{"", true, "", store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -284,7 +284,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Update",
-					Params: []interface{}{"", "", time.Time{}},
+					Params: []interface{}{"", "", store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -295,7 +295,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", false, time.Time{}},
+					Params: []interface{}{"", false, "", false, store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -306,7 +306,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", time.Time{}},
+					Params: []interface{}{"", "", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -317,7 +317,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", false, time.Time{}},
+					Params: []interface{}{"", false, "", false, store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -328,7 +328,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", time.Time{}},
+					Params: []interface{}{"", "", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -339,7 +339,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(0), "", time.Time{}},
+					Params: []interface{}{"", "bar", uint64(0), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -350,7 +350,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(1), "", time.Time{}},
+					Params: []interface{}{"", "bar", uint64(1), "", store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
