@@ -104,7 +104,7 @@ var (
 			Namespace: "etcd",
 			Subsystem: "storage",
 			Name:      "index_compaction_pause_duration_milliseconds",
-			Help:      "Bucketed histogram of index compaction puase duration.",
+			Help:      "Bucketed histogram of index compaction pause duration.",
 			// 0.5ms -> 1second
 			Buckets: prometheus.ExponentialBuckets(0.5, 2, 12),
 		})
@@ -114,7 +114,7 @@ var (
 			Namespace: "etcd",
 			Subsystem: "storage",
 			Name:      "db_compaction_pause_duration_milliseconds",
-			Help:      "Bucketed histogram of db compaction puase duration.",
+			Help:      "Bucketed histogram of db compaction pause duration.",
 			// 1ms -> 4second
 			Buckets: prometheus.ExponentialBuckets(1, 2, 13),
 		})
