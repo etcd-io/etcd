@@ -26,6 +26,11 @@ import (
 	"github.com/coreos/etcd/storage/backend"
 )
 
+const (
+	// NoLease is a special LeaseID representing the absence of a lease.
+	NoLease = LeaseID(0)
+)
+
 var (
 	minLeaseTerm = 5 * time.Second
 

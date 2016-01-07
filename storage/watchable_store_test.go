@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
 )
@@ -35,7 +36,7 @@ func TestWatch(t *testing.T) {
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, NoLease)
+	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
 	w.Watch(testKey, true, 0)
@@ -56,7 +57,7 @@ func TestNewWatcherCancel(t *testing.T) {
 	}()
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, NoLease)
+	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
 	wt := w.Watch(testKey, true, 0)
@@ -99,7 +100,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// and force watchers to be in unsynced.
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, NoLease)
+	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
 
@@ -147,7 +148,7 @@ func TestSyncWatchers(t *testing.T) {
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, NoLease)
+	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
 
@@ -223,7 +224,7 @@ func TestUnsafeAddWatcher(t *testing.T) {
 	}()
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, NoLease)
+	s.Put(testKey, testValue, lease.NoLease)
 
 	size := 10
 	ws := make([]*watcher, size)
