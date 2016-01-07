@@ -867,10 +867,10 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 
 	be, tmpPath := backend.NewDefaultTmpBackend()
 	defer func() {
-		be.Close()
 		os.RemoveAll(tmpPath)
 	}()
 	s.kv = dstorage.New(be, &s.consistIndex)
+	s.be = be
 
 	s.start()
 	defer s.Stop()

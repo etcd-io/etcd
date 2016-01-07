@@ -676,8 +676,8 @@ func TestKVRestore(t *testing.T) {
 		}
 		s.Close()
 
+		// ns should recover the the previous state from backend.
 		ns := NewStore(b)
-		ns.Restore()
 		// wait for possible compaction to finish
 		testutil.WaitSchedule()
 		var nkvss [][]storagepb.KeyValue
@@ -724,7 +724,6 @@ func TestKVSnapshot(t *testing.T) {
 
 	ns := NewStore(b)
 	defer ns.Close()
-	ns.Restore()
 	kvs, rev, err := ns.Range([]byte("a"), []byte("z"), 0, 0)
 	if err != nil {
 		t.Errorf("unexpect range error (%v)", err)

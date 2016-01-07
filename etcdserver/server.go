@@ -24,7 +24,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -167,8 +166,8 @@ type EtcdServer struct {
 
 	store store.Store
 
-	kvMu sync.RWMutex
-	kv   dstorage.ConsistentWatchableKV
+	kv dstorage.ConsistentWatchableKV
+	be backend.Backend
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -359,11 +358,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	}
 
 	if cfg.V3demo {
-		be := backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
-		srv.kv = dstorage.New(be, &srv.consistIndex)
-		if err := srv.kv.Restore(); err != nil {
-			plog.Fatalf("v3 storage restore error: %v", err)
-		}
+		srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
+		srv.kv = dstorage.New(srv.be, &srv.consistIndex)
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -542,6 +538,14 @@ func (s *EtcdServer) run() {
 
 	defer func() {
 		s.r.stop()
+		// kv and backend can be nil if runing without v3 enabled
+		// or running unit tests.
+		if s.kv != nil {
+			s.kv.Close()
+		}
+		if s.be != nil {
+			s.be.Close()
+		}
 		close(s.done)
 		<-appdonec
 	}()
@@ -586,21 +590,21 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		}
 
 		newbe := backend.NewDefaultBackend(fn)
-		newKV := dstorage.New(newbe, &s.consistIndex)
-		if err := newKV.Restore(); err != nil {
+		if err := s.kv.Restore(newbe); err != nil {
 			plog.Panicf("restore KV error: %v", err)
 		}
 
-		oldKV := s.swapKV(newKV)
-
-		// Closing oldKV might block until all the txns
-		// on the kv are finished.
-		// We do not want to wait on closing the old kv.
+		// Closing old backend might block until all the txns
+		// on the backend are finished.
+		// We do not want to wait on closing the old backend.
+		oldbe := s.be
 		go func() {
-			if err := oldKV.Close(); err != nil {
-				plog.Panicf("close KV error: %v", err)
+			if err := oldbe.Close(); err != nil {
+				plog.Panicf("close backend error: %v", err)
 			}
 		}()
+
+		s.be = newbe
 	}
 	if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 		plog.Panicf("recovery store error: %v", err)
@@ -1277,16 +1281,4 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 	}
 }
 
-func (s *EtcdServer) getKV() dstorage.ConsistentWatchableKV {
-	s.kvMu.RLock()
-	defer s.kvMu.RUnlock()
-	return s.kv
-}
-
-func (s *EtcdServer) swapKV(kv dstorage.ConsistentWatchableKV) dstorage.ConsistentWatchableKV {
-	s.kvMu.Lock()
-	defer s.kvMu.Unlock()
-	old := s.kv
-	s.kv = kv
-	return old
-}
+func (s *EtcdServer) getKV() dstorage.ConsistentWatchableKV { return s.kv }
