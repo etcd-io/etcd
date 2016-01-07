@@ -105,6 +105,7 @@ func (b *backend) ForceCommit() {
 }
 
 func (b *backend) Snapshot() Snapshot {
+	b.batchTx.Commit()
 	tx, err := b.db.Begin(false)
 	if err != nil {
 		log.Fatalf("storage: cannot begin tx (%s)", err)

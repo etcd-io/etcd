@@ -20,8 +20,6 @@ import (
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
-type Snapshot backend.Snapshot
-
 type KV interface {
 	// Rev returns the current revision of the KV.
 	Rev() int64
@@ -64,9 +62,6 @@ type KV interface {
 	// Get the hash of KV state.
 	// This method is designed for consistency checking purpose.
 	Hash() (uint32, error)
-
-	// Snapshot snapshots the full KV store.
-	Snapshot() Snapshot
 
 	// Commit commits txns into the underlying backend.
 	Commit()

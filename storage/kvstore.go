@@ -235,11 +235,6 @@ func (s *store) Hash() (uint32, error) {
 	return s.b.Hash()
 }
 
-func (s *store) Snapshot() Snapshot {
-	s.b.ForceCommit()
-	return s.b.Snapshot()
-}
-
 func (s *store) Commit() { s.b.ForceCommit() }
 
 func (s *store) Restore(b backend.Backend) error {
