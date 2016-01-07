@@ -74,7 +74,7 @@ func storagePutFunc(cmd *cobra.Command, args []string) {
 		if txn {
 			id := s.TxnBegin()
 			if _, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease); err != nil {
-				fmt.Errorf("txn put error: %v", err)
+				fmt.Fprintln(os.Stderr, "txn put error:", err)
 				os.Exit(1)
 			}
 			s.TxnEnd(id)
