@@ -16,6 +16,7 @@ package transport
 
 import (
 	"crypto/tls"
+	"net"
 	"net/http"
 	"os"
 	"testing"
@@ -25,7 +26,12 @@ import (
 // that accepts connections.
 // TODO: verify the keepalive option is set correctly
 func TestNewKeepAliveListener(t *testing.T) {
-	ln, err := NewKeepAliveListener("127.0.0.1:0", "http", TLSInfo{})
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("unexpected listen error: %v", err)
+	}
+
+	ln, err = NewKeepAliveListener(ln, "http", TLSInfo{})
 	if err != nil {
 		t.Fatalf("unexpected NewKeepAliveListener error: %v", err)
 	}
@@ -38,6 +44,7 @@ func TestNewKeepAliveListener(t *testing.T) {
 	conn.Close()
 	ln.Close()
 
+	ln, err = net.Listen("tcp", "127.0.0.1:0")
 	// tls
 	tmp, err := createTempFile([]byte("XXX"))
 	if err != nil {
@@ -46,7 +53,7 @@ func TestNewKeepAliveListener(t *testing.T) {
 	defer os.Remove(tmp)
 	tlsInfo := TLSInfo{CertFile: tmp, KeyFile: tmp}
 	tlsInfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
-	tlsln, err := NewKeepAliveListener("127.0.0.1:0", "https", tlsInfo)
+	tlsln, err := NewKeepAliveListener(ln, "https", tlsInfo)
 	if err != nil {
 		t.Fatalf("unexpected NewKeepAliveListener error: %v", err)
 	}
@@ -64,7 +71,12 @@ func TestNewKeepAliveListener(t *testing.T) {
 }
 
 func TestNewKeepAliveListenerTLSEmptyInfo(t *testing.T) {
-	_, err := NewListener("127.0.0.1:0", "https", TLSInfo{})
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("unexpected listen error: %v", err)
+	}
+
+	_, err = NewKeepAliveListener(ln, "https", TLSInfo{})
 	if err == nil {
 		t.Errorf("err = nil, want not presented error")
 	}
