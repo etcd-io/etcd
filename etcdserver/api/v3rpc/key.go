@@ -16,6 +16,7 @@
 package v3rpc
 
 import (
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
@@ -24,12 +25,25 @@ import (
 	"github.com/coreos/etcd/storage"
 )
 
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver/api", "v3rpc")
+)
+
 type kvServer struct {
+	clusterID int64
+	memberID  int64
+	raftTimer etcdserver.RaftTimer
+
 	kv etcdserver.RaftKV
 }
 
-func NewKVServer(s etcdserver.RaftKV) pb.KVServer {
-	return &kvServer{s}
+func NewKVServer(s *etcdserver.EtcdServer) pb.KVServer {
+	return &kvServer{
+		clusterID: int64(s.Cluster().ID()),
+		memberID:  int64(s.ID()),
+		raftTimer: s,
+		kv:        s,
+	}
 }
 
 func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -42,6 +56,10 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 		return nil, togRPCError(err)
 	}
 
+	if resp.Header == nil {
+		plog.Panic("unexpected nil resp.Header")
+	}
+	s.fillInHeader(resp.Header)
 	return resp, err
 }
 
@@ -55,6 +73,10 @@ func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, 
 		return nil, togRPCError(err)
 	}
 
+	if resp.Header == nil {
+		plog.Panic("unexpected nil resp.Header")
+	}
+	s.fillInHeader(resp.Header)
 	return resp, err
 }
 
@@ -68,6 +90,10 @@ func (s *kvServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*
 		return nil, togRPCError(err)
 	}
 
+	if resp.Header == nil {
+		plog.Panic("unexpected nil resp.Header")
+	}
+	s.fillInHeader(resp.Header)
 	return resp, err
 }
 
@@ -81,6 +107,10 @@ func (s *kvServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, 
 		return nil, togRPCError(err)
 	}
 
+	if resp.Header == nil {
+		plog.Panic("unexpected nil resp.Header")
+	}
+	s.fillInHeader(resp.Header)
 	return resp, err
 }
 
@@ -90,7 +120,18 @@ func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Co
 		return nil, togRPCError(err)
 	}
 
+	if resp.Header == nil {
+		plog.Panic("unexpected nil resp.Header")
+	}
+	s.fillInHeader(resp.Header)
 	return resp, nil
+}
+
+// fillInHeader populates pb.ResponseHeader from kvServer, except Revision.
+func (s *kvServer) fillInHeader(h *pb.ResponseHeader) {
+	h.ClusterId = uint64(s.clusterID)
+	h.MemberId = uint64(s.memberID)
+	h.RaftTerm = s.raftTimer.Term()
 }
 
 func checkRangeRequest(r *pb.RangeRequest) error {
