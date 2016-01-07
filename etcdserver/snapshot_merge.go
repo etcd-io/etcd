@@ -20,7 +20,7 @@ import (
 
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
-	dstorage "github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/storage/backend"
 )
 
 // createMergedSnapshotMessage creates a snapshot message that contains: raft status (term, conf),
@@ -40,7 +40,7 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapi uint64,
 	}
 
 	// get a snapshot of v3 KV as readCloser
-	rc := newSnapshotReaderCloser(s.kv.Snapshot())
+	rc := newSnapshotReaderCloser(s.be.Snapshot())
 
 	// put the []byte snapshot of store into raft snapshot and return the merged snapshot with
 	// KV readCloser snapshot.
@@ -57,7 +57,7 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapi uint64,
 	return *snap.NewMessage(m, rc)
 }
 
-func newSnapshotReaderCloser(snapshot dstorage.Snapshot) io.ReadCloser {
+func newSnapshotReaderCloser(snapshot backend.Snapshot) io.ReadCloser {
 	pr, pw := io.Pipe()
 	go func() {
 		_, err := snapshot.WriteTo(pw)

@@ -714,7 +714,7 @@ func TestKVSnapshot(t *testing.T) {
 	}
 	defer os.Remove(newPath)
 
-	snap := s.Snapshot()
+	snap := s.b.Snapshot()
 	defer snap.Close()
 	_, err = snap.WriteTo(f)
 	if err != nil {
