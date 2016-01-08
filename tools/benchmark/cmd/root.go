@@ -41,6 +41,9 @@ var (
 	bar     *pb.ProgressBar
 	results chan result
 	wg      sync.WaitGroup
+
+	cpuProfPath string
+	memProfPath string
 )
 
 func init() {
