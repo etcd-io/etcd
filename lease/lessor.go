@@ -33,10 +33,12 @@ const (
 )
 
 var (
-	minLeaseTerm = 5 * time.Second
+	minLeaseTTL = int64(5)
 
 	leaseBucketName = []byte("lease")
-	forever         = time.Unix(math.MaxInt64, 0)
+	// do not use maxInt64 since it can overflow time which will add
+	// the offset of unix time (1970yr to seconds).
+	forever = time.Unix(math.MaxInt64>>1, 0)
 
 	ErrNotPrimary = errors.New("not a primary lessor")
 )
@@ -147,16 +149,19 @@ func newLessor(lessorID uint8, b backend.Backend, dr DeleteableRange) *lessor {
 // TODO: when lessor is under high load, it should give out lease
 // with longer TTL to reduce renew load.
 func (le *lessor) Grant(ttl int64) *Lease {
-	// TODO: define max TTL
-	expiry := time.Now().Add(time.Duration(ttl) * time.Second)
-	expiry = minExpiry(time.Now(), expiry)
-
 	id := LeaseID(le.idgen.Next())
 
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
-	l := &Lease{ID: id, TTL: ttl, expiry: expiry, itemSet: make(map[leaseItem]struct{})}
+	l := &Lease{ID: id, TTL: ttl, itemSet: make(map[leaseItem]struct{})}
+
+	if le.primary {
+		l.refresh()
+	} else {
+		l.forever()
+	}
+
 	if _, ok := le.leaseMap[id]; ok {
 		panic("lease: unexpected duplicate ID!")
 	}
@@ -202,8 +207,7 @@ func (le *lessor) Renew(id LeaseID) error {
 		return fmt.Errorf("lease: cannot find lease %x", id)
 	}
 
-	expiry := time.Now().Add(time.Duration(l.TTL) * time.Second)
-	l.expiry = minExpiry(time.Now(), expiry)
+	l.refresh()
 	return nil
 }
 
@@ -215,7 +219,7 @@ func (le *lessor) Promote() {
 
 	// refresh the expiries of all leases.
 	for _, l := range le.leaseMap {
-		l.expiry = minExpiry(time.Now(), time.Now().Add(time.Duration(l.TTL)*time.Second))
+		l.refresh()
 	}
 }
 
@@ -225,7 +229,7 @@ func (le *lessor) Demote() {
 
 	// set the expiries of all leases to forever
 	for _, l := range le.leaseMap {
-		l.expiry = forever
+		l.forever()
 	}
 
 	le.primary = false
@@ -375,18 +379,24 @@ func (l Lease) removeFrom(b backend.Backend) {
 	b.BatchTx().Unlock()
 }
 
-type leaseItem struct {
-	key string
+// refresh refreshes the expiry of the lease. It extends the expiry at least
+// minLeaseTTL second.
+func (l *Lease) refresh() {
+	ttl := l.TTL
+	if l.TTL < minLeaseTTL {
+		ttl = minLeaseTTL
+	}
+
+	l.expiry = time.Now().Add(time.Second * time.Duration(ttl))
 }
 
-// minExpiry returns a minimal expiry. A minimal expiry is the larger on
-// between now + minLeaseTerm and the given expectedExpiry.
-func minExpiry(now time.Time, expectedExpiry time.Time) time.Time {
-	minExpiry := time.Now().Add(minLeaseTerm)
-	if expectedExpiry.Sub(minExpiry) < 0 {
-		expectedExpiry = minExpiry
-	}
-	return expectedExpiry
+// forever sets the expiry of lease to be forever.
+func (l *Lease) forever() {
+	l.expiry = forever
+}
+
+type leaseItem struct {
+	key string
 }
 
 func int64ToBytes(n int64) []byte {
