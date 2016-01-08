@@ -114,12 +114,15 @@ func TestLessorRenew(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	le := newLessor(1, be, &fakeDeleteable{})
+	le.Promote()
 	l := le.Grant(5)
 
 	// manually change the ttl field
 	l.TTL = 10
-
-	le.Renew(l.ID)
+	err := le.Renew(l.ID)
+	if err != nil {
+		t.Fatalf("failed to renew lease (%v)", err)
+	}
 	l = le.get(l.ID)
 
 	if l.expiry.Sub(time.Now()) < 9*time.Second {

@@ -553,11 +553,26 @@ func (s *EtcdServer) run() {
 		<-appdonec
 	}()
 
-	select {
-	case err := <-s.errorc:
-		plog.Errorf("%s", err)
-		plog.Infof("the data-dir used by this member must be removed.")
-	case <-s.stop:
+	var expiredLeaseC <-chan []*lease.Lease
+	if s.lessor != nil {
+		expiredLeaseC = s.lessor.ExpiredLeasesC()
+	}
+
+	for {
+		select {
+		case leases := <-expiredLeaseC:
+			go func() {
+				for _, l := range leases {
+					s.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: int64(l.ID)})
+				}
+			}()
+		case err := <-s.errorc:
+			plog.Errorf("%s", err)
+			plog.Infof("the data-dir used by this member must be removed.")
+			return
+		case <-s.stop:
+			return
+		}
 	}
 }
 
