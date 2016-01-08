@@ -148,13 +148,21 @@ func (r *raftNode) start(s *EtcdServer) {
 					}
 					atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
 					if rd.RaftState == raft.StateLeader {
+						// TODO: raft should send server a notification through chan when
+						// it promotes or demotes instead of modifying server directly.
 						syncC = r.s.SyncTicker
+						if r.s.lessor != nil {
+							r.s.lessor.Promote()
+						}
 						// TODO: remove the nil checking
 						// current test utility does not provide the stats
 						if r.s.stats != nil {
 							r.s.stats.BecomeLeader()
 						}
 					} else {
+						if r.s.lessor != nil {
+							r.s.lessor.Demote()
+						}
 						syncC = nil
 					}
 				}
