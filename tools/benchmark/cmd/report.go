@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ type report struct {
 	fastest  float64
 	slowest  float64
 	average  float64
+	stddev   float64
 	rps      float64
 
 	results chan result
@@ -91,6 +93,11 @@ func (r *report) finalize() {
 
 	r.rps = float64(len(r.lats)) / r.total.Seconds()
 	r.average = r.avgTotal / float64(len(r.lats))
+	for i := range r.lats {
+		dev := r.lats[i] - r.average
+		r.stddev += dev * dev
+	}
+	r.stddev = math.Sqrt(r.stddev / float64(len(r.lats)))
 }
 
 func (r *report) print() {
@@ -104,6 +111,7 @@ func (r *report) print() {
 		fmt.Printf("  Slowest:\t%4.4f secs.\n", r.slowest)
 		fmt.Printf("  Fastest:\t%4.4f secs.\n", r.fastest)
 		fmt.Printf("  Average:\t%4.4f secs.\n", r.average)
+		fmt.Printf("  Stddev:\t%4.4f secs.\n", r.stddev)
 		fmt.Printf("  Requests/sec:\t%4.4f\n", r.rps)
 		r.printHistogram()
 		r.printLatencies()
