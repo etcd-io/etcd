@@ -162,6 +162,7 @@ func watchFunc(cmd *cobra.Command, args []string) {
 }
 
 func doWatch(stream etcdserverpb.Watch_WatchClient, requests <-chan etcdserverpb.WatchRequest) {
+	i := 0
 	for r := range requests {
 		st := time.Now()
 		err := stream.Send(&r)
@@ -171,8 +172,10 @@ func doWatch(stream etcdserverpb.Watch_WatchClient, requests <-chan etcdserverpb
 		}
 		results <- result{errStr: errStr, duration: time.Since(st)}
 		bar.Increment()
+		i++
 	}
-	for {
+	j := 0
+	for j != i {
 		_, err := stream.Recv()
 		var errStr string
 		if err != nil {
@@ -180,6 +183,7 @@ func doWatch(stream etcdserverpb.Watch_WatchClient, requests <-chan etcdserverpb
 		}
 		results <- result{errStr: errStr}
 		bar.Increment()
+		j++
 	}
 	wg.Done()
 }
