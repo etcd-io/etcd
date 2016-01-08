@@ -243,19 +243,19 @@ message WatchResponse {
 
 message LeaseCreateRequest {
   // advisory ttl in seconds
-  int64 ttl = 1;
+  int64 TTL = 1;
 }
 
 message LeaseCreateResponse {
   ResponseHeader header = 1;
-  int64 lease_id = 2;
+  int64 ID = 2;
   // server decided ttl in second
-  int64 ttl = 3;
+  int64 TTL = 3;
   string error = 4;
 }
 
 message LeaseRevokeRequest {
-  int64 lease_id = 1;
+  int64 ID = 1;
 }
 
 message LeaseRevokeResponse {
@@ -263,11 +263,10 @@ message LeaseRevokeResponse {
 }
 
 message LeaseKeepAliveRequest {
-  int64 lease_id = 1;
+  int64 ID = 1;
 }
 
 message LeaseKeepAliveResponse {
   ResponseHeader header = 1;
-  int64 lease_id = 2;
-  int64 ttl = 3;
+  int64 TTL = 2;
 }

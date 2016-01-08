@@ -441,7 +441,7 @@ func (m *WatchResponse) GetEvents() []*storagepb.Event {
 
 type LeaseCreateRequest struct {
 	// advisory ttl in seconds
-	Ttl int64 `protobuf:"varint,1,opt,name=ttl,proto3" json:"ttl,omitempty"`
+	TTL int64 `protobuf:"varint,1,opt,proto3" json:"TTL,omitempty"`
 }
 
 func (m *LeaseCreateRequest) Reset()         { *m = LeaseCreateRequest{} }
@@ -449,10 +449,10 @@ func (m *LeaseCreateRequest) String() string { return proto.CompactTextString(m)
 func (*LeaseCreateRequest) ProtoMessage()    {}
 
 type LeaseCreateResponse struct {
-	Header  *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	LeaseId int64           `protobuf:"varint,2,opt,name=lease_id,proto3" json:"lease_id,omitempty"`
+	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	ID     int64           `protobuf:"varint,2,opt,proto3" json:"ID,omitempty"`
 	// server decided ttl in second
-	Ttl   int64  `protobuf:"varint,3,opt,name=ttl,proto3" json:"ttl,omitempty"`
+	TTL   int64  `protobuf:"varint,3,opt,proto3" json:"TTL,omitempty"`
 	Error string `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
 }
 
@@ -468,7 +468,7 @@ func (m *LeaseCreateResponse) GetHeader() *ResponseHeader {
 }
 
 type LeaseRevokeRequest struct {
-	LeaseId int64 `protobuf:"varint,1,opt,name=lease_id,proto3" json:"lease_id,omitempty"`
+	ID int64 `protobuf:"varint,1,opt,proto3" json:"ID,omitempty"`
 }
 
 func (m *LeaseRevokeRequest) Reset()         { *m = LeaseRevokeRequest{} }
@@ -491,7 +491,7 @@ func (m *LeaseRevokeResponse) GetHeader() *ResponseHeader {
 }
 
 type LeaseKeepAliveRequest struct {
-	LeaseId int64 `protobuf:"varint,1,opt,name=lease_id,proto3" json:"lease_id,omitempty"`
+	ID int64 `protobuf:"varint,1,opt,proto3" json:"ID,omitempty"`
 }
 
 func (m *LeaseKeepAliveRequest) Reset()         { *m = LeaseKeepAliveRequest{} }
@@ -499,9 +499,8 @@ func (m *LeaseKeepAliveRequest) String() string { return proto.CompactTextString
 func (*LeaseKeepAliveRequest) ProtoMessage()    {}
 
 type LeaseKeepAliveResponse struct {
-	Header  *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	LeaseId int64           `protobuf:"varint,2,opt,name=lease_id,proto3" json:"lease_id,omitempty"`
-	Ttl     int64           `protobuf:"varint,3,opt,name=ttl,proto3" json:"ttl,omitempty"`
+	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	TTL    int64           `protobuf:"varint,2,opt,proto3" json:"TTL,omitempty"`
 }
 
 func (m *LeaseKeepAliveResponse) Reset()         { *m = LeaseKeepAliveResponse{} }
@@ -1741,10 +1740,10 @@ func (m *LeaseCreateRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Ttl != 0 {
+	if m.TTL != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Ttl))
+		i = encodeVarintRpc(data, i, uint64(m.TTL))
 	}
 	return i, nil
 }
@@ -1774,15 +1773,15 @@ func (m *LeaseCreateResponse) MarshalTo(data []byte) (int, error) {
 		}
 		i += n15
 	}
-	if m.LeaseId != 0 {
+	if m.ID != 0 {
 		data[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.LeaseId))
+		i = encodeVarintRpc(data, i, uint64(m.ID))
 	}
-	if m.Ttl != 0 {
+	if m.TTL != 0 {
 		data[i] = 0x18
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Ttl))
+		i = encodeVarintRpc(data, i, uint64(m.TTL))
 	}
 	if len(m.Error) > 0 {
 		data[i] = 0x22
@@ -1808,10 +1807,10 @@ func (m *LeaseRevokeRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.LeaseId != 0 {
+	if m.ID != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.LeaseId))
+		i = encodeVarintRpc(data, i, uint64(m.ID))
 	}
 	return i, nil
 }
@@ -1859,10 +1858,10 @@ func (m *LeaseKeepAliveRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.LeaseId != 0 {
+	if m.ID != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.LeaseId))
+		i = encodeVarintRpc(data, i, uint64(m.ID))
 	}
 	return i, nil
 }
@@ -1892,15 +1891,10 @@ func (m *LeaseKeepAliveResponse) MarshalTo(data []byte) (int, error) {
 		}
 		i += n17
 	}
-	if m.LeaseId != 0 {
+	if m.TTL != 0 {
 		data[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.LeaseId))
-	}
-	if m.Ttl != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Ttl))
+		i = encodeVarintRpc(data, i, uint64(m.TTL))
 	}
 	return i, nil
 }
@@ -2258,8 +2252,8 @@ func (m *WatchResponse) Size() (n int) {
 func (m *LeaseCreateRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Ttl != 0 {
-		n += 1 + sovRpc(uint64(m.Ttl))
+	if m.TTL != 0 {
+		n += 1 + sovRpc(uint64(m.TTL))
 	}
 	return n
 }
@@ -2271,11 +2265,11 @@ func (m *LeaseCreateResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
-	if m.LeaseId != 0 {
-		n += 1 + sovRpc(uint64(m.LeaseId))
+	if m.ID != 0 {
+		n += 1 + sovRpc(uint64(m.ID))
 	}
-	if m.Ttl != 0 {
-		n += 1 + sovRpc(uint64(m.Ttl))
+	if m.TTL != 0 {
+		n += 1 + sovRpc(uint64(m.TTL))
 	}
 	l = len(m.Error)
 	if l > 0 {
@@ -2287,8 +2281,8 @@ func (m *LeaseCreateResponse) Size() (n int) {
 func (m *LeaseRevokeRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.LeaseId != 0 {
-		n += 1 + sovRpc(uint64(m.LeaseId))
+	if m.ID != 0 {
+		n += 1 + sovRpc(uint64(m.ID))
 	}
 	return n
 }
@@ -2306,8 +2300,8 @@ func (m *LeaseRevokeResponse) Size() (n int) {
 func (m *LeaseKeepAliveRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.LeaseId != 0 {
-		n += 1 + sovRpc(uint64(m.LeaseId))
+	if m.ID != 0 {
+		n += 1 + sovRpc(uint64(m.ID))
 	}
 	return n
 }
@@ -2319,11 +2313,8 @@ func (m *LeaseKeepAliveResponse) Size() (n int) {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
-	if m.LeaseId != 0 {
-		n += 1 + sovRpc(uint64(m.LeaseId))
-	}
-	if m.Ttl != 0 {
-		n += 1 + sovRpc(uint64(m.Ttl))
+	if m.TTL != 0 {
+		n += 1 + sovRpc(uint64(m.TTL))
 	}
 	return n
 }
@@ -4351,16 +4342,16 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ttl", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TTL", wireType)
 			}
-			m.Ttl = 0
+			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Ttl |= (int64(b) & 0x7F) << shift
+				m.TTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4442,32 +4433,32 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LeaseId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
 			}
-			m.LeaseId = 0
+			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.LeaseId |= (int64(b) & 0x7F) << shift
+				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ttl", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TTL", wireType)
 			}
-			m.Ttl = 0
+			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Ttl |= (int64(b) & 0x7F) << shift
+				m.TTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4545,16 +4536,16 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LeaseId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
 			}
-			m.LeaseId = 0
+			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.LeaseId |= (int64(b) & 0x7F) << shift
+				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4681,16 +4672,16 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LeaseId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
 			}
-			m.LeaseId = 0
+			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.LeaseId |= (int64(b) & 0x7F) << shift
+				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -4772,32 +4763,16 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LeaseId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TTL", wireType)
 			}
-			m.LeaseId = 0
+			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.LeaseId |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ttl", wireType)
-			}
-			m.Ttl = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Ttl |= (int64(b) & 0x7F) << shift
+				m.TTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

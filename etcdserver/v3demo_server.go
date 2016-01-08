@@ -34,6 +34,11 @@ type RaftKV interface {
 	Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error)
 }
 
+type Lessor interface {
+	LeaseCreate(ctx context.Context, r *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error)
+	LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
+}
+
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Range: r})
 	if err != nil {
@@ -72,6 +77,22 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 		return nil, err
 	}
 	return result.resp.(*pb.CompactionResponse), result.err
+}
+
+func (s *EtcdServer) LeaseCreate(ctx context.Context, r *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{LeaseCreate: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.LeaseCreateResponse), result.err
+}
+
+func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.LeaseRevokeResponse), result.err
 }
 
 type applyResult struct {
@@ -115,6 +136,7 @@ const (
 
 func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
 	kv := s.getKV()
+	le := s.lessor
 
 	ar := &applyResult{}
 
@@ -129,6 +151,10 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
 		ar.resp, ar.err = applyTxn(kv, r.Txn)
 	case r.Compaction != nil:
 		ar.resp, ar.err = applyCompaction(kv, r.Compaction)
+	case r.LeaseCreate != nil:
+		ar.resp, ar.err = applyLeaseCreate(le, r.LeaseCreate)
+	case r.LeaseRevoke != nil:
+		ar.resp, ar.err = applyLeaseRevoke(le, r.LeaseRevoke)
 	default:
 		panic("not implemented")
 	}
@@ -346,6 +372,18 @@ func applyCompare(txnID int64, kv dstorage.KV, c *pb.Compare) (int64, bool) {
 		}
 	}
 	return rev, true
+}
+
+func applyLeaseCreate(le lease.Lessor, lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+	l := le.Grant(lc.TTL)
+
+	return &pb.LeaseCreateResponse{ID: int64(l.ID), TTL: l.TTL}, nil
+}
+
+func applyLeaseRevoke(le lease.Lessor, lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	err := le.Revoke(lease.LeaseID(lc.ID))
+
+	return &pb.LeaseRevokeResponse{}, err
 }
 
 func compareInt64(a, b int64) int {

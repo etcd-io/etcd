@@ -24,6 +24,8 @@ type InternalRaftRequest struct {
 	DeleteRange *DeleteRangeRequest `protobuf:"bytes,5,opt,name=delete_range" json:"delete_range,omitempty"`
 	Txn         *TxnRequest         `protobuf:"bytes,6,opt,name=txn" json:"txn,omitempty"`
 	Compaction  *CompactionRequest  `protobuf:"bytes,7,opt,name=compaction" json:"compaction,omitempty"`
+	LeaseCreate *LeaseCreateRequest `protobuf:"bytes,8,opt,name=lease_create" json:"lease_create,omitempty"`
+	LeaseRevoke *LeaseRevokeRequest `protobuf:"bytes,9,opt,name=lease_revoke" json:"lease_revoke,omitempty"`
 }
 
 func (m *InternalRaftRequest) Reset()         { *m = InternalRaftRequest{} }
@@ -117,6 +119,26 @@ func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n6
 	}
+	if m.LeaseCreate != nil {
+		data[i] = 0x42
+		i++
+		i = encodeVarintRaftInternal(data, i, uint64(m.LeaseCreate.Size()))
+		n7, err := m.LeaseCreate.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
+	if m.LeaseRevoke != nil {
+		data[i] = 0x4a
+		i++
+		i = encodeVarintRaftInternal(data, i, uint64(m.LeaseRevoke.Size()))
+		n8, err := m.LeaseRevoke.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
 	return i, nil
 }
 
@@ -193,6 +215,14 @@ func (m *InternalRaftRequest) Size() (n int) {
 	}
 	if m.Compaction != nil {
 		l = m.Compaction.Size()
+		n += 1 + l + sovRaftInternal(uint64(l))
+	}
+	if m.LeaseCreate != nil {
+		l = m.LeaseCreate.Size()
+		n += 1 + l + sovRaftInternal(uint64(l))
+	}
+	if m.LeaseRevoke != nil {
+		l = m.LeaseRevoke.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
 	return n
@@ -429,6 +459,66 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 				m.Compaction = &CompactionRequest{}
 			}
 			if err := m.Compaction.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LeaseCreate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRaftInternal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LeaseCreate == nil {
+				m.LeaseCreate = &LeaseCreateRequest{}
+			}
+			if err := m.LeaseCreate.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LeaseRevoke", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRaftInternal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LeaseRevoke == nil {
+				m.LeaseRevoke = &LeaseRevokeRequest{}
+			}
+			if err := m.LeaseRevoke.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

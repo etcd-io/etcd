@@ -34,6 +34,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -166,8 +167,9 @@ type EtcdServer struct {
 
 	store store.Store
 
-	kv dstorage.ConsistentWatchableKV
-	be backend.Backend
+	kv     dstorage.ConsistentWatchableKV
+	lessor lease.Lessor
+	be     backend.Backend
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -360,6 +362,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	if cfg.V3demo {
 		srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
 		srv.kv = dstorage.New(srv.be, &srv.consistIndex)
+		srv.lessor = lease.NewLessor(uint8(id), srv.be, srv.kv)
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -588,6 +591,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		if err := os.Rename(snapfn, fn); err != nil {
 			plog.Panicf("rename snapshot file error: %v", err)
 		}
+
+		// TODO: recover leassor
 
 		newbe := backend.NewDefaultBackend(fn)
 		if err := s.kv.Restore(newbe); err != nil {
