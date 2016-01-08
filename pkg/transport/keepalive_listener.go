@@ -21,6 +21,11 @@ import (
 	"time"
 )
 
+type keepAliveConn interface {
+	SetKeepAlive(bool) error
+	SetKeepAlivePeriod(d time.Duration) error
+}
+
 // NewKeepAliveListener returns a listener that listens on the given address.
 // Be careful when wrap around KeepAliveListener with another Listener if TLSInfo is not nil.
 // Some pkgs (like go/http) might expect Listener to return TLSConn type to start TLS handshake.
@@ -50,13 +55,13 @@ func (kln *keepaliveListener) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcpc := c.(*net.TCPConn)
+	kac := c.(keepAliveConn)
 	// detection time: tcp_keepalive_time + tcp_keepalive_probes + tcp_keepalive_intvl
 	// default on linux:  30 + 8 * 30
 	// default on osx:    30 + 8 * 75
-	tcpc.SetKeepAlive(true)
-	tcpc.SetKeepAlivePeriod(30 * time.Second)
-	return tcpc, nil
+	kac.SetKeepAlive(true)
+	kac.SetKeepAlivePeriod(30 * time.Second)
+	return c, nil
 }
 
 // A tlsKeepaliveListener implements a network listener (net.Listener) for TLS connections.
@@ -72,12 +77,12 @@ func (l *tlsKeepaliveListener) Accept() (c net.Conn, err error) {
 	if err != nil {
 		return
 	}
-	tcpc := c.(*net.TCPConn)
+	kac := c.(keepAliveConn)
 	// detection time: tcp_keepalive_time + tcp_keepalive_probes + tcp_keepalive_intvl
 	// default on linux:  30 + 8 * 30
 	// default on osx:    30 + 8 * 75
-	tcpc.SetKeepAlive(true)
-	tcpc.SetKeepAlivePeriod(30 * time.Second)
+	kac.SetKeepAlive(true)
+	kac.SetKeepAlivePeriod(30 * time.Second)
 	c = tls.Server(c, l.config)
 	return
 }

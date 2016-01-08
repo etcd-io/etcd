@@ -4,11 +4,17 @@
 
 // Package netutil provides network utility functions, complementing the more
 // common ones in the net package.
-package netutil
+package transport
 
 import (
+	"errors"
 	"net"
 	"sync"
+	"time"
+)
+
+var (
+	ErrNotTCP = errors.New("only tcp connections have keepalive")
 )
 
 // LimitListener returns a Listener that accepts at most n simultaneous
@@ -45,4 +51,20 @@ func (l *limitListenerConn) Close() error {
 	err := l.Conn.Close()
 	l.releaseOnce.Do(l.release)
 	return err
+}
+
+func (l *limitListenerConn) SetKeepAlive(doKeepAlive bool) error {
+	tcpc, ok := l.Conn.(*net.TCPConn)
+	if !ok {
+		return ErrNotTCP
+	}
+	return tcpc.SetKeepAlive(doKeepAlive)
+}
+
+func (l *limitListenerConn) SetKeepAlivePeriod(d time.Duration) error {
+	tcpc, ok := l.Conn.(*net.TCPConn)
+	if !ok {
+		return ErrNotTCP
+	}
+	return tcpc.SetKeepAlivePeriod(d)
 }
