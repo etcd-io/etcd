@@ -18,12 +18,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/backend"
 )
 
 func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	watchable := newWatchableStore(be)
+	watchable := newWatchableStore(be, &lease.FakeLessor{})
 
 	defer cleanup(watchable, be, tmpPath)
 

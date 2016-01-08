@@ -31,7 +31,7 @@ import (
 
 func TestStoreRev(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer os.Remove(tmpPath)
 
 	for i := 0; i < 3; i++ {
@@ -360,7 +360,7 @@ func TestStoreRestore(t *testing.T) {
 
 func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s0 := NewStore(b)
+	s0 := NewStore(b, &lease.FakeLessor{})
 	defer os.Remove(tmpPath)
 
 	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -377,7 +377,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 
 	s0.Close()
 
-	s1 := NewStore(b)
+	s1 := NewStore(b, &lease.FakeLessor{})
 
 	// wait for scheduled compaction to be finished
 	time.Sleep(100 * time.Millisecond)
@@ -415,7 +415,7 @@ func TestTxnPut(t *testing.T) {
 	vals := createBytesSlice(bytesN, sliceN)
 
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < sliceN; i++ {
@@ -436,7 +436,7 @@ func TestTxnPut(t *testing.T) {
 
 func TestTxnBlockBackendForceCommit(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer os.Remove(tmpPath)
 
 	id := s.TxnBegin()
@@ -458,8 +458,9 @@ func TestTxnBlockBackendForceCommit(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatalf("failed to execute ForceCommit")
 	}
-
 }
+
+// TODO: test attach key to lessor
 
 func newTestRevBytes(rev revision) []byte {
 	bytes := newRevBytes()
@@ -489,6 +490,7 @@ func newFakeStore() *store {
 	}
 	return &store{
 		b:              b,
+		le:             &lease.FakeLessor{},
 		kvindex:        fi,
 		currentRev:     revision{},
 		compactMainRev: -1,

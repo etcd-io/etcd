@@ -16,6 +16,7 @@ package command
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -23,19 +24,30 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
+var (
+	leaseStr string
+)
+
 // NewPutCommand returns the cobra command for "put".
 func NewPutCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "put",
 		Short: "Put puts the given key into the store.",
 		Run:   putCommandFunc,
 	}
+	cmd.Flags().StringVar(&leaseStr, "lease", "0", "lease ID attached to the put key")
+	return cmd
 }
 
 // putCommandFunc executes the "put" command.
 func putCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 2 arguments."))
+	}
+
+	id, err := strconv.ParseInt(leaseStr, 16, 64)
+	if err != nil {
+		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
 
 	key := []byte(args[0])
@@ -50,7 +62,7 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadConnection, err)
 	}
 	kv := pb.NewKVClient(conn)
-	req := &pb.PutRequest{Key: key, Value: value}
+	req := &pb.PutRequest{Key: key, Value: value, Lease: id}
 
 	kv.Put(context.Background(), req)
 	fmt.Printf("%s %s\n", key, value)

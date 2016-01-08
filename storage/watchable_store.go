@@ -60,9 +60,9 @@ type watchableStore struct {
 // cancel operations.
 type cancelFunc func()
 
-func newWatchableStore(b backend.Backend) *watchableStore {
+func newWatchableStore(b backend.Backend, le lease.Lessor) *watchableStore {
 	s := &watchableStore{
-		store:    NewStore(b),
+		store:    NewStore(b, le),
 		unsynced: make(map[*watcher]struct{}),
 		synced:   make(map[string]map[*watcher]struct{}),
 		stopc:    make(chan struct{}),
