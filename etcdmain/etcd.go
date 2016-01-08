@@ -31,7 +31,6 @@ import (
 	systemdutil "github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/util"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/netutil"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
@@ -245,7 +244,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 			if fdLimit <= reservedInternalFDNum {
 				plog.Fatalf("file descriptor limit[%d] of etcd process is too low, and should be set higher than %d to ensure internal usage", fdLimit, reservedInternalFDNum)
 			}
-			l = netutil.LimitListener(l, int(fdLimit-reservedInternalFDNum))
+			l = transport.LimitListener(l, int(fdLimit-reservedInternalFDNum))
 		}
 
 		// Do not wrap around this listener if TLS Info is set.
