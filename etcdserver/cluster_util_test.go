@@ -32,7 +32,7 @@ func TestDecideClusterVersion(t *testing.T) {
 			map[string]*version.Versions{"a": {Server: "2.0.0"}},
 			semver.Must(semver.NewVersion("2.0.0")),
 		},
-		// unknow
+		// unknown
 		{
 			map[string]*version.Versions{"a": nil},
 			nil,
