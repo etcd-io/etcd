@@ -166,9 +166,9 @@ func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 	return cv
 }
 
-// isCompatibleWithCluster return true if the local member has a compitable version with
+// isCompatibleWithCluster return true if the local member has a compatible version with
 // the current running cluster.
-// The version is considered as compitable when at least one of the other members in the cluster has a
+// The version is considered as compatible when at least one of the other members in the cluster has a
 // cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
@@ -187,7 +187,7 @@ func isCompatibleWithCluster(cl Cluster, local types.ID, rt http.RoundTripper) b
 func isCompatibleWithVers(vers map[string]*version.Versions, local types.ID, minV, maxV *semver.Version) bool {
 	var ok bool
 	for id, v := range vers {
-		// ignore comparasion with local version
+		// ignore comparison with local version
 		if id == local.String() {
 			continue
 		}

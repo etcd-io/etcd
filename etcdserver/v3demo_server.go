@@ -122,7 +122,7 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 	}
 }
 
-// Watcable returns a watchable interface attached to the etcdserver.
+// Watchable returns a watchable interface attached to the etcdserver.
 func (s *EtcdServer) Watchable() dstorage.Watchable {
 	return s.getKV()
 }

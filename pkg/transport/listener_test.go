@@ -45,7 +45,7 @@ func fakeCertificateParserFunc(cert tls.Certificate, err error) func(certPEMBloc
 }
 
 // TestNewListenerTLSInfo tests that NewListener with valid TLSInfo returns
-// a TLS listerner that accepts TLS connections.
+// a TLS listener that accepts TLS connections.
 func TestNewListenerTLSInfo(t *testing.T) {
 	tmp, err := createTempFile([]byte("XXX"))
 	if err != nil {

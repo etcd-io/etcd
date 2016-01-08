@@ -294,7 +294,7 @@ func (s *watchableStore) syncWatchers() {
 
 		if w.cur < compactionRev {
 			// TODO: return error compacted to that watcher instead of
-			// just removing it sliently from unsynced.
+			// just removing it silently from unsynced.
 			delete(s.unsynced, w)
 			continue
 		}

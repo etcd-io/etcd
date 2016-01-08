@@ -541,7 +541,7 @@ func (s *EtcdServer) run() {
 
 	defer func() {
 		s.r.stop()
-		// kv and backend can be nil if runing without v3 enabled
+		// kv and backend can be nil if running without v3 enabled
 		// or running unit tests.
 		if s.kv != nil {
 			s.kv.Close()
@@ -856,7 +856,7 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error 
 
 // sync proposes a SYNC request and is non-blocking.
 // This makes no guarantee that the request will be proposed or performed.
-// The request will be cancelled after the given timeout.
+// The request will be canceled after the given timeout.
 func (s *EtcdServer) sync(timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	req := pb.Request{
@@ -1203,7 +1203,7 @@ func (s *EtcdServer) monitorVersions() {
 
 		v := decideClusterVersion(getVersions(s.cluster, s.id, s.versionRt))
 		if v != nil {
-			// only keep major.minor version for comparasion
+			// only keep major.minor version for comparison
 			v = &semver.Version{
 				Major: v.Major,
 				Minor: v.Minor,
