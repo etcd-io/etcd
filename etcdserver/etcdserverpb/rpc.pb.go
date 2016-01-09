@@ -500,7 +500,8 @@ func (*LeaseKeepAliveRequest) ProtoMessage()    {}
 
 type LeaseKeepAliveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	TTL    int64           `protobuf:"varint,2,opt,proto3" json:"TTL,omitempty"`
+	ID     int64           `protobuf:"varint,2,opt,proto3" json:"ID,omitempty"`
+	TTL    int64           `protobuf:"varint,3,opt,proto3" json:"TTL,omitempty"`
 }
 
 func (m *LeaseKeepAliveResponse) Reset()         { *m = LeaseKeepAliveResponse{} }
@@ -1891,8 +1892,13 @@ func (m *LeaseKeepAliveResponse) MarshalTo(data []byte) (int, error) {
 		}
 		i += n17
 	}
-	if m.TTL != 0 {
+	if m.ID != 0 {
 		data[i] = 0x10
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.ID))
+	}
+	if m.TTL != 0 {
+		data[i] = 0x18
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.TTL))
 	}
@@ -2312,6 +2318,9 @@ func (m *LeaseKeepAliveResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.ID != 0 {
+		n += 1 + sovRpc(uint64(m.ID))
 	}
 	if m.TTL != 0 {
 		n += 1 + sovRpc(uint64(m.TTL))
@@ -4762,6 +4771,22 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			m.ID = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ID |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TTL", wireType)
 			}

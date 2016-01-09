@@ -79,9 +79,9 @@ type Lessor interface {
 	// Demote demotes the lessor from being the primary lessor.
 	Demote()
 
-	// Renew renews a lease with given ID.  If the ID does not exist, an error
-	// will be returned.
-	Renew(id LeaseID) error
+	// Renew renews a lease with given ID. It returns the renewed TTL. If the ID does not exist,
+	// an error will be returned.
+	Renew(id LeaseID) (int64, error)
 
 	// ExpiredLeasesC returens a chan that is used to receive expired leases.
 	ExpiredLeasesC() <-chan []*Lease
@@ -209,22 +209,22 @@ func (le *lessor) Revoke(id LeaseID) error {
 
 // Renew renews an existing lease. If the given lease does not exist or
 // has expired, an error will be returned.
-// TODO: return new TTL?
-func (le *lessor) Renew(id LeaseID) error {
+func (le *lessor) Renew(id LeaseID) (int64, error) {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
 	if !le.primary {
-		return ErrNotPrimary
+		// forward renew request to primary instead of returning error.
+		return -1, ErrNotPrimary
 	}
 
 	l := le.leaseMap[id]
 	if l == nil {
-		return ErrLeaseNotFound
+		return -1, ErrLeaseNotFound
 	}
 
 	l.refresh()
-	return nil
+	return l.TTL, nil
 }
 
 func (le *lessor) Promote() {
@@ -438,6 +438,6 @@ func (fl *FakeLessor) Promote() {}
 
 func (fl *FakeLessor) Demote() {}
 
-func (fl *FakeLessor) Renew(id LeaseID) error { return nil }
+func (fl *FakeLessor) Renew(id LeaseID) (int64, error) { return 10, nil }
 
 func (fl *FakeLessor) ExpiredLeasesC() <-chan []*Lease { return nil }

@@ -268,5 +268,6 @@ message LeaseKeepAliveRequest {
 
 message LeaseKeepAliveResponse {
   ResponseHeader header = 1;
-  int64 TTL = 2;
+  int64 ID = 2;
+  int64 TTL = 3;
 }
