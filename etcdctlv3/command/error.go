@@ -27,6 +27,7 @@ const (
 	ExitError
 	ExitBadConnection
 	ExitInvalidInput // for txn, watch command
+	ExitBadFeature   // provided a valid flag with an unsupported value
 	ExitBadArgs      = 128
 )
 

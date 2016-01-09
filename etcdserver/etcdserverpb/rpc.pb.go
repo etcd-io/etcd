@@ -20,6 +20,58 @@ import fmt "fmt"
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 
+type RangeRequest_SortOrder int32
+
+const (
+	RangeRequest_NONE    RangeRequest_SortOrder = 0
+	RangeRequest_ASCEND  RangeRequest_SortOrder = 1
+	RangeRequest_DESCEND RangeRequest_SortOrder = 2
+)
+
+var RangeRequest_SortOrder_name = map[int32]string{
+	0: "NONE",
+	1: "ASCEND",
+	2: "DESCEND",
+}
+var RangeRequest_SortOrder_value = map[string]int32{
+	"NONE":    0,
+	"ASCEND":  1,
+	"DESCEND": 2,
+}
+
+func (x RangeRequest_SortOrder) String() string {
+	return proto.EnumName(RangeRequest_SortOrder_name, int32(x))
+}
+
+type RangeRequest_SortTarget int32
+
+const (
+	RangeRequest_KEY     RangeRequest_SortTarget = 0
+	RangeRequest_VERSION RangeRequest_SortTarget = 1
+	RangeRequest_CREATE  RangeRequest_SortTarget = 2
+	RangeRequest_MOD     RangeRequest_SortTarget = 3
+	RangeRequest_VALUE   RangeRequest_SortTarget = 4
+)
+
+var RangeRequest_SortTarget_name = map[int32]string{
+	0: "KEY",
+	1: "VERSION",
+	2: "CREATE",
+	3: "MOD",
+	4: "VALUE",
+}
+var RangeRequest_SortTarget_value = map[string]int32{
+	"KEY":     0,
+	"VERSION": 1,
+	"CREATE":  2,
+	"MOD":     3,
+	"VALUE":   4,
+}
+
+func (x RangeRequest_SortTarget) String() string {
+	return proto.EnumName(RangeRequest_SortTarget_name, int32(x))
+}
+
 type Compare_CompareResult int32
 
 const (
@@ -94,6 +146,10 @@ type RangeRequest struct {
 	// if the revision has been compacted, ErrCompaction will be returned in
 	// response.
 	Revision int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
+	// sort_order is the requested order for returned the results
+	SortOrder RangeRequest_SortOrder `protobuf:"varint,5,opt,name=sort_order,proto3,enum=etcdserverpb.RangeRequest_SortOrder" json:"sort_order,omitempty"`
+	// sort_target is the kv field to use for sorting
+	SortTarget RangeRequest_SortTarget `protobuf:"varint,6,opt,name=sort_target,proto3,enum=etcdserverpb.RangeRequest_SortTarget" json:"sort_target,omitempty"`
 }
 
 func (m *RangeRequest) Reset()         { *m = RangeRequest{} }
@@ -516,6 +572,8 @@ func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 }
 
 func init() {
+	proto.RegisterEnum("etcdserverpb.RangeRequest_SortOrder", RangeRequest_SortOrder_name, RangeRequest_SortOrder_value)
+	proto.RegisterEnum("etcdserverpb.RangeRequest_SortTarget", RangeRequest_SortTarget_name, RangeRequest_SortTarget_value)
 	proto.RegisterEnum("etcdserverpb.Compare_CompareResult", Compare_CompareResult_name, Compare_CompareResult_value)
 	proto.RegisterEnum("etcdserverpb.Compare_CompareTarget", Compare_CompareTarget_name, Compare_CompareTarget_value)
 }
@@ -1058,6 +1116,16 @@ func (m *RangeRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x20
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Revision))
+	}
+	if m.SortOrder != 0 {
+		data[i] = 0x28
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.SortOrder))
+	}
+	if m.SortTarget != 0 {
+		data[i] = 0x30
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.SortTarget))
 	}
 	return i, nil
 }
@@ -1971,6 +2039,12 @@ func (m *RangeRequest) Size() (n int) {
 	if m.Revision != 0 {
 		n += 1 + sovRpc(uint64(m.Revision))
 	}
+	if m.SortOrder != 0 {
+		n += 1 + sovRpc(uint64(m.SortOrder))
+	}
+	if m.SortTarget != 0 {
+		n += 1 + sovRpc(uint64(m.SortTarget))
+	}
 	return n
 }
 
@@ -2547,6 +2621,38 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				b := data[iNdEx]
 				iNdEx++
 				m.Revision |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SortOrder", wireType)
+			}
+			m.SortOrder = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.SortOrder |= (RangeRequest_SortOrder(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SortTarget", wireType)
+			}
+			m.SortTarget = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.SortTarget |= (RangeRequest_SortTarget(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
