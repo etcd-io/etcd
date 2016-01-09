@@ -79,7 +79,7 @@ func TestKVTxnRange(t *testing.T) { testKVRange(t, txnRangeFunc) }
 
 func testKVRange(t *testing.T, f rangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), 1)
@@ -147,7 +147,7 @@ func TestKVTxnRangeRev(t *testing.T) { testKVRangeRev(t, normalRangeFunc) }
 
 func testKVRangeRev(t *testing.T, f rangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), 1)
@@ -190,7 +190,7 @@ func TestKVTxnRangeBadRev(t *testing.T) { testKVRangeBadRev(t, normalRangeFunc) 
 
 func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -223,7 +223,7 @@ func TestKVTxnRangeLimit(t *testing.T) { testKVRangeLimit(t, txnRangeFunc) }
 
 func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), 1)
@@ -268,7 +268,7 @@ func TestKVTxnPutMultipleTimes(t *testing.T) { testKVPutMultipleTimes(t, txnPutF
 
 func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -330,7 +330,7 @@ func testKVDeleteRange(t *testing.T, f deleteRangeFunc) {
 
 	for i, tt := range tests {
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		s := NewStore(b)
+		s := NewStore(b, &lease.FakeLessor{})
 
 		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 		s.Put([]byte("foo1"), []byte("bar1"), lease.NoLease)
@@ -350,7 +350,7 @@ func TestKVTxnDeleteMultipleTimes(t *testing.T) { testKVDeleteMultipleTimes(t, t
 
 func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -371,7 +371,7 @@ func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 // test that range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVOperationInSequence(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -418,7 +418,7 @@ func TestKVOperationInSequence(t *testing.T) {
 
 func TestKVTxnBlockNonTnxOperations(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	tests := []func(){
@@ -450,7 +450,7 @@ func TestKVTxnBlockNonTnxOperations(t *testing.T) {
 
 func TestKVTxnWrongID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	id := s.TxnBegin()
@@ -487,7 +487,7 @@ func TestKVTxnWrongID(t *testing.T) {
 // test that txn range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVTnxOperationInSequence(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
@@ -543,7 +543,7 @@ func TestKVTnxOperationInSequence(t *testing.T) {
 
 func TestKVCompactReserveLastValue(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar0"), 1)
@@ -597,7 +597,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 
 func TestKVCompactBad(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar0"), lease.NoLease)
@@ -630,7 +630,7 @@ func TestKVHash(t *testing.T) {
 	for i := 0; i < len(hashes); i++ {
 		var err error
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		kv := NewStore(b)
+		kv := NewStore(b, &lease.FakeLessor{})
 		kv.Put([]byte("foo0"), []byte("bar0"), lease.NoLease)
 		kv.Put([]byte("foo1"), []byte("bar0"), lease.NoLease)
 		hashes[i], err = kv.Hash()
@@ -667,7 +667,7 @@ func TestKVRestore(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		s := NewStore(b)
+		s := NewStore(b, &lease.FakeLessor{})
 		tt(s)
 		var kvss [][]storagepb.KeyValue
 		for k := int64(0); k < 10; k++ {
@@ -677,7 +677,7 @@ func TestKVRestore(t *testing.T) {
 		s.Close()
 
 		// ns should recover the the previous state from backend.
-		ns := NewStore(b)
+		ns := NewStore(b, &lease.FakeLessor{})
 		// wait for possible compaction to finish
 		testutil.WaitSchedule()
 		var nkvss [][]storagepb.KeyValue
@@ -695,7 +695,7 @@ func TestKVRestore(t *testing.T) {
 
 func TestKVSnapshot(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(b)
+	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), 1)
@@ -722,7 +722,7 @@ func TestKVSnapshot(t *testing.T) {
 	}
 	f.Close()
 
-	ns := NewStore(b)
+	ns := NewStore(b, &lease.FakeLessor{})
 	defer ns.Close()
 	kvs, rev, err := ns.Range([]byte("a"), []byte("z"), 0, 0)
 	if err != nil {
@@ -738,7 +738,7 @@ func TestKVSnapshot(t *testing.T) {
 
 func TestWatchableKVWatch(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()

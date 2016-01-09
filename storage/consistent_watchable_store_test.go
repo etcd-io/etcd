@@ -28,7 +28,7 @@ func (v *indexVal) ConsistentIndex() uint64 { return uint64(*v) }
 func TestConsistentWatchableStoreConsistentIndex(t *testing.T) {
 	var idx indexVal
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newConsistentWatchableStore(b, &idx)
+	s := newConsistentWatchableStore(b, &lease.FakeLessor{}, &idx)
 	defer cleanup(s, b, tmpPath)
 
 	tests := []uint64{1, 2, 3, 5, 10}
@@ -48,7 +48,7 @@ func TestConsistentWatchableStoreConsistentIndex(t *testing.T) {
 func TestConsistentWatchableStoreSkip(t *testing.T) {
 	idx := indexVal(5)
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newConsistentWatchableStore(b, &idx)
+	s := newConsistentWatchableStore(b, &lease.FakeLessor{}, &idx)
 	defer cleanup(s, b, tmpPath)
 
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)

@@ -33,7 +33,7 @@ func TestLessorGrant(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(1, be, &fakeDeleteable{})
+	le := newLessor(1, be)
 	le.Promote()
 
 	l := le.Grant(1)
@@ -68,15 +68,16 @@ func TestLessorRevoke(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	fd := &fakeDeleteable{}
+	fd := &fakeDeleter{}
 
-	le := newLessor(1, be, fd)
+	le := newLessor(1, be)
+	le.SetRangeDeleter(fd)
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
 	l := le.Grant(100)
 
-	items := []leaseItem{
+	items := []LeaseItem{
 		{"foo"},
 		{"bar"},
 	}
@@ -114,8 +115,9 @@ func TestLessorRenew(t *testing.T) {
 	defer be.Close()
 	defer os.RemoveAll(dir)
 
-	le := newLessor(1, be, &fakeDeleteable{})
+	le := newLessor(1, be)
 	le.Promote()
+
 	l := le.Grant(5)
 
 	// manually change the ttl field
@@ -138,12 +140,12 @@ func TestLessorRecover(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	le := newLessor(1, be, &fakeDeleteable{})
+	le := newLessor(1, be)
 	l1 := le.Grant(10)
 	l2 := le.Grant(20)
 
 	// Create a new lessor with the same backend
-	nle := newLessor(1, be, &fakeDeleteable{})
+	nle := newLessor(1, be)
 	nl1 := nle.get(l1.ID)
 	if nl1 == nil || nl1.TTL != l1.TTL {
 		t.Errorf("nl1 = %v, want nl1.TTL= %d", nl1.TTL, l1.TTL)
@@ -155,11 +157,11 @@ func TestLessorRecover(t *testing.T) {
 	}
 }
 
-type fakeDeleteable struct {
+type fakeDeleter struct {
 	deleted []string
 }
 
-func (fd *fakeDeleteable) DeleteRange(key, end []byte) (int64, int64) {
+func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
 	return 0, 0
 }

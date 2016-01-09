@@ -47,15 +47,15 @@ type consistentWatchableStore struct {
 	skip bool // indicate whether or not to skip an operation
 }
 
-func New(b backend.Backend, ig ConsistentIndexGetter) ConsistentWatchableKV {
-	return newConsistentWatchableStore(b, ig)
+func New(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) ConsistentWatchableKV {
+	return newConsistentWatchableStore(b, le, ig)
 }
 
 // newConsistentWatchableStore creates a new consistentWatchableStore with the give
 // backend.
-func newConsistentWatchableStore(b backend.Backend, ig ConsistentIndexGetter) *consistentWatchableStore {
+func newConsistentWatchableStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *consistentWatchableStore {
 	return &consistentWatchableStore{
-		watchableStore: newWatchableStore(b),
+		watchableStore: newWatchableStore(b, le),
 		ig:             ig,
 	}
 }

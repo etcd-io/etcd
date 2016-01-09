@@ -53,6 +53,8 @@ type store struct {
 	b       backend.Backend
 	kvindex index
 
+	le lease.Lessor
+
 	currentRev revision
 	// the main revision of the last compaction
 	compactMainRev int64
@@ -66,13 +68,20 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // storage pkg. It should only be used for testing externally.
-func NewStore(b backend.Backend) *store {
+func NewStore(b backend.Backend, le lease.Lessor) *store {
 	s := &store{
-		b:              b,
-		kvindex:        newTreeIndex(),
+		b:       b,
+		kvindex: newTreeIndex(),
+
+		le: le,
+
 		currentRev:     revision{},
 		compactMainRev: -1,
 		stopc:          make(chan struct{}),
+	}
+
+	if s.le != nil {
+		s.le.SetRangeDeleter(s)
 	}
 
 	tx := s.b.BatchTx()
@@ -283,9 +292,23 @@ func (s *store) restore() error {
 		// restore index
 		switch {
 		case isTombstone(key):
+			// TODO: De-attach keys from lease if necessary
 			s.kvindex.Tombstone(kv.Key, rev)
 		default:
 			s.kvindex.Restore(kv.Key, revision{kv.CreateRevision, 0}, rev, kv.Version)
+			if lease.LeaseID(kv.Lease) != lease.NoLease {
+				if s.le == nil {
+					panic("no lessor to attach lease")
+				}
+				err := s.le.Attach(lease.LeaseID(kv.Lease), []lease.LeaseItem{{Key: string(kv.Key)}})
+				// We are walking through the kv history here. It is possible that we attached a key to
+				// the lease and the lease was revoked later.
+				// Thus attaching an old version of key to a none existing lease is possible here, and
+				// we should just ignore the error.
+				if err != nil && err != lease.ErrLeaseNotFound {
+					panic("unexpected Attach error")
+				}
+			}
 		}
 
 		// update revision
@@ -366,7 +389,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	return kvs, rev, nil
 }
 
-func (s *store) put(key, value []byte, lease lease.LeaseID) {
+func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 	rev := s.currentRev.main + 1
 	c := rev
 
@@ -386,7 +409,7 @@ func (s *store) put(key, value []byte, lease lease.LeaseID) {
 		CreateRevision: c,
 		ModRevision:    rev,
 		Version:        ver,
-		Lease:          int64(lease),
+		Lease:          int64(leaseID),
 	}
 
 	d, err := kv.Marshal()
@@ -397,6 +420,21 @@ func (s *store) put(key, value []byte, lease lease.LeaseID) {
 	s.tx.UnsafePut(keyBucketName, ibytes, d)
 	s.kvindex.Put(key, revision{main: rev, sub: s.currentRev.sub})
 	s.currentRev.sub += 1
+
+	if leaseID != lease.NoLease {
+		if s.le == nil {
+			panic("no lessor to attach lease")
+		}
+
+		// TODO: validate the existence of lease before call Attach.
+		// We need to ensure put always successful since we do not want
+		// to handle abortion for txn request. We need to ensure all requests
+		// inside the txn can execute without error before executing them.
+		err = s.le.Attach(leaseID, []lease.LeaseItem{{Key: string(key)}})
+		if err != nil {
+			panic("unexpected error from lease Attach")
+		}
+	}
 }
 
 func (s *store) deleteRange(key, end []byte) int64 {
@@ -438,6 +476,8 @@ func (s *store) delete(key []byte) {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
 	}
 	s.currentRev.sub += 1
+
+	// TODO: De-attach keys from lease if necessary
 }
 
 // appendMarkTombstone appends tombstone mark to normal revision bytes.

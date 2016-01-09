@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -869,7 +870,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
-	s.kv = dstorage.New(be, &s.consistIndex)
+	s.kv = dstorage.New(be, &lease.FakeLessor{}, &s.consistIndex)
 	s.be = be
 
 	s.start()

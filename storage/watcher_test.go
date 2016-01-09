@@ -25,7 +25,7 @@ import (
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -77,7 +77,7 @@ func TestWatcherWatchID(t *testing.T) {
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()

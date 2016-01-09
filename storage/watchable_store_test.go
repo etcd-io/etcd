@@ -27,7 +27,7 @@ import (
 
 func TestWatch(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b)
+	s := newWatchableStore(b, &lease.FakeLessor{})
 
 	defer func() {
 		s.store.Close()
@@ -49,7 +49,7 @@ func TestWatch(t *testing.T) {
 
 func TestNewWatcherCancel(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b)
+	s := newWatchableStore(b, &lease.FakeLessor{})
 
 	defer func() {
 		s.store.Close()
@@ -81,7 +81,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
-		store:    NewStore(b),
+		store:    NewStore(b, &lease.FakeLessor{}),
 		unsynced: make(map[*watcher]struct{}),
 
 		// to make the test not crash from assigning to nil map.
@@ -136,7 +136,7 @@ func TestSyncWatchers(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 
 	s := &watchableStore{
-		store:    NewStore(b),
+		store:    NewStore(b, &lease.FakeLessor{}),
 		unsynced: make(map[*watcher]struct{}),
 		synced:   make(map[string]map[*watcher]struct{}),
 	}
@@ -217,7 +217,7 @@ func TestSyncWatchers(t *testing.T) {
 
 func TestUnsafeAddWatcher(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b)
+	s := newWatchableStore(b, &lease.FakeLessor{})
 	defer func() {
 		s.store.Close()
 		os.Remove(tmpPath)

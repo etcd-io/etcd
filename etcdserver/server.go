@@ -361,8 +361,8 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 	if cfg.V3demo {
 		srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
-		srv.kv = dstorage.New(srv.be, &srv.consistIndex)
-		srv.lessor = lease.NewLessor(uint8(id), srv.be, srv.kv)
+		srv.lessor = lease.NewLessor(uint8(id), srv.be)
+		srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
 	}
 
 	// TODO: move transport initialization near the definition of remote

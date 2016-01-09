@@ -32,7 +32,7 @@ import (
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(be)
+	s := NewStore(be, &lease.FakeLessor{})
 
 	// manually create watchableStore instead of newWatchableStore
 	// because newWatchableStore periodically calls syncWatchersLoop
@@ -89,7 +89,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(be)
+	s := newWatchableStore(be, &lease.FakeLessor{})
 
 	defer func() {
 		s.store.Close()
