@@ -81,7 +81,7 @@ func NewStore(b backend.Backend, le lease.Lessor) *store {
 	}
 
 	if s.le != nil {
-		s.le.SetDeleteableRange(s)
+		s.le.SetRangeDeleter(s)
 	}
 
 	tx := s.b.BatchTx()

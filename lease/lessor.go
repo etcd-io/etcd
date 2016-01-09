@@ -45,21 +45,21 @@ var (
 
 type LeaseID int64
 
-// DeleteableRange defines an interface with DeleteRange method.
+// RangeDeleter defines an interface with DeleteRange method.
 // We define this interface only for lessor to limit the number
 // of methods of storage.KV to what lessor actually needs.
 //
 // Having a minimum interface makes testing easy.
-type DeleteableRange interface {
+type RangeDeleter interface {
 	DeleteRange(key, end []byte) (int64, int64)
 }
 
 // A Lessor is the owner of leases. It can grant, revoke, renew and modify leases for lessee.
 type Lessor interface {
-	// SetDeleteableRange sets the DeleteableRange to the Lessor.
+	// SetDeleteableRange sets the RangeDeleter to the Lessor.
 	// Lessor deletes the items in the revoked or expired lease from the
-	// the set DeleteableRange.
-	SetDeleteableRange(dr DeleteableRange)
+	// the set RangeDeleter.
+	SetRangeDeleter(dr RangeDeleter)
 
 	// Grant grants a lease that expires at least after TTL seconds.
 	Grant(ttl int64) *Lease
@@ -115,10 +115,9 @@ type lessor struct {
 	// FindExpired and Renew should be the most frequent operations.
 	leaseMap map[LeaseID]*Lease
 
-	// A DeleteableRange the lessor operates on.
 	// When a lease expires, the lessor will delete the
-	// leased range (or key) from the DeleteableRange.
-	dr DeleteableRange
+	// leased range (or key) by the RangeDeleter.
+	rd RangeDeleter
 
 	// backend to persist leases. We only persist lease ID and expiry for now.
 	// The leased items can be recovered by iterating all the keys in kv.
@@ -154,11 +153,11 @@ func newLessor(lessorID uint8, b backend.Backend) *lessor {
 	return l
 }
 
-func (le *lessor) SetDeleteableRange(dr DeleteableRange) {
+func (le *lessor) SetRangeDeleter(rd RangeDeleter) {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
-	le.dr = dr
+	le.rd = rd
 }
 
 // TODO: when lessor is under high load, it should give out lease
@@ -196,9 +195,9 @@ func (le *lessor) Revoke(id LeaseID) error {
 		return ErrLeaseNotFound
 	}
 
-	if le.dr != nil {
+	if le.rd != nil {
 		for item := range l.itemSet {
-			le.dr.DeleteRange([]byte(item.Key), nil)
+			le.rd.DeleteRange([]byte(item.Key), nil)
 		}
 	}
 
@@ -270,12 +269,12 @@ func (le *lessor) Attach(id LeaseID, items []LeaseItem) error {
 	return nil
 }
 
-func (le *lessor) Recover(b backend.Backend, dr DeleteableRange) {
+func (le *lessor) Recover(b backend.Backend, rd RangeDeleter) {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
 	le.b = b
-	le.dr = dr
+	le.rd = rd
 	le.leaseMap = make(map[LeaseID]*Lease)
 
 	le.initAndRecover()

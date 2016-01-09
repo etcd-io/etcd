@@ -68,10 +68,10 @@ func TestLessorRevoke(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	fd := &fakeDeleteable{}
+	fd := &fakeDeleter{}
 
 	le := newLessor(1, be)
-	le.SetDeleteableRange(fd)
+	le.SetRangeDeleter(fd)
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -157,11 +157,11 @@ func TestLessorRecover(t *testing.T) {
 	}
 }
 
-type fakeDeleteable struct {
+type fakeDeleter struct {
 	deleted []string
 }
 
-func (fd *fakeDeleteable) DeleteRange(key, end []byte) (int64, int64) {
+func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
 	return 0, 0
 }
