@@ -35,8 +35,14 @@ type RaftKV interface {
 }
 
 type Lessor interface {
+	// LeaseCreate sends LeaseCreate request to raft and apply it after committed.
 	LeaseCreate(ctx context.Context, r *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error)
+	// LeaseRevoke sends LeaseRevoke request to raft and apply it after committed.
 	LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
+
+	// LeaseRenew renews the lease with given ID. The renewed TTL is returned. Or an error
+	// is returned.
+	LeaseRenew(id lease.LeaseID) (int64, error)
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -93,6 +99,10 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 		return nil, err
 	}
 	return result.resp.(*pb.LeaseRevokeResponse), result.err
+}
+
+func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
+	return s.lessor.Renew(id)
 }
 
 type applyResult struct {

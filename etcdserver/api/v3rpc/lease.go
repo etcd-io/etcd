@@ -15,9 +15,12 @@
 package v3rpc
 
 import (
+	"io"
+
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 )
 
 type LeaseServer struct {
@@ -41,5 +44,28 @@ func (ls *LeaseServer) LeaseRevoke(ctx context.Context, rr *pb.LeaseRevokeReques
 }
 
 func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) error {
-	panic("not implemented")
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		ttl, err := ls.le.LeaseRenew(lease.LeaseID(req.ID))
+		if err != nil {
+			if err == lease.ErrLeaseNotFound {
+				return ErrLeaseNotFound
+			}
+			// TODO: handle not primary error by forwarding renew requests to leader
+			panic("TODO: handle not primary error by forwarding renew requests to leader")
+		}
+
+		resp := &pb.LeaseKeepAliveResponse{ID: req.ID, TTL: ttl}
+		err = stream.Send(resp)
+		if err != nil {
+			return err
+		}
+	}
 }

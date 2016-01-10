@@ -122,12 +122,15 @@ func TestLessorRenew(t *testing.T) {
 
 	// manually change the ttl field
 	l.TTL = 10
-	err := le.Renew(l.ID)
+	ttl, err := le.Renew(l.ID)
 	if err != nil {
 		t.Fatalf("failed to renew lease (%v)", err)
 	}
-	l = le.get(l.ID)
+	if ttl != l.TTL {
+		t.Errorf("ttl = %d, want %d", ttl, l.TTL)
+	}
 
+	l = le.get(l.ID)
 	if l.expiry.Sub(time.Now()) < 9*time.Second {
 		t.Errorf("failed to renew the lease")
 	}
