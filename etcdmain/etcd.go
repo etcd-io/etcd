@@ -196,15 +196,16 @@ func Main() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd(cfg *config) (<-chan struct{}, error) {
-	urlsmap, token, err := getPeerURLsMapAndToken(cfg, "etcd")
-	if err != nil {
-		return nil, fmt.Errorf("error setting up initial cluster: %v", err)
+	urlsmap, token, errG := getPeerURLsMapAndToken(cfg, "etcd")
+	if errG != nil {
+		return nil, fmt.Errorf("error setting up initial cluster: %v", errG)
 	}
 
 	if !cfg.peerTLSInfo.Empty() {
 		plog.Infof("peerTLS: %s", cfg.peerTLSInfo)
 	}
 	plns := make([]net.Listener, 0)
+	var err error
 	for _, u := range cfg.lpurls {
 		if u.Scheme == "http" && !cfg.peerTLSInfo.Empty() {
 			plog.Warningf("The scheme of peer url %s is http while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
@@ -240,7 +241,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 			return nil, err
 		}
 
-		if fdLimit, err := runtimeutil.FDLimit(); err == nil {
+		if fdLimit, errF := runtimeutil.FDLimit(); errF == nil {
 			if fdLimit <= reservedInternalFDNum {
 				plog.Fatalf("file descriptor limit[%d] of etcd process is too low, and should be set higher than %d to ensure internal usage", fdLimit, reservedInternalFDNum)
 			}
@@ -301,6 +302,8 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		return nil, err
 	}
 	s.Start()
+	cfg.etcdServer = s
+
 	osutil.RegisterInterruptHandler(s.Stop)
 
 	if cfg.corsInfo.String() != "" {
@@ -332,6 +335,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		etcdserverpb.RegisterKVServer(grpcServer, v3rpc.NewKVServer(s))
 		etcdserverpb.RegisterWatchServer(grpcServer, v3rpc.NewWatchServer(s))
 		etcdserverpb.RegisterLeaseServer(grpcServer, v3rpc.NewLeaseServer(s))
+		cfg.grpcServer = grpcServer
 		go func() { plog.Fatal(grpcServer.Serve(v3l)) }()
 	}
 
@@ -380,9 +384,9 @@ func startProxy(cfg *config) error {
 		plog.Infof("proxy: using peer urls %v from cluster file %q", peerURLs, clusterfile)
 	case os.IsNotExist(err):
 		if cfg.durl != "" {
-			s, err := discovery.GetCluster(cfg.durl, cfg.dproxy)
-			if err != nil {
-				return err
+			s, errD := discovery.GetCluster(cfg.durl, cfg.dproxy)
+			if errD != nil {
+				return errD
 			}
 			if urlsmap, err = types.NewURLsMap(s); err != nil {
 				return err
@@ -454,7 +458,12 @@ func startProxy(cfg *config) error {
 			mux := http.NewServeMux()
 			mux.Handle("/metrics", prometheus.Handler())
 			mux.Handle("/", ph)
-			plog.Fatal(http.Serve(l, mux))
+			// TODO: gracefully close http.Server
+			// (this can be done https://github.com/tylerb/graceful)
+			httpServer := &http.Server{
+				Handler: mux,
+			}
+			plog.Fatal(httpServer.Serve(l))
 		}()
 	}
 	return nil
