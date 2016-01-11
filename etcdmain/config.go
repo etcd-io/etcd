@@ -19,11 +19,13 @@ package etcdmain
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"runtime"
 	"strings"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/flags"
@@ -124,6 +126,11 @@ type config struct {
 	gRPCAddr string
 
 	ignored []string
+
+	// for testing
+	etcdServer   *etcdserver.EtcdServer
+	grpcServer   *grpc.Server
+	proxyServers []*http.Server
 }
 
 func NewConfig() *config {
