@@ -4,6 +4,12 @@ Benchmark 3-member etcd cluster to get its read and write performance.
 
 ## Instructions
 
+First install `boom` with:
+
+```
+go get -u github.com/rakyll/boom
+```
+
 1. Start 3-member etcd cluster on 3 machines
 2. Update `$leader` and `$servers` in the script
 3. Run the script in a separate machine
