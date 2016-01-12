@@ -20,7 +20,7 @@ TESTABLE_AND_FORMATTABLE="client discovery error etcdctl/command etcdmain etcdse
 # TODO: add it to race testing when the issue is resolved
 # https://github.com/golang/go/issues/9946
 NO_RACE_TESTABLE="rafthttp"
-FORMATTABLE="$TESTABLE_AND_FORMATTABLE $NO_RACE_TESTABLE *.go etcdctl/ integration"
+FORMATTABLE="$TESTABLE_AND_FORMATTABLE $NO_RACE_TESTABLE *.go etcdctl/ integration e2e"
 
 # user has not provided PKG override
 if [ -z "$PKG" ]; then
@@ -57,6 +57,7 @@ go test -timeout 3m ${COVER} -cpu 1,2,4 $@ ${NO_RACE_TEST}
 
 if [ -n "$INTEGRATION" ]; then
 	echo "Running integration tests..."
+	go test -timeout 5m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e
 	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration
 	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
 fi
