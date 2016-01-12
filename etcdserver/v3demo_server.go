@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"bytes"
 	"fmt"
+	"sort"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -191,6 +192,45 @@ func applyPut(txnID int64, kv dstorage.KV, p *pb.PutRequest) (*pb.PutResponse, e
 	return resp, nil
 }
 
+type kvSort struct{ kvs []storagepb.KeyValue }
+
+func (s *kvSort) Swap(i, j int) {
+	t := s.kvs[i]
+	s.kvs[i] = s.kvs[j]
+	s.kvs[j] = t
+}
+func (s *kvSort) Len() int { return len(s.kvs) }
+
+type kvSortByKey struct{ *kvSort }
+
+func (s *kvSortByKey) Less(i, j int) bool {
+	return bytes.Compare(s.kvs[i].Key, s.kvs[j].Key) < 0
+}
+
+type kvSortByVersion struct{ *kvSort }
+
+func (s *kvSortByVersion) Less(i, j int) bool {
+	return (s.kvs[i].Version - s.kvs[j].Version) < 0
+}
+
+type kvSortByCreate struct{ *kvSort }
+
+func (s *kvSortByCreate) Less(i, j int) bool {
+	return (s.kvs[i].CreateRevision - s.kvs[j].CreateRevision) < 0
+}
+
+type kvSortByMod struct{ *kvSort }
+
+func (s *kvSortByMod) Less(i, j int) bool {
+	return (s.kvs[i].ModRevision - s.kvs[j].ModRevision) < 0
+}
+
+type kvSortByValue struct{ *kvSort }
+
+func (s *kvSortByValue) Less(i, j int) bool {
+	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
+}
+
 func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
@@ -201,15 +241,46 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 		err error
 	)
 
+	limit := r.Limit
+	if r.SortOrder != pb.RangeRequest_NONE {
+		// fetch everything; sort and truncate afterwards
+		limit = 0
+	}
+
 	if txnID != noTxn {
-		kvs, rev, err = kv.TxnRange(txnID, r.Key, r.RangeEnd, r.Limit, 0)
+		kvs, rev, err = kv.TxnRange(txnID, r.Key, r.RangeEnd, limit, 0)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		kvs, rev, err = kv.Range(r.Key, r.RangeEnd, r.Limit, 0)
+		kvs, rev, err = kv.Range(r.Key, r.RangeEnd, limit, 0)
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	if r.SortOrder != pb.RangeRequest_NONE {
+		var sorter sort.Interface
+		switch {
+		case r.SortTarget == pb.RangeRequest_KEY:
+			sorter = &kvSortByKey{&kvSort{kvs}}
+		case r.SortTarget == pb.RangeRequest_VERSION:
+			sorter = &kvSortByVersion{&kvSort{kvs}}
+		case r.SortTarget == pb.RangeRequest_CREATE:
+			sorter = &kvSortByCreate{&kvSort{kvs}}
+		case r.SortTarget == pb.RangeRequest_MOD:
+			sorter = &kvSortByMod{&kvSort{kvs}}
+		case r.SortTarget == pb.RangeRequest_VALUE:
+			sorter = &kvSortByValue{&kvSort{kvs}}
+		}
+		switch {
+		case r.SortOrder == pb.RangeRequest_ASCEND:
+			sort.Sort(sorter)
+		case r.SortOrder == pb.RangeRequest_DESCEND:
+			sort.Sort(sort.Reverse(sorter))
+		}
+		if r.Limit > 0 && len(kvs) > int(r.Limit) {
+			kvs = kvs[:r.Limit]
 		}
 	}
 

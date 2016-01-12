@@ -67,6 +67,19 @@ message ResponseHeader {
 }
 
 message RangeRequest {
+  enum SortOrder {
+	NONE = 0; // default, no sorting
+	ASCEND = 1; // lowest target value first
+	DESCEND = 2; // highest target value first
+  }
+  enum SortTarget {
+	KEY = 0;
+	VERSION = 1;
+	CREATE = 2;
+	MOD = 3;
+	VALUE = 4;
+  }
+
   // if the range_end is not given, the request returns the key.
   bytes key = 1;
   // if the range_end is given, it gets the keys in range [key, range_end).
@@ -78,6 +91,12 @@ message RangeRequest {
   // if the revision has been compacted, ErrCompaction will be returned in
   // response.
   int64 revision = 4;
+
+  // sort_order is the requested order for returned the results
+  SortOrder sort_order = 5;
+
+  // sort_target is the kv field to use for sorting
+  SortTarget sort_target = 6;
 }
 
 message RangeResponse {
