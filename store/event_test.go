@@ -14,9 +14,7 @@
 
 package store
 
-import (
-	"testing"
-)
+import "testing"
 
 // TestEventQueue tests a queue with capacity = 100
 // Add 200 events into that queue, and test if the
@@ -55,6 +53,11 @@ func TestScanHistory(t *testing.T) {
 	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4, 4))
 	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5, 5))
 
+	// Delete a dir
+	de := newEvent(Delete, "/foo", 6, 6)
+	de.PrevNode = newDir(nil, "/foo", 1, nil, Permanent).Repr(false, false, nil)
+	eh.addEvent(de)
+
 	e, err := eh.scan("/foo", false, 1)
 	if err != nil || e.Index() != 1 {
 		t.Fatalf("scan error [/foo] [1] %v", e.Index)
@@ -72,8 +75,12 @@ func TestScanHistory(t *testing.T) {
 		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e.Index)
 	}
 
-	e, err = eh.scan("/foo/bar", true, 6)
+	e, err = eh.scan("/foo/foo/foo", false, 6)
+	if err != nil || e.Index() != 6 {
+		t.Fatalf("scan error [/foo/foo/foo] [6] %v", e.Index)
+	}
 
+	e, err = eh.scan("/foo/bar", true, 7)
 	if e != nil {
 		t.Fatalf("bad index shoud reuturn nil")
 	}
