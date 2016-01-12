@@ -285,6 +285,13 @@ The following DNS SRV records are looked up in the listed order:
 
 If `_etcd-server-ssl._tcp.example.com` is found then etcd will attempt the bootstrapping process over SSL.
 
+To help clients discover the etcd cluster, the following DNS SRV records are looked up in the listed order:
+
+* _etcd-client._tcp.example.com
+* _etcd-client-ssl._tcp.example.com
+
+If `_etcd-client-ssl._tcp.example.com` is found, clients will attempt to communicate with the etcd cluster over SSL.
+
 #### Create DNS SRV records
 
 ```
@@ -292,6 +299,13 @@ $ dig +noall +answer SRV _etcd-server._tcp.example.com
 _etcd-server._tcp.example.com. 300 IN	SRV	0 0 2380 infra0.example.com.
 _etcd-server._tcp.example.com. 300 IN	SRV	0 0 2380 infra1.example.com.
 _etcd-server._tcp.example.com. 300 IN	SRV	0 0 2380 infra2.example.com.
+```
+
+```
+$ dig +noall +answer SRV _etcd-client._tcp.example.com
+_etcd-client._tcp.example.com. 300 IN SRV 0 0 2379 infra0.example.com.
+_etcd-client._tcp.example.com. 300 IN SRV 0 0 2379 infra1.example.com.
+_etcd-client._tcp.example.com. 300 IN SRV 0 0 2379 infra2.example.com.
 ```
 
 ```
@@ -380,6 +394,18 @@ DNS SRV records can also be used to configure the list of peers for an etcd serv
 
 ```
 $ etcd --proxy on -discovery-srv example.com
+```
+
+#### etcd client configuration
+
+DNS SRV records can also be used to help clients discover the etcd cluster.
+
+The official [etcd/client](../client) supports [DNS Discovery](https://godoc.org/github.com/coreos/etcd/client#Discoverer).
+
+`etcdctl` also supports DNS Discovery by specifying the `--discovery-srv` option.
+
+```
+$ etcdctl --discovery-srv example.com set foo bar
 ```
 
 #### Error Cases
