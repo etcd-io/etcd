@@ -541,8 +541,11 @@ func (s *EtcdServer) run() {
 
 	defer func() {
 		s.r.stop()
-		// kv and backend can be nil if running without v3 enabled
+		// kv, lessor and backend can be nil if running without v3 enabled
 		// or running unit tests.
+		if s.lessor != nil {
+			s.lessor.Stop()
+		}
 		if s.kv != nil {
 			s.kv.Close()
 		}
