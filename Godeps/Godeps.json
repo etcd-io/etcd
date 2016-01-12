@@ -41,6 +41,10 @@
 			"Rev": "b5232bb2934f606f9f27a1305f1eea224e8e8b88"
 		},
 		{
+			"ImportPath": "github.com/coreos/gexpect",
+			"Rev": "5173270e159f5aa8fbc999dc7e3dcb50f4098a69"
+		},
+		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
 			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
 		},
@@ -91,6 +95,15 @@
 		{
 			"ImportPath": "github.com/jonboulle/clockwork",
 			"Rev": "72f9bd7c4e0c2a40055ab3d0f09654f730cce982"
+		},
+		{
+			"ImportPath": "github.com/kballard/go-shellquote",
+			"Rev": "d8ec1a69a250a17bb0e419c386eac1f3711dc142"
+		},
+		{
+			"ImportPath": "github.com/kr/pty",
+			"Comment": "release.r56-29-gf7ee69f",
+			"Rev": "f7ee69f31298ecbe5d2b349c711e2547a617d398"
 		},
 		{
 			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbutil",
