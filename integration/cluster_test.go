@@ -33,13 +33,16 @@ import (
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 )
 
 const (
@@ -79,7 +82,7 @@ func testCluster(t *testing.T, size int) {
 
 func TestTLSClusterOf3(t *testing.T) {
 	defer afterTest(t)
-	c := NewTLSCluster(t, 3)
+	c := NewClusterByConfig(t, &clusterConfig{size: 3, usePeerTLS: true})
 	c.Launch(t)
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
@@ -102,7 +105,10 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	}
 	cancel()
 
-	c := NewClusterByDiscovery(t, size, dc.URL(0)+"/v2/keys")
+	c := NewClusterByConfig(
+		t,
+		&clusterConfig{size: size, discoveryURL: dc.URL(0) + "/v2/keys"},
+	)
 	c.Launch(t)
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
@@ -122,7 +128,12 @@ func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
 	}
 	cancel()
 
-	c := NewTLSClusterByDiscovery(t, 3, dc.URL(0)+"/v2/keys")
+	c := NewClusterByConfig(t,
+		&clusterConfig{
+			size:         3,
+			usePeerTLS:   true,
+			discoveryURL: dc.URL(0) + "/v2/keys"},
+	)
 	c.Launch(t)
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
@@ -145,12 +156,12 @@ func testDoubleClusterSize(t *testing.T, size int) {
 
 func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	defer afterTest(t)
-	c := NewTLSCluster(t, 3)
+	c := NewClusterByConfig(t, &clusterConfig{size: 3, usePeerTLS: true})
 	c.Launch(t)
 	defer c.Terminate(t)
 
 	for i := 0; i < 3; i++ {
-		c.AddTLSMember(t)
+		c.AddMember(t)
 	}
 	clusterMustProgress(t, c.Members)
 }
@@ -336,14 +347,27 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 	}
 }
 
-// TODO: support TLS
+type clusterConfig struct {
+	size         int
+	usePeerTLS   bool
+	discoveryURL string
+	useV3        bool
+	useGRPC      bool
+}
+
 type cluster struct {
+	cfg     *clusterConfig
 	Members []*member
 }
 
-func fillClusterForMembers(ms []*member) error {
+func (c *cluster) fillClusterForMembers() error {
+	if c.cfg.discoveryURL != "" {
+		// cluster will be discovered
+		return nil
+	}
+
 	addrs := make([]string, 0)
-	for _, m := range ms {
+	for _, m := range c.Members {
 		scheme := "http"
 		if !m.PeerTLSInfo.Empty() {
 			scheme = "https"
@@ -354,7 +378,7 @@ func fillClusterForMembers(ms []*member) error {
 	}
 	clusterStr := strings.Join(addrs, ",")
 	var err error
-	for _, m := range ms {
+	for _, m := range c.Members {
 		m.InitialPeerURLsMap, err = types.NewURLsMap(clusterStr)
 		if err != nil {
 			return err
@@ -363,49 +387,29 @@ func fillClusterForMembers(ms []*member) error {
 	return nil
 }
 
-func newCluster(t *testing.T, size int, usePeerTLS bool) *cluster {
-	c := &cluster{}
-	ms := make([]*member, size)
-	for i := 0; i < size; i++ {
-		ms[i] = mustNewMember(t, c.name(i), usePeerTLS)
+func newCluster(t *testing.T, cfg *clusterConfig) *cluster {
+	c := &cluster{cfg: cfg}
+	ms := make([]*member, cfg.size)
+	for i := 0; i < cfg.size; i++ {
+		ms[i] = c.mustNewMember(t)
 	}
 	c.Members = ms
-	if err := fillClusterForMembers(c.Members); err != nil {
+	if err := c.fillClusterForMembers(); err != nil {
 		t.Fatal(err)
 	}
 
 	return c
 }
 
-func newClusterByDiscovery(t *testing.T, size int, usePeerTLS bool, url string) *cluster {
-	c := &cluster{}
-	ms := make([]*member, size)
-	for i := 0; i < size; i++ {
-		ms[i] = mustNewMember(t, c.name(i), usePeerTLS)
-		ms[i].DiscoveryURL = url
-	}
-	c.Members = ms
-	return c
-}
-
 // NewCluster returns an unlaunched cluster of the given size which has been
 // set to use static bootstrap.
 func NewCluster(t *testing.T, size int) *cluster {
-	return newCluster(t, size, false)
+	return newCluster(t, &clusterConfig{size: size})
 }
 
-// NewClusterUsingDiscovery returns an unlaunched cluster of the given size
-// which has been set to use the given url as discovery service to bootstrap.
-func NewClusterByDiscovery(t *testing.T, size int, url string) *cluster {
-	return newClusterByDiscovery(t, size, false, url)
-}
-
-func NewTLSCluster(t *testing.T, size int) *cluster {
-	return newCluster(t, size, true)
-}
-
-func NewTLSClusterByDiscovery(t *testing.T, size int, url string) *cluster {
-	return newClusterByDiscovery(t, size, true, url)
+// NewClusterByConfig returns an unlaunched cluster defined by a cluster configuration
+func NewClusterByConfig(t *testing.T, cfg *clusterConfig) *cluster {
+	return newCluster(t, cfg)
 }
 
 func (c *cluster) Launch(t *testing.T) {
@@ -459,10 +463,24 @@ func (c *cluster) HTTPMembers() []client.Member {
 	return ms
 }
 
-func (c *cluster) addMember(t *testing.T, usePeerTLS bool) {
-	m := mustNewMember(t, c.name(rand.Int()), usePeerTLS)
+func (c *cluster) mustNewMember(t *testing.T) *member {
+	name := c.name(rand.Int())
+	m := mustNewMember(t, name, c.cfg.usePeerTLS)
+	m.DiscoveryURL = c.cfg.discoveryURL
+	m.V3demo = c.cfg.useV3
+	if c.cfg.useGRPC {
+		if err := m.listenGRPC(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return m
+}
+
+func (c *cluster) addMember(t *testing.T) {
+	m := c.mustNewMember(t)
+
 	scheme := "http"
-	if usePeerTLS {
+	if c.cfg.usePeerTLS {
 		scheme = "https"
 	}
 
@@ -495,11 +513,7 @@ func (c *cluster) addMember(t *testing.T, usePeerTLS bool) {
 }
 
 func (c *cluster) AddMember(t *testing.T) {
-	c.addMember(t, false)
-}
-
-func (c *cluster) AddTLSMember(t *testing.T) {
-	c.addMember(t, true)
+	c.addMember(t)
 }
 
 func (c *cluster) RemoveMember(t *testing.T, id uint64) {
@@ -630,12 +644,16 @@ func newListenerWithAddr(t *testing.T, addr string) net.Listener {
 type member struct {
 	etcdserver.ServerConfig
 	PeerListeners, ClientListeners []net.Listener
+	grpcListener                   net.Listener
 	// inited PeerTLSInfo implies to enable peer TLS
 	PeerTLSInfo transport.TLSInfo
 
 	raftHandler *testutil.PauseableHandler
 	s           *etcdserver.EtcdServer
 	hss         []*httptest.Server
+
+	grpcServer *grpc.Server
+	grpcAddr   string
 }
 
 // mustNewMember return an inited member with the given name. If usePeerTLS is
@@ -692,6 +710,35 @@ func mustNewMember(t *testing.T, name string, usePeerTLS bool) *member {
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
 	return m
+}
+
+// startGRPC starts a grpc server over a unix domain socket on the member
+func (m *member) listenGRPC() error {
+	if m.V3demo == false {
+		return fmt.Errorf("starting grpc server without v3 configured")
+	}
+	m.grpcAddr = m.Name + ".sock"
+	if err := os.RemoveAll(m.grpcAddr); err != nil {
+		return err
+	}
+	l, err := net.Listen("unix", m.grpcAddr)
+	if err != nil {
+		return fmt.Errorf("listen failed on grpc socket %s (%v)", m.grpcAddr, err)
+	}
+	m.grpcListener = l
+	return nil
+}
+
+// newGrpcClient creates a new grpc client connection to the member
+func NewGRPCClient(m *member) (*grpc.ClientConn, error) {
+	if m.grpcAddr == "" {
+		return nil, fmt.Errorf("member not configured for grpc")
+	}
+	f := func(a string, t time.Duration) (net.Conn, error) {
+		return net.Dial("unix", a)
+	}
+	unixdialer := grpc.WithDialer(f)
+	return grpc.Dial(m.grpcAddr, unixdialer)
 }
 
 // Clone returns a member with the same server configuration. The returned
@@ -761,6 +808,12 @@ func (m *member) Launch() error {
 		hs.Start()
 		m.hss = append(m.hss, hs)
 	}
+	if m.grpcListener != nil {
+		m.grpcServer = grpc.NewServer()
+		etcdserverpb.RegisterKVServer(m.grpcServer, v3rpc.NewKVServer(m.s))
+		etcdserverpb.RegisterWatchServer(m.grpcServer, v3rpc.NewWatchServer(m.s))
+		go m.grpcServer.Serve(m.grpcListener)
+	}
 	return nil
 }
 
@@ -794,17 +847,26 @@ func (m *member) Resume() {
 	m.s.ResumeSending()
 }
 
-// Stop stops the member, but the data dir of the member is preserved.
-func (m *member) Stop(t *testing.T) {
+// Close stops the member's etcdserver and closes its connections
+func (m *member) Close() {
+	if m.grpcServer != nil {
+		m.grpcServer.Stop()
+		m.grpcServer = nil
+	}
 	m.s.Stop()
 	for _, hs := range m.hss {
 		hs.CloseClientConnections()
 		hs.Close()
 	}
+}
+
+// Stop stops the member, but the data dir of the member is preserved.
+func (m *member) Stop(t *testing.T) {
+	m.Close()
 	m.hss = nil
 }
 
-// Start starts the member using the preserved data dir.
+// Restart starts the member using the preserved data dir.
 func (m *member) Restart(t *testing.T) error {
 	newPeerListeners := make([]net.Listener, 0)
 	for _, ln := range m.PeerListeners {
@@ -816,16 +878,19 @@ func (m *member) Restart(t *testing.T) error {
 		newClientListeners = append(newClientListeners, newListenerWithAddr(t, ln.Addr().String()))
 	}
 	m.ClientListeners = newClientListeners
+
+	if m.grpcListener != nil {
+		if err := m.listenGRPC(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	return m.Launch()
 }
 
 // Terminate stops the member and removes the data dir.
 func (m *member) Terminate(t *testing.T) {
-	m.s.Stop()
-	for _, hs := range m.hss {
-		hs.CloseClientConnections()
-		hs.Close()
-	}
+	m.Close()
 	if err := os.RemoveAll(m.ServerConfig.DataDir); err != nil {
 		t.Fatal(err)
 	}
