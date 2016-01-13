@@ -45,7 +45,7 @@ type watchableStore struct {
 	*store
 
 	// contains all unsynced watchers that needs to sync with events that have happened
-	unsynced map[*watcher]struct{}
+	unsynced map[string]map[*watcher]struct{}
 
 	// contains all synced watchers that are in sync with the progress of the store.
 	// The key of the map is the key that the watcher watches on.
@@ -63,7 +63,7 @@ type cancelFunc func()
 func newWatchableStore(b backend.Backend, le lease.Lessor) *watchableStore {
 	s := &watchableStore{
 		store:    NewStore(b, le),
-		unsynced: make(map[*watcher]struct{}),
+		unsynced: make(map[string]map[*watcher]struct{}),
 		synced:   make(map[string]map[*watcher]struct{}),
 		stopc:    make(chan struct{}),
 	}
@@ -211,8 +211,10 @@ func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, id Watch
 			log.Panicf("error unsafeAddWatcher (%v) for key %s", err, k)
 		}
 	} else {
+		if err := unsafeAddWatcher(&s.unsynced, k, wa); err != nil {
+			log.Panicf("error unsafeAddWatcher (%v) for key %s", err, k)
+		}
 		slowWatcherGauge.Inc()
-		s.unsynced[wa] = struct{}{}
 	}
 	watcherGauge.Inc()
 
@@ -220,20 +222,20 @@ func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, id Watch
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		// remove global references of the watcher
-		if _, ok := s.unsynced[wa]; ok {
-			delete(s.unsynced, wa)
-			slowWatcherGauge.Dec()
-			watcherGauge.Dec()
-			return
+		if wm, ok := s.unsynced[k]; ok {
+			if _, ok := wm[wa]; ok {
+				if err := unsafeDeleteWatcher(&s.unsynced, k, wa); err != nil {
+					log.Panicf("error unsafeDeleteWatcher (%v) for key %s", err, k)
+				}
+				slowWatcherGauge.Dec()
+				watcherGauge.Dec()
+				return
+			}
 		}
-
-		if v, ok := s.synced[k]; ok {
-			if _, ok := v[wa]; ok {
-				delete(v, wa)
-				// if there is nothing in s.synced[k],
-				// remove the key from the synced
-				if len(v) == 0 {
-					delete(s.synced, k)
+		if wm, ok := s.synced[k]; ok {
+			if _, ok := wm[wa]; ok {
+				if err := unsafeDeleteWatcher(&s.synced, k, wa); err != nil {
+					log.Panicf("error unsafeDeleteWatcher (%v) for key %s", err, k)
 				}
 				watcherGauge.Dec()
 			}
@@ -282,31 +284,23 @@ func (s *watchableStore) syncWatchers() {
 	curRev := s.store.currentRev.main
 	compactionRev := s.store.compactMainRev
 
-	// TODO: change unsynced struct type same to this
-	keyToUnsynced := make(map[string]map[*watcher]struct{})
-
-	for w := range s.unsynced {
-		k := string(w.key)
-
-		if w.cur > curRev {
-			panic("watcher current revision should not exceed current revision")
+	for k, wm := range s.unsynced {
+		for w := range wm {
+			if w.cur > curRev {
+				panic("watcher current revision should not exceed current revision")
+			}
+			if w.cur < compactionRev {
+				// TODO: return error compacted to that watcher instead of
+				// just removing it sliently from unsynced.
+				if err := unsafeDeleteWatcher(&s.unsynced, k, w); err != nil {
+					log.Panicf("error unsafeDeleteWatcher (%v) for key %s", err, k)
+				}
+				continue
+			}
+			if minRev >= w.cur {
+				minRev = w.cur
+			}
 		}
-
-		if w.cur < compactionRev {
-			// TODO: return error compacted to that watcher instead of
-			// just removing it silently from unsynced.
-			delete(s.unsynced, w)
-			continue
-		}
-
-		if minRev >= w.cur {
-			minRev = w.cur
-		}
-
-		if _, ok := keyToUnsynced[k]; !ok {
-			keyToUnsynced[k] = make(map[*watcher]struct{})
-		}
-		keyToUnsynced[k][w] = struct{}{}
 	}
 
 	minBytes, maxBytes := newRevBytes(), newRevBytes()
@@ -330,7 +324,7 @@ func (s *watchableStore) syncWatchers() {
 		}
 
 		k := string(kv.Key)
-		if _, ok := keyToUnsynced[k]; !ok {
+		if _, ok := s.unsynced[k]; !ok {
 			continue
 		}
 
@@ -346,7 +340,7 @@ func (s *watchableStore) syncWatchers() {
 		evs = append(evs, ev)
 	}
 
-	for w, es := range newWatcherToEventMap(keyToUnsynced, evs) {
+	for w, es := range newWatcherToEventMap(s.unsynced, evs) {
 		select {
 		// s.store.Rev also uses Lock, so just return directly
 		case w.ch <- WatchResponse{WatchID: w.id, Events: es, Revision: s.store.currentRev.main}:
@@ -361,7 +355,9 @@ func (s *watchableStore) syncWatchers() {
 		if err := unsafeAddWatcher(&s.synced, k, w); err != nil {
 			log.Panicf("error unsafeAddWatcher (%v) for key %s", err, k)
 		}
-		delete(s.unsynced, w)
+		if err := unsafeDeleteWatcher(&s.unsynced, k, w); err != nil {
+			log.Panicf("error unsafeDeleteWatcher (%v) for key %s", err, k)
+		}
 	}
 
 	slowWatcherGauge.Set(float64(len(s.unsynced)))
@@ -376,7 +372,7 @@ func (s *watchableStore) handle(rev int64, evs []storagepb.Event) {
 // watchers that watch on the key of the event.
 func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 	we := newWatcherToEventMap(s.synced, evs)
-	for _, wm := range s.synced {
+	for k, wm := range s.synced {
 		for w := range wm {
 			es, ok := we[w]
 			if !ok {
@@ -388,8 +384,12 @@ func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 			default:
 				// move slow watcher to unsynced
 				w.cur = rev
-				s.unsynced[w] = struct{}{}
-				delete(wm, w)
+				if err := unsafeAddWatcher(&s.unsynced, k, w); err != nil {
+					log.Panicf("error unsafeAddWatcher (%v) for key %s", err, k)
+				}
+				if err := unsafeDeleteWatcher(&s.synced, k, w); err != nil {
+					log.Panicf("error unsafeDeleteWatcher (%v) for key %s", err, k)
+				}
 				slowWatcherGauge.Inc()
 			}
 		}
@@ -442,13 +442,13 @@ type watcher struct {
 	ch chan<- WatchResponse
 }
 
-// unsafeAddWatcher puts watcher with key k into watchableStore's synced.
-// Make sure to this is thread-safe using mutex before and after.
-func unsafeAddWatcher(synced *map[string]map[*watcher]struct{}, k string, wa *watcher) error {
+// unsafeAddWatcher puts watcher with key k into watchableStore's
+// synced or unsynced maps. Make sure to grab Lock before using this.
+func unsafeAddWatcher(sm *map[string]map[*watcher]struct{}, k string, wa *watcher) error {
 	if wa == nil {
 		return fmt.Errorf("nil watcher received")
 	}
-	mp := *synced
+	mp := *sm
 	if v, ok := mp[k]; ok {
 		if _, ok := v[wa]; ok {
 			return fmt.Errorf("put the same watcher twice: %+v", wa)
@@ -460,6 +460,23 @@ func unsafeAddWatcher(synced *map[string]map[*watcher]struct{}, k string, wa *wa
 
 	mp[k] = make(map[*watcher]struct{})
 	mp[k][wa] = struct{}{}
+	return nil
+}
+
+// unsafeDeleteWatcher deletes watcher with key k from watchableStore's
+// synced or unsynced maps. Make sure to grab Lock before using this.
+func unsafeDeleteWatcher(sm *map[string]map[*watcher]struct{}, k string, wa *watcher) error {
+	if wa == nil {
+		return fmt.Errorf("nil watcher received")
+	}
+	mp := *sm
+	wm, ok := mp[k]
+	if ok {
+		delete(wm, wa)
+	}
+	if len(wm) == 0 {
+		delete(mp, k)
+	}
 	return nil
 }
 

@@ -82,7 +82,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(map[*watcher]struct{}),
+		unsynced: make(map[string]map[*watcher]struct{}),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
@@ -137,7 +137,7 @@ func TestSyncWatchers(t *testing.T) {
 
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(map[*watcher]struct{}),
+		unsynced: make(map[string]map[*watcher]struct{}),
 		synced:   make(map[string]map[*watcher]struct{}),
 	}
 
@@ -169,8 +169,8 @@ func TestSyncWatchers(t *testing.T) {
 	}
 	// unsynced should not be empty
 	// because we manually populated unsynced only
-	if len(s.unsynced) == 0 {
-		t.Errorf("unsynced size = %d, want %d", len(s.unsynced), watcherN)
+	if len(s.unsynced[string(testKey)]) == 0 {
+		t.Errorf("unsynced size = %d, want %d", len(s.unsynced[string(testKey)]), watcherN)
 	}
 
 	// this should move all unsynced watchers
@@ -251,6 +251,33 @@ func TestUnsafeAddWatcher(t *testing.T) {
 				t.Errorf("#%d: ok = %v, want ok true", i, ok)
 			}
 		}
+	}
+}
+
+func TestUnsafeDeleteWatcher(t *testing.T) {
+	testKey := []byte("foo")
+	watcherN := 3
+	ws := make([]*watcher, watcherN)
+	for i := 0; i < watcherN; i++ {
+		ws[i] = &watcher{
+			key:    testKey,
+			prefix: true,
+		}
+	}
+	m := make(map[*watcher]struct{})
+	for i := range ws {
+		m[ws[i]] = struct{}{}
+	}
+	sm := make(map[string]map[*watcher]struct{})
+	sm[string(testKey)] = m
+
+	for i := range ws {
+		if err := unsafeDeleteWatcher(&sm, string(testKey), ws[i]); err != nil {
+			t.Error(err)
+		}
+	}
+	if len(sm) != 0 {
+		t.Errorf("len(sm) got = %d, want = 0", len(sm))
 	}
 }
 
