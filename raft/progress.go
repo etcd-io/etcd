@@ -220,7 +220,7 @@ func (in *inflights) freeTo(to uint64) {
 		}
 
 		// increase index and maybe rotate
-		if idx += 1; idx >= in.size {
+		if idx++; idx >= in.size {
 			idx -= in.size
 		}
 	}
