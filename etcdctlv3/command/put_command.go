@@ -31,9 +31,18 @@ var (
 // NewPutCommand returns the cobra command for "put".
 func NewPutCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "put",
+		Use:   "put [options] <key> <value>",
 		Short: "Put puts the given key into the store.",
-		Run:   putCommandFunc,
+		Long: `
+Put puts the given key into the store.
+
+When <value> begins with '-', <value> is interpreted as a flag.
+Insert '--' for workaround:
+
+$ put <key> -- <value>
+$ put -- <key> <value>
+`,
+		Run: putCommandFunc,
 	}
 	cmd.Flags().StringVar(&leaseStr, "lease", "0", "lease ID attached to the put key")
 	return cmd
