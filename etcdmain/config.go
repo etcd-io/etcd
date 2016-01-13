@@ -123,6 +123,8 @@ type config struct {
 	v3demo   bool
 	gRPCAddr string
 
+	enablePprof bool
+
 	ignored []string
 }
 
@@ -229,6 +231,9 @@ func NewConfig() *config {
 	fs.Var(&flags.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
 	fs.Var(&flags.DeprecatedFlag{Name: "peers"}, "peers", "DEPRECATED: Use -initial-cluster instead.")
 	fs.Var(&flags.DeprecatedFlag{Name: "peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead.")
+
+	// pprof profiler via HTTP
+	fs.BoolVar(&cfg.enablePprof, "enable-pprof", false, "Enable runtime profiling data via HTTP server. Address is at client URL + \"/debug/pprof\"")
 
 	// ignored
 	for _, f := range cfg.ignored {

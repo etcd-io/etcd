@@ -52,6 +52,8 @@ type ServerConfig struct {
 	V3demo bool
 
 	StrictReconfigCheck bool
+
+	EnablePprof bool
 }
 
 // VerifyBootstrapConfig sanity-checks the initial config for bootstrap case

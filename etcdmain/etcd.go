@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path"
 	"reflect"
@@ -294,6 +295,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		ElectionTicks:       cfg.electionTicks(),
 		V3demo:              cfg.v3demo,
 		StrictReconfigCheck: cfg.strictReconfigCheck,
+		EnablePprof:         cfg.enablePprof,
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(srvcfg)

@@ -139,5 +139,9 @@ experimental flags:
 		enable experimental v3 demo API.
 	--experimental-gRPC-addr '127.0.0.1:2378'
 		gRPC address for experimental v3 demo API.
+
+profiling flags:
+	--enable-pprof 'false'
+		Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof"
 `
 )
