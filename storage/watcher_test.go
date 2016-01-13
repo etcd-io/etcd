@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/coreos/etcd/lease"
@@ -69,6 +70,81 @@ func TestWatcherWatchID(t *testing.T) {
 
 		if err := w.Cancel(id); err != nil {
 			t.Error(err)
+		}
+	}
+}
+
+// TestWatcherWatchPrefix tests if Watch operation correctly watches
+// and returns events with matching prefixes.
+func TestWatcherWatchPrefix(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}))
+	defer cleanup(s, b, tmpPath)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	idm := make(map[WatchID]struct{})
+
+	prefixMatch := true
+	val := []byte("bar")
+	keyWatch, keyPut := []byte("foo"), []byte("foobar")
+
+	for i := 0; i < 10; i++ {
+		id := w.Watch(keyWatch, prefixMatch, 0)
+		if _, ok := idm[id]; ok {
+			t.Errorf("#%d: unexpected duplicated id %x", i, id)
+		}
+		idm[id] = struct{}{}
+
+		s.Put(keyPut, val, lease.NoLease)
+
+		resp := <-w.Chan()
+		if resp.WatchID != id {
+			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
+		}
+
+		if err := w.Cancel(id); err != nil {
+			t.Errorf("#%d: unexpected cancel error %v", i, err)
+		}
+
+		if len(resp.Events) != 1 {
+			t.Errorf("#%d: len(resp.Events) got = %d, want = 1", i, len(resp.Events))
+		}
+		if len(resp.Events) == 1 {
+			if !bytes.Equal(resp.Events[0].Kv.Key, keyPut) {
+				t.Errorf("#%d: resp.Events got = %s, want = %s", i, resp.Events[0].Kv.Key, keyPut)
+			}
+		}
+	}
+
+	keyWatch1, keyPut1 := []byte("foo1"), []byte("foo1bar")
+	s.Put(keyPut1, val, lease.NoLease)
+
+	// unsynced watchers
+	for i := 10; i < 15; i++ {
+		id := w.Watch(keyWatch1, prefixMatch, 1)
+		if _, ok := idm[id]; ok {
+			t.Errorf("#%d: id %d exists", i, id)
+		}
+		idm[id] = struct{}{}
+
+		resp := <-w.Chan()
+		if resp.WatchID != id {
+			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
+		}
+
+		if err := w.Cancel(id); err != nil {
+			t.Error(err)
+		}
+
+		if len(resp.Events) != 1 {
+			t.Errorf("#%d: len(resp.Events) got = %d, want = 1", i, len(resp.Events))
+		}
+		if len(resp.Events) == 1 {
+			if !bytes.Equal(resp.Events[0].Kv.Key, keyPut1) {
+				t.Errorf("#%d: resp.Events got = %s, want = %s", i, resp.Events[0].Kv.Key, keyPut1)
+			}
 		}
 	}
 }
