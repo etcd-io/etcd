@@ -868,12 +868,12 @@ func (r *raft) checkQuorumActive() bool {
 
 	for id := range r.prs {
 		if id == r.id { // self is always active
-			act += 1
+			act++
 			continue
 		}
 
 		if r.prs[id].RecentActive {
-			act += 1
+			act++
 		}
 
 		r.prs[id].RecentActive = false
