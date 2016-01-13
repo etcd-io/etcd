@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -284,6 +285,7 @@ func (s *watchableStore) syncWatchers() {
 
 	// TODO: change unsynced struct type same to this
 	keyToUnsynced := make(map[string]map[*watcher]struct{})
+	prefixes := make(map[string]struct{})
 
 	for w := range s.unsynced {
 		k := string(w.key)
@@ -307,6 +309,10 @@ func (s *watchableStore) syncWatchers() {
 			keyToUnsynced[k] = make(map[*watcher]struct{})
 		}
 		keyToUnsynced[k][w] = struct{}{}
+
+		if w.prefix {
+			prefixes[k] = struct{}{}
+		}
 	}
 
 	minBytes, maxBytes := newRevBytes(), newRevBytes()
@@ -330,7 +336,7 @@ func (s *watchableStore) syncWatchers() {
 		}
 
 		k := string(kv.Key)
-		if _, ok := keyToUnsynced[k]; !ok {
+		if _, ok := keyToUnsynced[k]; !ok && !matchPrefix(k, prefixes) {
 			continue
 		}
 
@@ -495,4 +501,15 @@ func newWatcherToEventMap(sm map[string]map[*watcher]struct{}, evs []storagepb.E
 	}
 
 	return watcherToEvents
+}
+
+// matchPrefix returns true if key has any matching prefix
+// from prefixes map.
+func matchPrefix(key string, prefixes map[string]struct{}) bool {
+	for p := range prefixes {
+		if strings.HasPrefix(key, p) {
+			return true
+		}
+	}
+	return false
 }
