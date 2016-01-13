@@ -79,7 +79,7 @@ func testCluster(t *testing.T, size int) {
 
 func TestTLSClusterOf3(t *testing.T) {
 	defer afterTest(t)
-	c := NewTLSCluster(t, 3)
+	c := NewClusterByConfig(t, &clusterConfig{size: 3, usePeerTLS: true})
 	c.Launch(t)
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
@@ -102,7 +102,10 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	}
 	cancel()
 
-	c := NewClusterByDiscovery(t, size, dc.URL(0)+"/v2/keys")
+	c := NewClusterByConfig(
+		t,
+		&clusterConfig{size: size, discoveryURL: dc.URL(0) + "/v2/keys"},
+	)
 	c.Launch(t)
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
@@ -122,7 +125,12 @@ func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
 	}
 	cancel()
 
-	c := NewTLSClusterByDiscovery(t, 3, dc.URL(0)+"/v2/keys")
+	c := NewClusterByConfig(t,
+		&clusterConfig{
+			size:         3,
+			usePeerTLS:   true,
+			discoveryURL: dc.URL(0) + "/v2/keys"},
+	)
 	c.Launch(t)
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
@@ -145,12 +153,12 @@ func testDoubleClusterSize(t *testing.T, size int) {
 
 func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	defer afterTest(t)
-	c := NewTLSCluster(t, 3)
+	c := NewClusterByConfig(t, &clusterConfig{size: 3, usePeerTLS: true})
 	c.Launch(t)
 	defer c.Terminate(t)
 
 	for i := 0; i < 3; i++ {
-		c.AddTLSMember(t)
+		c.AddMember(t)
 	}
 	clusterMustProgress(t, c.Members)
 }
@@ -336,14 +344,26 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 	}
 }
 
-// TODO: support TLS
+type clusterConfig struct {
+	size         int
+	usePeerTLS   bool
+	discoveryURL string
+	useV3        bool
+}
+
 type cluster struct {
+	cfg     *clusterConfig
 	Members []*member
 }
 
-func fillClusterForMembers(ms []*member) error {
+func (c *cluster) fillClusterForMembers() error {
+	if c.cfg.discoveryURL != "" {
+		// cluster will be discovered
+		return nil
+	}
+
 	addrs := make([]string, 0)
-	for _, m := range ms {
+	for _, m := range c.Members {
 		scheme := "http"
 		if !m.PeerTLSInfo.Empty() {
 			scheme = "https"
@@ -354,7 +374,7 @@ func fillClusterForMembers(ms []*member) error {
 	}
 	clusterStr := strings.Join(addrs, ",")
 	var err error
-	for _, m := range ms {
+	for _, m := range c.Members {
 		m.InitialPeerURLsMap, err = types.NewURLsMap(clusterStr)
 		if err != nil {
 			return err
@@ -363,49 +383,31 @@ func fillClusterForMembers(ms []*member) error {
 	return nil
 }
 
-func newCluster(t *testing.T, size int, usePeerTLS bool) *cluster {
-	c := &cluster{}
-	ms := make([]*member, size)
-	for i := 0; i < size; i++ {
-		ms[i] = mustNewMember(t, c.name(i), usePeerTLS)
+func newCluster(t *testing.T, cfg *clusterConfig) *cluster {
+	c := &cluster{cfg: cfg}
+	ms := make([]*member, cfg.size)
+	for i := 0; i < cfg.size; i++ {
+		ms[i] = mustNewMember(t, c.name(i), cfg.usePeerTLS)
+		ms[i].DiscoveryURL = cfg.discoveryURL
+		ms[i].V3demo = cfg.useV3
 	}
 	c.Members = ms
-	if err := fillClusterForMembers(c.Members); err != nil {
+	if err := c.fillClusterForMembers(); err != nil {
 		t.Fatal(err)
 	}
 
 	return c
 }
 
-func newClusterByDiscovery(t *testing.T, size int, usePeerTLS bool, url string) *cluster {
-	c := &cluster{}
-	ms := make([]*member, size)
-	for i := 0; i < size; i++ {
-		ms[i] = mustNewMember(t, c.name(i), usePeerTLS)
-		ms[i].DiscoveryURL = url
-	}
-	c.Members = ms
-	return c
-}
-
 // NewCluster returns an unlaunched cluster of the given size which has been
 // set to use static bootstrap.
 func NewCluster(t *testing.T, size int) *cluster {
-	return newCluster(t, size, false)
+	return newCluster(t, &clusterConfig{size: size})
 }
 
-// NewClusterUsingDiscovery returns an unlaunched cluster of the given size
-// which has been set to use the given url as discovery service to bootstrap.
-func NewClusterByDiscovery(t *testing.T, size int, url string) *cluster {
-	return newClusterByDiscovery(t, size, false, url)
-}
-
-func NewTLSCluster(t *testing.T, size int) *cluster {
-	return newCluster(t, size, true)
-}
-
-func NewTLSClusterByDiscovery(t *testing.T, size int, url string) *cluster {
-	return newClusterByDiscovery(t, size, true, url)
+// NewClusterByConfig returns an unlaunched cluster defined by a cluster configuration
+func NewClusterByConfig(t *testing.T, cfg *clusterConfig) *cluster {
+	return newCluster(t, cfg)
 }
 
 func (c *cluster) Launch(t *testing.T) {
@@ -459,10 +461,12 @@ func (c *cluster) HTTPMembers() []client.Member {
 	return ms
 }
 
-func (c *cluster) addMember(t *testing.T, usePeerTLS bool) {
-	m := mustNewMember(t, c.name(rand.Int()), usePeerTLS)
+func (c *cluster) addMember(t *testing.T) {
+	m := mustNewMember(t, c.name(rand.Int()), c.cfg.usePeerTLS)
+	m.V3demo = c.cfg.useV3
+
 	scheme := "http"
-	if usePeerTLS {
+	if c.cfg.usePeerTLS {
 		scheme = "https"
 	}
 
@@ -495,11 +499,7 @@ func (c *cluster) addMember(t *testing.T, usePeerTLS bool) {
 }
 
 func (c *cluster) AddMember(t *testing.T) {
-	c.addMember(t, false)
-}
-
-func (c *cluster) AddTLSMember(t *testing.T) {
-	c.addMember(t, true)
+	c.addMember(t)
 }
 
 func (c *cluster) RemoveMember(t *testing.T, id uint64) {
