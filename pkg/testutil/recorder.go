@@ -61,7 +61,7 @@ func (r *RecorderBuffered) Wait(n int) (acts []Action, err error) {
 	WaitSchedule()
 	acts = r.Action()
 	if len(acts) < n {
-		err = newLenErr(n, len(r.actions))
+		err = newLenErr(n, len(acts))
 	}
 	return acts, err
 }
