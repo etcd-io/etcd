@@ -1052,6 +1052,7 @@ curl http://127.0.0.1:2379/v2/stats/self
 ### Store Statistics
 
 The store statistics include information about the operations that this node has handled.
+Note that v2 `store Statistics` is stored in-memory. When a member stops, store statistics will reset on restart.
 
 Operations that modify the store's state like create, delete, set and update are seen by the entire cluster and the number will increase on all nodes.
 Operations like get and watch are node local and will only be seen on this node.

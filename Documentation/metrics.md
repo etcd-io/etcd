@@ -3,6 +3,7 @@
 **NOTE: The metrics feature is considered experimental. We may add/change/remove metrics without warning in future releases.**
 
 etcd uses [Prometheus](http://prometheus.io/) for metrics reporting in the server. The metrics can be used for real-time monitoring and debugging.
+etcd only stores these data in memory. If a member restarts, metrics will reset.
 
 The simplest way to see the available metrics is to cURL the metrics endpoint `/metrics` of etcd. The format is described [here](http://prometheus.io/docs/instrumenting/exposition_formats/).
 
