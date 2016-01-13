@@ -29,6 +29,12 @@ func NewSetCommand() cli.Command {
 		Name:      "set",
 		Usage:     "set the value of a key",
 		ArgsUsage: "<key> <value>",
+		Description: `Set sets the value of a key.
+
+   When <value> begins with '-', <value> is interpreted as a flag.
+   Insert '--' for workaround:
+
+   $ set -- <key> <value>`,
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 			cli.StringFlag{Name: "swap-with-value", Value: "", Usage: "previous value"},
