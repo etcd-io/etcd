@@ -28,7 +28,7 @@ func NewTimeoutTransport(info TLSInfo, dialtimeoutd, rdtimeoutd, wtimeoutd time.
 	if err != nil {
 		return nil, err
 	}
-	// the timeouted connection will tiemout soon after it is idle.
+	// the timeouted connection will timeout soon after it is idle.
 	// it should not be put back to http transport as an idle connection for future usage.
 	tr.MaxIdleConnsPerHost = -1
 	tr.Dial = (&rwTimeoutDialer{

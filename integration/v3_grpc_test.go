@@ -103,7 +103,7 @@ func TestV3PutOverwrite(t *testing.T) {
 	}
 }
 
-// TestV3DeleteRange tests various edge cases in teh DeleteRange API.
+// TestV3DeleteRange tests various edge cases in the DeleteRange API.
 func TestV3DeleteRange(t *testing.T) {
 	tests := []struct {
 		keySet []string

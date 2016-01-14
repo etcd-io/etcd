@@ -150,7 +150,7 @@ func newLessor(lessorID uint8, b backend.Backend) *lessor {
 	l := &lessor{
 		leaseMap: make(map[LeaseID]*Lease),
 		b:        b,
-		// expiredC is a small buffered chan to avoid unncessary blocking.
+		// expiredC is a small buffered chan to avoid unnecessary blocking.
 		expiredC: make(chan []*Lease, 16),
 		stopC:    make(chan struct{}),
 		doneC:    make(chan struct{}),

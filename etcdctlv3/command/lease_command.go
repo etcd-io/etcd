@@ -56,7 +56,7 @@ func NewLeaseCreateCommand() *cobra.Command {
 // leaseCreateCommandFunc executes the "lease create" command.
 func leaseCreateCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("lease create command needs TTL arguement."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("lease create command needs TTL argument."))
 	}
 
 	ttl, err := strconv.ParseInt(args[0], 10, 64)
