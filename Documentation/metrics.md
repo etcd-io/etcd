@@ -124,7 +124,7 @@ Example Prometheus queries that may be useful from these metrics (across all etc
  * `histogram_quantile(0.9, sum(increase(etcd_proxy_events_handling_time_seconds_bucket{job="etcd",method="GET"}[5m])) by (le))`
    `histogram_quantile(0.9, sum(increase(etcd_proxy_events_handling_time_seconds_bucket{job="etcd",method!="GET"}[5m])) by (le))`
     
-    Show the 0.90-tile latency (in seconds) of handling of user requestsacross all proxy machines, with a window of `5m`.  
+    Show the 0.90-tile latency (in seconds) of handling of user requests across all proxy machines, with a window of `5m`.  
  * `sum(rate(etcd_proxy_dropped_total{job="etcd"}[1m])) by (proxying_error)`
     
     Number of failed request on the proxy. This should be 0, spikes here indicate connectivity issues to etcd cluster.

@@ -136,7 +136,7 @@ func (fr *flushingRecorder) Flush() {
 }
 
 // resServer implements the etcd.Server interface for testing.
-// It returns the given responsefrom any Do calls, and nil error
+// It returns the given response from any Do calls, and nil error
 type resServer struct {
 	res etcdserver.Response
 }

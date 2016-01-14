@@ -137,7 +137,7 @@ func TestPipelinePost(t *testing.T) {
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	p := newPipeline(tr, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), nil, &fakeRaft{}, nil)
 	if err := p.post([]byte("some data")); err != nil {
-		t.Fatalf("unexpect post error: %v", err)
+		t.Fatalf("unexpected post error: %v", err)
 	}
 	p.stop()
 
