@@ -20,7 +20,6 @@ import (
 	"math"
 	"os"
 	"reflect"
-	"runtime"
 	"testing"
 	"time"
 
@@ -457,11 +456,7 @@ func TestTxnBlockBackendForceCommit(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second): // wait 5 seconds for CI with slow IO
-		// print out stack traces of all routines if there is a failure
-		stackTrace := make([]byte, 8*1024)
-		n := runtime.Stack(stackTrace, true)
-		t.Error(string(stackTrace[:n]))
-		t.Fatalf("failed to execute ForceCommit")
+		testutil.FatalStack(t, "failed to execute ForceCommit")
 	}
 }
 

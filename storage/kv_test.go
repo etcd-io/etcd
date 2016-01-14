@@ -15,9 +15,9 @@
 package storage
 
 import (
+	"fmt"
 	"os"
 	"reflect"
-	"runtime"
 	"testing"
 	"time"
 
@@ -443,10 +443,7 @@ func TestKVTxnBlockNonTnxOperations(t *testing.T) {
 		select {
 		case <-done:
 		case <-time.After(10 * time.Second):
-			stack := make([]byte, 8*1024)
-			n := runtime.Stack(stack, true)
-			t.Error(string(stack[:n]))
-			t.Fatalf("#%d: operation failed to be unblocked", i)
+			testutil.FatalStack(t, fmt.Sprintf("#%d: operation failed to be unblocked", i))
 		}
 	}
 
@@ -773,8 +770,9 @@ func TestWatchableKVWatch(t *testing.T) {
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
-	case <-time.After(time.Second):
-		t.Fatalf("failed to watch the event")
+	case <-time.After(5 * time.Second):
+		// CPU might be too slow, and the routine is not able to switch around
+		testutil.FatalStack(t, "failed to watch the event")
 	}
 
 	s.Put([]byte("foo1"), []byte("bar1"), 2)
@@ -798,8 +796,8 @@ func TestWatchableKVWatch(t *testing.T) {
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
-	case <-time.After(time.Second):
-		t.Fatalf("failed to watch the event")
+	case <-time.After(5 * time.Second):
+		testutil.FatalStack(t, "failed to watch the event")
 	}
 
 	w = s.NewWatchStream()
@@ -825,8 +823,8 @@ func TestWatchableKVWatch(t *testing.T) {
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
-	case <-time.After(time.Second):
-		t.Fatalf("failed to watch the event")
+	case <-time.After(5 * time.Second):
+		testutil.FatalStack(t, "failed to watch the event")
 	}
 
 	s.Put([]byte("foo1"), []byte("bar11"), 3)
@@ -850,8 +848,8 @@ func TestWatchableKVWatch(t *testing.T) {
 		if !reflect.DeepEqual(ev, wev) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev)
 		}
-	case <-time.After(time.Second):
-		t.Fatalf("failed to watch the event")
+	case <-time.After(5 * time.Second):
+		testutil.FatalStack(t, "failed to watch the event")
 	}
 }
 
