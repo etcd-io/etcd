@@ -83,16 +83,9 @@ func testKVRange(t *testing.T, f rangeFunc) {
 	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar"), 1)
-	s.Put([]byte("foo1"), []byte("bar1"), 2)
-	s.Put([]byte("foo2"), []byte("bar2"), 3)
-	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1, Lease: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 2},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1, Lease: 3},
-	}
+	kvs := put3TestKVs(s)
 
-	wrev := int64(3)
+	wrev := int64(4)
 	tests := []struct {
 		key, end []byte
 		wkvs     []storagepb.KeyValue
@@ -151,25 +144,18 @@ func testKVRangeRev(t *testing.T, f rangeFunc) {
 	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar"), 1)
-	s.Put([]byte("foo1"), []byte("bar1"), 2)
-	s.Put([]byte("foo2"), []byte("bar2"), 3)
-	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1, Lease: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 2},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1, Lease: 3},
-	}
+	kvs := put3TestKVs(s)
 
 	tests := []struct {
 		rev  int64
 		wrev int64
 		wkvs []storagepb.KeyValue
 	}{
-		{-1, 3, kvs},
-		{0, 3, kvs},
-		{1, 1, kvs[:1]},
-		{2, 2, kvs[:2]},
-		{3, 3, kvs},
+		{-1, 4, kvs},
+		{0, 4, kvs},
+		{2, 2, kvs[:1]},
+		{3, 3, kvs[:2]},
+		{4, 4, kvs},
 	}
 
 	for i, tt := range tests {
@@ -194,10 +180,8 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-	s.Put([]byte("foo1"), []byte("bar1"), lease.NoLease)
-	s.Put([]byte("foo2"), []byte("bar2"), lease.NoLease)
-	if err := s.Compact(3); err != nil {
+	put3TestKVs(s)
+	if err := s.Compact(4); err != nil {
 		t.Fatalf("compact error (%v)", err)
 	}
 
@@ -206,9 +190,9 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 		werr error
 	}{
 		{-1, ErrCompacted},
+		{1, ErrCompacted},
 		{2, ErrCompacted},
-		{3, ErrCompacted},
-		{4, ErrFutureRev},
+		{5, ErrFutureRev},
 		{100, ErrFutureRev},
 	}
 	for i, tt := range tests {
@@ -227,16 +211,9 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar"), 1)
-	s.Put([]byte("foo1"), []byte("bar1"), 2)
-	s.Put([]byte("foo2"), []byte("bar2"), 3)
-	kvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1, Lease: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 2},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1, Lease: 3},
-	}
+	kvs := put3TestKVs(s)
 
-	wrev := int64(3)
+	wrev := int64(4)
 	tests := []struct {
 		limit int64
 		wkvs  []storagepb.KeyValue
@@ -276,8 +253,8 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 		base := int64(i + 1)
 
 		rev := f(s, []byte("foo"), []byte("bar"), lease.LeaseID(base))
-		if rev != base {
-			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
+		if rev != base+1 {
+			t.Errorf("#%d: rev = %d, want %d", i, rev, base+1)
 		}
 
 		kvs, _, err := s.Range([]byte("foo"), nil, 0, 0)
@@ -285,7 +262,7 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 			t.Fatal(err)
 		}
 		wkvs := []storagepb.KeyValue{
-			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: base, Version: base, Lease: base},
+			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: base + 1, Version: base, Lease: base},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
 			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
@@ -305,27 +282,27 @@ func testKVDeleteRange(t *testing.T, f deleteRangeFunc) {
 	}{
 		{
 			[]byte("foo"), nil,
-			4, 1,
+			5, 1,
 		},
 		{
 			[]byte("foo"), []byte("foo1"),
-			4, 1,
+			5, 1,
 		},
 		{
 			[]byte("foo"), []byte("foo2"),
-			4, 2,
+			5, 2,
 		},
 		{
 			[]byte("foo"), []byte("foo3"),
-			4, 3,
+			5, 3,
 		},
 		{
 			[]byte("foo3"), []byte("foo8"),
-			3, 0,
+			4, 0,
 		},
 		{
 			[]byte("foo3"), nil,
-			3, 0,
+			4, 0,
 		},
 	}
 
@@ -357,14 +334,14 @@ func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 	s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 
 	n, rev := f(s, []byte("foo"), nil)
-	if n != 1 || rev != 2 {
-		t.Fatalf("n = %d, rev = %d, want (%d, %d)", n, rev, 1, 2)
+	if n != 1 || rev != 3 {
+		t.Fatalf("n = %d, rev = %d, want (%d, %d)", n, rev, 1, 3)
 	}
 
 	for i := 0; i < 10; i++ {
 		n, rev := f(s, []byte("foo"), nil)
-		if n != 0 || rev != 2 {
-			t.Fatalf("#%d: n = %d, rev = %d, want (%d, %d)", i, n, rev, 0, 2)
+		if n != 0 || rev != 3 {
+			t.Fatalf("#%d: n = %d, rev = %d, want (%d, %d)", i, n, rev, 0, 3)
 		}
 	}
 }
@@ -376,7 +353,7 @@ func TestKVOperationInSequence(t *testing.T) {
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
-		base := int64(i * 2)
+		base := int64(i*2 + 1)
 
 		// put foo
 		rev := s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
@@ -417,7 +394,7 @@ func TestKVOperationInSequence(t *testing.T) {
 	}
 }
 
-func TestKVTxnBlockNonTnxOperations(t *testing.T) {
+func TestKVTxnBlockNonTxnOperations(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := NewStore(b, &lease.FakeLessor{})
 
@@ -488,14 +465,14 @@ func TestKVTxnWrongID(t *testing.T) {
 }
 
 // test that txn range, put, delete on single key in sequence repeatedly works correctly.
-func TestKVTnxOperationInSequence(t *testing.T) {
+func TestKVTxnOperationInSequence(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
 	for i := 0; i < 10; i++ {
 		id := s.TxnBegin()
-		base := int64(i)
+		base := int64(i + 1)
 
 		// put foo
 		rev, err := s.TxnPut(id, []byte("foo"), []byte("bar"), lease.NoLease)
@@ -561,25 +538,25 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		wkvs []storagepb.KeyValue
 	}{
 		{
-			0,
-			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar0"), CreateRevision: 1, ModRevision: 1, Version: 1, Lease: 1},
-			},
-		},
-		{
 			1,
 			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar1"), CreateRevision: 1, ModRevision: 2, Version: 2, Lease: 2},
+				{Key: []byte("foo"), Value: []byte("bar0"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 1},
 			},
 		},
 		{
 			2,
-			nil,
+			[]storagepb.KeyValue{
+				{Key: []byte("foo"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 3, Version: 2, Lease: 2},
+			},
 		},
 		{
 			3,
+			nil,
+		},
+		{
+			4,
 			[]storagepb.KeyValue{
-				{Key: []byte("foo"), Value: []byte("bar2"), CreateRevision: 4, ModRevision: 4, Version: 1, Lease: 3},
+				{Key: []byte("foo"), Value: []byte("bar2"), CreateRevision: 5, ModRevision: 5, Version: 1, Lease: 3},
 			},
 		},
 	}
@@ -615,8 +592,8 @@ func TestKVCompactBad(t *testing.T) {
 		{0, nil},
 		{1, nil},
 		{1, ErrCompacted},
-		{3, nil},
-		{4, ErrFutureRev},
+		{4, nil},
+		{5, ErrFutureRev},
 		{100, ErrFutureRev},
 	}
 	for i, tt := range tests {
@@ -701,14 +678,7 @@ func TestKVSnapshot(t *testing.T) {
 	s := NewStore(b, &lease.FakeLessor{})
 	defer cleanup(s, b, tmpPath)
 
-	s.Put([]byte("foo"), []byte("bar"), 1)
-	s.Put([]byte("foo1"), []byte("bar1"), 2)
-	s.Put([]byte("foo2"), []byte("bar2"), 3)
-	wkvs := []storagepb.KeyValue{
-		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1, Lease: 1},
-		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 2},
-		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 3, ModRevision: 3, Version: 1, Lease: 3},
-	}
+	wkvs := put3TestKVs(s)
 
 	newPath := "new_test"
 	f, err := os.Create(newPath)
@@ -734,8 +704,8 @@ func TestKVSnapshot(t *testing.T) {
 	if !reflect.DeepEqual(kvs, wkvs) {
 		t.Errorf("kvs = %+v, want %+v", kvs, wkvs)
 	}
-	if rev != 3 {
-		t.Errorf("rev = %d, want %d", rev, 3)
+	if rev != 4 {
+		t.Errorf("rev = %d, want %d", rev, 4)
 	}
 }
 
@@ -757,8 +727,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			Kv: &storagepb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
-				CreateRevision: 1,
-				ModRevision:    1,
+				CreateRevision: 2,
+				ModRevision:    2,
 				Version:        1,
 				Lease:          1,
 			},
@@ -783,8 +753,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			Kv: &storagepb.KeyValue{
 				Key:            []byte("foo1"),
 				Value:          []byte("bar1"),
-				CreateRevision: 2,
-				ModRevision:    2,
+				CreateRevision: 3,
+				ModRevision:    3,
 				Version:        1,
 				Lease:          2,
 			},
@@ -810,8 +780,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			Kv: &storagepb.KeyValue{
 				Key:            []byte("foo1"),
 				Value:          []byte("bar1"),
-				CreateRevision: 2,
-				ModRevision:    2,
+				CreateRevision: 3,
+				ModRevision:    3,
 				Version:        1,
 				Lease:          2,
 			},
@@ -835,8 +805,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			Kv: &storagepb.KeyValue{
 				Key:            []byte("foo1"),
 				Value:          []byte("bar11"),
-				CreateRevision: 2,
-				ModRevision:    3,
+				CreateRevision: 3,
+				ModRevision:    4,
 				Version:        2,
 				Lease:          3,
 			},
@@ -857,4 +827,15 @@ func cleanup(s KV, b backend.Backend, path string) {
 	s.Close()
 	b.Close()
 	os.Remove(path)
+}
+
+func put3TestKVs(s KV) []storagepb.KeyValue {
+	s.Put([]byte("foo"), []byte("bar"), 1)
+	s.Put([]byte("foo1"), []byte("bar1"), 2)
+	s.Put([]byte("foo2"), []byte("bar2"), 3)
+	return []storagepb.KeyValue{
+		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 1},
+		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 3, ModRevision: 3, Version: 1, Lease: 2},
+		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 4, ModRevision: 4, Version: 1, Lease: 3},
+	}
 }

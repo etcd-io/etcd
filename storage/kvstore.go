@@ -75,7 +75,7 @@ func NewStore(b backend.Backend, le lease.Lessor) *store {
 
 		le: le,
 
-		currentRev:     revision{},
+		currentRev:     revision{main: 1},
 		compactMainRev: -1,
 		stopc:          make(chan struct{}),
 	}
@@ -256,7 +256,7 @@ func (s *store) Restore(b backend.Backend) error {
 
 	s.b = b
 	s.kvindex = newTreeIndex()
-	s.currentRev = revision{}
+	s.currentRev = revision{main: 1}
 	s.compactMainRev = -1
 	s.tx = b.BatchTx()
 	s.txnID = -1
@@ -267,7 +267,7 @@ func (s *store) Restore(b backend.Backend) error {
 
 func (s *store) restore() error {
 	min, max := newRevBytes(), newRevBytes()
-	revToBytes(revision{}, min)
+	revToBytes(revision{main: 1}, min)
 	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, max)
 
 	// restore index
