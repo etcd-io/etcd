@@ -137,6 +137,8 @@ func (t *batchTx) commit(stop bool) {
 			return
 		}
 		err = t.tx.Commit()
+		atomic.AddInt64(&t.backend.commits, 1)
+
 		t.pending = 0
 		if err != nil {
 			log.Fatalf("storage: cannot commit tx (%s)", err)
