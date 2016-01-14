@@ -342,11 +342,6 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy(cfg *config) error {
-	urlsmap, _, err := getPeerURLsMapAndToken(cfg, "proxy")
-	if err != nil {
-		return fmt.Errorf("error setting up initial cluster: %v", err)
-	}
-
 	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, time.Duration(cfg.proxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
 		return err
@@ -373,6 +368,9 @@ func startProxy(cfg *config) error {
 		if cfg.durl != "" {
 			plog.Warningf("discovery token ignored since the proxy has already been initialized. Valid cluster file found at %q", clusterfile)
 		}
+		if cfg.dnsCluster != "" {
+			plog.Warningf("DNS SRV discovery ignored since the proxy has already been initialized. Valid cluster file found at %q", clusterfile)
+		}
 		urls := struct{ PeerURLs []string }{}
 		err = json.Unmarshal(b, &urls)
 		if err != nil {
@@ -381,6 +379,11 @@ func startProxy(cfg *config) error {
 		peerURLs = urls.PeerURLs
 		plog.Infof("proxy: using peer urls %v from cluster file %q", peerURLs, clusterfile)
 	case os.IsNotExist(err):
+		urlsmap, _, err := getPeerURLsMapAndToken(cfg, "proxy")
+		if err != nil {
+			return fmt.Errorf("error setting up initial cluster: %v", err)
+		}
+
 		if cfg.durl != "" {
 			s, err := discovery.GetCluster(cfg.durl, cfg.dproxy)
 			if err != nil {
