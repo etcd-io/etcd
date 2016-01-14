@@ -60,6 +60,9 @@ type backend struct {
 	batchTx       *batchTx
 	size          int64
 
+	// number of commits since start
+	commits int64
+
 	stopc chan struct{}
 	donec chan struct{}
 }
@@ -162,6 +165,11 @@ func (b *backend) Close() error {
 	close(b.stopc)
 	<-b.donec
 	return b.db.Close()
+}
+
+// Commits returns total number of commits since start
+func (b *backend) Commits() int64 {
+	return atomic.LoadInt64(&b.commits)
 }
 
 // NewTmpBackend creates a backend implementation for testing.
