@@ -68,6 +68,7 @@
 
 **.Net Libraries**
 
+- [wangjia184/etcdnet](https://github.com/wangjia184/etcdnet) - Supports v2
 - [drusellers/etcetera](https://github.com/drusellers/etcetera)
 
 **PHP Libraries**
