@@ -17,6 +17,7 @@ package storage
 import (
 	"os"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -419,7 +420,6 @@ func TestKVOperationInSequence(t *testing.T) {
 func TestKVTxnBlockNonTnxOperations(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := NewStore(b, &lease.FakeLessor{})
-	defer cleanup(s, b, tmpPath)
 
 	tests := []func(){
 		func() { s.Range([]byte("foo"), nil, 0, 0) },
@@ -428,7 +428,7 @@ func TestKVTxnBlockNonTnxOperations(t *testing.T) {
 	}
 	for i, tt := range tests {
 		id := s.TxnBegin()
-		done := make(chan struct{})
+		done := make(chan struct{}, 1)
 		go func() {
 			tt()
 			done <- struct{}{}
@@ -442,10 +442,16 @@ func TestKVTxnBlockNonTnxOperations(t *testing.T) {
 		s.TxnEnd(id)
 		select {
 		case <-done:
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(10 * time.Second):
+			stack := make([]byte, 8*1024)
+			n := runtime.Stack(stack, true)
+			t.Error(string(stack[:n]))
 			t.Fatalf("#%d: operation failed to be unblocked", i)
 		}
 	}
+
+	// only close backend when we know all the tx are finished
+	cleanup(s, b, tmpPath)
 }
 
 func TestKVTxnWrongID(t *testing.T) {
