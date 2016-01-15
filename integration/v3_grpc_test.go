@@ -215,12 +215,12 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 					Created: true,
 				},
 				{
-					Header:  &pb.ResponseHeader{Revision: 1},
+					Header:  &pb.ResponseHeader{Revision: 2},
 					Created: false,
 					Events: []*storagepb.Event{
 						{
 							Type: storagepb.PUT,
-							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
 						},
 					},
 				},
@@ -249,12 +249,12 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 					Created: true,
 				},
 				{
-					Header:  &pb.ResponseHeader{Revision: 1},
+					Header:  &pb.ResponseHeader{Revision: 2},
 					Created: false,
 					Events: []*storagepb.Event{
 						{
 							Type: storagepb.PUT,
-							Kv:   &storagepb.KeyValue{Key: []byte("fooLong"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+							Kv:   &storagepb.KeyValue{Key: []byte("fooLong"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
 						},
 					},
 				},
@@ -283,32 +283,32 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 					Created: true,
 				},
 				{
-					Header:  &pb.ResponseHeader{Revision: 1},
+					Header:  &pb.ResponseHeader{Revision: 2},
 					Created: false,
 					Events: []*storagepb.Event{
 						{
 							Type: storagepb.PUT,
-							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
 						},
 					},
 				},
 				{
-					Header:  &pb.ResponseHeader{Revision: 1},
+					Header:  &pb.ResponseHeader{Revision: 3},
 					Created: false,
 					Events: []*storagepb.Event{
 						{
 							Type: storagepb.PUT,
-							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 2, Version: 2},
+							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 3, Version: 2},
 						},
 					},
 				},
 				{
-					Header:  &pb.ResponseHeader{Revision: 1},
+					Header:  &pb.ResponseHeader{Revision: 4},
 					Created: false,
 					Events: []*storagepb.Event{
 						{
 							Type: storagepb.PUT,
-							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 3, Version: 3},
+							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 4, Version: 3},
 						},
 					},
 				},
@@ -325,32 +325,32 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 					Created: true,
 				},
 				{
-					Header:  &pb.ResponseHeader{Revision: 1},
+					Header:  &pb.ResponseHeader{Revision: 2},
 					Created: false,
 					Events: []*storagepb.Event{
 						{
 							Type: storagepb.PUT,
-							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 1, Version: 1},
+							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
 						},
 					},
 				},
 				{
-					Header:  &pb.ResponseHeader{Revision: 1},
+					Header:  &pb.ResponseHeader{Revision: 3},
 					Created: false,
 					Events: []*storagepb.Event{
 						{
 							Type: storagepb.PUT,
-							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 2, Version: 2},
+							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 3, Version: 2},
 						},
 					},
 				},
 				{
-					Header:  &pb.ResponseHeader{Revision: 1},
+					Header:  &pb.ResponseHeader{Revision: 4},
 					Created: false,
 					Events: []*storagepb.Event{
 						{
 							Type: storagepb.PUT,
-							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 1, ModRevision: 3, Version: 3},
+							Kv:   &storagepb.KeyValue{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 4, Version: 3},
 						},
 					},
 				},
@@ -391,7 +391,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				t.Fatalf("#%d.%d: unexpected nil resp.Header", i, j)
 			}
 			if resp.Header.Revision != wresp.Header.Revision {
-				t.Logf("[TODO - skip for now] #%d.%d: resp.Header.Revision got = %d, want = %d", i, j, resp.Header.Revision, wresp.Header.Revision)
+				t.Errorf("#%d.%d: resp.Header.Revision got = %d, want = %d", i, j, resp.Header.Revision, wresp.Header.Revision)
 			}
 
 			if wresp.Created != resp.Created {
