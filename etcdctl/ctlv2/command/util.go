@@ -315,6 +315,11 @@ func newClient(c *cli.Context) (client.Client, error) {
 	}
 
 	uFlag := c.GlobalString("username")
+
+	if uFlag == "" {
+		uFlag = os.Getenv("ETCDCTL_USERNAME")
+	}
+
 	if uFlag != "" {
 		username, password, err := getUsernamePasswordFromFlag(uFlag)
 		if err != nil {

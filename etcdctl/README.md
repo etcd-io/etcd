@@ -4,14 +4,9 @@ etcdctl
 `etcdctl` is a command line client for [etcd][etcd].
 It can be used in scripts or for administrators to explore an etcd cluster.
 
-[etcd]: https://github.com/coreos/etcd
-
-
 ## Getting etcdctl
 
 The latest release is available as a binary at [Github][github-release] along with etcd.
-
-[github-release]: https://github.com/coreos/etcd/releases/
 
 You can also build etcdctl from source using the build script found in the parent directory.
 
@@ -62,6 +57,7 @@ You can also build etcdctl from source using the build script found in the paren
 ### --username, -u
 + provide username[:password] and prompt if password is not supplied
 + default: none
++ env variable: ETCDCTL_USERNAME
 
 ### --timeout
 + connection timeout per request
@@ -77,61 +73,61 @@ You can also build etcdctl from source using the build script found in the paren
 
 Set a value on the `/foo/bar` key:
 
-```
+```sh
 $ etcdctl set /foo/bar "Hello world"
 Hello world
 ```
 
 Set a value on the `/foo/bar` key with a value that expires in 60 seconds:
 
-```
+```sh
 $ etcdctl set /foo/bar "Hello world" --ttl 60
 Hello world
 ```
 
 Conditionally set a value on `/foo/bar` if the previous value was "Hello world":
 
-```
+```sh
 $ etcdctl set /foo/bar "Goodbye world" --swap-with-value "Hello world"
 Goodbye world
 ```
 
 Conditionally set a value on `/foo/bar` if the previous etcd index was 12:
 
-```
+```sh
 $ etcdctl set /foo/bar "Goodbye world" --swap-with-index 12
 Goodbye world
 ```
 
 Create a new key `/foo/bar`, only if the key did not previously exist:
 
-```
+```sh
 $ etcdctl mk /foo/new_bar "Hello world"
 Hello world
 ```
 
 Create a new in-order key under dir `/fooDir`:
 
-```
+```sh
 $ etcdctl mk --in-order /fooDir "Hello world"
 ```
 
 Create a new dir `/fooDir`, only if the key did not previously exist:
 
-```
+```sh
 $ etcdctl mkdir /fooDir
 ```
 
 Update an existing key `/foo/bar`, only if the key already existed:
 
-```
+```sh
 $ etcdctl update /foo/bar "Hola mundo"
 Hola mundo
 ```
 
 Create or update a directory called `/mydir`:
 
-```
+```sh
 $ etcdctl setdir /mydir
 ```
 
@@ -140,14 +136,14 @@ $ etcdctl setdir /mydir
 
 Get the current value for a single key in the local etcd node:
 
-```
+```sh
 $ etcdctl get /foo/bar
 Hello world
 ```
 
 Get the value of a key with additional metadata in a parseable format:
 
-```
+```sh
 $ etcdctl -o extended get /foo/bar
 Key: /foo/bar
 Modified-Index: 72
@@ -163,7 +159,7 @@ Hello World
 
 Explore the keyspace using the `ls` command
 
-```
+```sh
 $ etcdctl ls
 /akey
 /adir
@@ -174,7 +170,7 @@ $ etcdctl ls /adir
 
 Add `--recursive` to recursively list subdirectories encountered.
 
-```
+```sh
 $ etcdctl ls --recursive
 /akey
 /adir
@@ -184,7 +180,7 @@ $ etcdctl ls --recursive
 
 Directories can also have a trailing `/` added to output using `-p`.
 
-```
+```sh
 $ etcdctl ls -p
 /akey
 /adir/
@@ -194,37 +190,37 @@ $ etcdctl ls -p
 
 Delete a key:
 
-```
+```sh
 $ etcdctl rm /foo/bar
 ```
 
 Delete an empty directory or a key-value pair
 
-```
+```sh
 $ etcdctl rmdir /path/to/dir
 ```
 
 or
 
-```
+```sh
 $ etcdctl rm /path/to/dir --dir
 ```
 
 Recursively delete a key and all child keys:
 
-```
+```sh
 $ etcdctl rm /path/to/dir --recursive
 ```
 
 Conditionally delete `/foo/bar` if the previous value was "Hello world":
 
-```
+```sh
 $ etcdctl rm /foo/bar --with-value "Hello world"
 ```
 
 Conditionally delete `/foo/bar` if the previous etcd index was 12:
 
-```
+```sh
 $ etcdctl rm /foo/bar --with-index 12
 ```
 
@@ -232,14 +228,14 @@ $ etcdctl rm /foo/bar --with-index 12
 
 Watch for only the next change on a key:
 
-```
+```sh
 $ etcdctl watch /foo/bar
 Hello world
 ```
 
 Continuously watch a key:
 
-```
+```sh
 $ etcdctl watch /foo/bar --forever
 Hello world
 .... client hangs forever until ctrl+C printing values as key change
@@ -247,7 +243,7 @@ Hello world
 
 Continuously watch a key, starting with a given etcd index:
 
-```
+```sh
 $ etcdctl watch /foo/bar --forever --index 12
 Hello world
 .... client hangs forever until ctrl+C printing values as key change
@@ -255,7 +251,7 @@ Hello world
 
 Continuously watch a key and exec a program:
 
-```
+```sh
 $ etcdctl exec-watch /foo/bar -- sh -c "env | grep ETCD"
 ETCD_WATCH_ACTION=set
 ETCD_WATCH_VALUE=My configuration stuff
@@ -268,7 +264,7 @@ ETCD_WATCH_KEY=/foo/bar
 ```
 
 Continuously and recursively watch a key and exec a program:
-```
+```sh
 $ etcdctl exec-watch --recursive /foo -- sh -c "env | grep ETCD"
 ETCD_WATCH_ACTION=set
 ETCD_WATCH_VALUE=My configuration stuff
@@ -300,11 +296,19 @@ a `--endpoint` flag or `ETCDCTL_ENDPOINT` environment variable. You can list one
 or a comma-separated list of endpoints. This option is ignored if the `--discovery-srv`
 option is provided.
 
-```
+```sh
 ETCDCTL_ENDPOINT="http://10.0.28.1:4002" etcdctl set my-key to-a-value
 ETCDCTL_ENDPOINT="http://10.0.28.1:4002,http://10.0.28.2:4002,http://10.0.28.3:4002" etcdctl set my-key to-a-value
 etcdctl --endpoint http://10.0.28.1:4002 my-key to-a-value
 etcdctl --endpoint http://10.0.28.1:4002,http://10.0.28.2:4002,http://10.0.28.3:4002 etcdctl set my-key to-a-value
+```
+
+## Username and Password
+
+If your etcd cluster is protected by [authentication][authentication], you can specify username and password using the [`--username`][username-flag] or `ETCDCTL_USERNAME` environment variable. When `--username` flag or `ETCDCTL_USERNAME` environment variable doesn't contain password, etcdctl will prompt password in interactive mode.
+
+```sh
+ETCDCTL_USERNAME="root:password" etcdctl set my-key to-a-value
 ```
 
 ## DNS Discovery
@@ -313,7 +317,7 @@ If you want to discover your etcd cluster through domain SRV records you can spe
 a `--discovery-srv` flag or `ETCDCTL_DISCOVERY_SRV` environment variable. This option takes
 precedence over the `--endpoint` flag.
 
-```
+```sh
 ETCDCTL_DISCOVERY_SRV="some-domain" etcdctl set my-key to-a-value
 etcdctl --discovery-srv some-domain set my-key to-a-value
 ```
@@ -325,10 +329,13 @@ etcdctl --discovery-srv some-domain set my-key to-a-value
 etcdctl uses [semantic versioning][semver].
 Releases will follow lockstep with the etcd release cycle.
 
-[semver]: http://semver.org/
-
 ### License
 
 etcdctl is under the Apache 2.0 license. See the [LICENSE][license] file for details.
 
+[authentication]: ../Documentation/authentication.md
+[etcd]: https://github.com/coreos/etcd
+[github-release]: https://github.com/coreos/etcd/releases/
 [license]: https://github.com/coreos/etcdctl/blob/master/LICENSE
+[semver]: http://semver.org/
+[username-flag]: #--username--u
