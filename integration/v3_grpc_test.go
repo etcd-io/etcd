@@ -369,15 +369,18 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			t.Fatalf("#%d: wAPI.Watch error: %v", i, err)
 		}
 
+		go func() {
+			for _, k := range tt.putKeys {
+				kvc := pb.NewKVClient(clus.RandConn())
+				req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
+				if _, err := kvc.Put(context.TODO(), req); err != nil {
+					t.Fatalf("#%d: couldn't put key (%v)", i, err)
+				}
+			}
+		}()
+
 		if err := wStream.Send(tt.watchRequest); err != nil {
 			t.Fatalf("#%d: wStream.Send error: %v", i, err)
-		}
-
-		kvc := pb.NewKVClient(clus.RandConn())
-		for _, k := range tt.putKeys {
-			if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}); err != nil {
-				t.Fatalf("#%d: couldn't put key (%v)", i, err)
-			}
 		}
 
 		var createdWatchId int64
