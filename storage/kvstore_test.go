@@ -34,7 +34,7 @@ func TestStoreRev(t *testing.T) {
 	s := NewStore(b, &lease.FakeLessor{})
 	defer os.Remove(tmpPath)
 
-	for i := 0; i < 3; i++ {
+	for i := 1; i <= 3; i++ {
 		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 		if r := s.Rev(); r != int64(i+1) {
 			t.Errorf("#%d: rev = %d, want %d", i, r, i+1)
@@ -312,15 +312,15 @@ func TestStoreRestore(t *testing.T) {
 	putkv := storagepb.KeyValue{
 		Key:            []byte("foo"),
 		Value:          []byte("bar"),
-		CreateRevision: 3,
-		ModRevision:    3,
+		CreateRevision: 4,
+		ModRevision:    4,
 		Version:        1,
 	}
 	putkvb, err := putkv.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	delkey := newTestKeyBytes(revision{4, 0}, true)
+	delkey := newTestKeyBytes(revision{5, 0}, true)
 	delkv := storagepb.KeyValue{
 		Key: []byte("foo"),
 	}
@@ -328,30 +328,30 @@ func TestStoreRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b.tx.rangeRespc <- rangeResp{[][]byte{finishedCompactKeyName}, [][]byte{newTestRevBytes(revision{2, 0})}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{finishedCompactKeyName}, [][]byte{newTestRevBytes(revision{3, 0})}}
 	b.tx.rangeRespc <- rangeResp{[][]byte{putkey, delkey}, [][]byte{putkvb, delkvb}}
-	b.tx.rangeRespc <- rangeResp{[][]byte{scheduledCompactKeyName}, [][]byte{newTestRevBytes(revision{2, 0})}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{scheduledCompactKeyName}, [][]byte{newTestRevBytes(revision{3, 0})}}
 
 	s.restore()
 
-	if s.compactMainRev != 2 {
-		t.Errorf("compact rev = %d, want 4", s.compactMainRev)
+	if s.compactMainRev != 3 {
+		t.Errorf("compact rev = %d, want 5", s.compactMainRev)
 	}
-	wrev := revision{4, 0}
+	wrev := revision{5, 0}
 	if !reflect.DeepEqual(s.currentRev, wrev) {
 		t.Errorf("current rev = %v, want %v", s.currentRev, wrev)
 	}
 	wact := []testutil.Action{
 		{"range", []interface{}{metaBucketName, finishedCompactKeyName, []byte(nil), int64(0)}},
-		{"range", []interface{}{keyBucketName, newTestRevBytes(revision{}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(0)}},
+		{"range", []interface{}{keyBucketName, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(0)}},
 		{"range", []interface{}{metaBucketName, scheduledCompactKeyName, []byte(nil), int64(0)}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
 	}
 	wact = []testutil.Action{
-		{"restore", []interface{}{[]byte("foo"), revision{3, 0}, revision{3, 0}, int64(1)}},
-		{"tombstone", []interface{}{[]byte("foo"), revision{4, 0}}},
+		{"restore", []interface{}{[]byte("foo"), revision{4, 0}, revision{3, 0}, int64(1)}},
+		{"tombstone", []interface{}{[]byte("foo"), revision{5, 0}}},
 	}
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
@@ -420,7 +420,7 @@ func TestTxnPut(t *testing.T) {
 
 	for i := 0; i < sliceN; i++ {
 		id := s.TxnBegin()
-		base := int64(i + 1)
+		base := int64(i + 2)
 
 		rev, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease)
 		if err != nil {
