@@ -15,6 +15,59 @@ The latest release is available as a binary at [Github][github-release] along wi
 
 You can also build etcdctl from source using the build script found in the parent directory.
 
+## Configuration
+### --debug
++ output cURL commands which can be used to reproduce the request
+
+### --no-sync
++ don't synchronize cluster information before sending request
+
+### --output, -o
++ output response in the given format (`simple`, `extended` or `json`)
++ default: `"simple"`
+
+### --discovery-srv, -D
++ domain name to query for SRV records describing cluster endpoints
++ default: none
++ env variable: ETCDCTL_DISCOVERY_SRV
+
+### --peers
++ a comma-delimited list of machine addresses in the cluster
++ default: `"http://127.0.0.1:4001,http://127.0.0.1:2379"`
++ env variable: ETCDCTL_PEERS
+
+### --endpoint
++ a comma-delimited list of machine addresses in the cluster
++ default: `"http://127.0.0.1:4001,http://127.0.0.1:2379"`
++ env variable: ETCDCTL_ENDPOINT
+
+### --cert-file
++ identify HTTPS client using this SSL certificate file
++ default: none
++ env variable: ETCDCTL_CERT_FILE
+
+### --key-file
++ identify HTTPS client using this SSL key file
++ default: none
++ env variable: ETCDCTL_KEY_FILE
+
+### --ca-file
++ verify certificates of HTTPS-enabled servers using this CA bundle
++ default: none
++ env variable: ETCDCTL_CA_FILE
+
+### --username, -u
++ provide username[:password] and prompt if password is not supplied
++ default: none
+
+### --timeout
++ connection timeout per request
++ default: `"1s"`
+
+### --total-timeout
++ timeout for the command execution (except watch)
++ default: `"5s"`
+
 ## Usage
 
 ### Setting Key Values
