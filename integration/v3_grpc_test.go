@@ -432,3 +432,62 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		clus.Terminate(t)
 	}
 }
+
+// TestV3WatchCancel tests Watch APIs cancellation.
+func TestV3WatchCancel(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	wAPI := pb.NewWatchClient(clus.RandConn())
+
+	wStream, errW := wAPI.Watch(context.TODO())
+	if errW != nil {
+		t.Fatalf("wAPI.Watch error: %v", errW)
+	}
+
+	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")}}); err != nil {
+		t.Fatalf("wStream.Send error: %v", err)
+	}
+
+	wresp, errR := wStream.Recv()
+	if errR != nil {
+		t.Errorf("wStream.Recv error: %v", errR)
+	}
+	if !wresp.Created {
+		t.Errorf("wresp.Created got = %v, want = true", wresp.Created)
+	}
+
+	if err := wStream.Send(&pb.WatchRequest{CancelRequest: &pb.WatchCancelRequest{WatchId: wresp.WatchId}}); err != nil {
+		t.Fatalf("wStream.Send error: %v", err)
+	}
+
+	cresp, err := wStream.Recv()
+	if err != nil {
+		t.Errorf("wStream.Recv error: %v", err)
+	}
+	if !cresp.Canceled {
+		t.Errorf("cresp.Canceled got = %v, want = true", cresp.Canceled)
+	}
+
+	kvc := pb.NewKVClient(clus.RandConn())
+	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
+		t.Errorf("couldn't put key (%v)", err)
+	}
+
+	// watch got canceled, so this should block
+	rCh := make(chan *pb.WatchResponse)
+	go func() {
+		resp, _ := wStream.Recv()
+		rCh <- resp
+	}()
+	select {
+	case nr := <-rCh:
+		t.Errorf("unexpected response is received %+v", nr)
+	case <-time.After(2 * time.Second):
+	}
+	wStream.CloseSend()
+	rv, ok := <-rCh
+	if rv != nil || !ok {
+		t.Errorf("rv, ok got = %v %v, want = nil true", rv, ok)
+	}
+
+	clus.Terminate(t)
+}
