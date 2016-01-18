@@ -412,20 +412,9 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			}
 		}
 
-		rCh := make(chan *pb.WatchResponse)
-		go func() {
-			resp, _ := wStream.Recv()
-			rCh <- resp
-		}()
-		select {
-		case nr := <-rCh:
-			t.Errorf("#%d: unexpected response is received %+v", i, nr)
-		case <-time.After(2 * time.Second):
-		}
-		wStream.CloseSend()
-		rv, ok := <-rCh
-		if rv != nil || !ok {
-			t.Errorf("#%d: rv, ok got = %v %v, want = nil true", i, rv, ok)
+		rok, nr := WaitResponse(wStream, 1*time.Second)
+		if !rok {
+			t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 		}
 
 		// can't defer because tcp ports will be in use
@@ -473,20 +462,9 @@ func TestV3WatchCancel(t *testing.T) {
 	}
 
 	// watch got canceled, so this should block
-	rCh := make(chan *pb.WatchResponse)
-	go func() {
-		resp, _ := wStream.Recv()
-		rCh <- resp
-	}()
-	select {
-	case nr := <-rCh:
-		t.Errorf("unexpected response is received %+v", nr)
-	case <-time.After(2 * time.Second):
-	}
-	wStream.CloseSend()
-	rv, ok := <-rCh
-	if rv != nil || !ok {
-		t.Errorf("rv, ok got = %v %v, want = nil true", rv, ok)
+	rok, nr := WaitResponse(wStream, 1*time.Second)
+	if !rok {
+		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 	}
 
 	clus.Terminate(t)
