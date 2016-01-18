@@ -33,7 +33,7 @@ type ServerStats struct {
 	StartTime time.Time      `json:"startTime"`
 
 	LeaderInfo struct {
-		Name      string    `json:"leader"`
+		ID        string    `json:"leader"`
 		Uptime    string    `json:"uptime"`
 		StartTime time.Time `json:"startTime"`
 	} `json:"leaderInfo"`
@@ -102,8 +102,8 @@ func (ss *ServerStats) RecvAppendReq(leader string, reqSize int) {
 	now := time.Now()
 
 	ss.State = raft.StateFollower
-	if leader != ss.LeaderInfo.Name {
-		ss.LeaderInfo.Name = leader
+	if leader != ss.LeaderInfo.ID {
+		ss.LeaderInfo.ID = leader
 		ss.LeaderInfo.StartTime = now
 	}
 
@@ -126,7 +126,7 @@ func (ss *ServerStats) SendAppendReq(reqSize int) {
 
 	if ss.State != raft.StateLeader {
 		ss.State = raft.StateLeader
-		ss.LeaderInfo.Name = ss.ID
+		ss.LeaderInfo.ID = ss.ID
 		ss.LeaderInfo.StartTime = now
 	}
 
@@ -143,7 +143,7 @@ func (ss *ServerStats) SendAppendReq(reqSize int) {
 func (ss *ServerStats) BecomeLeader() {
 	if ss.State != raft.StateLeader {
 		ss.State = raft.StateLeader
-		ss.LeaderInfo.Name = ss.ID
+		ss.LeaderInfo.ID = ss.ID
 		ss.LeaderInfo.StartTime = time.Now()
 	}
 }
