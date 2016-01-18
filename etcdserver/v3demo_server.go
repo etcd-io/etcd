@@ -246,14 +246,18 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 		// fetch everything; sort and truncate afterwards
 		limit = 0
 	}
+	if limit > 0 {
+		// fetch one extra for 'more' flag
+		limit = limit + 1
+	}
 
 	if txnID != noTxn {
-		kvs, rev, err = kv.TxnRange(txnID, r.Key, r.RangeEnd, limit, 0)
+		kvs, rev, err = kv.TxnRange(txnID, r.Key, r.RangeEnd, limit, r.Revision)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		kvs, rev, err = kv.Range(r.Key, r.RangeEnd, limit, 0)
+		kvs, rev, err = kv.Range(r.Key, r.RangeEnd, limit, r.Revision)
 		if err != nil {
 			return nil, err
 		}
@@ -279,9 +283,11 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 		case r.SortOrder == pb.RangeRequest_DESCEND:
 			sort.Sort(sort.Reverse(sorter))
 		}
-		if r.Limit > 0 && len(kvs) > int(r.Limit) {
-			kvs = kvs[:r.Limit]
-		}
+	}
+
+	if r.Limit > 0 && len(kvs) > int(r.Limit) {
+		kvs = kvs[:r.Limit]
+		resp.More = true
 	}
 
 	resp.Header.Revision = rev

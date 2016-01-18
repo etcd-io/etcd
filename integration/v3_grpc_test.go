@@ -582,3 +582,175 @@ func WaitResponse(wc pb.Watch_WatchClient, timeout time.Duration) (bool, *pb.Wat
 	}
 	return true, nil
 }
+
+func TestV3RangeRequest(t *testing.T) {
+	tests := []struct {
+		putKeys []string
+		reqs    []pb.RangeRequest
+
+		wresps [][]string
+		wmores []bool
+	}{
+		// single key
+		{
+			[]string{"foo", "bar"},
+			[]pb.RangeRequest{
+				// exists
+				{Key: []byte("foo")},
+				// doesn't exist
+				{Key: []byte("baz")},
+			},
+
+			[][]string{
+				{"foo"},
+				{},
+			},
+			[]bool{false, false},
+		},
+		// multi-key
+		{
+			[]string{"a", "b", "c", "d", "e"},
+			[]pb.RangeRequest{
+				// all in range
+				{Key: []byte("a"), RangeEnd: []byte("z")},
+				// [b, d)
+				{Key: []byte("b"), RangeEnd: []byte("d")},
+				// out of range
+				{Key: []byte("f"), RangeEnd: []byte("z")},
+				// [c,c) = empty
+				{Key: []byte("c"), RangeEnd: []byte("c")},
+				// [d, b) = empty
+				{Key: []byte("d"), RangeEnd: []byte("b")},
+			},
+
+			[][]string{
+				{"a", "b", "c", "d", "e"},
+				{"b", "c"},
+				{},
+				{},
+				{},
+			},
+			[]bool{false, false, false, false, false},
+		},
+		// revision
+		{
+			[]string{"a", "b", "c", "d", "e"},
+			[]pb.RangeRequest{
+				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 0},
+				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 1},
+				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 2},
+				{Key: []byte("a"), RangeEnd: []byte("z"), Revision: 3},
+			},
+
+			[][]string{
+				{"a", "b", "c", "d", "e"},
+				{},
+				{"a"},
+				{"a", "b"},
+			},
+			[]bool{false, false, false, false},
+		},
+		// limit
+		{
+			[]string{"foo", "bar"},
+			[]pb.RangeRequest{
+				// more
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 1},
+				// no more
+				{Key: []byte("a"), RangeEnd: []byte("z"), Limit: 2},
+			},
+
+			[][]string{
+				{"bar"},
+				{"bar", "foo"},
+			},
+			[]bool{true, false},
+		},
+		// sort
+		{
+			[]string{"b", "a", "c", "d", "c"},
+			[]pb.RangeRequest{
+				{
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_ASCEND,
+					SortTarget: pb.RangeRequest_KEY,
+				},
+				{
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_DESCEND,
+					SortTarget: pb.RangeRequest_KEY,
+				},
+				{
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_ASCEND,
+					SortTarget: pb.RangeRequest_CREATE,
+				},
+				{
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_DESCEND,
+					SortTarget: pb.RangeRequest_MOD,
+				},
+				{
+					Key: []byte("z"), RangeEnd: []byte("z"),
+					Limit:      1,
+					SortOrder:  pb.RangeRequest_DESCEND,
+					SortTarget: pb.RangeRequest_CREATE,
+				},
+			},
+
+			[][]string{
+				{"a"},
+				{"d"},
+				{"b"},
+				{"c"},
+				{},
+			},
+			[]bool{true, true, true, true, false},
+		},
+	}
+
+	for i, tt := range tests {
+		clus := newClusterGRPC(t, &clusterConfig{size: 3})
+		for _, k := range tt.putKeys {
+			kvc := pb.NewKVClient(clus.RandConn())
+			req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
+			if _, err := kvc.Put(context.TODO(), req); err != nil {
+				t.Fatalf("#%d: couldn't put key (%v)", i, err)
+			}
+		}
+
+		for j, req := range tt.reqs {
+			kvc := pb.NewKVClient(clus.RandConn())
+			resp, err := kvc.Range(context.TODO(), &req)
+			if err != nil {
+				t.Errorf("#%d.%d: Range error: %v", i, j, err)
+				continue
+			}
+			if len(resp.Kvs) != len(tt.wresps[j]) {
+				t.Errorf("#%d.%d: bad len(resp.Kvs). got = %d, want = %d, ", i, j, len(resp.Kvs), len(tt.wresps[j]))
+				continue
+			}
+			for k, wKey := range tt.wresps[j] {
+				respKey := string(resp.Kvs[k].Key)
+				if respKey != wKey {
+					t.Errorf("#%d.%d: key[%d]. got = %v, want = %v, ", i, j, k, respKey, wKey)
+				}
+			}
+			if resp.More != tt.wmores[j] {
+				t.Errorf("#%d.%d: bad more. got = %v, want = %v, ", i, j, resp.More, tt.wmores[j])
+			}
+			wrev := req.Revision
+			if wrev == 0 {
+				wrev = int64(len(tt.putKeys) + 1)
+			}
+			if resp.Header.Revision != wrev {
+				t.Errorf("#%d.%d: bad header revision. got = %d. want = %d", i, j, resp.Header.Revision, wrev)
+			}
+		}
+		clus.Terminate(t)
+	}
+}
