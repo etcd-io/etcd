@@ -45,54 +45,63 @@ TEST=${split[@]/#/${REPO_PATH}/}
 split=(${NO_RACE_TEST// / })
 NO_RACE_TEST=${split[@]/#/${REPO_PATH}/}
 
-echo "Running tests..."
+function unit_tests {
+	echo "Running tests..."
 
-MACHINE_TYPE=$(uname -m)
-if [ $MACHINE_TYPE != "armv7l" ]; then
-  RACE="--race"
-fi
+	MACHINE_TYPE=$(uname -m)
+	if [ $MACHINE_TYPE != "armv7l" ]; then
+		RACE="--race"
+	fi
+	go test -timeout 3m ${COVER} ${RACE} -cpu 1,2,4 $@ ${TEST}
+	go test -timeout 3m ${COVER} -cpu 1,2,4 $@ ${NO_RACE_TEST}
+}
 
-go test -timeout 3m ${COVER} ${RACE} -cpu 1,2,4 $@ ${TEST}
-go test -timeout 3m ${COVER} -cpu 1,2,4 $@ ${NO_RACE_TEST}
-
-if [ -n "$INTEGRATION" ]; then
+function integration_tests {
 	echo "Running integration tests..."
 	go test -timeout 5m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e
 	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration
 	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
-fi
+}
 
-echo "Checking gofmt..."
-fmtRes=$(gofmt -l -s -d $FMT)
-if [ -n "${fmtRes}" ]; then
-	echo -e "gofmt checking failed:\n${fmtRes}"
-	exit 255
-fi
-
-echo "Checking govet..."
-vetRes=$(go vet $TEST)
-if [ -n "${vetRes}" ]; then
-	echo -e "govet checking failed:\n${vetRes}"
-	exit 255
-fi
-
-echo "Checking govet -shadow..."
-for path in $FMT; do
-	vetRes=$(go tool vet -shadow ${path})
-	if [ -n "${vetRes}" ]; then
-		echo -e "govet checking ${path} failed:\n${vetRes}"
+function fmt_tests {
+	echo "Checking gofmt..."
+	fmtRes=$(gofmt -l -s -d $FMT)
+	if [ -n "${fmtRes}" ]; then
+		echo -e "gofmt checking failed:\n${fmtRes}"
 		exit 255
 	fi
-done
 
+	echo "Checking govet..."
+	vetRes=$(go vet $TEST)
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet checking failed:\n${vetRes}"
+		exit 255
+	fi
 
-echo "Checking for license header..."
-licRes=$(for file in $(find . -type f -iname '*.go' ! -path './Godeps/*'); do
-		head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" || echo -e "  ${file}"
-	done;)
-if [ -n "${licRes}" ]; then 
-	echo -e "license header checking failed:\n${licRes}"
-	exit 255
+	echo "Checking govet -shadow..."
+	for path in $FMT; do
+		vetRes=$(go tool vet -shadow ${path})
+		if [ -n "${vetRes}" ]; then
+			echo -e "govet checking ${path} failed:\n${vetRes}"
+			exit 255
+		fi
+	done
+
+	echo "Checking for license header..."
+	licRes=$(for file in $(find . -type f -iname '*.go' ! -path './Godeps/*'); do
+			head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" || echo -e "  ${file}"
+		done;)
+	if [ -n "${licRes}" ]; then
+		echo -e "license header checking failed:\n${licRes}"
+		exit 255
+	fi
+}
+
+# fail fast on formatting tests
+fmt_tests
+
+unit_tests
+if [ -n "$INTEGRATION" ]; then
+	integration_tests
 fi
-
 echo "Success"
