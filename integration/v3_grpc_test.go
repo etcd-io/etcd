@@ -369,6 +369,10 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			t.Fatalf("#%d: wAPI.Watch error: %v", i, err)
 		}
 
+		if err := wStream.Send(tt.watchRequest); err != nil {
+			t.Fatalf("#%d: wStream.Send error: %v", i, err)
+		}
+
 		go func() {
 			for _, k := range tt.putKeys {
 				kvc := pb.NewKVClient(clus.RandConn())
@@ -378,10 +382,6 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				}
 			}
 		}()
-
-		if err := wStream.Send(tt.watchRequest); err != nil {
-			t.Fatalf("#%d: wStream.Send error: %v", i, err)
-		}
 
 		var createdWatchId int64
 		for j, wresp := range tt.wresps {
