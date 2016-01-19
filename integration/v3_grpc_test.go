@@ -14,8 +14,11 @@
 package integration
 
 import (
+	"bytes"
+	"fmt"
 	"math/rand"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -559,6 +562,84 @@ func TestV3WatchMultiple(t *testing.T) {
 
 	clus.Terminate(t)
 }
+
+// TestV3WatchMultipleEventsFromCurrentRevision tests Watch APIs from current revision
+// in cases it receives multiple events.
+func TestV3WatchMultipleEventsFromCurrentRevision(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+
+	wAPI := pb.NewWatchClient(clus.RandConn())
+	wStream, err := wAPI.Watch(context.TODO())
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+
+	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo")}}); err != nil {
+		t.Fatalf("wStream.Send error: %v", err)
+	}
+
+	kvc := pb.NewKVClient(clus.RandConn())
+	txn := pb.TxnRequest{}
+	for i := 0; i < 3; i++ {
+		ru := &pb.RequestUnion{}
+		ru.RequestPut = &pb.PutRequest{Key: []byte(fmt.Sprintf("foo%d", i)), Value: []byte("bar")}
+		txn.Success = append(txn.Success, ru)
+	}
+
+	tresp, err := kvc.Txn(context.Background(), &txn)
+	if err != nil {
+		t.Fatalf("kvc.Txn error: %v", err)
+	}
+	if !tresp.Succeeded {
+		t.Fatalf("kvc.Txn failed: %+v", tresp)
+	}
+
+	events := []*storagepb.Event{}
+	for len(events) < 3 {
+		resp, err := wStream.Recv()
+		if err != nil {
+			t.Errorf("wStream.Recv error: %v", err)
+		}
+		if resp.Created {
+			continue
+		}
+		events = append(events, resp.Events...)
+	}
+	sort.Sort(eventsSortByKey(events))
+
+	wevents := []*storagepb.Event{
+		{
+			Type: storagepb.PUT,
+			Kv:   &storagepb.KeyValue{Key: []byte("foo0"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		},
+		{
+			Type: storagepb.PUT,
+			Kv:   &storagepb.KeyValue{Key: []byte("foo1"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		},
+		{
+			Type: storagepb.PUT,
+			Kv:   &storagepb.KeyValue{Key: []byte("foo2"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		},
+	}
+
+	if !reflect.DeepEqual(events, wevents) {
+		t.Errorf("events got = %+v, want = %+v", events, wevents)
+	}
+
+	rok, nr := WaitResponse(wStream, 1*time.Second)
+	if !rok {
+		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
+	}
+
+	// can't defer because tcp ports will be in use
+	clus.Terminate(t)
+}
+
+type eventsSortByKey []*storagepb.Event
+
+func (evs eventsSortByKey) Len() int           { return len(evs) }
+func (evs eventsSortByKey) Swap(i, j int)      { evs[i], evs[j] = evs[j], evs[i] }
+func (evs eventsSortByKey) Less(i, j int) bool { return bytes.Compare(evs[i].Kv.Key, evs[j].Kv.Key) < 0 }
 
 // WaitResponse waits on the given stream for given duration.
 // If there is no more events, true and a nil response will be
