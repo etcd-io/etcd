@@ -498,6 +498,8 @@ func (m *WatchResponse) GetEvents() []*storagepb.Event {
 type LeaseCreateRequest struct {
 	// advisory ttl in seconds
 	TTL int64 `protobuf:"varint,1,opt,proto3" json:"TTL,omitempty"`
+	// requested ID to create; 0 lets lessor choose
+	ID int64 `protobuf:"varint,2,opt,proto3" json:"ID,omitempty"`
 }
 
 func (m *LeaseCreateRequest) Reset()         { *m = LeaseCreateRequest{} }
@@ -1814,6 +1816,11 @@ func (m *LeaseCreateRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.TTL))
 	}
+	if m.ID != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.ID))
+	}
 	return i, nil
 }
 
@@ -2334,6 +2341,9 @@ func (m *LeaseCreateRequest) Size() (n int) {
 	_ = l
 	if m.TTL != 0 {
 		n += 1 + sovRpc(uint64(m.TTL))
+	}
+	if m.ID != 0 {
+		n += 1 + sovRpc(uint64(m.ID))
 	}
 	return n
 }
@@ -4467,6 +4477,22 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 				b := data[iNdEx]
 				iNdEx++
 				m.TTL |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			m.ID = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

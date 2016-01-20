@@ -361,7 +361,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 
 	if cfg.V3demo {
 		srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
-		srv.lessor = lease.NewLessor(uint8(id), srv.be)
+		srv.lessor = lease.NewLessor(srv.be)
 		srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
 	}
 

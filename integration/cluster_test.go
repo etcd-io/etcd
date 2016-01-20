@@ -812,6 +812,7 @@ func (m *member) Launch() error {
 		m.grpcServer = grpc.NewServer()
 		etcdserverpb.RegisterKVServer(m.grpcServer, v3rpc.NewKVServer(m.s))
 		etcdserverpb.RegisterWatchServer(m.grpcServer, v3rpc.NewWatchServer(m.s))
+		etcdserverpb.RegisterLeaseServer(m.grpcServer, v3rpc.NewLeaseServer(m.s))
 		go m.grpcServer.Serve(m.grpcListener)
 	}
 	return nil
