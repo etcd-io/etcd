@@ -426,8 +426,17 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 	}
 }
 
-// TestV3WatchCancel tests Watch APIs cancellation.
-func TestV3WatchCancel(t *testing.T) {
+// TestV3WatchCancelSynced tests Watch APIs cancellation from synced map.
+func TestV3WatchCancelSynced(t *testing.T) {
+	testV3WatchCancel(t, 0)
+}
+
+// TestV3WatchCancelUnsynced tests Watch APIs cancellation from unsynced map.
+func TestV3WatchCancelUnsynced(t *testing.T) {
+	testV3WatchCancel(t, 1)
+}
+
+func testV3WatchCancel(t *testing.T, startRev int64) {
 	clus := newClusterGRPC(t, &clusterConfig{size: 3})
 	wAPI := pb.NewWatchClient(clus.RandConn())
 
@@ -436,7 +445,7 @@ func TestV3WatchCancel(t *testing.T) {
 		t.Fatalf("wAPI.Watch error: %v", errW)
 	}
 
-	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")}}); err != nil {
+	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 
