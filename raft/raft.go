@@ -826,6 +826,9 @@ func (r *raft) addNode(id uint64) {
 func (r *raft) removeNode(id uint64) {
 	r.delProgress(id)
 	r.pendingConf = false
+	// The quorum size is now smaller, so see if any pending entries can
+	// be committed.
+	r.maybeCommit()
 }
 
 func (r *raft) resetPendingConf() { r.pendingConf = false }
