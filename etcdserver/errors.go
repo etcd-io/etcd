@@ -33,6 +33,7 @@ var (
 	ErrTimeoutDueToLeaderFail     = errors.New("etcdserver: request timed out, possibly due to previous leader failure")
 	ErrTimeoutDueToConnectionLost = errors.New("etcdserver: request timed out, possibly due to connection lost")
 	ErrNotEnoughStartedMembers    = errors.New("etcdserver: re-configuration failed due to not enough started members")
+	ErrNoLeader                   = errors.New("etcdserver: no leader")
 )
 
 func isKeyNotFound(err error) bool {

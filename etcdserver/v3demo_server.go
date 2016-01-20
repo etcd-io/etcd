@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -112,7 +113,38 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 }
 
 func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
-	return s.lessor.Renew(id)
+	ttl, err := s.lessor.Renew(id)
+	if err == nil {
+		return ttl, nil
+	}
+	if err != lease.ErrNotPrimary {
+		return -1, err
+	}
+
+	// renewals don't go through raft; forward to leader manually
+	leader := s.cluster.Member(s.Leader())
+	for i := 0; i < 5 && leader == nil; i++ {
+		// wait an election
+		dur := time.Duration(s.cfg.ElectionTicks) * time.Duration(s.cfg.TickMs) * time.Millisecond
+		select {
+		case <-time.After(dur):
+			leader = s.cluster.Member(s.Leader())
+		case <-s.done:
+			return -1, ErrStopped
+		}
+	}
+	if leader == nil || len(leader.PeerURLs) == 0 {
+		return -1, ErrNoLeader
+	}
+
+	for _, url := range leader.PeerURLs {
+		lurl := url + "/leases"
+		ttl, err = lease.RenewHTTP(id, lurl, s.cfg.PeerTLSInfo, s.cfg.peerDialTimeout())
+		if err == nil {
+			break
+		}
+	}
+	return ttl, err
 }
 
 type applyResult struct {

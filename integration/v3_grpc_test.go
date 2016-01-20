@@ -1010,7 +1010,8 @@ func TestV3RangeRequest(t *testing.T) {
 
 // TestV3LeaseRevoke ensures a key is deleted once its lease is revoked.
 func TestV3LeaseRevoke(t *testing.T) {
-	testLeaseRemoveLeasedKey(t, func(lc pb.LeaseClient, leaseID int64) error {
+	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
+		lc := pb.NewLeaseClient(clus.RandConn())
 		_, err := lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
 		return err
 	})
@@ -1056,6 +1057,67 @@ func TestV3LeaseCreateByID(t *testing.T) {
 
 }
 
+// TestV3LeaseKeepAlive ensures keepalive keeps the lease alive.
+func TestV3LeaseKeepAlive(t *testing.T) {
+	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
+		lc := pb.NewLeaseClient(clus.RandConn())
+		lreq := &pb.LeaseKeepAliveRequest{ID: leaseID}
+		lac, err := lc.LeaseKeepAlive(context.TODO())
+		if err != nil {
+			return err
+		}
+		defer lac.CloseSend()
+
+		// renew long enough so lease would've expired otherwise
+		for i := 0; i < 3; i++ {
+			if err = lac.Send(lreq); err != nil {
+				return err
+			}
+			lresp, rxerr := lac.Recv()
+			if rxerr != nil {
+				return rxerr
+			}
+			if lresp.ID != leaseID {
+				return fmt.Errorf("expected lease ID %v, got %v", leaseID, lresp.ID)
+			}
+			time.Sleep(time.Duration(lresp.TTL/2) * time.Second)
+		}
+		_, err = lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
+		return err
+	})
+}
+
+// TestV3LeaseExists creates a lease on a random client, then sends a keepalive on another
+// client to confirm it's visible to the whole cluster.
+func TestV3LeaseExists(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	defer clus.Terminate(t)
+
+	// create lease
+	lresp, err := pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+		context.TODO(),
+		&pb.LeaseCreateRequest{TTL: 30})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lresp.Error != "" {
+		t.Fatal(lresp.Error)
+	}
+
+	// confirm keepalive
+	lac, err := pb.NewLeaseClient(clus.RandConn()).LeaseKeepAlive(context.TODO())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lac.CloseSend()
+	if err = lac.Send(&pb.LeaseKeepAliveRequest{ID: lresp.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = lac.Recv(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // acquireLeaseAndKey creates a new lease and creates an attached key.
 func acquireLeaseAndKey(clus *clusterV3, key string) (int64, error) {
 	// create lease
@@ -1078,7 +1140,7 @@ func acquireLeaseAndKey(clus *clusterV3, key string) (int64, error) {
 
 // testLeaseRemoveLeasedKey performs some action while holding a lease with an
 // attached key "foo", then confirms the key is gone.
-func testLeaseRemoveLeasedKey(t *testing.T, act func(pb.LeaseClient, int64) error) {
+func testLeaseRemoveLeasedKey(t *testing.T, act func(*clusterV3, int64) error) {
 	clus := newClusterGRPC(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
@@ -1087,7 +1149,7 @@ func testLeaseRemoveLeasedKey(t *testing.T, act func(pb.LeaseClient, int64) erro
 		t.Fatal(err)
 	}
 
-	if err := act(pb.NewLeaseClient(clus.RandConn()), leaseID); err != nil {
+	if err = act(clus, leaseID); err != nil {
 		t.Fatal(err)
 	}
 

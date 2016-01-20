@@ -312,7 +312,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		Handler: etcdhttp.NewClientHandler(s, srvcfg.ReqTimeout()),
 		Info:    cfg.corsInfo,
 	}
-	ph := etcdhttp.NewPeerHandler(s.Cluster(), s.RaftHandler())
+	ph := etcdhttp.NewPeerHandler(s)
 	// Start the peer server in a goroutine
 	for _, l := range plns {
 		go func(l net.Listener) {

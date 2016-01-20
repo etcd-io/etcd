@@ -33,7 +33,7 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("test data"))
 	})
-	ph := NewPeerHandler(&fakeCluster{}, h)
+	ph := newPeerHandler(&fakeCluster{}, h, nil)
 	srv := httptest.NewServer(ph)
 	defer srv.Close()
 
