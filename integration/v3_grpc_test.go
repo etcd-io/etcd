@@ -483,11 +483,19 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 	clus.Terminate(t)
 }
 
-// TestV3WatchMultiple tests multiple watchers on the same key
+func TestV3WatchMultipleWatchersSynced(t *testing.T) {
+	testV3WatchMultipleWatchers(t, 0)
+}
+
+func TestV3WatchMultipleWatchersUnsynced(t *testing.T) {
+	testV3WatchMultipleWatchers(t, 1)
+}
+
+// testV3WatchMultipleWatchers tests multiple watchers on the same key
 // and one watcher with matching prefix. It first puts the key
 // that matches all watchers, and another key that matches only
 // one watcher to test if it receives expected events.
-func TestV3WatchMultiple(t *testing.T) {
+func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
 	clus := newClusterGRPC(t, &clusterConfig{size: 3})
 	wAPI := pb.NewWatchClient(clus.RandConn())
 	kvc := pb.NewKVClient(clus.RandConn())
@@ -501,9 +509,9 @@ func TestV3WatchMultiple(t *testing.T) {
 	for i := 0; i < watchKeyN+1; i++ {
 		var wreq *pb.WatchRequest
 		if i < watchKeyN {
-			wreq = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")}}
+			wreq = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}
 		} else {
-			wreq = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("fo")}}
+			wreq = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("fo"), StartRevision: startRev}}
 		}
 		if err := wStream.Send(wreq); err != nil {
 			t.Fatalf("wStream.Send error: %v", err)
@@ -573,9 +581,16 @@ func TestV3WatchMultiple(t *testing.T) {
 	clus.Terminate(t)
 }
 
-// TestV3WatchMultipleEventsFromCurrentRevision tests Watch APIs from current revision
-// in cases it receives multiple events.
-func TestV3WatchMultipleEventsFromCurrentRevision(t *testing.T) {
+func TestV3WatchMultipleEventsTxnSynced(t *testing.T) {
+	testV3WatchMultipleEventsTxn(t, 0)
+}
+
+func TestV3WatchMultipleEventsTxnUnsynced(t *testing.T) {
+	testV3WatchMultipleEventsTxn(t, 1)
+}
+
+// testV3WatchMultipleEventsTxn tests Watch APIs when it receives multiple events.
+func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 	clus := newClusterGRPC(t, &clusterConfig{size: 3})
 
 	wAPI := pb.NewWatchClient(clus.RandConn())
@@ -584,7 +599,7 @@ func TestV3WatchMultipleEventsFromCurrentRevision(t *testing.T) {
 		t.Fatalf("wAPI.Watch error: %v", wErr)
 	}
 
-	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo")}}); err != nil {
+	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo"), StartRevision: startRev}}); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 
@@ -651,8 +666,16 @@ func (evs eventsSortByKey) Len() int           { return len(evs) }
 func (evs eventsSortByKey) Swap(i, j int)      { evs[i], evs[j] = evs[j], evs[i] }
 func (evs eventsSortByKey) Less(i, j int) bool { return bytes.Compare(evs[i].Kv.Key, evs[j].Kv.Key) < 0 }
 
-// TestV3WatchMultipleStreams tests multiple watchers on the same key on multiple streams.
-func TestV3WatchMultipleStreams(t *testing.T) {
+func TestV3WatchMultipleStreamsSynced(t *testing.T) {
+	testV3WatchMultipleStreams(t, 0)
+}
+
+func TestV3WatchMultipleStreamsUnsynced(t *testing.T) {
+	testV3WatchMultipleStreams(t, 1)
+}
+
+// testV3WatchMultipleStreams tests multiple watchers on the same key on multiple streams.
+func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 	clus := newClusterGRPC(t, &clusterConfig{size: 3})
 	wAPI := pb.NewWatchClient(clus.RandConn())
 	kvc := pb.NewKVClient(clus.RandConn())
@@ -663,7 +686,7 @@ func TestV3WatchMultipleStreams(t *testing.T) {
 		if errW != nil {
 			t.Fatalf("wAPI.Watch error: %v", errW)
 		}
-		if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")}}); err != nil {
+		if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}); err != nil {
 			t.Fatalf("wStream.Send error: %v", err)
 		}
 		streams[i] = wStream
