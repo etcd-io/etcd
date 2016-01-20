@@ -23,8 +23,9 @@ import (
 )
 
 var (
-	ErrKeyExists    = errors.New("key already exists")
-	ErrWaitMismatch = errors.New("unexpected wait result")
+	ErrKeyExists      = errors.New("key already exists")
+	ErrWaitMismatch   = errors.New("unexpected wait result")
+	ErrTooManyClients = errors.New("too many clients")
 )
 
 // deleteRevKey deletes a key by revision, returning false if key is missing

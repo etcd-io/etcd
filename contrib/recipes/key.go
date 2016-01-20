@@ -197,3 +197,36 @@ func (rk *RemoteKV) Put(val string) error {
 	_, err := rk.client.KV.Put(context.TODO(), req)
 	return err
 }
+
+// EphemeralKV is a new key associated with a session lease
+type EphemeralKV struct{ RemoteKV }
+
+// NewEphemeralKV creates a new key/value pair associated with a session lease
+func NewEphemeralKV(client *clientv3.Client, key, val string) (*EphemeralKV, error) {
+	leaseID, err := SessionLease(client)
+	if err != nil {
+		return nil, err
+	}
+	k, err := NewKV(client, key, val, leaseID)
+	if err != nil {
+		return nil, err
+	}
+	return &EphemeralKV{*k}, nil
+}
+
+// NewEphemeralKey creates a new unique valueless key associated with a session lease
+func NewUniqueEphemeralKey(client *clientv3.Client, prefix string) (*EphemeralKV, error) {
+	return NewUniqueEphemeralKV(client, prefix, "")
+}
+
+// NewEphemeralKV creates a new unique key/value pair associated with a session lease
+func NewUniqueEphemeralKV(client *clientv3.Client, prefix, val string) (ek *EphemeralKV, err error) {
+	for {
+		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
+		ek, err = NewEphemeralKV(client, newKey, val)
+		if err == nil || err != ErrKeyExists {
+			break
+		}
+	}
+	return ek, err
+}
