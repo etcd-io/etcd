@@ -360,8 +360,6 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				},
 			},
 		},
-
-		// TODO: watch and receive multiple-events from synced (need Txn)
 	}
 
 	for i, tt := range tests {
