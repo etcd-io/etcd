@@ -305,7 +305,7 @@ func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }
 
 // walk walks through the revisions in the generation in descending order.
 // It passes the revision to the given function.
-// walk returns until: 1. it finishs walking all pairs 2. the function returns false.
+// walk returns until: 1. it finishes walking all pairs 2. the function returns false.
 // walk returns the position at where it stopped. If it stopped after
 // finishing walking, -1 will be returned.
 func (g *generation) walk(f func(rev revision) bool) int {

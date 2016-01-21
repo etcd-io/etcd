@@ -349,7 +349,7 @@ func (le *lessor) findExpiredLeases() []*Lease {
 }
 
 // get gets the lease with given id.
-// get is a helper fucntion for testing, at least for now.
+// get is a helper function for testing, at least for now.
 func (le *lessor) get(id LeaseID) *Lease {
 	le.mu.Lock()
 	defer le.mu.Unlock()
