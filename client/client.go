@@ -52,11 +52,21 @@ var DefaultTransport CancelableTransport = &http.Transport{
 type EndpointSelectionMode int
 
 const (
-	// EndpointSelectionRandom is to pick an endpoint in a random manner.
+	// EndpointSelectionRandom is the default value of the 'SelectionMode'.
+	// As the name implies, the client object will pick a node from the members
+	// of the cluster in a random fashion. If the cluster has three members, A, B,
+	// and C, the client picks any node from its three members as its request
+	// destination.
 	EndpointSelectionRandom EndpointSelectionMode = iota
 
-	// EndpointSelectionPrioritizeLeader is to prioritize leader for reducing needless
-	// forward between follower and leader.
+	// If 'SelectionMode' is set to 'EndpointSelectionPrioritizeLeader',
+	// requests are sent directly to the cluster leader. This reduces
+	// forwarding roundtrips compared to making requests to etcd followers
+	// who then forward them to the cluster leader. In the event of a leader
+	// failure, however, clients configured this way cannot prioritize among
+	// the remaining etcd followers. Therefore, when a client sets 'SelectionMode'
+	// to 'EndpointSelectionPrioritizeLeader', it must use 'client.AutoSync()' to
+	// maintain its knowledge of current cluster state.
 	//
 	// This mode should be used with Client.AutoSync().
 	EndpointSelectionPrioritizeLeader
@@ -119,7 +129,8 @@ type Config struct {
 	// A HeaderTimeoutPerRequest of zero means no timeout.
 	HeaderTimeoutPerRequest time.Duration
 
-	// SelectionMode specifies a way of selecting destination endpoint.
+	// SelectionMode is an EndpointSelectionMode enum that specifies the
+	// policy for choosing the etcd cluster node to which requests are sent.
 	SelectionMode EndpointSelectionMode
 }
 
