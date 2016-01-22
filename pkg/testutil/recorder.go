@@ -100,7 +100,6 @@ func (r *recorderStream) Action() (acts []Action) {
 			return acts
 		}
 	}
-	return acts
 }
 
 func (r *recorderStream) Chan() <-chan Action {
