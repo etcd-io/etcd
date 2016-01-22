@@ -177,7 +177,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		reportRequestCompleted(rr, resp, startTime)
 	case resp.Watcher != nil:
-		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(rr.WaitTimeout))
 		defer cancel()
 		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
 	default:
@@ -463,7 +463,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	}
 	p := path.Join(etcdserver.StoreKeysPrefix, r.URL.Path[len(keysPrefix):])
 
-	var pIdx, wIdx uint64
+	var pIdx, wIdx, wTimeout uint64
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
 		return emptyReq, etcdErr.NewRequestError(
 			etcdErr.EcodeIndexNaN,
@@ -475,6 +475,15 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 			etcdErr.EcodeIndexNaN,
 			`invalid value for "waitIndex"`,
 		)
+	}
+	if wTimeout, err = getUint64(r.Form, "waitTimeout"); err != nil {
+		return emptyReq, etcdErr.NewRequestError(
+			etcdErr.EcodeIndexNaN,
+			`invalid value for "waitTimeout"`,
+		)
+	}
+	if wTimeout == 0 {
+		wTimeout = uint64(defaultWatchTimeout)
 	}
 
 	var rec, sort, wait, dir, quorum, stream bool
@@ -559,19 +568,20 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	}
 
 	rr := etcdserverpb.Request{
-		Method:    r.Method,
-		Path:      p,
-		Val:       r.FormValue("value"),
-		Dir:       dir,
-		PrevValue: pV,
-		PrevIndex: pIdx,
-		PrevExist: pe,
-		Wait:      wait,
-		Since:     wIdx,
-		Recursive: rec,
-		Sorted:    sort,
-		Quorum:    quorum,
-		Stream:    stream,
+		Method:      r.Method,
+		Path:        p,
+		Val:         r.FormValue("value"),
+		Dir:         dir,
+		PrevValue:   pV,
+		PrevIndex:   pIdx,
+		PrevExist:   pe,
+		Wait:        wait,
+		WaitTimeout: wTimeout,
+		Since:       wIdx,
+		Recursive:   rec,
+		Sorted:      sort,
+		Quorum:      quorum,
+		Stream:      stream,
 	}
 
 	if pe != nil {
