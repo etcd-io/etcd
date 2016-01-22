@@ -68,6 +68,10 @@ func newWatchableStore(b backend.Backend, le lease.Lessor) *watchableStore {
 		synced:   make(map[string]map[*watcher]struct{}),
 		stopc:    make(chan struct{}),
 	}
+	if s.le != nil {
+		// use this store as the deleter so revokes trigger watch events
+		s.le.SetRangeDeleter(s)
+	}
 	s.wg.Add(1)
 	go s.syncWatchersLoop()
 	return s
