@@ -83,6 +83,9 @@ type Lessor interface {
 	// an error will be returned.
 	Renew(id LeaseID) (int64, error)
 
+	// Lookup gives the lease at a given lease id, if any
+	Lookup(id LeaseID) *Lease
+
 	// ExpiredLeasesC returns a chan that is used to receive expired leases.
 	ExpiredLeasesC() <-chan []*Lease
 
@@ -228,6 +231,15 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 
 	l.refresh()
 	return l.TTL, nil
+}
+
+func (le *lessor) Lookup(id LeaseID) *Lease {
+	le.mu.Lock()
+	defer le.mu.Unlock()
+	if l, ok := le.leaseMap[id]; ok {
+		return l
+	}
+	return nil
 }
 
 func (le *lessor) Promote() {
@@ -455,6 +467,8 @@ func (fl *FakeLessor) Promote() {}
 func (fl *FakeLessor) Demote() {}
 
 func (fl *FakeLessor) Renew(id LeaseID) (int64, error) { return 10, nil }
+
+func (le *FakeLessor) Lookup(id LeaseID) *Lease { return nil }
 
 func (fl *FakeLessor) ExpiredLeasesC() <-chan []*Lease { return nil }
 

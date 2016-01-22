@@ -110,6 +110,68 @@ func TestV3PutOverwrite(t *testing.T) {
 	}
 }
 
+// TestV3PutMissingLease ensures that a Put on a key with a bogus lease fails.
+func TestV3PutMissingLease(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	defer clus.Terminate(t)
+
+	kvc := pb.NewKVClient(clus.RandConn())
+	key := []byte("foo")
+	preq := &pb.PutRequest{Key: key, Lease: 123456}
+	tests := []func(){
+		// put case
+		func() {
+			if presp, err := kvc.Put(context.TODO(), preq); err == nil {
+				t.Errorf("succeeded put key. req: %v. resp: %v", preq, presp)
+			}
+		},
+		// txn success case
+		func() {
+			txn := &pb.TxnRequest{}
+			txn.Success = append(txn.Success, &pb.RequestUnion{RequestPut: preq})
+			if tresp, err := kvc.Txn(context.TODO(), txn); err == nil {
+				t.Errorf("succeeded txn success. req: %v. resp: %v", txn, tresp)
+			}
+		},
+		// txn failure case
+		func() {
+			txn := &pb.TxnRequest{}
+			txn.Failure = append(txn.Failure, &pb.RequestUnion{RequestPut: preq})
+			cmp := &pb.Compare{
+				Result: pb.Compare_GREATER,
+				Target: pb.Compare_CREATE,
+				Key:    []byte("bar"),
+			}
+			txn.Compare = append(txn.Compare, cmp)
+			if tresp, err := kvc.Txn(context.TODO(), txn); err == nil {
+				t.Errorf("succeeded txn failure. req: %v. resp: %v", txn, tresp)
+			}
+		},
+		// ignore bad lease in failure on success txn
+		func() {
+			txn := &pb.TxnRequest{}
+			rreq := &pb.RangeRequest{Key: []byte("bar")}
+			txn.Success = append(txn.Success, &pb.RequestUnion{RequestRange: rreq})
+			txn.Failure = append(txn.Failure, &pb.RequestUnion{RequestPut: preq})
+			if tresp, err := kvc.Txn(context.TODO(), txn); err != nil {
+				t.Errorf("failed good txn. req: %v. resp: %v", txn, tresp)
+			}
+		},
+	}
+
+	for i, f := range tests {
+		f()
+		// key shouldn't have been stored
+		rreq := &pb.RangeRequest{Key: key}
+		rresp, err := kvc.Range(context.TODO(), rreq)
+		if err != nil {
+			t.Errorf("#%d. could not rangereq (%v)", i, err)
+		} else if len(rresp.Kvs) != 0 {
+			t.Errorf("#%d. expected no keys, got %v", i, rresp)
+		}
+	}
+}
+
 // TestV3DeleteRange tests various edge cases in the DeleteRange API.
 func TestV3DeleteRange(t *testing.T) {
 	tests := []struct {
