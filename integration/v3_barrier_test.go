@@ -45,8 +45,8 @@ func testBarrier(t *testing.T, waiters int, chooseConn func() *grpc.ClientConn) 
 	donec := make(chan struct{})
 	for i := 0; i < waiters; i++ {
 		go func() {
-			b := recipe.NewBarrier(recipe.NewEtcdClient(chooseConn()), "test-barrier")
-			if err := b.Wait(); err != nil {
+			br := recipe.NewBarrier(recipe.NewEtcdClient(chooseConn()), "test-barrier")
+			if err := br.Wait(); err != nil {
 				t.Fatalf("could not wait on barrier (%v)", err)
 			}
 			donec <- struct{}{}
