@@ -263,6 +263,8 @@ message WatchResponse {
 message LeaseCreateRequest {
   // advisory ttl in seconds
   int64 TTL = 1;
+  // requested ID to create; 0 lets lessor choose
+  int64 ID = 2;
 }
 
 message LeaseCreateResponse {

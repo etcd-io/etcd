@@ -87,11 +87,20 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 }
 
 func (s *EtcdServer) LeaseCreate(ctx context.Context, r *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+	// no id given? choose one
+	for r.ID == int64(lease.NoLease) {
+		// only use positive int64 id's
+		r.ID = int64(s.reqIDGen.Next() & ((1 << 63) - 1))
+	}
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{LeaseCreate: r})
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.LeaseCreateResponse), result.err
+	resp := result.resp.(*pb.LeaseCreateResponse)
+	if result.err != nil {
+		resp.Error = result.err.Error()
+	}
+	return resp, nil
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
@@ -462,9 +471,13 @@ func applyCompare(txnID int64, kv dstorage.KV, c *pb.Compare) (int64, bool) {
 }
 
 func applyLeaseCreate(le lease.Lessor, lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
-	l := le.Grant(lc.TTL)
-
-	return &pb.LeaseCreateResponse{ID: int64(l.ID), TTL: l.TTL}, nil
+	l, err := le.Grant(lease.LeaseID(lc.ID), lc.TTL)
+	resp := &pb.LeaseCreateResponse{}
+	if err == nil {
+		resp.ID = int64(l.ID)
+		resp.TTL = l.TTL
+	}
+	return resp, err
 }
 
 func applyLeaseRevoke(le lease.Lessor, lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {

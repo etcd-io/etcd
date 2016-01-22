@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
@@ -1004,5 +1005,99 @@ func TestV3RangeRequest(t *testing.T) {
 			}
 		}
 		clus.Terminate(t)
+	}
+}
+
+// TestV3LeaseRevoke ensures a key is deleted once its lease is revoked.
+func TestV3LeaseRevoke(t *testing.T) {
+	testLeaseRemoveLeasedKey(t, func(lc pb.LeaseClient, leaseID int64) error {
+		_, err := lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
+		return err
+	})
+}
+
+// TestV3LeaseCreateById ensures leases may be created by a given id.
+func TestV3LeaseCreateByID(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	defer clus.Terminate(t)
+
+	// create fixed lease
+	lresp, err := pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+		context.TODO(),
+		&pb.LeaseCreateRequest{ID: 1, TTL: 1})
+	if err != nil {
+		t.Errorf("could not create lease 1 (%v)", err)
+	}
+	if lresp.ID != 1 {
+		t.Errorf("got id %v, wanted id %v", lresp.ID)
+	}
+
+	// create duplicate fixed lease
+	lresp, err = pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+		context.TODO(),
+		&pb.LeaseCreateRequest{ID: 1, TTL: 1})
+	if err != nil {
+		t.Error(err)
+	}
+	if lresp.ID != 0 || lresp.Error != lease.ErrLeaseExists.Error() {
+		t.Errorf("got id %v, wanted id 0 (%v)", lresp.ID, lresp.Error)
+	}
+
+	// create fresh fixed lease
+	lresp, err = pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+		context.TODO(),
+		&pb.LeaseCreateRequest{ID: 2, TTL: 1})
+	if err != nil {
+		t.Errorf("could not create lease 2 (%v)", err)
+	}
+	if lresp.ID != 2 {
+		t.Errorf("got id %v, wanted id %v", lresp.ID)
+	}
+
+}
+
+// acquireLeaseAndKey creates a new lease and creates an attached key.
+func acquireLeaseAndKey(clus *clusterV3, key string) (int64, error) {
+	// create lease
+	lresp, err := pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+		context.TODO(),
+		&pb.LeaseCreateRequest{TTL: 1})
+	if err != nil {
+		return 0, err
+	}
+	if lresp.Error != "" {
+		return 0, fmt.Errorf(lresp.Error)
+	}
+	// attach to key
+	put := &pb.PutRequest{Key: []byte(key), Lease: lresp.ID}
+	if _, err := pb.NewKVClient(clus.RandConn()).Put(context.TODO(), put); err != nil {
+		return 0, err
+	}
+	return lresp.ID, nil
+}
+
+// testLeaseRemoveLeasedKey performs some action while holding a lease with an
+// attached key "foo", then confirms the key is gone.
+func testLeaseRemoveLeasedKey(t *testing.T, act func(pb.LeaseClient, int64) error) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	defer clus.Terminate(t)
+
+	leaseID, err := acquireLeaseAndKey(clus, "foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := act(pb.NewLeaseClient(clus.RandConn()), leaseID); err != nil {
+		t.Fatal(err)
+	}
+
+	// confirm no key
+	rreq := &pb.RangeRequest{Key: []byte("foo")}
+	rresp, err := pb.NewKVClient(clus.RandConn()).Range(context.TODO(), rreq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rresp.Kvs) != 0 {
+		t.Fatalf("lease removed but key remains")
 	}
 }
