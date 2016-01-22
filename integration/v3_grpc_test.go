@@ -1057,6 +1057,55 @@ func TestV3LeaseCreateByID(t *testing.T) {
 
 }
 
+// TestV3LeaseExpire ensures a key is deleted once a key expires.
+func TestV3LeaseExpire(t *testing.T) {
+	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
+		// let lease lapse; wait for deleted key
+
+		wAPI := pb.NewWatchClient(clus.RandConn())
+		wStream, err := wAPI.Watch(context.TODO())
+		if err != nil {
+			return err
+		}
+
+		creq := &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 1}
+		wreq := &pb.WatchRequest{CreateRequest: creq}
+		if err := wStream.Send(wreq); err != nil {
+			return err
+		}
+		if _, err := wStream.Recv(); err != nil {
+			// the 'created' message
+			return err
+		}
+		if _, err := wStream.Recv(); err != nil {
+			// the 'put' message
+			return err
+		}
+
+		errc := make(chan error, 1)
+		go func() {
+			resp, err := wStream.Recv()
+			switch {
+			case err != nil:
+				errc <- err
+			case len(resp.Events) != 1:
+				fallthrough
+			case resp.Events[0].Type != storagepb.DELETE:
+				errc <- fmt.Errorf("expected key delete, got %v", resp)
+			default:
+				errc <- nil
+			}
+		}()
+
+		select {
+		case <-time.After(15 * time.Second):
+			return fmt.Errorf("lease expiration too slow")
+		case err := <-errc:
+			return err
+		}
+	})
+}
+
 // TestV3LeaseKeepAlive ensures keepalive keeps the lease alive.
 func TestV3LeaseKeepAlive(t *testing.T) {
 	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
