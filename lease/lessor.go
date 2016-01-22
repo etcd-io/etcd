@@ -413,16 +413,17 @@ func (l Lease) removeFrom(b backend.Backend) {
 // refresh refreshes the expiry of the lease. It extends the expiry at least
 // minLeaseTTL second.
 func (l *Lease) refresh() {
-	ttl := l.TTL
 	if l.TTL < minLeaseTTL {
-		ttl = minLeaseTTL
+		l.TTL = minLeaseTTL
 	}
-
-	l.expiry = time.Now().Add(time.Second * time.Duration(ttl))
+	l.expiry = time.Now().Add(time.Second * time.Duration(l.TTL))
 }
 
 // forever sets the expiry of lease to be forever.
 func (l *Lease) forever() {
+	if l.TTL < minLeaseTTL {
+		l.TTL = minLeaseTTL
+	}
 	l.expiry = forever
 }
 
