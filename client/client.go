@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"reflect"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -122,6 +123,8 @@ type Config struct {
 	// For watch request, server returns the header immediately to notify Client
 	// watch start. But if server is behind some kind of proxy, the response
 	// header may be cached at proxy, and Client cannot rely on this behavior.
+	//
+	// Especially, wait request will ignore this timeout.
 	//
 	// One API call may send multiple requests to different etcd servers until it
 	// succeeds. Use context of the API to specify the overall timeout.
@@ -442,9 +445,21 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 		return nil, nil, err
 	}
 
+	isWait := false
+	if req != nil && req.URL != nil {
+		ws := req.URL.Query().Get("wait")
+		if len(ws) != 0 {
+			var err error
+			isWait, err = strconv.ParseBool(ws)
+			if err != nil {
+				return nil, nil, fmt.Errorf("wrong wait value %s (%v for %+v)", ws, err, req)
+			}
+		}
+	}
+
 	var hctx context.Context
 	var hcancel context.CancelFunc
-	if c.headerTimeout > 0 {
+	if !isWait && c.headerTimeout > 0 {
 		hctx, hcancel = context.WithTimeout(ctx, c.headerTimeout)
 	} else {
 		hctx, hcancel = context.WithCancel(ctx)
