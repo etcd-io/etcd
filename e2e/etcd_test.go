@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/gexpect"
 	"github.com/coreos/etcd/pkg/fileutil"
+	"github.com/coreos/etcd/pkg/testutil"
 )
 
 const (
@@ -34,6 +35,7 @@ const (
 )
 
 func TestBasicOpsNoTLS(t *testing.T) {
+	defer testutil.AfterTest(t)
 	testProcessClusterPutGet(
 		t,
 		&etcdProcessClusterConfig{
@@ -46,6 +48,7 @@ func TestBasicOpsNoTLS(t *testing.T) {
 }
 
 func TestBasicOpsAllTLS(t *testing.T) {
+	defer testutil.AfterTest(t)
 	testProcessClusterPutGet(
 		t,
 		&etcdProcessClusterConfig{
@@ -58,6 +61,7 @@ func TestBasicOpsAllTLS(t *testing.T) {
 }
 
 func TestBasicOpsPeerTLS(t *testing.T) {
+	defer testutil.AfterTest(t)
 	testProcessClusterPutGet(
 		t,
 		&etcdProcessClusterConfig{
@@ -70,6 +74,7 @@ func TestBasicOpsPeerTLS(t *testing.T) {
 }
 
 func TestBasicOpsClientTLS(t *testing.T) {
+	defer testutil.AfterTest(t)
 	testProcessClusterPutGet(
 		t,
 		&etcdProcessClusterConfig{
@@ -175,8 +180,9 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 		go func(etcdp *etcdProcess) {
 			_, err := etcdp.proc.ExpectRegex(readyStr)
 			readyC <- err
-			etcdp.proc.ReadUntil('\n') // don't display rest of line
-			etcdp.proc.Interact()
+			etcdp.proc.ReadLine()
+			etcdp.proc.Interact() // this blocks(leaks) if another goroutine is reading
+			etcdp.proc.ReadLine() // wait for leaky goroutine to accept an EOF
 			close(etcdp.donec)
 		}(epc.procs[i])
 	}
