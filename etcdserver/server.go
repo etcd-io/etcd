@@ -147,6 +147,12 @@ type Server interface {
 	ClusterVersion() *semver.Version
 }
 
+type PathHookFunc func(pb.Request, interface{})
+type PathHookFuncEntry struct {
+	f    PathHookFunc
+	data interface{}
+}
+
 // EtcdServer is the production implementation of the Server interface
 type EtcdServer struct {
 	// r must be the first element to keep 64-bit alignment for atomic
@@ -192,6 +198,8 @@ type EtcdServer struct {
 	// count the number of inflight snapshots.
 	// MUST use atomic operation to access this field.
 	inflightSnapshots int64
+
+	pathHookFuncEntries map[string]*PathHookFuncEntry
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -347,16 +355,17 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			raftStorage: s,
 			storage:     NewStorage(w, ss),
 		},
-		id:            id,
-		attributes:    Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
-		cluster:       cl,
-		stats:         sstats,
-		lstats:        lstats,
-		SyncTicker:    time.Tick(500 * time.Millisecond),
-		versionRt:     prt,
-		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
-		forceVersionC: make(chan struct{}),
-		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
+		id:                  id,
+		attributes:          Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		cluster:             cl,
+		stats:               sstats,
+		lstats:              lstats,
+		SyncTicker:          time.Tick(500 * time.Millisecond),
+		versionRt:           prt,
+		reqIDGen:            idutil.NewGenerator(uint8(id), time.Now()),
+		forceVersionC:       make(chan struct{}),
+		msgSnapC:            make(chan raftpb.Message, maxInFlightMsgSnap),
+		pathHookFuncEntries: make(map[string]*PathHookFuncEntry),
 	}
 
 	if cfg.V3demo {
@@ -1038,6 +1047,11 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		return Response{Event: ev, err: err}
 	}
 	expr := timeutil.UnixNanoToTime(r.Expiration)
+
+	if e, ok := s.pathHookFuncEntries[r.Path]; ok {
+		e.f(r, e.data)
+	}
+
 	switch r.Method {
 	case "POST":
 		return f(s.store.Create(r.Path, r.Dir, r.Val, true, expr))
@@ -1308,4 +1322,14 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 	}
 }
 
+
 func (s *EtcdServer) getKV() dstorage.ConsistentWatchableKV { return s.kv }
+
+func (s *EtcdServer) RegisterPathHookFunc(path string, f PathHookFunc, data interface{}) {
+	e := &PathHookFuncEntry{
+		f:    f,
+		data: data,
+	}
+
+	s.pathHookFuncEntries[path] = e
+}

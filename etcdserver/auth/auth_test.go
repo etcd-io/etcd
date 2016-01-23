@@ -183,6 +183,9 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 	return etcdserver.Response{}, nil
 }
 
+func (td *testDoer) RegisterPathHookFunc(path string, r etcdserver.PathHookFunc, data interface{}) {
+}
+
 func TestAllUsers(t *testing.T) {
 	d := &testDoer{
 		get: []etcdserver.Response{

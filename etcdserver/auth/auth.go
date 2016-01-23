@@ -72,6 +72,7 @@ var guestRole = Role{
 
 type doer interface {
 	Do(context.Context, etcdserverpb.Request) (etcdserver.Response, error)
+	RegisterPathHookFunc(string, etcdserver.PathHookFunc, interface{})
 }
 
 type Store interface {
@@ -154,6 +155,8 @@ func NewStore(server doer, timeout time.Duration) Store {
 		timeout:       timeout,
 		PasswordStore: passwordStore{},
 	}
+
+	server.RegisterPathHookFunc(StorePermsPrefix+"/enabled", invalidateAuthEnableCache, s)
 	return s
 }
 
@@ -666,4 +669,13 @@ func attachRootRole(u User) User {
 		u.Roles = append(u.Roles, RootRoleName)
 	}
 	return u
+}
+
+func invalidateAuthEnableCache(r etcdserverpb.Request, data interface{}) {
+	if r.Method != "PUT" {
+		return
+	}
+	s := data.(*store)
+	s.enabled = nil
+	plog.Infof("invalidated cached auth enable flag")
 }
