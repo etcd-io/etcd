@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package lease
+package leasehttp
 
 import (
 	"bytes"
@@ -22,15 +22,16 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/transport"
 )
 
 // NewHandler returns an http Handler for lease renewals
-func NewHandler(l Lessor) http.Handler {
+func NewHandler(l lease.Lessor) http.Handler {
 	return &leaseHandler{l}
 }
 
-type leaseHandler struct{ l Lessor }
+type leaseHandler struct{ l lease.Lessor }
 
 func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -50,7 +51,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ttl, err := h.l.Renew(LeaseID(lreq.ID))
+	ttl, err := h.l.Renew(lease.LeaseID(lreq.ID))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -69,7 +70,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // RenewHTTP renews a lease at a given primary server.
-func RenewHTTP(id LeaseID, url string, tlsInfo transport.TLSInfo, timeout time.Duration) (int64, error) {
+func RenewHTTP(id lease.LeaseID, url string, tlsInfo transport.TLSInfo, timeout time.Duration) (int64, error) {
 	// will post lreq protobuf to leader
 	lreq, err := (&pb.LeaseKeepAliveRequest{ID: int64(id)}).Marshal()
 	if err != nil {

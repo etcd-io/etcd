@@ -19,7 +19,7 @@ import (
 	"net/http"
 
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/rafthttp"
 )
 
@@ -32,7 +32,7 @@ const (
 func NewPeerHandler(s *etcdserver.EtcdServer) http.Handler {
 	var lh http.Handler
 	if l := s.Lessor(); l != nil {
-		lh = lease.NewHandler(l)
+		lh = leasehttp.NewHandler(l)
 	}
 	return newPeerHandler(s.Cluster(), s.RaftHandler(), lh)
 }
