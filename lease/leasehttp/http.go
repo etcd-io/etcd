@@ -23,7 +23,6 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/pkg/transport"
 )
 
 // NewHandler returns an http Handler for lease renewals
@@ -70,16 +69,10 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // RenewHTTP renews a lease at a given primary server.
-func RenewHTTP(id lease.LeaseID, url string, tlsInfo transport.TLSInfo, timeout time.Duration) (int64, error) {
+// TODO: Batch request in future?
+func RenewHTTP(id lease.LeaseID, url string, rt http.RoundTripper, timeout time.Duration) (int64, error) {
 	// will post lreq protobuf to leader
 	lreq, err := (&pb.LeaseKeepAliveRequest{ID: int64(id)}).Marshal()
-	if err != nil {
-		return -1, err
-	}
-
-	// TODO creating a new transporter for each forward request
-	// can be expensive; in the future reuse transports and batch requests
-	rt, err := transport.NewTimeoutTransport(tlsInfo, timeout, 0, 0)
 	if err != nil {
 		return -1, err
 	}

@@ -140,7 +140,7 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 
 	for _, url := range leader.PeerURLs {
 		lurl := url + "/leases"
-		ttl, err = leasehttp.RenewHTTP(id, lurl, s.cfg.PeerTLSInfo, s.cfg.peerDialTimeout())
+		ttl, err = leasehttp.RenewHTTP(id, lurl, s.peerRt, s.cfg.peerDialTimeout())
 		if err == nil {
 			break
 		}
