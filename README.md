@@ -22,7 +22,7 @@ etcd is used [in production by many companies](./Documentation/production-users.
 See [etcdctl][etcdctl] for a simple command line client.
 Or feel free to just use `curl`, as in the examples below.
 
-[raft]: http://raftconsensus.github.io/
+[raft]: https://raft.github.io/
 [k8s]: http://kubernetes.io/
 [fleet]: https://github.com/coreos/fleet
 [locksmith]: https://github.com/coreos/locksmith
