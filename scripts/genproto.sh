@@ -23,7 +23,7 @@ ESCAPED_PREFIX=$(echo $PREFIX | sed -e 's/[\/&]/\\&/g')
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb ./lease/leasepb"
 
 # exact version of protoc-gen-gogo to build
-SHA="932b70afa8b0bf4a8e167fdf0c3367cebba45903"
+SHA="c57e439bad574c2e0877ff18d514badcfced004d"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath
@@ -52,6 +52,9 @@ for dir in ${DIRS}; do
 		protoc --gogofast_out=plugins=grpc,import_prefix=github.com/coreos/:. -I=.:"${GOGOPROTO_PATH}":"${COREOS_ROOT}" *.proto
 		sed -i.bak -E "s/github\.com\/coreos\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/${ESCAPED_PREFIX}\/\1/g" *.pb.go
 		sed -i.bak -E 's/github\.com\/coreos\/(errors|fmt|io)/\1/g' *.pb.go
+		sed -i.bak -E 's/import _ \"github\.com\/coreos\/etcd\/Godeps\/\_workspace\/src\/gogoproto\"//g' *.pb.go
+		sed -i.bak -E 's/import fmt \"fmt\"//g' *.pb.go
 		rm -f *.bak
+		goimports -w *.pb.go
 	popd
 done
