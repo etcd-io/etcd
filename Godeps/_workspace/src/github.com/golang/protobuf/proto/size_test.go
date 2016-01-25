@@ -33,11 +33,12 @@ package proto_test
 
 import (
 	"log"
+	"strings"
 	"testing"
 
-	proto3pb "./proto3_proto"
-	pb "./testdata"
 	. "github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	proto3pb "github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto/proto3_proto"
+	pb "github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto/testdata"
 )
 
 var messageWithExtension1 = &pb.MyMessage{Count: Int32(7)}
@@ -113,10 +114,38 @@ var SizeTests = []struct {
 	{"proto3 bytes", &proto3pb.Message{Data: []byte("wowsa")}},
 	{"proto3 bytes, empty", &proto3pb.Message{Data: []byte{}}},
 	{"proto3 enum", &proto3pb.Message{Hilarity: proto3pb.Message_PUNS}},
+	{"proto3 map field with empty bytes", &proto3pb.MessageWithMap{ByteMapping: map[bool][]byte{false: []byte{}}}},
 
 	{"map field", &pb.MessageWithMap{NameMapping: map[int32]string{1: "Rob", 7: "Andrew"}}},
 	{"map field with message", &pb.MessageWithMap{MsgMapping: map[int64]*pb.FloatingPoint{0x7001: &pb.FloatingPoint{F: Float64(2.0)}}}},
 	{"map field with bytes", &pb.MessageWithMap{ByteMapping: map[bool][]byte{true: []byte("this time for sure")}}},
+	{"map field with empty bytes", &pb.MessageWithMap{ByteMapping: map[bool][]byte{true: []byte{}}}},
+
+	{"map field with big entry", &pb.MessageWithMap{NameMapping: map[int32]string{8: strings.Repeat("x", 125)}}},
+	{"map field with big key and val", &pb.MessageWithMap{StrToStr: map[string]string{strings.Repeat("x", 70): strings.Repeat("y", 70)}}},
+	{"map field with big numeric key", &pb.MessageWithMap{NameMapping: map[int32]string{0xf00d: "om nom nom"}}},
+
+	{"oneof not set", &pb.Oneof{}},
+	{"oneof bool", &pb.Oneof{Union: &pb.Oneof_F_Bool{true}}},
+	{"oneof zero int32", &pb.Oneof{Union: &pb.Oneof_F_Int32{0}}},
+	{"oneof big int32", &pb.Oneof{Union: &pb.Oneof_F_Int32{1 << 20}}},
+	{"oneof int64", &pb.Oneof{Union: &pb.Oneof_F_Int64{42}}},
+	{"oneof fixed32", &pb.Oneof{Union: &pb.Oneof_F_Fixed32{43}}},
+	{"oneof fixed64", &pb.Oneof{Union: &pb.Oneof_F_Fixed64{44}}},
+	{"oneof uint32", &pb.Oneof{Union: &pb.Oneof_F_Uint32{45}}},
+	{"oneof uint64", &pb.Oneof{Union: &pb.Oneof_F_Uint64{46}}},
+	{"oneof float", &pb.Oneof{Union: &pb.Oneof_F_Float{47.1}}},
+	{"oneof double", &pb.Oneof{Union: &pb.Oneof_F_Double{48.9}}},
+	{"oneof string", &pb.Oneof{Union: &pb.Oneof_F_String{"Rhythmic Fman"}}},
+	{"oneof bytes", &pb.Oneof{Union: &pb.Oneof_F_Bytes{[]byte("let go")}}},
+	{"oneof sint32", &pb.Oneof{Union: &pb.Oneof_F_Sint32{50}}},
+	{"oneof sint64", &pb.Oneof{Union: &pb.Oneof_F_Sint64{51}}},
+	{"oneof enum", &pb.Oneof{Union: &pb.Oneof_F_Enum{pb.MyMessage_BLUE}}},
+	{"message for oneof", &pb.GoTestField{Label: String("k"), Type: String("v")}},
+	{"oneof message", &pb.Oneof{Union: &pb.Oneof_F_Message{&pb.GoTestField{Label: String("k"), Type: String("v")}}}},
+	{"oneof group", &pb.Oneof{Union: &pb.Oneof_FGroup{&pb.Oneof_F_Group{X: Int32(52)}}}},
+	{"oneof largest tag", &pb.Oneof{Union: &pb.Oneof_F_Largest_Tag{1}}},
+	{"multiple oneofs", &pb.Oneof{Union: &pb.Oneof_F_Int32{1}, Tormato: &pb.Oneof_Value{2}}},
 }
 
 func TestSize(t *testing.T) {

@@ -47,12 +47,15 @@ import (
 	"net"
 	"time"
 
-	proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
-	pb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/examples/route_guide/proto"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+
+	pb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/examples/route_guide/routeguide"
 )
 
 var (

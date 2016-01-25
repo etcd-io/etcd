@@ -34,10 +34,10 @@
 package grpc
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -73,6 +73,14 @@ func (protoCodec) Unmarshal(data []byte, v interface{}) error {
 
 func (protoCodec) String() string {
 	return "proto"
+}
+
+// callInfo contains all related configuration and information about an RPC.
+type callInfo struct {
+	failFast  bool
+	headerMD  metadata.MD
+	trailerMD metadata.MD
+	traceInfo traceInfo // in trace.go
 }
 
 // CallOption configures a Call before it starts or extracts information from
@@ -127,42 +135,40 @@ type parser struct {
 	s io.Reader
 }
 
-// msgFixedHeader defines the header of a gRPC message (go/grpc-wirefmt).
-type msgFixedHeader struct {
-	T      payloadFormat
-	Length uint32
-}
-
 // recvMsg is to read a complete gRPC message from the stream. It is blocking if
 // the message has not been complete yet. It returns the message and its type,
 // EOF is returned with nil msg and 0 pf if the entire stream is done. Other
 // non-nil error is returned if something is wrong on reading.
 func (p *parser) recvMsg() (pf payloadFormat, msg []byte, err error) {
-	var hdr msgFixedHeader
-	if err := binary.Read(p.s, binary.BigEndian, &hdr); err != nil {
+	// The header of a gRPC message. Find more detail
+	// at http://www.grpc.io/docs/guides/wire.html.
+	var buf [5]byte
+
+	if _, err := io.ReadFull(p.s, buf[:]); err != nil {
 		return 0, nil, err
 	}
-	if hdr.Length == 0 {
-		return hdr.T, nil, nil
+
+	pf = payloadFormat(buf[0])
+	length := binary.BigEndian.Uint32(buf[1:])
+
+	if length == 0 {
+		return pf, nil, nil
 	}
-	msg = make([]byte, int(hdr.Length))
+	msg = make([]byte, int(length))
 	if _, err := io.ReadFull(p.s, msg); err != nil {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
 		return 0, nil, err
 	}
-	return hdr.T, msg, nil
+	return pf, msg, nil
 }
 
 // encode serializes msg and prepends the message header. If msg is nil, it
 // generates the message header of 0 message length.
 func encode(c Codec, msg interface{}, pf payloadFormat) ([]byte, error) {
-	var buf bytes.Buffer
-	// Write message fixed header.
-	buf.WriteByte(uint8(pf))
 	var b []byte
-	var length uint32
+	var length uint
 	if msg != nil {
 		var err error
 		// TODO(zhaoq): optimize to reduce memory alloc and copying.
@@ -170,13 +176,27 @@ func encode(c Codec, msg interface{}, pf payloadFormat) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		length = uint32(len(b))
+		length = uint(len(b))
 	}
-	var szHdr [4]byte
-	binary.BigEndian.PutUint32(szHdr[:], length)
-	buf.Write(szHdr[:])
-	buf.Write(b)
-	return buf.Bytes(), nil
+	if length > math.MaxUint32 {
+		return nil, Errorf(codes.InvalidArgument, "grpc: message too large (%d bytes)", length)
+	}
+
+	const (
+		payloadLen = 1
+		sizeLen    = 4
+	)
+
+	var buf = make([]byte, payloadLen+sizeLen+len(b))
+
+	// Write payload format
+	buf[0] = byte(pf)
+	// Write length of b into buf
+	binary.BigEndian.PutUint32(buf[1:], uint32(length))
+	// Copy encoded msg to buf
+	copy(buf[5:], b)
+
+	return buf, nil
 }
 
 func recv(p *parser, c Codec, m interface{}) error {
@@ -187,7 +207,11 @@ func recv(p *parser, c Codec, m interface{}) error {
 	switch pf {
 	case compressionNone:
 		if err := c.Unmarshal(d, m); err != nil {
-			return Errorf(codes.Internal, "grpc: %v", err)
+			if rErr, ok := err.(rpcError); ok {
+				return rErr
+			} else {
+				return Errorf(codes.Internal, "grpc: %v", err)
+			}
 		}
 	default:
 		return Errorf(codes.Internal, "gprc: compression is not supported yet.")
@@ -217,6 +241,18 @@ func Code(err error) codes.Code {
 	return codes.Unknown
 }
 
+// ErrorDesc returns the error description of err if it was produced by the rpc system.
+// Otherwise, it returns err.Error() or empty string when err is nil.
+func ErrorDesc(err error) string {
+	if err == nil {
+		return ""
+	}
+	if e, ok := err.(rpcError); ok {
+		return e.desc
+	}
+	return err.Error()
+}
+
 // Errorf returns an error containing an error code and a description;
 // Errorf returns nil if c is OK.
 func Errorf(c codes.Code, format string, a ...interface{}) error {
@@ -232,6 +268,8 @@ func Errorf(c codes.Code, format string, a ...interface{}) error {
 // toRPCErr converts an error into a rpcError.
 func toRPCErr(err error) error {
 	switch e := err.(type) {
+	case rpcError:
+		return err
 	case transport.StreamError:
 		return rpcError{
 			code: e.Code,
@@ -277,28 +315,29 @@ func convertCode(err error) codes.Code {
 const (
 	// how long to wait after the first failure before retrying
 	baseDelay = 1.0 * time.Second
-	// upper bound on backoff delay
-	maxDelay      = 120 * time.Second
-	backoffFactor = 2.0 // backoff increases by this factor on each retry
-	backoffRange  = 0.4 // backoff is randomized downwards by this factor
+	// upper bound of backoff delay
+	maxDelay = 120 * time.Second
+	// backoff increases by this factor on each retry
+	backoffFactor = 1.6
+	// backoff is randomized downwards by this factor
+	backoffJitter = 0.2
 )
 
-// backoff returns a value in [0, maxDelay] that increases exponentially with
-// retries, starting from baseDelay.
-func backoff(retries int) time.Duration {
+func backoff(retries int) (t time.Duration) {
+	if retries == 0 {
+		return baseDelay
+	}
 	backoff, max := float64(baseDelay), float64(maxDelay)
 	for backoff < max && retries > 0 {
-		backoff = backoff * backoffFactor
+		backoff *= backoffFactor
 		retries--
 	}
 	if backoff > max {
 		backoff = max
 	}
-
 	// Randomize backoff delays so that if a cluster of requests start at
-	// the same time, they won't operate in lockstep.  We just subtract up
-	// to 40% so that we obey maxDelay.
-	backoff -= backoff * backoffRange * rand.Float64()
+	// the same time, they won't operate in lockstep.
+	backoff *= 1 + backoffJitter*(rand.Float64()*2-1)
 	if backoff < 0 {
 		return 0
 	}

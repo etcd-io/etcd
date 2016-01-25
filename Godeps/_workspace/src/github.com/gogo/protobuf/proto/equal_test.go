@@ -180,6 +180,24 @@ var EqualTests = []struct {
 		&pb.MessageWithMap{NameMapping: map[int32]string{1: "Rob"}},
 		false,
 	},
+	{
+		"oneof same",
+		&pb.Communique{Union: &pb.Communique_Number{Number: 41}},
+		&pb.Communique{Union: &pb.Communique_Number{Number: 41}},
+		true,
+	},
+	{
+		"oneof one nil",
+		&pb.Communique{Union: &pb.Communique_Number{Number: 41}},
+		&pb.Communique{},
+		false,
+	},
+	{
+		"oneof different",
+		&pb.Communique{Union: &pb.Communique_Number{Number: 41}},
+		&pb.Communique{Union: &pb.Communique_Name{Name: "Bobby Tables"}},
+		false,
+	},
 }
 
 func TestEqual(t *testing.T) {

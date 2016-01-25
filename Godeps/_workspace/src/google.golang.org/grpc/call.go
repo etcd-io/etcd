@@ -35,10 +35,11 @@ package grpc
 
 import (
 	"io"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/trace"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/metadata"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/transport"
 )
 
@@ -92,16 +93,9 @@ func sendRequest(ctx context.Context, codec Codec, callHdr *transport.CallHdr, t
 	return stream, nil
 }
 
-// callInfo contains all related configuration and information about an RPC.
-type callInfo struct {
-	failFast  bool
-	headerMD  metadata.MD
-	trailerMD metadata.MD
-}
-
 // Invoke is called by the generated code. It sends the RPC request on the
 // wire and returns after response is received.
-func Invoke(ctx context.Context, method string, args, reply interface{}, cc *ClientConn, opts ...CallOption) error {
+func Invoke(ctx context.Context, method string, args, reply interface{}, cc *ClientConn, opts ...CallOption) (err error) {
 	var c callInfo
 	for _, o := range opts {
 		if err := o.before(&c); err != nil {
@@ -113,16 +107,27 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 			o.after(&c)
 		}
 	}()
-	callHdr := &transport.CallHdr{
-		Host:   cc.authority,
-		Method: method,
+	if EnableTracing {
+		c.traceInfo.tr = trace.New("grpc.Sent."+methodFamily(method), method)
+		defer c.traceInfo.tr.Finish()
+		c.traceInfo.firstLine.client = true
+		if deadline, ok := ctx.Deadline(); ok {
+			c.traceInfo.firstLine.deadline = deadline.Sub(time.Now())
+		}
+		c.traceInfo.tr.LazyLog(&c.traceInfo.firstLine, false)
+		// TODO(dsymonds): Arrange for c.traceInfo.firstLine.remoteAddr to be set.
+		defer func() {
+			if err != nil {
+				c.traceInfo.tr.LazyLog(&fmtStringer{"%v", []interface{}{err}}, true)
+				c.traceInfo.tr.SetError()
+			}
+		}()
 	}
 	topts := &transport.Options{
 		Last:  true,
 		Delay: false,
 	}
 	var (
-		ts      int   // track the transport sequence number
 		lastErr error // record the error that happened
 	)
 	for {
@@ -135,13 +140,20 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 		if lastErr != nil && c.failFast {
 			return toRPCErr(lastErr)
 		}
-		t, ts, err = cc.wait(ctx, ts)
+		callHdr := &transport.CallHdr{
+			Host:   cc.authority,
+			Method: method,
+		}
+		t, err = cc.dopts.picker.Pick(ctx)
 		if err != nil {
 			if lastErr != nil {
 				// This was a retry; return the error from the last attempt.
 				return toRPCErr(lastErr)
 			}
 			return toRPCErr(err)
+		}
+		if c.traceInfo.tr != nil {
+			c.traceInfo.tr.LazyLog(&payload{sent: true, msg: args}, true)
 		}
 		stream, err = sendRequest(ctx, cc.dopts.codec, callHdr, t, args, topts)
 		if err != nil {
@@ -158,6 +170,9 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 		lastErr = recvResponse(cc.dopts.codec, t, &c, stream, reply)
 		if _, ok := lastErr.(transport.ConnectionError); ok {
 			continue
+		}
+		if c.traceInfo.tr != nil {
+			c.traceInfo.tr.LazyLog(&payload{sent: false, msg: reply}, true)
 		}
 		t.CloseStream(stream, lastErr)
 		if lastErr != nil {

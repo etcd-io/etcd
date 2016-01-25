@@ -42,6 +42,7 @@ package proto
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"reflect"
 	"sort"
@@ -88,6 +89,12 @@ type decoder func(p *Buffer, prop *Properties, base structPointer) error
 
 // A valueDecoder decodes a single integer in a particular encoding.
 type valueDecoder func(o *Buffer) (x uint64, err error)
+
+// A oneofMarshaler does the marshaling for all oneof fields in a message.
+type oneofMarshaler func(Message, *Buffer) error
+
+// A oneofUnmarshaler does the unmarshaling for a oneof field in a message.
+type oneofUnmarshaler func(Message, int, int, *Buffer) (bool, error)
 
 // tagMap is an optimization over map[int]int for typical protocol buffer
 // use-cases. Encoded protocol buffers are often in tag order with small tag
@@ -137,6 +144,21 @@ type StructProperties struct {
 	order            []int          // list of struct field numbers in tag order
 	unrecField       field          // field id of the XXX_unrecognized []byte field
 	extendable       bool           // is this an extendable proto
+
+	oneofMarshaler   oneofMarshaler
+	oneofUnmarshaler oneofUnmarshaler
+	stype            reflect.Type
+
+	// OneofTypes contains information about the oneof fields in this message.
+	// It is keyed by the original name of a field.
+	OneofTypes map[string]*OneofProperties
+}
+
+// OneofProperties represents information about a specific field in a oneof.
+type OneofProperties struct {
+	Type  reflect.Type // pointer to generated struct type for this oneof field
+	Field int          // struct field number of the containing oneof in the message
+	Prop  *Properties
 }
 
 // Implement the sorting interface so we can sort the fields in tag order, as recommended by the spec.
@@ -161,6 +183,7 @@ type Properties struct {
 	Packed   bool   // relevant for repeated primitives only
 	Enum     string // set for enum types only
 	proto3   bool   // whether this is known to be a proto3 field; set for []byte only
+	oneof    bool   // whether this is a oneof field
 
 	Default    string // default value
 	HasDefault bool   // whether an explicit default was provided
@@ -215,6 +238,9 @@ func (p *Properties) String() string {
 	}
 	if p.proto3 {
 		s += ",proto3"
+	}
+	if p.oneof {
+		s += ",oneof"
 	}
 	if len(p.Enum) > 0 {
 		s += ",enum=" + p.Enum
@@ -292,6 +318,8 @@ func (p *Properties) Parse(s string) {
 			p.Enum = f[5:]
 		case f == "proto3":
 			p.proto3 = true
+		case f == "oneof":
+			p.oneof = true
 		case strings.HasPrefix(f, "def="):
 			p.HasDefault = true
 			p.Default = f[4:] // rest of string
@@ -713,6 +741,7 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 	prop.Prop = make([]*Properties, t.NumField())
 	prop.order = make([]int, t.NumField())
 
+	isOneofMessage := false
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		p := new(Properties)
@@ -733,6 +762,10 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 		if f.Name == "XXX_unrecognized" { // special case
 			prop.unrecField = toField(&f)
 		}
+		oneof := f.Tag.Get("protobuf_oneof") != "" // special case
+		if oneof {
+			isOneofMessage = true
+		}
 		prop.Prop[i] = p
 		prop.order[i] = i
 		if debug {
@@ -742,13 +775,48 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 			}
 			print("\n")
 		}
-		if p.enc == nil && !strings.HasPrefix(f.Name, "XXX_") {
+		if p.enc == nil && !strings.HasPrefix(f.Name, "XXX_") && !oneof {
 			fmt.Fprintln(os.Stderr, "proto: no encoder for", f.Name, f.Type.String(), "[GetProperties]")
 		}
 	}
 
 	// Re-order prop.order.
 	sort.Sort(prop)
+
+	type oneofMessage interface {
+		XXX_OneofFuncs() (func(Message, *Buffer) error, func(Message, int, int, *Buffer) (bool, error), []interface{})
+	}
+	if om, ok := reflect.Zero(reflect.PtrTo(t)).Interface().(oneofMessage); isOneofMessage && ok {
+		var oots []interface{}
+		prop.oneofMarshaler, prop.oneofUnmarshaler, oots = om.XXX_OneofFuncs()
+		prop.stype = t
+
+		// Interpret oneof metadata.
+		prop.OneofTypes = make(map[string]*OneofProperties)
+		for _, oot := range oots {
+			oop := &OneofProperties{
+				Type: reflect.ValueOf(oot).Type(), // *T
+				Prop: new(Properties),
+			}
+			sft := oop.Type.Elem().Field(0)
+			oop.Prop.Name = sft.Name
+			oop.Prop.Parse(sft.Tag.Get("protobuf"))
+			// There will be exactly one interface field that
+			// this new value is assignable to.
+			for i := 0; i < t.NumField(); i++ {
+				f := t.Field(i)
+				if f.Type.Kind() != reflect.Interface {
+					continue
+				}
+				if !oop.Type.AssignableTo(f.Type) {
+					continue
+				}
+				oop.Field = i
+				break
+			}
+			prop.OneofTypes[oop.Prop.OrigName] = oop
+		}
+	}
 
 	// build required counts
 	// build tags
@@ -813,3 +881,35 @@ func RegisterEnum(typeName string, unusedNameMap map[int32]string, valueMap map[
 	}
 	enumStringMaps[typeName] = unusedNameMap
 }
+
+// EnumValueMap returns the mapping from names to integers of the
+// enum type enumType, or a nil if not found.
+func EnumValueMap(enumType string) map[string]int32 {
+	return enumValueMaps[enumType]
+}
+
+// A registry of all linked message types.
+// The string is a fully-qualified proto name ("pkg.Message").
+var (
+	protoTypes    = make(map[string]reflect.Type)
+	revProtoTypes = make(map[reflect.Type]string)
+)
+
+// RegisterType is called from generated code and maps from the fully qualified
+// proto name to the type (pointer to struct) of the protocol buffer.
+func RegisterType(x Message, name string) {
+	if _, ok := protoTypes[name]; ok {
+		// TODO: Some day, make this a panic.
+		log.Printf("proto: duplicate proto type registered: %s", name)
+		return
+	}
+	t := reflect.TypeOf(x)
+	protoTypes[name] = t
+	revProtoTypes[t] = name
+}
+
+// MessageName returns the fully-qualified proto name for the given message type.
+func MessageName(x Message) string { return revProtoTypes[reflect.TypeOf(x)] }
+
+// MessageType returns the message type (pointer to struct) for a named message.
+func MessageType(name string) reflect.Type { return protoTypes[name] }

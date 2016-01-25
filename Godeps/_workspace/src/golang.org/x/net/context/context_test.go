@@ -375,7 +375,7 @@ func TestAllocs(t *testing.T) {
 				<-c.Done()
 			},
 			limit:      8,
-			gccgoLimit: 13,
+			gccgoLimit: 15,
 		},
 		{
 			desc: "WithCancel(bg)",
@@ -536,7 +536,7 @@ func testLayers(t *testing.T, seed int64, testTimeout bool) {
 	if testTimeout {
 		select {
 		case <-ctx.Done():
-		case <-time.After(timeout + timeout/10):
+		case <-time.After(timeout + 100*time.Millisecond):
 			errorf("ctx should have timed out")
 		}
 		checkValues("after timeout")

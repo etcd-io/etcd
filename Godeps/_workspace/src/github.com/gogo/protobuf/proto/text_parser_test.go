@@ -152,7 +152,7 @@ var unMarshalTextTests = []UnmarshalTextTest{
 	// Bad quoted string
 	{
 		in:  `inner: < host: "\0" >` + "\n",
-		err: `line 1.15: invalid quoted string "\0"`,
+		err: `line 1.15: invalid quoted string "\0": \0 requires 2 following digits`,
 	},
 
 	// Number too large for int64
@@ -250,6 +250,15 @@ var unMarshalTextTests = []UnmarshalTextTest{
 	// Repeated field
 	{
 		in: `count:42 pet: "horsey" pet:"bunny"`,
+		out: &MyMessage{
+			Count: Int32(42),
+			Pet:   []string{"horsey", "bunny"},
+		},
+	},
+
+	// Repeated field with list notation
+	{
+		in: `count:42 pet: ["horsey", "bunny"]`,
 		out: &MyMessage{
 			Count: Int32(42),
 			Pet:   []string{"horsey", "bunny"},
@@ -462,7 +471,7 @@ func TestProto3TextParsing(t *testing.T) {
 func TestMapParsing(t *testing.T) {
 	m := new(MessageWithMap)
 	const in = `name_mapping:<key:1234 value:"Feist"> name_mapping:<key:1 value:"Beatles">` +
-		`msg_mapping:<key:-4 value:<f: 2.0>>` +
+		`msg_mapping:<key:-4, value:<f: 2.0>,>` + // separating commas are okay
 		`msg_mapping<key:-2 value<f: 4.0>>` + // no colon after "value"
 		`byte_mapping:<key:true value:"so be it">`
 	want := &MessageWithMap{
@@ -478,6 +487,18 @@ func TestMapParsing(t *testing.T) {
 			true: []byte("so be it"),
 		},
 	}
+	if err := UnmarshalText(in, m); err != nil {
+		t.Fatal(err)
+	}
+	if !Equal(m, want) {
+		t.Errorf("\n got %v\nwant %v", m, want)
+	}
+}
+
+func TestOneofParsing(t *testing.T) {
+	const in = `name:"Shrek"`
+	m := new(Communique)
+	want := &Communique{Union: &Communique_Name{"Shrek"}}
 	if err := UnmarshalText(in, m); err != nil {
 		t.Fatal(err)
 	}
