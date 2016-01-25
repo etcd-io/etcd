@@ -369,7 +369,11 @@ func applyDeleteRange(txnID int64, kv dstorage.KV, dr *pb.DeleteRangeRequest) (*
 
 func checkRequestLeases(le lease.Lessor, reqs []*pb.RequestUnion) error {
 	for _, requ := range reqs {
-		preq := requ.RequestPut
+		v, ok := requ.Request.(*pb.RequestUnion_RequestPut)
+		if !ok {
+			continue
+		}
+		preq := v.RequestPut
 		if preq == nil || lease.LeaseID(preq.Lease) == lease.NoLease {
 			continue
 		}
@@ -382,7 +386,6 @@ func checkRequestLeases(le lease.Lessor, reqs []*pb.RequestUnion) error {
 
 func applyTxn(kv dstorage.KV, le lease.Lessor, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	var revision int64
-
 	txnID := kv.TxnBegin()
 	defer func() {
 		err := kv.TxnEnd(txnID)
@@ -441,29 +444,36 @@ func applyCompaction(kv dstorage.KV, compaction *pb.CompactionRequest) (*pb.Comp
 }
 
 func applyUnion(txnID int64, kv dstorage.KV, union *pb.RequestUnion) *pb.ResponseUnion {
-	switch {
-	case union.RequestRange != nil:
-		resp, err := applyRange(txnID, kv, union.RequestRange)
-		if err != nil {
-			panic("unexpected error during txn")
+	switch v := union.Request.(type) {
+	case *pb.RequestUnion_RequestRange:
+		if v.RequestRange != nil {
+			resp, err := applyRange(txnID, kv, v.RequestRange)
+			if err != nil {
+				panic("unexpected error during txn")
+			}
+			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseRange{ResponseRange: resp}}
 		}
-		return &pb.ResponseUnion{ResponseRange: resp}
-	case union.RequestPut != nil:
-		resp, err := applyPut(txnID, kv, nil, union.RequestPut)
-		if err != nil {
-			panic("unexpected error during txn")
+	case *pb.RequestUnion_RequestPut:
+		if v.RequestPut != nil {
+			resp, err := applyPut(txnID, kv, nil, v.RequestPut)
+			if err != nil {
+				panic("unexpected error during txn")
+			}
+			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponsePut{ResponsePut: resp}}
 		}
-		return &pb.ResponseUnion{ResponsePut: resp}
-	case union.RequestDeleteRange != nil:
-		resp, err := applyDeleteRange(txnID, kv, union.RequestDeleteRange)
-		if err != nil {
-			panic("unexpected error during txn")
+	case *pb.RequestUnion_RequestDeleteRange:
+		if v.RequestDeleteRange != nil {
+			resp, err := applyDeleteRange(txnID, kv, v.RequestDeleteRange)
+			if err != nil {
+				panic("unexpected error during txn")
+			}
+			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseDeleteRange{ResponseDeleteRange: resp}}
 		}
-		return &pb.ResponseUnion{ResponseDeleteRange: resp}
 	default:
 		// empty union
 		return nil
 	}
+	return nil
 }
 
 // applyCompare applies the compare request.
@@ -500,13 +510,23 @@ func applyCompare(txnID int64, kv dstorage.KV, c *pb.Compare) (int64, bool) {
 	var result int
 	switch c.Target {
 	case pb.Compare_VALUE:
-		result = bytes.Compare(ckv.Value, c.Value)
+		v, _ := c.TargetUnion.(*pb.Compare_Value)
+		result = bytes.Compare(ckv.Value, v.Value)
 	case pb.Compare_CREATE:
-		result = compareInt64(ckv.CreateRevision, c.CreateRevision)
+		v, _ := c.TargetUnion.(*pb.Compare_CreateRevision)
+		if v != nil {
+			result = compareInt64(ckv.CreateRevision, v.CreateRevision)
+		}
 	case pb.Compare_MOD:
-		result = compareInt64(ckv.ModRevision, c.ModRevision)
+		v, _ := c.TargetUnion.(*pb.Compare_ModRevision)
+		if v != nil {
+			result = compareInt64(ckv.ModRevision, v.ModRevision)
+		}
 	case pb.Compare_VERSION:
-		result = compareInt64(ckv.Version, c.Version)
+		v, _ := c.TargetUnion.(*pb.Compare_Version)
+		if v != nil {
+			result = compareInt64(ckv.Version, v.Version)
+		}
 	}
 
 	switch c.Result {
