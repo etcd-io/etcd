@@ -1844,6 +1844,71 @@ func TestCampaignWhileLeader(t *testing.T) {
 	}
 }
 
+// TestCommitAfterRemoveNode verifies that pending commands can become
+// committed when a config change reduces the quorum requirements.
+func TestCommitAfterRemoveNode(t *testing.T) {
+	// Create a cluster with two nodes.
+	s := NewMemoryStorage()
+	r := newTestRaft(1, []uint64{1, 2}, 5, 1, s)
+	r.becomeCandidate()
+	r.becomeLeader()
+
+	// Begin to remove the second node.
+	cc := pb.ConfChange{
+		Type:   pb.ConfChangeRemoveNode,
+		NodeID: 2,
+	}
+	ccData, err := cc.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Step(pb.Message{
+		Type: pb.MsgProp,
+		Entries: []pb.Entry{
+			{Type: pb.EntryConfChange, Data: ccData},
+		},
+	})
+	// Stabilize the log and make sure nothing is committed yet.
+	if ents := nextEnts(r, s); len(ents) > 0 {
+		t.Fatalf("unexpected committed entries: %v", ents)
+	}
+	ccIndex := r.raftLog.lastIndex()
+
+	// While the config change is pending, make another proposal.
+	r.Step(pb.Message{
+		Type: pb.MsgProp,
+		Entries: []pb.Entry{
+			{Type: pb.EntryNormal, Data: []byte("hello")},
+		},
+	})
+
+	// Node 2 acknowledges the config change, committing it.
+	r.Step(pb.Message{
+		Type:  pb.MsgAppResp,
+		From:  2,
+		Index: ccIndex,
+	})
+	ents := nextEnts(r, s)
+	if len(ents) != 2 {
+		t.Fatalf("expected two committed entries, got %v", ents)
+	}
+	if ents[0].Type != pb.EntryNormal || ents[0].Data != nil {
+		t.Fatalf("expected ents[0] to be empty, but got %v", ents[0])
+	}
+	if ents[1].Type != pb.EntryConfChange {
+		t.Fatalf("expected ents[1] to be EntryConfChange, got %v", ents[1])
+	}
+
+	// Apply the config change. This reduces quorum requirements so the
+	// pending command can now commit.
+	r.removeNode(2)
+	ents = nextEnts(r, s)
+	if len(ents) != 1 || ents[0].Type != pb.EntryNormal ||
+		string(ents[0].Data) != "hello" {
+		t.Fatalf("expected one committed EntryNormal, got %v", ents)
+	}
+}
+
 func ents(terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
