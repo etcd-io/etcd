@@ -62,8 +62,11 @@ const (
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
 
-	purgeFileInterval      = 30 * time.Second
-	monitorVersionInterval = 5 * time.Second
+	purgeFileInterval = 30 * time.Second
+	// monitorVersionInterval should be smaller than the timeout
+	// on the connection. Or we will not be able to resue the connection
+	// (since it will timeout).
+	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
 	databaseFilename = "db"
 	// max number of in-flight snapshot messages etcdserver allows to have
