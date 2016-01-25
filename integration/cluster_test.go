@@ -73,7 +73,7 @@ func TestClusterOf1(t *testing.T) { testCluster(t, 1) }
 func TestClusterOf3(t *testing.T) { testCluster(t, 3) }
 
 func testCluster(t *testing.T, size int) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	c := NewCluster(t, size)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -81,7 +81,7 @@ func testCluster(t *testing.T, size int) {
 }
 
 func TestTLSClusterOf3(t *testing.T) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	c := NewClusterByConfig(t, &clusterConfig{size: 3, usePeerTLS: true})
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -92,7 +92,7 @@ func TestClusterOf1UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t, 1
 func TestClusterOf3UsingDiscovery(t *testing.T) { testClusterUsingDiscovery(t, 3) }
 
 func testClusterUsingDiscovery(t *testing.T, size int) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	dc := NewCluster(t, 1)
 	dc.Launch(t)
 	defer dc.Terminate(t)
@@ -115,7 +115,7 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 }
 
 func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	dc := NewCluster(t, 1)
 	dc.Launch(t)
 	defer dc.Terminate(t)
@@ -143,7 +143,7 @@ func TestDoubleClusterSizeOf1(t *testing.T) { testDoubleClusterSize(t, 1) }
 func TestDoubleClusterSizeOf3(t *testing.T) { testDoubleClusterSize(t, 3) }
 
 func testDoubleClusterSize(t *testing.T, size int) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	c := NewCluster(t, size)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -155,7 +155,7 @@ func testDoubleClusterSize(t *testing.T, size int) {
 }
 
 func TestDoubleTLSClusterSizeOf3(t *testing.T) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	c := NewClusterByConfig(t, &clusterConfig{size: 3, usePeerTLS: true})
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -170,7 +170,7 @@ func TestDecreaseClusterSizeOf3(t *testing.T) { testDecreaseClusterSize(t, 3) }
 func TestDecreaseClusterSizeOf5(t *testing.T) { testDecreaseClusterSize(t, 5) }
 
 func testDecreaseClusterSize(t *testing.T, size int) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	c := NewCluster(t, size)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -226,7 +226,7 @@ func TestForceNewCluster(t *testing.T) {
 }
 
 func TestAddMemberAfterClusterFullRotation(t *testing.T) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	c := NewCluster(t, 3)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -248,7 +248,7 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 
 // Ensure we can remove a member then add a new one back immediately.
 func TestIssue2681(t *testing.T) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	c := NewCluster(t, 5)
 	c.Launch(t)
 	defer c.Terminate(t)
@@ -263,7 +263,7 @@ func TestIssue2681(t *testing.T) {
 
 // Ensure we can remove a member after a snapshot then add a new one back.
 func TestIssue2746(t *testing.T) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	c := NewCluster(t, 5)
 
 	for _, m := range c.Members {
@@ -288,7 +288,7 @@ func TestIssue2746(t *testing.T) {
 
 // Ensure etcd will not panic when removing a just started member.
 func TestIssue2904(t *testing.T) {
-	defer afterTest(t)
+	defer testutil.AfterTest(t)
 	// start 1-member cluster to ensure member 0 is the leader of the cluster.
 	c := NewCluster(t, 1)
 	c.Launch(t)

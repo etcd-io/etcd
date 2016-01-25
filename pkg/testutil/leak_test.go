@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,28 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package integration
+package testutil
 
 import (
-	"os/exec"
+	"fmt"
+	"os"
 	"testing"
-
-	"github.com/coreos/etcd/pkg/testutil"
 )
 
-func TestUpgradeMember(t *testing.T) {
-	defer testutil.AfterTest(t)
-	m := mustNewMember(t, "integration046", false)
-	cmd := exec.Command("cp", "-r", "testdata/integration046_data/conf", "testdata/integration046_data/log", "testdata/integration046_data/snapshot", m.DataDir)
-	err := cmd.Run()
-	if err != nil {
-		t.Fatal(err)
+func TestMain(m *testing.M) {
+	m.Run()
+	isLeaked := CheckLeakedGoroutine()
+	if !isLeaked {
+		fmt.Fprintln(os.Stderr, "expected leaky goroutines but none is detected")
+		os.Exit(1)
 	}
-	if err := m.Launch(); err != nil {
-		t.Fatal(err)
-	}
-	defer m.Terminate(t)
-	m.WaitOK(t)
+	os.Exit(0)
+}
 
-	clusterMustProgress(t, []*member{m})
+func TestSample(t *testing.T) {
+	defer AfterTest(t)
+	for range make([]struct{}, 100) {
+		go func() {
+			select {}
+		}()
+	}
 }
