@@ -380,10 +380,10 @@ func (le *lessor) initAndRecover() {
 		le.leaseMap[ID] = &Lease{
 			ID:  ID,
 			TTL: lpb.TTL,
-
 			// itemSet will be filled in when recover key-value pairs
 			// set expiry to forever, refresh when promoted
-			expiry: forever,
+			itemSet: make(map[LeaseItem]struct{}),
+			expiry:  forever,
 		}
 	}
 	tx.Unlock()
