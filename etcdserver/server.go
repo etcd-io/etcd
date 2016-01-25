@@ -62,8 +62,11 @@ const (
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
 
-	purgeFileInterval      = 30 * time.Second
-	monitorVersionInterval = 5 * time.Second
+	purgeFileInterval = 30 * time.Second
+	// monitorVersionInterval should be smaller than the timeout
+	// on the connection. Or we will not be able to resue the connection
+	// (since it will timeout).
+	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
 	databaseFilename = "db"
 	// max number of in-flight snapshot messages etcdserver allows to have
@@ -179,9 +182,10 @@ type EtcdServer struct {
 	// consistent index used to hold the offset of current executing entry
 	// It is initialized to 0 before executing any entry.
 	consistIndex consistentIndex
-	// versionRt used to send requests for peer version
-	versionRt http.RoundTripper
-	reqIDGen  *idutil.Generator
+
+	// peerRt used to send requests (version, lease) to peers.
+	peerRt   http.RoundTripper
+	reqIDGen *idutil.Generator
 
 	// forceVersionC is used to force the version monitor loop
 	// to detect the cluster version immediately.
@@ -353,7 +357,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		stats:         sstats,
 		lstats:        lstats,
 		SyncTicker:    time.Tick(500 * time.Millisecond),
-		versionRt:     prt,
+		peerRt:        prt,
 		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
 		forceVersionC: make(chan struct{}),
 		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
@@ -1223,7 +1227,7 @@ func (s *EtcdServer) monitorVersions() {
 			continue
 		}
 
-		v := decideClusterVersion(getVersions(s.cluster, s.id, s.versionRt))
+		v := decideClusterVersion(getVersions(s.cluster, s.id, s.peerRt))
 		if v != nil {
 			// only keep major.minor version for comparison
 			v = &semver.Version{
