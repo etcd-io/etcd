@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -1215,17 +1216,58 @@ func TestV3LeaseExists(t *testing.T) {
 		t.Fatal(lresp.Error)
 	}
 
-	// confirm keepalive
-	lac, err := pb.NewLeaseClient(clus.RandConn()).LeaseKeepAlive(context.TODO())
+	if !leaseExist(t, clus, lresp.ID) {
+		t.Error("unexpected lease not exists")
+	}
+}
+
+// TestV3LeasePrmote ensures the newly elected leader can promote itself
+// to the primary lessor, refresh the leases and start to manage leases.
+// TODO: use customized clock to make this test go faster?
+func TestV3LeasePrmote(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	defer clus.Terminate(t)
+
+	// create lease
+	lresp, err := pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+		context.TODO(),
+		&pb.LeaseCreateRequest{TTL: 5})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer lac.CloseSend()
-	if err = lac.Send(&pb.LeaseKeepAliveRequest{ID: lresp.ID}); err != nil {
-		t.Fatal(err)
+	if lresp.Error != "" {
+		t.Fatal(lresp.Error)
 	}
-	if _, err = lac.Recv(); err != nil {
-		t.Fatal(err)
+
+	// wait until the lease is going to expire.
+	time.Sleep(time.Duration(lresp.TTL-1) * time.Second)
+
+	// kill the current leader, all leases should be refreshed.
+	toStop := clus.waitLeader(t, clus.Members)
+	clus.Members[toStop].Stop(t)
+
+	var toWait []*member
+	for i, m := range clus.Members {
+		if i != toStop {
+			toWait = append(toWait, m)
+		}
+	}
+	clus.waitLeader(t, toWait)
+	clus.Members[toStop].Restart(t)
+	clus.waitLeader(t, clus.Members)
+
+	// ensure lease is refreshed by waiting for a "long" time.
+	// it was going to expire anyway.
+	time.Sleep(3 * time.Second)
+
+	if !leaseExist(t, clus, lresp.ID) {
+		t.Error("unexpected lease not exists")
+	}
+
+	// let lease expires.
+	time.Sleep(6 * time.Second)
+	if leaseExist(t, clus, lresp.ID) {
+		t.Error("unexpected lease exists")
 	}
 }
 
@@ -1273,4 +1315,24 @@ func testLeaseRemoveLeasedKey(t *testing.T, act func(*clusterV3, int64) error) {
 	if len(rresp.Kvs) != 0 {
 		t.Fatalf("lease removed but key remains")
 	}
+}
+
+// TODO: remove the refreshing TTL side-effect
+func leaseExist(t *testing.T, clus *clusterV3, leaseID int64) bool {
+	lac, err := pb.NewLeaseClient(clus.RandConn()).LeaseKeepAlive(context.TODO())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lac.CloseSend()
+	if err = lac.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = lac.Recv(); err != nil {
+		if err == v3rpc.ErrLeaseNotFound {
+			return false
+		}
+		t.Fatal(err)
+	}
+
+	return true
 }
