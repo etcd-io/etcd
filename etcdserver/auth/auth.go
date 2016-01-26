@@ -102,8 +102,7 @@ type store struct {
 	timeout     time.Duration
 	ensuredOnce bool
 
-	mu      sync.Mutex // protect enabled
-	enabled *bool
+	mu sync.Mutex // protect enabled
 
 	PasswordStore
 }
@@ -440,8 +439,6 @@ func (s *store) EnableAuth() error {
 		return err
 	}
 
-	b := true
-	s.enabled = &b
 	plog.Noticef("auth: enabled auth")
 	return nil
 }
@@ -456,8 +453,6 @@ func (s *store) DisableAuth() error {
 
 	err := s.disableAuth()
 	if err == nil {
-		b := false
-		s.enabled = &b
 		plog.Noticef("auth: disabled auth")
 	} else {
 		plog.Errorf("error disabling auth (%v)", err)

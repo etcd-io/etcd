@@ -615,8 +615,6 @@ func TestDisableAuth(t *testing.T) {
 		t.Error("Expected error; already disabled")
 	}
 
-	// clear cache
-	s.enabled = nil
 	err = s.DisableAuth()
 	if err != nil {
 		t.Error("Unexpected error", err)
