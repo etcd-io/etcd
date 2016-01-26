@@ -704,7 +704,10 @@ func (s *EtcdServer) Stop() {
 }
 
 func (s *EtcdServer) stopWithDelay(d time.Duration, err error) {
-	time.Sleep(d)
+	select {
+	case <-time.After(d):
+	case <-s.done:
+	}
 	select {
 	case s.errorc <- err:
 	default:
