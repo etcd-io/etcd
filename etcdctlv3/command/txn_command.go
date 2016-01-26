@@ -155,16 +155,18 @@ func parseRequestUnion(line string) (*pb.RequestUnion, error) {
 	key := []byte(parts[1])
 	switch parts[0] {
 	case "r", "range":
-		ru.RequestRange = &pb.RangeRequest{Key: key}
 		if len(parts) == 3 {
-			ru.RequestRange.RangeEnd = []byte(parts[2])
+			ru.Request = &pb.RequestUnion_RequestRange{RequestRange: &pb.RangeRequest{Key: key, RangeEnd: []byte(parts[2])}}
+		} else {
+			ru.Request = &pb.RequestUnion_RequestRange{RequestRange: &pb.RangeRequest{Key: key}}
 		}
 	case "p", "put":
-		ru.RequestPut = &pb.PutRequest{Key: key, Value: []byte(parts[2])}
+		ru.Request = &pb.RequestUnion_RequestPut{RequestPut: &pb.PutRequest{Key: key, Value: []byte(parts[2])}}
 	case "d", "deleteRange":
-		ru.RequestDeleteRange = &pb.DeleteRangeRequest{Key: key}
 		if len(parts) == 3 {
-			ru.RequestRange.RangeEnd = []byte(parts[2])
+			ru.Request = &pb.RequestUnion_RequestDeleteRange{RequestDeleteRange: &pb.DeleteRangeRequest{Key: key, RangeEnd: []byte(parts[2])}}
+		} else {
+			ru.Request = &pb.RequestUnion_RequestDeleteRange{RequestDeleteRange: &pb.DeleteRangeRequest{Key: key}}
 		}
 	default:
 		return nil, fmt.Errorf("invalid txn request: %s", line)
@@ -183,26 +185,25 @@ func parseCompare(line string) (*pb.Compare, error) {
 	c.Key = []byte(parts[0])
 	switch parts[1] {
 	case "ver", "version":
-		c.Target = pb.Compare_VERSION
-		c.Version, err = strconv.ParseInt(parts[3], 10, 64)
+		v, _ := c.TargetUnion.(*pb.Compare_Version)
+		v.Version, err = strconv.ParseInt(parts[3], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid txn compare request: %s", line)
 		}
 	case "c", "create":
-		c.Target = pb.Compare_CREATE
-		c.CreateRevision, err = strconv.ParseInt(parts[3], 10, 64)
+		v, _ := c.TargetUnion.(*pb.Compare_CreateRevision)
+		v.CreateRevision, err = strconv.ParseInt(parts[3], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid txn compare request: %s", line)
 		}
 	case "m", "mod":
-		c.Target = pb.Compare_MOD
-		c.ModRevision, err = strconv.ParseInt(parts[3], 10, 64)
+		v, _ := c.TargetUnion.(*pb.Compare_ModRevision)
+		v.ModRevision, err = strconv.ParseInt(parts[3], 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("invalid txn compare request: %s", line)
 		}
 	case "val", "value":
-		c.Target = pb.Compare_VALUE
-		c.Value = []byte(parts[3])
+		c.TargetUnion.(*pb.Compare_Value).Value = []byte(parts[3])
 	default:
 		return nil, fmt.Errorf("invalid txn compare request: %s", line)
 	}

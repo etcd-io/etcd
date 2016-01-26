@@ -181,7 +181,7 @@ func TestV3PutMissingLease(t *testing.T) {
 		// txn success case
 		func() {
 			txn := &pb.TxnRequest{}
-			txn.Success = append(txn.Success, &pb.RequestUnion{RequestPut: preq})
+			txn.Success = append(txn.Success, &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: preq}})
 			if tresp, err := kvc.Txn(context.TODO(), txn); err == nil {
 				t.Errorf("succeeded txn success. req: %v. resp: %v", txn, tresp)
 			}
@@ -189,7 +189,7 @@ func TestV3PutMissingLease(t *testing.T) {
 		// txn failure case
 		func() {
 			txn := &pb.TxnRequest{}
-			txn.Failure = append(txn.Failure, &pb.RequestUnion{RequestPut: preq})
+			txn.Failure = append(txn.Failure, &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: preq}})
 			cmp := &pb.Compare{
 				Result: pb.Compare_GREATER,
 				Target: pb.Compare_CREATE,
@@ -204,10 +204,11 @@ func TestV3PutMissingLease(t *testing.T) {
 		func() {
 			txn := &pb.TxnRequest{}
 			rreq := &pb.RangeRequest{Key: []byte("bar")}
-			txn.Success = append(txn.Success, &pb.RequestUnion{RequestRange: rreq})
-			txn.Failure = append(txn.Failure, &pb.RequestUnion{RequestPut: preq})
+			txn.Success = append(txn.Success, &pb.RequestUnion{Request: &pb.RequestUnion_RequestRange{RequestRange: rreq}})
+			txn.Failure = append(txn.Failure, &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: preq}})
 			if tresp, err := kvc.Txn(context.TODO(), txn); err != nil {
 				t.Errorf("failed good txn. req: %v. resp: %v", txn, tresp)
+
 			}
 		},
 	}
@@ -327,7 +328,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		// watch the key, matching
 		{
 			[]string{"foo"},
-			&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")}},
+			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")}}},
 
 			[]*pb.WatchResponse{
 				{
@@ -349,7 +350,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		// watch the key, non-matching
 		{
 			[]string{"foo"},
-			&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("helloworld")}},
+			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("helloworld")}}},
 
 			[]*pb.WatchResponse{
 				{
@@ -361,7 +362,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		// watch the prefix, matching
 		{
 			[]string{"fooLong"},
-			&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo")}},
+			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo")}}},
 
 			[]*pb.WatchResponse{
 				{
@@ -383,7 +384,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		// watch the prefix, non-matching
 		{
 			[]string{"foo"},
-			&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("helloworld")}},
+			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("helloworld")}}},
 
 			[]*pb.WatchResponse{
 				{
@@ -395,7 +396,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		// multiple puts, one watcher with matching key
 		{
 			[]string{"foo", "foo", "foo"},
-			&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")}},
+			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")}}},
 
 			[]*pb.WatchResponse{
 				{
@@ -437,7 +438,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		// multiple puts, one watcher with matching prefix
 		{
 			[]string{"foo", "foo", "foo"},
-			&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo")}},
+			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo")}}},
 
 			[]*pb.WatchResponse{
 				{
@@ -559,7 +560,8 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 		t.Fatalf("wAPI.Watch error: %v", errW)
 	}
 
-	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}); err != nil {
+	wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}}
+	if err := wStream.Send(wreq); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 
@@ -571,7 +573,8 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 		t.Errorf("wresp.Created got = %v, want = true", wresp.Created)
 	}
 
-	if err := wStream.Send(&pb.WatchRequest{CancelRequest: &pb.WatchCancelRequest{WatchId: wresp.WatchId}}); err != nil {
+	creq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CancelRequest{CancelRequest: &pb.WatchCancelRequest{WatchId: wresp.WatchId}}}
+	if err := wStream.Send(creq); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 
@@ -623,9 +626,9 @@ func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
 	for i := 0; i < watchKeyN+1; i++ {
 		var wreq *pb.WatchRequest
 		if i < watchKeyN {
-			wreq = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}
+			wreq = &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}}
 		} else {
-			wreq = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("fo"), StartRevision: startRev}}
+			wreq = &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("fo"), StartRevision: startRev}}}
 		}
 		if err := wStream.Send(wreq); err != nil {
 			t.Fatalf("wStream.Send error: %v", err)
@@ -713,7 +716,8 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 		t.Fatalf("wAPI.Watch error: %v", wErr)
 	}
 
-	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo"), StartRevision: startRev}}); err != nil {
+	wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo"), StartRevision: startRev}}}
+	if err := wStream.Send(wreq); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 
@@ -721,7 +725,7 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 	txn := pb.TxnRequest{}
 	for i := 0; i < 3; i++ {
 		ru := &pb.RequestUnion{}
-		ru.RequestPut = &pb.PutRequest{Key: []byte(fmt.Sprintf("foo%d", i)), Value: []byte("bar")}
+		ru.Request = &pb.RequestUnion_RequestPut{RequestPut: &pb.PutRequest{Key: []byte(fmt.Sprintf("foo%d", i)), Value: []byte("bar")}}
 		txn.Success = append(txn.Success, ru)
 	}
 
@@ -799,7 +803,8 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 		t.Fatalf("wAPI.Watch error: %v", wErr)
 	}
 
-	if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo"), StartRevision: 1}}); err != nil {
+	wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte("foo"), StartRevision: 1}}}
+	if err := wStream.Send(wreq); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 
@@ -874,7 +879,8 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 		if errW != nil {
 			t.Fatalf("wAPI.Watch error: %v", errW)
 		}
-		if err := wStream.Send(&pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}); err != nil {
+		wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: startRev}}}
+		if err := wStream.Send(wreq); err != nil {
 			t.Fatalf("wStream.Send error: %v", err)
 		}
 		streams[i] = wStream
@@ -1183,8 +1189,7 @@ func TestV3LeaseExpire(t *testing.T) {
 			return err
 		}
 
-		creq := &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 1}
-		wreq := &pb.WatchRequest{CreateRequest: creq}
+		wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 1}}}
 		if err := wStream.Send(wreq); err != nil {
 			return err
 		}

@@ -186,18 +186,24 @@ func checkTxnRequest(r *pb.TxnRequest) error {
 }
 
 func checkRequestUnion(u *pb.RequestUnion) error {
-	// TODO: ensure only one of the field is set.
-	switch {
-	case u.RequestRange != nil:
-		return checkRangeRequest(u.RequestRange)
-	case u.RequestPut != nil:
-		return checkPutRequest(u.RequestPut)
-	case u.RequestDeleteRange != nil:
-		return checkDeleteRequest(u.RequestDeleteRange)
+	switch v := u.Request.(type) {
+	case *pb.RequestUnion_RequestRange:
+		if v.RequestRange != nil {
+			return checkRangeRequest(v.RequestRange)
+		}
+	case *pb.RequestUnion_RequestPut:
+		if v.RequestPut != nil {
+			return checkPutRequest(v.RequestPut)
+		}
+	case *pb.RequestUnion_RequestDeleteRange:
+		if v.RequestDeleteRange != nil {
+			return checkDeleteRequest(v.RequestDeleteRange)
+		}
 	default:
 		// empty union
 		return nil
 	}
+	return nil
 }
 
 func togRPCError(err error) error {

@@ -50,7 +50,7 @@ func newWatcher(c *EtcdClient, key string, rev int64, isPrefix bool) (*Watcher, 
 		req.Key = []byte(key)
 	}
 
-	if err := w.Send(&pb.WatchRequest{CreateRequest: req}); err != nil {
+	if err := w.Send(&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: req}}); err != nil {
 		return nil, err
 	}
 
@@ -75,8 +75,8 @@ func (w *Watcher) Close() error {
 	if w.wstream == nil {
 		return w.lastErr
 	}
-	req := &pb.WatchCancelRequest{WatchId: int64(w.id)}
-	err := w.wstream.Send(&pb.WatchRequest{CancelRequest: req})
+	req := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CancelRequest{CancelRequest: &pb.WatchCancelRequest{WatchId: int64(w.id)}}}
+	err := w.wstream.Send(req)
 	if err != nil && w.lastErr == nil {
 		return err
 	}

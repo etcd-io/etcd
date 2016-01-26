@@ -84,15 +84,19 @@ func (s *STM) commit() (ok bool, err error) {
 			Result:      pb.Compare_LESS,
 			Target:      pb.Compare_MOD,
 			Key:         []byte(k),
-			ModRevision: rk.Revision() + 1,
+			TargetUnion: &pb.Compare_ModRevision{ModRevision: rk.Revision() + 1},
 		}
 		cmps = append(cmps, cmp)
 	}
 	// apply all writes
 	puts := []*pb.RequestUnion{}
 	for k, v := range s.wset {
-		put := &pb.PutRequest{Key: []byte(k), Value: []byte(v)}
-		puts = append(puts, &pb.RequestUnion{RequestPut: put})
+		puts = append(puts, &pb.RequestUnion{
+			Request: &pb.RequestUnion_RequestPut{
+				RequestPut: &pb.PutRequest{
+					Key:   []byte(k),
+					Value: []byte(v),
+				}}})
 	}
 	txnresp, err := s.client.KV.Txn(context.TODO(), &pb.TxnRequest{cmps, puts, nil})
 	return txnresp.Succeeded, err

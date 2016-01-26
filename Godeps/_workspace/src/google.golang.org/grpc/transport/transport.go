@@ -47,6 +47,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/trace"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/metadata"
@@ -169,10 +170,9 @@ type Stream struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	// method records the associated RPC method of the stream.
-	method string
-	buf    *recvBuffer
-	dec    io.Reader
-
+	method    string
+	buf       *recvBuffer
+	dec       io.Reader
 	fc        *inFlow
 	recvQuota uint32
 	// The accumulated inbound quota pending for window update.
@@ -231,6 +231,11 @@ func (s *Stream) ServerTransport() ServerTransport {
 // Context returns the context of the stream.
 func (s *Stream) Context() context.Context {
 	return s.ctx
+}
+
+// TraceContext recreates the context of s with a trace.Trace.
+func (s *Stream) TraceContext(tr trace.Trace) {
+	s.ctx = trace.NewContext(s.ctx, tr)
 }
 
 // Method returns the method for the stream.
@@ -309,15 +314,20 @@ const (
 
 // NewServerTransport creates a ServerTransport with conn or non-nil error
 // if it fails.
-func NewServerTransport(protocol string, conn net.Conn, maxStreams uint32) (ServerTransport, error) {
-	return newHTTP2Server(conn, maxStreams)
+func NewServerTransport(protocol string, conn net.Conn, maxStreams uint32, authInfo credentials.AuthInfo) (ServerTransport, error) {
+	return newHTTP2Server(conn, maxStreams, authInfo)
 }
 
 // ConnectOptions covers all relevant options for dialing a server.
 type ConnectOptions struct {
-	Dialer      func(string, time.Duration) (net.Conn, error)
+	// UserAgent is the application user agent.
+	UserAgent string
+	// Dialer specifies how to dial a network address.
+	Dialer func(string, time.Duration) (net.Conn, error)
+	// AuthOptions stores the credentials required to setup a client connection and/or issue RPCs.
 	AuthOptions []credentials.Credentials
-	Timeout     time.Duration
+	// Timeout specifies the timeout for dialing a client connection.
+	Timeout time.Duration
 }
 
 // NewClientTransport establishes the transport with the required ConnectOptions
@@ -386,6 +396,8 @@ type ServerTransport interface {
 	// should not be accessed any more. All the pending streams and their
 	// handlers will be terminated asynchronously.
 	Close() error
+	// RemoteAddr returns the remote network address.
+	RemoteAddr() net.Addr
 }
 
 // StreamErrorf creates an StreamError with the specified error code and description.

@@ -36,10 +36,8 @@ package grpc
 import (
 	"bytes"
 	"io"
-	"math"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -49,6 +47,7 @@ import (
 )
 
 func TestSimpleParsing(t *testing.T) {
+	bigMsg := bytes.Repeat([]byte{'x'}, 1<<24)
 	for _, test := range []struct {
 		// input
 		p []byte
@@ -62,6 +61,8 @@ func TestSimpleParsing(t *testing.T) {
 		{[]byte{0, 0, 0, 0, 1, 'a'}, nil, []byte{'a'}, compressionNone},
 		{[]byte{1, 0}, io.ErrUnexpectedEOF, nil, compressionNone},
 		{[]byte{0, 0, 0, 0, 10, 'a'}, io.ErrUnexpectedEOF, nil, compressionNone},
+		// Check that messages with length >= 2^24 are parsed.
+		{append([]byte{0, 1, 0, 0, 0}, bigMsg...), nil, bigMsg, compressionNone},
 	} {
 		buf := bytes.NewReader(test.p)
 		parser := &parser{buf}
@@ -149,25 +150,6 @@ func TestContextErr(t *testing.T) {
 		err := transport.ContextErr(test.errIn)
 		if err != test.errOut {
 			t.Fatalf("ContextErr{%v} = %v \nwant %v", test.errIn, err, test.errOut)
-		}
-	}
-}
-
-func TestBackoff(t *testing.T) {
-	for _, test := range []struct {
-		retries   int
-		maxResult time.Duration
-	}{
-		{0, time.Second},
-		{1, time.Duration(1e9 * math.Pow(backoffFactor, 1))},
-		{2, time.Duration(1e9 * math.Pow(backoffFactor, 2))},
-		{3, time.Duration(1e9 * math.Pow(backoffFactor, 3))},
-		{4, time.Duration(1e9 * math.Pow(backoffFactor, 4))},
-		{int(math.Log2(float64(maxDelay)/float64(baseDelay))) + 1, maxDelay},
-	} {
-		delay := backoff(test.retries)
-		if delay < 0 || delay > test.maxResult {
-			t.Errorf("backoff(%d) = %v outside [0, %v]", test.retries, delay, test.maxResult)
 		}
 	}
 }
