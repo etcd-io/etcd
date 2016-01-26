@@ -27,6 +27,10 @@ import (
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver/api", "v3rpc")
+
+	// Max operations per txn list. For example, Txn.Success can have at most 128 operations,
+	// and Txn.Failure can have at most 128 operations.
+	MaxOpsPerTxn = 128
 )
 
 type kvServer struct {
@@ -156,6 +160,10 @@ func checkDeleteRequest(r *pb.DeleteRangeRequest) error {
 }
 
 func checkTxnRequest(r *pb.TxnRequest) error {
+	if len(r.Compare) > MaxOpsPerTxn || len(r.Success) > MaxOpsPerTxn || len(r.Failure) > MaxOpsPerTxn {
+		return ErrTooManyOps
+	}
+
 	for _, c := range r.Compare {
 		if len(c.Key) == 0 {
 			return ErrEmptyKey

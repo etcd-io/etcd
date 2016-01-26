@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -107,6 +108,58 @@ func TestV3PutOverwrite(t *testing.T) {
 	}
 	if !reflect.DeepEqual(reqput.Value, kv.Value) {
 		t.Errorf("expected value %v, got %v", reqput.Value, kv.Value)
+	}
+}
+
+func TestV3TxnTooManyOps(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	defer clus.Terminate(t)
+
+	kvc := pb.NewKVClient(clus.RandConn())
+
+	addCompareOps := func(txn *pb.TxnRequest) {
+		txn.Compare = append(txn.Compare,
+			&pb.Compare{
+				Result: pb.Compare_GREATER,
+				Target: pb.Compare_CREATE,
+				Key:    []byte("bar"),
+			})
+	}
+	addSuccessOps := func(txn *pb.TxnRequest) {
+		txn.Success = append(txn.Success,
+			&pb.RequestUnion{
+				RequestPut: &pb.PutRequest{
+					Key:   []byte("bar"),
+					Value: []byte("bar"),
+				},
+			})
+	}
+	addFailureOps := func(txn *pb.TxnRequest) {
+		txn.Failure = append(txn.Failure,
+			&pb.RequestUnion{
+				RequestPut: &pb.PutRequest{
+					Key:   []byte("bar"),
+					Value: []byte("bar"),
+				},
+			})
+	}
+
+	tests := []func(txn *pb.TxnRequest){
+		addCompareOps,
+		addSuccessOps,
+		addFailureOps,
+	}
+
+	for i, tt := range tests {
+		txn := &pb.TxnRequest{}
+		for j := 0; j < v3rpc.MaxOpsPerTxn+1; j++ {
+			tt(txn)
+		}
+
+		_, err := kvc.Txn(context.Background(), txn)
+		if err != v3rpc.ErrTooManyOps {
+			t.Errorf("#%d: err = %v, want %v", i, err, v3rpc.ErrTooManyOps)
+		}
 	}
 }
 
