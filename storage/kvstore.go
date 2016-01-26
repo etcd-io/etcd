@@ -106,6 +106,13 @@ func (s *store) Rev() int64 {
 	return s.currentRev.main
 }
 
+func (s *store) FirstRev() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.compactMainRev
+}
+
 func (s *store) Put(key, value []byte, lease lease.LeaseID) int64 {
 	id := s.TxnBegin()
 	s.put(key, value, lease)

@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -260,6 +261,44 @@ func TestV3DeleteRange(t *testing.T) {
 
 		// can't defer because tcp ports will be in use
 		clus.Terminate(t)
+	}
+}
+
+// TestV3TxnInvaildRange tests txn
+func TestV3TxnInvaildRange(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	defer clus.Terminate(t)
+
+	kvc := pb.NewKVClient(clus.RandConn())
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+
+	for i := 0; i < 3; i++ {
+		_, err := kvc.Put(context.Background(), preq)
+		if err != nil {
+			t.Fatalf("couldn't put key (%v)", err)
+		}
+	}
+
+	_, err := kvc.Compact(context.Background(), &pb.CompactionRequest{Revision: 2})
+	if err != nil {
+		t.Fatalf("couldn't compact kv space (%v)", err)
+	}
+
+	// future rev
+	txn := &pb.TxnRequest{}
+	txn.Success = append(txn.Success, &pb.RequestUnion{RequestPut: preq})
+
+	rreq := &pb.RangeRequest{Key: []byte("foo"), Revision: 100}
+	txn.Success = append(txn.Success, &pb.RequestUnion{RequestRange: rreq})
+
+	if _, err := kvc.Txn(context.TODO(), txn); err != v3rpc.ErrFutureRev {
+		t.Errorf("err = %v, want %v", err, v3rpc.ErrFutureRev)
+	}
+
+	// compacted rev
+	txn.Success[1].RequestRange.Revision = 1
+	if _, err := kvc.Txn(context.TODO(), txn); err != v3rpc.ErrCompacted {
+		t.Errorf("err = %v, want %v", err, v3rpc.ErrCompacted)
 	}
 }
 
