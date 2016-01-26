@@ -957,8 +957,8 @@ func TestMsgAppRespWaitReset(t *testing.T) {
 		Type:  pb.MsgAppResp,
 		Index: 1,
 	})
-	if sm.Commit != 1 {
-		t.Fatalf("expected Commit to be 1, got %d", sm.Commit)
+	if sm.raftLog.committed != 1 {
+		t.Fatalf("expected committed to be 1, got %d", sm.raftLog.committed)
 	}
 	// Also consume the MsgApp messages that update Commit on the followers.
 	sm.readMessages()
@@ -1046,7 +1046,7 @@ func TestRecvMsgVote(t *testing.T) {
 		case StateLeader:
 			sm.step = stepLeader
 		}
-		sm.HardState = pb.HardState{Vote: tt.voteFor}
+		sm.Vote = tt.voteFor
 		sm.raftLog = &raftLog{
 			storage:  &MemoryStorage{ents: []pb.Entry{{}, {Index: 1, Term: 2}, {Index: 2, Term: 2}}},
 			unstable: unstable{offset: 3},

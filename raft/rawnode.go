@@ -105,7 +105,7 @@ func NewRawNode(config *Config, peers []Peer) (*RawNode, error) {
 	}
 	// Set the initial hard and soft states after performing all initialization.
 	rn.prevSoftSt = r.softState()
-	rn.prevHardSt = r.HardState
+	rn.prevHardSt = r.hardState()
 
 	return rn, nil
 }
@@ -191,7 +191,7 @@ func (rn *RawNode) HasReady() bool {
 	if !r.softState().equal(rn.prevSoftSt) {
 		return true
 	}
-	if !IsEmptyHardState(r.HardState) && !isHardStateEqual(r.HardState, rn.prevHardSt) {
+	if hardSt := r.hardState(); !IsEmptyHardState(hardSt) && !isHardStateEqual(hardSt, rn.prevHardSt) {
 		return true
 	}
 	if r.raftLog.unstable.snapshot != nil && !IsEmptySnap(*r.raftLog.unstable.snapshot) {
