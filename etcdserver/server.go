@@ -667,6 +667,9 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 	if ep.appliedi+1-firsti < uint64(len(apply.entries)) {
 		ents = apply.entries[ep.appliedi+1-firsti:]
 	}
+	if len(ents) == 0 {
+		return
+	}
 	var shouldstop bool
 	if ep.appliedi, shouldstop = s.apply(ents, &ep.confState); shouldstop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
