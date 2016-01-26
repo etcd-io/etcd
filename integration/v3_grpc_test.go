@@ -316,6 +316,44 @@ func TestV3DeleteRange(t *testing.T) {
 	}
 }
 
+// TestV3TxnInvaildRange tests txn
+func TestV3TxnInvaildRange(t *testing.T) {
+	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	defer clus.Terminate(t)
+
+	kvc := pb.NewKVClient(clus.RandConn())
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+
+	for i := 0; i < 3; i++ {
+		_, err := kvc.Put(context.Background(), preq)
+		if err != nil {
+			t.Fatalf("couldn't put key (%v)", err)
+		}
+	}
+
+	_, err := kvc.Compact(context.Background(), &pb.CompactionRequest{Revision: 2})
+	if err != nil {
+		t.Fatalf("couldn't compact kv space (%v)", err)
+	}
+
+	// future rev
+	txn := &pb.TxnRequest{}
+	txn.Success = append(txn.Success, &pb.RequestUnion{RequestPut: preq})
+
+	rreq := &pb.RangeRequest{Key: []byte("foo"), Revision: 100}
+	txn.Success = append(txn.Success, &pb.RequestUnion{RequestRange: rreq})
+
+	if _, err := kvc.Txn(context.TODO(), txn); err != v3rpc.ErrFutureRev {
+		t.Errorf("err = %v, want %v", err, v3rpc.ErrFutureRev)
+	}
+
+	// compacted rev
+	txn.Success[1].RequestRange.Revision = 1
+	if _, err := kvc.Txn(context.TODO(), txn); err != v3rpc.ErrCompacted {
+		t.Errorf("err = %v, want %v", err, v3rpc.ErrCompacted)
+	}
+}
+
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.
 func TestV3WatchFromCurrentRevision(t *testing.T) {
 	tests := []struct {
