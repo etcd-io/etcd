@@ -369,6 +369,9 @@ func (r *raft) bcastHeartbeat() {
 	}
 }
 
+// maybeCommit attempts to advance the commit index. Returns true if
+// the commit index changed (in which case the caller should call
+// r.bcastAppend).
 func (r *raft) maybeCommit() bool {
 	// TODO(bmizerany): optimize.. Currently naive
 	mis := make(uint64Slice, 0, len(r.prs))
@@ -408,6 +411,7 @@ func (r *raft) appendEntry(es ...pb.Entry) {
 	}
 	r.raftLog.append(es...)
 	r.prs[r.id].maybeUpdate(r.raftLog.lastIndex())
+	// Regardless of maybeCommit's return, our caller will call bcastAppend.
 	r.maybeCommit()
 }
 
@@ -835,7 +839,9 @@ func (r *raft) removeNode(id uint64) {
 	r.pendingConf = false
 	// The quorum size is now smaller, so see if any pending entries can
 	// be committed.
-	r.maybeCommit()
+	if r.maybeCommit() {
+		r.bcastAppend()
+	}
 }
 
 func (r *raft) resetPendingConf() { r.pendingConf = false }
