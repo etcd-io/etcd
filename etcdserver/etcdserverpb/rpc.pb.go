@@ -4,9 +4,14 @@
 
 package etcdserverpb
 
-import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+import (
+	"fmt"
 
-// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto"
+	proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+)
+
+import math "math"
+
 import storagepb "github.com/coreos/etcd/storage/storagepb"
 
 import (
@@ -15,10 +20,11 @@ import (
 )
 
 import io "io"
-import fmt "fmt"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 type RangeRequest_SortOrder int32
 
@@ -233,65 +239,257 @@ func (m *DeleteRangeResponse) GetHeader() *ResponseHeader {
 }
 
 type RequestUnion struct {
-	RequestRange       *RangeRequest       `protobuf:"bytes,1,opt,name=request_range" json:"request_range,omitempty"`
-	RequestPut         *PutRequest         `protobuf:"bytes,2,opt,name=request_put" json:"request_put,omitempty"`
-	RequestDeleteRange *DeleteRangeRequest `protobuf:"bytes,3,opt,name=request_delete_range" json:"request_delete_range,omitempty"`
+	// Types that are valid to be assigned to Request:
+	//	*RequestUnion_RequestRange
+	//	*RequestUnion_RequestPut
+	//	*RequestUnion_RequestDeleteRange
+	Request isRequestUnion_Request `protobuf_oneof:"request"`
 }
 
 func (m *RequestUnion) Reset()         { *m = RequestUnion{} }
 func (m *RequestUnion) String() string { return proto.CompactTextString(m) }
 func (*RequestUnion) ProtoMessage()    {}
 
-func (m *RequestUnion) GetRequestRange() *RangeRequest {
+type isRequestUnion_Request interface {
+	isRequestUnion_Request()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type RequestUnion_RequestRange struct {
+	RequestRange *RangeRequest `protobuf:"bytes,1,opt,name=request_range,oneof"`
+}
+type RequestUnion_RequestPut struct {
+	RequestPut *PutRequest `protobuf:"bytes,2,opt,name=request_put,oneof"`
+}
+type RequestUnion_RequestDeleteRange struct {
+	RequestDeleteRange *DeleteRangeRequest `protobuf:"bytes,3,opt,name=request_delete_range,oneof"`
+}
+
+func (*RequestUnion_RequestRange) isRequestUnion_Request()       {}
+func (*RequestUnion_RequestPut) isRequestUnion_Request()         {}
+func (*RequestUnion_RequestDeleteRange) isRequestUnion_Request() {}
+
+func (m *RequestUnion) GetRequest() isRequestUnion_Request {
 	if m != nil {
-		return m.RequestRange
+		return m.Request
+	}
+	return nil
+}
+
+func (m *RequestUnion) GetRequestRange() *RangeRequest {
+	if x, ok := m.GetRequest().(*RequestUnion_RequestRange); ok {
+		return x.RequestRange
 	}
 	return nil
 }
 
 func (m *RequestUnion) GetRequestPut() *PutRequest {
-	if m != nil {
-		return m.RequestPut
+	if x, ok := m.GetRequest().(*RequestUnion_RequestPut); ok {
+		return x.RequestPut
 	}
 	return nil
 }
 
 func (m *RequestUnion) GetRequestDeleteRange() *DeleteRangeRequest {
-	if m != nil {
-		return m.RequestDeleteRange
+	if x, ok := m.GetRequest().(*RequestUnion_RequestDeleteRange); ok {
+		return x.RequestDeleteRange
 	}
 	return nil
 }
 
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*RequestUnion) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _RequestUnion_OneofMarshaler, _RequestUnion_OneofUnmarshaler, []interface{}{
+		(*RequestUnion_RequestRange)(nil),
+		(*RequestUnion_RequestPut)(nil),
+		(*RequestUnion_RequestDeleteRange)(nil),
+	}
+}
+
+func _RequestUnion_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*RequestUnion)
+	// request
+	switch x := m.Request.(type) {
+	case *RequestUnion_RequestRange:
+		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.RequestRange); err != nil {
+			return err
+		}
+	case *RequestUnion_RequestPut:
+		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.RequestPut); err != nil {
+			return err
+		}
+	case *RequestUnion_RequestDeleteRange:
+		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.RequestDeleteRange); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("RequestUnion.Request has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _RequestUnion_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*RequestUnion)
+	switch tag {
+	case 1: // request.request_range
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(RangeRequest)
+		err := b.DecodeMessage(msg)
+		m.Request = &RequestUnion_RequestRange{msg}
+		return true, err
+	case 2: // request.request_put
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(PutRequest)
+		err := b.DecodeMessage(msg)
+		m.Request = &RequestUnion_RequestPut{msg}
+		return true, err
+	case 3: // request.request_delete_range
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(DeleteRangeRequest)
+		err := b.DecodeMessage(msg)
+		m.Request = &RequestUnion_RequestDeleteRange{msg}
+		return true, err
+	default:
+		return false, nil
+	}
+}
+
 type ResponseUnion struct {
-	ResponseRange       *RangeResponse       `protobuf:"bytes,1,opt,name=response_range" json:"response_range,omitempty"`
-	ResponsePut         *PutResponse         `protobuf:"bytes,2,opt,name=response_put" json:"response_put,omitempty"`
-	ResponseDeleteRange *DeleteRangeResponse `protobuf:"bytes,3,opt,name=response_delete_range" json:"response_delete_range,omitempty"`
+	// Types that are valid to be assigned to Response:
+	//	*ResponseUnion_ResponseRange
+	//	*ResponseUnion_ResponsePut
+	//	*ResponseUnion_ResponseDeleteRange
+	Response isResponseUnion_Response `protobuf_oneof:"response"`
 }
 
 func (m *ResponseUnion) Reset()         { *m = ResponseUnion{} }
 func (m *ResponseUnion) String() string { return proto.CompactTextString(m) }
 func (*ResponseUnion) ProtoMessage()    {}
 
-func (m *ResponseUnion) GetResponseRange() *RangeResponse {
+type isResponseUnion_Response interface {
+	isResponseUnion_Response()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type ResponseUnion_ResponseRange struct {
+	ResponseRange *RangeResponse `protobuf:"bytes,1,opt,name=response_range,oneof"`
+}
+type ResponseUnion_ResponsePut struct {
+	ResponsePut *PutResponse `protobuf:"bytes,2,opt,name=response_put,oneof"`
+}
+type ResponseUnion_ResponseDeleteRange struct {
+	ResponseDeleteRange *DeleteRangeResponse `protobuf:"bytes,3,opt,name=response_delete_range,oneof"`
+}
+
+func (*ResponseUnion_ResponseRange) isResponseUnion_Response()       {}
+func (*ResponseUnion_ResponsePut) isResponseUnion_Response()         {}
+func (*ResponseUnion_ResponseDeleteRange) isResponseUnion_Response() {}
+
+func (m *ResponseUnion) GetResponse() isResponseUnion_Response {
 	if m != nil {
-		return m.ResponseRange
+		return m.Response
+	}
+	return nil
+}
+
+func (m *ResponseUnion) GetResponseRange() *RangeResponse {
+	if x, ok := m.GetResponse().(*ResponseUnion_ResponseRange); ok {
+		return x.ResponseRange
 	}
 	return nil
 }
 
 func (m *ResponseUnion) GetResponsePut() *PutResponse {
-	if m != nil {
-		return m.ResponsePut
+	if x, ok := m.GetResponse().(*ResponseUnion_ResponsePut); ok {
+		return x.ResponsePut
 	}
 	return nil
 }
 
 func (m *ResponseUnion) GetResponseDeleteRange() *DeleteRangeResponse {
-	if m != nil {
-		return m.ResponseDeleteRange
+	if x, ok := m.GetResponse().(*ResponseUnion_ResponseDeleteRange); ok {
+		return x.ResponseDeleteRange
 	}
 	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*ResponseUnion) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _ResponseUnion_OneofMarshaler, _ResponseUnion_OneofUnmarshaler, []interface{}{
+		(*ResponseUnion_ResponseRange)(nil),
+		(*ResponseUnion_ResponsePut)(nil),
+		(*ResponseUnion_ResponseDeleteRange)(nil),
+	}
+}
+
+func _ResponseUnion_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*ResponseUnion)
+	// response
+	switch x := m.Response.(type) {
+	case *ResponseUnion_ResponseRange:
+		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.ResponseRange); err != nil {
+			return err
+		}
+	case *ResponseUnion_ResponsePut:
+		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.ResponsePut); err != nil {
+			return err
+		}
+	case *ResponseUnion_ResponseDeleteRange:
+		_ = b.EncodeVarint(3<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.ResponseDeleteRange); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("ResponseUnion.Response has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _ResponseUnion_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*ResponseUnion)
+	switch tag {
+	case 1: // response.response_range
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(RangeResponse)
+		err := b.DecodeMessage(msg)
+		m.Response = &ResponseUnion_ResponseRange{msg}
+		return true, err
+	case 2: // response.response_put
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(PutResponse)
+		err := b.DecodeMessage(msg)
+		m.Response = &ResponseUnion_ResponsePut{msg}
+		return true, err
+	case 3: // response.response_delete_range
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(DeleteRangeResponse)
+		err := b.DecodeMessage(msg)
+		m.Response = &ResponseUnion_ResponseDeleteRange{msg}
+		return true, err
+	default:
+		return false, nil
+	}
 }
 
 type Compare struct {
@@ -299,19 +497,145 @@ type Compare struct {
 	Target Compare_CompareTarget `protobuf:"varint,2,opt,name=target,proto3,enum=etcdserverpb.Compare_CompareTarget" json:"target,omitempty"`
 	// key path
 	Key []byte `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
-	// version of the given key
-	Version int64 `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
-	// create revision of the given key
-	CreateRevision int64 `protobuf:"varint,5,opt,name=create_revision,proto3" json:"create_revision,omitempty"`
-	// last modified revision of the given key
-	ModRevision int64 `protobuf:"varint,6,opt,name=mod_revision,proto3" json:"mod_revision,omitempty"`
-	// value of the given key
-	Value []byte `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
+	// Types that are valid to be assigned to TargetUnion:
+	//	*Compare_Version
+	//	*Compare_CreateRevision
+	//	*Compare_ModRevision
+	//	*Compare_Value
+	TargetUnion isCompare_TargetUnion `protobuf_oneof:"target_union"`
 }
 
 func (m *Compare) Reset()         { *m = Compare{} }
 func (m *Compare) String() string { return proto.CompactTextString(m) }
 func (*Compare) ProtoMessage()    {}
+
+type isCompare_TargetUnion interface {
+	isCompare_TargetUnion()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type Compare_Version struct {
+	Version int64 `protobuf:"varint,4,opt,name=version,proto3,oneof"`
+}
+type Compare_CreateRevision struct {
+	CreateRevision int64 `protobuf:"varint,5,opt,name=create_revision,proto3,oneof"`
+}
+type Compare_ModRevision struct {
+	ModRevision int64 `protobuf:"varint,6,opt,name=mod_revision,proto3,oneof"`
+}
+type Compare_Value struct {
+	Value []byte `protobuf:"bytes,7,opt,name=value,proto3,oneof"`
+}
+
+func (*Compare_Version) isCompare_TargetUnion()        {}
+func (*Compare_CreateRevision) isCompare_TargetUnion() {}
+func (*Compare_ModRevision) isCompare_TargetUnion()    {}
+func (*Compare_Value) isCompare_TargetUnion()          {}
+
+func (m *Compare) GetTargetUnion() isCompare_TargetUnion {
+	if m != nil {
+		return m.TargetUnion
+	}
+	return nil
+}
+
+func (m *Compare) GetVersion() int64 {
+	if x, ok := m.GetTargetUnion().(*Compare_Version); ok {
+		return x.Version
+	}
+	return 0
+}
+
+func (m *Compare) GetCreateRevision() int64 {
+	if x, ok := m.GetTargetUnion().(*Compare_CreateRevision); ok {
+		return x.CreateRevision
+	}
+	return 0
+}
+
+func (m *Compare) GetModRevision() int64 {
+	if x, ok := m.GetTargetUnion().(*Compare_ModRevision); ok {
+		return x.ModRevision
+	}
+	return 0
+}
+
+func (m *Compare) GetValue() []byte {
+	if x, ok := m.GetTargetUnion().(*Compare_Value); ok {
+		return x.Value
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*Compare) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _Compare_OneofMarshaler, _Compare_OneofUnmarshaler, []interface{}{
+		(*Compare_Version)(nil),
+		(*Compare_CreateRevision)(nil),
+		(*Compare_ModRevision)(nil),
+		(*Compare_Value)(nil),
+	}
+}
+
+func _Compare_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*Compare)
+	// target_union
+	switch x := m.TargetUnion.(type) {
+	case *Compare_Version:
+		_ = b.EncodeVarint(4<<3 | proto.WireVarint)
+		_ = b.EncodeVarint(uint64(x.Version))
+	case *Compare_CreateRevision:
+		_ = b.EncodeVarint(5<<3 | proto.WireVarint)
+		_ = b.EncodeVarint(uint64(x.CreateRevision))
+	case *Compare_ModRevision:
+		_ = b.EncodeVarint(6<<3 | proto.WireVarint)
+		_ = b.EncodeVarint(uint64(x.ModRevision))
+	case *Compare_Value:
+		_ = b.EncodeVarint(7<<3 | proto.WireBytes)
+		_ = b.EncodeRawBytes(x.Value)
+	case nil:
+	default:
+		return fmt.Errorf("Compare.TargetUnion has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _Compare_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*Compare)
+	switch tag {
+	case 4: // target_union.version
+		if wire != proto.WireVarint {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeVarint()
+		m.TargetUnion = &Compare_Version{int64(x)}
+		return true, err
+	case 5: // target_union.create_revision
+		if wire != proto.WireVarint {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeVarint()
+		m.TargetUnion = &Compare_CreateRevision{int64(x)}
+		return true, err
+	case 6: // target_union.mod_revision
+		if wire != proto.WireVarint {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeVarint()
+		m.TargetUnion = &Compare_ModRevision{int64(x)}
+		return true, err
+	case 7: // target_union.value
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		x, err := b.DecodeRawBytes(true)
+		m.TargetUnion = &Compare_Value{x}
+		return true, err
+	default:
+		return false, nil
+	}
+}
 
 // From google paxosdb paper:
 // Our implementation hinges around a powerful primitive which we call MultiOp. All other database
@@ -411,26 +735,104 @@ func (m *CompactionResponse) GetHeader() *ResponseHeader {
 }
 
 type WatchRequest struct {
-	CreateRequest *WatchCreateRequest `protobuf:"bytes,1,opt,name=create_request" json:"create_request,omitempty"`
-	CancelRequest *WatchCancelRequest `protobuf:"bytes,2,opt,name=cancel_request" json:"cancel_request,omitempty"`
+	// Types that are valid to be assigned to RequestUnion:
+	//	*WatchRequest_CreateRequest
+	//	*WatchRequest_CancelRequest
+	RequestUnion isWatchRequest_RequestUnion `protobuf_oneof:"request_union"`
 }
 
 func (m *WatchRequest) Reset()         { *m = WatchRequest{} }
 func (m *WatchRequest) String() string { return proto.CompactTextString(m) }
 func (*WatchRequest) ProtoMessage()    {}
 
-func (m *WatchRequest) GetCreateRequest() *WatchCreateRequest {
+type isWatchRequest_RequestUnion interface {
+	isWatchRequest_RequestUnion()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type WatchRequest_CreateRequest struct {
+	CreateRequest *WatchCreateRequest `protobuf:"bytes,1,opt,name=create_request,oneof"`
+}
+type WatchRequest_CancelRequest struct {
+	CancelRequest *WatchCancelRequest `protobuf:"bytes,2,opt,name=cancel_request,oneof"`
+}
+
+func (*WatchRequest_CreateRequest) isWatchRequest_RequestUnion() {}
+func (*WatchRequest_CancelRequest) isWatchRequest_RequestUnion() {}
+
+func (m *WatchRequest) GetRequestUnion() isWatchRequest_RequestUnion {
 	if m != nil {
-		return m.CreateRequest
+		return m.RequestUnion
+	}
+	return nil
+}
+
+func (m *WatchRequest) GetCreateRequest() *WatchCreateRequest {
+	if x, ok := m.GetRequestUnion().(*WatchRequest_CreateRequest); ok {
+		return x.CreateRequest
 	}
 	return nil
 }
 
 func (m *WatchRequest) GetCancelRequest() *WatchCancelRequest {
-	if m != nil {
-		return m.CancelRequest
+	if x, ok := m.GetRequestUnion().(*WatchRequest_CancelRequest); ok {
+		return x.CancelRequest
 	}
 	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*WatchRequest) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
+	return _WatchRequest_OneofMarshaler, _WatchRequest_OneofUnmarshaler, []interface{}{
+		(*WatchRequest_CreateRequest)(nil),
+		(*WatchRequest_CancelRequest)(nil),
+	}
+}
+
+func _WatchRequest_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
+	m := msg.(*WatchRequest)
+	// request_union
+	switch x := m.RequestUnion.(type) {
+	case *WatchRequest_CreateRequest:
+		_ = b.EncodeVarint(1<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.CreateRequest); err != nil {
+			return err
+		}
+	case *WatchRequest_CancelRequest:
+		_ = b.EncodeVarint(2<<3 | proto.WireBytes)
+		if err := b.EncodeMessage(x.CancelRequest); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("WatchRequest.RequestUnion has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _WatchRequest_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
+	m := msg.(*WatchRequest)
+	switch tag {
+	case 1: // request_union.create_request
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(WatchCreateRequest)
+		err := b.DecodeMessage(msg)
+		m.RequestUnion = &WatchRequest_CreateRequest{msg}
+		return true, err
+	case 2: // request_union.cancel_request
+		if wire != proto.WireBytes {
+			return true, proto.ErrInternalBadWireType
+		}
+		msg := new(WatchCancelRequest)
+		err := b.DecodeMessage(msg)
+		m.RequestUnion = &WatchRequest_CancelRequest{msg}
+		return true, err
+	default:
+		return false, nil
+	}
 }
 
 type WatchCreateRequest struct {
@@ -497,9 +899,9 @@ func (m *WatchResponse) GetEvents() []*storagepb.Event {
 
 type LeaseCreateRequest struct {
 	// advisory ttl in seconds
-	TTL int64 `protobuf:"varint,1,opt,proto3" json:"TTL,omitempty"`
+	TTL int64 `protobuf:"varint,1,opt,name=TTL,proto3" json:"TTL,omitempty"`
 	// requested ID to create; 0 lets lessor choose
-	ID int64 `protobuf:"varint,2,opt,proto3" json:"ID,omitempty"`
+	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
 func (m *LeaseCreateRequest) Reset()         { *m = LeaseCreateRequest{} }
@@ -508,9 +910,9 @@ func (*LeaseCreateRequest) ProtoMessage()    {}
 
 type LeaseCreateResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	ID     int64           `protobuf:"varint,2,opt,proto3" json:"ID,omitempty"`
+	ID     int64           `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
 	// server decided ttl in second
-	TTL   int64  `protobuf:"varint,3,opt,proto3" json:"TTL,omitempty"`
+	TTL   int64  `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
 	Error string `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
 }
 
@@ -526,7 +928,7 @@ func (m *LeaseCreateResponse) GetHeader() *ResponseHeader {
 }
 
 type LeaseRevokeRequest struct {
-	ID int64 `protobuf:"varint,1,opt,proto3" json:"ID,omitempty"`
+	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
 func (m *LeaseRevokeRequest) Reset()         { *m = LeaseRevokeRequest{} }
@@ -549,7 +951,7 @@ func (m *LeaseRevokeResponse) GetHeader() *ResponseHeader {
 }
 
 type LeaseKeepAliveRequest struct {
-	ID int64 `protobuf:"varint,1,opt,proto3" json:"ID,omitempty"`
+	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
 func (m *LeaseKeepAliveRequest) Reset()         { *m = LeaseKeepAliveRequest{} }
@@ -558,8 +960,8 @@ func (*LeaseKeepAliveRequest) ProtoMessage()    {}
 
 type LeaseKeepAliveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	ID     int64           `protobuf:"varint,2,opt,proto3" json:"ID,omitempty"`
-	TTL    int64           `protobuf:"varint,3,opt,proto3" json:"TTL,omitempty"`
+	ID     int64           `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	TTL    int64           `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
 }
 
 func (m *LeaseKeepAliveResponse) Reset()         { *m = LeaseKeepAliveResponse{} }
@@ -574,7 +976,7 @@ func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 }
 
 type Member struct {
-	ID uint64 `protobuf:"varint,1,opt,proto3" json:"ID,omitempty"`
+	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	// If the member is not started, name will be an empty string.
 	Name      string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Peer_URLs []string `protobuf:"bytes,3,rep,name=peer_URLs" json:"peer_URLs,omitempty"`
@@ -619,7 +1021,7 @@ func (m *AddMemberResponse) GetMember() *Member {
 }
 
 type RemoveMemberRequest struct {
-	ID uint64 `protobuf:"varint,1,opt,proto3" json:"ID,omitempty"`
+	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
 func (m *RemoveMemberRequest) Reset()         { *m = RemoveMemberRequest{} }
@@ -642,7 +1044,7 @@ func (m *RemoveMemberResponse) GetHeader() *ResponseHeader {
 }
 
 type UpdateMemberRequest struct {
-	ID        uint64   `protobuf:"varint,1,opt,proto3" json:"ID,omitempty"`
+	ID        uint64   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Peer_URLs []string `protobuf:"bytes,2,rep,name=peer_URLs" json:"peer_URLs,omitempty"`
 }
 
@@ -696,6 +1098,39 @@ func (m *ListMemberResponse) GetMembers() []*Member {
 }
 
 func init() {
+	proto.RegisterType((*ResponseHeader)(nil), "etcdserverpb.ResponseHeader")
+	proto.RegisterType((*RangeRequest)(nil), "etcdserverpb.RangeRequest")
+	proto.RegisterType((*RangeResponse)(nil), "etcdserverpb.RangeResponse")
+	proto.RegisterType((*PutRequest)(nil), "etcdserverpb.PutRequest")
+	proto.RegisterType((*PutResponse)(nil), "etcdserverpb.PutResponse")
+	proto.RegisterType((*DeleteRangeRequest)(nil), "etcdserverpb.DeleteRangeRequest")
+	proto.RegisterType((*DeleteRangeResponse)(nil), "etcdserverpb.DeleteRangeResponse")
+	proto.RegisterType((*RequestUnion)(nil), "etcdserverpb.RequestUnion")
+	proto.RegisterType((*ResponseUnion)(nil), "etcdserverpb.ResponseUnion")
+	proto.RegisterType((*Compare)(nil), "etcdserverpb.Compare")
+	proto.RegisterType((*TxnRequest)(nil), "etcdserverpb.TxnRequest")
+	proto.RegisterType((*TxnResponse)(nil), "etcdserverpb.TxnResponse")
+	proto.RegisterType((*CompactionRequest)(nil), "etcdserverpb.CompactionRequest")
+	proto.RegisterType((*CompactionResponse)(nil), "etcdserverpb.CompactionResponse")
+	proto.RegisterType((*WatchRequest)(nil), "etcdserverpb.WatchRequest")
+	proto.RegisterType((*WatchCreateRequest)(nil), "etcdserverpb.WatchCreateRequest")
+	proto.RegisterType((*WatchCancelRequest)(nil), "etcdserverpb.WatchCancelRequest")
+	proto.RegisterType((*WatchResponse)(nil), "etcdserverpb.WatchResponse")
+	proto.RegisterType((*LeaseCreateRequest)(nil), "etcdserverpb.LeaseCreateRequest")
+	proto.RegisterType((*LeaseCreateResponse)(nil), "etcdserverpb.LeaseCreateResponse")
+	proto.RegisterType((*LeaseRevokeRequest)(nil), "etcdserverpb.LeaseRevokeRequest")
+	proto.RegisterType((*LeaseRevokeResponse)(nil), "etcdserverpb.LeaseRevokeResponse")
+	proto.RegisterType((*LeaseKeepAliveRequest)(nil), "etcdserverpb.LeaseKeepAliveRequest")
+	proto.RegisterType((*LeaseKeepAliveResponse)(nil), "etcdserverpb.LeaseKeepAliveResponse")
+	proto.RegisterType((*Member)(nil), "etcdserverpb.Member")
+	proto.RegisterType((*AddMemberRequest)(nil), "etcdserverpb.AddMemberRequest")
+	proto.RegisterType((*AddMemberResponse)(nil), "etcdserverpb.AddMemberResponse")
+	proto.RegisterType((*RemoveMemberRequest)(nil), "etcdserverpb.RemoveMemberRequest")
+	proto.RegisterType((*RemoveMemberResponse)(nil), "etcdserverpb.RemoveMemberResponse")
+	proto.RegisterType((*UpdateMemberRequest)(nil), "etcdserverpb.UpdateMemberRequest")
+	proto.RegisterType((*UpdateMemberResponse)(nil), "etcdserverpb.UpdateMemberResponse")
+	proto.RegisterType((*ListMemberRequest)(nil), "etcdserverpb.ListMemberRequest")
+	proto.RegisterType((*ListMemberResponse)(nil), "etcdserverpb.ListMemberResponse")
 	proto.RegisterEnum("etcdserverpb.RangeRequest_SortOrder", RangeRequest_SortOrder_name, RangeRequest_SortOrder_value)
 	proto.RegisterEnum("etcdserverpb.RangeRequest_SortTarget", RangeRequest_SortTarget_name, RangeRequest_SortTarget_value)
 	proto.RegisterEnum("etcdserverpb.Compare_CompareResult", Compare_CompareResult_name, Compare_CompareResult_value)
@@ -809,9 +1244,9 @@ func RegisterKVServer(s *grpc.Server, srv KVServer) {
 	s.RegisterService(&_KV_serviceDesc, srv)
 }
 
-func _KV_Range_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_Range_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(RangeRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(KVServer).Range(ctx, in)
@@ -821,9 +1256,9 @@ func _KV_Range_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, b
 	return out, nil
 }
 
-func _KV_Put_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(PutRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(KVServer).Put(ctx, in)
@@ -833,9 +1268,9 @@ func _KV_Put_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf
 	return out, nil
 }
 
-func _KV_DeleteRange_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_DeleteRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(DeleteRangeRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(KVServer).DeleteRange(ctx, in)
@@ -845,9 +1280,9 @@ func _KV_DeleteRange_Handler(srv interface{}, ctx context.Context, codec grpc.Co
 	return out, nil
 }
 
-func _KV_Txn_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_Txn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(TxnRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(KVServer).Txn(ctx, in)
@@ -857,9 +1292,9 @@ func _KV_Txn_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf
 	return out, nil
 }
 
-func _KV_Compact_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _KV_Compact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(CompactionRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(KVServer).Compact(ctx, in)
@@ -1089,9 +1524,9 @@ func RegisterLeaseServer(s *grpc.Server, srv LeaseServer) {
 	s.RegisterService(&_Lease_serviceDesc, srv)
 }
 
-func _Lease_LeaseCreate_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _Lease_LeaseCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(LeaseCreateRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(LeaseServer).LeaseCreate(ctx, in)
@@ -1101,9 +1536,9 @@ func _Lease_LeaseCreate_Handler(srv interface{}, ctx context.Context, codec grpc
 	return out, nil
 }
 
-func _Lease_LeaseRevoke_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _Lease_LeaseRevoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(LeaseRevokeRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(LeaseServer).LeaseRevoke(ctx, in)
@@ -1236,9 +1671,9 @@ func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
 	s.RegisterService(&_Cluster_serviceDesc, srv)
 }
 
-func _Cluster_AddMember_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _Cluster_AddMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(AddMemberRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(ClusterServer).AddMember(ctx, in)
@@ -1248,9 +1683,9 @@ func _Cluster_AddMember_Handler(srv interface{}, ctx context.Context, codec grpc
 	return out, nil
 }
 
-func _Cluster_RemoveMember_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _Cluster_RemoveMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(RemoveMemberRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(ClusterServer).RemoveMember(ctx, in)
@@ -1260,9 +1695,9 @@ func _Cluster_RemoveMember_Handler(srv interface{}, ctx context.Context, codec g
 	return out, nil
 }
 
-func _Cluster_UpdateMember_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _Cluster_UpdateMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(UpdateMemberRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(ClusterServer).UpdateMember(ctx, in)
@@ -1272,9 +1707,9 @@ func _Cluster_UpdateMember_Handler(srv interface{}, ctx context.Context, codec g
 	return out, nil
 }
 
-func _Cluster_ListMember_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _Cluster_ListMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
 	in := new(ListMemberRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
+	if err := dec(in); err != nil {
 		return nil, err
 	}
 	out, err := srv.(ClusterServer).ListMember(ctx, in)
@@ -1594,31 +2029,37 @@ func (m *RequestUnion) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Request != nil {
+		nn4, err := m.Request.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += nn4
+	}
+	return i, nil
+}
+
+func (m *RequestUnion_RequestRange) MarshalTo(data []byte) (int, error) {
+	i := 0
 	if m.RequestRange != nil {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.RequestRange.Size()))
-		n4, err := m.RequestRange.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	if m.RequestPut != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.RequestPut.Size()))
-		n5, err := m.RequestPut.MarshalTo(data[i:])
+		n5, err := m.RequestRange.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n5
 	}
-	if m.RequestDeleteRange != nil {
-		data[i] = 0x1a
+	return i, nil
+}
+func (m *RequestUnion_RequestPut) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.RequestPut != nil {
+		data[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.RequestDeleteRange.Size()))
-		n6, err := m.RequestDeleteRange.MarshalTo(data[i:])
+		i = encodeVarintRpc(data, i, uint64(m.RequestPut.Size()))
+		n6, err := m.RequestPut.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -1626,7 +2067,20 @@ func (m *RequestUnion) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-
+func (m *RequestUnion_RequestDeleteRange) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.RequestDeleteRange != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.RequestDeleteRange.Size()))
+		n7, err := m.RequestDeleteRange.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
+	return i, nil
+}
 func (m *ResponseUnion) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1642,31 +2096,23 @@ func (m *ResponseUnion) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Response != nil {
+		nn8, err := m.Response.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += nn8
+	}
+	return i, nil
+}
+
+func (m *ResponseUnion_ResponseRange) MarshalTo(data []byte) (int, error) {
+	i := 0
 	if m.ResponseRange != nil {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.ResponseRange.Size()))
-		n7, err := m.ResponseRange.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n7
-	}
-	if m.ResponsePut != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.ResponsePut.Size()))
-		n8, err := m.ResponsePut.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n8
-	}
-	if m.ResponseDeleteRange != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.ResponseDeleteRange.Size()))
-		n9, err := m.ResponseDeleteRange.MarshalTo(data[i:])
+		n9, err := m.ResponseRange.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -1674,7 +2120,34 @@ func (m *ResponseUnion) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-
+func (m *ResponseUnion_ResponsePut) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.ResponsePut != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.ResponsePut.Size()))
+		n10, err := m.ResponsePut.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n10
+	}
+	return i, nil
+}
+func (m *ResponseUnion_ResponseDeleteRange) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.ResponseDeleteRange != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.ResponseDeleteRange.Size()))
+		n11, err := m.ResponseDeleteRange.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n11
+	}
+	return i, nil
+}
 func (m *Compare) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1708,32 +2181,47 @@ func (m *Compare) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], m.Key)
 		}
 	}
-	if m.Version != 0 {
-		data[i] = 0x20
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Version))
-	}
-	if m.CreateRevision != 0 {
-		data[i] = 0x28
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.CreateRevision))
-	}
-	if m.ModRevision != 0 {
-		data[i] = 0x30
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.ModRevision))
-	}
-	if m.Value != nil {
-		if len(m.Value) > 0 {
-			data[i] = 0x3a
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Value)))
-			i += copy(data[i:], m.Value)
+	if m.TargetUnion != nil {
+		nn12, err := m.TargetUnion.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
 		}
+		i += nn12
 	}
 	return i, nil
 }
 
+func (m *Compare_Version) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x20
+	i++
+	i = encodeVarintRpc(data, i, uint64(m.Version))
+	return i, nil
+}
+func (m *Compare_CreateRevision) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x28
+	i++
+	i = encodeVarintRpc(data, i, uint64(m.CreateRevision))
+	return i, nil
+}
+func (m *Compare_ModRevision) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x30
+	i++
+	i = encodeVarintRpc(data, i, uint64(m.ModRevision))
+	return i, nil
+}
+func (m *Compare_Value) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Value != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Value)))
+		i += copy(data[i:], m.Value)
+	}
+	return i, nil
+}
 func (m *TxnRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1807,11 +2295,11 @@ func (m *TxnResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n10, err := m.Header.MarshalTo(data[i:])
+		n13, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n10
+		i += n13
 	}
 	if m.Succeeded {
 		data[i] = 0x10
@@ -1880,11 +2368,11 @@ func (m *CompactionResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n11, err := m.Header.MarshalTo(data[i:])
+		n14, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n14
 	}
 	return i, nil
 }
@@ -1904,29 +2392,44 @@ func (m *WatchRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.CreateRequest != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.CreateRequest.Size()))
-		n12, err := m.CreateRequest.MarshalTo(data[i:])
+	if m.RequestUnion != nil {
+		nn15, err := m.RequestUnion.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
-	}
-	if m.CancelRequest != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.CancelRequest.Size()))
-		n13, err := m.CancelRequest.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n13
+		i += nn15
 	}
 	return i, nil
 }
 
+func (m *WatchRequest_CreateRequest) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.CreateRequest != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.CreateRequest.Size()))
+		n16, err := m.CreateRequest.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n16
+	}
+	return i, nil
+}
+func (m *WatchRequest_CancelRequest) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.CancelRequest != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.CancelRequest.Size()))
+		n17, err := m.CancelRequest.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n17
+	}
+	return i, nil
+}
 func (m *WatchCreateRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2008,11 +2511,11 @@ func (m *WatchResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n14, err := m.Header.MarshalTo(data[i:])
+		n18, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n14
+		i += n18
 	}
 	if m.WatchId != 0 {
 		data[i] = 0x10
@@ -2111,11 +2614,11 @@ func (m *LeaseCreateResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n15, err := m.Header.MarshalTo(data[i:])
+		n19, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n19
 	}
 	if m.ID != 0 {
 		data[i] = 0x10
@@ -2178,11 +2681,11 @@ func (m *LeaseRevokeResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n16, err := m.Header.MarshalTo(data[i:])
+		n20, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n20
 	}
 	return i, nil
 }
@@ -2229,11 +2732,11 @@ func (m *LeaseKeepAliveResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n17, err := m.Header.MarshalTo(data[i:])
+		n21, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n21
 	}
 	if m.ID != 0 {
 		data[i] = 0x10
@@ -2359,21 +2862,21 @@ func (m *AddMemberResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n18, err := m.Header.MarshalTo(data[i:])
+		n22, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n22
 	}
 	if m.Member != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Member.Size()))
-		n19, err := m.Member.MarshalTo(data[i:])
+		n23, err := m.Member.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n23
 	}
 	return i, nil
 }
@@ -2420,11 +2923,11 @@ func (m *RemoveMemberResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n20, err := m.Header.MarshalTo(data[i:])
+		n24, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n24
 	}
 	return i, nil
 }
@@ -2486,11 +2989,11 @@ func (m *UpdateMemberResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n21, err := m.Header.MarshalTo(data[i:])
+		n25, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n25
 	}
 	return i, nil
 }
@@ -2532,11 +3035,11 @@ func (m *ListMemberResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n22, err := m.Header.MarshalTo(data[i:])
+		n26, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n26
 	}
 	if len(m.Members) > 0 {
 		for _, msg := range m.Members {
@@ -2709,39 +3212,75 @@ func (m *DeleteRangeResponse) Size() (n int) {
 func (m *RequestUnion) Size() (n int) {
 	var l int
 	_ = l
+	if m.Request != nil {
+		n += m.Request.Size()
+	}
+	return n
+}
+
+func (m *RequestUnion_RequestRange) Size() (n int) {
+	var l int
+	_ = l
 	if m.RequestRange != nil {
 		l = m.RequestRange.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	return n
+}
+func (m *RequestUnion_RequestPut) Size() (n int) {
+	var l int
+	_ = l
 	if m.RequestPut != nil {
 		l = m.RequestPut.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	return n
+}
+func (m *RequestUnion_RequestDeleteRange) Size() (n int) {
+	var l int
+	_ = l
 	if m.RequestDeleteRange != nil {
 		l = m.RequestDeleteRange.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
 	return n
 }
-
 func (m *ResponseUnion) Size() (n int) {
+	var l int
+	_ = l
+	if m.Response != nil {
+		n += m.Response.Size()
+	}
+	return n
+}
+
+func (m *ResponseUnion_ResponseRange) Size() (n int) {
 	var l int
 	_ = l
 	if m.ResponseRange != nil {
 		l = m.ResponseRange.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	return n
+}
+func (m *ResponseUnion_ResponsePut) Size() (n int) {
+	var l int
+	_ = l
 	if m.ResponsePut != nil {
 		l = m.ResponsePut.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	return n
+}
+func (m *ResponseUnion_ResponseDeleteRange) Size() (n int) {
+	var l int
+	_ = l
 	if m.ResponseDeleteRange != nil {
 		l = m.ResponseDeleteRange.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
 	return n
 }
-
 func (m *Compare) Size() (n int) {
 	var l int
 	_ = l
@@ -2757,24 +3296,39 @@ func (m *Compare) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
-	if m.Version != 0 {
-		n += 1 + sovRpc(uint64(m.Version))
-	}
-	if m.CreateRevision != 0 {
-		n += 1 + sovRpc(uint64(m.CreateRevision))
-	}
-	if m.ModRevision != 0 {
-		n += 1 + sovRpc(uint64(m.ModRevision))
-	}
-	if m.Value != nil {
-		l = len(m.Value)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	if m.TargetUnion != nil {
+		n += m.TargetUnion.Size()
 	}
 	return n
 }
 
+func (m *Compare_Version) Size() (n int) {
+	var l int
+	_ = l
+	n += 1 + sovRpc(uint64(m.Version))
+	return n
+}
+func (m *Compare_CreateRevision) Size() (n int) {
+	var l int
+	_ = l
+	n += 1 + sovRpc(uint64(m.CreateRevision))
+	return n
+}
+func (m *Compare_ModRevision) Size() (n int) {
+	var l int
+	_ = l
+	n += 1 + sovRpc(uint64(m.ModRevision))
+	return n
+}
+func (m *Compare_Value) Size() (n int) {
+	var l int
+	_ = l
+	if m.Value != nil {
+		l = len(m.Value)
+		n += 1 + l + sovRpc(uint64(l))
+	}
+	return n
+}
 func (m *TxnRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -2840,17 +3394,30 @@ func (m *CompactionResponse) Size() (n int) {
 func (m *WatchRequest) Size() (n int) {
 	var l int
 	_ = l
+	if m.RequestUnion != nil {
+		n += m.RequestUnion.Size()
+	}
+	return n
+}
+
+func (m *WatchRequest_CreateRequest) Size() (n int) {
+	var l int
+	_ = l
 	if m.CreateRequest != nil {
 		l = m.CreateRequest.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
+	return n
+}
+func (m *WatchRequest_CancelRequest) Size() (n int) {
+	var l int
+	_ = l
 	if m.CancelRequest != nil {
 		l = m.CancelRequest.Size()
 		n += 1 + l + sovRpc(uint64(l))
 	}
 	return n
 }
-
 func (m *WatchCreateRequest) Size() (n int) {
 	var l int
 	_ = l
@@ -3119,8 +3686,12 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3133,6 +3704,12 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ResponseHeader: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ResponseHeader: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -3140,6 +3717,9 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 			}
 			m.ClusterId = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3156,6 +3736,9 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 			}
 			m.MemberId = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3172,6 +3755,9 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 			}
 			m.Revision = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3188,6 +3774,9 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 			}
 			m.RaftTerm = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3199,15 +3788,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -3222,14 +3803,21 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *RangeRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3242,6 +3830,12 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RangeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RangeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -3249,6 +3843,9 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3266,7 +3863,10 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -3274,6 +3874,9 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3291,7 +3894,10 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RangeEnd = append([]byte{}, data[iNdEx:postIndex]...)
+			m.RangeEnd = append(m.RangeEnd[:0], data[iNdEx:postIndex]...)
+			if m.RangeEnd == nil {
+				m.RangeEnd = []byte{}
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -3299,6 +3905,9 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			}
 			m.Limit = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3315,6 +3924,9 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			}
 			m.Revision = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3331,6 +3943,9 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			}
 			m.SortOrder = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3347,6 +3962,9 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			}
 			m.SortTarget = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3358,15 +3976,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -3381,14 +3991,21 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *RangeResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3401,6 +4018,12 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RangeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RangeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -3408,6 +4031,9 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3438,6 +4064,9 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3466,6 +4095,9 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3478,15 +4110,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			}
 			m.More = bool(v != 0)
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -3501,14 +4125,21 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *PutRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3521,6 +4152,12 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PutRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PutRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -3528,6 +4165,9 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3545,7 +4185,10 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -3553,6 +4196,9 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3570,7 +4216,10 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Value = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Value = append(m.Value[:0], data[iNdEx:postIndex]...)
+			if m.Value == nil {
+				m.Value = []byte{}
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -3578,6 +4227,9 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			}
 			m.Lease = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3589,15 +4241,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -3612,14 +4256,21 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *PutResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3632,6 +4283,12 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: PutResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: PutResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -3639,6 +4296,9 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3664,15 +4324,7 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -3687,14 +4339,21 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3707,6 +4366,12 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteRangeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteRangeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -3714,6 +4379,9 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3731,7 +4399,10 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -3739,6 +4410,9 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3756,18 +4430,13 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RangeEnd = append([]byte{}, data[iNdEx:postIndex]...)
+			m.RangeEnd = append(m.RangeEnd[:0], data[iNdEx:postIndex]...)
+			if m.RangeEnd == nil {
+				m.RangeEnd = []byte{}
+			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -3782,14 +4451,21 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3802,6 +4478,12 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: DeleteRangeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: DeleteRangeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -3809,6 +4491,9 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3834,15 +4519,7 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -3857,14 +4534,21 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *RequestUnion) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3877,6 +4561,12 @@ func (m *RequestUnion) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RequestUnion: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RequestUnion: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -3884,6 +4574,9 @@ func (m *RequestUnion) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3901,12 +4594,11 @@ func (m *RequestUnion) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.RequestRange == nil {
-				m.RequestRange = &RangeRequest{}
-			}
-			if err := m.RequestRange.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &RangeRequest{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.Request = &RequestUnion_RequestRange{v}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -3914,6 +4606,9 @@ func (m *RequestUnion) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3931,12 +4626,11 @@ func (m *RequestUnion) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.RequestPut == nil {
-				m.RequestPut = &PutRequest{}
-			}
-			if err := m.RequestPut.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &PutRequest{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.Request = &RequestUnion_RequestPut{v}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -3944,6 +4638,9 @@ func (m *RequestUnion) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -3961,23 +4658,14 @@ func (m *RequestUnion) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.RequestDeleteRange == nil {
-				m.RequestDeleteRange = &DeleteRangeRequest{}
-			}
-			if err := m.RequestDeleteRange.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &DeleteRangeRequest{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.Request = &RequestUnion_RequestDeleteRange{v}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -3992,14 +4680,21 @@ func (m *RequestUnion) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *ResponseUnion) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4012,6 +4707,12 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ResponseUnion: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ResponseUnion: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -4019,6 +4720,9 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4036,12 +4740,11 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.ResponseRange == nil {
-				m.ResponseRange = &RangeResponse{}
-			}
-			if err := m.ResponseRange.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &RangeResponse{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.Response = &ResponseUnion_ResponseRange{v}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -4049,6 +4752,9 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4066,12 +4772,11 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.ResponsePut == nil {
-				m.ResponsePut = &PutResponse{}
-			}
-			if err := m.ResponsePut.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &PutResponse{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.Response = &ResponseUnion_ResponsePut{v}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -4079,6 +4784,9 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4096,23 +4804,14 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.ResponseDeleteRange == nil {
-				m.ResponseDeleteRange = &DeleteRangeResponse{}
-			}
-			if err := m.ResponseDeleteRange.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &DeleteRangeResponse{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.Response = &ResponseUnion_ResponseDeleteRange{v}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4127,14 +4826,21 @@ func (m *ResponseUnion) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *Compare) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4147,6 +4853,12 @@ func (m *Compare) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Compare: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Compare: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -4154,6 +4866,9 @@ func (m *Compare) Unmarshal(data []byte) error {
 			}
 			m.Result = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4170,6 +4885,9 @@ func (m *Compare) Unmarshal(data []byte) error {
 			}
 			m.Target = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4186,6 +4904,9 @@ func (m *Compare) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4203,62 +4924,80 @@ func (m *Compare) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
 			}
-			m.Version = 0
+			var v int64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Version |= (int64(b) & 0x7F) << shift
+				v |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.TargetUnion = &Compare_Version{v}
 		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field CreateRevision", wireType)
 			}
-			m.CreateRevision = 0
+			var v int64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.CreateRevision |= (int64(b) & 0x7F) << shift
+				v |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.TargetUnion = &Compare_CreateRevision{v}
 		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ModRevision", wireType)
 			}
-			m.ModRevision = 0
+			var v int64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.ModRevision |= (int64(b) & 0x7F) << shift
+				v |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			m.TargetUnion = &Compare_ModRevision{v}
 		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4276,18 +5015,12 @@ func (m *Compare) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Value = append([]byte{}, data[iNdEx:postIndex]...)
+			v := make([]byte, postIndex-iNdEx)
+			copy(v, data[iNdEx:postIndex])
+			m.TargetUnion = &Compare_Value{v}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4302,14 +5035,21 @@ func (m *Compare) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *TxnRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4322,6 +5062,12 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TxnRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TxnRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -4329,6 +5075,9 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4357,6 +5106,9 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4385,6 +5137,9 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4408,15 +5163,7 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4431,14 +5178,21 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *TxnResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4451,6 +5205,12 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TxnResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TxnResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -4458,6 +5218,9 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4488,6 +5251,9 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4505,6 +5271,9 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4528,15 +5297,7 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4551,14 +5312,21 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *CompactionRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4571,6 +5339,12 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CompactionRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CompactionRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -4578,6 +5352,9 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 			}
 			m.Revision = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4589,15 +5366,7 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4612,14 +5381,21 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *CompactionResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4632,6 +5408,12 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CompactionResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CompactionResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -4639,6 +5421,9 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4664,15 +5449,7 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4687,14 +5464,21 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *WatchRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4707,6 +5491,12 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: WatchRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: WatchRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -4714,6 +5504,9 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4731,12 +5524,11 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.CreateRequest == nil {
-				m.CreateRequest = &WatchCreateRequest{}
-			}
-			if err := m.CreateRequest.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &WatchCreateRequest{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.RequestUnion = &WatchRequest_CreateRequest{v}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -4744,6 +5536,9 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4761,23 +5556,14 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.CancelRequest == nil {
-				m.CancelRequest = &WatchCancelRequest{}
-			}
-			if err := m.CancelRequest.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			v := &WatchCancelRequest{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			m.RequestUnion = &WatchRequest_CancelRequest{v}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4792,14 +5578,21 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4812,6 +5605,12 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: WatchCreateRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: WatchCreateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -4819,6 +5618,9 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4836,7 +5638,10 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -4844,6 +5649,9 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4861,7 +5669,10 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Prefix = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Prefix = append(m.Prefix[:0], data[iNdEx:postIndex]...)
+			if m.Prefix == nil {
+				m.Prefix = []byte{}
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -4869,6 +5680,9 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			}
 			m.StartRevision = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4880,15 +5694,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4903,14 +5709,21 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4923,6 +5736,12 @@ func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: WatchCancelRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: WatchCancelRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -4930,6 +5749,9 @@ func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 			}
 			m.WatchId = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -4941,15 +5763,7 @@ func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -4964,14 +5778,21 @@ func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *WatchResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4984,6 +5805,12 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: WatchResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: WatchResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -4991,6 +5818,9 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5021,6 +5851,9 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			}
 			m.WatchId = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5037,6 +5870,9 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5054,6 +5890,9 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5071,6 +5910,9 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5088,6 +5930,9 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5111,15 +5956,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5134,14 +5971,21 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5154,6 +5998,12 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LeaseCreateRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LeaseCreateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -5161,6 +6011,9 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 			}
 			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5177,6 +6030,9 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5188,15 +6044,7 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5211,14 +6059,21 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5231,6 +6086,12 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LeaseCreateResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LeaseCreateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -5238,6 +6099,9 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5268,6 +6132,9 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5284,6 +6151,9 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 			}
 			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5300,6 +6170,9 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5321,15 +6194,7 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 			m.Error = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5344,14 +6209,21 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5364,6 +6236,12 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LeaseRevokeRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LeaseRevokeRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -5371,6 +6249,9 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5382,15 +6263,7 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5405,14 +6278,21 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5425,6 +6305,12 @@ func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LeaseRevokeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LeaseRevokeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -5432,6 +6318,9 @@ func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5457,15 +6346,7 @@ func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5480,14 +6361,21 @@ func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5500,6 +6388,12 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LeaseKeepAliveRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LeaseKeepAliveRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -5507,6 +6401,9 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5518,15 +6415,7 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5541,14 +6430,21 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5561,6 +6457,12 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: LeaseKeepAliveResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: LeaseKeepAliveResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -5568,6 +6470,9 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5598,6 +6503,9 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5614,6 +6522,9 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 			}
 			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5625,15 +6536,7 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5648,14 +6551,21 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *Member) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5668,6 +6578,12 @@ func (m *Member) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Member: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Member: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -5675,6 +6591,9 @@ func (m *Member) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5691,6 +6610,9 @@ func (m *Member) Unmarshal(data []byte) error {
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5717,6 +6639,9 @@ func (m *Member) Unmarshal(data []byte) error {
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5743,6 +6668,9 @@ func (m *Member) Unmarshal(data []byte) error {
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5764,15 +6692,7 @@ func (m *Member) Unmarshal(data []byte) error {
 			m.Client_URLs = append(m.Client_URLs, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5787,14 +6707,21 @@ func (m *Member) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *AddMemberRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5807,6 +6734,12 @@ func (m *AddMemberRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AddMemberRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AddMemberRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -5814,6 +6747,9 @@ func (m *AddMemberRequest) Unmarshal(data []byte) error {
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5835,15 +6771,7 @@ func (m *AddMemberRequest) Unmarshal(data []byte) error {
 			m.Peer_URLs = append(m.Peer_URLs, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5858,14 +6786,21 @@ func (m *AddMemberRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *AddMemberResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5878,6 +6813,12 @@ func (m *AddMemberResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AddMemberResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AddMemberResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -5885,6 +6826,9 @@ func (m *AddMemberResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5915,6 +6859,9 @@ func (m *AddMemberResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -5940,15 +6887,7 @@ func (m *AddMemberResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -5963,14 +6902,21 @@ func (m *AddMemberResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *RemoveMemberRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -5983,6 +6929,12 @@ func (m *RemoveMemberRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveMemberRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveMemberRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -5990,6 +6942,9 @@ func (m *RemoveMemberRequest) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -6001,15 +6956,7 @@ func (m *RemoveMemberRequest) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -6024,14 +6971,21 @@ func (m *RemoveMemberRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *RemoveMemberResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -6044,6 +6998,12 @@ func (m *RemoveMemberResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RemoveMemberResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RemoveMemberResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -6051,6 +7011,9 @@ func (m *RemoveMemberResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -6076,15 +7039,7 @@ func (m *RemoveMemberResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -6099,14 +7054,21 @@ func (m *RemoveMemberResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -6119,6 +7081,12 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateMemberRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateMemberRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -6126,6 +7094,9 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -6142,6 +7113,9 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -6163,15 +7137,7 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 			m.Peer_URLs = append(m.Peer_URLs, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -6186,14 +7152,21 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *UpdateMemberResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -6206,6 +7179,12 @@ func (m *UpdateMemberResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: UpdateMemberResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: UpdateMemberResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -6213,6 +7192,9 @@ func (m *UpdateMemberResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -6238,15 +7220,7 @@ func (m *UpdateMemberResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -6261,58 +7235,21 @@ func (m *UpdateMemberResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *ListMemberRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
+			if shift >= 64 {
+				return ErrIntOverflowRpc
 			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		switch fieldNum {
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipRpc(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthRpc
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *ListMemberResponse) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -6325,6 +7262,62 @@ func (m *ListMemberResponse) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListMemberRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListMemberRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipRpc(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthRpc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ListMemberResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ListMemberResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ListMemberResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -6332,6 +7325,9 @@ func (m *ListMemberResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -6362,6 +7358,9 @@ func (m *ListMemberResponse) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -6385,15 +7384,7 @@ func (m *ListMemberResponse) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
 			if err != nil {
 				return err
@@ -6408,6 +7399,9 @@ func (m *ListMemberResponse) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func skipRpc(data []byte) (n int, err error) {
@@ -6416,6 +7410,9 @@ func skipRpc(data []byte) (n int, err error) {
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowRpc
+			}
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
@@ -6429,7 +7426,10 @@ func skipRpc(data []byte) (n int, err error) {
 		wireType := int(wire & 0x7)
 		switch wireType {
 		case 0:
-			for {
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -6445,6 +7445,9 @@ func skipRpc(data []byte) (n int, err error) {
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowRpc
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -6465,6 +7468,9 @@ func skipRpc(data []byte) (n int, err error) {
 				var innerWire uint64
 				var start int = iNdEx
 				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowRpc
+					}
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
@@ -6500,4 +7506,5 @@ func skipRpc(data []byte) (n int, err error) {
 
 var (
 	ErrInvalidLengthRpc = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowRpc   = fmt.Errorf("proto: integer overflow")
 )
