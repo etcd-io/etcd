@@ -1019,7 +1019,7 @@ func TestRecvSnapshot(t *testing.T) {
 // first and then committed entries.
 func TestApplySnapshotAndCommittedEntries(t *testing.T) {
 	n := newNopReadyNode()
-	st := store.NewRecorder()
+	st := store.NewRecorderStream()
 	cl := newCluster("abc")
 	cl.SetStore(store.New())
 	storage := raft.NewMemoryStorage()

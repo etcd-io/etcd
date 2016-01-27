@@ -756,13 +756,17 @@ type StoreRecorder struct {
 // It always returns invalid empty response and no error.
 type storeRecorder struct {
 	Store
-	testutil.RecorderBuffered
+	testutil.Recorder
 }
 
-func NewNop() Store { return &storeRecorder{} }
+func NewNop() Store { return &storeRecorder{Recorder: &testutil.RecorderBuffered{}} }
 func NewRecorder() *StoreRecorder {
-	sr := &storeRecorder{}
-	return &StoreRecorder{Store: sr, Recorder: sr}
+	sr := &storeRecorder{Recorder: &testutil.RecorderBuffered{}}
+	return &StoreRecorder{Store: sr, Recorder: sr.Recorder}
+}
+func NewRecorderStream() *StoreRecorder {
+	sr := &storeRecorder{Recorder: testutil.NewRecorderStream()}
+	return &StoreRecorder{Store: sr, Recorder: sr.Recorder}
 }
 
 func (s *storeRecorder) Version() int  { return 0 }
@@ -856,7 +860,8 @@ type errStoreRecorder struct {
 
 func NewErrRecorder(err error) *StoreRecorder {
 	sr := &errStoreRecorder{err: err}
-	return &StoreRecorder{Store: sr, Recorder: sr}
+	sr.Recorder = &testutil.RecorderBuffered{}
+	return &StoreRecorder{Store: sr, Recorder: sr.Recorder}
 }
 
 func (s *errStoreRecorder) Get(path string, recursive, sorted bool) (*Event, error) {
