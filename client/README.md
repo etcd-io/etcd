@@ -127,6 +127,7 @@ selection_mode: PrioritizeLeader
 
 `endpoints` accepts multiple URLs. It assumes the URLs are separated with whilte space. `header_timeout_per_request` accepts a number with suffix `s` (stands for second). `selection_mode` accepts `Random` or `PrioritizeLeader`.
 
+A working example of the configuration mechanism is provided in [contrib/client_conf_example](../contrib/client_conf_example).
 ### File based configuration
 
 The function `client.NewWithFile(cfg Config, configPath string)` creates a new client based on configuration provided in a file whose path is `configPath`. The format of the file can be one of JSON, TOML, YAML and HCL (formats accepted by [viper](https://github.com/spf13/viper)).

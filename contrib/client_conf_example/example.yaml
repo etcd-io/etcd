@@ -1,0 +1,4 @@
+
+endpoints: http://localhost:12379 http://localhost:22379 http://localhost:32379
+header_timeout_per_request: 1.5s
+selection_mode: PrioritizeLeader
