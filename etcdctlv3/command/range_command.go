@@ -92,7 +92,8 @@ func rangeCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadFeature, fmt.Errorf("bad sort target %v", rangeSortTarget))
 	}
 
-	conn, err := grpc.Dial(endpoint)
+	// TODO: enable grpc.WithTransportCredentials(creds)
+	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)
 	}

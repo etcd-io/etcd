@@ -66,7 +66,8 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	conn, err := grpc.Dial(endpoint)
+	// TODO: enable grpc.WithTransportCredentials(creds)
+	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)
 	}

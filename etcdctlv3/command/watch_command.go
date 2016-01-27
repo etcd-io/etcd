@@ -43,7 +43,8 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitInvalidInput, err)
 	}
-	conn, err := grpc.Dial(endpoint)
+	// TODO: enable grpc.WithTransportCredentials(creds)
+	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)
 	}
