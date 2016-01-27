@@ -32,7 +32,11 @@ func TestQueueOneReaderOneWriter(t *testing.T) {
 	clus := newClusterGRPC(t, &clusterConfig{size: 1})
 	defer clus.Terminate(t)
 
+	done := make(chan struct{})
 	go func() {
+		defer func() {
+			done <- struct{}{}
+		}()
 		etcdc := recipe.NewEtcdClient(clus.RandConn())
 		q := recipe.NewQueue(etcdc, "testq")
 		for i := 0; i < 5; i++ {
@@ -53,6 +57,7 @@ func TestQueueOneReaderOneWriter(t *testing.T) {
 			t.Fatalf("expected dequeue value %v, got %v", s, i)
 		}
 	}
+	<-done
 }
 
 func TestQueueManyReaderOneWriter(t *testing.T) {

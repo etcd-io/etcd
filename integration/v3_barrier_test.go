@@ -19,15 +19,18 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/contrib/recipes"
+	"github.com/coreos/etcd/pkg/testutil"
 )
 
 func TestBarrierSingleNode(t *testing.T) {
+	defer testutil.AfterTest(t)
 	clus := newClusterGRPC(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 	testBarrier(t, 5, func() *grpc.ClientConn { return clus.conns[0] })
 }
 
 func TestBarrierMultiNode(t *testing.T) {
+	defer testutil.AfterTest(t)
 	clus := newClusterGRPC(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 	testBarrier(t, 5, func() *grpc.ClientConn { return clus.RandConn() })
