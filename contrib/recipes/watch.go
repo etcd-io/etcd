@@ -23,6 +23,7 @@ import (
 
 type Watcher struct {
 	wstream pb.Watch_WatchClient
+	cancel  context.CancelFunc
 	donec   chan struct{}
 	id      storage.WatchID
 	recvc   chan *storagepb.Event
@@ -38,7 +39,8 @@ func NewPrefixWatcher(c *EtcdClient, prefix string, rev int64) (*Watcher, error)
 }
 
 func newWatcher(c *EtcdClient, key string, rev int64, isPrefix bool) (*Watcher, error) {
-	w, err := c.Watch.Watch(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	w, err := c.Watch.Watch(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +52,7 @@ func newWatcher(c *EtcdClient, key string, rev int64, isPrefix bool) (*Watcher, 
 		req.Key = []byte(key)
 	}
 
-	if err := w.Send(&pb.WatchRequest{CreateRequest: req}); err != nil {
+	if err := w.Send(&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{CreateRequest: req}}); err != nil {
 		return nil, err
 	}
 
@@ -63,6 +65,7 @@ func newWatcher(c *EtcdClient, key string, rev int64, isPrefix bool) (*Watcher, 
 	}
 	ret := &Watcher{
 		wstream: w,
+		cancel:  cancel,
 		donec:   make(chan struct{}),
 		id:      storage.WatchID(wresp.WatchId),
 		recvc:   make(chan *storagepb.Event),
@@ -72,11 +75,14 @@ func newWatcher(c *EtcdClient, key string, rev int64, isPrefix bool) (*Watcher, 
 }
 
 func (w *Watcher) Close() error {
+	defer w.cancel()
 	if w.wstream == nil {
 		return w.lastErr
 	}
-	req := &pb.WatchCancelRequest{WatchId: int64(w.id)}
-	err := w.wstream.Send(&pb.WatchRequest{CancelRequest: req})
+	req := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CancelRequest{
+		CancelRequest: &pb.WatchCancelRequest{
+			WatchId: int64(w.id)}}}
+	err := w.wstream.Send(req)
 	if err != nil && w.lastErr == nil {
 		return err
 	}
