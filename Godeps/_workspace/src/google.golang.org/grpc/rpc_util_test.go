@@ -36,10 +36,8 @@ package grpc
 import (
 	"bytes"
 	"io"
-	"math"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -49,6 +47,7 @@ import (
 )
 
 func TestSimpleParsing(t *testing.T) {
+	bigMsg := bytes.Repeat([]byte{'x'}, 1<<24)
 	for _, test := range []struct {
 		// input
 		p []byte
@@ -62,6 +61,8 @@ func TestSimpleParsing(t *testing.T) {
 		{[]byte{0, 0, 0, 0, 1, 'a'}, nil, []byte{'a'}, compressionNone},
 		{[]byte{1, 0}, io.ErrUnexpectedEOF, nil, compressionNone},
 		{[]byte{0, 0, 0, 0, 10, 'a'}, io.ErrUnexpectedEOF, nil, compressionNone},
+		// Check that messages with length >= 2^24 are parsed.
+		{append([]byte{0, 1, 0, 0, 0}, bigMsg...), nil, bigMsg, compressionNone},
 	} {
 		buf := bytes.NewReader(test.p)
 		parser := &parser{buf}
@@ -105,16 +106,40 @@ func TestEncode(t *testing.T) {
 	for _, test := range []struct {
 		// input
 		msg proto.Message
-		pt  payloadFormat
+		cp  Compressor
 		// outputs
 		b   []byte
 		err error
 	}{
-		{nil, compressionNone, []byte{0, 0, 0, 0, 0}, nil},
+		{nil, nil, []byte{0, 0, 0, 0, 0}, nil},
 	} {
-		b, err := encode(protoCodec{}, test.msg, test.pt)
+		b, err := encode(protoCodec{}, test.msg, nil, nil)
 		if err != test.err || !bytes.Equal(b, test.b) {
-			t.Fatalf("encode(_, _, %d) = %v, %v\nwant %v, %v", test.pt, b, err, test.b, test.err)
+			t.Fatalf("encode(_, _, %v, _) = %v, %v\nwant %v, %v", test.cp, b, err, test.b, test.err)
+		}
+	}
+}
+
+func TestCompress(t *testing.T) {
+	for _, test := range []struct {
+		// input
+		data []byte
+		cp   Compressor
+		dc   Decompressor
+		// outputs
+		err error
+	}{
+		{make([]byte, 1024), &gzipCompressor{}, &gzipDecompressor{}, nil},
+	} {
+		b := new(bytes.Buffer)
+		if err := test.cp.Do(b, test.data); err != test.err {
+			t.Fatalf("Compressor.Do(_, %v) = %v, want %v", test.data, err, test.err)
+		}
+		if b.Len() >= len(test.data) {
+			t.Fatalf("The compressor fails to compress data.")
+		}
+		if p, err := test.dc.Do(b); err != nil || !bytes.Equal(test.data, p) {
+			t.Fatalf("Decompressor.Do(%v) = %v, %v, want %v, <nil>", b, p, err, test.data)
 		}
 	}
 }
@@ -153,35 +178,16 @@ func TestContextErr(t *testing.T) {
 	}
 }
 
-func TestBackoff(t *testing.T) {
-	for _, test := range []struct {
-		retries   int
-		maxResult time.Duration
-	}{
-		{0, time.Second},
-		{1, time.Duration(1e9 * math.Pow(backoffFactor, 1))},
-		{2, time.Duration(1e9 * math.Pow(backoffFactor, 2))},
-		{3, time.Duration(1e9 * math.Pow(backoffFactor, 3))},
-		{4, time.Duration(1e9 * math.Pow(backoffFactor, 4))},
-		{int(math.Log2(float64(maxDelay)/float64(baseDelay))) + 1, maxDelay},
-	} {
-		delay := backoff(test.retries)
-		if delay < 0 || delay > test.maxResult {
-			t.Errorf("backoff(%d) = %v outside [0, %v]", test.retries, delay, test.maxResult)
-		}
-	}
-}
-
 // bmEncode benchmarks encoding a Protocol Buffer message containing mSize
 // bytes.
 func bmEncode(b *testing.B, mSize int) {
 	msg := &perfpb.Buffer{Body: make([]byte, mSize)}
-	encoded, _ := encode(protoCodec{}, msg, compressionNone)
+	encoded, _ := encode(protoCodec{}, msg, nil, nil)
 	encodedSz := int64(len(encoded))
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		encode(protoCodec{}, msg, compressionNone)
+		encode(protoCodec{}, msg, nil, nil)
 	}
 	b.SetBytes(encodedSz)
 }

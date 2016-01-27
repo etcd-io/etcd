@@ -46,7 +46,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
-	pb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/examples/route_guide/proto"
+	pb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/examples/route_guide/routeguide"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
 )
 
@@ -175,6 +175,8 @@ func main() {
 			creds = credentials.NewClientTLSFromCert(nil, sn)
 		}
 		opts = append(opts, grpc.WithTransportCredentials(creds))
+	} else {
+		opts = append(opts, grpc.WithInsecure())
 	}
 	conn, err := grpc.Dial(*serverAddr, opts...)
 	if err != nil {
