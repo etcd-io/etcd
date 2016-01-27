@@ -18,28 +18,28 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/contrib/recipes"
 )
 
 func TestMutexSingleNode(t *testing.T) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
-	testMutex(t, 5, func() *grpc.ClientConn { return clus.conns[0] })
+	testMutex(t, 5, func() *clientv3.Client { return clus.clients[0] })
 }
 
 func TestMutexMultiNode(t *testing.T) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
-	testMutex(t, 5, func() *grpc.ClientConn { return clus.RandConn() })
+	testMutex(t, 5, func() *clientv3.Client { return clus.RandClient() })
 }
 
-func testMutex(t *testing.T, waiters int, chooseConn func() *grpc.ClientConn) {
+func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
 	// stream lock acquistions
 	lockedC := make(chan *recipe.Mutex, 1)
 	for i := 0; i < waiters; i++ {
 		go func() {
-			m := recipe.NewMutex(recipe.NewEtcdClient(chooseConn()), "test-mutex")
+			m := recipe.NewMutex(chooseClient(), "test-mutex")
 			if err := m.Lock(); err != nil {
 				t.Fatalf("could not wait on lock (%v)", err)
 			}
@@ -68,32 +68,32 @@ func testMutex(t *testing.T, waiters int, chooseConn func() *grpc.ClientConn) {
 
 func BenchmarkMutex4Waiters(b *testing.B) {
 	// XXX switch tests to use TB interface
-	clus := newClusterGRPC(nil, &clusterConfig{size: 3})
+	clus := newClusterV3(nil, &clusterConfig{size: 3})
 	defer clus.Terminate(nil)
 	for i := 0; i < b.N; i++ {
-		testMutex(nil, 4, func() *grpc.ClientConn { return clus.RandConn() })
+		testMutex(nil, 4, func() *clientv3.Client { return clus.RandClient() })
 	}
 }
 
 func TestRWMutexSingleNode(t *testing.T) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
-	testRWMutex(t, 5, func() *grpc.ClientConn { return clus.conns[0] })
+	testRWMutex(t, 5, func() *clientv3.Client { return clus.clients[0] })
 }
 
 func TestRWMutexMultiNode(t *testing.T) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
-	testRWMutex(t, 5, func() *grpc.ClientConn { return clus.RandConn() })
+	testRWMutex(t, 5, func() *clientv3.Client { return clus.RandClient() })
 }
 
-func testRWMutex(t *testing.T, waiters int, chooseConn func() *grpc.ClientConn) {
+func testRWMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
 	// stream rwlock acquistions
 	rlockedC := make(chan *recipe.RWMutex, 1)
 	wlockedC := make(chan *recipe.RWMutex, 1)
 	for i := 0; i < waiters; i++ {
 		go func() {
-			rwm := recipe.NewRWMutex(recipe.NewEtcdClient(chooseConn()), "test-rwmutex")
+			rwm := recipe.NewRWMutex(chooseClient(), "test-rwmutex")
 			if rand.Intn(1) == 0 {
 				if err := rwm.RLock(); err != nil {
 					t.Fatalf("could not rlock (%v)", err)

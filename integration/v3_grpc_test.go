@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
@@ -34,47 +34,47 @@ import (
 
 type clusterV3 struct {
 	*cluster
-	conns []*grpc.ClientConn
+	clients []*clientv3.Client
 }
 
-// newClusterGRPC returns a launched cluster with a grpc client connection
+// newClusterV3 returns a launched cluster with a grpc client connection
 // for each cluster member.
-func newClusterGRPC(t *testing.T, cfg *clusterConfig) *clusterV3 {
+func newClusterV3(t *testing.T, cfg *clusterConfig) *clusterV3 {
 	cfg.useV3 = true
 	cfg.useGRPC = true
 	clus := &clusterV3{cluster: NewClusterByConfig(t, cfg)}
 	for _, m := range clus.Members {
-		conn, err := NewGRPCClient(m)
+		client, err := NewClientV3(m)
 		if err != nil {
 			t.Fatal(err)
 		}
-		clus.conns = append(clus.conns, conn)
+		clus.clients = append(clus.clients, client)
 	}
 	clus.Launch(t)
 	return clus
 }
 
 func (c *clusterV3) Terminate(t *testing.T) {
-	for _, conn := range c.conns {
-		if err := conn.Close(); err != nil {
+	for _, client := range c.clients {
+		if err := client.Close(); err != nil {
 			t.Error(err)
 		}
 	}
 	c.cluster.Terminate(t)
 }
 
-func (c *clusterV3) RandConn() *grpc.ClientConn {
-	return c.conns[rand.Intn(len(c.conns))]
+func (c *clusterV3) RandClient() *clientv3.Client {
+	return c.clients[rand.Intn(len(c.clients))]
 }
 
 // TestV3PutOverwrite puts a key with the v3 api to a random cluster member,
 // overwrites it, then checks that the change was applied.
 func TestV3PutOverwrite(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
-	kvc := pb.NewKVClient(clus.RandConn())
+	kvc := clus.RandClient().KV
 	key := []byte("foo")
 	reqput := &pb.PutRequest{Key: key, Value: []byte("bar")}
 
@@ -115,10 +115,10 @@ func TestV3PutOverwrite(t *testing.T) {
 
 func TestV3TxnTooManyOps(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
-	kvc := pb.NewKVClient(clus.RandConn())
+	kvc := clus.RandClient().KV
 
 	addCompareOps := func(txn *pb.TxnRequest) {
 		txn.Compare = append(txn.Compare,
@@ -173,10 +173,10 @@ func TestV3TxnTooManyOps(t *testing.T) {
 // TestV3PutMissingLease ensures that a Put on a key with a bogus lease fails.
 func TestV3PutMissingLease(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
-	kvc := pb.NewKVClient(clus.RandConn())
+	kvc := clus.RandClient().KV
 	key := []byte("foo")
 	preq := &pb.PutRequest{Key: key, Lease: 123456}
 	tests := []func(){
@@ -290,8 +290,8 @@ func TestV3DeleteRange(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		clus := newClusterGRPC(t, &clusterConfig{size: 3})
-		kvc := pb.NewKVClient(clus.RandConn())
+		clus := newClusterV3(t, &clusterConfig{size: 3})
+		kvc := clus.RandClient().KV
 
 		ks := tt.keySet
 		for j := range ks {
@@ -336,10 +336,10 @@ func TestV3DeleteRange(t *testing.T) {
 // TestV3TxnInvaildRange tests txn
 func TestV3TxnInvaildRange(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
-	kvc := pb.NewKVClient(clus.RandConn())
+	kvc := clus.RandClient().KV
 	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 
 	for i := 0; i < 3; i++ {
@@ -553,9 +553,9 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		clus := newClusterGRPC(t, &clusterConfig{size: 3})
+		clus := newClusterV3(t, &clusterConfig{size: 3})
 
-		wAPI := pb.NewWatchClient(clus.RandConn())
+		wAPI := clus.RandClient().Watch
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		wStream, err := wAPI.Watch(ctx)
@@ -569,7 +569,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 
 		go func() {
 			for _, k := range tt.putKeys {
-				kvc := pb.NewKVClient(clus.RandConn())
+				kvc := clus.RandClient().KV
 				req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
 				if _, err := kvc.Put(context.TODO(), req); err != nil {
 					t.Fatalf("#%d: couldn't put key (%v)", i, err)
@@ -629,12 +629,11 @@ func TestV3WatchCancelUnsynced(t *testing.T) {
 }
 
 func testV3WatchCancel(t *testing.T, startRev int64) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
-	wAPI := pb.NewWatchClient(clus.RandConn())
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wStream, errW := wAPI.Watch(ctx)
+	wStream, errW := clus.RandClient().Watch.Watch(ctx)
 	if errW != nil {
 		t.Fatalf("wAPI.Watch error: %v", errW)
 	}
@@ -669,7 +668,7 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 		t.Errorf("cresp.Canceled got = %v, want = true", cresp.Canceled)
 	}
 
-	kvc := pb.NewKVClient(clus.RandConn())
+	kvc := clus.RandClient().KV
 	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
 		t.Errorf("couldn't put key (%v)", err)
 	}
@@ -698,13 +697,12 @@ func TestV3WatchMultipleWatchersUnsynced(t *testing.T) {
 // that matches all watchers, and another key that matches only
 // one watcher to test if it receives expected events.
 func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
-	wAPI := pb.NewWatchClient(clus.RandConn())
-	kvc := pb.NewKVClient(clus.RandConn())
+	clus := newClusterV3(t, &clusterConfig{size: 3})
+	kvc := clus.RandClient().KV
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wStream, errW := wAPI.Watch(ctx)
+	wStream, errW := clus.RandClient().Watch.Watch(ctx)
 	if errW != nil {
 		t.Fatalf("wAPI.Watch error: %v", errW)
 	}
@@ -801,12 +799,11 @@ func TestV3WatchMultipleEventsTxnUnsynced(t *testing.T) {
 
 // testV3WatchMultipleEventsTxn tests Watch APIs when it receives multiple events.
 func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 
-	wAPI := pb.NewWatchClient(clus.RandConn())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wStream, wErr := wAPI.Watch(ctx)
+	wStream, wErr := clus.RandClient().Watch.Watch(ctx)
 	if wErr != nil {
 		t.Fatalf("wAPI.Watch error: %v", wErr)
 	}
@@ -818,7 +815,7 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 
-	kvc := pb.NewKVClient(clus.RandConn())
+	kvc := clus.RandClient().KV
 	txn := pb.TxnRequest{}
 	for i := 0; i < 3; i++ {
 		ru := &pb.RequestUnion{}
@@ -885,10 +882,10 @@ func (evs eventsSortByKey) Less(i, j int) bool { return bytes.Compare(evs[i].Kv.
 
 func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
-	kvc := pb.NewKVClient(clus.RandConn())
+	kvc := clus.RandClient().KV
 
 	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo0"), Value: []byte("bar")}); err != nil {
 		t.Fatalf("couldn't put key (%v)", err)
@@ -897,10 +894,9 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
 
-	wAPI := pb.NewWatchClient(clus.RandConn())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wStream, wErr := wAPI.Watch(ctx)
+	wStream, wErr := clus.RandClient().Watch.Watch(ctx)
 	if wErr != nil {
 		t.Fatalf("wAPI.Watch error: %v", wErr)
 	}
@@ -975,9 +971,9 @@ func TestV3WatchMultipleStreamsUnsynced(t *testing.T) {
 
 // testV3WatchMultipleStreams tests multiple watchers on the same key on multiple streams.
 func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
-	wAPI := pb.NewWatchClient(clus.RandConn())
-	kvc := pb.NewKVClient(clus.RandConn())
+	clus := newClusterV3(t, &clusterConfig{size: 3})
+	wAPI := clus.RandClient().Watch
+	kvc := clus.RandClient().KV
 
 	streams := make([]pb.Watch_WatchClient, 5)
 	for i := range streams {
@@ -1199,9 +1195,9 @@ func TestV3RangeRequest(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		clus := newClusterGRPC(t, &clusterConfig{size: 3})
+		clus := newClusterV3(t, &clusterConfig{size: 3})
 		for _, k := range tt.putKeys {
-			kvc := pb.NewKVClient(clus.RandConn())
+			kvc := clus.RandClient().KV
 			req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
 			if _, err := kvc.Put(context.TODO(), req); err != nil {
 				t.Fatalf("#%d: couldn't put key (%v)", i, err)
@@ -1209,7 +1205,7 @@ func TestV3RangeRequest(t *testing.T) {
 		}
 
 		for j, req := range tt.reqs {
-			kvc := pb.NewKVClient(clus.RandConn())
+			kvc := clus.RandClient().KV
 			resp, err := kvc.Range(context.TODO(), &req)
 			if err != nil {
 				t.Errorf("#%d.%d: Range error: %v", i, j, err)
@@ -1244,7 +1240,7 @@ func TestV3RangeRequest(t *testing.T) {
 func TestV3LeaseRevoke(t *testing.T) {
 	defer testutil.AfterTest(t)
 	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
-		lc := pb.NewLeaseClient(clus.RandConn())
+		lc := clus.RandClient().Lease
 		_, err := lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
 		return err
 	})
@@ -1253,11 +1249,11 @@ func TestV3LeaseRevoke(t *testing.T) {
 // TestV3LeaseCreateById ensures leases may be created by a given id.
 func TestV3LeaseCreateByID(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
 	// create fixed lease
-	lresp, err := pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+	lresp, err := clus.RandClient().Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{ID: 1, TTL: 1})
 	if err != nil {
@@ -1268,7 +1264,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 	}
 
 	// create duplicate fixed lease
-	lresp, err = pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+	lresp, err = clus.RandClient().Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{ID: 1, TTL: 1})
 	if err != nil {
@@ -1279,7 +1275,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 	}
 
 	// create fresh fixed lease
-	lresp, err = pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+	lresp, err = clus.RandClient().Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{ID: 2, TTL: 1})
 	if err != nil {
@@ -1297,10 +1293,9 @@ func TestV3LeaseExpire(t *testing.T) {
 	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
 		// let lease lapse; wait for deleted key
 
-		wAPI := pb.NewWatchClient(clus.RandConn())
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		wStream, err := wAPI.Watch(ctx)
+		wStream, err := clus.RandClient().Watch.Watch(ctx)
 		if err != nil {
 			return err
 		}
@@ -1348,7 +1343,7 @@ func TestV3LeaseExpire(t *testing.T) {
 func TestV3LeaseKeepAlive(t *testing.T) {
 	defer testutil.AfterTest(t)
 	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
-		lc := pb.NewLeaseClient(clus.RandConn())
+		lc := clus.RandClient().Lease
 		lreq := &pb.LeaseKeepAliveRequest{ID: leaseID}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -1381,13 +1376,13 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 // client to confirm it's visible to the whole cluster.
 func TestV3LeaseExists(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
 	// create lease
 	ctx0, cancel0 := context.WithCancel(context.Background())
 	defer cancel0()
-	lresp, err := pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+	lresp, err := clus.RandClient().Lease.LeaseCreate(
 		ctx0,
 		&pb.LeaseCreateRequest{TTL: 30})
 	if err != nil {
@@ -1400,7 +1395,7 @@ func TestV3LeaseExists(t *testing.T) {
 	// confirm keepalive
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	defer cancel1()
-	lac, err := pb.NewLeaseClient(clus.RandConn()).LeaseKeepAlive(ctx1)
+	lac, err := clus.RandClient().Lease.LeaseKeepAlive(ctx1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1416,7 +1411,7 @@ func TestV3LeaseExists(t *testing.T) {
 // acquireLeaseAndKey creates a new lease and creates an attached key.
 func acquireLeaseAndKey(clus *clusterV3, key string) (int64, error) {
 	// create lease
-	lresp, err := pb.NewLeaseClient(clus.RandConn()).LeaseCreate(
+	lresp, err := clus.RandClient().Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{TTL: 1})
 	if err != nil {
@@ -1427,7 +1422,7 @@ func acquireLeaseAndKey(clus *clusterV3, key string) (int64, error) {
 	}
 	// attach to key
 	put := &pb.PutRequest{Key: []byte(key), Lease: lresp.ID}
-	if _, err := pb.NewKVClient(clus.RandConn()).Put(context.TODO(), put); err != nil {
+	if _, err := clus.RandClient().KV.Put(context.TODO(), put); err != nil {
 		return 0, err
 	}
 	return lresp.ID, nil
@@ -1436,7 +1431,7 @@ func acquireLeaseAndKey(clus *clusterV3, key string) (int64, error) {
 // testLeaseRemoveLeasedKey performs some action while holding a lease with an
 // attached key "foo", then confirms the key is gone.
 func testLeaseRemoveLeasedKey(t *testing.T, act func(*clusterV3, int64) error) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
 	leaseID, err := acquireLeaseAndKey(clus, "foo")
@@ -1450,7 +1445,7 @@ func testLeaseRemoveLeasedKey(t *testing.T, act func(*clusterV3, int64) error) {
 
 	// confirm no key
 	rreq := &pb.RangeRequest{Key: []byte("foo")}
-	rresp, err := pb.NewKVClient(clus.RandConn()).Range(context.TODO(), rreq)
+	rresp, err := clus.RandClient().KV.Range(context.TODO(), rreq)
 	if err != nil {
 		t.Fatal(err)
 	}

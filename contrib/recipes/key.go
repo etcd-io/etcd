@@ -20,23 +20,24 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 )
 
 // Key is a key/revision pair created by the client and stored on etcd
 type RemoteKV struct {
-	client *EtcdClient
+	client *clientv3.Client
 	key    string
 	rev    int64
 	val    string
 }
 
-func NewKey(client *EtcdClient, key string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func NewKey(client *clientv3.Client, key string, leaseID lease.LeaseID) (*RemoteKV, error) {
 	return NewKV(client, key, "", leaseID)
 }
 
-func NewKV(client *EtcdClient, key, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func NewKV(client *clientv3.Client, key, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
 	rev, err := putNewKV(client, key, val, leaseID)
 	if err != nil {
 		return nil, err
@@ -44,7 +45,7 @@ func NewKV(client *EtcdClient, key, val string, leaseID lease.LeaseID) (*RemoteK
 	return &RemoteKV{client, key, rev, val}, nil
 }
 
-func GetRemoteKV(client *EtcdClient, key string) (*RemoteKV, error) {
+func GetRemoteKV(client *clientv3.Client, key string) (*RemoteKV, error) {
 	resp, err := client.KV.Range(
 		context.TODO(),
 		&pb.RangeRequest{Key: []byte(key)},
@@ -65,11 +66,11 @@ func GetRemoteKV(client *EtcdClient, key string) (*RemoteKV, error) {
 		val:    val}, nil
 }
 
-func NewUniqueKey(client *EtcdClient, prefix string) (*RemoteKV, error) {
+func NewUniqueKey(client *clientv3.Client, prefix string) (*RemoteKV, error) {
 	return NewUniqueKV(client, prefix, "", 0)
 }
 
-func NewUniqueKV(client *EtcdClient, prefix string, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func NewUniqueKV(client *clientv3.Client, prefix string, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
 	for {
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
 		rev, err := putNewKV(client, newKey, val, 0)
@@ -84,7 +85,7 @@ func NewUniqueKV(client *EtcdClient, prefix string, val string, leaseID lease.Le
 
 // putNewKV attempts to create the given key, only succeeding if the key did
 // not yet exist.
-func putNewKV(ec *EtcdClient, key, val string, leaseID lease.LeaseID) (int64, error) {
+func putNewKV(ec *clientv3.Client, key, val string, leaseID lease.LeaseID) (int64, error) {
 	cmp := &pb.Compare{
 		Result:      pb.Compare_EQUAL,
 		Target:      pb.Compare_VERSION,
@@ -110,13 +111,13 @@ func putNewKV(ec *EtcdClient, key, val string, leaseID lease.LeaseID) (int64, er
 }
 
 // NewSequentialKV allocates a new sequential key-value pair at <prefix>/nnnnn
-func NewSequentialKV(client *EtcdClient, prefix, val string) (*RemoteKV, error) {
+func NewSequentialKV(client *clientv3.Client, prefix, val string) (*RemoteKV, error) {
 	return newSequentialKV(client, prefix, val, 0)
 }
 
 // newSequentialKV allocates a new sequential key <prefix>/nnnnn with a given
 // value and lease.  Note: a bookkeeping node __<prefix> is also allocated.
-func newSequentialKV(client *EtcdClient, prefix, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func newSequentialKV(client *clientv3.Client, prefix, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
 	resp, err := NewRange(client, prefix).LastKey()
 	if err != nil {
 		return nil, err

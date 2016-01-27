@@ -16,12 +16,13 @@ package recipe
 
 import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 // STM implements software transactional memory over etcd
 type STM struct {
-	client *EtcdClient
+	client *clientv3.Client
 	// rset holds the read key's value and revision of read
 	rset map[string]*RemoteKV
 	// wset holds the write key and its value
@@ -32,7 +33,7 @@ type STM struct {
 }
 
 // NewSTM creates new transaction loop for a given apply function.
-func NewSTM(client *EtcdClient, apply func(*STM) error) <-chan error {
+func NewSTM(client *clientv3.Client, apply func(*STM) error) <-chan error {
 	s := &STM{client: client, apply: apply}
 	errc := make(chan error, 1)
 	go func() {
