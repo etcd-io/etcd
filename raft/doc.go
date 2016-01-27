@@ -81,6 +81,10 @@ no messages be sent until after the latest HardState has been persisted to disk,
 and all Entries written by any previous Ready batch (Messages may be sent while
 entries from the same batch are being persisted). If any Message has type MsgSnap,
 call Node.ReportSnapshot() after it has been sent (these messages may be large).
+Note: Marshalling messages is not thread-safe; it is important that you
+make sure that no new entries are persisted while marshalling.
+The easiest way to achieve this is to serialise the messages directly inside
+your main raft loop.
 
 3. Apply Snapshot (if any) and CommittedEntries to the state machine.
 If any committed Entry has Type EntryConfChange, call Node.ApplyConfChange()
