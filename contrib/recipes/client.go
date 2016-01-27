@@ -48,11 +48,17 @@ func (ec *EtcdClient) deleteRevKey(key string, rev int64) (bool, error) {
 		Result:      pb.Compare_EQUAL,
 		Target:      pb.Compare_MOD,
 		Key:         []byte(key),
-		ModRevision: rev}
-	req := &pb.RequestUnion{RequestDeleteRange: &pb.DeleteRangeRequest{Key: []byte(key)}}
+		TargetUnion: &pb.Compare_ModRevision{ModRevision: rev},
+	}
+	req := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
+		RequestDeleteRange: &pb.DeleteRangeRequest{Key: []byte(key)}}}
 	txnresp, err := ec.KV.Txn(
 		context.TODO(),
-		&pb.TxnRequest{[]*pb.Compare{cmp}, []*pb.RequestUnion{req}, nil})
+		&pb.TxnRequest{
+			Compare: []*pb.Compare{cmp},
+			Success: []*pb.RequestUnion{req},
+			Failure: nil,
+		})
 	if err != nil {
 		return false, err
 	} else if txnresp.Succeeded == false {

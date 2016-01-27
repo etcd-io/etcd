@@ -34,8 +34,9 @@ package proto_test
 import (
 	"testing"
 
-	pb "./testdata"
 	. "github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto"
+	proto3pb "github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto/proto3_proto"
+	pb "github.com/coreos/etcd/Godeps/_workspace/src/github.com/golang/protobuf/proto/testdata"
 )
 
 // Four identical base messages.
@@ -131,6 +132,8 @@ var EqualTests = []struct {
 		&pb.MyMessage{RepBytes: [][]byte{[]byte("sham"), []byte("wow")}},
 		true,
 	},
+	// In proto3, []byte{} and []byte(nil) are equal.
+	{"proto3 bytes, empty vs nil", &proto3pb.Message{Data: []byte{}}, &proto3pb.Message{Data: nil}, true},
 
 	{"extension vs. no extension", messageWithoutExtension, messageWithExtension1a, false},
 	{"extension vs. same extension", messageWithExtension1a, messageWithExtension1b, true},
@@ -178,6 +181,24 @@ var EqualTests = []struct {
 		"map different value only",
 		&pb.MessageWithMap{NameMapping: map[int32]string{1: "Ken"}},
 		&pb.MessageWithMap{NameMapping: map[int32]string{1: "Rob"}},
+		false,
+	},
+	{
+		"oneof same",
+		&pb.Communique{Union: &pb.Communique_Number{41}},
+		&pb.Communique{Union: &pb.Communique_Number{41}},
+		true,
+	},
+	{
+		"oneof one nil",
+		&pb.Communique{Union: &pb.Communique_Number{41}},
+		&pb.Communique{},
+		false,
+	},
+	{
+		"oneof different",
+		&pb.Communique{Union: &pb.Communique_Number{41}},
+		&pb.Communique{Union: &pb.Communique_Name{"Bobby Tables"}},
 		false,
 	},
 }

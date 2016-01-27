@@ -738,7 +738,7 @@ func NewGRPCClient(m *member) (*grpc.ClientConn, error) {
 		return net.Dial("unix", a)
 	}
 	unixdialer := grpc.WithDialer(f)
-	return grpc.Dial(m.grpcAddr, unixdialer)
+	return grpc.Dial(m.grpcAddr, grpc.WithInsecure(), unixdialer)
 }
 
 // Clone returns a member with the same server configuration. The returned

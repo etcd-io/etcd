@@ -92,29 +92,33 @@ func (sws *serverWatchStream) recvLoop() error {
 			return err
 		}
 
-		switch {
-		case req.CreateRequest != nil:
-			creq := req.CreateRequest
-			var prefix bool
-			toWatch := creq.Key
-			if len(creq.Key) == 0 {
-				toWatch = creq.Prefix
-				prefix = true
-			}
-			id := sws.watchStream.Watch(toWatch, prefix, creq.StartRevision)
-			sws.ctrlStream <- &pb.WatchResponse{
-				Header:  sws.newResponseHeader(sws.watchStream.Rev()),
-				WatchId: int64(id),
-				Created: true,
-			}
-		case req.CancelRequest != nil:
-			id := req.CancelRequest.WatchId
-			err := sws.watchStream.Cancel(storage.WatchID(id))
-			if err == nil {
+		switch uv := req.RequestUnion.(type) {
+		case *pb.WatchRequest_CreateRequest:
+			if uv.CreateRequest != nil {
+				creq := uv.CreateRequest
+				var prefix bool
+				toWatch := creq.Key
+				if len(creq.Key) == 0 {
+					toWatch = creq.Prefix
+					prefix = true
+				}
+				id := sws.watchStream.Watch(toWatch, prefix, creq.StartRevision)
 				sws.ctrlStream <- &pb.WatchResponse{
-					Header:   sws.newResponseHeader(sws.watchStream.Rev()),
-					WatchId:  id,
-					Canceled: true,
+					Header:  sws.newResponseHeader(sws.watchStream.Rev()),
+					WatchId: int64(id),
+					Created: true,
+				}
+			}
+		case *pb.WatchRequest_CancelRequest:
+			if uv.CancelRequest != nil {
+				id := uv.CancelRequest.WatchId
+				err := sws.watchStream.Cancel(storage.WatchID(id))
+				if err == nil {
+					sws.ctrlStream <- &pb.WatchResponse{
+						Header:   sws.newResponseHeader(sws.watchStream.Rev()),
+						WatchId:  id,
+						Canceled: true,
+					}
 				}
 			}
 			// TODO: do we need to return error back to client?

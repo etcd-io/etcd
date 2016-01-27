@@ -16,10 +16,14 @@ It has these top-level messages:
 package proto3_proto
 
 import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+import fmt "fmt"
+import math "math"
 import testdata "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto/testdata"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 type Message_Humour int32
 
@@ -118,5 +122,8 @@ func (m *MessageWithMap) GetByteMapping() map[bool][]byte {
 }
 
 func init() {
+	proto.RegisterType((*Message)(nil), "proto3_proto.Message")
+	proto.RegisterType((*Nested)(nil), "proto3_proto.Nested")
+	proto.RegisterType((*MessageWithMap)(nil), "proto3_proto.MessageWithMap")
 	proto.RegisterEnum("proto3_proto.Message_Humour", Message_Humour_name, Message_Humour_value)
 }

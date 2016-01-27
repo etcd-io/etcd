@@ -86,15 +86,17 @@ func NewUniqueKV(client *EtcdClient, prefix string, val string, leaseID lease.Le
 // not yet exist.
 func putNewKV(ec *EtcdClient, key, val string, leaseID lease.LeaseID) (int64, error) {
 	cmp := &pb.Compare{
-		Result: pb.Compare_EQUAL,
-		Target: pb.Compare_VERSION,
-		Key:    []byte(key)}
-	req := &pb.RequestUnion{
-		RequestPut: &pb.PutRequest{
-			Key:   []byte(key),
-			Value: []byte(val),
-			Lease: int64(leaseID)}}
+		Result:      pb.Compare_EQUAL,
+		Target:      pb.Compare_VERSION,
+		Key:         []byte(key),
+		TargetUnion: &pb.Compare_Version{Version: 0}}
 
+	req := &pb.RequestUnion{
+		Request: &pb.RequestUnion_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key:   []byte(key),
+				Value: []byte(val),
+				Lease: int64(leaseID)}}}
 	txnresp, err := ec.KV.Txn(
 		context.TODO(),
 		&pb.TxnRequest{[]*pb.Compare{cmp}, []*pb.RequestUnion{req}, nil})
@@ -143,17 +145,23 @@ func newSequentialKV(client *EtcdClient, prefix, val string, leaseID lease.Lease
 		Target: pb.Compare_MOD,
 		Key:    []byte(baseKey),
 		// current revision might contain modification so +1
-		ModRevision: resp.Header.Revision + 1,
+		TargetUnion: &pb.Compare_ModRevision{ModRevision: resp.Header.Revision + 1},
 	}
-	prPrefix := &pb.PutRequest{Key: baseKey, Lease: int64(leaseID)}
-	reqPrefix := &pb.RequestUnion{RequestPut: prPrefix}
 
-	prNewKey := &pb.PutRequest{
-		Key:   []byte(newKey),
-		Value: []byte(val),
-		Lease: int64(leaseID),
-	}
-	reqNewKey := &pb.RequestUnion{RequestPut: prNewKey}
+	reqPrefix := &pb.RequestUnion{
+		Request: &pb.RequestUnion_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key:   baseKey,
+				Lease: int64(leaseID),
+			}}}
+
+	reqNewKey := &pb.RequestUnion{
+		Request: &pb.RequestUnion_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key:   []byte(newKey),
+				Value: []byte(val),
+				Lease: int64(leaseID),
+			}}}
 
 	txnresp, err := client.KV.Txn(
 		context.TODO(),

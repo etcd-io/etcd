@@ -109,8 +109,9 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	go func() {
 		for i := 0; i < watchTotal; i++ {
 			requests <- etcdserverpb.WatchRequest{
-				CreateRequest: &etcdserverpb.WatchCreateRequest{Key: watched[i%(len(watched))]},
-			}
+				RequestUnion: &etcdserverpb.WatchRequest_CreateRequest{
+					CreateRequest: &etcdserverpb.WatchCreateRequest{
+						Key: watched[i%(len(watched))]}}}
 		}
 		close(requests)
 	}()
