@@ -52,6 +52,7 @@ func init() {
 		command.NewWatchCommand(),
 		command.NewVersionCommand(),
 		command.NewLeaseCommand(),
+		command.NewMemberCommand(),
 	)
 }
 

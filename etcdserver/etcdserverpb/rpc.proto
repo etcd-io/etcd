@@ -58,17 +58,17 @@ service Lease {
 }
 
 service Cluster {
-  // AddMember adds a member into the cluster.
-  rpc AddMember(AddMemberRequest) returns (AddMemberResponse) {}
+  // MemberAdd adds a member into the cluster.
+  rpc MemberAdd(MemberAddRequest) returns (MemberAddResponse) {}
 
-  // RemoveMember removes an existing member from the cluster.
-  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse) {}
+  // MemberRemove removes an existing member from the cluster.
+  rpc MemberRemove(MemberRemoveRequest) returns (MemberRemoveResponse) {}
 
-  // UpdateMember updates the member configuration.
-  rpc UpdateMember(UpdateMemberRequest) returns (UpdateMemberResponse) {}
+  // MemberUpdate updates the member configuration.
+  rpc MemberUpdate(MemberUpdateRequest) returns (MemberUpdateResponse) {}
 
-  // ListMember lists all the members in the cluster.
-  rpc ListMember(ListMemberRequest) returns (ListMemberResponse) {}
+  // MemberList lists all the members in the cluster.
+  rpc MemberList(MemberListRequest) returns (MemberListResponse) {}
 }
 
 message ResponseHeader {
@@ -311,42 +311,42 @@ message Member {
   uint64 ID = 1;
   // If the member is not started, name will be an empty string.
   string name = 2;
-  repeated string peer_URLs = 3;
+  repeated string peerURLs = 3;
   // If the member is not started, client_URLs will be an zero length
   // string array.
-  repeated string client_URLs = 4;
+  repeated string clientURLs = 4;
 }
 
-message AddMemberRequest {
-  repeated string peer_URLs = 1;
+message MemberAddRequest {
+  repeated string peerURLs = 1;
 }
 
-message AddMemberResponse {
+message MemberAddResponse {
   ResponseHeader header = 1;
   Member member = 2;
 }
 
-message RemoveMemberRequest {
+message MemberRemoveRequest {
   uint64 ID = 1;
 }
 
-message RemoveMemberResponse {
+message MemberRemoveResponse {
   ResponseHeader header = 1;
 }
 
-message UpdateMemberRequest {
+message MemberUpdateRequest {
   uint64 ID = 1;
-  repeated string peer_URLs = 2;
+  repeated string peerURLs = 2;
 }
 
-message UpdateMemberResponse{
+message MemberUpdateResponse{
   ResponseHeader header = 1;
 }
 
-message ListMemberRequest {
+message MemberListRequest {
 }
 
-message ListMemberResponse {
+message MemberListResponse {
   ResponseHeader header = 1;
   repeated Member members = 2;
 }

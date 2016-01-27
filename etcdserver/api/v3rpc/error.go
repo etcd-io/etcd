@@ -26,4 +26,9 @@ var (
 	ErrCompacted     = grpc.Errorf(codes.OutOfRange, storage.ErrCompacted.Error())
 	ErrFutureRev     = grpc.Errorf(codes.OutOfRange, storage.ErrFutureRev.Error())
 	ErrLeaseNotFound = grpc.Errorf(codes.NotFound, "requested lease not found")
+
+	ErrMemberExist    = grpc.Errorf(codes.FailedPrecondition, "member ID already exist")
+	ErrPeerURLExist   = grpc.Errorf(codes.FailedPrecondition, "Peer URLs already exists")
+	ErrMemberBadURLs  = grpc.Errorf(codes.InvalidArgument, "given member URLs are invalid")
+	ErrMemberNotFound = grpc.Errorf(codes.NotFound, "member not found")
 )
