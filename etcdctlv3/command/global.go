@@ -14,8 +14,25 @@
 
 package command
 
+import (
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/etcd/clientv3"
+)
+
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
 	Endpoints string
+}
+
+func mustClient(cmd *cobra.Command) *clientv3.Client {
+	endpoint, err := cmd.Flags().GetString("endpoint")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	client, err := clientv3.NewFromURL(endpoint)
+	if err != nil {
+		ExitWithError(ExitBadConnection, err)
+	}
+	return client
 }

@@ -24,10 +24,10 @@ import (
 
 // TestSTMConflict tests that conflicts are retried.
 func TestSTMConflict(t *testing.T) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
 
-	etcdc := recipe.NewEtcdClient(clus.RandConn())
+	etcdc := clus.RandClient()
 	keys := make([]*recipe.RemoteKV, 5)
 	for i := 0; i < len(keys); i++ {
 		rk, err := recipe.NewKV(etcdc, fmt.Sprintf("foo-%d", i), "100", 0)
@@ -39,7 +39,7 @@ func TestSTMConflict(t *testing.T) {
 
 	errc := make([]<-chan error, len(keys))
 	for i, rk := range keys {
-		curEtcdc := recipe.NewEtcdClient(clus.RandConn())
+		curEtcdc := clus.RandClient()
 		srcKey := rk.Key()
 		applyf := func(stm *recipe.STM) error {
 			src, err := stm.Get(srcKey)
@@ -89,10 +89,10 @@ func TestSTMConflict(t *testing.T) {
 
 // TestSTMPut confirms a STM put on a new key is visible after commit.
 func TestSTMPutNewKey(t *testing.T) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 1})
+	clus := newClusterV3(t, &clusterConfig{size: 1})
 	defer clus.Terminate(t)
 
-	etcdc := recipe.NewEtcdClient(clus.RandConn())
+	etcdc := clus.RandClient()
 	applyf := func(stm *recipe.STM) error {
 		stm.Put("foo", "bar")
 		return nil
@@ -113,10 +113,10 @@ func TestSTMPutNewKey(t *testing.T) {
 
 // TestSTMAbort tests that an aborted txn does not modify any keys.
 func TestSTMAbort(t *testing.T) {
-	clus := newClusterGRPC(t, &clusterConfig{size: 1})
+	clus := newClusterV3(t, &clusterConfig{size: 1})
 	defer clus.Terminate(t)
 
-	etcdc := recipe.NewEtcdClient(clus.RandConn())
+	etcdc := clus.RandClient()
 	applyf := func(stm *recipe.STM) error {
 		stm.Put("foo", "baz")
 		stm.Abort()

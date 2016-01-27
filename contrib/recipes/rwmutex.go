@@ -15,16 +15,17 @@
 package recipe
 
 import (
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
 type RWMutex struct {
-	client *EtcdClient
+	client *clientv3.Client
 	key    string
 	myKey  *RemoteKV
 }
 
-func NewRWMutex(client *EtcdClient, key string) *RWMutex {
+func NewRWMutex(client *clientv3.Client, key string) *RWMutex {
 	return &RWMutex{client, key, nil}
 }
 

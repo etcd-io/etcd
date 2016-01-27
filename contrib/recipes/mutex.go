@@ -17,17 +17,18 @@ package recipe
 import (
 	"sync"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
 // Mutex implements the sync Locker interface with etcd
 type Mutex struct {
-	client *EtcdClient
+	client *clientv3.Client
 	key    string
 	myKey  *RemoteKV
 }
 
-func NewMutex(client *EtcdClient, key string) *Mutex {
+func NewMutex(client *clientv3.Client, key string) *Mutex {
 	return &Mutex{client, key, nil}
 }
 
@@ -80,6 +81,6 @@ func (lm *lockerMutex) Unlock() {
 	}
 }
 
-func NewLocker(client *EtcdClient, key string) sync.Locker {
+func NewLocker(client *clientv3.Client, key string) sync.Locker {
 	return &lockerMutex{NewMutex(client, key)}
 }

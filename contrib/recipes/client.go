@@ -18,7 +18,6 @@ import (
 	"errors"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	spb "github.com/coreos/etcd/storage/storagepb"
 )
@@ -28,22 +27,8 @@ var (
 	ErrWaitMismatch = errors.New("unexpected wait result")
 )
 
-type EtcdClient struct {
-	conn  *grpc.ClientConn
-	KV    pb.KVClient
-	Lease pb.LeaseClient
-	Watch pb.WatchClient
-}
-
-func NewEtcdClient(conn *grpc.ClientConn) *EtcdClient {
-	kv := pb.NewKVClient(conn)
-	lease := pb.NewLeaseClient(conn)
-	watch := pb.NewWatchClient(conn)
-	return &EtcdClient{conn, kv, lease, watch}
-}
-
 // deleteRevKey deletes a key by revision, returning false if key is missing
-func (ec *EtcdClient) deleteRevKey(key string, rev int64) (bool, error) {
+func deleteRevKey(kvc pb.KVClient, key string, rev int64) (bool, error) {
 	cmp := &pb.Compare{
 		Result:      pb.Compare_EQUAL,
 		Target:      pb.Compare_MOD,
@@ -52,7 +37,7 @@ func (ec *EtcdClient) deleteRevKey(key string, rev int64) (bool, error) {
 	}
 	req := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
 		RequestDeleteRange: &pb.DeleteRangeRequest{Key: []byte(key)}}}
-	txnresp, err := ec.KV.Txn(
+	txnresp, err := kvc.Txn(
 		context.TODO(),
 		&pb.TxnRequest{
 			Compare: []*pb.Compare{cmp},
@@ -67,9 +52,9 @@ func (ec *EtcdClient) deleteRevKey(key string, rev int64) (bool, error) {
 	return true, nil
 }
 
-func (ec *EtcdClient) claimFirstKey(kvs []*spb.KeyValue) (*spb.KeyValue, error) {
+func claimFirstKey(kvc pb.KVClient, kvs []*spb.KeyValue) (*spb.KeyValue, error) {
 	for _, kv := range kvs {
-		ok, err := ec.deleteRevKey(string(kv.Key), kv.ModRevision)
+		ok, err := deleteRevKey(kvc, string(kv.Key), kv.ModRevision)
 		if err != nil {
 			return nil, err
 		} else if ok {

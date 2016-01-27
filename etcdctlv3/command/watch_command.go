@@ -24,7 +24,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -39,18 +38,7 @@ func NewWatchCommand() *cobra.Command {
 
 // watchCommandFunc executes the "watch" command.
 func watchCommandFunc(cmd *cobra.Command, args []string) {
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitInvalidInput, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-
-	wAPI := pb.NewWatchClient(conn)
-	wStream, err := wAPI.Watch(context.TODO())
+	wStream, err := mustClient(cmd).Watch.Watch(context.TODO())
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)
 	}

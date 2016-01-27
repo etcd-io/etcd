@@ -16,6 +16,7 @@ package recipe
 
 import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/storage/storagepb"
 )
@@ -23,11 +24,11 @@ import (
 // Barrier creates a key in etcd to block processes, then deletes the key to
 // release all blocked processes.
 type Barrier struct {
-	client *EtcdClient
+	client *clientv3.Client
 	key    string
 }
 
-func NewBarrier(client *EtcdClient, key string) *Barrier {
+func NewBarrier(client *clientv3.Client, key string) *Barrier {
 	return &Barrier{client, key}
 }
 

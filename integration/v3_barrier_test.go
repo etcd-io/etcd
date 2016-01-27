@@ -17,27 +17,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/contrib/recipes"
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
 func TestBarrierSingleNode(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
-	testBarrier(t, 5, func() *grpc.ClientConn { return clus.conns[0] })
+	testBarrier(t, 5, func() *clientv3.Client { return clus.clients[0] })
 }
 
 func TestBarrierMultiNode(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterGRPC(t, &clusterConfig{size: 3})
+	clus := newClusterV3(t, &clusterConfig{size: 3})
 	defer clus.Terminate(t)
-	testBarrier(t, 5, func() *grpc.ClientConn { return clus.RandConn() })
+	testBarrier(t, 5, func() *clientv3.Client { return clus.RandClient() })
 }
 
-func testBarrier(t *testing.T, waiters int, chooseConn func() *grpc.ClientConn) {
-	b := recipe.NewBarrier(recipe.NewEtcdClient(chooseConn()), "test-barrier")
+func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
+	b := recipe.NewBarrier(chooseClient(), "test-barrier")
 	if err := b.Hold(); err != nil {
 		t.Fatalf("could not hold barrier (%v)", err)
 	}
@@ -48,7 +48,7 @@ func testBarrier(t *testing.T, waiters int, chooseConn func() *grpc.ClientConn) 
 	donec := make(chan struct{})
 	for i := 0; i < waiters; i++ {
 		go func() {
-			br := recipe.NewBarrier(recipe.NewEtcdClient(chooseConn()), "test-barrier")
+			br := recipe.NewBarrier(chooseClient(), "test-barrier")
 			if err := br.Wait(); err != nil {
 				t.Fatalf("could not wait on barrier (%v)", err)
 			}

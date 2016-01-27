@@ -17,17 +17,18 @@ package recipe
 import (
 	"fmt"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
 // PriorityQueue implements a multi-reader, multi-writer distributed queue.
 type PriorityQueue struct {
-	client *EtcdClient
+	client *clientv3.Client
 	key    string
 }
 
 // NewPriorityQueue creates an etcd priority queue.
-func NewPriorityQueue(client *EtcdClient, key string) *PriorityQueue {
+func NewPriorityQueue(client *clientv3.Client, key string) *PriorityQueue {
 	return &PriorityQueue{client, key + "/"}
 }
 
@@ -47,7 +48,7 @@ func (q *PriorityQueue) Dequeue() (string, error) {
 		return "", err
 	}
 
-	kv, err := q.client.claimFirstKey(resp.Kvs)
+	kv, err := claimFirstKey(q.client.KV, resp.Kvs)
 	if err != nil {
 		return "", err
 	} else if kv != nil {
@@ -67,7 +68,7 @@ func (q *PriorityQueue) Dequeue() (string, error) {
 		return "", err
 	}
 
-	ok, err := q.client.deleteRevKey(string(ev.Kv.Key), ev.Kv.ModRevision)
+	ok, err := deleteRevKey(q.client.KV, string(ev.Kv.Key), ev.Kv.ModRevision)
 	if err != nil {
 		return "", err
 	} else if !ok {

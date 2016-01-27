@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
@@ -729,8 +730,8 @@ func (m *member) listenGRPC() error {
 	return nil
 }
 
-// newGrpcClient creates a new grpc client connection to the member
-func NewGRPCClient(m *member) (*grpc.ClientConn, error) {
+// NewClientV3 creates a new grpc client connection to the member
+func NewClientV3(m *member) (*clientv3.Client, error) {
 	if m.grpcAddr == "" {
 		return nil, fmt.Errorf("member not configured for grpc")
 	}
@@ -738,7 +739,11 @@ func NewGRPCClient(m *member) (*grpc.ClientConn, error) {
 		return net.Dial("unix", a)
 	}
 	unixdialer := grpc.WithDialer(f)
-	return grpc.Dial(m.grpcAddr, grpc.WithInsecure(), unixdialer)
+	conn, err := grpc.Dial(m.grpcAddr, grpc.WithInsecure(), unixdialer)
+	if err != nil {
+		return nil, err
+	}
+	return clientv3.NewFromConn(conn), nil
 }
 
 // Clone returns a member with the same server configuration. The returned

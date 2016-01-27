@@ -16,6 +16,7 @@ package recipe
 
 import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/storage"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -30,15 +31,15 @@ type Watcher struct {
 	lastErr error
 }
 
-func NewWatcher(c *EtcdClient, key string, rev int64) (*Watcher, error) {
+func NewWatcher(c *clientv3.Client, key string, rev int64) (*Watcher, error) {
 	return newWatcher(c, key, rev, false)
 }
 
-func NewPrefixWatcher(c *EtcdClient, prefix string, rev int64) (*Watcher, error) {
+func NewPrefixWatcher(c *clientv3.Client, prefix string, rev int64) (*Watcher, error) {
 	return newWatcher(c, prefix, rev, true)
 }
 
-func newWatcher(c *EtcdClient, key string, rev int64, isPrefix bool) (*Watcher, error) {
+func newWatcher(c *clientv3.Client, key string, rev int64, isPrefix bool) (*Watcher, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	w, err := c.Watch.Watch(ctx)
 	if err != nil {
@@ -134,7 +135,7 @@ func (w *Watcher) waitEvents(evs []storagepb.Event_EventType) (*storagepb.Event,
 }
 
 // WaitEvents waits on a key until it observes the given events and returns the final one.
-func WaitEvents(c *EtcdClient, key string, rev int64, evs []storagepb.Event_EventType) (*storagepb.Event, error) {
+func WaitEvents(c *clientv3.Client, key string, rev int64, evs []storagepb.Event_EventType) (*storagepb.Event, error) {
 	w, err := NewWatcher(c, key, rev)
 	if err != nil {
 		return nil, err
@@ -143,7 +144,7 @@ func WaitEvents(c *EtcdClient, key string, rev int64, evs []storagepb.Event_Even
 	return w.waitEvents(evs)
 }
 
-func WaitPrefixEvents(c *EtcdClient, prefix string, rev int64, evs []storagepb.Event_EventType) (*storagepb.Event, error) {
+func WaitPrefixEvents(c *clientv3.Client, prefix string, rev int64, evs []storagepb.Event_EventType) (*storagepb.Event, error) {
 	w, err := NewPrefixWatcher(c, prefix, rev)
 	if err != nil {
 		return nil, err

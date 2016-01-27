@@ -16,6 +16,7 @@ package recipe
 
 import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -26,11 +27,11 @@ type Range struct {
 	keyEnd []byte
 }
 
-func NewRange(client *EtcdClient, key string) *Range {
+func NewRange(client *clientv3.Client, key string) *Range {
 	return NewRangeRev(client, key, 0)
 }
 
-func NewRangeRev(client *EtcdClient, key string, rev int64) *Range {
+func NewRangeRev(client *clientv3.Client, key string, rev int64) *Range {
 	return &Range{client.KV, []byte(key), rev, prefixEnd(key)}
 }
 
