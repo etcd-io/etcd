@@ -17,7 +17,6 @@ package command
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -105,16 +104,8 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 		cmd.Env = environResponse(resp, os.Environ())
 
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, err.Error())
-			os.Exit(1)
-		}
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, err.Error())
-			os.Exit(1)
-		}
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
 		go func() {
 			err := cmd.Start()
@@ -122,8 +113,6 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 				fmt.Fprintf(os.Stderr, err.Error())
 				os.Exit(1)
 			}
-			go io.Copy(os.Stdout, stdout)
-			go io.Copy(os.Stderr, stderr)
 			cmd.Wait()
 		}()
 	}
