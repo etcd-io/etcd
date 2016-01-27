@@ -857,7 +857,7 @@ func (r *raft) loadState(state pb.HardState) {
 	r.Vote = state.Vote
 }
 
-// isElectionTimeout returns true if r.elapsed is greater than the
+// isElectionTimeout returns true if r.electionElapsed is greater than the
 // randomized election timeout in (electiontimeout, 2 * electiontimeout - 1).
 // Otherwise, it returns false.
 func (r *raft) isElectionTimeout() bool {
