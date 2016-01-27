@@ -21,7 +21,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -109,18 +108,8 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 
 	urls := strings.Split(memberPeerURLs, ",")
 
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	mc := pb.NewClusterClient(conn)
-
-	resp, err := mc.MemberAdd(context.TODO(), &pb.MemberAddRequest{PeerURLs: urls})
+	req := &pb.MemberAddRequest{PeerURLs: urls}
+	resp, err := mustClient(cmd).Cluster.MemberAdd(context.TODO(), req)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -139,18 +128,8 @@ func memberRemoveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad member ID arg (%v), expecting ID in Hex", err))
 	}
 
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	mc := pb.NewClusterClient(conn)
-
-	resp, err := mc.MemberRemove(context.TODO(), &pb.MemberRemoveRequest{ID: uint64(id)})
+	req := &pb.MemberRemoveRequest{ID: uint64(id)}
+	resp, err := mustClient(cmd).Cluster.MemberRemove(context.TODO(), req)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -175,18 +154,8 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 
 	urls := strings.Split(memberPeerURLs, ",")
 
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	mc := pb.NewClusterClient(conn)
-
-	resp, err := mc.MemberUpdate(context.TODO(), &pb.MemberUpdateRequest{ID: uint64(id), PeerURLs: urls})
+	req := &pb.MemberUpdateRequest{ID: uint64(id), PeerURLs: urls}
+	resp, err := mustClient(cmd).Cluster.MemberUpdate(context.TODO(), req)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -196,18 +165,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 
 // memberListCommandFunc executes the "member list" command.
 func memberListCommandFunc(cmd *cobra.Command, args []string) {
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	mc := pb.NewClusterClient(conn)
-
-	resp, err := mc.MemberList(context.TODO(), &pb.MemberListRequest{})
+	resp, err := mustClient(cmd).Cluster.MemberList(context.TODO(), &pb.MemberListRequest{})
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

@@ -20,7 +20,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -55,11 +54,6 @@ func rangeCommandFunc(cmd *cobra.Command, args []string) {
 		rangeEnd = []byte(args[1])
 	}
 
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-
 	sortByOrder := pb.RangeRequest_NONE
 	sortOrder := strings.ToUpper(rangeSortOrder)
 	switch {
@@ -92,12 +86,6 @@ func rangeCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadFeature, fmt.Errorf("bad sort target %v", rangeSortTarget))
 	}
 
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	kv := pb.NewKVClient(conn)
 	req := &pb.RangeRequest{
 		Key:        key,
 		RangeEnd:   rangeEnd,
@@ -105,7 +93,10 @@ func rangeCommandFunc(cmd *cobra.Command, args []string) {
 		SortTarget: sortByTarget,
 		Limit:      int64(rangeLimit),
 	}
-	resp, err := kv.Range(context.Background(), req)
+	resp, err := mustClient(cmd).KV.Range(context.Background(), req)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
 	for _, kv := range resp.Kvs {
 		fmt.Printf("%s %s\n", string(kv.Key), string(kv.Value))
 	}

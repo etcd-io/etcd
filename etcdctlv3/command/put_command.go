@@ -20,7 +20,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -62,18 +61,7 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 	key := []byte(args[0])
 	value := []byte(args[1])
 
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	kv := pb.NewKVClient(conn)
 	req := &pb.PutRequest{Key: key, Value: value, Lease: id}
-
-	kv.Put(context.Background(), req)
+	mustClient(cmd).KV.Put(context.Background(), req)
 	fmt.Printf("%s %s\n", key, value)
 }

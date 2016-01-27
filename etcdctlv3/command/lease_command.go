@@ -23,7 +23,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -64,19 +63,8 @@ func leaseCreateCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad TTL (%v)", err))
 	}
 
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	lease := pb.NewLeaseClient(conn)
-
 	req := &pb.LeaseCreateRequest{TTL: ttl}
-	resp, err := lease.LeaseCreate(context.Background(), req)
+	resp, err := mustClient(cmd).Lease.LeaseCreate(context.Background(), req)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create lease (%v)\n", err)
 		return
@@ -107,19 +95,8 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
 
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	lease := pb.NewLeaseClient(conn)
-
 	req := &pb.LeaseRevokeRequest{ID: id}
-	_, err = lease.LeaseRevoke(context.Background(), req)
+	_, err = mustClient(cmd).Lease.LeaseRevoke(context.Background(), req)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to revoke lease (%v)\n", err)
 		return
@@ -150,17 +127,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
 
-	endpoint, err := cmd.Flags().GetString("endpoint")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-	lease := pb.NewLeaseClient(conn)
-	kStream, err := lease.LeaseKeepAlive(context.TODO())
+	kStream, err := mustClient(cmd).Lease.LeaseKeepAlive(context.TODO())
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)
 	}
