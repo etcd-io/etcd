@@ -75,16 +75,25 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 		var r *pb.WatchRequest
 		switch segs[0] {
 		case "watch":
-			r = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Key: []byte(segs[1])}}
+			r = &pb.WatchRequest{
+				RequestUnion: &pb.WatchRequest_CreateRequest{
+					CreateRequest: &pb.WatchCreateRequest{
+						Key: []byte(segs[1])}}}
 		case "watchprefix":
-			r = &pb.WatchRequest{CreateRequest: &pb.WatchCreateRequest{Prefix: []byte(segs[1])}}
+			r = &pb.WatchRequest{
+				RequestUnion: &pb.WatchRequest_CreateRequest{
+					CreateRequest: &pb.WatchCreateRequest{
+						Prefix: []byte(segs[1])}}}
 		case "cancel":
 			id, perr := strconv.ParseInt(segs[1], 10, 64)
 			if perr != nil {
 				fmt.Fprintf(os.Stderr, "Invalid cancel ID (%v)\n", perr)
 				continue
 			}
-			r = &pb.WatchRequest{CancelRequest: &pb.WatchCancelRequest{WatchId: id}}
+			r = &pb.WatchRequest{
+				RequestUnion: &pb.WatchRequest_CancelRequest{
+					CancelRequest: &pb.WatchCancelRequest{
+						WatchId: id}}}
 		default:
 			fmt.Fprintf(os.Stderr, "Invalid watch request type: use watch, watchprefix or cancel\n")
 			continue
