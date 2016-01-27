@@ -33,7 +33,7 @@ func mustCreateConn() *grpc.ClientConn {
 	eps := strings.Split(endpoints, ",")
 	endpoint := eps[dialTotal%len(eps)]
 	dialTotal++
-	conn, err := grpc.Dial(endpoint)
+	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dial error: %v\n", err)
 		os.Exit(1)
