@@ -978,119 +978,119 @@ func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 type Member struct {
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	// If the member is not started, name will be an empty string.
-	Name      string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Peer_URLs []string `protobuf:"bytes,3,rep,name=peer_URLs" json:"peer_URLs,omitempty"`
+	Name     string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	PeerURLs []string `protobuf:"bytes,3,rep,name=peerURLs" json:"peerURLs,omitempty"`
 	// If the member is not started, client_URLs will be an zero length
 	// string array.
-	Client_URLs []string `protobuf:"bytes,4,rep,name=client_URLs" json:"client_URLs,omitempty"`
+	ClientURLs []string `protobuf:"bytes,4,rep,name=clientURLs" json:"clientURLs,omitempty"`
 }
 
 func (m *Member) Reset()         { *m = Member{} }
 func (m *Member) String() string { return proto.CompactTextString(m) }
 func (*Member) ProtoMessage()    {}
 
-type AddMemberRequest struct {
-	Peer_URLs []string `protobuf:"bytes,1,rep,name=peer_URLs" json:"peer_URLs,omitempty"`
+type MemberAddRequest struct {
+	PeerURLs []string `protobuf:"bytes,1,rep,name=peerURLs" json:"peerURLs,omitempty"`
 }
 
-func (m *AddMemberRequest) Reset()         { *m = AddMemberRequest{} }
-func (m *AddMemberRequest) String() string { return proto.CompactTextString(m) }
-func (*AddMemberRequest) ProtoMessage()    {}
+func (m *MemberAddRequest) Reset()         { *m = MemberAddRequest{} }
+func (m *MemberAddRequest) String() string { return proto.CompactTextString(m) }
+func (*MemberAddRequest) ProtoMessage()    {}
 
-type AddMemberResponse struct {
+type MemberAddResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	Member *Member         `protobuf:"bytes,2,opt,name=member" json:"member,omitempty"`
 }
 
-func (m *AddMemberResponse) Reset()         { *m = AddMemberResponse{} }
-func (m *AddMemberResponse) String() string { return proto.CompactTextString(m) }
-func (*AddMemberResponse) ProtoMessage()    {}
+func (m *MemberAddResponse) Reset()         { *m = MemberAddResponse{} }
+func (m *MemberAddResponse) String() string { return proto.CompactTextString(m) }
+func (*MemberAddResponse) ProtoMessage()    {}
 
-func (m *AddMemberResponse) GetHeader() *ResponseHeader {
+func (m *MemberAddResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
 	}
 	return nil
 }
 
-func (m *AddMemberResponse) GetMember() *Member {
+func (m *MemberAddResponse) GetMember() *Member {
 	if m != nil {
 		return m.Member
 	}
 	return nil
 }
 
-type RemoveMemberRequest struct {
+type MemberRemoveRequest struct {
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
-func (m *RemoveMemberRequest) Reset()         { *m = RemoveMemberRequest{} }
-func (m *RemoveMemberRequest) String() string { return proto.CompactTextString(m) }
-func (*RemoveMemberRequest) ProtoMessage()    {}
+func (m *MemberRemoveRequest) Reset()         { *m = MemberRemoveRequest{} }
+func (m *MemberRemoveRequest) String() string { return proto.CompactTextString(m) }
+func (*MemberRemoveRequest) ProtoMessage()    {}
 
-type RemoveMemberResponse struct {
+type MemberRemoveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *RemoveMemberResponse) Reset()         { *m = RemoveMemberResponse{} }
-func (m *RemoveMemberResponse) String() string { return proto.CompactTextString(m) }
-func (*RemoveMemberResponse) ProtoMessage()    {}
+func (m *MemberRemoveResponse) Reset()         { *m = MemberRemoveResponse{} }
+func (m *MemberRemoveResponse) String() string { return proto.CompactTextString(m) }
+func (*MemberRemoveResponse) ProtoMessage()    {}
 
-func (m *RemoveMemberResponse) GetHeader() *ResponseHeader {
+func (m *MemberRemoveResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
 	}
 	return nil
 }
 
-type UpdateMemberRequest struct {
-	ID        uint64   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
-	Peer_URLs []string `protobuf:"bytes,2,rep,name=peer_URLs" json:"peer_URLs,omitempty"`
+type MemberUpdateRequest struct {
+	ID       uint64   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	PeerURLs []string `protobuf:"bytes,2,rep,name=peerURLs" json:"peerURLs,omitempty"`
 }
 
-func (m *UpdateMemberRequest) Reset()         { *m = UpdateMemberRequest{} }
-func (m *UpdateMemberRequest) String() string { return proto.CompactTextString(m) }
-func (*UpdateMemberRequest) ProtoMessage()    {}
+func (m *MemberUpdateRequest) Reset()         { *m = MemberUpdateRequest{} }
+func (m *MemberUpdateRequest) String() string { return proto.CompactTextString(m) }
+func (*MemberUpdateRequest) ProtoMessage()    {}
 
-type UpdateMemberResponse struct {
+type MemberUpdateResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *UpdateMemberResponse) Reset()         { *m = UpdateMemberResponse{} }
-func (m *UpdateMemberResponse) String() string { return proto.CompactTextString(m) }
-func (*UpdateMemberResponse) ProtoMessage()    {}
+func (m *MemberUpdateResponse) Reset()         { *m = MemberUpdateResponse{} }
+func (m *MemberUpdateResponse) String() string { return proto.CompactTextString(m) }
+func (*MemberUpdateResponse) ProtoMessage()    {}
 
-func (m *UpdateMemberResponse) GetHeader() *ResponseHeader {
+func (m *MemberUpdateResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
 	}
 	return nil
 }
 
-type ListMemberRequest struct {
+type MemberListRequest struct {
 }
 
-func (m *ListMemberRequest) Reset()         { *m = ListMemberRequest{} }
-func (m *ListMemberRequest) String() string { return proto.CompactTextString(m) }
-func (*ListMemberRequest) ProtoMessage()    {}
+func (m *MemberListRequest) Reset()         { *m = MemberListRequest{} }
+func (m *MemberListRequest) String() string { return proto.CompactTextString(m) }
+func (*MemberListRequest) ProtoMessage()    {}
 
-type ListMemberResponse struct {
+type MemberListResponse struct {
 	Header  *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	Members []*Member       `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
 }
 
-func (m *ListMemberResponse) Reset()         { *m = ListMemberResponse{} }
-func (m *ListMemberResponse) String() string { return proto.CompactTextString(m) }
-func (*ListMemberResponse) ProtoMessage()    {}
+func (m *MemberListResponse) Reset()         { *m = MemberListResponse{} }
+func (m *MemberListResponse) String() string { return proto.CompactTextString(m) }
+func (*MemberListResponse) ProtoMessage()    {}
 
-func (m *ListMemberResponse) GetHeader() *ResponseHeader {
+func (m *MemberListResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
 	}
 	return nil
 }
 
-func (m *ListMemberResponse) GetMembers() []*Member {
+func (m *MemberListResponse) GetMembers() []*Member {
 	if m != nil {
 		return m.Members
 	}
@@ -1123,14 +1123,14 @@ func init() {
 	proto.RegisterType((*LeaseKeepAliveRequest)(nil), "etcdserverpb.LeaseKeepAliveRequest")
 	proto.RegisterType((*LeaseKeepAliveResponse)(nil), "etcdserverpb.LeaseKeepAliveResponse")
 	proto.RegisterType((*Member)(nil), "etcdserverpb.Member")
-	proto.RegisterType((*AddMemberRequest)(nil), "etcdserverpb.AddMemberRequest")
-	proto.RegisterType((*AddMemberResponse)(nil), "etcdserverpb.AddMemberResponse")
-	proto.RegisterType((*RemoveMemberRequest)(nil), "etcdserverpb.RemoveMemberRequest")
-	proto.RegisterType((*RemoveMemberResponse)(nil), "etcdserverpb.RemoveMemberResponse")
-	proto.RegisterType((*UpdateMemberRequest)(nil), "etcdserverpb.UpdateMemberRequest")
-	proto.RegisterType((*UpdateMemberResponse)(nil), "etcdserverpb.UpdateMemberResponse")
-	proto.RegisterType((*ListMemberRequest)(nil), "etcdserverpb.ListMemberRequest")
-	proto.RegisterType((*ListMemberResponse)(nil), "etcdserverpb.ListMemberResponse")
+	proto.RegisterType((*MemberAddRequest)(nil), "etcdserverpb.MemberAddRequest")
+	proto.RegisterType((*MemberAddResponse)(nil), "etcdserverpb.MemberAddResponse")
+	proto.RegisterType((*MemberRemoveRequest)(nil), "etcdserverpb.MemberRemoveRequest")
+	proto.RegisterType((*MemberRemoveResponse)(nil), "etcdserverpb.MemberRemoveResponse")
+	proto.RegisterType((*MemberUpdateRequest)(nil), "etcdserverpb.MemberUpdateRequest")
+	proto.RegisterType((*MemberUpdateResponse)(nil), "etcdserverpb.MemberUpdateResponse")
+	proto.RegisterType((*MemberListRequest)(nil), "etcdserverpb.MemberListRequest")
+	proto.RegisterType((*MemberListResponse)(nil), "etcdserverpb.MemberListResponse")
 	proto.RegisterEnum("etcdserverpb.RangeRequest_SortOrder", RangeRequest_SortOrder_name, RangeRequest_SortOrder_value)
 	proto.RegisterEnum("etcdserverpb.RangeRequest_SortTarget", RangeRequest_SortTarget_name, RangeRequest_SortTarget_value)
 	proto.RegisterEnum("etcdserverpb.Compare_CompareResult", Compare_CompareResult_name, Compare_CompareResult_value)
@@ -1600,14 +1600,14 @@ var _Lease_serviceDesc = grpc.ServiceDesc{
 // Client API for Cluster service
 
 type ClusterClient interface {
-	// AddMember adds a member into the cluster.
-	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error)
-	// RemoveMember removes an existing member from the cluster.
-	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
-	// UpdateMember updates the member configuration.
-	UpdateMember(ctx context.Context, in *UpdateMemberRequest, opts ...grpc.CallOption) (*UpdateMemberResponse, error)
-	// ListMember lists all the members in the cluster.
-	ListMember(ctx context.Context, in *ListMemberRequest, opts ...grpc.CallOption) (*ListMemberResponse, error)
+	// MemberAdd adds a member into the cluster.
+	MemberAdd(ctx context.Context, in *MemberAddRequest, opts ...grpc.CallOption) (*MemberAddResponse, error)
+	// MemberRemove removes an existing member from the cluster.
+	MemberRemove(ctx context.Context, in *MemberRemoveRequest, opts ...grpc.CallOption) (*MemberRemoveResponse, error)
+	// MemberUpdate updates the member configuration.
+	MemberUpdate(ctx context.Context, in *MemberUpdateRequest, opts ...grpc.CallOption) (*MemberUpdateResponse, error)
+	// MemberList lists all the members in the cluster.
+	MemberList(ctx context.Context, in *MemberListRequest, opts ...grpc.CallOption) (*MemberListResponse, error)
 }
 
 type clusterClient struct {
@@ -1618,36 +1618,36 @@ func NewClusterClient(cc *grpc.ClientConn) ClusterClient {
 	return &clusterClient{cc}
 }
 
-func (c *clusterClient) AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error) {
-	out := new(AddMemberResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/AddMember", in, out, c.cc, opts...)
+func (c *clusterClient) MemberAdd(ctx context.Context, in *MemberAddRequest, opts ...grpc.CallOption) (*MemberAddResponse, error) {
+	out := new(MemberAddResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/MemberAdd", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clusterClient) RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error) {
-	out := new(RemoveMemberResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/RemoveMember", in, out, c.cc, opts...)
+func (c *clusterClient) MemberRemove(ctx context.Context, in *MemberRemoveRequest, opts ...grpc.CallOption) (*MemberRemoveResponse, error) {
+	out := new(MemberRemoveResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/MemberRemove", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clusterClient) UpdateMember(ctx context.Context, in *UpdateMemberRequest, opts ...grpc.CallOption) (*UpdateMemberResponse, error) {
-	out := new(UpdateMemberResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/UpdateMember", in, out, c.cc, opts...)
+func (c *clusterClient) MemberUpdate(ctx context.Context, in *MemberUpdateRequest, opts ...grpc.CallOption) (*MemberUpdateResponse, error) {
+	out := new(MemberUpdateResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/MemberUpdate", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clusterClient) ListMember(ctx context.Context, in *ListMemberRequest, opts ...grpc.CallOption) (*ListMemberResponse, error) {
-	out := new(ListMemberResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/ListMember", in, out, c.cc, opts...)
+func (c *clusterClient) MemberList(ctx context.Context, in *MemberListRequest, opts ...grpc.CallOption) (*MemberListResponse, error) {
+	out := new(MemberListResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.Cluster/MemberList", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1657,62 +1657,62 @@ func (c *clusterClient) ListMember(ctx context.Context, in *ListMemberRequest, o
 // Server API for Cluster service
 
 type ClusterServer interface {
-	// AddMember adds a member into the cluster.
-	AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error)
-	// RemoveMember removes an existing member from the cluster.
-	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
-	// UpdateMember updates the member configuration.
-	UpdateMember(context.Context, *UpdateMemberRequest) (*UpdateMemberResponse, error)
-	// ListMember lists all the members in the cluster.
-	ListMember(context.Context, *ListMemberRequest) (*ListMemberResponse, error)
+	// MemberAdd adds a member into the cluster.
+	MemberAdd(context.Context, *MemberAddRequest) (*MemberAddResponse, error)
+	// MemberRemove removes an existing member from the cluster.
+	MemberRemove(context.Context, *MemberRemoveRequest) (*MemberRemoveResponse, error)
+	// MemberUpdate updates the member configuration.
+	MemberUpdate(context.Context, *MemberUpdateRequest) (*MemberUpdateResponse, error)
+	// MemberList lists all the members in the cluster.
+	MemberList(context.Context, *MemberListRequest) (*MemberListResponse, error)
 }
 
 func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
 	s.RegisterService(&_Cluster_serviceDesc, srv)
 }
 
-func _Cluster_AddMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(AddMemberRequest)
+func _Cluster_MemberAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(MemberAddRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).AddMember(ctx, in)
+	out, err := srv.(ClusterServer).MemberAdd(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Cluster_RemoveMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(RemoveMemberRequest)
+func _Cluster_MemberRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(MemberRemoveRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).RemoveMember(ctx, in)
+	out, err := srv.(ClusterServer).MemberRemove(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Cluster_UpdateMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(UpdateMemberRequest)
+func _Cluster_MemberUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(MemberUpdateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).UpdateMember(ctx, in)
+	out, err := srv.(ClusterServer).MemberUpdate(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _Cluster_ListMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(ListMemberRequest)
+func _Cluster_MemberList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(MemberListRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).ListMember(ctx, in)
+	out, err := srv.(ClusterServer).MemberList(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -1724,20 +1724,20 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*ClusterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "AddMember",
-			Handler:    _Cluster_AddMember_Handler,
+			MethodName: "MemberAdd",
+			Handler:    _Cluster_MemberAdd_Handler,
 		},
 		{
-			MethodName: "RemoveMember",
-			Handler:    _Cluster_RemoveMember_Handler,
+			MethodName: "MemberRemove",
+			Handler:    _Cluster_MemberRemove_Handler,
 		},
 		{
-			MethodName: "UpdateMember",
-			Handler:    _Cluster_UpdateMember_Handler,
+			MethodName: "MemberUpdate",
+			Handler:    _Cluster_MemberUpdate_Handler,
 		},
 		{
-			MethodName: "ListMember",
-			Handler:    _Cluster_ListMember_Handler,
+			MethodName: "MemberList",
+			Handler:    _Cluster_MemberList_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -2777,8 +2777,8 @@ func (m *Member) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
 		i += copy(data[i:], m.Name)
 	}
-	if len(m.Peer_URLs) > 0 {
-		for _, s := range m.Peer_URLs {
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
 			data[i] = 0x1a
 			i++
 			l = len(s)
@@ -2792,8 +2792,8 @@ func (m *Member) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], s)
 		}
 	}
-	if len(m.Client_URLs) > 0 {
-		for _, s := range m.Client_URLs {
+	if len(m.ClientURLs) > 0 {
+		for _, s := range m.ClientURLs {
 			data[i] = 0x22
 			i++
 			l = len(s)
@@ -2810,7 +2810,7 @@ func (m *Member) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AddMemberRequest) Marshal() (data []byte, err error) {
+func (m *MemberAddRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2820,13 +2820,13 @@ func (m *AddMemberRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *AddMemberRequest) MarshalTo(data []byte) (int, error) {
+func (m *MemberAddRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.Peer_URLs) > 0 {
-		for _, s := range m.Peer_URLs {
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
 			data[i] = 0xa
 			i++
 			l = len(s)
@@ -2843,7 +2843,7 @@ func (m *AddMemberRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AddMemberResponse) Marshal() (data []byte, err error) {
+func (m *MemberAddResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2853,7 +2853,7 @@ func (m *AddMemberResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *AddMemberResponse) MarshalTo(data []byte) (int, error) {
+func (m *MemberAddResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2881,7 +2881,7 @@ func (m *AddMemberResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RemoveMemberRequest) Marshal() (data []byte, err error) {
+func (m *MemberRemoveRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2891,7 +2891,7 @@ func (m *RemoveMemberRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveMemberRequest) MarshalTo(data []byte) (int, error) {
+func (m *MemberRemoveRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2904,7 +2904,7 @@ func (m *RemoveMemberRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RemoveMemberResponse) Marshal() (data []byte, err error) {
+func (m *MemberRemoveResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2914,7 +2914,7 @@ func (m *RemoveMemberResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RemoveMemberResponse) MarshalTo(data []byte) (int, error) {
+func (m *MemberRemoveResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2932,7 +2932,7 @@ func (m *RemoveMemberResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *UpdateMemberRequest) Marshal() (data []byte, err error) {
+func (m *MemberUpdateRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2942,7 +2942,7 @@ func (m *UpdateMemberRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *UpdateMemberRequest) MarshalTo(data []byte) (int, error) {
+func (m *MemberUpdateRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2952,8 +2952,8 @@ func (m *UpdateMemberRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.ID))
 	}
-	if len(m.Peer_URLs) > 0 {
-		for _, s := range m.Peer_URLs {
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
 			data[i] = 0x12
 			i++
 			l = len(s)
@@ -2970,7 +2970,7 @@ func (m *UpdateMemberRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *UpdateMemberResponse) Marshal() (data []byte, err error) {
+func (m *MemberUpdateResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -2980,7 +2980,7 @@ func (m *UpdateMemberResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *UpdateMemberResponse) MarshalTo(data []byte) (int, error) {
+func (m *MemberUpdateResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2998,7 +2998,7 @@ func (m *UpdateMemberResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *ListMemberRequest) Marshal() (data []byte, err error) {
+func (m *MemberListRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -3008,7 +3008,7 @@ func (m *ListMemberRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *ListMemberRequest) MarshalTo(data []byte) (int, error) {
+func (m *MemberListRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -3016,7 +3016,7 @@ func (m *ListMemberRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *ListMemberResponse) Marshal() (data []byte, err error) {
+func (m *MemberListResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -3026,7 +3026,7 @@ func (m *ListMemberResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *ListMemberResponse) MarshalTo(data []byte) (int, error) {
+func (m *MemberListResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -3562,14 +3562,14 @@ func (m *Member) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
-	if len(m.Peer_URLs) > 0 {
-		for _, s := range m.Peer_URLs {
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
 			l = len(s)
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
-	if len(m.Client_URLs) > 0 {
-		for _, s := range m.Client_URLs {
+	if len(m.ClientURLs) > 0 {
+		for _, s := range m.ClientURLs {
 			l = len(s)
 			n += 1 + l + sovRpc(uint64(l))
 		}
@@ -3577,11 +3577,11 @@ func (m *Member) Size() (n int) {
 	return n
 }
 
-func (m *AddMemberRequest) Size() (n int) {
+func (m *MemberAddRequest) Size() (n int) {
 	var l int
 	_ = l
-	if len(m.Peer_URLs) > 0 {
-		for _, s := range m.Peer_URLs {
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
 			l = len(s)
 			n += 1 + l + sovRpc(uint64(l))
 		}
@@ -3589,7 +3589,7 @@ func (m *AddMemberRequest) Size() (n int) {
 	return n
 }
 
-func (m *AddMemberResponse) Size() (n int) {
+func (m *MemberAddResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Header != nil {
@@ -3603,7 +3603,7 @@ func (m *AddMemberResponse) Size() (n int) {
 	return n
 }
 
-func (m *RemoveMemberRequest) Size() (n int) {
+func (m *MemberRemoveRequest) Size() (n int) {
 	var l int
 	_ = l
 	if m.ID != 0 {
@@ -3612,7 +3612,7 @@ func (m *RemoveMemberRequest) Size() (n int) {
 	return n
 }
 
-func (m *RemoveMemberResponse) Size() (n int) {
+func (m *MemberRemoveResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Header != nil {
@@ -3622,14 +3622,14 @@ func (m *RemoveMemberResponse) Size() (n int) {
 	return n
 }
 
-func (m *UpdateMemberRequest) Size() (n int) {
+func (m *MemberUpdateRequest) Size() (n int) {
 	var l int
 	_ = l
 	if m.ID != 0 {
 		n += 1 + sovRpc(uint64(m.ID))
 	}
-	if len(m.Peer_URLs) > 0 {
-		for _, s := range m.Peer_URLs {
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
 			l = len(s)
 			n += 1 + l + sovRpc(uint64(l))
 		}
@@ -3637,7 +3637,7 @@ func (m *UpdateMemberRequest) Size() (n int) {
 	return n
 }
 
-func (m *UpdateMemberResponse) Size() (n int) {
+func (m *MemberUpdateResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Header != nil {
@@ -3647,13 +3647,13 @@ func (m *UpdateMemberResponse) Size() (n int) {
 	return n
 }
 
-func (m *ListMemberRequest) Size() (n int) {
+func (m *MemberListRequest) Size() (n int) {
 	var l int
 	_ = l
 	return n
 }
 
-func (m *ListMemberResponse) Size() (n int) {
+func (m *MemberListResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Header != nil {
@@ -6635,7 +6635,7 @@ func (m *Member) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Peer_URLs", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PeerURLs", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -6660,11 +6660,11 @@ func (m *Member) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Peer_URLs = append(m.Peer_URLs, string(data[iNdEx:postIndex]))
+			m.PeerURLs = append(m.PeerURLs, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Client_URLs", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ClientURLs", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -6689,7 +6689,7 @@ func (m *Member) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Client_URLs = append(m.Client_URLs, string(data[iNdEx:postIndex]))
+			m.ClientURLs = append(m.ClientURLs, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -6712,7 +6712,7 @@ func (m *Member) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AddMemberRequest) Unmarshal(data []byte) error {
+func (m *MemberAddRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6735,15 +6735,15 @@ func (m *AddMemberRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: AddMemberRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: MemberAddRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: AddMemberRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MemberAddRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Peer_URLs", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PeerURLs", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -6768,7 +6768,7 @@ func (m *AddMemberRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Peer_URLs = append(m.Peer_URLs, string(data[iNdEx:postIndex]))
+			m.PeerURLs = append(m.PeerURLs, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -6791,7 +6791,7 @@ func (m *AddMemberRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AddMemberResponse) Unmarshal(data []byte) error {
+func (m *MemberAddResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6814,10 +6814,10 @@ func (m *AddMemberResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: AddMemberResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MemberAddResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: AddMemberResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MemberAddResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -6907,7 +6907,7 @@ func (m *AddMemberResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveMemberRequest) Unmarshal(data []byte) error {
+func (m *MemberRemoveRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6930,10 +6930,10 @@ func (m *RemoveMemberRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveMemberRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: MemberRemoveRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveMemberRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MemberRemoveRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -6976,7 +6976,7 @@ func (m *RemoveMemberRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RemoveMemberResponse) Unmarshal(data []byte) error {
+func (m *MemberRemoveResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -6999,10 +6999,10 @@ func (m *RemoveMemberResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RemoveMemberResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MemberRemoveResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RemoveMemberResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MemberRemoveResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -7059,7 +7059,7 @@ func (m *RemoveMemberResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
+func (m *MemberUpdateRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7082,10 +7082,10 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: UpdateMemberRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: MemberUpdateRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UpdateMemberRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MemberUpdateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -7109,7 +7109,7 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 			}
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Peer_URLs", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PeerURLs", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -7134,7 +7134,7 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Peer_URLs = append(m.Peer_URLs, string(data[iNdEx:postIndex]))
+			m.PeerURLs = append(m.PeerURLs, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -7157,7 +7157,7 @@ func (m *UpdateMemberRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *UpdateMemberResponse) Unmarshal(data []byte) error {
+func (m *MemberUpdateResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7180,10 +7180,10 @@ func (m *UpdateMemberResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: UpdateMemberResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MemberUpdateResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: UpdateMemberResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MemberUpdateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -7240,7 +7240,7 @@ func (m *UpdateMemberResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ListMemberRequest) Unmarshal(data []byte) error {
+func (m *MemberListRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7263,10 +7263,10 @@ func (m *ListMemberRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ListMemberRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: MemberListRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListMemberRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MemberListRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		default:
@@ -7290,7 +7290,7 @@ func (m *ListMemberRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ListMemberResponse) Unmarshal(data []byte) error {
+func (m *MemberListResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -7313,10 +7313,10 @@ func (m *ListMemberResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: ListMemberResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: MemberListResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ListMemberResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: MemberListResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
