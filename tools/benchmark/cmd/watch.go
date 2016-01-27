@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cheggaaa/pb"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 )
 
 // watchCmd represents the watch command
@@ -72,20 +71,12 @@ func watchFunc(cmd *cobra.Command, args []string) {
 
 	requests := make(chan etcdserverpb.WatchRequest, totalClients)
 
-	conns := make([]*grpc.ClientConn, totalConns)
-	for i := range conns {
-		conns[i] = mustCreateConn()
-	}
-
-	clients := make([]etcdserverpb.WatchClient, totalClients)
-	for i := range clients {
-		clients[i] = etcdserverpb.NewWatchClient(conns[i%int(totalConns)])
-	}
+	clients := mustCreateClients(totalClients, totalConns)
 
 	streams := make([]etcdserverpb.Watch_WatchClient, watchTotalStreams)
 	var err error
 	for i := range streams {
-		streams[i], err = clients[i%int(totalClients)].Watch(context.TODO())
+		streams[i], err = clients[i%len(clients)].Watch.Watch(context.TODO())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Failed to create watch stream:", err)
 			os.Exit(1)
@@ -124,7 +115,6 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	<-pdoneC
 
 	// put phase
-	kv := etcdserverpb.NewKVClient(conns[0])
 	// total number of puts * number of watchers on each key
 	eventsTotal := watchPutTotal * (watchTotal / watchedKeyTotal)
 
@@ -138,7 +128,7 @@ func watchFunc(cmd *cobra.Command, args []string) {
 
 	for i := 0; i < watchPutTotal; i++ {
 		wg.Add(1)
-		go doPut(context.TODO(), kv, putreqc)
+		go doPut(context.TODO(), clients[i%len(clients)].KV, putreqc)
 	}
 
 	pdoneC = printRate(results)

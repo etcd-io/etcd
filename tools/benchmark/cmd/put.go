@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cheggaaa/pb"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -67,22 +66,14 @@ func putFunc(cmd *cobra.Command, args []string) {
 
 	k, v := make([]byte, keySize), mustRandBytes(valSize)
 
-	conns := make([]*grpc.ClientConn, totalConns)
-	for i := range conns {
-		conns[i] = mustCreateConn()
-	}
-
-	clients := make([]etcdserverpb.KVClient, totalClients)
-	for i := range clients {
-		clients[i] = etcdserverpb.NewKVClient(conns[i%int(totalConns)])
-	}
+	clients := mustCreateClients(totalClients, totalConns)
 
 	bar.Format("Bom !")
 	bar.Start()
 
 	for i := range clients {
 		wg.Add(1)
-		go doPut(context.Background(), clients[i], requests)
+		go doPut(context.Background(), clients[i].KV, requests)
 	}
 
 	pdoneC := printReport(results)

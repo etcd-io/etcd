@@ -20,7 +20,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/clientv3"
 )
 
 var (
@@ -29,16 +29,29 @@ var (
 	dialTotal int
 )
 
-func mustCreateConn() *grpc.ClientConn {
+func mustCreateConn() *clientv3.Client {
 	eps := strings.Split(endpoints, ",")
 	endpoint := eps[dialTotal%len(eps)]
 	dialTotal++
-	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
+	client, err := clientv3.NewFromURL(endpoint)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dial error: %v\n", err)
 		os.Exit(1)
 	}
-	return conn
+	return client
+}
+
+func mustCreateClients(totalClients, totalConns uint) []*clientv3.Client {
+	conns := make([]*clientv3.Client, totalConns)
+	for i := range conns {
+		conns[i] = mustCreateConn()
+	}
+
+	clients := make([]*clientv3.Client, totalClients)
+	for i := range clients {
+		clients[i] = conns[i%int(totalConns)].Clone()
+	}
+	return clients
 }
 
 func mustRandBytes(n int) []byte {
