@@ -13,25 +13,33 @@
 */
 package leasepb
 
-import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+import (
+	"fmt"
 
-// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto"
+	proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+)
+
+import math "math"
 
 import io "io"
-import fmt "fmt"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 type Lease struct {
-	ID  int64 `protobuf:"varint,1,opt,proto3" json:"ID,omitempty"`
-	TTL int64 `protobuf:"varint,2,opt,proto3" json:"TTL,omitempty"`
+	ID  int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	TTL int64 `protobuf:"varint,2,opt,name=TTL,proto3" json:"TTL,omitempty"`
 }
 
 func (m *Lease) Reset()         { *m = Lease{} }
 func (m *Lease) String() string { return proto.CompactTextString(m) }
 func (*Lease) ProtoMessage()    {}
 
+func init() {
+	proto.RegisterType((*Lease)(nil), "leasepb.Lease")
+}
 func (m *Lease) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -116,8 +124,12 @@ func (m *Lease) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowLease
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -130,6 +142,12 @@ func (m *Lease) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Lease: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Lease: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -137,6 +155,9 @@ func (m *Lease) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLease
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -153,6 +174,9 @@ func (m *Lease) Unmarshal(data []byte) error {
 			}
 			m.TTL = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLease
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -164,15 +188,7 @@ func (m *Lease) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipLease(data[iNdEx:])
 			if err != nil {
 				return err
@@ -187,6 +203,9 @@ func (m *Lease) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func skipLease(data []byte) (n int, err error) {
@@ -195,6 +214,9 @@ func skipLease(data []byte) (n int, err error) {
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowLease
+			}
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
@@ -208,7 +230,10 @@ func skipLease(data []byte) (n int, err error) {
 		wireType := int(wire & 0x7)
 		switch wireType {
 		case 0:
-			for {
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowLease
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -224,6 +249,9 @@ func skipLease(data []byte) (n int, err error) {
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowLease
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -244,6 +272,9 @@ func skipLease(data []byte) (n int, err error) {
 				var innerWire uint64
 				var start int = iNdEx
 				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowLease
+					}
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
@@ -279,4 +310,5 @@ func skipLease(data []byte) (n int, err error) {
 
 var (
 	ErrInvalidLengthLease = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowLease   = fmt.Errorf("proto: integer overflow")
 )
