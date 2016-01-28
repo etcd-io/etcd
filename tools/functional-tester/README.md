@@ -1,6 +1,6 @@
 # etcd functional test suite
 
-etcd functional test suite tests the functionality of a etcd cluster with a focus on failure resistance under high pressure. It sets up an etcd cluster and inject failures into the cluster by killing the process or isolate the network of the process. It expects the etcd cluster to recover within a short amount of time after fixing the fault.
+etcd functional test suite tests the functionality of an etcd cluster with a focus on failure resistance under high pressure. It sets up an etcd cluster and inject failures into the cluster by killing the process or isolate the network of the process. It expects the etcd cluster to recover within a short amount of time after fixing the fault.
 
 etcd functional test suite has two components: etcd-agent and etcd-tester. etcd-agent runs on every test machines and etcd-tester is a single controller of the test. etcd-tester controls all the etcd-agent to start etcd clusters and simulate various failure cases.
 

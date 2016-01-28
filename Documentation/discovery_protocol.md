@@ -14,7 +14,7 @@ The idea of discovery protocol is to use an internal etcd cluster to coordinate 
 
 In the following example workflow, we will list each step of protocol in curl format for ease of understanding.
 
-By convention the etcd discovery protocol uses the key prefix `_etcd/registry`. If `http://example.com` hosts a etcd cluster for discovery service, a full URL to discovery keyspace will be `http://example.com/v2/keys/_etcd/registry`. We will use this as the URL prefix in the example.
+By convention the etcd discovery protocol uses the key prefix `_etcd/registry`. If `http://example.com` hosts an etcd cluster for discovery service, a full URL to discovery keyspace will be `http://example.com/v2/keys/_etcd/registry`. We will use this as the URL prefix in the example.
 
 ### Creating a New Discovery Token
 
