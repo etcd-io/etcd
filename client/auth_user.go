@@ -188,12 +188,16 @@ func (u *httpAuthUserAPI) ListUsers(ctx context.Context) ([]string, error) {
 		return nil, sec
 	}
 	var userList struct {
-		Users []string `json:"users"`
+		Users []map[string]interface{} `json:"users"`
 	}
 	if err = json.Unmarshal(body, &userList); err != nil {
 		return nil, err
 	}
-	return userList.Users, nil
+	ret := make([]string, 0)
+	for _, u := range userList.Users {
+		ret = append(ret, u["user"].(string))
+	}
+	return ret, nil
 }
 
 func (u *httpAuthUserAPI) AddUser(ctx context.Context, username string, password string) error {
