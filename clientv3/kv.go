@@ -14,27 +14,41 @@
 
 package clientv3
 
+import (
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+)
+
+type (
+	PutResponse         pb.PutResponse
+	RangeResponse       pb.RangeResponse
+	GetResponse         pb.RangeResponse
+	DeleteRangeResponse pb.DeleteRangeResponse
+	DeleteResponse      pb.DeleteRangeResponse
+	TxnResponse         pb.TxnResponse
+)
+
 type KV interface {
 	// PUT puts a key-value pair into etcd.
 	// Note that key,value can be plain bytes array and string is
 	// an immutable representation of that bytes array.
 	// To get a string of bytes, do string([]byte(0x10, 0x20)).
-	Put(key, val string) (PutResponse, error)
+	Put(key, val string) (*PutResponse, error)
 
 	// Range gets the keys [key, end) in the range at rev.
 	// If revev <=0, range gets the keys at currentRev.
 	// Limit limits the number of keys returned.
 	// If the required rev is compacted, ErrCompacted will be returned.
-	Range(key, end string, limit, rev int64, sort SortOption) (RangeResponse, error)
+	Range(key, end string, limit, rev int64, sort *SortOption) (*RangeResponse, error)
 
 	// Get is like Range. A shortcut for ranging single key like [key, key+1).
-	Get(key, limit, rev int64) (RangeResponse, error)
+	Get(key, rev int64) (*GetResponse, error)
 
 	// DeleteRange deletes the given range [key, end).
-	DeleteRange(key, end string) (DeleteRangeResponse, error)
+	DeleteRange(key, end string) (*DeleteRangeResponse, error)
 
 	// Delete is like DeleteRange. A shortcut for deleting single key like [key, key+1).
-	Delete(key string) (DeleteRangeResponse, error)
+	Delete(key string) (*DeleteResponse, error)
 
 	// Compact compacts etcd KV history before the given rev.
 	Compact(rev int64) error
@@ -67,33 +81,36 @@ type Txn interface {
 	Else(ops ...Op) Txn
 
 	// Commit tries to commit the transaction.
-	Commit() (TxnResponse, error)
+	Commit() (*TxnResponse, error)
 
 	// TODO: add a Do for shortcut the txn without any condition?
 }
 
-type Compare struct {
+type kv struct {
+	remote pb.KVClient
+
+	c *Client
 }
 
-type Op struct {
+func (kv *kv) Range(key, end string, limit, rev int64, sort *SortOption) (*pb.RangeResponse, error) {
+	r := kv.do(OpRange(key, end, limit, rev, sort))
+	return r.GetResponseRange(), nil
 }
 
-type PutResponse struct {
-}
+func (kv *kv) do(op Op) *pb.ResponseUnion {
+	switch op.t {
+	// TODO: handle other ops
+	case tRange:
+		// TODO: setup sorting
+		r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev}
+		resp, err := kv.remote.Range(context.TODO(), r)
+		if err != nil {
+			// do something
+		}
+		return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseRange{resp}}
+	default:
+		panic("Unknown op")
+	}
 
-type DeleteRangeResponse struct {
-}
-
-type RangeResponse struct {
-}
-
-type TxnResponse struct {
-}
-
-type SortTarget int
-type SortOrder int
-
-type SortOption struct {
-	Target SortTarget
-	Order  SortOrder
+	return nil
 }
