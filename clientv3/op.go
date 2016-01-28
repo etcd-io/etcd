@@ -14,6 +14,8 @@
 
 package clientv3
 
+import "github.com/coreos/etcd/lease"
+
 type opType int
 
 const (
@@ -33,6 +35,10 @@ type Op struct {
 	limit int64
 	rev   int64
 	sort  *SortOption
+
+	// for put
+	val     []byte
+	leaseID lease.LeaseID
 }
 
 func OpRange(key, end string, limit, rev int64, sort *SortOption) Op {
@@ -68,5 +74,15 @@ func OpDelete(key string) Op {
 	return Op{
 		t:   tDeleteRange,
 		key: []byte(key),
+	}
+}
+
+func OpPut(key, val string, leaseID lease.LeaseID) Op {
+	return Op{
+		t:   tPut,
+		key: []byte(key),
+
+		val:     []byte(val),
+		leaseID: leaseID,
 	}
 }
