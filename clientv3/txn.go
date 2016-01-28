@@ -63,7 +63,7 @@ type txn struct {
 	fas []*pb.RequestUnion
 }
 
-func (txn *txn) If(cs ...Cmp) *txn {
+func (txn *txn) If(cs ...Cmp) Txn {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
 
@@ -86,7 +86,7 @@ func (txn *txn) If(cs ...Cmp) *txn {
 	return txn
 }
 
-func (txn *txn) Then(ops ...Op) *txn {
+func (txn *txn) Then(ops ...Op) Txn {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
 
@@ -106,7 +106,7 @@ func (txn *txn) Then(ops ...Op) *txn {
 	return txn
 }
 
-func (txn *txn) Else(ops ...Op) *txn {
+func (txn *txn) Else(ops ...Op) Txn {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
 
