@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -87,30 +88,47 @@ type Txn interface {
 }
 
 type kv struct {
+	conn   *grpc.ClientConn // conn in-use
 	remote pb.KVClient
 
 	c *Client
 }
 
 func (kv *kv) Range(key, end string, limit, rev int64, sort *SortOption) (*pb.RangeResponse, error) {
-	r := kv.do(OpRange(key, end, limit, rev, sort))
+	r, err := kv.do(OpRange(key, end, limit, rev, sort))
+	if err != nil {
+		return nil, err
+	}
 	return r.GetResponseRange(), nil
 }
 
-func (kv *kv) do(op Op) *pb.ResponseUnion {
-	switch op.t {
-	// TODO: handle other ops
-	case tRange:
-		// TODO: setup sorting
-		r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev}
-		resp, err := kv.remote.Range(context.TODO(), r)
-		if err != nil {
-			// do something
+func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
+	for {
+		var err error
+		switch op.t {
+		// TODO: handle other ops
+		case tRange:
+			var resp *pb.RangeResponse
+			// TODO: setup sorting
+			r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev}
+			resp, err = kv.remote.Range(context.TODO(), r)
+			if err == nil {
+				return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseRange{resp}}, nil
+			}
+		default:
+			panic("Unknown op")
 		}
-		return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseRange{resp}}
-	default:
-		panic("Unknown op")
-	}
 
-	return nil
+		if isRPCError(err) {
+			return nil, err
+		}
+
+		newConn, cerr := kv.c.retryConnection(kv.conn, err)
+		if cerr != nil {
+			// TODO: return client lib defined connection error
+			return nil, cerr
+		}
+		kv.conn = newConn
+		kv.remote = pb.NewKVClient(kv.conn)
+	}
 }

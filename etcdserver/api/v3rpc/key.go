@@ -215,6 +215,6 @@ func togRPCError(err error) error {
 		return ErrFutureRev
 	// TODO: handle error from raft and timeout
 	default:
-		return grpc.Errorf(codes.Unknown, err.Error())
+		return grpc.Errorf(codes.Internal, err.Error())
 	}
 }
