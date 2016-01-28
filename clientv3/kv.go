@@ -59,35 +59,6 @@ type KV interface {
 	Txn() Txn
 }
 
-//
-// Tx.If(
-//  CmpValue(k1, ">", v1),
-//  CmpVersion(k1, "=", 2)
-// ).Then(
-//  OpPut(k2,v2), OpPut(k3,v3)
-// ).Else(
-//  OpPut(k4,v4), OpPut(k5,v5)
-// ).Commit()
-type Txn interface {
-	// If takes a list of comparison. If all comparisons passed in succeed,
-	// the operations passed into Then() will be executed. Or the operations
-	// passed into Else() will be executed.
-	If(cs ...Compare) Txn
-
-	// Then takes a list of operations. The Ops list will be executed, if the
-	// comparisons passed in If() succeed.
-	Then(ops ...Op) Txn
-
-	// Else takes a list of operations. The Ops list will be executed, if the
-	// comparisons passed in If() fail.
-	Else(ops ...Op) Txn
-
-	// Commit tries to commit the transaction.
-	Commit() (*TxnResponse, error)
-
-	// TODO: add a Do for shortcut the txn without any condition?
-}
-
 type kv struct {
 	conn   *grpc.ClientConn // conn in-use
 	remote pb.KVClient

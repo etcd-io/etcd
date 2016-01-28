@@ -14,7 +14,10 @@
 
 package clientv3
 
-import "github.com/coreos/etcd/lease"
+import (
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
+)
 
 type opType int
 
@@ -39,6 +42,26 @@ type Op struct {
 	// for put
 	val     []byte
 	leaseID lease.LeaseID
+}
+
+func (op Op) toRequestUnion() *pb.RequestUnion {
+	switch op.t {
+	case tRange:
+		r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev}
+		if op.sort != nil {
+			r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
+			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
+		}
+		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestRange{RequestRange: r}}
+	case tPut:
+		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
+		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: r}}
+	case tDeleteRange:
+		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
+		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{RequestDeleteRange: r}}
+	default:
+		panic("Unknown Op")
+	}
 }
 
 func OpRange(key, end string, limit, rev int64, sort *SortOption) Op {
