@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 )
 
 type (
@@ -34,7 +35,7 @@ type KV interface {
 	// Note that key,value can be plain bytes array and string is
 	// an immutable representation of that bytes array.
 	// To get a string of bytes, do string([]byte(0x10, 0x20)).
-	Put(key, val string) (*PutResponse, error)
+	Put(key, val string, leaseID lease.LeaseID) (*PutResponse, error)
 
 	// Range gets the keys [key, end) in the range at rev.
 	// If revev <=0, range gets the keys at currentRev.
@@ -43,7 +44,7 @@ type KV interface {
 	Range(key, end string, limit, rev int64, sort *SortOption) (*RangeResponse, error)
 
 	// Get is like Range. A shortcut for ranging single key like [key, key+1).
-	Get(key, rev int64) (*GetResponse, error)
+	Get(key string, rev int64) (*GetResponse, error)
 
 	// DeleteRange deletes the given range [key, end).
 	DeleteRange(key, end string) (*DeleteRangeResponse, error)
@@ -94,12 +95,44 @@ type kv struct {
 	c *Client
 }
 
-func (kv *kv) Range(key, end string, limit, rev int64, sort *SortOption) (*pb.RangeResponse, error) {
+func (kv *kv) Put(key, val string, leaseID lease.LeaseID) (*PutResponse, error) {
+	r, err := kv.do(OpPut(key, val, leaseID))
+	if err != nil {
+		return nil, err
+	}
+	return (*PutResponse)(r.GetResponsePut()), nil
+}
+
+func (kv *kv) Range(key, end string, limit, rev int64, sort *SortOption) (*RangeResponse, error) {
 	r, err := kv.do(OpRange(key, end, limit, rev, sort))
 	if err != nil {
 		return nil, err
 	}
-	return r.GetResponseRange(), nil
+	return (*RangeResponse)(r.GetResponseRange()), nil
+}
+
+func (kv *kv) Get(key string, rev int64) (*GetResponse, error) {
+	r, err := kv.do(OpGet(key, rev))
+	if err != nil {
+		return nil, err
+	}
+	return (*GetResponse)(r.GetResponseRange()), nil
+}
+
+func (kv *kv) DeleteRange(key, end string) (*DeleteRangeResponse, error) {
+	r, err := kv.do(OpDeleteRange(key, end))
+	if err != nil {
+		return nil, err
+	}
+	return (*DeleteRangeResponse)(r.GetResponseDeleteRange()), nil
+}
+
+func (kv *kv) Delete(key string) (*DeleteResponse, error) {
+	r, err := kv.do(OpDelete(key))
+	if err != nil {
+		return nil, err
+	}
+	return (*DeleteResponse)(r.GetResponseDeleteRange()), nil
 }
 
 func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
@@ -109,11 +142,29 @@ func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
 		// TODO: handle other ops
 		case tRange:
 			var resp *pb.RangeResponse
-			// TODO: setup sorting
 			r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev}
+			if op.sort != nil {
+				r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
+				r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
+			}
+
 			resp, err = kv.remote.Range(context.TODO(), r)
 			if err == nil {
 				return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseRange{resp}}, nil
+			}
+		case tPut:
+			var resp *pb.PutResponse
+			r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
+			resp, err = kv.remote.Put(context.TODO(), r)
+			if err == nil {
+				return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponsePut{resp}}, nil
+			}
+		case tDeleteRange:
+			var resp *pb.DeleteRangeResponse
+			r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
+			resp, err = kv.remote.DeleteRange(context.TODO(), r)
+			if err == nil {
+				return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseDeleteRange{resp}}, nil
 			}
 		default:
 			panic("Unknown op")
