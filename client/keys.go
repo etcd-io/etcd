@@ -106,7 +106,7 @@ type KeysAPI interface {
 
 	// Set assigns a new value to a Node identified by a given key. The caller
 	// may define a set of conditions in the SetOptions. If SetOptions.Dir=true
-	// than value is ignored.
+	// then value is ignored.
 	Set(ctx context.Context, key, value string, opts *SetOptions) (*Response, error)
 
 	// Delete removes a Node identified by the given key, optionally destroying
