@@ -108,15 +108,16 @@ func TestElectionFailover(t *testing.T) {
 	// next leader
 	electedc := make(chan struct{})
 	go func() {
-		e := recipe.NewElection(clus.clients[1], "test-election")
-		if err := e.Volunteer("bar"); err != nil {
-			t.Fatal(err)
+		ee := recipe.NewElection(clus.clients[1], "test-election")
+		if eer := ee.Volunteer("bar"); eer != nil {
+			t.Fatal(eer)
 		}
 		electedc <- struct{}{}
 	}()
 
 	// invoke leader failover
-	if err := recipe.RevokeSessionLease(clus.clients[0]); err != nil {
+	err = recipe.RevokeSessionLease(clus.clients[0])
+	if err != nil {
 		t.Fatal(err)
 	}
 

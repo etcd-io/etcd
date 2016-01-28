@@ -31,12 +31,12 @@ func TestDoubleBarrier(t *testing.T) {
 	donec := make(chan struct{})
 	for i := 0; i < waiters-1; i++ {
 		go func() {
-			b := recipe.NewDoubleBarrier(clus.RandClient(), "test-barrier", waiters)
-			if err := b.Enter(); err != nil {
+			bb := recipe.NewDoubleBarrier(clus.RandClient(), "test-barrier", waiters)
+			if err := bb.Enter(); err != nil {
 				t.Fatalf("could not enter on barrier (%v)", err)
 			}
 			donec <- struct{}{}
-			if err := b.Leave(); err != nil {
+			if err := bb.Leave(); err != nil {
 				t.Fatalf("could not leave on barrier (%v)", err)
 			}
 			donec <- struct{}{}
