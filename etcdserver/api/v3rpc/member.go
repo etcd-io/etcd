@@ -54,7 +54,7 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 	case err == etcdserver.ErrPeerURLexists:
 		return nil, ErrPeerURLExist
 	case err != nil:
-		return nil, grpc.Errorf(codes.Unknown, err.Error())
+		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
 
 	return &pb.MemberAddResponse{
@@ -71,7 +71,7 @@ func (cs *ClusterServer) MemberRemove(ctx context.Context, r *pb.MemberRemoveReq
 	case err == etcdserver.ErrIDNotFound:
 		return nil, ErrMemberNotFound
 	case err != nil:
-		return nil, grpc.Errorf(codes.Unknown, err.Error())
+		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
 
 	return &pb.MemberRemoveResponse{Header: cs.header()}, nil
@@ -89,7 +89,7 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 	case err == etcdserver.ErrIDNotFound:
 		return nil, ErrMemberNotFound
 	case err != nil:
-		return nil, grpc.Errorf(codes.Unknown, err.Error())
+		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
 
 	return &pb.MemberUpdateResponse{Header: cs.header()}, nil

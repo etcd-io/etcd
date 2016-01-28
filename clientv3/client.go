@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -120,7 +121,7 @@ func (c *Client) activeConnection() *grpc.ClientConn {
 }
 
 // refreshConnection establishes a new connection
-func (c *Client) retryConnection(oldConn *grpc.ClientConn, err error) *grpc.ClientConn {
+func (c *Client) retryConnection(oldConn *grpc.ClientConn, err error) (*grpc.ClientConn, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err != nil {
@@ -128,14 +129,15 @@ func (c *Client) retryConnection(oldConn *grpc.ClientConn, err error) *grpc.Clie
 	}
 	if oldConn != c.conn {
 		// conn has already been updated
-		return c.conn
+		return c.conn, nil
 	}
 	conn, dialErr := c.cfg.RetryDialer(c)
 	if dialErr != nil {
 		c.errors = append(c.errors, dialErr)
+		return nil, dialErr
 	}
 	c.conn = conn
-	return c.conn
+	return c.conn, nil
 }
 
 // dialEndpoints attempts to connect to each endpoint in order until a
@@ -151,4 +153,8 @@ func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 		}
 	}
 	return nil, err
+}
+
+func isRPCError(err error) bool {
+	return grpc.Code(err) != codes.Unknown
 }
