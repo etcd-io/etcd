@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/logutil"
 )
@@ -54,7 +53,7 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		if et := e.WriteTo(w); et != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
 		}
-	case auth.Error:
+	case etcdserver.AuthError:
 		herr := httptypes.NewHTTPError(e.HTTPStatus(), e.Error())
 		if et := herr.WriteTo(w); et != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
