@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
@@ -48,6 +49,9 @@ type Config struct {
 
 	// RetryDialer chooses the next endpoint to use
 	RetryDialer EndpointDialer
+
+	// DialTimeout is the timeout for failing to establish a connection.
+	DialTimeout time.Duration
 
 	// TODO TLS options
 }
@@ -96,7 +100,15 @@ func (c *Client) Errors() (errs []error) {
 // Dial establishes a connection for a given endpoint using the client's config
 func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 	// TODO: enable grpc.WithTransportCredentials(creds)
-	return grpc.Dial(endpoint, grpc.WithInsecure())
+	conn, err := grpc.Dial(
+		endpoint,
+		grpc.WithBlock(),
+		grpc.WithTimeout(c.cfg.DialTimeout),
+		grpc.WithInsecure())
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
 }
 
 func newClient(conn *grpc.ClientConn, cfg *Config) *Client {
@@ -146,7 +158,7 @@ func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 	var err error
 	for _, ep := range c.Endpoints() {
 		conn, curErr := c.Dial(ep)
-		if err != nil {
+		if curErr != nil {
 			err = curErr
 		} else {
 			return conn, nil

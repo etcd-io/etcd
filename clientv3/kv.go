@@ -150,21 +150,24 @@ func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
 
 			resp, err = kv.remote.Range(context.TODO(), r)
 			if err == nil {
-				return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseRange{resp}}, nil
+				respu := &pb.ResponseUnion_ResponseRange{ResponseRange: resp}
+				return &pb.ResponseUnion{Response: respu}, nil
 			}
 		case tPut:
 			var resp *pb.PutResponse
 			r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
 			resp, err = kv.remote.Put(context.TODO(), r)
 			if err == nil {
-				return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponsePut{resp}}, nil
+				respu := &pb.ResponseUnion_ResponsePut{ResponsePut: resp}
+				return &pb.ResponseUnion{Response: respu}, nil
 			}
 		case tDeleteRange:
 			var resp *pb.DeleteRangeResponse
 			r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
 			resp, err = kv.remote.DeleteRange(context.TODO(), r)
 			if err == nil {
-				return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseDeleteRange{resp}}, nil
+				respu := &pb.ResponseUnion_ResponseDeleteRange{ResponseDeleteRange: resp}
+				return &pb.ResponseUnion{Response: respu}, nil
 			}
 		default:
 			panic("Unknown op")
