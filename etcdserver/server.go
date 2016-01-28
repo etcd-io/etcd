@@ -196,6 +196,9 @@ type EtcdServer struct {
 	// count the number of inflight snapshots.
 	// MUST use atomic operation to access this field.
 	inflightSnapshots int64
+
+	// for looking up *enabled flag
+	AuthStore *authStore
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -1041,9 +1044,21 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 	return applied, shouldstop
 }
 
+func (s *EtcdServer) handleSpecialPath(r pb.Request) {
+	if r.Path == StorePermsPrefix+"/enabled" {
+		if r.Method != "PUT" {
+			return
+		}
+
+		s.AuthStore.enabled = nil
+	}
+}
+
 // applyRequest interprets r as a call to store.X and returns a Response interpreted
 // from store.Event
 func (s *EtcdServer) applyRequest(r pb.Request) Response {
+	s.handleSpecialPath(r)
+
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}

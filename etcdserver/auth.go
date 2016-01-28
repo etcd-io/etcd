@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package auth implements etcd authentication.
-package auth
+package etcdserver
 
 import (
 	"encoding/json"
@@ -26,11 +25,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/crypto/bcrypt"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcderr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -44,10 +41,6 @@ const (
 
 	// GuestRoleName is the name of the role that defines the privileges of an unauthenticated user.
 	GuestRoleName = "guest"
-)
-
-var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver", "auth")
 )
 
 var rootRole = Role{
@@ -70,11 +63,7 @@ var guestRole = Role{
 	},
 }
 
-type doer interface {
-	Do(context.Context, etcdserverpb.Request) (etcdserver.Response, error)
-}
-
-type Store interface {
+type AuthStore interface {
 	AllUsers() ([]string, error)
 	GetUser(name string) (User, error)
 	CreateOrUpdateUser(user User) (out User, created bool, err error)
@@ -89,6 +78,7 @@ type Store interface {
 	AuthEnabled() bool
 	EnableAuth() error
 	DisableAuth() error
+	InitPointerOfServer(etcdserver *EtcdServer)
 	PasswordStore
 }
 
@@ -97,12 +87,17 @@ type PasswordStore interface {
 	HashPassword(password string) (string, error)
 }
 
-type store struct {
+type doer interface {
+	Do(context.Context, etcdserverpb.Request) (Response, error)
+}
+
+type authStore struct {
 	server      doer
 	timeout     time.Duration
 	ensuredOnce bool
 
-	mu sync.Mutex // protect enabled
+	mu      sync.Mutex // protect enabled
+	enabled *bool
 
 	PasswordStore
 }
@@ -135,20 +130,20 @@ type RWPermission struct {
 	Write []string `json:"write"`
 }
 
-type Error struct {
+type AuthError struct {
 	Status int
 	Errmsg string
 }
 
-func (ae Error) Error() string   { return ae.Errmsg }
-func (ae Error) HTTPStatus() int { return ae.Status }
+func (ae AuthError) Error() string   { return ae.Errmsg }
+func (ae AuthError) HTTPStatus() int { return ae.Status }
 
-func authErr(hs int, s string, v ...interface{}) Error {
-	return Error{Status: hs, Errmsg: fmt.Sprintf("auth: "+s, v...)}
+func authErr(hs int, s string, v ...interface{}) AuthError {
+	return AuthError{Status: hs, Errmsg: fmt.Sprintf("auth: "+s, v...)}
 }
 
-func NewStore(server doer, timeout time.Duration) Store {
-	s := &store{
+func NewAuthStore(server doer, timeout time.Duration) AuthStore {
+	s := &authStore{
 		server:        server,
 		timeout:       timeout,
 		PasswordStore: passwordStore{},
@@ -169,7 +164,7 @@ func (_ passwordStore) HashPassword(password string) (string, error) {
 	return string(hash), err
 }
 
-func (s *store) AllUsers() ([]string, error) {
+func (s *authStore) AllUsers() ([]string, error) {
 	resp, err := s.requestResource("/users/", false)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
@@ -188,7 +183,7 @@ func (s *store) AllUsers() ([]string, error) {
 	return nodes, nil
 }
 
-func (s *store) GetUser(name string) (User, error) {
+func (s *authStore) GetUser(name string) (User, error) {
 	resp, err := s.requestResource("/users/"+name, false)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
@@ -213,7 +208,7 @@ func (s *store) GetUser(name string) (User, error) {
 // CreateOrUpdateUser should be only used for creating the new user or when you are not
 // sure if it is a create or update. (When only password is passed in, we are not sure
 // if it is a update or create)
-func (s *store) CreateOrUpdateUser(user User) (out User, created bool, err error) {
+func (s *authStore) CreateOrUpdateUser(user User) (out User, created bool, err error) {
 	_, err = s.GetUser(user.User)
 	if err == nil {
 		out, err = s.UpdateUser(user)
@@ -223,7 +218,7 @@ func (s *store) CreateOrUpdateUser(user User) (out User, created bool, err error
 	return u, true, err
 }
 
-func (s *store) CreateUser(user User) (User, error) {
+func (s *authStore) CreateUser(user User) (User, error) {
 	// Attach root role to root user.
 	if user.User == "root" {
 		user = attachRootRole(user)
@@ -235,7 +230,7 @@ func (s *store) CreateUser(user User) (User, error) {
 	return u, err
 }
 
-func (s *store) createUserInternal(user User) (User, error) {
+func (s *authStore) createUserInternal(user User) (User, error) {
 	if user.Password == "" {
 		return user, authErr(http.StatusBadRequest, "Cannot create user %s with an empty password", user.User)
 	}
@@ -256,7 +251,7 @@ func (s *store) createUserInternal(user User) (User, error) {
 	return user, err
 }
 
-func (s *store) DeleteUser(name string) error {
+func (s *authStore) DeleteUser(name string) error {
 	if s.AuthEnabled() && name == "root" {
 		return authErr(http.StatusForbidden, "Cannot delete root user while auth is enabled.")
 	}
@@ -273,7 +268,7 @@ func (s *store) DeleteUser(name string) error {
 	return nil
 }
 
-func (s *store) UpdateUser(user User) (User, error) {
+func (s *authStore) UpdateUser(user User) (User, error) {
 	old, err := s.GetUser(user.User)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
@@ -304,7 +299,7 @@ func (s *store) UpdateUser(user User) (User, error) {
 	return newUser, err
 }
 
-func (s *store) AllRoles() ([]string, error) {
+func (s *authStore) AllRoles() ([]string, error) {
 	nodes := []string{RootRoleName}
 	resp, err := s.requestResource("/roles/", false)
 	if err != nil {
@@ -323,7 +318,7 @@ func (s *store) AllRoles() ([]string, error) {
 	return nodes, nil
 }
 
-func (s *store) GetRole(name string) (Role, error) {
+func (s *authStore) GetRole(name string) (Role, error) {
 	if name == RootRoleName {
 		return rootRole, nil
 	}
@@ -345,7 +340,7 @@ func (s *store) GetRole(name string) (Role, error) {
 	return r, nil
 }
 
-func (s *store) CreateRole(role Role) error {
+func (s *authStore) CreateRole(role Role) error {
 	if role.Role == RootRoleName {
 		return authErr(http.StatusForbidden, "Cannot modify role %s: is root role.", role.Role)
 	}
@@ -363,7 +358,7 @@ func (s *store) CreateRole(role Role) error {
 	return err
 }
 
-func (s *store) DeleteRole(name string) error {
+func (s *authStore) DeleteRole(name string) error {
 	if name == RootRoleName {
 		return authErr(http.StatusForbidden, "Cannot modify role %s: is root role.", name)
 	}
@@ -381,7 +376,7 @@ func (s *store) DeleteRole(name string) error {
 	return err
 }
 
-func (s *store) UpdateRole(role Role) (Role, error) {
+func (s *authStore) UpdateRole(role Role) (Role, error) {
 	if role.Role == RootRoleName {
 		return Role{}, authErr(http.StatusForbidden, "Cannot modify role %s: is root role.", role.Role)
 	}
@@ -408,14 +403,14 @@ func (s *store) UpdateRole(role Role) (Role, error) {
 	return newRole, err
 }
 
-func (s *store) AuthEnabled() bool {
+func (s *authStore) AuthEnabled() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	return s.detectAuth()
 }
 
-func (s *store) EnableAuth() error {
+func (s *authStore) EnableAuth() error {
 	if s.AuthEnabled() {
 		return authErr(http.StatusConflict, "already enabled")
 	}
@@ -439,11 +434,14 @@ func (s *store) EnableAuth() error {
 		return err
 	}
 
+	b := true
+	s.enabled = &b
+
 	plog.Noticef("auth: enabled auth")
 	return nil
 }
 
-func (s *store) DisableAuth() error {
+func (s *authStore) DisableAuth() error {
 	if !s.AuthEnabled() {
 		return authErr(http.StatusConflict, "already disabled")
 	}
@@ -453,11 +451,18 @@ func (s *store) DisableAuth() error {
 
 	err := s.disableAuth()
 	if err == nil {
+		b := false
+		s.enabled = &b
+
 		plog.Noticef("auth: disabled auth")
 	} else {
 		plog.Errorf("error disabling auth (%v)", err)
 	}
 	return err
+}
+
+func (s *authStore) InitPointerOfServer(etcdServer *EtcdServer) {
+	etcdServer.AuthStore = s
 }
 
 // merge applies the properties of the passed-in User to the User on which it

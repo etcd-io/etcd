@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/etcdserver/auth"
+	"github.com/coreos/etcd/etcdserver"
 )
 
 const goodPassword = "good"
@@ -37,21 +37,21 @@ func mustJSONRequest(t *testing.T, method string, p string, body string) *http.R
 }
 
 type mockAuthStore struct {
-	users   map[string]*auth.User
-	roles   map[string]*auth.Role
+	users   map[string]*etcdserver.User
+	roles   map[string]*etcdserver.Role
 	err     error
 	enabled bool
 }
 
 func (s *mockAuthStore) AllUsers() ([]string, error) { return []string{"alice", "bob", "root"}, s.err }
-func (s *mockAuthStore) GetUser(name string) (auth.User, error) {
+func (s *mockAuthStore) GetUser(name string) (etcdserver.User, error) {
 	u, ok := s.users[name]
 	if !ok {
-		return auth.User{}, s.err
+		return etcdserver.User{}, s.err
 	}
 	return *u, s.err
 }
-func (s *mockAuthStore) CreateOrUpdateUser(user auth.User) (out auth.User, created bool, err error) {
+func (s *mockAuthStore) CreateOrUpdateUser(user etcdserver.User) (out etcdserver.User, created bool, err error) {
 	if s.users == nil {
 		u, err := s.CreateUser(user)
 		return u, true, err
@@ -59,25 +59,25 @@ func (s *mockAuthStore) CreateOrUpdateUser(user auth.User) (out auth.User, creat
 	u, err := s.UpdateUser(user)
 	return u, false, err
 }
-func (s *mockAuthStore) CreateUser(user auth.User) (auth.User, error) { return user, s.err }
-func (s *mockAuthStore) DeleteUser(name string) error                 { return s.err }
-func (s *mockAuthStore) UpdateUser(user auth.User) (auth.User, error) {
+func (s *mockAuthStore) CreateUser(user etcdserver.User) (etcdserver.User, error) { return user, s.err }
+func (s *mockAuthStore) DeleteUser(name string) error                             { return s.err }
+func (s *mockAuthStore) UpdateUser(user etcdserver.User) (etcdserver.User, error) {
 	return *s.users[user.User], s.err
 }
 func (s *mockAuthStore) AllRoles() ([]string, error) {
 	return []string{"awesome", "guest", "root"}, s.err
 }
-func (s *mockAuthStore) GetRole(name string) (auth.Role, error) { return *s.roles[name], s.err }
-func (s *mockAuthStore) CreateRole(role auth.Role) error        { return s.err }
-func (s *mockAuthStore) DeleteRole(name string) error           { return s.err }
-func (s *mockAuthStore) UpdateRole(role auth.Role) (auth.Role, error) {
+func (s *mockAuthStore) GetRole(name string) (etcdserver.Role, error) { return *s.roles[name], s.err }
+func (s *mockAuthStore) CreateRole(role etcdserver.Role) error        { return s.err }
+func (s *mockAuthStore) DeleteRole(name string) error                 { return s.err }
+func (s *mockAuthStore) UpdateRole(role etcdserver.Role) (etcdserver.Role, error) {
 	return *s.roles[role.Role], s.err
 }
 func (s *mockAuthStore) AuthEnabled() bool  { return s.enabled }
 func (s *mockAuthStore) EnableAuth() error  { return s.err }
 func (s *mockAuthStore) DisableAuth() error { return s.err }
 
-func (s *mockAuthStore) CheckPassword(user auth.User, password string) bool {
+func (s *mockAuthStore) CheckPassword(user etcdserver.User, password string) bool {
 	return user.Password == password
 }
 
@@ -113,7 +113,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "users", ""),
 			store: mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"alice": {
 						User:     "alice",
 						Roles:    []string{"alicerole", "guest"},
@@ -130,7 +130,7 @@ func TestAuthFlow(t *testing.T) {
 						Password: "wheeee",
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"alicerole": {
 						Role: "alicerole",
 					},
@@ -154,14 +154,14 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "users/alice", ""),
 			store: mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"alice": {
 						User:     "alice",
 						Roles:    []string{"alicerole"},
 						Password: "wheeee",
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"alicerole": {
 						Role: "alicerole",
 					},
@@ -185,7 +185,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "PUT", "users/alice", `{"user": "alice", "password": "goodpassword"}`),
 			store: mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"alice": {
 						User:     "alice",
 						Roles:    []string{"alicerole", "guest"},
@@ -199,7 +199,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "PUT", "users/alice", `{"user": "alice", "grant": ["alicerole"]}`),
 			store: mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"alice": {
 						User:     "alice",
 						Roles:    []string{"alicerole", "guest"},
@@ -213,8 +213,8 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "users/alice", ``),
 			store: mockAuthStore{
-				users: map[string]*auth.User{},
-				err:   auth.Error{Status: http.StatusNotFound, Errmsg: "auth: User alice doesn't exist."},
+				users: map[string]*etcdserver.User{},
+				err:   etcdserver.AuthError{Status: http.StatusNotFound, Errmsg: "auth: User alice doesn't exist."},
 			},
 			wcode: http.StatusNotFound,
 			wbody: `{"message":"auth: User alice doesn't exist."}`,
@@ -222,7 +222,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "roles/manager", ""),
 			store: mockAuthStore{
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"manager": {
 						Role: "manager",
 					},
@@ -246,7 +246,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "PUT", "roles/manager", `{"role":"manager","revoke":{"kv":{"read":["foo"],"write":[]}}}`),
 			store: mockAuthStore{
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"manager": {
 						Role: "manager",
 					},
@@ -258,7 +258,7 @@ func TestAuthFlow(t *testing.T) {
 		{
 			req: mustJSONRequest(t, "GET", "roles", ""),
 			store: mockAuthStore{
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"awesome": {
 						Role: "awesome",
 					},
@@ -299,14 +299,14 @@ func TestAuthFlow(t *testing.T) {
 			})(),
 			store: mockAuthStore{
 				enabled: true,
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"root": {
 						Role: "root",
 					},
@@ -323,14 +323,14 @@ func TestAuthFlow(t *testing.T) {
 			})(),
 			store: mockAuthStore{
 				enabled: true,
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"root": {
 						Role: "guest",
 					},
@@ -383,14 +383,14 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "root", "good"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"root": {
 						Role: "root",
 					},
@@ -405,18 +405,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "good"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"foorole": {
 						Role: "foorole",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: etcdserver.Permissions{
+							KV: etcdserver.RWPermission{
 								Read:  []string{"/foo"},
 								Write: []string{"/foo"},
 							},
@@ -433,18 +433,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "good"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"foorole": {
 						Role: "foorole",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: etcdserver.Permissions{
+							KV: etcdserver.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -461,18 +461,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "bad"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"foorole": {
 						Role: "foorole",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: etcdserver.Permissions{
+							KV: etcdserver.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -489,7 +489,7 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "good"),
 			store: &mockAuthStore{
-				users:   map[string]*auth.User{},
+				users:   map[string]*etcdserver.User{},
 				err:     errors.New("Not the user"),
 				enabled: true,
 			},
@@ -501,18 +501,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustJSONRequest(t, "GET", "somepath", ""),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"guest": {
 						Role: "guest",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: etcdserver.Permissions{
+							KV: etcdserver.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -529,18 +529,18 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/bar",
 			req: mustJSONRequest(t, "GET", "somepath", ""),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"foorole"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"guest": {
 						Role: "guest",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: etcdserver.Permissions{
+							KV: etcdserver.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},
@@ -558,21 +558,21 @@ func TestPrefixAccess(t *testing.T) {
 			key: "/foo",
 			req: mustAuthRequest("GET", "user", "good"),
 			store: &mockAuthStore{
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"user": {
 						User:     "user",
 						Password: goodPassword,
 						Roles:    []string{"role1", "role2"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"role1": {
 						Role: "role1",
 					},
 					"role2": {
 						Role: "role2",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: etcdserver.Permissions{
+							KV: etcdserver.RWPermission{
 								Read:  []string{"/foo"},
 								Write: []string{"/foo"},
 							},
@@ -594,18 +594,18 @@ func TestPrefixAccess(t *testing.T) {
 			})(),
 			store: &mockAuthStore{
 				enabled: true,
-				users: map[string]*auth.User{
+				users: map[string]*etcdserver.User{
 					"root": {
 						User:     "root",
 						Password: goodPassword,
 						Roles:    []string{"root"},
 					},
 				},
-				roles: map[string]*auth.Role{
+				roles: map[string]*etcdserver.Role{
 					"guest": {
 						Role: "guest",
-						Permissions: auth.Permissions{
-							KV: auth.RWPermission{
+						Permissions: etcdserver.Permissions{
+							KV: etcdserver.RWPermission{
 								Read:  []string{"/foo*"},
 								Write: []string{"/foo*"},
 							},

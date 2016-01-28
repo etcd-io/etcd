@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package auth
+package etcdserver
 
 import (
 	"encoding/json"
@@ -20,11 +20,10 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcderr "github.com/coreos/etcd/error"
-	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-func (s *store) ensureAuthDirectories() error {
+func (s *authStore) ensureAuthDirectories() error {
 	if s.ensuredOnce {
 		return nil
 	}
@@ -72,23 +71,30 @@ func (s *store) ensureAuthDirectories() error {
 	return nil
 }
 
-func (s *store) enableAuth() error {
+func (s *authStore) enableAuth() error {
 	_, err := s.updateResource("/enabled", true)
 	return err
 }
-func (s *store) disableAuth() error {
+func (s *authStore) disableAuth() error {
 	_, err := s.updateResource("/enabled", false)
 	return err
 }
 
-func (s *store) detectAuth() bool {
+func (s *authStore) detectAuth() bool {
 	if s.server == nil {
 		return false
 	}
+
+	if s.enabled != nil {
+		return *s.enabled
+	}
+
 	value, err := s.requestResource("/enabled", false)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				b := false
+				s.enabled = &b
 				return false
 			}
 		}
@@ -102,10 +108,11 @@ func (s *store) detectAuth() bool {
 		plog.Errorf("internal bookkeeping value for enabled isn't valid JSON (%v)", err)
 		return false
 	}
+	s.enabled = &u
 	return u
 }
 
-func (s *store) requestResource(res string, dir bool) (etcdserver.Response, error) {
+func (s *authStore) requestResource(res string, dir bool) (Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 	p := path.Join(StorePermsPrefix, res)
@@ -113,26 +120,27 @@ func (s *store) requestResource(res string, dir bool) (etcdserver.Response, erro
 		Method: "GET",
 		Path:   p,
 		Dir:    dir,
+		Quorum: true,
 	}
 	return s.server.Do(ctx, rr)
 }
 
-func (s *store) updateResource(res string, value interface{}) (etcdserver.Response, error) {
+func (s *authStore) updateResource(res string, value interface{}) (Response, error) {
 	return s.setResource(res, value, true)
 }
-func (s *store) createResource(res string, value interface{}) (etcdserver.Response, error) {
+func (s *authStore) createResource(res string, value interface{}) (Response, error) {
 	return s.setResource(res, value, false)
 }
-func (s *store) setResource(res string, value interface{}, prevexist bool) (etcdserver.Response, error) {
+func (s *authStore) setResource(res string, value interface{}, prevexist bool) (Response, error) {
 	err := s.ensureAuthDirectories()
 	if err != nil {
-		return etcdserver.Response{}, err
+		return Response{}, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 	data, err := json.Marshal(value)
 	if err != nil {
-		return etcdserver.Response{}, err
+		return Response{}, err
 	}
 	p := path.Join(StorePermsPrefix, res)
 	rr := etcdserverpb.Request{
@@ -144,10 +152,10 @@ func (s *store) setResource(res string, value interface{}, prevexist bool) (etcd
 	return s.server.Do(ctx, rr)
 }
 
-func (s *store) deleteResource(res string) (etcdserver.Response, error) {
+func (s *authStore) deleteResource(res string) (Response, error) {
 	err := s.ensureAuthDirectories()
 	if err != nil {
-		return etcdserver.Response{}, err
+		return Response{}, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()

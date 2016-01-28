@@ -34,7 +34,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
@@ -62,7 +61,8 @@ const (
 func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http.Handler {
 	go capabilityLoop(server)
 
-	sec := auth.NewStore(server, timeout)
+	sec := etcdserver.NewAuthStore(server, timeout)
+	sec.InitPointerOfServer(server)
 
 	kh := &keysHandler{
 		sec:     sec,
@@ -131,7 +131,7 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 }
 
 type keysHandler struct {
-	sec     auth.Store
+	sec     etcdserver.AuthStore
 	server  etcdserver.Server
 	cluster etcdserver.Cluster
 	timer   etcdserver.RaftTimer
@@ -198,7 +198,7 @@ func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 }
 
 type membersHandler struct {
-	sec     auth.Store
+	sec     etcdserver.AuthStore
 	server  etcdserver.Server
 	cluster etcdserver.Cluster
 	timeout time.Duration

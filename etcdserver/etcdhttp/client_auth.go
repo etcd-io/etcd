@@ -21,23 +21,22 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
 
 type authHandler struct {
-	sec     auth.Store
+	sec     etcdserver.AuthStore
 	cluster etcdserver.Cluster
 }
 
-func hasWriteRootAccess(sec auth.Store, r *http.Request) bool {
+func hasWriteRootAccess(sec etcdserver.AuthStore, r *http.Request) bool {
 	if r.Method == "GET" || r.Method == "HEAD" {
 		return true
 	}
 	return hasRootAccess(sec, r)
 }
 
-func hasRootAccess(sec auth.Store, r *http.Request) bool {
+func hasRootAccess(sec etcdserver.AuthStore, r *http.Request) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
 		return true
@@ -60,15 +59,15 @@ func hasRootAccess(sec auth.Store, r *http.Request) bool {
 		return false
 	}
 	for _, role := range rootUser.Roles {
-		if role == auth.RootRoleName {
+		if role == etcdserver.RootRoleName {
 			return true
 		}
 	}
-	plog.Warningf("auth: user %s does not have the %s role for resource %s.", username, auth.RootRoleName, r.URL.Path)
+	plog.Warningf("auth: user %s does not have the %s role for resource %s.", username, etcdserver.RootRoleName, r.URL.Path)
 	return false
 }
 
-func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive bool) bool {
+func hasKeyPrefixAccess(sec etcdserver.AuthStore, r *http.Request, key string, recursive bool) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
 		return true
@@ -113,9 +112,9 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive b
 	return false
 }
 
-func hasGuestAccess(sec auth.Store, r *http.Request, key string) bool {
+func hasGuestAccess(sec etcdserver.AuthStore, r *http.Request, key string) bool {
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
-	role, err := sec.GetRole(auth.GuestRoleName)
+	role, err := sec.GetRole(etcdserver.GuestRoleName)
 	if err != nil {
 		return false
 	}
@@ -169,10 +168,10 @@ func (sh *authHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var rolesCollections struct {
-		Roles []auth.Role `json:"roles"`
+		Roles []etcdserver.Role `json:"roles"`
 	}
 	for _, roleName := range roles {
-		var role auth.Role
+		var role etcdserver.Role
 		role, err = sh.sec.GetRole(roleName)
 		if err != nil {
 			writeError(w, r, err)
@@ -230,7 +229,7 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 		}
 		return
 	case "PUT":
-		var in auth.Role
+		var in etcdserver.Role
 		err := json.NewDecoder(r.Body).Decode(&in)
 		if err != nil {
 			writeError(w, r, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid JSON in request body."))
@@ -241,7 +240,7 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 			return
 		}
 
-		var out auth.Role
+		var out etcdserver.Role
 
 		// create
 		if in.Grant.IsEmpty() && in.Revoke.IsEmpty() {
@@ -281,8 +280,8 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 }
 
 type userWithRoles struct {
-	User  string      `json:"user"`
-	Roles []auth.Role `json:"roles,omitempty"`
+	User  string            `json:"user"`
+	Roles []etcdserver.Role `json:"roles,omitempty"`
 }
 
 func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
@@ -315,7 +314,7 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 		Users []userWithRoles `json:"users"`
 	}
 	for _, userName := range users {
-		var user auth.User
+		var user etcdserver.User
 		user, err = sh.sec.GetUser(userName)
 		if err != nil {
 			writeError(w, r, err)
@@ -324,7 +323,7 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 
 		uwr := userWithRoles{User: user.User}
 		for _, roleName := range user.Roles {
-			var role auth.Role
+			var role etcdserver.Role
 			role, err = sh.sec.GetRole(roleName)
 			if err != nil {
 				writeError(w, r, err)
@@ -387,7 +386,7 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 
 		uwr := userWithRoles{User: u.User}
 		for _, roleName := range u.Roles {
-			var role auth.Role
+			var role etcdserver.Role
 			role, err = sh.sec.GetRole(roleName)
 			if err != nil {
 				writeError(w, r, err)
@@ -403,7 +402,7 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 		}
 		return
 	case "PUT":
-		var u auth.User
+		var u etcdserver.User
 		err := json.NewDecoder(r.Body).Decode(&u)
 		if err != nil {
 			writeError(w, r, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid JSON in request body."))
@@ -415,7 +414,7 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 		}
 
 		var (
-			out     auth.User
+			out     etcdserver.User
 			created bool
 		)
 
