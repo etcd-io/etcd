@@ -84,10 +84,17 @@ func (s *authStore) detectAuth() bool {
 	if s.server == nil {
 		return false
 	}
+
+	if s.enabled != nil {
+		return *s.enabled
+	}
+
 	value, err := s.requestResource("/enabled", false)
 	if err != nil {
 		if e, ok := err.(*etcderr.Error); ok {
 			if e.ErrorCode == etcderr.EcodeKeyNotFound {
+				b := false
+				s.enabled = &b
 				return false
 			}
 		}
@@ -101,6 +108,7 @@ func (s *authStore) detectAuth() bool {
 		plog.Errorf("internal bookkeeping value for enabled isn't valid JSON (%v)", err)
 		return false
 	}
+	s.enabled = &u
 	return u
 }
 
@@ -112,6 +120,7 @@ func (s *authStore) requestResource(res string, dir bool) (Response, error) {
 		Method: "GET",
 		Path:   p,
 		Dir:    dir,
+		Quorum: true,
 	}
 	return s.server.Do(ctx, rr)
 }

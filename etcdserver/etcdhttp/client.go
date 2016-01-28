@@ -62,6 +62,7 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 	go capabilityLoop(server)
 
 	sec := etcdserver.NewAuthStore(server, timeout)
+	sec.InitPointerOfServer(server)
 
 	kh := &keysHandler{
 		sec:     sec,

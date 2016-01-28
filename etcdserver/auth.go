@@ -78,6 +78,7 @@ type AuthStore interface {
 	AuthEnabled() bool
 	EnableAuth() error
 	DisableAuth() error
+	InitPointerOfServer(etcdserver *EtcdServer)
 	PasswordStore
 }
 
@@ -95,7 +96,8 @@ type authStore struct {
 	timeout     time.Duration
 	ensuredOnce bool
 
-	mu sync.Mutex // protect enabled
+	mu      sync.Mutex // protect enabled
+	enabled *bool
 
 	PasswordStore
 }
@@ -432,6 +434,9 @@ func (s *authStore) EnableAuth() error {
 		return err
 	}
 
+	b := true
+	s.enabled = &b
+
 	plog.Noticef("auth: enabled auth")
 	return nil
 }
@@ -446,11 +451,18 @@ func (s *authStore) DisableAuth() error {
 
 	err := s.disableAuth()
 	if err == nil {
+		b := false
+		s.enabled = &b
+
 		plog.Noticef("auth: disabled auth")
 	} else {
 		plog.Errorf("error disabling auth (%v)", err)
 	}
 	return err
+}
+
+func (s *authStore) InitPointerOfServer(etcdServer *EtcdServer) {
+	etcdServer.AuthStore = s
 }
 
 // merge applies the properties of the passed-in User to the User on which it
