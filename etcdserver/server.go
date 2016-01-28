@@ -134,7 +134,7 @@ type Server interface {
 	UpdateMember(ctx context.Context, updateMemb Member) error
 
 	// ClusterVersion is the cluster-wide minimum major.minor version.
-	// Cluster version is set to the min version that a etcd member is
+	// Cluster version is set to the min version that an etcd member is
 	// compatible with when first bootstrap.
 	//
 	// ClusterVersion is nil until the cluster is bootstrapped (has a quorum).
