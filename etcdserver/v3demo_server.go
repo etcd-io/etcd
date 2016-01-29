@@ -285,7 +285,6 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 
 	var (
 		kvs []storagepb.KeyValue
-		rev int64
 		err error
 	)
 
@@ -300,12 +299,12 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 	}
 
 	if txnID != noTxn {
-		kvs, rev, err = kv.TxnRange(txnID, r.Key, r.RangeEnd, limit, r.Revision)
+		kvs, _, err = kv.TxnRange(txnID, r.Key, r.RangeEnd, limit, r.Revision)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		kvs, rev, err = kv.Range(r.Key, r.RangeEnd, limit, r.Revision)
+		kvs, _, err = kv.Range(r.Key, r.RangeEnd, limit, r.Revision)
 		if err != nil {
 			return nil, err
 		}
@@ -338,7 +337,7 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 		resp.More = true
 	}
 
-	resp.Header.Revision = rev
+	resp.Header.Revision = kv.Rev()
 	for i := range kvs {
 		resp.Kvs = append(resp.Kvs, &kvs[i])
 	}
