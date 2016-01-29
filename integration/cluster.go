@@ -37,7 +37,6 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -524,10 +523,7 @@ func (m *member) Launch() error {
 		m.hss = append(m.hss, hs)
 	}
 	if m.grpcListener != nil {
-		m.grpcServer = grpc.NewServer()
-		etcdserverpb.RegisterKVServer(m.grpcServer, v3rpc.NewKVServer(m.s))
-		etcdserverpb.RegisterWatchServer(m.grpcServer, v3rpc.NewWatchServer(m.s))
-		etcdserverpb.RegisterLeaseServer(m.grpcServer, v3rpc.NewLeaseServer(m.s))
+		m.grpcServer, err = v3rpc.Server(m.s, nil)
 		go m.grpcServer.Serve(m.grpcListener)
 	}
 	return nil

@@ -32,13 +32,10 @@ import (
 	systemdutil "github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/util"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/etcdhttp"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
 	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
@@ -331,20 +328,16 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 
 	if cfg.v3demo {
 		// set up v3 demo rpc
-		creds, err := credentials.NewServerTLSFromFile(
-			cfg.clientTLSInfo.CertFile,
-			cfg.clientTLSInfo.KeyFile)
+		tls := &cfg.clientTLSInfo
+		if cfg.clientTLSInfo.Empty() {
+			tls = nil
+		}
+		grpcServer, err := v3rpc.Server(s, tls)
 		if err != nil {
 			s.Stop()
 			<-s.StopNotify()
 			return nil, err
 		}
-
-		grpcServer := grpc.NewServer(grpc.Creds(creds))
-		etcdserverpb.RegisterKVServer(grpcServer, v3rpc.NewKVServer(s))
-		etcdserverpb.RegisterWatchServer(grpcServer, v3rpc.NewWatchServer(s))
-		etcdserverpb.RegisterLeaseServer(grpcServer, v3rpc.NewLeaseServer(s))
-		etcdserverpb.RegisterClusterServer(grpcServer, v3rpc.NewClusterServer(s))
 		go func() { plog.Fatal(grpcServer.Serve(v3l)) }()
 	}
 
