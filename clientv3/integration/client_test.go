@@ -43,7 +43,7 @@ func TestKVPut(t *testing.T) {
 		kv := clientv3.NewKV(clus.RandClient())
 
 		if _, err := kv.Put(tt.key, tt.val, tt.leaseID); err != nil {
-			t.Fatalf("#%d: couldn't put (%v)", i, tt.key, err)
+			t.Fatalf("#%d: couldn't put %q (%v)", i, tt.key, err)
 		}
 
 		resp, err := kv.Get(tt.key, 0)
