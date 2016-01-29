@@ -21,7 +21,7 @@ import (
 )
 
 func TestDoubleBarrier(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	defer closeSessionLease(clus)
 
@@ -82,7 +82,7 @@ func TestDoubleBarrier(t *testing.T) {
 }
 
 func TestDoubleBarrierFailover(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	defer closeSessionLease(clus)
 
@@ -122,7 +122,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 	}
 }
 
-func closeSessionLease(clus *clusterV3) {
+func closeSessionLease(clus *ClusterV3) {
 	for _, client := range clus.clients {
 		recipe.StopSessionLease(client)
 	}
