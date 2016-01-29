@@ -254,7 +254,7 @@ func TestServeRaftStreamPrefixBad(t *testing.T) {
 			"1",
 			http.StatusNotFound,
 		},
-		// non-existant peer
+		// non-existent peer
 		{
 			"GET",
 			RaftStreamPrefix + "/message/2",
