@@ -124,21 +124,24 @@ func (txn *txn) Else(ops ...Op) Txn {
 }
 
 func (txn *txn) Commit() (*TxnResponse, error) {
+	txn.mu.Lock()
+	defer txn.mu.Unlock()
+
 	kv := txn.kv
+
 	for {
 		r := &pb.TxnRequest{Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
-		resp, err := kv.remote.Txn(context.TODO(), r)
+		resp, err := kv.getRemote().Txn(context.TODO(), r)
 		if err == nil {
 			return (*TxnResponse)(resp), nil
 		}
 
-		// TODO: this can cause data race with other kv operation.
-		newConn, cerr := kv.c.retryConnection(kv.conn, err)
-		if cerr != nil {
-			// TODO: return client lib defined connection error
-			return nil, cerr
+		if isRPCError(err) {
+			return nil, err
 		}
-		kv.conn = newConn
-		kv.remote = pb.NewKVClient(kv.conn)
+
+		if nerr := kv.switchRemote(err); nerr != nil {
+			return nil, nerr
+		}
 	}
 }
