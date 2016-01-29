@@ -145,10 +145,12 @@ type etcdProcessConfig struct {
 	args        []string
 	dataDirPath string
 	acurl       url.URL
+	isProxy     bool
 }
 
 type etcdProcessClusterConfig struct {
 	clusterSize  int
+	proxySize    int
 	isClientTLS  bool
 	isPeerTLS    bool
 	initialToken string
@@ -160,7 +162,7 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 	etcdCfgs := cfg.etcdProcessConfigs()
 	epc := &etcdProcessCluster{
 		cfg:   cfg,
-		procs: make([]*etcdProcess, cfg.clusterSize),
+		procs: make([]*etcdProcess, cfg.clusterSize+cfg.proxySize),
 	}
 
 	// launch etcd processes
@@ -174,11 +176,15 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 	}
 
 	// wait for cluster to start
-	readyC := make(chan error, cfg.clusterSize)
+	readyC := make(chan error, cfg.clusterSize+cfg.proxySize)
 	readyStr := "set the initial cluster version"
 	for i := range etcdCfgs {
 		go func(etcdp *etcdProcess) {
-			_, err := etcdp.proc.ExpectRegex(readyStr)
+			rs := readyStr
+			if etcdp.cfg.isProxy {
+				rs = "listening for client requests"
+			}
+			_, err := etcdp.proc.ExpectRegex(rs)
 			readyC <- err
 			etcdp.proc.ReadLine()
 			etcdp.proc.Interact() // this blocks(leaks) if another goroutine is reading
@@ -220,7 +226,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		peerScheme = "https"
 	}
 
-	etcdCfgs := make([]*etcdProcessConfig, cfg.clusterSize)
+	etcdCfgs := make([]*etcdProcessConfig, cfg.clusterSize+cfg.proxySize)
 	initialCluster := make([]string, cfg.clusterSize)
 	for i := 0; i < cfg.clusterSize; i++ {
 		port := etcdProcessBasePort + 2*i
@@ -262,6 +268,24 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			acurl:       curl,
 		}
 	}
+	for i := 0; i < cfg.proxySize; i++ {
+		port := etcdProcessBasePort + 2*cfg.clusterSize + i + 1
+		curl := url.URL{Scheme: clientScheme, Host: fmt.Sprintf("localhost:%d", port)}
+		name := fmt.Sprintf("testname-proxy%d", i)
+		dataDirPath := name + ".etcd"
+		args := []string{
+			"--name", name,
+			"--proxy", "on",
+			"--listen-client-urls", curl.String(),
+			"--data-dir", dataDirPath,
+		}
+		etcdCfgs[cfg.clusterSize+i] = &etcdProcessConfig{
+			args:        args,
+			dataDirPath: dataDirPath,
+			acurl:       curl,
+			isProxy:     true,
+		}
+	}
 
 	initialClusterArgs := []string{"--initial-cluster", strings.Join(initialCluster, ",")}
 	for i := range etcdCfgs {
@@ -287,6 +311,15 @@ func (epc *etcdProcessCluster) Close() (err error) {
 		<-p.donec
 	}
 	return err
+}
+
+// proxies returns only the proxy etcdProcess.
+func (epc *etcdProcessCluster) proxies() []*etcdProcess {
+	return epc.procs[epc.cfg.clusterSize:]
+}
+
+func (epc *etcdProcessCluster) backends() []*etcdProcess {
+	return epc.procs[:epc.cfg.clusterSize]
 }
 
 func spawnCmd(args []string) (*gexpect.ExpectSubprocess, error) {
