@@ -119,7 +119,7 @@ func testProcessClusterV2CtlWatch(t *testing.T, cfg *etcdProcessClusterConfig, n
 		return
 	case err := <-errChan:
 		t.Fatalf("failed watch (%v)", err)
-	case <-time.After(2 * time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fatalf("watch timed out!")
 	}
 }
