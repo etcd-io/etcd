@@ -16,7 +16,6 @@ package integration
 import (
 	"bytes"
 	"fmt"
-	"math/rand"
 	"reflect"
 	"sort"
 	"sync"
@@ -24,7 +23,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
@@ -32,46 +30,11 @@ import (
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
-type clusterV3 struct {
-	*cluster
-	clients []*clientv3.Client
-}
-
-// newClusterV3 returns a launched cluster with a grpc client connection
-// for each cluster member.
-func newClusterV3(t *testing.T, cfg *clusterConfig) *clusterV3 {
-	cfg.useV3 = true
-	cfg.useGRPC = true
-	clus := &clusterV3{cluster: NewClusterByConfig(t, cfg)}
-	for _, m := range clus.Members {
-		client, err := NewClientV3(m)
-		if err != nil {
-			t.Fatal(err)
-		}
-		clus.clients = append(clus.clients, client)
-	}
-	clus.Launch(t)
-	return clus
-}
-
-func (c *clusterV3) Terminate(t *testing.T) {
-	for _, client := range c.clients {
-		if err := client.Close(); err != nil {
-			t.Error(err)
-		}
-	}
-	c.cluster.Terminate(t)
-}
-
-func (c *clusterV3) RandClient() *clientv3.Client {
-	return c.clients[rand.Intn(len(c.clients))]
-}
-
 // TestV3PutOverwrite puts a key with the v3 api to a random cluster member,
 // overwrites it, then checks that the change was applied.
 func TestV3PutOverwrite(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := clus.RandClient().KV
@@ -115,7 +78,7 @@ func TestV3PutOverwrite(t *testing.T) {
 
 func TestV3TxnTooManyOps(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := clus.RandClient().KV
@@ -173,7 +136,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 // TestV3PutMissingLease ensures that a Put on a key with a bogus lease fails.
 func TestV3PutMissingLease(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := clus.RandClient().KV
@@ -290,7 +253,7 @@ func TestV3DeleteRange(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		clus := newClusterV3(t, &clusterConfig{size: 3})
+		clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 		kvc := clus.RandClient().KV
 
 		ks := tt.keySet
@@ -336,7 +299,7 @@ func TestV3DeleteRange(t *testing.T) {
 // TestV3TxnInvaildRange tests txn
 func TestV3TxnInvaildRange(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := clus.RandClient().KV
@@ -553,7 +516,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		clus := newClusterV3(t, &clusterConfig{size: 3})
+		clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 
 		wAPI := clus.RandClient().Watch
 		ctx, cancel := context.WithCancel(context.Background())
@@ -629,7 +592,7 @@ func TestV3WatchCancelUnsynced(t *testing.T) {
 }
 
 func testV3WatchCancel(t *testing.T, startRev int64) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -697,7 +660,7 @@ func TestV3WatchMultipleWatchersUnsynced(t *testing.T) {
 // that matches all watchers, and another key that matches only
 // one watcher to test if it receives expected events.
 func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	kvc := clus.RandClient().KV
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -799,7 +762,7 @@ func TestV3WatchMultipleEventsTxnUnsynced(t *testing.T) {
 
 // testV3WatchMultipleEventsTxn tests Watch APIs when it receives multiple events.
 func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -882,7 +845,7 @@ func (evs eventsSortByKey) Less(i, j int) bool { return bytes.Compare(evs[i].Kv.
 
 func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kvc := clus.RandClient().KV
@@ -971,7 +934,7 @@ func TestV3WatchMultipleStreamsUnsynced(t *testing.T) {
 
 // testV3WatchMultipleStreams tests multiple watchers on the same key on multiple streams.
 func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	wAPI := clus.RandClient().Watch
 	kvc := clus.RandClient().KV
 
@@ -1195,7 +1158,7 @@ func TestV3RangeRequest(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		clus := newClusterV3(t, &clusterConfig{size: 3})
+		clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 		for _, k := range tt.putKeys {
 			kvc := clus.RandClient().KV
 			req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
@@ -1239,7 +1202,7 @@ func TestV3RangeRequest(t *testing.T) {
 // TestV3LeaseRevoke ensures a key is deleted once its lease is revoked.
 func TestV3LeaseRevoke(t *testing.T) {
 	defer testutil.AfterTest(t)
-	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
+	testLeaseRemoveLeasedKey(t, func(clus *ClusterV3, leaseID int64) error {
 		lc := clus.RandClient().Lease
 		_, err := lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
 		return err
@@ -1249,7 +1212,7 @@ func TestV3LeaseRevoke(t *testing.T) {
 // TestV3LeaseCreateById ensures leases may be created by a given id.
 func TestV3LeaseCreateByID(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// create fixed lease
@@ -1290,7 +1253,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 // TestV3LeaseExpire ensures a key is deleted once a key expires.
 func TestV3LeaseExpire(t *testing.T) {
 	defer testutil.AfterTest(t)
-	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
+	testLeaseRemoveLeasedKey(t, func(clus *ClusterV3, leaseID int64) error {
 		// let lease lapse; wait for deleted key
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -1342,7 +1305,7 @@ func TestV3LeaseExpire(t *testing.T) {
 // TestV3LeaseKeepAlive ensures keepalive keeps the lease alive.
 func TestV3LeaseKeepAlive(t *testing.T) {
 	defer testutil.AfterTest(t)
-	testLeaseRemoveLeasedKey(t, func(clus *clusterV3, leaseID int64) error {
+	testLeaseRemoveLeasedKey(t, func(clus *ClusterV3, leaseID int64) error {
 		lc := clus.RandClient().Lease
 		lreq := &pb.LeaseKeepAliveRequest{ID: leaseID}
 		ctx, cancel := context.WithCancel(context.Background())
@@ -1376,7 +1339,7 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 // client to confirm it's visible to the whole cluster.
 func TestV3LeaseExists(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// create lease
@@ -1409,7 +1372,7 @@ func TestV3LeaseExists(t *testing.T) {
 }
 
 // acquireLeaseAndKey creates a new lease and creates an attached key.
-func acquireLeaseAndKey(clus *clusterV3, key string) (int64, error) {
+func acquireLeaseAndKey(clus *ClusterV3, key string) (int64, error) {
 	// create lease
 	lresp, err := clus.RandClient().Lease.LeaseCreate(
 		context.TODO(),
@@ -1430,8 +1393,8 @@ func acquireLeaseAndKey(clus *clusterV3, key string) (int64, error) {
 
 // testLeaseRemoveLeasedKey performs some action while holding a lease with an
 // attached key "foo", then confirms the key is gone.
-func testLeaseRemoveLeasedKey(t *testing.T, act func(*clusterV3, int64) error) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+func testLeaseRemoveLeasedKey(t *testing.T, act func(*ClusterV3, int64) error) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	leaseID, err := acquireLeaseAndKey(clus, "foo")

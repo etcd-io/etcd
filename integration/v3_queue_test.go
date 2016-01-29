@@ -29,7 +29,7 @@ const (
 
 // TestQueueOneReaderOneWriter confirms the queue is FIFO
 func TestQueueOneReaderOneWriter(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	done := make(chan struct{})
@@ -75,7 +75,7 @@ func TestQueueManyReaderManyWriter(t *testing.T) {
 // BenchmarkQueue benchmarks Queues using many/many readers/writers
 func BenchmarkQueue(b *testing.B) {
 	// XXX switch tests to use TB interface
-	clus := newClusterV3(nil, &clusterConfig{size: 3})
+	clus := NewClusterV3(nil, &ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
 	for i := 0; i < b.N; i++ {
 		testQueueNReaderMWriter(nil, manyQueueClients, manyQueueClients)
@@ -84,7 +84,7 @@ func BenchmarkQueue(b *testing.B) {
 
 // TestPrQueue tests whether priority queues respect priorities.
 func TestPrQueueOneReaderOneWriter(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// write out five items with random priority
@@ -116,7 +116,7 @@ func TestPrQueueOneReaderOneWriter(t *testing.T) {
 }
 
 func TestPrQueueManyReaderManyWriter(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	rqs := newPriorityQueues(clus, manyQueueClients)
 	wqs := newPriorityQueues(clus, manyQueueClients)
@@ -126,7 +126,7 @@ func TestPrQueueManyReaderManyWriter(t *testing.T) {
 // BenchmarkQueue benchmarks Queues using n/n readers/writers
 func BenchmarkPrQueueOneReaderOneWriter(b *testing.B) {
 	// XXX switch tests to use TB interface
-	clus := newClusterV3(nil, &clusterConfig{size: 3})
+	clus := NewClusterV3(nil, &ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
 	rqs := newPriorityQueues(clus, 1)
 	wqs := newPriorityQueues(clus, 1)
@@ -136,12 +136,12 @@ func BenchmarkPrQueueOneReaderOneWriter(b *testing.B) {
 }
 
 func testQueueNReaderMWriter(t *testing.T, n int, m int) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testReadersWriters(t, newQueues(clus, n), newQueues(clus, m))
 }
 
-func newQueues(clus *clusterV3, n int) (qs []testQueue) {
+func newQueues(clus *ClusterV3, n int) (qs []testQueue) {
 	for i := 0; i < n; i++ {
 		etcdc := clus.RandClient()
 		qs = append(qs, recipe.NewQueue(etcdc, "q"))
@@ -149,7 +149,7 @@ func newQueues(clus *clusterV3, n int) (qs []testQueue) {
 	return qs
 }
 
-func newPriorityQueues(clus *clusterV3, n int) (qs []testQueue) {
+func newPriorityQueues(clus *ClusterV3, n int) (qs []testQueue) {
 	for i := 0; i < n; i++ {
 		etcdc := clus.RandClient()
 		q := &flatPriorityQueue{recipe.NewPriorityQueue(etcdc, "prq")}

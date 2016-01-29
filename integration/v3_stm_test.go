@@ -24,7 +24,7 @@ import (
 
 // TestSTMConflict tests that conflicts are retried.
 func TestSTMConflict(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -89,7 +89,7 @@ func TestSTMConflict(t *testing.T) {
 
 // TestSTMPut confirms a STM put on a new key is visible after commit.
 func TestSTMPutNewKey(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -113,7 +113,7 @@ func TestSTMPutNewKey(t *testing.T) {
 
 // TestSTMAbort tests that an aborted txn does not modify any keys.
 func TestSTMAbort(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()

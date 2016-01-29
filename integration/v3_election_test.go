@@ -23,7 +23,7 @@ import (
 
 // TestElectionWait tests if followers can correcty wait for elections.
 func TestElectionWait(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	defer closeSessionLease(clus)
 
@@ -86,7 +86,7 @@ func TestElectionWait(t *testing.T) {
 
 // TestElectionFailover tests that an election will
 func TestElectionFailover(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	defer closeSessionLease(clus)
 

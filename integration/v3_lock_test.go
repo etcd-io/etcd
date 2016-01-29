@@ -23,13 +23,13 @@ import (
 )
 
 func TestMutexSingleNode(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testMutex(t, 5, func() *clientv3.Client { return clus.clients[0] })
 }
 
 func TestMutexMultiNode(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testMutex(t, 5, func() *clientv3.Client { return clus.RandClient() })
 }
@@ -68,7 +68,7 @@ func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) 
 
 func BenchmarkMutex4Waiters(b *testing.B) {
 	// XXX switch tests to use TB interface
-	clus := newClusterV3(nil, &clusterConfig{size: 3})
+	clus := NewClusterV3(nil, &ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
 	for i := 0; i < b.N; i++ {
 		testMutex(nil, 4, func() *clientv3.Client { return clus.RandClient() })
@@ -76,13 +76,13 @@ func BenchmarkMutex4Waiters(b *testing.B) {
 }
 
 func TestRWMutexSingleNode(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testRWMutex(t, 5, func() *clientv3.Client { return clus.clients[0] })
 }
 
 func TestRWMutexMultiNode(t *testing.T) {
-	clus := newClusterV3(t, &clusterConfig{size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testRWMutex(t, 5, func() *clientv3.Client { return clus.RandClient() })
 }
