@@ -66,6 +66,18 @@ type kv struct {
 	c *Client
 }
 
+func NewKV(c *Client) KV {
+	conn := c.activeConnection()
+	remote := pb.NewKVClient(conn)
+
+	return &kv{
+		conn:   c.activeConnection(),
+		remote: remote,
+
+		c: c,
+	}
+}
+
 func (kv *kv) Put(key, val string, leaseID lease.LeaseID) (*PutResponse, error) {
 	r, err := kv.do(OpPut(key, val, leaseID))
 	if err != nil {
@@ -104,6 +116,30 @@ func (kv *kv) Delete(key string) (*DeleteResponse, error) {
 		return nil, err
 	}
 	return (*DeleteResponse)(r.GetResponseDeleteRange()), nil
+}
+
+func (kv *kv) Compact(rev int64) error {
+	for {
+		r := &pb.CompactionRequest{Revision: rev}
+		_, err := kv.remote.Compact(context.TODO(), r)
+		if err == nil {
+			return nil
+		}
+
+		if isRPCError(err) {
+			return err
+		}
+
+		if nerr := kv.switchRemote(err); nerr != nil {
+			return nerr
+		}
+	}
+}
+
+func (kv *kv) Txn() Txn {
+	return &txn{
+		kv: kv,
+	}
 }
 
 func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
@@ -148,12 +184,18 @@ func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
 			return nil, err
 		}
 
-		newConn, cerr := kv.c.retryConnection(kv.conn, err)
-		if cerr != nil {
-			// TODO: return client lib defined connection error
-			return nil, cerr
+		if nerr := kv.switchRemote(err); nerr != nil {
+			return nil, nerr
 		}
-		kv.conn = newConn
-		kv.remote = pb.NewKVClient(kv.conn)
 	}
+}
+
+func (kv *kv) switchRemote(prevErr error) error {
+	newConn, err := kv.c.retryConnection(kv.conn, prevErr)
+	if err != nil {
+		return err
+	}
+	kv.conn = newConn
+	kv.remote = pb.NewKVClient(kv.conn)
+	return nil
 }
