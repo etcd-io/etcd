@@ -1223,7 +1223,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 		t.Errorf("could not create lease 1 (%v)", err)
 	}
 	if lresp.ID != 1 {
-		t.Errorf("got id %v, wanted id %v", lresp.ID)
+		t.Errorf("got id %v, wanted id %v", lresp.ID, 1)
 	}
 
 	// create duplicate fixed lease
@@ -1245,7 +1245,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 		t.Errorf("could not create lease 2 (%v)", err)
 	}
 	if lresp.ID != 2 {
-		t.Errorf("got id %v, wanted id %v", lresp.ID)
+		t.Errorf("got id %v, wanted id %v", lresp.ID, 2)
 	}
 
 }
