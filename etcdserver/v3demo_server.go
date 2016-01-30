@@ -195,7 +195,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
 
 	switch {
 	case r.Range != nil:
-		ar.resp, ar.err = applyRange(noTxn, kv, r.Range)
+		curRev := kv.Rev()
+		ar.resp, ar.err = applyRange(noTxn, kv, r.Range, curRev)
 	case r.Put != nil:
 		ar.resp, ar.err = applyPut(noTxn, kv, le, r.Put)
 	case r.DeleteRange != nil:
@@ -279,13 +280,14 @@ func (s *kvSortByValue) Less(i, j int) bool {
 	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
 }
 
-func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+// curRev is the current main revision from storage. Need this separate
+// to avoid deadlocks on storage.
+func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest, curRev int64) (*pb.RangeResponse, error) {
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
 
 	var (
 		kvs []storagepb.KeyValue
-		rev int64
 		err error
 	)
 
@@ -300,12 +302,12 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 	}
 
 	if txnID != noTxn {
-		kvs, rev, err = kv.TxnRange(txnID, r.Key, r.RangeEnd, limit, r.Revision)
+		kvs, _, err = kv.TxnRange(txnID, r.Key, r.RangeEnd, limit, r.Revision)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		kvs, rev, err = kv.Range(r.Key, r.RangeEnd, limit, r.Revision)
+		kvs, _, err = kv.Range(r.Key, r.RangeEnd, limit, r.Revision)
 		if err != nil {
 			return nil, err
 		}
@@ -338,7 +340,7 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 		resp.More = true
 	}
 
-	resp.Header.Revision = rev
+	resp.Header.Revision = curRev
 	for i := range kvs {
 		resp.Kvs = append(resp.Kvs, &kvs[i])
 	}
@@ -429,6 +431,8 @@ func applyTxn(kv dstorage.KV, le lease.Lessor, rt *pb.TxnRequest) (*pb.TxnRespon
 		return nil, err
 	}
 
+	curRev := kv.Rev()
+
 	// When executing the operations of txn, we need to hold the txn lock.
 	// So the reader will not see any intermediate results.
 	txnID := kv.TxnBegin()
@@ -441,7 +445,7 @@ func applyTxn(kv dstorage.KV, le lease.Lessor, rt *pb.TxnRequest) (*pb.TxnRespon
 
 	resps := make([]*pb.ResponseUnion, len(reqs))
 	for i := range reqs {
-		resps[i] = applyUnion(txnID, kv, reqs[i])
+		resps[i] = applyUnion(txnID, kv, reqs[i], curRev)
 	}
 
 	if len(resps) != 0 {
@@ -468,11 +472,11 @@ func applyCompaction(kv dstorage.KV, compaction *pb.CompactionRequest) (*pb.Comp
 	return resp, err
 }
 
-func applyUnion(txnID int64, kv dstorage.KV, union *pb.RequestUnion) *pb.ResponseUnion {
+func applyUnion(txnID int64, kv dstorage.KV, union *pb.RequestUnion, curRev int64) *pb.ResponseUnion {
 	switch tv := union.Request.(type) {
 	case *pb.RequestUnion_RequestRange:
 		if tv.RequestRange != nil {
-			resp, err := applyRange(txnID, kv, tv.RequestRange)
+			resp, err := applyRange(txnID, kv, tv.RequestRange, curRev)
 			if err != nil {
 				panic("unexpected error during txn")
 			}
