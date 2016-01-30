@@ -15,6 +15,8 @@
 package command
 
 import (
+	"time"
+
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/transport"
@@ -46,8 +48,9 @@ func mustClient(cmd *cobra.Command) *clientv3.Client {
 		cfgtls = &tls
 	}
 	cfg := clientv3.Config{
-		Endpoints: []string{endpoint},
-		TLS:       cfgtls,
+		Endpoints:   []string{endpoint},
+		TLS:         cfgtls,
+		DialTimeout: 20 * time.Second,
 	}
 
 	client, err := clientv3.New(cfg)

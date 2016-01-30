@@ -54,7 +54,7 @@ func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) erro
 		}
 
 		ttl, err := ls.le.LeaseRenew(lease.LeaseID(req.ID))
-		if err != nil {
+		if err != nil && err != lease.ErrLeaseNotFound {
 			return err
 		}
 
