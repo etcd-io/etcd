@@ -22,7 +22,148 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
-func TestBasicOpsV2CtlWatchWithProxy(t *testing.T) {
+func TestCtlV2Set(t *testing.T) {
+	defer testutil.AfterTest(t)
+	testProcessClusterV2CtlSetGet(
+		t,
+		&etcdProcessClusterConfig{
+			clusterSize:  3,
+			proxySize:    1,
+			isClientTLS:  false,
+			isPeerTLS:    false,
+			initialToken: "new",
+		},
+		false,
+	)
+}
+
+func TestCtlV2SetNoSync(t *testing.T) {
+	defer testutil.AfterTest(t)
+	testProcessClusterV2CtlSetGet(
+		t,
+		&etcdProcessClusterConfig{
+			clusterSize:  3,
+			proxySize:    1,
+			isClientTLS:  false,
+			isPeerTLS:    false,
+			initialToken: "new",
+		},
+		true,
+	)
+}
+
+func etcdctlPrefixArgs(epc *etcdProcessCluster, noSync bool) []string {
+	endpoint := ""
+	if proxies := epc.proxies(); len(proxies) != 0 {
+		endpoint = proxies[0].cfg.acurl.String()
+	} else if backends := epc.backends(); len(backends) != 0 {
+		endpoint = backends[0].cfg.acurl.String()
+	}
+	args := []string{"../bin/etcdctl", "--endpoint", endpoint}
+	if noSync {
+		args = append(args, "--no-sync")
+	}
+	return args
+}
+
+func etcdctlSet(epc *etcdProcessCluster, key, value string, noSync bool) error {
+	args := append(etcdctlPrefixArgs(epc, noSync), "set", key, value)
+	return spawnWithExpect(args, value)
+}
+
+func etcdctlGet(epc *etcdProcessCluster, key, value string, noSync bool) error {
+	args := append(etcdctlPrefixArgs(epc, noSync), "get", key)
+	return spawnWithExpect(args, value)
+}
+
+func testProcessClusterV2CtlSetGet(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
+	if fileutil.Exist("../bin/etcdctl") == false {
+		t.Fatalf("could not find etcdctl binary")
+	}
+
+	epc, errC := newEtcdProcessCluster(cfg)
+	if errC != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", errC)
+	}
+	defer func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	}()
+
+	key, value := "foo", "bar"
+
+	if err := etcdctlSet(epc, key, value, noSync); err != nil {
+		t.Fatalf("failed set (%v)", err)
+	}
+
+	if err := etcdctlGet(epc, key, value, noSync); err != nil {
+		t.Fatalf("failed set (%v)", err)
+	}
+}
+
+func TestCtlV2Ls(t *testing.T) {
+	defer testutil.AfterTest(t)
+	testProcessClusterV2CtlLs(
+		t,
+		&etcdProcessClusterConfig{
+			clusterSize:  3,
+			proxySize:    1,
+			isClientTLS:  false,
+			isPeerTLS:    false,
+			initialToken: "new",
+		},
+		false,
+	)
+}
+
+func TestCtlV2LsNoSync(t *testing.T) {
+	defer testutil.AfterTest(t)
+	testProcessClusterV2CtlLs(
+		t,
+		&etcdProcessClusterConfig{
+			clusterSize:  3,
+			proxySize:    1,
+			isClientTLS:  false,
+			isPeerTLS:    false,
+			initialToken: "new",
+		},
+		true,
+	)
+}
+
+func etcdctlLs(epc *etcdProcessCluster, key string, noSync bool) error {
+	args := append(etcdctlPrefixArgs(epc, noSync), "ls")
+	return spawnWithExpect(args, key)
+}
+
+func testProcessClusterV2CtlLs(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
+	if fileutil.Exist("../bin/etcdctl") == false {
+		t.Fatalf("could not find etcdctl binary")
+	}
+
+	epc, errC := newEtcdProcessCluster(cfg)
+	if errC != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", errC)
+	}
+	defer func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	}()
+
+	key, value := "foo", "bar"
+
+	if err := etcdctlSet(epc, key, value, noSync); err != nil {
+		t.Fatalf("failed set (%v)", err)
+	}
+
+	if err := etcdctlLs(epc, key, noSync); err != nil {
+		t.Fatalf("failed set (%v)", err)
+	}
+}
+
+func TestCtlV2WatchWithProxy(t *testing.T) {
 	defer testutil.AfterTest(t)
 	testProcessClusterV2CtlWatch(
 		t,
@@ -37,7 +178,7 @@ func TestBasicOpsV2CtlWatchWithProxy(t *testing.T) {
 	)
 }
 
-func TestBasicOpsV2CtlWatchWithProxyNoSync(t *testing.T) {
+func TestCtlV2WatchWithProxyNoSync(t *testing.T) {
 	defer testutil.AfterTest(t)
 	testProcessClusterV2CtlWatch(
 		t,
@@ -52,38 +193,9 @@ func TestBasicOpsV2CtlWatchWithProxyNoSync(t *testing.T) {
 	)
 }
 
-func etcdctlSet(epc *etcdProcessCluster, key, value string, noSync bool) error {
-	endpoint := ""
-	if proxies := epc.proxies(); len(proxies) != 0 {
-		endpoint = proxies[0].cfg.acurl.String()
-	} else if backends := epc.backends(); len(backends) != 0 {
-		endpoint = backends[0].cfg.acurl.String()
-	}
-
-	putArgs := []string{"../bin/etcdctl", "--endpoint", endpoint}
-	if noSync {
-		putArgs = append(putArgs, "--no-sync")
-	}
-	putArgs = append(putArgs, "set", key, value)
-
-	return spawnWithExpect(putArgs, value)
-}
-
 func etcdctlWatch(epc *etcdProcessCluster, key, value string, noSync bool, done chan struct{}, errChan chan error) {
-	endpoint := ""
-	if proxies := epc.proxies(); len(proxies) != 0 {
-		endpoint = proxies[0].cfg.acurl.String()
-	} else if backends := epc.backends(); len(backends) != 0 {
-		endpoint = backends[0].cfg.acurl.String()
-	}
-
-	watchArgs := []string{"../bin/etcdctl", "--endpoint", endpoint}
-	if noSync {
-		watchArgs = append(watchArgs, "--no-sync")
-	}
-	watchArgs = append(watchArgs, "watch", key)
-
-	if err := spawnWithExpect(watchArgs, value); err != nil {
+	args := append(etcdctlPrefixArgs(epc, noSync), "watch", key)
+	if err := spawnWithExpect(args, value); err != nil {
 		errChan <- err
 		return
 	}
