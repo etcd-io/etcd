@@ -33,7 +33,16 @@ func mustCreateConn() *clientv3.Client {
 	eps := strings.Split(endpoints, ",")
 	endpoint := eps[dialTotal%len(eps)]
 	dialTotal++
-	client, err := clientv3.NewFromURL(endpoint)
+	cfgtls := &tls
+	if cfgtls.Empty() {
+		cfgtls = nil
+	}
+	client, err := clientv3.New(
+		clientv3.Config{
+			Endpoints: []string{endpoint},
+			TLS:       cfgtls,
+		},
+	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dial error: %v\n", err)
 		os.Exit(1)

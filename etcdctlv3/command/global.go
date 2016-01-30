@@ -17,12 +17,14 @@ package command
 import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/transport"
 )
 
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
 	Endpoints string
+	TLS       transport.TLSInfo
 }
 
 func mustClient(cmd *cobra.Command) *clientv3.Client {
@@ -30,7 +32,25 @@ func mustClient(cmd *cobra.Command) *clientv3.Client {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	client, err := clientv3.NewFromURL(endpoint)
+
+	// set tls if any one tls option set
+	var cfgtls *transport.TLSInfo
+	tls := transport.TLSInfo{}
+	if tls.CertFile, err = cmd.Flags().GetString("cert"); err == nil {
+		cfgtls = &tls
+	}
+	if tls.KeyFile, err = cmd.Flags().GetString("key"); err == nil {
+		cfgtls = &tls
+	}
+	if tls.CAFile, err = cmd.Flags().GetString("cacert"); err == nil {
+		cfgtls = &tls
+	}
+	cfg := clientv3.Config{
+		Endpoints: []string{endpoint},
+		TLS:       cfgtls,
+	}
+
+	client, err := clientv3.New(cfg)
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)
 	}

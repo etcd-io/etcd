@@ -43,6 +43,10 @@ var (
 func init() {
 	rootCmd.PersistentFlags().StringVar(&globalFlags.Endpoints, "endpoint", "127.0.0.1:2378", "gRPC endpoint")
 
+	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.CertFile, "cert", "", "identify HTTPS client using this SSL certificate file")
+	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.KeyFile, "key", "", "identify HTTPS client using this SSL key file")
+	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.CAFile, "cacert", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
+
 	rootCmd.AddCommand(
 		command.NewRangeCommand(),
 		command.NewPutCommand(),

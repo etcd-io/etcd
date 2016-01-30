@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
@@ -1414,5 +1415,101 @@ func testLeaseRemoveLeasedKey(t *testing.T, act func(*ClusterV3, int64) error) {
 	}
 	if len(rresp.Kvs) != 0 {
 		t.Fatalf("lease removed but key remains")
+	}
+}
+
+func newClusterV3NoClients(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
+	cfg.UseV3 = true
+	cfg.UseGRPC = true
+	clus := &ClusterV3{cluster: NewClusterByConfig(t, cfg)}
+	clus.Launch(t)
+	return clus
+}
+
+// TestTLSGRPCRejectInsecureClient checks that connection is rejected if server is TLS but not client.
+func TestTLSGRPCRejectInsecureClient(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	cfg := ClusterConfig{Size: 3, ClientTLS: &testTLSInfo}
+	clus := newClusterV3NoClients(t, &cfg)
+	defer clus.Terminate(t)
+
+	// nil out TLS field so client will use an insecure connection
+	clus.Members[0].ClientTLSInfo = nil
+	client, err := NewClientV3(clus.Members[0])
+	if err != nil && err != grpc.ErrClientConnTimeout {
+		t.Fatalf("unexpected error (%v)", err)
+	} else if client == nil {
+		// Ideally, no client would be returned. However, grpc will
+		// return a connection without trying to handshake first so
+		// the connection appears OK.
+		return
+	}
+	defer client.Close()
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	conn := client.ActiveConnection()
+	st, err := conn.State()
+	if err != nil {
+		t.Fatal(err)
+	} else if st != grpc.Ready {
+		t.Fatalf("expected Ready, got %v", st)
+	}
+
+	// rpc will fail to handshake, triggering a connection state change
+	donec := make(chan error, 1)
+	go func() {
+		reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+		_, perr := client.KV.Put(ctx, reqput)
+		donec <- perr
+	}()
+
+	st, err = conn.WaitForStateChange(ctx, st)
+	if err != nil {
+		t.Fatalf("unexpected error waiting for change (%v)", err)
+	} else if st != grpc.Connecting {
+		t.Fatalf("expected connecting state, got %v", st)
+	}
+
+	cancel()
+	if perr := <-donec; perr == nil {
+		t.Fatalf("expected client error on put")
+	}
+}
+
+// TestTLSGRPCRejectSecureClient checks that connection is rejected if client is TLS but not server.
+func TestTLSGRPCRejectSecureClient(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	cfg := ClusterConfig{Size: 3}
+	clus := newClusterV3NoClients(t, &cfg)
+	defer clus.Terminate(t)
+
+	clus.Members[0].ClientTLSInfo = &testTLSInfo
+	client, err := NewClientV3(clus.Members[0])
+	if client != nil || err == nil {
+		t.Fatalf("expected no client")
+	} else if err != grpc.ErrClientConnTimeout {
+		t.Fatalf("unexpected error (%v)", err)
+	}
+}
+
+// TestTLSGRPCAcceptSecureAll checks that connection is accepted if both client and server are TLS
+func TestTLSGRPCAcceptSecureAll(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	cfg := ClusterConfig{Size: 3, ClientTLS: &testTLSInfo}
+	clus := newClusterV3NoClients(t, &cfg)
+	defer clus.Terminate(t)
+
+	client, err := NewClientV3(clus.Members[0])
+	if err != nil {
+		t.Fatalf("expected tls client (%v)", err)
+	}
+	defer client.Close()
+
+	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+	if _, err := client.KV.Put(context.TODO(), reqput); err != nil {
+		t.Fatalf("unexpected error on put over tls (%v)", err)
 	}
 }

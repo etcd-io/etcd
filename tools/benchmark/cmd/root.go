@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cheggaaa/pb"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/etcd/pkg/transport"
 )
 
 // This represents the base command when called without any subcommands
@@ -40,6 +41,8 @@ var (
 	results chan result
 	wg      sync.WaitGroup
 
+	tls transport.TLSInfo
+
 	cpuProfPath string
 	memProfPath string
 )
@@ -48,4 +51,8 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&endpoints, "endpoint", "127.0.0.1:2378", "comma-separated gRPC endpoints")
 	RootCmd.PersistentFlags().UintVar(&totalConns, "conns", 1, "Total number of gRPC connections")
 	RootCmd.PersistentFlags().UintVar(&totalClients, "clients", 1, "Total number of gRPC clients")
+
+	RootCmd.PersistentFlags().StringVar(&tls.CertFile, "cert", "", "identify HTTPS client using this SSL certificate file")
+	RootCmd.PersistentFlags().StringVar(&tls.KeyFile, "key", "", "identify HTTPS client using this SSL key file")
+	RootCmd.PersistentFlags().StringVar(&tls.CAFile, "cacert", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 }

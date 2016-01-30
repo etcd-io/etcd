@@ -20,7 +20,9 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/transport"
 )
 
 // Client provides and manages an etcd v3 client session.
@@ -36,6 +38,7 @@ type Client struct {
 
 	conn   *grpc.ClientConn
 	cfg    Config
+	creds  *credentials.TransportAuthenticator
 	mu     sync.RWMutex // protects connection selection and error list
 	errors []error      // errors passed to retryConnection
 }
@@ -53,7 +56,8 @@ type Config struct {
 	// DialTimeout is the timeout for failing to establish a connection.
 	DialTimeout time.Duration
 
-	// TODO TLS options
+	// TLS holds the client secure credentials, if any.
+	TLS *transport.TLSInfo
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -66,7 +70,7 @@ func New(cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newClient(conn, &cfg), nil
+	return newClient(conn, &cfg)
 }
 
 // NewFromURL creates a new etcdv3 client from a URL.
@@ -75,10 +79,10 @@ func NewFromURL(url string) (*Client, error) {
 }
 
 // NewFromConn creates a new etcdv3 client from an established grpc Connection.
-func NewFromConn(conn *grpc.ClientConn) *Client { return newClient(conn, nil) }
+func NewFromConn(conn *grpc.ClientConn) *Client { return mustNewClient(conn, nil) }
 
 // Clone creates a copy of client with the old connection and new API clients.
-func (c *Client) Clone() *Client { return newClient(c.conn, &c.cfg) }
+func (c *Client) Clone() *Client { return mustNewClient(c.conn, &c.cfg) }
 
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
@@ -99,21 +103,42 @@ func (c *Client) Errors() (errs []error) {
 
 // Dial establishes a connection for a given endpoint using the client's config
 func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
-	// TODO: enable grpc.WithTransportCredentials(creds)
-	conn, err := grpc.Dial(
-		endpoint,
+	opts := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithTimeout(c.cfg.DialTimeout),
-		grpc.WithInsecure())
+	}
+	if c.creds != nil {
+		opts = append(opts, grpc.WithTransportCredentials(*c.creds))
+	} else {
+		opts = append(opts, grpc.WithInsecure())
+	}
+	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return conn, nil
 }
 
-func newClient(conn *grpc.ClientConn, cfg *Config) *Client {
+func mustNewClient(conn *grpc.ClientConn, cfg *Config) *Client {
+	c, err := newClient(conn, cfg)
+	if err != nil {
+		panic("expected no error")
+	}
+	return c
+}
+
+func newClient(conn *grpc.ClientConn, cfg *Config) (*Client, error) {
 	if cfg == nil {
 		cfg = &Config{RetryDialer: dialEndpointList}
+	}
+	var creds *credentials.TransportAuthenticator
+	if cfg.TLS != nil {
+		tlscfg, err := cfg.TLS.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		c := credentials.NewTLS(tlscfg)
+		creds = &c
 	}
 	return &Client{
 		KV:      pb.NewKVClient(conn),
@@ -122,11 +147,12 @@ func newClient(conn *grpc.ClientConn, cfg *Config) *Client {
 		Cluster: pb.NewClusterClient(conn),
 		conn:    conn,
 		cfg:     *cfg,
-	}
+		creds:   creds,
+	}, nil
 }
 
 // activeConnection returns the current in-use connection
-func (c *Client) activeConnection() *grpc.ClientConn {
+func (c *Client) ActiveConnection() *grpc.ClientConn {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.conn

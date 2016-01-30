@@ -70,11 +70,11 @@ type kv struct {
 }
 
 func NewKV(c *Client) KV {
-	conn := c.activeConnection()
+	conn := c.ActiveConnection()
 	remote := pb.NewKVClient(conn)
 
 	return &kv{
-		conn:   c.activeConnection(),
+		conn:   c.ActiveConnection(),
 		remote: remote,
 
 		c: c,
