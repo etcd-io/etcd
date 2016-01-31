@@ -16,6 +16,7 @@ package storage
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -82,11 +83,11 @@ func TestCancelUnsynced(t *testing.T) {
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(map[*watcher]struct{}),
+		unsynced: make(watcherSetByKey),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
-		synced: make(map[string]map[*watcher]struct{}),
+		synced: make(watcherSetByKey),
 	}
 
 	defer func() {
@@ -137,8 +138,8 @@ func TestSyncWatchers(t *testing.T) {
 
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(map[*watcher]struct{}),
-		synced:   make(map[string]map[*watcher]struct{}),
+		unsynced: make(watcherSetByKey),
+		synced:   make(watcherSetByKey),
 	}
 
 	defer func() {
@@ -169,8 +170,8 @@ func TestSyncWatchers(t *testing.T) {
 	}
 	// unsynced should not be empty
 	// because we manually populated unsynced only
-	if len(s.unsynced) == 0 {
-		t.Errorf("unsynced size = %d, want %d", len(s.unsynced), watcherN)
+	if len(s.unsynced[string(testKey)]) == 0 {
+		t.Errorf("unsynced size = %d, want %d", len(s.unsynced[string(testKey)]), watcherN)
 	}
 
 	// this should move all unsynced watchers
@@ -215,6 +216,68 @@ func TestSyncWatchers(t *testing.T) {
 	}
 }
 
+func TestEventsFromWatchKVs(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := &watchableStore{
+		store:    NewStore(b, &lease.FakeLessor{}),
+		unsynced: make(watcherSetByKey),
+		synced:   make(watcherSetByKey),
+	}
+
+	defer func() {
+		s.store.Close()
+		os.Remove(tmpPath)
+	}()
+
+	testKeyWatch, testKeyPut := []byte("foo"), []byte("foobar")
+	testValue := []byte("bar")
+	s.Put(testKeyPut, testValue, lease.NoLease)
+
+	w := s.NewWatchStream()
+
+	watcherN := 5
+	for i := 0; i < watcherN; i++ {
+		if i == 0 {
+			w.Watch(testKeyWatch, true, 1)
+		} else {
+			w.Watch([]byte(fmt.Sprintf("%s%d", testKeyWatch, i)), true, 1)
+		}
+	}
+
+	prefixes := make(map[string]struct{})
+	for k, wm := range s.unsynced {
+		for w := range wm {
+			if w.prefix {
+				prefixes[k] = struct{}{}
+			}
+		}
+	}
+	wv := watchKVs{prefixes: prefixes}
+
+	minBytes, maxBytes := newRevBytes(), newRevBytes()
+	revToBytes(revision{main: 1}, minBytes)
+	revToBytes(revision{main: s.store.currentRev.main + 1}, maxBytes)
+
+	// UnsafeRange returns keys and values. And in boltdb, keys are revisions.
+	// values are actual key-value pairs in backend.
+	tx := s.store.b.BatchTx()
+	tx.Lock()
+	wv.keys, wv.vs = tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
+	tx.Unlock()
+
+	evs := wv.eventsFromWatchKVs(&s.unsynced)
+
+	if len(evs) != 1 {
+		t.Errorf("len(evs) got = %d, want = 1", len(evs))
+	}
+	if len(evs) == 1 {
+		event := evs[0]
+		if !bytes.Equal(event.Kv.Key, testKeyPut) {
+			t.Errorf("event.Kv.Key got = %s, want = %s", event.Kv.Key, testKeyPut)
+		}
+	}
+}
+
 func TestUnsafeAddWatcher(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := newWatchableStore(b, &lease.FakeLessor{})
@@ -235,10 +298,10 @@ func TestUnsafeAddWatcher(t *testing.T) {
 			cur:    0,
 		}
 	}
-	// to test if unsafeAddWatcher is correctly updating
+	// to test if unsafeAdd is correctly updating
 	// synced map when adding new watcher.
 	for i, wa := range ws {
-		if err := unsafeAddWatcher(&s.synced, string(testKey), wa); err != nil {
+		if err := (&s.synced).unsafeAdd(string(testKey), wa); err != nil {
 			t.Errorf("#%d: error = %v, want nil", i, err)
 		}
 		if v, ok := s.synced[string(testKey)]; !ok {
@@ -251,6 +314,33 @@ func TestUnsafeAddWatcher(t *testing.T) {
 				t.Errorf("#%d: ok = %v, want ok true", i, ok)
 			}
 		}
+	}
+}
+
+func TestUnsafeDeleteWatcher(t *testing.T) {
+	testKey := []byte("foo")
+	watcherN := 3
+	ws := make([]*watcher, watcherN)
+	for i := 0; i < watcherN; i++ {
+		ws[i] = &watcher{
+			key:    testKey,
+			prefix: true,
+		}
+	}
+	m := make(map[*watcher]struct{})
+	for i := range ws {
+		m[ws[i]] = struct{}{}
+	}
+	sm := make(watcherSetByKey)
+	sm[string(testKey)] = m
+
+	for i := range ws {
+		if err := (&sm).unsafeDelete(string(testKey), ws[i]); err != nil {
+			t.Error(err)
+		}
+	}
+	if len(sm) != 0 {
+		t.Errorf("len(sm) got = %d, want = 0", len(sm))
 	}
 }
 
@@ -276,14 +366,14 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 	}
 
 	tests := []struct {
-		sync map[string]map[*watcher]struct{}
+		sync watcherSetByKey
 		evs  []storagepb.Event
 
 		wwe map[*watcher][]storagepb.Event
 	}{
 		// no watcher in sync, some events should return empty wwe
 		{
-			map[string]map[*watcher]struct{}{},
+			watcherSetByKey{},
 			evs,
 			map[*watcher][]storagepb.Event{},
 		},
@@ -291,7 +381,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// one watcher in sync, one event that does not match the key of that
 		// watcher should return empty wwe
 		{
-			map[string]map[*watcher]struct{}{
+			watcherSetByKey{
 				string(k2): {ws[2]: struct{}{}},
 			},
 			evs[:1],
@@ -301,7 +391,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// one watcher in sync, one event that matches the key of that
 		// watcher should return wwe with that matching watcher
 		{
-			map[string]map[*watcher]struct{}{
+			watcherSetByKey{
 				string(k1): {ws[1]: struct{}{}},
 			},
 			evs[1:2],
@@ -314,7 +404,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// that matches the key of only one of the watcher should return wwe
 		// with the matching watcher
 		{
-			map[string]map[*watcher]struct{}{
+			watcherSetByKey{
 				string(k0): {ws[0]: struct{}{}},
 				string(k2): {ws[2]: struct{}{}},
 			},
@@ -327,7 +417,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// two watchers in sync that watches the same key, two events that
 		// match the keys should return wwe with those two watchers
 		{
-			map[string]map[*watcher]struct{}{
+			watcherSetByKey{
 				string(k0): {ws[0]: struct{}{}},
 				string(k1): {ws[1]: struct{}{}},
 			},
