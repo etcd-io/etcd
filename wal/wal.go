@@ -60,7 +60,7 @@ var (
 	crcTable            = crc32.MakeTable(crc32.Castagnoli)
 )
 
-// WAL is a logical repersentation of the stable storage.
+// WAL is a logical representation of the stable storage.
 // WAL is either in read mode or append mode but not both.
 // A newly created WAL is in append mode, and ready for appending records.
 // A just opened WAL is in read mode, and ready for reading records.
@@ -189,7 +189,7 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) 
 	}
 
 	if write {
-		// open the lastest wal file for appending
+		// open the last wal file for appending
 		seq, _, err := parseWalName(names[len(names)-1])
 		if err != nil {
 			rc.Close()
@@ -315,7 +315,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 
 // cut closes current file written and creates a new one ready to append.
 // cut first creates a temp wal file and writes necessary headers into it.
-// Then cut atomtically rename temp wal file to a wal file.
+// Then cut atomically rename temp wal file to a wal file.
 func (w *WAL) cut() error {
 	// close old wal file
 	if err := w.sync(); err != nil {
@@ -428,7 +428,7 @@ func (w *WAL) ReleaseLockTo(index uint64) error {
 	}
 
 	// if no lock index is greater than the release index, we can
-	// release lock upto the last one(excluding).
+	// release lock up to the last one(excluding).
 	if !found && len(w.locks) != 0 {
 		smaller = len(w.locks) - 1
 	}

@@ -237,7 +237,7 @@ func TestProgressIsPaused(t *testing.T) {
 			ins:    newInflights(256),
 		}
 		if g := p.isPaused(); g != tt.w {
-			t.Errorf("#%d: shouldwait = %t, want %t", i, g, tt.w)
+			t.Errorf("#%d: paused= %t, want %t", i, g, tt.w)
 		}
 	}
 }
@@ -1323,7 +1323,7 @@ func TestBcastBeat(t *testing.T) {
 	}
 }
 
-// tests the output of the statemachine when receiving MsgBeat
+// tests the output of the state machine when receiving MsgBeat
 func TestRecvMsgBeat(t *testing.T) {
 	tests := []struct {
 		state StateType
