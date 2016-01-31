@@ -26,6 +26,7 @@ func saveToDisk(ents []pb.Entry)      {}
 func ExampleNode() {
 	c := &Config{}
 	n := StartNode(c, nil)
+	defer n.Stop()
 
 	// stuff to n happens in other goroutines
 

@@ -330,6 +330,7 @@ func TestNodeStart(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := StartNode(c, []Peer{{ID: 1}})
+	defer n.Stop()
 	n.Campaign(ctx)
 	g := <-n.Ready()
 	if !reflect.DeepEqual(g, wants[0]) {
@@ -379,6 +380,7 @@ func TestNodeRestart(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := RestartNode(c)
+	defer n.Stop()
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	}
@@ -423,6 +425,7 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := RestartNode(c)
+	defer n.Stop()
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	} else {
@@ -450,6 +453,7 @@ func TestNodeAdvance(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := StartNode(c, []Peer{{ID: 1}})
+	defer n.Stop()
 	n.Campaign(ctx)
 	<-n.Ready()
 	n.Propose(ctx, []byte("foo"))
