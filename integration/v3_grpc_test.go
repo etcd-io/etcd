@@ -1188,10 +1188,7 @@ func TestV3RangeRequest(t *testing.T) {
 			if resp.More != tt.wmores[j] {
 				t.Errorf("#%d.%d: bad more. got = %v, want = %v, ", i, j, resp.More, tt.wmores[j])
 			}
-			wrev := req.Revision
-			if wrev == 0 {
-				wrev = int64(len(tt.putKeys) + 1)
-			}
+			wrev := int64(len(tt.putKeys) + 1)
 			if resp.Header.Revision != wrev {
 				t.Errorf("#%d.%d: bad header revision. got = %d. want = %d", i, j, resp.Header.Revision, wrev)
 			}

@@ -153,8 +153,8 @@ func testKVRangeRev(t *testing.T, f rangeFunc) {
 	}{
 		{-1, 4, kvs},
 		{0, 4, kvs},
-		{2, 2, kvs[:1]},
-		{3, 3, kvs[:2]},
+		{2, 4, kvs[:1]},
+		{3, 4, kvs[:2]},
 		{4, 4, kvs},
 	}
 
