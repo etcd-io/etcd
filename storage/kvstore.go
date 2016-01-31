@@ -62,6 +62,8 @@ type store struct {
 	tx    backend.BatchTx
 	txnID int64 // tracks the current txnID to verify txn operations
 
+	changes []storagepb.KeyValue
+
 	wg    sync.WaitGroup
 	stopc chan struct{}
 }
@@ -426,6 +428,7 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 
 	s.tx.UnsafePut(keyBucketName, ibytes, d)
 	s.kvindex.Put(key, revision{main: rev, sub: s.currentRev.sub})
+	s.changes = append(s.changes, kv)
 	s.currentRev.sub += 1
 
 	if leaseID != lease.NoLease {
@@ -482,9 +485,16 @@ func (s *store) delete(key []byte) {
 	if err != nil {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
 	}
+	s.changes = append(s.changes, kv)
 	s.currentRev.sub += 1
 
 	// TODO: De-attach keys from lease if necessary
+}
+
+func (s *store) getChanges() []storagepb.KeyValue {
+	changes := s.changes
+	s.changes = make([]storagepb.KeyValue, 0, 128)
+	return changes
 }
 
 // appendMarkTombstone appends tombstone mark to normal revision bytes.
