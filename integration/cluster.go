@@ -31,7 +31,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/clientv3"
@@ -445,6 +444,7 @@ func (m *member) listenGRPC() error {
 	if err != nil {
 		return fmt.Errorf("listen failed on grpc socket %s (%v)", m.grpcAddr, err)
 	}
+	m.grpcAddr = "unix://" + m.grpcAddr
 	m.grpcListener = l
 	return nil
 }
@@ -454,29 +454,12 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	if m.grpcAddr == "" {
 		return nil, fmt.Errorf("member not configured for grpc")
 	}
-	f := func(a string, t time.Duration) (net.Conn, error) {
-		return net.Dial("unix", a)
+	cfg := clientv3.Config{
+		Endpoints:   []string{m.grpcAddr},
+		DialTimeout: 5 * time.Second,
+		TLS:         m.ClientTLSInfo,
 	}
-	unixdialer := grpc.WithDialer(f)
-	opts := []grpc.DialOption{
-		unixdialer,
-		grpc.WithBlock(),
-		grpc.WithTimeout(5 * time.Second)}
-	if m.ClientTLSInfo != nil {
-		tlscfg, err := m.ClientTLSInfo.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
-		creds := credentials.NewTLS(tlscfg)
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
-	conn, err := grpc.Dial(m.grpcAddr, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return clientv3.NewFromConn(conn), nil
+	return clientv3.New(cfg)
 }
 
 // Clone returns a member with the same server configuration. The returned

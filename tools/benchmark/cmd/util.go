@@ -58,7 +58,7 @@ func mustCreateClients(totalClients, totalConns uint) []*clientv3.Client {
 
 	clients := make([]*clientv3.Client, totalClients)
 	for i := range clients {
-		clients[i] = conns[i%int(totalConns)].Clone()
+		clients[i] = conns[i%int(totalConns)]
 	}
 	return clients
 }
