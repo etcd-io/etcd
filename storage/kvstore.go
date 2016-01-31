@@ -353,8 +353,8 @@ func (a *store) Equal(b *store) bool {
 }
 
 // range is a keyword in Go, add Keys suffix.
-func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
-	curRev := int64(s.currentRev.main)
+func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, curRev int64, err error) {
+	curRev = int64(s.currentRev.main)
 	if s.currentRev.sub > 0 {
 		curRev += 1
 	}
@@ -362,6 +362,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	if rangeRev > curRev {
 		return nil, s.currentRev.main, ErrFutureRev
 	}
+	var rev int64
 	if rangeRev <= 0 {
 		rev = curRev
 	} else {
@@ -373,7 +374,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 
 	_, revpairs := s.kvindex.Range(key, end, int64(rev))
 	if len(revpairs) == 0 {
-		return nil, rev, nil
+		return nil, curRev, nil
 	}
 
 	for _, revpair := range revpairs {
@@ -393,7 +394,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 			break
 		}
 	}
-	return kvs, rev, nil
+	return kvs, curRev, nil
 }
 
 func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
