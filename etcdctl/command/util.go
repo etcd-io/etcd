@@ -82,7 +82,7 @@ func getPeersFlagValue(c *cli.Context) []string {
 
 	// If we still don't have peers, use a default
 	if peerstr == "" {
-		peerstr = "http://127.0.0.1:4001,http://127.0.0.1:2379"
+		peerstr = "http://127.0.0.1:2379,http://127.0.0.1:4001"
 	}
 
 	return strings.Split(peerstr, ",")
