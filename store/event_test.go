@@ -60,24 +60,24 @@ func TestScanHistory(t *testing.T) {
 
 	e, err := eh.scan("/foo", false, 1)
 	if err != nil || e.Index() != 1 {
-		t.Fatalf("scan error [/foo] [1] %v", e.Index)
+		t.Fatalf("scan error [/foo] [1] %d (%v)", e.Index(), err)
 	}
 
 	e, err = eh.scan("/foo/bar", false, 1)
 
 	if err != nil || e.Index() != 2 {
-		t.Fatalf("scan error [/foo/bar] [2] %v", e.Index)
+		t.Fatalf("scan error [/foo/bar] [2] %d (%v)", e.Index(), err)
 	}
 
 	e, err = eh.scan("/foo/bar", true, 3)
 
 	if err != nil || e.Index() != 4 {
-		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e.Index)
+		t.Fatalf("scan error [/foo/bar/bar] [4] %d (%v)", e.Index(), err)
 	}
 
 	e, err = eh.scan("/foo/foo/foo", false, 6)
 	if err != nil || e.Index() != 6 {
-		t.Fatalf("scan error [/foo/foo/foo] [6] %v", e.Index)
+		t.Fatalf("scan error [/foo/foo/foo] [6] %d (%v)", e.Index(), err)
 	}
 
 	e, err = eh.scan("/foo/bar", true, 7)
