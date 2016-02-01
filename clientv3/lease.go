@@ -218,7 +218,7 @@ func (l *lessor) recvKeepAliveLoop() {
 
 		resp, err := stream.Recv()
 		if err != nil {
-			err := l.switchRemoteAndStream(err)
+			err = l.switchRemoteAndStream(err)
 			if err != nil {
 				l.Close()
 				return
@@ -278,14 +278,14 @@ func (l *lessor) sendKeepAliveLoop() {
 		var err error
 		for _, id := range tosend {
 			r := &pb.LeaseKeepAliveRequest{ID: int64(id)}
-			err := stream.Send(r)
+			err = stream.Send(r)
 			if err != nil {
 				break
 			}
 		}
 
 		if err != nil {
-			err := l.switchRemoteAndStream(err)
+			err = l.switchRemoteAndStream(err)
 			if err != nil {
 				l.Close()
 				return
