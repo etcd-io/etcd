@@ -58,8 +58,8 @@ function unit_tests {
 
 function integration_tests {
 	echo "Running integration tests..."
-	go test -timeout 5m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e
-	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration
+	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e
+	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration
 	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
 	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
 }

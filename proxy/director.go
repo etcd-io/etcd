@@ -26,6 +26,8 @@ import (
 // as in etcdmain/config.go.
 const defaultRefreshInterval = 30000 * time.Millisecond
 
+var once sync.Once
+
 func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
 	d := &director{
 		uf:          urlsFunc,
@@ -38,11 +40,21 @@ func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterv
 		// and whenever there is no available proxy endpoints,
 		// give 1-second refreshInterval.
 		for {
+			es := d.endpoints()
 			ri := refreshInterval
 			if ri >= defaultRefreshInterval {
-				if len(d.endpoints()) == 0 {
+				if len(es) == 0 {
 					ri = time.Second
 				}
+			}
+			if len(es) > 0 {
+				once.Do(func() {
+					var sl []string
+					for _, e := range es {
+						sl = append(sl, e.URL.String())
+					}
+					plog.Infof("endpoints found %q", sl)
+				})
 			}
 			select {
 			case <-time.After(ri):
@@ -69,7 +81,7 @@ func (d *director) refresh() {
 	for _, u := range urls {
 		uu, err := url.Parse(u)
 		if err != nil {
-			log.Printf("proxy: upstream URL invalid: %v", err)
+			plog.Printf("upstream URL invalid: %v", err)
 			continue
 		}
 		endpoints = append(endpoints, newEndpoint(*uu, d.failureWait))
