@@ -42,7 +42,7 @@ var (
 
 // writeError logs and writes the given Error to the ResponseWriter
 // If Error is an etcdErr, it is rendered to the ResponseWriter
-// Otherwise, it is assumed to be an InternalServerError
+// Otherwise, it is assumed to be a StatusInternalServerError
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	if err == nil {
 		return

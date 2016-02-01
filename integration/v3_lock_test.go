@@ -35,7 +35,7 @@ func TestMutexMultiNode(t *testing.T) {
 }
 
 func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
-	// stream lock acquistions
+	// stream lock acquisitions
 	lockedC := make(chan *recipe.Mutex, 1)
 	for i := 0; i < waiters; i++ {
 		go func() {

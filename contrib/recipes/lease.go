@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/lease"
 )
 
-// only keep one ephemeral lease per clientection
+// only keep one ephemeral lease per client
 var clientLeases clientLeaseMgr = clientLeaseMgr{leases: make(map[*clientv3.Client]*leaseKeepAlive)}
 
 type clientLeaseMgr struct {
@@ -45,7 +45,7 @@ func SessionLeaseTTL(client *clientv3.Client, ttl int64) (lease.LeaseID, error) 
 }
 
 // StopSessionLease ends the refresh for the session lease. This is useful
-// in case the state of the client clientection is indeterminate (revoke
+// in case the state of the client connection is indeterminate (revoke
 // would fail) or if transferring lease ownership.
 func StopSessionLease(client *clientv3.Client) {
 	clientLeases.mu.Lock()
@@ -95,7 +95,7 @@ func (clm *clientLeaseMgr) sessionLease(client *clientv3.Client, ttl int64) (lea
 	lka := &leaseKeepAlive{id: id, donec: make(chan struct{})}
 	clm.leases[client] = lka
 
-	// keep the lease alive until clientection error
+	// keep the lease alive until client error
 	go func() {
 		defer func() {
 			keepAlive.CloseSend()

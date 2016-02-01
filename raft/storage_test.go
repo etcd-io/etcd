@@ -220,7 +220,7 @@ func TestStorageAppend(t *testing.T) {
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 5}},
 		},
-		// tunncate the existing entries and append
+		// truncate the existing entries and append
 		{
 			[]pb.Entry{{Index: 4, Term: 5}},
 			nil,

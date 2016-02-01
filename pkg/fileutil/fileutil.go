@@ -59,7 +59,7 @@ func ReadDir(dirpath string) ([]string, error) {
 	return names, nil
 }
 
-// TouchDirAll is simliar to os.MkdirAll. It creates directories with 0700 permission if any directory
+// TouchDirAll is similar to os.MkdirAll. It creates directories with 0700 permission if any directory
 // does not exists. TouchDirAll also ensures the given directory is writable.
 func TouchDirAll(dir string) error {
 	err := os.MkdirAll(dir, privateDirMode)

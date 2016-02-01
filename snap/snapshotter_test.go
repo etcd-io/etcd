@@ -207,7 +207,7 @@ func TestEmptySnapshot(t *testing.T) {
 	}
 }
 
-// TestAllSnapshotBroken ensures snapshotter returens
+// TestAllSnapshotBroken ensures snapshotter returns
 // ErrNoSnapshot if all the snapshots are broken.
 func TestAllSnapshotBroken(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")

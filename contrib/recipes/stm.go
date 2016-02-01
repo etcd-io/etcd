@@ -55,7 +55,7 @@ func NewSTM(client *clientv3.Client, apply func(*STM) error) <-chan error {
 // Abort abandons the apply loop, letting the transaction close without a commit.
 func (s *STM) Abort() { s.aborted = true }
 
-// Get returns the value for a given key, inserting the key into the txn's readset.
+// Get returns the value for a given key, inserting the key into the txn's rset.
 func (s *STM) Get(key string) (string, error) {
 	if wv, ok := s.wset[key]; ok {
 		return wv, nil

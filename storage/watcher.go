@@ -47,7 +47,7 @@ type WatchStream interface {
 	// returned.
 	Cancel(id WatchID) error
 
-	// Close closes the WatchChan and release all related resources.
+	// Close closes Chan and release all related resources.
 	Close()
 
 	// Rev returns the current revision of the KV the stream watches on.

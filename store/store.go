@@ -429,7 +429,7 @@ func (s *store) Watch(key string, recursive, stream bool, sinceIndex uint64) (Wa
 	if sinceIndex == 0 {
 		sinceIndex = s.CurrentIndex + 1
 	}
-	// WatchHub does not know about the current index, so we need to pass it in
+	// WatcherHub does not know about the current index, so we need to pass it in
 	w, err := s.WatcherHub.watch(key, recursive, stream, sinceIndex, s.CurrentIndex)
 	if err != nil {
 		return nil, err
@@ -631,7 +631,7 @@ func (s *store) internalGet(nodePath string) (*node, *etcdErr.Error) {
 	return f, nil
 }
 
-// deleteExpiredKyes will delete all
+// DeleteExpiredKeys will delete all expired keys
 func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 	s.worldLock.Lock()
 	defer s.worldLock.Unlock()

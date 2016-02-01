@@ -673,7 +673,7 @@ func TestIsReadyToRemoveMember(t *testing.T) {
 		},
 		{
 			// 1/2 members ready, should be fine to remove unstarted member
-			// (iReadyToRemoveMember() logic should return success, but operation itself would fail)
+			// (isReadyToRemoveMember() logic should return success, but operation itself would fail)
 			[]*Member{
 				newTestMember(1, nil, "1", nil),
 				newTestMember(2, nil, "", nil),

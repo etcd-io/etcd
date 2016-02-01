@@ -34,7 +34,7 @@ func (q *Queue) Enqueue(val string) error {
 	return err
 }
 
-// Dequeue returns Enqueued()'d elements in FIFO order. If the
+// Dequeue returns Enqueue()'d elements in FIFO order. If the
 // queue is empty, Dequeue blocks until elements are available.
 func (q *Queue) Dequeue() (string, error) {
 	// TODO: fewer round trips by fetching more than one key

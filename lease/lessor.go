@@ -56,7 +56,7 @@ type RangeDeleter interface {
 
 // A Lessor is the owner of leases. It can grant, revoke, renew and modify leases for lessee.
 type Lessor interface {
-	// SetDeleteableRange sets the RangeDeleter to the Lessor.
+	// SetRangeDeleter sets the RangeDeleter to the Lessor.
 	// Lessor deletes the items in the revoked or expired lease from the
 	// the set RangeDeleter.
 	SetRangeDeleter(dr RangeDeleter)
@@ -117,9 +117,9 @@ type lessor struct {
 	// TODO: probably this should be a heap with a secondary
 	// id index.
 	// Now it is O(N) to loop over the leases to find expired ones.
-	// We want to make Grant, Revoke, and FindExpired all O(logN) and
+	// We want to make Grant, Revoke, and findExpiredLeases all O(logN) and
 	// Renew O(1).
-	// FindExpired and Renew should be the most frequent operations.
+	// findExpiredLeases and Renew should be the most frequent operations.
 	leaseMap map[LeaseID]*Lease
 
 	// When a lease expires, the lessor will delete the

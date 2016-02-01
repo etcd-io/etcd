@@ -36,7 +36,7 @@ func nextEnts(r *raft, s *MemoryStorage) (ents []pb.Entry) {
 	return ents
 }
 
-type Interface interface {
+type stateMachine interface {
 	Step(m pb.Message) error
 	readMessages() []pb.Message
 }
@@ -939,7 +939,7 @@ func TestHandleHeartbeatResp(t *testing.T) {
 	}
 }
 
-// TestMsgAppRespWaitReset verifies the waitReset behavior of a leader
+// TestMsgAppRespWaitReset verifies the resume behavior of a leader
 // MsgAppResp.
 func TestMsgAppRespWaitReset(t *testing.T) {
 	sm := newTestRaft(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
@@ -1920,7 +1920,7 @@ func ents(terms ...uint64) *raft {
 }
 
 type network struct {
-	peers   map[uint64]Interface
+	peers   map[uint64]stateMachine
 	storage map[uint64]*MemoryStorage
 	dropm   map[connem]float64
 	ignorem map[pb.MessageType]bool
@@ -1930,11 +1930,11 @@ type network struct {
 // A nil node will be replaced with a new *stateMachine.
 // A *stateMachine will get its k, id.
 // When using stateMachine, the address list is always [1, n].
-func newNetwork(peers ...Interface) *network {
+func newNetwork(peers ...stateMachine) *network {
 	size := len(peers)
 	peerAddrs := idsBySize(size)
 
-	npeers := make(map[uint64]Interface, size)
+	npeers := make(map[uint64]stateMachine, size)
 	nstorage := make(map[uint64]*MemoryStorage, size)
 
 	for j, p := range peers {

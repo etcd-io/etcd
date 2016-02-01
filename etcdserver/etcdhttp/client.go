@@ -361,7 +361,7 @@ func serveVars(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO: change etcdserver to raft interface when we have it.
-//       add test for healthHeadler when we have the interface ready.
+//       add test for healthHandler when we have the interface ready.
 func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !allowMethod(w, r.Method, "GET") {

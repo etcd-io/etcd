@@ -123,7 +123,7 @@ func TestProposeOnCommit(t *testing.T) {
 	}
 }
 
-// TestCloseBeforeReplay tests closing the producer before raft starts.
+// TestCloseProposerBeforeReplay tests closing the producer before raft starts.
 func TestCloseProposerBeforeReplay(t *testing.T) {
 	clus := newCluster(1)
 	// close before replay so raft never starts

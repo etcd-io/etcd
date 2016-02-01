@@ -6,7 +6,7 @@
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writinrawNode, software
+// Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
@@ -45,7 +45,7 @@ func TestRawNodeStep(t *testing.T) {
 // no goroutine in RawNode.
 
 // TestRawNodeProposeAndConfChange ensures that RawNode.Propose and RawNode.ProposeConfChange
-// send the given proposal and ConfChangeto the underlying raft.
+// send the given proposal and ConfChange to the underlying raft.
 func TestRawNodeProposeAndConfChange(t *testing.T) {
 	s := NewMemoryStorage()
 	var err error

@@ -39,7 +39,7 @@ func (q *PriorityQueue) Enqueue(val string, pr uint16) error {
 	return err
 }
 
-// Dequeue returns Enqueued()'d items in FIFO order. If the
+// Dequeue returns Enqueue()'d items in FIFO order. If the
 // queue is empty, Dequeue blocks until items are available.
 func (q *PriorityQueue) Dequeue() (string, error) {
 	// TODO: fewer round trips by fetching more than one key

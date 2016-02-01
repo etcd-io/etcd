@@ -431,7 +431,7 @@ func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, client
 	return m
 }
 
-// startGRPC starts a grpc server over a unix domain socket on the member
+// listenGRPC starts a grpc server over a unix domain socket on the member
 func (m *member) listenGRPC() error {
 	if m.V3demo == false {
 		return fmt.Errorf("starting grpc server without v3 configured")
