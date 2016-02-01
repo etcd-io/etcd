@@ -15,18 +15,12 @@
 package e2e
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
-	"net/http"
 	"net/url"
 	"os"
-	"reflect"
-	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/gexpect"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -194,7 +188,8 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 		go func(etcdp *etcdProcess) {
 			rs := readyStr
 			if etcdp.cfg.isProxy {
-				rs = "proxy: listening for client requests on"
+				// rs = "proxy: listening for client requests on"
+				rs = "proxy: endpoints found"
 			}
 			ok, err := etcdp.proc.ExpectRegex(rs)
 			if err != nil {
@@ -216,70 +211,7 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 			return nil, err
 		}
 	}
-	if epc.cfg.proxySize > 0 {
-		for i := 0; i < 5; i++ {
-			ok, _ := isProxyReady(epc)
-			if ok {
-				break
-			}
-			time.Sleep(time.Second)
-		}
-	}
 	return epc, nil
-}
-
-func isProxyReady(clus *etcdProcessCluster) (bool, error) {
-	if clus.cfg.proxySize == 0 {
-		return false, nil
-	}
-
-	proxies := clus.proxies()
-	if len(proxies) == 0 {
-		return false, nil
-	}
-	endpoint := proxies[0].cfg.acurl.String()
-
-	am := make(map[string]struct{})
-	as := []string{}
-	for _, cfg := range clus.cfg.etcdProcessConfigs() {
-		if cfg.isProxy {
-			continue
-		}
-		v := cfg.acurl.String()
-		if _, ok := am[v]; !ok {
-			am[v] = struct{}{}
-			as = append(as, v)
-		}
-	}
-	sort.Strings(as)
-
-	emap1 := make(map[string][]string)
-	emap1["endpoints"] = as
-
-	resp, err := http.Get(endpoint + "/v2/config/local/proxy")
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	emap2 := make(map[string][]string)
-	dec := json.NewDecoder(resp.Body)
-	for {
-		if err := dec.Decode(&emap2); err == io.EOF {
-			break
-		} else if err != nil {
-			return false, err
-		}
-	}
-
-	if vs, ok := emap2["endpoints"]; !ok {
-		return false, nil
-	} else {
-		sort.Strings(vs)
-		emap2["endpoints"] = vs
-	}
-
-	return reflect.DeepEqual(emap1, emap2), nil
 }
 
 func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
