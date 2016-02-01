@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage"
 )
 
@@ -213,6 +214,8 @@ func togRPCError(err error) error {
 		return ErrCompacted
 	case storage.ErrFutureRev:
 		return ErrFutureRev
+	case lease.ErrLeaseNotFound:
+		return ErrLeaseNotFound
 	// TODO: handle error from raft and timeout
 	default:
 		return grpc.Errorf(codes.Internal, err.Error())
