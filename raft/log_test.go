@@ -273,7 +273,7 @@ func TestLogMaybeAppend(t *testing.T) {
 	}
 }
 
-// TestCompactionSideEffects ensures that all the log related funcationality works correctly after
+// TestCompactionSideEffects ensures that all the log related functionality works correctly after
 // a compaction.
 func TestCompactionSideEffects(t *testing.T) {
 	var i uint64

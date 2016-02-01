@@ -126,7 +126,7 @@ func checkPostResponse(resp *http.Response, body []byte, req *http.Request, to t
 	}
 }
 
-// reportErr reports the given error through sending it into
+// reportCriticalError reports the given error through sending it into
 // the given error channel.
 // If the error channel is filled up when sending error, it drops the error
 // because the fact that error has happened is reported, which is

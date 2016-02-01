@@ -77,8 +77,8 @@ type Config struct {
 	// message to maintain the leadership every heartbeat interval.
 	HeartbeatTick int
 
-	// Storage is the storage for raft. raft generates entires and
-	// states to be stored in storage. raft reads the persisted entires
+	// Storage is the storage for raft. raft generates entries and
+	// states to be stored in storage. raft reads the persisted entries
 	// and states out of Storage when it needs. raft reads out the previous
 	// state and configuration out of storage when restarting.
 	Storage Storage

@@ -222,7 +222,7 @@ func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, id Watch
 	return wa, cancel
 }
 
-// syncWatchersLoop syncs the watcher in the unsyncd map every 100ms.
+// syncWatchersLoop syncs the watcher in the unsynced map every 100ms.
 func (s *watchableStore) syncWatchersLoop() {
 	defer s.wg.Done()
 

@@ -87,7 +87,7 @@ func TestSTMConflict(t *testing.T) {
 	}
 }
 
-// TestSTMPut confirms a STM put on a new key is visible after commit.
+// TestSTMPutNewKey confirms a STM put on a new key is visible after commit.
 func TestSTMPutNewKey(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

@@ -40,7 +40,7 @@ type KV interface {
 	Put(key, val string, leaseID lease.LeaseID) (*PutResponse, error)
 
 	// Range gets the keys [key, end) in the range at rev.
-	// If revev <=0, range gets the keys at currentRev.
+	// If rev <=0, range gets the keys at currentRev.
 	// Limit limits the number of keys returned.
 	// If the required rev is compacted, ErrCompacted will be returned.
 	Range(key, end string, limit, rev int64, sort *SortOption) (*RangeResponse, error)

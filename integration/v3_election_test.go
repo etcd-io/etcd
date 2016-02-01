@@ -21,7 +21,7 @@ import (
 	"github.com/coreos/etcd/contrib/recipes"
 )
 
-// TestElectionWait tests if followers can correcty wait for elections.
+// TestElectionWait tests if followers can correctly wait for elections.
 func TestElectionWait(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)

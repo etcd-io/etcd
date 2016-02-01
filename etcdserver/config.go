@@ -56,7 +56,7 @@ type ServerConfig struct {
 	EnablePprof bool
 }
 
-// VerifyBootstrapConfig sanity-checks the initial config for bootstrap case
+// VerifyBootstrap sanity-checks the initial config for bootstrap case
 // and returns an error for things that should never happen.
 func (c *ServerConfig) VerifyBootstrap() error {
 	if err := c.verifyLocalMember(true); err != nil {

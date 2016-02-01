@@ -27,7 +27,7 @@ var (
 
 type srvDiscover struct{}
 
-// NewSRVDiscover constructs a new Dicoverer that uses the stdlib to lookup SRV records.
+// NewSRVDiscover constructs a new Discoverer that uses the stdlib to lookup SRV records.
 func NewSRVDiscover() Discoverer {
 	return &srvDiscover{}
 }

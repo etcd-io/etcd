@@ -149,7 +149,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 	}
 }
 
-// TestWatchStreamCancel ensures cancel calls the cancel func of the watcher
+// TestWatchStreamCancelWatcherByID ensures cancel calls the cancel func of the watcher
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()

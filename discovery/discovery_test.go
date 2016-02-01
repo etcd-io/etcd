@@ -329,9 +329,9 @@ func TestCreateSelf(t *testing.T) {
 		{c, nil},
 		// client.create returns an error
 		{errc, errc.err},
-		// watcher.next retuens an error
+		// watcher.next returns an error
 		{errwc, errw.err},
-		// parse key exist error to duplciate ID error
+		// parse key exist error to duplicate ID error
 		{errdupc, ErrDuplicateID},
 	}
 

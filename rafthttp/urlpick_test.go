@@ -23,7 +23,7 @@ import (
 
 // TestURLPickerPickTwice tests that pick returns a possible url,
 // and always returns the same one.
-func TestURLPickerPick(t *testing.T) {
+func TestURLPickerPickTwice(t *testing.T) {
 	picker := mustNewURLPicker(t, []string{"http://127.0.0.1:2380", "http://127.0.0.1:7001"})
 
 	u := picker.pick()

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package timeutil providese time-related utility functions.
+// Package timeutil provides time-related utility functions.
 package timeutil
 
 import "time"

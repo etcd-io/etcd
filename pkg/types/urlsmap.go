@@ -40,7 +40,7 @@ func NewURLsMap(s string) (URLsMap, error) {
 	return cl, nil
 }
 
-// String returns NameURLPairs into discovery-formatted name-to-URLs sorted by name.
+// String turns URLsMap into discovery-formatted name-to-URLs sorted by name.
 func (c URLsMap) String() string {
 	var pairs []string
 	for name, urls := range c {

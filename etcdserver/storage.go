@@ -110,7 +110,7 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 	return
 }
 
-// upgradeWAL converts an older version of the etcdServer data to the newest version.
+// upgradeDataDir converts an older version of the etcdServer data to the newest version.
 // It must ensure that, after upgrading, the most recent version is present.
 func upgradeDataDir(baseDataDir string, name string, ver version.DataDirVersion) error {
 	switch ver {

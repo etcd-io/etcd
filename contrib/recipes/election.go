@@ -30,7 +30,7 @@ func NewElection(client *clientv3.Client, keyPrefix string) *Election {
 	return &Election{client, keyPrefix, nil}
 }
 
-// Volunteer puts a value as elegible for the election. It blocks until
+// Volunteer puts a value as eligible for the election. It blocks until
 // it is elected or an error occurs (cannot withdraw candidacy)
 func (e *Election) Volunteer(val string) error {
 	if e.leaderKey != nil {

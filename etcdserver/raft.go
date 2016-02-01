@@ -378,7 +378,7 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 // the entries. The given snapshot/entries can contain two kinds of
 // ID-related entry:
 // - ConfChangeAddNode, in which case the contained ID will be added into the set.
-// - ConfChangeAddRemove, in which case the contained ID will be removed from the set.
+// - ConfChangeRemoveNode, in which case the contained ID will be removed from the set.
 func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {

@@ -196,7 +196,7 @@ func (ki *keyIndex) compact(atRev int64, available map[revision]struct{}) {
 	}
 
 	// walk until reaching the first revision that has an revision smaller or equal to
-	// the atRevision.
+	// the atRev.
 	// add it to the available map
 	f := func(rev revision) bool {
 		if rev.main <= atRev {
@@ -237,7 +237,7 @@ func (ki *keyIndex) isEmpty() bool {
 	return len(ki.generations) == 1 && ki.generations[0].isEmpty()
 }
 
-// findGeneartion finds out the generation of the keyIndex that the
+// findGeneration finds out the generation of the keyIndex that the
 // given rev belongs to. If the given rev is at the gap of two generations,
 // which means that the key does not exist at the given rev, it returns nil.
 func (ki *keyIndex) findGeneration(rev int64) *generation {

@@ -37,7 +37,7 @@ import (
 // continuously, and closes it when stopped.
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 	sw := startStreamWriter(types.ID(1), newPeerStatus(types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
-	// the expected initial state of streamWrite is not working
+	// the expected initial state of streamWriter is not working
 	if _, ok := sw.writec(); ok != false {
 		t.Errorf("initial working status = %v, want false", ok)
 	}

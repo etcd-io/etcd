@@ -158,7 +158,7 @@ func (c *Client) ActiveConnection() *grpc.ClientConn {
 	return c.conn
 }
 
-// refreshConnection establishes a new connection
+// retryConnection establishes a new connection
 func (c *Client) retryConnection(oldConn *grpc.ClientConn, err error) (*grpc.ClientConn, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -178,7 +178,7 @@ func (c *Client) retryConnection(oldConn *grpc.ClientConn, err error) (*grpc.Cli
 	return c.conn, nil
 }
 
-// dialEndpoints attempts to connect to each endpoint in order until a
+// dialEndpointList attempts to connect to each endpoint in order until a
 // connection is established.
 func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 	var err error

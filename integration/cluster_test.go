@@ -275,7 +275,7 @@ func TestIssue2904(t *testing.T) {
 	ma.Remove(ctx, c.Members[1].s.ID().String())
 	cancel()
 
-	// restart member, and expect it to send updateAttr request.
+	// restart member, and expect it to send UpdateAttributes request.
 	// the log in the leader is like this:
 	// [..., remove 1, ..., update attr 1, ...]
 	c.Members[1].Restart(t)

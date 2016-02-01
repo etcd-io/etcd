@@ -64,7 +64,7 @@ const (
 
 	purgeFileInterval = 30 * time.Second
 	// monitorVersionInterval should be smaller than the timeout
-	// on the connection. Or we will not be able to resue the connection
+	// on the connection. Or we will not be able to reuse the connection
 	// (since it will timeout).
 	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
@@ -486,7 +486,7 @@ type etcdProgress struct {
 	appliedi  uint64
 }
 
-// newApplier buffers apply operations so raftNode won't block on sending
+// startApplier buffers apply operations so raftNode won't block on sending
 // new applies, timing out (since applies can be slow). The goroutine begins
 // shutdown on close(s.done) and closes the returned channel when finished.
 func (s *EtcdServer) startApplier(ep etcdProgress) <-chan struct{} {
@@ -616,7 +616,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 			plog.Panicf("rename snapshot file error: %v", err)
 		}
 
-		// TODO: recover leassor
+		// TODO: recover lessor
 
 		newbe := backend.NewDefaultBackend(fn)
 		if err := s.kv.Restore(newbe); err != nil {
@@ -1216,7 +1216,7 @@ func (s *EtcdServer) ClusterVersion() *semver.Version {
 	return s.cluster.Version()
 }
 
-// monitorVersions checks the member's version every monitorVersion interval.
+// monitorVersions checks the member's version every monitorVersionInterval.
 // It updates the cluster version if all members agrees on a higher one.
 // It prints out log if there is a member with a higher version than the
 // local version.

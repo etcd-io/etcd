@@ -46,7 +46,7 @@ type Backend interface {
 type Snapshot interface {
 	// Size gets the size of the snapshot.
 	Size() int64
-	// WriteTo writes the snapshot into the given writter.
+	// WriteTo writes the snapshot into the given writer.
 	WriteTo(w io.Writer) (n int64, err error)
 	// Close closes the snapshot.
 	Close() error

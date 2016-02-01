@@ -35,7 +35,7 @@ var (
 	GitSHA = "Not provided (use ./build instead of go build)"
 )
 
-// WalVersion is an enum for versions of etcd logs.
+// DataDirVersion is an enum for versions of etcd logs.
 type DataDirVersion string
 
 const (

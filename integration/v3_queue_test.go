@@ -82,7 +82,7 @@ func BenchmarkQueue(b *testing.B) {
 	}
 }
 
-// TestPrQueue tests whether priority queues respect priorities.
+// TestPrQueueOneReaderOneWriter tests whether priority queues respect priorities.
 func TestPrQueueOneReaderOneWriter(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)

@@ -51,7 +51,7 @@ func (u *unstable) maybeLastIndex() (uint64, bool) {
 	return 0, false
 }
 
-// myabeTerm returns the term of the entry at index i, if there
+// maybeTerm returns the term of the entry at index i, if there
 // is any.
 func (u *unstable) maybeTerm(i uint64) (uint64, bool) {
 	if i < u.offset {
@@ -79,7 +79,7 @@ func (u *unstable) stableTo(i, t uint64) {
 	if !ok {
 		return
 	}
-	// if i < offest, term is matched with the snapshot
+	// if i < offset, term is matched with the snapshot
 	// only update the unstable entries if term is matched with
 	// an unstable entry.
 	if gt == t && i >= u.offset {

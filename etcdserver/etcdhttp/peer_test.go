@@ -27,7 +27,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 )
 
-// TestNewPeerHandler tests that NewPeerHandler returns a handler that
+// TestNewPeerHandlerOnRaftPrefix tests that NewPeerHandler returns a handler that
 // handles raft-prefix requests well.
 func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

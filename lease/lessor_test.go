@@ -27,7 +27,7 @@ import (
 
 // TestLessorGrant ensures Lessor can grant wanted lease.
 // The granted lease should have a unique ID with a term
-// that is greater than minLeaseTerm.
+// that is greater than minLeaseTTL.
 func TestLessorGrant(t *testing.T) {
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
@@ -72,7 +72,7 @@ func TestLessorGrant(t *testing.T) {
 
 // TestLessorRevoke ensures Lessor can revoke a lease.
 // The items in the revoked lease should be removed from
-// the DeleteableKV.
+// the backend.
 // The revoked lease cannot be got from Lessor again.
 func TestLessorRevoke(t *testing.T) {
 	dir, be := NewTestBackend(t)

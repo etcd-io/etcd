@@ -65,7 +65,7 @@ func TestMinExpireTime(t *testing.T) {
 	assert.Equal(t, e.Node.TTL, 0)
 }
 
-// Ensure that the store can recrusively retrieve a directory listing.
+// Ensure that the store can recursively retrieve a directory listing.
 // Note that hidden files should not be returned.
 func TestStoreGetDirectory(t *testing.T) {
 	s := newStore()
@@ -472,7 +472,7 @@ func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 	assert.Equal(t, e.Action, "compareAndDelete", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
 
-	// check pervNode
+	// check prevNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
 	assert.Equal(t, *e.PrevNode.Value, "bar", "")
@@ -502,7 +502,7 @@ func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "compareAndDelete", "")
-	// check pervNode
+	// check prevNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
 	assert.Equal(t, *e.PrevNode.Value, "bar", "")
@@ -545,7 +545,7 @@ func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "compareAndSwap", "")
 	assert.Equal(t, *e.Node.Value, "baz", "")
-	// check pervNode
+	// check prevNode
 	assert.NotNil(t, e.PrevNode, "")
 	assert.Equal(t, e.PrevNode.Key, "/foo", "")
 	assert.Equal(t, *e.PrevNode.Value, "bar", "")
