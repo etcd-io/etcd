@@ -6,23 +6,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	testpb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/benchmark/grpc_testing"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/benchmark/stats"
-	testpb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/interop/grpc_testing"
 )
 
-func run(b *testing.B, maxConcurrentCalls int, caller func(testpb.TestServiceClient)) {
+func runUnary(b *testing.B, maxConcurrentCalls int) {
 	s := stats.AddStats(b, 38)
 	b.StopTimer()
-	target, stopper := StartServer()
+	target, stopper := StartServer("localhost:0")
 	defer stopper()
 	conn := NewClientConn(target)
 	tc := testpb.NewTestServiceClient(conn)
 
 	// Warm up connection.
 	for i := 0; i < 10; i++ {
-		caller(tc)
+		unaryCaller(tc)
 	}
-
 	ch := make(chan int, maxConcurrentCalls*4)
 	var (
 		mu sync.Mutex
@@ -33,9 +34,9 @@ func run(b *testing.B, maxConcurrentCalls int, caller func(testpb.TestServiceCli
 	// Distribute the b.N calls over maxConcurrentCalls workers.
 	for i := 0; i < maxConcurrentCalls; i++ {
 		go func() {
-			for _ = range ch {
+			for range ch {
 				start := time.Now()
-				caller(tc)
+				unaryCaller(tc)
 				elapse := time.Since(start)
 				mu.Lock()
 				s.Add(elapse)
@@ -54,24 +55,141 @@ func run(b *testing.B, maxConcurrentCalls int, caller func(testpb.TestServiceCli
 	conn.Close()
 }
 
-func smallCaller(client testpb.TestServiceClient) {
+func runStream(b *testing.B, maxConcurrentCalls int) {
+	s := stats.AddStats(b, 38)
+	b.StopTimer()
+	target, stopper := StartServer("localhost:0")
+	defer stopper()
+	conn := NewClientConn(target)
+	tc := testpb.NewTestServiceClient(conn)
+
+	// Warm up connection.
+	stream, err := tc.StreamingCall(context.Background())
+	if err != nil {
+		b.Fatalf("%v.StreamingCall(_) = _, %v", tc, err)
+	}
+	for i := 0; i < 10; i++ {
+		streamCaller(tc, stream)
+	}
+
+	ch := make(chan int, maxConcurrentCalls*4)
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
+	wg.Add(maxConcurrentCalls)
+
+	// Distribute the b.N calls over maxConcurrentCalls workers.
+	for i := 0; i < maxConcurrentCalls; i++ {
+		go func() {
+			stream, err := tc.StreamingCall(context.Background())
+			if err != nil {
+				b.Fatalf("%v.StreamingCall(_) = _, %v", tc, err)
+			}
+			for range ch {
+				start := time.Now()
+				streamCaller(tc, stream)
+				elapse := time.Since(start)
+				mu.Lock()
+				s.Add(elapse)
+				mu.Unlock()
+			}
+			wg.Done()
+		}()
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		ch <- i
+	}
+	b.StopTimer()
+	close(ch)
+	wg.Wait()
+	conn.Close()
+}
+func unaryCaller(client testpb.TestServiceClient) {
 	DoUnaryCall(client, 1, 1)
 }
 
-func BenchmarkClientSmallc1(b *testing.B) {
-	run(b, 1, smallCaller)
+func streamCaller(client testpb.TestServiceClient, stream testpb.TestService_StreamingCallClient) {
+	DoStreamingRoundTrip(client, stream, 1, 1)
 }
 
-func BenchmarkClientSmallc8(b *testing.B) {
-	run(b, 8, smallCaller)
+func BenchmarkClientStreamc1(b *testing.B) {
+	grpc.EnableTracing = true
+	runStream(b, 1)
 }
 
-func BenchmarkClientSmallc64(b *testing.B) {
-	run(b, 64, smallCaller)
+func BenchmarkClientStreamc8(b *testing.B) {
+	grpc.EnableTracing = true
+	runStream(b, 8)
 }
 
-func BenchmarkClientSmallc512(b *testing.B) {
-	run(b, 512, smallCaller)
+func BenchmarkClientStreamc64(b *testing.B) {
+	grpc.EnableTracing = true
+	runStream(b, 64)
+}
+
+func BenchmarkClientStreamc512(b *testing.B) {
+	grpc.EnableTracing = true
+	runStream(b, 512)
+}
+func BenchmarkClientUnaryc1(b *testing.B) {
+	grpc.EnableTracing = true
+	runUnary(b, 1)
+}
+
+func BenchmarkClientUnaryc8(b *testing.B) {
+	grpc.EnableTracing = true
+	runUnary(b, 8)
+}
+
+func BenchmarkClientUnaryc64(b *testing.B) {
+	grpc.EnableTracing = true
+	runUnary(b, 64)
+}
+
+func BenchmarkClientUnaryc512(b *testing.B) {
+	grpc.EnableTracing = true
+	runUnary(b, 512)
+}
+
+func BenchmarkClientStreamNoTracec1(b *testing.B) {
+	grpc.EnableTracing = false
+	runStream(b, 1)
+}
+
+func BenchmarkClientStreamNoTracec8(b *testing.B) {
+	grpc.EnableTracing = false
+	runStream(b, 8)
+}
+
+func BenchmarkClientStreamNoTracec64(b *testing.B) {
+	grpc.EnableTracing = false
+	runStream(b, 64)
+}
+
+func BenchmarkClientStreamNoTracec512(b *testing.B) {
+	grpc.EnableTracing = false
+	runStream(b, 512)
+}
+func BenchmarkClientUnaryNoTracec1(b *testing.B) {
+	grpc.EnableTracing = false
+	runUnary(b, 1)
+}
+
+func BenchmarkClientUnaryNoTracec8(b *testing.B) {
+	grpc.EnableTracing = false
+	runUnary(b, 8)
+}
+
+func BenchmarkClientUnaryNoTracec64(b *testing.B) {
+	grpc.EnableTracing = false
+	runUnary(b, 64)
+}
+
+func BenchmarkClientUnaryNoTracec512(b *testing.B) {
+	grpc.EnableTracing = false
+	runUnary(b, 512)
 }
 
 func TestMain(m *testing.M) {

@@ -9,30 +9,89 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/benchmark"
+	testpb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/benchmark/grpc_testing"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/benchmark/stats"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
-	testpb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/interop/grpc_testing"
 )
 
 var (
 	server            = flag.String("server", "", "The server address")
 	maxConcurrentRPCs = flag.Int("max_concurrent_rpcs", 1, "The max number of concurrent RPCs")
 	duration          = flag.Int("duration", math.MaxInt32, "The duration in seconds to run the benchmark client")
+	trace             = flag.Bool("trace", true, "Whether tracing is on")
+	rpcType           = flag.Int("rpc_type", 0,
+		`Configure different client rpc type. Valid options are:
+		   0 : unary call;
+		   1 : streaming call.`)
 )
 
-func caller(client testpb.TestServiceClient) {
+func unaryCaller(client testpb.TestServiceClient) {
 	benchmark.DoUnaryCall(client, 1, 1)
 }
 
-func closeLoop() {
-	s := stats.NewStats(256)
-	conn := benchmark.NewClientConn(*server)
-	tc := testpb.NewTestServiceClient(conn)
-	// Warm up connection.
+func streamCaller(client testpb.TestServiceClient, stream testpb.TestService_StreamingCallClient) {
+	benchmark.DoStreamingRoundTrip(client, stream, 1, 1)
+}
+
+func buildConnection() (s *stats.Stats, conn *grpc.ClientConn, tc testpb.TestServiceClient) {
+	s = stats.NewStats(256)
+	conn = benchmark.NewClientConn(*server)
+	tc = testpb.NewTestServiceClient(conn)
+	return s, conn, tc
+}
+
+func closeLoopUnary() {
+	s, conn, tc := buildConnection()
+
 	for i := 0; i < 100; i++ {
-		caller(tc)
+		unaryCaller(tc)
 	}
+	ch := make(chan int, *maxConcurrentRPCs*4)
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
+	wg.Add(*maxConcurrentRPCs)
+
+	for i := 0; i < *maxConcurrentRPCs; i++ {
+		go func() {
+			for _ = range ch {
+				start := time.Now()
+				unaryCaller(tc)
+				elapse := time.Since(start)
+				mu.Lock()
+				s.Add(elapse)
+				mu.Unlock()
+			}
+			wg.Done()
+		}()
+	}
+	// Stop the client when time is up.
+	done := make(chan struct{})
+	go func() {
+		<-time.After(time.Duration(*duration) * time.Second)
+		close(done)
+	}()
+	ok := true
+	for ok {
+		select {
+		case ch <- 0:
+		case <-done:
+			ok = false
+		}
+	}
+	close(ch)
+	wg.Wait()
+	conn.Close()
+	grpclog.Println(s.String())
+
+}
+
+func closeLoopStream() {
+	s, conn, tc := buildConnection()
 	ch := make(chan int, *maxConcurrentRPCs*4)
 	var (
 		mu sync.Mutex
@@ -42,9 +101,17 @@ func closeLoop() {
 	// Distribute RPCs over maxConcurrentCalls workers.
 	for i := 0; i < *maxConcurrentRPCs; i++ {
 		go func() {
-			for _ = range ch {
+			stream, err := tc.StreamingCall(context.Background())
+			if err != nil {
+				grpclog.Fatalf("%v.StreamingCall(_) = _, %v", tc, err)
+			}
+			// Do some warm up.
+			for i := 0; i < 100; i++ {
+				streamCaller(tc, stream)
+			}
+			for range ch {
 				start := time.Now()
-				caller(tc)
+				streamCaller(tc, stream)
 				elapse := time.Since(start)
 				mu.Lock()
 				s.Add(elapse)
@@ -75,6 +142,7 @@ func closeLoop() {
 
 func main() {
 	flag.Parse()
+	grpc.EnableTracing = *trace
 	go func() {
 		lis, err := net.Listen("tcp", ":0")
 		if err != nil {
@@ -85,5 +153,10 @@ func main() {
 			grpclog.Fatalf("Failed to serve: %v", err)
 		}
 	}()
-	closeLoop()
+	switch *rpcType {
+	case 0:
+		closeLoopUnary()
+	case 1:
+		closeLoopStream()
+	}
 }
