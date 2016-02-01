@@ -179,3 +179,75 @@ func TestKVRange(t *testing.T) {
 		}
 	}
 }
+
+func TestKVDeleteRange(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+
+	keySet := []string{"a", "b", "c", "c", "c", "d", "e", "f"}
+	for i, key := range keySet {
+		if _, err := kv.Put(key, "", lease.NoLease); err != nil {
+			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
+		}
+	}
+
+	tests := []struct {
+		key, end string
+		delRev   int64
+	}{
+		{"a", "b", int64(len(keySet) + 2)}, // delete [a, b)
+		{"d", "f", int64(len(keySet) + 3)}, // delete [d, f)
+	}
+
+	for i, tt := range tests {
+		dresp, err := kv.DeleteRange(tt.key, tt.end)
+		if err != nil {
+			t.Fatalf("#%d: couldn't delete range (%v)", i, err)
+		}
+		if dresp.Header.Revision != tt.delRev {
+			t.Fatalf("#%d: dresp.Header.Revision got %d, want %d", i, dresp.Header.Revision, tt.delRev)
+		}
+		resp, err := kv.Range(tt.key, tt.end, 0, 0, nil)
+		if err != nil {
+			t.Fatalf("#%d: couldn't get key (%v)", i, err)
+		}
+		if len(resp.Kvs) > 0 {
+			t.Fatalf("#%d: resp.Kvs expected none, but got %+v", i, resp.Kvs)
+		}
+	}
+}
+
+func TestKVDelete(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+
+	presp, err := kv.Put("foo", "", lease.NoLease)
+	if err != nil {
+		t.Fatalf("couldn't put 'foo' (%v)", err)
+	}
+	if presp.Header.Revision != 2 {
+		t.Fatalf("presp.Header.Revision got %d, want %d", presp.Header.Revision, 2)
+	}
+	resp, err := kv.Delete("foo")
+	if err != nil {
+		t.Fatalf("couldn't delete key (%v)", err)
+	}
+	if resp.Header.Revision != 3 {
+		t.Fatalf("resp.Header.Revision got %d, want %d", resp.Header.Revision, 3)
+	}
+	gresp, err := kv.Get("foo", 0)
+	if err != nil {
+		t.Fatalf("couldn't get key (%v)", err)
+	}
+	if len(gresp.Kvs) > 0 {
+		t.Fatalf("gresp.Kvs got %+v, want none", gresp.Kvs)
+	}
+}
