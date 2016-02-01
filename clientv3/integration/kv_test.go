@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/lease"
@@ -29,25 +30,31 @@ import (
 func TestKVPut(t *testing.T) {
 	defer testutil.AfterTest(t)
 
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	lapi := clientv3.NewLease(clus.RandClient())
+	defer lapi.Close()
+
+	kv := clientv3.NewKV(clus.RandClient())
+
+	resp, err := lapi.Create(context.Background(), 10)
+	if err != nil {
+		t.Fatalf("failed to create lease %v", err)
+	}
+
 	tests := []struct {
 		key, val string
 		leaseID  lease.LeaseID
 	}{
 		{"foo", "bar", lease.NoLease},
-
-		// TODO: test with leaseID
+		{"hello", "world", lease.LeaseID(resp.ID)},
 	}
 
 	for i, tt := range tests {
-		clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
-		defer clus.Terminate(t)
-
-		kv := clientv3.NewKV(clus.RandClient())
-
 		if _, err := kv.Put(tt.key, tt.val, tt.leaseID); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, tt.key, err)
 		}
-
 		resp, err := kv.Get(tt.key, 0)
 		if err != nil {
 			t.Fatalf("#%d: couldn't get key (%v)", i, err)
