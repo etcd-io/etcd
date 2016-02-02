@@ -16,6 +16,8 @@
 package v3rpc
 
 import (
+	"sort"
+
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
@@ -176,10 +178,76 @@ func checkTxnRequest(r *pb.TxnRequest) error {
 			return err
 		}
 	}
+	if err := checkRequestDupKeys(r.Success); err != nil {
+		return err
+	}
 
 	for _, u := range r.Failure {
 		if err := checkRequestUnion(u); err != nil {
 			return err
+		}
+	}
+	if err := checkRequestDupKeys(r.Failure); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// checkRequestDupKeys gives ErrDuplicateKey if the same key is modified twice
+func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
+	// check put overlap
+	keys := make(map[string]struct{})
+	for _, requ := range reqs {
+		tv, ok := requ.Request.(*pb.RequestUnion_RequestPut)
+		if !ok {
+			continue
+		}
+		preq := tv.RequestPut
+		if preq == nil {
+			continue
+		}
+		key := string(preq.Key)
+		if _, ok := keys[key]; ok {
+			return ErrDuplicateKey
+		}
+		keys[key] = struct{}{}
+	}
+
+	// no need to check deletes if no puts; delete overlaps are permitted
+	if len(keys) == 0 {
+		return nil
+	}
+
+	// sort keys for range checking
+	sortedKeys := []string{}
+	for k := range keys {
+		sortedKeys = append(sortedKeys, k)
+	}
+	sort.Strings(sortedKeys)
+
+	// check put overlap with deletes
+	for _, requ := range reqs {
+		tv, ok := requ.Request.(*pb.RequestUnion_RequestDeleteRange)
+		if !ok {
+			continue
+		}
+		dreq := tv.RequestDeleteRange
+		if dreq == nil {
+			continue
+		}
+		key := string(dreq.Key)
+		if dreq.RangeEnd == nil {
+			if _, found := keys[key]; found {
+				return ErrDuplicateKey
+			}
+		} else {
+			lo := sort.SearchStrings(sortedKeys, key)
+			hi := sort.SearchStrings(sortedKeys, string(dreq.RangeEnd))
+			if lo != hi {
+				// element between lo and hi => overlap
+				return ErrDuplicateKey
+			}
 		}
 	}
 

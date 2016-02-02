@@ -84,12 +84,19 @@ func TestV3TxnTooManyOps(t *testing.T) {
 
 	kvc := clus.RandClient().KV
 
+	// unique keys
+	i := new(int)
+	keyf := func() []byte {
+		*i++
+		return []byte(fmt.Sprintf("key-%d", i))
+	}
+
 	addCompareOps := func(txn *pb.TxnRequest) {
 		txn.Compare = append(txn.Compare,
 			&pb.Compare{
 				Result: pb.Compare_GREATER,
 				Target: pb.Compare_CREATE,
-				Key:    []byte("bar"),
+				Key:    keyf(),
 			})
 	}
 	addSuccessOps := func(txn *pb.TxnRequest) {
@@ -97,7 +104,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 			&pb.RequestUnion{
 				Request: &pb.RequestUnion_RequestPut{
 					RequestPut: &pb.PutRequest{
-						Key:   []byte("bar"),
+						Key:   keyf(),
 						Value: []byte("bar"),
 					},
 				},
@@ -108,7 +115,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 			&pb.RequestUnion{
 				Request: &pb.RequestUnion_RequestPut{
 					RequestPut: &pb.PutRequest{
-						Key:   []byte("bar"),
+						Key:   keyf(),
 						Value: []byte("bar"),
 					},
 				},
@@ -130,6 +137,72 @@ func TestV3TxnTooManyOps(t *testing.T) {
 		_, err := kvc.Txn(context.Background(), txn)
 		if err != v3rpc.ErrTooManyOps {
 			t.Errorf("#%d: err = %v, want %v", i, err, v3rpc.ErrTooManyOps)
+		}
+	}
+}
+
+func TestV3TxnDuplicateKeys(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	putreq := &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("def")}}}
+	delKeyReq := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
+		RequestDeleteRange: &pb.DeleteRangeRequest{
+			Key: []byte("abc"),
+		},
+	},
+	}
+	delInRangeReq := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
+		RequestDeleteRange: &pb.DeleteRangeRequest{
+			Key: []byte("a"), RangeEnd: []byte("b"),
+		},
+	},
+	}
+	delOutOfRangeReq := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
+		RequestDeleteRange: &pb.DeleteRangeRequest{
+			Key: []byte("abb"), RangeEnd: []byte("abc"),
+		},
+	},
+	}
+
+	kvc := clus.RandClient().KV
+	tests := []struct {
+		txnSuccess []*pb.RequestUnion
+
+		werr error
+	}{
+		{
+			txnSuccess: []*pb.RequestUnion{putreq, putreq},
+
+			werr: v3rpc.ErrDuplicateKey,
+		},
+		{
+			txnSuccess: []*pb.RequestUnion{putreq, delKeyReq},
+
+			werr: v3rpc.ErrDuplicateKey,
+		},
+		{
+			txnSuccess: []*pb.RequestUnion{putreq, delInRangeReq},
+
+			werr: v3rpc.ErrDuplicateKey,
+		},
+		{
+			txnSuccess: []*pb.RequestUnion{delKeyReq, delInRangeReq, delKeyReq, delInRangeReq},
+
+			werr: nil,
+		},
+		{
+			txnSuccess: []*pb.RequestUnion{putreq, delOutOfRangeReq},
+
+			werr: nil,
+		},
+	}
+	for i, tt := range tests {
+		txn := &pb.TxnRequest{Success: tt.txnSuccess}
+		_, err := kvc.Txn(context.Background(), txn)
+		if err != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}
 	}
 }
