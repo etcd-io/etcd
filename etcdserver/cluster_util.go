@@ -29,8 +29,8 @@ import (
 
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
 // in the given cluster.
-func isMemberBootstrapped(cl *cluster, member string, rt http.RoundTripper) bool {
-	rcl, err := getClusterFromRemotePeers(getRemotePeerURLs(cl, member), time.Second, false, rt)
+func isMemberBootstrapped(cl *cluster, member string, rt http.RoundTripper, timeout time.Duration) bool {
+	rcl, err := getClusterFromRemotePeers(getRemotePeerURLs(cl, member), timeout, false, rt)
 	if err != nil {
 		return false
 	}

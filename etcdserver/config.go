@@ -46,8 +46,9 @@ type ServerConfig struct {
 	ForceNewCluster     bool
 	PeerTLSInfo         transport.TLSInfo
 
-	TickMs        uint
-	ElectionTicks int
+	TickMs           uint
+	ElectionTicks    int
+	BootstrapTimeout time.Duration
 
 	V3demo bool
 
@@ -180,4 +181,11 @@ func checkDuplicateURL(urlsmap types.URLsMap) bool {
 		}
 	}
 	return false
+}
+
+func (c *ServerConfig) bootstrapTimeout() time.Duration {
+	if c.BootstrapTimeout != 0 {
+		return c.BootstrapTimeout
+	}
+	return time.Second
 }

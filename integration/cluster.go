@@ -430,6 +430,7 @@ func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, client
 	}
 	m.InitialClusterToken = clusterName
 	m.NewCluster = true
+	m.BootstrapTimeout = 10 * time.Millisecond
 	if m.PeerTLSInfo != nil {
 		m.ServerConfig.PeerTLSInfo = *m.PeerTLSInfo
 	}
