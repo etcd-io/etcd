@@ -289,7 +289,7 @@ func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
 	return
 }
 
-func (c *cluster) waitLeader(t *testing.T, membs []*member) {
+func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
@@ -307,6 +307,14 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) {
 		}
 		time.Sleep(10 * tickDuration)
 	}
+
+	for i, m := range membs {
+		if uint64(m.s.ID()) == lead {
+			return i
+		}
+	}
+
+	return -1
 }
 
 func (c *cluster) waitVersion() {
