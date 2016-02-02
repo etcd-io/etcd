@@ -102,7 +102,6 @@ func TestLeaseKeepAlive(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
 
 	resp, err := lapi.Create(context.Background(), 10)
 	if err != nil {
@@ -114,9 +113,20 @@ func TestLeaseKeepAlive(t *testing.T) {
 		t.Errorf("failed to keepalive lease %v", kerr)
 	}
 
-	kresp := <-rc
+	kresp, ok := <-rc
+	if !ok {
+		t.Errorf("chan is closed, want not closed")
+	}
+
 	if kresp.ID != resp.ID {
 		t.Errorf("ID = %x, want %x", kresp.ID, resp.ID)
+	}
+
+	lapi.Close()
+
+	_, ok = <-rc
+	if ok {
+		t.Errorf("chan is not closed, want lease Close() closes chan")
 	}
 }
 
@@ -132,7 +142,6 @@ func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 
 	// TODO: change this line to get a cluster client
 	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
 
 	resp, err := lapi.Create(context.Background(), 10)
 	if err != nil {
@@ -164,5 +173,12 @@ func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 	kresp = <-rc
 	if kresp.ID != resp.ID {
 		t.Errorf("ID = %x, want %x", kresp.ID, resp.ID)
+	}
+
+	lapi.Close()
+
+	_, ok := <-rc
+	if ok {
+		t.Errorf("chan is not closed, want lease Close() closes chan")
 	}
 }
