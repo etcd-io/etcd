@@ -15,6 +15,8 @@
 package clientv3
 
 import (
+	"net"
+	"net/url"
 	"sync"
 	"time"
 
@@ -65,24 +67,13 @@ func New(cfg Config) (*Client, error) {
 	if cfg.RetryDialer == nil {
 		cfg.RetryDialer = dialEndpointList
 	}
-	// use a temporary skeleton client to bootstrap first connection
-	conn, err := cfg.RetryDialer(&Client{cfg: cfg})
-	if err != nil {
-		return nil, err
-	}
-	return newClient(conn, &cfg)
+	return newClient(&cfg)
 }
 
 // NewFromURL creates a new etcdv3 client from a URL.
 func NewFromURL(url string) (*Client, error) {
 	return New(Config{Endpoints: []string{url}})
 }
-
-// NewFromConn creates a new etcdv3 client from an established grpc Connection.
-func NewFromConn(conn *grpc.ClientConn) *Client { return mustNewClient(conn, nil) }
-
-// Clone creates a copy of client with the old connection and new API clients.
-func (c *Client) Clone() *Client { return mustNewClient(c.conn, &c.cfg) }
 
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
@@ -112,6 +103,15 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
+	if url, uerr := url.Parse(endpoint); uerr == nil && url.Scheme == "unix" {
+		f := func(a string, t time.Duration) (net.Conn, error) {
+			return net.DialTimeout("unix", a, t)
+		}
+		// strip unix:// prefix so certs work
+		endpoint = url.Host
+		opts = append(opts, grpc.WithDialer(f))
+	}
+
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return nil, err
@@ -119,15 +119,7 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 	return conn, nil
 }
 
-func mustNewClient(conn *grpc.ClientConn, cfg *Config) *Client {
-	c, err := newClient(conn, cfg)
-	if err != nil {
-		panic("expected no error")
-	}
-	return c
-}
-
-func newClient(conn *grpc.ClientConn, cfg *Config) (*Client, error) {
+func newClient(cfg *Config) (*Client, error) {
 	if cfg == nil {
 		cfg = &Config{RetryDialer: dialEndpointList}
 	}
@@ -139,6 +131,11 @@ func newClient(conn *grpc.ClientConn, cfg *Config) (*Client, error) {
 		}
 		c := credentials.NewTLS(tlscfg)
 		creds = &c
+	}
+	// use a temporary skeleton client to bootstrap first connection
+	conn, err := cfg.RetryDialer(&Client{cfg: *cfg, creds: creds})
+	if err != nil {
+		return nil, err
 	}
 	return &Client{
 		KV:      pb.NewKVClient(conn),
