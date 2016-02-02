@@ -186,6 +186,7 @@ func (l *lessor) Close() error {
 
 	l.stopCancel()
 	l.stream = nil
+
 	return nil
 }
 
@@ -213,11 +214,25 @@ func (l *lessor) recvKeepAliveLoop() {
 		return
 	}
 
+	defer func() {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+
+		for _, ch := range l.keepAlives {
+			close(ch)
+		}
+	}()
+
 	for {
 		stream := l.getKeepAliveStream()
 
 		resp, err := stream.Recv()
 		if err != nil {
+			if isRPCError(err) {
+				l.Close()
+				return
+			}
+
 			err = l.switchRemoteAndStream(err)
 			if err != nil {
 				l.Close()
@@ -280,6 +295,10 @@ func (l *lessor) sendKeepAliveLoop() {
 			r := &pb.LeaseKeepAliveRequest{ID: int64(id)}
 			err = stream.Send(r)
 			if err != nil {
+				if isRPCError(err) {
+					l.Close()
+					return
+				}
 				break
 			}
 		}
