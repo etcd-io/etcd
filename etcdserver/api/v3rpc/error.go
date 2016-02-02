@@ -21,12 +21,14 @@ import (
 )
 
 var (
-	ErrEmptyKey      = grpc.Errorf(codes.InvalidArgument, "key is not provided")
-	ErrTooManyOps    = grpc.Errorf(codes.InvalidArgument, "too many operations in txn request")
-	ErrDuplicateKey  = grpc.Errorf(codes.InvalidArgument, "duplicate key given in txn request")
-	ErrCompacted     = grpc.Errorf(codes.OutOfRange, storage.ErrCompacted.Error())
-	ErrFutureRev     = grpc.Errorf(codes.OutOfRange, storage.ErrFutureRev.Error())
+	ErrEmptyKey     = grpc.Errorf(codes.InvalidArgument, "key is not provided")
+	ErrTooManyOps   = grpc.Errorf(codes.InvalidArgument, "too many operations in txn request")
+	ErrDuplicateKey = grpc.Errorf(codes.InvalidArgument, "duplicate key given in txn request")
+	ErrCompacted    = grpc.Errorf(codes.OutOfRange, storage.ErrCompacted.Error())
+	ErrFutureRev    = grpc.Errorf(codes.OutOfRange, storage.ErrFutureRev.Error())
+
 	ErrLeaseNotFound = grpc.Errorf(codes.NotFound, "requested lease not found")
+	ErrLeaseExist    = grpc.Errorf(codes.FailedPrecondition, "lease already exists")
 
 	ErrMemberExist    = grpc.Errorf(codes.FailedPrecondition, "member ID already exist")
 	ErrPeerURLExist   = grpc.Errorf(codes.FailedPrecondition, "Peer URLs already exists")

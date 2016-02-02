@@ -98,11 +98,7 @@ func (s *EtcdServer) LeaseCreate(ctx context.Context, r *pb.LeaseCreateRequest) 
 	if err != nil {
 		return nil, err
 	}
-	resp := result.resp.(*pb.LeaseCreateResponse)
-	if result.err != nil {
-		resp.Error = result.err.Error()
-	}
-	return resp, nil
+	return result.resp.(*pb.LeaseCreateResponse), result.err
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {

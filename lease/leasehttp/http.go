@@ -52,6 +52,11 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ttl, err := h.l.Renew(lease.LeaseID(lreq.ID))
 	if err != nil {
+		if err == lease.ErrLeaseNotFound {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -88,8 +93,12 @@ func RenewHTTP(id lease.LeaseID, url string, rt http.RoundTripper, timeout time.
 		return -1, err
 	}
 
+	if resp.StatusCode == http.StatusNotFound {
+		return -1, lease.ErrLeaseNotFound
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		return -1, fmt.Errorf("lease: %s", string(b))
+		return -1, fmt.Errorf("lease: unknown error(%s)", string(b))
 	}
 
 	lresp := &pb.LeaseKeepAliveResponse{}
@@ -99,5 +108,5 @@ func RenewHTTP(id lease.LeaseID, url string, rt http.RoundTripper, timeout time.
 	if lresp.ID != int64(id) {
 		return -1, fmt.Errorf("lease: renew id mismatch")
 	}
-	return lresp.TTL, err
+	return lresp.TTL, nil
 }
