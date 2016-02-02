@@ -15,6 +15,7 @@
 package clientv3
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -23,6 +24,10 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/transport"
+)
+
+var (
+	ErrNoAvailableEndpoints = errors.New("etcdclient: no available endpoints")
 )
 
 // Client provides and manages an etcd v3 client session.
@@ -182,6 +187,10 @@ func (c *Client) retryConnection(oldConn *grpc.ClientConn, err error) (*grpc.Cli
 // connection is established.
 func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 	var err error
+	if len(c.Endpoints()) == 0 {
+		return nil, ErrNoAvailableEndpoints
+	}
+
 	for _, ep := range c.Endpoints() {
 		conn, curErr := c.Dial(ep)
 		if curErr != nil {
