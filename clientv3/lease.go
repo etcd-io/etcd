@@ -206,12 +206,18 @@ func (l *lessor) recvKeepAliveLoop() {
 	defer func() {
 		l.stopCancel()
 		close(l.donec)
+		for _, ch := range l.keepAlives {
+			close(ch)
+		}
 	}()
 
 	stream, serr := l.resetRecv()
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
+			if isRPCError(err) {
+				return
+			}
 			if stream, serr = l.resetRecv(); serr != nil {
 				return
 			}
