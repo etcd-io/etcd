@@ -122,21 +122,18 @@ func (kv *kv) Delete(key string) (*DeleteResponse, error) {
 }
 
 func (kv *kv) Compact(rev int64) error {
-	for {
-		r := &pb.CompactionRequest{Revision: rev}
-		_, err := kv.getRemote().Compact(context.TODO(), r)
-		if err == nil {
-			return nil
-		}
-
-		if isRPCError(err) {
-			return err
-		}
-
-		if nerr := kv.switchRemote(err); nerr != nil {
-			return nerr
-		}
+	r := &pb.CompactionRequest{Revision: rev}
+	_, err := kv.getRemote().Compact(context.TODO(), r)
+	if err == nil {
+		return nil
 	}
+
+	if isRPCError(err) {
+		return err
+	}
+
+	go kv.switchRemote(err)
+	return nil
 }
 
 func (kv *kv) Txn() Txn {
@@ -184,6 +181,12 @@ func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
 		}
 
 		if isRPCError(err) {
+			return nil, err
+		}
+
+		// do not retry on modifications
+		if op.t != tRange {
+			go kv.switchRemote(err)
 			return nil, err
 		}
 
