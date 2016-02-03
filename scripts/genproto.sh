@@ -42,6 +42,7 @@ ln -s "${PWD}" "${ETCD_ROOT}"
 # Ensure we have the right version of protoc-gen-gogo by building it every time.
 # TODO(jonboulle): vendor this instead of `go get`ting it.
 go get github.com/gogo/protobuf/{proto,protoc-gen-gogo,gogoproto}
+go get golang.org/x/tools/cmd/goimports
 pushd "${GOGOPROTO_ROOT}"
 	git reset --hard "${SHA}"
 	make install
