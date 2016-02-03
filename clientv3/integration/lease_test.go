@@ -66,7 +66,7 @@ func TestLeaseRevoke(t *testing.T) {
 
 	_, err = lapi.Revoke(context.Background(), lease.LeaseID(resp.ID))
 	if err != nil {
-		t.Errorf("failed to revoke lease", err)
+		t.Errorf("failed to revoke lease %v", err)
 	}
 
 	_, err = kv.Put("foo", "bar", lease.LeaseID(resp.ID))
@@ -91,7 +91,7 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 
 	_, err = lapi.KeepAliveOnce(context.Background(), lease.LeaseID(resp.ID))
 	if err != nil {
-		t.Errorf("failed to keepalive lease", err)
+		t.Errorf("failed to keepalive lease %v", err)
 	}
 }
 

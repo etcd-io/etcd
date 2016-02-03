@@ -114,7 +114,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Member %16x added to cluster %16x\n", args[0], resp.Member.ID, resp.Header.ClusterId)
+	fmt.Printf("Member %16x added to cluster %16x\n", resp.Member.ID, resp.Header.ClusterId)
 }
 
 // memberRemoveCommandFunc executes the "member remove" command.
