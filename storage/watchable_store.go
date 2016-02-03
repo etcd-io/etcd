@@ -324,7 +324,6 @@ func (s *watchableStore) syncWatchers() {
 	tx := s.store.b.BatchTx()
 	tx.Lock()
 	ks, vs := tx.UnsafeRange(keyBucketName, minBytes, maxBytes, 0)
-	tx.Unlock()
 
 	evs := []storagepb.Event{}
 
@@ -351,6 +350,7 @@ func (s *watchableStore) syncWatchers() {
 
 		evs = append(evs, ev)
 	}
+	tx.Unlock()
 
 	for w, es := range newWatcherToEventMap(s.unsynced, evs) {
 		select {
