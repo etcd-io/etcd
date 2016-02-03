@@ -67,7 +67,7 @@ func TestMemberRemove(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	capi := clientv3.NewCluster(clus.RandClient())
+	capi := clientv3.NewCluster(clus.Client(1))
 	resp, err := capi.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
