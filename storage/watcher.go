@@ -67,6 +67,9 @@ type WatchResponse struct {
 	// watcher, the revision is greater than the last modified revision
 	// inside Events.
 	Revision int64
+
+	// Compacted is set when the watcher is cancelled due to compaction.
+	Compacted bool
 }
 
 // watchStream contains a collection of watchers that share

@@ -299,9 +299,12 @@ func (s *watchableStore) syncWatchers() {
 			}
 
 			if w.cur < compactionRev {
-				// TODO: return error compacted to that watcher instead of
-				// just removing it silently from unsynced.
-				s.unsynced.delete(w)
+				select {
+				case w.ch <- WatchResponse{WatchID: w.id, Compacted: true}:
+					s.unsynced.delete(w)
+				default:
+					// retry next time
+				}
 				continue
 			}
 
