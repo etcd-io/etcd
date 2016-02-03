@@ -15,7 +15,6 @@
 package storage
 
 import (
-	"fmt"
 	"log"
 	"math"
 	"strings"
@@ -206,9 +205,7 @@ func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, id Watch
 
 	k := string(key)
 	if startRev == 0 {
-		if err := unsafeAddWatcher(s.synced, k, wa); err != nil {
-			log.Panicf("error unsafeAddWatcher (%v) for key %s", err, k)
-		}
+		s.synced.add(wa)
 	} else {
 		slowWatcherGauge.Inc()
 		s.unsynced[wa] = struct{}{}
@@ -358,10 +355,7 @@ func (s *watchableStore) syncWatchers() {
 			// will be processed next time and hopefully it will not be full.
 			continue
 		}
-		k := string(w.key)
-		if err := unsafeAddWatcher(s.synced, k, w); err != nil {
-			log.Panicf("error unsafeAddWatcher (%v) for key %s", err, k)
-		}
+		s.synced.add(w)
 		delete(s.unsynced, w)
 	}
 
@@ -414,16 +408,6 @@ type watcher struct {
 	// a chan to send out the watch response.
 	// The chan might be shared with other watchers.
 	ch chan<- WatchResponse
-}
-
-// unsafeAddWatcher puts watcher with key k into watchableStore's synced.
-// Make sure to this is thread-safe using mutex before and after.
-func unsafeAddWatcher(synced watcherSetByKey, k string, wa *watcher) error {
-	if wa == nil {
-		return fmt.Errorf("nil watcher received")
-	}
-	synced.add(wa)
-	return nil
 }
 
 // newWatcherToEventMap creates a map that has watcher as key and events as

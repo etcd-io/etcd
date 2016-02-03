@@ -215,45 +215,6 @@ func TestSyncWatchers(t *testing.T) {
 	}
 }
 
-func TestUnsafeAddWatcher(t *testing.T) {
-	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b, &lease.FakeLessor{})
-	defer func() {
-		s.store.Close()
-		os.Remove(tmpPath)
-	}()
-	testKey := []byte("foo")
-	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
-
-	size := 10
-	ws := make([]*watcher, size)
-	for i := 0; i < size; i++ {
-		ws[i] = &watcher{
-			key:    testKey,
-			prefix: true,
-			cur:    0,
-		}
-	}
-	// to test if unsafeAddWatcher is correctly updating
-	// synced map when adding new watcher.
-	for i, wa := range ws {
-		if err := unsafeAddWatcher(s.synced, string(testKey), wa); err != nil {
-			t.Errorf("#%d: error = %v, want nil", i, err)
-		}
-		if v, ok := s.synced[string(testKey)]; !ok {
-			t.Errorf("#%d: ok = %v, want ok true", i, ok)
-		} else {
-			if len(v) != i+1 {
-				t.Errorf("#%d: len(v) = %d, want %d", i, len(v), i+1)
-			}
-			if _, ok := v[wa]; !ok {
-				t.Errorf("#%d: ok = %v, want ok true", i, ok)
-			}
-		}
-	}
-}
-
 func TestNewMapwatcherToEventMap(t *testing.T) {
 	k0, k1, k2 := []byte("foo0"), []byte("foo1"), []byte("foo2")
 	v0, v1, v2 := []byte("bar0"), []byte("bar1"), []byte("bar2")
