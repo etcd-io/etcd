@@ -131,7 +131,7 @@ func (s *watchableStore) Put(key, value []byte, lease lease.LeaseID) (rev int64)
 		Type: storagepb.PUT,
 		Kv:   &changes[0],
 	}
-	s.handle(rev, []storagepb.Event{ev})
+	s.notify(rev, []storagepb.Event{ev})
 	return rev
 }
 
@@ -156,7 +156,7 @@ func (s *watchableStore) DeleteRange(key, end []byte) (n, rev int64) {
 			Type: storagepb.DELETE,
 			Kv:   &change}
 	}
-	s.handle(rev, evs)
+	s.notify(rev, evs)
 	return n, rev
 }
 
@@ -191,7 +191,7 @@ func (s *watchableStore) TxnEnd(txnID int64) error {
 		}
 	}
 
-	s.handle(s.store.Rev(), evs)
+	s.notify(s.store.Rev(), evs)
 	s.mu.Unlock()
 
 	return nil
@@ -368,11 +368,6 @@ func (s *watchableStore) syncWatchers() {
 	}
 
 	slowWatcherGauge.Set(float64(len(s.unsynced)))
-}
-
-// handle handles the change of the happening event on all watchers.
-func (s *watchableStore) handle(rev int64, evs []storagepb.Event) {
-	s.notify(rev, evs)
 }
 
 // notify notifies the fact that given event at the given rev just happened to
