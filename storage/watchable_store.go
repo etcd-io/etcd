@@ -35,6 +35,27 @@ const (
 	chanBufLen = 1024
 )
 
+type (
+	watcherSetByKey map[string]watcherSet
+	watcherSet      map[*watcher]struct{}
+)
+
+func (w watcherSet) add(wa *watcher) {
+	if _, ok := w[wa]; ok {
+		panic("add watcher twice!")
+	}
+	w[wa] = struct{}{}
+}
+
+func (w watcherSetByKey) add(wa *watcher) {
+	set := w[string(wa.key)]
+	if set == nil {
+		set = make(watcherSet)
+		w[string(wa.key)] = set
+	}
+	set.add(wa)
+}
+
 type watchable interface {
 	watch(key []byte, prefix bool, startRev int64, id WatchID, ch chan<- WatchResponse) (*watcher, cancelFunc)
 	rev() int64
@@ -46,11 +67,11 @@ type watchableStore struct {
 	*store
 
 	// contains all unsynced watchers that needs to sync with events that have happened
-	unsynced map[*watcher]struct{}
+	unsynced watcherSet
 
 	// contains all synced watchers that are in sync with the progress of the store.
 	// The key of the map is the key that the watcher watches on.
-	synced map[string]map[*watcher]struct{}
+	synced watcherSetByKey
 
 	stopc chan struct{}
 	wg    sync.WaitGroup
@@ -63,8 +84,8 @@ type cancelFunc func()
 func newWatchableStore(b backend.Backend, le lease.Lessor) *watchableStore {
 	s := &watchableStore{
 		store:    NewStore(b, le),
-		unsynced: make(map[*watcher]struct{}),
-		synced:   make(map[string]map[*watcher]struct{}),
+		unsynced: make(watcherSet),
+		synced:   make(watcherSetByKey),
 		stopc:    make(chan struct{}),
 	}
 	if s.le != nil {
@@ -185,7 +206,7 @@ func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, id Watch
 
 	k := string(key)
 	if startRev == 0 {
-		if err := unsafeAddWatcher(&s.synced, k, wa); err != nil {
+		if err := unsafeAddWatcher(s.synced, k, wa); err != nil {
 			log.Panicf("error unsafeAddWatcher (%v) for key %s", err, k)
 		}
 	} else {
@@ -261,7 +282,7 @@ func (s *watchableStore) syncWatchers() {
 	compactionRev := s.store.compactMainRev
 
 	// TODO: change unsynced struct type same to this
-	keyToUnsynced := make(map[string]map[*watcher]struct{})
+	keyToUnsynced := make(watcherSetByKey)
 	prefixes := make(map[string]struct{})
 
 	for w := range s.unsynced {
@@ -282,10 +303,7 @@ func (s *watchableStore) syncWatchers() {
 			minRev = w.cur
 		}
 
-		if _, ok := keyToUnsynced[k]; !ok {
-			keyToUnsynced[k] = make(map[*watcher]struct{})
-		}
-		keyToUnsynced[k][w] = struct{}{}
+		keyToUnsynced.add(w)
 
 		if w.prefix {
 			prefixes[k] = struct{}{}
@@ -341,7 +359,7 @@ func (s *watchableStore) syncWatchers() {
 			continue
 		}
 		k := string(w.key)
-		if err := unsafeAddWatcher(&s.synced, k, w); err != nil {
+		if err := unsafeAddWatcher(s.synced, k, w); err != nil {
 			log.Panicf("error unsafeAddWatcher (%v) for key %s", err, k)
 		}
 		delete(s.unsynced, w)
@@ -400,28 +418,17 @@ type watcher struct {
 
 // unsafeAddWatcher puts watcher with key k into watchableStore's synced.
 // Make sure to this is thread-safe using mutex before and after.
-func unsafeAddWatcher(synced *map[string]map[*watcher]struct{}, k string, wa *watcher) error {
+func unsafeAddWatcher(synced watcherSetByKey, k string, wa *watcher) error {
 	if wa == nil {
 		return fmt.Errorf("nil watcher received")
 	}
-	mp := *synced
-	if v, ok := mp[k]; ok {
-		if _, ok := v[wa]; ok {
-			return fmt.Errorf("put the same watcher twice: %+v", wa)
-		} else {
-			v[wa] = struct{}{}
-		}
-		return nil
-	}
-
-	mp[k] = make(map[*watcher]struct{})
-	mp[k][wa] = struct{}{}
+	synced.add(wa)
 	return nil
 }
 
 // newWatcherToEventMap creates a map that has watcher as key and events as
 // value. It enables quick events look up by watcher.
-func newWatcherToEventMap(sm map[string]map[*watcher]struct{}, evs []storagepb.Event) map[*watcher][]storagepb.Event {
+func newWatcherToEventMap(sm watcherSetByKey, evs []storagepb.Event) map[*watcher][]storagepb.Event {
 	watcherToEvents := make(map[*watcher][]storagepb.Event)
 	for _, ev := range evs {
 		key := string(ev.Kv.Key)
