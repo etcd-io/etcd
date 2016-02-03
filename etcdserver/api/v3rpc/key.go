@@ -134,6 +134,14 @@ func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Co
 	return resp, nil
 }
 
+func (s *kvServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
+	resp, err := s.kv.Hash(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
 // fillInHeader populates pb.ResponseHeader from kvServer, except Revision.
 func (s *kvServer) fillInHeader(h *pb.ResponseHeader) {
 	h.ClusterId = uint64(s.clusterID)

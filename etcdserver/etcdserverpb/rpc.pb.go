@@ -734,6 +734,22 @@ func (m *CompactionResponse) GetHeader() *ResponseHeader {
 	return nil
 }
 
+type HashRequest struct {
+}
+
+func (m *HashRequest) Reset()         { *m = HashRequest{} }
+func (m *HashRequest) String() string { return proto.CompactTextString(m) }
+func (*HashRequest) ProtoMessage()    {}
+
+type HashResponse struct {
+	Succeeded bool   `protobuf:"varint,1,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
+	Hash      uint32 `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
+}
+
+func (m *HashResponse) Reset()         { *m = HashResponse{} }
+func (m *HashResponse) String() string { return proto.CompactTextString(m) }
+func (*HashResponse) ProtoMessage()    {}
+
 type WatchRequest struct {
 	// Types that are valid to be assigned to RequestUnion:
 	//	*WatchRequest_CreateRequest
@@ -1112,6 +1128,8 @@ func init() {
 	proto.RegisterType((*TxnResponse)(nil), "etcdserverpb.TxnResponse")
 	proto.RegisterType((*CompactionRequest)(nil), "etcdserverpb.CompactionRequest")
 	proto.RegisterType((*CompactionResponse)(nil), "etcdserverpb.CompactionResponse")
+	proto.RegisterType((*HashRequest)(nil), "etcdserverpb.HashRequest")
+	proto.RegisterType((*HashResponse)(nil), "etcdserverpb.HashResponse")
 	proto.RegisterType((*WatchRequest)(nil), "etcdserverpb.WatchRequest")
 	proto.RegisterType((*WatchCreateRequest)(nil), "etcdserverpb.WatchCreateRequest")
 	proto.RegisterType((*WatchCancelRequest)(nil), "etcdserverpb.WatchCancelRequest")
@@ -1162,6 +1180,10 @@ type KVClient interface {
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
 	Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error)
+	// Hash returns the hash of local KV state for consistency checking purpose.
+	// This is for internal testing. Do not use this in production when there
+	// are ongoing transactions.
+	Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error)
 }
 
 type kVClient struct {
@@ -1217,6 +1239,15 @@ func (c *kVClient) Compact(ctx context.Context, in *CompactionRequest, opts ...g
 	return out, nil
 }
 
+func (c *kVClient) Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error) {
+	out := new(HashResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Hash", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // Server API for KV service
 
 type KVServer interface {
@@ -1238,6 +1269,10 @@ type KVServer interface {
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
 	Compact(context.Context, *CompactionRequest) (*CompactionResponse, error)
+	// Hash returns the hash of local KV state for consistency checking purpose.
+	// This is for internal testing. Do not use this in production when there
+	// are ongoing transactions.
+	Hash(context.Context, *HashRequest) (*HashResponse, error)
 }
 
 func RegisterKVServer(s *grpc.Server, srv KVServer) {
@@ -1304,6 +1339,18 @@ func _KV_Compact_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return out, nil
 }
 
+func _KV_Hash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(HashRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(KVServer).Hash(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _KV_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "etcdserverpb.KV",
 	HandlerType: (*KVServer)(nil),
@@ -1327,6 +1374,10 @@ var _KV_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Compact",
 			Handler:    _KV_Compact_Handler,
+		},
+		{
+			MethodName: "Hash",
+			Handler:    _KV_Hash_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -2377,6 +2428,57 @@ func (m *CompactionResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *HashRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *HashRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *HashResponse) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *HashResponse) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Succeeded {
+		data[i] = 0x8
+		i++
+		if m.Succeeded {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	if m.Hash != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.Hash))
+	}
+	return i, nil
+}
+
 func (m *WatchRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -3387,6 +3489,24 @@ func (m *CompactionResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	return n
+}
+
+func (m *HashRequest) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func (m *HashResponse) Size() (n int) {
+	var l int
+	_ = l
+	if m.Succeeded {
+		n += 2
+	}
+	if m.Hash != 0 {
+		n += 1 + sovRpc(uint64(m.Hash))
 	}
 	return n
 }
@@ -5448,6 +5568,145 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipRpc(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthRpc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *HashRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: HashRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: HashRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipRpc(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthRpc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *HashResponse) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRpc
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: HashResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: HashResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Succeeded", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Succeeded = bool(v != 0)
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Hash", wireType)
+			}
+			m.Hash = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Hash |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])

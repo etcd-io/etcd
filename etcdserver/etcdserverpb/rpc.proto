@@ -30,6 +30,11 @@ service KV {
   // Compact compacts the event history in etcd. User should compact the
   // event history periodically, or it will grow infinitely.
   rpc Compact(CompactionRequest) returns (CompactionResponse) {}
+
+  // Hash returns the hash of local KV state for consistency checking purpose.
+  // This is for internal testing. Do not use this in production when there
+  // are ongoing transactions.
+  rpc Hash(HashRequest) returns (HashResponse) {}
 }
 
 service Watch {
@@ -227,6 +232,14 @@ message CompactionRequest {
 
 message CompactionResponse {
   ResponseHeader header = 1;
+}
+
+message HashRequest {
+}
+
+message HashResponse {
+  bool succeeded = 1;
+  uint32 hash = 2;
 }
 
 message WatchRequest {

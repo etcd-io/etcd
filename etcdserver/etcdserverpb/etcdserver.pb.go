@@ -29,6 +29,8 @@
 		TxnResponse
 		CompactionRequest
 		CompactionResponse
+		HashRequest
+		HashResponse
 		WatchRequest
 		WatchCreateRequest
 		WatchCancelRequest
@@ -40,14 +42,14 @@
 		LeaseKeepAliveRequest
 		LeaseKeepAliveResponse
 		Member
-		AddMemberRequest
-		AddMemberResponse
-		RemoveMemberRequest
-		RemoveMemberResponse
-		UpdateMemberRequest
-		UpdateMemberResponse
-		ListMemberRequest
-		ListMemberResponse
+		MemberAddRequest
+		MemberAddResponse
+		MemberRemoveRequest
+		MemberRemoveResponse
+		MemberUpdateRequest
+		MemberUpdateResponse
+		MemberListRequest
+		MemberListResponse
 */
 package etcdserverpb
 
