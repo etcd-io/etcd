@@ -58,6 +58,8 @@ type txn struct {
 	cthen bool
 	celse bool
 
+	isWrite bool
+
 	cmps []*pb.Compare
 
 	sus []*pb.RequestUnion
@@ -101,6 +103,7 @@ func (txn *txn) Then(ops ...Op) Txn {
 	txn.cthen = true
 
 	for _, op := range ops {
+		txn.isWrite = txn.isWrite || op.isWrite()
 		txn.sus = append(txn.sus, op.toRequestUnion())
 	}
 
@@ -118,6 +121,7 @@ func (txn *txn) Else(ops ...Op) Txn {
 	txn.celse = true
 
 	for _, op := range ops {
+		txn.isWrite = txn.isWrite || op.isWrite()
 		txn.fas = append(txn.fas, op.toRequestUnion())
 	}
 
@@ -135,6 +139,10 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 		resp, err := kv.getRemote().Txn(context.TODO(), r)
 		if err == nil {
 			return (*TxnResponse)(resp), nil
+		}
+
+		if txn.isWrite {
+			return nil, err
 		}
 
 		if isRPCError(err) {
