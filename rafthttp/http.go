@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
@@ -198,15 +199,17 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type streamHandler struct {
+	tr         *Transport
 	peerGetter peerGetter
 	r          Raft
 	id         types.ID
 	cid        types.ID
 }
 
-func newStreamHandler(peerGetter peerGetter, r Raft, id, cid types.ID) http.Handler {
+func newStreamHandler(tr *Transport, pg peerGetter, r Raft, id, cid types.ID) http.Handler {
 	return &streamHandler{
-		peerGetter: peerGetter,
+		tr:         tr,
+		peerGetter: pg,
 		r:          r,
 		id:         id,
 		cid:        cid,
@@ -253,6 +256,13 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := h.peerGetter.Get(from)
+	if p == nil {
+		if urls := r.Header.Get("X-Server-Peers"); urls != "" {
+			h.tr.AddPeer(from, strings.Split(urls, ","))
+		}
+		p = h.peerGetter.Get(from)
+	}
+
 	if p == nil {
 		// This may happen in following cases:
 		// 1. user starts a remote peer that belongs to a different cluster

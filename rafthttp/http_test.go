@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -183,7 +184,8 @@ func TestServeRaftStreamPrefix(t *testing.T) {
 
 		peer := newFakePeer()
 		peerGetter := &fakePeerGetter{peers: map[types.ID]Peer{types.ID(1): peer}}
-		h := newStreamHandler(peerGetter, &fakeRaft{}, types.ID(2), types.ID(1))
+		tr := &Transport{}
+		h := newStreamHandler(tr, peerGetter, &fakeRaft{}, types.ID(2), types.ID(1))
 
 		rw := httptest.NewRecorder()
 		go h.ServeHTTP(rw, req)
@@ -296,9 +298,10 @@ func TestServeRaftStreamPrefixBad(t *testing.T) {
 		req.Header.Set("X-Server-Version", version.Version)
 		req.Header.Set("X-Raft-To", tt.remote)
 		rw := httptest.NewRecorder()
+		tr := &Transport{}
 		peerGetter := &fakePeerGetter{peers: map[types.ID]Peer{types.ID(1): newFakePeer()}}
 		r := &fakeRaft{removedID: removedID}
-		h := newStreamHandler(peerGetter, r, types.ID(1), types.ID(1))
+		h := newStreamHandler(tr, peerGetter, r, types.ID(1), types.ID(1))
 		h.ServeHTTP(rw, req)
 
 		if rw.Code != tt.wcode {
@@ -343,19 +346,22 @@ func (pg *fakePeerGetter) Get(id types.ID) Peer { return pg.peers[id] }
 type fakePeer struct {
 	msgs     []raftpb.Message
 	snapMsgs []snap.Message
-	urls     types.URLs
+	peerURLs types.URLs
 	connc    chan *outgoingConn
 }
 
 func newFakePeer() *fakePeer {
+	fakeURL, _ := url.Parse("http://localhost")
 	return &fakePeer{
-		connc: make(chan *outgoingConn, 1),
+		connc:    make(chan *outgoingConn, 1),
+		peerURLs: types.URLs{*fakeURL},
 	}
 }
 
 func (pr *fakePeer) send(m raftpb.Message)                 { pr.msgs = append(pr.msgs, m) }
 func (pr *fakePeer) sendSnap(m snap.Message)               { pr.snapMsgs = append(pr.snapMsgs, m) }
-func (pr *fakePeer) update(urls types.URLs)                { pr.urls = urls }
+func (pr *fakePeer) update(urls types.URLs)                { pr.peerURLs = urls }
 func (pr *fakePeer) attachOutgoingConn(conn *outgoingConn) { pr.connc <- conn }
 func (pr *fakePeer) activeSince() time.Time                { return time.Time{} }
 func (pr *fakePeer) stop()                                 {}
+func (pr *fakePeer) urls() types.URLs                      { return pr.peerURLs }
