@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -42,17 +43,18 @@ func CheckLeakedGoroutine() bool {
 		return false
 	}
 	gs := interestingGoroutines()
-
-	n := 0
-	stackCount := make(map[string]int)
-	for _, g := range gs {
-		stackCount[g]++
-		n++
-	}
-
-	if n == 0 {
+	if len(gs) == 0 {
 		return false
 	}
+
+	stackCount := make(map[string]int)
+	re := regexp.MustCompile("\\(0[0-9a-fx, ]*\\)")
+	for _, g := range gs {
+		// strip out pointer arguments in first function of stack dump
+		normalized := string(re.ReplaceAll([]byte(g), []byte("(...)")))
+		stackCount[normalized]++
+	}
+
 	fmt.Fprintf(os.Stderr, "Too many goroutines running after all test(s).\n")
 	for stack, count := range stackCount {
 		fmt.Fprintf(os.Stderr, "%d instances of:\n%s\n", count, stack)
