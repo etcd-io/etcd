@@ -366,6 +366,7 @@ func (s *watchableStore) syncWatchers() {
 			// will be processed next time and hopefully it will not be full.
 			continue
 		}
+		w.cur = curRev
 		s.synced.add(w)
 		s.unsynced.delete(w)
 	}
