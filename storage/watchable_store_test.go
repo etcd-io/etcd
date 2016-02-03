@@ -82,7 +82,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(watcherSet),
+		unsynced: make(watcherSetByKey),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
@@ -137,7 +137,7 @@ func TestSyncWatchers(t *testing.T) {
 
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(watcherSet),
+		unsynced: make(watcherSetByKey),
 		synced:   make(watcherSetByKey),
 	}
 
