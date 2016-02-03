@@ -82,11 +82,11 @@ func TestCancelUnsynced(t *testing.T) {
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(map[*watcher]struct{}),
+		unsynced: make(watcherSet),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
-		synced: make(map[string]map[*watcher]struct{}),
+		synced: make(watcherSetByKey),
 	}
 
 	defer func() {
@@ -137,8 +137,8 @@ func TestSyncWatchers(t *testing.T) {
 
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(map[*watcher]struct{}),
-		synced:   make(map[string]map[*watcher]struct{}),
+		unsynced: make(watcherSet),
+		synced:   make(watcherSetByKey),
 	}
 
 	defer func() {
@@ -238,7 +238,7 @@ func TestUnsafeAddWatcher(t *testing.T) {
 	// to test if unsafeAddWatcher is correctly updating
 	// synced map when adding new watcher.
 	for i, wa := range ws {
-		if err := unsafeAddWatcher(&s.synced, string(testKey), wa); err != nil {
+		if err := unsafeAddWatcher(s.synced, string(testKey), wa); err != nil {
 			t.Errorf("#%d: error = %v, want nil", i, err)
 		}
 		if v, ok := s.synced[string(testKey)]; !ok {
@@ -276,14 +276,14 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 	}
 
 	tests := []struct {
-		sync map[string]map[*watcher]struct{}
+		sync watcherSetByKey
 		evs  []storagepb.Event
 
 		wwe map[*watcher][]storagepb.Event
 	}{
 		// no watcher in sync, some events should return empty wwe
 		{
-			map[string]map[*watcher]struct{}{},
+			watcherSetByKey{},
 			evs,
 			map[*watcher][]storagepb.Event{},
 		},
@@ -291,7 +291,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// one watcher in sync, one event that does not match the key of that
 		// watcher should return empty wwe
 		{
-			map[string]map[*watcher]struct{}{
+			watcherSetByKey{
 				string(k2): {ws[2]: struct{}{}},
 			},
 			evs[:1],
@@ -301,7 +301,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// one watcher in sync, one event that matches the key of that
 		// watcher should return wwe with that matching watcher
 		{
-			map[string]map[*watcher]struct{}{
+			watcherSetByKey{
 				string(k1): {ws[1]: struct{}{}},
 			},
 			evs[1:2],
@@ -314,7 +314,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// that matches the key of only one of the watcher should return wwe
 		// with the matching watcher
 		{
-			map[string]map[*watcher]struct{}{
+			watcherSetByKey{
 				string(k0): {ws[0]: struct{}{}},
 				string(k2): {ws[2]: struct{}{}},
 			},
@@ -327,7 +327,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// two watchers in sync that watches the same key, two events that
 		// match the keys should return wwe with those two watchers
 		{
-			map[string]map[*watcher]struct{}{
+			watcherSetByKey{
 				string(k0): {ws[0]: struct{}{}},
 				string(k1): {ws[1]: struct{}{}},
 			},
