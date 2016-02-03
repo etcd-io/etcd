@@ -697,3 +697,7 @@ func (c *ClusterV3) Terminate(t *testing.T) {
 func (c *ClusterV3) RandClient() *clientv3.Client {
 	return c.clients[rand.Intn(len(c.clients))]
 }
+
+func (c *ClusterV3) Client(i int) *clientv3.Client {
+	return c.clients[i]
+}
