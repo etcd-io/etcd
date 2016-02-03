@@ -23,20 +23,24 @@ import (
 const etcdPath = "./etcd"
 
 func TestAgentStart(t *testing.T) {
+	defer os.Remove("etcd.log")
+
 	a, dir := newTestAgent(t)
 	defer a.terminate()
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestAgentRestart(t *testing.T) {
+	defer os.Remove("etcd.log")
+
 	a, dir := newTestAgent(t)
 	defer a.terminate()
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,9 +56,11 @@ func TestAgentRestart(t *testing.T) {
 }
 
 func TestAgentTerminate(t *testing.T) {
+	defer os.Remove("etcd.log")
+
 	a, dir := newTestAgent(t)
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -23,13 +23,18 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	etcdclient "github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+
+	clientV2 "github.com/coreos/etcd/client"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
 const peerURLPort = 2380
 
 type cluster struct {
+	v2Only bool // to be deprecated
+
 	agentEndpoints       []string
 	datadir              string
 	stressKeySize        int
@@ -39,6 +44,7 @@ type cluster struct {
 	Agents     []client.Agent
 	Stressers  []Stresser
 	Names      []string
+	GRPCURLs   []string
 	ClientURLs []string
 }
 
@@ -47,8 +53,9 @@ type ClusterStatus struct {
 }
 
 // newCluster starts and returns a new cluster. The caller should call Terminate when finished, to shut it down.
-func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int) (*cluster, error) {
+func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int, isV2Only bool) (*cluster, error) {
 	c := &cluster{
+		v2Only:               isV2Only,
 		agentEndpoints:       agentEndpoints,
 		datadir:              datadir,
 		stressKeySize:        stressKeySize,
@@ -65,6 +72,7 @@ func (c *cluster) Bootstrap() error {
 
 	agents := make([]client.Agent, size)
 	names := make([]string, size)
+	grpcURLs := make([]string, size)
 	clientURLs := make([]string, size)
 	peerURLs := make([]string, size)
 	members := make([]string, size)
@@ -90,18 +98,28 @@ func (c *cluster) Bootstrap() error {
 	token := fmt.Sprint(rand.Int())
 
 	for i, a := range agents {
-		_, err := a.Start(
-			"-name", names[i],
-			"-data-dir", c.datadir,
-			"-advertise-client-urls", clientURLs[i],
-			"-listen-client-urls", clientURLs[i],
-			"-initial-advertise-peer-urls", peerURLs[i],
-			"-listen-peer-urls", peerURLs[i],
-			"-initial-cluster-token", token,
-			"-initial-cluster", clusterStr,
-			"-initial-cluster-state", "new",
-		)
-		if err != nil {
+		flags := []string{
+			"--name", names[i],
+			"--data-dir", c.datadir,
+
+			"--listen-client-urls", clientURLs[i],
+			"--advertise-client-urls", clientURLs[i],
+
+			"--listen-peer-urls", peerURLs[i],
+			"--initial-advertise-peer-urls", peerURLs[i],
+
+			"--initial-cluster-token", token,
+			"--initial-cluster", clusterStr,
+			"--initial-cluster-state", "new",
+		}
+		if !c.v2Only {
+			flags = append(flags,
+				"--experimental-v3demo",
+				"--experimental-gRPC-addr", grpcURLs[i],
+			)
+		}
+
+		if _, err := a.Start(flags...); err != nil {
 			// cleanup
 			for j := 0; j < i; j++ {
 				agents[j].Terminate()
@@ -110,22 +128,36 @@ func (c *cluster) Bootstrap() error {
 		}
 	}
 
-	stressers := make([]Stresser, len(clientURLs))
-	for i, u := range clientURLs {
-		s := &stresser{
-			Endpoint:       u,
-			KeySize:        c.stressKeySize,
-			KeySuffixRange: c.stressKeySuffixRange,
-			N:              200,
+	var stressers []Stresser
+	if c.v2Only {
+		for _, u := range clientURLs {
+			s := &stresserV2{
+				Endpoint:       u,
+				KeySize:        c.stressKeySize,
+				KeySuffixRange: c.stressKeySuffixRange,
+				N:              200,
+			}
+			go s.Stress()
+			stressers = append(stressers, s)
 		}
-		go s.Stress()
-		stressers[i] = s
+	} else {
+		for _, u := range grpcURLs {
+			s := &stresser{
+				Endpoint:       u,
+				KeySize:        c.stressKeySize,
+				KeySuffixRange: c.stressKeySuffixRange,
+				N:              200,
+			}
+			go s.Stress()
+			stressers = append(stressers, s)
+		}
 	}
 
 	c.Size = size
 	c.Agents = agents
 	c.Stressers = stressers
 	c.Names = names
+	c.GRPCURLs = grpcURLs
 	c.ClientURLs = clientURLs
 	return nil
 }
@@ -136,8 +168,13 @@ func (c *cluster) WaitHealth() error {
 	// TODO: set it to a reasonable value. It is set that high because
 	// follower may use long time to catch up the leader when reboot under
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
+	healthFunc, urls := setHealthKey, c.GRPCURLs
+	if c.v2Only {
+		healthFunc = setHealthKeyV2
+		urls = c.ClientURLs
+	}
 	for i := 0; i < 60; i++ {
-		err = setHealthKey(c.ClientURLs)
+		err = healthFunc(urls)
 		if err == nil {
 			return nil
 		}
@@ -198,15 +235,33 @@ func (c *cluster) Status() ClusterStatus {
 // setHealthKey sets health key on all given urls.
 func setHealthKey(us []string) error {
 	for _, u := range us {
-		cfg := etcdclient.Config{
+		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if err != nil {
+			return fmt.Errorf("no connection available for %s (%v)", u, err)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		kvc := pb.NewKVClient(conn)
+		_, err = kvc.Put(ctx, &pb.PutRequest{Key: []byte("health"), Value: []byte("good")})
+		cancel()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// setHealthKeyV2 sets health key on all given urls.
+func setHealthKeyV2(us []string) error {
+	for _, u := range us {
+		cfg := clientV2.Config{
 			Endpoints: []string{u},
 		}
-		c, err := etcdclient.New(cfg)
+		c, err := clientV2.New(cfg)
 		if err != nil {
 			return err
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		kapi := etcdclient.NewKeysAPI(c)
+		kapi := clientV2.NewKeysAPI(c)
 		_, err = kapi.Set(ctx, "health", "good", nil)
 		cancel()
 		if err != nil {
