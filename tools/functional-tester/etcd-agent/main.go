@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package agent
 
 import (
-	"flag"
-	"log"
+	"fmt"
+	"os"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
-func main() {
-	etcdPath := flag.String("etcd-path", "/opt/etcd/bin/etcd", "the path to etcd binary")
-	flag.Parse()
+type flag struct {
+	EtcdBinary   string
+	AgentRPCPort string
+}
 
-	a, err := newAgent(*etcdPath)
-	if err != nil {
-		log.Fatal(err)
+var (
+	Command = &cobra.Command{
+		Use:   "agent",
+		Short: "agent is a daemon on each machine to control an etcd process: start, stop, restart, isolate, terminate, etc.",
+		Run:   CommandFunc,
 	}
-	a.serveRPC()
+
+	cmdFlag = flag{}
+)
+
+func init() {
+	cobra.EnablePrefixMatching = true
+}
+
+func init() {
+	Command.PersistentFlags().StringVarP(&cmdFlag.EtcdBinary, "etcd-binary", "b", "bin/etcd", "Path of executable etcd binary.")
+	Command.PersistentFlags().StringVarP(&cmdFlag.AgentRPCPort, "agent-rpc-port", "p", ":9027", "Port to serve agent RPC server. Tester requests to this endpoint.")
+}
+
+func CommandFunc(cmd *cobra.Command, args []string) {
+	a, err := newAgent(cmdFlag.EtcdBinary)
+	if err != nil {
+		fmt.Fprintln(os.Stdout, err)
+		os.Exit(1)
+	}
+	a.serveRPC(cmdFlag.AgentRPCPort)
 
 	var done chan struct{}
 	<-done

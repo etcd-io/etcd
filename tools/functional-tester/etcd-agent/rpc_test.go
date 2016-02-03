@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package agent
 
 import (
 	"io/ioutil"
@@ -25,14 +25,16 @@ import (
 )
 
 func init() {
-	defaultAgent, err := newAgent(etcdPath)
+	defaultAgent, err := newAgent("../../../bin/etcd")
 	if err != nil {
 		log.Panic(err)
 	}
-	defaultAgent.serveRPC()
+	defaultAgent.serveRPC(":9027")
 }
 
 func TestRPCStart(t *testing.T) {
+	defer os.Remove(logPath)
+
 	c, err := rpc.DialHTTP("tcp", ":9027")
 	if err != nil {
 		t.Fatal(err)
@@ -42,8 +44,9 @@ func TestRPCStart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	var pid int
-	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	err = c.Call("Agent.RPCStart", []string{"--data-dir", dir}, &pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,6 +59,8 @@ func TestRPCStart(t *testing.T) {
 }
 
 func TestRPCRestart(t *testing.T) {
+	defer os.Remove(logPath)
+
 	c, err := rpc.DialHTTP("tcp", ":9027")
 	if err != nil {
 		t.Fatal(err)
@@ -65,8 +70,9 @@ func TestRPCRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	var pid int
-	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	err = c.Call("Agent.RPCStart", []string{"--data-dir", dir}, &pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,6 +82,7 @@ func TestRPCRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	var npid int
 	err = c.Call("Agent.RPCRestart", struct{}{}, &npid)
 	if err != nil {
@@ -90,10 +97,12 @@ func TestRPCRestart(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error %v when find process %d", err, pid)
 	}
+
 	_, err = s.Wait()
 	if err == nil {
 		t.Errorf("err = nil, want killed error")
 	}
+
 	_, err = os.FindProcess(npid)
 	if err != nil {
 		t.Errorf("unexpected error %v when find process %d", err, npid)
@@ -101,6 +110,8 @@ func TestRPCRestart(t *testing.T) {
 }
 
 func TestRPCTerminate(t *testing.T) {
+	defer os.Remove(logPath)
+
 	c, err := rpc.DialHTTP("tcp", ":9027")
 	if err != nil {
 		t.Fatal(err)
@@ -110,8 +121,9 @@ func TestRPCTerminate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	var pid int
-	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	err = c.Call("Agent.RPCStart", []string{"--data-dir", dir}, &pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,6 +139,8 @@ func TestRPCTerminate(t *testing.T) {
 }
 
 func TestRPCStatus(t *testing.T) {
+	defer os.Remove(logPath)
+
 	c, err := rpc.DialHTTP("tcp", ":9027")
 	if err != nil {
 		t.Fatal(err)
@@ -145,8 +159,9 @@ func TestRPCStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	var pid int
-	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	err = c.Call("Agent.RPCStart", []string{"--data-dir", dir}, &pid)
 	if err != nil {
 		t.Fatal(err)
 	}

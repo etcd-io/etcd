@@ -16,7 +16,8 @@ tester:
   privileged: true
   net: etcd-functional
   command:
-    - /etcd-tester
+    - /functional-tester
+    - tester
     - -agent-endpoints
     - "172.20.0.2:9027,172.20.0.3:9027,172.20.0.4:9027"
     - -limit 
@@ -25,4 +26,3 @@ tester:
     - "1"
     - -stress-key-size
     - "1"
-      

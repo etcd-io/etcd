@@ -14,7 +14,11 @@
 
 package client
 
-import "net/rpc"
+import (
+	"net"
+	"net/rpc"
+	"net/url"
+)
 
 type Status struct {
 	// TODO: gather more informations
@@ -48,7 +52,16 @@ type agent struct {
 }
 
 func NewAgent(endpoint string) (Agent, error) {
-	c, err := rpc.DialHTTP("tcp", endpoint)
+	url, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	_, port, err := net.SplitHostPort(url.Host)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := rpc.DialHTTP("tcp", ":"+port)
 	if err != nil {
 		return nil, err
 	}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package agent
 
 import (
 	"fmt"
@@ -31,38 +31,38 @@ const (
 	stateStarted       = "started"
 	stateStopped       = "stopped"
 	stateTerminated    = "terminated"
+	logPath            = "etcd.log"
 )
 
 type Agent struct {
 	state string // the state of etcd process
 
 	cmd     *exec.Cmd
-	logfile *os.File
+	logFile *os.File
 	l       net.Listener
 }
 
 func newAgent(etcd string) (*Agent, error) {
 	// check if the file exists
-	_, err := os.Stat(etcd)
-	if err != nil {
+	if _, err := os.Stat(etcd); err != nil {
 		return nil, err
 	}
 
 	c := exec.Command(etcd)
 
-	f, err := os.Create("etcd.log")
+	f, err := openToOverwrite(logPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Agent{state: stateUninitialized, cmd: c, logfile: f}, nil
+	return &Agent{state: stateUninitialized, cmd: c, logFile: f}, nil
 }
 
 // start starts a new etcd process with the given args.
 func (a *Agent) start(args ...string) error {
 	a.cmd = exec.Command(a.cmd.Path, args...)
-	a.cmd.Stdout = a.logfile
-	a.cmd.Stderr = a.logfile
+	a.cmd.Stdout = a.logFile
+	a.cmd.Stderr = a.logFile
 	err := a.cmd.Start()
 	if err != nil {
 		return err
@@ -77,14 +77,15 @@ func (a *Agent) stop() error {
 	if a.state != stateStarted {
 		return nil
 	}
+
 	err := a.cmd.Process.Kill()
 	if err != nil {
 		return err
 	}
+
 	_, err = a.cmd.Process.Wait()
 	if err != nil {
 		return err
-
 	}
 
 	a.state = stateStopped
@@ -93,9 +94,18 @@ func (a *Agent) stop() error {
 
 // restart restarts the stopped etcd process.
 func (a *Agent) restart() error {
-	a.cmd = exec.Command(a.cmd.Path, a.cmd.Args[1:]...)
-	a.cmd.Stdout = a.logfile
-	a.cmd.Stderr = a.logfile
+	flags := a.cmd.Args[1:]
+	for i := range flags {
+		if flags[i] == "--initial-cluster-state" {
+			if len(flags)-1 >= i+1 {
+				flags[i+1] = "existing"
+				break
+			}
+		}
+	}
+	a.cmd = exec.Command(a.cmd.Path, flags...)
+	a.cmd.Stdout = a.logFile
+	a.cmd.Stderr = a.logFile
 	err := a.cmd.Start()
 	if err != nil {
 		return err
@@ -111,12 +121,12 @@ func (a *Agent) cleanup() error {
 	}
 	a.state = stateUninitialized
 
-	a.logfile.Close()
-	if err := archiveLogAndDataDir("etcd.log", a.dataDir()); err != nil {
+	a.logFile.Close()
+	if err := archiveLogAndDataDir(logPath, a.dataDir()); err != nil {
 		return err
 	}
-	f, err := os.Create("etcd.log")
-	a.logfile = f
+	f, err := openToOverwrite(logPath)
+	a.logFile = f
 	return err
 }
 
@@ -150,9 +160,9 @@ func (a *Agent) status() client.Status {
 func (a *Agent) dataDir() string {
 	datadir := path.Join(a.cmd.Path, "*.etcd")
 	args := a.cmd.Args
-	// only parse the simple case like "-data-dir /var/lib/etcd"
+	// only parse the simple case like "--data-dir /var/lib/etcd"
 	for i, arg := range args {
-		if arg == "-data-dir" {
+		if arg == "--data-dir" {
 			datadir = args[i+1]
 			break
 		}

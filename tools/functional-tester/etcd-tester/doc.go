@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package tester implements 'functional-tester tester' command.
 package tester
-
-import (
-	"encoding/json"
-	"net/http"
-)
-
-type statusHandler struct {
-	status *Status
-}
-
-func (sh statusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	en := json.NewEncoder(w)
-	err := en.Encode(sh.status.get())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}

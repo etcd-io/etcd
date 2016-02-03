@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package tester
 
 import (
 	"fmt"
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	clientV2 "github.com/coreos/etcd/client"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 type Stresser interface {
@@ -36,6 +39,98 @@ type Stresser interface {
 }
 
 type stresser struct {
+	Endpoints []string
+
+	KeySize        int
+	KeySuffixRange int
+
+	N int
+
+	mu      sync.Mutex
+	failure int
+	success int
+
+	cancel func()
+}
+
+// TODO: use clientv3
+func mustCreateConn(endpoint string) *grpc.ClientConn {
+	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "dial error: %v\n", err)
+		os.Exit(1)
+	}
+	return conn
+}
+
+func (s *stresser) Stress() error {
+	endpoint := ""
+	for i := range s.Endpoints {
+		if s.Endpoints[i] != "" {
+			endpoint = s.Endpoints[i]
+			break
+		}
+	}
+	if endpoint == "" {
+		return fmt.Errorf("no endpoints available")
+	}
+
+	connsN := 1
+	clientsN := 10
+	conns := make([]*grpc.ClientConn, connsN)
+	for i := range conns {
+		conns[i] = mustCreateConn(endpoint)
+	}
+	clients := make([]pb.KVClient, clientsN)
+	for i := range clients {
+		clients[i] = pb.NewKVClient(conns[i%int(connsN)])
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	for i := 0; i < s.N; i++ {
+		go func(i int) {
+			for {
+				kvc := clients[i%len(clients)]
+				key := []byte(fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange)))
+				val := []byte(randStr(s.KeySize))
+
+				putctx, putcancel := context.WithTimeout(ctx, 5*time.Second)
+				_, err := kvc.Put(putctx, &pb.PutRequest{
+					Key:   key,
+					Value: val,
+				})
+				putcancel()
+				if err == context.Canceled {
+					return
+				}
+				s.mu.Lock()
+				if err != nil {
+					s.failure++
+				} else {
+					s.success++
+				}
+				s.mu.Unlock()
+			}
+		}(i)
+	}
+
+	<-ctx.Done()
+	return nil
+}
+
+func (s *stresser) Cancel() {
+	s.cancel()
+}
+
+func (s *stresser) Report() (success int, failure int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.success, s.failure
+}
+
+type stresserV2 struct {
 	Endpoint string
 
 	KeySize        int
@@ -52,8 +147,8 @@ type stresser struct {
 	cancel func()
 }
 
-func (s *stresser) Stress() error {
-	cfg := client.Config{
+func (s *stresserV2) Stress() error {
+	cfg := clientV2.Config{
 		Endpoints: []string{s.Endpoint},
 		Transport: &http.Transport{
 			Dial: (&net.Dialer{
@@ -63,19 +158,19 @@ func (s *stresser) Stress() error {
 			MaxIdleConnsPerHost: s.N,
 		},
 	}
-	c, err := client.New(cfg)
+	c, err := clientV2.New(cfg)
 	if err != nil {
 		return err
 	}
 
-	kv := client.NewKeysAPI(c)
+	kv := clientV2.NewKeysAPI(c)
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
 	for i := 0; i < s.N; i++ {
 		go func() {
 			for {
-				setctx, setcancel := context.WithTimeout(ctx, client.DefaultRequestTimeout)
+				setctx, setcancel := context.WithTimeout(ctx, clientV2.DefaultRequestTimeout)
 				key := fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))
 				_, err := kv.Set(setctx, key, randStr(s.KeySize), nil)
 				setcancel()
@@ -97,11 +192,11 @@ func (s *stresser) Stress() error {
 	return nil
 }
 
-func (s *stresser) Cancel() {
+func (s *stresserV2) Cancel() {
 	s.cancel()
 }
 
-func (s *stresser) Report() (success int, failure int) {
+func (s *stresserV2) Report() (success int, failure int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.success, s.failure

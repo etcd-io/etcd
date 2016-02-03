@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package agent
 
 import (
 	"io/ioutil"
@@ -20,23 +20,25 @@ import (
 	"testing"
 )
 
-const etcdPath = "./etcd"
-
 func TestAgentStart(t *testing.T) {
+	defer os.Remove(logPath)
+
 	a, dir := newTestAgent(t)
 	defer a.terminate()
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestAgentRestart(t *testing.T) {
+	defer os.Remove(logPath)
+
 	a, dir := newTestAgent(t)
 	defer a.terminate()
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir, "--initial-cluster-state", "new")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,6 +47,7 @@ func TestAgentRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	err = a.restart()
 	if err != nil {
 		t.Fatal(err)
@@ -52,9 +55,11 @@ func TestAgentRestart(t *testing.T) {
 }
 
 func TestAgentTerminate(t *testing.T) {
+	defer os.Remove(logPath)
+
 	a, dir := newTestAgent(t)
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,14 +69,14 @@ func TestAgentTerminate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+	if _, err = os.Stat(dir); !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
 }
 
 // newTestAgent creates a test agent and with a temp data directory.
 func newTestAgent(t *testing.T) (*Agent, string) {
-	a, err := newAgent(etcdPath)
+	a, err := newAgent("../../../bin/etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
