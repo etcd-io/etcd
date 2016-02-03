@@ -43,7 +43,7 @@ func TestRPCStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pid int
-	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	err = c.Call("Agent.RPCStart", []string{"--data-dir", dir}, &pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestRPCRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pid int
-	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	err = c.Call("Agent.RPCStart", []string{"--data-dir", dir}, &pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestRPCTerminate(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pid int
-	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	err = c.Call("Agent.RPCStart", []string{"--data-dir", dir}, &pid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestRPCStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pid int
-	err = c.Call("Agent.RPCStart", []string{"-data-dir", dir}, &pid)
+	err = c.Call("Agent.RPCStart", []string{"--data-dir", dir}, &pid)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -30,6 +30,7 @@ func (a *Agent) serveRPC() {
 	if e != nil {
 		log.Fatal("agent:", e)
 	}
+	log.Println("agent listening on :9027")
 	go http.Serve(l, nil)
 }
 

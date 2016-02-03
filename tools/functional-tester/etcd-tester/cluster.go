@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	etcdclient "github.com/coreos/etcd/client"
+	clientv2 "github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
@@ -198,15 +198,15 @@ func (c *cluster) Status() ClusterStatus {
 // setHealthKey sets health key on all given urls.
 func setHealthKey(us []string) error {
 	for _, u := range us {
-		cfg := etcdclient.Config{
+		cfg := clientv2.Config{
 			Endpoints: []string{u},
 		}
-		c, err := etcdclient.New(cfg)
+		c, err := clientv2.New(cfg)
 		if err != nil {
 			return err
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		kapi := etcdclient.NewKeysAPI(c)
+		kapi := clientv2.NewKeysAPI(c)
 		_, err = kapi.Set(ctx, "health", "good", nil)
 		cancel()
 		if err != nil {
