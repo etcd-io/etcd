@@ -151,6 +151,45 @@ func TestLessorRenew(t *testing.T) {
 	}
 }
 
+func TestLessorDetach(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	fd := &fakeDeleter{}
+
+	le := newLessor(be)
+	le.SetRangeDeleter(fd)
+
+	// grant a lease with long term (100 seconds) to
+	// avoid early termination during the test.
+	l, err := le.Grant(1, 100)
+	if err != nil {
+		t.Fatalf("could not grant lease for 100s ttl (%v)", err)
+	}
+
+	items := []LeaseItem{
+		{"foo"},
+		{"bar"},
+	}
+
+	if err := le.Attach(l.ID, items); err != nil {
+		t.Fatalf("failed to attach items to the lease: %v", err)
+	}
+
+	if err := le.Detach(l.ID, items[0:1]); err != nil {
+		t.Fatalf("failed to de-attach items to the lease: %v", err)
+	}
+
+	l = le.Lookup(l.ID)
+	if len(l.itemSet) != 1 {
+		t.Fatalf("len(l.itemSet) = %d, failed to de-attach items", len(l.itemSet))
+	}
+	if _, ok := l.itemSet[LeaseItem{"bar"}]; !ok {
+		t.Fatalf("de-attached wrong item, want %q exists", "bar")
+	}
+}
+
 // TestLessorRecover ensures Lessor recovers leases from
 // persist backend.
 func TestLessorRecover(t *testing.T) {
