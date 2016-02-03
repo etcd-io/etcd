@@ -19,6 +19,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/backend"
@@ -212,6 +213,44 @@ func TestSyncWatchers(t *testing.T) {
 	}
 	if !bytes.Equal(evs[0].Kv.Value, testValue) {
 		t.Errorf("got = %s, want = %s", evs[0].Kv.Value, testValue)
+	}
+}
+
+// TestWatchCompacted tests a watcher that watches on a compacted revision.
+func TestWatchCompacted(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(b, &lease.FakeLessor{})
+
+	defer func() {
+		s.store.Close()
+		os.Remove(tmpPath)
+	}()
+	testKey := []byte("foo")
+	testValue := []byte("bar")
+
+	maxRev := 10
+	compactRev := int64(5)
+	for i := 0; i < maxRev; i++ {
+		s.Put(testKey, testValue, lease.NoLease)
+	}
+	err := s.Compact(compactRev)
+	if err != nil {
+		t.Fatalf("failed to compact kv (%v)", err)
+	}
+
+	w := s.NewWatchStream()
+	wt := w.Watch(testKey, true, compactRev-1)
+
+	select {
+	case resp := <-w.Chan():
+		if resp.WatchID != wt {
+			t.Errorf("resp.WatchID = %x, want %x", resp.WatchID, wt)
+		}
+		if resp.Compacted != true {
+			t.Errorf("resp.Compacted = %v, want %v", resp.Compacted, true)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatalf("failed to receive response (timeout)")
 	}
 }
 
