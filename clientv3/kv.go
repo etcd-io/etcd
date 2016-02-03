@@ -185,7 +185,7 @@ func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
 		}
 
 		// do not retry on modifications
-		if op.t != tRange {
+		if op.isWrite() {
 			go kv.switchRemote(err)
 			return nil, err
 		}

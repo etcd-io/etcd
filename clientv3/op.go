@@ -64,6 +64,10 @@ func (op Op) toRequestUnion() *pb.RequestUnion {
 	}
 }
 
+func (op Op) isWrite() bool {
+	return op.t != tRange
+}
+
 func OpRange(key, end string, limit, rev int64, sort *SortOption) Op {
 	return Op{
 		t:   tRange,
