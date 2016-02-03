@@ -1,8 +1,7 @@
 FROM alpine
 RUN apk update 
 RUN apk add -v iptables sudo
-ADD bin/etcd-agent /
 ADD bin/etcd /
-ADD bin/etcd-tester /
+ADD bin/functional-tester /
 RUN mkdir /failure_archive
-CMD ["./etcd-agent", "-etcd-path", "./etcd"]
+CMD ["./functional-tester", "agent", "--etcd-path", "./etcd"]

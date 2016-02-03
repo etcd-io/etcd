@@ -12,25 +12,59 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package tester
 
 import (
-	"flag"
 	"log"
 	"net/http"
-	"strings"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 )
 
-func main() {
-	endpointStr := flag.String("agent-endpoints", ":9027", "HTTP RPC endpoints of agents")
-	datadir := flag.String("data-dir", "agent.etcd", "etcd data directory location on agent machine")
-	stressKeySize := flag.Int("stress-key-size", 100, "the size of each key written into etcd")
-	stressKeySuffixRange := flag.Int("stress-key-count", 250000, "the count of key range written into etcd")
-	limit := flag.Int("limit", 3, "the limit of rounds to run failure set")
-	flag.Parse()
+type flag struct {
+	AgentEndpoints []string
 
-	endpoints := strings.Split(*endpointStr, ",")
-	c, err := newCluster(endpoints, *datadir, *stressKeySize, *stressKeySuffixRange)
+	DataDir string
+	V2      bool
+
+	StressKeySize        int
+	StressKeySuffixRange int
+
+	RoundLimit int
+
+	TesterPort string
+}
+
+var (
+	Command = &cobra.Command{
+		Use:   "tester",
+		Short: "tester utilizes all etcd-agents to control the cluster and simulate various test cases.",
+		Run:   CommandFunc,
+	}
+
+	cmdFlag = flag{}
+)
+
+func init() {
+	cobra.EnablePrefixMatching = true
+}
+
+func init() {
+	Command.PersistentFlags().StringSliceVar(&cmdFlag.AgentEndpoints, "agent-endpoints", []string{"http://localhost:9027"}, "HTTP RPC endpoints of agents.")
+
+	Command.PersistentFlags().StringVar(&cmdFlag.DataDir, "data-dir", "agent.etcd", "etcd data directory path on agent machine.")
+	Command.PersistentFlags().BoolVar(&cmdFlag.V2, "v2", false, "'true' to test v2 (to be deprecated in preference to v3).")
+
+	Command.PersistentFlags().IntVar(&cmdFlag.StressKeySize, "stress-key-size", 100, "Size of each key written into etcd.")
+	Command.PersistentFlags().IntVar(&cmdFlag.StressKeySuffixRange, "stress-key-suffix-range", 1000, "Count of key range written into etcd.")
+
+	Command.PersistentFlags().IntVar(&cmdFlag.RoundLimit, "round-limit", 3, "Limit of rounds to run failure set.")
+
+	Command.PersistentFlags().StringVarP(&cmdFlag.TesterPort, "tester-port", "p", ":9028", "Port to serve tester status.")
+}
+
+func CommandFunc(cmd *cobra.Command, args []string) {
+	c, err := newCluster(cmdFlag)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -46,12 +80,12 @@ func main() {
 			newFailureIsolateAll(),
 		},
 		cluster: c,
-		limit:   *limit,
+		limit:   cmdFlag.RoundLimit,
 	}
 
 	sh := statusHandler{status: &t.status}
 	http.Handle("/status", sh)
-	go func() { log.Fatal(http.ListenAndServe(":9028", nil)) }()
+	go func() { log.Fatal(http.ListenAndServe(cmdFlag.TesterPort, nil)) }()
 
 	t.runLoop()
 }

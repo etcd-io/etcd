@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tester
+package agent
 
-import (
-	"encoding/json"
-	"net/http"
-)
+import "os"
 
-type statusHandler struct {
-	status *Status
-}
-
-func (sh statusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	en := json.NewEncoder(w)
-	err := en.Encode(sh.status.get())
+func openToOverwrite(fpath string) (*os.File, error) {
+	f, err := os.OpenFile(fpath, os.O_RDWR|os.O_TRUNC, 0777)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		f, err = os.Create(fpath)
+		if err != nil {
+			return f, err
+		}
 	}
+	return f, nil
 }

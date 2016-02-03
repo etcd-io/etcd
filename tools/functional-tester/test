@@ -6,7 +6,7 @@ set -e
 [ -f bin/etcd ] || ./build
 
 # 2. build agent & tester
-[ -f bin/etcd-agent -a -f bin/etcd-tester ] || ./tools/functional-tester/build
+[ -f bin/functional-tester ] || ./tools/functional-tester/build
 
 # 3. build docker image (alpine based)
 mkdir -p ./tools/functional-tester/docker/bin
