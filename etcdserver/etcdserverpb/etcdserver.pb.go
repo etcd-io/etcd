@@ -29,6 +29,8 @@
 		TxnResponse
 		CompactionRequest
 		CompactionResponse
+		HashRequest
+		HashResponse
 		WatchRequest
 		WatchCreateRequest
 		WatchCancelRequest

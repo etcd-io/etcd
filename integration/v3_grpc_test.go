@@ -413,6 +413,28 @@ func TestV3TxnInvaildRange(t *testing.T) {
 	}
 }
 
+// TestV3Hash tests hash.
+func TestV3Hash(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kvc := clus.RandClient().KV
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+
+	for i := 0; i < 3; i++ {
+		_, err := kvc.Put(context.Background(), preq)
+		if err != nil {
+			t.Fatalf("couldn't put key (%v)", err)
+		}
+	}
+
+	resp, err := kvc.Hash(context.Background(), &pb.HashRequest{})
+	if err != nil || resp.Hash == 0 {
+		t.Fatalf("couldn't hash (%v, hash %d)", err, resp.Hash)
+	}
+}
+
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.
 func TestV3WatchFromCurrentRevision(t *testing.T) {
 	defer testutil.AfterTest(t)

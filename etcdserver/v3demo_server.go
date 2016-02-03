@@ -35,6 +35,7 @@ type RaftKV interface {
 	DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error)
 	Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error)
+	Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error)
 }
 
 type Lessor interface {
@@ -86,6 +87,14 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 		return nil, err
 	}
 	return result.resp.(*pb.CompactionResponse), result.err
+}
+
+func (s *EtcdServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
+	h, err := s.be.Hash()
+	if err != nil {
+		return nil, err
+	}
+	return &pb.HashResponse{Hash: h}, nil
 }
 
 func (s *EtcdServer) LeaseCreate(ctx context.Context, r *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
