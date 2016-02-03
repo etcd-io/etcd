@@ -153,9 +153,15 @@ func (c *cluster) URL(i int) string {
 	return c.Members[i].ClientURLs[0].String()
 }
 
+// URLs returns a list of all active client URLs in the cluster
 func (c *cluster) URLs() []string {
 	urls := make([]string, 0)
 	for _, m := range c.Members {
+		select {
+		case <-m.s.StopNotify():
+			continue
+		default:
+		}
 		for _, u := range m.ClientURLs {
 			urls = append(urls, u.String())
 		}
@@ -163,9 +169,10 @@ func (c *cluster) URLs() []string {
 	return urls
 }
 
+// HTTPMembers returns a list of all active members as client.Members
 func (c *cluster) HTTPMembers() []client.Member {
-	ms := make([]client.Member, len(c.Members))
-	for i, m := range c.Members {
+	ms := []client.Member{}
+	for _, m := range c.Members {
 		pScheme, cScheme := "http", "http"
 		if m.PeerTLSInfo != nil {
 			pScheme = "https"
@@ -173,13 +180,14 @@ func (c *cluster) HTTPMembers() []client.Member {
 		if m.ClientTLSInfo != nil {
 			cScheme = "https"
 		}
-		ms[i].Name = m.Name
+		cm := client.Member{Name: m.Name}
 		for _, ln := range m.PeerListeners {
-			ms[i].PeerURLs = append(ms[i].PeerURLs, pScheme+"://"+ln.Addr().String())
+			cm.PeerURLs = append(cm.PeerURLs, pScheme+"://"+ln.Addr().String())
 		}
 		for _, ln := range m.ClientListeners {
-			ms[i].ClientURLs = append(ms[i].ClientURLs, cScheme+"://"+ln.Addr().String())
+			cm.ClientURLs = append(cm.ClientURLs, cScheme+"://"+ln.Addr().String())
 		}
+		ms = append(ms, cm)
 	}
 	return ms
 }
@@ -206,18 +214,17 @@ func (c *cluster) addMember(t *testing.T) {
 	}
 
 	// send add request to the cluster
-	cc := mustNewHTTPClient(t, []string{c.URL(0)}, c.cfg.ClientTLS)
-	ma := client.NewMembersAPI(cc)
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	peerURL := scheme + "://" + m.PeerListeners[0].Addr().String()
-	if _, err := ma.Add(ctx, peerURL); err != nil {
-		t.Fatalf("add member on %s error: %v", c.URL(0), err)
+	var err error
+	for i := 0; i < len(c.Members); i++ {
+		clientURL := c.URL(i)
+		peerURL := scheme + "://" + m.PeerListeners[0].Addr().String()
+		if err = c.addMemberByURL(t, clientURL, peerURL); err == nil {
+			break
+		}
 	}
-	cancel()
-
-	// wait for the add node entry applied in the cluster
-	members := append(c.HTTPMembers(), client.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
-	c.waitMembersMatch(t, members)
+	if err != nil {
+		t.Fatalf("add member failed on all members error: %v", err)
+	}
 
 	m.InitialPeerURLsMap = types.URLsMap{}
 	for _, mm := range c.Members {
@@ -231,6 +238,21 @@ func (c *cluster) addMember(t *testing.T) {
 	c.Members = append(c.Members, m)
 	// wait cluster to be stable to receive future client requests
 	c.waitMembersMatch(t, c.HTTPMembers())
+}
+
+func (c *cluster) addMemberByURL(t *testing.T, clientURL, peerURL string) error {
+	cc := mustNewHTTPClient(t, []string{clientURL}, c.cfg.ClientTLS)
+	ma := client.NewMembersAPI(cc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	if _, err := ma.Add(ctx, peerURL); err != nil {
+		return err
+	}
+	cancel()
+
+	// wait for the add node entry applied in the cluster
+	members := append(c.HTTPMembers(), client.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})
+	c.waitMembersMatch(t, members)
+	return nil
 }
 
 func (c *cluster) AddMember(t *testing.T) {
@@ -299,6 +321,11 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	for lead == 0 || !possibleLead[lead] {
 		lead = 0
 		for _, m := range membs {
+			select {
+			case <-m.s.StopNotify():
+				continue
+			default:
+			}
 			if lead != 0 && lead != m.s.Lead() {
 				lead = 0
 				break

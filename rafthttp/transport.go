@@ -140,7 +140,7 @@ func (t *Transport) Start() error {
 
 func (t *Transport) Handler() http.Handler {
 	pipelineHandler := newPipelineHandler(t.Raft, t.ClusterID)
-	streamHandler := newStreamHandler(t, t.Raft, t.ID, t.ClusterID)
+	streamHandler := newStreamHandler(t, t, t.Raft, t.ID, t.ClusterID)
 	snapHandler := newSnapshotHandler(t.Raft, t.Snapshotter, t.ClusterID)
 	mux := http.NewServeMux()
 	mux.Handle(RaftPrefix, pipelineHandler)
@@ -226,7 +226,7 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.LeaderStats.Follower(id.String())
-	t.peers[id] = startPeer(t.streamRt, t.pipelineRt, urls, t.ID, id, t.ClusterID, t.Raft, fs, t.ErrorC, t.V3demo)
+	t.peers[id] = startPeer(t, urls, t.ID, id, t.ClusterID, t.Raft, fs, t.ErrorC, t.V3demo)
 	addPeerToProber(t.prober, id.String(), us)
 }
 

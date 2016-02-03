@@ -15,7 +15,6 @@
 package rafthttp
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -65,6 +64,10 @@ type Peer interface {
 
 	// update updates the urls of remote peer.
 	update(urls types.URLs)
+
+	// urls  retrieves the urls of the remote peer
+	urls() types.URLs
+
 	// attachOutgoingConn attaches the outgoing connection to the peer for
 	// stream usage. After the call, the ownership of the outgoing
 	// connection hands over to the peer. The peer will close the connection
@@ -97,6 +100,8 @@ type peer struct {
 
 	status *peerStatus
 
+	picker *urlPicker
+
 	msgAppV2Writer *streamWriter
 	writer         *streamWriter
 	pipeline       *pipeline
@@ -116,14 +121,16 @@ type peer struct {
 	done  chan struct{}
 }
 
-func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error, v3demo bool) *peer {
-	picker := newURLPicker(urls)
+func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error, v3demo bool) *peer {
 	status := newPeerStatus(to)
+	picker := newURLPicker(urls)
+	pipelineRt := transport.pipelineRt
 	p := &peer{
 		id:             to,
 		r:              r,
 		v3demo:         v3demo,
 		status:         status,
+		picker:         picker,
 		msgAppV2Writer: startStreamWriter(to, status, fs, r),
 		writer:         startStreamWriter(to, status, fs, r),
 		pipeline:       newPipeline(pipelineRt, picker, local, to, cid, status, fs, r, errorc),
@@ -154,8 +161,8 @@ func startPeer(streamRt, pipelineRt http.RoundTripper, urls types.URLs, local, t
 		}
 	}()
 
-	p.msgAppV2Reader = startStreamReader(streamRt, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc)
-	reader := startStreamReader(streamRt, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
+	p.msgAppV2Reader = startStreamReader(p, transport.streamRt, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc)
+	reader := startStreamReader(p, transport.streamRt, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
 	go func() {
 		var paused bool
 		for {
@@ -220,6 +227,10 @@ func (p *peer) update(urls types.URLs) {
 	case p.newURLsC <- urls:
 	case <-p.done:
 	}
+}
+
+func (p *peer) urls() types.URLs {
+	return p.picker.urls
 }
 
 func (p *peer) attachOutgoingConn(conn *outgoingConn) {

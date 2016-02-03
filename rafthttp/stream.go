@@ -226,6 +226,7 @@ func (cw *streamWriter) stop() {
 // streamReader is a long-running go-routine that dials to the remote stream
 // endpoint and reads messages from the response body returned.
 type streamReader struct {
+	localPeer     Peer
 	tr            http.RoundTripper
 	picker        *urlPicker
 	t             streamType
@@ -243,20 +244,21 @@ type streamReader struct {
 	done   chan struct{}
 }
 
-func startStreamReader(tr http.RoundTripper, picker *urlPicker, t streamType, local, remote, cid types.ID, status *peerStatus, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error) *streamReader {
+func startStreamReader(p Peer, tr http.RoundTripper, picker *urlPicker, t streamType, local, remote, cid types.ID, status *peerStatus, recvc chan<- raftpb.Message, propc chan<- raftpb.Message, errorc chan<- error) *streamReader {
 	r := &streamReader{
-		tr:     tr,
-		picker: picker,
-		t:      t,
-		local:  local,
-		remote: remote,
-		cid:    cid,
-		status: status,
-		recvc:  recvc,
-		propc:  propc,
-		errorc: errorc,
-		stopc:  make(chan struct{}),
-		done:   make(chan struct{}),
+		localPeer: p,
+		tr:        tr,
+		picker:    picker,
+		t:         t,
+		local:     local,
+		remote:    remote,
+		cid:       cid,
+		status:    status,
+		recvc:     recvc,
+		propc:     propc,
+		errorc:    errorc,
+		stopc:     make(chan struct{}),
+		done:      make(chan struct{}),
 	}
 	go r.run()
 	return r
@@ -371,6 +373,12 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	req.Header.Set("X-Min-Cluster-Version", version.MinClusterVersion)
 	req.Header.Set("X-Etcd-Cluster-ID", cr.cid.String())
 	req.Header.Set("X-Raft-To", cr.remote.String())
+
+	var peerURLs []string
+	for _, url := range cr.localPeer.urls() {
+		peerURLs = append(peerURLs, url.String())
+	}
+	req.Header.Set("X-Server-Peers", strings.Join(peerURLs, ","))
 
 	cr.mu.Lock()
 	select {

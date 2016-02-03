@@ -120,7 +120,7 @@ func TestTransportUpdate(t *testing.T) {
 	u := "http://localhost:2380"
 	tr.UpdatePeer(types.ID(1), []string{u})
 	wurls := types.URLs(testutil.MustNewURLs(t, []string{"http://localhost:2380"}))
-	if !reflect.DeepEqual(peer.urls, wurls) {
+	if !reflect.DeepEqual(peer.peerURLs, wurls) {
 		t.Errorf("urls = %+v, want %+v", peer.urls, wurls)
 	}
 }

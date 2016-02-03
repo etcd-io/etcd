@@ -290,6 +290,53 @@ func TestIssue2904(t *testing.T) {
 	c.waitMembersMatch(t, c.HTTPMembers())
 }
 
+// TestIssue3699 tests minority failure during cluster configuration; it was
+// deadlocking.
+func TestIssue3699(t *testing.T) {
+	// start a cluster of 3 nodes a, b, c
+	defer testutil.AfterTest(t)
+	c := NewCluster(t, 3)
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// make node a unavailable
+	c.Members[0].Stop(t)
+	<-c.Members[0].s.StopNotify()
+
+	// add node d
+	c.AddMember(t)
+
+	// electing node d as leader makes node a unable to participate
+	leaderID := c.waitLeader(t, c.Members)
+	for leaderID != 3 {
+		c.Members[leaderID].Stop(t)
+		<-c.Members[leaderID].s.StopNotify()
+		c.Members[leaderID].Restart(t)
+		leaderID = c.waitLeader(t, c.Members)
+	}
+
+	// bring back node a
+	// node a will remain useless as long as d is the leader.
+	err := c.Members[0].Restart(t)
+	select {
+	case <-c.Members[0].s.StopNotify():
+		t.Fatalf("should not be stopped")
+	default:
+	}
+	// must waitLeader so goroutines don't leak on terminate
+	leaderID = c.waitLeader(t, c.Members)
+
+	// try to participate in cluster
+	cc := mustNewHTTPClient(t, []string{c.URL(0)}, c.cfg.ClientTLS)
+	kapi := client.NewKeysAPI(cc)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	_, err = kapi.Set(ctx, "/foo", "bar", nil)
+	cancel()
+	if err != nil {
+		t.Fatalf("unexpected error on Set (%v)", err)
+	}
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
