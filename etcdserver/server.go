@@ -358,7 +358,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		lstats:        lstats,
 		SyncTicker:    time.Tick(500 * time.Millisecond),
 		peerRt:        prt,
-		reqIDGen:      idutil.NewGenerator(uint8(id), time.Now()),
+		reqIDGen:      idutil.NewGenerator(uint16(id), time.Now()),
 		forceVersionC: make(chan struct{}),
 		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
 	}
