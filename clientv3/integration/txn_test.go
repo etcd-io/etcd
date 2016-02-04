@@ -1,0 +1,103 @@
+// Copyright 2016 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package integration
+
+import (
+	"testing"
+	"time"
+
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/integration"
+	"github.com/coreos/etcd/pkg/testutil"
+)
+
+func TestTxnWriteFail(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.Client(0))
+	clus.Members[0].Stop(t)
+	<-clus.Members[0].StopNotify()
+
+	resp, err := kv.Txn().Then(clientv3.OpPut("foo", "bar", 0)).Commit()
+	if err == nil {
+		t.Fatalf("expected error, got response %v", resp)
+	}
+
+	// reconnect so cluster terminate doesn't complain about double-close
+	clus.Members[0].Restart(t)
+
+	// and ensure the put didn't take
+	gresp, gerr := kv.Get("foo", 0)
+	if gerr != nil {
+		t.Fatal(gerr)
+	}
+	if len(gresp.Kvs) != 0 {
+		t.Fatalf("expected no keys, got %v", gresp.Kvs)
+	}
+}
+
+func TestTxnReadRetry(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.Client(0))
+	clus.Members[0].Stop(t)
+	<-clus.Members[0].StopNotify()
+
+	donec := make(chan struct{})
+	go func() {
+		_, err := kv.Txn().Then(clientv3.OpGet("foo", 0)).Commit()
+		if err != nil {
+			t.Fatalf("expected response, got error %v", err)
+		}
+		donec <- struct{}{}
+	}()
+	// wait for txn to fail on disconnect
+	time.Sleep(100 * time.Millisecond)
+
+	// restart node; client should resume
+	clus.Members[0].Restart(t)
+	select {
+	case <-donec:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("waited too long")
+	}
+}
+
+func TestTxnSuccess(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.Client(0))
+	_, err := kv.Txn().Then(clientv3.OpPut("foo", "bar", 0)).Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := kv.Get("foo", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" {
+		t.Fatalf("unexpected Get response %v", resp)
+	}
+}
