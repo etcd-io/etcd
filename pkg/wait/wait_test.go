@@ -17,6 +17,7 @@ package wait
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestWait(t *testing.T) {
@@ -34,17 +35,30 @@ func TestWait(t *testing.T) {
 	}
 }
 
-func TestRegisterDupSuppression(t *testing.T) {
+func TestRegisterDupPanic(t *testing.T) {
 	const eid = 1
 	wt := New()
 	ch1 := wt.Register(eid)
-	ch2 := wt.Register(eid)
+
+	panicC := make(chan struct{}, 1)
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicC <- struct{}{}
+			}
+		}()
+		wt.Register(eid)
+	}()
+
+	select {
+	case <-panicC:
+	case <-time.After(1 * time.Second):
+		t.Errorf("failed to receive panic")
+	}
+
 	wt.Trigger(eid, "foo")
 	<-ch1
-	g := <-ch2
-	if g != nil {
-		t.Errorf("unexpected non-nil value: %v (%T)", g, g)
-	}
 }
 
 func TestTriggerDupSuppression(t *testing.T) {
