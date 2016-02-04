@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -249,5 +250,43 @@ func TestKVDelete(t *testing.T) {
 	}
 	if len(gresp.Kvs) > 0 {
 		t.Fatalf("gresp.Kvs got %+v, want none", gresp.Kvs)
+	}
+}
+
+func TestKVCompact(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+
+	for i := 0; i < 10; i++ {
+		if _, err := kv.Put("foo", "bar", lease.NoLease); err != nil {
+			t.Fatalf("couldn't put 'foo' (%v)", err)
+		}
+	}
+
+	err := kv.Compact(7)
+	if err != nil {
+		t.Fatalf("couldn't compact kv space (%v)", err)
+	}
+	err = kv.Compact(7)
+	if err == nil || err != v3rpc.ErrCompacted {
+		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
+	}
+
+	wc := clientv3.NewWatcher(clus.RandClient())
+	defer wc.Close()
+	wchan := wc.Watch(context.TODO(), "foo", 3)
+
+	_, ok := <-wchan
+	if ok {
+		t.Fatalf("wchan ok got %v, want false", ok)
+	}
+
+	err = kv.Compact(1000)
+	if err == nil || err != v3rpc.ErrFutureRev {
+		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
 	}
 }
