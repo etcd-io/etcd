@@ -82,6 +82,8 @@ func (txn *txn) If(cs ...Cmp) Txn {
 		panic("cannot call If after Else!")
 	}
 
+	txn.cif = true
+
 	for _, cmp := range cs {
 		txn.cmps = append(txn.cmps, (*pb.Compare)(&cmp))
 	}

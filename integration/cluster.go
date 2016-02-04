@@ -630,6 +630,11 @@ func (m *member) Stop(t *testing.T) {
 	m.hss = nil
 }
 
+// StopNotify unblocks when a member stop completes
+func (m *member) StopNotify() <-chan struct{} {
+	return m.s.StopNotify()
+}
+
 // Restart starts the member using the preserved data dir.
 func (m *member) Restart(t *testing.T) error {
 	newPeerListeners := make([]net.Listener, 0)
