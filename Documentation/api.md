@@ -832,7 +832,9 @@ curl http://127.0.0.1:2379/v2/keys/dir?recursive=true -XDELETE
 ```
 
 
-### Creating a hidden node
+### Creating a hidden node [DEPRECATED]
+
+Note: We recommend not to use hidden keyspace. Support is dropped in v3.
 
 We can create a hidden key-value pair or directory by add a `_` prefix.
 The hidden item will not be listed when sending a `GET` request for a directory.
