@@ -60,8 +60,7 @@ removed from the etcd cluster member list.
 This makes sense because it's usually an application level / administrative
 action to determine whether a reconfiguration should happen based on health. 
 
-For more information, refer to
-[Documentation/runtime-reconf-design.md](https://github.com/coreos/etcd/blob/master/Documentation/runtime-reconf-design.md).
+For more information, refer to the [runtime reconfiguration design document][runtime-reconf-design].
 
 ## 6) how does --endpoint work with etcdctl? 
 
@@ -80,3 +79,5 @@ the clusters. This is probably not what you want.
 
 Note: --peers flag is now deprecated and --endpoint should be used instead, 
 as it might confuse users to give etcdctl a peerURL.
+
+[runtime-reconf-design]: runtime-reconf-design.md

@@ -51,7 +51,7 @@ GCE n1-standard-2 machine type
 
 ## Overall memory usage
 
-The overall memory usage captures how much [RSS](https://en.wikipedia.org/wiki/Resident_set_size) etcd consumes with the client watchers. The result is not very accurate and might vary around 10%. It is still very meaningful, since the goal is to learn about the rough memory usage and the pattern (find out `c1`, `c2` and `c3`).
+The overall memory usage captures how much [RSS][rss] etcd consumes with the client watchers. While the result may vary by as much as 10%, it is still meaningful, since the goal is to learn about the rough memory usage and the pattern of allocations.
 
 With the benchmark result, we can calculate roughly that `c1 = 17kb`, `c2 = 18kb` and `c3 = 350bytes`. So each additional client connection consumes 17kb of memory and each additional stream consumes 18kb of memory, and each additional watching only cause 350bytes. A single etcd server can maintain millions of watchings with a few GB of memory in normal case.
 
@@ -74,3 +74,4 @@ With the benchmark result, we can calculate roughly that `c1 = 17kb`, `c2 = 18kb
 | 2k | 50 | 100 |  10M | 4672MB |
 | 5k | 50 | 100 |  50M |  *OOM* |
 
+[rss]: https://en.wikipedia.org/wiki/Resident_set_size

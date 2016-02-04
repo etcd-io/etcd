@@ -20,11 +20,11 @@ Go Version: go1.4.2
 Go OS/Arch: linux/amd64
 ```
 
-Also, we use 3 etcd 2.1.0 alpha-stage members to form cluster to get base performance. etcd's commit head is at [c7146bd5](https://github.com/coreos/etcd/commits/c7146bd5f2c73716091262edc638401bb8229144), which is the same as the one that we use in [etcd 2.1 benchmark](./etcd-2-1-0-benchmarks.md).
+Also, we use 3 etcd 2.1.0 alpha-stage members to form cluster to get base performance. etcd's commit head is at [c7146bd5][c7146bd5], which is the same as the one that we use in [etcd 2.1 benchmark][etcd-2.1-benchmark].
 
 ## Testing
 
-Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyll/boom) to send requests to each etcd member. Check [here](../../hack/benchmark/) for instructions.
+Bootstrap another machine and use the [boom HTTP benchmark tool][boom] to send requests to each etcd member. Check the [benchmark hacking guide][hack-benchmark] for detailed instructions.
 
 ## Performance
 
@@ -65,3 +65,8 @@ Bootstrap another machine and use benchmark tool [boom](https://github.com/rakyl
 - write QPS to leader is increased by 20~30%. This is because we decouple raft main loop and entry apply loop, which avoids them blocking each other.
 
 - write QPS to all servers is increased by 30~80% because follower could receive latest commit index earlier and commit proposals faster.
+
+[boom]: https://github.com/rakyll/boom
+[c7146bd5]: https://github.com/coreos/etcd/commits/c7146bd5f2c73716091262edc638401bb8229144
+[etcd-2.1-benchmark]: etcd-2-1-0-alpha-benchmarks.md
+[hack-benchmark]: /hack/benchmark/

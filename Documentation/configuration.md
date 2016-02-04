@@ -4,7 +4,7 @@ etcd is configurable through command-line flags and environment variables. Optio
 
 The format of environment variable for flag `--my-flag` is `ETCD_MY_FLAG`. It applies to all  flags.
 
-The [official etcd ports](https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd) are 2379 for client requests, and 2380 for peer communication. Some legacy code and documentation still references ports 4001 and 7001, but all new etcd use and discussion should adopt the assigned ports.
+The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication. Some legacy code and documentation still references ports 4001 and 7001, but all new etcd use and discussion should adopt the assigned ports.
 
 To start etcd automatically using custom settings at startup in Linux, using a [systemd][systemd-intro] unit is highly recommended.
 
@@ -16,7 +16,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + Human-readable name for this member.
 + default: "default"
 + env variable: ETCD_NAME
-+ This value is referenced as this node's own entries listed in the `--initial-cluster` flag (Ex: `default=http://localhost:2380` or `default=http://localhost:2380,default=http://localhost:7001`). This needs to match the key used in the flag if you're using [static bootstrapping](clustering.md#static). When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
++ This value is referenced as this node's own entries listed in the `--initial-cluster` flag (Ex: `default=http://localhost:2380` or `default=http://localhost:2380,default=http://localhost:7001`). This needs to match the key used in the flag if you're using [static bootstrapping][build-cluster]. When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
 
 ### --data-dir
 + Path to the data directory.
@@ -253,7 +253,7 @@ Follow the instructions when using these flags.
 ## Experimental Flags
 
 ### --experimental-v3demo
-+ Enable experimental [v3 demo API](rfc/v3api.proto).
++ Enable experimental [v3 demo API][rfc-v3].
 + default: false
 + env variable: ETCD_EXPERIMENTAL_V3DEMO
 
@@ -272,6 +272,11 @@ Follow the instructions when using these flags.
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
 [discovery]: clustering.md#discovery
+[iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
 [proxy]: proxy.md
-[security]: security.md
+[reconfig]: runtime-configuration.md
 [restore]: admin_guide.md#restoring-a-backup
+[rfc-v3]: rfc/v3api.md
+[security]: security.md
+[systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
+[tuning]: tuning.md#time-parameters

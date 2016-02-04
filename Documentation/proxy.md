@@ -14,7 +14,7 @@ After establishing a list of peer URLs in this manner, the proxy retrieves the l
 
 While etcd proxies therefore do not need to be given the `advertise-client-urls` option, as they retrieve this configuration from the cluster, this implies that `initial-cluster` must be set correctly for every proxy, and the `advertise-client-urls` option must be set correctly for every non-proxy, first-order cluster peer. Otherwise, requests to any etcd proxy would be forwarded improperly. Take special care not to set the `advertise-client-urls` option to URLs that point to the proxy itself, as such a configuration will cause the proxy to enter a loop, forwarding requests to itself until resources are exhausted. To correct either case, stop etcd and restart it with the correct URLs.
 
-[This example Procfile](https://github.com/coreos/etcd/blob/master/Procfile) illustrates the difference in the etcd peer and proxy command lines used to configure and start a cluster with one proxy under the [goreman process management utility](https://github.com/mattn/goreman).
+[This example Procfile][procfile] illustrates the difference in the etcd peer and proxy command lines used to configure and start a cluster with one proxy under the [goreman process management utility][goreman].
 
 To summarize etcd proxy startup and peer discovery:
 
@@ -145,6 +145,9 @@ If you are running etcd under systemd, you should modify the service file with c
 sudo systemd restart etcd
 ```
 
-If you see an error, you can read the [add member troubleshooting doc](runtime-configuration.md#error-cases).
+If an error occurs, check the [add member troubleshooting doc][runtime-configuration].
 
 [discovery-service]: clustering.md#discovery
+[goreman]: https://github.com/mattn/goreman
+[procfile]: /Procfile
+[runtime-configuration]: runtime-configuration.md#error-cases-when-adding-members
