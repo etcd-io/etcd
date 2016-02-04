@@ -22,7 +22,7 @@ import (
 func TestNewGenerator(t *testing.T) {
 	g := NewGenerator(0x12, time.Unix(0, 0).Add(0x3456*time.Millisecond))
 	id := g.Next()
-	wid := uint64(0x1200000034560001)
+	wid := uint64(0x12000000345601)
 	if id != wid {
 		t.Errorf("id = %x, want %x", id, wid)
 	}
@@ -45,7 +45,7 @@ func TestNewGeneratorUnique(t *testing.T) {
 
 func TestNext(t *testing.T) {
 	g := NewGenerator(0x12, time.Unix(0, 0).Add(0x3456*time.Millisecond))
-	wid := uint64(0x1200000034560001)
+	wid := uint64(0x12000000345601)
 	for i := 0; i < 1000; i++ {
 		id := g.Next()
 		if id != wid+uint64(i) {
