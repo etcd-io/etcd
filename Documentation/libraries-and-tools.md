@@ -87,10 +87,6 @@
 
 - [efrecon/etcd-tcl](https://github.com/efrecon/etcd-tcl) - Supports v2, except wait.
 
-A detailed recap of client functionalities can be found in the [clients compatibility matrix][clients-matrix.md].
-
-[clients-matrix.md]: https://github.com/coreos/etcd/blob/master/Documentation/clients-matrix.md
-
 **Chef Integration**
 
 - [coderanger/etcd-chef](https://github.com/coderanger/etcd-chef)
