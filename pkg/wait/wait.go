@@ -17,6 +17,7 @@
 package wait
 
 import (
+	"log"
 	"sync"
 
 	"github.com/coreos/etcd/pkg/testutil"
@@ -43,6 +44,8 @@ func (w *List) Register(id uint64) <-chan interface{} {
 	if ch == nil {
 		ch = make(chan interface{}, 1)
 		w.m[id] = ch
+	} else {
+		log.Panicf("dup id %x", id)
 	}
 	return ch
 }
