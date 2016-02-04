@@ -89,6 +89,7 @@ func (c *cluster) Bootstrap() error {
 		if err != nil {
 			return err
 		}
+		grpcURLs[i] = fmt.Sprintf("%s:2378", host)
 		clientURLs[i] = fmt.Sprintf("http://%s:2379", host)
 		peerURLs[i] = fmt.Sprintf("http://%s:%d", host, peerURLPort)
 
@@ -170,8 +171,7 @@ func (c *cluster) WaitHealth() error {
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
 	healthFunc, urls := setHealthKey, c.GRPCURLs
 	if c.v2Only {
-		healthFunc = setHealthKeyV2
-		urls = c.ClientURLs
+		healthFunc, urls = setHealthKeyV2, c.ClientURLs
 	}
 	for i := 0; i < 60; i++ {
 		err = healthFunc(urls)
@@ -237,7 +237,7 @@ func setHealthKey(us []string) error {
 	for _, u := range us {
 		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 		if err != nil {
-			return fmt.Errorf("no connection available for %s (%v)", u, err)
+			return fmt.Errorf("%v (%s)", err, u)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		kvc := pb.NewKVClient(conn)

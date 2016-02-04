@@ -15,9 +15,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 type tester struct {
@@ -68,7 +74,37 @@ func (tt *tester) runLoop() {
 				}
 				continue
 			}
-			log.Printf("etcd-tester: [round#%d case#%d] succeed!", i, j)
+
+			if tt.cluster.v2Only {
+				log.Printf("etcd-tester: [round#%d case#%d] succeed!", i, j)
+				continue
+			}
+
+			log.Printf("etcd-tester: [round#%d case#%d] canceling the stressers...", i, j)
+			for _, s := range tt.cluster.Stressers {
+				s.Cancel()
+			}
+
+			log.Printf("etcd-tester: [round#%d case#%d] waiting 5s for pending PUTs to be committed across cluster...", i, j)
+			time.Sleep(5 * time.Second)
+
+			log.Printf("etcd-tester: [round#%d case#%d] starting checking consistency...", i, j)
+			err := tt.cluster.checkConsistency()
+			if err != nil {
+				log.Printf("etcd-tester: [round#%d case#%d] checkConsistency error (%v)", i, j, err)
+				if err := tt.cleanup(i, j); err != nil {
+					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					return
+				}
+			} else {
+				log.Printf("etcd-tester: [round#%d case#%d] all members are consistent!", i, j)
+				log.Printf("etcd-tester: [round#%d case#%d] succeed!", i, j)
+			}
+
+			log.Printf("etcd-tester: [round#%d case#%d] restarting the stressers...", i, j)
+			for _, s := range tt.cluster.Stressers {
+				go s.Stress()
+			}
 		}
 	}
 }
@@ -114,4 +150,46 @@ func (s *Status) setCase(c int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Case = c
+}
+
+// checkConsistency stops the cluster for a moment and get the hashes of KV storages.
+func (c *cluster) checkConsistency() error {
+	hashes := make(map[string]uint32)
+	for _, u := range c.GRPCURLs {
+		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if err != nil {
+			return err
+		}
+		kvc := pb.NewKVClient(conn)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		resp, err := kvc.Hash(ctx, &pb.HashRequest{})
+		hv := resp.Hash
+		if resp != nil && err != nil {
+			return err
+		}
+		cancel()
+
+		hashes[u] = hv
+	}
+
+	if !checkConsistency(hashes) {
+		return fmt.Errorf("check consistency fails: %v", hashes)
+	}
+	return nil
+}
+
+// checkConsistency returns true if all nodes have the same KV hash values.
+func checkConsistency(hashes map[string]uint32) bool {
+	var cv uint32
+	isConsistent := true
+	for _, v := range hashes {
+		if cv == 0 {
+			cv = v
+		}
+		if cv != v {
+			isConsistent = false
+		}
+	}
+	return isConsistent
 }

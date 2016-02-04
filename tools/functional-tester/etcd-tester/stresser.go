@@ -55,7 +55,7 @@ type stresser struct {
 func (s *stresser) Stress() error {
 	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
-		return fmt.Errorf("no connection available for %s (%v)", s.Endpoint, err)
+		return fmt.Errorf("%v (%s)", err, s.Endpoint)
 	}
 	kvc := pb.NewKVClient(conn)
 
