@@ -43,6 +43,7 @@ type raftNode struct {
 
 	id     int      // client ID for raft session
 	peers  []string // raft peer URLs
+	join   bool     // node is joining an existing cluster
 	waldir string   // path to WAL directory
 
 	// raft backing for the commit/error channel
@@ -60,7 +61,7 @@ type raftNode struct {
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func newRaftNode(id int, peers []string, proposeC <-chan string,
+func newRaftNode(id int, peers []string, join bool, proposeC <-chan string,
 	confChangeC <-chan raftpb.ConfChange) (<-chan *string, <-chan error) {
 
 	rc := &raftNode{
@@ -70,6 +71,7 @@ func newRaftNode(id int, peers []string, proposeC <-chan string,
 		errorC:      make(chan error),
 		id:          id,
 		peers:       peers,
+		join:        join,
 		waldir:      fmt.Sprintf("raftexample-%d", id),
 		raftStorage: raft.NewMemoryStorage(),
 		stopc:       make(chan struct{}),
@@ -186,7 +188,11 @@ func (rc *raftNode) startRaft() {
 	if oldwal {
 		rc.node = raft.RestartNode(c)
 	} else {
-		rc.node = raft.StartNode(c, rpeers)
+		startPeers := rpeers
+		if rc.join {
+			startPeers = nil
+		}
+		rc.node = raft.StartNode(c, startPeers)
 	}
 
 	ss := &stats.ServerStats{}
