@@ -172,23 +172,18 @@ func testCtlV2Watch(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	}()
 
 	key, value := "foo", "bar"
-	done, errChan := make(chan struct{}, 1), make(chan error, 1)
-
-	go etcdctlWatch(epc, key, value, noSync, done, errChan)
-
+	errc := etcdctlWatch(epc, key, value, noSync)
 	if err := etcdctlSet(epc, key, value, noSync); err != nil {
 		t.Fatalf("failed set (%v)", err)
 	}
 
 	select {
-	case <-done:
-		return
-	case err := <-errChan:
-		t.Fatalf("failed watch (%v)", err)
+	case err := <-errc:
+		if err != nil {
+			t.Fatalf("failed watch (%v)", err)
+		}
 	case <-time.After(5 * time.Second):
-		// TODO: 'watch' sometimes times out in Semaphore CI environment
-		// but works fine in every other environments
-		t.Logf("[WARNING] watch timed out!")
+		t.Fatalf("watch timed out")
 	}
 }
 
@@ -240,11 +235,11 @@ func etcdctlLs(clus *etcdProcessCluster, key string, noSync bool) error {
 	return spawnWithExpect(cmdArgs, key)
 }
 
-func etcdctlWatch(clus *etcdProcessCluster, key, value string, noSync bool, done chan struct{}, errChan chan error) {
-	cmdArgs := append(etcdctlPrefixArgs(clus, noSync), "watch", key)
-	if err := spawnWithExpect(cmdArgs, value); err != nil {
-		errChan <- err
-		return
-	}
-	done <- struct{}{}
+func etcdctlWatch(clus *etcdProcessCluster, key, value string, noSync bool) <-chan error {
+	cmdArgs := append(etcdctlPrefixArgs(clus, noSync), "watch", "--after-index 1", key)
+	errc := make(chan error, 1)
+	go func() {
+		errc <- spawnWithExpect(cmdArgs, value)
+	}()
+	return errc
 }
