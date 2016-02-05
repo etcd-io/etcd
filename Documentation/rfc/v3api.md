@@ -1,3 +1,9 @@
+# Overview
+
+The etcd v3 API is designed to give users a more efficient and cleaner abstraction compared to etcd v2. There are a number of semantic and protocol changes in this new API. For an overview [see Xiang Li's video](https://youtu.be/J5AioGtEPeQ?t=211).
+
+To prove out the design of the v3 API the team has also built [a number of example recipes](https://github.com/coreos/etcd/tree/master/contrib/recipes), there is a [video discussing these recipes too](https://www.youtube.com/watch?v=fj-2RY-3yVU&feature=youtu.be&t=590).
+
 # Design
 
 1. Flatten binary key-value space
