@@ -143,11 +143,12 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 			return (*TxnResponse)(resp), nil
 		}
 
-		if txn.isWrite {
+		if isRPCError(err) {
 			return nil, err
 		}
 
-		if isRPCError(err) {
+		if txn.isWrite {
+			go kv.switchRemote(err)
 			return nil, err
 		}
 
