@@ -37,8 +37,6 @@ func TestSendMessage(t *testing.T) {
 		LeaderStats: stats.NewLeaderStats("1"),
 	}
 	tr.Start()
-	srv := httptest.NewServer(tr.Handler())
-	defer srv.Close()
 
 	// member 2
 	recvc := make(chan raftpb.Message, 1)
@@ -51,12 +49,19 @@ func TestSendMessage(t *testing.T) {
 		LeaderStats: stats.NewLeaderStats("2"),
 	}
 	tr2.Start()
-	srv2 := httptest.NewServer(tr2.Handler())
+
+	srv := httptest.NewUnstartedServer(tr.Handler())
+	srv2 := httptest.NewUnstartedServer(tr2.Handler())
+
+	tr.AddPeer(types.ID(2), []string{"http://" + srv2.Listener.Addr().String()})
+	tr2.AddPeer(types.ID(1), []string{"http://" + srv.Listener.Addr().String()})
+
+	srv.Start()
+	defer srv.Close()
+	srv2.Start()
 	defer srv2.Close()
 
-	tr.AddPeer(types.ID(2), []string{srv2.URL})
 	defer tr.Stop()
-	tr2.AddPeer(types.ID(1), []string{srv.URL})
 	defer tr2.Stop()
 	if !waitStreamWorking(tr.Get(types.ID(2)).(*peer)) {
 		t.Fatalf("stream from 1 to 2 is not in work as expected")
@@ -95,8 +100,6 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		LeaderStats: stats.NewLeaderStats("1"),
 	}
 	tr.Start()
-	srv := httptest.NewServer(tr.Handler())
-	defer srv.Close()
 
 	// member 2
 	recvc := make(chan raftpb.Message, 1)
@@ -109,12 +112,19 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		LeaderStats: stats.NewLeaderStats("2"),
 	}
 	tr2.Start()
-	srv2 := httptest.NewServer(tr2.Handler())
+
+	srv := httptest.NewUnstartedServer(tr.Handler())
+	srv2 := httptest.NewUnstartedServer(tr2.Handler())
+
+	tr.AddPeer(types.ID(2), []string{"http://" + srv2.Listener.Addr().String()})
+	tr2.AddPeer(types.ID(1), []string{"http://" + srv.Listener.Addr().String()})
+
+	srv.Start()
+	defer srv.Close()
+	srv2.Start()
 	defer srv2.Close()
 
-	tr.AddPeer(types.ID(2), []string{srv2.URL})
 	defer tr.Stop()
-	tr2.AddPeer(types.ID(1), []string{srv.URL})
 	defer tr2.Stop()
 	if !waitStreamWorking(tr.Get(types.ID(2)).(*peer)) {
 		t.Fatalf("stream from 1 to 2 is not in work as expected")

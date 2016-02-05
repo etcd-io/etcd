@@ -65,9 +65,6 @@ type Peer interface {
 	// update updates the urls of remote peer.
 	update(urls types.URLs)
 
-	// urls  retrieves the urls of the remote peer
-	urls() types.URLs
-
 	// attachOutgoingConn attaches the outgoing connection to the peer for
 	// stream usage. After the call, the ownership of the outgoing
 	// connection hands over to the peer. The peer will close the connection
@@ -161,8 +158,8 @@ func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r
 		}
 	}()
 
-	p.msgAppV2Reader = startStreamReader(p, transport.streamRt, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc)
-	reader := startStreamReader(p, transport.streamRt, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
+	p.msgAppV2Reader = startStreamReader(transport, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc)
+	reader := startStreamReader(transport, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
 	go func() {
 		var paused bool
 		for {
@@ -227,10 +224,6 @@ func (p *peer) update(urls types.URLs) {
 	case p.newURLsC <- urls:
 	case <-p.done:
 	}
-}
-
-func (p *peer) urls() types.URLs {
-	return p.picker.urls
 }
 
 func (p *peer) attachOutgoingConn(conn *outgoingConn) {
