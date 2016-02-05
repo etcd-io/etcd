@@ -374,6 +374,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		TLSInfo:     cfg.PeerTLSInfo,
 		DialTimeout: cfg.peerDialTimeout(),
 		ID:          id,
+		URLs:        cfg.PeerURLs,
 		ClusterID:   cl.ID(),
 		Raft:        srv,
 		Snapshotter: ss,

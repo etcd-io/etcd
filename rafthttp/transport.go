@@ -97,9 +97,10 @@ type Transport struct {
 	DialTimeout time.Duration     // maximum duration before timing out dial of the request
 	TLSInfo     transport.TLSInfo // TLS information used when creating connection
 
-	ID          types.ID // local member ID
-	ClusterID   types.ID // raft cluster ID for request validation
-	Raft        Raft     // raft state machine, to which the Transport forwards received messages and reports status
+	ID          types.ID   // local member ID
+	URLs        types.URLs // local peer URLs
+	ClusterID   types.ID   // raft cluster ID for request validation
+	Raft        Raft       // raft state machine, to which the Transport forwards received messages and reports status
 	Snapshotter *snap.Snapshotter
 	ServerStats *stats.ServerStats // used to record general transportation statistics
 	// used to record transportation statistics with followers when
@@ -139,9 +140,9 @@ func (t *Transport) Start() error {
 }
 
 func (t *Transport) Handler() http.Handler {
-	pipelineHandler := newPipelineHandler(t.Raft, t.ClusterID)
+	pipelineHandler := newPipelineHandler(t, t.Raft, t.ClusterID)
 	streamHandler := newStreamHandler(t, t, t.Raft, t.ID, t.ClusterID)
-	snapHandler := newSnapshotHandler(t.Raft, t.Snapshotter, t.ClusterID)
+	snapHandler := newSnapshotHandler(t, t.Raft, t.Snapshotter, t.ClusterID)
 	mux := http.NewServeMux()
 	mux.Handle(RaftPrefix, pipelineHandler)
 	mux.Handle(RaftStreamPrefix+"/", streamHandler)

@@ -151,7 +151,7 @@ func TestServeRaftPrefix(t *testing.T) {
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		req.Header.Set("X-Server-Version", version.Version)
 		rw := httptest.NewRecorder()
-		h := newPipelineHandler(tt.p, types.ID(0))
+		h := newPipelineHandler(NewNopTransporter(), tt.p, types.ID(0))
 		h.ServeHTTP(rw, req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
@@ -364,4 +364,3 @@ func (pr *fakePeer) update(urls types.URLs)                { pr.peerURLs = urls 
 func (pr *fakePeer) attachOutgoingConn(conn *outgoingConn) { pr.connc <- conn }
 func (pr *fakePeer) activeSince() time.Time                { return time.Time{} }
 func (pr *fakePeer) stop()                                 {}
-func (pr *fakePeer) urls() types.URLs                      { return pr.peerURLs }
