@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
@@ -288,5 +289,92 @@ func TestKVCompact(t *testing.T) {
 	err = kv.Compact(1000)
 	if err == nil || err != v3rpc.ErrFutureRev {
 		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
+	}
+}
+
+// TestKVGetRetry ensures get will retry on disconnect.
+func TestKVGetRetry(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.Client(0))
+
+	if _, err := kv.Put("foo", "bar", 0); err != nil {
+		t.Fatal(err)
+	}
+
+	clus.Members[0].Stop(t)
+	<-clus.Members[0].StopNotify()
+
+	donec := make(chan struct{})
+	go func() {
+		// Get will fail, but reconnect will trigger
+		gresp, gerr := kv.Get("foo", 0)
+		if gerr != nil {
+			t.Fatal(gerr)
+		}
+		wkvs := []*storagepb.KeyValue{
+			{
+				Key:            []byte("foo"),
+				Value:          []byte("bar"),
+				CreateRevision: 2,
+				ModRevision:    2,
+				Version:        1,
+			},
+		}
+		if !reflect.DeepEqual(gresp.Kvs, wkvs) {
+			t.Fatalf("bad get: got %v, want %v", gresp.Kvs, wkvs)
+		}
+		donec <- struct{}{}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	clus.Members[0].Restart(t)
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed out waiting for get")
+	case <-donec:
+	}
+}
+
+// TestKVPutFailGetRetry ensures a get will retry following a failed put.
+func TestKVPutFailGetRetry(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.Client(0))
+	clus.Members[0].Stop(t)
+	<-clus.Members[0].StopNotify()
+
+	_, err := kv.Put("foo", "bar", 0)
+	if err == nil {
+		t.Fatalf("got success on disconnected put, wanted error")
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		// Get will fail, but reconnect will trigger
+		gresp, gerr := kv.Get("foo", 0)
+		if gerr != nil {
+			t.Fatal(gerr)
+		}
+		if len(gresp.Kvs) != 0 {
+			t.Fatalf("bad get kvs: got %+v, want empty", gresp.Kvs)
+		}
+		donec <- struct{}{}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	clus.Members[0].Restart(t)
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed out waiting for get")
+	case <-donec:
 	}
 }
