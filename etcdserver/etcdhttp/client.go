@@ -149,7 +149,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	clock := clockwork.NewRealClock()
 	startTime := clock.Now()
-	rr, err := parseKeyRequest(r, clock)
+	rr, noDataOnSuccess, err := parseKeyRequest(r, clock)
 	if err != nil {
 		writeKeyError(w, err)
 		return
@@ -171,7 +171,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case resp.Event != nil:
-		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
+		if err := writeKeyEvent(w, resp.Event, noDataOnSuccess, h.timer); err != nil {
 			// Should never be reached
 			plog.Errorf("error writing event (%v)", err)
 		}
@@ -444,19 +444,20 @@ func logHandleFunc(w http.ResponseWriter, r *http.Request) {
 // parseKeyRequest converts a received http.Request on keysPrefix to
 // a server Request, performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
-func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Request, error) {
+func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Request, bool, error) {
+	noDataOnSuccess := false
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()
 	if err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidForm,
 			err.Error(),
 		)
 	}
 
 	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidForm,
 			"incorrect key prefix",
 		)
@@ -465,13 +466,13 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 
 	var pIdx, wIdx uint64
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeIndexNaN,
 			`invalid value for "prevIndex"`,
 		)
 	}
 	if wIdx, err = getUint64(r.Form, "waitIndex"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeIndexNaN,
 			`invalid value for "waitIndex"`,
 		)
@@ -479,45 +480,45 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 
 	var rec, sort, wait, dir, quorum, stream bool
 	if rec, err = getBool(r.Form, "recursive"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "recursive"`,
 		)
 	}
 	if sort, err = getBool(r.Form, "sorted"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "sorted"`,
 		)
 	}
 	if wait, err = getBool(r.Form, "wait"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "wait"`,
 		)
 	}
 	// TODO(jonboulle): define what parameters dir is/isn't compatible with?
 	if dir, err = getBool(r.Form, "dir"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "dir"`,
 		)
 	}
 	if quorum, err = getBool(r.Form, "quorum"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "quorum"`,
 		)
 	}
 	if stream, err = getBool(r.Form, "stream"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "stream"`,
 		)
 	}
 
 	if wait && r.Method != "GET" {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`"wait" can only be used with GET requests`,
 		)
@@ -525,9 +526,16 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 
 	pV := r.FormValue("prevValue")
 	if _, ok := r.Form["prevValue"]; ok && pV == "" {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodePrevValueRequired,
 			`"prevValue" cannot be empty`,
+		)
+	}
+
+	if noDataOnSuccess, err = getBool(r.Form, "noDataOnSuccess"); err != nil {
+		return emptyReq, false, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "noDataOnSuccess"`,
 		)
 	}
 
@@ -537,7 +545,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if len(r.FormValue("ttl")) > 0 {
 		i, err := getUint64(r.Form, "ttl")
 		if err != nil {
-			return emptyReq, etcdErr.NewRequestError(
+			return emptyReq, false, etcdErr.NewRequestError(
 				etcdErr.EcodeTTLNaN,
 				`invalid value for "ttl"`,
 			)
@@ -550,7 +558,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if _, ok := r.Form["prevExist"]; ok {
 		bv, err := getBool(r.Form, "prevExist")
 		if err != nil {
-			return emptyReq, etcdErr.NewRequestError(
+			return emptyReq, false, etcdErr.NewRequestError(
 				etcdErr.EcodeInvalidField,
 				"invalid value for prevExist",
 			)
@@ -584,13 +592,13 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 		rr.Expiration = clock.Now().Add(expr).UnixNano()
 	}
 
-	return rr, nil
+	return rr, noDataOnSuccess, nil
 }
 
 // writeKeyEvent trims the prefix of key path in a single Event under
 // StoreKeysPrefix, serializes it and writes the resulting JSON to the given
 // ResponseWriter, along with the appropriate headers.
-func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer) error {
+func writeKeyEvent(w http.ResponseWriter, ev *store.Event, noDataOnSuccess bool, rt etcdserver.RaftTimer) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
@@ -604,6 +612,12 @@ func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTim
 	}
 
 	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
+	if noDataOnSuccess &&
+		(ev.Action == store.Set || ev.Action == store.CompareAndSwap ||
+			ev.Action == store.Create || ev.Action == store.Update) {
+		ev.Node = nil
+		ev.PrevNode = nil
+	}
 	return json.NewEncoder(w).Encode(ev)
 }
 
