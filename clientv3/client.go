@@ -200,5 +200,5 @@ func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 }
 
 func isRPCError(err error) bool {
-	return grpc.Code(err) != codes.Unknown
+	return grpc.Code(err) != codes.Unknown && err != grpc.ErrClientConnClosing
 }
