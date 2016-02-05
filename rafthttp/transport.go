@@ -187,6 +187,8 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 }
 
 func (t *Transport) Stop() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	for _, r := range t.remotes {
 		r.stop()
 	}
