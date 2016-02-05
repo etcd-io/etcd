@@ -228,7 +228,7 @@ func (rc *raftNode) serveChannels() {
 			rc.wal.Save(rd.HardState, rd.Entries)
 			rc.raftStorage.Append(rd.Entries)
 			rc.transport.Send(rd.Messages)
-			if ok := rc.publishEntries(rd.Entries); !ok {
+			if ok := rc.publishEntries(rd.CommittedEntries); !ok {
 				rc.stop()
 				return
 			}
