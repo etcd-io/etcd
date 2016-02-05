@@ -33,21 +33,48 @@ func TestTxnWriteFail(t *testing.T) {
 	clus.Members[0].Stop(t)
 	<-clus.Members[0].StopNotify()
 
-	resp, err := kv.Txn().Then(clientv3.OpPut("foo", "bar", 0)).Commit()
-	if err == nil {
-		t.Fatalf("expected error, got response %v", resp)
+	donec := make(chan struct{})
+	go func() {
+		resp, err := kv.Txn().Then(clientv3.OpPut("foo", "bar", 0)).Commit()
+		if err == nil {
+			t.Fatalf("expected error, got response %v", resp)
+		}
+		donec <- struct{}{}
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed out waiting for txn to fail")
+	case <-donec:
+		// don't restart cluster until txn errors out
 	}
 
-	// reconnect so cluster terminate doesn't complain about double-close
-	clus.Members[0].Restart(t)
+	go func() {
+		// reconnect so terminate doesn't complain about double-close
+		clus.Members[0].Restart(t)
+		donec <- struct{}{}
 
-	// and ensure the put didn't take
-	gresp, gerr := kv.Get("foo", 0)
-	if gerr != nil {
-		t.Fatal(gerr)
+		// and ensure the put didn't take
+		gresp, gerr := kv.Get("foo", 0)
+		if gerr != nil {
+			t.Fatal(gerr)
+		}
+		if len(gresp.Kvs) != 0 {
+			t.Fatalf("expected no keys, got %v", gresp.Kvs)
+		}
+		donec <- struct{}{}
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed out waiting for restart")
+	case <-donec:
 	}
-	if len(gresp.Kvs) != 0 {
-		t.Fatalf("expected no keys, got %v", gresp.Kvs)
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("timed out waiting for get")
+	case <-donec:
 	}
 }
 
