@@ -28,4 +28,7 @@ import (
 // package. If your kernel version is lower than 2.6.23
 // (https://github.com/torvalds/linux/releases/tag/v2.6.23), mmap might
 // silently ignore this flag. Please update your kernel to prevent this.
-var boltOpenOptions = &bolt.Options{MmapFlags: syscall.MAP_POPULATE}
+var boltOpenOptions = &bolt.Options{
+	MmapFlags:       syscall.MAP_POPULATE,
+	InitialMmapSize: InitialMmapSize,
+}

@@ -31,6 +31,11 @@ import (
 var (
 	defaultBatchLimit    = 10000
 	defaultBatchInterval = 100 * time.Millisecond
+
+	// InitialMmapSize is the initial size of the mmapped region. Setting this larger than
+	// the potential max db size can prevent writer from blocking reader.
+	// This only works for linux.
+	InitialMmapSize = 10 * 1024 * 1024 * 1024
 )
 
 type Backend interface {
