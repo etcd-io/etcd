@@ -17,17 +17,20 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"path/filepath"
 )
 
 func main() {
-	etcdPath := flag.String("etcd-path", "/opt/etcd/bin/etcd", "the path to etcd binary")
+	etcdPath := flag.String("etcd-path", filepath.Join(os.Getenv("GOPATH"), "bin/etcd"), "the path to etcd binary")
+	port := flag.String("port", ":9027", "port to serve agent server")
 	flag.Parse()
 
 	a, err := newAgent(*etcdPath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	a.serveRPC()
+	a.serveRPC(*port)
 
 	var done chan struct{}
 	<-done

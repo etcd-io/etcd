@@ -23,14 +23,14 @@ import (
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
-func (a *Agent) serveRPC() {
+func (a *Agent) serveRPC(port string) {
 	rpc.Register(a)
 	rpc.HandleHTTP()
-	l, e := net.Listen("tcp", ":9027")
+	l, e := net.Listen("tcp", port)
 	if e != nil {
 		log.Fatal("agent:", e)
 	}
-	log.Println("agent listening on :9027")
+	log.Println("agent listening on", port)
 	go http.Serve(l, nil)
 }
 
