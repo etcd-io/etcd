@@ -18,11 +18,11 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/transport"
@@ -200,5 +200,5 @@ func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 }
 
 func isRPCError(err error) bool {
-	return grpc.Code(err) != codes.Unknown
+	return strings.HasPrefix(grpc.ErrorDesc(err), "etcdserver: ")
 }
