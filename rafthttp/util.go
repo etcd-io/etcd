@@ -86,7 +86,7 @@ func readEntryFrom(r io.Reader, ent *raftpb.Entry) error {
 }
 
 // createPostRequest creates a HTTP POST request that sends raft message.
-func createPostRequest(u url.URL, path string, body io.Reader, ct string, from, cid types.ID) *http.Request {
+func createPostRequest(u url.URL, path string, body io.Reader, ct string, urls types.URLs, from, cid types.ID) *http.Request {
 	uu := u
 	uu.Path = path
 	req, err := http.NewRequest("POST", uu.String(), body)
@@ -98,6 +98,8 @@ func createPostRequest(u url.URL, path string, body io.Reader, ct string, from, 
 	req.Header.Set("X-Server-Version", version.Version)
 	req.Header.Set("X-Min-Cluster-Version", version.MinClusterVersion)
 	req.Header.Set("X-Etcd-Cluster-ID", cid.String())
+	setPeerURLsHeader(req, urls)
+
 	return req
 }
 
@@ -186,4 +188,17 @@ func checkVersionCompability(name string, server, minCluster *semver.Version) er
 		return fmt.Errorf("local version is too low: remote[%s]=%s, local=%s", name, server, localServer)
 	}
 	return nil
+}
+
+// setPeerURLsHeader reports local urls for peer discovery
+func setPeerURLsHeader(req *http.Request, urls types.URLs) {
+	if urls == nil {
+		// often not set in unit tests
+		return
+	}
+	var peerURLs []string
+	for _, url := range urls {
+		peerURLs = append(peerURLs, url.String())
+	}
+	req.Header.Set("X-PeerURLs", strings.Join(peerURLs, ","))
 }

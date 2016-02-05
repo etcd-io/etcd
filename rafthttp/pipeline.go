@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
-	"net/http"
 	"sync"
 	"time"
 
@@ -45,7 +44,7 @@ type pipeline struct {
 	from, to types.ID
 	cid      types.ID
 
-	tr     http.RoundTripper
+	tr     *Transport
 	picker *urlPicker
 	status *peerStatus
 	fs     *stats.FollowerStats
@@ -58,7 +57,7 @@ type pipeline struct {
 	stopc chan struct{}
 }
 
-func newPipeline(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
+func newPipeline(tr *Transport, picker *urlPicker, from, to, cid types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
 	p := &pipeline{
 		from:   from,
 		to:     to,
@@ -126,10 +125,10 @@ func (p *pipeline) handle() {
 // error on any failure.
 func (p *pipeline) post(data []byte) (err error) {
 	u := p.picker.pick()
-	req := createPostRequest(u, RaftPrefix, bytes.NewBuffer(data), "application/protobuf", p.from, p.cid)
+	req := createPostRequest(u, RaftPrefix, bytes.NewBuffer(data), "application/protobuf", p.tr.URLs, p.from, p.cid)
 
 	done := make(chan struct{}, 1)
-	cancel := httputil.RequestCanceler(p.tr, req)
+	cancel := httputil.RequestCanceler(p.tr.pipelineRt, req)
 	go func() {
 		select {
 		case <-done:
@@ -139,7 +138,7 @@ func (p *pipeline) post(data []byte) (err error) {
 		}
 	}()
 
-	resp, err := p.tr.RoundTrip(req)
+	resp, err := p.tr.pipelineRt.RoundTrip(req)
 	done <- struct{}{}
 	if err != nil {
 		p.picker.unreachable(u)

@@ -59,6 +59,7 @@ type writerToResponse interface {
 }
 
 type pipelineHandler struct {
+	tr  Transporter
 	r   Raft
 	cid types.ID
 }
@@ -68,8 +69,9 @@ type pipelineHandler struct {
 //
 // The handler reads out the raft message from request body,
 // and forwards it to the given raft state machine for processing.
-func newPipelineHandler(r Raft, cid types.ID) http.Handler {
+func newPipelineHandler(tr Transporter, r Raft, cid types.ID) http.Handler {
 	return &pipelineHandler{
+		tr:  tr,
 		r:   r,
 		cid: cid,
 	}
@@ -87,6 +89,12 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := checkClusterCompatibilityFromHeader(r.Header, h.cid); err != nil {
 		http.Error(w, err.Error(), http.StatusPreconditionFailed)
 		return
+	}
+
+	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err != nil {
+		if urls := r.Header.Get("X-PeerURLs"); urls != "" {
+			h.tr.AddRemote(from, strings.Split(urls, ","))
+		}
 	}
 
 	// Limit the data size that could be read from the request body, which ensures that read from
@@ -114,19 +122,22 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+
 	// Write StatusNoContent header after the message has been processed by
 	// raft, which facilitates the client to report MsgSnap status.
 	w.WriteHeader(http.StatusNoContent)
 }
 
 type snapshotHandler struct {
+	tr          Transporter
 	r           Raft
 	snapshotter *snap.Snapshotter
 	cid         types.ID
 }
 
-func newSnapshotHandler(r Raft, snapshotter *snap.Snapshotter, cid types.ID) http.Handler {
+func newSnapshotHandler(tr Transporter, r Raft, snapshotter *snap.Snapshotter, cid types.ID) http.Handler {
 	return &snapshotHandler{
+		tr:          tr,
 		r:           r,
 		snapshotter: snapshotter,
 		cid:         cid,
@@ -154,6 +165,12 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := checkClusterCompatibilityFromHeader(r.Header, h.cid); err != nil {
 		http.Error(w, err.Error(), http.StatusPreconditionFailed)
 		return
+	}
+
+	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err != nil {
+		if urls := r.Header.Get("X-PeerURLs"); urls != "" {
+			h.tr.AddRemote(from, strings.Split(urls, ","))
+		}
 	}
 
 	dec := &messageDecoder{r: r.Body}
@@ -257,18 +274,14 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	p := h.peerGetter.Get(from)
 	if p == nil {
-		if urls := r.Header.Get("X-Server-Peers"); urls != "" {
-			h.tr.AddPeer(from, strings.Split(urls, ","))
-		}
-		p = h.peerGetter.Get(from)
-	}
-
-	if p == nil {
 		// This may happen in following cases:
 		// 1. user starts a remote peer that belongs to a different cluster
 		// with the same cluster ID.
 		// 2. local etcd falls behind of the cluster, and cannot recognize
 		// the members that joined after its current progress.
+		if urls := r.Header.Get("X-PeerURLs"); urls != "" {
+			h.tr.AddRemote(from, strings.Split(urls, ","))
+		}
 		plog.Errorf("failed to find member %s in cluster %s", from, h.cid)
 		http.Error(w, "error sender not found", http.StatusNotFound)
 		return

@@ -37,7 +37,7 @@ type snapshotSender struct {
 	from, to types.ID
 	cid      types.ID
 
-	tr     http.RoundTripper
+	tr     *Transport
 	picker *urlPicker
 	status *peerStatus
 	r      Raft
@@ -46,7 +46,7 @@ type snapshotSender struct {
 	stopc chan struct{}
 }
 
-func newSnapshotSender(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, status *peerStatus, r Raft, errorc chan error) *snapshotSender {
+func newSnapshotSender(tr *Transport, picker *urlPicker, from, to, cid types.ID, status *peerStatus, r Raft, errorc chan error) *snapshotSender {
 	return &snapshotSender{
 		from:   from,
 		to:     to,
@@ -71,7 +71,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 	defer body.Close()
 
 	u := s.picker.pick()
-	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.from, s.cid)
+	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.tr.URLs, s.from, s.cid)
 
 	plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
 
@@ -105,7 +105,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 // post posts the given request.
 // It returns nil when request is sent out and processed successfully.
 func (s *snapshotSender) post(req *http.Request) (err error) {
-	cancel := httputil.RequestCanceler(s.tr, req)
+	cancel := httputil.RequestCanceler(s.tr.pipelineRt, req)
 
 	type responseAndError struct {
 		resp *http.Response
@@ -115,7 +115,7 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	result := make(chan responseAndError, 1)
 
 	go func() {
-		resp, err := s.tr.RoundTrip(req)
+		resp, err := s.tr.pipelineRt.RoundTrip(req)
 		if err != nil {
 			result <- responseAndError{resp, nil, err}
 			return
