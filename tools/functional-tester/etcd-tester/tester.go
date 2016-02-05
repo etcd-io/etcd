@@ -15,7 +15,10 @@
 package main
 
 import (
-	"log"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
 	"sync"
 	"time"
 
@@ -33,6 +36,31 @@ type tester struct {
 	status Status
 }
 
+type logObject struct {
+	Time        string      `json:"time"`
+	EventType   string      `json:"event_type"`
+	EventCaller string      `json:"event_caller"`
+	Round       int         `json:"round"`
+	Case        int         `json:"case"`
+	Failure     string      `json:"failure_description"`
+	Message     interface{} `json:"message"`
+}
+
+func logf(w io.Writer, eventType, eventCaller string, roundN, caseN int, failure string, msg interface{}) {
+	l := logObject{
+		Time:        nowPST(),
+		EventType:   eventType,
+		EventCaller: eventCaller,
+		Round:       roundN,
+		Case:        caseN,
+		Failure:     failure,
+		Message:     msg,
+	}
+	json.NewEncoder(w).Encode(l)
+}
+
+var writer = os.Stdout
+
 func (tt *tester) runLoop() {
 	tt.status.Since = time.Now()
 	tt.status.RoundLimit = tt.limit
@@ -47,92 +75,90 @@ func (tt *tester) runLoop() {
 			tt.status.setCase(j)
 
 			if err := tt.cluster.WaitHealth(); err != nil {
-				log.Printf("etcd-tester: [round#%d case#%d] wait full health error: %v", i, j, err)
+				logf(writer, "error", "WaitHealth", i, j, f.Desc(), err)
 				if err := tt.cleanup(i, j); err != nil {
-					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					logf(writer, "error", "cleanup", i, j, f.Desc(), err)
 					return
 				}
 				continue
 			}
-			log.Printf("etcd-tester: [round#%d case#%d] start failure %s", i, j, f.Desc())
-			log.Printf("etcd-tester: [round#%d case#%d] start injecting failure...", i, j)
+			logf(writer, "info", "failure.Inject", i, j, f.Desc(), nil)
 			if err := f.Inject(tt.cluster, i); err != nil {
-				log.Printf("etcd-tester: [round#%d case#%d] injection error: %v", i, j, err)
+				logf(writer, "error", "failure.Inject", i, j, f.Desc(), err)
 				if err := tt.cleanup(i, j); err != nil {
-					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					logf(writer, "error", "cleanup", i, j, f.Desc(), err)
 					return
 				}
 				continue
 			}
-			log.Printf("etcd-tester: [round#%d case#%d] start recovering failure...", i, j)
+			logf(writer, "info", "failure.Recover", i, j, f.Desc(), nil)
 			if err := f.Recover(tt.cluster, i); err != nil {
-				log.Printf("etcd-tester: [round#%d case#%d] recovery error: %v", i, j, err)
+				logf(writer, "error", "failure.Recover", i, j, f.Desc(), err)
 				if err := tt.cleanup(i, j); err != nil {
-					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					logf(writer, "error", "cleanup", i, j, f.Desc(), err)
 					return
 				}
 				continue
 			}
 
 			if tt.cluster.v2Only {
-				log.Printf("etcd-tester: [round#%d case#%d] succeed!", i, j)
+				logf(writer, "success", "v2", i, j, f.Desc(), nil)
 				continue
 			}
 
-			log.Printf("etcd-tester: [round#%d case#%d] canceling the stressers...", i, j)
+			logf(writer, "info", "cluster.Stressers.Cancel", i, j, f.Desc(), nil)
 			for _, s := range tt.cluster.Stressers {
 				s.Cancel()
 			}
 
+			revisions := make(map[string]int64)
 			ok := false
-			for k := 0; k < 5; k++ {
-				time.Sleep(time.Second)
-				log.Printf("etcd-tester: [round#%d case#%d.%d] checking current revisions...", i, j, k)
-				revs, err := tt.cluster.getRevision()
+			for k := 0; k < 10; k++ {
+				time.Sleep(3 * time.Second)
+				logf(writer, "info", "cluster.getRevision", i, j, f.Desc(), nil)
+				var err error
+				revisions, err = tt.cluster.getRevision()
 				if err != nil {
 					if e := tt.cleanup(i, j); e != nil {
-						log.Printf("etcd-tester: [round#%d case#%d.%d] cleanup error: %v", i, j, k, e)
+						logf(writer, "error", "cleanup", i, j, f.Desc(), e)
 						return
 					}
-					log.Printf("etcd-tester: [round#%d case#%d.%d] failed to get revisions (%v)", i, j, k, err)
+					logf(writer, "error", "cluster.getRevision", i, j, f.Desc(), err)
 					continue
 				}
-				if ok = isSameValueInMap(revs); ok {
-					log.Printf("etcd-tester: [round#%d case#%d] checking current revisions succeed!", i, j)
+				if ok = isSameValueInMap(revisions); ok {
+					logf(writer, "success", "isSameValueInMap(cluster.getRevision)", i, j, f.Desc(), fmt.Sprintf("consistent revisions: %+v", revisions))
 					break
-				} else {
-					log.Printf("etcd-tester: [round#%d case#%d] current revisions %+v", i, j, revs)
 				}
 			}
 			if !ok {
-				log.Printf("etcd-tester: [round#%d case#%d] checking current revisions failure...", i, j)
+				logf(writer, "error", "cluster.getRevision", i, j, f.Desc(), fmt.Sprintf("inconsistent revisions: %+v", revisions))
 				if err := tt.cleanup(i, j); err != nil {
-					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					logf(writer, "error", "cleanup", i, j, f.Desc(), err)
 					return
 				}
 				continue
 			}
 
-			log.Printf("etcd-tester: [round#%d case#%d] checking current storage hashes...", i, j)
+			logf(writer, "info", "cluster.getKVHash", i, j, f.Desc(), nil)
 			hashes, err := tt.cluster.getKVHash()
 			if err != nil {
-				log.Printf("etcd-tester: [round#%d case#%d] getKVHash error (%v)", i, j, err)
+				logf(writer, "error", "cluster.getKVHash", i, j, f.Desc(), err)
 				if err := tt.cleanup(i, j); err != nil {
-					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					logf(writer, "error", "cleanup", i, j, f.Desc(), err)
 					return
 				}
 			}
 			if !isSameValueInMap(hashes) {
 				if err := tt.cleanup(i, j); err != nil {
-					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
+					logf(writer, "error", "cleanup", i, j, f.Desc(), err)
 					return
 				}
 				continue
 			}
-			log.Printf("etcd-tester: [round#%d case#%d] all members are consistent!", i, j)
-			log.Printf("etcd-tester: [round#%d case#%d] succeed!", i, j)
+			logf(writer, "success", "v3", i, j, f.Desc(), "all members are consistent!")
 
-			log.Printf("etcd-tester: [round#%d case#%d] restarting the stressers...", i, j)
+			logf(writer, "info", "stresser.Stress", i, j, f.Desc(), nil)
 			for _, s := range tt.cluster.Stressers {
 				go s.Stress()
 			}
@@ -141,7 +167,7 @@ func (tt *tester) runLoop() {
 }
 
 func (tt *tester) cleanup(i, j int) error {
-	log.Printf("etcd-tester: [round#%d case#%d] cleaning up...", i, j)
+	logf(writer, "info", "cleanup", i, j, tt.failures[j].Desc(), nil)
 	if err := tt.cluster.Cleanup(); err != nil {
 		return err
 	}
@@ -222,6 +248,9 @@ func (c *cluster) getKVHash() (map[string]int64, error) {
 }
 
 func isSameValueInMap(hashes map[string]int64) bool {
+	if len(hashes) < 2 {
+		return true
+	}
 	var rv int64
 	ok := true
 	for _, v := range hashes {
@@ -234,4 +263,12 @@ func isSameValueInMap(hashes map[string]int64) bool {
 		}
 	}
 	return ok
+}
+
+func nowPST() string {
+	tzone, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		return time.Now().String()[:21]
+	}
+	return time.Now().In(tzone).String()[:21]
 }
