@@ -150,9 +150,9 @@ func (a *Agent) status() client.Status {
 func (a *Agent) dataDir() string {
 	datadir := path.Join(a.cmd.Path, "*.etcd")
 	args := a.cmd.Args
-	// only parse the simple case like "-data-dir /var/lib/etcd"
+	// only parse the simple case like "--data-dir /var/lib/etcd"
 	for i, arg := range args {
-		if arg == "-data-dir" {
+		if arg == "--data-dir" {
 			datadir = args[i+1]
 			break
 		}
