@@ -17,10 +17,11 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
-const etcdPath = "./etcd"
+const etcdPath = filepath.Join(os.Getenv("GOPATH"), "bin/etcd")
 
 func TestAgentStart(t *testing.T) {
 	defer os.Remove("etcd.log")
@@ -77,7 +78,7 @@ func TestAgentTerminate(t *testing.T) {
 
 // newTestAgent creates a test agent and with a temp data directory.
 func newTestAgent(t *testing.T) (*Agent, string) {
-	a, err := newAgent(etcdPath)
+	a, err := newAgent(etcdPath, "etcd.log")
 	if err != nil {
 		t.Fatal(err)
 	}

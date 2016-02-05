@@ -23,10 +23,11 @@ import (
 
 func main() {
 	etcdPath := flag.String("etcd-path", filepath.Join(os.Getenv("GOPATH"), "bin/etcd"), "the path to etcd binary")
+	etcdLogPath := flag.String("etcd-log-path", "etcd.log", "the path to etcd log")
 	port := flag.String("port", ":9027", "port to serve agent server")
 	flag.Parse()
 
-	a, err := newAgent(*etcdPath)
+	a, err := newAgent(*etcdPath, *etcdLogPath)
 	if err != nil {
 		log.Fatal(err)
 	}
