@@ -52,6 +52,8 @@ func TestTxnWriteFail(t *testing.T) {
 	go func() {
 		// reconnect so terminate doesn't complain about double-close
 		clus.Members[0].Restart(t)
+		// wait for etcdserver to get established (CI races and get req times out)
+		time.Sleep(2 * time.Second)
 		donec <- struct{}{}
 
 		// and ensure the put didn't take
