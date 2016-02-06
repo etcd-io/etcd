@@ -15,8 +15,6 @@
 package rafthttp
 
 import (
-	"net/http"
-
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
@@ -27,7 +25,7 @@ type remote struct {
 	pipeline *pipeline
 }
 
-func startRemote(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, errorc chan error) *remote {
+func startRemote(tr *Transport, urls types.URLs, local, to, cid types.ID, r Raft, errorc chan error) *remote {
 	picker := newURLPicker(urls)
 	status := newPeerStatus(to)
 	return &remote{

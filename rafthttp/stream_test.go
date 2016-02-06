@@ -116,12 +116,11 @@ func TestStreamReaderDialRequest(t *testing.T) {
 	for i, tt := range []streamType{streamTypeMessage, streamTypeMsgAppV2} {
 		tr := &roundTripperRecorder{}
 		sr := &streamReader{
-			tr:        tr,
-			localPeer: newFakePeer(),
-			picker:    mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:     types.ID(1),
-			remote:    types.ID(2),
-			cid:       types.ID(1),
+			tr:     &Transport{streamRt: tr},
+			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
+			local:  types.ID(1),
+			remote: types.ID(2),
+			cid:    types.ID(1),
 		}
 		sr.dial(tt)
 
@@ -167,13 +166,12 @@ func TestStreamReaderDialResult(t *testing.T) {
 			err:    tt.err,
 		}
 		sr := &streamReader{
-			tr:        tr,
-			localPeer: newFakePeer(),
-			picker:    mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:     types.ID(1),
-			remote:    types.ID(2),
-			cid:       types.ID(1),
-			errorc:    make(chan error, 1),
+			tr:     &Transport{streamRt: tr},
+			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
+			local:  types.ID(1),
+			remote: types.ID(2),
+			cid:    types.ID(1),
+			errorc: make(chan error, 1),
 		}
 
 		_, err := sr.dial(streamTypeMessage)
@@ -196,12 +194,11 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 			header: http.Header{},
 		}
 		sr := &streamReader{
-			tr:        tr,
-			localPeer: newFakePeer(),
-			picker:    mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:     types.ID(1),
-			remote:    types.ID(2),
-			cid:       types.ID(1),
+			tr:     &Transport{streamRt: tr},
+			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
+			local:  types.ID(1),
+			remote: types.ID(2),
+			cid:    types.ID(1),
 		}
 
 		_, err := sr.dial(typ)
@@ -257,9 +254,8 @@ func TestStream(t *testing.T) {
 		h.sw = sw
 
 		picker := mustNewURLPicker(t, []string{srv.URL})
-		tr := &http.Transport{}
-		peer := newFakePeer()
-		sr := startStreamReader(peer, tr, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), newPeerStatus(types.ID(1)), recvc, propc, nil)
+		tr := &Transport{streamRt: &http.Transport{}}
+		sr := startStreamReader(tr, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), newPeerStatus(types.ID(1)), recvc, propc, nil)
 		defer sr.stop()
 		// wait for stream to work
 		var writec chan<- raftpb.Message
