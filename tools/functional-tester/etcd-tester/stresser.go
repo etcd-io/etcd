@@ -78,7 +78,8 @@ func (s *stresser) Stress() error {
 					Value: []byte(randStr(s.KeySize)),
 				})
 				putcancel()
-				if err == context.Canceled {
+				if grpc.ErrorDesc(err) == context.Canceled.Error() {
+					log.Printf("etcd-tester: stresser#%d is cancelled", i)
 					return
 				}
 				s.mu.Lock()

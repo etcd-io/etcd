@@ -98,10 +98,10 @@ func (tt *tester) runLoop() {
 					continue
 				}
 				if ok = isSameValueInMap(revs); ok {
-					log.Printf("etcd-tester: [round#%d case#%d] checking current revisions succeed!", i, j)
+					log.Printf("etcd-tester: [round#%d case#%d.%d] checking current revisions succeed!", i, j, k)
 					break
 				} else {
-					log.Printf("etcd-tester: [round#%d case#%d] current revisions %+v", i, j, revs)
+					log.Printf("etcd-tester: [round#%d case#%d.%d] current revisions %+v", i, j, k, revs)
 				}
 			}
 			if !ok {
