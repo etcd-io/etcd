@@ -15,6 +15,7 @@
 package command
 
 import (
+	"errors"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
@@ -38,15 +39,28 @@ func mustClient(cmd *cobra.Command) *clientv3.Client {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tls := transport.TLSInfo{}
-	if tls.CertFile, err = cmd.Flags().GetString("cert"); err == nil {
+	var file string
+	if file, err = cmd.Flags().GetString("cert"); err == nil && file != "" {
+		tls.CertFile = file
 		cfgtls = &tls
+	} else if cmd.Flags().Changed("cert") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cert option"))
 	}
-	if tls.KeyFile, err = cmd.Flags().GetString("key"); err == nil {
+
+	if file, err = cmd.Flags().GetString("key"); err == nil && file != "" {
+		tls.KeyFile = file
 		cfgtls = &tls
+	} else if cmd.Flags().Changed("key") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --key option"))
 	}
-	if tls.CAFile, err = cmd.Flags().GetString("cacert"); err == nil {
+
+	if file, err = cmd.Flags().GetString("cacert"); err == nil && file != "" {
+		tls.CAFile = file
 		cfgtls = &tls
+	} else if cmd.Flags().Changed("cacert") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cacert option"))
 	}
+
 	cfg := clientv3.Config{
 		Endpoints:   []string{endpoint},
 		TLS:         cfgtls,
