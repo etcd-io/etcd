@@ -79,7 +79,6 @@ func (s *stresser) Stress() error {
 				})
 				putcancel()
 				if grpc.ErrorDesc(err) == context.Canceled.Error() {
-					log.Printf("etcd-tester: stresser#%d is cancelled", i)
 					return
 				}
 				s.mu.Lock()
