@@ -33,8 +33,7 @@ func TestTxnPanics(t *testing.T) {
 		}
 	}
 
-	k, tgt := CreatedRevision("foo")
-	cmp := Compare(k, tgt, "=", 0)
+	cmp := Compare(CreatedRevision("foo"), "=", 0)
 	op := OpPut("foo", "bar", 0)
 
 	tests := []struct {
