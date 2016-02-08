@@ -34,4 +34,6 @@ var (
 	ErrPeerURLExist   = grpc.Errorf(codes.FailedPrecondition, "etcdserver: Peer URLs already exists")
 	ErrMemberBadURLs  = grpc.Errorf(codes.InvalidArgument, "etcdserver: given member URLs are invalid")
 	ErrMemberNotFound = grpc.Errorf(codes.NotFound, "etcdserver: member not found")
+
+	ErrRequestTooLarge = grpc.Errorf(codes.InvalidArgument, "etcdserver: request is too large")
 )
