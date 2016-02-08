@@ -57,7 +57,7 @@ func TestTxnWriteFail(t *testing.T) {
 		donec <- struct{}{}
 
 		// and ensure the put didn't take
-		gresp, gerr := kv.Get("foo", 0)
+		gresp, gerr := kv.Get("foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
@@ -92,7 +92,7 @@ func TestTxnReadRetry(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		_, err := kv.Txn().Then(clientv3.OpGet("foo", 0)).Commit()
+		_, err := kv.Txn().Then(clientv3.OpGet("foo")).Commit()
 		if err != nil {
 			t.Fatalf("expected response, got error %v", err)
 		}
@@ -122,7 +122,7 @@ func TestTxnSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resp, err := kv.Get("foo", 0)
+	resp, err := kv.Get("foo")
 	if err != nil {
 		t.Fatal(err)
 	}

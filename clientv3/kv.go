@@ -25,7 +25,6 @@ import (
 
 type (
 	PutResponse         pb.PutResponse
-	RangeResponse       pb.RangeResponse
 	GetResponse         pb.RangeResponse
 	DeleteRangeResponse pb.DeleteRangeResponse
 	DeleteResponse      pb.DeleteRangeResponse
@@ -39,14 +38,14 @@ type KV interface {
 	// To get a string of bytes, do string([]byte(0x10, 0x20)).
 	Put(key, val string, leaseID lease.LeaseID) (*PutResponse, error)
 
-	// Range gets the keys [key, end) in the range at rev.
-	// If rev <=0, range gets the keys at currentRev.
-	// Limit limits the number of keys returned.
-	// If the required rev is compacted, ErrCompacted will be returned.
-	Range(key, end string, limit, rev int64, sort *SortOption) (*RangeResponse, error)
-
-	// Get is like Range. A shortcut for ranging single key like [key, key+1).
-	Get(key string, rev int64) (*GetResponse, error)
+	// Get retrieves keys.
+	// By default, Get will return the value for "key", if any.
+	// When passed WithRange(end), Get will return the keys in the range [key, end).
+	// When passed WithRev(rev) with rev > 0, Get retrieves keys at the given revision;
+	// if the required revision is compacted, the request will fail with ErrCompacted .
+	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
+	// When passed WithSort(), the keys will be sorted.
+	Get(key string, opts ...OpOption) (*GetResponse, error)
 
 	// DeleteRange deletes the given range [key, end).
 	DeleteRange(key, end string) (*DeleteRangeResponse, error)
@@ -89,16 +88,8 @@ func (kv *kv) Put(key, val string, leaseID lease.LeaseID) (*PutResponse, error) 
 	return (*PutResponse)(r.GetResponsePut()), nil
 }
 
-func (kv *kv) Range(key, end string, limit, rev int64, sort *SortOption) (*RangeResponse, error) {
-	r, err := kv.do(OpRange(key, end, limit, rev, sort))
-	if err != nil {
-		return nil, err
-	}
-	return (*RangeResponse)(r.GetResponseRange()), nil
-}
-
-func (kv *kv) Get(key string, rev int64) (*GetResponse, error) {
-	r, err := kv.do(OpGet(key, rev))
+func (kv *kv) Get(key string, opts ...OpOption) (*GetResponse, error) {
+	r, err := kv.do(OpGet(key, opts...))
 	if err != nil {
 		return nil, err
 	}
