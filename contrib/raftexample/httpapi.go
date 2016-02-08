@@ -19,11 +19,14 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/coreos/etcd/raft/raftpb"
 )
 
 // Handler for a http based key-value store backed by raft
 type httpKVAPI struct {
-	store *kvstore
+	store       *kvstore
+	confChangeC chan<- raftpb.ConfChange
 }
 
 func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -48,18 +51,65 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, "Failed to GET", http.StatusNotFound)
 		}
+	case r.Method == "POST":
+		url, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.Printf("Failed to read on POST (%v)\n", err)
+			http.Error(w, "Failed on POST", http.StatusBadRequest)
+			return
+		}
+
+		nodeId, err := strconv.ParseUint(key[1:], 0, 64)
+		if err != nil {
+			log.Printf("Failed to convert ID for conf change (%v)\n", err)
+			http.Error(w, "Failed on POST", http.StatusBadRequest)
+			return
+		}
+
+		cc := raftpb.ConfChange{
+			Type:    raftpb.ConfChangeAddNode,
+			NodeID:  nodeId,
+			Context: url,
+		}
+		h.confChangeC <- cc
+
+		// As above, optimistic that raft will apply the conf change
+		w.WriteHeader(http.StatusNoContent)
+	case r.Method == "DELETE":
+		nodeId, err := strconv.ParseUint(key[1:], 0, 64)
+		if err != nil {
+			log.Printf("Failed to convert ID for conf change (%v)\n", err)
+			http.Error(w, "Failed on DELETE", http.StatusBadRequest)
+			return
+		}
+
+		cc := raftpb.ConfChange{
+			Type:   raftpb.ConfChangeRemoveNode,
+			NodeID: nodeId,
+		}
+		h.confChangeC <- cc
+
+		// As above, optimistic that raft will apply the conf change
+		w.WriteHeader(http.StatusNoContent)
 	default:
 		w.Header().Set("Allow", "PUT")
 		w.Header().Add("Allow", "GET")
+		w.Header().Add("Allow", "POST")
+		w.Header().Add("Allow", "DELETE")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 // serveHttpKVAPI starts a key-value server with a GET/PUT API and listens.
-func serveHttpKVAPI(port int, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) {
+func serveHttpKVAPI(port int, proposeC chan<- string, confChangeC chan<- raftpb.ConfChange,
+	commitC <-chan *string, errorC <-chan error) {
+
 	srv := http.Server{
-		Addr:    ":" + strconv.Itoa(port),
-		Handler: &httpKVAPI{newKVStore(proposeC, commitC, errorC)},
+		Addr: ":" + strconv.Itoa(port),
+		Handler: &httpKVAPI{
+			store:       newKVStore(proposeC, commitC, errorC),
+			confChangeC: confChangeC,
+		},
 	}
 	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
