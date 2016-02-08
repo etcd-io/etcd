@@ -36,9 +36,10 @@ import (
 
 // A key-value stream backed by raft
 type raftNode struct {
-	proposeC <-chan string // proposed messages (k,v)
-	commitC  chan *string  // entries committed to log (k,v)
-	errorC   chan error    // errors from raft session
+	proposeC    <-chan string            // proposed messages (k,v)
+	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
+	commitC     chan *string             // entries committed to log (k,v)
+	errorC      chan error               // errors from raft session
 
 	id     int      // client ID for raft session
 	peers  []string // raft peer URLs
@@ -59,9 +60,12 @@ type raftNode struct {
 // provided the proposal channel. All log entries are replayed over the
 // commit channel, followed by a nil message (to indicate the channel is
 // current), then new log entries. To shutdown, close proposeC and read errorC.
-func newRaftNode(id int, peers []string, proposeC <-chan string) (<-chan *string, <-chan error) {
+func newRaftNode(id int, peers []string, proposeC <-chan string,
+	confChangeC <-chan raftpb.ConfChange) (<-chan *string, <-chan error) {
+
 	rc := &raftNode{
 		proposeC:    proposeC,
+		confChangeC: confChangeC,
 		commitC:     make(chan *string),
 		errorC:      make(chan error),
 		id:          id,
@@ -232,9 +236,27 @@ func (rc *raftNode) serveChannels() {
 
 	// send proposals over raft
 	go func() {
-		for prop := range rc.proposeC {
-			// blocks until accepted by raft state machine
-			rc.node.Propose(context.TODO(), []byte(prop))
+		var confChangeCount uint64 = 0
+
+		for rc.proposeC != nil && rc.confChangeC != nil {
+			select {
+			case prop, ok := <-rc.proposeC:
+				if !ok {
+					rc.proposeC = nil
+				} else {
+					// blocks until accepted by raft state machine
+					rc.node.Propose(context.TODO(), []byte(prop))
+				}
+
+			case cc, ok := <-rc.confChangeC:
+				if !ok {
+					rc.confChangeC = nil
+				} else {
+					confChangeCount += 1
+					cc.ID = confChangeCount
+					rc.node.ProposeConfChange(context.TODO(), cc)
+				}
+			}
 		}
 		// client closed channel; shutdown raft if not already
 		close(rc.stopc)

@@ -17,6 +17,8 @@ package main
 import (
 	"flag"
 	"strings"
+
+	"github.com/coreos/etcd/raft/raftpb"
 )
 
 func main() {
@@ -27,9 +29,11 @@ func main() {
 
 	proposeC := make(chan string)
 	defer close(proposeC)
+	confChangeC := make(chan raftpb.ConfChange)
+	defer close(confChangeC)
 
 	// raft provides a commit stream for the proposals from the http api
-	commitC, errorC := newRaftNode(*id, strings.Split(*cluster, ","), proposeC)
+	commitC, errorC := newRaftNode(*id, strings.Split(*cluster, ","), proposeC, confChangeC)
 
 	// the key-value http handler will propose updates to raft
 	serveHttpKVAPI(*kvport, proposeC, commitC, errorC)
