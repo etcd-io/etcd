@@ -162,8 +162,23 @@ func (a *Agent) dataDir() string {
 	return datadir
 }
 
+func existDir(fpath string) bool {
+	st, err := os.Stat(fpath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	} else {
+		return st.IsDir()
+	}
+	return false
+}
+
 func archiveLogAndDataDir(log string, datadir string) error {
 	dir := path.Join("failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
+	if existDir(dir) {
+		dir = path.Join("failure_archive", fmt.Sprint(time.Now().Add(time.Second).Format(time.RFC3339)))
+	}
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}

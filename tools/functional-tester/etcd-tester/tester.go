@@ -43,6 +43,7 @@ func (tt *tester) runLoop() {
 	for i := 0; i < tt.limit; i++ {
 		tt.status.setRound(i)
 
+		var currentRevision int64
 		for j, f := range tt.failures {
 			tt.status.setCase(j)
 
@@ -90,27 +91,27 @@ func (tt *tester) runLoop() {
 			log.Printf("etcd-tester: [round#%d case#%d] canceled stressers", i, j)
 
 			log.Printf("etcd-tester: [round#%d case#%d] checking current revisions...", i, j)
-			ok := false
-			var currentRevision int64
+			var (
+				revs map[string]int64
+				rerr error
+				ok   bool
+			)
 			for k := 0; k < 5; k++ {
 				time.Sleep(time.Second)
-				revs, err := tt.cluster.getRevision()
-				if err != nil {
-					if e := tt.cleanup(i, j); e != nil {
-						log.Printf("etcd-tester: [round#%d case#%d.%d] cleanup error: %v", i, j, k, e)
-						return
-					}
-					log.Printf("etcd-tester: [round#%d case#%d.%d] failed to get current revisions (%v)", i, j, k, err)
+
+				revs, rerr = tt.cluster.getRevision()
+				if rerr != nil {
+					log.Printf("etcd-tester: [round#%d case#%d.%d] failed to get current revisions (%v)", i, j, k, rerr)
 					continue
 				}
 				if currentRevision, ok = getSameValue(revs); ok {
 					break
-				} else {
-					log.Printf("etcd-tester: [round#%d case#%d.%d] inconsistent current revisions %+v", i, j, k, revs)
 				}
+
+				log.Printf("etcd-tester: [round#%d case#%d.%d] inconsistent current revisions %+v", i, j, k, revs)
 			}
-			if !ok {
-				log.Printf("etcd-tester: [round#%d case#%d] checking current revisions failure...", i, j)
+			if !ok || rerr != nil {
+				log.Printf("etcd-tester: [round#%d case#%d] checking current revisions failed (%v)", i, j, revs)
 				if err := tt.cleanup(i, j); err != nil {
 					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
 					return
@@ -129,6 +130,7 @@ func (tt *tester) runLoop() {
 				}
 			}
 			if _, ok = getSameValue(hashes); !ok {
+				log.Printf("etcd-tester: [round#%d case#%d] checking current storage hashes failed (%v)", i, j, hashes)
 				if err := tt.cleanup(i, j); err != nil {
 					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
 					return
@@ -137,17 +139,6 @@ func (tt *tester) runLoop() {
 			}
 			log.Printf("etcd-tester: [round#%d case#%d] all members are consistent with storage hashes", i, j)
 
-			revToCompact := max(0, currentRevision-10000)
-			log.Printf("etcd-tester: [round#%d case#%d] compacting storage at %d (current revision %d)", i, j, revToCompact, currentRevision)
-			if err := tt.cluster.compactKV(revToCompact); err != nil {
-				log.Printf("etcd-tester: [round#%d case#%d] compactKV error (%v)", i, j, err)
-				if err := tt.cleanup(i, j); err != nil {
-					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
-					return
-				}
-			}
-			log.Printf("etcd-tester: [round#%d case#%d] compacted storage", i, j)
-
 			log.Printf("etcd-tester: [round#%d case#%d] restarting the stressers...", i, j)
 			for _, s := range tt.cluster.Stressers {
 				go s.Stress()
@@ -155,6 +146,20 @@ func (tt *tester) runLoop() {
 
 			log.Printf("etcd-tester: [round#%d case#%d] succeed!", i, j)
 		}
+
+		revToCompact := max(0, currentRevision-10000)
+		log.Printf("etcd-tester: [round#%d] compacting storage at %d (current revision %d)", i, revToCompact, currentRevision)
+		if err := tt.cluster.compactKV(revToCompact); err != nil {
+			log.Printf("etcd-tester: [round#%d] compactKV error (%v)", i, err)
+			if err := tt.cleanup(i, 0); err != nil {
+				log.Printf("etcd-tester: [round#%d] cleanup error: %v", i, err)
+				return
+			}
+		}
+		log.Printf("etcd-tester: [round#%d] compacted storage", i)
+
+		// TODO: make sure compaction is finished
+		time.Sleep(30 * time.Second)
 	}
 }
 
