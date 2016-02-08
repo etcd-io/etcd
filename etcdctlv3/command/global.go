@@ -16,6 +16,8 @@ package command
 
 import (
 	"errors"
+	"io"
+	"io/ioutil"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
@@ -72,4 +74,15 @@ func mustClient(cmd *cobra.Command) *clientv3.Client {
 		ExitWithError(ExitBadConnection, err)
 	}
 	return client
+}
+
+func argOrStdin(args []string, stdin io.Reader, i int) ([]byte, error) {
+	if i < len(args) {
+		return []byte(args[i]), nil
+	}
+	bytes, err := ioutil.ReadAll(stdin)
+	if string(bytes) == "" || err != nil {
+		return nil, errors.New("no available argument and stdin")
+	}
+	return bytes, nil
 }
