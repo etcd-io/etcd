@@ -56,7 +56,7 @@ func BenchmarkStoreDelete(b *testing.B) {
 	runtime.ReadMemStats(memStats)
 
 	for i := 0; i < b.N; i++ {
-		_, err := s.Set(kvs[i][0], false, kvs[i][1], Permanent)
+		_, err := s.Set(kvs[i][0], false, kvs[i][1], TTLOptionSet{ExpireTime: Permanent})
 		if err != nil {
 			panic(err)
 		}
@@ -132,7 +132,7 @@ func BenchmarkWatchWithSet(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		w, _ := s.Watch(kvs[i][0], false, false, 0)
 
-		s.Set(kvs[i][0], false, "test", Permanent)
+		s.Set(kvs[i][0], false, "test", TTLOptionSet{ExpireTime: Permanent})
 		<-w.EventChan()
 	}
 }
@@ -150,7 +150,7 @@ func BenchmarkWatchWithSetBatch(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		s.Set(kvs[i][0], false, "test", Permanent)
+		s.Set(kvs[i][0], false, "test", TTLOptionSet{ExpireTime: Permanent})
 	}
 
 	for i := 0; i < b.N; i++ {
@@ -167,7 +167,7 @@ func BenchmarkWatchOneKey(b *testing.B) {
 		watchers[i], _ = s.Watch("/foo", false, false, 0)
 	}
 
-	s.Set("/foo", false, "", Permanent)
+	s.Set("/foo", false, "", TTLOptionSet{ExpireTime: Permanent})
 
 	for i := 0; i < b.N; i++ {
 		<-watchers[i].EventChan()
@@ -181,7 +181,7 @@ func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byt
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		resp, err := s.Set(kvs[i][0], false, kvs[i][1], Permanent)
+		resp, err := s.Set(kvs[i][0], false, kvs[i][1], TTLOptionSet{ExpireTime: Permanent})
 		if err != nil {
 			panic(err)
 		}

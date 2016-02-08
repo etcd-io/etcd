@@ -234,6 +234,50 @@ curl http://127.0.0.1:2379/v2/keys/foo -XPUT -d value=bar -d ttl= -d prevExist=t
 }
 ```
 
+### Refreshing key TTL
+
+Keys in etcd can be refreshed notifying watchers
+this can be achieved by setting the refresh to true when updating a TTL
+
+You cannot update the value of a key when refreshing it
+
+```sh
+curl http://127.0.0.1:2379/v2/keys/foo -XPUT -d value=bar -d ttl=5
+curl http://127.0.0.1:2379/v2/keys/foo -XPUT -d ttl=5 -d refresh=true -d prevExist=true
+```
+
+```json
+{
+    "action": "set",
+    "node": {
+        "createdIndex": 5,
+        "expiration": "2013-12-04T12:01:21.874888581-08:00",
+        "key": "/foo",
+        "modifiedIndex": 5,
+        "ttl": 5,
+        "value": "bar"
+    }
+}
+{
+   "action":"update",
+   "node":{
+       "key":"/foo",
+       "value":"bar",
+       "expiration": "2013-12-04T12:01:26.874888581-08:00",
+       "ttl":5,
+       "modifiedIndex":6,
+       "createdIndex":5
+    },
+   "prevNode":{
+       "key":"/foo",
+       "value":"bar",
+       "expiration":"2013-12-04T12:01:21.874888581-08:00",
+       "ttl":3,
+       "modifiedIndex":5,
+       "createdIndex":5
+     }
+}
+```
 
 ### Waiting for a change
 

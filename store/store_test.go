@@ -35,7 +35,7 @@ func TestNewStoreWithNamespaces(t *testing.T) {
 // Ensure that the store can retrieve an existing value.
 func TestStoreGetValue(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	var eidx uint64 = 1
 	e, err := s.Get("/foo", false, false)
 	assert.Nil(t, err, "")
@@ -52,7 +52,7 @@ func TestMinExpireTime(t *testing.T) {
 	s.clock = fc
 	// FakeClock starts at 0, so minExpireTime should be far in the future.. but just in case
 	assert.True(t, minExpireTime.After(fc.Now()), "minExpireTime should be ahead of FakeClock!")
-	s.Create("/foo", false, "Y", false, fc.Now().Add(3*time.Second))
+	s.Create("/foo", false, "Y", false, TTLOptionSet{ExpireTime: fc.Now().Add(3 * time.Second)})
 	fc.Advance(5 * time.Second)
 	// Ensure it hasn't expired
 	s.DeleteExpiredKeys(fc.Now())
@@ -71,13 +71,13 @@ func TestStoreGetDirectory(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
 	s.clock = fc
-	s.Create("/foo", true, "", false, Permanent)
-	s.Create("/foo/bar", false, "X", false, Permanent)
-	s.Create("/foo/_hidden", false, "*", false, Permanent)
-	s.Create("/foo/baz", true, "", false, Permanent)
-	s.Create("/foo/baz/bat", false, "Y", false, Permanent)
-	s.Create("/foo/baz/_hidden", false, "*", false, Permanent)
-	s.Create("/foo/baz/ttl", false, "Y", false, fc.Now().Add(time.Second*3))
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/bar", false, "X", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/_hidden", false, "*", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/baz", true, "", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/baz/bat", false, "Y", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/baz/_hidden", false, "*", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/baz/ttl", false, "Y", false, TTLOptionSet{ExpireTime: fc.Now().Add(time.Second * 3)})
 	var eidx uint64 = 7
 	e, err := s.Get("/foo", true, false)
 	assert.Nil(t, err, "")
@@ -117,12 +117,12 @@ func TestStoreGetDirectory(t *testing.T) {
 // Ensure that the store can retrieve a directory in sorted order.
 func TestStoreGetSorted(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", true, "", false, Permanent)
-	s.Create("/foo/x", false, "0", false, Permanent)
-	s.Create("/foo/z", false, "0", false, Permanent)
-	s.Create("/foo/y", true, "", false, Permanent)
-	s.Create("/foo/y/a", false, "0", false, Permanent)
-	s.Create("/foo/y/b", false, "0", false, Permanent)
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/x", false, "0", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/z", false, "0", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/y", true, "", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/y/a", false, "0", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/y/b", false, "0", false, TTLOptionSet{ExpireTime: Permanent})
 	var eidx uint64 = 6
 	e, err := s.Get("/foo", true, true)
 	assert.Nil(t, err, "")
@@ -153,7 +153,7 @@ func TestSet(t *testing.T) {
 
 	// Set /foo=""
 	var eidx uint64 = 1
-	e, err := s.Set("/foo", false, "", Permanent)
+	e, err := s.Set("/foo", false, "", TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "set", "")
@@ -167,7 +167,7 @@ func TestSet(t *testing.T) {
 
 	// Set /foo="bar"
 	eidx = 2
-	e, err = s.Set("/foo", false, "bar", Permanent)
+	e, err = s.Set("/foo", false, "bar", TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "set", "")
@@ -185,7 +185,7 @@ func TestSet(t *testing.T) {
 	assert.Equal(t, e.PrevNode.ModifiedIndex, uint64(1), "")
 	// Set /foo="baz" (for testing prevNode)
 	eidx = 3
-	e, err = s.Set("/foo", false, "baz", Permanent)
+	e, err = s.Set("/foo", false, "baz", TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "set", "")
@@ -204,7 +204,7 @@ func TestSet(t *testing.T) {
 
 	// Set /dir as a directory
 	eidx = 4
-	e, err = s.Set("/dir", true, "", Permanent)
+	e, err = s.Set("/dir", true, "", TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "set", "")
@@ -222,7 +222,7 @@ func TestStoreCreateValue(t *testing.T) {
 	s := newStore()
 	// Create /foo=bar
 	var eidx uint64 = 1
-	e, err := s.Create("/foo", false, "bar", false, Permanent)
+	e, err := s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "create", "")
@@ -236,7 +236,7 @@ func TestStoreCreateValue(t *testing.T) {
 
 	// Create /empty=""
 	eidx = 2
-	e, err = s.Create("/empty", false, "", false, Permanent)
+	e, err = s.Create("/empty", false, "", false, TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "create", "")
@@ -254,7 +254,7 @@ func TestStoreCreateValue(t *testing.T) {
 func TestStoreCreateDirectory(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	e, err := s.Create("/foo", true, "", false, Permanent)
+	e, err := s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "create", "")
@@ -266,10 +266,10 @@ func TestStoreCreateDirectory(t *testing.T) {
 func TestStoreCreateFailsIfExists(t *testing.T) {
 	s := newStore()
 	// create /foo as dir
-	s.Create("/foo", true, "", false, Permanent)
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 
 	// create /foo as dir again
-	e, _err := s.Create("/foo", true, "", false, Permanent)
+	e, _err := s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNodeExist, "")
 	assert.Equal(t, err.Message, "Key already exists", "")
@@ -282,10 +282,10 @@ func TestStoreCreateFailsIfExists(t *testing.T) {
 func TestStoreUpdateValue(t *testing.T) {
 	s := newStore()
 	// create /foo=bar
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	// update /foo="bzr"
 	var eidx uint64 = 2
-	e, err := s.Update("/foo", "baz", Permanent)
+	e, err := s.Update("/foo", "baz", TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "update", "")
@@ -306,7 +306,7 @@ func TestStoreUpdateValue(t *testing.T) {
 
 	// update /foo=""
 	eidx = 3
-	e, err = s.Update("/foo", "", Permanent)
+	e, err = s.Update("/foo", "", TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "update", "")
@@ -329,8 +329,8 @@ func TestStoreUpdateValue(t *testing.T) {
 // Ensure that the store cannot update a directory.
 func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", true, "", false, Permanent)
-	e, _err := s.Update("/foo", "baz", Permanent)
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
+	e, _err := s.Update("/foo", "baz", TTLOptionSet{ExpireTime: Permanent})
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNotFile, "")
 	assert.Equal(t, err.Message, "Not a file", "")
@@ -345,8 +345,8 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 	s.clock = fc
 
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, Permanent)
-	_, err := s.Update("/foo", "baz", fc.Now().Add(500*time.Millisecond))
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
+	_, err := s.Update("/foo", "baz", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 	e, _ := s.Get("/foo", false, false)
 	assert.Equal(t, *e.Node.Value, "baz", "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -364,9 +364,9 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	s.clock = fc
 
 	var eidx uint64 = 3
-	s.Create("/foo", true, "", false, Permanent)
-	s.Create("/foo/bar", false, "baz", false, Permanent)
-	e, err := s.Update("/foo", "", fc.Now().Add(500*time.Millisecond))
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
+	e, err := s.Update("/foo", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 	assert.Equal(t, e.Node.Dir, true, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	e, _ = s.Get("/foo/bar", false, false)
@@ -384,7 +384,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 func TestStoreDeleteValue(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, err := s.Delete("/foo", false, false)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -400,7 +400,7 @@ func TestStoreDeleteDiretory(t *testing.T) {
 	s := newStore()
 	// create directory /foo
 	var eidx uint64 = 2
-	s.Create("/foo", true, "", false, Permanent)
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	// delete /foo with dir = true and recursive = false
 	// this should succeed, since the directory is empty
 	e, err := s.Delete("/foo", true, false)
@@ -413,7 +413,7 @@ func TestStoreDeleteDiretory(t *testing.T) {
 	assert.Equal(t, e.PrevNode.Dir, true, "")
 
 	// create directory /foo and directory /foo/bar
-	s.Create("/foo/bar", true, "", false, Permanent)
+	s.Create("/foo/bar", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	// delete /foo with dir = true and recursive = false
 	// this should fail, since the directory is not empty
 	_, err = s.Delete("/foo", true, false)
@@ -433,7 +433,7 @@ func TestStoreDeleteDiretory(t *testing.T) {
 // and dir are not specified.
 func TestStoreDeleteDiretoryFailsIfNonRecursiveAndDir(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", true, "", false, Permanent)
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.Delete("/foo", false, false)
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeNotFile, "")
@@ -445,19 +445,19 @@ func TestRootRdOnly(t *testing.T) {
 	s := newStore("/0")
 
 	for _, tt := range []string{"/", "/0"} {
-		_, err := s.Set(tt, true, "", Permanent)
+		_, err := s.Set(tt, true, "", TTLOptionSet{ExpireTime: Permanent})
 		assert.NotNil(t, err, "")
 
 		_, err = s.Delete(tt, true, true)
 		assert.NotNil(t, err, "")
 
-		_, err = s.Create(tt, true, "", false, Permanent)
+		_, err = s.Create(tt, true, "", false, TTLOptionSet{ExpireTime: Permanent})
 		assert.NotNil(t, err, "")
 
-		_, err = s.Update(tt, "", Permanent)
+		_, err = s.Update(tt, "", TTLOptionSet{ExpireTime: Permanent})
 		assert.NotNil(t, err, "")
 
-		_, err = s.CompareAndSwap(tt, "", 0, "", Permanent)
+		_, err = s.CompareAndSwap(tt, "", 0, "", TTLOptionSet{ExpireTime: Permanent})
 		assert.NotNil(t, err, "")
 	}
 }
@@ -465,7 +465,7 @@ func TestRootRdOnly(t *testing.T) {
 func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, err := s.CompareAndDelete("/foo", "bar", 0)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -483,7 +483,7 @@ func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.CompareAndDelete("/foo", "baz", 0)
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeTestFailed, "")
@@ -497,7 +497,7 @@ func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
 func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, err := s.CompareAndDelete("/foo", "", 1)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -513,7 +513,7 @@ func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.CompareAndDelete("/foo", "", 100)
 	assert.NotNil(t, _err, "")
 	err := _err.(*etcdErr.Error)
@@ -528,7 +528,7 @@ func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 // Ensure that the store cannot delete a directory.
 func TestStoreCompareAndDeleteDiretoryFail(t *testing.T) {
 	s := newStore()
-	s.Create("/foo", true, "", false, Permanent)
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	_, _err := s.CompareAndDelete("/foo", "", 0)
 	assert.NotNil(t, _err, "")
 	err := _err.(*etcdErr.Error)
@@ -539,8 +539,8 @@ func TestStoreCompareAndDeleteDiretoryFail(t *testing.T) {
 func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, Permanent)
-	e, err := s.CompareAndSwap("/foo", "bar", 0, "baz", Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
+	e, err := s.CompareAndSwap("/foo", "bar", 0, "baz", TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "compareAndSwap", "")
@@ -560,8 +560,8 @@ func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, Permanent)
-	e, _err := s.CompareAndSwap("/foo", "wrong_value", 0, "baz", Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
+	e, _err := s.CompareAndSwap("/foo", "wrong_value", 0, "baz", TTLOptionSet{ExpireTime: Permanent})
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeTestFailed, "")
 	assert.Equal(t, err.Message, "Compare failed", "")
@@ -575,8 +575,8 @@ func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
 func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, Permanent)
-	e, err := s.CompareAndSwap("/foo", "", 1, "baz", Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
+	e, err := s.CompareAndSwap("/foo", "", 1, "baz", TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "compareAndSwap", "")
@@ -597,8 +597,8 @@ func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
 func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, Permanent)
-	e, _err := s.CompareAndSwap("/foo", "", 100, "baz", Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
+	e, _err := s.CompareAndSwap("/foo", "", 100, "baz", TTLOptionSet{ExpireTime: Permanent})
 	err := _err.(*etcdErr.Error)
 	assert.Equal(t, err.ErrorCode, etcdErr.EcodeTestFailed, "")
 	assert.Equal(t, err.Message, "Compare failed", "")
@@ -615,7 +615,7 @@ func TestStoreWatchCreate(t *testing.T) {
 	w, _ := s.Watch("/foo", false, false, 0)
 	c := w.EventChan()
 	assert.Equal(t, w.StartIndex(), eidx, "")
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	eidx = 1
 	e := nbselect(c)
 	assert.Equal(t, e.EtcdIndex, eidx, "")
@@ -632,7 +632,7 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 	w, _ := s.Watch("/foo", true, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	eidx = 1
-	s.Create("/foo/bar", false, "baz", false, Permanent)
+	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "create", "")
@@ -643,11 +643,11 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 func TestStoreWatchUpdate(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	eidx = 2
-	s.Update("/foo", "baz", Permanent)
+	s.Update("/foo", "baz", TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "update", "")
@@ -658,11 +658,11 @@ func TestStoreWatchUpdate(t *testing.T) {
 func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo/bar", false, "baz", false, Permanent)
+	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	eidx = 2
-	s.Update("/foo/bar", "baz", Permanent)
+	s.Update("/foo/bar", "baz", TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "update", "")
@@ -673,7 +673,7 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 func TestStoreWatchDelete(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	eidx = 2
@@ -688,7 +688,7 @@ func TestStoreWatchDelete(t *testing.T) {
 func TestStoreWatchRecursiveDelete(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo/bar", false, "baz", false, Permanent)
+	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	eidx = 2
@@ -703,11 +703,11 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 func TestStoreWatchCompareAndSwap(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	eidx = 2
-	s.CompareAndSwap("/foo", "bar", 0, "baz", Permanent)
+	s.CompareAndSwap("/foo", "bar", 0, "baz", TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "compareAndSwap", "")
@@ -718,11 +718,11 @@ func TestStoreWatchCompareAndSwap(t *testing.T) {
 func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
-	s.Create("/foo/bar", false, "baz", false, Permanent)
+	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	eidx = 2
-	s.CompareAndSwap("/foo/bar", "baz", 0, "bat", Permanent)
+	s.CompareAndSwap("/foo/bar", "baz", 0, "bat", TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "compareAndSwap", "")
@@ -736,8 +736,8 @@ func TestStoreWatchExpire(t *testing.T) {
 	s.clock = fc
 
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, fc.Now().Add(500*time.Millisecond))
-	s.Create("/foofoo", false, "barbarbar", false, fc.Now().Add(500*time.Millisecond))
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	s.Create("/foofoo", false, "barbarbar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 
 	w, _ := s.Watch("/", true, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
@@ -760,13 +760,95 @@ func TestStoreWatchExpire(t *testing.T) {
 	assert.Equal(t, e.Node.Key, "/foofoo", "")
 }
 
+// Ensure that the store can watch for key expiration when refreshing.
+func TestStoreWatchExpireRefresh(t *testing.T) {
+	s := newStore()
+	fc := newFakeClock()
+	s.clock = fc
+
+	var eidx uint64 = 2
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	s.Create("/foofoo", false, "barbarbar", false, TTLOptionSet{ExpireTime: fc.Now().Add(1200 * time.Millisecond), Refresh: true})
+
+	// Make sure we set watch updates when Refresh is true for newly created keys
+	w, _ := s.Watch("/", true, false, 0)
+	assert.Equal(t, w.StartIndex(), eidx, "")
+	c := w.EventChan()
+	e := nbselect(c)
+	assert.Nil(t, e, "")
+	fc.Advance(600 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
+	eidx = 3
+	e = nbselect(c)
+	assert.Equal(t, e.EtcdIndex, eidx, "")
+	assert.Equal(t, e.Action, "expire", "")
+	assert.Equal(t, e.Node.Key, "/foo", "")
+
+	s.Update("/foofoo", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	w, _ = s.Watch("/", true, false, 4)
+	fc.Advance(700 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
+	eidx = 5 // We should skip 4 because a TTL update should occur with no watch notification
+	assert.Equal(t, w.StartIndex(), eidx-1, "")
+	e = nbselect(w.EventChan())
+	assert.Equal(t, e.EtcdIndex, eidx, "")
+	assert.Equal(t, e.Action, "expire", "")
+	assert.Equal(t, e.Node.Key, "/foofoo", "")
+}
+
+// Ensure that the store can watch for key expiration when refreshing with an empty value.
+func TestStoreWatchExpireEmptyRefresh(t *testing.T) {
+	s := newStore()
+	fc := newFakeClock()
+	s.clock = fc
+
+	var eidx uint64 = 1
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	// Should be no-op
+	fc.Advance(200 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
+
+	s.Update("/foo", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	w, _ := s.Watch("/", true, false, 2)
+	fc.Advance(700 * time.Millisecond)
+	s.DeleteExpiredKeys(fc.Now())
+	eidx = 3 // We should skip 2 because a TTL update should occur with no watch notification
+	assert.Equal(t, w.StartIndex(), eidx-1, "")
+	e := nbselect(w.EventChan())
+	assert.Equal(t, e.EtcdIndex, eidx, "")
+	assert.Equal(t, e.Action, "expire", "")
+	assert.Equal(t, e.Node.Key, "/foo", "")
+	assert.Equal(t, *e.PrevNode.Value, "bar", "")
+}
+
+// Ensure that the store can update the TTL on a value with refresh.
+func TestStoreRefresh(t *testing.T) {
+	s := newStore()
+	fc := newFakeClock()
+	s.clock = fc
+
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	s.Create("/bar", true, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	_, err := s.Update("/foo", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	assert.Nil(t, err, "")
+
+	_, err = s.Set("/foo", false, "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	assert.Nil(t, err, "")
+
+	_, err = s.Update("/bar", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	assert.Nil(t, err, "")
+
+	_, err = s.CompareAndSwap("/foo", "bar", 0, "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
+	assert.Nil(t, err, "")
+}
+
 // Ensure that the store can watch in streaming mode.
 func TestStoreWatchStream(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
 	w, _ := s.Watch("/foo", false, true, 0)
 	// first modification
-	s.Create("/foo", false, "bar", false, Permanent)
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "create", "")
@@ -776,7 +858,7 @@ func TestStoreWatchStream(t *testing.T) {
 	assert.Nil(t, e, "")
 	// second modification
 	eidx = 2
-	s.Update("/foo", "baz", Permanent)
+	s.Update("/foo", "baz", TTLOptionSet{ExpireTime: Permanent})
 	e = nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "update", "")
@@ -790,10 +872,10 @@ func TestStoreWatchStream(t *testing.T) {
 func TestStoreRecover(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 4
-	s.Create("/foo", true, "", false, Permanent)
-	s.Create("/foo/x", false, "bar", false, Permanent)
-	s.Update("/foo/x", "barbar", Permanent)
-	s.Create("/foo/y", false, "baz", false, Permanent)
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/x", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Update("/foo/x", "barbar", TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/y", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	b, err := s.Save()
 
 	s2 := newStore()
@@ -820,9 +902,9 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 	fc := newFakeClock()
 
 	var eidx uint64 = 4
-	s.Create("/foo", true, "", false, Permanent)
-	s.Create("/foo/x", false, "bar", false, Permanent)
-	s.Create("/foo/y", false, "baz", false, fc.Now().Add(5*time.Millisecond))
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/x", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
+	s.Create("/foo/y", false, "baz", false, TTLOptionSet{ExpireTime: fc.Now().Add(5 * time.Millisecond)})
 	b, err := s.Save()
 
 	time.Sleep(10 * time.Millisecond)
@@ -850,7 +932,7 @@ func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
 	w, _ := s.Watch("/_foo", false, false, 0)
-	s.Create("/_foo", false, "bar", false, Permanent)
+	s.Create("/_foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "create", "")
@@ -863,14 +945,14 @@ func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
 func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 	s := newStore()
 	w, _ := s.Watch("/foo", true, false, 0)
-	s.Create("/foo/_bar", false, "baz", false, Permanent)
+	s.Create("/foo/_bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Nil(t, e, "")
 	w, _ = s.Watch("/foo", true, false, 0)
-	s.Create("/foo/_baz", true, "", false, Permanent)
+	s.Create("/foo/_baz", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	e = nbselect(w.EventChan())
 	assert.Nil(t, e, "")
-	s.Create("/foo/_baz/quux", false, "quux", false, Permanent)
+	s.Create("/foo/_baz/quux", false, "quux", false, TTLOptionSet{ExpireTime: Permanent})
 	e = nbselect(w.EventChan())
 	assert.Nil(t, e, "")
 }
@@ -878,9 +960,9 @@ func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 // Ensure that the store doesn't see hidden key updates.
 func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 	s := newStore()
-	s.Create("/_foo", false, "bar", false, Permanent)
+	s.Create("/_foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/_foo", false, false, 0)
-	s.Update("/_foo", "baz", Permanent)
+	s.Update("/_foo", "baz", TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Equal(t, e.Action, "update", "")
 	assert.Equal(t, e.Node.Key, "/_foo", "")
@@ -891,9 +973,9 @@ func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 // Ensure that the store doesn't see hidden key updates without an exact path match in recursive mode.
 func TestStoreWatchRecursiveUpdateWithHiddenKey(t *testing.T) {
 	s := newStore()
-	s.Create("/foo/_bar", false, "baz", false, Permanent)
+	s.Create("/foo/_bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
-	s.Update("/foo/_bar", "baz", Permanent)
+	s.Update("/foo/_bar", "baz", TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
 	assert.Nil(t, e, "")
 }
@@ -902,7 +984,7 @@ func TestStoreWatchRecursiveUpdateWithHiddenKey(t *testing.T) {
 func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 2
-	s.Create("/_foo", false, "bar", false, Permanent)
+	s.Create("/_foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Delete("/_foo", false, false)
 	e := nbselect(w.EventChan())
@@ -916,7 +998,7 @@ func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 // Ensure that the store doesn't see hidden key deletes without an exact path match in recursive mode.
 func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
 	s := newStore()
-	s.Create("/foo/_bar", false, "baz", false, Permanent)
+	s.Create("/foo/_bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
 	s.Delete("/foo/_bar", false, false)
 	e := nbselect(w.EventChan())
@@ -929,8 +1011,8 @@ func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 	fc := newFakeClock()
 	s.clock = fc
 
-	s.Create("/_foo", false, "bar", false, fc.Now().Add(500*time.Millisecond))
-	s.Create("/foofoo", false, "barbarbar", false, fc.Now().Add(1000*time.Millisecond))
+	s.Create("/_foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	s.Create("/foofoo", false, "barbarbar", false, TTLOptionSet{ExpireTime: fc.Now().Add(1000 * time.Millisecond)})
 
 	w, _ := s.Watch("/", true, false, 0)
 	c := w.EventChan()
@@ -952,7 +1034,7 @@ func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 	s := newStore()
 	var eidx uint64 = 1
 	w, _ := s.Watch("/_foo/bar", true, false, 0)
-	s.Create("/_foo/bar/baz", false, "baz", false, Permanent)
+	s.Create("/_foo/bar/baz", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 
 	e := nbselect(w.EventChan())
 	assert.NotNil(t, e, "")
@@ -970,10 +1052,10 @@ func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 // to operate correctly.
 func TestStoreWatchSlowConsumer(t *testing.T) {
 	s := newStore()
-	s.Watch("/foo", true, true, 0)       // stream must be true
-	s.Set("/foo", false, "1", Permanent) // ok
-	s.Set("/foo", false, "2", Permanent) // ok
-	s.Set("/foo", false, "3", Permanent) // must not panic
+	s.Watch("/foo", true, true, 0)                                 // stream must be true
+	s.Set("/foo", false, "1", TTLOptionSet{ExpireTime: Permanent}) // ok
+	s.Set("/foo", false, "2", TTLOptionSet{ExpireTime: Permanent}) // ok
+	s.Set("/foo", false, "3", TTLOptionSet{ExpireTime: Permanent}) // must not panic
 }
 
 // Performs a non-blocking select on an event channel.

@@ -306,7 +306,7 @@ func (c *cluster) AddMember(m *Member) {
 		plog.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
-	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
+	if _, err := c.store.Create(p, false, string(b), false, store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
 		plog.Panicf("create raftAttributes should never fail: %v", err)
 	}
 	c.members[m.ID] = m
@@ -321,7 +321,7 @@ func (c *cluster) RemoveMember(id types.ID) {
 		plog.Panicf("delete member should never fail: %v", err)
 	}
 	delete(c.members, id)
-	if _, err := c.store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
+	if _, err := c.store.Create(removedMemberStoreKey(id), false, "", false, store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
 		plog.Panicf("create removedMember should never fail: %v", err)
 	}
 	c.removed[id] = true
@@ -352,7 +352,7 @@ func (c *cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 		plog.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(id), raftAttributesSuffix)
-	if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
+	if _, err := c.store.Update(p, string(b), store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
 		plog.Panicf("update raftAttributes should never fail: %v", err)
 	}
 	c.members[id].RaftAttributes = raftAttr
