@@ -413,6 +413,24 @@ func TestV3TxnInvaildRange(t *testing.T) {
 	}
 }
 
+func TestV3TooLargeRequest(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kvc := clus.RandClient().KV
+
+	// 2MB request value
+	largeV := make([]byte, 2*1024*1024)
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: largeV}
+
+	_, err := kvc.Put(context.Background(), preq)
+	if err != v3rpc.ErrRequestTooLarge {
+		t.Errorf("err = %v, want %v", err, v3rpc.ErrRequestTooLarge)
+	}
+}
+
 // TestV3Hash tests hash.
 func TestV3Hash(t *testing.T) {
 	defer testutil.AfterTest(t)

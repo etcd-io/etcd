@@ -29,6 +29,14 @@ import (
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
+const (
+	// the max request size that raft accepts.
+	// TODO: make this a flag? But we probably do not want to
+	// accept large request which might block raft stream. User
+	// specify a large value might end up with shooting in the foot.
+	maxRequestBytes = 1.5 * 1024 * 1024
+)
+
 type RaftKV interface {
 	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
 	Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error)
@@ -165,6 +173,11 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 	if err != nil {
 		return nil, err
 	}
+
+	if len(data) > maxRequestBytes {
+		return nil, ErrRequestTooLarge
+	}
+
 	ch := s.w.Register(r.ID)
 
 	s.r.Propose(ctx, data)

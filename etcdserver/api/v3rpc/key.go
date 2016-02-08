@@ -293,6 +293,8 @@ func togRPCError(err error) error {
 	case lease.ErrLeaseNotFound:
 		return ErrLeaseNotFound
 	// TODO: handle error from raft and timeout
+	case etcdserver.ErrRequestTooLarge:
+		return ErrRequestTooLarge
 	default:
 		return grpc.Errorf(codes.Internal, err.Error())
 	}
