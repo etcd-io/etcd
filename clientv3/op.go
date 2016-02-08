@@ -68,25 +68,12 @@ func (op Op) isWrite() bool {
 	return op.t != tRange
 }
 
-func OpRange(key, end string, limit, rev int64, sort *SortOption) Op {
-	return Op{
-		t:   tRange,
-		key: []byte(key),
-		end: []byte(end),
-
-		limit: limit,
-		rev:   rev,
-		sort:  sort,
+func OpGet(key string, opts ...OpOption) Op {
+	ret := Op{t: tRange, key: []byte(key)}
+	for _, opt := range opts {
+		opt(&ret)
 	}
-}
-
-func OpGet(key string, rev int64) Op {
-	return Op{
-		t:   tRange,
-		key: []byte(key),
-
-		rev: rev,
-	}
+	return ret
 }
 
 func OpDeleteRange(key, end string) Op {
@@ -112,4 +99,17 @@ func OpPut(key, val string, leaseID lease.LeaseID) Op {
 		val:     []byte(val),
 		leaseID: leaseID,
 	}
+}
+
+type OpOption func(*Op)
+
+func WithLimit(n int64) OpOption { return func(op *Op) { op.limit = n } }
+func WithRev(rev int64) OpOption { return func(op *Op) { op.rev = rev } }
+func WithSort(tgt SortTarget, order SortOrder) OpOption {
+	return func(op *Op) {
+		op.sort = &SortOption{tgt, order}
+	}
+}
+func WithRange(endKey string) OpOption {
+	return func(op *Op) { op.end = []byte(endKey) }
 }

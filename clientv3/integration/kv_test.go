@@ -57,7 +57,7 @@ func TestKVPut(t *testing.T) {
 		if _, err := kv.Put(tt.key, tt.val, tt.leaseID); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, tt.key, err)
 		}
-		resp, err := kv.Get(tt.key, 0)
+		resp, err := kv.Get(tt.key)
 		if err != nil {
 			t.Fatalf("#%d: couldn't get key (%v)", i, err)
 		}
@@ -87,7 +87,7 @@ func TestKVRange(t *testing.T) {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
 		}
 	}
-	resp, err := kv.Get(keySet[0], 0)
+	resp, err := kv.Get(keySet[0])
 	if err != nil {
 		t.Fatalf("couldn't get key (%v)", err)
 	}
@@ -169,7 +169,11 @@ func TestKVRange(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		resp, err := kv.Range(tt.begin, tt.end, 0, tt.rev, tt.sortOption)
+		opts := []clientv3.OpOption{clientv3.WithRange(tt.end), clientv3.WithRev(tt.rev)}
+		if tt.sortOption != nil {
+			opts = append(opts, clientv3.WithSort(tt.sortOption.Target, tt.sortOption.Order))
+		}
+		resp, err := kv.Get(tt.begin, opts...)
 		if err != nil {
 			t.Fatalf("#%d: couldn't range (%v)", i, err)
 		}
@@ -213,7 +217,7 @@ func TestKVDeleteRange(t *testing.T) {
 		if dresp.Header.Revision != tt.delRev {
 			t.Fatalf("#%d: dresp.Header.Revision got %d, want %d", i, dresp.Header.Revision, tt.delRev)
 		}
-		resp, err := kv.Range(tt.key, tt.end, 0, 0, nil)
+		resp, err := kv.Get(tt.key, clientv3.WithRange(tt.end))
 		if err != nil {
 			t.Fatalf("#%d: couldn't get key (%v)", i, err)
 		}
@@ -245,7 +249,7 @@ func TestKVDelete(t *testing.T) {
 	if resp.Header.Revision != 3 {
 		t.Fatalf("resp.Header.Revision got %d, want %d", resp.Header.Revision, 3)
 	}
-	gresp, err := kv.Get("foo", 0)
+	gresp, err := kv.Get("foo")
 	if err != nil {
 		t.Fatalf("couldn't get key (%v)", err)
 	}
@@ -311,7 +315,7 @@ func TestKVGetRetry(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get("foo", 0)
+		gresp, gerr := kv.Get("foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
@@ -359,7 +363,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get("foo", 0)
+		gresp, gerr := kv.Get("foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
