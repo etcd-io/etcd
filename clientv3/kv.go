@@ -124,7 +124,7 @@ func (kv *kv) Compact(rev int64) error {
 	}
 
 	go kv.switchRemote(err)
-	return nil
+	return err
 }
 
 func (kv *kv) Txn() Txn {
