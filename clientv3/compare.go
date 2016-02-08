@@ -30,7 +30,7 @@ const (
 
 type Cmp pb.Compare
 
-func Compare(key string, t pb.Compare_CompareTarget, result string, v interface{}) Cmp {
+func Compare(cmp Cmp, result string, v interface{}) Cmp {
 	var r pb.Compare_CompareResult
 
 	switch result {
@@ -44,38 +44,40 @@ func Compare(key string, t pb.Compare_CompareTarget, result string, v interface{
 		panic("Unknown result op")
 	}
 
-	switch t {
+	cmp.Result = r
+	switch cmp.Target {
 	case pb.Compare_VALUE:
 		val, ok := v.(string)
 		if !ok {
 			panic("bad compare value")
 		}
-		return Cmp{Key: []byte(key), Result: r, Target: t, TargetUnion: &pb.Compare_Value{Value: []byte(val)}}
+		cmp.TargetUnion = &pb.Compare_Value{Value: []byte(val)}
 	case pb.Compare_VERSION:
-		return Cmp{Key: []byte(key), Result: r, Target: t, TargetUnion: &pb.Compare_Version{Version: mustInt64(v)}}
+		cmp.TargetUnion = &pb.Compare_Version{Version: mustInt64(v)}
 	case pb.Compare_CREATE:
-		return Cmp{Key: []byte(key), Result: r, Target: t, TargetUnion: &pb.Compare_CreateRevision{CreateRevision: mustInt64(v)}}
+		cmp.TargetUnion = &pb.Compare_CreateRevision{CreateRevision: mustInt64(v)}
 	case pb.Compare_MOD:
-		return Cmp{Key: []byte(key), Result: r, Target: t, TargetUnion: &pb.Compare_ModRevision{ModRevision: mustInt64(v)}}
+		cmp.TargetUnion = &pb.Compare_ModRevision{ModRevision: mustInt64(v)}
 	default:
 		panic("Unknown compare type")
 	}
+	return cmp
 }
 
-func Value(key string) (string, pb.Compare_CompareTarget) {
-	return key, pb.Compare_VALUE
+func Value(key string) Cmp {
+	return Cmp{Key: []byte(key), Target: pb.Compare_VALUE}
 }
 
-func Version(key string) (string, pb.Compare_CompareTarget) {
-	return key, pb.Compare_VERSION
+func Version(key string) Cmp {
+	return Cmp{Key: []byte(key), Target: pb.Compare_VERSION}
 }
 
-func CreatedRevision(key string) (string, pb.Compare_CompareTarget) {
-	return key, pb.Compare_CREATE
+func CreatedRevision(key string) Cmp {
+	return Cmp{Key: []byte(key), Target: pb.Compare_CREATE}
 }
 
-func ModifiedRevision(key string) (string, pb.Compare_CompareTarget) {
-	return key, pb.Compare_MOD
+func ModifiedRevision(key string) Cmp {
+	return Cmp{Key: []byte(key), Target: pb.Compare_MOD}
 }
 
 func mustInt64(val interface{}) int64 {
