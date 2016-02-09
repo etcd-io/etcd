@@ -99,18 +99,12 @@ func testBasicOpsPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 
 	expectPut := `{"action":"set","node":{"key":"/testKey","value":"foo","`
 	if err := cURLPut(epc, "testKey", "foo", expectPut); err != nil {
-		// TODO: fix the certs to support cURL operations
-		// curl: (35) error:14094410:SSL routines:SSL3_READ_BYTES:sslv3 alert handshake failure
-		t.Logf("[WARNING] failed put with curl (%v)", err)
-		return
+		t.Fatalf("failed put with curl (%v)", err)
 	}
 
 	expectGet := `{"action":"get","node":{"key":"/testKey","value":"foo","`
 	if err := cURLGet(epc, "testKey", expectGet); err != nil {
-		// TODO: fix the certs to support cURL operations
-		// curl: (35) error:14094410:SSL routines:SSL3_READ_BYTES:sslv3 alert handshake failure
-		t.Logf("[WARNING] failed get with curl (%v)", err)
-		return
+		t.Fatalf("failed get with curl (%v)", err)
 	}
 }
 
