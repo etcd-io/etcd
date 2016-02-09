@@ -57,6 +57,7 @@ type stresser struct {
 	success int
 
 	cancel func()
+	conn   *grpc.ClientConn
 }
 
 func (s *stresser) Stress() error {
@@ -64,10 +65,14 @@ func (s *stresser) Stress() error {
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, s.Endpoint)
 	}
-	kvc := pb.NewKVClient(conn)
-
 	ctx, cancel := context.WithCancel(context.Background())
+
+	s.mu.Lock()
+	s.conn = conn
 	s.cancel = cancel
+	s.mu.Unlock()
+
+	kvc := pb.NewKVClient(conn)
 
 	for i := 0; i < s.N; i++ {
 		go func(i int) {
@@ -97,7 +102,12 @@ func (s *stresser) Stress() error {
 }
 
 func (s *stresser) Cancel() {
-	s.cancel()
+	s.mu.Lock()
+	cancel, conn := s.cancel, s.conn
+	s.mu.Unlock()
+	cancel()
+	// TODO: wait for all routines to exit by adding a waitGroup before calling conn.Close()
+	conn.Close()
 }
 
 func (s *stresser) Report() (success int, failure int) {
