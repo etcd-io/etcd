@@ -203,9 +203,23 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		return nil, fmt.Errorf("error setting up initial cluster: %v", err)
 	}
 
+	if cfg.peerAutoTLS && cfg.peerTLSInfo.Empty() {
+		phosts := make([]string, 0)
+		for _, u := range cfg.lpurls {
+			phosts = append(phosts, u.Host)
+		}
+		cfg.peerTLSInfo, err = transport.SelfCert(cfg.dir, phosts)
+		if err != nil {
+			plog.Fatalf("could not get certs (%v)", err)
+		}
+	} else if cfg.peerAutoTLS {
+		plog.Warningf("ignoring peer auto TLS since certs given")
+	}
+
 	if !cfg.peerTLSInfo.Empty() {
 		plog.Infof("peerTLS: %s", cfg.peerTLSInfo)
 	}
+
 	plns := make([]net.Listener, 0)
 	for _, u := range cfg.lpurls {
 		if u.Scheme == "http" && !cfg.peerTLSInfo.Empty() {

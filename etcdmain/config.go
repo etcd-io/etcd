@@ -111,6 +111,7 @@ type config struct {
 
 	// security
 	clientTLSInfo, peerTLSInfo transport.TLSInfo
+	peerAutoTLS                bool
 
 	// logging
 	debug        bool
@@ -211,6 +212,7 @@ func NewConfig() *config {
 	fs.StringVar(&cfg.peerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 	fs.BoolVar(&cfg.peerTLSInfo.ClientCertAuth, "peer-client-cert-auth", false, "Enable peer client cert authentication.")
 	fs.StringVar(&cfg.peerTLSInfo.TrustedCAFile, "peer-trusted-ca-file", "", "Path to the peer server TLS trusted CA file.")
+	fs.BoolVar(&cfg.peerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 
 	// logging
 	fs.BoolVar(&cfg.debug, "debug", false, "Enable debug-level logging for etcd.")
