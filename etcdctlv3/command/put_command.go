@@ -55,6 +55,10 @@ will store the content of the file to <key>.
 
 // putCommandFunc executes the "put" command.
 func putCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) == 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
+	}
+
 	key := []byte(args[0])
 	value, err := argOrStdin(args, os.Stdin, 1)
 	if err != nil {
