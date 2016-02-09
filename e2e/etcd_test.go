@@ -43,6 +43,12 @@ var (
 		isPeerTLS:    false,
 		initialToken: "new",
 	}
+	configAutoTLS = etcdProcessClusterConfig{
+		clusterSize:   3,
+		isPeerTLS:     true,
+		isPeerAutoTLS: true,
+		initialToken:  "new",
+	}
 	configTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    0,
@@ -94,6 +100,7 @@ func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
 }
 
 func TestBasicOpsNoTLS(t *testing.T)        { testBasicOpsPutGet(t, &configNoTLS) }
+func TestBasicOpsAutoTLS(t *testing.T)      { testBasicOpsPutGet(t, &configAutoTLS) }
 func TestBasicOpsAllTLS(t *testing.T)       { testBasicOpsPutGet(t, &configTLS) }
 func TestBasicOpsPeerTLS(t *testing.T)      { testBasicOpsPutGet(t, &configPeerTLS) }
 func TestBasicOpsClientTLS(t *testing.T)    { testBasicOpsPutGet(t, &configClientTLS) }
@@ -170,11 +177,12 @@ type etcdProcessConfig struct {
 }
 
 type etcdProcessClusterConfig struct {
-	clusterSize  int
-	proxySize    int
-	isClientTLS  bool
-	isPeerTLS    bool
-	initialToken string
+	clusterSize   int
+	proxySize     int
+	isClientTLS   bool
+	isPeerTLS     bool
+	isPeerAutoTLS bool
+	initialToken  string
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -325,12 +333,16 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 		args = append(args, tlsClientArgs...)
 	}
 	if cfg.isPeerTLS {
-		tlsPeerArgs := []string{
-			"--peer-cert-file", certPath,
-			"--peer-key-file", privateKeyPath,
-			"--peer-ca-file", caPath,
+		if cfg.isPeerAutoTLS {
+			args = append(args, "--peer-auto-tls=true")
+		} else {
+			tlsPeerArgs := []string{
+				"--peer-cert-file", certPath,
+				"--peer-key-file", privateKeyPath,
+				"--peer-ca-file", caPath,
+			}
+			args = append(args, tlsPeerArgs...)
 		}
-		args = append(args, tlsPeerArgs...)
 	}
 	return args
 }
