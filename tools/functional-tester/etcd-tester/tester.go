@@ -235,7 +235,7 @@ func (c *cluster) getKVHash() (map[string]int64, error) {
 		kvc := pb.NewKVClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		resp, err := kvc.Hash(ctx, &pb.HashRequest{})
-		if resp != nil && err != nil {
+		if err != nil {
 			return nil, err
 		}
 		cancel()
