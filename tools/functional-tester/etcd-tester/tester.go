@@ -128,6 +128,7 @@ func (tt *tester) runLoop() {
 					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
+				continue
 			}
 			if _, ok = getSameValue(hashes); !ok {
 				log.Printf("etcd-tester: [round#%d case#%d] checking current storage hashes failed (%v)", i, j, hashes)
@@ -155,6 +156,7 @@ func (tt *tester) runLoop() {
 				log.Printf("etcd-tester: [round#%d] cleanup error: %v", i, err)
 				return
 			}
+			continue
 		}
 		log.Printf("etcd-tester: [round#%d] compacted storage", i)
 
