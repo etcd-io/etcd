@@ -244,28 +244,6 @@ func (c *cluster) getKVHash() (map[string]int64, error) {
 	return hashes, nil
 }
 
-func getSameValue(hashes map[string]int64) (int64, bool) {
-	var rv int64
-	ok := true
-	for _, v := range hashes {
-		if rv == 0 {
-			rv = v
-		}
-		if rv != v {
-			ok = false
-			break
-		}
-	}
-	return rv, ok
-}
-
-func max(n1, n2 int64) int64 {
-	if n1 > n2 {
-		return n1
-	}
-	return n2
-}
-
 func (c *cluster) compactKV(rev int64) error {
 	var (
 		conn *grpc.ClientConn
