@@ -179,7 +179,7 @@ func archiveLogAndDataDir(log string, datadir string) error {
 	if existDir(dir) {
 		dir = path.Join("failure_archive", fmt.Sprint(time.Now().Add(time.Second).Format(time.RFC3339)))
 	}
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
 	if err := os.Rename(log, path.Join(dir, log)); err != nil {
