@@ -54,6 +54,10 @@ func TestNewListenerTLSInfo(t *testing.T) {
 	defer os.Remove(tmp)
 	tlsInfo := TLSInfo{CertFile: tmp, KeyFile: tmp}
 	tlsInfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
+	testNewListenerTLSInfoAccept(t, tlsInfo)
+}
+
+func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
 	ln, err := NewListener("127.0.0.1:0", "https", tlsInfo)
 	if err != nil {
 		t.Fatalf("unexpected NewListener error: %v", err)
@@ -248,4 +252,21 @@ func TestNewListenerUnixSocket(t *testing.T) {
 		t.Errorf("error listening on unix socket (%v)", err)
 	}
 	l.Close()
+}
+
+// TestNewListenerTLSInfoSelfCert tests that a new certificate accepts connections.
+func TestNewListenerTLSInfoSelfCert(t *testing.T) {
+	tmpdir, err := ioutil.TempDir(os.TempDir(), "tlsdir")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpdir)
+	tlsinfo, err := SelfCert(tmpdir, []string{"127.0.0.1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tlsinfo.Empty() {
+		t.Fatalf("tlsinfo should have certs (%+v)", tlsinfo)
+	}
+	testNewListenerTLSInfoAccept(t, tlsinfo)
 }

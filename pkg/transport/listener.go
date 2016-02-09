@@ -15,13 +15,21 @@
 package transport
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net"
 	"net/http"
+	"os"
+	"path"
+	"strings"
 	"time"
 )
 
@@ -79,6 +87,8 @@ type TLSInfo struct {
 	TrustedCAFile  string
 	ClientCertAuth bool
 
+	selfCert bool
+
 	// parseFunc exists to simplify testing. Typically, parseFunc
 	// should be left nil. In that case, tls.X509KeyPair will be used.
 	parseFunc func([]byte, []byte) (tls.Certificate, error)
@@ -90,6 +100,78 @@ func (info TLSInfo) String() string {
 
 func (info TLSInfo) Empty() bool {
 	return info.CertFile == "" && info.KeyFile == ""
+}
+
+func SelfCert(dirpath string, hosts []string) (info TLSInfo, err error) {
+	if err = os.MkdirAll(dirpath, 0700); err != nil {
+		return
+	}
+
+	certPath := path.Join(dirpath, "cert.pem")
+	keyPath := path.Join(dirpath, "key.pem")
+	_, errcert := os.Stat(certPath)
+	_, errkey := os.Stat(keyPath)
+	if errcert == nil && errkey == nil {
+		info.CertFile = certPath
+		info.KeyFile = keyPath
+		info.selfCert = true
+		return
+	}
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return
+	}
+
+	tmpl := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject:      pkix.Name{Organization: []string{"etcd"}},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(365 * (24 * time.Hour)),
+
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+
+	for _, host := range hosts {
+		if ip := net.ParseIP(host); ip != nil {
+			tmpl.IPAddresses = append(tmpl.IPAddresses, ip)
+		} else {
+			tmpl.DNSNames = append(tmpl.DNSNames, strings.Split(host, ":")[0])
+		}
+	}
+
+	priv, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	if err != nil {
+		return
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, &priv.PublicKey, priv)
+	if err != nil {
+		return
+	}
+
+	certOut, err := os.Create(certPath)
+	if err != nil {
+		return
+	}
+	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	certOut.Close()
+
+	b, err := x509.MarshalECPrivateKey(priv)
+	if err != nil {
+		return
+	}
+	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return
+	}
+	pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
+	keyOut.Close()
+
+	return SelfCert(dirpath, hosts)
 }
 
 func (info TLSInfo) baseConfig() (*tls.Config, error) {
@@ -182,6 +264,9 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 		}
 	}
 
+	if info.selfCert {
+		cfg.InsecureSkipVerify = true
+	}
 	return cfg, nil
 }
 
