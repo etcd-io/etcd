@@ -27,6 +27,8 @@ type STM struct {
 	rset map[string]*RemoteKV
 	// wset holds the write key and its value
 	wset map[string]string
+	// firstRev is the store revision at the first read
+	firstRev int64
 	// aborted is whether user aborted the txn
 	aborted bool
 	apply   func(*STM) error
@@ -63,9 +65,12 @@ func (s *STM) Get(key string) (string, error) {
 	if rk, ok := s.rset[key]; ok {
 		return rk.Value(), nil
 	}
-	rk, err := GetRemoteKV(s.client, key)
+	rk, err := GetRemoteKV(s.client, key, s.firstRev)
 	if err != nil {
 		return "", err
+	}
+	if s.firstRev == 0 {
+		s.firstRev = rk.FetchRevision()
 	}
 	// TODO: setup watchers to abort txn early
 	s.rset[key] = rk
@@ -79,13 +84,13 @@ func (s *STM) Put(key string, val string) { s.wset[key] = val }
 func (s *STM) commit() (ok bool, err error) {
 	// read set must not change
 	cmps := []*pb.Compare{}
-	for k, rk := range s.rset {
+	for k, _ := range s.rset {
 		// use < to support updating keys that don't exist yet
 		cmp := &pb.Compare{
 			Result:      pb.Compare_LESS,
 			Target:      pb.Compare_MOD,
 			Key:         []byte(k),
-			TargetUnion: &pb.Compare_ModRevision{ModRevision: rk.Revision() + 1},
+			TargetUnion: &pb.Compare_ModRevision{ModRevision: s.firstRev + 1},
 		}
 		cmps = append(cmps, cmp)
 	}
@@ -106,4 +111,5 @@ func (s *STM) commit() (ok bool, err error) {
 func (s *STM) clear() {
 	s.rset = make(map[string]*RemoteKV)
 	s.wset = make(map[string]string)
+	s.firstRev = 0
 }

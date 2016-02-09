@@ -27,10 +27,11 @@ import (
 
 // Key is a key/revision pair created by the client and stored on etcd
 type RemoteKV struct {
-	client *clientv3.Client
-	key    string
-	rev    int64
-	val    string
+	client   *clientv3.Client
+	key      string
+	rev      int64
+	val      string
+	fetchRev int64
 }
 
 func NewKey(client *clientv3.Client, key string, leaseID lease.LeaseID) (*RemoteKV, error) {
@@ -42,13 +43,13 @@ func NewKV(client *clientv3.Client, key, val string, leaseID lease.LeaseID) (*Re
 	if err != nil {
 		return nil, err
 	}
-	return &RemoteKV{client, key, rev, val}, nil
+	return &RemoteKV{client, key, rev, val, rev}, nil
 }
 
-func GetRemoteKV(client *clientv3.Client, key string) (*RemoteKV, error) {
+func GetRemoteKV(client *clientv3.Client, key string, startRev int64) (*RemoteKV, error) {
 	resp, err := client.KV.Range(
 		context.TODO(),
-		&pb.RangeRequest{Key: []byte(key)},
+		&pb.RangeRequest{Key: []byte(key), Revision: startRev},
 	)
 	if err != nil {
 		return nil, err
@@ -60,10 +61,12 @@ func GetRemoteKV(client *clientv3.Client, key string) (*RemoteKV, error) {
 		val = string(resp.Kvs[0].Value)
 	}
 	return &RemoteKV{
-		client: client,
-		key:    key,
-		rev:    rev,
-		val:    val}, nil
+		client:   client,
+		key:      key,
+		rev:      rev,
+		val:      val,
+		fetchRev: resp.Header.Revision,
+	}, nil
 }
 
 func NewUniqueKey(client *clientv3.Client, prefix string) (*RemoteKV, error) {
@@ -75,7 +78,7 @@ func NewUniqueKV(client *clientv3.Client, prefix string, val string, leaseID lea
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
 		rev, err := putNewKV(client, newKey, val, 0)
 		if err == nil {
-			return &RemoteKV{client, newKey, rev, val}, nil
+			return &RemoteKV{client, newKey, rev, val, rev}, nil
 		}
 		if err != ErrKeyExists {
 			return nil, err
@@ -175,12 +178,14 @@ func newSequentialKV(client *clientv3.Client, prefix, val string, leaseID lease.
 	if txnresp.Succeeded == false {
 		return newSequentialKV(client, prefix, val, leaseID)
 	}
-	return &RemoteKV{client, newKey, txnresp.Header.Revision, val}, nil
+	rev := txnresp.Header.Revision
+	return &RemoteKV{client, newKey, rev, val, rev}, nil
 }
 
-func (rk *RemoteKV) Key() string     { return rk.key }
-func (rk *RemoteKV) Revision() int64 { return rk.rev }
-func (rk *RemoteKV) Value() string   { return rk.val }
+func (rk *RemoteKV) Key() string          { return rk.key }
+func (rk *RemoteKV) Revision() int64      { return rk.rev }
+func (rk *RemoteKV) Value() string        { return rk.val }
+func (rk *RemoteKV) FetchRevision() int64 { return rk.fetchRev }
 
 func (rk *RemoteKV) Delete() error {
 	if rk.client == nil {
