@@ -97,21 +97,28 @@ func main() {
 		switch e.Type {
 		case raftpb.EntryNormal:
 			msg = fmt.Sprintf("%s\tnorm", msg)
-			var r etcdserverpb.Request
-			if err := r.Unmarshal(e.Data); err != nil {
-				msg = fmt.Sprintf("%s\t???", msg)
+
+			var rr etcdserverpb.InternalRaftRequest
+			if err := rr.Unmarshal(e.Data); err == nil {
+				msg = fmt.Sprintf("%s\t%s", msg, rr.String())
 				break
 			}
-			switch r.Method {
-			case "":
-				msg = fmt.Sprintf("%s\tnoop", msg)
-			case "SYNC":
-				msg = fmt.Sprintf("%s\tmethod=SYNC time=%q", msg, time.Unix(0, r.Time))
-			case "QGET", "DELETE":
-				msg = fmt.Sprintf("%s\tmethod=%s path=%s", msg, r.Method, excerpt(r.Path, 64, 64))
-			default:
-				msg = fmt.Sprintf("%s\tmethod=%s path=%s val=%s", msg, r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
+
+			var r etcdserverpb.Request
+			if err := r.Unmarshal(e.Data); err == nil {
+				switch r.Method {
+				case "":
+					msg = fmt.Sprintf("%s\tnoop", msg)
+				case "SYNC":
+					msg = fmt.Sprintf("%s\tmethod=SYNC time=%q", msg, time.Unix(0, r.Time))
+				case "QGET", "DELETE":
+					msg = fmt.Sprintf("%s\tmethod=%s path=%s", msg, r.Method, excerpt(r.Path, 64, 64))
+				default:
+					msg = fmt.Sprintf("%s\tmethod=%s path=%s val=%s", msg, r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
+				}
+				break
 			}
+			msg = fmt.Sprintf("%s\t???", msg)
 		case raftpb.EntryConfChange:
 			msg = fmt.Sprintf("%s\tconf", msg)
 			var r raftpb.ConfChange
