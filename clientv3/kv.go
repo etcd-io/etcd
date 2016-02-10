@@ -20,15 +20,13 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/lease"
 )
 
 type (
-	PutResponse         pb.PutResponse
-	GetResponse         pb.RangeResponse
-	DeleteRangeResponse pb.DeleteRangeResponse
-	DeleteResponse      pb.DeleteRangeResponse
-	TxnResponse         pb.TxnResponse
+	PutResponse    pb.PutResponse
+	GetResponse    pb.RangeResponse
+	DeleteResponse pb.DeleteRangeResponse
+	TxnResponse    pb.TxnResponse
 )
 
 type KV interface {
@@ -36,7 +34,7 @@ type KV interface {
 	// Note that key,value can be plain bytes array and string is
 	// an immutable representation of that bytes array.
 	// To get a string of bytes, do string([]byte(0x10, 0x20)).
-	Put(ctx context.Context, key, val string, leaseID lease.LeaseID) (*PutResponse, error)
+	Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error)
 
 	// Get retrieves keys.
 	// By default, Get will return the value for "key", if any.
@@ -47,11 +45,8 @@ type KV interface {
 	// When passed WithSort(), the keys will be sorted.
 	Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error)
 
-	// DeleteRange deletes the given range [key, end).
-	DeleteRange(ctx context.Context, key, end string) (*DeleteRangeResponse, error)
-
-	// Delete is like DeleteRange. A shortcut for deleting single key like [key, key+1).
-	Delete(ctx context.Context, key string) (*DeleteResponse, error)
+	// Delete deletes a key, or optionallly using WithRange(end), [key, end).
+	Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error)
 
 	// Compact compacts etcd KV history before the given rev.
 	Compact(ctx context.Context, rev int64) error
@@ -80,8 +75,8 @@ func NewKV(c *Client) KV {
 	}
 }
 
-func (kv *kv) Put(ctx context.Context, key, val string, leaseID lease.LeaseID) (*PutResponse, error) {
-	r, err := kv.do(ctx, OpPut(key, val, leaseID))
+func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
+	r, err := kv.do(ctx, OpPut(key, val, opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -96,16 +91,8 @@ func (kv *kv) Get(ctx context.Context, key string, opts ...OpOption) (*GetRespon
 	return (*GetResponse)(r.GetResponseRange()), nil
 }
 
-func (kv *kv) DeleteRange(ctx context.Context, key, end string) (*DeleteRangeResponse, error) {
-	r, err := kv.do(ctx, OpDeleteRange(key, end))
-	if err != nil {
-		return nil, err
-	}
-	return (*DeleteRangeResponse)(r.GetResponseDeleteRange()), nil
-}
-
-func (kv *kv) Delete(ctx context.Context, key string) (*DeleteResponse, error) {
-	r, err := kv.do(ctx, OpDelete(key))
+func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
+	r, err := kv.do(ctx, OpDelete(key, opts...))
 	if err != nil {
 		return nil, err
 	}

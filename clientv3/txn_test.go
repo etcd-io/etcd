@@ -34,7 +34,7 @@ func TestTxnPanics(t *testing.T) {
 	}
 
 	cmp := Compare(CreatedRevision("foo"), "=", 0)
-	op := OpPut("foo", "bar", 0)
+	op := OpPut("foo", "bar")
 
 	tests := []struct {
 		f func()
