@@ -19,6 +19,7 @@ import (
 	"strconv"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
 )
 
@@ -43,7 +44,7 @@ func compactionCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	c := mustClient(cmd)
-	if cerr := clientv3.NewKV(c).Compact(rev); cerr != nil {
+	if cerr := clientv3.NewKV(c).Compact(context.TODO(), rev); cerr != nil {
 		ExitWithError(ExitError, cerr)
 		return
 	}

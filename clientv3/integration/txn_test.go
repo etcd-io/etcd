@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -30,12 +31,14 @@ func TestTxnWriteFail(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.Client(0))
+	ctx := context.TODO()
+
 	clus.Members[0].Stop(t)
 	<-clus.Members[0].StopNotify()
 
 	donec := make(chan struct{})
 	go func() {
-		resp, err := kv.Txn().Then(clientv3.OpPut("foo", "bar", 0)).Commit()
+		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar", 0)).Commit()
 		if err == nil {
 			t.Fatalf("expected error, got response %v", resp)
 		}
@@ -57,7 +60,7 @@ func TestTxnWriteFail(t *testing.T) {
 		donec <- struct{}{}
 
 		// and ensure the put didn't take
-		gresp, gerr := kv.Get("foo")
+		gresp, gerr := kv.Get(ctx, "foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
@@ -92,7 +95,8 @@ func TestTxnReadRetry(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		_, err := kv.Txn().Then(clientv3.OpGet("foo")).Commit()
+		ctx := context.TODO()
+		_, err := kv.Txn(ctx).Then(clientv3.OpGet("foo")).Commit()
 		if err != nil {
 			t.Fatalf("expected response, got error %v", err)
 		}
@@ -117,12 +121,14 @@ func TestTxnSuccess(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.Client(0))
-	_, err := kv.Txn().Then(clientv3.OpPut("foo", "bar", 0)).Commit()
+	ctx := context.TODO()
+
+	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar", 0)).Commit()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	resp, err := kv.Get("foo")
+	resp, err := kv.Get(ctx, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
