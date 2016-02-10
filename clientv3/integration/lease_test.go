@@ -42,7 +42,7 @@ func TestLeaseCreate(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	_, err = kv.Put(context.TODO(), "foo", "bar", lease.LeaseID(resp.ID))
+	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
 	if err != nil {
 		t.Fatalf("failed to create key with lease %v", err)
 	}
@@ -69,7 +69,7 @@ func TestLeaseRevoke(t *testing.T) {
 		t.Errorf("failed to revoke lease %v", err)
 	}
 
-	_, err = kv.Put(context.TODO(), "foo", "bar", lease.LeaseID(resp.ID))
+	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
 	if err != v3rpc.ErrLeaseNotFound {
 		t.Fatalf("err = %v, want %v", err, v3rpc.ErrLeaseNotFound)
 	}

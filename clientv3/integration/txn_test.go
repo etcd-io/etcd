@@ -38,7 +38,7 @@ func TestTxnWriteFail(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar", 0)).Commit()
+		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
 		if err == nil {
 			t.Fatalf("expected error, got response %v", resp)
 		}
@@ -123,7 +123,7 @@ func TestTxnSuccess(t *testing.T) {
 	kv := clientv3.NewKV(clus.Client(0))
 	ctx := context.TODO()
 
-	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar", 0)).Commit()
+	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
 	if err != nil {
 		t.Fatal(err)
 	}

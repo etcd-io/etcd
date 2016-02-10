@@ -70,39 +70,53 @@ func (op Op) isWrite() bool {
 
 func OpGet(key string, opts ...OpOption) Op {
 	ret := Op{t: tRange, key: []byte(key)}
-	for _, opt := range opts {
-		opt(&ret)
+	ret.applyOpts(opts)
+	return ret
+}
+
+func OpDelete(key string, opts ...OpOption) Op {
+	ret := Op{t: tDeleteRange, key: []byte(key)}
+	ret.applyOpts(opts)
+	switch {
+	case ret.leaseID != 0:
+		panic("unexpected lease in delete")
+	case ret.limit != 0:
+		panic("unexpected limit in delete")
+	case ret.rev != 0:
+		panic("unexpected revision in delete")
+	case ret.sort != nil:
+		panic("unexpected sort in delete")
 	}
 	return ret
 }
 
-func OpDeleteRange(key, end string) Op {
-	return Op{
-		t:   tDeleteRange,
-		key: []byte(key),
-		end: []byte(end),
+func OpPut(key, val string, opts ...OpOption) Op {
+	ret := Op{t: tPut, key: []byte(key), val: []byte(val)}
+	ret.applyOpts(opts)
+	switch {
+	case ret.end != nil:
+		panic("unexpected range in put")
+	case ret.limit != 0:
+		panic("unexpected limit in put")
+	case ret.rev != 0:
+		panic("unexpected revision in put")
+	case ret.sort != nil:
+		panic("unexpected sort in put")
 	}
+	return ret
 }
 
-func OpDelete(key string) Op {
-	return Op{
-		t:   tDeleteRange,
-		key: []byte(key),
-	}
-}
-
-func OpPut(key, val string, leaseID lease.LeaseID) Op {
-	return Op{
-		t:   tPut,
-		key: []byte(key),
-
-		val:     []byte(val),
-		leaseID: leaseID,
+func (op *Op) applyOpts(opts []OpOption) {
+	for _, opt := range opts {
+		opt(op)
 	}
 }
 
 type OpOption func(*Op)
 
+func WithLease(leaseID lease.LeaseID) OpOption {
+	return func(op *Op) { op.leaseID = leaseID }
+}
 func WithLimit(n int64) OpOption { return func(op *Op) { op.limit = n } }
 func WithRev(rev int64) OpOption { return func(op *Op) { op.rev = rev } }
 func WithSort(tgt SortTarget, order SortOrder) OpOption {

@@ -55,7 +55,7 @@ func TestKVPut(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		if _, err := kv.Put(ctx, tt.key, tt.val, tt.leaseID); err != nil {
+		if _, err := kv.Put(ctx, tt.key, tt.val, clientv3.WithLease(tt.leaseID)); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, tt.key, err)
 		}
 		resp, err := kv.Get(ctx, tt.key)
@@ -85,7 +85,7 @@ func TestKVRange(t *testing.T) {
 
 	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
 	for i, key := range keySet {
-		if _, err := kv.Put(ctx, key, "", lease.NoLease); err != nil {
+		if _, err := kv.Put(ctx, key, ""); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
 		}
 	}
@@ -199,7 +199,7 @@ func TestKVDeleteRange(t *testing.T) {
 
 	keySet := []string{"a", "b", "c", "c", "c", "d", "e", "f"}
 	for i, key := range keySet {
-		if _, err := kv.Put(ctx, key, "", lease.NoLease); err != nil {
+		if _, err := kv.Put(ctx, key, ""); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
 		}
 	}
@@ -213,7 +213,7 @@ func TestKVDeleteRange(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		dresp, err := kv.DeleteRange(ctx, tt.key, tt.end)
+		dresp, err := kv.Delete(ctx, tt.key, clientv3.WithRange(tt.end))
 		if err != nil {
 			t.Fatalf("#%d: couldn't delete range (%v)", i, err)
 		}
@@ -239,7 +239,7 @@ func TestKVDelete(t *testing.T) {
 	kv := clientv3.NewKV(clus.RandClient())
 	ctx := context.TODO()
 
-	presp, err := kv.Put(ctx, "foo", "", lease.NoLease)
+	presp, err := kv.Put(ctx, "foo", "")
 	if err != nil {
 		t.Fatalf("couldn't put 'foo' (%v)", err)
 	}
@@ -272,7 +272,7 @@ func TestKVCompact(t *testing.T) {
 	ctx := context.TODO()
 
 	for i := 0; i < 10; i++ {
-		if _, err := kv.Put(ctx, "foo", "bar", lease.NoLease); err != nil {
+		if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
 			t.Fatalf("couldn't put 'foo' (%v)", err)
 		}
 	}
@@ -311,7 +311,7 @@ func TestKVGetRetry(t *testing.T) {
 	kv := clientv3.NewKV(clus.Client(0))
 	ctx := context.TODO()
 
-	if _, err := kv.Put(ctx, "foo", "bar", 0); err != nil {
+	if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -363,7 +363,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	clus.Members[0].Stop(t)
 	<-clus.Members[0].StopNotify()
 
-	_, err := kv.Put(ctx, "foo", "bar", 0)
+	_, err := kv.Put(ctx, "foo", "bar")
 	if err == nil {
 		t.Fatalf("got success on disconnected put, wanted error")
 	}
