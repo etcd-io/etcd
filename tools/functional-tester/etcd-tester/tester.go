@@ -218,10 +218,11 @@ func (c *cluster) getRevision() (map[string]int64, error) {
 		kvc := pb.NewKVClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		resp, err := kvc.Range(ctx, &pb.RangeRequest{Key: []byte("foo")})
+		cancel()
+		conn.Close()
 		if err != nil {
 			return nil, err
 		}
-		cancel()
 		revs[u] = resp.Header.Revision
 	}
 	return revs, nil
@@ -237,10 +238,11 @@ func (c *cluster) getKVHash() (map[string]int64, error) {
 		kvc := pb.NewKVClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		resp, err := kvc.Hash(ctx, &pb.HashRequest{})
+		cancel()
+		conn.Close()
 		if err != nil {
 			return nil, err
 		}
-		cancel()
 		hashes[u] = int64(resp.Hash)
 	}
 	return hashes, nil
@@ -260,6 +262,7 @@ func (c *cluster) compactKV(rev int64) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		_, err = kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev})
 		cancel()
+		conn.Close()
 		if err == nil {
 			return nil
 		}
