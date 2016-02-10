@@ -39,6 +39,7 @@ func TestKVPut(t *testing.T) {
 	defer lapi.Close()
 
 	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
 
 	resp, err := lapi.Create(context.Background(), 10)
 	if err != nil {
@@ -54,10 +55,10 @@ func TestKVPut(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		if _, err := kv.Put(tt.key, tt.val, tt.leaseID); err != nil {
+		if _, err := kv.Put(ctx, tt.key, tt.val, tt.leaseID); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, tt.key, err)
 		}
-		resp, err := kv.Get(tt.key)
+		resp, err := kv.Get(ctx, tt.key)
 		if err != nil {
 			t.Fatalf("#%d: couldn't get key (%v)", i, err)
 		}
@@ -80,14 +81,15 @@ func TestKVRange(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
 
 	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
 	for i, key := range keySet {
-		if _, err := kv.Put(key, "", lease.NoLease); err != nil {
+		if _, err := kv.Put(ctx, key, "", lease.NoLease); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
 		}
 	}
-	resp, err := kv.Get(keySet[0])
+	resp, err := kv.Get(ctx, keySet[0])
 	if err != nil {
 		t.Fatalf("couldn't get key (%v)", err)
 	}
@@ -173,7 +175,7 @@ func TestKVRange(t *testing.T) {
 		if tt.sortOption != nil {
 			opts = append(opts, clientv3.WithSort(tt.sortOption.Target, tt.sortOption.Order))
 		}
-		resp, err := kv.Get(tt.begin, opts...)
+		resp, err := kv.Get(ctx, tt.begin, opts...)
 		if err != nil {
 			t.Fatalf("#%d: couldn't range (%v)", i, err)
 		}
@@ -193,10 +195,11 @@ func TestKVDeleteRange(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
 
 	keySet := []string{"a", "b", "c", "c", "c", "d", "e", "f"}
 	for i, key := range keySet {
-		if _, err := kv.Put(key, "", lease.NoLease); err != nil {
+		if _, err := kv.Put(ctx, key, "", lease.NoLease); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
 		}
 	}
@@ -210,14 +213,14 @@ func TestKVDeleteRange(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		dresp, err := kv.DeleteRange(tt.key, tt.end)
+		dresp, err := kv.DeleteRange(ctx, tt.key, tt.end)
 		if err != nil {
 			t.Fatalf("#%d: couldn't delete range (%v)", i, err)
 		}
 		if dresp.Header.Revision != tt.delRev {
 			t.Fatalf("#%d: dresp.Header.Revision got %d, want %d", i, dresp.Header.Revision, tt.delRev)
 		}
-		resp, err := kv.Get(tt.key, clientv3.WithRange(tt.end))
+		resp, err := kv.Get(ctx, tt.key, clientv3.WithRange(tt.end))
 		if err != nil {
 			t.Fatalf("#%d: couldn't get key (%v)", i, err)
 		}
@@ -234,22 +237,23 @@ func TestKVDelete(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
 
-	presp, err := kv.Put("foo", "", lease.NoLease)
+	presp, err := kv.Put(ctx, "foo", "", lease.NoLease)
 	if err != nil {
 		t.Fatalf("couldn't put 'foo' (%v)", err)
 	}
 	if presp.Header.Revision != 2 {
 		t.Fatalf("presp.Header.Revision got %d, want %d", presp.Header.Revision, 2)
 	}
-	resp, err := kv.Delete("foo")
+	resp, err := kv.Delete(ctx, "foo")
 	if err != nil {
 		t.Fatalf("couldn't delete key (%v)", err)
 	}
 	if resp.Header.Revision != 3 {
 		t.Fatalf("resp.Header.Revision got %d, want %d", resp.Header.Revision, 3)
 	}
-	gresp, err := kv.Get("foo")
+	gresp, err := kv.Get(ctx, "foo")
 	if err != nil {
 		t.Fatalf("couldn't get key (%v)", err)
 	}
@@ -265,32 +269,33 @@ func TestKVCompact(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
 
 	for i := 0; i < 10; i++ {
-		if _, err := kv.Put("foo", "bar", lease.NoLease); err != nil {
+		if _, err := kv.Put(ctx, "foo", "bar", lease.NoLease); err != nil {
 			t.Fatalf("couldn't put 'foo' (%v)", err)
 		}
 	}
 
-	err := kv.Compact(7)
+	err := kv.Compact(ctx, 7)
 	if err != nil {
 		t.Fatalf("couldn't compact kv space (%v)", err)
 	}
-	err = kv.Compact(7)
+	err = kv.Compact(ctx, 7)
 	if err == nil || err != v3rpc.ErrCompacted {
 		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
 	}
 
 	wc := clientv3.NewWatcher(clus.RandClient())
 	defer wc.Close()
-	wchan := wc.Watch(context.TODO(), "foo", 3)
+	wchan := wc.Watch(ctx, "foo", 3)
 
 	_, ok := <-wchan
 	if ok {
 		t.Fatalf("wchan ok got %v, want false", ok)
 	}
 
-	err = kv.Compact(1000)
+	err = kv.Compact(ctx, 1000)
 	if err == nil || err != v3rpc.ErrFutureRev {
 		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
 	}
@@ -304,8 +309,9 @@ func TestKVGetRetry(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.Client(0))
+	ctx := context.TODO()
 
-	if _, err := kv.Put("foo", "bar", 0); err != nil {
+	if _, err := kv.Put(ctx, "foo", "bar", 0); err != nil {
 		t.Fatal(err)
 	}
 
@@ -315,7 +321,7 @@ func TestKVGetRetry(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get("foo")
+		gresp, gerr := kv.Get(ctx, "foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
@@ -352,10 +358,12 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.Client(0))
+	ctx := context.TODO()
+
 	clus.Members[0].Stop(t)
 	<-clus.Members[0].StopNotify()
 
-	_, err := kv.Put("foo", "bar", 0)
+	_, err := kv.Put(ctx, "foo", "bar", 0)
 	if err == nil {
 		t.Fatalf("got success on disconnected put, wanted error")
 	}
@@ -363,7 +371,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get("foo")
+		gresp, gerr := kv.Get(ctx, "foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}

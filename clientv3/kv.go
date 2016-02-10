@@ -36,7 +36,7 @@ type KV interface {
 	// Note that key,value can be plain bytes array and string is
 	// an immutable representation of that bytes array.
 	// To get a string of bytes, do string([]byte(0x10, 0x20)).
-	Put(key, val string, leaseID lease.LeaseID) (*PutResponse, error)
+	Put(ctx context.Context, key, val string, leaseID lease.LeaseID) (*PutResponse, error)
 
 	// Get retrieves keys.
 	// By default, Get will return the value for "key", if any.
@@ -45,19 +45,19 @@ type KV interface {
 	// if the required revision is compacted, the request will fail with ErrCompacted .
 	// When passed WithLimit(limit), the number of returned keys is bounded by limit.
 	// When passed WithSort(), the keys will be sorted.
-	Get(key string, opts ...OpOption) (*GetResponse, error)
+	Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error)
 
 	// DeleteRange deletes the given range [key, end).
-	DeleteRange(key, end string) (*DeleteRangeResponse, error)
+	DeleteRange(ctx context.Context, key, end string) (*DeleteRangeResponse, error)
 
 	// Delete is like DeleteRange. A shortcut for deleting single key like [key, key+1).
-	Delete(key string) (*DeleteResponse, error)
+	Delete(ctx context.Context, key string) (*DeleteResponse, error)
 
 	// Compact compacts etcd KV history before the given rev.
-	Compact(rev int64) error
+	Compact(ctx context.Context, rev int64) error
 
 	// Txn creates a transaction.
-	Txn() Txn
+	Txn(ctx context.Context) Txn
 }
 
 type kv struct {
@@ -80,41 +80,41 @@ func NewKV(c *Client) KV {
 	}
 }
 
-func (kv *kv) Put(key, val string, leaseID lease.LeaseID) (*PutResponse, error) {
-	r, err := kv.do(OpPut(key, val, leaseID))
+func (kv *kv) Put(ctx context.Context, key, val string, leaseID lease.LeaseID) (*PutResponse, error) {
+	r, err := kv.do(ctx, OpPut(key, val, leaseID))
 	if err != nil {
 		return nil, err
 	}
 	return (*PutResponse)(r.GetResponsePut()), nil
 }
 
-func (kv *kv) Get(key string, opts ...OpOption) (*GetResponse, error) {
-	r, err := kv.do(OpGet(key, opts...))
+func (kv *kv) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
+	r, err := kv.do(ctx, OpGet(key, opts...))
 	if err != nil {
 		return nil, err
 	}
 	return (*GetResponse)(r.GetResponseRange()), nil
 }
 
-func (kv *kv) DeleteRange(key, end string) (*DeleteRangeResponse, error) {
-	r, err := kv.do(OpDeleteRange(key, end))
+func (kv *kv) DeleteRange(ctx context.Context, key, end string) (*DeleteRangeResponse, error) {
+	r, err := kv.do(ctx, OpDeleteRange(key, end))
 	if err != nil {
 		return nil, err
 	}
 	return (*DeleteRangeResponse)(r.GetResponseDeleteRange()), nil
 }
 
-func (kv *kv) Delete(key string) (*DeleteResponse, error) {
-	r, err := kv.do(OpDelete(key))
+func (kv *kv) Delete(ctx context.Context, key string) (*DeleteResponse, error) {
+	r, err := kv.do(ctx, OpDelete(key))
 	if err != nil {
 		return nil, err
 	}
 	return (*DeleteResponse)(r.GetResponseDeleteRange()), nil
 }
 
-func (kv *kv) Compact(rev int64) error {
+func (kv *kv) Compact(ctx context.Context, rev int64) error {
 	r := &pb.CompactionRequest{Revision: rev}
-	_, err := kv.getRemote().Compact(context.TODO(), r)
+	_, err := kv.getRemote().Compact(ctx, r)
 	if err == nil {
 		return nil
 	}
@@ -127,13 +127,14 @@ func (kv *kv) Compact(rev int64) error {
 	return err
 }
 
-func (kv *kv) Txn() Txn {
+func (kv *kv) Txn(ctx context.Context) Txn {
 	return &txn{
-		kv: kv,
+		kv:  kv,
+		ctx: ctx,
 	}
 }
 
-func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
+func (kv *kv) do(ctx context.Context, op Op) (*pb.ResponseUnion, error) {
 	for {
 		var err error
 		switch op.t {
@@ -146,7 +147,7 @@ func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
 				r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
 			}
 
-			resp, err = kv.getRemote().Range(context.TODO(), r)
+			resp, err = kv.getRemote().Range(ctx, r)
 			if err == nil {
 				respu := &pb.ResponseUnion_ResponseRange{ResponseRange: resp}
 				return &pb.ResponseUnion{Response: respu}, nil
@@ -154,7 +155,7 @@ func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
 		case tPut:
 			var resp *pb.PutResponse
 			r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
-			resp, err = kv.getRemote().Put(context.TODO(), r)
+			resp, err = kv.getRemote().Put(ctx, r)
 			if err == nil {
 				respu := &pb.ResponseUnion_ResponsePut{ResponsePut: resp}
 				return &pb.ResponseUnion{Response: respu}, nil
@@ -162,7 +163,7 @@ func (kv *kv) do(op Op) (*pb.ResponseUnion, error) {
 		case tDeleteRange:
 			var resp *pb.DeleteRangeResponse
 			r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
-			resp, err = kv.getRemote().DeleteRange(context.TODO(), r)
+			resp, err = kv.getRemote().DeleteRange(ctx, r)
 			if err == nil {
 				respu := &pb.ResponseUnion_ResponseDeleteRange{ResponseDeleteRange: resp}
 				return &pb.ResponseUnion{Response: respu}, nil

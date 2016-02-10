@@ -51,7 +51,8 @@ type Txn interface {
 }
 
 type txn struct {
-	kv *kv
+	kv  *kv
+	ctx context.Context
 
 	mu    sync.Mutex
 	cif   bool
@@ -138,7 +139,7 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 
 	for {
 		r := &pb.TxnRequest{Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
-		resp, err := kv.getRemote().Txn(context.TODO(), r)
+		resp, err := kv.getRemote().Txn(txn.ctx, r)
 		if err == nil {
 			return (*TxnResponse)(resp), nil
 		}

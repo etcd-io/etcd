@@ -142,10 +142,11 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 		<-readyc
 	}
 	// generate events
+	ctx := context.TODO()
 	for i := 0; i < numKeyUpdates; i++ {
 		for _, k := range keys {
 			v := fmt.Sprintf("%s-%d", k, i)
-			if _, err := wctx.kv.Put(k, v, 0); err != nil {
+			if _, err := wctx.kv.Put(ctx, k, v, 0); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -220,7 +221,7 @@ func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 	if wctx.ch = wctx.w.Watch(ctx, "a", 0); wctx.ch == nil {
 		t.Fatalf("expected non-nil watcher channel")
 	}
-	if _, err := wctx.kv.Put("a", "a", 0); err != nil {
+	if _, err := wctx.kv.Put(ctx, "a", "a", 0); err != nil {
 		t.Fatal(err)
 	}
 	cancel()
@@ -245,7 +246,7 @@ func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 }
 
 func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
-	if _, err := wctx.kv.Put(key, val, 0); err != nil {
+	if _, err := wctx.kv.Put(context.TODO(), key, val, 0); err != nil {
 		t.Fatal(err)
 	}
 	select {

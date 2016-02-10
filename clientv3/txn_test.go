@@ -44,7 +44,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn().If(cmp).If(cmp)
+				kv.Txn(nil).If(cmp).If(cmp)
 			},
 
 			err: "cannot call If twice!",
@@ -52,7 +52,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn().Then(op).If(cmp)
+				kv.Txn(nil).Then(op).If(cmp)
 			},
 
 			err: "cannot call If after Then!",
@@ -60,7 +60,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn().Else(op).If(cmp)
+				kv.Txn(nil).Else(op).If(cmp)
 			},
 
 			err: "cannot call If after Else!",
@@ -68,7 +68,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn().Then(op).Then(op)
+				kv.Txn(nil).Then(op).Then(op)
 			},
 
 			err: "cannot call Then twice!",
@@ -76,7 +76,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn().Else(op).Then(op)
+				kv.Txn(nil).Else(op).Then(op)
 			},
 
 			err: "cannot call Then after Else!",
@@ -84,7 +84,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func() {
 				defer df()
-				kv.Txn().Else(op).Else(op)
+				kv.Txn(nil).Else(op).Else(op)
 			},
 
 			err: "cannot call Else twice!",
