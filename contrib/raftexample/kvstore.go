@@ -35,8 +35,6 @@ type kv struct {
 
 func newKVStore(proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string)}
-	// replay log into key-value map
-	s.readCommits(commitC, errorC)
 	// read commits from raft into kvStore map until error
 	go s.readCommits(commitC, errorC)
 	return s
