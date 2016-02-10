@@ -56,6 +56,8 @@ type stresser struct {
 	wg     *sync.WaitGroup
 	cancel func()
 	conn   *grpc.ClientConn
+
+	success int
 }
 
 func (s *stresser) Stress() error {
@@ -90,6 +92,9 @@ func (s *stresser) Stress() error {
 				if err != nil {
 					return
 				}
+				s.mu.Lock()
+				s.success++
+				s.mu.Unlock()
 			}
 		}(i)
 	}
@@ -111,7 +116,7 @@ func (s *stresser) Report() (int, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// TODO: find a better way to report v3 tests
-	return -1, -1
+	return s.success, -1
 }
 
 type stresserV2 struct {
