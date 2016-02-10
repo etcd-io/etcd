@@ -22,7 +22,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/pkg/schedule"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
 )
@@ -62,9 +64,9 @@ type store struct {
 	tx    backend.BatchTx
 	txnID int64 // tracks the current txnID to verify txn operations
 
-	changes []storagepb.KeyValue
+	changes   []storagepb.KeyValue
+	fifoSched schedule.Scheduler
 
-	wg    sync.WaitGroup
 	stopc chan struct{}
 }
 
@@ -79,7 +81,10 @@ func NewStore(b backend.Backend, le lease.Lessor) *store {
 
 		currentRev:     revision{main: 1},
 		compactMainRev: -1,
-		stopc:          make(chan struct{}),
+
+		fifoSched: schedule.NewFIFOScheduler(),
+
+		stopc: make(chan struct{}),
 	}
 
 	if s.le != nil {
@@ -239,8 +244,16 @@ func (s *store) Compact(rev int64) error {
 
 	keep := s.kvindex.Compact(rev)
 
-	s.wg.Add(1)
-	go s.scheduleCompaction(rev, keep)
+	var j = func(ctx context.Context) {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		s.scheduleCompaction(rev, keep)
+	}
+
+	s.fifoSched.Schedule(j)
 
 	indexCompactionPauseDurations.Observe(float64(time.Now().Sub(start) / time.Millisecond))
 	return nil
@@ -258,10 +271,7 @@ func (s *store) Restore(b backend.Backend) error {
 	defer s.mu.Unlock()
 
 	close(s.stopc)
-	// TODO: restore without waiting for compaction routine to finish.
-	// We need a way to notify that the store is finished using the old
-	// backend though.
-	s.wg.Wait()
+	s.fifoSched.Stop()
 
 	s.b = b
 	s.kvindex = newTreeIndex()
@@ -269,6 +279,7 @@ func (s *store) Restore(b backend.Backend) error {
 	s.compactMainRev = -1
 	s.tx = b.BatchTx()
 	s.txnID = -1
+	s.fifoSched = schedule.NewFIFOScheduler()
 	s.stopc = make(chan struct{})
 
 	return s.restore()
@@ -340,7 +351,7 @@ func (s *store) restore() error {
 
 func (s *store) Close() error {
 	close(s.stopc)
-	s.wg.Wait()
+	s.fifoSched.Stop()
 	return nil
 }
 

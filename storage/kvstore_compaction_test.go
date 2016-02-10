@@ -72,9 +72,7 @@ func TestScheduleCompaction(t *testing.T) {
 			tx.UnsafePut(keyBucketName, ibytes, []byte("bar"))
 		}
 		tx.Unlock()
-		// call `s.wg.Add(1)` to match the `s.wg.Done()` call in scheduleCompaction
-		// to avoid panic from wait group
-		s.wg.Add(1)
+
 		s.scheduleCompaction(tt.rev, tt.keep)
 
 		tx.Lock()

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/pkg/schedule"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -32,6 +33,7 @@ import (
 func TestStoreRev(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := NewStore(b, &lease.FakeLessor{})
+	defer s.Close()
 	defer os.Remove(tmpPath)
 
 	for i := 1; i <= 3; i++ {
@@ -129,6 +131,8 @@ func TestStorePut(t *testing.T) {
 		if s.currentRev != tt.wrev {
 			t.Errorf("#%d: rev = %+v, want %+v", i, s.currentRev, tt.wrev)
 		}
+
+		s.Close()
 	}
 }
 
@@ -198,6 +202,8 @@ func TestStoreRange(t *testing.T) {
 		if s.currentRev != currev {
 			t.Errorf("#%d: current rev = %+v, want %+v", i, s.currentRev, currev)
 		}
+
+		s.Close()
 	}
 }
 
@@ -269,6 +275,7 @@ func TestStoreDeleteRange(t *testing.T) {
 
 func TestStoreCompact(t *testing.T) {
 	s := newFakeStore()
+	defer s.Close()
 	b := s.b.(*fakeBackend)
 	fi := s.kvindex.(*fakeIndex)
 
@@ -279,7 +286,7 @@ func TestStoreCompact(t *testing.T) {
 	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
 
 	s.Compact(3)
-	s.wg.Wait()
+	s.fifoSched.WaitFinish()
 
 	if s.compactMainRev != 3 {
 		t.Errorf("compact main rev = %d, want 3", s.compactMainRev)
@@ -494,6 +501,8 @@ func newFakeStore() *store {
 		kvindex:        fi,
 		currentRev:     revision{},
 		compactMainRev: -1,
+		fifoSched:      schedule.NewFIFOScheduler(),
+		stopc:          make(chan struct{}),
 	}
 }
 

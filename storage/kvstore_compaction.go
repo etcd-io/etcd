@@ -20,8 +20,6 @@ import (
 )
 
 func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struct{}) {
-	defer s.wg.Done()
-
 	totalStart := time.Now()
 	defer dbCompactionTotalDurations.Observe(float64(time.Now().Sub(totalStart) / time.Millisecond))
 
