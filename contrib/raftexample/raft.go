@@ -148,15 +148,13 @@ func (rc *raftNode) openWAL() *wal.WAL {
 // channel and returns an appendable WAL.
 func (rc *raftNode) replayWAL() *wal.WAL {
 	w := rc.openWAL()
-	_, _, ents, err := w.ReadAll()
+	_, st, ents, err := w.ReadAll()
 	if err != nil {
 		log.Fatalf("raftexample: failed to read WAL (%v)", err)
 	}
 	// append to storage so raft starts at the right place in log
 	rc.raftStorage.Append(ents)
-	rc.publishEntries(ents)
-	// send nil value so client knows commit channel is current
-	rc.commitC <- nil
+	rc.raftStorage.SetHardState(st)
 	return w
 }
 
