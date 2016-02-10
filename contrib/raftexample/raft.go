@@ -236,8 +236,6 @@ func (rc *raftNode) stop() {
 	close(rc.commitC)
 	close(rc.errorC)
 	rc.node.Stop()
-
-	os.Exit(0)
 }
 
 func (rc *raftNode) stopHTTP() {
