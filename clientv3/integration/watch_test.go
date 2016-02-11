@@ -35,7 +35,7 @@ type watchctx struct {
 	w       clientv3.Watcher
 	wclient *clientv3.Client
 	kv      clientv3.KV
-	ch      <-chan clientv3.WatchResponse
+	ch      clientv3.WatchChan
 }
 
 func runWatchTest(t *testing.T, f watcherTest) {

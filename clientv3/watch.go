@@ -24,18 +24,20 @@ import (
 	storagepb "github.com/coreos/etcd/storage/storagepb"
 )
 
+type WatchChan <-chan WatchResponse
+
 type Watcher interface {
 	// Watch watches on a single key. The watched events will be returned
 	// through the returned channel.
 	// If the watch is slow or the required rev is compacted, the watch request
 	// might be canceled from the server-side and the chan will be closed.
-	Watch(cxt context.Context, key string, rev int64) <-chan WatchResponse
+	Watch(ctx context.Context, key string, rev int64) WatchChan
 
-	// Watch watches on a prefix. The watched events will be returned
+	// WatchPrefix watches on a prefix. The watched events will be returned
 	// through the returned channel.
 	// If the watch is slow or the required rev is compacted, the watch request
 	// might be canceled from the server-side and the chan will be closed.
-	WatchPrefix(cxt context.Context, prefix string, rev int64) <-chan WatchResponse
+	WatchPrefix(ctx context.Context, prefix string, rev int64) WatchChan
 
 	// Close closes the watcher and cancels all watch requests.
 	Close() error
@@ -125,11 +127,11 @@ func NewWatcher(c *Client) Watcher {
 	return w
 }
 
-func (w *watcher) Watch(ctx context.Context, key string, rev int64) <-chan WatchResponse {
+func (w *watcher) Watch(ctx context.Context, key string, rev int64) WatchChan {
 	return w.watch(ctx, key, "", rev)
 }
 
-func (w *watcher) WatchPrefix(ctx context.Context, prefix string, rev int64) <-chan WatchResponse {
+func (w *watcher) WatchPrefix(ctx context.Context, prefix string, rev int64) WatchChan {
 	return w.watch(ctx, "", prefix, rev)
 }
 
@@ -143,7 +145,7 @@ func (w *watcher) Close() error {
 }
 
 // watch posts a watch request to run() and waits for a new watcher channel
-func (w *watcher) watch(ctx context.Context, key, prefix string, rev int64) <-chan WatchResponse {
+func (w *watcher) watch(ctx context.Context, key, prefix string, rev int64) WatchChan {
 	retc := make(chan chan WatchResponse, 1)
 	wr := &watchRequest{ctx: ctx, key: key, prefix: prefix, rev: rev, retc: retc}
 	// submit request
