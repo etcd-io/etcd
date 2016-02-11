@@ -300,7 +300,7 @@ func (s *watchableStore) syncWatchers() {
 
 			if w.cur < compactionRev {
 				select {
-				case w.ch <- WatchResponse{WatchID: w.id, Compacted: true}:
+				case w.ch <- WatchResponse{WatchID: w.id, CompactRevision: compactionRev}:
 					s.unsynced.delete(w)
 				default:
 					// retry next time

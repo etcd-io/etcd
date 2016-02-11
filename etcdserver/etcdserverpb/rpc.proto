@@ -282,14 +282,15 @@ message WatchResponse {
   // If the response is for a cancel watch request, cancel is set to true.
   // No further events will be sent to the canceled watching.
   bool canceled = 4;
-  // If a watching tries to watch at a compacted index, compacted will be set to true.
+  // CompactRevision is set to the minimum index if a watching tries to watch
+  // at a compacted index.
   //
   // This happens when creating a watching at a compacted revision or the watching cannot
   // catch up with the progress of the KV.
   //
   // Client should treat the watching as canceled and should not try to create any
   // watching with same start_revision again.
-  bool compacted = 5;
+  int64 compact_revision  = 5;
 
   repeated storagepb.Event events = 11;
 }

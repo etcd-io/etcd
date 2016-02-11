@@ -247,8 +247,8 @@ func TestWatchCompacted(t *testing.T) {
 		if resp.WatchID != wt {
 			t.Errorf("resp.WatchID = %x, want %x", resp.WatchID, wt)
 		}
-		if resp.Compacted != true {
-			t.Errorf("resp.Compacted = %v, want %v", resp.Compacted, true)
+		if resp.CompactRevision == 0 {
+			t.Errorf("resp.Compacted = %v, want %v", resp.CompactRevision, compactRev)
 		}
 	case <-time.After(1 * time.Second):
 		t.Fatalf("failed to receive response (timeout)")

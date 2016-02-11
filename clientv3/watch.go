@@ -166,7 +166,7 @@ func (w *watcher) addStream(resp *pb.WatchResponse, pendingReq *watchRequest) {
 	if pendingReq == nil {
 		// no pending request; ignore
 		return
-	} else if resp.WatchId == -1 || resp.Compacted {
+	} else if resp.WatchId == -1 || resp.CompactRevision != 0 {
 		// failed; no channel
 		pendingReq.retc <- nil
 		return
@@ -238,7 +238,7 @@ func (w *watcher) run() {
 			switch {
 			case pbresp.Canceled:
 				delete(cancelSet, pbresp.WatchId)
-			case pbresp.Compacted:
+			case pbresp.CompactRevision != 0:
 				w.mu.Lock()
 				if ws, ok := w.streams[pbresp.WatchId]; ok {
 					w.closeStream(ws)
