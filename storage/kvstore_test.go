@@ -286,7 +286,7 @@ func TestStoreCompact(t *testing.T) {
 	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
 
 	s.Compact(3)
-	s.fifoSched.WaitFinish()
+	s.fifoSched.WaitFinish(1)
 
 	if s.compactMainRev != 3 {
 		t.Errorf("compact main rev = %d, want 3", s.compactMainRev)

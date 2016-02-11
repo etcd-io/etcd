@@ -37,8 +37,8 @@ type Scheduler interface {
 	// Finished returns the number of finished jobs
 	Finished() int
 
-	// WaitFinish waits all pending jobs to finish.
-	WaitFinish()
+	// WaitFinish waits until at least n job are finished and all pending jobs are finished.
+	WaitFinish(n int)
 
 	// Stop stops the scheduler.
 	Stop()
@@ -110,13 +110,9 @@ func (f *fifo) Finished() int {
 	return f.finished
 }
 
-func (f *fifo) WaitFinish() {
+func (f *fifo) WaitFinish(n int) {
 	f.finishCond.L.Lock()
-	finish := f.finished
-	f.finishCond.L.Unlock()
-
-	f.finishCond.L.Lock()
-	for f.finished == finish || len(f.pendings) != 0 {
+	for f.finished < n || len(f.pendings) != 0 {
 		f.finishCond.Wait()
 	}
 	f.finishCond.L.Unlock()
