@@ -149,8 +149,8 @@ func (f *failureKillOneForLongTime) Inject(c *cluster, round int) error {
 		start, _ := c.Report()
 		var end int
 		// Normal healthy cluster could accept 1000req/s at least.
-		// Give it 3-times time to create a new snapshot.
-		retry := snapshotCount / 1000 * 3
+		// Give it 10-times time to create a new snapshot.
+		retry := (snazpshotCount / 1000) * 10
 		for j := 0; j < retry; j++ {
 			end, _ = c.Report()
 			// If the number of proposals committed is bigger than snapshot count,
