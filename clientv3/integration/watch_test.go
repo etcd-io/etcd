@@ -157,6 +157,33 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	}
 }
 
+// TestWatchReconnRequest tests the send failure path when requesting a watcher.
+func TestWatchReconnRequest(t *testing.T) {
+	runWatchTest(t, testWatchReconnRequest)
+}
+
+func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
+	// take down watcher connection
+	donec := make(chan struct{})
+	go func() {
+		for {
+			wctx.wclient.ActiveConnection().Close()
+			select {
+			case <-donec:
+				return
+			default:
+			}
+		}
+	}()
+	// should reconnect when requesting watch
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a", 0); wctx.ch == nil {
+		t.Fatalf("expected non-nil channel")
+	}
+	close(donec)
+	// ensure watcher works
+	putAndWatch(t, wctx, "a", "a")
+}
+
 // TestWatchReconnInit tests watcher resumes correctly if connection lost
 // before any data was sent.
 func TestWatchReconnInit(t *testing.T) {
