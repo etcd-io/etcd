@@ -286,13 +286,13 @@ func (w *watcher) run() {
 
 		// send failed; queue for retry
 		if failedReq != nil {
-			go func() {
+			go func(wr *watchRequest) {
 				select {
-				case w.reqc <- pendingReq:
-				case <-pendingReq.ctx.Done():
+				case w.reqc <- wr:
+				case <-wr.ctx.Done():
 				case <-w.donec:
 				}
-			}()
+			}(pendingReq)
 			failedReq = nil
 			pendingReq = nil
 		}
