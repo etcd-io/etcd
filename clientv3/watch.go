@@ -44,6 +44,9 @@ type Watcher interface {
 type WatchResponse struct {
 	Header pb.ResponseHeader
 	Events []*storagepb.Event
+	// CompactRevision is set to the compaction revision that
+	// caused the watcher to cancel.
+	CompactRevision int64
 }
 
 // watcher implements the Watcher interface
@@ -166,7 +169,18 @@ func (w *watcher) addStream(resp *pb.WatchResponse, pendingReq *watchRequest) {
 	if pendingReq == nil {
 		// no pending request; ignore
 		return
-	} else if resp.WatchId == -1 || resp.CompactRevision != 0 {
+	}
+	if resp.CompactRevision != 0 {
+		// compaction after start revision
+		ret := make(chan WatchResponse, 1)
+		ret <- WatchResponse{
+			Header:          *resp.Header,
+			CompactRevision: resp.CompactRevision}
+		close(ret)
+		pendingReq.retc <- ret
+		return
+	}
+	if resp.WatchId == -1 {
 		// failed; no channel
 		pendingReq.retc <- nil
 		return
@@ -238,12 +252,6 @@ func (w *watcher) run() {
 			switch {
 			case pbresp.Canceled:
 				delete(cancelSet, pbresp.WatchId)
-			case pbresp.CompactRevision != 0:
-				w.mu.Lock()
-				if ws, ok := w.streams[pbresp.WatchId]; ok {
-					w.closeStream(ws)
-				}
-				w.mu.Unlock()
 			case pbresp.Created:
 				// response to pending req, try to add
 				w.addStream(pbresp, pendingReq)
@@ -305,7 +313,10 @@ func (w *watcher) dispatchEvent(pbresp *pb.WatchResponse) bool {
 	defer w.mu.RUnlock()
 	ws, ok := w.streams[pbresp.WatchId]
 	if ok {
-		wr := &WatchResponse{*pbresp.Header, pbresp.Events}
+		wr := &WatchResponse{
+			Header:          *pbresp.Header,
+			Events:          pbresp.Events,
+			CompactRevision: pbresp.CompactRevision}
 		ws.recvc <- wr
 	}
 	return ok
@@ -346,6 +357,11 @@ func (w *watcher) serveStream(ws *watcherStream) {
 		}
 		select {
 		case outc <- *curWr:
+			if len(wrs[0].Events) == 0 {
+				// compaction message
+				closing = true
+				break
+			}
 			newRev := wrs[0].Events[len(wrs[0].Events)-1].Kv.ModRevision
 			if newRev != ws.lastRev {
 				ws.lastRev = newRev
