@@ -59,7 +59,7 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 
 	return &pb.MemberAddResponse{
 		Header: cs.header(),
-		Member: &pb.Member{ID: uint64(m.ID), PeerURLs: m.PeerURLs},
+		Member: &pb.Member{ID: uint64(m.ID), IsLeader: m.ID == cs.server.Leader(), PeerURLs: m.PeerURLs},
 	}, nil
 }
 
@@ -103,6 +103,7 @@ func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest
 		protoMembs[i] = &pb.Member{
 			Name:       membs[i].Name,
 			ID:         uint64(membs[i].ID),
+			IsLeader:   membs[i].ID == cs.server.Leader(),
 			PeerURLs:   membs[i].PeerURLs,
 			ClientURLs: membs[i].ClientURLs,
 		}

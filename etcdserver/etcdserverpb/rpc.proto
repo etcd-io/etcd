@@ -323,10 +323,11 @@ message Member {
   uint64 ID = 1;
   // If the member is not started, name will be an empty string.
   string name = 2;
-  repeated string peerURLs = 3;
+  bool IsLeader = 3;
+  repeated string peerURLs = 4;
   // If the member is not started, client_URLs will be an zero length
   // string array.
-  repeated string clientURLs = 4;
+  repeated string clientURLs = 5;
 }
 
 message MemberAddRequest {
