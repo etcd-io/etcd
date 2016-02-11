@@ -31,10 +31,10 @@ type (
 )
 
 type Cluster interface {
-	// List lists the current cluster membership.
+	// MemberList lists the current cluster membership.
 	MemberList(ctx context.Context) (*MemberListResponse, error)
 
-	// Leader returns the current leader member.
+	// MemberLeader returns the current leader member.
 	MemberLeader(ctx context.Context) (*Member, error)
 
 	// MemberAdd adds a new member into the cluster.
