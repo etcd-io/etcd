@@ -104,7 +104,7 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 	defer ti.RUnlock()
 
 	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
-		if !item.Less(endi) {
+		if len(endi.key) > 0 && !item.Less(endi) {
 			return false
 		}
 		curKeyi := item.(*keyIndex)
@@ -154,7 +154,7 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 	endi := &keyIndex{key: end}
 	var revs []revision
 	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
-		if !item.Less(endi) {
+		if len(endi.key) > 0 && !item.Less(endi) {
 			return false
 		}
 		curKeyi := item.(*keyIndex)

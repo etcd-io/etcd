@@ -120,6 +120,11 @@ func testKVRange(t *testing.T, f rangeFunc) {
 			[]byte("foo"), nil,
 			kvs[:1],
 		},
+		// get entire keyspace
+		{
+			[]byte(""), []byte(""),
+			kvs,
+		},
 	}
 
 	for i, tt := range tests {

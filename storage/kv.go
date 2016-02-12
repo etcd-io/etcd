@@ -33,7 +33,8 @@ type KV interface {
 	// The returned rev is the current revision of the KV when the operation is executed.
 	// If rangeRev <=0, range gets the keys at currentRev.
 	// If `end` is nil, the request returns the key.
-	// If `end` is not nil, it gets the keys in range [key, range_end).
+	// If `end` is not nil and not empty, it gets the keys in range [key, range_end).
+	// If `end` is not nil and empty, it gets the keys greater than or equal to key.
 	// Limit limits the number of keys returned.
 	// If the required rev is compacted, ErrCompacted will be returned.
 	Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
