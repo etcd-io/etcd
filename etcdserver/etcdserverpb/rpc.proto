@@ -117,6 +117,13 @@ message RangeRequest {
 
   // sort_target is the kv field to use for sorting
   SortTarget sort_target = 6;
+
+  // range request is linearizable by default. Linearizable requests has a higher
+  // latency and lower throughput than serializable request.
+  // To reduce latency, serializable can be set. If serializable is set, range request 
+  // will be serializable, but not linearizable with other requests.
+  // Serializable range can be served locally without waiting for other nodes in the cluster.
+  bool serializable = 7;
 }
 
 message RangeResponse {

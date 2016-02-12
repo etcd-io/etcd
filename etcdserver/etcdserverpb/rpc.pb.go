@@ -143,7 +143,8 @@ func (*ResponseHeader) ProtoMessage()    {}
 type RangeRequest struct {
 	// if the range_end is not given, the request returns the key.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// if the range_end is given, it gets the keys in range [key, range_end).
+	// if the range_end is given, it gets the keys in range [key, range_end)
+	// if range_end is nonempty, otherwise it returns all keys >= key.
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
 	// limit the number of keys returned.
 	Limit int64 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
@@ -156,6 +157,12 @@ type RangeRequest struct {
 	SortOrder RangeRequest_SortOrder `protobuf:"varint,5,opt,name=sort_order,proto3,enum=etcdserverpb.RangeRequest_SortOrder" json:"sort_order,omitempty"`
 	// sort_target is the kv field to use for sorting
 	SortTarget RangeRequest_SortTarget `protobuf:"varint,6,opt,name=sort_target,proto3,enum=etcdserverpb.RangeRequest_SortTarget" json:"sort_target,omitempty"`
+	// range request is linearizable by default. Linearizable requests has a higher
+	// latency and lower throughput than serializable request.
+	// To reduce latency, serializable can be set. If serializable is set, range request
+	// will be serializable, but not linearizable with other requests.
+	// Serializable range can be served locally without waiting for other nodes in the cluster.
+	Serializable bool `protobuf:"varint,7,opt,name=serializable,proto3" json:"serializable,omitempty"`
 }
 
 func (m *RangeRequest) Reset()         { *m = RangeRequest{} }
@@ -1883,6 +1890,16 @@ func (m *RangeRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.SortTarget))
 	}
+	if m.Serializable {
+		data[i] = 0x38
+		i++
+		if m.Serializable {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
 	return i, nil
 }
 
@@ -3230,6 +3247,9 @@ func (m *RangeRequest) Size() (n int) {
 	if m.SortTarget != 0 {
 		n += 1 + sovRpc(uint64(m.SortTarget))
 	}
+	if m.Serializable {
+		n += 2
+	}
 	return n
 }
 
@@ -4095,6 +4115,26 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Serializable", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Serializable = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
