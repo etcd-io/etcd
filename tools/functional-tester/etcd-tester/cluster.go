@@ -25,7 +25,8 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 
-	clientV2 "github.com/coreos/etcd/client"
+	clientv2 "github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
@@ -183,6 +184,32 @@ func (c *cluster) WaitHealth() error {
 	return err
 }
 
+// GetLeader returns the index of leader and error if any.
+func (c *cluster) GetLeader() (int, error) {
+	if c.v2Only {
+		return 0, nil
+	}
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   c.GRPCURLs,
+		DialTimeout: 5 * time.Second,
+	})
+	if err != nil {
+		return 0, err
+	}
+	defer cli.Close()
+	clus := clientv3.NewCluster(cli)
+	mem, err := clus.MemberLeader(context.Background())
+	if err != nil {
+		return 0, err
+	}
+	for i, name := range c.Names {
+		if name == mem.Name {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("no leader found")
+}
+
 func (c *cluster) Report() (success, failure int) {
 	for _, stress := range c.Stressers {
 		s, f := stress.Report()
@@ -253,15 +280,15 @@ func setHealthKey(us []string) error {
 // setHealthKeyV2 sets health key on all given urls.
 func setHealthKeyV2(us []string) error {
 	for _, u := range us {
-		cfg := clientV2.Config{
+		cfg := clientv2.Config{
 			Endpoints: []string{u},
 		}
-		c, err := clientV2.New(cfg)
+		c, err := clientv2.New(cfg)
 		if err != nil {
 			return err
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		kapi := clientV2.NewKeysAPI(c)
+		kapi := clientv2.NewKeysAPI(c)
 		_, err = kapi.Set(ctx, "health", "good", nil)
 		cancel()
 		if err != nil {

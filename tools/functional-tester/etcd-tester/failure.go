@@ -128,6 +128,33 @@ func (f *failureKillOne) Recover(c *cluster, round int) error {
 	return c.WaitHealth()
 }
 
+type failureKillLeader struct {
+	description
+	idx int
+}
+
+func newFailureKillLeader() *failureKillLeader {
+	return &failureKillLeader{
+		description: "kill leader member",
+	}
+}
+
+func (f *failureKillLeader) Inject(c *cluster, round int) error {
+	idx, err := c.GetLeader()
+	if err != nil {
+		return err
+	}
+	f.idx = idx
+	return c.Agents[idx].Stop()
+}
+
+func (f *failureKillLeader) Recover(c *cluster, round int) error {
+	if _, err := c.Agents[f.idx].Restart(); err != nil {
+		return err
+	}
+	return c.WaitHealth()
+}
+
 // failureKillOneForLongTime kills one member for long time, and restart
 // after a snapshot is required.
 type failureKillOneForLongTime struct {
@@ -168,6 +195,51 @@ func (f *failureKillOneForLongTime) Inject(c *cluster, round int) error {
 func (f *failureKillOneForLongTime) Recover(c *cluster, round int) error {
 	i := round % c.Size
 	if _, err := c.Agents[i].Restart(); err != nil {
+		return err
+	}
+	return c.WaitHealth()
+}
+
+// failureKillLeaderForLongTime kills the leader for long time, and restart
+// after a snapshot is required.
+type failureKillLeaderForLongTime struct {
+	description
+	idx int
+}
+
+func newFailureKillLeaderForLongTime() *failureKillLeaderForLongTime {
+	return &failureKillLeaderForLongTime{
+		description: "kill the leader for long time and expect it to recover from incoming snapshot",
+	}
+}
+
+func (f *failureKillLeaderForLongTime) Inject(c *cluster, round int) error {
+	idx, err := c.GetLeader()
+	if err != nil {
+		return err
+	}
+	f.idx = idx
+	if err := c.Agents[idx].Stop(); err != nil {
+		return err
+	}
+	if c.Size >= 3 {
+		start, _ := c.Report()
+		var end int
+		retry := snapshotCount / 1000 * 3
+		for j := 0; j < retry; j++ {
+			end, _ = c.Report()
+			if end-start > snapshotCount {
+				return nil
+			}
+			time.Sleep(time.Second)
+		}
+		return fmt.Errorf("cluster too slow: only commit %d requests in %ds", end-start, retry)
+	}
+	return nil
+}
+
+func (f *failureKillLeaderForLongTime) Recover(c *cluster, round int) error {
+	if _, err := c.Agents[f.idx].Restart(); err != nil {
 		return err
 	}
 	return c.WaitHealth()
