@@ -101,7 +101,8 @@ message RangeRequest {
 
   // if the range_end is not given, the request returns the key.
   bytes key = 1;
-  // if the range_end is given, it gets the keys in range [key, range_end).
+  // if the range_end is given, it gets the keys in range [key, range_end)
+  // if range_end is nonempty, otherwise it returns all keys >= key.
   bytes range_end = 2;
   // limit the number of keys returned.
   int64 limit = 3;
