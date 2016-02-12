@@ -297,3 +297,47 @@ func setHealthKeyV2(us []string) error {
 	}
 	return nil
 }
+
+func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) {
+	revs := make(map[string]int64)
+	hashes := make(map[string]int64)
+	for _, u := range c.GRPCURLs {
+		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if err != nil {
+			return nil, nil, err
+		}
+		kvc := pb.NewKVClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		resp, err := kvc.Hash(ctx, &pb.HashRequest{})
+		cancel()
+		conn.Close()
+		if err != nil {
+			return nil, nil, err
+		}
+		revs[u] = resp.Header.Revision
+		hashes[u] = int64(resp.Hash)
+	}
+	return revs, hashes, nil
+}
+
+func (c *cluster) compactKV(rev int64) error {
+	var (
+		conn *grpc.ClientConn
+		err  error
+	)
+	for _, u := range c.GRPCURLs {
+		conn, err = grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if err != nil {
+			continue
+		}
+		kvc := pb.NewKVClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, err = kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev})
+		cancel()
+		conn.Close()
+		if err == nil {
+			return nil
+		}
+	}
+	return err
+}

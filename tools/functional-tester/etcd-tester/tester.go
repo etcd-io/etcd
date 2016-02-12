@@ -18,11 +18,6 @@ import (
 	"log"
 	"sync"
 	"time"
-
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
-
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 type tester struct {
@@ -92,14 +87,15 @@ func (tt *tester) runLoop() {
 
 			log.Printf("etcd-tester: [round#%d case#%d] checking current revisions...", i, j)
 			var (
-				revs map[string]int64
-				rerr error
-				ok   bool
+				revs   map[string]int64
+				hashes map[string]int64
+				rerr   error
+				ok     bool
 			)
 			for k := 0; k < 5; k++ {
 				time.Sleep(time.Second)
 
-				revs, rerr = tt.cluster.getRevision()
+				revs, hashes, rerr = tt.cluster.getRevisionHash()
 				if rerr != nil {
 					log.Printf("etcd-tester: [round#%d case#%d.%d] failed to get current revisions (%v)", i, j, k, rerr)
 					continue
@@ -121,15 +117,6 @@ func (tt *tester) runLoop() {
 			log.Printf("etcd-tester: [round#%d case#%d] all members are consistent with current revisions", i, j)
 
 			log.Printf("etcd-tester: [round#%d case#%d] checking current storage hashes...", i, j)
-			hashes, err := tt.cluster.getKVHash()
-			if err != nil {
-				log.Printf("etcd-tester: [round#%d case#%d] getKVHash error (%v)", i, j, err)
-				if err := tt.cleanup(i, j); err != nil {
-					log.Printf("etcd-tester: [round#%d case#%d] cleanup error: %v", i, j, err)
-					return
-				}
-				continue
-			}
 			if _, ok = getSameValue(hashes); !ok {
 				log.Printf("etcd-tester: [round#%d case#%d] checking current storage hashes failed (%v)", i, j, hashes)
 				if err := tt.cleanup(i, j); err != nil {
@@ -206,66 +193,4 @@ func (s *Status) setCase(c int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Case = c
-}
-
-func (c *cluster) getRevision() (map[string]int64, error) {
-	revs := make(map[string]int64)
-	for _, u := range c.GRPCURLs {
-		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-		if err != nil {
-			return nil, err
-		}
-		kvc := pb.NewKVClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		resp, err := kvc.Range(ctx, &pb.RangeRequest{Key: []byte("foo")})
-		cancel()
-		conn.Close()
-		if err != nil {
-			return nil, err
-		}
-		revs[u] = resp.Header.Revision
-	}
-	return revs, nil
-}
-
-func (c *cluster) getKVHash() (map[string]int64, error) {
-	hashes := make(map[string]int64)
-	for _, u := range c.GRPCURLs {
-		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-		if err != nil {
-			return nil, err
-		}
-		kvc := pb.NewKVClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		resp, err := kvc.Hash(ctx, &pb.HashRequest{})
-		cancel()
-		conn.Close()
-		if err != nil {
-			return nil, err
-		}
-		hashes[u] = int64(resp.Hash)
-	}
-	return hashes, nil
-}
-
-func (c *cluster) compactKV(rev int64) error {
-	var (
-		conn *grpc.ClientConn
-		err  error
-	)
-	for _, u := range c.GRPCURLs {
-		conn, err = grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-		if err != nil {
-			continue
-		}
-		kvc := pb.NewKVClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_, err = kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev})
-		cancel()
-		conn.Close()
-		if err == nil {
-			return nil
-		}
-	}
-	return err
 }
