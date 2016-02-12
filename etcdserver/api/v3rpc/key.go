@@ -139,6 +139,7 @@ func (s *kvServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashRespons
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	s.fillInHeader(resp.Header)
 	return resp, nil
 }
 

@@ -246,7 +246,8 @@ message HashRequest {
 }
 
 message HashResponse {
-  uint32 hash = 1;
+  ResponseHeader header = 1;
+  uint32 hash = 2;
 }
 
 message WatchRequest {
