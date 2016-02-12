@@ -96,9 +96,10 @@ func TestKVRange(t *testing.T) {
 	wheader := resp.Header
 
 	tests := []struct {
-		begin, end string
-		rev        int64
-		sortOption *clientv3.SortOption
+		begin, end   string
+		rev          int64
+		sortOption   *clientv3.SortOption
+		serializable bool
 
 		wantSet []*storagepb.KeyValue
 	}{
@@ -107,6 +108,19 @@ func TestKVRange(t *testing.T) {
 			"a", "c",
 			0,
 			nil,
+			false,
+
+			[]*storagepb.KeyValue{
+				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
+				{Key: []byte("b"), Value: nil, CreateRevision: 3, ModRevision: 3, Version: 1},
+			},
+		},
+		// range first two with serializable
+		{
+			"a", "c",
+			0,
+			nil,
+			true,
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -118,6 +132,7 @@ func TestKVRange(t *testing.T) {
 			"a", "x",
 			2,
 			nil,
+			false,
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -128,6 +143,7 @@ func TestKVRange(t *testing.T) {
 			"a", "x",
 			0,
 			&clientv3.SortOption{Target: clientv3.SortByKey, Order: clientv3.SortAscend},
+			false,
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -143,6 +159,7 @@ func TestKVRange(t *testing.T) {
 			"a", "x",
 			0,
 			&clientv3.SortOption{Target: clientv3.SortByCreatedRev, Order: clientv3.SortDescend},
+			false,
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
@@ -158,6 +175,7 @@ func TestKVRange(t *testing.T) {
 			"a", "x",
 			0,
 			&clientv3.SortOption{Target: clientv3.SortByModifiedRev, Order: clientv3.SortDescend},
+			false,
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
@@ -174,6 +192,9 @@ func TestKVRange(t *testing.T) {
 		opts := []clientv3.OpOption{clientv3.WithRange(tt.end), clientv3.WithRev(tt.rev)}
 		if tt.sortOption != nil {
 			opts = append(opts, clientv3.WithSort(tt.sortOption.Target, tt.sortOption.Order))
+		}
+		if tt.serializable == true {
+			opts = append(opts, clientv3.WithSerializable())
 		}
 		resp, err := kv.Get(ctx, tt.begin, opts...)
 		if err != nil {

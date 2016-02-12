@@ -35,9 +35,10 @@ type Op struct {
 	end []byte
 
 	// for range
-	limit int64
-	rev   int64
-	sort  *SortOption
+	limit        int64
+	rev          int64
+	sort         *SortOption
+	serializable bool
 
 	// for put
 	val     []byte
@@ -86,6 +87,8 @@ func OpDelete(key string, opts ...OpOption) Op {
 		panic("unexpected revision in delete")
 	case ret.sort != nil:
 		panic("unexpected sort in delete")
+	case ret.serializable != false:
+		panic("unexpected serializable in delete")
 	}
 	return ret
 }
@@ -102,6 +105,8 @@ func OpPut(key, val string, opts ...OpOption) Op {
 		panic("unexpected revision in put")
 	case ret.sort != nil:
 		panic("unexpected sort in put")
+	case ret.serializable != false:
+		panic("unexpected serializable in delete")
 	}
 	return ret
 }
@@ -126,4 +131,7 @@ func WithSort(tgt SortTarget, order SortOrder) OpOption {
 }
 func WithRange(endKey string) OpOption {
 	return func(op *Op) { op.end = []byte(endKey) }
+}
+func WithSerializable() OpOption {
+	return func(op *Op) { op.serializable = true }
 }
