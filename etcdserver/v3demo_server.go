@@ -58,6 +58,10 @@ type Lessor interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	if r.Serializable {
+		return applyRange(noTxn, s.kv, r)
+	}
+
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Range: r})
 	if err != nil {
 		return nil, err
