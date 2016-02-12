@@ -37,9 +37,12 @@ func (tt *tester) runLoop() {
 	}
 	for i := 0; i < tt.limit; i++ {
 		tt.status.setRound(i)
+		roundTotalCounter.Inc()
 
 		var currentRevision int64
 		for j, f := range tt.failures {
+			caseTotalCounter.WithLabelValues(f.Desc()).Inc()
+
 			tt.status.setCase(j)
 
 			if err := tt.cluster.WaitHealth(); err != nil {
@@ -153,6 +156,9 @@ func (tt *tester) runLoop() {
 }
 
 func (tt *tester) cleanup(i, j int) error {
+	roundFailedTotalCounter.Inc()
+	caseFailedTotalCounter.WithLabelValues(tt.failures[j].Desc()).Inc()
+
 	log.Printf("etcd-tester: [round#%d case#%d] cleaning up...", i, j)
 	if err := tt.cluster.Cleanup(); err != nil {
 		return err
