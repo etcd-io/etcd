@@ -28,7 +28,9 @@ const (
 	ExitBadConnection
 	ExitInvalidInput // for txn, watch command
 	ExitBadFeature   // provided a valid flag with an unsupported value
-	ExitBadArgs      = 128
+	ExitInterrupted
+	ExitIO
+	ExitBadArgs = 128
 )
 
 func ExitWithError(code int, err error) {

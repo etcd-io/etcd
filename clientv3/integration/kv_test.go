@@ -311,9 +311,11 @@ func TestKVCompact(t *testing.T) {
 	defer wc.Close()
 	wchan := wc.Watch(ctx, "foo", 3)
 
-	_, ok := <-wchan
-	if ok {
-		t.Fatalf("wchan ok got %v, want false", ok)
+	if wr := <-wchan; wr.CompactRevision != 7 {
+		t.Fatalf("wchan CompactRevision got %v, want 7", wr.CompactRevision)
+	}
+	if wr, ok := <-wchan; ok {
+		t.Fatalf("wchan got %v, expected closed", wr)
 	}
 
 	err = kv.Compact(ctx, 1000)

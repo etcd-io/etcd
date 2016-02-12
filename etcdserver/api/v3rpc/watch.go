@@ -146,10 +146,10 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 
 			err := sws.gRPCStream.Send(&pb.WatchResponse{
-				Header:    sws.newResponseHeader(wresp.Revision),
-				WatchId:   int64(wresp.WatchID),
-				Events:    events,
-				Compacted: wresp.Compacted,
+				Header:          sws.newResponseHeader(wresp.Revision),
+				WatchId:         int64(wresp.WatchID),
+				Events:          events,
+				CompactRevision: wresp.CompactRevision,
 			})
 			storage.ReportEventReceived()
 			if err != nil {
