@@ -98,7 +98,15 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.CompactionResponse), result.err
+	resp := result.resp.(*pb.CompactionResponse)
+	if resp == nil {
+		resp = &pb.CompactionResponse{}
+	}
+	if resp.Header == nil {
+		resp.Header = &pb.ResponseHeader{}
+	}
+	resp.Header.Revision = s.kv.Rev()
+	return resp, result.err
 }
 
 func (s *EtcdServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
@@ -106,7 +114,7 @@ func (s *EtcdServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashRespo
 	if err != nil {
 		return nil, err
 	}
-	return &pb.HashResponse{Hash: h}, nil
+	return &pb.HashResponse{Header: &pb.ResponseHeader{Revision: s.kv.Rev()}, Hash: h}, nil
 }
 
 func (s *EtcdServer) LeaseCreate(ctx context.Context, r *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {

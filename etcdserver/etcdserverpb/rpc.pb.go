@@ -749,12 +749,20 @@ func (m *HashRequest) String() string { return proto.CompactTextString(m) }
 func (*HashRequest) ProtoMessage()    {}
 
 type HashResponse struct {
-	Hash uint32 `protobuf:"varint,1,opt,name=hash,proto3" json:"hash,omitempty"`
+	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Hash   uint32          `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
 }
 
 func (m *HashResponse) Reset()         { *m = HashResponse{} }
 func (m *HashResponse) String() string { return proto.CompactTextString(m) }
 func (*HashResponse) ProtoMessage()    {}
+
+func (m *HashResponse) GetHeader() *ResponseHeader {
+	if m != nil {
+		return m.Header
+	}
+	return nil
+}
 
 type WatchRequest struct {
 	// Types that are valid to be assigned to RequestUnion:
@@ -2479,8 +2487,18 @@ func (m *HashResponse) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Header != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
+		n15, err := m.Header.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n15
+	}
 	if m.Hash != 0 {
-		data[i] = 0x8
+		data[i] = 0x10
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Hash))
 	}
@@ -2503,11 +2521,11 @@ func (m *WatchRequest) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.RequestUnion != nil {
-		nn15, err := m.RequestUnion.MarshalTo(data[i:])
+		nn16, err := m.RequestUnion.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn15
+		i += nn16
 	}
 	return i, nil
 }
@@ -2518,11 +2536,11 @@ func (m *WatchRequest_CreateRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.CreateRequest.Size()))
-		n16, err := m.CreateRequest.MarshalTo(data[i:])
+		n17, err := m.CreateRequest.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n16
+		i += n17
 	}
 	return i, nil
 }
@@ -2532,11 +2550,11 @@ func (m *WatchRequest_CancelRequest) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.CancelRequest.Size()))
-		n17, err := m.CancelRequest.MarshalTo(data[i:])
+		n18, err := m.CancelRequest.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n18
 	}
 	return i, nil
 }
@@ -2621,11 +2639,11 @@ func (m *WatchResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n18, err := m.Header.MarshalTo(data[i:])
+		n19, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n18
+		i += n19
 	}
 	if m.WatchId != 0 {
 		data[i] = 0x10
@@ -2719,11 +2737,11 @@ func (m *LeaseCreateResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n19, err := m.Header.MarshalTo(data[i:])
+		n20, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n19
+		i += n20
 	}
 	if m.ID != 0 {
 		data[i] = 0x10
@@ -2786,11 +2804,11 @@ func (m *LeaseRevokeResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n20, err := m.Header.MarshalTo(data[i:])
+		n21, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n20
+		i += n21
 	}
 	return i, nil
 }
@@ -2837,11 +2855,11 @@ func (m *LeaseKeepAliveResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n21, err := m.Header.MarshalTo(data[i:])
+		n22, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n22
 	}
 	if m.ID != 0 {
 		data[i] = 0x10
@@ -2977,21 +2995,21 @@ func (m *MemberAddResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n22, err := m.Header.MarshalTo(data[i:])
+		n23, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n22
+		i += n23
 	}
 	if m.Member != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Member.Size()))
-		n23, err := m.Member.MarshalTo(data[i:])
+		n24, err := m.Member.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n23
+		i += n24
 	}
 	return i, nil
 }
@@ -3038,11 +3056,11 @@ func (m *MemberRemoveResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n24, err := m.Header.MarshalTo(data[i:])
+		n25, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n24
+		i += n25
 	}
 	return i, nil
 }
@@ -3104,11 +3122,11 @@ func (m *MemberUpdateResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n25, err := m.Header.MarshalTo(data[i:])
+		n26, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n25
+		i += n26
 	}
 	return i, nil
 }
@@ -3150,11 +3168,11 @@ func (m *MemberListResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n26, err := m.Header.MarshalTo(data[i:])
+		n27, err := m.Header.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n26
+		i += n27
 	}
 	if len(m.Members) > 0 {
 		for _, msg := range m.Members {
@@ -3518,6 +3536,10 @@ func (m *HashRequest) Size() (n int) {
 func (m *HashResponse) Size() (n int) {
 	var l int
 	_ = l
+	if m.Header != nil {
+		l = m.Header.Size()
+		n += 1 + l + sovRpc(uint64(l))
+	}
 	if m.Hash != 0 {
 		n += 1 + sovRpc(uint64(m.Hash))
 	}
@@ -5705,6 +5727,39 @@ func (m *HashResponse) Unmarshal(data []byte) error {
 		}
 		switch fieldNum {
 		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Header", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRpc
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Header == nil {
+				m.Header = &ResponseHeader{}
+			}
+			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Hash", wireType)
 			}
