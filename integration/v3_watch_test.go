@@ -257,7 +257,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			}
 		}
 
-		rok, nr := WaitResponse(wStream, 1*time.Second)
+		rok, nr := waitResponse(wStream, 1*time.Second)
 		if !rok {
 			t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 		}
@@ -325,7 +325,7 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 	}
 
 	// watch got canceled, so this should block
-	rok, nr := WaitResponse(wStream, 1*time.Second)
+	rok, nr := waitResponse(wStream, 1*time.Second)
 	if !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 	}
@@ -430,7 +430,7 @@ func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
 	}
 
 	// now Recv should block because there is no more events coming
-	rok, nr := WaitResponse(wStream, 1*time.Second)
+	rok, nr := waitResponse(wStream, 1*time.Second)
 	if !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 	}
@@ -516,7 +516,7 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 		t.Errorf("events got = %+v, want = %+v", events, wevents)
 	}
 
-	rok, nr := WaitResponse(wStream, 1*time.Second)
+	rok, nr := waitResponse(wStream, 1*time.Second)
 	if !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 	}
@@ -604,7 +604,7 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 		t.Errorf("events got = %+v, want = %+v", events, allWevents)
 	}
 
-	rok, nr := WaitResponse(wStream, 1*time.Second)
+	rok, nr := waitResponse(wStream, 1*time.Second)
 	if !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 	}
@@ -680,7 +680,7 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 				t.Errorf("wresp.Events got = %+v, want = %+v", wresp.Events, wevents)
 			}
 			// now Recv should block because there is no more events coming
-			rok, nr := WaitResponse(wStream, 1*time.Second)
+			rok, nr := waitResponse(wStream, 1*time.Second)
 			if !rok {
 				t.Errorf("unexpected pb.WatchResponse is received %+v", nr)
 			}
@@ -691,11 +691,11 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 	clus.Terminate(t)
 }
 
-// WaitResponse waits on the given stream for given duration.
+// waitResponse waits on the given stream for given duration.
 // If there is no more events, true and a nil response will be
 // returned closing the WatchClient stream. Or the response will
 // be returned.
-func WaitResponse(wc pb.Watch_WatchClient, timeout time.Duration) (bool, *pb.WatchResponse) {
+func waitResponse(wc pb.Watch_WatchClient, timeout time.Duration) (bool, *pb.WatchResponse) {
 	rCh := make(chan *pb.WatchResponse)
 	go func() {
 		resp, _ := wc.Recv()
