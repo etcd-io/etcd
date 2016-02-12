@@ -311,6 +311,12 @@ func applyRange(txnID int64, kv dstorage.KV, r *pb.RangeRequest) (*pb.RangeRespo
 		err error
 	)
 
+	// grpc sends empty byte strings as nils, so use a '\0' to indicate
+	// wanting a >= query
+	if len(r.RangeEnd) == 1 && r.RangeEnd[0] == 0 {
+		r.RangeEnd = []byte{}
+	}
+
 	limit := r.Limit
 	if r.SortOrder != pb.RangeRequest_NONE {
 		// fetch everything; sort and truncate afterwards

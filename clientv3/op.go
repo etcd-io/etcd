@@ -132,6 +132,7 @@ func WithSort(tgt SortTarget, order SortOrder) OpOption {
 func WithRange(endKey string) OpOption {
 	return func(op *Op) { op.end = []byte(endKey) }
 }
+func WithFromKey() OpOption { return WithRange("\x00") }
 func WithSerializable() OpOption {
 	return func(op *Op) { op.serializable = true }
 }

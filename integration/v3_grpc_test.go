@@ -488,6 +488,8 @@ func TestV3RangeRequest(t *testing.T) {
 				{Key: []byte("c"), RangeEnd: []byte("c")},
 				// [d, b) = empty
 				{Key: []byte("d"), RangeEnd: []byte("b")},
+				// ["\0", "\0") => all in range
+				{Key: []byte{0}, RangeEnd: []byte{0}},
 			},
 
 			[][]string{
@@ -496,8 +498,9 @@ func TestV3RangeRequest(t *testing.T) {
 				{},
 				{},
 				{},
+				{"a", "b", "c", "d", "e"},
 			},
-			[]bool{false, false, false, false, false},
+			[]bool{false, false, false, false, false, false},
 		},
 		// revision
 		{
