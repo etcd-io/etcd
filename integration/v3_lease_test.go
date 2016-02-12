@@ -230,6 +230,66 @@ func TestV3LeaseExists(t *testing.T) {
 	}
 }
 
+// TestV3LeaseSwitch tests a key can be switched from one lease to another.
+func TestV3LeaseSwitch(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	key := "foo"
+
+	// create lease
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	lresp1, err1 := clus.RandClient().Lease.LeaseCreate(ctx, &pb.LeaseCreateRequest{TTL: 30})
+	if err1 != nil {
+		t.Fatal(err1)
+	}
+	lresp2, err2 := clus.RandClient().Lease.LeaseCreate(ctx, &pb.LeaseCreateRequest{TTL: 30})
+	if err2 != nil {
+		t.Fatal(err2)
+	}
+
+	// attach key on lease1 then switch it to lease2
+	put1 := &pb.PutRequest{Key: []byte(key), Lease: lresp1.ID}
+	_, err := clus.RandClient().KV.Put(ctx, put1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	put2 := &pb.PutRequest{Key: []byte(key), Lease: lresp2.ID}
+	_, err = clus.RandClient().KV.Put(ctx, put2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// revoke lease1 should not remove key
+	_, err = clus.RandClient().Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp1.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rreq := &pb.RangeRequest{Key: []byte("foo")}
+	rresp, err := clus.RandClient().KV.Range(context.TODO(), rreq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rresp.Kvs) != 1 {
+		t.Fatalf("unexpect removal of key")
+	}
+
+	// revoke lease2 should remove key
+	_, err = clus.RandClient().Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp2.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rresp, err = clus.RandClient().KV.Range(context.TODO(), rreq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rresp.Kvs) != 0 {
+		t.Fatalf("lease removed but key remains")
+	}
+}
+
 // acquireLeaseAndKey creates a new lease and creates an attached key.
 func acquireLeaseAndKey(clus *ClusterV3, key string) (int64, error) {
 	// create lease
