@@ -19,6 +19,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 )
 
 func main() {
@@ -54,6 +56,7 @@ func main() {
 
 	sh := statusHandler{status: &t.status}
 	http.Handle("/status", sh)
+	http.Handle("/metrics", prometheus.Handler())
 	go func() { log.Fatal(http.ListenAndServe(":9028", nil)) }()
 
 	t.runLoop()
