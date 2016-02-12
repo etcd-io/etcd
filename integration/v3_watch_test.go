@@ -207,7 +207,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 		clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 
 		wAPI := clus.RandClient().Watch
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		wStream, err := wAPI.Watch(ctx)
 		if err != nil {
@@ -282,7 +282,7 @@ func TestV3WatchCancelUnsynced(t *testing.T) {
 func testV3WatchCancel(t *testing.T, startRev int64) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	wStream, errW := clus.RandClient().Watch.Watch(ctx)
 	if errW != nil {
@@ -351,7 +351,7 @@ func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	kvc := clus.RandClient().KV
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	wStream, errW := clus.RandClient().Watch.Watch(ctx)
 	if errW != nil {
@@ -452,7 +452,7 @@ func TestV3WatchMultipleEventsTxnUnsynced(t *testing.T) {
 func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	wStream, wErr := clus.RandClient().Watch.Watch(ctx)
 	if wErr != nil {
@@ -545,7 +545,7 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	wStream, wErr := clus.RandClient().Watch.Watch(ctx)
 	if wErr != nil {
@@ -628,7 +628,7 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 
 	streams := make([]pb.Watch_WatchClient, 5)
 	for i := range streams {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		wStream, errW := wAPI.Watch(ctx)
 		if errW != nil {
