@@ -34,12 +34,14 @@ var rangeCmd = &cobra.Command{
 }
 
 var (
-	rangeTotal int
+	rangeTotal       int
+	rangeConsistency string
 )
 
 func init() {
 	RootCmd.AddCommand(rangeCmd)
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
+	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
@@ -50,8 +52,17 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 
 	k := []byte(args[0])
 	var end []byte
-	if len(args) == 1 {
+	if len(args) == 2 {
 		end = []byte(args[1])
+	}
+
+	if rangeConsistency == "l" {
+		fmt.Println("bench with linearizable range")
+	} else if rangeConsistency == "s" {
+		fmt.Println("bench with serializable range")
+	} else {
+		fmt.Fprintln(os.Stderr, cmd.Usage())
+		os.Exit(1)
 	}
 
 	results = make(chan result)
@@ -72,9 +83,11 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 
 	go func() {
 		for i := 0; i < rangeTotal; i++ {
-			requests <- etcdserverpb.RangeRequest{
-				Key:      k,
-				RangeEnd: end}
+			r := etcdserverpb.RangeRequest{Key: k, RangeEnd: end}
+			if rangeConsistency == "s" {
+				r.Serializable = true
+			}
+			requests <- r
 		}
 		close(requests)
 	}()
