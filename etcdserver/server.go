@@ -116,6 +116,8 @@ type Server interface {
 	ID() types.ID
 	// Leader returns the ID of the leader Server.
 	Leader() types.ID
+	// State returns the state of the Server.
+	State() string
 	// Do takes a request and attempts to fulfill it, returning a Response.
 	Do(ctx context.Context, r pb.Request) (Response, error)
 	// Process takes a raft message and applies it to the server's raft state
@@ -824,6 +826,10 @@ func (s *EtcdServer) Term() uint64 { return atomic.LoadUint64(&s.r.term) }
 func (s *EtcdServer) Lead() uint64 { return atomic.LoadUint64(&s.r.lead) }
 
 func (s *EtcdServer) Leader() types.ID { return types.ID(s.Lead()) }
+
+func (s *EtcdServer) State() string {
+	return s.r.Status().RaftState.String()
+}
 
 func (s *EtcdServer) IsPprofEnabled() bool { return s.cfg.EnablePprof }
 

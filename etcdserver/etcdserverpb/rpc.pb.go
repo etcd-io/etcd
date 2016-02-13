@@ -127,6 +127,29 @@ func (x Compare_CompareTarget) String() string {
 	return proto.EnumName(Compare_CompareTarget_name, int32(x))
 }
 
+type Member_State int32
+
+const (
+	Member_Follower  Member_State = 0
+	Member_Candidate Member_State = 1
+	Member_Leader    Member_State = 2
+)
+
+var Member_State_name = map[int32]string{
+	0: "Follower",
+	1: "Candidate",
+	2: "Leader",
+}
+var Member_State_value = map[string]int32{
+	"Follower":  0,
+	"Candidate": 1,
+	"Leader":    2,
+}
+
+func (x Member_State) String() string {
+	return proto.EnumName(Member_State_name, int32(x))
+}
+
 type ResponseHeader struct {
 	ClusterId uint64 `protobuf:"varint,1,opt,name=cluster_id,proto3" json:"cluster_id,omitempty"`
 	MemberId  uint64 `protobuf:"varint,2,opt,name=member_id,proto3" json:"member_id,omitempty"`
@@ -1009,9 +1032,9 @@ func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 type Member struct {
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	// If the member is not started, name will be an empty string.
-	Name     string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	IsLeader bool     `protobuf:"varint,3,opt,name=IsLeader,proto3" json:"IsLeader,omitempty"`
-	PeerURLs []string `protobuf:"bytes,4,rep,name=peerURLs" json:"peerURLs,omitempty"`
+	Name     string       `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	State    Member_State `protobuf:"varint,3,opt,name=state,proto3,enum=etcdserverpb.Member_State" json:"state,omitempty"`
+	PeerURLs []string     `protobuf:"bytes,4,rep,name=peerURLs" json:"peerURLs,omitempty"`
 	// If the member is not started, client_URLs will be an zero length
 	// string array.
 	ClientURLs []string `protobuf:"bytes,5,rep,name=clientURLs" json:"clientURLs,omitempty"`
@@ -1169,6 +1192,7 @@ func init() {
 	proto.RegisterEnum("etcdserverpb.RangeRequest_SortTarget", RangeRequest_SortTarget_name, RangeRequest_SortTarget_value)
 	proto.RegisterEnum("etcdserverpb.Compare_CompareResult", Compare_CompareResult_name, Compare_CompareResult_value)
 	proto.RegisterEnum("etcdserverpb.Compare_CompareTarget", Compare_CompareTarget_name, Compare_CompareTarget_value)
+	proto.RegisterEnum("etcdserverpb.Member_State", Member_State_name, Member_State_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -2900,15 +2924,10 @@ func (m *Member) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
 		i += copy(data[i:], m.Name)
 	}
-	if m.IsLeader {
+	if m.State != 0 {
 		data[i] = 0x18
 		i++
-		if m.IsLeader {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
+		i = encodeVarintRpc(data, i, uint64(m.State))
 	}
 	if len(m.PeerURLs) > 0 {
 		for _, s := range m.PeerURLs {
@@ -3717,8 +3736,8 @@ func (m *Member) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
 	}
-	if m.IsLeader {
-		n += 2
+	if m.State != 0 {
+		n += 1 + sovRpc(uint64(m.State))
 	}
 	if len(m.PeerURLs) > 0 {
 		for _, s := range m.PeerURLs {
@@ -6964,9 +6983,9 @@ func (m *Member) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IsLeader", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
 			}
-			var v int
+			m.State = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowRpc
@@ -6976,12 +6995,11 @@ func (m *Member) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				v |= (int(b) & 0x7F) << shift
+				m.State |= (Member_State(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.IsLeader = bool(v != 0)
 		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PeerURLs", wireType)

@@ -141,7 +141,7 @@ func (c *cluster) MemberLeader(ctx context.Context) (*Member, error) {
 		return nil, err
 	}
 	for _, m := range resp.Members {
-		if m.IsLeader {
+		if m.State == pb.Member_Leader {
 			return (*Member)(m), nil
 		}
 	}

@@ -94,6 +94,7 @@ type serverRecorder struct {
 func (s *serverRecorder) Start()           {}
 func (s *serverRecorder) Stop()            {}
 func (s *serverRecorder) Leader() types.ID { return types.ID(1) }
+func (s *serverRecorder) State() string    { return "" }
 func (s *serverRecorder) ID() types.ID     { return types.ID(1) }
 func (s *serverRecorder) Do(_ context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
 	s.actions = append(s.actions, action{name: "Do", params: []interface{}{r}})
@@ -145,6 +146,7 @@ func (rs *resServer) Start()           {}
 func (rs *resServer) Stop()            {}
 func (rs *resServer) ID() types.ID     { return types.ID(1) }
 func (rs *resServer) Leader() types.ID { return types.ID(1) }
+func (rs *resServer) State() string    { return "" }
 func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.Response, error) {
 	return rs.res, nil
 }

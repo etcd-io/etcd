@@ -57,9 +57,16 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
 
+	leaderID := cs.server.Leader()
+	ms := pb.Member_Follower
+	if m.ID == leaderID {
+		ms = pb.Member_Leader
+	} else if cs.server.State() == "StateCandidate" {
+		ms = pb.Member_Candidate
+	}
 	return &pb.MemberAddResponse{
 		Header: cs.header(),
-		Member: &pb.Member{ID: uint64(m.ID), IsLeader: m.ID == cs.server.Leader(), PeerURLs: m.PeerURLs},
+		Member: &pb.Member{ID: uint64(m.ID), State: ms, PeerURLs: m.PeerURLs},
 	}, nil
 }
 
@@ -98,12 +105,19 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
 	membs := cs.cluster.Members()
 
+	leaderID := cs.server.Leader()
 	protoMembs := make([]*pb.Member, len(membs))
 	for i := range membs {
+		ms := pb.Member_Follower
+		if membs[i].ID == leaderID {
+			ms = pb.Member_Leader
+		} else if cs.server.State() == "StateCandidate" {
+			ms = pb.Member_Candidate
+		}
 		protoMembs[i] = &pb.Member{
 			Name:       membs[i].Name,
 			ID:         uint64(membs[i].ID),
-			IsLeader:   membs[i].ID == cs.server.Leader(),
+			State:      ms,
 			PeerURLs:   membs[i].PeerURLs,
 			ClientURLs: membs[i].ClientURLs,
 		}

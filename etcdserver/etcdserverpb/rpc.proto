@@ -330,10 +330,16 @@ message LeaseKeepAliveResponse {
 }
 
 message Member {
+  enum State {
+  Follower = 0;
+  Candidate = 1;
+  Leader = 2;
+  }
+
   uint64 ID = 1;
   // If the member is not started, name will be an empty string.
   string name = 2;
-  bool IsLeader = 3;
+  State state = 3;
   repeated string peerURLs = 4;
   // If the member is not started, client_URLs will be an zero length
   // string array.
