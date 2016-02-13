@@ -194,7 +194,14 @@ func archiveLogAndDataDir(log string, datadir string) error {
 		return err
 	}
 	if err := os.Rename(log, path.Join(dir, log)); err != nil {
-		return err
+		if !os.IsNotExist(err) {
+			return err
+		}
 	}
-	return os.Rename(datadir, path.Join(dir, datadir))
+	if err := os.Rename(datadir, path.Join(dir, datadir)); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }
