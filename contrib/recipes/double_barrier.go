@@ -60,7 +60,7 @@ func (b *DoubleBarrier) Enter() error {
 	_, err = WaitEvents(
 		b.client,
 		b.key+"/ready",
-		resp.Header.Revision,
+		ek.Revision(),
 		[]storagepb.Event_EventType{storagepb.PUT})
 	return err
 }
@@ -100,7 +100,7 @@ func (b *DoubleBarrier) Leave() error {
 		_, err = WaitEvents(
 			b.client,
 			string(highest.Key),
-			resp.Header.Revision,
+			highest.ModRevision,
 			[]storagepb.Event_EventType{storagepb.DELETE})
 		if err != nil {
 			return err
@@ -117,7 +117,7 @@ func (b *DoubleBarrier) Leave() error {
 	_, err = WaitEvents(
 		b.client,
 		key,
-		resp.Header.Revision,
+		lowest.ModRevision,
 		[]storagepb.Event_EventType{storagepb.DELETE})
 	if err != nil {
 		return err

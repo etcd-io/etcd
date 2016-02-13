@@ -112,13 +112,21 @@ func TestDoubleBarrierFailover(t *testing.T) {
 
 	// wait for barrier enter to unblock
 	for i := 0; i < waiters; i++ {
-		<-donec
+		select {
+		case <-donec:
+		case <-time.After(10 * time.Second):
+			t.Fatalf("timed out waiting for enter, %d", i)
+		}
 	}
 	// kill lease, expect Leave unblock
 	recipe.RevokeSessionLease(clus.clients[0])
 	// join on rest of waiters
 	for i := 0; i < waiters-1; i++ {
-		<-donec
+		select {
+		case <-donec:
+		case <-time.After(10 * time.Second):
+			t.Fatalf("timed out waiting for leave, %d", i)
+		}
 	}
 }
 
