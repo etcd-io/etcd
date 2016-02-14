@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/sync"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 )
 
@@ -57,10 +58,11 @@ func snapshotToStdout(c *clientv3.Client) {
 	if len(wr.Events) > 0 {
 		wr.CompactRevision = 1
 	}
-	if rev := snapshot(os.Stdout, c, wr.CompactRevision); rev != 0 {
+	if rev := snapshot(os.Stdout, c, wr.CompactRevision+1); rev != 0 {
 		err := fmt.Errorf("snapshot interrupted by compaction %v", rev)
 		ExitWithError(ExitInterrupted, err)
 	}
+	os.Stdout.Sync()
 }
 
 // snapshotToFile atomically writes a snapshot to a file
@@ -88,13 +90,29 @@ func snapshotToFile(c *clientv3.Client, path string) {
 // snapshot reads all of a watcher; returns compaction revision if incomplete
 // TODO: stabilize snapshot format
 func snapshot(w io.Writer, c *clientv3.Client, rev int64) int64 {
-	wapi := clientv3.NewWatcher(c)
-	defer wapi.Close()
+	s := sync.NewSyncer(c, "", rev)
 
-	// get all events since revision (or get non-compacted revision, if
-	// rev is too far behind)
-	wch := wapi.WatchPrefix(context.TODO(), "", rev)
-	for wr := range wch {
+	rc, errc := s.SyncBase(context.TODO())
+
+	for r := range rc {
+		for _, kv := range r.Kvs {
+			fmt.Fprintln(w, kv)
+		}
+	}
+
+	err := <-errc
+	if err != nil {
+		if err == v3rpc.ErrCompacted {
+			// will get correct compact revision on retry
+			return rev + 1
+		}
+		// failed for some unknown reason, retry on same revision
+		return rev
+	}
+
+	wc := s.SyncUpdates(context.TODO())
+
+	for wr := range wc {
 		if len(wr.Events) == 0 {
 			return wr.CompactRevision
 		}
@@ -105,33 +123,6 @@ func snapshot(w io.Writer, c *clientv3.Client, rev int64) int64 {
 		if rev >= wr.Header.Revision {
 			break
 		}
-	}
-
-	// get base state at rev
-	kapi := clientv3.NewKV(c)
-	key := "\x00"
-	for {
-		kvs, err := kapi.Get(
-			context.TODO(),
-			key,
-			clientv3.WithFromKey(),
-			clientv3.WithRev(rev+1),
-			clientv3.WithLimit(1000))
-		if err == v3rpc.ErrCompacted {
-			// will get correct compact revision on retry
-			return rev + 1
-		} else if err != nil {
-			// failed for some unknown reason, retry on same revision
-			return rev
-		}
-		for _, kv := range kvs.Kvs {
-			fmt.Fprintln(w, kv)
-		}
-		if !kvs.More {
-			break
-		}
-		// move to next key
-		key = string(append(kvs.Kvs[len(kvs.Kvs)-1].Key, 0))
 	}
 
 	return 0
