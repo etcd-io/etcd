@@ -58,6 +58,7 @@ func init() {
 		command.NewLeaseCommand(),
 		command.NewMemberCommand(),
 		command.NewSnapshotCommand(),
+		command.NewMakeMirrorCommand(),
 	)
 }
 
