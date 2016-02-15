@@ -259,22 +259,49 @@ func (c *cluster) Status() ClusterStatus {
 	return cs
 }
 
-// setHealthKey sets health key on all given urls.
-func setHealthKey(us []string) error {
-	for _, u := range us {
-		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-		if err != nil {
-			return fmt.Errorf("%v (%s)", err, u)
+func retry(endpoint string, f func(string) error) error {
+	var err error
+	for i := 0; i < 5; i++ {
+		err = f(endpoint)
+		if err == nil {
+			return nil
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		kvc := pb.NewKVClient(conn)
-		_, err = kvc.Put(ctx, &pb.PutRequest{Key: []byte("health"), Value: []byte("good")})
-		cancel()
-		if err != nil {
-			return err
+		if grpc.ErrorDesc(err) == context.DeadlineExceeded.Error() {
+			log.Printf("etcd-tester: retrying at %s", endpoint)
+			time.Sleep(time.Second)
+			continue
+		} else {
+			return fmt.Errorf("%v (%s)", err, endpoint)
 		}
 	}
-	return nil
+	return err
+}
+
+// setHealthKey sets health key on all given urls.
+func setHealthKey(us []string) error {
+	f := func(endpoint string) error {
+		conn, gerr := grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if gerr != nil {
+			return gerr
+		}
+		kvc := pb.NewKVClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, kerr := kvc.Put(ctx, &pb.PutRequest{Key: []byte("health"), Value: []byte("good")})
+		cancel()
+		conn.Close()
+		if kerr != nil {
+			return kerr
+		}
+		return nil
+	}
+	var err error
+	for _, u := range us {
+		err = retry(u, f)
+		if err == nil {
+			return nil
+		}
+	}
+	return err
 }
 
 // setHealthKeyV2 sets health key on all given urls.
@@ -301,40 +328,52 @@ func setHealthKeyV2(us []string) error {
 func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) {
 	revs := make(map[string]int64)
 	hashes := make(map[string]int64)
-	for _, u := range c.GRPCURLs {
-		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-		if err != nil {
-			return nil, nil, err
+	f := func(endpoint string) error {
+		conn, gerr := grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if gerr != nil {
+			return gerr
 		}
 		kvc := pb.NewKVClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		resp, err := kvc.Hash(ctx, &pb.HashRequest{})
+		resp, kerr := kvc.Hash(ctx, &pb.HashRequest{})
 		cancel()
 		conn.Close()
+		if kerr != nil {
+			return kerr
+		}
+		revs[endpoint] = resp.Header.Revision
+		hashes[endpoint] = int64(resp.Hash)
+		return nil
+	}
+	var err error
+	for _, u := range c.GRPCURLs {
+		err = retry(u, f)
 		if err != nil {
 			return nil, nil, err
 		}
-		revs[u] = resp.Header.Revision
-		hashes[u] = int64(resp.Hash)
 	}
 	return revs, hashes, nil
 }
 
 func (c *cluster) compactKV(rev int64) error {
-	var (
-		conn *grpc.ClientConn
-		err  error
-	)
-	for _, u := range c.GRPCURLs {
-		conn, err = grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
-		if err != nil {
-			continue
+	f := func(endpoint string) error {
+		conn, gerr := grpc.Dial(endpoint, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if gerr != nil {
+			return fmt.Errorf("%v (%s)", gerr, endpoint)
 		}
 		kvc := pb.NewKVClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		_, err = kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev})
+		_, kerr := kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev})
 		cancel()
 		conn.Close()
+		if kerr != nil {
+			return kerr
+		}
+		return nil
+	}
+	var err error
+	for _, u := range c.GRPCURLs {
+		err = retry(u, f)
 		if err == nil {
 			return nil
 		}
