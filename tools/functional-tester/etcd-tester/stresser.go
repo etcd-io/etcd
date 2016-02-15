@@ -27,7 +27,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
-	clientV2 "github.com/coreos/etcd/client"
+	clientv2 "github.com/coreos/etcd/client"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -52,15 +52,19 @@ type stresser struct {
 
 	N int
 
-	mu     sync.Mutex
-	wg     *sync.WaitGroup
-	cancel func()
-	conn   *grpc.ClientConn
+	mu      sync.Mutex
+	stopped bool
+	cancel  func()
+	conn    *grpc.ClientConn
 
 	success int
 }
 
 func (s *stresser) Stress() error {
+	s.mu.Lock()
+	s.stopped = false
+	s.mu.Unlock()
+
 	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, s.Endpoint)
@@ -68,21 +72,22 @@ func (s *stresser) Stress() error {
 	defer conn.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 
-	wg := &sync.WaitGroup{}
-	wg.Add(s.N)
-
 	s.mu.Lock()
 	s.conn = conn
 	s.cancel = cancel
-	s.wg = wg
 	s.mu.Unlock()
 
 	kvc := pb.NewKVClient(conn)
 
 	for i := 0; i < s.N; i++ {
 		go func(i int) {
-			defer wg.Done()
 			for {
+				s.mu.Lock()
+				stopped := s.stopped
+				s.mu.Unlock()
+				if stopped {
+					return
+				}
 				putctx, putcancel := context.WithTimeout(ctx, 5*time.Second)
 				_, err := kvc.Put(putctx, &pb.PutRequest{
 					Key:   []byte(fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))),
@@ -90,7 +95,8 @@ func (s *stresser) Stress() error {
 				})
 				putcancel()
 				if err != nil {
-					return
+					log.Printf("etcd-tester: bad network error (%v)", err)
+					continue
 				}
 				s.mu.Lock()
 				s.success++
@@ -105,10 +111,10 @@ func (s *stresser) Stress() error {
 
 func (s *stresser) Cancel() {
 	s.mu.Lock()
-	cancel, conn, wg := s.cancel, s.conn, s.wg
+	s.stopped = true
+	cancel, conn := s.cancel, s.conn
 	s.mu.Unlock()
 	cancel()
-	wg.Wait()
 	conn.Close()
 }
 
@@ -137,7 +143,7 @@ type stresserV2 struct {
 }
 
 func (s *stresserV2) Stress() error {
-	cfg := clientV2.Config{
+	cfg := clientv2.Config{
 		Endpoints: []string{s.Endpoint},
 		Transport: &http.Transport{
 			Dial: (&net.Dialer{
@@ -147,19 +153,19 @@ func (s *stresserV2) Stress() error {
 			MaxIdleConnsPerHost: s.N,
 		},
 	}
-	c, err := clientV2.New(cfg)
+	c, err := clientv2.New(cfg)
 	if err != nil {
 		return err
 	}
 
-	kv := clientV2.NewKeysAPI(c)
+	kv := clientv2.NewKeysAPI(c)
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
 	for i := 0; i < s.N; i++ {
 		go func() {
 			for {
-				setctx, setcancel := context.WithTimeout(ctx, clientV2.DefaultRequestTimeout)
+				setctx, setcancel := context.WithTimeout(ctx, clientv2.DefaultRequestTimeout)
 				key := fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))
 				_, err := kv.Set(setctx, key, randStr(s.KeySize), nil)
 				setcancel()
