@@ -43,7 +43,7 @@ func compactionCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	c := mustClient(cmd)
+	c := mustClientFromCmd(cmd)
 	if cerr := clientv3.NewKV(c).Compact(context.TODO(), rev); cerr != nil {
 		ExitWithError(ExitError, cerr)
 		return

@@ -44,7 +44,7 @@ func deleteRangeCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	req := &pb.DeleteRangeRequest{Key: key, RangeEnd: rangeEnd}
-	mustClient(cmd).KV.DeleteRange(context.Background(), req)
+	mustClientFromCmd(cmd).KV.DeleteRange(context.Background(), req)
 
 	if rangeEnd != nil {
 		fmt.Printf("range [%s, %s) is deleted\n", string(key), string(rangeEnd))

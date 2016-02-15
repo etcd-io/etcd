@@ -40,9 +40,9 @@ func NewSnapshotCommand() *cobra.Command {
 func snapshotCommandFunc(cmd *cobra.Command, args []string) {
 	switch {
 	case len(args) == 0:
-		snapshotToStdout(mustClient(cmd))
+		snapshotToStdout(mustClientFromCmd(cmd))
 	case len(args) == 1:
-		snapshotToFile(mustClient(cmd), args[0])
+		snapshotToFile(mustClientFromCmd(cmd), args[0])
 	default:
 		err := fmt.Errorf("snapshot takes at most one argument")
 		ExitWithError(ExitBadArgs, err)

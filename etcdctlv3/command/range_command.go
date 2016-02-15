@@ -93,7 +93,7 @@ func rangeCommandFunc(cmd *cobra.Command, args []string) {
 		SortTarget: sortByTarget,
 		Limit:      int64(rangeLimit),
 	}
-	resp, err := mustClient(cmd).KV.Range(context.Background(), req)
+	resp, err := mustClientFromCmd(cmd).KV.Range(context.Background(), req)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

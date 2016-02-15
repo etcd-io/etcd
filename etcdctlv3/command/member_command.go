@@ -109,7 +109,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	urls := strings.Split(memberPeerURLs, ",")
 
 	req := &pb.MemberAddRequest{PeerURLs: urls}
-	resp, err := mustClient(cmd).Cluster.MemberAdd(context.TODO(), req)
+	resp, err := mustClientFromCmd(cmd).Cluster.MemberAdd(context.TODO(), req)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -129,7 +129,7 @@ func memberRemoveCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	req := &pb.MemberRemoveRequest{ID: uint64(id)}
-	resp, err := mustClient(cmd).Cluster.MemberRemove(context.TODO(), req)
+	resp, err := mustClientFromCmd(cmd).Cluster.MemberRemove(context.TODO(), req)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -155,7 +155,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 	urls := strings.Split(memberPeerURLs, ",")
 
 	req := &pb.MemberUpdateRequest{ID: uint64(id), PeerURLs: urls}
-	resp, err := mustClient(cmd).Cluster.MemberUpdate(context.TODO(), req)
+	resp, err := mustClientFromCmd(cmd).Cluster.MemberUpdate(context.TODO(), req)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -165,7 +165,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 
 // memberListCommandFunc executes the "member list" command.
 func memberListCommandFunc(cmd *cobra.Command, args []string) {
-	resp, err := mustClient(cmd).Cluster.MemberList(context.TODO(), &pb.MemberListRequest{})
+	resp, err := mustClientFromCmd(cmd).Cluster.MemberList(context.TODO(), &pb.MemberListRequest{})
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
