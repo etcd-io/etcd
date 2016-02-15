@@ -429,7 +429,7 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 		revToBytes(grev, ibytes)
 		_, vs := s.tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
 		var kv storagepb.KeyValue
-		if err := kv.Unmarshal(vs[0]); err != nil {
+		if err = kv.Unmarshal(vs[0]); err != nil {
 			log.Fatalf("storage: cannot unmarshal value: %v", err)
 		}
 		oldLease = lease.LeaseID(kv.Lease)
@@ -527,7 +527,7 @@ func (s *store) delete(key []byte, rev revision) {
 	_, vs := s.tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
 
 	kv.Reset()
-	if err := kv.Unmarshal(vs[0]); err != nil {
+	if err = kv.Unmarshal(vs[0]); err != nil {
 		log.Fatalf("storage: cannot unmarshal value: %v", err)
 	}
 
