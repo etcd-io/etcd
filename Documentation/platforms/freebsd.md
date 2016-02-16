@@ -15,7 +15,7 @@ when asked
 
 2. Update your repository data with `pkg update`
 
-3. Install etcd with `pkg install coreos­etcd coreos­etcdctl`
+3. Install etcd with `pkg install coreos-etcd coreos-etcdctl`
 
 4. Verify successful installation with `pkg info | grep etcd` and you should get:
 
