@@ -212,9 +212,9 @@ func etcdctlSet(clus *etcdProcessCluster, key, value string, noSync bool) error 
 func etcdctlMk(clus *etcdProcessCluster, key, value string, first, noSync bool) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus, noSync), "mk", key, value)
 	if first {
-		return spawnWithExpect(cmdArgs, value)
+		return spawnWithExpectedString(cmdArgs, value)
 	}
-	return spawnWithExpect(cmdArgs, "Error:  105: Key already exists")
+	return spawnWithExpectedString(cmdArgs, "Error:  105: Key already exists")
 }
 
 func etcdctlGet(clus *etcdProcessCluster, key, value string, noSync bool) error {
