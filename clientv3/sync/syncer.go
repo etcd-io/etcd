@@ -51,7 +51,7 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 	kapi := clientv3.NewKV(s.c)
 	// if rev is not specified, we will choose the most recent revision.
 	if s.rev == 0 {
-		resp, err := kapi.Get(ctx, "")
+		resp, err := kapi.Get(ctx, "foo")
 		if err != nil {
 			errchan <- err
 			close(respchan)
