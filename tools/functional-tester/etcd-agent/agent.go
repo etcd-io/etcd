@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"syscall"
 	"time"
 
 	"github.com/coreos/etcd/pkg/netutil"
@@ -80,18 +81,37 @@ func (a *Agent) stop() error {
 	if a.state != stateStarted {
 		return nil
 	}
-	err := a.cmd.Process.Kill()
-	if err != nil {
-		return err
-	}
-	_, err = a.cmd.Process.Wait()
-	if err != nil {
-		return err
 
+	err := sigtermAndWait(a.cmd)
+	if err != nil {
+		return err
 	}
 
 	a.state = stateStopped
 	return nil
+}
+
+func sigtermAndWait(cmd *exec.Cmd) error {
+	err := cmd.Process.Signal(syscall.SIGTERM)
+	if err != nil {
+		return err
+	}
+
+	errc := make(chan error)
+	go func() {
+		_, err := cmd.Process.Wait()
+		errc <- err
+		close(errc)
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		cmd.Process.Kill()
+	case err := <-errc:
+		return err
+	}
+	err = <-errc
+	return err
 }
 
 // restart restarts the stopped etcd process.
