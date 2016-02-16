@@ -71,7 +71,7 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	req := &pb.PutRequest{Key: key, Value: value, Lease: id}
-	_, err = mustClient(cmd).KV.Put(context.Background(), req)
+	_, err = mustClientFromCmd(cmd).KV.Put(context.Background(), req)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

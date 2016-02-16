@@ -62,7 +62,7 @@ func leaseCreateCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad TTL (%v)", err))
 	}
 
-	c := mustClient(cmd)
+	c := mustClientFromCmd(cmd)
 	l := clientv3.NewLease(c)
 	resp, err := l.Create(context.TODO(), ttl)
 	if err != nil {
@@ -95,7 +95,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
 
-	c := mustClient(cmd)
+	c := mustClientFromCmd(cmd)
 	l := clientv3.NewLease(c)
 	_, err = l.Revoke(context.TODO(), lease.LeaseID(id))
 	if err != nil {
@@ -128,7 +128,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
 
-	c := mustClient(cmd)
+	c := mustClientFromCmd(cmd)
 	l := clientv3.NewLease(c)
 	respc, kerr := l.KeepAlive(context.TODO(), lease.LeaseID(id))
 	if kerr != nil {

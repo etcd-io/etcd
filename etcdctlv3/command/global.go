@@ -32,35 +32,52 @@ type GlobalFlags struct {
 	TLS       transport.TLSInfo
 }
 
-func mustClient(cmd *cobra.Command) *clientv3.Client {
+func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	endpoint, err := cmd.Flags().GetString("endpoint")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
+	var cert, key, cacert string
+	if cert, err = cmd.Flags().GetString("cert"); err != nil {
+		ExitWithError(ExitBadArgs, err)
+	} else if cert == "" && cmd.Flags().Changed("cert") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cert option"))
+	}
+
+	if key, err = cmd.Flags().GetString("key"); err != nil {
+		ExitWithError(ExitBadArgs, err)
+	} else if key == "" && cmd.Flags().Changed("key") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --key option"))
+	}
+
+	if cacert, err = cmd.Flags().GetString("cacert"); err != nil {
+		ExitWithError(ExitBadArgs, err)
+	} else if cacert == "" && cmd.Flags().Changed("cacert") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cacert option"))
+	}
+
+	return mustClient(endpoint, cert, key, cacert)
+}
+
+func mustClient(endpoint, cert, key, cacert string) *clientv3.Client {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tls := transport.TLSInfo{}
 	var file string
-	if file, err = cmd.Flags().GetString("cert"); err == nil && file != "" {
-		tls.CertFile = file
+	if cert != "" {
+		tls.CertFile = cert
 		cfgtls = &tls
-	} else if cmd.Flags().Changed("cert") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cert option"))
 	}
 
-	if file, err = cmd.Flags().GetString("key"); err == nil && file != "" {
-		tls.KeyFile = file
+	if key != "" {
+		tls.KeyFile = key
 		cfgtls = &tls
-	} else if cmd.Flags().Changed("key") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --key option"))
 	}
 
-	if file, err = cmd.Flags().GetString("cacert"); err == nil && file != "" {
+	if cacert != "" {
 		tls.CAFile = file
 		cfgtls = &tls
-	} else if cmd.Flags().Changed("cacert") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cacert option"))
 	}
 
 	cfg := clientv3.Config{

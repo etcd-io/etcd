@@ -49,7 +49,7 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 		next = next(txn, reader)
 	}
 
-	resp, err := mustClient(cmd).KV.Txn(context.Background(), txn)
+	resp, err := mustClientFromCmd(cmd).KV.Txn(context.Background(), txn)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

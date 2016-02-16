@@ -38,7 +38,7 @@ func NewWatchCommand() *cobra.Command {
 
 // watchCommandFunc executes the "watch" command.
 func watchCommandFunc(cmd *cobra.Command, args []string) {
-	wStream, err := mustClient(cmd).Watch.Watch(context.TODO())
+	wStream, err := mustClientFromCmd(cmd).Watch.Watch(context.TODO())
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)
 	}
