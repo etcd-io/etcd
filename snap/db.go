@@ -31,7 +31,8 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(f, r)
+	var n int64
+	n, err = io.Copy(f, r)
 	if err == nil {
 		err = f.Sync()
 	}
@@ -50,6 +51,9 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) error {
 		os.Remove(f.Name())
 		return err
 	}
+
+	plog.Infof("saved database snapshot to disk [total bytes: %d]", n)
+
 	return nil
 }
 
