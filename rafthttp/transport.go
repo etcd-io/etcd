@@ -289,6 +289,8 @@ func (t *Transport) ActiveSince(id types.ID) time.Time {
 }
 
 func (t *Transport) SendSnapshot(m snap.Message) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	p := t.peers[types.ID(m.To)]
 	if p == nil {
 		m.CloseWithError(errMemberNotFound)
