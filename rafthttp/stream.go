@@ -130,11 +130,13 @@ func startStreamWriter(id types.ID, status *peerStatus, fs *stats.FollowerStats,
 }
 
 func (cw *streamWriter) run() {
-	var msgc chan raftpb.Message
-	var heartbeatc <-chan time.Time
-	var t streamType
-	var enc encoder
-	var flusher http.Flusher
+	var (
+		msgc       chan raftpb.Message
+		heartbeatc <-chan time.Time
+		t          streamType
+		enc        encoder
+		flusher    http.Flusher
+	)
 	tickc := time.Tick(ConnReadTimeout / 3)
 
 	for {
