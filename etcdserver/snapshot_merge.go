@@ -60,7 +60,10 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapi uint64,
 func newSnapshotReaderCloser(snapshot backend.Snapshot) io.ReadCloser {
 	pr, pw := io.Pipe()
 	go func() {
-		_, err := snapshot.WriteTo(pw)
+		n, err := snapshot.WriteTo(pw)
+		if err == nil {
+			plog.Infof("wrote database snapshot out [total bytes: %d]", n)
+		}
 		pw.CloseWithError(err)
 		snapshot.Close()
 	}()
