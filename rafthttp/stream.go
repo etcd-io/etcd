@@ -95,8 +95,7 @@ type outgoingConn struct {
 	io.Closer
 }
 
-// streamWriter is a long-running go-routine that writes messages into the
-// attached outgoingConn.
+// streamWriter writes messages to the attached outgoingConn.
 type streamWriter struct {
 	id     types.ID
 	status *peerStatus
@@ -113,6 +112,8 @@ type streamWriter struct {
 	done  chan struct{}
 }
 
+// startStreamWriter creates a streamWrite and starts a long running go-routine that accepts
+// messages and writes to the attached outgoing connection.
 func startStreamWriter(id types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft) *streamWriter {
 	w := &streamWriter{
 		id:     id,
