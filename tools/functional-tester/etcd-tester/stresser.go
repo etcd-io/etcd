@@ -83,7 +83,10 @@ func (s *stresser) Stress() error {
 		go func(i int) {
 			defer wg.Done()
 			for {
-				putctx, putcancel := context.WithTimeout(ctx, 5*time.Second)
+				// TODO: 10-second is enough timeout to cover leader failure
+				// and immediate leader election. Find out what other cases this
+				// could be timed out.
+				putctx, putcancel := context.WithTimeout(ctx, 10*time.Second)
 				_, err := kvc.Put(putctx, &pb.PutRequest{
 					Key:   []byte(fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))),
 					Value: []byte(randStr(s.KeySize)),
