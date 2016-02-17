@@ -102,9 +102,16 @@ func (sws *serverWatchStream) recvLoop() error {
 					toWatch = creq.Prefix
 					prefix = true
 				}
-				id := sws.watchStream.Watch(toWatch, prefix, creq.StartRevision)
+
+				rev := creq.StartRevision
+				wsrev := sws.watchStream.Rev()
+				if rev == 0 {
+					// rev 0 watches past the current revision
+					rev = wsrev + 1
+				}
+				id := sws.watchStream.Watch(toWatch, prefix, rev)
 				sws.ctrlStream <- &pb.WatchResponse{
-					Header:  sws.newResponseHeader(sws.watchStream.Rev()),
+					Header:  sws.newResponseHeader(wsrev),
 					WatchId: int64(id),
 					Created: true,
 				}
