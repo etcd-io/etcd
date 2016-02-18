@@ -133,16 +133,9 @@ func (s *syncer) SyncUpdates(ctx context.Context) clientv3.WatchChan {
 }
 
 func incr(bs []byte) []byte {
-	c := int8(1)
-	for i := range bs {
-		j := len(bs) - i - 1
-		n := int8(bs[j])
-		n += c
-		bs[j] = byte(n)
-		if n == 0 {
-			c = 1
-		} else {
-			c = 0
+	for i := len(bs) - 1; i >= 0; i-- {
+		bs[i] = bs[i] + 1
+		if bs[i] != 0 {
 			return bs
 		}
 	}
