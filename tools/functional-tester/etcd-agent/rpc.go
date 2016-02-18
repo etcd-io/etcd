@@ -15,7 +15,6 @@
 package main
 
 import (
-	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -28,17 +27,17 @@ func (a *Agent) serveRPC(port string) {
 	rpc.HandleHTTP()
 	l, e := net.Listen("tcp", port)
 	if e != nil {
-		log.Fatal("agent:", e)
+		plog.Fatal(e)
 	}
-	log.Println("agent listening on", port)
+	plog.Println("agent listening on", port)
 	go http.Serve(l, nil)
 }
 
 func (a *Agent) RPCStart(args []string, pid *int) error {
-	log.Printf("rpc: start etcd with args %v", args)
+	plog.Printf("rpc: start etcd with args %v", args)
 	err := a.start(args...)
 	if err != nil {
-		log.Println("rpc: error starting etcd", err)
+		plog.Println("rpc: error starting etcd", err)
 		return err
 	}
 	*pid = a.cmd.Process.Pid
@@ -46,20 +45,20 @@ func (a *Agent) RPCStart(args []string, pid *int) error {
 }
 
 func (a *Agent) RPCStop(args struct{}, reply *struct{}) error {
-	log.Printf("rpc: stop etcd")
+	plog.Printf("rpc: stop etcd")
 	err := a.stop()
 	if err != nil {
-		log.Println("rpc: error stopping etcd", err)
+		plog.Println("rpc: error stopping etcd", err)
 		return err
 	}
 	return nil
 }
 
 func (a *Agent) RPCRestart(args struct{}, pid *int) error {
-	log.Printf("rpc: restart etcd")
+	plog.Printf("rpc: restart etcd")
 	err := a.restart()
 	if err != nil {
-		log.Println("rpc: error restarting etcd", err)
+		plog.Println("rpc: error restarting etcd", err)
 		return err
 	}
 	*pid = a.cmd.Process.Pid
@@ -67,38 +66,38 @@ func (a *Agent) RPCRestart(args struct{}, pid *int) error {
 }
 
 func (a *Agent) RPCCleanup(args struct{}, reply *struct{}) error {
-	log.Printf("rpc: cleanup etcd")
+	plog.Printf("rpc: cleanup etcd")
 	err := a.cleanup()
 	if err != nil {
-		log.Println("rpc: error cleaning up etcd", err)
+		plog.Println("rpc: error cleaning up etcd", err)
 		return err
 	}
 	return nil
 }
 
 func (a *Agent) RPCTerminate(args struct{}, reply *struct{}) error {
-	log.Printf("rpc: terminate etcd")
+	plog.Printf("rpc: terminate etcd")
 	err := a.terminate()
 	if err != nil {
-		log.Println("rpc: error terminating etcd", err)
+		plog.Println("rpc: error terminating etcd", err)
 	}
 	return nil
 }
 
 func (a *Agent) RPCDropPort(port int, reply *struct{}) error {
-	log.Printf("rpc: drop port %d", port)
+	plog.Printf("rpc: drop port %d", port)
 	err := a.dropPort(port)
 	if err != nil {
-		log.Println("rpc: error dropping port", err)
+		plog.Println("rpc: error dropping port", err)
 	}
 	return nil
 }
 
 func (a *Agent) RPCRecoverPort(port int, reply *struct{}) error {
-	log.Printf("rpc: recover port %d", port)
+	plog.Printf("rpc: recover port %d", port)
 	err := a.recoverPort(port)
 	if err != nil {
-		log.Println("rpc: error recovering port", err)
+		plog.Println("rpc: error recovering port", err)
 	}
 	return nil
 }

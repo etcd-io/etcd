@@ -16,10 +16,13 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-agent")
 
 func main() {
 	etcdPath := flag.String("etcd-path", filepath.Join(os.Getenv("GOPATH"), "bin/etcd"), "the path to etcd binary")
@@ -29,7 +32,7 @@ func main() {
 
 	a, err := newAgent(*etcdPath, *etcdLogPath)
 	if err != nil {
-		log.Fatal(err)
+		plog.Fatal(err)
 	}
 	a.serveRPC(*port)
 
