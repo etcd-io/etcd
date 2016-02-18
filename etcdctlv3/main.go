@@ -50,7 +50,7 @@ func init() {
 	rootCmd.AddCommand(
 		command.NewRangeCommand(),
 		command.NewPutCommand(),
-		command.NewDeleteRangeCommand(),
+		command.NewDelCommand(),
 		command.NewTxnCommand(),
 		command.NewCompactionCommand(),
 		command.NewWatchCommand(),
