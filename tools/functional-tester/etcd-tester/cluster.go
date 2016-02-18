@@ -251,7 +251,7 @@ func (c *cluster) Status() ClusterStatus {
 		desc := c.agentEndpoints[i]
 		if err != nil {
 			cs.AgentStatuses[desc] = client.Status{State: "unknown"}
-			plog.Printf("etcd-tester: failed to get the status of agent [%s]", desc)
+			plog.Printf("failed to get the status of agent [%s]", desc)
 		}
 		cs.AgentStatuses[desc] = s
 	}
