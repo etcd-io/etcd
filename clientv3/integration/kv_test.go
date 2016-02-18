@@ -229,35 +229,65 @@ func TestKVDeleteRange(t *testing.T) {
 	kv := clientv3.NewKV(clus.RandClient())
 	ctx := context.TODO()
 
-	keySet := []string{"a", "b", "c", "c", "c", "d", "e", "f"}
-	for i, key := range keySet {
-		if _, err := kv.Put(ctx, key, ""); err != nil {
-			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
-		}
-	}
-
 	tests := []struct {
-		key, end string
-		delRev   int64
+		key  string
+		opts []clientv3.OpOption
+
+		wkeys []string
 	}{
-		{"a", "b", int64(len(keySet) + 2)}, // delete [a, b)
-		{"d", "f", int64(len(keySet) + 3)}, // delete [d, f)
+		// [a, c)
+		{
+			key:  "a",
+			opts: []clientv3.OpOption{clientv3.WithRange("c")},
+
+			wkeys: []string{"c", "c/abc", "d"},
+		},
+		// >= c
+		{
+			key:  "c",
+			opts: []clientv3.OpOption{clientv3.WithFromKey()},
+
+			wkeys: []string{"a", "b"},
+		},
+		// c*
+		{
+			key:  "c",
+			opts: []clientv3.OpOption{clientv3.WithPrefix()},
+
+			wkeys: []string{"a", "b", "d"},
+		},
+		// *
+		{
+			key:  "\x00",
+			opts: []clientv3.OpOption{clientv3.WithFromKey()},
+
+			wkeys: []string{},
+		},
 	}
 
 	for i, tt := range tests {
-		dresp, err := kv.Delete(ctx, tt.key, clientv3.WithRange(tt.end))
+		keySet := []string{"a", "b", "c", "c/abc", "d"}
+		for j, key := range keySet {
+			if _, err := kv.Put(ctx, key, ""); err != nil {
+				t.Fatalf("#%d: couldn't put %q (%v)", j, key, err)
+			}
+		}
+
+		_, err := kv.Delete(ctx, tt.key, tt.opts...)
 		if err != nil {
 			t.Fatalf("#%d: couldn't delete range (%v)", i, err)
 		}
-		if dresp.Header.Revision != tt.delRev {
-			t.Fatalf("#%d: dresp.Header.Revision got %d, want %d", i, dresp.Header.Revision, tt.delRev)
-		}
-		resp, err := kv.Get(ctx, tt.key, clientv3.WithRange(tt.end))
+
+		resp, err := kv.Get(ctx, "a", clientv3.WithFromKey())
 		if err != nil {
-			t.Fatalf("#%d: couldn't get key (%v)", i, err)
+			t.Fatalf("#%d: couldn't get keys (%v)", i, err)
 		}
-		if len(resp.Kvs) > 0 {
-			t.Fatalf("#%d: resp.Kvs expected none, but got %+v", i, resp.Kvs)
+		keys := []string{}
+		for _, kv := range resp.Kvs {
+			keys = append(keys, string(kv.Key))
+		}
+		if !reflect.DeepEqual(tt.wkeys, keys) {
+			t.Errorf("#%d: resp.Kvs got %v, expected %v", i, keys, tt.wkeys)
 		}
 	}
 }
