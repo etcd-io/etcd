@@ -212,12 +212,12 @@ func archiveLogAndDataDir(log string, datadir string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	if err := os.Rename(log, path.Join(dir, log)); err != nil {
+	if err := os.Rename(log, path.Join(dir, path.Base(log))); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
 	}
-	if err := os.Rename(datadir, path.Join(dir, datadir)); err != nil {
+	if err := os.Rename(datadir, path.Join(dir, path.Base(datadir))); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
