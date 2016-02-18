@@ -93,13 +93,13 @@ func mustClient(endpoint, cert, key, cacert string) *clientv3.Client {
 	return client
 }
 
-func argOrStdin(args []string, stdin io.Reader, i int) ([]byte, error) {
+func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 	if i < len(args) {
-		return []byte(args[i]), nil
+		return args[i], nil
 	}
 	bytes, err := ioutil.ReadAll(stdin)
 	if string(bytes) == "" || err != nil {
-		return nil, errors.New("no available argument and stdin")
+		return "", errors.New("no available argument and stdin")
 	}
-	return bytes, nil
+	return string(bytes), nil
 }
