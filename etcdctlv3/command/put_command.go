@@ -21,7 +21,8 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/lease"
 )
 
 var (
@@ -42,14 +43,14 @@ Insert '--' for workaround:
 $ put <key> -- <value>
 $ put -- <key> <value>
 
-If <value> isn't given, this command tries to read the value from standard input.
+If <value> isn't given as command line arguement, this command tries to read the value from standard input.
 For example,
 $ cat file | put <key>
 will store the content of the file to <key>.
 `,
 		Run: putCommandFunc,
 	}
-	cmd.Flags().StringVar(&leaseStr, "lease", "0", "lease ID attached to the put key")
+	cmd.Flags().StringVar(&leaseStr, "lease", "0", "lease ID (in hexadecimal) to attach to the key")
 	return cmd
 }
 
@@ -59,7 +60,7 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
 	}
 
-	key := []byte(args[0])
+	key := args[0]
 	value, err := argOrStdin(args, os.Stdin, 1)
 	if err != nil {
 		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
@@ -67,13 +68,14 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 
 	id, err := strconv.ParseInt(leaseStr, 16, 64)
 	if err != nil {
-		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
+		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID (%v), expecting ID in Hex", err))
 	}
 
-	req := &pb.PutRequest{Key: key, Value: value, Lease: id}
-	_, err = mustClientFromCmd(cmd).KV.Put(context.Background(), req)
+	c := mustClientFromCmd(cmd)
+	kvapi := clientv3.NewKV(c)
+	_, err = kvapi.Put(context.TODO(), key, value, clientv3.WithLease(lease.LeaseID(id)))
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	fmt.Printf("%s %s\n", key, value)
+	fmt.Println("OK")
 }
