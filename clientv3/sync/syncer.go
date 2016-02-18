@@ -65,7 +65,7 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 		defer close(respchan)
 		defer close(errchan)
 
-		var key, end string
+		var key string
 
 		opts := []clientv3.OpOption{clientv3.WithLimit(batchLimit), clientv3.WithRev(s.rev)}
 
@@ -78,15 +78,8 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 			// If len(s.prefix) != 0, we will sync key-value space with given prefix.
 			// We then range from the prefix to the next prefix if exists. Or we will
 			// range from the prefix to the end if the next prefix does not exists.
-			// (For example, when the given prefix is 0xffff, the next prefix does not
-			// exist).
+			opts = append(opts, clientv3.WithPrefix())
 			key = s.prefix
-			end = string(incr([]byte(s.prefix)))
-			if len(end) == 0 {
-				opts = append(opts, clientv3.WithFromKey())
-			} else {
-				opts = append(opts, clientv3.WithRange(string(end)))
-			}
 		}
 
 		for {
@@ -130,21 +123,4 @@ func (s *syncer) SyncUpdates(ctx context.Context) clientv3.WatchChan {
 	}()
 
 	return respchan
-}
-
-func incr(bs []byte) []byte {
-	c := int8(1)
-	for i := range bs {
-		j := len(bs) - i - 1
-		n := int8(bs[j])
-		n += c
-		bs[j] = byte(n)
-		if n == 0 {
-			c = 1
-		} else {
-			c = 0
-			return bs
-		}
-	}
-	return nil
 }
