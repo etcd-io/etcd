@@ -255,6 +255,40 @@ func TestWatchCompacted(t *testing.T) {
 	}
 }
 
+// TestWatchBatchUnsynced tests batching on unsynced watchers
+func TestWatchBatchUnsynced(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(b, &lease.FakeLessor{})
+
+	oldMaxRevs := watchBatchMaxRevs
+	defer func() {
+		watchBatchMaxRevs = oldMaxRevs
+		s.store.Close()
+		os.Remove(tmpPath)
+	}()
+	batches := 3
+	watchBatchMaxRevs = 4
+
+	v := []byte("foo")
+	for i := 0; i < watchBatchMaxRevs*batches; i++ {
+		s.Put(v, v, lease.NoLease)
+	}
+
+	w := s.NewWatchStream()
+	w.Watch(v, false, 1)
+	for i := 0; i < batches; i++ {
+		if resp := <-w.Chan(); len(resp.Events) != watchBatchMaxRevs {
+			t.Fatalf("len(events) = %d, want %d", len(resp.Events), watchBatchMaxRevs)
+		}
+	}
+
+	s.store.mu.Lock()
+	defer s.store.mu.Unlock()
+	if len(s.synced) != 1 {
+		t.Errorf("synced size = %d, want 1", len(s.synced))
+	}
+}
+
 func TestNewMapwatcherToEventMap(t *testing.T) {
 	k0, k1, k2 := []byte("foo0"), []byte("foo1"), []byte("foo2")
 	v0, v1, v2 := []byte("bar0"), []byte("bar1"), []byte("bar2")
@@ -341,16 +375,16 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gwe := newWatcherToEventMap(tt.sync, tt.evs)
+		gwe := newWatcherBatch(tt.sync, tt.evs)
 		if len(gwe) != len(tt.wwe) {
 			t.Errorf("#%d: len(gwe) got = %d, want = %d", i, len(gwe), len(tt.wwe))
 		}
 		// compare gwe and tt.wwe
-		for w, mevs := range gwe {
-			if len(mevs) != len(tt.wwe[w]) {
-				t.Errorf("#%d: len(mevs) got = %d, want = %d", i, len(mevs), len(tt.wwe[w]))
+		for w, eb := range gwe {
+			if len(eb.evs) != len(tt.wwe[w]) {
+				t.Errorf("#%d: len(eb.evs) got = %d, want = %d", i, len(eb.evs), len(tt.wwe[w]))
 			}
-			if !reflect.DeepEqual(mevs, tt.wwe[w]) {
+			if !reflect.DeepEqual(eb.evs, tt.wwe[w]) {
 				t.Errorf("#%d: reflect.DeepEqual events got = %v, want = true", i, false)
 			}
 		}
