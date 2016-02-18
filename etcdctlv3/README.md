@@ -42,3 +42,30 @@ Insert '--' for workaround:
 ./etcdctl put -- <key> <value>
 ```
 
+### DEL [options] \<key\> [range_end]
+
+Removes the specified key or range of keys [key, range_end) if `range-end` is given.
+
+#### Options
+
+TODO: --prefix, --from
+
+#### Return value
+
+Simple reply
+
+- The number of keys that were removed in decimal if DEL executed correctly. Exit code is zero. 
+
+- Error string if DEL failed. Exit code is non-zero.
+
+TODO: probably json and binary encoded proto
+
+#### Examples
+
+``` bash
+./etcdctl put foo bar
+OK
+./etcdctl del foo
+1
+./etcdctl range foo
+```
