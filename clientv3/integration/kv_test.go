@@ -96,10 +96,9 @@ func TestKVRange(t *testing.T) {
 	wheader := resp.Header
 
 	tests := []struct {
-		begin, end   string
-		rev          int64
-		sortOption   *clientv3.SortOption
-		serializable bool
+		begin, end string
+		rev        int64
+		opts       []clientv3.OpOption
 
 		wantSet []*storagepb.KeyValue
 	}{
@@ -108,7 +107,6 @@ func TestKVRange(t *testing.T) {
 			"a", "c",
 			0,
 			nil,
-			false,
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -119,8 +117,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "c",
 			0,
-			nil,
-			true,
+			[]clientv3.OpOption{clientv3.WithSerializable()},
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -132,7 +129,6 @@ func TestKVRange(t *testing.T) {
 			"a", "x",
 			2,
 			nil,
-			false,
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -142,8 +138,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			0,
-			&clientv3.SortOption{Target: clientv3.SortByKey, Order: clientv3.SortAscend},
-			false,
+			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)},
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
@@ -158,8 +153,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			0,
-			&clientv3.SortOption{Target: clientv3.SortByCreatedRev, Order: clientv3.SortDescend},
-			false,
+			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByCreatedRev, clientv3.SortDescend)},
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
@@ -174,8 +168,7 @@ func TestKVRange(t *testing.T) {
 		{
 			"a", "x",
 			0,
-			&clientv3.SortOption{Target: clientv3.SortByModifiedRev, Order: clientv3.SortDescend},
-			false,
+			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByModifiedRev, clientv3.SortDescend)},
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
@@ -186,16 +179,34 @@ func TestKVRange(t *testing.T) {
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
 			},
 		},
+		// WithPrefix
+		{
+			"foo", "",
+			0,
+			[]clientv3.OpOption{clientv3.WithPrefix()},
+
+			[]*storagepb.KeyValue{
+				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
+				{Key: []byte("foo/abc"), Value: nil, CreateRevision: 8, ModRevision: 8, Version: 1},
+			},
+		},
+		// WithFromKey
+		{
+			"fo", "",
+			0,
+			[]clientv3.OpOption{clientv3.WithFromKey()},
+
+			[]*storagepb.KeyValue{
+				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
+				{Key: []byte("foo/abc"), Value: nil, CreateRevision: 8, ModRevision: 8, Version: 1},
+				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
+			},
+		},
 	}
 
 	for i, tt := range tests {
 		opts := []clientv3.OpOption{clientv3.WithRange(tt.end), clientv3.WithRev(tt.rev)}
-		if tt.sortOption != nil {
-			opts = append(opts, clientv3.WithSort(tt.sortOption.Target, tt.sortOption.Order))
-		}
-		if tt.serializable == true {
-			opts = append(opts, clientv3.WithSerializable())
-		}
+		opts = append(opts, tt.opts...)
 		resp, err := kv.Get(ctx, tt.begin, opts...)
 		if err != nil {
 			t.Fatalf("#%d: couldn't range (%v)", i, err)

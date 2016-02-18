@@ -129,6 +129,22 @@ func WithSort(tgt SortTarget, order SortOrder) OpOption {
 		op.sort = &SortOption{tgt, order}
 	}
 }
+func WithPrefix() OpOption {
+	return func(op *Op) {
+		op.end = make([]byte, len(op.key))
+		copy(op.end, op.key)
+		for i := len(op.end) - 1; i >= 0; i-- {
+			if op.end[i] < 0xff {
+				op.end[i] = op.end[i] + 1
+				op.end = op.end[:i+1]
+				return
+			}
+		}
+		// next prefix does not exist (e.g., 0xffff);
+		// default to WithFromKey policy
+		op.end = []byte{0}
+	}
+}
 func WithRange(endKey string) OpOption {
 	return func(op *Op) { op.end = []byte(endKey) }
 }
