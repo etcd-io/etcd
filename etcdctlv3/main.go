@@ -48,7 +48,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.CAFile, "cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
 
 	rootCmd.AddCommand(
-		command.NewRangeCommand(),
+		command.NewGetCommand(),
 		command.NewPutCommand(),
 		command.NewDelCommand(),
 		command.NewTxnCommand(),
