@@ -188,7 +188,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			t.Fatalf("#%d: wAPI.Watch error: %v", i, err)
 		}
 
-		if err := wStream.Send(tt.watchRequest); err != nil {
+		err = wStream.Send(tt.watchRequest)
+		if err != nil {
 			t.Fatalf("#%d: wStream.Send error: %v", i, err)
 		}
 
