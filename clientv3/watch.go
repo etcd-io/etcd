@@ -198,6 +198,12 @@ func (w *watcher) addStream(resp *pb.WatchResponse, pendingReq *watchRequest) {
 		resumec: make(chan int64),
 	}
 
+	if pendingReq.rev == 0 {
+		// note the header revision so that a put following a current watcher
+		// disconnect will arrive on the watcher channel after reconnect
+		ws.initReq.rev = resp.Header.Revision
+	}
+
 	w.mu.Lock()
 	w.streams[ws.id] = ws
 	w.mu.Unlock()

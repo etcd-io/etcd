@@ -163,13 +163,18 @@ func TestWatchReconnRequest(t *testing.T) {
 }
 
 func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
-	// take down watcher connection
-	donec := make(chan struct{})
+	donec, stopc := make(chan struct{}), make(chan struct{}, 1)
 	go func() {
+		timer := time.After(2 * time.Second)
+		defer close(donec)
+		// take down watcher connection
 		for {
 			wctx.wclient.ActiveConnection().Close()
 			select {
-			case <-donec:
+			case <-timer:
+				// spinning on close may live lock reconnection
+				return
+			case <-stopc:
 				return
 			default:
 			}
@@ -179,7 +184,11 @@ func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
 	if wctx.ch = wctx.w.Watch(context.TODO(), "a", 0); wctx.ch == nil {
 		t.Fatalf("expected non-nil channel")
 	}
-	close(donec)
+
+	// wait for disconnections to stop
+	stopc <- struct{}{}
+	<-donec
+
 	// ensure watcher works
 	putAndWatch(t, wctx, "a", "a")
 }
