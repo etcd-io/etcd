@@ -74,9 +74,9 @@ func (*KeyValue) ProtoMessage()    {}
 
 type Event struct {
 	Type Event_EventType `protobuf:"varint,1,opt,name=type,proto3,enum=storagepb.Event_EventType" json:"type,omitempty"`
-	// a put event contains the current key-value
-	// a delete/expire event contains the previous
-	// key-value
+	// A PUT event contains current kv pair.
+	// A PUT event with kv.Version=1 indicates the creation of a key.
+	// A DELETE/EXPIRE event contains previous kv pair
 	Kv *KeyValue `protobuf:"bytes,2,opt,name=kv" json:"kv,omitempty"`
 }
 
