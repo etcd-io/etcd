@@ -24,20 +24,67 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+)
+
+var (
+	watchRev         int64
+	watchPrefix      bool
+	watchHex         bool
+	watchInteractive bool
 )
 
 // NewWatchCommand returns the cobra command for "watch".
 func NewWatchCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "watch",
-		Short: "Watch watches the events happening or happened.",
+	cmd := &cobra.Command{
+		Use:   "watch [key or prefix]",
+		Short: "Watch watches events stream on keys or prefixes.",
 		Run:   watchCommandFunc,
 	}
+
+	cmd.Flags().BoolVar(&watchHex, "hex", false, "print out key and value as hex encode string for text format")
+	cmd.Flags().BoolVar(&watchInteractive, "i", false, "interactive mode")
+	cmd.Flags().BoolVar(&watchPrefix, "prefix", false, "watch on a prefix if prefix is set")
+	cmd.Flags().Int64Var(&watchRev, "rev", 0, "revision to start watching")
+
+	return cmd
 }
 
 // watchCommandFunc executes the "watch" command.
 func watchCommandFunc(cmd *cobra.Command, args []string) {
+	if watchInteractive {
+		watchInteractiveFunc(cmd, args)
+		return
+	}
+
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("watch in non-interactive mode requires an argument as key or prefix"))
+	}
+
+	c := mustClientFromCmd(cmd)
+	w := clientv3.NewWatcher(c)
+
+	var wc clientv3.WatchChan
+	if !watchPrefix {
+		wc = w.Watch(context.TODO(), args[0], watchRev)
+	} else {
+		wc = w.Watch(context.TODO(), args[0], watchRev)
+	}
+	for resp := range wc {
+		for _, e := range resp.Events {
+			fmt.Printf("%s\r\n", e.Type)
+			printKV(watchHex, e.Kv)
+		}
+	}
+	err := w.Close()
+	if err == nil {
+		ExitWithError(ExitInterrupted, fmt.Errorf("watch is canceled by the server"))
+	}
+	ExitWithError(ExitBadConnection, err)
+}
+
+func watchInteractiveFunc(cmd *cobra.Command, args []string) {
 	wStream, err := mustClientFromCmd(cmd).Watch.Watch(context.TODO())
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)

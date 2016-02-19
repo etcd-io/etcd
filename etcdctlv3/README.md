@@ -108,3 +108,41 @@ OK
 1
 ./etcdctl range foo
 ```
+
+
+### WATCH [options] [key or prefix]
+
+Watch watches events stream on keys or prefixes. The watch command runs until it encounters an error or is terminated by the user.
+
+#### Options
+
+- hex -- print out key and value as hex encode string
+
+- i -- begins an interactive watch session
+
+- prefix -- watch on a prefix if prefix is set.
+
+- rev -- the revision to start watching. Specifying a revision is useful for observing past events.
+
+#### Return value
+
+Simple reply
+
+- \<event\>\<key\>\r\n\<value\>\r\n\<event\>\<next_key\>\r\n\<next_value\>...
+
+- Additional error string if WATCH failed. Exit code is non-zero.
+
+TODO: probably json and binary encoded proto
+
+#### Examples
+
+``` bash
+./etcdctl watch foo
+PUT
+foo
+bar
+```
+
+#### Notes
+
+TODO: doc interactive mode
