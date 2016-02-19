@@ -109,7 +109,6 @@ OK
 ./etcdctl range foo
 ```
 
-
 ### WATCH [options] [key or prefix]
 
 Watch watches events stream on keys or prefixes. The watch command runs until it encounters an error or is terminated by the user.
@@ -146,3 +145,37 @@ bar
 #### Notes
 
 TODO: doc interactive mode
+
+## Utility Commands
+
+### MAKE-MIRROR [options] \<destination\>
+
+[make-mirror][mirror] mirrors a key prefix in an etcd cluster to a destination etcd cluster.
+
+#### Options
+
+- dest-cacert -- TLS certificate authority file for destination cluster
+
+- dest-cert -- TLS certificate file for destination cluster
+
+- dest-key -- TLS key file for destination cluster
+
+- prefix -- The key-value prefix to mirror
+
+#### Return value
+
+Simple reply
+
+- The approximate total number of keys transferred to the destination cluster, updated every 30 seconds.
+
+- Error string if mirroring failed. Exit code is non-zero.
+
+#### Examples
+
+```
+./etcdctl make-mirror mirror.example.com:2379
+10
+18
+```
+
+[mirror]: ./doc/mirror_maker.md
