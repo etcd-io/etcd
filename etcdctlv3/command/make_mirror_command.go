@@ -16,6 +16,9 @@ package command
 
 import (
 	"errors"
+	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
@@ -35,7 +38,7 @@ var (
 // NewMakeMirrorCommand returns the cobra command for "makeMirror".
 func NewMakeMirrorCommand() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "make-mirror [options] [destination]",
+		Use:   "make-mirror [options] <destination>",
 		Short: "make-mirror makes a mirror at the destination etcd cluster",
 		Run:   makeMirrorCommandFunc,
 	}
@@ -62,6 +65,15 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) error {
+	total := int64(0)
+
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+			fmt.Println(atomic.LoadInt64(&total))
+		}
+	}()
+
 	// TODO: remove the prefix of the destination cluster?
 	dkv := clientv3.NewKV(dc)
 
@@ -75,6 +87,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 			if err != nil {
 				return err
 			}
+			atomic.AddInt64(&total, 1)
 		}
 	}
 
@@ -105,8 +118,10 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 			switch ev.Type {
 			case storagepb.PUT:
 				ops = append(ops, clientv3.OpPut(string(ev.Kv.Key), string(ev.Kv.Value)))
+				atomic.AddInt64(&total, 1)
 			case storagepb.DELETE, storagepb.EXPIRE:
 				ops = append(ops, clientv3.OpDelete(string(ev.Kv.Key)))
+				atomic.AddInt64(&total, 1)
 			default:
 				panic("unexpected event type")
 			}
