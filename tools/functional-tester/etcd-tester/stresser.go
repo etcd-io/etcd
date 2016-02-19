@@ -93,6 +93,15 @@ func (s *stresser) Stress() error {
 				})
 				putcancel()
 				if err != nil {
+					if grpc.ErrorDesc(err) == context.DeadlineExceeded.Error() {
+						// This retries when request is triggered at the same time as
+						// leader failure. When we terminate the leader, the request to
+						// that leader cannot be processed, and times out. Also requests
+						// to followers cannot be forwarded to the old leader, so timing out
+						// as well. We want to keep stressing until the cluster elects a
+						// new leader and start processing requests again.
+						continue
+					}
 					return
 				}
 				s.mu.Lock()
