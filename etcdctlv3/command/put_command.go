@@ -56,6 +56,18 @@ will store the content of the file to <key>.
 
 // putCommandFunc executes the "put" command.
 func putCommandFunc(cmd *cobra.Command, args []string) {
+	key, value, opts := getPutOp(cmd, args)
+
+	c := mustClientFromCmd(cmd)
+	kvapi := clientv3.NewKV(c)
+	resp, err := kvapi.Put(context.TODO(), key, value, opts...)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	printPutResponse(*resp)
+}
+
+func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpOption) {
 	if len(args) == 0 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
 	}
@@ -71,11 +83,14 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID (%v), expecting ID in Hex", err))
 	}
 
-	c := mustClientFromCmd(cmd)
-	kvapi := clientv3.NewKV(c)
-	_, err = kvapi.Put(context.TODO(), key, value, clientv3.WithLease(lease.LeaseID(id)))
-	if err != nil {
-		ExitWithError(ExitError, err)
+	opts := []clientv3.OpOption{}
+	if id != 0 {
+		opts = append(opts, clientv3.WithLease(lease.LeaseID(id)))
 	}
+
+	return key, value, opts
+}
+
+func printPutResponse(resp clientv3.PutResponse) {
 	fmt.Println("OK")
 }
