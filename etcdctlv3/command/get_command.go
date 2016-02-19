@@ -15,7 +15,6 @@
 package command
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -104,22 +103,6 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	for _, kv := range resp.Kvs {
-		k, v := string(kv.Key), string(kv.Value)
-		if getHex {
-			k = addHexPrefix(hex.EncodeToString(kv.Key))
-			v = addHexPrefix(hex.EncodeToString(kv.Value))
-		}
-		fmt.Printf("%s\r\n%s\r\n", k, v)
+		printKV(getHex, kv)
 	}
-}
-
-func addHexPrefix(s string) string {
-	ns := make([]byte, len(s)*2)
-	for i := 0; i < len(s); i += 2 {
-		ns[i*2] = '\\'
-		ns[i*2+1] = 'x'
-		ns[i*2+2] = s[i]
-		ns[i*2+3] = s[i+1]
-	}
-	return string(ns)
 }
