@@ -26,6 +26,7 @@ var (
 	ErrKeyExists      = errors.New("key already exists")
 	ErrWaitMismatch   = errors.New("unexpected wait result")
 	ErrTooManyClients = errors.New("too many clients")
+	ErrNoWatcher      = errors.New("no watcher channel")
 )
 
 // deleteRevKey deletes a key by revision, returning false if key is missing
