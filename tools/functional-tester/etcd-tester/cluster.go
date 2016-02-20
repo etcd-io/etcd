@@ -269,6 +269,7 @@ func setHealthKey(us []string) error {
 		kvc := pb.NewKVClient(conn)
 		_, err = kvc.Put(ctx, &pb.PutRequest{Key: []byte("health"), Value: []byte("good")})
 		cancel()
+		conn.Close()
 		if err != nil {
 			return err
 		}
