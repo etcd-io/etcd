@@ -17,29 +17,33 @@ package recipe
 import (
 	"sync"
 
-	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
 // Mutex implements the sync Locker interface with etcd
 type Mutex struct {
-	client *clientv3.Client
-	key    string
-	myKey  *RemoteKV
+	client *v3.Client
+	kv     v3.KV
+	ctx    context.Context
+
+	key   string
+	myKey *EphemeralKV
 }
 
-func NewMutex(client *clientv3.Client, key string) *Mutex {
-	return &Mutex{client, key, nil}
+func NewMutex(client *v3.Client, key string) *Mutex {
+	return &Mutex{client, v3.NewKV(client), context.TODO(), key, nil}
 }
 
 func (m *Mutex) Lock() (err error) {
 	// put self in lock waiters via myKey; oldest waiter holds lock
-	m.myKey, err = NewUniqueKey(m.client, m.key)
+	m.myKey, err = NewUniqueEphemeralKey(m.client, m.key)
 	if err != nil {
 		return err
 	}
 	// find oldest element in waiters via revision of insertion
-	resp, err := NewRange(m.client, m.key).FirstRev()
+	resp, err := m.kv.Get(m.ctx, m.key, withFirstRev()...)
 	if err != nil {
 		return err
 	}
@@ -48,7 +52,8 @@ func (m *Mutex) Lock() (err error) {
 		return nil
 	}
 	// otherwise myKey isn't lowest, so there must be a key prior to myKey
-	lastKey, err := NewRangeRev(m.client, m.key, m.myKey.Revision()-1).LastRev()
+	opts := append(withLastRev(), v3.WithRev(m.myKey.Revision()-1))
+	lastKey, err := m.kv.Get(m.ctx, m.key, opts...)
 	if err != nil {
 		return err
 	}
@@ -81,6 +86,6 @@ func (lm *lockerMutex) Unlock() {
 	}
 }
 
-func NewLocker(client *clientv3.Client, key string) sync.Locker {
+func NewLocker(client *v3.Client, key string) sync.Locker {
 	return &lockerMutex{NewMutex(client, key)}
 }

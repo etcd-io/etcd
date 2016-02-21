@@ -17,25 +17,28 @@ package recipe
 import (
 	"fmt"
 
-	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
 // PriorityQueue implements a multi-reader, multi-writer distributed queue.
 type PriorityQueue struct {
-	client *clientv3.Client
+	client *v3.Client
+	kv     v3.KV
+	ctx    context.Context
 	key    string
 }
 
 // NewPriorityQueue creates an etcd priority queue.
-func NewPriorityQueue(client *clientv3.Client, key string) *PriorityQueue {
-	return &PriorityQueue{client, key + "/"}
+func NewPriorityQueue(client *v3.Client, key string) *PriorityQueue {
+	return &PriorityQueue{client, v3.NewKV(client), context.TODO(), key + "/"}
 }
 
 // Enqueue puts a value into a queue with a given priority.
 func (q *PriorityQueue) Enqueue(val string, pr uint16) error {
 	prefix := fmt.Sprintf("%s%05d", q.key, pr)
-	_, err := NewSequentialKV(q.client, prefix, val)
+	_, err := NewSequentialKV(q.kv, prefix, val)
 	return err
 }
 
@@ -43,12 +46,12 @@ func (q *PriorityQueue) Enqueue(val string, pr uint16) error {
 // queue is empty, Dequeue blocks until items are available.
 func (q *PriorityQueue) Dequeue() (string, error) {
 	// TODO: fewer round trips by fetching more than one key
-	resp, err := NewRange(q.client, q.key).FirstKey()
+	resp, err := q.kv.Get(q.ctx, q.key, withFirstKey()...)
 	if err != nil {
 		return "", err
 	}
 
-	kv, err := claimFirstKey(q.client.KV, resp.Kvs)
+	kv, err := claimFirstKey(q.kv, resp.Kvs)
 	if err != nil {
 		return "", err
 	} else if kv != nil {
@@ -68,7 +71,7 @@ func (q *PriorityQueue) Dequeue() (string, error) {
 		return "", err
 	}
 
-	ok, err := deleteRevKey(q.client.KV, string(ev.Kv.Key), ev.Kv.ModRevision)
+	ok, err := deleteRevKey(q.kv, string(ev.Kv.Key), ev.Kv.ModRevision)
 	if err != nil {
 		return "", err
 	} else if !ok {
