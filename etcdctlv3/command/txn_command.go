@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -115,11 +114,6 @@ func readOps(r *bufio.Reader) (ops []clientv3.Op) {
 	}
 
 	return ops
-}
-
-func argify(s string) []string {
-	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
-	return r.FindAllString(s, -1)
 }
 
 func parseRequestUnion(line string) (*clientv3.Op, error) {
