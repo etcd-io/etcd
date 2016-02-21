@@ -81,7 +81,7 @@ type store struct {
 	readonlySet    types.Set
 }
 
-// The given namespaces will be created as initial directories in the returned store.
+// New creates a store where the given namespaces will be created as initial directories.
 func New(namespaces ...string) Store {
 	s := newStore(namespaces...)
 	s.clock = clockwork.NewRealClock()
@@ -107,7 +107,7 @@ func (s *store) Version() int {
 	return s.CurrentVersion
 }
 
-// Retrieves current of the store
+// Index retrieves the current index of the store.
 func (s *store) Index() uint64 {
 	s.worldLock.RLock()
 	defer s.worldLock.RUnlock()

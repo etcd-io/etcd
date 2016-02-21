@@ -107,7 +107,7 @@ func (b *backend) BatchTx() BatchTx {
 	return b.batchTx
 }
 
-// force commit the current batching tx.
+// ForceCommit forces the current batching tx to commit.
 func (b *backend) ForceCommit() {
 	b.batchTx.Commit()
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/coreos/etcd/client"
 )
 
-// NewRemoveCommand returns the CLI command for "rmdir".
+// NewRemoveDirCommand returns the CLI command for "rmdir".
 func NewRemoveDirCommand() cli.Command {
 	return cli.Command{
 		Name:      "rmdir",

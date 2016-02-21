@@ -27,7 +27,7 @@ var (
 
 type HTTPError struct {
 	Message string `json:"message"`
-	// HTTP return code
+	// Code is the HTTP status code
 	Code int `json:"-"`
 }
 

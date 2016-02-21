@@ -157,7 +157,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}, nil
 }
 
-// activeConnection returns the current in-use connection
+// ActiveConnection returns the current in-use connection
 func (c *Client) ActiveConnection() *grpc.ClientConn {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

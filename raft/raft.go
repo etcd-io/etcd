@@ -103,7 +103,7 @@ type Config struct {
 	// quorum is not active for an electionTimeout.
 	CheckQuorum bool
 
-	// logger is the logger used for raft log. For multinode which
+	// Logger is the logger used for raft log. For multinode which
 	// can host multiple raft group, each raft group can have its
 	// own logger
 	Logger Logger

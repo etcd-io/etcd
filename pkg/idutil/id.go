@@ -28,6 +28,9 @@ const (
 	suffixLen = tsLen + cntLen
 )
 
+// Generator generates unique identifiers based on counters, timestamps, and
+// a node member ID.
+//
 // The initial id is in this format:
 // High order byte is memberID, next 5 bytes are from timestamp,
 // and low order 2 bytes are 0s.
