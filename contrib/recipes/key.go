@@ -20,36 +20,32 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/clientv3"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/lease"
 )
 
 // Key is a key/revision pair created by the client and stored on etcd
 type RemoteKV struct {
-	client *clientv3.Client
-	key    string
-	rev    int64
-	val    string
+	kv  v3.KV
+	key string
+	rev int64
+	val string
 }
 
-func NewKey(client *clientv3.Client, key string, leaseID lease.LeaseID) (*RemoteKV, error) {
-	return NewKV(client, key, "", leaseID)
+func NewKey(kv v3.KV, key string, leaseID lease.LeaseID) (*RemoteKV, error) {
+	return NewKV(kv, key, "", leaseID)
 }
 
-func NewKV(client *clientv3.Client, key, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
-	rev, err := putNewKV(client, key, val, leaseID)
+func NewKV(kv v3.KV, key, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+	rev, err := putNewKV(kv, key, val, leaseID)
 	if err != nil {
 		return nil, err
 	}
-	return &RemoteKV{client, key, rev, val}, nil
+	return &RemoteKV{kv, key, rev, val}, nil
 }
 
-func GetRemoteKV(client *clientv3.Client, key string) (*RemoteKV, error) {
-	resp, err := client.KV.Range(
-		context.TODO(),
-		&pb.RangeRequest{Key: []byte(key)},
-	)
+func GetRemoteKV(kv v3.KV, key string) (*RemoteKV, error) {
+	resp, err := kv.Get(context.TODO(), key)
 	if err != nil {
 		return nil, err
 	}
@@ -59,23 +55,19 @@ func GetRemoteKV(client *clientv3.Client, key string) (*RemoteKV, error) {
 		rev = resp.Kvs[0].ModRevision
 		val = string(resp.Kvs[0].Value)
 	}
-	return &RemoteKV{
-		client: client,
-		key:    key,
-		rev:    rev,
-		val:    val}, nil
+	return &RemoteKV{kv: kv, key: key, rev: rev, val: val}, nil
 }
 
-func NewUniqueKey(client *clientv3.Client, prefix string) (*RemoteKV, error) {
-	return NewUniqueKV(client, prefix, "", 0)
+func NewUniqueKey(kv v3.KV, prefix string) (*RemoteKV, error) {
+	return NewUniqueKV(kv, prefix, "", 0)
 }
 
-func NewUniqueKV(client *clientv3.Client, prefix string, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func NewUniqueKV(kv v3.KV, prefix string, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
 	for {
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
-		rev, err := putNewKV(client, newKey, val, 0)
+		rev, err := putNewKV(kv, newKey, val, 0)
 		if err == nil {
-			return &RemoteKV{client, newKey, rev, val}, nil
+			return &RemoteKV{kv, newKey, rev, val}, nil
 		}
 		if err != ErrKeyExists {
 			return nil, err
@@ -85,22 +77,10 @@ func NewUniqueKV(client *clientv3.Client, prefix string, val string, leaseID lea
 
 // putNewKV attempts to create the given key, only succeeding if the key did
 // not yet exist.
-func putNewKV(ec *clientv3.Client, key, val string, leaseID lease.LeaseID) (int64, error) {
-	cmp := &pb.Compare{
-		Result:      pb.Compare_EQUAL,
-		Target:      pb.Compare_VERSION,
-		Key:         []byte(key),
-		TargetUnion: &pb.Compare_Version{Version: 0}}
-
-	req := &pb.RequestUnion{
-		Request: &pb.RequestUnion_RequestPut{
-			RequestPut: &pb.PutRequest{
-				Key:   []byte(key),
-				Value: []byte(val),
-				Lease: int64(leaseID)}}}
-	txnresp, err := ec.KV.Txn(
-		context.TODO(),
-		&pb.TxnRequest{[]*pb.Compare{cmp}, []*pb.RequestUnion{req}, nil})
+func putNewKV(kv v3.KV, key, val string, leaseID lease.LeaseID) (int64, error) {
+	cmp := v3.Compare(v3.Version(key), "=", 0)
+	req := v3.OpPut(key, val, v3.WithLease(leaseID))
+	txnresp, err := kv.Txn(context.TODO()).If(cmp).Then(req).Commit()
 	if err != nil {
 		return 0, err
 	}
@@ -111,14 +91,14 @@ func putNewKV(ec *clientv3.Client, key, val string, leaseID lease.LeaseID) (int6
 }
 
 // NewSequentialKV allocates a new sequential key-value pair at <prefix>/nnnnn
-func NewSequentialKV(client *clientv3.Client, prefix, val string) (*RemoteKV, error) {
-	return newSequentialKV(client, prefix, val, 0)
+func NewSequentialKV(kv v3.KV, prefix, val string) (*RemoteKV, error) {
+	return newSequentialKV(kv, prefix, val, 0)
 }
 
 // newSequentialKV allocates a new sequential key <prefix>/nnnnn with a given
 // value and lease.  Note: a bookkeeping node __<prefix> is also allocated.
-func newSequentialKV(client *clientv3.Client, prefix, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
-	resp, err := NewRange(client, prefix).LastKey()
+func newSequentialKV(kv v3.KV, prefix, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+	resp, err := kv.Get(context.TODO(), prefix, withLastKey()...)
 	if err != nil {
 		return nil, err
 	}
@@ -127,9 +107,9 @@ func newSequentialKV(client *clientv3.Client, prefix, val string, leaseID lease.
 	newSeqNum := 0
 	if len(resp.Kvs) != 0 {
 		fields := strings.Split(string(resp.Kvs[0].Key), "/")
-		_, err := fmt.Sscanf(fields[len(fields)-1], "%d", &newSeqNum)
-		if err != nil {
-			return nil, err
+		_, serr := fmt.Sscanf(fields[len(fields)-1], "%d", &newSeqNum)
+		if serr != nil {
+			return nil, serr
 		}
 		newSeqNum++
 	}
@@ -140,42 +120,22 @@ func newSequentialKV(client *clientv3.Client, prefix, val string, leaseID lease.
 	// N1: LastKey() == 1, start txn.
 	// N2: New Key 2, New Key 3, Delete Key 2
 	// N1: txn succeeds allocating key 2 when it shouldn't
-	baseKey := []byte("__" + prefix)
-	cmp := &pb.Compare{
-		Result: pb.Compare_LESS,
-		Target: pb.Compare_MOD,
-		Key:    []byte(baseKey),
-		// current revision might contain modification so +1
-		TargetUnion: &pb.Compare_ModRevision{ModRevision: resp.Header.Revision + 1},
-	}
+	baseKey := "__" + prefix
 
-	reqPrefix := &pb.RequestUnion{
-		Request: &pb.RequestUnion_RequestPut{
-			RequestPut: &pb.PutRequest{
-				Key:   baseKey,
-				Lease: int64(leaseID),
-			}}}
+	// current revision might contain modification so +1
+	cmp := v3.Compare(v3.ModifiedRevision(baseKey), "<", resp.Header.Revision+1)
+	reqPrefix := v3.OpPut(baseKey, "", v3.WithLease(leaseID))
+	reqNewKey := v3.OpPut(newKey, val, v3.WithLease(leaseID))
 
-	reqNewKey := &pb.RequestUnion{
-		Request: &pb.RequestUnion_RequestPut{
-			RequestPut: &pb.PutRequest{
-				Key:   []byte(newKey),
-				Value: []byte(val),
-				Lease: int64(leaseID),
-			}}}
-
-	txnresp, err := client.KV.Txn(
-		context.TODO(),
-		&pb.TxnRequest{
-			[]*pb.Compare{cmp},
-			[]*pb.RequestUnion{reqPrefix, reqNewKey}, nil})
+	txn := kv.Txn(context.TODO())
+	txnresp, err := txn.If(cmp).Then(reqPrefix, reqNewKey).Commit()
 	if err != nil {
 		return nil, err
 	}
 	if txnresp.Succeeded == false {
-		return newSequentialKV(client, prefix, val, leaseID)
+		return newSequentialKV(kv, prefix, val, leaseID)
 	}
-	return &RemoteKV{client, newKey, txnresp.Header.Revision, val}, nil
+	return &RemoteKV{kv, newKey, txnresp.Header.Revision, val}, nil
 }
 
 func (rk *RemoteKV) Key() string     { return rk.key }
@@ -183,18 +143,16 @@ func (rk *RemoteKV) Revision() int64 { return rk.rev }
 func (rk *RemoteKV) Value() string   { return rk.val }
 
 func (rk *RemoteKV) Delete() error {
-	if rk.client == nil {
+	if rk.kv == nil {
 		return nil
 	}
-	req := &pb.DeleteRangeRequest{Key: []byte(rk.key)}
-	_, err := rk.client.KV.DeleteRange(context.TODO(), req)
-	rk.client = nil
+	_, err := rk.kv.Delete(context.TODO(), rk.key)
+	rk.kv = nil
 	return err
 }
 
 func (rk *RemoteKV) Put(val string) error {
-	req := &pb.PutRequest{Key: []byte(rk.key), Value: []byte(val)}
-	_, err := rk.client.KV.Put(context.TODO(), req)
+	_, err := rk.kv.Put(context.TODO(), rk.key, val)
 	return err
 }
 
@@ -202,12 +160,12 @@ func (rk *RemoteKV) Put(val string) error {
 type EphemeralKV struct{ RemoteKV }
 
 // NewEphemeralKV creates a new key/value pair associated with a session lease
-func NewEphemeralKV(client *clientv3.Client, key, val string) (*EphemeralKV, error) {
+func NewEphemeralKV(client *v3.Client, key, val string) (*EphemeralKV, error) {
 	leaseID, err := SessionLease(client)
 	if err != nil {
 		return nil, err
 	}
-	k, err := NewKV(client, key, val, leaseID)
+	k, err := NewKV(v3.NewKV(client), key, val, leaseID)
 	if err != nil {
 		return nil, err
 	}
@@ -215,12 +173,12 @@ func NewEphemeralKV(client *clientv3.Client, key, val string) (*EphemeralKV, err
 }
 
 // NewUniqueEphemeralKey creates a new unique valueless key associated with a session lease
-func NewUniqueEphemeralKey(client *clientv3.Client, prefix string) (*EphemeralKV, error) {
+func NewUniqueEphemeralKey(client *v3.Client, prefix string) (*EphemeralKV, error) {
 	return NewUniqueEphemeralKV(client, prefix, "")
 }
 
 // NewUniqueEphemeralKV creates a new unique key/value pair associated with a session lease
-func NewUniqueEphemeralKV(client *clientv3.Client, prefix, val string) (ek *EphemeralKV, err error) {
+func NewUniqueEphemeralKV(client *v3.Client, prefix, val string) (ek *EphemeralKV, err error) {
 	for {
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
 		ek, err = NewEphemeralKV(client, newKey, val)

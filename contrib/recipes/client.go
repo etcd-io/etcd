@@ -18,7 +18,7 @@ import (
 	"errors"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	v3 "github.com/coreos/etcd/clientv3"
 	spb "github.com/coreos/etcd/storage/storagepb"
 )
 
@@ -30,22 +30,10 @@ var (
 )
 
 // deleteRevKey deletes a key by revision, returning false if key is missing
-func deleteRevKey(kvc pb.KVClient, key string, rev int64) (bool, error) {
-	cmp := &pb.Compare{
-		Result:      pb.Compare_EQUAL,
-		Target:      pb.Compare_MOD,
-		Key:         []byte(key),
-		TargetUnion: &pb.Compare_ModRevision{ModRevision: rev},
-	}
-	req := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
-		RequestDeleteRange: &pb.DeleteRangeRequest{Key: []byte(key)}}}
-	txnresp, err := kvc.Txn(
-		context.TODO(),
-		&pb.TxnRequest{
-			Compare: []*pb.Compare{cmp},
-			Success: []*pb.RequestUnion{req},
-			Failure: nil,
-		})
+func deleteRevKey(kv v3.KV, key string, rev int64) (bool, error) {
+	cmp := v3.Compare(v3.ModifiedRevision(key), "=", rev)
+	req := v3.OpDelete(key)
+	txnresp, err := kv.Txn(context.TODO()).If(cmp).Then(req).Commit()
 	if err != nil {
 		return false, err
 	} else if txnresp.Succeeded == false {
@@ -54,27 +42,14 @@ func deleteRevKey(kvc pb.KVClient, key string, rev int64) (bool, error) {
 	return true, nil
 }
 
-func claimFirstKey(kvc pb.KVClient, kvs []*spb.KeyValue) (*spb.KeyValue, error) {
-	for _, kv := range kvs {
-		ok, err := deleteRevKey(kvc, string(kv.Key), kv.ModRevision)
+func claimFirstKey(kv v3.KV, kvs []*spb.KeyValue) (*spb.KeyValue, error) {
+	for _, k := range kvs {
+		ok, err := deleteRevKey(kv, string(k.Key), k.ModRevision)
 		if err != nil {
 			return nil, err
 		} else if ok {
-			return kv, nil
+			return k, nil
 		}
 	}
 	return nil, nil
-}
-
-func putEmptyKey(kv pb.KVClient, key string) (*pb.PutResponse, error) {
-	return kv.Put(context.TODO(), &pb.PutRequest{Key: []byte(key), Value: []byte{}})
-}
-
-// deletePrefix performs a RangeRequest to get keys on a given prefix
-func deletePrefix(kv pb.KVClient, prefix string) (*pb.DeleteRangeResponse, error) {
-	return kv.DeleteRange(
-		context.TODO(),
-		&pb.DeleteRangeRequest{
-			Key:      []byte(prefix),
-			RangeEnd: []byte(prefixEnd(prefix))})
 }
