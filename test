@@ -89,6 +89,18 @@ function fmt_tests {
 		fi
 	done
 
+	echo "Checking goword..."
+	# get all go files to process
+	gofiles=`find $FMT -iname '*.go' 2>/dev/null`
+	# ignore tests and protobuf files
+	gofiles=`echo ${gofiles} | sort | uniq | sed "s/ /\n/g" | egrep -v "(\\_test.go|\\.pb\\.go)"`
+	# only check for broken exported godocs
+	gowordRes=`goword -use-spell=false ${gofiles} | grep godoc-export | sort`
+	if [ ! -z "$gowordRes" ]; then
+		echo -e "goword checking failed:\n${gowordRes}"
+		exit 255
+	fi
+
 	echo "Checking for license header..."
 	licRes=$(for file in $(find . -type f -iname '*.go' ! -path './Godeps/*'); do
 			head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" || echo -e "  ${file}"
