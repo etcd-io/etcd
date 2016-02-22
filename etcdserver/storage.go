@@ -149,8 +149,16 @@ func makeMemberDir(dir string) error {
 }
 
 type storageRecorder struct {
-	testutil.RecorderBuffered
+	testutil.Recorder
 	dbPath string // must have '/' suffix if set
+}
+
+func newStorageRecorder(db string) *storageRecorder {
+	return &storageRecorder{&testutil.RecorderBuffered{}, db}
+}
+
+func newStorageRecorderStream(db string) *storageRecorder {
+	return &storageRecorder{testutil.NewRecorderStream(), db}
 }
 
 func (p *storageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) error {

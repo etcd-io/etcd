@@ -153,7 +153,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	n := newNopReadyNode()
 	r := raftNode{
 		Node:        n,
-		storage:     &storageRecorder{},
+		storage:     newStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
 	}
