@@ -152,6 +152,8 @@ message DeleteRangeRequest {
 
 message DeleteRangeResponse {
   ResponseHeader header = 1;
+  // Deleted is the number of keys that got deleted.
+  int64 deleted = 2;
 }
 
 message RequestUnion {
