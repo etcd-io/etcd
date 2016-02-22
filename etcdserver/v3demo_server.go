@@ -384,6 +384,7 @@ func applyDeleteRange(txnID int64, kv dstorage.KV, dr *pb.DeleteRangeRequest) (*
 	resp.Header = &pb.ResponseHeader{}
 
 	var (
+		n   int64
 		rev int64
 		err error
 	)
@@ -393,14 +394,15 @@ func applyDeleteRange(txnID int64, kv dstorage.KV, dr *pb.DeleteRangeRequest) (*
 	}
 
 	if txnID != noTxn {
-		_, rev, err = kv.TxnDeleteRange(txnID, dr.Key, dr.RangeEnd)
+		n, rev, err = kv.TxnDeleteRange(txnID, dr.Key, dr.RangeEnd)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		_, rev = kv.DeleteRange(dr.Key, dr.RangeEnd)
+		n, rev = kv.DeleteRange(dr.Key, dr.RangeEnd)
 	}
 
+	resp.Deleted = n
 	resp.Header.Revision = rev
 	return resp, nil
 }

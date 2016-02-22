@@ -232,6 +232,8 @@ func (*DeleteRangeRequest) ProtoMessage()    {}
 
 type DeleteRangeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	// Deleted is the number of keys that got deleted.
+	Deleted int64 `protobuf:"varint,2,opt,name=deleted,proto3" json:"deleted,omitempty"`
 }
 
 func (m *DeleteRangeResponse) Reset()         { *m = DeleteRangeResponse{} }
@@ -2088,6 +2090,11 @@ func (m *DeleteRangeResponse) MarshalTo(data []byte) (int, error) {
 		}
 		i += n3
 	}
+	if m.Deleted != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.Deleted))
+	}
 	return i, nil
 }
 
@@ -3341,6 +3348,9 @@ func (m *DeleteRangeResponse) Size() (n int) {
 	if m.Header != nil {
 		l = m.Header.Size()
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.Deleted != 0 {
+		n += 1 + sovRpc(uint64(m.Deleted))
 	}
 	return n
 }
@@ -4696,6 +4706,25 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Deleted", wireType)
+			}
+			m.Deleted = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Deleted |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])

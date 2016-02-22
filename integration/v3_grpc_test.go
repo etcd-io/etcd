@@ -282,42 +282,43 @@ func TestV3DeleteRange(t *testing.T) {
 		end    string
 
 		wantSet [][]byte
+		deleted int64
 	}{
 		// delete middle
 		{
 			[]string{"foo", "foo/abc", "fop"},
 			"foo/", "fop",
-			[][]byte{[]byte("foo"), []byte("fop")},
+			[][]byte{[]byte("foo"), []byte("fop")}, 1,
 		},
 		// no delete
 		{
 			[]string{"foo", "foo/abc", "fop"},
 			"foo/", "foo/",
-			[][]byte{[]byte("foo"), []byte("foo/abc"), []byte("fop")},
+			[][]byte{[]byte("foo"), []byte("foo/abc"), []byte("fop")}, 0,
 		},
 		// delete first
 		{
 			[]string{"foo", "foo/abc", "fop"},
 			"fo", "fop",
-			[][]byte{[]byte("fop")},
+			[][]byte{[]byte("fop")}, 2,
 		},
 		// delete tail
 		{
 			[]string{"foo", "foo/abc", "fop"},
 			"foo/", "fos",
-			[][]byte{[]byte("foo")},
+			[][]byte{[]byte("foo")}, 2,
 		},
 		// delete exact
 		{
 			[]string{"foo", "foo/abc", "fop"},
 			"foo/abc", "",
-			[][]byte{[]byte("foo"), []byte("fop")},
+			[][]byte{[]byte("foo"), []byte("fop")}, 1,
 		},
 		// delete none, [x,x)
 		{
 			[]string{"foo"},
 			"foo", "foo",
-			[][]byte{[]byte("foo")},
+			[][]byte{[]byte("foo")}, 0,
 		},
 	}
 
@@ -340,6 +341,9 @@ func TestV3DeleteRange(t *testing.T) {
 		dresp, err := kvc.DeleteRange(context.TODO(), dreq)
 		if err != nil {
 			t.Fatalf("couldn't delete range on test %d (%v)", i, err)
+		}
+		if tt.deleted != dresp.Deleted {
+			t.Errorf("expected %d on test %v, got %d", tt.deleted, i, dresp.Deleted)
 		}
 
 		rreq := &pb.RangeRequest{Key: []byte{0x0}, RangeEnd: []byte{0xff}}
