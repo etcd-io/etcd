@@ -73,7 +73,7 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 	}
 	for resp := range wc {
 		for _, e := range resp.Events {
-			fmt.Printf("%s\r\n", e.Type)
+			fmt.Println(e.Type)
 			printKV(watchHex, e.Kv)
 		}
 	}

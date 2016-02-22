@@ -27,7 +27,8 @@ func printKV(isHex bool, kv *pb.KeyValue) {
 		k = addHexPrefix(hex.EncodeToString(kv.Key))
 		v = addHexPrefix(hex.EncodeToString(kv.Value))
 	}
-	fmt.Printf("%s\r\n%s\r\n", k, v)
+	fmt.Println(k)
+	fmt.Println(v)
 }
 
 func addHexPrefix(s string) string {
