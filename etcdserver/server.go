@@ -814,11 +814,12 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb Member) error {
 }
 
 // Implement the RaftTimer interface
+
 func (s *EtcdServer) Index() uint64 { return atomic.LoadUint64(&s.r.index) }
 
 func (s *EtcdServer) Term() uint64 { return atomic.LoadUint64(&s.r.term) }
 
-// Only for testing purpose
+// Lead is only for testing purposes.
 // TODO: add Raft server interface to expose raft related info:
 // Index, Term, Lead, Committed, Applied, LastIndex, etc.
 func (s *EtcdServer) Lead() uint64 { return atomic.LoadUint64(&s.r.lead) }

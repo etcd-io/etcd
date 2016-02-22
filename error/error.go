@@ -136,7 +136,7 @@ func NewError(errorCode int, cause string, index uint64) *Error {
 	}
 }
 
-// Only for error interface
+// Error is for the error interface
 func (e Error) Error() string {
 	return e.Message + " (" + e.Cause + ")"
 }

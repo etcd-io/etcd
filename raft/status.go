@@ -48,6 +48,7 @@ func getStatus(r *raft) Status {
 	return s
 }
 
+// MarshalJSON translates the raft status into JSON.
 // TODO: try to simplify this by introducing ID type into raft
 func (s Status) MarshalJSON() ([]byte, error) {
 	j := fmt.Sprintf(`{"id":"%x","term":%d,"vote":"%x","commit":%d,"lead":"%x","raftState":%q,"progress":{`,

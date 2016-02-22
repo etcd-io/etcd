@@ -299,12 +299,12 @@ func (t *Transport) SendSnapshot(m snap.Message) {
 	p.sendSnap(m)
 }
 
+// Pausable is a testing interface for pausing transport traffic.
 type Pausable interface {
 	Pause()
 	Resume()
 }
 
-// for testing
 func (t *Transport) Pause() {
 	for _, p := range t.peers {
 		p.(Pausable).Pause()

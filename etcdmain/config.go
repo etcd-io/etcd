@@ -84,6 +84,7 @@ type config struct {
 	maxWalFiles    uint
 	name           string
 	snapCount      uint64
+	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
 	// make ticks a cluster wide configuration.
 	TickMs     uint

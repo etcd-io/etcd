@@ -85,6 +85,7 @@ type watchStream struct {
 	cancels map[WatchID]cancelFunc
 }
 
+// Watch creates a new watcher in the stream and returns its WatchID.
 // TODO: return error if ws is closed?
 func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) WatchID {
 	ws.mu.Lock()

@@ -168,7 +168,7 @@ func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
 	return nil
 }
 
-// Creates a snapshot which can be retrieved with the Snapshot() method and
+// CreateSnapshot makes a snapshot which can be retrieved with Snapshot() and
 // can be used to reconstruct the state at that point.
 // If any configuration changes have been made since the last compaction,
 // the result of the last ApplyConfChange must be passed in.

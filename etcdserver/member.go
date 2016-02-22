@@ -157,14 +157,14 @@ func nodeToMember(n *store.NodeExtern) (*Member, error) {
 	return m, nil
 }
 
-// implement sort by ID interface
+// MembersByID implements sort by ID interface
 type MembersByID []*Member
 
 func (ms MembersByID) Len() int           { return len(ms) }
 func (ms MembersByID) Less(i, j int) bool { return ms[i].ID < ms[j].ID }
 func (ms MembersByID) Swap(i, j int)      { ms[i], ms[j] = ms[j], ms[i] }
 
-// implement sort by peer urls interface
+// MembersByPeerURLs implements sort by peer urls interface
 type MembersByPeerURLs []*Member
 
 func (ms MembersByPeerURLs) Len() int { return len(ms) }
