@@ -50,6 +50,17 @@ func NewGetCommand() *cobra.Command {
 
 // getCommandFunc executes the "get" command.
 func getCommandFunc(cmd *cobra.Command, args []string) {
+	key, opts := getGetOp(cmd, args)
+	c := mustClientFromCmd(cmd)
+	kvapi := clientv3.NewKV(c)
+	resp, err := kvapi.Get(context.TODO(), key, opts...)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	printGetResponse(*resp, getHex)
+}
+
+func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	if len(args) == 0 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("range command needs arguments."))
 	}
@@ -94,15 +105,11 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	opts = append(opts, clientv3.WithSort(sortByTarget, sortByOrder))
+	return key, opts
+}
 
-	c := mustClientFromCmd(cmd)
-	kvapi := clientv3.NewKV(c)
-	resp, err := kvapi.Get(context.TODO(), key, opts...)
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-
+func printGetResponse(resp clientv3.GetResponse, isHex bool) {
 	for _, kv := range resp.Kvs {
-		printKV(getHex, kv)
+		printKV(isHex, kv)
 	}
 }

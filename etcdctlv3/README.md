@@ -15,7 +15,7 @@ PUT assigns the specified value with the specified key. If key already holds a v
 
 Simple reply
 
-- OK if PUT executed correctly. Exit code is zero. 
+- OK if PUT executed correctly. Exit code is zero.
 
 - Error string if PUT failed. Exit code is non-zero.
 
@@ -93,7 +93,7 @@ TODO: --prefix, --from
 
 Simple reply
 
-- The number of keys that were removed in decimal if DEL executed correctly. Exit code is zero. 
+- The number of keys that were removed in decimal if DEL executed correctly. Exit code is zero.
 
 - Error string if DEL failed. Exit code is non-zero.
 
@@ -109,6 +109,72 @@ OK
 ./etcdctl range foo
 ```
 
+### TXN [options]
+
+TXN applies multiple etcd requests as a single atomic transaction. A transaction consists of list of conditions, a list of requests to apply if all the conditions are true, and a list of requests to apply if any condition is false.
+
+#### Options
+
+- hex -- print out keys and values as hex encoded string
+
+- interactive -- input transaction with interactive mode
+
+#### Input Format
+Interactive mode:
+```ebnf
+<Txn> ::= <CMP>* "\n" <THEN> "\n" <ELSE> "\n"
+<CMP> ::= (<CMPCREATE>|<CMPMOD>|<CMPVAL>|<CMPVER>) "\n"
+<CMPOP> ::= "<" | "=" | ">"
+<CMPCREATE> := ("c"|"create")"("<KEY>")" <REVISION>
+<CMPMOD> ::= ("m"|"mod")"("<KEY>")" <CMPOP> <REVISION>
+<CMPVAL> ::= ("val"|"value")"("<KEY>")" <CMPOP> <VALUE>
+<CMPVER> ::= ("ver"|"version")"("<KEY>")" <CMPOP> <VERSION>
+<THEN> ::= <OP>*
+<ELSE> ::= <OP>*
+<OP> ::= ((see put, get, del etcdctl command syntax)) "\n"
+<KEY> ::= (%q formatted string)
+<VALUE> ::= (%q formatted string)
+<REVISION> ::= "\""[0-9]+"\""
+<VERSION> ::= "\""[0-9]+"\""
+```
+
+TODO: non-interactive mode
+
+#### Return value
+
+Simple reply
+
+- SUCCESS if etcd processed the transaction success list, FAILURE if etcd processed the transaction failure list.
+
+- Simple reply for each command executed request list, each separated by a blank line.
+
+- Additional error string if TXN failed. Exit code is non-zero.
+
+TODO: probably json and binary encoded proto
+
+#### Examples
+
+``` bash
+./etcdctl txn -i
+mod("key1") > "0"
+
+put key1 "overwrote-key1"
+
+put key1 "created-key1"
+put key2 "some extra key"
+
+FAILURE
+
+OK
+
+OK
+```
+
+#### Notes
+
+TODO: non-interactive mode
+
+
 ### WATCH [options] [key or prefix]
 
 Watch watches events stream on keys or prefixes. The watch command runs until it encounters an error or is terminated by the user.
@@ -117,7 +183,7 @@ Watch watches events stream on keys or prefixes. The watch command runs until it
 
 - hex -- print out key and value as hex encode string
 
-- i -- begins an interactive watch session
+- interactive -- begins an interactive watch session
 
 - prefix -- watch on a prefix if prefix is set.
 

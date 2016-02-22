@@ -18,21 +18,31 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+)
+
+var (
+	txnInteractive bool
+	txnHex         bool
 )
 
 // NewTxnCommand returns the cobra command for "txn".
 func NewTxnCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "txn",
+	cmd := &cobra.Command{
+		Use:   "txn [options]",
 		Short: "Txn processes all the requests in one transaction.",
 		Run:   txnCommandFunc,
 	}
+	cmd.Flags().BoolVarP(&txnInteractive, "interactive", "i", false, "input transaction in interactive mode")
+	cmd.Flags().BoolVar(&txnHex, "hex", false, "print out key-values as hex encoded strings")
+	return cmd
 }
 
 // txnCommandFunc executes the "txn" command.
@@ -41,198 +51,182 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("txn command does not accept argument."))
 	}
 
-	reader := bufio.NewReader(os.Stdin)
-
-	next := compareState
-	txn := &pb.TxnRequest{}
-	for next != nil {
-		next = next(txn, reader)
+	if !txnInteractive {
+		ExitWithError(ExitBadFeature, fmt.Errorf("txn command only supports interactive mode"))
 	}
 
-	resp, err := mustClientFromCmd(cmd).KV.Txn(context.Background(), txn)
+	reader := bufio.NewReader(os.Stdin)
+
+	txn := clientv3.NewKV(mustClientFromCmd(cmd)).Txn(context.Background())
+	fmt.Println("compares:")
+	txn.If(readCompares(reader)...)
+	fmt.Println("success requests (get, put, delete):")
+	txn.Then(readOps(reader)...)
+	fmt.Println("failure requests (get, put, delete):")
+	txn.Else(readOps(reader)...)
+
+	resp, err := txn.Commit()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	if resp.Succeeded {
-		fmt.Println("executed success request list")
-	} else {
-		fmt.Println("executed failure request list")
-	}
+
+	printTxnResponse(*resp, txnHex)
 }
 
-type stateFunc func(txn *pb.TxnRequest, r *bufio.Reader) stateFunc
+func readCompares(r *bufio.Reader) (cmps []clientv3.Cmp) {
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			ExitWithError(ExitInvalidInput, err)
+		}
+		if len(line) == 1 {
+			break
+		}
 
-func compareState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
-	fmt.Println("entry comparison[key target expected_result compare_value] (end with empty line):")
-
-	line, err := r.ReadString('\n')
-	if err != nil {
-		ExitWithError(ExitInvalidInput, err)
+		// remove trialling \n
+		line = line[:len(line)-1]
+		cmp, err := parseCompare(line)
+		if err != nil {
+			ExitWithError(ExitInvalidInput, err)
+		}
+		cmps = append(cmps, *cmp)
 	}
 
-	if len(line) == 1 {
-		return successState
-	}
-
-	// remove trialling \n
-	line = line[:len(line)-1]
-	c, err := parseCompare(line)
-	if err != nil {
-		ExitWithError(ExitInvalidInput, err)
-	}
-
-	txn.Compare = append(txn.Compare, c)
-
-	return compareState
+	return cmps
 }
 
-func successState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
-	fmt.Println("entry success request[method key value(end_range)] (end with empty line):")
+func readOps(r *bufio.Reader) (ops []clientv3.Op) {
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			ExitWithError(ExitInvalidInput, err)
+		}
+		if len(line) == 1 {
+			break
+		}
 
-	line, err := r.ReadString('\n')
-	if err != nil {
-		ExitWithError(ExitInvalidInput, err)
+		// remove trialling \n
+		line = line[:len(line)-1]
+		op, err := parseRequestUnion(line)
+		if err != nil {
+			ExitWithError(ExitInvalidInput, err)
+		}
+		ops = append(ops, *op)
 	}
 
-	if len(line) == 1 {
-		return failureState
-	}
-
-	// remove trialling \n
-	line = line[:len(line)-1]
-	ru, err := parseRequestUnion(line)
-	if err != nil {
-		ExitWithError(ExitInvalidInput, err)
-	}
-
-	txn.Success = append(txn.Success, ru)
-
-	return successState
+	return ops
 }
 
-func failureState(txn *pb.TxnRequest, r *bufio.Reader) stateFunc {
-	fmt.Println("entry failure request[method key value(end_range)] (end with empty line):")
-
-	line, err := r.ReadString('\n')
-	if err != nil {
-		ExitWithError(ExitInvalidInput, err)
-	}
-
-	if len(line) == 1 {
-		return nil
-	}
-
-	// remove trialling \n
-	line = line[:len(line)-1]
-	ru, err := parseRequestUnion(line)
-	if err != nil {
-		ExitWithError(ExitInvalidInput, err)
-	}
-
-	txn.Failure = append(txn.Failure, ru)
-
-	return failureState
+func argify(s string) []string {
+	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
+	return r.FindAllString(s, -1)
 }
 
-func parseRequestUnion(line string) (*pb.RequestUnion, error) {
-	parts := strings.Split(line, " ")
-	if len(parts) < 2 {
+func parseRequestUnion(line string) (*clientv3.Op, error) {
+	args := argify(line)
+	if len(args) < 2 {
 		return nil, fmt.Errorf("invalid txn compare request: %s", line)
 	}
 
-	ru := &pb.RequestUnion{}
-	key := []byte(parts[1])
-	switch parts[0] {
-	case "r", "range":
-		if len(parts) == 3 {
-			ru.Request = &pb.RequestUnion_RequestRange{
-				RequestRange: &pb.RangeRequest{
-					Key:      key,
-					RangeEnd: []byte(parts[2]),
-				}}
-		} else {
-			ru.Request = &pb.RequestUnion_RequestRange{
-				RequestRange: &pb.RangeRequest{
-					Key: key,
-				}}
-		}
-	case "p", "put":
-		ru.Request = &pb.RequestUnion_RequestPut{
-			RequestPut: &pb.PutRequest{
-				Key:   key,
-				Value: []byte(parts[2]),
-			}}
-	case "d", "deleteRange":
-		if len(parts) == 3 {
-			ru.Request = &pb.RequestUnion_RequestDeleteRange{
-				RequestDeleteRange: &pb.DeleteRangeRequest{
-					Key:      key,
-					RangeEnd: []byte(parts[2]),
-				}}
-		} else {
-			ru.Request = &pb.RequestUnion_RequestDeleteRange{
-				RequestDeleteRange: &pb.DeleteRangeRequest{
-					Key: key,
-				}}
-		}
-	default:
+	opc := make(chan clientv3.Op, 1)
+
+	put := NewPutCommand()
+	put.Run = func(cmd *cobra.Command, args []string) {
+		key, value, opts := getPutOp(cmd, args)
+		opc <- clientv3.OpPut(key, value, opts...)
+	}
+	get := NewGetCommand()
+	get.Run = func(cmd *cobra.Command, args []string) {
+		key, opts := getGetOp(cmd, args)
+		opc <- clientv3.OpGet(key, opts...)
+	}
+	del := NewDelCommand()
+	del.Run = func(cmd *cobra.Command, args []string) {
+		key, opts := getDelOp(cmd, args)
+		opc <- clientv3.OpDelete(key, opts...)
+	}
+	cmds := &cobra.Command{SilenceErrors: true}
+	cmds.AddCommand(put, get, del)
+
+	cmds.SetArgs(args)
+	if err := cmds.Execute(); err != nil {
 		return nil, fmt.Errorf("invalid txn request: %s", line)
 	}
-	return ru, nil
+
+	op := <-opc
+	return &op, nil
 }
 
-func parseCompare(line string) (*pb.Compare, error) {
-	parts := strings.Split(line, " ")
-	if len(parts) != 4 {
-		return nil, fmt.Errorf("invalid txn compare request: %s", line)
+func parseCompare(line string) (*clientv3.Cmp, error) {
+	var (
+		key string
+		op  string
+		val string
+	)
+
+	lparenSplit := strings.SplitN(line, "(", 2)
+	if len(lparenSplit) != 2 {
+		return nil, fmt.Errorf("malformed comparison: %s", line)
 	}
 
-	var err error
-	c := &pb.Compare{}
-	c.Key = []byte(parts[0])
-	switch parts[1] {
+	target := lparenSplit[0]
+	n, serr := fmt.Sscanf(lparenSplit[1], "%q) %s %q", &key, &op, &val)
+	if n != 3 {
+		return nil, fmt.Errorf("malformed comparison: %s; got %s(%q) %s %q", line, target, key, op, val)
+	}
+	if serr != nil {
+		return nil, fmt.Errorf("malformed comparison: %s (%v)", line, serr)
+	}
+
+	var (
+		v   int64
+		err error
+		cmp clientv3.Cmp
+	)
+	switch target {
 	case "ver", "version":
-		tv, _ := c.TargetUnion.(*pb.Compare_Version)
-		if tv != nil {
-			tv.Version, err = strconv.ParseInt(parts[3], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("invalid txn compare request: %s", line)
-			}
+		if v, err = strconv.ParseInt(val, 10, 64); err == nil {
+			cmp = clientv3.Compare(clientv3.Version(key), op, v)
 		}
 	case "c", "create":
-		tv, _ := c.TargetUnion.(*pb.Compare_CreateRevision)
-		if tv != nil {
-			tv.CreateRevision, err = strconv.ParseInt(parts[3], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("invalid txn compare request: %s", line)
-			}
+		if v, err = strconv.ParseInt(val, 10, 64); err == nil {
+			cmp = clientv3.Compare(clientv3.CreatedRevision(key), op, v)
 		}
 	case "m", "mod":
-		tv, _ := c.TargetUnion.(*pb.Compare_ModRevision)
-		if tv != nil {
-			tv.ModRevision, err = strconv.ParseInt(parts[3], 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("invalid txn compare request: %s", line)
-			}
+		if v, err = strconv.ParseInt(val, 10, 64); err == nil {
+			cmp = clientv3.Compare(clientv3.ModifiedRevision(key), op, v)
 		}
 	case "val", "value":
-		tv, _ := c.TargetUnion.(*pb.Compare_Value)
-		if tv != nil {
-			tv.Value = []byte(parts[3])
-		}
+		cmp = clientv3.Compare(clientv3.Value(key), op, val)
 	default:
+		return nil, fmt.Errorf("malformed comparison: %s (unknown target %s)", line, target)
+	}
+
+	if err != nil {
 		return nil, fmt.Errorf("invalid txn compare request: %s", line)
 	}
 
-	switch parts[2] {
-	case "g", "greater":
-		c.Result = pb.Compare_GREATER
-	case "e", "equal":
-		c.Result = pb.Compare_EQUAL
-	case "l", "less":
-		c.Result = pb.Compare_LESS
-	default:
-		return nil, fmt.Errorf("invalid txn compare request: %s", line)
+	return &cmp, nil
+}
+
+func printTxnResponse(resp clientv3.TxnResponse, isHex bool) {
+	if resp.Succeeded {
+		fmt.Println("SUCCESS")
+	} else {
+		fmt.Println("FAILURE")
 	}
-	return c, nil
+
+	for _, r := range resp.Responses {
+		fmt.Println("")
+		switch v := r.Response.(type) {
+		case *pb.ResponseUnion_ResponseDeleteRange:
+			printDeleteResponse((clientv3.DeleteResponse)(*v.ResponseDeleteRange))
+		case *pb.ResponseUnion_ResponsePut:
+			printPutResponse((clientv3.PutResponse)(*v.ResponsePut))
+		case *pb.ResponseUnion_ResponseRange:
+			printGetResponse(((clientv3.GetResponse)(*v.ResponseRange)), isHex)
+		default:
+			fmt.Printf("unexpected response %+v\n", r)
+		}
+	}
 }

@@ -33,22 +33,29 @@ func NewDelCommand() *cobra.Command {
 
 // delCommandFunc executes the "del" command.
 func delCommandFunc(cmd *cobra.Command, args []string) {
+	key, opts := getDelOp(cmd, args)
+	c := mustClientFromCmd(cmd)
+	kvapi := clientv3.NewKV(c)
+	resp, err := kvapi.Delete(context.TODO(), key, opts...)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	printDeleteResponse(*resp)
+}
+
+func getDelOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	if len(args) == 0 || len(args) > 2 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("del command needs one argument as key and an optional argument as range_end."))
 	}
-
 	opts := []clientv3.OpOption{}
 	key := args[0]
 	if len(args) > 1 {
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}
+	return key, opts
+}
 
-	c := mustClientFromCmd(cmd)
-	kvapi := clientv3.NewKV(c)
-	_, err := kvapi.Delete(context.TODO(), key, opts...)
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
+func printDeleteResponse(resp clientv3.DeleteResponse) {
 	// TODO: add number of key removed into the response of delete.
 	// TODO: print out the number of removed keys.
 	fmt.Println(0)
