@@ -183,7 +183,7 @@ Watch watches events stream on keys or prefixes. The watch command runs until it
 
 - hex -- print out key and value as hex encode string
 
-- i -- begins an interactive watch session
+- interactive -- begins an interactive watch session
 
 - prefix -- watch on a prefix if prefix is set.
 

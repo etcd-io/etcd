@@ -44,7 +44,7 @@ func NewWatchCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&watchHex, "hex", false, "print out key and value as hex encode string for text format")
-	cmd.Flags().BoolVar(&watchInteractive, "i", false, "interactive mode")
+	cmd.Flags().BoolVarP(&watchInteractive, "interactive", "i", false, "interactive mode")
 	cmd.Flags().BoolVar(&watchPrefix, "prefix", false, "watch on a prefix if prefix is set")
 	cmd.Flags().Int64Var(&watchRev, "rev", 0, "revision to start watching")
 
