@@ -13,13 +13,19 @@ PUT assigns the specified value with the specified key. If key already holds a v
 
 #### Return value
 
-Simple reply
+##### Simple reply
 
 - OK if PUT executed correctly. Exit code is zero.
 
 - Error string if PUT failed. Exit code is non-zero.
 
-TODO: probably json and binary encoded proto
+##### JSON reply
+
+The JSON encoding of the PUT [RPC response][etcdrpc].
+
+##### Protobuf reply
+
+The protobuf encoding of the PUT [RPC response][etcdrpc].
 
 #### Examples
 
@@ -60,13 +66,19 @@ TODO: add consistency, from, prefix
 
 #### Return value
 
-Simple reply
+##### Simple reply
 
 - \<key\>\n\<value\>\n\<next_key\>\n\<next_value\>...
 
 - Error string if GET failed. Exit code is non-zero.
 
-TODO: probably json and binary encoded proto
+##### JSON reply
+
+The JSON encoding of the [RPC message][etcdrpc] for a key-value pair for each fetched key-value.
+
+##### Protobuf reply
+
+The protobuf encoding of the [RPC message][etcdrpc] for a key-value pair for each fetched key-value.
 
 #### Examples
 
@@ -78,7 +90,7 @@ bar
 
 #### Notes
 
-If any key or value contains non-printable characters or control characters, the output in text format (e.g. simple reply or JSON reply) might be ambiguous.
+If any key or value contains non-printable characters or control characters, the output in text format (e.g. simple reply) might be ambiguous.
 Adding `--hex` to print key or value as hex encode string in text format can resolve this issue.
 
 ### DEL [options] \<key\> [range_end]
@@ -91,13 +103,19 @@ TODO: --prefix, --from
 
 #### Return value
 
-Simple reply
+##### Simple reply
 
 - The number of keys that were removed in decimal if DEL executed correctly. Exit code is zero.
 
 - Error string if DEL failed. Exit code is non-zero.
 
-TODO: probably json and binary encoded proto
+##### JSON reply
+
+The JSON encoding of the DeleteRange [RPC response][etcdrpc].
+
+##### Protobuf reply
+
+The protobuf encoding of the DeleteRange [RPC response][etcdrpc].
 
 #### Examples
 
@@ -142,7 +160,7 @@ TODO: non-interactive mode
 
 #### Return value
 
-Simple reply
+##### Simple reply
 
 - SUCCESS if etcd processed the transaction success list, FAILURE if etcd processed the transaction failure list.
 
@@ -150,7 +168,13 @@ Simple reply
 
 - Additional error string if TXN failed. Exit code is non-zero.
 
-TODO: probably json and binary encoded proto
+##### JSON reply
+
+The JSON encoding of the Txn [RPC response][etcdrpc].
+
+##### Protobuf reply
+
+The protobuf encoding of the Txn [RPC response][etcdrpc].
 
 #### Examples
 
@@ -205,7 +229,13 @@ watch [options] <key or prefix>\n
 
 - Additional error string if WATCH failed. Exit code is non-zero.
 
-TODO: probably json and binary encoded proto
+##### JSON reply
+
+The JSON encoding of the [RPC message][storagerpc] for each received Event.
+
+##### Protobuf reply
+
+The protobuf encoding of the [RPC message][storagerpc] for each received Event.
 
 #### Examples
 
@@ -265,3 +295,12 @@ Simple reply
 ```
 
 [mirror]: ./doc/mirror_maker.md
+
+
+## Notes
+
+- JSON encoding for keys and values uses base64 since they are byte strings.
+
+
+[etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
+[storagerpc]: ../storage/storagepb/kv.proto

@@ -40,7 +40,7 @@ func delCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	printDeleteResponse(*resp)
+	display.Del(*resp)
 }
 
 func getDelOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
@@ -53,10 +53,4 @@ func getDelOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}
 	return key, opts
-}
-
-func printDeleteResponse(resp clientv3.DeleteResponse) {
-	// TODO: add number of key removed into the response of delete.
-	// TODO: print out the number of removed keys.
-	fmt.Println(0)
 }
