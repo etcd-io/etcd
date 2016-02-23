@@ -17,19 +17,14 @@ package clientv3_test
 import (
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
 )
 
 func ExampleKV_put() {
-	var (
-		dialTimeout    = 5 * time.Second
-		requestTimeout = 1 * time.Second
-	)
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{"localhost:12378", "localhost:22378", "localhost:32378"},
+		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
 	if err != nil {
@@ -45,17 +40,77 @@ func ExampleKV_put() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("OK")
-	fmt.Println(resp.Header)
+	fmt.Println("current revision:", resp.Header.Revision) // revision start at 1
+	// current revision: 2
 }
 
 func ExampleKV_get() {
-	var (
-		dialTimeout    = 5 * time.Second
-		requestTimeout = 1 * time.Second
-	)
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{"localhost:12378", "localhost:22378", "localhost:32378"},
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	kvc := clientv3.NewKV(cli)
+
+	_, err = kvc.Put(context.TODO(), "foo", "bar")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	resp, err := kvc.Get(ctx, "foo")
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, ev := range resp.Kvs {
+		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+	}
+	// foo : bar
+}
+
+func ExampleKV_getSortedPrefix() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	kvc := clientv3.NewKV(cli)
+
+	for i := range make([]int, 3) {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		_, err = kvc.Put(ctx, fmt.Sprintf("key_%d", i), "value")
+		cancel()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	resp, err := kvc.Get(ctx, "key", clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, ev := range resp.Kvs {
+		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+	}
+	// key_2 : value
+	// key_1 : value
+	// key_0 : value
+}
+
+func ExampleKV_delete() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	})
 	if err != nil {
@@ -66,13 +121,73 @@ func ExampleKV_get() {
 	kvc := clientv3.NewKV(cli)
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := kvc.Get(ctx, "sample_key")
+	resp, err := kvc.Delete(ctx, "key", clientv3.WithPrefix())
 	cancel()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("OK")
-	for _, ev := range resp.Kvs {
+	fmt.Println("Deleted", resp.Deleted, "keys")
+	// Deleted n keys
+}
+
+func ExampleKV_compact() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	kvc := clientv3.NewKV(cli)
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	resp, err := kvc.Get(ctx, "foo")
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+	compRev := resp.Header.Revision // specify compact revision of your choice
+
+	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
+	err = kvc.Compact(ctx, compRev)
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func ExampleKV_txn() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	kvc := clientv3.NewKV(cli)
+
+	// TODO: 'if' not working. Add expected output once fixed.
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	_, err = kvc.Txn(ctx).
+		If(clientv3.Compare(clientv3.Value("1"), ">", "1")).
+		Then(clientv3.OpPut("1", "100")).
+		Else(clientv3.OpPut("1", "-1")).
+		Commit()
+	cancel()
+	if err == nil {
+		log.Fatal(err)
+	}
+
+	gresp, err := kvc.Get(ctx, "1")
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, ev := range gresp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
 }
