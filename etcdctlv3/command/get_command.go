@@ -27,7 +27,6 @@ var (
 	getLimit      int64
 	getSortOrder  string
 	getSortTarget string
-	getHex        bool
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -41,7 +40,6 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().StringVar(&getSortOrder, "order", "", "order of results; ASCEND or DESCEND")
 	cmd.Flags().StringVar(&getSortTarget, "sort-by", "", "sort target; CREATE, KEY, MODIFY, VALUE, or VERSION")
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "maximum number of results")
-	cmd.Flags().BoolVar(&getHex, "hex", false, "print out key and value as hex encode string for text format")
 	// TODO: add fromkey.
 	// TODO: add prefix.
 	// TODO: add consistency.
@@ -57,7 +55,8 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	printGetResponse(*resp, getHex)
+
+	display.Get(*resp)
 }
 
 func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
@@ -106,10 +105,4 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 
 	opts = append(opts, clientv3.WithSort(sortByTarget, sortByOrder))
 	return key, opts
-}
-
-func printGetResponse(resp clientv3.GetResponse, isHex bool) {
-	for _, kv := range resp.Kvs {
-		printKV(isHex, kv)
-	}
 }

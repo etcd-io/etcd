@@ -64,7 +64,7 @@ func putCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	printPutResponse(*resp)
+	display.Put(*resp)
 }
 
 func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpOption) {
@@ -89,8 +89,4 @@ func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpO
 	}
 
 	return key, value, opts
-}
-
-func printPutResponse(resp clientv3.PutResponse) {
-	fmt.Println("OK")
 }

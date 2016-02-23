@@ -24,12 +24,10 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 var (
 	txnInteractive bool
-	txnHex         bool
 )
 
 // NewTxnCommand returns the cobra command for "txn".
@@ -40,7 +38,6 @@ func NewTxnCommand() *cobra.Command {
 		Run:   txnCommandFunc,
 	}
 	cmd.Flags().BoolVarP(&txnInteractive, "interactive", "i", false, "input transaction in interactive mode")
-	cmd.Flags().BoolVar(&txnHex, "hex", false, "print out key-values as hex encoded strings")
 	return cmd
 }
 
@@ -69,7 +66,7 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	printTxnResponse(*resp, txnHex)
+	display.Txn(*resp)
 }
 
 func readCompares(r *bufio.Reader) (cmps []clientv3.Cmp) {
@@ -201,26 +198,4 @@ func parseCompare(line string) (*clientv3.Cmp, error) {
 	}
 
 	return &cmp, nil
-}
-
-func printTxnResponse(resp clientv3.TxnResponse, isHex bool) {
-	if resp.Succeeded {
-		fmt.Println("SUCCESS")
-	} else {
-		fmt.Println("FAILURE")
-	}
-
-	for _, r := range resp.Responses {
-		fmt.Println("")
-		switch v := r.Response.(type) {
-		case *pb.ResponseUnion_ResponseDeleteRange:
-			printDeleteResponse((clientv3.DeleteResponse)(*v.ResponseDeleteRange))
-		case *pb.ResponseUnion_ResponsePut:
-			printPutResponse((clientv3.PutResponse)(*v.ResponsePut))
-		case *pb.ResponseUnion_ResponseRange:
-			printGetResponse(((clientv3.GetResponse)(*v.ResponseRange)), isHex)
-		default:
-			fmt.Printf("unexpected response %+v\n", r)
-		}
-	}
 }

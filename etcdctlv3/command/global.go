@@ -30,7 +30,12 @@ import (
 type GlobalFlags struct {
 	Endpoints string
 	TLS       transport.TLSInfo
+
+	OutputFormat string
+	IsHex        bool
 }
+
+var display printer = &simplePrinter{}
 
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	endpoint, err := cmd.Flags().GetString("endpoint")
@@ -57,6 +62,8 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cacert option"))
 	}
 
+	isHex, _ := cmd.Flags().GetBool("hex")
+	display = &simplePrinter{isHex: isHex}
 	return mustClient(endpoint, cert, key, cacert)
 }
 
@@ -90,6 +97,7 @@ func mustClient(endpoint, cert, key, cacert string) *clientv3.Client {
 	if err != nil {
 		ExitWithError(ExitBadConnection, err)
 	}
+
 	return client
 }
 

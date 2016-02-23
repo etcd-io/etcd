@@ -28,7 +28,6 @@ import (
 var (
 	watchRev         int64
 	watchPrefix      bool
-	watchHex         bool
 	watchInteractive bool
 )
 
@@ -40,7 +39,6 @@ func NewWatchCommand() *cobra.Command {
 		Run:   watchCommandFunc,
 	}
 
-	cmd.Flags().BoolVar(&watchHex, "hex", false, "print out key and value as hex encode string for text format")
 	cmd.Flags().BoolVarP(&watchInteractive, "interactive", "i", false, "interactive mode")
 	cmd.Flags().BoolVar(&watchPrefix, "prefix", false, "watch on a prefix if prefix is set")
 	cmd.Flags().Int64Var(&watchRev, "rev", 0, "revision to start watching")
@@ -68,7 +66,7 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 	} else {
 		wc = w.Watch(context.TODO(), args[0], watchRev)
 	}
-	printWatchCh(wc, watchHex)
+	printWatchCh(wc)
 	err := w.Close()
 	if err == nil {
 		ExitWithError(ExitInterrupted, fmt.Errorf("watch is canceled by the server"))
@@ -122,19 +120,12 @@ func watchInteractiveFunc(cmd *cobra.Command, args []string) {
 		} else {
 			ch = w.Watch(context.TODO(), key, watchRev)
 		}
-		go printWatchCh(ch, watchHex)
+		go printWatchCh(ch)
 	}
 }
 
-func printWatchCh(ch clientv3.WatchChan, hex bool) {
+func printWatchCh(ch clientv3.WatchChan) {
 	for resp := range ch {
-		printWatchResponse(resp, hex)
-	}
-}
-
-func printWatchResponse(resp clientv3.WatchResponse, hex bool) {
-	for _, e := range resp.Events {
-		fmt.Println(e.Type)
-		printKV(hex, e.Kv)
+		display.Watch(resp)
 	}
 }
