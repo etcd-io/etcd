@@ -62,7 +62,7 @@ TODO: add consistency, from, prefix
 
 Simple reply
 
-- \<key\>\r\n\<value\>\r\n\<next_key\>\r\n\<next_value\>...
+- \<key\>\n\<value\>\n\<next_key\>\n\<next_value\>...
 
 - Error string if GET failed. Exit code is non-zero.
 
@@ -193,7 +193,7 @@ Watch watches events stream on keys or prefixes. The watch command runs until it
 
 Simple reply
 
-- \<event\>\<key\>\r\n\<value\>\r\n\<event\>\<next_key\>\r\n\<next_value\>...
+- \<event\>\<key\>\n\<value\>\n\<event\>\<next_key\>\n\<next_value\>...
 
 - Additional error string if WATCH failed. Exit code is non-zero.
 
