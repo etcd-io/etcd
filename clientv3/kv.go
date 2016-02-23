@@ -46,7 +46,7 @@ type KV interface {
 	// When passed WithSort(), the keys will be sorted.
 	Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error)
 
-	// Delete deletes a key, or optionallly using WithRange(end), [key, end).
+	// Delete deletes a key, or optionally using WithRange(end), [key, end).
 	Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error)
 
 	// Compact compacts etcd KV history before the given rev.
