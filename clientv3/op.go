@@ -117,18 +117,37 @@ func (op *Op) applyOpts(opts []OpOption) {
 	}
 }
 
+// OpOption configures Operations like Get, Put, Delete.
 type OpOption func(*Op)
 
+// WithLease attaches a lease ID to a key in 'Put' request.
 func WithLease(leaseID lease.LeaseID) OpOption {
 	return func(op *Op) { op.leaseID = leaseID }
 }
+
+// WithLimit limits the number of results to return from 'Get' request.
 func WithLimit(n int64) OpOption { return func(op *Op) { op.limit = n } }
+
+// WithRev specifies the store revision for 'Get' request.
+//
+// TODO: support Watch API
 func WithRev(rev int64) OpOption { return func(op *Op) { op.rev = rev } }
-func WithSort(tgt SortTarget, order SortOrder) OpOption {
+
+// WithSort specifies the ordering in 'Get' request. It requires
+// 'WithRange' and/or 'WithPrefix' to be specified too.
+// 'target' specifies the target to sort by: key, version, revisions, value.
+// 'order' can be either 'SortNone', 'SortAscend', 'SortDescend'.
+func WithSort(target SortTarget, order SortOrder) OpOption {
 	return func(op *Op) {
-		op.sort = &SortOption{tgt, order}
+		op.sort = &SortOption{target, order}
 	}
 }
+
+// WithPrefix enables 'Get' or 'Delete' requests to operate on the
+// keys with matching prefix. For example, 'Get(foo, WithPrefix())'
+// can return 'foo1', 'foo2', and so on.
+//
+// TODO: support Watch API
 func WithPrefix() OpOption {
 	return func(op *Op) {
 		op.end = make([]byte, len(op.key))
@@ -145,10 +164,21 @@ func WithPrefix() OpOption {
 		op.end = []byte{0}
 	}
 }
+
+// WithRange specifies the range of 'Get' or 'Delete' requests.
+// For example, 'Get' requests with 'WithRange(end)' returns
+// the keys in the range [key, end).
 func WithRange(endKey string) OpOption {
 	return func(op *Op) { op.end = []byte(endKey) }
 }
+
+// WithFromKey specifies the range of 'Get' or 'Delete' requests
+// to be equal or greater than they key in the argument.
 func WithFromKey() OpOption { return WithRange("\x00") }
+
+// WithSerializable makes 'Get' request serializable. By default,
+// it's linearizable. Serializable requests are better for lower latency
+// requirement.
 func WithSerializable() OpOption {
 	return func(op *Op) { op.serializable = true }
 }
