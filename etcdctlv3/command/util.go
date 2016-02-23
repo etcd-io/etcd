@@ -17,6 +17,7 @@ package command
 import (
 	"encoding/hex"
 	"fmt"
+	"regexp"
 
 	pb "github.com/coreos/etcd/storage/storagepb"
 )
@@ -40,4 +41,9 @@ func addHexPrefix(s string) string {
 		ns[i*2+3] = s[i+1]
 	}
 	return string(ns)
+}
+
+func argify(s string) []string {
+	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
+	return r.FindAllString(s, -1)
 }

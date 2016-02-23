@@ -189,17 +189,27 @@ Watch watches events stream on keys or prefixes. The watch command runs until it
 
 - rev -- the revision to start watching. Specifying a revision is useful for observing past events.
 
+#### Input Format
+
+Input is only accepted for interactive mode.
+
+```
+watch [options] <key or prefix>\n
+```
+
 #### Return value
 
-Simple reply
+##### Simple reply
 
-- \<event\>\<key\>\n\<value\>\n\<event\>\<next_key\>\n\<next_value\>...
+- \<event\>\n\<key\>\n\<value\>\n\<event\>\n\<next_key\>\n\<next_value\>\n...
 
 - Additional error string if WATCH failed. Exit code is non-zero.
 
 TODO: probably json and binary encoded proto
 
 #### Examples
+
+##### Non-interactive
 
 ``` bash
 ./etcdctl watch foo
@@ -208,9 +218,19 @@ foo
 bar
 ```
 
-#### Notes
+##### Interactive
 
-TODO: doc interactive mode
+``` bash
+./etcdctl watch -i
+watch foo
+watch foo
+PUT
+foo
+bar
+PUT
+foo
+bar
+```
 
 ## Utility Commands
 
