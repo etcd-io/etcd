@@ -15,7 +15,9 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -27,6 +29,16 @@ type printer interface {
 	Put(v3.PutResponse)
 	Txn(v3.TxnResponse)
 	Watch(v3.WatchResponse)
+}
+
+func NewPrinter(printerType string, isHex bool) printer {
+	switch printerType {
+	case "simple":
+		return &simplePrinter{isHex: isHex}
+	case "json":
+		return &jsonPrinter{}
+	}
+	return nil
 }
 
 type simplePrinter struct {
@@ -74,4 +86,25 @@ func (s *simplePrinter) Watch(resp v3.WatchResponse) {
 		fmt.Println(e.Type)
 		printKV(s.isHex, e.Kv)
 	}
+}
+
+type jsonPrinter struct{}
+
+func (p *jsonPrinter) Del(r v3.DeleteResponse) { printJSON(r) }
+func (p *jsonPrinter) Get(r v3.GetResponse) {
+	for _, kv := range r.Kvs {
+		printJSON(kv)
+	}
+}
+func (p *jsonPrinter) Put(r v3.PutResponse)     { printJSON(r) }
+func (p *jsonPrinter) Txn(r v3.TxnResponse)     { printJSON(r) }
+func (p *jsonPrinter) Watch(r v3.WatchResponse) { printJSON(r) }
+
+func printJSON(v interface{}) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return
+	}
+	fmt.Println(string(b))
 }

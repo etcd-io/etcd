@@ -63,7 +63,11 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	}
 
 	isHex, _ := cmd.Flags().GetBool("hex")
-	display = &simplePrinter{isHex: isHex}
+	outputType, _ := cmd.Flags().GetString("write-out")
+	if display = NewPrinter(outputType, isHex); display == nil {
+		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
+	}
+
 	return mustClient(endpoint, cert, key, cacert)
 }
 
