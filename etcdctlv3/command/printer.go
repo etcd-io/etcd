@@ -21,6 +21,7 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	spb "github.com/coreos/etcd/storage/storagepb"
 )
 
 type printer interface {
@@ -37,6 +38,8 @@ func NewPrinter(printerType string, isHex bool) printer {
 		return &simplePrinter{isHex: isHex}
 	case "json":
 		return &jsonPrinter{}
+	case "protobuf":
+		return &pbPrinter{}
 	}
 	return nil
 }
@@ -107,4 +110,37 @@ func printJSON(v interface{}) {
 		return
 	}
 	fmt.Println(string(b))
+}
+
+type pbPrinter struct{}
+
+type pbMarshal interface {
+	Marshal() ([]byte, error)
+}
+
+func (p *pbPrinter) Del(r v3.DeleteResponse) {
+	printPB((*pb.DeleteRangeResponse)(&r))
+}
+func (p *pbPrinter) Get(r v3.GetResponse) {
+	printPB((*pb.RangeResponse)(&r))
+}
+func (p *pbPrinter) Put(r v3.PutResponse) {
+	printPB((*pb.PutResponse)(&r))
+}
+func (p *pbPrinter) Txn(r v3.TxnResponse) {
+	printPB((*pb.TxnResponse)(&r))
+}
+func (p *pbPrinter) Watch(r v3.WatchResponse) {
+	for _, ev := range r.Events {
+		printPB((*spb.Event)(ev))
+	}
+}
+
+func printPB(m pbMarshal) {
+	b, err := m.Marshal()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return
+	}
+	fmt.Printf(string(b))
 }

@@ -23,6 +23,10 @@ PUT assigns the specified value with the specified key. If key already holds a v
 
 The JSON encoding of the PUT [RPC response][etcdrpc].
 
+##### Protobuf reply
+
+The protobuf encoding of the PUT [RPC response][etcdrpc].
+
 #### Examples
 
 ``` bash
@@ -72,6 +76,10 @@ TODO: add consistency, from, prefix
 
 The JSON encoding of the [RPC message][etcdrpc] for a key-value pair for each fetched key-value.
 
+##### Protobuf reply
+
+The protobuf encoding of the [RPC message][etcdrpc] for a key-value pair for each fetched key-value.
+
 #### Examples
 
 ``` bash
@@ -104,6 +112,10 @@ TODO: --prefix, --from
 ##### JSON reply
 
 The JSON encoding of the DeleteRange [RPC response][etcdrpc].
+
+##### Protobuf reply
+
+The protobuf encoding of the DeleteRange [RPC response][etcdrpc].
 
 #### Examples
 
@@ -159,6 +171,10 @@ TODO: non-interactive mode
 ##### JSON reply
 
 The JSON encoding of the Txn [RPC response][etcdrpc].
+
+##### Protobuf reply
+
+The protobuf encoding of the Txn [RPC response][etcdrpc].
 
 #### Examples
 
@@ -216,6 +232,10 @@ watch [options] <key or prefix>\n
 ##### JSON reply
 
 The JSON encoding of the [RPC message][storagerpc] for each received Event.
+
+##### Protobuf reply
+
+The protobuf encoding of the [RPC message][storagerpc] for each received Event.
 
 #### Examples
 
