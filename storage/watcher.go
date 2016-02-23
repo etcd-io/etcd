@@ -99,6 +99,9 @@ func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) WatchID {
 
 	_, c := ws.watchable.watch(key, prefix, startRev, id, ws.ch)
 
+	if c == nil {
+		return -1
+	}
 	ws.cancels[id] = c
 	return id
 }
