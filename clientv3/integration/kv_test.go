@@ -350,7 +350,7 @@ func TestKVCompact(t *testing.T) {
 
 	wc := clientv3.NewWatcher(clus.RandClient())
 	defer wc.Close()
-	wchan := wc.Watch(ctx, "foo", 3)
+	wchan := wc.Watch(ctx, "foo", clientv3.WithRev(3))
 
 	if wr := <-wchan; wr.CompactRevision != 7 {
 		t.Fatalf("wchan CompactRevision got %v, want 7", wr.CompactRevision)

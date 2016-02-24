@@ -73,7 +73,7 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	for _, k := range keys {
 		// key watcher
 		go func(key string) {
-			ch := wctx.w.Watch(context.TODO(), key, 0)
+			ch := wctx.w.Watch(context.TODO(), key)
 			if ch == nil {
 				t.Fatalf("expected watcher channel, got nil")
 			}
@@ -94,7 +94,7 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	}
 	// prefix watcher on "b" (bar and baz)
 	go func() {
-		prefixc := wctx.w.WatchPrefix(context.TODO(), "b", 0)
+		prefixc := wctx.w.Watch(context.TODO(), "b", clientv3.WithPrefix())
 		if prefixc == nil {
 			t.Fatalf("expected watcher channel, got nil")
 		}
@@ -181,7 +181,7 @@ func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
 		}
 	}()
 	// should reconnect when requesting watch
-	if wctx.ch = wctx.w.Watch(context.TODO(), "a", 0); wctx.ch == nil {
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil channel")
 	}
 
@@ -200,7 +200,7 @@ func TestWatchReconnInit(t *testing.T) {
 }
 
 func testWatchReconnInit(t *testing.T, wctx *watchctx) {
-	if wctx.ch = wctx.w.Watch(context.TODO(), "a", 0); wctx.ch == nil {
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil channel")
 	}
 	// take down watcher connection
@@ -216,7 +216,7 @@ func TestWatchReconnRunning(t *testing.T) {
 }
 
 func testWatchReconnRunning(t *testing.T, wctx *watchctx) {
-	if wctx.ch = wctx.w.Watch(context.TODO(), "a", 0); wctx.ch == nil {
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil channel")
 	}
 	putAndWatch(t, wctx, "a", "a")
@@ -233,7 +233,7 @@ func TestWatchCancelInit(t *testing.T) {
 
 func testWatchCancelInit(t *testing.T, wctx *watchctx) {
 	ctx, cancel := context.WithCancel(context.Background())
-	if wctx.ch = wctx.w.Watch(ctx, "a", 0); wctx.ch == nil {
+	if wctx.ch = wctx.w.Watch(ctx, "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil watcher channel")
 	}
 	cancel()
@@ -254,7 +254,7 @@ func TestWatchCancelRunning(t *testing.T) {
 
 func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 	ctx, cancel := context.WithCancel(context.Background())
-	if wctx.ch = wctx.w.Watch(ctx, "a", 0); wctx.ch == nil {
+	if wctx.ch = wctx.w.Watch(ctx, "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil watcher channel")
 	}
 	if _, err := wctx.kv.Put(ctx, "a", "a"); err != nil {
