@@ -46,7 +46,7 @@ func (q *PriorityQueue) Enqueue(val string, pr uint16) error {
 // queue is empty, Dequeue blocks until items are available.
 func (q *PriorityQueue) Dequeue() (string, error) {
 	// TODO: fewer round trips by fetching more than one key
-	resp, err := q.kv.Get(q.ctx, q.key, withFirstKey()...)
+	resp, err := q.kv.Get(q.ctx, q.key, v3.WithFirstKey()...)
 	if err != nil {
 		return "", err
 	}

@@ -227,3 +227,26 @@ func WithFromKey() OpOption { return WithRange("\x00") }
 func WithSerializable() OpOption {
 	return func(op *Op) { op.serializable = true }
 }
+
+// WithFirstCreate gets the key with the oldest creation revision in the request range.
+func WithFirstCreate() []OpOption { return withTop(SortByCreatedRev, SortAscend) }
+
+// WithLastCreate gets the key with the latest creation revision in the request range.
+func WithLastCreate() []OpOption { return withTop(SortByCreatedRev, SortDescend) }
+
+// WithFirstKey gets the lexically first key in the request range.
+func WithFirstKey() []OpOption { return withTop(SortByKey, SortAscend) }
+
+// WithLastKey gets the lexically last key in the request range.
+func WithLastKey() []OpOption { return withTop(SortByKey, SortDescend) }
+
+// WithFirstRev gets the key with the oldest modification revision in the request range.
+func WithFirstRev() []OpOption { return withTop(SortByModifiedRev, SortAscend) }
+
+// WithLastRev gets the key with the latest modification revision in the request range.
+func WithLastRev() []OpOption { return withTop(SortByModifiedRev, SortDescend) }
+
+// withTop gets the first key over the get's prefix given a sort order
+func withTop(target SortTarget, order SortOrder) []OpOption {
+	return []OpOption{WithPrefix(), WithSort(target, order), WithLimit(1)}
+}

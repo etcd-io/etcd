@@ -42,7 +42,7 @@ func (q *Queue) Enqueue(val string) error {
 // queue is empty, Dequeue blocks until elements are available.
 func (q *Queue) Dequeue() (string, error) {
 	// TODO: fewer round trips by fetching more than one key
-	resp, err := q.kv.Get(q.ctx, q.keyPrefix, withFirstRev()...)
+	resp, err := q.kv.Get(q.ctx, q.keyPrefix, v3.WithFirstRev()...)
 	if err != nil {
 		return "", err
 	}
