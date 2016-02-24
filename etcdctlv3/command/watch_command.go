@@ -60,12 +60,11 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 	c := mustClientFromCmd(cmd)
 	w := clientv3.NewWatcher(c)
 
-	var wc clientv3.WatchChan
-	if !watchPrefix {
-		wc = w.Watch(context.TODO(), args[0], watchRev)
-	} else {
-		wc = w.Watch(context.TODO(), args[0], watchRev)
+	opts := []clientv3.OpOption{clientv3.WithRev(watchRev)}
+	if watchPrefix {
+		opts = append(opts, clientv3.WithPrefix())
 	}
+	wc := w.Watch(context.TODO(), args[0], opts...)
 	printWatchCh(wc)
 	err := w.Close()
 	if err == nil {
@@ -114,12 +113,11 @@ func watchInteractiveFunc(cmd *cobra.Command, args []string) {
 		if err != nil {
 			key = moreargs[0]
 		}
-		var ch clientv3.WatchChan
+		opts := []clientv3.OpOption{clientv3.WithRev(watchRev)}
 		if watchPrefix {
-			ch = w.WatchPrefix(context.TODO(), key, watchRev)
-		} else {
-			ch = w.Watch(context.TODO(), key, watchRev)
+			opts = append(opts, clientv3.WithPrefix())
 		}
+		ch := w.Watch(context.TODO(), key, opts...)
 		go printWatchCh(ch)
 	}
 }
