@@ -30,7 +30,7 @@ type (
 )
 
 type KV interface {
-	// PUT puts a key-value pair into etcd.
+	// Put puts a key-value pair into etcd.
 	// Note that key,value can be plain bytes array and string is
 	// an immutable representation of that bytes array.
 	// To get a string of bytes, do string([]byte(0x10, 0x20)).

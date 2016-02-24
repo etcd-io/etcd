@@ -69,7 +69,7 @@ type KV interface {
 
 	Compact(rev int64) error
 
-	// Get the hash of KV state.
+	// Hash retrieves the hash of KV state.
 	// This method is designed for consistency checking purpose.
 	Hash() (uint32, error)
 
