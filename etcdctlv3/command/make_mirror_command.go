@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/clientv3/sync"
+	"github.com/coreos/etcd/clientv3/mirror"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/storage/storagepb"
 )
@@ -77,7 +77,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 	// TODO: remove the prefix of the destination cluster?
 	dkv := clientv3.NewKV(dc)
 
-	s := sync.NewSyncer(c, mmprefix, 0)
+	s := mirror.NewSyncer(c, mmprefix, 0)
 
 	rc, errc := s.SyncBase(ctx)
 
