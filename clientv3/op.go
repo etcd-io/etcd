@@ -15,6 +15,8 @@
 package clientv3
 
 import (
+	"reflect"
+
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 )
@@ -36,9 +38,11 @@ type Op struct {
 
 	// for range
 	limit        int64
-	rev          int64
 	sort         *SortOption
 	serializable bool
+
+	// for range, watch
+	rev int64
 
 	// for put
 	val     []byte
@@ -62,6 +66,27 @@ func (op Op) toRequestUnion() *pb.RequestUnion {
 		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic("Unknown Op")
+	}
+}
+
+func (op Op) toWatchRequest() *watchRequest {
+	switch op.t {
+	case tRange:
+		key := string(op.key)
+		prefix := ""
+		if op.end != nil {
+			prefix = key
+			key = ""
+		}
+		wr := &watchRequest{
+			key:    key,
+			prefix: prefix,
+			rev:    op.rev,
+		}
+		return wr
+
+	default:
+		panic("Only for tRange")
 	}
 }
 
@@ -111,6 +136,24 @@ func OpPut(key, val string, opts ...OpOption) Op {
 	return ret
 }
 
+func opWatch(key string, opts ...OpOption) Op {
+	ret := Op{t: tRange, key: []byte(key)}
+	ret.applyOpts(opts)
+	switch {
+	case ret.end != nil && !reflect.DeepEqual(ret.end, getPrefix(ret.key)):
+		panic("only supports single keys or prefixes")
+	case ret.leaseID != 0:
+		panic("unexpected lease in watch")
+	case ret.limit != 0:
+		panic("unexpected limit in watch")
+	case ret.sort != nil:
+		panic("unexpected sort in watch")
+	case ret.serializable != false:
+		panic("unexpected serializable in watch")
+	}
+	return ret
+}
+
 func (op *Op) applyOpts(opts []OpOption) {
 	for _, opt := range opts {
 		opt(op)
@@ -129,8 +172,7 @@ func WithLease(leaseID lease.LeaseID) OpOption {
 func WithLimit(n int64) OpOption { return func(op *Op) { op.limit = n } }
 
 // WithRev specifies the store revision for 'Get' request.
-//
-// TODO: support Watch API
+// Or the start revision of 'Watch' request.
 func WithRev(rev int64) OpOption { return func(op *Op) { op.rev = rev } }
 
 // WithSort specifies the ordering in 'Get' request. It requires
@@ -143,25 +185,28 @@ func WithSort(target SortTarget, order SortOrder) OpOption {
 	}
 }
 
-// WithPrefix enables 'Get' or 'Delete' requests to operate on the
-// keys with matching prefix. For example, 'Get(foo, WithPrefix())'
+func getPrefix(key []byte) []byte {
+	end := make([]byte, len(key))
+	copy(end, key)
+	for i := len(end) - 1; i >= 0; i-- {
+		if end[i] < 0xff {
+			end[i] = end[i] + 1
+			end = end[:i+1]
+			return end
+		}
+	}
+	// next prefix does not exist (e.g., 0xffff);
+	// default to WithFromKey policy
+	end = []byte{0}
+	return end
+}
+
+// WithPrefix enables 'Get', 'Delete', or 'Watch' requests to operate
+// on the keys with matching prefix. For example, 'Get(foo, WithPrefix())'
 // can return 'foo1', 'foo2', and so on.
-//
-// TODO: support Watch API
 func WithPrefix() OpOption {
 	return func(op *Op) {
-		op.end = make([]byte, len(op.key))
-		copy(op.end, op.key)
-		for i := len(op.end) - 1; i >= 0; i-- {
-			if op.end[i] < 0xff {
-				op.end[i] = op.end[i] + 1
-				op.end = op.end[:i+1]
-				return
-			}
-		}
-		// next prefix does not exist (e.g., 0xffff);
-		// default to WithFromKey policy
-		op.end = []byte{0}
+		op.end = getPrefix(op.key)
 	}
 }
 

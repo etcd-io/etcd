@@ -116,7 +116,7 @@ func (s *syncer) SyncUpdates(ctx context.Context) clientv3.WatchChan {
 
 		// get all events since revision (or get non-compacted revision, if
 		// rev is too far behind)
-		wch := wapi.WatchPrefix(ctx, s.prefix, s.rev)
+		wch := wapi.Watch(ctx, s.prefix, clientv3.WithPrefix(), clientv3.WithRev(s.rev))
 		for wr := range wch {
 			respchan <- wr
 		}

@@ -27,17 +27,11 @@ import (
 type WatchChan <-chan WatchResponse
 
 type Watcher interface {
-	// Watch watches on a single key. The watched events will be returned
+	// Watch watches on a key or prefix. The watched events will be returned
 	// through the returned channel.
 	// If the watch is slow or the required rev is compacted, the watch request
 	// might be canceled from the server-side and the chan will be closed.
-	Watch(ctx context.Context, key string, rev int64) WatchChan
-
-	// WatchPrefix watches on a prefix. The watched events will be returned
-	// through the returned channel.
-	// If the watch is slow or the required rev is compacted, the watch request
-	// might be canceled from the server-side and the chan will be closed.
-	WatchPrefix(ctx context.Context, prefix string, rev int64) WatchChan
+	Watch(ctx context.Context, key string, opts ...OpOption) WatchChan
 
 	// Close closes the watcher and cancels all watch requests.
 	Close() error
@@ -127,27 +121,16 @@ func NewWatcher(c *Client) Watcher {
 	return w
 }
 
-func (w *watcher) Watch(ctx context.Context, key string, rev int64) WatchChan {
-	return w.watch(ctx, key, "", rev)
-}
+// Watch posts a watch request to run() and waits for a new watcher channel
+func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
+	ow := opWatch(key, opts...)
 
-func (w *watcher) WatchPrefix(ctx context.Context, prefix string, rev int64) WatchChan {
-	return w.watch(ctx, "", prefix, rev)
-}
+	wr := ow.toWatchRequest()
+	wr.ctx = ctx
 
-func (w *watcher) Close() error {
-	select {
-	case w.stopc <- struct{}{}:
-	case <-w.donec:
-	}
-	<-w.donec
-	return <-w.errc
-}
-
-// watch posts a watch request to run() and waits for a new watcher channel
-func (w *watcher) watch(ctx context.Context, key, prefix string, rev int64) WatchChan {
 	retc := make(chan chan WatchResponse, 1)
-	wr := &watchRequest{ctx: ctx, key: key, prefix: prefix, rev: rev, retc: retc}
+	wr.retc = retc
+
 	// submit request
 	select {
 	case w.reqc <- wr:
@@ -165,6 +148,15 @@ func (w *watcher) watch(ctx context.Context, key, prefix string, rev int64) Watc
 	case <-w.donec:
 		return nil
 	}
+}
+
+func (w *watcher) Close() error {
+	select {
+	case w.stopc <- struct{}{}:
+	case <-w.donec:
+	}
+	<-w.donec
+	return <-w.errc
 }
 
 func (w *watcher) addStream(resp *pb.WatchResponse, pendingReq *watchRequest) {
