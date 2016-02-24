@@ -173,11 +173,12 @@ func (c *cluster) WaitHealth() error {
 	if c.v2Only {
 		healthFunc, urls = setHealthKeyV2, c.ClientURLs
 	}
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 120; i++ {
 		err = healthFunc(urls)
 		if err == nil {
 			return nil
 		}
+		plog.Printf("#%d: WaitHealth error %v", i, err)
 		time.Sleep(time.Second)
 	}
 	return err
@@ -271,7 +272,7 @@ func setHealthKey(us []string) error {
 		cancel()
 		conn.Close()
 		if err != nil {
-			return err
+			return fmt.Errorf("%v (%s)", err, u)
 		}
 	}
 	return nil
