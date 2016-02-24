@@ -92,6 +92,8 @@ func (m *Mutex) IsOwner() v3.Cmp {
 	return v3.Compare(v3.CreatedRevision(m.myKey), "=", m.myRev)
 }
 
+func (m *Mutex) Key() string { return m.myKey }
+
 type lockerMutex struct{ *Mutex }
 
 func (lm *lockerMutex) Lock() {

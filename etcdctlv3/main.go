@@ -62,6 +62,7 @@ func init() {
 		command.NewMemberCommand(),
 		command.NewSnapshotCommand(),
 		command.NewMakeMirrorCommand(),
+		command.NewLockCommand(),
 	)
 }
 
