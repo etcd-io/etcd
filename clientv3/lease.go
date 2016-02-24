@@ -49,8 +49,8 @@ type Lease interface {
 	// should be used instead of KeepAliveOnce.
 	KeepAliveOnce(ctx context.Context, id lease.LeaseID) (*LeaseKeepAliveResponse, error)
 
-	// Lease keeps internal routines and connections for efficient communication with etcd server.
-	// After using Lease, call Close() to release all related resources.
+	// Close releases all resources Lease keeps for efficient communication
+	// with the etcd server.
 	Close() error
 }
 

@@ -28,7 +28,7 @@ type Syncer interface {
 	// SyncBase syncs the base state of the key-value state.
 	// The key-value state are sent through the returned chan.
 	SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, chan error)
-	// SyncBase syncs the updates of the key-value state.
+	// SyncUpdates syncs the updates of the key-value state.
 	// The update events are sent through the returned chan.
 	SyncUpdates(ctx context.Context) clientv3.WatchChan
 }

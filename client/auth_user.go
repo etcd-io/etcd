@@ -117,25 +117,25 @@ func NewAuthUserAPI(c Client) AuthUserAPI {
 }
 
 type AuthUserAPI interface {
-	// Add a user.
+	// AddUser adds a user.
 	AddUser(ctx context.Context, username string, password string) error
 
-	// Remove a user.
+	// RemoveUser removes a user.
 	RemoveUser(ctx context.Context, username string) error
 
-	// Get user details.
+	// GetUser retrieves user details.
 	GetUser(ctx context.Context, username string) (*User, error)
 
-	// Grant a user some permission roles.
+	// GrantUser grants a user some permission roles.
 	GrantUser(ctx context.Context, username string, roles []string) (*User, error)
 
-	// Revoke some permission roles from a user.
+	// RevokeUser revokes some permission roles from a user.
 	RevokeUser(ctx context.Context, username string, roles []string) (*User, error)
 
-	// Change the user's password.
+	// ChangePassword changes the user's password.
 	ChangePassword(ctx context.Context, username string, password string) (*User, error)
 
-	// List users.
+	// ListUsers lists the users.
 	ListUsers(ctx context.Context) ([]string, error)
 }
 

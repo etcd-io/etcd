@@ -106,7 +106,7 @@ type Transport struct {
 	// used to record transportation statistics with followers when
 	// performing as leader in raft protocol
 	LeaderStats *stats.LeaderStats
-	// error channel used to report detected critical error, e.g.,
+	// ErrorC is used to report detected critical errors, e.g.,
 	// the member has been permanently removed from the cluster
 	// When an error is received from ErrorC, user should stop raft state
 	// machine and thus stop the Transport.

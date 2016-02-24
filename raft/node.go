@@ -153,7 +153,7 @@ type Node interface {
 	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
 	// Status returns the current status of the raft state machine.
 	Status() Status
-	// Report reports the given node is not reachable for the last send.
+	// ReportUnreachable reports the given node is not reachable for the last send.
 	ReportUnreachable(id uint64)
 	// ReportSnapshot reports the status of the sent snapshot.
 	ReportSnapshot(id uint64, status SnapshotStatus)

@@ -53,7 +53,7 @@ type Cluster interface {
 	// IsIDRemoved checks whether the given ID has been removed from this
 	// cluster at some point in the past
 	IsIDRemoved(id types.ID) bool
-	// ClusterVersion is the cluster-wide minimum major.minor version.
+	// Version is the cluster-wide minimum major.minor version.
 	Version() *semver.Version
 }
 

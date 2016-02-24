@@ -56,22 +56,22 @@ func NewAuthRoleAPI(c Client) AuthRoleAPI {
 }
 
 type AuthRoleAPI interface {
-	// Add a role.
+	// AddRole adds a role.
 	AddRole(ctx context.Context, role string) error
 
-	// Remove a role.
+	// RemoveRole removes a role.
 	RemoveRole(ctx context.Context, role string) error
 
-	// Get role details.
+	// GetRole retrieves role details.
 	GetRole(ctx context.Context, role string) (*Role, error)
 
-	// Grant a role some permission prefixes for the KV store.
+	// GrantRoleKV grants a role some permission prefixes for the KV store.
 	GrantRoleKV(ctx context.Context, role string, prefixes []string, permType PermissionType) (*Role, error)
 
-	// Revoke some some permission prefixes for a role on the KV store.
+	// RevokeRoleKV revokes some permission prefixes for a role on the KV store.
 	RevokeRoleKV(ctx context.Context, role string, prefixes []string, permType PermissionType) (*Role, error)
 
-	// List roles.
+	// ListRoles lists roles.
 	ListRoles(ctx context.Context) ([]string, error)
 }
 
