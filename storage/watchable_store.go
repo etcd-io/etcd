@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -35,6 +36,8 @@ const (
 )
 
 var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "storage")
+
 	// watchBatchMaxRevs is the maximum distinct revisions that
 	// may be sent to an unsynced watcher at a time. Declared as
 	// var instead of const for testing purposes.
@@ -288,7 +291,8 @@ func (s *watchableStore) watch(key []byte, prefix bool, startRev int64, id Watch
 	s.store.mu.Unlock()
 	if synced {
 		if startRev > wa.cur {
-			panic("can't watch past sync revision")
+			plog.Warningf("can't watch past sync revision (startRev: %d, cuRev: %d)", startRev, wa.cur)
+			return nil, nil
 		}
 		s.synced.add(wa)
 	} else {
