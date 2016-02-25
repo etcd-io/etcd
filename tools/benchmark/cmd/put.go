@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cheggaaa/pb"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	v3 "github.com/coreos/etcd/clientv3"
 )
 
 // putCmd represents the put command
@@ -61,10 +61,10 @@ func putFunc(cmd *cobra.Command, args []string) {
 	}
 
 	results = make(chan result)
-	requests := make(chan etcdserverpb.PutRequest, totalClients)
+	requests := make(chan v3.Op, totalClients)
 	bar = pb.New(putTotal)
 
-	k, v := make([]byte, keySize), mustRandBytes(valSize)
+	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
 	clients := mustCreateClients(totalClients, totalConns)
 
@@ -73,7 +73,7 @@ func putFunc(cmd *cobra.Command, args []string) {
 
 	for i := range clients {
 		wg.Add(1)
-		go doPut(context.Background(), clients[i].KV, requests)
+		go doPut(context.Background(), clients[i], requests)
 	}
 
 	pdoneC := printReport(results)
@@ -85,7 +85,7 @@ func putFunc(cmd *cobra.Command, args []string) {
 			} else {
 				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
 			}
-			requests <- etcdserverpb.PutRequest{Key: k, Value: v}
+			requests <- v3.OpPut(string(k), v)
 		}
 		close(requests)
 	}()
@@ -98,12 +98,12 @@ func putFunc(cmd *cobra.Command, args []string) {
 	<-pdoneC
 }
 
-func doPut(ctx context.Context, client etcdserverpb.KVClient, requests <-chan etcdserverpb.PutRequest) {
+func doPut(ctx context.Context, client v3.KV, requests <-chan v3.Op) {
 	defer wg.Done()
 
-	for r := range requests {
+	for op := range requests {
 		st := time.Now()
-		_, err := client.Put(ctx, &r)
+		_, err := client.Do(ctx, op)
 
 		var errStr string
 		if err != nil {
