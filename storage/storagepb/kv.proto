@@ -34,6 +34,7 @@ message Event {
   EventType type = 1;
   // A PUT event contains current kv pair.
   // A PUT event with kv.Version=1 indicates the creation of a key.
-  // A DELETE/EXPIRE event contains previous kv pair
+  // A DELETE/EXPIRE event contains the deleted key with
+  // its modification revision set to the revision of deletion.
   KeyValue kv = 2;
 }
