@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	v3 "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/lease"
 )
 
@@ -98,7 +99,7 @@ func NewSequentialKV(kv v3.KV, prefix, val string) (*RemoteKV, error) {
 // newSequentialKV allocates a new sequential key <prefix>/nnnnn with a given
 // value and lease.  Note: a bookkeeping node __<prefix> is also allocated.
 func newSequentialKV(kv v3.KV, prefix, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
-	resp, err := kv.Get(context.TODO(), prefix, withLastKey()...)
+	resp, err := kv.Get(context.TODO(), prefix, v3.WithLastKey()...)
 	if err != nil {
 		return nil, err
 	}
@@ -161,11 +162,11 @@ type EphemeralKV struct{ RemoteKV }
 
 // NewEphemeralKV creates a new key/value pair associated with a session lease
 func NewEphemeralKV(client *v3.Client, key, val string) (*EphemeralKV, error) {
-	leaseID, err := SessionLease(client)
+	s, err := concurrency.NewSession(client)
 	if err != nil {
 		return nil, err
 	}
-	k, err := NewKV(v3.NewKV(client), key, val, leaseID)
+	k, err := NewKV(v3.NewKV(client), key, val, s.Lease())
 	if err != nil {
 		return nil, err
 	}

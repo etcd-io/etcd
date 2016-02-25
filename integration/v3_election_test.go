@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/contrib/recipes"
 )
 
@@ -25,7 +26,7 @@ import (
 func TestElectionWait(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-	defer closeSessionLease(clus)
+	defer dropSessionLease(clus)
 
 	leaders := 3
 	followers := 3
@@ -88,7 +89,7 @@ func TestElectionWait(t *testing.T) {
 func TestElectionFailover(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-	defer closeSessionLease(clus)
+	defer dropSessionLease(clus)
 
 	// first leader (elected)
 	e := recipe.NewElection(clus.clients[0], "test-election")
@@ -116,7 +117,11 @@ func TestElectionFailover(t *testing.T) {
 	}()
 
 	// invoke leader failover
-	err = recipe.RevokeSessionLease(clus.clients[0])
+	session, serr := concurrency.NewSession(clus.clients[0])
+	if serr != nil {
+		t.Fatal(serr)
+	}
+	err = session.Close()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -264,6 +264,25 @@ bar
 
 ## Utility Commands
 
+### LOCK \<lockname\>
+
+LOCK acquires a distributed named mutex with a given name. Once the lock is acquired, it will be held until etcdctlv3 is terminated.
+
+#### Return value
+
+- Once the lock is acquired, the result for the GET on the unique lock holder key is displayed.
+
+- LOCK returns a zero exit code only if it is terminated by a signal and can release the lock.
+
+#### Example
+```bash
+./etcdctl lock mylock
+mylock/1234534535445
+
+
+```
+
+
 ### MAKE-MIRROR [options] \<destination\>
 
 [make-mirror][mirror] mirrors a key prefix in an etcd cluster to a destination etcd cluster.

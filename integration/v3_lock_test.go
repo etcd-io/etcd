@@ -18,7 +18,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/contrib/recipes"
 )
 
@@ -36,11 +38,11 @@ func TestMutexMultiNode(t *testing.T) {
 
 func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
 	// stream lock acquisitions
-	lockedC := make(chan *recipe.Mutex, 1)
+	lockedC := make(chan *concurrency.Mutex, 1)
 	for i := 0; i < waiters; i++ {
 		go func() {
-			m := recipe.NewMutex(chooseClient(), "test-mutex")
-			if err := m.Lock(); err != nil {
+			m := concurrency.NewMutex(context.TODO(), chooseClient(), "test-mutex")
+			if err := m.Lock(context.TODO()); err != nil {
 				t.Fatalf("could not wait on lock (%v)", err)
 			}
 			lockedC <- m

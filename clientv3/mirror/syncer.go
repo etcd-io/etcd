@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sync
+package mirror
 
 import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
