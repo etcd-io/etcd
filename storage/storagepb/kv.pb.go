@@ -76,7 +76,8 @@ type Event struct {
 	Type Event_EventType `protobuf:"varint,1,opt,name=type,proto3,enum=storagepb.Event_EventType" json:"type,omitempty"`
 	// A PUT event contains current kv pair.
 	// A PUT event with kv.Version=1 indicates the creation of a key.
-	// A DELETE/EXPIRE event contains previous kv pair
+	// A DELETE/EXPIRE event contains the deleted key with
+	// its modification revision set to the revision of deletion.
 	Kv *KeyValue `protobuf:"bytes,2,opt,name=kv" json:"kv,omitempty"`
 }
 
