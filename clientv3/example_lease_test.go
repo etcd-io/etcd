@@ -33,11 +33,8 @@ func ExampleLease_create() {
 	}
 	defer cli.Close()
 
-	lapi := clientv3.NewLease(cli)
-	defer lapi.Close()
-
 	// minimum lease TTL is 5-second
-	resp, err := lapi.Create(context.TODO(), 5)
+	resp, err := cli.Create(context.TODO(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,10 +56,7 @@ func ExampleLease_revoke() {
 	}
 	defer cli.Close()
 
-	lapi := clientv3.NewLease(cli)
-	defer lapi.Close()
-
-	resp, err := lapi.Create(context.TODO(), 5)
+	resp, err := cli.Create(context.TODO(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,7 +67,7 @@ func ExampleLease_revoke() {
 	}
 
 	// revoking lease expires the key attached to its lease ID
-	_, err = lapi.Revoke(context.TODO(), lease.LeaseID(resp.ID))
+	_, err = cli.Revoke(context.TODO(), lease.LeaseID(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,10 +90,7 @@ func ExampleLease_keepAlive() {
 	}
 	defer cli.Close()
 
-	lapi := clientv3.NewLease(cli)
-	defer lapi.Close()
-
-	resp, err := lapi.Create(context.TODO(), 5)
+	resp, err := cli.Create(context.TODO(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -110,7 +101,7 @@ func ExampleLease_keepAlive() {
 	}
 
 	// the key 'foo' will be kept forever
-	_, err = lapi.KeepAlive(context.TODO(), lease.LeaseID(resp.ID))
+	_, err = cli.KeepAlive(context.TODO(), lease.LeaseID(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -126,10 +117,7 @@ func ExampleLease_keepAliveOnce() {
 	}
 	defer cli.Close()
 
-	lapi := clientv3.NewLease(cli)
-	defer lapi.Close()
-
-	resp, err := lapi.Create(context.TODO(), 5)
+	resp, err := cli.Create(context.TODO(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -140,7 +128,7 @@ func ExampleLease_keepAliveOnce() {
 	}
 
 	// to renew the lease only once
-	_, err = lapi.KeepAliveOnce(context.TODO(), lease.LeaseID(resp.ID))
+	_, err = cli.KeepAliveOnce(context.TODO(), lease.LeaseID(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
