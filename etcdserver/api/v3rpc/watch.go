@@ -108,6 +108,13 @@ func (sws *serverWatchStream) recvLoop() error {
 				if rev == 0 {
 					// rev 0 watches past the current revision
 					rev = wsrev + 1
+				} else if rev > wsrev { // do not allow watching future revision.
+					sws.ctrlStream <- &pb.WatchResponse{
+						Header:   sws.newResponseHeader(wsrev),
+						Created:  true,
+						Canceled: true,
+					}
+					continue
 				}
 				id := sws.watchStream.Watch(toWatch, prefix, rev)
 				sws.ctrlStream <- &pb.WatchResponse{
