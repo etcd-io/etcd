@@ -24,7 +24,6 @@ import (
 // Mutex implements the sync Locker interface with etcd
 type Mutex struct {
 	client *v3.Client
-	kv     v3.KV
 	ctx    context.Context
 
 	pfx   string
@@ -33,7 +32,7 @@ type Mutex struct {
 }
 
 func NewMutex(ctx context.Context, client *v3.Client, pfx string) *Mutex {
-	return &Mutex{client, v3.NewKV(client), ctx, pfx, "", -1}
+	return &Mutex{client, ctx, pfx, "", -1}
 }
 
 // Lock locks the mutex with a cancellable context. If the context is cancelled
@@ -44,12 +43,12 @@ func (m *Mutex) Lock(ctx context.Context) error {
 		return err
 	}
 	// put self in lock waiters via myKey; oldest waiter holds lock
-	m.myKey, m.myRev, err = NewUniqueKey(ctx, m.kv, m.pfx, v3.WithLease(s.Lease()))
+	m.myKey, m.myRev, err = NewUniqueKey(ctx, m.client, m.pfx, v3.WithLease(s.Lease()))
 	// wait for lock to become available
 	for err == nil {
 		// find oldest element in waiters via revision of insertion
 		var resp *v3.GetResponse
-		resp, err = m.kv.Get(ctx, m.pfx, v3.WithFirstRev()...)
+		resp, err = m.client.Get(ctx, m.pfx, v3.WithFirstRev()...)
 		if err != nil {
 			break
 		}
@@ -59,7 +58,7 @@ func (m *Mutex) Lock(ctx context.Context) error {
 		}
 		// otherwise myKey isn't lowest, so there must be a pfx prior to myKey
 		opts := append(v3.WithLastRev(), v3.WithRev(m.myRev-1))
-		resp, err = m.kv.Get(ctx, m.pfx, opts...)
+		resp, err = m.client.Get(ctx, m.pfx, opts...)
 		if err != nil {
 			break
 		}
@@ -80,7 +79,7 @@ func (m *Mutex) Lock(ctx context.Context) error {
 }
 
 func (m *Mutex) Unlock() error {
-	if _, err := m.kv.Delete(m.ctx, m.myKey); err != nil {
+	if _, err := m.client.Delete(m.ctx, m.myKey); err != nil {
 		return err
 	}
 	m.myKey = "\x00"

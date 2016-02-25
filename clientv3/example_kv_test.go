@@ -32,10 +32,8 @@ func ExampleKV_put() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
-
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := kvc.Put(ctx, "sample_key", "sample_value")
+	resp, err := cli.Put(ctx, "sample_key", "sample_value")
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -54,15 +52,13 @@ func ExampleKV_get() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
-
-	_, err = kvc.Put(context.TODO(), "foo", "bar")
+	_, err = cli.Put(context.TODO(), "foo", "bar")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := kvc.Get(ctx, "foo")
+	resp, err := cli.Get(ctx, "foo")
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -83,11 +79,9 @@ func ExampleKV_getSortedPrefix() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
-
 	for i := range make([]int, 3) {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		_, err = kvc.Put(ctx, fmt.Sprintf("key_%d", i), "value")
+		_, err = cli.Put(ctx, fmt.Sprintf("key_%d", i), "value")
 		cancel()
 		if err != nil {
 			log.Fatal(err)
@@ -95,7 +89,7 @@ func ExampleKV_getSortedPrefix() {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := kvc.Get(ctx, "key", clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
+	resp, err := cli.Get(ctx, "key", clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -118,10 +112,8 @@ func ExampleKV_delete() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
-
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := kvc.Delete(ctx, "key", clientv3.WithPrefix())
+	resp, err := cli.Delete(ctx, "key", clientv3.WithPrefix())
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -140,10 +132,8 @@ func ExampleKV_compact() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
-
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := kvc.Get(ctx, "foo")
+	resp, err := cli.Get(ctx, "foo")
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -151,7 +141,7 @@ func ExampleKV_compact() {
 	compRev := resp.Header.Revision // specify compact revision of your choice
 
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	err = kvc.Compact(ctx, compRev)
+	err = cli.Compact(ctx, compRev)
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -207,15 +197,13 @@ func ExampleKV_do() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
-
 	ops := []clientv3.Op{
 		clientv3.OpPut("put-key", "123"),
 		clientv3.OpGet("put-key"),
 		clientv3.OpPut("put-key", "456")}
 
 	for _, op := range ops {
-		if _, err := kvc.Do(context.TODO(), op); err != nil {
+		if _, err := cli.Do(context.TODO(), op); err != nil {
 			log.Fatal(err)
 		}
 	}

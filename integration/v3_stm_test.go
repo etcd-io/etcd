@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"testing"
 
-	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/contrib/recipes"
 )
 
@@ -31,7 +30,7 @@ func TestSTMConflict(t *testing.T) {
 	etcdc := clus.RandClient()
 	keys := make([]*recipe.RemoteKV, 5)
 	for i := 0; i < len(keys); i++ {
-		rk, err := recipe.NewKV(v3.NewKV(etcdc), fmt.Sprintf("foo-%d", i), "100", 0)
+		rk, err := recipe.NewKV(etcdc, fmt.Sprintf("foo-%d", i), "100", 0)
 		if err != nil {
 			t.Fatalf("could not make key (%v)", err)
 		}
@@ -76,7 +75,7 @@ func TestSTMConflict(t *testing.T) {
 	// ensure sum matches initial sum
 	sum := 0
 	for _, oldRK := range keys {
-		rk, err := recipe.GetRemoteKV(v3.NewKV(etcdc), oldRK.Key())
+		rk, err := recipe.GetRemoteKV(etcdc, oldRK.Key())
 		if err != nil {
 			t.Fatalf("couldn't fetch key %s (%v)", oldRK.Key(), err)
 		}
@@ -103,7 +102,7 @@ func TestSTMPutNewKey(t *testing.T) {
 		t.Fatalf("error on stm txn (%v)", err)
 	}
 
-	rk, err := recipe.GetRemoteKV(v3.NewKV(etcdc), "foo")
+	rk, err := recipe.GetRemoteKV(etcdc, "foo")
 	if err != nil {
 		t.Fatalf("error fetching key (%v)", err)
 	}
@@ -129,7 +128,7 @@ func TestSTMAbort(t *testing.T) {
 		t.Fatalf("error on stm txn (%v)", err)
 	}
 
-	rk, err := recipe.GetRemoteKV(v3.NewKV(etcdc), "foo")
+	rk, err := recipe.GetRemoteKV(etcdc, "foo")
 	if err != nil {
 		t.Fatalf("error fetching key (%v)", err)
 	}

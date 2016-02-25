@@ -33,7 +33,6 @@ func ExampleLease_create() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
 	lapi := clientv3.NewLease(cli)
 	defer lapi.Close()
 
@@ -44,7 +43,7 @@ func ExampleLease_create() {
 	}
 
 	// after 5 seconds, the key 'foo' will be removed
-	_, err = kvc.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,7 +59,6 @@ func ExampleLease_revoke() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
 	lapi := clientv3.NewLease(cli)
 	defer lapi.Close()
 
@@ -69,7 +67,7 @@ func ExampleLease_revoke() {
 		log.Fatal(err)
 	}
 
-	_, err = kvc.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,7 +78,7 @@ func ExampleLease_revoke() {
 		log.Fatal(err)
 	}
 
-	gresp, err := kvc.Get(context.TODO(), "foo")
+	gresp, err := cli.Get(context.TODO(), "foo")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,7 +96,6 @@ func ExampleLease_keepAlive() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
 	lapi := clientv3.NewLease(cli)
 	defer lapi.Close()
 
@@ -107,7 +104,7 @@ func ExampleLease_keepAlive() {
 		log.Fatal(err)
 	}
 
-	_, err = kvc.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -129,7 +126,6 @@ func ExampleLease_keepAliveOnce() {
 	}
 	defer cli.Close()
 
-	kvc := clientv3.NewKV(cli)
 	lapi := clientv3.NewLease(cli)
 	defer lapi.Close()
 
@@ -138,7 +134,7 @@ func ExampleLease_keepAliveOnce() {
 		log.Fatal(err)
 	}
 
-	_, err = kvc.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
 	if err != nil {
 		log.Fatal(err)
 	}

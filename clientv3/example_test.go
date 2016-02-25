@@ -38,9 +38,7 @@ func Example() {
 	}
 	defer cli.Close() // make sure to close the client
 
-	kvc := clientv3.NewKV(cli)
-
-	_, err = kvc.Put(context.TODO(), "foo", "bar")
+	_, err = cli.Put(context.TODO(), "foo", "bar")
 	if err != nil {
 		log.Fatal(err)
 	}

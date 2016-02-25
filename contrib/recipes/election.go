@@ -22,7 +22,6 @@ import (
 
 type Election struct {
 	client *v3.Client
-	kv     v3.KV
 	ctx    context.Context
 
 	keyPrefix string
@@ -31,7 +30,7 @@ type Election struct {
 
 // NewElection returns a new election on a given key prefix.
 func NewElection(client *v3.Client, keyPrefix string) *Election {
-	return &Election{client, v3.NewKV(client), context.TODO(), keyPrefix, nil}
+	return &Election{client, context.TODO(), keyPrefix, nil}
 }
 
 // Volunteer puts a value as eligible for the election. It blocks until
@@ -62,7 +61,7 @@ func (e *Election) Resign() (err error) {
 
 // Leader returns the leader value for the current election.
 func (e *Election) Leader() (string, error) {
-	resp, err := e.kv.Get(e.ctx, e.keyPrefix, v3.WithFirstCreate()...)
+	resp, err := e.client.Get(e.ctx, e.keyPrefix, v3.WithFirstCreate()...)
 	if err != nil {
 		return "", err
 	} else if len(resp.Kvs) == 0 {
@@ -74,7 +73,7 @@ func (e *Election) Leader() (string, error) {
 
 // Wait waits for a leader to be elected, returning the leader value.
 func (e *Election) Wait() (string, error) {
-	resp, err := e.kv.Get(e.ctx, e.keyPrefix, v3.WithFirstCreate()...)
+	resp, err := e.client.Get(e.ctx, e.keyPrefix, v3.WithFirstCreate()...)
 	if err != nil {
 		return "", err
 	} else if len(resp.Kvs) != 0 {
@@ -94,7 +93,7 @@ func (e *Election) Wait() (string, error) {
 
 func (e *Election) waitLeadership(tryKey *EphemeralKV) error {
 	opts := append(v3.WithLastCreate(), v3.WithRev(tryKey.Revision()-1))
-	resp, err := e.kv.Get(e.ctx, e.keyPrefix, opts...)
+	resp, err := e.client.Get(e.ctx, e.keyPrefix, opts...)
 	if err != nil {
 		return err
 	} else if len(resp.Kvs) == 0 {

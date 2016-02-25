@@ -48,10 +48,9 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 	respchan := make(chan clientv3.GetResponse, 1024)
 	errchan := make(chan error, 1)
 
-	kapi := clientv3.NewKV(s.c)
 	// if rev is not specified, we will choose the most recent revision.
 	if s.rev == 0 {
-		resp, err := kapi.Get(ctx, "foo")
+		resp, err := s.c.Get(ctx, "foo")
 		if err != nil {
 			errchan <- err
 			close(respchan)
@@ -83,7 +82,7 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 		}
 
 		for {
-			resp, err := kapi.Get(ctx, key, opts...)
+			resp, err := s.c.Get(ctx, key, opts...)
 			if err != nil {
 				errchan <- err
 				return

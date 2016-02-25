@@ -34,9 +34,7 @@ func NewDelCommand() *cobra.Command {
 // delCommandFunc executes the "del" command.
 func delCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getDelOp(cmd, args)
-	c := mustClientFromCmd(cmd)
-	kvapi := clientv3.NewKV(c)
-	resp, err := kvapi.Delete(context.TODO(), key, opts...)
+	resp, err := mustClientFromCmd(cmd).Delete(context.TODO(), key, opts...)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

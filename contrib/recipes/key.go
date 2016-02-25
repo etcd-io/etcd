@@ -166,7 +166,7 @@ func NewEphemeralKV(client *v3.Client, key, val string) (*EphemeralKV, error) {
 	if err != nil {
 		return nil, err
 	}
-	k, err := NewKV(v3.NewKV(client), key, val, s.Lease())
+	k, err := NewKV(client, key, val, s.Lease())
 	if err != nil {
 		return nil, err
 	}
