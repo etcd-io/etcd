@@ -170,19 +170,23 @@ func ExampleKV_txn() {
 
 	kvc := clientv3.NewKV(cli)
 
-	// TODO: 'if' not working. Add expected output once fixed.
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	_, err = kvc.Txn(ctx).
-		If(clientv3.Compare(clientv3.Value("1"), ">", "1")).
-		Then(clientv3.OpPut("1", "100")).
-		Else(clientv3.OpPut("1", "-1")).
-		Commit()
-	cancel()
-	if err == nil {
+	_, err = kvc.Put(context.TODO(), "key", "xyz")
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	gresp, err := kvc.Get(ctx, "1")
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	_, err = kvc.Txn(ctx).
+		If(clientv3.Compare(clientv3.Value("key"), ">", "abc")). // txn value comparisons are lexical
+		Then(clientv3.OpPut("key", "XYZ")).                      // this runs, since 'xyz' > 'abc'
+		Else(clientv3.OpPut("key", "ABC")).
+		Commit()
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	gresp, err := kvc.Get(context.TODO(), "key")
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -190,4 +194,5 @@ func ExampleKV_txn() {
 	for _, ev := range gresp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
+	// key : XYZ
 }
