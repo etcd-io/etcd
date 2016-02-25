@@ -870,8 +870,9 @@ func _WatchRequest_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.B
 type WatchCreateRequest struct {
 	// the key to be watched
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// the prefix to be watched.
-	Prefix []byte `protobuf:"bytes,2,opt,name=prefix,proto3" json:"prefix,omitempty"`
+	// if the range_end is given, keys in [key, range_end) are watched
+	// NOTE: only range_end == prefixEnd(key) is accepted now
+	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
 	// start_revision is an optional revision (including) to watch from. No start_revision is "now".
 	StartRevision int64 `protobuf:"varint,3,opt,name=start_revision,proto3" json:"start_revision,omitempty"`
 }
@@ -2588,12 +2589,12 @@ func (m *WatchCreateRequest) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], m.Key)
 		}
 	}
-	if m.Prefix != nil {
-		if len(m.Prefix) > 0 {
+	if m.RangeEnd != nil {
+		if len(m.RangeEnd) > 0 {
 			data[i] = 0x12
 			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Prefix)))
-			i += copy(data[i:], m.Prefix)
+			i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
+			i += copy(data[i:], m.RangeEnd)
 		}
 	}
 	if m.StartRevision != 0 {
@@ -3592,8 +3593,8 @@ func (m *WatchCreateRequest) Size() (n int) {
 			n += 1 + l + sovRpc(uint64(l))
 		}
 	}
-	if m.Prefix != nil {
-		l = len(m.Prefix)
+	if m.RangeEnd != nil {
+		l = len(m.RangeEnd)
 		if l > 0 {
 			n += 1 + l + sovRpc(uint64(l))
 		}
@@ -6004,7 +6005,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Prefix", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field RangeEnd", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -6028,9 +6029,9 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Prefix = append(m.Prefix[:0], data[iNdEx:postIndex]...)
-			if m.Prefix == nil {
-				m.Prefix = []byte{}
+			m.RangeEnd = append(m.RangeEnd[:0], data[iNdEx:postIndex]...)
+			if m.RangeEnd == nil {
+				m.RangeEnd = []byte{}
 			}
 			iNdEx = postIndex
 		case 3:

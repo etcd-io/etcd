@@ -69,27 +69,6 @@ func (op Op) toRequestUnion() *pb.RequestUnion {
 	}
 }
 
-func (op Op) toWatchRequest() *watchRequest {
-	switch op.t {
-	case tRange:
-		key := string(op.key)
-		prefix := ""
-		if op.end != nil {
-			prefix = key
-			key = ""
-		}
-		wr := &watchRequest{
-			key:    key,
-			prefix: prefix,
-			rev:    op.rev,
-		}
-		return wr
-
-	default:
-		panic("Only for tRange")
-	}
-}
-
 func (op Op) isWrite() bool {
 	return op.t != tRange
 }

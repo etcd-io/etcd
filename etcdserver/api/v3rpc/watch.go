@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"io"
+	"reflect"
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -94,35 +95,33 @@ func (sws *serverWatchStream) recvLoop() error {
 
 		switch uv := req.RequestUnion.(type) {
 		case *pb.WatchRequest_CreateRequest:
-			if uv.CreateRequest != nil {
-				creq := uv.CreateRequest
-				var prefix bool
-				toWatch := creq.Key
-				if len(creq.Key) == 0 {
-					toWatch = creq.Prefix
-					prefix = true
-				}
+			if uv.CreateRequest == nil {
+				break
+			}
 
-				rev := creq.StartRevision
-				wsrev := sws.watchStream.Rev()
-				if rev == 0 {
-					// rev 0 watches past the current revision
-					rev = wsrev + 1
-				} else if rev > wsrev { // do not allow watching future revision.
-					sws.ctrlStream <- &pb.WatchResponse{
-						Header:   sws.newResponseHeader(wsrev),
-						WatchId:  -1,
-						Created:  true,
-						Canceled: true,
-					}
-					continue
-				}
-				id := sws.watchStream.Watch(toWatch, prefix, rev)
-				sws.ctrlStream <- &pb.WatchResponse{
-					Header:  sws.newResponseHeader(wsrev),
-					WatchId: int64(id),
-					Created: true,
-				}
+			creq := uv.CreateRequest
+			toWatch := creq.Key
+			isPrefix := len(creq.RangeEnd) != 0
+			badPrefix := isPrefix && !reflect.DeepEqual(getPrefix(toWatch), creq.RangeEnd)
+
+			rev := creq.StartRevision
+			wsrev := sws.watchStream.Rev()
+			futureRev := rev > wsrev
+			if rev == 0 {
+				// rev 0 watches past the current revision
+				rev = wsrev + 1
+			}
+			// do not allow future watch revision
+			// do not allow range that is not a prefix
+			id := storage.WatchID(-1)
+			if !futureRev && !badPrefix {
+				id = sws.watchStream.Watch(toWatch, isPrefix, rev)
+			}
+			sws.ctrlStream <- &pb.WatchResponse{
+				Header:   sws.newResponseHeader(wsrev),
+				WatchId:  int64(id),
+				Created:  true,
+				Canceled: futureRev || badPrefix,
 			}
 		case *pb.WatchRequest_CancelRequest:
 			if uv.CancelRequest != nil {
@@ -237,4 +236,22 @@ func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
 		Revision:  rev,
 		RaftTerm:  sws.raftTimer.Term(),
 	}
+}
+
+// TODO: remove getPrefix when storage supports full range watchers
+
+func getPrefix(key []byte) []byte {
+	end := make([]byte, len(key))
+	copy(end, key)
+	for i := len(end) - 1; i >= 0; i-- {
+		if end[i] < 0xff {
+			end[i] = end[i] + 1
+			end = end[:i+1]
+			return end
+		}
+	}
+	// next prefix does not exist (e.g., 0xffff);
+	// default to WithFromKey policy
+	end = []byte{0}
+	return end
 }
