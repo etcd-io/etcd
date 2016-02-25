@@ -66,7 +66,15 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 }
 
 func getPeersFlagValue(c *cli.Context) []string {
-	peerstr := c.GlobalString("endpoint")
+	peerstr := c.GlobalString("endpoints")
+
+	if peerstr == "" {
+		peerstr = os.Getenv("ETCDCTL_ENDPOINTS")
+	}
+
+	if peerstr == "" {
+		peerstr = c.GlobalString("endpoint")
+	}
 
 	if peerstr == "" {
 		peerstr = os.Getenv("ETCDCTL_ENDPOINT")
