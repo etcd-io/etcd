@@ -297,3 +297,28 @@ func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
 		}
 	}
 }
+
+func TestWatchInvalidFutureRevision(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	w := clientv3.NewWatcher(clus.RandClient())
+	defer w.Close()
+
+	rch := w.Watch(context.Background(), "foo", clientv3.WithRev(100))
+
+	wresp, ok := <-rch // WatchResponse from canceled one
+	if !ok {
+		t.Fatalf("expected wresp 'open'(ok true), but got ok %v", ok)
+	}
+	if !wresp.Canceled {
+		t.Fatalf("wresp.Canceled expected 'true', but got %v", wresp.Canceled)
+	}
+
+	_, ok = <-rch // ensure the channel is closed
+	if ok != false {
+		t.Fatalf("expected wresp 'closed'(ok false), but got ok %v", ok)
+	}
+}

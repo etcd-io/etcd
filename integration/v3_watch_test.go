@@ -782,3 +782,32 @@ func waitResponse(wc pb.Watch_WatchClient, timeout time.Duration) (bool, *pb.Wat
 	}
 	return true, nil
 }
+
+// TestV3WatchFutureRevision ensures invalid future revision to Watch APIs
+// returns WatchResponse of true Created and true Canceled.
+func TestV3WatchInvalidFutureRevision(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	wStream, wErr := clus.RandClient().Watch.Watch(ctx)
+	if wErr != nil {
+		t.Fatalf("wAPI.Watch error: %v", wErr)
+	}
+
+	wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
+		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 100}}}
+	if err := wStream.Send(wreq); err != nil {
+		t.Fatalf("watch request failed (%v)", err)
+	}
+
+	resp, err := wStream.Recv()
+	if err != nil {
+		t.Errorf("wStream.Recv error: %v", err)
+	}
+	if !resp.Created || !resp.Canceled || len(resp.Events) != 0 {
+		t.Errorf("invalid start rev should return true, true, 0, but got %v, %v, %d", resp.Created, resp.Canceled, len(resp.Events))
+	}
+}
