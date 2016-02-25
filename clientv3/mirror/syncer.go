@@ -106,21 +106,5 @@ func (s *syncer) SyncUpdates(ctx context.Context) clientv3.WatchChan {
 	if s.rev == 0 {
 		panic("unexpected revision = 0. Calling SyncUpdates before SyncBase finishes?")
 	}
-
-	respchan := make(chan clientv3.WatchResponse, 1024)
-
-	go func() {
-		wapi := clientv3.NewWatcher(s.c)
-		defer wapi.Close()
-		defer close(respchan)
-
-		// get all events since revision (or get non-compacted revision, if
-		// rev is too far behind)
-		wch := wapi.Watch(ctx, s.prefix, clientv3.WithPrefix(), clientv3.WithRev(s.rev))
-		for wr := range wch {
-			respchan <- wr
-		}
-	}()
-
-	return respchan
+	return s.c.Watch(ctx, s.prefix, clientv3.WithPrefix(), clientv3.WithRev(s.rev))
 }

@@ -32,10 +32,7 @@ func ExampleWatcher_watch() {
 	}
 	defer cli.Close()
 
-	wc := clientv3.NewWatcher(cli)
-	defer wc.Close()
-
-	rch := wc.Watch(context.Background(), "foo")
+	rch := cli.Watch(context.Background(), "foo")
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
@@ -54,10 +51,7 @@ func ExampleWatcher_watchPrefix() {
 	}
 	defer cli.Close()
 
-	wc := clientv3.NewWatcher(cli)
-	defer wc.Close()
-
-	rch := wc.Watch(context.Background(), "foo", clientv3.WithPrefix())
+	rch := cli.Watch(context.Background(), "foo", clientv3.WithPrefix())
 	for wresp := range rch {
 		for _, ev := range wresp.Events {
 			fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)

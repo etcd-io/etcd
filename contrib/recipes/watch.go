@@ -22,23 +22,19 @@ import (
 
 // WaitEvents waits on a key until it observes the given events and returns the final one.
 func WaitEvents(c *clientv3.Client, key string, rev int64, evs []storagepb.Event_EventType) (*storagepb.Event, error) {
-	w := clientv3.NewWatcher(c)
-	wc := w.Watch(context.Background(), key, clientv3.WithRev(rev))
+	wc := c.Watch(context.Background(), key, clientv3.WithRev(rev))
 	if wc == nil {
-		w.Close()
 		return nil, ErrNoWatcher
 	}
-	return waitEvents(wc, evs), w.Close()
+	return waitEvents(wc, evs), nil
 }
 
 func WaitPrefixEvents(c *clientv3.Client, prefix string, rev int64, evs []storagepb.Event_EventType) (*storagepb.Event, error) {
-	w := clientv3.NewWatcher(c)
-	wc := w.Watch(context.Background(), prefix, clientv3.WithPrefix(), clientv3.WithRev(rev))
+	wc := c.Watch(context.Background(), prefix, clientv3.WithPrefix(), clientv3.WithRev(rev))
 	if wc == nil {
-		w.Close()
 		return nil, ErrNoWatcher
 	}
-	return waitEvents(wc, evs), w.Close()
+	return waitEvents(wc, evs), nil
 }
 
 func waitEvents(wc clientv3.WatchChan, evs []storagepb.Event_EventType) *storagepb.Event {

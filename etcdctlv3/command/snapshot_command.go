@@ -52,9 +52,7 @@ func snapshotCommandFunc(cmd *cobra.Command, args []string) {
 // snapshotToStdout streams a snapshot over stdout
 func snapshotToStdout(c *clientv3.Client) {
 	// must explicitly fetch first revision since no retry on stdout
-	wapi := clientv3.NewWatcher(c)
-	defer wapi.Close()
-	wr := <-wapi.Watch(context.TODO(), "", clientv3.WithPrefix(), clientv3.WithRev(1))
+	wr := <-c.Watch(context.TODO(), "", clientv3.WithPrefix(), clientv3.WithRev(1))
 	if len(wr.Events) > 0 {
 		wr.CompactRevision = 1
 	}
