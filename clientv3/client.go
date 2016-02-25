@@ -24,7 +24,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/transport"
 )
 
@@ -34,14 +33,10 @@ var (
 
 // Client provides and manages an etcd v3 client session.
 type Client struct {
-	// KV is the keyvalue API for the client's connection.
-	KV pb.KVClient
-	// Lease is the lease API for the client's connection.
-	Lease pb.LeaseClient
-	// Watch is the watch API for the client's connection.
-	Watch pb.WatchClient
-	// Cluster is the cluster API for the client's connection.
-	Cluster pb.ClusterClient
+	Cluster
+	KV
+	Lease
+	Watcher
 
 	conn   *grpc.ClientConn
 	cfg    Config
@@ -86,6 +81,8 @@ func NewFromURL(url string) (*Client, error) {
 
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
+	c.Watcher.Close()
+	c.Lease.Close()
 	return c.conn.Close()
 }
 
@@ -146,15 +143,17 @@ func newClient(cfg *Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{
-		KV:      pb.NewKVClient(conn),
-		Lease:   pb.NewLeaseClient(conn),
-		Watch:   pb.NewWatchClient(conn),
-		Cluster: pb.NewClusterClient(conn),
-		conn:    conn,
-		cfg:     *cfg,
-		creds:   creds,
-	}, nil
+	client := &Client{
+		conn:  conn,
+		cfg:   *cfg,
+		creds: creds,
+	}
+	client.Cluster = NewCluster(client)
+	client.KV = NewKV(client)
+	client.Lease = NewLease(client)
+	client.Watcher = NewWatcher(client)
+
+	return client, nil
 }
 
 // ActiveConnection returns the current in-use connection

@@ -33,7 +33,7 @@ func TestV3LeasePrmote(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// create lease
-	lresp, err := clus.RandClient().Lease.LeaseCreate(context.TODO(), &pb.LeaseCreateRequest{TTL: 5})
+	lresp, err := toGRPC(clus.RandClient()).Lease.LeaseCreate(context.TODO(), &pb.LeaseCreateRequest{TTL: 5})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestV3LeasePrmote(t *testing.T) {
 func TestV3LeaseRevoke(t *testing.T) {
 	defer testutil.AfterTest(t)
 	testLeaseRemoveLeasedKey(t, func(clus *ClusterV3, leaseID int64) error {
-		lc := clus.RandClient().Lease
+		lc := toGRPC(clus.RandClient()).Lease
 		_, err := lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
 		return err
 	})
@@ -91,7 +91,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// create fixed lease
-	lresp, err := clus.RandClient().Lease.LeaseCreate(
+	lresp, err := toGRPC(clus.RandClient()).Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{ID: 1, TTL: 1})
 	if err != nil {
@@ -102,7 +102,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 	}
 
 	// create duplicate fixed lease
-	lresp, err = clus.RandClient().Lease.LeaseCreate(
+	lresp, err = toGRPC(clus.RandClient()).Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{ID: 1, TTL: 1})
 	if err != v3rpc.ErrLeaseExist {
@@ -110,7 +110,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 	}
 
 	// create fresh fixed lease
-	lresp, err = clus.RandClient().Lease.LeaseCreate(
+	lresp, err = toGRPC(clus.RandClient()).Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{ID: 2, TTL: 1})
 	if err != nil {
@@ -129,7 +129,7 @@ func TestV3LeaseExpire(t *testing.T) {
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		wStream, err := clus.RandClient().Watch.Watch(ctx)
+		wStream, err := toGRPC(clus.RandClient()).Watch.Watch(ctx)
 		if err != nil {
 			return err
 		}
@@ -177,7 +177,7 @@ func TestV3LeaseExpire(t *testing.T) {
 func TestV3LeaseKeepAlive(t *testing.T) {
 	defer testutil.AfterTest(t)
 	testLeaseRemoveLeasedKey(t, func(clus *ClusterV3, leaseID int64) error {
-		lc := clus.RandClient().Lease
+		lc := toGRPC(clus.RandClient()).Lease
 		lreq := &pb.LeaseKeepAliveRequest{ID: leaseID}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -215,7 +215,7 @@ func TestV3LeaseExists(t *testing.T) {
 	// create lease
 	ctx0, cancel0 := context.WithCancel(context.Background())
 	defer cancel0()
-	lresp, err := clus.RandClient().Lease.LeaseCreate(
+	lresp, err := toGRPC(clus.RandClient()).Lease.LeaseCreate(
 		ctx0,
 		&pb.LeaseCreateRequest{TTL: 30})
 	if err != nil {
@@ -241,34 +241,34 @@ func TestV3LeaseSwitch(t *testing.T) {
 	// create lease
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	lresp1, err1 := clus.RandClient().Lease.LeaseCreate(ctx, &pb.LeaseCreateRequest{TTL: 30})
+	lresp1, err1 := toGRPC(clus.RandClient()).Lease.LeaseCreate(ctx, &pb.LeaseCreateRequest{TTL: 30})
 	if err1 != nil {
 		t.Fatal(err1)
 	}
-	lresp2, err2 := clus.RandClient().Lease.LeaseCreate(ctx, &pb.LeaseCreateRequest{TTL: 30})
+	lresp2, err2 := toGRPC(clus.RandClient()).Lease.LeaseCreate(ctx, &pb.LeaseCreateRequest{TTL: 30})
 	if err2 != nil {
 		t.Fatal(err2)
 	}
 
 	// attach key on lease1 then switch it to lease2
 	put1 := &pb.PutRequest{Key: []byte(key), Lease: lresp1.ID}
-	_, err := clus.RandClient().KV.Put(ctx, put1)
+	_, err := toGRPC(clus.RandClient()).KV.Put(ctx, put1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	put2 := &pb.PutRequest{Key: []byte(key), Lease: lresp2.ID}
-	_, err = clus.RandClient().KV.Put(ctx, put2)
+	_, err = toGRPC(clus.RandClient()).KV.Put(ctx, put2)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// revoke lease1 should not remove key
-	_, err = clus.RandClient().Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp1.ID})
+	_, err = toGRPC(clus.RandClient()).Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp1.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	rreq := &pb.RangeRequest{Key: []byte("foo")}
-	rresp, err := clus.RandClient().KV.Range(context.TODO(), rreq)
+	rresp, err := toGRPC(clus.RandClient()).KV.Range(context.TODO(), rreq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,11 +277,11 @@ func TestV3LeaseSwitch(t *testing.T) {
 	}
 
 	// revoke lease2 should remove key
-	_, err = clus.RandClient().Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp2.ID})
+	_, err = toGRPC(clus.RandClient()).Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp2.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	rresp, err = clus.RandClient().KV.Range(context.TODO(), rreq)
+	rresp, err = toGRPC(clus.RandClient()).KV.Range(context.TODO(), rreq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +293,7 @@ func TestV3LeaseSwitch(t *testing.T) {
 // acquireLeaseAndKey creates a new lease and creates an attached key.
 func acquireLeaseAndKey(clus *ClusterV3, key string) (int64, error) {
 	// create lease
-	lresp, err := clus.RandClient().Lease.LeaseCreate(
+	lresp, err := toGRPC(clus.RandClient()).Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{TTL: 1})
 	if err != nil {
@@ -304,7 +304,7 @@ func acquireLeaseAndKey(clus *ClusterV3, key string) (int64, error) {
 	}
 	// attach to key
 	put := &pb.PutRequest{Key: []byte(key), Lease: lresp.ID}
-	if _, err := clus.RandClient().KV.Put(context.TODO(), put); err != nil {
+	if _, err := toGRPC(clus.RandClient()).KV.Put(context.TODO(), put); err != nil {
 		return 0, err
 	}
 	return lresp.ID, nil
@@ -327,7 +327,7 @@ func testLeaseRemoveLeasedKey(t *testing.T, act func(*ClusterV3, int64) error) {
 
 	// confirm no key
 	rreq := &pb.RangeRequest{Key: []byte("foo")}
-	rresp, err := clus.RandClient().KV.Range(context.TODO(), rreq)
+	rresp, err := toGRPC(clus.RandClient()).KV.Range(context.TODO(), rreq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +337,7 @@ func testLeaseRemoveLeasedKey(t *testing.T, act func(*ClusterV3, int64) error) {
 }
 
 func leaseExist(t *testing.T, clus *ClusterV3, leaseID int64) bool {
-	l := clus.RandClient().Lease
+	l := toGRPC(clus.RandClient()).Lease
 
 	_, err := l.LeaseCreate(context.Background(), &pb.LeaseCreateRequest{ID: leaseID, TTL: 5})
 	if err == nil {
