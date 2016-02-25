@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -179,6 +180,8 @@ type EtcdServer struct {
 	lstats *stats.LeaderStats
 
 	SyncTicker <-chan time.Time
+	// compactor is used to auto-compact the KV.
+	compactor *compactor.Periodic
 
 	// consistent index used to hold the offset of current executing entry
 	// It is initialized to 0 before executing any entry.
@@ -368,6 +371,10 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
 		srv.lessor = lease.NewLessor(srv.be)
 		srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
+		if h := cfg.AutoCompactionRetention; h != 0 {
+			srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
+			srv.compactor.Run()
+		}
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -517,6 +524,9 @@ func (s *EtcdServer) run() {
 		}
 		if s.be != nil {
 			s.be.Close()
+		}
+		if s.compactor != nil {
+			s.compactor.Stop()
 		}
 		close(s.done)
 	}()
