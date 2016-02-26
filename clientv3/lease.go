@@ -258,15 +258,13 @@ func (l *lessor) recvKeepAliveLoop() {
 	}()
 
 	stream, serr := l.resetRecv()
-	for {
+	for serr == nil {
 		resp, err := stream.Recv()
 		if err != nil {
 			if isRPCError(err) {
 				return
 			}
-			if stream, serr = l.resetRecv(); serr != nil {
-				return
-			}
+			stream, serr = l.resetRecv()
 			continue
 		}
 		l.recvKeepAlive(resp)
