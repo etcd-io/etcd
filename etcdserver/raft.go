@@ -159,9 +159,15 @@ func (r *raftNode) start(s *EtcdServer) {
 						if r.s.stats != nil {
 							r.s.stats.BecomeLeader()
 						}
+						if r.s.compactor != nil {
+							r.s.compactor.Resume()
+						}
 					} else {
 						if r.s.lessor != nil {
 							r.s.lessor.Demote()
+						}
+						if r.s.compactor != nil {
+							r.s.compactor.Pause()
 						}
 						syncC = nil
 					}

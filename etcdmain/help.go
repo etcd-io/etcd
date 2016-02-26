@@ -137,6 +137,8 @@ experimental flags:
 
 	--experimental-v3demo 'false'
 		enable experimental v3 demo API.
+	--experimental-auto-compaction-retention '0'
+		auto compaction retention in hour. 0 means disable auto compaction.
 	--experimental-gRPC-addr '127.0.0.1:2378'
 		gRPC address for experimental v3 demo API.
 
