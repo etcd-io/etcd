@@ -186,7 +186,7 @@ type SetOptions struct {
 
 	// Refresh set to true means a TTL value can be updated
 	// without firing a watch or changing the node value. A
-	// value must not provided when refreshing a key.
+	// value must not be provided when refreshing a key.
 	Refresh bool
 
 	// Dir specifies whether or not this Node should be created as a directory.
