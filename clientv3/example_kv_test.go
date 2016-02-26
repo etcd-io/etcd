@@ -196,3 +196,27 @@ func ExampleKV_txn() {
 	}
 	// key : XYZ
 }
+
+func ExampleKV_do() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	kvc := clientv3.NewKV(cli)
+
+	ops := []clientv3.Op{
+		clientv3.OpPut("put-key", "123"),
+		clientv3.OpGet("put-key"),
+		clientv3.OpPut("put-key", "456")}
+
+	for _, op := range ops {
+		if _, err := kvc.Do(context.TODO(), op); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
