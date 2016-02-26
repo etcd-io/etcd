@@ -807,7 +807,8 @@ func TestV3WatchInvalidFutureRevision(t *testing.T) {
 	if err != nil {
 		t.Errorf("wStream.Recv error: %v", err)
 	}
-	if !resp.Created || !resp.Canceled || len(resp.Events) != 0 {
-		t.Errorf("invalid start rev should return true, true, 0, but got %v, %v, %d", resp.Created, resp.Canceled, len(resp.Events))
+	if resp.WatchId != -1 || !resp.Created || !resp.Canceled || len(resp.Events) != 0 {
+		t.Errorf("invalid start-rev expected -1, true, true, 0, but got %d, %v, %v, %d",
+			resp.WatchId, resp.Created, resp.Canceled, len(resp.Events))
 	}
 }

@@ -111,6 +111,7 @@ func (sws *serverWatchStream) recvLoop() error {
 				} else if rev > wsrev { // do not allow watching future revision.
 					sws.ctrlStream <- &pb.WatchResponse{
 						Header:   sws.newResponseHeader(wsrev),
+						WatchId:  -1,
 						Created:  true,
 						Canceled: true,
 					}
