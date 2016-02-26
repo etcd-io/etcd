@@ -226,6 +226,26 @@ func testWatchReconnRunning(t *testing.T, wctx *watchctx) {
 	putAndWatch(t, wctx, "a", "b")
 }
 
+// TestWatchCancelImmediate ensures a closed channel is returned
+// if the context is cancelled.
+func TestWatchCancelImmediate(t *testing.T) {
+	runWatchTest(t, testWatchCancelImmediate)
+}
+
+func testWatchCancelImmediate(t *testing.T, wctx *watchctx) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	wch := wctx.w.Watch(ctx, "a")
+	select {
+	case wresp, ok := <-wch:
+		if ok {
+			t.Fatalf("read wch got %v; expected closed channel", wresp)
+		}
+	default:
+		t.Fatalf("closed watcher channel should not block")
+	}
+}
+
 // TestWatchCancelInit tests watcher closes correctly after no events.
 func TestWatchCancelInit(t *testing.T) {
 	runWatchTest(t, testWatchCancelInit)
