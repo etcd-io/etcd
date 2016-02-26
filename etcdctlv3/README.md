@@ -323,3 +323,19 @@ Simple reply
 
 [etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
 [storagerpc]: ../storage/storagepb/kv.proto
+
+## Compatibility Support
+
+etcdctl is still in its early stage. We try out best to ensure fully compatible releases, however we might break compatibility to fix bugs or improve commands. If we intend to release a version of etcdctl with backward incompatibilities, we will provide notice prior to release and have instructions on how to upgrade.
+
+### Input Compatibility
+
+Input includes the command name, its flags, and its arguments. We ensure backward compatibility of the input of normal commands in non-interactive mode.
+
+### Output Compatibility
+
+Output includes output from etcdctl and its exit code. etcdctl provides `simple` output format by default.
+We ensure compatibility for the `simple` output format of normal commands in non-interactive mode. Currently, we do not ensure
+backward compatibility for `JSON` format and the format in non-interactive mode. Currently, we do not ensure backward compatibility of utility commands.
+
+### TODO: compatibility with etcd server
