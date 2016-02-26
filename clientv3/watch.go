@@ -135,23 +135,30 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 	retc := make(chan chan WatchResponse, 1)
 	wr.retc = retc
 
+	ok := false
+
 	// submit request
 	select {
 	case w.reqc <- wr:
+		ok = true
 	case <-wr.ctx.Done():
-		return nil
 	case <-w.donec:
-		return nil
 	}
+
 	// receive channel
-	select {
-	case ret := <-retc:
-		return ret
-	case <-ctx.Done():
-		return nil
-	case <-w.donec:
-		return nil
+	if ok {
+		select {
+		case ret := <-retc:
+			return ret
+		case <-ctx.Done():
+		case <-w.donec:
+		}
 	}
+
+	// couldn't create channel; return closed channel
+	ch := make(chan WatchResponse)
+	close(ch)
+	return ch
 }
 
 func (w *watcher) Close() error {
@@ -179,13 +186,15 @@ func (w *watcher) addStream(resp *pb.WatchResponse, pendingReq *watchRequest) {
 		pendingReq.retc <- ret
 		return
 	}
+
+	ret := make(chan WatchResponse)
 	if resp.WatchId == -1 {
 		// failed; no channel
-		pendingReq.retc <- nil
+		close(ret)
+		pendingReq.retc <- ret
 		return
 	}
 
-	ret := make(chan WatchResponse)
 	ws := &watcherStream{
 		initReq: *pendingReq,
 		id:      resp.WatchId,
