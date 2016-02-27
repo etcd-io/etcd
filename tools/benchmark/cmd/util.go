@@ -18,7 +18,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/coreos/etcd/clientv3"
 )
@@ -30,8 +29,7 @@ var (
 )
 
 func mustCreateConn() *clientv3.Client {
-	eps := strings.Split(endpoints, ",")
-	endpoint := eps[dialTotal%len(eps)]
+	endpoint := endpoints[dialTotal%len(endpoints)]
 	dialTotal++
 	cfgtls := &tls
 	if cfgtls.Empty() {
