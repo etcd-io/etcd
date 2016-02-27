@@ -1,0 +1,9 @@
+language: go
+go:
+  - 1.3
+  - release
+  - tip
+
+script:
+  - go test -v ./...
+sudo: false
