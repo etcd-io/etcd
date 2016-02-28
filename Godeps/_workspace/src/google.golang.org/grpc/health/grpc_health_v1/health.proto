@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package grpc.health.v1alpha;
+package grpc.health.v1;
 
 message HealthCheckRequest {
   string service = 1;

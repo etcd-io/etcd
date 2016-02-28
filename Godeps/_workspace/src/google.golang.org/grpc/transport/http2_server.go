@@ -62,8 +62,8 @@ type http2Server struct {
 	maxStreamID uint32               // max stream ID ever seen
 	authInfo    credentials.AuthInfo // auth info about the connection
 	// writableChan synchronizes write access to the transport.
-	// A writer acquires the write lock by sending a value on writableChan
-	// and releases it by receiving from writableChan.
+	// A writer acquires the write lock by receiving a value on writableChan
+	// and releases it by sending on writableChan.
 	writableChan chan int
 	// shutdownChan is closed when Close is called.
 	// Blocking operations should select on shutdownChan to avoid
@@ -136,37 +136,38 @@ func newHTTP2Server(conn net.Conn, maxStreams uint32, authInfo credentials.AuthI
 	return t, nil
 }
 
-// operateHeader takes action on the decoded headers. It returns the current
-// stream if there are remaining headers on the wire (in the following
-// Continuation frame).
-func (t *http2Server) operateHeaders(hDec *hpackDecoder, s *Stream, frame headerFrame, endStream bool, handle func(*Stream)) (pendingStream *Stream) {
-	defer func() {
-		if pendingStream == nil {
-			hDec.state = decodeState{}
-		}
-	}()
-	endHeaders, err := hDec.decodeServerHTTP2Headers(frame)
-	if s == nil {
-		// s has been closed.
-		return nil
+// operateHeader takes action on the decoded headers.
+func (t *http2Server) operateHeaders(frame *http2.MetaHeadersFrame, handle func(*Stream)) {
+	buf := newRecvBuffer()
+	fc := &inFlow{
+		limit: initialWindowSize,
+		conn:  t.fc,
 	}
-	if err != nil {
-		grpclog.Printf("transport: http2Server.operateHeader found %v", err)
+	s := &Stream{
+		id:  frame.Header().StreamID,
+		st:  t,
+		buf: buf,
+		fc:  fc,
+	}
+
+	var state decodeState
+	for _, hf := range frame.Fields {
+		state.processHeaderField(hf)
+	}
+	if err := state.err; err != nil {
 		if se, ok := err.(StreamError); ok {
 			t.controlBuf.put(&resetStream{s.id, statusCodeConvTab[se.Code]})
 		}
-		return nil
+		return
 	}
-	if endStream {
+
+	if frame.StreamEnded() {
 		// s is just created by the caller. No lock needed.
 		s.state = streamReadDone
 	}
-	if !endHeaders {
-		return s
-	}
-	s.recvCompress = hDec.state.encoding
-	if hDec.state.timeoutSet {
-		s.ctx, s.cancel = context.WithTimeout(context.TODO(), hDec.state.timeout)
+	s.recvCompress = state.encoding
+	if state.timeoutSet {
+		s.ctx, s.cancel = context.WithTimeout(context.TODO(), state.timeout)
 	} else {
 		s.ctx, s.cancel = context.WithCancel(context.TODO())
 	}
@@ -183,25 +184,25 @@ func (t *http2Server) operateHeaders(hDec *hpackDecoder, s *Stream, frame header
 	// back to the client (unary call only).
 	s.ctx = newContextWithStream(s.ctx, s)
 	// Attach the received metadata to the context.
-	if len(hDec.state.mdata) > 0 {
-		s.ctx = metadata.NewContext(s.ctx, hDec.state.mdata)
+	if len(state.mdata) > 0 {
+		s.ctx = metadata.NewContext(s.ctx, state.mdata)
 	}
 
 	s.dec = &recvBufferReader{
 		ctx:  s.ctx,
 		recv: s.buf,
 	}
-	s.recvCompress = hDec.state.encoding
-	s.method = hDec.state.method
+	s.recvCompress = state.encoding
+	s.method = state.method
 	t.mu.Lock()
 	if t.state != reachable {
 		t.mu.Unlock()
-		return nil
+		return
 	}
 	if uint32(len(t.activeStreams)) >= t.maxStreams {
 		t.mu.Unlock()
 		t.controlBuf.put(&resetStream{s.id, http2.ErrCodeRefusedStream})
-		return nil
+		return
 	}
 	s.sendQuotaPool = newQuotaPool(int(t.streamSendQuota))
 	t.activeStreams[s.id] = s
@@ -210,7 +211,6 @@ func (t *http2Server) operateHeaders(hDec *hpackDecoder, s *Stream, frame header
 		t.updateWindow(s, uint32(n))
 	}
 	handle(s)
-	return nil
 }
 
 // HandleStreams receives incoming streams using the given handler. This is
@@ -243,8 +243,6 @@ func (t *http2Server) HandleStreams(handle func(*Stream)) {
 	}
 	t.handleSettings(sf)
 
-	hDec := newHPACKDecoder()
-	var curStream *Stream
 	for {
 		frame, err := t.framer.readFrame()
 		if err != nil {
@@ -252,7 +250,7 @@ func (t *http2Server) HandleStreams(handle func(*Stream)) {
 			return
 		}
 		switch frame := frame.(type) {
-		case *http2.HeadersFrame:
+		case *http2.MetaHeadersFrame:
 			id := frame.Header().StreamID
 			if id%2 != 1 || id <= t.maxStreamID {
 				// illegal gRPC stream id.
@@ -261,21 +259,7 @@ func (t *http2Server) HandleStreams(handle func(*Stream)) {
 				break
 			}
 			t.maxStreamID = id
-			buf := newRecvBuffer()
-			fc := &inFlow{
-				limit: initialWindowSize,
-				conn:  t.fc,
-			}
-			curStream = &Stream{
-				id:  frame.Header().StreamID,
-				st:  t,
-				buf: buf,
-				fc:  fc,
-			}
-			endStream := frame.Header().Flags.Has(http2.FlagHeadersEndStream)
-			curStream = t.operateHeaders(hDec, curStream, frame, endStream, handle)
-		case *http2.ContinuationFrame:
-			curStream = t.operateHeaders(hDec, curStream, frame, frame.HeadersEnded(), handle)
+			t.operateHeaders(frame, handle)
 		case *http2.DataFrame:
 			t.handleData(frame)
 		case *http2.RSTStreamFrame:

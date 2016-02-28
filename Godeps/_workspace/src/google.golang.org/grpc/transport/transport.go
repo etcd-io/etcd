@@ -352,26 +352,40 @@ func NewClientTransport(target string, opts *ConnectOptions) (ClientTransport, e
 // Options provides additional hints and information for message
 // transmission.
 type Options struct {
-	// Indicate whether it is the last piece for this stream.
+	// Last indicates whether this write is the last piece for
+	// this stream.
 	Last bool
-	// The hint to transport impl whether the data could be buffered for
-	// batching write. Transport impl can feel free to ignore it.
+
+	// Delay is a hint to the transport implementation for whether
+	// the data could be buffered for a batching write. The
+	// Transport implementation may ignore the hint.
 	Delay bool
 }
 
 // CallHdr carries the information of a particular RPC.
 type CallHdr struct {
-	// Host specifies peer host.
+	// Host specifies the peer's host.
 	Host string
+
 	// Method specifies the operation to perform.
 	Method string
-	// RecvCompress specifies the compression algorithm applied on inbound messages.
+
+	// RecvCompress specifies the compression algorithm applied on
+	// inbound messages.
 	RecvCompress string
-	// SendCompress specifies the compression algorithm applied on outbound message.
+
+	// SendCompress specifies the compression algorithm applied on
+	// outbound message.
 	SendCompress string
+
+	// Flush indicates whether a new stream command should be sent
+	// to the peer without waiting for the first data. This is
+	// only a hint. The transport may modify the flush decision
+	// for performance purposes.
+	Flush bool
 }
 
-// ClientTransport is the common interface for all gRPC client side transport
+// ClientTransport is the common interface for all gRPC client-side transport
 // implementations.
 type ClientTransport interface {
 	// Close tears down this transport. Once it returns, the transport
@@ -400,21 +414,33 @@ type ClientTransport interface {
 	Error() <-chan struct{}
 }
 
-// ServerTransport is the common interface for all gRPC server side transport
+// ServerTransport is the common interface for all gRPC server-side transport
 // implementations.
+//
+// Methods may be called concurrently from multiple goroutines, but
+// Write methods for a given Stream will be called serially.
 type ServerTransport interface {
-	// WriteStatus sends the status of a stream to the client.
-	WriteStatus(s *Stream, statusCode codes.Code, statusDesc string) error
-	// Write sends the data for the given stream.
-	Write(s *Stream, data []byte, opts *Options) error
-	// WriteHeader sends the header metedata for the given stream.
-	WriteHeader(s *Stream, md metadata.MD) error
 	// HandleStreams receives incoming streams using the given handler.
 	HandleStreams(func(*Stream))
+
+	// WriteHeader sends the header metadata for the given stream.
+	// WriteHeader may not be called on all streams.
+	WriteHeader(s *Stream, md metadata.MD) error
+
+	// Write sends the data for the given stream.
+	// Write may not be called on all streams.
+	Write(s *Stream, data []byte, opts *Options) error
+
+	// WriteStatus sends the status of a stream to the client.
+	// WriteStatus is the final call made on a stream and always
+	// occurs.
+	WriteStatus(s *Stream, statusCode codes.Code, statusDesc string) error
+
 	// Close tears down the transport. Once it is called, the transport
 	// should not be accessed any more. All the pending streams and their
 	// handlers will be terminated asynchronously.
 	Close() error
+
 	// RemoteAddr returns the remote network address.
 	RemoteAddr() net.Addr
 }

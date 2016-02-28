@@ -241,8 +241,18 @@ func encodeHeaders(enc *hpack.Encoder, h http.Header, keys []string) {
 	for _, k := range keys {
 		vv := h[k]
 		k = lowerHeader(k)
+		if !validHeaderFieldName(k) {
+			// TODO: return an error? golang.org/issue/14048
+			// For now just omit it.
+			continue
+		}
 		isTE := k == "transfer-encoding"
 		for _, v := range vv {
+			if !validHeaderFieldValue(v) {
+				// TODO: return an error? golang.org/issue/14048
+				// For now just omit it.
+				continue
+			}
 			// TODO: more of "8.1.2.2 Connection-Specific Header Fields"
 			if isTE && v != "trailers" {
 				continue

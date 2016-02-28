@@ -55,9 +55,9 @@ func recvResponse(dopts dialOptions, t transport.ClientTransport, c *callInfo, s
 	if err != nil {
 		return err
 	}
-	p := &parser{s: stream}
+	p := &parser{r: stream}
 	for {
-		if err = recv(p, dopts.codec, stream, dopts.dg, reply); err != nil {
+		if err = recv(p, dopts.codec, stream, dopts.dc, reply); err != nil {
 			if err == io.EOF {
 				break
 			}
@@ -133,11 +133,7 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 	}
 	var (
 		lastErr error // record the error that happened
-		cp      Compressor
 	)
-	if cc.dopts.cg != nil {
-		cp = cc.dopts.cg()
-	}
 	for {
 		var (
 			err    error
@@ -152,8 +148,8 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 			Host:   cc.authority,
 			Method: method,
 		}
-		if cp != nil {
-			callHdr.SendCompress = cp.Type()
+		if cc.dopts.cp != nil {
+			callHdr.SendCompress = cc.dopts.cp.Type()
 		}
 		t, err = cc.dopts.picker.Pick(ctx)
 		if err != nil {
@@ -166,7 +162,7 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 		if c.traceInfo.tr != nil {
 			c.traceInfo.tr.LazyLog(&payload{sent: true, msg: args}, true)
 		}
-		stream, err = sendRequest(ctx, cc.dopts.codec, cp, callHdr, t, args, topts)
+		stream, err = sendRequest(ctx, cc.dopts.codec, cc.dopts.cp, callHdr, t, args, topts)
 		if err != nil {
 			if _, ok := err.(transport.ConnectionError); ok {
 				lastErr = err
