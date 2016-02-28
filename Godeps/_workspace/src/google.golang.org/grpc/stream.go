@@ -71,7 +71,7 @@ type Stream interface {
 	SendMsg(m interface{}) error
 	// RecvMsg blocks until it receives a message or the stream is
 	// done. On client side, it returns io.EOF when the stream is done. On
-	// any other error, it aborts the streama nd returns an RPC status. On
+	// any other error, it aborts the stream and returns an RPC status. On
 	// server side, it simply returns the error to the caller.
 	RecvMsg(m interface{}) error
 }
@@ -105,27 +105,24 @@ func NewClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 	if err != nil {
 		return nil, toRPCErr(err)
 	}
-	var cp Compressor
-	if cc.dopts.cg != nil {
-		cp = cc.dopts.cg()
-	}
 	// TODO(zhaoq): CallOption is omitted. Add support when it is needed.
 	callHdr := &transport.CallHdr{
 		Host:   cc.authority,
 		Method: method,
+		Flush:  desc.ServerStreams && desc.ClientStreams,
 	}
-	if cp != nil {
-		callHdr.SendCompress = cp.Type()
+	if cc.dopts.cp != nil {
+		callHdr.SendCompress = cc.dopts.cp.Type()
 	}
 	cs := &clientStream{
 		desc:    desc,
 		codec:   cc.dopts.codec,
-		cp:      cp,
-		dg:      cc.dopts.dg,
+		cp:      cc.dopts.cp,
+		dc:      cc.dopts.dc,
 		tracing: EnableTracing,
 	}
-	if cp != nil {
-		callHdr.SendCompress = cp.Type()
+	if cc.dopts.cp != nil {
+		callHdr.SendCompress = cc.dopts.cp.Type()
 		cs.cbuf = new(bytes.Buffer)
 	}
 	if cs.tracing {
@@ -144,7 +141,7 @@ func NewClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 	}
 	cs.t = t
 	cs.s = s
-	cs.p = &parser{s: s}
+	cs.p = &parser{r: s}
 	// Listen on ctx.Done() to detect cancellation when there is no pending
 	// I/O operations on this stream.
 	go func() {
@@ -169,7 +166,7 @@ type clientStream struct {
 	codec Codec
 	cp    Compressor
 	cbuf  *bytes.Buffer
-	dg    DecompressorGenerator
+	dc    Decompressor
 
 	tracing bool // set to EnableTracing when the clientStream is created.
 
@@ -207,6 +204,9 @@ func (cs *clientStream) SendMsg(m interface{}) (err error) {
 		cs.mu.Unlock()
 	}
 	defer func() {
+		if err != nil {
+			cs.finish(err)
+		}
 		if err == nil || err == io.EOF {
 			return
 		}
@@ -228,7 +228,7 @@ func (cs *clientStream) SendMsg(m interface{}) (err error) {
 }
 
 func (cs *clientStream) RecvMsg(m interface{}) (err error) {
-	err = recv(cs.p, cs.codec, cs.s, cs.dg, m)
+	err = recv(cs.p, cs.codec, cs.s, cs.dc, m)
 	defer func() {
 		// err != nil indicates the termination of the stream.
 		if err != nil {
@@ -247,13 +247,14 @@ func (cs *clientStream) RecvMsg(m interface{}) (err error) {
 			return
 		}
 		// Special handling for client streaming rpc.
-		err = recv(cs.p, cs.codec, cs.s, cs.dg, m)
+		err = recv(cs.p, cs.codec, cs.s, cs.dc, m)
 		cs.closeTransportStream(err)
 		if err == nil {
 			return toRPCErr(errors.New("grpc: client streaming protocol violation: get <nil>, want <EOF>"))
 		}
 		if err == io.EOF {
 			if cs.s.StatusCode() == codes.OK {
+				cs.finish(err)
 				return nil
 			}
 			return Errorf(cs.s.StatusCode(), cs.s.StatusDesc())
@@ -275,6 +276,11 @@ func (cs *clientStream) RecvMsg(m interface{}) (err error) {
 
 func (cs *clientStream) CloseSend() (err error) {
 	err = cs.t.Write(cs.s, nil, &transport.Options{Last: true})
+	defer func() {
+		if err != nil {
+			cs.finish(err)
+		}
+	}()
 	if err == nil || err == io.EOF {
 		return
 	}
@@ -333,7 +339,7 @@ type serverStream struct {
 	p          *parser
 	codec      Codec
 	cp         Compressor
-	dg         DecompressorGenerator
+	dc         Decompressor
 	cbuf       *bytes.Buffer
 	statusCode codes.Code
 	statusDesc string
@@ -401,5 +407,5 @@ func (ss *serverStream) RecvMsg(m interface{}) (err error) {
 			ss.mu.Unlock()
 		}
 	}()
-	return recv(ss.p, ss.codec, ss.s, ss.dg, m)
+	return recv(ss.p, ss.codec, ss.s, ss.dc, m)
 }

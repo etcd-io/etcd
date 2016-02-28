@@ -73,8 +73,8 @@ var (
 // values passed to Dial.
 type dialOptions struct {
 	codec    Codec
-	cg       CompressorGenerator
-	dg       DecompressorGenerator
+	cp       Compressor
+	dc       Decompressor
 	picker   Picker
 	block    bool
 	insecure bool
@@ -93,17 +93,17 @@ func WithCodec(c Codec) DialOption {
 
 // WithCompressor returns a DialOption which sets a CompressorGenerator for generating message
 // compressor.
-func WithCompressor(f CompressorGenerator) DialOption {
+func WithCompressor(cp Compressor) DialOption {
 	return func(o *dialOptions) {
-		o.cg = f
+		o.cp = cp
 	}
 }
 
 // WithDecompressor returns a DialOption which sets a DecompressorGenerator for generating
 // message decompressor.
-func WithDecompressor(f DecompressorGenerator) DialOption {
+func WithDecompressor(dc Decompressor) DialOption {
 	return func(o *dialOptions) {
-		o.dg = f
+		o.dc = dc
 	}
 }
 
@@ -539,8 +539,9 @@ func (cc *Conn) Wait(ctx context.Context) (transport.ClientTransport, error) {
 			cc.mu.Unlock()
 			return nil, ErrClientConnClosing
 		case cc.state == Ready:
+			ct := cc.transport
 			cc.mu.Unlock()
-			return cc.transport, nil
+			return ct, nil
 		default:
 			ready := cc.ready
 			if ready == nil {

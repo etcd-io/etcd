@@ -39,6 +39,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"reflect"
 	"runtime"
 	"strings"
@@ -46,6 +47,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/http2"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/trace"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
@@ -82,10 +84,11 @@ type service struct {
 
 // Server is a gRPC server to serve RPC requests.
 type Server struct {
-	opts   options
-	mu     sync.Mutex
+	opts options
+
+	mu     sync.Mutex // guards following
 	lis    map[net.Listener]bool
-	conns  map[transport.ServerTransport]bool
+	conns  map[io.Closer]bool
 	m      map[string]*service // service name -> service info
 	events trace.EventLog
 }
@@ -93,9 +96,10 @@ type Server struct {
 type options struct {
 	creds                credentials.Credentials
 	codec                Codec
-	cg                   CompressorGenerator
-	dg                   DecompressorGenerator
+	cp                   Compressor
+	dc                   Decompressor
 	maxConcurrentStreams uint32
+	useHandlerImpl       bool // use http.Handler-based server
 }
 
 // A ServerOption sets options.
@@ -108,15 +112,15 @@ func CustomCodec(codec Codec) ServerOption {
 	}
 }
 
-func CompressON(f CompressorGenerator) ServerOption {
+func RPCCompressor(cp Compressor) ServerOption {
 	return func(o *options) {
-		o.cg = f
+		o.cp = cp
 	}
 }
 
-func DecompressON(f DecompressorGenerator) ServerOption {
+func RPCDecompressor(dc Decompressor) ServerOption {
 	return func(o *options) {
-		o.dg = f
+		o.dc = dc
 	}
 }
 
@@ -149,7 +153,7 @@ func NewServer(opt ...ServerOption) *Server {
 	s := &Server{
 		lis:   make(map[net.Listener]bool),
 		opts:  opts,
-		conns: make(map[transport.ServerTransport]bool),
+		conns: make(map[io.Closer]bool),
 		m:     make(map[string]*service),
 	}
 	if EnableTracing {
@@ -216,9 +220,17 @@ var (
 	ErrServerStopped = errors.New("grpc: the server has been stopped")
 )
 
+func (s *Server) useTransportAuthenticator(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
+	creds, ok := s.opts.creds.(credentials.TransportAuthenticator)
+	if !ok {
+		return rawConn, nil, nil
+	}
+	return creds.ServerHandshake(rawConn)
+}
+
 // Serve accepts incoming connections on the listener lis, creating a new
 // ServerTransport and service goroutine for each. The service goroutines
-// read gRPC request and then call the registered handlers to reply to them.
+// read gRPC requests and then call the registered handlers to reply to them.
 // Service returns when lis.Accept fails.
 func (s *Server) Serve(lis net.Listener) error {
 	s.mu.Lock()
@@ -235,70 +247,171 @@ func (s *Server) Serve(lis net.Listener) error {
 		delete(s.lis, lis)
 		s.mu.Unlock()
 	}()
+	listenerAddr := lis.Addr()
 	for {
-		c, err := lis.Accept()
+		rawConn, err := lis.Accept()
 		if err != nil {
 			s.mu.Lock()
 			s.printf("done serving; Accept = %v", err)
 			s.mu.Unlock()
 			return err
 		}
-		var authInfo credentials.AuthInfo
-		if creds, ok := s.opts.creds.(credentials.TransportAuthenticator); ok {
-			var conn net.Conn
-			conn, authInfo, err = creds.ServerHandshake(c)
-			if err != nil {
-				s.mu.Lock()
-				s.errorf("ServerHandshake(%q) failed: %v", c.RemoteAddr(), err)
-				s.mu.Unlock()
-				grpclog.Println("grpc: Server.Serve failed to complete security handshake.")
-				continue
-			}
-			c = conn
-		}
-		s.mu.Lock()
-		if s.conns == nil {
-			s.mu.Unlock()
-			c.Close()
-			return nil
-		}
-		st, err := transport.NewServerTransport("http2", c, s.opts.maxConcurrentStreams, authInfo)
-		if err != nil {
-			s.errorf("NewServerTransport(%q) failed: %v", c.RemoteAddr(), err)
-			s.mu.Unlock()
-			c.Close()
-			grpclog.Println("grpc: Server.Serve failed to create ServerTransport: ", err)
-			continue
-		}
-		s.conns[st] = true
-		s.mu.Unlock()
+		// Start a new goroutine to deal with rawConn
+		// so we don't stall this Accept loop goroutine.
+		go s.handleRawConn(listenerAddr, rawConn)
+	}
+}
 
+// handleRawConn is run in its own goroutine and handles a just-accepted
+// connection that has not had any I/O performed on it yet.
+func (s *Server) handleRawConn(listenerAddr net.Addr, rawConn net.Conn) {
+	conn, authInfo, err := s.useTransportAuthenticator(rawConn)
+	if err != nil {
+		s.mu.Lock()
+		s.errorf("ServerHandshake(%q) failed: %v", rawConn.RemoteAddr(), err)
+		s.mu.Unlock()
+		grpclog.Printf("grpc: Server.Serve failed to complete security handshake from %q: %v", rawConn.RemoteAddr(), err)
+		rawConn.Close()
+		return
+	}
+
+	s.mu.Lock()
+	if s.conns == nil {
+		s.mu.Unlock()
+		conn.Close()
+		return
+	}
+	s.mu.Unlock()
+
+	if s.opts.useHandlerImpl {
+		s.serveUsingHandler(listenerAddr, conn)
+	} else {
+		s.serveNewHTTP2Transport(conn, authInfo)
+	}
+}
+
+// serveNewHTTP2Transport sets up a new http/2 transport (using the
+// gRPC http2 server transport in transport/http2_server.go) and
+// serves streams on it.
+// This is run in its own goroutine (it does network I/O in
+// transport.NewServerTransport).
+func (s *Server) serveNewHTTP2Transport(c net.Conn, authInfo credentials.AuthInfo) {
+	st, err := transport.NewServerTransport("http2", c, s.opts.maxConcurrentStreams, authInfo)
+	if err != nil {
+		s.mu.Lock()
+		s.errorf("NewServerTransport(%q) failed: %v", c.RemoteAddr(), err)
+		s.mu.Unlock()
+		c.Close()
+		grpclog.Println("grpc: Server.Serve failed to create ServerTransport: ", err)
+		return
+	}
+	if !s.addConn(st) {
+		st.Close()
+		return
+	}
+	s.serveStreams(st)
+}
+
+func (s *Server) serveStreams(st transport.ServerTransport) {
+	defer s.removeConn(st)
+	defer st.Close()
+	var wg sync.WaitGroup
+	st.HandleStreams(func(stream *transport.Stream) {
+		wg.Add(1)
 		go func() {
-			var wg sync.WaitGroup
-			st.HandleStreams(func(stream *transport.Stream) {
-				var trInfo *traceInfo
-				if EnableTracing {
-					trInfo = &traceInfo{
-						tr: trace.New("grpc.Recv."+methodFamily(stream.Method()), stream.Method()),
-					}
-					trInfo.firstLine.client = false
-					trInfo.firstLine.remoteAddr = st.RemoteAddr()
-					stream.TraceContext(trInfo.tr)
-					if dl, ok := stream.Context().Deadline(); ok {
-						trInfo.firstLine.deadline = dl.Sub(time.Now())
-					}
-				}
-				wg.Add(1)
-				go func() {
-					s.handleStream(st, stream, trInfo)
-					wg.Done()
-				}()
-			})
-			wg.Wait()
-			s.mu.Lock()
-			delete(s.conns, st)
-			s.mu.Unlock()
+			defer wg.Done()
+			s.handleStream(st, stream, s.traceInfo(st, stream))
 		}()
+	})
+	wg.Wait()
+}
+
+var _ http.Handler = (*Server)(nil)
+
+// serveUsingHandler is called from handleRawConn when s is configured
+// to handle requests via the http.Handler interface. It sets up a
+// net/http.Server to handle the just-accepted conn. The http.Server
+// is configured to route all incoming requests (all HTTP/2 streams)
+// to ServeHTTP, which creates a new ServerTransport for each stream.
+// serveUsingHandler blocks until conn closes.
+//
+// This codepath is only used when Server.TestingUseHandlerImpl has
+// been configured. This lets the end2end tests exercise the ServeHTTP
+// method as one of the environment types.
+//
+// conn is the *tls.Conn that's already been authenticated.
+func (s *Server) serveUsingHandler(listenerAddr net.Addr, conn net.Conn) {
+	if !s.addConn(conn) {
+		conn.Close()
+		return
+	}
+	defer s.removeConn(conn)
+	connDone := make(chan struct{})
+	hs := &http.Server{
+		Handler: s,
+		ConnState: func(c net.Conn, cs http.ConnState) {
+			if cs == http.StateClosed {
+				close(connDone)
+			}
+		},
+	}
+	if err := http2.ConfigureServer(hs, &http2.Server{
+		MaxConcurrentStreams: s.opts.maxConcurrentStreams,
+	}); err != nil {
+		grpclog.Fatalf("grpc: http2.ConfigureServer: %v", err)
+		return
+	}
+	hs.Serve(&singleConnListener{addr: listenerAddr, conn: conn})
+	<-connDone
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	st, err := transport.NewServerHandlerTransport(w, r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !s.addConn(st) {
+		st.Close()
+		return
+	}
+	defer s.removeConn(st)
+	s.serveStreams(st)
+}
+
+// traceInfo returns a traceInfo and associates it with stream, if tracing is enabled.
+// If tracing is not enabled, it returns nil.
+func (s *Server) traceInfo(st transport.ServerTransport, stream *transport.Stream) (trInfo *traceInfo) {
+	if !EnableTracing {
+		return nil
+	}
+	trInfo = &traceInfo{
+		tr: trace.New("grpc.Recv."+methodFamily(stream.Method()), stream.Method()),
+	}
+	trInfo.firstLine.client = false
+	trInfo.firstLine.remoteAddr = st.RemoteAddr()
+	stream.TraceContext(trInfo.tr)
+	if dl, ok := stream.Context().Deadline(); ok {
+		trInfo.firstLine.deadline = dl.Sub(time.Now())
+	}
+	return trInfo
+}
+
+func (s *Server) addConn(c io.Closer) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.conns == nil {
+		return false
+	}
+	s.conns[c] = true
+	return true
+}
+
+func (s *Server) removeConn(c io.Closer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.conns != nil {
+		delete(s.conns, c)
 	}
 }
 
@@ -333,12 +446,15 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 			}
 		}()
 	}
-	p := &parser{s: stream}
+	p := &parser{r: stream}
 	for {
 		pf, req, err := p.recvMsg()
 		if err == io.EOF {
 			// The entire stream is done (for unary RPC only).
 			return err
+		}
+		if err == io.ErrUnexpectedEOF {
+			err = transport.StreamError{Code: codes.Internal, Desc: "io.ErrUnexpectedEOF"}
 		}
 		if err != nil {
 			switch err := err.(type) {
@@ -354,11 +470,7 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 			return err
 		}
 
-		var dc Decompressor
-		if pf == compressionMade && s.opts.dg != nil {
-			dc = s.opts.dg()
-		}
-		if err := checkRecvPayload(pf, stream.RecvCompress(), dc); err != nil {
+		if err := checkRecvPayload(pf, stream.RecvCompress(), s.opts.dc); err != nil {
 			switch err := err.(type) {
 			case transport.StreamError:
 				if err := t.WriteStatus(stream, err.Code, err.Desc); err != nil {
@@ -377,9 +489,7 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 		df := func(v interface{}) error {
 			if pf == compressionMade {
 				var err error
-				req, err = dc.Do(bytes.NewReader(req))
-				//req, err = ioutil.ReadAll(dc)
-				//defer dc.Close()
+				req, err = s.opts.dc.Do(bytes.NewReader(req))
 				if err != nil {
 					if err := t.WriteStatus(stream, codes.Internal, err.Error()); err != nil {
 						grpclog.Printf("grpc: Server.processUnaryRPC failed to write status %v", err)
@@ -421,12 +531,10 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 			Last:  true,
 			Delay: false,
 		}
-		var cp Compressor
-		if s.opts.cg != nil {
-			cp = s.opts.cg()
-			stream.SetSendCompress(cp.Type())
+		if s.opts.cp != nil {
+			stream.SetSendCompress(s.opts.cp.Type())
 		}
-		if err := s.sendResponse(t, stream, reply, cp, opts); err != nil {
+		if err := s.sendResponse(t, stream, reply, s.opts.cp, opts); err != nil {
 			switch err := err.(type) {
 			case transport.ConnectionError:
 				// Nothing to do here.
@@ -447,21 +555,19 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 }
 
 func (s *Server) processStreamingRPC(t transport.ServerTransport, stream *transport.Stream, srv *service, sd *StreamDesc, trInfo *traceInfo) (err error) {
-	var cp Compressor
-	if s.opts.cg != nil {
-		cp = s.opts.cg()
-		stream.SetSendCompress(cp.Type())
+	if s.opts.cp != nil {
+		stream.SetSendCompress(s.opts.cp.Type())
 	}
 	ss := &serverStream{
 		t:      t,
 		s:      stream,
-		p:      &parser{s: stream},
+		p:      &parser{r: stream},
 		codec:  s.opts.codec,
-		cp:     cp,
-		dg:     s.opts.dg,
+		cp:     s.opts.cp,
+		dc:     s.opts.dc,
 		trInfo: trInfo,
 	}
-	if cp != nil {
+	if ss.cp != nil {
 		ss.cbuf = new(bytes.Buffer)
 	}
 	if trInfo != nil {
@@ -571,8 +677,11 @@ func (s *Server) handleStream(t transport.ServerTransport, stream *transport.Str
 	}
 }
 
-// Stop stops the gRPC server. Once Stop returns, the server stops accepting
-// connection requests and closes all the connected connections.
+// Stop stops the gRPC server. It immediately closes all open
+// connections and listeners.
+// It cancels all active RPCs on the server side and the corresponding
+// pending RPCs on the client side will get notified by connection
+// errors.
 func (s *Server) Stop() {
 	s.mu.Lock()
 	listeners := s.lis
@@ -580,12 +689,14 @@ func (s *Server) Stop() {
 	cs := s.conns
 	s.conns = nil
 	s.mu.Unlock()
+
 	for lis := range listeners {
 		lis.Close()
 	}
 	for c := range cs {
 		c.Close()
 	}
+
 	s.mu.Lock()
 	if s.events != nil {
 		s.events.Finish()
@@ -595,14 +706,22 @@ func (s *Server) Stop() {
 }
 
 // TestingCloseConns closes all exiting transports but keeps s.lis accepting new
-// connections. This is for test only now.
+// connections.
+// This is only for tests and is subject to removal.
 func (s *Server) TestingCloseConns() {
 	s.mu.Lock()
 	for c := range s.conns {
 		c.Close()
+		delete(s.conns, c)
 	}
-	s.conns = make(map[transport.ServerTransport]bool)
 	s.mu.Unlock()
+}
+
+// TestingUseHandlerImpl enables the http.Handler-based server implementation.
+// It must be called before Serve and requires TLS credentials.
+// This is only for tests and is subject to removal.
+func (s *Server) TestingUseHandlerImpl() {
+	s.opts.useHandlerImpl = true
 }
 
 // SendHeader sends header metadata. It may be called at most once from a unary
@@ -634,4 +753,31 @@ func SetTrailer(ctx context.Context, md metadata.MD) error {
 		return fmt.Errorf("grpc: failed to fetch the stream from the context %v", ctx)
 	}
 	return stream.SetTrailer(md)
+}
+
+// singleConnListener is a net.Listener that yields a single conn.
+type singleConnListener struct {
+	mu   sync.Mutex
+	addr net.Addr
+	conn net.Conn // nil if done
+}
+
+func (ln *singleConnListener) Addr() net.Addr { return ln.addr }
+
+func (ln *singleConnListener) Close() error {
+	ln.mu.Lock()
+	defer ln.mu.Unlock()
+	ln.conn = nil
+	return nil
+}
+
+func (ln *singleConnListener) Accept() (net.Conn, error) {
+	ln.mu.Lock()
+	defer ln.mu.Unlock()
+	c := ln.conn
+	if c == nil {
+		return nil, io.EOF
+	}
+	ln.conn = nil
+	return c, nil
 }

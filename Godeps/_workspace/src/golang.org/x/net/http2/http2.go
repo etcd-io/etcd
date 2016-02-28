@@ -17,6 +17,7 @@ package http2
 
 import (
 	"bufio"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -421,4 +422,8 @@ var isTokenTable = [127]bool{
 	'z':  true,
 	'|':  true,
 	'~':  true,
+}
+
+type connectionStater interface {
+	ConnectionState() tls.ConnectionState
 }

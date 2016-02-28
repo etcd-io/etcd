@@ -8,7 +8,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
-	healthpb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/health/grpc_health_v1alpha"
+	healthpb "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/health/grpc_health_v1"
 )
 
 type HealthServer struct {

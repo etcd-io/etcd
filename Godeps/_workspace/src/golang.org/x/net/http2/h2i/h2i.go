@@ -78,7 +78,6 @@ var commands = map[string]command{
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: h2i <hostname>\n\n")
 	flag.PrintDefaults()
-	os.Exit(1)
 }
 
 // withPort adds ":443" if another port isn't already present.
@@ -111,6 +110,7 @@ func main() {
 	flag.Parse()
 	if flag.NArg() != 1 {
 		usage()
+		os.Exit(2)
 	}
 	log.SetFlags(0)
 

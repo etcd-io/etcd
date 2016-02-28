@@ -11,4 +11,3 @@ install:
 
 script:
   - make test testrace
-  - make coverage
