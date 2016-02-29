@@ -157,6 +157,20 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	}
 }
 
+// TestWatchRange tests watcher creates ranges
+func TestWatchRange(t *testing.T) {
+	runWatchTest(t, testWatchReconnInit)
+}
+
+func testWatchRange(t *testing.T, wctx *watchctx) {
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a", clientv3.WithRange("c")); wctx.ch == nil {
+		t.Fatalf("expected non-nil channel")
+	}
+	putAndWatch(t, wctx, "a", "a")
+	putAndWatch(t, wctx, "b", "b")
+	putAndWatch(t, wctx, "bar", "bar")
+}
+
 // TestWatchReconnRequest tests the send failure path when requesting a watcher.
 func TestWatchReconnRequest(t *testing.T) {
 	runWatchTest(t, testWatchReconnRequest)

@@ -15,8 +15,6 @@
 package clientv3
 
 import (
-	"reflect"
-
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 )
@@ -119,8 +117,6 @@ func opWatch(key string, opts ...OpOption) Op {
 	ret := Op{t: tRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	switch {
-	case ret.end != nil && !reflect.DeepEqual(ret.end, getPrefix(ret.key)):
-		panic("only supports single keys or prefixes")
 	case ret.leaseID != 0:
 		panic("unexpected lease in watch")
 	case ret.limit != 0:
