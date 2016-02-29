@@ -32,9 +32,7 @@ func ExampleCluster_memberList() {
 	}
 	defer cli.Close()
 
-	capi := clientv3.NewCluster(cli)
-
-	resp, err := capi.MemberList(context.Background())
+	resp, err := cli.MemberList(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,9 +50,7 @@ func ExampleCluster_memberLeader() {
 	}
 	defer cli.Close()
 
-	capi := clientv3.NewCluster(cli)
-
-	resp, err := capi.MemberLeader(context.Background())
+	resp, err := cli.MemberLeader(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,10 +68,8 @@ func ExampleCluster_memberAdd() {
 	}
 	defer cli.Close()
 
-	capi := clientv3.NewCluster(cli)
-
 	peerURLs := endpoints[2:]
-	mresp, err := capi.MemberAdd(context.Background(), peerURLs)
+	mresp, err := cli.MemberAdd(context.Background(), peerURLs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -93,14 +87,12 @@ func ExampleCluster_memberRemove() {
 	}
 	defer cli.Close()
 
-	capi := clientv3.NewCluster(cli)
-
-	resp, err := capi.MemberList(context.Background())
+	resp, err := cli.MemberList(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = capi.MemberRemove(context.Background(), resp.Members[0].ID)
+	_, err = cli.MemberRemove(context.Background(), resp.Members[0].ID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -116,15 +108,13 @@ func ExampleCluster_memberUpdate() {
 	}
 	defer cli.Close()
 
-	capi := clientv3.NewCluster(cli)
-
-	resp, err := capi.MemberList(context.Background())
+	resp, err := cli.MemberList(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	peerURLs := []string{"http://localhost:12378"}
-	_, err = capi.MemberUpdate(context.Background(), resp.Members[0].ID, peerURLs)
+	_, err = cli.MemberUpdate(context.Background(), resp.Members[0].ID, peerURLs)
 	if err != nil {
 		log.Fatal(err)
 	}

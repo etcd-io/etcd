@@ -22,7 +22,6 @@ import (
 
 type RWMutex struct {
 	client *v3.Client
-	kv     v3.KV
 	ctx    context.Context
 
 	key   string
@@ -30,7 +29,7 @@ type RWMutex struct {
 }
 
 func NewRWMutex(client *v3.Client, key string) *RWMutex {
-	return &RWMutex{client, v3.NewKV(client), context.TODO(), key, nil}
+	return &RWMutex{client, context.TODO(), key, nil}
 }
 
 func (rwm *RWMutex) RLock() error {
@@ -42,7 +41,7 @@ func (rwm *RWMutex) RLock() error {
 
 	// if there are nodes with "write-" and a lower
 	// revision number than us we must wait
-	resp, err := rwm.kv.Get(rwm.ctx, rwm.key+"/write", v3.WithFirstRev()...)
+	resp, err := rwm.client.Get(rwm.ctx, rwm.key+"/write", v3.WithFirstRev()...)
 	if err != nil {
 		return err
 	}
@@ -63,7 +62,7 @@ func (rwm *RWMutex) Lock() error {
 	for {
 		// find any key of lower rev number blocks the write lock
 		opts := append(v3.WithLastRev(), v3.WithRev(rk.Revision()-1))
-		resp, err := rwm.kv.Get(rwm.ctx, rwm.key, opts...)
+		resp, err := rwm.client.Get(rwm.ctx, rwm.key, opts...)
 		if err != nil {
 			return err
 		}
@@ -83,7 +82,7 @@ func (rwm *RWMutex) Lock() error {
 func (rwm *RWMutex) waitOnLowest() error {
 	// must block; get key before ek for waiting
 	opts := append(v3.WithLastRev(), v3.WithRev(rwm.myKey.Revision()-1))
-	lastKey, err := rwm.kv.Get(rwm.ctx, rwm.key, opts...)
+	lastKey, err := rwm.client.Get(rwm.ctx, rwm.key, opts...)
 	if err != nil {
 		return err
 	}

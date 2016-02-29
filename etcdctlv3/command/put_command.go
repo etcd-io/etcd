@@ -58,9 +58,7 @@ will store the content of the file to <key>.
 func putCommandFunc(cmd *cobra.Command, args []string) {
 	key, value, opts := getPutOp(cmd, args)
 
-	c := mustClientFromCmd(cmd)
-	kvapi := clientv3.NewKV(c)
-	resp, err := kvapi.Put(context.TODO(), key, value, opts...)
+	resp, err := mustClientFromCmd(cmd).Put(context.TODO(), key, value, opts...)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

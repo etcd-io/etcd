@@ -40,9 +40,7 @@ func NewUniqueKey(ctx context.Context, kv v3.KV, pfx string, opts ...v3.OpOption
 }
 
 func waitUpdate(ctx context.Context, client *v3.Client, key string, opts ...v3.OpOption) error {
-	w := v3.NewWatcher(client)
-	defer w.Close()
-	wc := w.Watch(ctx, key, opts...)
+	wc := client.Watch(ctx, key, opts...)
 	if wc == nil {
 		return ctx.Err()
 	}

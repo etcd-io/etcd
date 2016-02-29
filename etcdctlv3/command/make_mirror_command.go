@@ -75,15 +75,13 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 	}()
 
 	// TODO: remove the prefix of the destination cluster?
-	dkv := clientv3.NewKV(dc)
-
 	s := mirror.NewSyncer(c, mmprefix, 0)
 
 	rc, errc := s.SyncBase(ctx)
 
 	for r := range rc {
 		for _, kv := range r.Kvs {
-			_, err := dkv.Put(ctx, string(kv.Key), string(kv.Value))
+			_, err := dc.Put(ctx, string(kv.Key), string(kv.Value))
 			if err != nil {
 				return err
 			}
@@ -109,7 +107,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 		for _, ev := range wr.Events {
 			nrev := ev.Kv.ModRevision
 			if rev != 0 && nrev > rev {
-				_, err := dkv.Txn(ctx).Then(ops...).Commit()
+				_, err := dc.Txn(ctx).Then(ops...).Commit()
 				if err != nil {
 					return err
 				}
@@ -128,7 +126,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 		}
 
 		if len(ops) != 0 {
-			_, err := dkv.Txn(ctx).Then(ops...).Commit()
+			_, err := dc.Txn(ctx).Then(ops...).Commit()
 			if err != nil {
 				return err
 			}

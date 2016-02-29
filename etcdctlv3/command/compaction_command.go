@@ -20,7 +20,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/clientv3"
 )
 
 // NewCompactionCommand returns the cobra command for "compaction".
@@ -44,7 +43,7 @@ func compactionCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	c := mustClientFromCmd(cmd)
-	if cerr := clientv3.NewKV(c).Compact(context.TODO(), rev); cerr != nil {
+	if cerr := c.Compact(context.TODO(), rev); cerr != nil {
 		ExitWithError(ExitError, cerr)
 		return
 	}

@@ -21,7 +21,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 var (
@@ -108,8 +107,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 
 	urls := strings.Split(memberPeerURLs, ",")
 
-	req := &pb.MemberAddRequest{PeerURLs: urls}
-	resp, err := mustClientFromCmd(cmd).Cluster.MemberAdd(context.TODO(), req)
+	resp, err := mustClientFromCmd(cmd).MemberAdd(context.TODO(), urls)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -128,8 +126,7 @@ func memberRemoveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad member ID arg (%v), expecting ID in Hex", err))
 	}
 
-	req := &pb.MemberRemoveRequest{ID: uint64(id)}
-	resp, err := mustClientFromCmd(cmd).Cluster.MemberRemove(context.TODO(), req)
+	resp, err := mustClientFromCmd(cmd).MemberRemove(context.TODO(), id)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -154,8 +151,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 
 	urls := strings.Split(memberPeerURLs, ",")
 
-	req := &pb.MemberUpdateRequest{ID: uint64(id), PeerURLs: urls}
-	resp, err := mustClientFromCmd(cmd).Cluster.MemberUpdate(context.TODO(), req)
+	resp, err := mustClientFromCmd(cmd).MemberUpdate(context.TODO(), id, urls)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -165,7 +161,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 
 // memberListCommandFunc executes the "member list" command.
 func memberListCommandFunc(cmd *cobra.Command, args []string) {
-	resp, err := mustClientFromCmd(cmd).Cluster.MemberList(context.TODO(), &pb.MemberListRequest{})
+	resp, err := mustClientFromCmd(cmd).MemberList(context.TODO())
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

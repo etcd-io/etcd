@@ -68,7 +68,7 @@ func lockUntilSignal(c *clientv3.Client, lockname string) error {
 		return err
 	}
 
-	k, kerr := clientv3.NewKV(c).Get(ctx, m.Key())
+	k, kerr := c.Get(ctx, m.Key())
 	if kerr != nil {
 		return kerr
 	}

@@ -24,7 +24,6 @@ import (
 // blocks again on Leave until all processes have left.
 type DoubleBarrier struct {
 	client *clientv3.Client
-	kv     clientv3.KV
 	ctx    context.Context
 
 	key   string // key for the collective barrier
@@ -35,7 +34,6 @@ type DoubleBarrier struct {
 func NewDoubleBarrier(client *clientv3.Client, key string, count int) *DoubleBarrier {
 	return &DoubleBarrier{
 		client: client,
-		kv:     clientv3.NewKV(client),
 		ctx:    context.TODO(),
 		key:    key,
 		count:  count,
@@ -50,7 +48,7 @@ func (b *DoubleBarrier) Enter() error {
 	}
 	b.myKey = ek
 
-	resp, err := b.kv.Get(b.ctx, b.key+"/waiters", clientv3.WithPrefix())
+	resp, err := b.client.Get(b.ctx, b.key+"/waiters", clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
@@ -61,7 +59,7 @@ func (b *DoubleBarrier) Enter() error {
 
 	if len(resp.Kvs) == b.count {
 		// unblock waiters
-		_, err = b.kv.Put(b.ctx, b.key+"/ready", "")
+		_, err = b.client.Put(b.ctx, b.key+"/ready", "")
 		return err
 	}
 
@@ -75,7 +73,7 @@ func (b *DoubleBarrier) Enter() error {
 
 // Leave waits for "count" processes to leave the barrier then returns
 func (b *DoubleBarrier) Leave() error {
-	resp, err := b.kv.Get(b.ctx, b.key+"/waiters", clientv3.WithPrefix())
+	resp, err := b.client.Get(b.ctx, b.key+"/waiters", clientv3.WithPrefix())
 	if len(resp.Kvs) == 0 {
 		return nil
 	}
@@ -93,7 +91,7 @@ func (b *DoubleBarrier) Leave() error {
 
 	if len(resp.Kvs) == 1 {
 		// this is the only node in the barrier; finish up
-		if _, err = b.kv.Delete(b.ctx, b.key+"/ready"); err != nil {
+		if _, err = b.client.Delete(b.ctx, b.key+"/ready"); err != nil {
 			return err
 		}
 		return b.myKey.Delete()

@@ -49,9 +49,7 @@ func NewGetCommand() *cobra.Command {
 // getCommandFunc executes the "get" command.
 func getCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getGetOp(cmd, args)
-	c := mustClientFromCmd(cmd)
-	kvapi := clientv3.NewKV(c)
-	resp, err := kvapi.Get(context.TODO(), key, opts...)
+	resp, err := mustClientFromCmd(cmd).Get(context.TODO(), key, opts...)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

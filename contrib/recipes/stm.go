@@ -22,7 +22,6 @@ import (
 // STM implements software transactional memory over etcd
 type STM struct {
 	client *v3.Client
-	kv     v3.KV
 	// rset holds the read key's value and revision of read
 	rset map[string]*RemoteKV
 	// wset holds the write key and its value
@@ -34,7 +33,7 @@ type STM struct {
 
 // NewSTM creates new transaction loop for a given apply function.
 func NewSTM(client *v3.Client, apply func(*STM) error) <-chan error {
-	s := &STM{client: client, kv: v3.NewKV(client), apply: apply}
+	s := &STM{client: client, apply: apply}
 	errc := make(chan error, 1)
 	go func() {
 		var err error
@@ -64,7 +63,7 @@ func (s *STM) Get(key string) (string, error) {
 	if rk, ok := s.rset[key]; ok {
 		return rk.Value(), nil
 	}
-	rk, err := GetRemoteKV(s.kv, key)
+	rk, err := GetRemoteKV(s.client, key)
 	if err != nil {
 		return "", err
 	}
@@ -91,7 +90,7 @@ func (s *STM) commit() (ok bool, rr error) {
 	for k, v := range s.wset {
 		puts = append(puts, v3.OpPut(k, v))
 	}
-	txnresp, err := s.kv.Txn(context.TODO()).If(cmps...).Then(puts...).Commit()
+	txnresp, err := s.client.Txn(context.TODO()).If(cmps...).Then(puts...).Commit()
 	return txnresp.Succeeded, err
 }
 

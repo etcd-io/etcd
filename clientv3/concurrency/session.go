@@ -49,15 +49,14 @@ func NewSession(client *v3.Client) (*Session, error) {
 		return s, nil
 	}
 
-	lc := v3.NewLease(client)
-	resp, err := lc.Create(context.TODO(), sessionTTL)
+	resp, err := client.Create(context.TODO(), sessionTTL)
 	if err != nil {
 		return nil, err
 	}
 	id := lease.LeaseID(resp.ID)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	keepAlive, err := lc.KeepAlive(ctx, id)
+	keepAlive, err := client.KeepAlive(ctx, id)
 	if err != nil || keepAlive == nil {
 		return nil, err
 	}
@@ -72,7 +71,6 @@ func NewSession(client *v3.Client) (*Session, error) {
 			clientSessions.mu.Lock()
 			delete(clientSessions.sessions, client)
 			clientSessions.mu.Unlock()
-			lc.Close()
 			close(donec)
 		}()
 		for range keepAlive {
@@ -101,6 +99,6 @@ func (s *Session) Orphan() {
 // Close orphans the session and revokes the session lease.
 func (s *Session) Close() error {
 	s.Orphan()
-	_, err := v3.NewLease(s.client).Revoke(context.TODO(), s.id)
+	_, err := s.client.Revoke(context.TODO(), s.id)
 	return err
 }

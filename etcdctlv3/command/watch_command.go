@@ -57,16 +57,14 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("watch in non-interactive mode requires an argument as key or prefix"))
 	}
 
-	c := mustClientFromCmd(cmd)
-	w := clientv3.NewWatcher(c)
-
 	opts := []clientv3.OpOption{clientv3.WithRev(watchRev)}
 	if watchPrefix {
 		opts = append(opts, clientv3.WithPrefix())
 	}
-	wc := w.Watch(context.TODO(), args[0], opts...)
+	c := mustClientFromCmd(cmd)
+	wc := c.Watch(context.TODO(), args[0], opts...)
 	printWatchCh(wc)
-	err := w.Close()
+	err := c.Close()
 	if err == nil {
 		ExitWithError(ExitInterrupted, fmt.Errorf("watch is canceled by the server"))
 	}
@@ -75,7 +73,6 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 
 func watchInteractiveFunc(cmd *cobra.Command, args []string) {
 	c := mustClientFromCmd(cmd)
-	w := clientv3.NewWatcher(c)
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -117,7 +114,7 @@ func watchInteractiveFunc(cmd *cobra.Command, args []string) {
 		if watchPrefix {
 			opts = append(opts, clientv3.WithPrefix())
 		}
-		ch := w.Watch(context.TODO(), key, opts...)
+		ch := c.Watch(context.TODO(), key, opts...)
 		go printWatchCh(ch)
 	}
 }
