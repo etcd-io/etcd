@@ -218,7 +218,7 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	return n, rev, nil
 }
 
-func (s *store) Compact(rev int64) error {
+func (s *store) doCompact(rev int64, sync bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if rev <= s.compactMainRev {
@@ -244,19 +244,31 @@ func (s *store) Compact(rev int64) error {
 
 	keep := s.kvindex.Compact(rev)
 
-	var j = func(ctx context.Context) {
-		select {
-		case <-ctx.Done():
-			return
-		default:
+	if sync {
+		s.bundleCompaction(rev, keep)
+	} else {
+		var j = func(ctx context.Context) {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			s.scheduleCompaction(rev, keep)
 		}
-		s.scheduleCompaction(rev, keep)
+
+		s.fifoSched.Schedule(j)
+
+		indexCompactionPauseDurations.Observe(float64(time.Now().Sub(start) / time.Millisecond))
 	}
-
-	s.fifoSched.Schedule(j)
-
-	indexCompactionPauseDurations.Observe(float64(time.Now().Sub(start) / time.Millisecond))
 	return nil
+}
+
+func (s *store) Compact(rev int64) error {
+	return s.doCompact(rev, false)
+}
+
+func (s *store) SyncCompact(rev int64) error {
+	return s.doCompact(rev, true)
 }
 
 func (s *store) Hash() (uint32, error) {
