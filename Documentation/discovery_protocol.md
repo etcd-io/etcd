@@ -32,7 +32,7 @@ You need to specify the expected cluster size for this discovery token. The size
 curl -X PUT http://example.com/v2/keys/_etcd/registry/${UUID}/_config/size -d value=${cluster_size}
 ```
 
-Usually the cluster size is 3, 5 or 7. Check [optimal cluster size](admin_guide.md#optimal-cluster-size) for more details.
+Usually the cluster size is 3, 5 or 7. Check [optimal cluster size][cluster-size] for more details.
 
 ### Bringing up etcd Processes
 
@@ -64,7 +64,7 @@ In etcd implementation, the member may check the cluster status even before regi
 ### Waiting for All Members
 
 
-The wait process is described in details [here](https://github.com/coreos/etcd/blob/master/Documentation/api.md#waiting-for-a-change).
+The wait process is described in detail in the [etcd API documentation][api].
 
 ```
 curl -X GET http://example.com/v2/keys/_etcd/registry/${UUID}?wait=true&waitIndex=${current_etcd_index}
@@ -94,7 +94,7 @@ Possible status codes:
 	generated discovery url
 ```
 
-The generation process in the service follows the step from [Creating a New Discovery Token](#creating-a-new-discovery-token) to [Specifying the Expected Cluster Size](#specifying-the-expected-cluster-size).
+The generation process in the service follows the steps from [Creating a New Discovery Token][new-discovery-token] to [Specifying the Expected Cluster Size][expected-cluster-size].
 
 ### Check Discovery Status
 
@@ -107,3 +107,8 @@ You can check the status for this discovery token, including the machines that h
 ### Open-source repository
 
 The repository is located at https://github.com/coreos/discovery.etcd.io. You could use it to build your own public discovery service.
+
+[api]: api.md#waiting-for-a-change
+[cluster-size]: admin_guide.md#optimal-cluster-size
+[expected-cluster-size]: #specifying-the-expected-cluster-size
+[new-discovery-token]: #creating-a-new-discovery-token

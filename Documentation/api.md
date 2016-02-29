@@ -78,12 +78,9 @@ X-Raft-Index: 5398
 X-Raft-Term: 1
 ```
 
-- `X-Etcd-Index` is the current etcd index as explained above. When request is a watch on key space, `X-Etcd-Index` is the current etcd index when the watch starts, which means that the watched event may happen after `X-Etcd-Index`.
-- `X-Raft-Index` is similar to the etcd index but is for the underlying raft protocol
-- `X-Raft-Term` is an integer that will increase whenever an etcd master election happens in the cluster. If this number is increasing rapidly, you may need to tune the election timeout. See the [tuning][tuning] section for details.
-
-[tuning]: tuning.md
-
+* `X-Etcd-Index` is the current etcd index as explained above. When request is a watch on key space, `X-Etcd-Index` is the current etcd index when the watch starts, which means that the watched event may happen after `X-Etcd-Index`.
+* `X-Raft-Index` is similar to the etcd index but is for the underlying raft protocol.
+* `X-Raft-Term` is an integer that will increase whenever an etcd master election happens in the cluster. If this number is increasing rapidly, you may need to tune the election timeout. See the [tuning][tuning] section for details.
 
 ### Get the value of a key
 
@@ -544,7 +541,7 @@ etcd can be used as a centralized coordination service in a cluster, and `Compar
 
 This command will set the value of a key only if the client-provided conditions are equal to the current conditions.
 
-_Note that `CompareAndSwap` does not work with [directories](#listing-a-directory). If an attempt is made to `CompareAndSwap` a directory, a 102 "Not a file" error will be returned._
+*Note that `CompareAndSwap` does not work with [directories][directories]. If an attempt is made to `CompareAndSwap` a directory, a 102 "Not a file" error will be returned.*
 
 The current comparable conditions are:
 
@@ -631,7 +628,7 @@ We successfully changed the value from "one" to "two" since we gave the correct 
 
 This command will delete a key only if the client-provided conditions are equal to the current conditions.
 
-_Note that `CompareAndDelete` does not work with [directories](#listing-a-directory). If an attempt is made to `CompareAndDelete` a directory, a 102 "Not a file" error will be returned._
+*Note that `CompareAndDelete` does not work with [directories]. If an attempt is made to `CompareAndDelete` a directory, a 102 "Not a file" error will be returned.*
 
 The current comparable conditions are:
 
@@ -1128,4 +1125,6 @@ curl http://127.0.0.1:2379/v2/stats/store
 
 See the [members API][members-api] for details on the cluster management.
 
+[directories]: #listing-a-directory
 [members-api]: members_api.md
+[tuning]: tuning.md

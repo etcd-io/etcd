@@ -2,15 +2,14 @@
 
 **NOTE: The metrics feature is considered experimental. We may add/change/remove metrics without warning in future releases.**
 
-etcd uses [Prometheus](http://prometheus.io/) for metrics reporting in the server. The metrics can be used for real-time monitoring and debugging.
+etcd uses [Prometheus][prometheus] for metrics reporting in the server. The metrics can be used for real-time monitoring and debugging.
 etcd only stores these data in memory. If a member restarts, metrics will reset.
 
 The simplest way to see the available metrics is to cURL the metrics endpoint `/metrics` of etcd. The format is described [here](http://prometheus.io/docs/instrumenting/exposition_formats/).
 
+Follow the [Prometheus getting started doc][prometheus-getting-started] to spin up a Prometheus server to collect etcd metrics.
 
-You can also follow the doc [here](http://prometheus.io/docs/introduction/getting_started/) to start a Prometheus server and monitor etcd metrics.
-
-The naming of metrics follows the suggested [best practice of Prometheus](http://prometheus.io/docs/practices/naming/). A metric name has an `etcd` prefix as its namespace and a subsystem prefix (for example `wal` and `etcdserver`).
+The naming of metrics follows the suggested [best practice of Prometheus][prometheus-naming]. A metric name has an `etcd` prefix as its namespace and a subsystem prefix (for example `wal` and `etcdserver`).
 
 etcd now exposes the following metrics:
 
@@ -25,7 +24,7 @@ etcd now exposes the following metrics:
 
 High file descriptors (`file_descriptors_used_total`) usage (near the file descriptors limitation of the process) indicates a potential out of file descriptors issue. That might cause etcd fails to create new WAL files and panics.
 
-[Proposal](glossary.md#proposal) durations (`proposal_durations_seconds`) give you a histogram about the proposal commit latency. Latency can be introduced into this process by network and disk IO.
+[Proposal][glossary-proposal] durations (`proposal_durations_seconds`) provides a histogram about the proposal commit latency. Latency can be introduced into this process by network and disk IO.
 
 Pending proposal (`pending_proposal_total`) gives you an idea about how many proposal are in the queue and waiting for commit. An increasing pending number indicates a high client load or an unstable cluster.
 
@@ -128,4 +127,8 @@ Example Prometheus queries that may be useful from these metrics (across all etc
  * `sum(rate(etcd_proxy_dropped_total{job="etcd"}[1m])) by (proxying_error)`
     
     Number of failed request on the proxy. This should be 0, spikes here indicate connectivity issues to etcd cluster.
- 
+
+[glossary-proposal]: glossary.md#proposal
+[prometheus]: http://prometheus.io/
+[prometheus-getting-started](http://prometheus.io/docs/introduction/getting_started/)
+[prometheus-naming]: http://prometheus.io/docs/practices/naming/

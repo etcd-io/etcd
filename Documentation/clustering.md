@@ -4,7 +4,7 @@
 
 Starting an etcd cluster statically requires that each member knows another in the cluster. In a number of cases, you might not know the IPs of your cluster members ahead of time. In these cases, you can bootstrap an etcd cluster with the help of a discovery service.
 
-Once an etcd cluster is up and running, adding or removing members is done via [runtime reconfiguration](runtime-configuration.md). To better understand the design behind runtime reconfiguration, we suggest you read [this](runtime-reconf-design.md).
+Once an etcd cluster is up and running, adding or removing members is done via [runtime reconfiguration][runtime-conf]. To better understand the design behind runtime reconfiguration, we suggest you read [the runtime configuration design document][runtime-reconf-design].
 
 This guide will cover the following mechanisms for bootstrapping an etcd cluster:
 
@@ -38,7 +38,7 @@ Note that the URLs specified in `initial-cluster` are the _advertised peer URLs_
 
 If you are spinning up multiple clusters (or creating and destroying a single cluster) with same configuration for testing purpose, it is highly recommended that you specify a unique `initial-cluster-token` for the different clusters. By doing this, etcd can generate unique cluster IDs and member IDs for the clusters even if they otherwise have the exact same configuration. This can protect you from cross-cluster-interaction, which might corrupt your clusters.
 
-etcd listens on [`listen-client-urls`](configuration.md#-listen-client-urls) to accept client traffic. etcd member advertises the URLs specified in [`advertise-client-urls`](configuration.md#-advertise-client-urls) to other members, proxies, clients. Please make sure the `advertise-client-urls` are reachable from intended clients. A common mistake is setting `advertise-client-urls` to localhost or leave it as default when you want the remote clients to reach etcd.
+etcd listens on [`listen-client-urls`][conf-listen-client] to accept client traffic. etcd member advertises the URLs specified in [`advertise-client-urls`][conf-adv-client] to other members, proxies, clients. Please make sure the `advertise-client-urls` are reachable from intended clients. A common mistake is setting `advertise-client-urls` to localhost or leave it as default when you want the remote clients to reach etcd.
 
 On each machine you would start etcd with these flags:
 
@@ -70,7 +70,7 @@ $ etcd --name infra2 --initial-advertise-peer-urls http://10.0.1.12:2380 \
   --initial-cluster-state new
 ```
 
-The command line parameters starting with `--initial-cluster` will be ignored on subsequent runs of etcd. You are free to remove the environment variables or command line flags after the initial bootstrap process. If you need to make changes to the configuration later (for example, adding or removing members to/from the cluster), see the [runtime configuration](runtime-configuration.md) guide.
+The command line parameters starting with `--initial-cluster` will be ignored on subsequent runs of etcd. You are free to remove the environment variables or command line flags after the initial bootstrap process. If you need to make changes to the configuration later (for example, adding or removing members to/from the cluster), see the [runtime configuration][runtime-conf] guide.
 
 ### Error Cases
 
@@ -124,15 +124,13 @@ There two methods that can be used for discovery:
 
 ### etcd Discovery
 
-To better understand the design about discovery service protocol, we suggest you read [this](discovery_protocol.md).
+To better understand the design about discovery service protocol, we suggest you read [this][discovery-proto].
 
 #### Lifetime of a Discovery URL
 
 A discovery URL identifies a unique etcd cluster. Instead of reusing a discovery URL, you should always create discovery URLs for new clusters.
 
-Moreover, discovery URLs should ONLY be used for the initial bootstrapping of a cluster. To change cluster membership after the cluster is already running, see the [runtime reconfiguration][runtime] guide.
-
-[runtime]: runtime-configuration.md
+Moreover, discovery URLs should ONLY be used for the initial bootstrapping of a cluster. To change cluster membership after the cluster is already running, see the [runtime reconfiguration][runtime-conf] guide.
 
 #### Custom etcd Discovery Service
 
@@ -188,9 +186,6 @@ https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 This will create the cluster with an initial expected size of 3 members. If you do not specify a size, a default of 3 will be used.
 
 If you bootstrap an etcd cluster using discovery service with more than the expected number of etcd members, the extra etcd processes will [fall back][fall-back] to being [proxies][proxy] by default.
-
-[fall-back]: proxy.md#fallback-to-proxy-mode-with-discovery-service
-[proxy]: proxy.md
 
 ```
 ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
@@ -276,7 +271,7 @@ etcdserver: discovery token ignored since a cluster has already been initialized
 
 ### DNS Discovery
 
-DNS [SRV records](http://www.ietf.org/rfc/rfc2052.txt) can be used as a discovery mechanism.
+DNS [SRV records][rfc-srv] can be used as a discovery mechanism.
 The `-discovery-srv` flag can be used to set the DNS domain name where the discovery SRV records can be found.
 The following DNS SRV records are looked up in the listed order:
 
@@ -400,7 +395,7 @@ $ etcd --proxy on --discovery-srv example.com
 
 DNS SRV records can also be used to help clients discover the etcd cluster.
 
-The official [etcd/client](../client) supports [DNS Discovery](https://godoc.org/github.com/coreos/etcd/client#Discoverer).
+The official [etcd/client][client] supports [DNS Discovery][client-discoverer].
 
 `etcdctl` also supports DNS Discovery by specifying the `--discovery-srv` option.
 
@@ -426,3 +421,14 @@ To make understanding this feature easier, we changed the naming of some flags, 
 |-bind-addr    |--listen-client-urls  |If specified, bind-addr will be used as the only client bind URL. Error if both flags specified.|
 |-peers      |none      |Deprecated. The --initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
 |-peers-file    |none      |Deprecated. The --initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
+
+[client]: /client
+[client-discoverer]: https://godoc.org/github.com/coreos/etcd/client#Discoverer
+[conf-adv-client]: configuration.md#-advertise-client-urls
+[conf-listen-client]: configuration.md#-listen-client-urls
+[discovery-proto]: discovery_protocol.md
+[fall-back]: proxy.md#fallback-to-proxy-mode-with-discovery-service
+[proxy]: proxy.md
+[rfc-srv]: http://www.ietf.org/rfc/rfc2052.txt
+[runtime-conf]: runtime-configuration.md
+[runtime-reconf-design]: runtime-reconf-design.md

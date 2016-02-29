@@ -6,7 +6,7 @@ Read on to learn about the design of etcd's runtime reconfiguration commands and
 
 ## Two Phase Config Changes Keep you Safe
 
-In etcd, every runtime reconfiguration has to go through [two phases](Documentation/runtime-configuration.md#add-a-new-member) for safety reasons. For example, to add a member you need to first inform cluster of new configuration and then start the new member.
+In etcd, every runtime reconfiguration has to go through [two phases][add-member] for safety reasons. For example, to add a member you need to first inform cluster of new configuration and then start the new member.
 
 Phase 1 - Inform cluster of new configuration
 
@@ -28,7 +28,7 @@ If a cluster permanently loses a majority of its members, a new cluster will nee
 
 It is entirely possible to force removing the failed members from the existing cluster to recover. However, we decided not to support this method since it bypasses the normal consensus committing phase, which is unsafe. If the member to remove is not actually dead or you force to remove different members through different members in the same cluster, you will end up with diverged cluster with same clusterID. This is very dangerous and hard to debug/fix afterwards. 
 
-If you have a correct deployment, the possibility of permanent majority lose is very low. But it is a severe enough problem that worth special care. We strongly suggest you to read the [disaster recovery documentation](admin_guide.md#disaster-recovery) and prepare for permanent majority lose before you put etcd into production.
+If you have a correct deployment, the possibility of permanent majority lose is very low. But it is a severe enough problem that worth special care. We strongly suggest you to read the [disaster recovery documentation][disaster-recovery] and prepare for permanent majority lose before you put etcd into production.
 
 ## Do Not Use Public Discovery Service For Runtime Reconfiguration
 
@@ -45,3 +45,6 @@ It seems that using public discovery service is a convenient way to do runtime r
 3. public discovery service has to keep tens of thousands of cluster configurations. Our public discovery service backend is not ready for that workload.
 
 If you want to have a discovery service that supports runtime reconfiguration, the best choice is to build your private one.
+
+[add-member]: runtime-configuration.md#add-a-new-member
+[disaster-recovery]: admin_guide.md#disaster-recovery

@@ -46,4 +46,6 @@ CyCore Systems provides architecture and engineering for computing systems.  Thi
 - *Environment*: AWS, CoreOS, Kubernetes
 - *Backups*: None, all data can be recreated if necessary.
 
-Radius Intelligence uses Kubernetes running CoreOS to containerize and scale internal toolsets. Examples include running [JetBrains TeamCity](https://www.jetbrains.com/teamcity/) and internal AWS security and cost reporting tools. etcd clusters back these clusters as well as provide some basic environment bootstrapping configuration keys.
+Radius Intelligence uses Kubernetes running CoreOS to containerize and scale internal toolsets. Examples include running [JetBrains TeamCity][teamcity] and internal AWS security and cost reporting tools. etcd clusters back these clusters as well as provide some basic environment bootstrapping configuration keys.
+
+[teamcity]: https://www.jetbrains.com/teamcity/

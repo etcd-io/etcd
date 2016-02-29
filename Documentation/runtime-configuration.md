@@ -4,13 +4,11 @@ etcd comes with support for incremental runtime reconfiguration, which allows us
 
 Reconfiguration requests can only be processed when the majority of the cluster members are functioning. It is **highly recommended** to always have a cluster size greater than two in production. It is unsafe to remove a member from a two member cluster. The majority of a two member cluster is also two. If there is a failure during the removal process, the cluster might not able to make progress and need to [restart from majority failure][majority failure].
 
-To better understand the design behind runtime reconfiguration, we suggest you read [this](runtime-reconf-design.md).
-
-[majority failure]: #restart-cluster-from-majority-failure
+To better understand the design behind runtime reconfiguration, we suggest you read [the runtime reconfiguration document][runtime-reconf].
 
 ## Reconfiguration Use Cases
 
-Let us walk through some common reasons for reconfiguring a cluster. Most of these just involve combinations of adding or removing a member, which are explained below under [Cluster Reconfiguration Operations](#cluster-reconfiguration-operations).
+Let's walk through some common reasons for reconfiguring a cluster. Most of these just involve combinations of adding or removing a member, which are explained below under [Cluster Reconfiguration Operations][cluster-reconf].
 
 ### Cycle or Upgrade Multiple Machines
 
@@ -18,15 +16,11 @@ If you need to move multiple members of your cluster due to planned maintenance 
 
 It is safe to remove the leader, however there is a brief period of downtime while the election process takes place. If your cluster holds more than 50MB, it is recommended to [migrate the member's data directory][member migration].
 
-[member migration]: admin_guide.md#member-migration
-
 ### Change the Cluster Size
 
 Increasing the cluster size can enhance [failure tolerance][fault tolerance table] and provide better read performance. Since clients can read from any member, increasing the number of members increases the overall read throughput.
 
 Decreasing the cluster size can improve the write performance of a cluster, with a trade-off of decreased resilience. Writes into the cluster are replicated to a majority of members of the cluster before considered committed. Decreasing the cluster size lowers the majority, and each write is committed more quickly.
-
-[fault tolerance table]: admin_guide.md#fault-tolerance-table
 
 ### Replace A Failed Machine
 
@@ -34,16 +28,10 @@ If a machine fails due to hardware failure, data directory corruption, or some o
 
 To replace the machine, follow the instructions for [removing the member][remove member] from the cluster, and then [add a new member][add member] in its place. If your cluster holds more than 50MB, it is recommended to [migrate the failed member's data directory][member migration] if you can still access it.
 
-[remove member]: #remove-a-member
-[add member]: #add-a-new-member
-
 ### Restart Cluster from Majority Failure
 
 If the majority of your cluster is lost or all of your nodes have changed IP addresses, then you need to take manual action in order to recover safely.
 The basic steps in the recovery process include [creating a new cluster using the old data][disaster recovery], forcing a single member to act as the leader, and finally using runtime configuration to [add new members][add member] to this new cluster one at a time.
-
-[add member]: #add-a-new-member
-[disaster recovery]: admin_guide.md#disaster-recovery
 
 ## Cluster Reconfiguration Operations
 
@@ -60,7 +48,7 @@ All changes to the cluster are done one at a time:
 * To decrease from 5 to 3 you will make two remove operations
 
 All of these examples will use the `etcdctl` command line tool that ships with etcd.
-If you want to use the members API directly you can find the documentation [here](members_api.md).
+If you want to use the members API directly you can find the documentation [here][member-api].
 
 ### Update a Member
 
@@ -115,10 +103,10 @@ It is safe to remove the leader, however the cluster will be inactive while a ne
 
 Adding a member is a two step process:
 
- * Add the new member to the cluster via the [members API](members_api.md#post-v2members) or the `etcdctl member add` command.
+ * Add the new member to the cluster via the [members API][member-api] or the `etcdctl member add` command.
  * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
 
-Using `etcdctl` let's add the new member to the cluster by specifying its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):
+Using `etcdctl` let's add the new member to the cluster by specifying its [name][conf-name] and [advertised peer URLs][conf-adv-peer]:
 
 ```sh
 $ etcdctl member add infra3 http://10.0.1.13:2380
@@ -182,3 +170,15 @@ As described in the above, the best practice of adding new members is to configu
 For avoiding this problem, etcd provides an option `-strict-reconfig-check`. If this option is passed to etcd, etcd rejects reconfiguration requests if the number of started members will be less than a quorum of the reconfigured cluster.
 
 It is recommended to enable this option. However, it is disabled by default because of keeping compatibility.
+
+[add member]: #add-a-new-member
+[cluster-reconf]: #cluster-reconfiguration-operations
+[conf-adv-peer]: configuration.md#-initial-advertise-peer-urls
+[conf-name]: configuration.md#-name
+[disaster recovery]: admin_guide.md#disaster-recovery
+[fault tolerance table]: admin_guide.md#fault-tolerance-table
+[majority failure]: #restart-cluster-from-majority-failure
+[member-api]: members_api.md
+[member migration]: admin_guide.md#member-migration
+[remove member]: #remove-a-member
+[runtime-reconf]: runtime-reconf-design.md

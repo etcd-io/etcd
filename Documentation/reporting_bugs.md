@@ -1,6 +1,6 @@
 # Reporting Bugs
 
-If you find bugs or documentation mistakes in etcd project, please let us know by [opening an issue](https://github.com/coreos/etcd/issues/new). We treat bugs and mistakes very seriously and believe no issue is too small. Before creating a bug report, please check there that one does not already exist.
+If you find bugs or documentation mistakes in the etcd project, please let us know by [opening an issue][issue]. We treat bugs and mistakes very seriously and believe no issue is too small. Before creating a bug report, please check that an issue reporting the same problem does not already exist.
 
 To make your bug report accurate and easy to understand, please try to create bug reports that are:
 
@@ -14,7 +14,7 @@ To make your bug report accurate and easy to understand, please try to create bu
 
 - Scoped. One bug per report. Do not follow up with another bug inside one report.
 
-You might also want to read [Elika Etemad’s article on filing good bug reports](http://fantasai.inkedblade.net/style/talks/filing-good-bugs/) before creating a bug report.
+You might also want to read [Elika Etemad’s article on filing good bug reports][filing-good-bugs] before creating a bug report.
 
 We might ask you for further information to locate a bug. A duplicated bug report will be closed.
 
@@ -41,3 +41,5 @@ $ sudo journalctl -u etcd2
 
 Due to an upstream systemd bug, journald may miss the last few log lines when its process exit. If journalctl tells you that etcd stops without fatal or panic message, you could try `sudo journalctl -f -t etcd2` to get full log.
 
+[etcd-issue]: https://github.com/coreos/etcd/issues/new
+[filing-good-bugs]: http://fantasai.inkedblade.net/style/talks/filing-good-bugs/

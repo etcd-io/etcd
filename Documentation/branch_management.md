@@ -2,12 +2,12 @@
 
 ## Guide
 
-- New development occurs on the [master branch](https://github.com/coreos/etcd/tree/master)
-- Master branch should always have a green build!
-- Backwards-compatible bug fixes should target the master branch and subsequently be ported to stable branches
-- Once the master branch is ready for release, it will be tagged and become the new stable branch.
+* New development occurs on the [master branch][master].
+* Master branch should always have a green build!
+* Backwards-compatible bug fixes should target the master branch and subsequently be ported to stable branches.
+* Once the master branch is ready for release, it will be tagged and become the new stable branch.
 
-The etcd team has adopted a _rolling release model_ and supports one stable version of etcd.
+The etcd team has adopted a *rolling release model* and supports one stable version of etcd.
 
 ### Master branch
 
@@ -22,3 +22,5 @@ Before the release of the next stable version, feature PRs will be frozen. We wi
 All branches with prefix `release-` are considered _stable_ branches.
 
 After every minor release (http://semver.org/), we will have a new stable branch for that release. We will keep fixing the backwards-compatible bugs for the latest stable release, but not previous releases. The _patch_ release, incorporating any bug fixes, will be once every two weeks, given any patches.
+
+[master]: https://github.com/coreos/etcd/tree/master

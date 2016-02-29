@@ -40,7 +40,7 @@ Specific settings for the cluster as a whole. This can include adding and removi
 ## v2 Auth
 
 ### Basic Auth
-We only support [Basic Auth](http://en.wikipedia.org/wiki/Basic_access_authentication) for the first version. Client needs to attach the basic auth to the HTTP Authorization Header. 
+We only support [Basic Auth][basic-auth] for the first version. Client needs to attach the basic auth to the HTTP Authorization Header.
 
 ### Authorization field for operations
 Added to requests to /v2/keys, /v2/auth
@@ -508,3 +508,4 @@ PUT /v2/keys/rkt/RktData
 
 Reads and writes outside the prefixes granted will fail with a 401 Unauthorized.
 
+[basic-auth]: https://en.wikipedia.org/wiki/Basic_access_authentication

@@ -45,9 +45,9 @@ the size in the future a little bit or make it configurable.
 
 ## Protobuf Defined API
 
-[api protobuf](../../etcdserver/etcdserverpb/rpc.proto)
+[api protobuf][api-protobuf]
 
-[kv protobuf](../../storage/storagepb/kv.proto)
+[kv protobuf][kv-protobuf]
 
 ## Examples
 
@@ -206,3 +206,6 @@ WatchResponse {
     …
     
 ```
+
+[api-protobuf]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
+[kv-protobuf]: https://github.com/coreos/etcd/blob/master/storage/storagepb/kv.proto

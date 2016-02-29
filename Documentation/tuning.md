@@ -21,7 +21,7 @@ Adjusting these values is a trade off.
 The value of heartbeat interval is recommended to be around the maximum of average round-trip time (RTT) between members, normally around 0.5-1.5x the round-trip time.
 If heartbeat interval is too low, etcd will send unnecessary messages that increase the usage of CPU and network resources.
 On the other side, a too high heartbeat interval leads to high election timeout. Higher election timeout takes longer time to detect a leader failure.
-The easiest way to measure round-trip time (RTT) is to use [PING utility](https://en.wikipedia.org/wiki/Ping_(networking_utility)).
+The easiest way to measure round-trip time (RTT) is to use [PING utility][ping].
 
 The election timeout should be set based on the heartbeat interval and average round-trip time between members.
 Election timeouts must be at least 10 times the round-trip time so it can account for variance in your network.
@@ -71,3 +71,5 @@ $ etcd -snapshot-count=5000
 # Environment variables:
 $ ETCD_SNAPSHOT_COUNT=5000 etcd
 ```
+
+[ping]: https://en.wikipedia.org/wiki/Ping_(networking_utility)

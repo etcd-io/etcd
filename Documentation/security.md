@@ -4,7 +4,7 @@ etcd supports SSL/TLS as well as authentication through client certificates, bot
 
 To get up and running you first need to have a CA certificate and a signed key pair for one member. It is recommended to create and sign a new key pair for every member in a cluster.
 
-For convenience, the [cfssl](https://github.com/cloudflare/cfssl) tool provides an easy interface to certificate generation, and we provide an example using the tool [here](https://github.com/coreos/etcd/tree/master/hack/tls-setup). You can also examine this [alternative guide to generating self-signed key pairs](http://www.g-loaded.eu/2005/11/10/be-your-own-ca/).
+For convenience, the [cfssl] tool provides an easy interface to certificate generation, and we provide an example using the tool [here][tls-setup]. You can also examine this [alternative guide to generating self-signed key pairs][tls-guide].
 
 ## Basic setup
 
@@ -185,4 +185,9 @@ $ openssl ca -config openssl.cnf -policy policy_anything -extensions ssl_client 
 ### With peer certificate authentication I receive "certificate is valid for 127.0.0.1, not $MY_IP"
 Make sure that you sign your certificates with a Subject Name your member's public IP address. The `etcd-ca` tool for example provides an `--ip=` option for its `new-cert` command.
 
-If you need your certificate to be signed for your member's FQDN in its Subject Name then you could use Subject Alternative Names (short IP SANs) to add your IP address. The `etcd-ca` tool provides `--domain=` option for its `new-cert` command, and openssl can make [it](http://wiki.cacert.org/FAQ/subjectAltName) too.
+If you need your certificate to be signed for your member's FQDN in its Subject Name then you could use Subject Alternative Names (short IP SANs) to add your IP address. The `etcd-ca` tool provides `--domain=` option for its `new-cert` command, and openssl can make [it][alt-name] too.
+
+[cfssl]: https://github.com/cloudflare/cfssl
+[tls-setup]: /hack/tls-setup
+[tls-guide]: https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
+[alt-name]: http://wiki.cacert.org/FAQ/subjectAltName
