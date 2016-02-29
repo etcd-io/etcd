@@ -38,6 +38,24 @@
 //	}
 //	// use the response
 //
-//	TODO: document error handling
+// etcd client returns 2 types of errors:
+//
+//	1. context error: canceled or deadline exceeded.
+//	2. gRPC error: see https://github.com/coreos/etcd/blob/master/etcdserver/api/v3rpc/error.go.
+//
+// Here is the example code to handle client errors:
+//
+//	resp, err := kvc.Put(ctx, "", "")
+//	if err != nil {
+//		if err == context.Canceled {
+//			// ctx is canceled by another routine
+//		} else if err == context.DeadlineExceeded {
+//			// ctx is attached with a deadline and it exceeded
+//		} else if verr, ok := err.(*v3rpc.ErrEmptyKey); ok {
+//			// process (verr.Errors)
+//		} else {
+//			// bad cluster endpoints, which are not etcd servers
+//		}
+//	}
 //
 package clientv3
