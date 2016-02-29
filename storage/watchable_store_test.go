@@ -40,11 +40,11 @@ func TestWatch(t *testing.T) {
 	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
-	w.Watch(testKey, true, 0)
+	w.Watch(testKey, nil, 0)
 
-	if _, ok := s.synced[string(testKey)]; !ok {
+	if !s.synced.contains(string(testKey)) {
 		// the key must have had an entry in synced
-		t.Errorf("existence = %v, want true", ok)
+		t.Errorf("existence = false, want true")
 	}
 }
 
@@ -61,15 +61,15 @@ func TestNewWatcherCancel(t *testing.T) {
 	s.Put(testKey, testValue, lease.NoLease)
 
 	w := s.NewWatchStream()
-	wt := w.Watch(testKey, true, 0)
+	wt := w.Watch(testKey, nil, 0)
 
 	if err := w.Cancel(wt); err != nil {
 		t.Error(err)
 	}
 
-	if _, ok := s.synced[string(testKey)]; ok {
+	if s.synced.contains(string(testKey)) {
 		// the key shoud have been deleted
-		t.Errorf("existence = %v, want false", ok)
+		t.Errorf("existence = true, want false")
 	}
 }
 
@@ -83,11 +83,11 @@ func TestCancelUnsynced(t *testing.T) {
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(watcherSetByKey),
+		unsynced: newWatcherGroup(),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
-		synced: make(watcherSetByKey),
+		synced: newWatcherGroup(),
 	}
 
 	defer func() {
@@ -112,7 +112,7 @@ func TestCancelUnsynced(t *testing.T) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// use 1 to keep watchers in unsynced
-		watchIDs[i] = w.Watch(testKey, true, 1)
+		watchIDs[i] = w.Watch(testKey, nil, 1)
 	}
 
 	for _, idx := range watchIDs {
@@ -125,8 +125,8 @@ func TestCancelUnsynced(t *testing.T) {
 	//
 	// unsynced should be empty
 	// because cancel removes watcher from unsynced
-	if len(s.unsynced) != 0 {
-		t.Errorf("unsynced size = %d, want 0", len(s.unsynced))
+	if size := s.unsynced.size(); size != 0 {
+		t.Errorf("unsynced size = %d, want 0", size)
 	}
 }
 
@@ -138,8 +138,8 @@ func TestSyncWatchers(t *testing.T) {
 
 	s := &watchableStore{
 		store:    NewStore(b, &lease.FakeLessor{}),
-		unsynced: make(watcherSetByKey),
-		synced:   make(watcherSetByKey),
+		unsynced: newWatcherGroup(),
+		synced:   newWatcherGroup(),
 	}
 
 	defer func() {
@@ -158,13 +158,13 @@ func TestSyncWatchers(t *testing.T) {
 
 	for i := 0; i < watcherN; i++ {
 		// specify rev as 1 to keep watchers in unsynced
-		w.Watch(testKey, true, 1)
+		w.Watch(testKey, nil, 1)
 	}
 
 	// Before running s.syncWatchers() synced should be empty because we manually
 	// populate unsynced only
-	sws, _ := s.synced.getSetByKey(string(testKey))
-	uws, _ := s.unsynced.getSetByKey(string(testKey))
+	sws := s.synced.watcherSetByKey(string(testKey))
+	uws := s.unsynced.watcherSetByKey(string(testKey))
 
 	if len(sws) != 0 {
 		t.Fatalf("synced[string(testKey)] size = %d, want 0", len(sws))
@@ -177,8 +177,8 @@ func TestSyncWatchers(t *testing.T) {
 	// this should move all unsynced watchers to synced ones
 	s.syncWatchers()
 
-	sws, _ = s.synced.getSetByKey(string(testKey))
-	uws, _ = s.unsynced.getSetByKey(string(testKey))
+	sws = s.synced.watcherSetByKey(string(testKey))
+	uws = s.unsynced.watcherSetByKey(string(testKey))
 
 	// After running s.syncWatchers(), synced should not be empty because syncwatchers
 	// populates synced in this test case
@@ -240,7 +240,7 @@ func TestWatchCompacted(t *testing.T) {
 	}
 
 	w := s.NewWatchStream()
-	wt := w.Watch(testKey, true, compactRev-1)
+	wt := w.Watch(testKey, nil, compactRev-1)
 
 	select {
 	case resp := <-w.Chan():
@@ -275,7 +275,7 @@ func TestWatchBatchUnsynced(t *testing.T) {
 	}
 
 	w := s.NewWatchStream()
-	w.Watch(v, false, 1)
+	w.Watch(v, nil, 1)
 	for i := 0; i < batches; i++ {
 		if resp := <-w.Chan(); len(resp.Events) != watchBatchMaxRevs {
 			t.Fatalf("len(events) = %d, want %d", len(resp.Events), watchBatchMaxRevs)
@@ -284,8 +284,8 @@ func TestWatchBatchUnsynced(t *testing.T) {
 
 	s.store.mu.Lock()
 	defer s.store.mu.Unlock()
-	if len(s.synced) != 1 {
-		t.Errorf("synced size = %d, want 1", len(s.synced))
+	if size := s.synced.size(); size != 1 {
+		t.Errorf("synced size = %d, want 1", size)
 	}
 }
 
@@ -311,14 +311,14 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 	}
 
 	tests := []struct {
-		sync watcherSetByKey
+		sync []*watcher
 		evs  []storagepb.Event
 
 		wwe map[*watcher][]storagepb.Event
 	}{
 		// no watcher in sync, some events should return empty wwe
 		{
-			watcherSetByKey{},
+			nil,
 			evs,
 			map[*watcher][]storagepb.Event{},
 		},
@@ -326,9 +326,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// one watcher in sync, one event that does not match the key of that
 		// watcher should return empty wwe
 		{
-			watcherSetByKey{
-				string(k2): {ws[2]: struct{}{}},
-			},
+			[]*watcher{ws[2]},
 			evs[:1],
 			map[*watcher][]storagepb.Event{},
 		},
@@ -336,9 +334,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// one watcher in sync, one event that matches the key of that
 		// watcher should return wwe with that matching watcher
 		{
-			watcherSetByKey{
-				string(k1): {ws[1]: struct{}{}},
-			},
+			[]*watcher{ws[1]},
 			evs[1:2],
 			map[*watcher][]storagepb.Event{
 				ws[1]: evs[1:2],
@@ -349,10 +345,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// that matches the key of only one of the watcher should return wwe
 		// with the matching watcher
 		{
-			watcherSetByKey{
-				string(k0): {ws[0]: struct{}{}},
-				string(k2): {ws[2]: struct{}{}},
-			},
+			[]*watcher{ws[0], ws[2]},
 			evs[2:],
 			map[*watcher][]storagepb.Event{
 				ws[2]: evs[2:],
@@ -362,10 +355,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		// two watchers in sync that watches the same key, two events that
 		// match the keys should return wwe with those two watchers
 		{
-			watcherSetByKey{
-				string(k0): {ws[0]: struct{}{}},
-				string(k1): {ws[1]: struct{}{}},
-			},
+			[]*watcher{ws[0], ws[1]},
 			evs[:2],
 			map[*watcher][]storagepb.Event{
 				ws[0]: evs[:1],
@@ -375,7 +365,12 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		gwe := newWatcherBatch(tt.sync, tt.evs)
+		wg := newWatcherGroup()
+		for _, w := range tt.sync {
+			wg.add(w)
+		}
+
+		gwe := newWatcherBatch(&wg, tt.evs)
 		if len(gwe) != len(tt.wwe) {
 			t.Errorf("#%d: len(gwe) got = %d, want = %d", i, len(gwe), len(tt.wwe))
 		}

@@ -29,16 +29,15 @@ type WatchID int64
 
 type WatchStream interface {
 	// Watch creates a watcher. The watcher watches the events happening or
-	// happened on the given key or key prefix from the given startRev.
+	// happened on the given key or range [key, end) from the given startRev.
 	//
 	// The whole event history can be watched unless compacted.
-	// If `prefix` is true, watch observes all events whose key prefix could be the given `key`.
 	// If `startRev` <=0, watch observes events after currentRev.
 	//
 	// The returned `id` is the ID of this watcher. It appears as WatchID
 	// in events that are sent to the created watcher through stream channel.
 	//
-	Watch(key []byte, prefix bool, startRev int64) WatchID
+	Watch(key, end []byte, startRev int64) WatchID
 
 	// Chan returns a chan. All watch response will be sent to the returned chan.
 	Chan() <-chan WatchResponse
@@ -87,7 +86,7 @@ type watchStream struct {
 
 // Watch creates a new watcher in the stream and returns its WatchID.
 // TODO: return error if ws is closed?
-func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) WatchID {
+func (ws *watchStream) Watch(key, end []byte, startRev int64) WatchID {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 	if ws.closed {
@@ -97,7 +96,7 @@ func (ws *watchStream) Watch(key []byte, prefix bool, startRev int64) WatchID {
 	id := ws.nextID
 	ws.nextID++
 
-	_, c := ws.watchable.watch(key, prefix, startRev, id, ws.ch)
+	_, c := ws.watchable.watch(key, end, startRev, id, ws.ch)
 
 	ws.cancels[id] = c
 	return id

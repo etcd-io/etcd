@@ -722,13 +722,10 @@ func TestWatchableKVWatch(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	wid := w.Watch([]byte("foo"), true, 0)
+	wid := w.Watch([]byte("foo"), []byte("fop"), 0)
 
-	s.Put([]byte("foo"), []byte("bar"), 1)
-	select {
-	case resp := <-w.Chan():
-		wev := storagepb.Event{
-			Type: storagepb.PUT,
+	wev := []storagepb.Event{
+		{Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
@@ -737,23 +734,8 @@ func TestWatchableKVWatch(t *testing.T) {
 				Version:        1,
 				Lease:          1,
 			},
-		}
-		if resp.WatchID != wid {
-			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
-		}
-		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev)
-		}
-	case <-time.After(5 * time.Second):
-		// CPU might be too slow, and the routine is not able to switch around
-		testutil.FatalStack(t, "failed to watch the event")
-	}
-
-	s.Put([]byte("foo1"), []byte("bar1"), 2)
-	select {
-	case resp := <-w.Chan():
-		wev := storagepb.Event{
+		},
+		{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
 				Key:            []byte("foo1"),
@@ -763,49 +745,8 @@ func TestWatchableKVWatch(t *testing.T) {
 				Version:        1,
 				Lease:          2,
 			},
-		}
-		if resp.WatchID != wid {
-			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
-		}
-		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev)
-		}
-	case <-time.After(5 * time.Second):
-		testutil.FatalStack(t, "failed to watch the event")
-	}
-
-	w = s.NewWatchStream()
-	wid = w.Watch([]byte("foo1"), false, 1)
-
-	select {
-	case resp := <-w.Chan():
-		wev := storagepb.Event{
-			Type: storagepb.PUT,
-			Kv: &storagepb.KeyValue{
-				Key:            []byte("foo1"),
-				Value:          []byte("bar1"),
-				CreateRevision: 3,
-				ModRevision:    3,
-				Version:        1,
-				Lease:          2,
-			},
-		}
-		if resp.WatchID != wid {
-			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
-		}
-		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev)
-		}
-	case <-time.After(5 * time.Second):
-		testutil.FatalStack(t, "failed to watch the event")
-	}
-
-	s.Put([]byte("foo1"), []byte("bar11"), 3)
-	select {
-	case resp := <-w.Chan():
-		wev := storagepb.Event{
+		},
+		{
 			Type: storagepb.PUT,
 			Kv: &storagepb.KeyValue{
 				Key:            []byte("foo1"),
@@ -815,13 +756,63 @@ func TestWatchableKVWatch(t *testing.T) {
 				Version:        2,
 				Lease:          3,
 			},
-		}
+		},
+	}
+
+	s.Put([]byte("foo"), []byte("bar"), 1)
+	select {
+	case resp := <-w.Chan():
 		if resp.WatchID != wid {
 			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		}
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev)
+		if !reflect.DeepEqual(ev, wev[0]) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev[0])
+		}
+	case <-time.After(5 * time.Second):
+		// CPU might be too slow, and the routine is not able to switch around
+		testutil.FatalStack(t, "failed to watch the event")
+	}
+
+	s.Put([]byte("foo1"), []byte("bar1"), 2)
+	select {
+	case resp := <-w.Chan():
+		if resp.WatchID != wid {
+			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
+		}
+		ev := resp.Events[0]
+		if !reflect.DeepEqual(ev, wev[1]) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev[1])
+		}
+	case <-time.After(5 * time.Second):
+		testutil.FatalStack(t, "failed to watch the event")
+	}
+
+	w = s.NewWatchStream()
+	wid = w.Watch([]byte("foo1"), []byte("foo2"), 3)
+
+	select {
+	case resp := <-w.Chan():
+		if resp.WatchID != wid {
+			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
+		}
+		ev := resp.Events[0]
+		if !reflect.DeepEqual(ev, wev[1]) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev[1])
+		}
+	case <-time.After(5 * time.Second):
+		testutil.FatalStack(t, "failed to watch the event")
+	}
+
+	s.Put([]byte("foo1"), []byte("bar11"), 3)
+	select {
+	case resp := <-w.Chan():
+		if resp.WatchID != wid {
+			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
+		}
+		ev := resp.Events[0]
+		if !reflect.DeepEqual(ev, wev[2]) {
+			t.Errorf("watched event = %+v, want %+v", ev, wev[2])
 		}
 	case <-time.After(5 * time.Second):
 		testutil.FatalStack(t, "failed to watch the event")

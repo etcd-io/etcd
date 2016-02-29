@@ -15,8 +15,6 @@
 package clientv3
 
 import (
-	"reflect"
-
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 )
@@ -66,27 +64,6 @@ func (op Op) toRequestUnion() *pb.RequestUnion {
 		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic("Unknown Op")
-	}
-}
-
-func (op Op) toWatchRequest() *watchRequest {
-	switch op.t {
-	case tRange:
-		key := string(op.key)
-		prefix := ""
-		if op.end != nil {
-			prefix = key
-			key = ""
-		}
-		wr := &watchRequest{
-			key:    key,
-			prefix: prefix,
-			rev:    op.rev,
-		}
-		return wr
-
-	default:
-		panic("Only for tRange")
 	}
 }
 
@@ -140,8 +117,6 @@ func opWatch(key string, opts ...OpOption) Op {
 	ret := Op{t: tRange, key: []byte(key)}
 	ret.applyOpts(opts)
 	switch {
-	case ret.end != nil && !reflect.DeepEqual(ret.end, getPrefix(ret.key)):
-		panic("only supports single keys or prefixes")
 	case ret.leaseID != 0:
 		panic("unexpected lease in watch")
 	case ret.limit != 0:

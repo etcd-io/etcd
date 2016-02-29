@@ -78,10 +78,10 @@ type watcher struct {
 
 // watchRequest is issued by the subscriber to start a new watcher
 type watchRequest struct {
-	ctx    context.Context
-	key    string
-	prefix string
-	rev    int64
+	ctx context.Context
+	key string
+	end string
+	rev int64
 	// retc receives a chan WatchResponse once the watcher is established
 	retc chan chan WatchResponse
 }
@@ -129,11 +129,14 @@ func NewWatcher(c *Client) Watcher {
 func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
 	ow := opWatch(key, opts...)
 
-	wr := ow.toWatchRequest()
-	wr.ctx = ctx
-
 	retc := make(chan chan WatchResponse, 1)
-	wr.retc = retc
+	wr := &watchRequest{
+		ctx:  ctx,
+		key:  string(ow.key),
+		end:  string(ow.end),
+		rev:  ow.rev,
+		retc: retc,
+	}
 
 	ok := false
 
@@ -502,11 +505,10 @@ func (w *watcher) resumeWatchers(wc pb.Watch_WatchClient) error {
 
 // toPB converts an internal watch request structure to its protobuf messagefunc (wr *watchRequest)
 func (wr *watchRequest) toPB() *pb.WatchRequest {
-	req := &pb.WatchCreateRequest{StartRevision: wr.rev}
-	if wr.key != "" {
-		req.Key = []byte(wr.key)
-	} else {
-		req.Prefix = []byte(wr.prefix)
+	req := &pb.WatchCreateRequest{
+		StartRevision: wr.rev,
+		Key:           []byte(wr.key),
+		RangeEnd:      []byte(wr.end),
 	}
 	cr := &pb.WatchRequest_CreateRequest{CreateRequest: req}
 	return &pb.WatchRequest{RequestUnion: cr}

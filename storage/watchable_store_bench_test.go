@@ -40,11 +40,11 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	// in unsynced for this benchmark.
 	ws := &watchableStore{
 		store:    s,
-		unsynced: make(watcherSetByKey),
+		unsynced: newWatcherGroup(),
 
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
-		synced: make(watcherSetByKey),
+		synced: newWatcherGroup(),
 	}
 
 	defer func() {
@@ -69,7 +69,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// non-0 value to keep watchers in unsynced
-		watchIDs[i] = w.Watch(testKey, true, 1)
+		watchIDs[i] = w.Watch(testKey, nil, 1)
 	}
 
 	// random-cancel N watchers to make it not biased towards
@@ -109,7 +109,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// 0 for startRev to keep watchers in synced
-		watchIDs[i] = w.Watch(testKey, true, 0)
+		watchIDs[i] = w.Watch(testKey, nil, 0)
 	}
 
 	// randomly cancel watchers to make it not biased towards

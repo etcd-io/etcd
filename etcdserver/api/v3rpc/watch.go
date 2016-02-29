@@ -94,35 +94,33 @@ func (sws *serverWatchStream) recvLoop() error {
 
 		switch uv := req.RequestUnion.(type) {
 		case *pb.WatchRequest_CreateRequest:
-			if uv.CreateRequest != nil {
-				creq := uv.CreateRequest
-				var prefix bool
-				toWatch := creq.Key
-				if len(creq.Key) == 0 {
-					toWatch = creq.Prefix
-					prefix = true
-				}
+			if uv.CreateRequest == nil {
+				break
+			}
 
-				rev := creq.StartRevision
-				wsrev := sws.watchStream.Rev()
-				if rev == 0 {
-					// rev 0 watches past the current revision
-					rev = wsrev + 1
-				} else if rev > wsrev { // do not allow watching future revision.
-					sws.ctrlStream <- &pb.WatchResponse{
-						Header:   sws.newResponseHeader(wsrev),
-						WatchId:  -1,
-						Created:  true,
-						Canceled: true,
-					}
-					continue
-				}
-				id := sws.watchStream.Watch(toWatch, prefix, rev)
-				sws.ctrlStream <- &pb.WatchResponse{
-					Header:  sws.newResponseHeader(wsrev),
-					WatchId: int64(id),
-					Created: true,
-				}
+			creq := uv.CreateRequest
+			if len(creq.RangeEnd) == 1 && creq.RangeEnd[0] == 0 {
+				// support  >= key queries
+				creq.RangeEnd = []byte{}
+			}
+
+			rev := creq.StartRevision
+			wsrev := sws.watchStream.Rev()
+			futureRev := rev > wsrev
+			if rev == 0 {
+				// rev 0 watches past the current revision
+				rev = wsrev + 1
+			}
+			// do not allow future watch revision
+			id := storage.WatchID(-1)
+			if !futureRev {
+				id = sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev)
+			}
+			sws.ctrlStream <- &pb.WatchResponse{
+				Header:   sws.newResponseHeader(wsrev),
+				WatchId:  int64(id),
+				Created:  true,
+				Canceled: futureRev,
 			}
 		case *pb.WatchRequest_CancelRequest:
 			if uv.CancelRequest != nil {

@@ -262,11 +262,11 @@ message WatchRequest {
 message WatchCreateRequest {
   // the key to be watched
   bytes key = 1;
-  // the prefix to be watched.
-  bytes prefix = 2;
+  // if the range_end is given, keys in [key, range_end) are watched
+  // NOTE: only range_end == prefixEnd(key) is accepted now
+  bytes range_end = 2;
   // start_revision is an optional revision (including) to watch from. No start_revision is "now".
   int64 start_revision = 3;
-  // TODO: support Range watch?
 }
 
 message WatchCancelRequest {
