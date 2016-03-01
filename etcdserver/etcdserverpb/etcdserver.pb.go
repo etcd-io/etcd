@@ -50,6 +50,34 @@
 		MemberUpdateResponse
 		MemberListRequest
 		MemberListResponse
+		AuthEnableRequest
+		AuthDisableRequest
+		AuthenticateRequest
+		UserAddRequest
+		UserGetRequest
+		UserDeleteRequest
+		UserChangePasswordRequest
+		UserGrantRequest
+		UserRevokeRequest
+		RoleAddRequest
+		RoleGetRequest
+		RoleDeleteRequest
+		RoleGrantRequest
+		RoleRevokeRequest
+		AuthEnableResponse
+		AuthDisableResponse
+		AuthenticateResponse
+		UserAddResponse
+		UserGetResponse
+		UserDeleteResponse
+		UserChangePasswordResponse
+		UserGrantResponse
+		UserRevokeResponse
+		RoleAddResponse
+		RoleGetResponse
+		RoleDeleteResponse
+		RoleGrantResponse
+		RoleRevokeResponse
 */
 package etcdserverpb
 
