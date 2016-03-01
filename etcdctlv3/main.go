@@ -64,6 +64,7 @@ func init() {
 		command.NewMakeMirrorCommand(),
 		command.NewLockCommand(),
 		command.NewAuthCommand(),
+		command.NewElectCommand(),
 	)
 }
 

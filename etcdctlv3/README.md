@@ -282,6 +282,43 @@ mylock/1234534535445
 
 ```
 
+### Notes
+
+The lease length of a lock defaults to 60 seconds. If LOCK is abnormally terminated, lock progress may be delayed
+by up to 60 seconds.
+
+
+### ELECT [options] \<election-name\> [proposal]
+
+ELECT participates on a named election. A node announces its candidacy in the election by providing
+a proposal value. If a node wishes to observe the election, ELECT listens for new leaders values.
+Whenever a leader is elected, its proposal is given as output.
+
+#### Options
+
+- listen -- observe the election
+
+#### Return value
+
+- If a candidate, ELECT displays the GET on the leader key once the node is elected election.
+
+- If observing, ELECT streams the result for a GET on the leader key for the current election and all future elections.
+
+- ELECT returns a zero exit code only if it is terminated by a signal and can revoke its candidacy or leadership, if any.
+
+#### Example
+```bash
+./etcdctl elect myelection foo
+myelection/1456952310051373265
+foo
+
+```
+
+### Notes
+
+The lease length of a leader defaults to 60 seconds. If a candidate is abnormally terminated, election
+progress may be delayed by up to 60 seconds.
+
 
 ### MAKE-MIRROR [options] \<destination\>
 
