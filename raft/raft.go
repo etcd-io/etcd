@@ -66,15 +66,16 @@ type Config struct {
 	// peer is private and only used for testing right now.
 	peers []uint64
 
-	// ElectionTick is the election timeout. If a follower does not
-	// receive any message from the leader of current term during
-	// ElectionTick, it will become candidate and start an election.
-	// ElectionTick must be greater than HeartbeatTick. We suggest
-	// to use ElectionTick = 10 * HeartbeatTick to avoid unnecessary
-	// leader switching.
+	// ElectionTick is the number of Node.Tick invocations that must pass between
+	// elections. That is, if a follower does not receive any message from the
+	// leader of current term before ElectionTick has elapsed, it will become
+	// candidate and start an election. ElectionTick must be greater than
+	// HeartbeatTick. We suggest ElectionTick = 10 * HeartbeatTick to avoid
+	// unnecessary leader switching.
 	ElectionTick int
-	// HeartbeatTick is the heartbeat interval. A leader sends heartbeat
-	// message to maintain the leadership every heartbeat interval.
+	// HeartbeatTick is the number of Node.Tick invocations that must pass between
+	// heartbeats. That is, a leader sends heartbeat messages to maintain its
+	// leadership every HeartbeatTick ticks.
 	HeartbeatTick int
 
 	// Storage is the storage for raft. raft generates entries and
