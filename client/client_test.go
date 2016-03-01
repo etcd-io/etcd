@@ -851,7 +851,7 @@ func TestHTTPClusterClientSyncPinEndpoint(t *testing.T) {
 		}
 
 		if g := hc.endpoints[hc.pinned]; g != pinnedEndpoint {
-			t.Errorf("#%d: pinned endpoint = %s, want %s", i, g, pinnedEndpoint)
+			t.Errorf("#%d: pinned endpoint = %v, want %v", i, g, pinnedEndpoint)
 		}
 	}
 }
