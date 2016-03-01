@@ -41,7 +41,6 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/schedule"
-	"github.com/coreos/etcd/pkg/timeutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/etcd/raft"
@@ -1027,9 +1026,13 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 	f := func(ev *store.Event, err error) Response {
 		return Response{Event: ev, err: err}
 	}
-	expr := timeutil.UnixNanoToTime(r.Expiration)
+
 	refresh, _ := pbutil.GetBool(r.Refresh)
-	ttlOptions := store.TTLOptionSet{ExpireTime: expr, Refresh: refresh}
+	ttlOptions := store.TTLOptionSet{Refresh: refresh}
+	if r.Expiration != 0 {
+		ttlOptions.ExpireTime = time.Unix(0, r.Expiration)
+	}
+
 	switch r.Method {
 	case "POST":
 		return f(s.store.Create(r.Path, r.Dir, r.Val, true, ttlOptions))
