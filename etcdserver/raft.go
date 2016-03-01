@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/contention"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -117,6 +118,8 @@ type raftNode struct {
 	// If transport is nil, server will panic.
 	transport rafthttp.Transporter
 
+	td *contention.TimeoutDetector
+
 	stopped chan struct{}
 	done    chan struct{}
 }
@@ -129,6 +132,14 @@ func (r *raftNode) start(s *EtcdServer) {
 	r.applyc = make(chan apply)
 	r.stopped = make(chan struct{})
 	r.done = make(chan struct{})
+
+	heartbeat := 200 * time.Millisecond
+	if s.cfg != nil {
+		heartbeat = time.Duration(s.cfg.TickMs) * time.Millisecond
+	}
+	// set up contention detectors for raft heartbeat message.
+	// expect to send a heartbeat within 2 heartbeat intervals.
+	r.td = contention.NewTimeoutDetector(2 * heartbeat)
 
 	go func() {
 		var syncC <-chan time.Time
@@ -162,6 +173,7 @@ func (r *raftNode) start(s *EtcdServer) {
 						if r.s.compactor != nil {
 							r.s.compactor.Resume()
 						}
+						r.td.Reset()
 					} else {
 						if r.s.lessor != nil {
 							r.s.lessor.Demote()

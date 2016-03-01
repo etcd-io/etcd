@@ -918,6 +918,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 	}
 }
 
+// TODO: move this function into raft.go
 func (s *EtcdServer) send(ms []raftpb.Message) {
 	for i := range ms {
 		if s.cluster.IsIDRemoved(types.ID(ms[i].To)) {
@@ -937,6 +938,14 @@ func (s *EtcdServer) send(ms []raftpb.Message) {
 					// drop msgSnap if the inflight chan if full.
 				}
 				ms[i].To = 0
+			}
+		}
+		if ms[i].Type == raftpb.MsgHeartbeat {
+			ok, exceed := s.r.td.Observe(ms[i].To)
+			if !ok {
+				// TODO: limit request rate.
+				plog.Warningf("failed to send out heartbeat on time (deadline exceeded for %v)", exceed)
+				plog.Warningf("server is likely overloaded")
 			}
 		}
 	}
