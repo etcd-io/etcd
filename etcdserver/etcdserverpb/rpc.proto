@@ -76,6 +76,50 @@ service Cluster {
   rpc MemberList(MemberListRequest) returns (MemberListResponse) {}
 }
 
+service Auth {
+  // AuthEnable enables authentication.
+  rpc AuthEnable(AuthEnableRequest) returns (AuthEnableResponse) {}
+
+  // AuthDisable disables authentication.
+  rpc AuthDisable(AuthDisableRequest) returns (AuthDisableResponse) {}
+
+  // Authenticate processes authenticate request.
+  rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse) {}
+
+  // UserAdd adds a new user.
+  rpc UserAdd(UserAddRequest) returns (UserAddResponse) {}
+
+  // UserGet gets a detailed information of a user or lists entire users.
+  rpc UserGet(UserGetRequest) returns (UserGetResponse) {}
+
+  // UserDelete deletes a specified user.
+  rpc UserDelete(UserDeleteRequest) returns (UserDeleteResponse) {}
+
+  // UserChangePassword changes password of a specified user.
+  rpc UserChangePassword(UserChangePasswordRequest) returns (UserChangePasswordResponse) {}
+
+  // UserGrant grants a role to a specified user.
+  rpc UserGrant(UserGrantRequest) returns (UserGrantResponse) {}
+
+  // UserRevoke revokes a role of specified user.
+  rpc UserRevoke(UserRevokeRequest) returns (UserRevokeResponse) {}
+
+  // RoleAdd adds a new role.
+  rpc RoleAdd(RoleAddRequest) returns (RoleAddResponse) {}
+
+  // RoleGet gets a detailed information of a role or lists entire roles.
+  rpc RoleGet(RoleGetRequest) returns (RoleGetResponse) {}
+
+  // RoleDelete deletes a specified role.
+  rpc RoleDelete(RoleDeleteRequest) returns (RoleDeleteResponse) {}
+
+  // RoleGrant grants a permission of a specified key or range to a specified role.
+  rpc RoleGrant(RoleGrantRequest) returns (RoleGrantResponse) {}
+
+  // RoleRevoke revokes a key or range permission of a specified role.
+  rpc RoleRevoke(RoleRevokeRequest) returns (RoleRevokeResponse) {}
+}
+
 message ResponseHeader {
   uint64 cluster_id = 1;
   uint64 member_id = 2;
@@ -374,4 +418,102 @@ message MemberListRequest {
 message MemberListResponse {
   ResponseHeader header = 1;
   repeated Member members = 2;
+}
+
+message AuthEnableRequest {
+}
+
+message AuthDisableRequest {
+}
+
+message AuthenticateRequest {
+}
+
+message UserAddRequest {
+}
+
+message UserGetRequest {
+}
+
+message UserDeleteRequest {
+}
+
+message UserChangePasswordRequest {
+}
+
+message UserGrantRequest {
+}
+
+message UserRevokeRequest {
+}
+
+message RoleAddRequest {
+}
+
+message RoleGetRequest {
+}
+
+message RoleDeleteRequest {
+}
+
+message RoleGrantRequest {
+}
+
+message RoleRevokeRequest {
+}
+
+message AuthEnableResponse {
+  ResponseHeader header = 1;
+}
+
+message AuthDisableResponse {
+  ResponseHeader header = 1;
+}
+
+message AuthenticateResponse {
+  ResponseHeader header = 1;
+}
+
+message UserAddResponse {
+  ResponseHeader header = 1;
+}
+
+message UserGetResponse {
+  ResponseHeader header = 1;
+}
+
+message UserDeleteResponse {
+  ResponseHeader header = 1;
+}
+
+message UserChangePasswordResponse {
+  ResponseHeader header = 1;
+}
+
+message UserGrantResponse {
+  ResponseHeader header = 1;
+}
+
+message UserRevokeResponse {
+  ResponseHeader header = 1;
+}
+
+message RoleAddResponse {
+  ResponseHeader header = 1;
+}
+
+message RoleGetResponse {
+  ResponseHeader header = 1;
+}
+
+message RoleDeleteResponse {
+  ResponseHeader header = 1;
+}
+
+message RoleGrantResponse {
+  ResponseHeader header = 1;
+}
+
+message RoleRevokeResponse {
+  ResponseHeader header = 1;
 }
