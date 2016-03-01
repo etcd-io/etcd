@@ -58,12 +58,10 @@ type Config struct {
 	// ID is the identity of the local raft. ID cannot be 0.
 	ID uint64
 
-	// peers contains the IDs of all nodes (including self) in
-	// the raft cluster. It should only be set when starting a new
-	// raft cluster.
-	// Restarting raft from previous configuration will panic if
-	// peers is set.
-	// peer is private and only used for testing right now.
+	// peers contains the IDs of all nodes (including self) in the raft cluster. It
+	// should only be set when starting a new raft cluster. Restarting raft from
+	// previous configuration will panic if peers is set. peer is private and only
+	// used for testing right now.
 	peers []uint64
 
 	// ElectionTick is the number of Node.Tick invocations that must pass between
@@ -78,35 +76,36 @@ type Config struct {
 	// leadership every HeartbeatTick ticks.
 	HeartbeatTick int
 
-	// Storage is the storage for raft. raft generates entries and
-	// states to be stored in storage. raft reads the persisted entries
-	// and states out of Storage when it needs. raft reads out the previous
-	// state and configuration out of storage when restarting.
+	// Storage is the storage for raft. raft generates entries and states to be
+	// stored in storage. raft reads the persisted entries and states out of
+	// Storage when it needs. raft reads out the previous state and configuration
+	// out of storage when restarting.
 	Storage Storage
 	// Applied is the last applied index. It should only be set when restarting
-	// raft. raft will not return entries to the application smaller or equal to Applied.
-	// If Applied is unset when restarting, raft might return previous applied entries.
-	// This is a very application dependent configuration.
+	// raft. raft will not return entries to the application smaller or equal to
+	// Applied. If Applied is unset when restarting, raft might return previous
+	// applied entries. This is a very application dependent configuration.
 	Applied uint64
 
-	// MaxSizePerMsg limits the max size of each append message. Smaller value lowers
-	// the raft recovery cost(initial probing and message lost during normal operation).
-	// On the other side, it might affect the throughput during normal replication.
-	// Note: math.MaxUint64 for unlimited, 0 for at most one entry per message.
+	// MaxSizePerMsg limits the max size of each append message. Smaller value
+	// lowers the raft recovery cost(initial probing and message lost during normal
+	// operation). On the other side, it might affect the throughput during normal
+	// replication. Note: math.MaxUint64 for unlimited, 0 for at most one entry per
+	// message.
 	MaxSizePerMsg uint64
-	// MaxInflightMsgs limits the max number of in-flight append messages during optimistic
-	// replication phase. The application transportation layer usually has its own sending
-	// buffer over TCP/UDP. Setting MaxInflightMsgs to avoid overflowing that sending buffer.
-	// TODO (xiangli): feedback to application to limit the proposal rate?
+	// MaxInflightMsgs limits the max number of in-flight append messages during
+	// optimistic replication phase. The application transportation layer usually
+	// has its own sending buffer over TCP/UDP. Setting MaxInflightMsgs to avoid
+	// overflowing that sending buffer. TODO (xiangli): feedback to application to
+	// limit the proposal rate?
 	MaxInflightMsgs int
 
-	// CheckQuorum specifies if the leader should check quorum activity. Leader steps down when
-	// quorum is not active for an electionTimeout.
+	// CheckQuorum specifies if the leader should check quorum activity. Leader
+	// steps down when quorum is not active for an electionTimeout.
 	CheckQuorum bool
 
-	// Logger is the logger used for raft log. For multinode which
-	// can host multiple raft group, each raft group can have its
-	// own logger
+	// Logger is the logger used for raft log. For multinode which can host
+	// multiple raft group, each raft group can have its own logger
 	Logger Logger
 }
 
