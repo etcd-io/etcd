@@ -875,6 +875,10 @@ type WatchCreateRequest struct {
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
 	// start_revision is an optional revision (including) to watch from. No start_revision is "now".
 	StartRevision int64 `protobuf:"varint,3,opt,name=start_revision,proto3" json:"start_revision,omitempty"`
+	// ProgressReport 'true' subscribes to periodic watch status updates.
+	ProgressReport bool `protobuf:"varint,4,opt,name=progress_report,proto3" json:"progress_report,omitempty"`
+	// ReportInterval is progress report frequency in seconds. If 600, it notifies every 10-minute.
+	ReportInterval int64 `protobuf:"varint,5,opt,name=report_interval,proto3" json:"report_interval,omitempty"`
 }
 
 func (m *WatchCreateRequest) Reset()         { *m = WatchCreateRequest{} }
@@ -909,8 +913,12 @@ type WatchResponse struct {
 	//
 	// Client should treat the watching as canceled and should not try to create any
 	// watching with same start_revision again.
-	CompactRevision int64              `protobuf:"varint,5,opt,name=compact_revision,proto3" json:"compact_revision,omitempty"`
-	Events          []*storagepb.Event `protobuf:"bytes,11,rep,name=events" json:"events,omitempty"`
+	CompactRevision int64 `protobuf:"varint,5,opt,name=compact_revision,proto3" json:"compact_revision,omitempty"`
+	// ProgressReport is 'true' if the response is the report (not watch event).
+	ProgressReport bool `protobuf:"varint,6,opt,name=progress_report,proto3" json:"progress_report,omitempty"`
+	// StartRevision is the watch start revision of the request.
+	StartRevision int64              `protobuf:"varint,7,opt,name=start_revision,proto3" json:"start_revision,omitempty"`
+	Events        []*storagepb.Event `protobuf:"bytes,11,rep,name=events" json:"events,omitempty"`
 }
 
 func (m *WatchResponse) Reset()         { *m = WatchResponse{} }
@@ -3374,6 +3382,21 @@ func (m *WatchCreateRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.StartRevision))
 	}
+	if m.ProgressReport {
+		data[i] = 0x20
+		i++
+		if m.ProgressReport {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	if m.ReportInterval != 0 {
+		data[i] = 0x28
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.ReportInterval))
+	}
 	return i, nil
 }
 
@@ -3454,6 +3477,21 @@ func (m *WatchResponse) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x28
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.CompactRevision))
+	}
+	if m.ProgressReport {
+		data[i] = 0x30
+		i++
+		if m.ProgressReport {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	if m.StartRevision != 0 {
+		data[i] = 0x38
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.StartRevision))
 	}
 	if len(m.Events) > 0 {
 		for _, msg := range m.Events {
@@ -5018,6 +5056,12 @@ func (m *WatchCreateRequest) Size() (n int) {
 	if m.StartRevision != 0 {
 		n += 1 + sovRpc(uint64(m.StartRevision))
 	}
+	if m.ProgressReport {
+		n += 2
+	}
+	if m.ReportInterval != 0 {
+		n += 1 + sovRpc(uint64(m.ReportInterval))
+	}
 	return n
 }
 
@@ -5048,6 +5092,12 @@ func (m *WatchResponse) Size() (n int) {
 	}
 	if m.CompactRevision != 0 {
 		n += 1 + sovRpc(uint64(m.CompactRevision))
+	}
+	if m.ProgressReport {
+		n += 2
+	}
+	if m.StartRevision != 0 {
+		n += 1 + sovRpc(uint64(m.StartRevision))
 	}
 	if len(m.Events) > 0 {
 		for _, e := range m.Events {
@@ -7693,6 +7743,45 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProgressReport", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ProgressReport = bool(v != 0)
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReportInterval", wireType)
+			}
+			m.ReportInterval = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ReportInterval |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])
@@ -7919,6 +8008,45 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 				b := data[iNdEx]
 				iNdEx++
 				m.CompactRevision |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProgressReport", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ProgressReport = bool(v != 0)
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StartRevision", wireType)
+			}
+			m.StartRevision = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.StartRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
