@@ -47,6 +47,11 @@ type WatchResponse struct {
 
 	// Canceled is 'true' when it has received wrong watch start revision.
 	Canceled bool
+
+	// ProgressReport is 'true' if the response is the report (not watch event).
+	ProgressReport bool
+	// StartRevision is the watch start revision of the request.
+	StartRevision int64
 }
 
 // watcher implements the Watcher interface
@@ -78,10 +83,13 @@ type watcher struct {
 
 // watchRequest is issued by the subscriber to start a new watcher
 type watchRequest struct {
-	ctx context.Context
-	key string
-	end string
-	rev int64
+	ctx            context.Context
+	key            string
+	end            string
+	rev            int64
+	progressReport bool
+	reportInterval int64
+
 	// retc receives a chan WatchResponse once the watcher is established
 	retc chan chan WatchResponse
 }
@@ -131,11 +139,13 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 
 	retc := make(chan chan WatchResponse, 1)
 	wr := &watchRequest{
-		ctx:  ctx,
-		key:  string(ow.key),
-		end:  string(ow.end),
-		rev:  ow.rev,
-		retc: retc,
+		ctx:            ctx,
+		key:            string(ow.key),
+		end:            string(ow.end),
+		rev:            ow.rev,
+		retc:           retc,
+		progressReport: ow.ProgressReport,
+		reportInterval: ow.ReportInterval,
 	}
 
 	ok := false
@@ -334,7 +344,9 @@ func (w *watcher) dispatchEvent(pbresp *pb.WatchResponse) bool {
 			Header:          *pbresp.Header,
 			Events:          pbresp.Events,
 			CompactRevision: pbresp.CompactRevision,
-			Canceled:        pbresp.Canceled}
+			Canceled:        pbresp.Canceled,
+			ProgressReport:  pbresp.ProgressReport,
+			StartRevision:   pbresp.StartRevision}
 		ws.recvc <- wr
 	}
 	return ok
@@ -375,14 +387,16 @@ func (w *watcher) serveStream(ws *watcherStream) {
 		}
 		select {
 		case outc <- *curWr:
-			if len(wrs[0].Events) == 0 {
+			if len(wrs[0].Events) == 0 && !curWr.ProgressReport {
 				// compaction message
 				closing = true
 				break
 			}
-			newRev := wrs[0].Events[len(wrs[0].Events)-1].Kv.ModRevision
-			if newRev != ws.lastRev {
-				ws.lastRev = newRev
+			if !curWr.ProgressReport {
+				newRev := wrs[0].Events[len(wrs[0].Events)-1].Kv.ModRevision
+				if newRev != ws.lastRev {
+					ws.lastRev = newRev
+				}
 			}
 			wrs[0] = nil
 			wrs = wrs[1:]
@@ -506,9 +520,11 @@ func (w *watcher) resumeWatchers(wc pb.Watch_WatchClient) error {
 // toPB converts an internal watch request structure to its protobuf messagefunc (wr *watchRequest)
 func (wr *watchRequest) toPB() *pb.WatchRequest {
 	req := &pb.WatchCreateRequest{
-		StartRevision: wr.rev,
-		Key:           []byte(wr.key),
-		RangeEnd:      []byte(wr.end),
+		StartRevision:  wr.rev,
+		Key:            []byte(wr.key),
+		RangeEnd:       []byte(wr.end),
+		ProgressReport: wr.progressReport,
+		ReportInterval: wr.reportInterval,
 	}
 	cr := &pb.WatchRequest_CreateRequest{CreateRequest: req}
 	return &pb.WatchRequest{RequestUnion: cr}
