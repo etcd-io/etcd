@@ -57,6 +57,10 @@ type Lessor interface {
 	LeaseRenew(id lease.LeaseID) (int64, error)
 }
 
+type Authenticator interface {
+	AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error)
+}
+
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if r.Serializable {
 		return applyRange(noTxn, s.kv, r)
@@ -173,6 +177,11 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 	return ttl, err
 }
 
+func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
+	plog.Info("EtcdServer.AuthEnable isn't implemented yet")
+	return &pb.AuthEnableResponse{}, nil
+}
+
 type applyResult struct {
 	resp proto.Message
 	err  error
@@ -238,6 +247,9 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
 		ar.resp, ar.err = applyLeaseCreate(le, r.LeaseCreate)
 	case r.LeaseRevoke != nil:
 		ar.resp, ar.err = applyLeaseRevoke(le, r.LeaseRevoke)
+	case r.AuthEnable != nil:
+		plog.Info("AuthEnable is not implemented yet")
+		ar.resp, ar.err = nil, nil
 	default:
 		panic("not implemented")
 	}

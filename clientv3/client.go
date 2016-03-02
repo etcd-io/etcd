@@ -37,6 +37,7 @@ type Client struct {
 	KV
 	Lease
 	Watcher
+	Auth
 
 	conn   *grpc.ClientConn
 	cfg    Config
@@ -152,6 +153,7 @@ func newClient(cfg *Config) (*Client, error) {
 	client.KV = NewKV(client)
 	client.Lease = NewLease(client)
 	client.Watcher = NewWatcher(client)
+	client.Auth = NewAuth(client)
 
 	return client, nil
 }

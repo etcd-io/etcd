@@ -24,6 +24,8 @@ message InternalRaftRequest {
 
   LeaseCreateRequest lease_create = 8;
   LeaseRevokeRequest lease_revoke = 9;
+
+  AuthEnableRequest auth_enable = 10;
 }
 
 message EmptyResponse {
