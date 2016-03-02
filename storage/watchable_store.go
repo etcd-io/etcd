@@ -35,7 +35,16 @@ const (
 type watchable interface {
 	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse) (*watcher, cancelFunc)
 	rev() int64
+	watchStatus(id int64) WatchStatus
 }
+
+type WatchStatus int
+
+const (
+	Unknown WatchStatus = iota
+	Synced
+	Unsynced
+)
 
 type watchableStore struct {
 	mu sync.Mutex
@@ -48,6 +57,9 @@ type watchableStore struct {
 	// contains all synced watchers that are in sync with the progress of the store.
 	// The key of the map is the key that the watcher watches on.
 	synced watcherGroup
+
+	// ids keeps track of WatchID status.
+	ids map[WatchID]WatchStatus
 
 	stopc chan struct{}
 	wg    sync.WaitGroup
@@ -62,6 +74,7 @@ func newWatchableStore(b backend.Backend, le lease.Lessor) *watchableStore {
 		store:    NewStore(b, le),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
+		ids:      make(map[WatchID]WatchStatus),
 		stopc:    make(chan struct{}),
 	}
 	if s.le != nil {
@@ -194,9 +207,11 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 			panic("can't watch past sync revision")
 		}
 		s.synced.add(wa)
+		s.ids[wa.id] = Synced
 	} else {
 		slowWatcherGauge.Inc()
 		s.unsynced.add(wa)
+		s.ids[wa.id] = Unsynced
 	}
 	watcherGauge.Inc()
 
@@ -205,12 +220,14 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 		defer s.mu.Unlock()
 		// remove references of the watcher
 		if s.unsynced.delete(wa) {
+			s.ids[wa.id] = Unknown
 			slowWatcherGauge.Dec()
 			watcherGauge.Dec()
 			return
 		}
 
 		if s.synced.delete(wa) {
+			s.ids[wa.id] = Unknown
 			watcherGauge.Dec()
 		}
 		// If we cannot find it, it should have finished watch.
@@ -285,6 +302,7 @@ func (s *watchableStore) syncWatchers() {
 		w.cur = curRev
 		s.synced.add(w)
 		s.unsynced.delete(w)
+		s.ids[w.id] = Synced
 	}
 
 	slowWatcherGauge.Set(float64(s.unsynced.size()))
@@ -328,12 +346,14 @@ func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 			w.cur = rev
 			s.unsynced.add(w)
 			s.synced.delete(w)
+			s.ids[w.id] = Unsynced
 			slowWatcherGauge.Inc()
 		}
 	}
 }
 
-func (s *watchableStore) rev() int64 { return s.store.Rev() }
+func (s *watchableStore) rev() int64                       { return s.store.Rev() }
+func (s *watchableStore) watchStatus(id int64) WatchStatus { return s.ids[WatchID(id)] }
 
 type watcher struct {
 	// the watcher key
