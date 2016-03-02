@@ -149,6 +149,8 @@ func (t *batchTx) commit(stop bool) {
 		return
 	}
 
+	t.backend.mu.RLock()
+	defer t.backend.mu.RUnlock()
 	// begin a new tx
 	t.tx, err = t.backend.db.Begin(true)
 	if err != nil {
