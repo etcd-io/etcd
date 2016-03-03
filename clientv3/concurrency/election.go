@@ -139,7 +139,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 
 			for kv == nil {
 				wr, ok := <-wch
-				if !ok || len(wr.Events) == 0 {
+				if !ok || wr.Err() != nil {
 					cancel()
 					return
 				}

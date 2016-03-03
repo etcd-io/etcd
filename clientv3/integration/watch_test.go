@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	storagepb "github.com/coreos/etcd/storage/storagepb"
@@ -347,12 +348,51 @@ func TestWatchInvalidFutureRevision(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected wresp 'open'(ok true), but got ok %v", ok)
 	}
-	if !wresp.Canceled {
-		t.Fatalf("wresp.Canceled expected 'true', but got %v", wresp.Canceled)
+	if wresp.Err() != v3rpc.ErrFutureRev {
+		t.Fatalf("wresp.Err() expected ErrFutureRev, but got %v", wresp.Err())
 	}
 
 	_, ok = <-rch // ensure the channel is closed
 	if ok != false {
 		t.Fatalf("expected wresp 'closed'(ok false), but got ok %v", ok)
+	}
+}
+
+// TestWatchCompactRevision ensures the CompactRevision error is given on a
+// compaction event ahead of a watcher.
+func TestWatchCompactRevision(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// set some keys
+	kv := clientv3.NewKV(clus.RandClient())
+	for i := 0; i < 5; i++ {
+		if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	w := clientv3.NewWatcher(clus.RandClient())
+	defer w.Close()
+
+	if err := kv.Compact(context.TODO(), 4); err != nil {
+		t.Fatal(err)
+	}
+	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(2))
+
+	// get compacted error message
+	wresp, ok := <-wch
+	if !ok {
+		t.Fatalf("expected wresp, but got closed channel")
+	}
+	if wresp.Err() != v3rpc.ErrCompacted {
+		t.Fatalf("wresp.Err() expected ErrCompacteed, but got %v", wresp.Err())
+	}
+
+	// ensure the channel is closed
+	if wresp, ok = <-wch; ok {
+		t.Fatalf("expected closed channel, but got %v", wresp)
 	}
 }

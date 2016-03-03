@@ -53,7 +53,7 @@ func snapshotCommandFunc(cmd *cobra.Command, args []string) {
 func snapshotToStdout(c *clientv3.Client) {
 	// must explicitly fetch first revision since no retry on stdout
 	wr := <-c.Watch(context.TODO(), "", clientv3.WithPrefix(), clientv3.WithRev(1))
-	if len(wr.Events) > 0 {
+	if wr.Err() == nil {
 		wr.CompactRevision = 1
 	}
 	if rev := snapshot(os.Stdout, c, wr.CompactRevision+1); rev != 0 {
@@ -111,7 +111,7 @@ func snapshot(w io.Writer, c *clientv3.Client, rev int64) int64 {
 	wc := s.SyncUpdates(context.TODO())
 
 	for wr := range wc {
-		if len(wr.Events) == 0 {
+		if wr.Err() != nil {
 			return wr.CompactRevision
 		}
 		for _, ev := range wr.Events {
