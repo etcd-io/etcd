@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/contrib/recipes"
 )
 
 // TestElectionWait tests if followers can correctly wait for elections.
@@ -40,12 +40,14 @@ func TestElectionWait(t *testing.T) {
 		nextc = append(nextc, make(chan struct{}))
 		go func(ch chan struct{}) {
 			for j := 0; j < leaders; j++ {
-				b := recipe.NewElection(clus.RandClient(), "test-election")
-				s, err := b.Wait()
-				if err != nil {
-					t.Fatalf("could not wait for election (%v)", err)
+				b := concurrency.NewElection(context.TODO(), clus.RandClient(), "test-election")
+				cctx, cancel := context.WithCancel(context.TODO())
+				defer cancel()
+				s, ok := <-b.Observe(cctx)
+				if !ok {
+					t.Fatalf("could not observe election; channel closed")
 				}
-				electedc <- s
+				electedc <- string(s.Kvs[0].Value)
 				// wait for next election round
 				<-ch
 			}
@@ -56,9 +58,9 @@ func TestElectionWait(t *testing.T) {
 	// elect some leaders
 	for i := 0; i < leaders; i++ {
 		go func() {
-			e := recipe.NewElection(clus.RandClient(), "test-election")
+			e := concurrency.NewElection(context.TODO(), clus.RandClient(), "test-election")
 			ev := fmt.Sprintf("electval-%v", time.Now().UnixNano())
-			if err := e.Volunteer(ev); err != nil {
+			if err := e.Campaign(context.TODO(), ev); err != nil {
 				t.Fatalf("failed volunteer (%v)", err)
 			}
 			// wait for followers to accept leadership
@@ -91,17 +93,21 @@ func TestElectionFailover(t *testing.T) {
 	defer clus.Terminate(t)
 	defer dropSessionLease(clus)
 
+	cctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
 	// first leader (elected)
-	e := recipe.NewElection(clus.clients[0], "test-election")
-	if err := e.Volunteer("foo"); err != nil {
+	e := concurrency.NewElection(context.TODO(), clus.clients[0], "test-election")
+	if err := e.Campaign(context.TODO(), "foo"); err != nil {
 		t.Fatalf("failed volunteer (%v)", err)
 	}
 
 	// check first leader
-	s, err := e.Wait()
-	if err != nil {
-		t.Fatalf("could not wait for first election (%v)", err)
+	resp, ok := <-e.Observe(cctx)
+	if !ok {
+		t.Fatalf("could not wait for first election; channel closed")
 	}
+	s := string(resp.Kvs[0].Value)
 	if s != "foo" {
 		t.Fatalf("wrong election result. got %s, wanted foo", s)
 	}
@@ -109,8 +115,8 @@ func TestElectionFailover(t *testing.T) {
 	// next leader
 	electedc := make(chan struct{})
 	go func() {
-		ee := recipe.NewElection(clus.clients[1], "test-election")
-		if eer := ee.Volunteer("bar"); eer != nil {
+		ee := concurrency.NewElection(context.TODO(), clus.clients[1], "test-election")
+		if eer := ee.Campaign(context.TODO(), "bar"); eer != nil {
 			t.Fatal(eer)
 		}
 		electedc <- struct{}{}
@@ -121,21 +127,21 @@ func TestElectionFailover(t *testing.T) {
 	if serr != nil {
 		t.Fatal(serr)
 	}
-	err = session.Close()
-	if err != nil {
+	if err := session.Close(); err != nil {
 		t.Fatal(err)
 	}
 
 	// check new leader
-	e = recipe.NewElection(clus.clients[2], "test-election")
-	s, err = e.Wait()
-	if err != nil {
-		t.Fatalf("could not wait for second election (%v)", err)
+	e = concurrency.NewElection(context.TODO(), clus.clients[2], "test-election")
+	resp, ok = <-e.Observe(cctx)
+	if !ok {
+		t.Fatalf("could not wait for second election; channel closed")
 	}
+	s = string(resp.Kvs[0].Value)
 	if s != "bar" {
 		t.Fatalf("wrong election result. got %s, wanted bar", s)
 	}
 
-	// leader must ack election (otherwise, Volunteer may see closed conn)
+	// leader must ack election (otherwise, Campaign may see closed conn)
 	<-electedc
 }
