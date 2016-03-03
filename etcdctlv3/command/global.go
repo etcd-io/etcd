@@ -28,8 +28,9 @@ import (
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
-	Endpoints string
-	TLS       transport.TLSInfo
+	Endpoints []string
+
+	TLS transport.TLSInfo
 
 	OutputFormat string
 	IsHex        bool
@@ -38,7 +39,7 @@ type GlobalFlags struct {
 var display printer = &simplePrinter{}
 
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
-	endpoint, err := cmd.Flags().GetString("endpoint")
+	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -68,10 +69,10 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
 	}
 
-	return mustClient(endpoint, cert, key, cacert)
+	return mustClient(endpoints, cert, key, cacert)
 }
 
-func mustClient(endpoint, cert, key, cacert string) *clientv3.Client {
+func mustClient(endpoints []string, cert, key, cacert string) *clientv3.Client {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tls := transport.TLSInfo{}
@@ -92,7 +93,7 @@ func mustClient(endpoint, cert, key, cacert string) *clientv3.Client {
 	}
 
 	cfg := clientv3.Config{
-		Endpoints:   []string{endpoint},
+		Endpoints:   endpoints,
 		TLS:         cfgtls,
 		DialTimeout: 20 * time.Second,
 	}
