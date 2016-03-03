@@ -57,7 +57,7 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, errors.New("make-mirror takes one destination arguement."))
 	}
 
-	dc := mustClient(args[0], mmcert, mmkey, mmcacert)
+	dc := mustClient([]string{args[0]}, mmcert, mmkey, mmcacert)
 	c := mustClientFromCmd(cmd)
 
 	err := makeMirror(context.TODO(), c, dc)
