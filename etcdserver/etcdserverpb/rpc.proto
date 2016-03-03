@@ -311,6 +311,11 @@ message WatchCreateRequest {
   bytes range_end = 2;
   // start_revision is an optional revision (including) to watch from. No start_revision is "now".
   int64 start_revision = 3;
+  // if progress_notify is set, etcd server sends WatchResponse with empty events to the 
+  // created watcher when there are no recent events. It is useful when clients want always to be
+  // able to recover a disconnected watcher from a recent known revision.
+  // etcdsever can decide how long it should send a notification based on current load.
+  bool progress_notify = 4;
 }
 
 message WatchCancelRequest {
