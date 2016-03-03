@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	storagepb "github.com/coreos/etcd/storage/storagepb"
 )
@@ -41,12 +42,23 @@ type Watcher interface {
 type WatchResponse struct {
 	Header pb.ResponseHeader
 	Events []*storagepb.Event
-	// CompactRevision is set to the compaction revision that
-	// caused the watcher to cancel.
+
+	// CompactRevision is the minimum revision the watcher may receive.
 	CompactRevision int64
 
-	// Canceled is 'true' when it has received wrong watch start revision.
+	// Canceled is set to indicate the channel is about to close.
 	Canceled bool
+}
+
+// Err is the error value if this WatchResponse holds an error.
+func (wr *WatchResponse) Err() error {
+	if wr.CompactRevision != 0 {
+		return v3rpc.ErrCompacted
+	}
+	if wr.Canceled {
+		return v3rpc.ErrFutureRev
+	}
+	return nil
 }
 
 // watcher implements the Watcher interface
@@ -179,12 +191,13 @@ func (w *watcher) addStream(resp *pb.WatchResponse, pendingReq *watchRequest) {
 		return
 	}
 	if resp.Canceled || resp.CompactRevision != 0 {
-		// compaction after start revision
+		// a cancel at id creation time means the start revision has
+		// been compacted out of the store
 		ret := make(chan WatchResponse, 1)
 		ret <- WatchResponse{
 			Header:          *resp.Header,
 			CompactRevision: resp.CompactRevision,
-			Canceled:        resp.Canceled}
+			Canceled:        true}
 		close(ret)
 		pendingReq.retc <- ret
 		return
@@ -375,8 +388,7 @@ func (w *watcher) serveStream(ws *watcherStream) {
 		}
 		select {
 		case outc <- *curWr:
-			if len(wrs[0].Events) == 0 {
-				// compaction message
+			if wrs[0].Err() != nil {
 				closing = true
 				break
 			}

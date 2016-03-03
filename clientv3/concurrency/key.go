@@ -20,7 +20,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
@@ -52,10 +51,7 @@ func waitUpdate(ctx context.Context, client *v3.Client, key string, opts ...v3.O
 	if !ok {
 		return ctx.Err()
 	}
-	if len(wresp.Events) == 0 {
-		return v3rpc.ErrCompacted
-	}
-	return nil
+	return wresp.Err()
 }
 
 func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) error {
