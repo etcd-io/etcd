@@ -15,7 +15,9 @@
 package cmd
 
 import (
+	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"os"
 	"sync/atomic"
 	"time"
@@ -53,6 +55,10 @@ var (
 	watchPutRate  int
 	watchPutTotal int
 
+	watchKeySize      int
+	watchKeySpaceSize int
+	watchSeqKeys      bool
+
 	eventsTotal int
 
 	nrWatchCompleted       int32
@@ -70,12 +76,27 @@ func init() {
 
 	watchCmd.Flags().IntVar(&watchPutRate, "put-rate", 100, "Number of keys to put per second")
 	watchCmd.Flags().IntVar(&watchPutTotal, "put-total", 10000, "Number of put requests")
+
+	watchCmd.Flags().IntVar(&watchKeySize, "key-size", 32, "Key size of watch request")
+	watchCmd.Flags().IntVar(&watchKeySpaceSize, "key-space-size", 1, "Maximum possible keys")
+	watchCmd.Flags().BoolVar(&watchSeqKeys, "sequential-keys", false, "Use sequential keys")
 }
 
 func watchFunc(cmd *cobra.Command, args []string) {
+	if watchKeySpaceSize <= 0 {
+		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", watchKeySpaceSize)
+		os.Exit(1)
+	}
+
 	watched := make([]string, watchedKeyTotal)
 	for i := range watched {
-		watched[i] = string(mustRandBytes(32))
+		k := make([]byte, watchKeySize)
+		if watchSeqKeys {
+			binary.PutVarint(k, int64(i%watchKeySpaceSize))
+		} else {
+			binary.PutVarint(k, int64(rand.Intn(watchKeySpaceSize)))
+		}
+		watched[i] = string(k)
 	}
 
 	requests := make(chan string, totalClients)
