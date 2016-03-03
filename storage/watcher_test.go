@@ -16,6 +16,8 @@ package storage
 
 import (
 	"bytes"
+	"os"
+	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/lease"
@@ -182,5 +184,50 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 
 	if l := len(w.(*watchStream).cancels); l != 0 {
 		t.Errorf("cancels = %d, want 0", l)
+	}
+}
+
+// TestWatcherRequestStatus tests if Watch operation correctly reports the
+// watch status.
+func TestWatcherRequestStatus(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+
+	// manually create watchableStore instead of newWatchableStore
+	// because newWatchableStore automatically calls syncWatchers
+	// method to sync watchers in unsynced map. We want to keep watchers
+	// in unsynced to test if syncWatchers works as expected.
+	s := &watchableStore{
+		store:    NewStore(b, &lease.FakeLessor{}),
+		unsynced: newWatcherGroup(),
+
+		// to make the test not crash from assigning to nil map.
+		// 'synced' doesn't get populated in this test.
+		synced: newWatcherGroup(),
+	}
+
+	defer func() {
+		s.store.Close()
+		os.Remove(tmpPath)
+	}()
+
+	// Put a key so that we can spawn watchers on that key.
+	// (testKey in this test). This increases the rev to 2,
+	// and later we can we set the watcher's startRev to 1,
+	// and force watchers to be in unsynced.
+	testKey := []byte("foo")
+	testValue := []byte("bar")
+	s.Put(testKey, testValue, lease.NoLease)
+
+	w := s.NewWatchStream()
+	id := w.Watch(testKey, nil, 1)
+
+	if err := w.RequestStatus(id); err != nil {
+		t.Fatal(err)
+	}
+
+	rs := WatchResponse{WatchID: 0, Revision: 2, CompactRevision: -1}
+	resp := <-w.Chan()
+	if !reflect.DeepEqual(rs, resp) {
+		t.Fatalf("expected %+v, got  %+v", rs, resp)
 	}
 }
