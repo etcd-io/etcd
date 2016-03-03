@@ -35,6 +35,7 @@ const (
 type watchable interface {
 	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse) (*watcher, cancelFunc)
 	rev() int64
+	compactRev() int64
 }
 
 type watchableStore struct {
@@ -333,7 +334,8 @@ func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 	}
 }
 
-func (s *watchableStore) rev() int64 { return s.store.Rev() }
+func (s *watchableStore) rev() int64        { return s.store.Rev() }
+func (s *watchableStore) compactRev() int64 { return s.store.FirstRev() }
 
 type watcher struct {
 	// the watcher key

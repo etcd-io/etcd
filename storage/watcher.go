@@ -42,6 +42,10 @@ type WatchStream interface {
 	// Chan returns a chan. All watch response will be sent to the returned chan.
 	Chan() <-chan WatchResponse
 
+	// RequestStatus requests the status of the watcher with given ID. The responses will
+	// be sent through the WatchRespone Chan attached with this stream to ensure correct ordering.
+	RequestStatus(id WatchID) error
+
 	// Cancel cancels a watcher by giving its ID. If watcher does not exist, an error will be
 	// returned.
 	Cancel(id WatchID) error
@@ -104,6 +108,14 @@ func (ws *watchStream) Watch(key, end []byte, startRev int64) WatchID {
 
 func (ws *watchStream) Chan() <-chan WatchResponse {
 	return ws.ch
+}
+
+func (ws *watchStream) RequestStatus(id WatchID) error {
+	if _, ok := ws.cancels[id]; !ok {
+		return ErrWatcherNotExist
+	}
+	ws.ch <- WatchResponse{WatchID: id, Revision: ws.watchable.rev(), CompactRevision: ws.watchable.compactRev()}
+	return nil
 }
 
 func (ws *watchStream) Cancel(id WatchID) error {
