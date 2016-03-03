@@ -75,6 +75,11 @@ func (wb watcherBatch) add(w *watcher, ev storagepb.Event) {
 	eb.add(ev)
 }
 
+func (wb watcherBatch) contains(w *watcher) bool {
+	_, ok := wb[w]
+	return ok
+}
+
 // newWatcherBatch maps watchers to their matched events. It enables quick
 // events look up by watcher.
 func newWatcherBatch(wg *watcherGroup, evs []storagepb.Event) watcherBatch {
