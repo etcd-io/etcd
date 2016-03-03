@@ -34,6 +34,7 @@ const (
 
 type watchable interface {
 	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse) (*watcher, cancelFunc)
+	progress(w *watcher)
 	rev() int64
 }
 
@@ -168,6 +169,7 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 		watchable: s,
 		ch:        make(chan WatchResponse, chanBufLen),
 		cancels:   make(map[WatchID]cancelFunc),
+		watchers:  make(map[WatchID]*watcher),
 	}
 }
 
@@ -267,7 +269,9 @@ func (s *watchableStore) syncWatchers() {
 	evs := kvsToEvents(&s.unsynced, revs, vs)
 	tx.Unlock()
 
-	for w, eb := range newWatcherBatch(&s.unsynced, evs) {
+	wb := newWatcherBatch(&s.unsynced, evs)
+
+	for w, eb := range wb {
 		select {
 		// s.store.Rev also uses Lock, so just return directly
 		case w.ch <- WatchResponse{WatchID: w.id, Events: eb.evs, Revision: s.store.currentRev.main}:
@@ -285,6 +289,15 @@ func (s *watchableStore) syncWatchers() {
 		w.cur = curRev
 		s.synced.add(w)
 		s.unsynced.delete(w)
+	}
+
+	// bring all un-notified watchers to synced.
+	for w := range s.unsynced.watchers {
+		if !wb.contains(w) {
+			w.cur = curRev
+			s.synced.add(w)
+			s.unsynced.delete(w)
+		}
 	}
 
 	slowWatcherGauge.Set(float64(s.unsynced.size()))
@@ -334,6 +347,20 @@ func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
 }
 
 func (s *watchableStore) rev() int64 { return s.store.Rev() }
+
+func (s *watchableStore) progress(w *watcher) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.synced.watchers[w]; ok {
+		select {
+		case w.ch <- WatchResponse{WatchID: w.id, Revision: s.rev()}:
+		default:
+			// If the ch is full, this watcher is receiving events.
+			// We do not need to send progress at all.
+		}
+	}
+}
 
 type watcher struct {
 	// the watcher key

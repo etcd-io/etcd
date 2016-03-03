@@ -16,7 +16,10 @@ package storage
 
 import (
 	"bytes"
+	"os"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage/backend"
@@ -182,5 +185,62 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 
 	if l := len(w.(*watchStream).cancels); l != 0 {
 		t.Errorf("cancels = %d, want 0", l)
+	}
+}
+
+// TestWatcherRequestProgress ensures synced watcher can correctly
+// report its correct progress.
+func TestWatcherRequestProgress(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+
+	// manually create watchableStore instead of newWatchableStore
+	// because newWatchableStore automatically calls syncWatchers
+	// method to sync watchers in unsynced map. We want to keep watchers
+	// in unsynced to test if syncWatchers works as expected.
+	s := &watchableStore{
+		store:    NewStore(b, &lease.FakeLessor{}),
+		unsynced: newWatcherGroup(),
+		synced:   newWatcherGroup(),
+	}
+
+	defer func() {
+		s.store.Close()
+		os.Remove(tmpPath)
+	}()
+
+	testKey := []byte("foo")
+	notTestKey := []byte("bad")
+	testValue := []byte("bar")
+	s.Put(testKey, testValue, lease.NoLease)
+
+	w := s.NewWatchStream()
+
+	badID := WatchID(1000)
+	w.RequestProgress(badID)
+	select {
+	case resp := <-w.Chan():
+		t.Fatalf("unexpected %+v", resp)
+	default:
+	}
+
+	id := w.Watch(notTestKey, nil, 1)
+	w.RequestProgress(id)
+	select {
+	case resp := <-w.Chan():
+		t.Fatalf("unexpected %+v", resp)
+	default:
+	}
+
+	s.syncWatchers()
+
+	w.RequestProgress(id)
+	wrs := WatchResponse{WatchID: 0, Revision: 2}
+	select {
+	case resp := <-w.Chan():
+		if !reflect.DeepEqual(resp, wrs) {
+			t.Fatalf("got %+v, expect %+v", resp, wrs)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("failed to receive progress")
 	}
 }
