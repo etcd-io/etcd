@@ -44,31 +44,8 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	}
 	// put self in lock waiters via myKey; oldest waiter holds lock
 	m.myKey, m.myRev, err = NewUniqueKey(ctx, m.client, m.pfx, v3.WithLease(s.Lease()))
-	// wait for lock to become available
-	for err == nil {
-		// find oldest element in waiters via revision of insertion
-		var resp *v3.GetResponse
-		resp, err = m.client.Get(ctx, m.pfx, v3.WithFirstRev()...)
-		if err != nil {
-			break
-		}
-		if m.myRev == resp.Kvs[0].CreateRevision {
-			// myKey is oldest in waiters; myKey holds the lock now
-			return nil
-		}
-		// otherwise myKey isn't lowest, so there must be a pfx prior to myKey
-		opts := append(v3.WithLastRev(), v3.WithRev(m.myRev-1))
-		resp, err = m.client.Get(ctx, m.pfx, opts...)
-		if err != nil {
-			break
-		}
-		lastKey := string(resp.Kvs[0].Key)
-		// wait for release on prior pfx
-		err = waitUpdate(ctx, m.client, lastKey, v3.WithRev(m.myRev))
-		// try again in case lastKey left the wait list before acquiring the lock;
-		// myKey can only hold the lock if it's the oldest in the list
-	}
-
+	// wait for deletion revisions prior to myKey
+	err = waitDeletes(ctx, m.client, m.pfx, v3.WithPrefix(), v3.WithRev(m.myRev-1))
 	// release lock key if cancelled
 	select {
 	case <-ctx.Done():
