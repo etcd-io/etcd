@@ -24,15 +24,14 @@ import (
 // Mutex implements the sync Locker interface with etcd
 type Mutex struct {
 	client *v3.Client
-	ctx    context.Context
 
 	pfx   string
 	myKey string
 	myRev int64
 }
 
-func NewMutex(ctx context.Context, client *v3.Client, pfx string) *Mutex {
-	return &Mutex{client, ctx, pfx, "", -1}
+func NewMutex(client *v3.Client, pfx string) *Mutex {
+	return &Mutex{client, pfx, "", -1}
 }
 
 // Lock locks the mutex with a cancellable context. If the context is cancelled
@@ -56,7 +55,7 @@ func (m *Mutex) Lock(ctx context.Context) error {
 }
 
 func (m *Mutex) Unlock() error {
-	if _, err := m.client.Delete(m.ctx, m.myKey); err != nil {
+	if _, err := m.client.Delete(m.client.Ctx(), m.myKey); err != nil {
 		return err
 	}
 	m.myKey = "\x00"
@@ -73,7 +72,7 @@ func (m *Mutex) Key() string { return m.myKey }
 type lockerMutex struct{ *Mutex }
 
 func (lm *lockerMutex) Lock() {
-	if err := lm.Mutex.Lock(lm.ctx); err != nil {
+	if err := lm.Mutex.Lock(lm.client.Ctx()); err != nil {
 		panic(err)
 	}
 }
@@ -84,6 +83,6 @@ func (lm *lockerMutex) Unlock() {
 }
 
 // NewLocker creates a sync.Locker backed by an etcd mutex.
-func NewLocker(ctx context.Context, client *v3.Client, pfx string) sync.Locker {
-	return &lockerMutex{NewMutex(ctx, client, pfx)}
+func NewLocker(client *v3.Client, pfx string) sync.Locker {
+	return &lockerMutex{NewMutex(client, pfx)}
 }

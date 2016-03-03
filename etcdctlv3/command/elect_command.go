@@ -64,7 +64,7 @@ func electCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func observe(c *clientv3.Client, election string) error {
-	e := concurrency.NewElection(context.TODO(), c, election)
+	e := concurrency.NewElection(c, election)
 	ctx, cancel := context.WithCancel(context.TODO())
 
 	donec := make(chan struct{})
@@ -94,7 +94,7 @@ func observe(c *clientv3.Client, election string) error {
 }
 
 func campaign(c *clientv3.Client, election string, prop string) error {
-	e := concurrency.NewElection(context.TODO(), c, election)
+	e := concurrency.NewElection(c, election)
 	ctx, cancel := context.WithCancel(context.TODO())
 
 	donec := make(chan struct{})

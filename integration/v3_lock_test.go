@@ -41,7 +41,7 @@ func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) 
 	lockedC := make(chan *concurrency.Mutex, 1)
 	for i := 0; i < waiters; i++ {
 		go func() {
-			m := concurrency.NewMutex(context.TODO(), chooseClient(), "test-mutex")
+			m := concurrency.NewMutex(chooseClient(), "test-mutex")
 			if err := m.Lock(context.TODO()); err != nil {
 				t.Fatalf("could not wait on lock (%v)", err)
 			}

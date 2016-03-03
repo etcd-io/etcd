@@ -49,13 +49,13 @@ func NewSession(client *v3.Client) (*Session, error) {
 		return s, nil
 	}
 
-	resp, err := client.Create(context.TODO(), sessionTTL)
+	resp, err := client.Create(client.Ctx(), sessionTTL)
 	if err != nil {
 		return nil, err
 	}
 	id := lease.LeaseID(resp.ID)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(client.Ctx())
 	keepAlive, err := client.KeepAlive(ctx, id)
 	if err != nil || keepAlive == nil {
 		return nil, err
@@ -99,6 +99,6 @@ func (s *Session) Orphan() {
 // Close orphans the session and revokes the session lease.
 func (s *Session) Close() error {
 	s.Orphan()
-	_, err := s.client.Revoke(context.TODO(), s.id)
+	_, err := s.client.Revoke(s.client.Ctx(), s.id)
 	return err
 }
