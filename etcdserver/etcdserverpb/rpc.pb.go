@@ -875,6 +875,11 @@ type WatchCreateRequest struct {
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
 	// start_revision is an optional revision (including) to watch from. No start_revision is "now".
 	StartRevision int64 `protobuf:"varint,3,opt,name=start_revision,proto3" json:"start_revision,omitempty"`
+	// if progress_notify is set, etcd server sends WatchResponse with empty events to the
+	// created watcher when there are no recent events. It is useful when clients want always to be
+	// able to recover a disconnected watcher from a recent known revision.
+	// etcdsever can decide how long it should send a notification based on current load.
+	ProgressNotify bool `protobuf:"varint,4,opt,name=progress_notify,proto3" json:"progress_notify,omitempty"`
 }
 
 func (m *WatchCreateRequest) Reset()         { *m = WatchCreateRequest{} }
@@ -3374,6 +3379,16 @@ func (m *WatchCreateRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.StartRevision))
 	}
+	if m.ProgressNotify {
+		data[i] = 0x20
+		i++
+		if m.ProgressNotify {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
 	return i, nil
 }
 
@@ -5017,6 +5032,9 @@ func (m *WatchCreateRequest) Size() (n int) {
 	}
 	if m.StartRevision != 0 {
 		n += 1 + sovRpc(uint64(m.StartRevision))
+	}
+	if m.ProgressNotify {
+		n += 2
 	}
 	return n
 }
@@ -7693,6 +7711,26 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProgressNotify", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ProgressNotify = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])

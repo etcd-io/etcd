@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -818,5 +819,59 @@ func TestV3WatchInvalidFutureRevision(t *testing.T) {
 	if resp.WatchId != -1 || !resp.Created || !resp.Canceled || len(resp.Events) != 0 {
 		t.Errorf("invalid start-rev expected -1, true, true, 0, but got %d, %v, %v, %d",
 			resp.WatchId, resp.Created, resp.Canceled, len(resp.Events))
+	}
+}
+
+func TestWatchWithProgressNotify(t *testing.T) {
+	testInterval := 3 * time.Second
+	pi := v3rpc.ProgressReportInterval
+	v3rpc.ProgressReportInterval = testInterval
+	defer func() { v3rpc.ProgressReportInterval = pi }()
+
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	wStream, wErr := toGRPC(clus.RandClient()).Watch.Watch(ctx)
+	if wErr != nil {
+		t.Fatalf("wAPI.Watch error: %v", wErr)
+	}
+
+	// create two watchers, one with progressNotify set.
+	wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
+		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 1, ProgressNotify: true}}}
+	if err := wStream.Send(wreq); err != nil {
+		t.Fatalf("watch request failed (%v)", err)
+	}
+	wreq = &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
+		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 1}}}
+	if err := wStream.Send(wreq); err != nil {
+		t.Fatalf("watch request failed (%v)", err)
+	}
+
+	// two creation  + one notification
+	for i := 0; i < 3; i++ {
+		rok, resp := waitResponse(wStream, testInterval+time.Second)
+		if resp.Created {
+			continue
+		}
+
+		if rok {
+			t.Errorf("failed to receive response from watch stream")
+		}
+		if resp.Header.Revision != 1 {
+			t.Errorf("revision = %d, want 1", resp.Header.Revision)
+		}
+		if len(resp.Events) != 0 {
+			t.Errorf("len(resp.Events) = %d, want 0", len(resp.Events))
+		}
+	}
+
+	// no more notification
+	rok, resp := waitResponse(wStream, testInterval+time.Second)
+	if !rok {
+		t.Errorf("unexpected pb.WatchResponse is received %+v", resp)
 	}
 }
