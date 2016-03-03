@@ -88,6 +88,7 @@ func TestCancelUnsynced(t *testing.T) {
 		// to make the test not crash from assigning to nil map.
 		// 'synced' doesn't get populated in this test.
 		synced: newWatcherGroup(),
+		ids:    make(map[WatchID]WatchStatus),
 	}
 
 	defer func() {
@@ -140,6 +141,7 @@ func TestSyncWatchers(t *testing.T) {
 		store:    NewStore(b, &lease.FakeLessor{}),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
+		ids:      make(map[WatchID]WatchStatus),
 	}
 
 	defer func() {

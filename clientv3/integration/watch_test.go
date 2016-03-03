@@ -356,3 +356,94 @@ func TestWatchInvalidFutureRevision(t *testing.T) {
 		t.Fatalf("expected wresp 'closed'(ok false), but got ok %v", ok)
 	}
 }
+
+func TestWatchWithProgressReport(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	tests := []struct {
+		currentRevision int64
+		events          []*storagepb.Event
+		compactRevision int64
+		canceled        bool
+		progressReport  bool
+		startRevision   int64
+	}{
+		{1, []*storagepb.Event{}, 0, false, true, 2},
+		{1, []*storagepb.Event{}, 0, false, true, 2},
+		{1, []*storagepb.Event{}, 0, false, true, 2},
+
+		{2, []*storagepb.Event{{
+			Type: storagepb.PUT,
+			Kv:   &storagepb.KeyValue{Key: []byte("key_0"), Value: []byte("value"), CreateRevision: 2, ModRevision: 2, Version: 1},
+		}}, 0, false, false, 2},
+
+		{3, []*storagepb.Event{{
+			Type: storagepb.PUT,
+			Kv:   &storagepb.KeyValue{Key: []byte("key_1"), Value: []byte("value"), CreateRevision: 3, ModRevision: 3, Version: 1},
+		}}, 0, false, false, 2},
+
+		{3, []*storagepb.Event{}, 0, false, true, 2},
+		{3, []*storagepb.Event{}, 0, false, true, 2},
+	}
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	ready := make(chan struct{})
+	go func() {
+		<-ready
+		kvc := clientv3.NewKV(clus.RandClient())
+		for i := range make([]int, 2) {
+			if _, err := kvc.Put(context.TODO(), fmt.Sprintf("key_%d", i), "value"); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}()
+
+	w := clientv3.NewWatcher(clus.RandClient())
+	defer w.Close()
+
+	reportInterval := time.Second
+	rch := w.Watch(context.Background(), "key", clientv3.WithPrefix(), withProgressReport(reportInterval)) // clientv3.WithProgressReport(reportInterval)
+
+	for i := range tests {
+		select {
+		case wresp := <-rch:
+			if tests[i].currentRevision != wresp.Header.Revision {
+				t.Fatalf("#%d: tests[i].currentRevision expected %d, got %d", i, tests[i].currentRevision, wresp.Header.Revision)
+			}
+			if len(tests[i].events) != len(wresp.Events) {
+				t.Fatalf("#%d: len(tests[i].events) expected %d, got %d", i, len(tests[i].events), len(wresp.Events))
+			}
+			if len(tests[i].events) > 0 {
+				if !reflect.DeepEqual(tests[i].events, wresp.Events) {
+					t.Fatalf("#%d: tests[i].events expected %+v, got %+v", i, tests[i].events, wresp.Events)
+				}
+			}
+			if tests[i].compactRevision != wresp.CompactRevision {
+				t.Fatalf("#%d: tests[i].compactRevision expected %d, got %d", i, tests[i].compactRevision, wresp.CompactRevision)
+			}
+			if tests[i].canceled != wresp.Canceled {
+				t.Fatalf("#%d: tests[i].canceled expected %v, got %v", i, tests[i].canceled, wresp.Canceled)
+			}
+			if tests[i].progressReport != wresp.ProgressReport {
+				t.Fatalf("#%d: tests[i].progressReport expected %v, got %v", i, tests[i].progressReport, wresp.ProgressReport)
+			}
+			if tests[i].startRevision != wresp.StartRevision {
+				t.Fatalf("#%d: tests[i].startRevision expected %d, got %d", i, tests[i].startRevision, wresp.StartRevision)
+			}
+			if i == 2 {
+				close(ready) // trigger PUT
+			}
+		case <-time.After(3 * reportInterval):
+			t.Fatalf("#%d: expected notification in %v, but timed out", i, reportInterval)
+		}
+	}
+}
+
+func withProgressReport(interval time.Duration) clientv3.OpOption {
+	return func(op *clientv3.Op) {
+		op.ProgressReport = true
+		op.ReportInterval = int64(interval.Seconds())
+	}
+}

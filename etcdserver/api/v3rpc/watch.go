@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"io"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -59,7 +60,11 @@ type serverWatchStream struct {
 
 	gRPCStream  pb.Watch_WatchServer
 	watchStream storage.WatchStream
-	ctrlStream  chan *pb.WatchResponse
+	// ctrlStream is a channel for sending control response like watcher created and canceled.
+	ctrlStream chan *pb.WatchResponse
+	// reportStream is a channel for sending progress report messages.
+	reportStream chan *pb.WatchResponse
+	reportDone   chan struct{}
 
 	// closec indicates the stream is closed.
 	closec chan struct{}
@@ -67,14 +72,15 @@ type serverWatchStream struct {
 
 func (ws *watchServer) Watch(stream pb.Watch_WatchServer) error {
 	sws := serverWatchStream{
-		clusterID:   ws.clusterID,
-		memberID:    ws.memberID,
-		raftTimer:   ws.raftTimer,
-		gRPCStream:  stream,
-		watchStream: ws.watchable.NewWatchStream(),
-		// chan for sending control response like watcher created and canceled.
-		ctrlStream: make(chan *pb.WatchResponse, ctrlStreamBufLen),
-		closec:     make(chan struct{}),
+		clusterID:    ws.clusterID,
+		memberID:     ws.memberID,
+		raftTimer:    ws.raftTimer,
+		gRPCStream:   stream,
+		watchStream:  ws.watchable.NewWatchStream(),
+		ctrlStream:   make(chan *pb.WatchResponse, ctrlStreamBufLen),
+		reportStream: make(chan *pb.WatchResponse),
+		reportDone:   make(chan struct{}),
+		closec:       make(chan struct{}),
 	}
 	defer sws.close()
 
@@ -117,10 +123,33 @@ func (sws *serverWatchStream) recvLoop() error {
 				id = sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev)
 			}
 			sws.ctrlStream <- &pb.WatchResponse{
-				Header:   sws.newResponseHeader(wsrev),
-				WatchId:  int64(id),
-				Created:  true,
-				Canceled: futureRev,
+				Header:        sws.newResponseHeader(wsrev),
+				WatchId:       int64(id),
+				Created:       true,
+				Canceled:      futureRev,
+				StartRevision: rev,
+			}
+
+			if uv.CreateRequest.ProgressReport {
+				go func() {
+					for {
+						select {
+						case <-sws.reportDone:
+							close(sws.reportStream)
+							return
+						case <-time.After(time.Duration(uv.CreateRequest.ReportInterval) * time.Second):
+							if sws.watchStream.WatchStatus(int64(id)) != storage.Synced {
+								continue // skip if the watcher is not synced
+							}
+							sws.reportStream <- &pb.WatchResponse{
+								Header:         sws.newResponseHeader(sws.watchStream.Rev()),
+								WatchId:        int64(id),
+								ProgressReport: uv.CreateRequest.ProgressReport,
+								StartRevision:  rev,
+							}
+						}
+					}
+				}()
 			}
 		case *pb.WatchRequest_CancelRequest:
 			if uv.CancelRequest != nil {
@@ -143,7 +172,7 @@ func (sws *serverWatchStream) recvLoop() error {
 
 func (sws *serverWatchStream) sendLoop() {
 	// watch ids that are currently active
-	ids := make(map[storage.WatchID]struct{})
+	ids := make(map[storage.WatchID]int64)
 	// watch responses pending on a watch id creation message
 	pending := make(map[storage.WatchID][]*pb.WatchResponse)
 
@@ -170,11 +199,13 @@ func (sws *serverWatchStream) sendLoop() {
 				CompactRevision: wresp.CompactRevision,
 			}
 
-			if _, hasId := ids[wresp.WatchID]; !hasId {
+			if rev, hasId := ids[wresp.WatchID]; !hasId {
 				// buffer if id not yet announced
 				wrs := append(pending[wresp.WatchID], wr)
 				pending[wresp.WatchID] = wrs
 				continue
+			} else {
+				wr.StartRevision = rev
 			}
 
 			storage.ReportEventReceived()
@@ -199,7 +230,7 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 			if c.Created {
 				// flush buffered events
-				ids[wid] = struct{}{}
+				ids[wid] = c.StartRevision
 				for _, v := range pending[wid] {
 					storage.ReportEventReceived()
 					if err := sws.gRPCStream.Send(v); err != nil {
@@ -208,6 +239,15 @@ func (sws *serverWatchStream) sendLoop() {
 				}
 				delete(pending, wid)
 			}
+
+		case c, ok := <-sws.reportStream:
+			if !ok {
+				return
+			}
+			if err := sws.gRPCStream.Send(c); err != nil {
+				return
+			}
+
 		case <-sws.closec:
 			// drain the chan to clean up pending events
 			for range sws.watchStream.Chan() {
@@ -226,6 +266,7 @@ func (sws *serverWatchStream) close() {
 	sws.watchStream.Close()
 	close(sws.closec)
 	close(sws.ctrlStream)
+	close(sws.reportDone)
 }
 
 func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {

@@ -311,6 +311,11 @@ message WatchCreateRequest {
   bytes range_end = 2;
   // start_revision is an optional revision (including) to watch from. No start_revision is "now".
   int64 start_revision = 3;
+
+  // ProgressReport 'true' subscribes to periodic watch status updates.
+  bool progress_report = 4;
+  // ReportInterval is progress report frequency in seconds. If 600, it notifies every 10-minute.
+  int64 report_interval = 5;
 }
 
 message WatchCancelRequest {
@@ -338,6 +343,11 @@ message WatchResponse {
   // Client should treat the watching as canceled and should not try to create any
   // watching with same start_revision again.
   int64 compact_revision  = 5;
+
+  // ProgressReport is 'true' if the response is the report (not watch event).
+  bool progress_report = 6;
+  // StartRevision is the watch start revision of the request.
+  int64 start_revision  = 7;
 
   repeated storagepb.Event events = 11;
 }

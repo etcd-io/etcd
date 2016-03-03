@@ -15,6 +15,8 @@
 package clientv3
 
 import (
+	"time"
+
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 )
@@ -45,6 +47,10 @@ type Op struct {
 	// for put
 	val     []byte
 	leaseID lease.LeaseID
+
+	// ProgressReport is for watch status updates.
+	ProgressReport bool
+	ReportInterval int64
 }
 
 func (op Op) toRequestUnion() *pb.RequestUnion {
@@ -125,6 +131,8 @@ func opWatch(key string, opts ...OpOption) Op {
 		panic("unexpected sort in watch")
 	case ret.serializable != false:
 		panic("unexpected serializable in watch")
+	case ret.ProgressReport && ret.ReportInterval == 0:
+		panic("unexpected progress report interval 0")
 	}
 	return ret
 }
@@ -224,4 +232,18 @@ func WithLastRev() []OpOption { return withTop(SortByModifiedRev, SortDescend) }
 // withTop gets the first key over the get's prefix given a sort order
 func withTop(target SortTarget, order SortOrder) []OpOption {
 	return []OpOption{WithPrefix(), WithSort(target, order), WithLimit(1)}
+}
+
+var minReportInterval = 10 * time.Minute
+
+// WithProgressReport makes watch server send periodic status updates.
+// The minimum interval is 10-minute.
+func WithProgressReport(interval time.Duration) OpOption {
+	if interval < minReportInterval {
+		interval = minReportInterval
+	}
+	return func(op *Op) {
+		op.ProgressReport = true
+		op.ReportInterval = int64(interval.Seconds())
+	}
 }

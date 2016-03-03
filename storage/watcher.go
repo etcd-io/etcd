@@ -51,6 +51,9 @@ type WatchStream interface {
 
 	// Rev returns the current revision of the KV the stream watches on.
 	Rev() int64
+
+	// WatchStatus returns the current revision of the KV the stream watches on.
+	WatchStatus(id int64) WatchStatus
 }
 
 type WatchResponse struct {
@@ -132,4 +135,10 @@ func (ws *watchStream) Rev() int64 {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
 	return ws.watchable.rev()
+}
+
+func (ws *watchStream) WatchStatus(id int64) WatchStatus {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	return ws.watchable.watchStatus(id)
 }
