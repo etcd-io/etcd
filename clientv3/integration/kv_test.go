@@ -454,3 +454,26 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	case <-donec:
 	}
 }
+
+// TestKVGetCancel tests that a context cancel on a Get terminates as expected.
+func TestKVGetCancel(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	oldconn := clus.Client(0).ActiveConnection()
+	kv := clientv3.NewKV(clus.Client(0))
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
+
+	resp, err := kv.Get(ctx, "abc")
+	if err == nil {
+		t.Fatalf("cancel on get response %v, expected context error", resp)
+	}
+	newconn := clus.Client(0).ActiveConnection()
+	if oldconn != newconn {
+		t.Fatalf("cancel on get broke client connection")
+	}
+}

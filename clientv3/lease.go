@@ -112,8 +112,7 @@ func (l *lessor) Create(ctx context.Context, ttl int64) (*LeaseCreateResponse, e
 		if err == nil {
 			return (*LeaseCreateResponse)(resp), nil
 		}
-
-		if isRPCError(err) {
+		if isHalted(cctx, err) {
 			return nil, err
 		}
 		if nerr := l.switchRemoteAndStream(err); nerr != nil {
@@ -134,8 +133,7 @@ func (l *lessor) Revoke(ctx context.Context, id lease.LeaseID) (*LeaseRevokeResp
 		if err == nil {
 			return (*LeaseRevokeResponse)(resp), nil
 		}
-
-		if isRPCError(err) {
+		if isHalted(ctx, err) {
 			return nil, err
 		}
 
@@ -261,7 +259,7 @@ func (l *lessor) recvKeepAliveLoop() {
 	for serr == nil {
 		resp, err := stream.Recv()
 		if err != nil {
-			if isRPCError(err) {
+			if isHalted(l.stopCtx, err) {
 				return
 			}
 			stream, serr = l.resetRecv()

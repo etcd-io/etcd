@@ -116,7 +116,7 @@ func (kv *kv) Compact(ctx context.Context, rev int64) error {
 		return nil
 	}
 
-	if isRPCError(err) {
+	if isHalted(ctx, err) {
 		return err
 	}
 
@@ -166,7 +166,7 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 			panic("Unknown op")
 		}
 
-		if isRPCError(err) {
+		if isHalted(ctx, err) {
 			return OpResponse{}, err
 		}
 
