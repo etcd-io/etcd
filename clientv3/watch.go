@@ -452,7 +452,7 @@ func (w *watcher) openWatchClient() (ws pb.Watch_WatchClient, err error) {
 	for {
 		if ws, err = w.remote.Watch(w.ctx); ws != nil {
 			break
-		} else if isRPCError(err) {
+		} else if isHalted(w.ctx, err) {
 			return nil, err
 		}
 		newConn, nerr := w.c.retryConnection(w.conn, nil)

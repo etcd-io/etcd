@@ -15,9 +15,11 @@
 package clientv3
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 )
 
@@ -50,5 +52,19 @@ func TestDialTimeout(t *testing.T) {
 		if err != grpc.ErrClientConnTimeout {
 			t.Errorf("unexpected error %v, want %v", err, grpc.ErrClientConnTimeout)
 		}
+	}
+}
+
+func TestIsHalted(t *testing.T) {
+	if !isHalted(nil, fmt.Errorf("etcdserver: some etcdserver error")) {
+		t.Errorf(`error prefixed with "etcdserver: " should be Halted`)
+	}
+	ctx, cancel := context.WithCancel(context.TODO())
+	if isHalted(ctx, nil) {
+		t.Errorf("no error and active context should not be Halted")
+	}
+	cancel()
+	if !isHalted(ctx, nil) {
+		t.Errorf("cancel on context should be Halted")
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
 	"github.com/coreos/etcd/pkg/transport"
@@ -200,6 +201,9 @@ func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 	return nil, err
 }
 
-func isRPCError(err error) bool {
-	return strings.HasPrefix(grpc.ErrorDesc(err), "etcdserver: ")
+// isHalted returns true if the given error and context indicate no forward
+// progress can be made, even after reconnecting.
+func isHalted(ctx context.Context, err error) bool {
+	isRPCError := strings.HasPrefix(grpc.ErrorDesc(err), "etcdserver: ")
+	return isRPCError || ctx.Err() != nil
 }

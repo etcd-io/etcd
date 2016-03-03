@@ -144,7 +144,7 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 			return (*TxnResponse)(resp), nil
 		}
 
-		if isRPCError(err) {
+		if isHalted(txn.ctx, err) {
 			return nil, err
 		}
 
