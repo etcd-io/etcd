@@ -36,6 +36,11 @@ type User struct {
 	Revoke   []string `json:"revoke,omitempty"`
 }
 
+type UserRoles struct {
+	User  string `json:"user"`
+	Roles []Role `json:"roles"`
+}
+
 func v2AuthURL(ep url.URL, action string, name string) *url.URL {
 	if name != "" {
 		ep.Path = path.Join(ep.Path, defaultV2AuthPrefix, action, name)
@@ -289,7 +294,14 @@ func (u *httpAuthUserAPI) modUser(ctx context.Context, req *authUserAPIAction) (
 	}
 	var user User
 	if err = json.Unmarshal(body, &user); err != nil {
-		return nil, err
+		var userR UserRoles
+		if urerr := json.Unmarshal(body, &userR); urerr != nil {
+			return nil, err
+		}
+		user.User = userR.User
+		for _, r := range userR.Roles {
+			user.Roles = append(user.Roles, r.Role)
+		}
 	}
 	return &user, nil
 }
