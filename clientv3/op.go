@@ -42,6 +42,9 @@ type Op struct {
 	// for range, watch
 	rev int64
 
+	// progressNotify is for progress updates.
+	progressNotify bool
+
 	// for put
 	val     []byte
 	leaseID lease.LeaseID
@@ -224,4 +227,12 @@ func WithLastRev() []OpOption { return withTop(SortByModifiedRev, SortDescend) }
 // withTop gets the first key over the get's prefix given a sort order
 func withTop(target SortTarget, order SortOrder) []OpOption {
 	return []OpOption{WithPrefix(), WithSort(target, order), WithLimit(1)}
+}
+
+// WithProgressNotify makes watch server send periodic progress updates.
+// Progress updates have zero events in WatchResponse.
+func WithProgressNotify() OpOption {
+	return func(op *Op) {
+		op.progressNotify = true
+	}
 }

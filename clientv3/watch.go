@@ -94,6 +94,8 @@ type watchRequest struct {
 	key string
 	end string
 	rev int64
+	// progressNotify is for progress updates.
+	progressNotify bool
 	// retc receives a chan WatchResponse once the watcher is established
 	retc chan chan WatchResponse
 }
@@ -143,11 +145,12 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 
 	retc := make(chan chan WatchResponse, 1)
 	wr := &watchRequest{
-		ctx:  ctx,
-		key:  string(ow.key),
-		end:  string(ow.end),
-		rev:  ow.rev,
-		retc: retc,
+		ctx:            ctx,
+		key:            string(ow.key),
+		end:            string(ow.end),
+		rev:            ow.rev,
+		progressNotify: ow.progressNotify,
+		retc:           retc,
 	}
 
 	ok := false
@@ -392,7 +395,12 @@ func (w *watcher) serveStream(ws *watcherStream) {
 				closing = true
 				break
 			}
-			newRev := wrs[0].Events[len(wrs[0].Events)-1].Kv.ModRevision
+			var newRev int64
+			if len(wrs[0].Events) > 0 {
+				newRev = wrs[0].Events[len(wrs[0].Events)-1].Kv.ModRevision
+			} else {
+				newRev = wrs[0].Header.Revision
+			}
 			if newRev != ws.lastRev {
 				ws.lastRev = newRev
 			}
@@ -518,9 +526,10 @@ func (w *watcher) resumeWatchers(wc pb.Watch_WatchClient) error {
 // toPB converts an internal watch request structure to its protobuf messagefunc (wr *watchRequest)
 func (wr *watchRequest) toPB() *pb.WatchRequest {
 	req := &pb.WatchCreateRequest{
-		StartRevision: wr.rev,
-		Key:           []byte(wr.key),
-		RangeEnd:      []byte(wr.end),
+		StartRevision:  wr.rev,
+		Key:            []byte(wr.key),
+		RangeEnd:       []byte(wr.end),
+		ProgressNotify: wr.progressNotify,
 	}
 	cr := &pb.WatchRequest_CreateRequest{CreateRequest: req}
 	return &pb.WatchRequest{RequestUnion: cr}
