@@ -29,7 +29,6 @@ var (
 
 type Election struct {
 	client *v3.Client
-	ctx    context.Context
 
 	keyPrefix string
 
@@ -39,8 +38,8 @@ type Election struct {
 }
 
 // NewElection returns a new election on a given key prefix.
-func NewElection(ctx context.Context, client *v3.Client, pfx string) *Election {
-	return &Election{client: client, ctx: ctx, keyPrefix: pfx}
+func NewElection(client *v3.Client, pfx string) *Election {
+	return &Election{client: client, keyPrefix: pfx}
 }
 
 // Campaign puts a value as eligible for the election. It blocks until
@@ -60,7 +59,7 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 		// clean up in case of context cancel
 		select {
 		case <-ctx.Done():
-			e.client.Delete(e.ctx, k)
+			e.client.Delete(e.client.Ctx(), k)
 		default:
 		}
 		return err
@@ -94,7 +93,7 @@ func (e *Election) Resign() (err error) {
 	if e.leaderSession == nil {
 		return nil
 	}
-	_, err = e.client.Delete(e.ctx, e.leaderKey)
+	_, err = e.client.Delete(e.client.Ctx(), e.leaderKey)
 	e.leaderKey = ""
 	e.leaderSession = nil
 	return err
@@ -102,7 +101,7 @@ func (e *Election) Resign() (err error) {
 
 // Leader returns the leader value for the current election.
 func (e *Election) Leader() (string, error) {
-	resp, err := e.client.Get(e.ctx, e.keyPrefix, v3.WithFirstCreate()...)
+	resp, err := e.client.Get(e.client.Ctx(), e.keyPrefix, v3.WithFirstCreate()...)
 	if err != nil {
 		return "", err
 	} else if len(resp.Kvs) == 0 {

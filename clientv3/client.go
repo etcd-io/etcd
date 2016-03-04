@@ -45,6 +45,9 @@ type Client struct {
 	creds  *credentials.TransportAuthenticator
 	mu     sync.RWMutex // protects connection selection and error list
 	errors []error      // errors passed to retryConnection
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // EndpointDialer is a policy for choosing which endpoint to dial next
@@ -83,10 +86,22 @@ func NewFromURL(url string) (*Client, error) {
 
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.cancel == nil {
+		return nil
+	}
+	c.cancel()
+	c.cancel = nil
 	c.Watcher.Close()
 	c.Lease.Close()
 	return c.conn.Close()
 }
+
+// Ctx is a context for "out of band" messages (e.g., for sending
+// "clean up" message when another context is canceled). It is
+// canceled on client Close().
+func (c *Client) Ctx() context.Context { return c.ctx }
 
 // Endpoints lists the registered endpoints for the client.
 func (c *Client) Endpoints() []string { return c.cfg.Endpoints }
@@ -145,10 +160,13 @@ func newClient(cfg *Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := context.WithCancel(context.TODO())
 	client := &Client{
-		conn:  conn,
-		cfg:   *cfg,
-		creds: creds,
+		conn:   conn,
+		cfg:    *cfg,
+		creds:  creds,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 	client.Cluster = NewCluster(client)
 	client.KV = NewKV(client)
@@ -172,6 +190,9 @@ func (c *Client) retryConnection(oldConn *grpc.ClientConn, err error) (*grpc.Cli
 	defer c.mu.Unlock()
 	if err != nil {
 		c.errors = append(c.errors, err)
+	}
+	if c.cancel == nil {
+		return nil, c.ctx.Err()
 	}
 	if oldConn != c.conn {
 		// conn has already been updated
