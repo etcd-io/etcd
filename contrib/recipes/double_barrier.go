@@ -74,6 +74,9 @@ func (b *DoubleBarrier) Enter() error {
 // Leave waits for "count" processes to leave the barrier then returns
 func (b *DoubleBarrier) Leave() error {
 	resp, err := b.client.Get(b.ctx, b.key+"/waiters", clientv3.WithPrefix())
+	if err != nil {
+		return err
+	}
 	if len(resp.Kvs) == 0 {
 		return nil
 	}

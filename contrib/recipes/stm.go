@@ -91,6 +91,9 @@ func (s *STM) commit() (ok bool, rr error) {
 		puts = append(puts, v3.OpPut(k, v))
 	}
 	txnresp, err := s.client.Txn(context.TODO()).If(cmps...).Then(puts...).Commit()
+	if err != nil {
+		return false, err
+	}
 	return txnresp.Succeeded, err
 }
 
