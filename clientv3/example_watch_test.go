@@ -59,3 +59,20 @@ func ExampleWatcher_watchPrefix() {
 	}
 	// PUT "foo1" : "bar"
 }
+
+func ExampleWatcher_watchProgressNotify() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rch := cli.Watch(context.Background(), "foo", clientv3.WithProgressNotify())
+	wresp := <-rch
+	fmt.Printf("wresp.Header.Revision: %d\n", wresp.Header.Revision)
+	fmt.Println("wresp.IsProgressNotify:", wresp.IsProgressNotify())
+	// wresp.Header.Revision: 0
+	// wresp.IsProgressNotify: true
+}
