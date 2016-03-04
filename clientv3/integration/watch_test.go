@@ -396,3 +396,59 @@ func TestWatchCompactRevision(t *testing.T) {
 		t.Fatalf("expected closed channel, but got %v", wresp)
 	}
 }
+
+func TestWatchWithProgressNotify(t *testing.T)        { testWatchWithProgressNotify(t, true) }
+func TestWatchWithProgressNotifyNoEvent(t *testing.T) { testWatchWithProgressNotify(t, false) }
+
+func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	wc := clientv3.NewWatcher(clus.RandClient())
+	defer wc.Close()
+
+	testInterval := 3 * time.Second
+	pi := v3rpc.ProgressReportInterval
+	v3rpc.ProgressReportInterval = testInterval
+	defer func() { v3rpc.ProgressReportInterval = pi }()
+
+	opts := []clientv3.OpOption{clientv3.WithProgressNotify()}
+	if watchOnPut {
+		opts = append(opts, clientv3.WithPrefix())
+	}
+	rch := wc.Watch(context.Background(), "foo", opts...)
+
+	select {
+	case resp := <-rch: // wait for notification
+		if len(resp.Events) != 0 {
+			t.Fatalf("resp.Events expected none, got %+v", resp.Events)
+		}
+	case <-time.After(2 * pi):
+		t.Fatalf("watch response expected in %v, but timed out", pi)
+	}
+
+	kvc := clientv3.NewKV(clus.RandClient())
+	if _, err := kvc.Put(context.TODO(), "foox", "bar"); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case resp := <-rch:
+		if resp.Header.Revision != 2 {
+			t.Fatalf("resp.Header.Revision expected 2, got %d", resp.Header.Revision)
+		}
+		if watchOnPut { // wait for put if watch on the put key
+			ev := []*storagepb.Event{{Type: storagepb.PUT,
+				Kv: &storagepb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}}
+			if !reflect.DeepEqual(ev, resp.Events) {
+				t.Fatalf("expected %+v, got %+v", ev, resp.Events)
+			}
+		} else if len(resp.Events) != 0 { // wait for notification otherwise
+			t.Fatalf("expected no events, but got %+v", resp.Events)
+		}
+	case <-time.After(2 * pi):
+		t.Fatalf("watch response expected in %v, but timed out", pi)
+	}
+}
