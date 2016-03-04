@@ -230,6 +230,22 @@ func TestV3LeaseExists(t *testing.T) {
 	}
 }
 
+func TestV3PutOnNonExistLease(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	badLeaseID := int64(0x12345678)
+	putr := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: badLeaseID}
+	_, err := toGRPC(clus.RandClient()).KV.Put(ctx, putr)
+	if err != v3rpc.ErrLeaseNotFound {
+		t.Errorf("err = %v, want %v", err, v3rpc.ErrCompacted)
+	}
+}
+
 // TestV3LeaseSwitch tests a key can be switched from one lease to another.
 func TestV3LeaseSwitch(t *testing.T) {
 	defer testutil.AfterTest(t)
