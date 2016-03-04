@@ -61,6 +61,11 @@ func (wr *WatchResponse) Err() error {
 	return nil
 }
 
+// IsProgressNotify returns true if the WatchResponse is progress notification.
+func (wr *WatchResponse) IsProgressNotify() bool {
+	return len(wr.Events) == 0 && !wr.Canceled
+}
+
 // watcher implements the Watcher interface
 type watcher struct {
 	c      *Client
