@@ -43,6 +43,9 @@ var (
 
 	keySpaceSize int
 	seqKeys      bool
+
+	compactInterval   time.Duration
+	compactIndexDelta int64
 )
 
 func init() {
@@ -52,6 +55,8 @@ func init() {
 	putCmd.Flags().IntVar(&putTotal, "total", 10000, "Total number of put requests")
 	putCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
+	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
+	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
@@ -90,6 +95,15 @@ func putFunc(cmd *cobra.Command, args []string) {
 		close(requests)
 	}()
 
+	if compactInterval > 0 {
+		go func() {
+			for {
+				time.Sleep(compactInterval)
+				compactKV(clients)
+			}
+		}()
+	}
+
 	wg.Wait()
 
 	bar.Finish()
@@ -112,4 +126,35 @@ func doPut(ctx context.Context, client v3.KV, requests <-chan v3.Op) {
 		results <- result{errStr: errStr, duration: time.Since(st)}
 		bar.Increment()
 	}
+}
+
+func compactKV(clients []*v3.Client) {
+	var curRev int64
+	for _, c := range clients {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		resp, err := c.KV.Get(ctx, "foo")
+		cancel()
+		if err != nil {
+			panic(err)
+		}
+		curRev = resp.Header.Revision
+		break
+	}
+	revToCompact := max(0, curRev-compactIndexDelta)
+	for _, c := range clients {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := c.KV.Compact(ctx, revToCompact)
+		cancel()
+		if err != nil {
+			panic(err)
+		}
+		break
+	}
+}
+
+func max(n1, n2 int64) int64 {
+	if n1 > n2 {
+		return n1
+	}
+	return n2
 }
