@@ -29,9 +29,7 @@ func TestCtlV2SetTLS(t *testing.T)       { testCtlV2Set(t, &defaultConfigTLS, fa
 func testCtlV2Set(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	defer testutil.AfterTest(t)
 
-	if fileutil.Exist("../bin/etcdctl") == false {
-		t.Fatalf("could not find etcdctl binary")
-	}
+	mustEtcdctl(t)
 
 	epc, errC := newEtcdProcessCluster(cfg)
 	if errC != nil {
@@ -59,9 +57,7 @@ func TestCtlV2MkTLS(t *testing.T) { testCtlV2Mk(t, &defaultConfigTLS, false) }
 func testCtlV2Mk(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	defer testutil.AfterTest(t)
 
-	if fileutil.Exist("../bin/etcdctl") == false {
-		t.Fatalf("could not find etcdctl binary")
-	}
+	mustEtcdctl(t)
 
 	epc, errC := newEtcdProcessCluster(cfg)
 	if errC != nil {
@@ -92,9 +88,7 @@ func TestCtlV2RmTLS(t *testing.T) { testCtlV2Rm(t, &defaultConfigTLS, false) }
 func testCtlV2Rm(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	defer testutil.AfterTest(t)
 
-	if fileutil.Exist("../bin/etcdctl") == false {
-		t.Fatalf("could not find etcdctl binary")
-	}
+	mustEtcdctl(t)
 
 	epc, errC := newEtcdProcessCluster(cfg)
 	if errC != nil {
@@ -125,9 +119,7 @@ func TestCtlV2LsTLS(t *testing.T) { testCtlV2Ls(t, &defaultConfigTLS, false) }
 func testCtlV2Ls(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	defer testutil.AfterTest(t)
 
-	if fileutil.Exist("../bin/etcdctl") == false {
-		t.Fatalf("could not find etcdctl binary")
-	}
+	mustEtcdctl(t)
 
 	epc, errC := newEtcdProcessCluster(cfg)
 	if errC != nil {
@@ -157,9 +149,7 @@ func TestCtlV2WatchWithProxyNoSync(t *testing.T) { testCtlV2Watch(t, &defaultCon
 func testCtlV2Watch(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	defer testutil.AfterTest(t)
 
-	if fileutil.Exist("../bin/etcdctl") == false {
-		t.Fatalf("could not find etcdctl binary")
-	}
+	mustEtcdctl(t)
 
 	epc, errC := newEtcdProcessCluster(cfg)
 	if errC != nil {
@@ -184,6 +174,42 @@ func testCtlV2Watch(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatalf("watch timed out")
+	}
+}
+
+func TestCtlV2GetRoleUser(t *testing.T)          { testCtlV2GetRoleUser(t, &defaultConfig) }
+func TestCtlV2GetRoleUserWithProxy(t *testing.T) { testCtlV2GetRoleUser(t, &defaultConfigWithProxy) }
+
+func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
+	defer testutil.AfterTest(t)
+
+	mustEtcdctl(t)
+
+	epc, cerr := newEtcdProcessCluster(cfg)
+	if cerr != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", cerr)
+	}
+	defer func() {
+		if err := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", err)
+		}
+	}()
+
+	// wait for the server capabilities to be updated based on the version;
+	// the update loop has a delay of 500ms, so 1s should be enough wait time
+	time.Sleep(time.Second)
+
+	if err := etcdctlAddRole(epc, "foo"); err != nil {
+		t.Fatalf("failed to add role (%v)", err)
+	}
+	if err := etcdctlUserAdd(epc, "username", "password"); err != nil {
+		t.Fatalf("failed to add user (%v)", err)
+	}
+	if err := etcdctlUserGrant(epc, "username", "foo"); err != nil {
+		t.Fatalf("failed to grant role (%v)", err)
+	}
+	if err := etcdctlUserGet(epc, "username"); err != nil {
+		t.Fatalf("failed to get user (%v)", err)
 	}
 }
 
@@ -242,4 +268,30 @@ func etcdctlWatch(clus *etcdProcessCluster, key, value string, noSync bool) <-ch
 		errc <- spawnWithExpect(cmdArgs, value)
 	}()
 	return errc
+}
+
+func etcdctlAddRole(clus *etcdProcessCluster, role string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus, false), "role", "add", role)
+	return spawnWithExpectedString(cmdArgs, role)
+}
+
+func etcdctlUserAdd(clus *etcdProcessCluster, user, pass string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus, false), "user", "add", user+":"+pass)
+	return spawnWithExpectedString(cmdArgs, "User "+user+" created")
+}
+
+func etcdctlUserGrant(clus *etcdProcessCluster, user, role string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus, false), "user", "grant", "--roles", role, user)
+	return spawnWithExpectedString(cmdArgs, "User "+user+" updated")
+}
+
+func etcdctlUserGet(clus *etcdProcessCluster, user string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus, false), "user", "get", user)
+	return spawnWithExpectedString(cmdArgs, "User: "+user)
+}
+
+func mustEtcdctl(t *testing.T) {
+	if !fileutil.Exist("../bin/etcdctl") {
+		t.Fatalf("could not find etcdctl binary")
+	}
 }
