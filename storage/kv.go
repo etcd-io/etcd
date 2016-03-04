@@ -68,6 +68,7 @@ type KV interface {
 	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
 
 	Compact(rev int64) error
+	SyncCompact(rev int64) error
 
 	// Hash retrieves the hash of KV state.
 	// This method is designed for consistency checking purpose.
