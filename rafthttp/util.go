@@ -18,10 +18,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
@@ -34,6 +36,9 @@ import (
 var (
 	errMemberRemoved  = fmt.Errorf("the member has been permanently removed from the cluster")
 	errMemberNotFound = fmt.Errorf("member not found")
+
+	// proposalRetryTerm indicates the proposal is a retried one
+	proposalRetryTerm = uint64(math.MaxUint64)
 )
 
 // NewListener returns a listener for raft message transfer between peers.
@@ -201,4 +206,43 @@ func setPeerURLsHeader(req *http.Request, urls types.URLs) {
 		peerURLs = append(peerURLs, url.String())
 	}
 	req.Header.Set("X-PeerURLs", strings.Join(peerURLs, ","))
+}
+
+type proposalRetrier struct {
+	t *Transport
+
+	mu  sync.Mutex
+	buf []raftpb.Message
+}
+
+func (pr *proposalRetrier) retry(m raftpb.Message) {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+
+	// drop message other than proposals since raft will retry other
+	// types of messages
+	// drop the already retried messages
+	if m.Type != raftpb.MsgProp || m.LogTerm == proposalRetryTerm {
+		return
+	}
+	if len(pr.buf) > 1024 {
+		return
+	}
+	m.LogTerm = proposalRetryTerm
+	pr.buf = append(pr.buf, m)
+}
+
+func (pr *proposalRetrier) run(stop chan struct{}) {
+	for {
+		select {
+		case <-stop:
+			return
+		case <-time.After(200 * time.Millisecond):
+			pr.mu.Lock()
+			msgs := pr.buf
+			pr.buf = make([]raftpb.Message, 0, 2048)
+			pr.mu.Unlock()
+			pr.t.Send(msgs)
+		}
+	}
 }

@@ -95,6 +95,7 @@ func (p *pipeline) handle() {
 
 			if err != nil {
 				p.status.deactivate(failureType{source: pipelineMsg, action: "write"}, err.Error())
+				p.tr.retry(m)
 
 				reportSentFailure(pipelineMsg, m)
 				if m.Type == raftpb.MsgApp && p.fs != nil {

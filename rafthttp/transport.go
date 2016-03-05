@@ -120,7 +120,8 @@ type Transport struct {
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
 	peers   map[types.ID]Peer    // peers map
 
-	prober probing.Prober
+	prober  probing.Prober
+	retrier *proposalRetrier
 }
 
 func (t *Transport) Start() error {
@@ -297,6 +298,12 @@ func (t *Transport) SendSnapshot(m snap.Message) {
 		return
 	}
 	p.sendSnap(m)
+}
+
+func (t *Transport) retry(m raftpb.Message) {
+	if t.retrier != nil {
+		t.retrier.retry(m)
+	}
 }
 
 // Pausable is a testing interface for pausing transport traffic.
