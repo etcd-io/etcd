@@ -97,6 +97,7 @@ type outgoingConn struct {
 
 // streamWriter writes messages to the attached outgoingConn.
 type streamWriter struct {
+	tr     *Transport
 	id     types.ID
 	status *peerStatus
 	fs     *stats.FollowerStats
@@ -114,8 +115,9 @@ type streamWriter struct {
 
 // startStreamWriter creates a streamWrite and starts a long running go-routine that accepts
 // messages and writes to the attached outgoing connection.
-func startStreamWriter(id types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft) *streamWriter {
+func startStreamWriter(tr *Transport, id types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft) *streamWriter {
 	w := &streamWriter{
+		tr:     tr,
 		id:     id,
 		status: status,
 		fs:     fs,
@@ -172,6 +174,7 @@ func (cw *streamWriter) run() {
 				continue
 			}
 
+			cw.tr.retry(m)
 			reportSentFailure(string(t), m)
 			cw.status.deactivate(failureType{source: t.String(), action: "write"}, err.Error())
 			cw.close()
