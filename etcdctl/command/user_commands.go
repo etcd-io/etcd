@@ -109,15 +109,17 @@ func actionUserList(c *cli.Context) {
 }
 
 func actionUserAdd(c *cli.Context) {
-	api, user := mustUserAPIAndName(c)
+	api, userarg := mustUserAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	defer cancel()
+	user, _, _ := getUsernamePassword("", userarg+":")
 	currentUser, err := api.GetUser(ctx, user)
 	if currentUser != nil {
 		fmt.Fprintf(os.Stderr, "User %s already exists\n", user)
 		os.Exit(1)
 	}
-	pass, err := speakeasy.Ask("New password: ")
+
+	_, pass, err := getUsernamePassword("New password: ", userarg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading password:", err)
 		os.Exit(1)

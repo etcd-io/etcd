@@ -172,11 +172,15 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 }
 
 func getUsernamePasswordFromFlag(usernameFlag string) (username string, password string, err error) {
+	return getUsernamePassword("Password: ", usernameFlag)
+}
+
+func getUsernamePassword(prompt, usernameFlag string) (username string, password string, err error) {
 	colon := strings.Index(usernameFlag, ":")
 	if colon == -1 {
 		username = usernameFlag
 		// Prompt for the password.
-		password, err = speakeasy.Ask("Password: ")
+		password, err = speakeasy.Ask(prompt)
 		if err != nil {
 			return "", "", err
 		}
