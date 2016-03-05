@@ -129,6 +129,9 @@ func (c *cluster) Bootstrap() error {
 		}
 	}
 
+	// TODO: Too intensive stressers can panic etcd member with
+	// 'out of memory' error. Put rate limits in server side.
+	stressN := 100
 	var stressers []Stresser
 	if c.v2Only {
 		for _, u := range clientURLs {
@@ -136,7 +139,7 @@ func (c *cluster) Bootstrap() error {
 				Endpoint:       u,
 				KeySize:        c.stressKeySize,
 				KeySuffixRange: c.stressKeySuffixRange,
-				N:              200,
+				N:              stressN,
 			}
 			go s.Stress()
 			stressers = append(stressers, s)
@@ -147,7 +150,7 @@ func (c *cluster) Bootstrap() error {
 				Endpoint:       u,
 				KeySize:        c.stressKeySize,
 				KeySuffixRange: c.stressKeySuffixRange,
-				N:              200,
+				N:              stressN,
 			}
 			go s.Stress()
 			stressers = append(stressers, s)
