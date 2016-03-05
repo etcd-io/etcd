@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -214,13 +215,17 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 }
 
 func etcdctlPrefixArgs(clus *etcdProcessCluster, noSync bool) []string {
-	endpoint := ""
+	endpoints := ""
 	if proxies := clus.proxies(); len(proxies) != 0 {
-		endpoint = proxies[0].cfg.acurl.String()
+		endpoints = proxies[0].cfg.acurl.String()
 	} else if backends := clus.backends(); len(backends) != 0 {
-		endpoint = backends[0].cfg.acurl.String()
+		es := []string{}
+		for _, b := range backends {
+			es = append(es, b.cfg.acurl.String())
+		}
+		endpoints = strings.Join(es, ",")
 	}
-	cmdArgs := []string{"../bin/etcdctl", "--endpoint", endpoint}
+	cmdArgs := []string{"../bin/etcdctl", "--endpoints", endpoints}
 	if noSync {
 		cmdArgs = append(cmdArgs, "--no-sync")
 	}
