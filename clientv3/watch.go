@@ -46,7 +46,9 @@ type WatchResponse struct {
 	// CompactRevision is the minimum revision the watcher may receive.
 	CompactRevision int64
 
-	// Canceled is set to indicate the channel is about to close.
+	// Canceled is used to indicate watch failure.
+	// If the watch failed and the stream was about to close, before the channel is closed,
+	// the channel sends a final response that has Canceled set to true with a non-nil Err().
 	Canceled bool
 }
 
