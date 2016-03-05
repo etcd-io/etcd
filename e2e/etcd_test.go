@@ -35,49 +35,49 @@ const (
 )
 
 var (
-	defaultConfig = etcdProcessClusterConfig{
+	configNoTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    0,
 		isClientTLS:  false,
 		isPeerTLS:    false,
 		initialToken: "new",
 	}
-	defaultConfigTLS = etcdProcessClusterConfig{
+	configTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    0,
 		isClientTLS:  true,
 		isPeerTLS:    true,
 		initialToken: "new",
 	}
-	defaultConfigClientTLS = etcdProcessClusterConfig{
+	configClientTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    0,
 		isClientTLS:  true,
 		isPeerTLS:    false,
 		initialToken: "new",
 	}
-	defaultConfigPeerTLS = etcdProcessClusterConfig{
+	configPeerTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    0,
 		isClientTLS:  false,
 		isPeerTLS:    true,
 		initialToken: "new",
 	}
-	defaultConfigWithProxy = etcdProcessClusterConfig{
+	configWithProxy = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    1,
 		isClientTLS:  false,
 		isPeerTLS:    false,
 		initialToken: "new",
 	}
-	defaultConfigWithProxyTLS = etcdProcessClusterConfig{
+	configWithProxyTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    1,
 		isClientTLS:  true,
 		isPeerTLS:    true,
 		initialToken: "new",
 	}
-	defaultConfigWithProxyPeerTLS = etcdProcessClusterConfig{
+	configWithProxyPeerTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    1,
 		isClientTLS:  false,
@@ -86,16 +86,26 @@ var (
 	}
 )
 
-func TestBasicOpsNoTLS(t *testing.T)        { testBasicOpsPutGet(t, &defaultConfig) }
-func TestBasicOpsAllTLS(t *testing.T)       { testBasicOpsPutGet(t, &defaultConfigTLS) }
-func TestBasicOpsPeerTLS(t *testing.T)      { testBasicOpsPutGet(t, &defaultConfigPeerTLS) }
-func TestBasicOpsClientTLS(t *testing.T)    { testBasicOpsPutGet(t, &defaultConfigClientTLS) }
-func TestBasicOpsProxyNoTLS(t *testing.T)   { testBasicOpsPutGet(t, &defaultConfigWithProxy) }
-func TestBasicOpsProxyTLS(t *testing.T)     { testBasicOpsPutGet(t, &defaultConfigWithProxyTLS) }
-func TestBasicOpsProxyPeerTLS(t *testing.T) { testBasicOpsPutGet(t, &defaultConfigWithProxyPeerTLS) }
+func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
+	ret := cfg
+	ret.clusterSize = 1
+	return &ret
+}
+
+func TestBasicOpsNoTLS(t *testing.T)        { testBasicOpsPutGet(t, &configNoTLS) }
+func TestBasicOpsAllTLS(t *testing.T)       { testBasicOpsPutGet(t, &configTLS) }
+func TestBasicOpsPeerTLS(t *testing.T)      { testBasicOpsPutGet(t, &configPeerTLS) }
+func TestBasicOpsClientTLS(t *testing.T)    { testBasicOpsPutGet(t, &configClientTLS) }
+func TestBasicOpsProxyNoTLS(t *testing.T)   { testBasicOpsPutGet(t, &configWithProxy) }
+func TestBasicOpsProxyTLS(t *testing.T)     { testBasicOpsPutGet(t, &configWithProxyTLS) }
+func TestBasicOpsProxyPeerTLS(t *testing.T) { testBasicOpsPutGet(t, &configWithProxyPeerTLS) }
 
 func testBasicOpsPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 	defer testutil.AfterTest(t)
+
+	// test doesn't use quorum gets, so ensure there are no followers to avoid
+	// stale reads that will break the test
+	cfg = configStandalone(*cfg)
 
 	epc, err := newEtcdProcessCluster(cfg)
 	if err != nil {
