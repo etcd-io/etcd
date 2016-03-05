@@ -41,6 +41,10 @@ type UserRoles struct {
 	Roles []Role `json:"roles"`
 }
 
+type userName struct {
+	User string `json:"user"`
+}
+
 func v2AuthURL(ep url.URL, action string, name string) *url.URL {
 	if name != "" {
 		ep.Path = path.Join(ep.Path, defaultV2AuthPrefix, action, name)
@@ -192,13 +196,20 @@ func (u *httpAuthUserAPI) ListUsers(ctx context.Context) ([]string, error) {
 		}
 		return nil, sec
 	}
+
 	var userList struct {
-		Users []string `json:"users"`
+		Users []User `json:"users"`
 	}
+
 	if err = json.Unmarshal(body, &userList); err != nil {
 		return nil, err
 	}
-	return userList.Users, nil
+
+	ret := make([]string, 0, len(userList.Users))
+	for _, u := range userList.Users {
+		ret = append(ret, u.User)
+	}
+	return ret, nil
 }
 
 func (u *httpAuthUserAPI) AddUser(ctx context.Context, username string, password string) error {

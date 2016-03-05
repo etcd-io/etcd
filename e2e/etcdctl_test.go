@@ -214,6 +214,29 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	}
 }
 
+func TestCtlV2UserList(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	mustEtcdctl(t)
+
+	epc, cerr := newEtcdProcessCluster(&defaultConfigWithProxy)
+	if cerr != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", cerr)
+	}
+	defer func() {
+		if err := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", err)
+		}
+	}()
+
+	if err := etcdctlUserAdd(epc, "username", "password"); err != nil {
+		t.Fatalf("failed to add user (%v)", err)
+	}
+	if err := etcdctlUserList(epc, "username"); err != nil {
+		t.Fatalf("failed to list users (%v)", err)
+	}
+}
+
 func etcdctlPrefixArgs(clus *etcdProcessCluster, noSync bool) []string {
 	endpoints := ""
 	if proxies := clus.proxies(); len(proxies) != 0 {
@@ -293,6 +316,11 @@ func etcdctlUserGrant(clus *etcdProcessCluster, user, role string) error {
 func etcdctlUserGet(clus *etcdProcessCluster, user string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus, false), "user", "get", user)
 	return spawnWithExpectedString(cmdArgs, "User: "+user)
+}
+
+func etcdctlUserList(clus *etcdProcessCluster, expectedUser string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus, false), "user", "list")
+	return spawnWithExpectedString(cmdArgs, expectedUser)
 }
 
 func mustEtcdctl(t *testing.T) {
