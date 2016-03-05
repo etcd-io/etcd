@@ -28,6 +28,10 @@ const (
 	tDeleteRange
 )
 
+var (
+	noPrefixEnd = []byte{0}
+)
+
 // Op represents an Operation that kv can execute.
 type Op struct {
 	t   opType
@@ -175,8 +179,7 @@ func getPrefix(key []byte) []byte {
 	}
 	// next prefix does not exist (e.g., 0xffff);
 	// default to WithFromKey policy
-	end = []byte{0}
-	return end
+	return noPrefixEnd
 }
 
 // WithPrefix enables 'Get', 'Delete', or 'Watch' requests to operate

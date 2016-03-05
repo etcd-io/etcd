@@ -111,6 +111,10 @@ func (sws *serverWatchStream) recvLoop() error {
 			}
 
 			creq := uv.CreateRequest
+			if len(creq.Key) == 0 {
+				// \x00 is the smallest key
+				creq.Key = []byte{0}
+			}
 			if len(creq.RangeEnd) == 1 && creq.RangeEnd[0] == 0 {
 				// support  >= key queries
 				creq.RangeEnd = []byte{}
