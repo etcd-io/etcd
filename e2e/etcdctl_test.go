@@ -200,7 +200,7 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	// the update loop has a delay of 500ms, so 1s should be enough wait time
 	time.Sleep(time.Second)
 
-	if err := etcdctlAddRole(epc, "foo"); err != nil {
+	if err := etcdctlRoleAdd(epc, "foo"); err != nil {
 		t.Fatalf("failed to add role (%v)", err)
 	}
 	if err := etcdctlUserAdd(epc, "username", "password"); err != nil {
@@ -211,6 +211,52 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	}
 	if err := etcdctlUserGet(epc, "username"); err != nil {
 		t.Fatalf("failed to get user (%v)", err)
+	}
+}
+
+func TestCtlV2UserList(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	mustEtcdctl(t)
+
+	epc, cerr := newEtcdProcessCluster(&defaultConfigWithProxy)
+	if cerr != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", cerr)
+	}
+	defer func() {
+		if err := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", err)
+		}
+	}()
+
+	if err := etcdctlUserAdd(epc, "username", "password"); err != nil {
+		t.Fatalf("failed to add user (%v)", err)
+	}
+	if err := etcdctlUserList(epc, "username"); err != nil {
+		t.Fatalf("failed to list users (%v)", err)
+	}
+}
+
+func TestCtlV2RoleList(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	mustEtcdctl(t)
+
+	epc, cerr := newEtcdProcessCluster(&defaultConfigWithProxy)
+	if cerr != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", cerr)
+	}
+	defer func() {
+		if err := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", err)
+		}
+	}()
+
+	if err := etcdctlRoleAdd(epc, "foo"); err != nil {
+		t.Fatalf("failed to add role (%v)", err)
+	}
+	if err := etcdctlRoleList(epc, "foo"); err != nil {
+		t.Fatalf("failed to list roles (%v)", err)
 	}
 }
 
@@ -275,9 +321,14 @@ func etcdctlWatch(clus *etcdProcessCluster, key, value string, noSync bool) <-ch
 	return errc
 }
 
-func etcdctlAddRole(clus *etcdProcessCluster, role string) error {
+func etcdctlRoleAdd(clus *etcdProcessCluster, role string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus, false), "role", "add", role)
 	return spawnWithExpectedString(cmdArgs, role)
+}
+
+func etcdctlRoleList(clus *etcdProcessCluster, expectedRole string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus, false), "role", "list")
+	return spawnWithExpectedString(cmdArgs, expectedRole)
 }
 
 func etcdctlUserAdd(clus *etcdProcessCluster, user, pass string) error {
@@ -293,6 +344,11 @@ func etcdctlUserGrant(clus *etcdProcessCluster, user, role string) error {
 func etcdctlUserGet(clus *etcdProcessCluster, user string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus, false), "user", "get", user)
 	return spawnWithExpectedString(cmdArgs, "User: "+user)
+}
+
+func etcdctlUserList(clus *etcdProcessCluster, expectedUser string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus, false), "user", "list")
+	return spawnWithExpectedString(cmdArgs, expectedUser)
 }
 
 func mustEtcdctl(t *testing.T) {
