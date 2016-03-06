@@ -98,6 +98,27 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 
 			[]*pb.WatchResponse{},
 		},
+		// watch full range, matching
+		{
+			[]string{"fooLong"},
+			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
+				CreateRequest: &pb.WatchCreateRequest{
+					Key:      []byte(""),
+					RangeEnd: []byte("\x00")}}},
+
+			[]*pb.WatchResponse{
+				{
+					Header:  &pb.ResponseHeader{Revision: 2},
+					Created: false,
+					Events: []*storagepb.Event{
+						{
+							Type: storagepb.PUT,
+							Kv:   &storagepb.KeyValue{Key: []byte("fooLong"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
+						},
+					},
+				},
+			},
+		},
 		// multiple puts, one watcher with matching key
 		{
 			[]string{"foo", "foo", "foo"},
