@@ -138,8 +138,8 @@ func (s *watchableStore) TxnEnd(txnID int64) error {
 	rev := s.store.Rev()
 	evs := make([]storagepb.Event, len(changes))
 	for i, change := range changes {
-		switch change.Value {
-		case nil:
+		switch change.CreateRevision {
+		case 0:
 			evs[i] = storagepb.Event{
 				Type: storagepb.DELETE,
 				Kv:   &changes[i]}
