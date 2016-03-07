@@ -53,7 +53,7 @@ type Member struct {
 }
 
 // NewMember creates a Member without an ID and generates one based on the
-// name, peer URLs. This is used for bootstrapping/adding new member.
+// cluster name, peer URLs, and time. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
 	m := &Member{
 		RaftAttributes: RaftAttributes{PeerURLs: peerURLs.StringSlice()},
