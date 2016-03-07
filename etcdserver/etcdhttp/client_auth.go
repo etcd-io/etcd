@@ -37,6 +37,43 @@ func hasWriteRootAccess(sec auth.Store, r *http.Request) bool {
 	return hasRootAccess(sec, r)
 }
 
+func userFromBasicAuth(sec auth.Store, r *http.Request) *auth.User {
+	username, password, ok := r.BasicAuth()
+	if !ok {
+		plog.Warningf("auth: malformed basic auth encoding")
+		return nil
+	}
+	user, err := sec.GetUser(username)
+	if err != nil {
+		return nil
+	}
+
+	ok = sec.CheckPassword(user, password)
+	if !ok {
+		plog.Warningf("auth: incorrect password for user: %s", username)
+		return nil
+	}
+	return &user
+}
+
+func userFromClientCertificate(sec auth.Store, r *http.Request) *auth.User {
+	if r.TLS == nil {
+		return nil
+	}
+
+	for _, chains := range r.TLS.VerifiedChains {
+		for _, chain := range chains {
+			plog.Debugf("auth: found common name %s.\n", chain.Subject.CommonName)
+			user, err := sec.GetUser(chain.Subject.CommonName)
+			if err == nil {
+				plog.Debugf("auth: authenticated user %s by cert common name.", user.User)
+				return &user
+			}
+		}
+	}
+	return nil
+}
+
 func hasRootAccess(sec auth.Store, r *http.Request) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
@@ -45,26 +82,26 @@ func hasRootAccess(sec auth.Store, r *http.Request) bool {
 	if !sec.AuthEnabled() {
 		return true
 	}
-	username, password, ok := r.BasicAuth()
-	if !ok {
-		return false
-	}
-	rootUser, err := sec.GetUser(username)
-	if err != nil {
-		return false
+
+	var rootUser *auth.User
+	if r.Header.Get("Authorization") == "" {
+		rootUser = userFromClientCertificate(sec, r)
+		if rootUser == nil {
+			return false
+		}
+	} else {
+		rootUser = userFromBasicAuth(sec, r)
+		if rootUser == nil {
+			return false
+		}
 	}
 
-	ok = sec.CheckPassword(rootUser, password)
-	if !ok {
-		plog.Warningf("auth: wrong password for user %s", username)
-		return false
-	}
 	for _, role := range rootUser.Roles {
 		if role == auth.RootRoleName {
 			return true
 		}
 	}
-	plog.Warningf("auth: user %s does not have the %s role for resource %s.", username, auth.RootRoleName, r.URL.Path)
+	plog.Warningf("auth: user %s does not have the %s role for resource %s.", rootUser.User, auth.RootRoleName, r.URL.Path)
 	return false
 }
 
@@ -76,25 +113,21 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive b
 	if !sec.AuthEnabled() {
 		return true
 	}
+
+	var user *auth.User
 	if r.Header.Get("Authorization") == "" {
-		plog.Warningf("auth: no authorization provided, checking guest access")
-		return hasGuestAccess(sec, r, key)
+		user = userFromClientCertificate(sec, r)
+		if user == nil {
+			plog.Warningf("auth: no authorization provided, checking guest access")
+			return hasGuestAccess(sec, r, key)
+		}
+	} else {
+		user = userFromBasicAuth(sec, r)
+		if user == nil {
+			return false
+		}
 	}
-	username, password, ok := r.BasicAuth()
-	if !ok {
-		plog.Warningf("auth: malformed basic auth encoding")
-		return false
-	}
-	user, err := sec.GetUser(username)
-	if err != nil {
-		plog.Warningf("auth: no such user: %s.", username)
-		return false
-	}
-	authAsUser := sec.CheckPassword(user, password)
-	if !authAsUser {
-		plog.Warningf("auth: incorrect password for user: %s.", username)
-		return false
-	}
+
 	writeAccess := r.Method != "GET" && r.Method != "HEAD"
 	for _, roleName := range user.Roles {
 		role, err := sec.GetRole(roleName)
@@ -109,7 +142,7 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive b
 			return true
 		}
 	}
-	plog.Warningf("auth: invalid access for user %s on key %s.", username, key)
+	plog.Warningf("auth: invalid access for user %s on key %s.", user.User, key)
 	return false
 }
 
