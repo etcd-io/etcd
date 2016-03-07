@@ -119,27 +119,20 @@ func (sws *serverWatchStream) recvLoop() error {
 				// support  >= key queries
 				creq.RangeEnd = []byte{}
 			}
-
-			rev := creq.StartRevision
 			wsrev := sws.watchStream.Rev()
-			futureRev := rev > wsrev
+			rev := creq.StartRevision
 			if rev == 0 {
-				// rev 0 watches past the current revision
 				rev = wsrev + 1
 			}
-			// do not allow future watch revision
-			id := storage.WatchID(-1)
-			if !futureRev {
-				id = sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev)
-				if creq.ProgressNotify {
-					sws.progress[id] = true
-				}
+			id := sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev)
+			if id != -1 && creq.ProgressNotify {
+				sws.progress[id] = true
 			}
 			sws.ctrlStream <- &pb.WatchResponse{
 				Header:   sws.newResponseHeader(wsrev),
 				WatchId:  int64(id),
 				Created:  true,
-				Canceled: futureRev,
+				Canceled: id == -1,
 			}
 		case *pb.WatchRequest_CancelRequest:
 			if uv.CancelRequest != nil {
