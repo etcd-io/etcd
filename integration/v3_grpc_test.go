@@ -675,10 +675,9 @@ func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	st, err = conn.WaitForStateChange(ctx, st)
 	if err != nil {
 		t.Fatalf("unexpected error waiting for change (%v)", err)
-	} else if st != grpc.Connecting && st != grpc.TransientFailure {
-		t.Fatalf("expected connecting or transient failure state, got %v", st)
+	} else if st == grpc.Ready {
+		t.Fatalf("expected failure state, got %v", st)
 	}
-
 	cancel()
 	if perr := <-donec; perr == nil {
 		t.Fatalf("expected client error on put")
