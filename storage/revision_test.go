@@ -22,7 +22,7 @@ import (
 )
 
 // TestRevision tests that revision could be encoded to and decoded from
-// bytes slice. Moreover, the lexicograph order of its byte slice representation
+// bytes slice. Moreover, the lexicographical order of its byte slice representation
 // follows the order of (main, sub).
 func TestRevision(t *testing.T) {
 	tests := []revision{
