@@ -15,6 +15,7 @@
 package clientv3
 
 import (
+	"crypto/tls"
 	"errors"
 	"net"
 	"net/url"
@@ -25,7 +26,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/credentials"
-	"github.com/coreos/etcd/pkg/transport"
 )
 
 var (
@@ -64,7 +64,7 @@ type Config struct {
 	DialTimeout time.Duration
 
 	// TLS holds the client secure credentials, if any.
-	TLS *transport.TLSInfo
+	TLS *tls.Config
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -157,11 +157,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 	var creds *credentials.TransportAuthenticator
 	if cfg.TLS != nil {
-		tlscfg, err := cfg.TLS.ClientConfig()
-		if err != nil {
-			return nil, err
-		}
-		c := credentials.NewTLS(tlscfg)
+		c := credentials.NewTLS(cfg.TLS)
 		creds = &c
 	}
 	// use a temporary skeleton client to bootstrap first connection
