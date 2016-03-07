@@ -286,6 +286,70 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 	}
 }
 
+// TestV3WatchFutureRevision tests Watch APIs from a future revision.
+func TestV3WatchFutureRevision(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	wAPI := toGRPC(clus.RandClient()).Watch
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	wStream, err := wAPI.Watch(ctx)
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+
+	wkey := []byte("foo")
+	wrev := int64(10)
+	req := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
+		CreateRequest: &pb.WatchCreateRequest{Key: wkey, StartRevision: wrev}}}
+	err = wStream.Send(req)
+	if err != nil {
+		t.Fatalf("wStream.Send error: %v", err)
+	}
+
+	// ensure watcher request created a new watcher
+	cresp, err := wStream.Recv()
+	if err != nil {
+		t.Fatalf("wStream.Recv error: %v", err)
+	}
+	if !cresp.Created {
+		t.Fatal("create = %v, want %v", cresp.Created, true)
+	}
+
+	// asynchronously create keys
+	go func() {
+		kvc := toGRPC(clus.RandClient()).KV
+		for {
+			req := &pb.PutRequest{Key: wkey, Value: []byte("bar")}
+			resp, rerr := kvc.Put(context.TODO(), req)
+			if rerr != nil {
+				t.Fatalf("couldn't put key (%v)", rerr)
+			}
+			if resp.Header.Revision == wrev {
+				return
+			}
+		}
+	}()
+
+	// ensure watcher request created a new watcher
+	cresp, err = wStream.Recv()
+	if err != nil {
+		t.Fatalf("wStream.Recv error: %v", err)
+	}
+	if cresp.Header.Revision != wrev {
+		t.Fatalf("revision = %d, want %d", cresp.Header.Revision, wrev)
+	}
+	if len(cresp.Events) != 1 {
+		t.Fatalf("failed to receive events")
+	}
+	if cresp.Events[0].Kv.ModRevision != wrev {
+		t.Errorf("mod revision = %d, want %d", cresp.Events[0].Kv.ModRevision, wrev)
+	}
+}
+
 // TestV3WatchCancelSynced tests Watch APIs cancellation from synced map.
 func TestV3WatchCancelSynced(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -857,36 +921,6 @@ func waitResponse(wc pb.Watch_WatchClient, timeout time.Duration) (bool, *pb.Wat
 		return false, rv
 	}
 	return true, nil
-}
-
-// TestV3WatchFutureRevision ensures invalid future revision to Watch APIs
-// returns WatchResponse of true Created and true Canceled.
-func TestV3WatchInvalidFutureRevision(t *testing.T) {
-	defer testutil.AfterTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
-	defer clus.Terminate(t)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	wStream, wErr := toGRPC(clus.RandClient()).Watch.Watch(ctx)
-	if wErr != nil {
-		t.Fatalf("wAPI.Watch error: %v", wErr)
-	}
-
-	wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
-		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 100}}}
-	if err := wStream.Send(wreq); err != nil {
-		t.Fatalf("watch request failed (%v)", err)
-	}
-
-	resp, err := wStream.Recv()
-	if err != nil {
-		t.Errorf("wStream.Recv error: %v", err)
-	}
-	if resp.WatchId != -1 || !resp.Created || !resp.Canceled || len(resp.Events) != 0 {
-		t.Errorf("invalid start-rev expected -1, true, true, 0, but got %d, %v, %v, %d",
-			resp.WatchId, resp.Created, resp.Canceled, len(resp.Events))
-	}
 }
 
 func TestWatchWithProgressNotify(t *testing.T) {

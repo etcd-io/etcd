@@ -189,12 +189,12 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 	synced := startRev > s.store.currentRev.main || startRev == 0
 	if synced {
 		wa.cur = s.store.currentRev.main + 1
+		if startRev > wa.cur {
+			wa.cur = startRev
+		}
 	}
 	s.store.mu.Unlock()
 	if synced {
-		if startRev > wa.cur {
-			panic("can't watch past sync revision")
-		}
 		s.synced.add(wa)
 	} else {
 		slowWatcherGauge.Inc()
@@ -368,9 +368,11 @@ type watcher struct {
 	// end indicates the end of the range to watch.
 	// If end is set, the watcher is on a range.
 	end []byte
-	// cur is the current watcher revision.
-	// If cur is behind the current revision of the KV,
-	// watcher is unsynced and needs to catch up.
+
+	// cur is the current watcher revision of a unsynced watcher.
+	// cur will be updated for unsynced watcher while it is catching up.
+	// cur is startRev of a synced watcher.
+	// cur will not be updated for synced watcher.
 	cur int64
 	id  WatchID
 
