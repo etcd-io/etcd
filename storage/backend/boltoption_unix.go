@@ -30,5 +30,5 @@ import (
 // silently ignore this flag. Please update your kernel to prevent this.
 var boltOpenOptions = &bolt.Options{
 	MmapFlags:       syscall.MAP_POPULATE,
-	InitialMmapSize: InitialMmapSize,
+	InitialMmapSize: int(InitialMmapSize),
 }
