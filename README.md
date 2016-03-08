@@ -140,6 +140,9 @@ The `v2` API responses should not change after the 2.0.0 release but new feature
 
 etcd has known issues on 32-bit systems due to a bug in the Go runtime. See #[358][358] for more information.
 
+To avoid inadvertantly producing an unstable etcd server, 32-bit builds emit an `etcd` that prints
+a warning message and immediately exits.
+
 [358]: https://github.com/coreos/etcd/issues/358
 
 ### License
