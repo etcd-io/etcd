@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
@@ -172,10 +173,11 @@ type EtcdServer struct {
 
 	store store.Store
 
-	kv     dstorage.ConsistentWatchableKV
-	lessor lease.Lessor
-	bemu   sync.Mutex
-	be     backend.Backend
+	kv        dstorage.ConsistentWatchableKV
+	lessor    lease.Lessor
+	bemu      sync.Mutex
+	be        backend.Backend
+	authStore auth.AuthStore
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -372,6 +374,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
 		srv.lessor = lease.NewLessor(srv.be)
 		srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
+		srv.authStore = auth.NewAuthStore(srv)
 		if h := cfg.AutoCompactionRetention; h != 0 {
 			srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 			srv.compactor.Run()
@@ -1324,3 +1327,5 @@ func (s *EtcdServer) Backend() backend.Backend {
 	defer s.bemu.Unlock()
 	return s.be
 }
+
+func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
