@@ -20,6 +20,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -32,6 +33,12 @@ func TestIsDirWriteable(t *testing.T) {
 	if err = IsDirWriteable(tmpdir); err != nil {
 		t.Fatalf("unexpected IsDirWriteable error: %v", err)
 	}
+
+	if runtime.GOOS == "windows" {
+		// TODO: support windows (getting access denied)
+		t.Skipf("skip TestIsDirWriteable, OS = %s", runtime.GOOS)
+	}
+
 	if err = os.Chmod(tmpdir, 0444); err != nil {
 		t.Fatalf("unexpected os.Chmod error: %v", err)
 	}

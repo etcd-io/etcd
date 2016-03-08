@@ -17,6 +17,7 @@ package fileutil
 import (
 	"io/ioutil"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -59,6 +60,11 @@ func TestLockAndUnlock(t *testing.T) {
 	err = l.Unlock()
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if runtime.GOOS == "windows" {
+		// TODO: supports duplicate locks on windows
+		t.Skipf("skip TestLockAndUnlock, OS = %s", runtime.GOOS)
 	}
 
 	// try lock the unlocked file
