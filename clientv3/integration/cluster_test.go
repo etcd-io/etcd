@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/pkg/types"
 )
 
 func TestMemberList(t *testing.T) {
@@ -73,7 +74,18 @@ func TestMemberRemove(t *testing.T) {
 		t.Fatalf("failed to list member %v", err)
 	}
 
-	_, err = capi.MemberRemove(context.Background(), resp.Members[0].ID)
+	rmvID := resp.Members[0].ID
+	// indexes in capi member list don't necessarily match cluster member list;
+	// find member that is not the client to remove
+	for _, m := range resp.Members {
+		mURLs, _ := types.NewURLs(m.PeerURLs)
+		if !reflect.DeepEqual(mURLs, clus.Members[1].ServerConfig.PeerURLs) {
+			rmvID = m.ID
+			break
+		}
+	}
+
+	_, err = capi.MemberRemove(context.Background(), rmvID)
 	if err != nil {
 		t.Fatalf("failed to remove member %v", err)
 	}
