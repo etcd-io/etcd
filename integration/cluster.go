@@ -491,10 +491,18 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	if m.grpcAddr == "" {
 		return nil, fmt.Errorf("member not configured for grpc")
 	}
+
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.grpcAddr},
 		DialTimeout: 5 * time.Second,
-		TLS:         m.ClientTLSInfo,
+	}
+
+	if m.ClientTLSInfo != nil {
+		tls, err := m.ClientTLSInfo.ClientConfig()
+		if err != nil {
+			return nil, err
+		}
+		cfg.TLS = tls
 	}
 	return clientv3.New(cfg)
 }

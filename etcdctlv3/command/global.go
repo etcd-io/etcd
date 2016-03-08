@@ -94,8 +94,14 @@ func mustClient(endpoints []string, cert, key, cacert string) *clientv3.Client {
 
 	cfg := clientv3.Config{
 		Endpoints:   endpoints,
-		TLS:         cfgtls,
 		DialTimeout: 20 * time.Second,
+	}
+	if cfgtls != nil {
+		clientTLS, err := cfgtls.ClientConfig()
+		if err != nil {
+			ExitWithError(ExitBadArgs, err)
+		}
+		cfg.TLS = clientTLS
 	}
 
 	client, err := clientv3.New(cfg)
