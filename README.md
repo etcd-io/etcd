@@ -62,6 +62,12 @@ curl -L http://127.0.0.1:2379/v2/keys/mykey
 
 You have successfully started an etcd and written a key to the store.
 
+### etcd TCP ports
+
+The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication. To maintain compatibility, some etcd configuration and documentation continues to refer to the legacy ports 4001 and 7001, but all new etcd use and discussion should adopt the IANA-assigned ports. The legacy ports 4001 and 7001 will be fully deprecated, and support for their use removed, in future etcd releases.
+
+[iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
+
 ### Running local etcd cluster
 
 First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
