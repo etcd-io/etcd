@@ -20,6 +20,8 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"runtime"
+	"sort"
 	"testing"
 	"time"
 )
@@ -32,10 +34,12 @@ func TestPurgeFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i := 0; i < 5; i++ {
-		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		var f *os.File
+		f, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
+		f.Close()
 	}
 
 	stop := make(chan struct{})
@@ -45,10 +49,12 @@ func TestPurgeFile(t *testing.T) {
 
 	// create 5 more files
 	for i := 5; i < 10; i++ {
-		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		var f *os.File
+		f, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
+		f.Close()
 		time.Sleep(10 * time.Millisecond)
 	}
 
@@ -88,10 +94,12 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i := 0; i < 10; i++ {
-		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		var f *os.File
+		f, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
+		f.Close()
 	}
 
 	// create a purge barrier at 5
@@ -116,6 +124,10 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	wnames := []string{"5.test", "6.test", "7.test", "8.test", "9.test"}
+	if runtime.GOOS == "windows" {
+		wnames = append(wnames, ".5.test.etcd_fileutil_windows_flock")
+		sort.Strings(wnames)
+	}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
 	}

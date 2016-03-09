@@ -18,11 +18,13 @@ package fileutil
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 var (
-	ErrLocked = errors.New("file already locked")
+	ErrLocked = errors.New("The process cannot access the file because another process has locked a portion of the file.")
 )
 
 type Lock interface {
@@ -34,38 +36,42 @@ type Lock interface {
 }
 
 type lock struct {
-	fd   int
-	file *os.File
+	filePath string
+	lockPath string
 }
 
 func (l *lock) Name() string {
-	return l.file.Name()
+	return l.filePath
 }
 
-// TryLock acquires exclusivity on the lock without blocking
+// TryLock acquires exclusivity on the lock without blocking.
 func (l *lock) TryLock() error {
-	return nil
+	if Exist(l.lockPath) {
+		return ErrLocked
+	}
+	return ioutil.WriteFile(l.lockPath, []byte(""), privateFileMode)
 }
 
-// Lock acquires exclusivity on the lock without blocking
+// Lock acquires exclusivity on the lock.
 func (l *lock) Lock() error {
-	return nil
+	for Exist(l.lockPath) {
+	}
+	return ioutil.WriteFile(l.lockPath, []byte(""), privateFileMode)
 }
 
 // Unlock unlocks the lock
 func (l *lock) Unlock() error {
-	return nil
+	return os.Remove(l.lockPath)
 }
 
 func (l *lock) Destroy() error {
-	return l.file.Close()
+	if Exist(l.lockPath) {
+		return ErrLocked
+	}
+	return nil
 }
 
 func NewLock(file string) (Lock, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	l := &lock{int(f.Fd()), f}
-	return l, nil
+	fbase := filepath.Base(file)
+	return &lock{filePath: file, lockPath: filepath.Join(filepath.Dir(file), "."+fbase+".etcd_fileutil_windows_flock")}, nil
 }

@@ -15,6 +15,7 @@
 package fileutil
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"sort"
