@@ -62,16 +62,20 @@ type Snapshot interface {
 }
 
 type backend struct {
+	// size and commits are used with atomic operations so they must be
+	// 64-bit aligned, otherwise 32-bit tests will crash
+
+	// size is the number of bytes in the backend
+	size int64
+	// commits counts number of commits since start
+	commits int64
+
 	mu sync.RWMutex
 	db *bolt.DB
 
 	batchInterval time.Duration
 	batchLimit    int
 	batchTx       *batchTx
-	size          int64
-
-	// number of commits since start
-	commits int64
 
 	stopc chan struct{}
 	donec chan struct{}
