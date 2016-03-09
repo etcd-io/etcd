@@ -39,8 +39,8 @@ func TestBackendClose(t *testing.T) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(time.Second):
-		t.Errorf("failed to close database in 1s")
+	case <-time.After(10 * time.Second):
+		t.Errorf("failed to close database in 10s")
 	}
 }
 
