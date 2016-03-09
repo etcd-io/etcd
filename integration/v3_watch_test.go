@@ -319,20 +319,17 @@ func TestV3WatchFutureRevision(t *testing.T) {
 		t.Fatal("create = %v, want %v", cresp.Created, true)
 	}
 
-	// asynchronously create keys
-	go func() {
-		kvc := toGRPC(clus.RandClient()).KV
-		for {
-			req := &pb.PutRequest{Key: wkey, Value: []byte("bar")}
-			resp, rerr := kvc.Put(context.TODO(), req)
-			if rerr != nil {
-				t.Fatalf("couldn't put key (%v)", rerr)
-			}
-			if resp.Header.Revision == wrev {
-				return
-			}
+	kvc := toGRPC(clus.RandClient()).KV
+	for {
+		req := &pb.PutRequest{Key: wkey, Value: []byte("bar")}
+		resp, rerr := kvc.Put(context.TODO(), req)
+		if rerr != nil {
+			t.Fatalf("couldn't put key (%v)", rerr)
 		}
-	}()
+		if resp.Header.Revision == wrev {
+			break
+		}
+	}
 
 	// ensure watcher request created a new watcher
 	cresp, err = wStream.Recv()
