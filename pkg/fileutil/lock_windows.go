@@ -19,7 +19,6 @@ package fileutil
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -51,16 +50,15 @@ type Lock interface {
 	Destroy() error
 }
 
-// fileMutex is similar to sync.RWMutex, but also synchronizes across processes.
-// This implementation is based on flock syscall.
-// https://github.com/golang/build/blob/master/cmd/builder/filemutex_windows.go
 type fileMutex struct {
-	mu       sync.RWMutex
+	// This implementation is based on flock syscall.
+	// https://github.com/golang/build/blob/master/cmd/builder/filemutex_windows.go
 	fd       syscall.Handle
 	filename string
 }
 
-func lockFileEx(h syscall.Handle, flags, reserved, locklow, lockhigh uint32, ol *syscall.Overlapped) (err error) {
+func lockFileEx(h syscall.Handle, flags, locklow, lockhigh uint32, ol *syscall.Overlapped) (err error) {
+	var reserved uint32 = 0
 	r1, _, e1 := syscall.Syscall6(procLockFileEx.Addr(), 6, uintptr(h), uintptr(flags), uintptr(reserved), uintptr(locklow), uintptr(lockhigh), uintptr(unsafe.Pointer(ol)))
 	if r1 == 0 {
 		if e1 != 0 {
@@ -105,22 +103,14 @@ func NewLock(file string) (Lock, error) {
 
 // TryLock acquires exclusivity on the lock without blocking.
 func (fm *fileMutex) TryLock() error {
-	err := fm.lockFile(LOCKFILE_FAIL_IMMEDIATELY)
-	if err != nil && err != ErrLocked {
-		fm.mu.Unlock()
-	}
-	return err
+	return fm.lockFile(LOCKFILE_FAIL_IMMEDIATELY)
 }
 
 // Lock acquires exclusivity on the lock.
 // It blocks until the lock is acquired.
 // https://msdn.microsoft.com/en-us/library/windows/desktop/aa365202(v=vs.85).aspx
 func (fm *fileMutex) Lock() error {
-	err := fm.lockFile(0)
-	if err != nil && err != ErrLocked {
-		fm.mu.Unlock()
-	}
-	return err
+	return fm.lockFile(0)
 }
 
 // Unlock unlocks the lock.
@@ -130,12 +120,10 @@ func (fm *fileMutex) Unlock() error {
 			return err
 		}
 	}
-	fm.mu.Unlock()
 	return nil
 }
 
 func (fm *fileMutex) lockFile(flags uint32) error {
-	fm.mu.Lock()
 	var flag uint32 = LOCKFILE_EXCLUSIVE_LOCK
 	if flags != 0 {
 		flag |= flags
@@ -144,7 +132,7 @@ func (fm *fileMutex) lockFile(flags uint32) error {
 		return nil
 	}
 	for {
-		err := lockFileEx(fm.fd, flag, 0, 1, 0, &syscall.Overlapped{})
+		err := lockFileEx(fm.fd, flag, 1, 0, &syscall.Overlapped{})
 		if err == nil {
 			return nil
 		} else if err.Error() == ErrLocked.Error() {

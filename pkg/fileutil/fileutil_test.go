@@ -34,11 +34,6 @@ func TestIsDirWriteable(t *testing.T) {
 		t.Fatalf("unexpected IsDirWriteable error: %v", err)
 	}
 
-	if runtime.GOOS == "windows" {
-		// TODO: support windows (getting access denied)
-		t.Skipf("skip TestIsDirWriteable, OS = %s", runtime.GOOS)
-	}
-
 	if err = os.Chmod(tmpdir, 0444); err != nil {
 		t.Fatalf("unexpected os.Chmod error: %v", err)
 	}
@@ -48,10 +43,10 @@ func TestIsDirWriteable(t *testing.T) {
 		// http://stackoverflow.com/questions/20609415/cross-compiling-user-current-not-implemented-on-linux-amd64
 		t.Skipf("failed to get current user: %v", err)
 	}
-	if me.Name == "root" || me.Name == "Administrator" {
+	if me.Name == "root" || me.Name == "Administrator" || runtime.GOOS == "windows" {
 		// ideally we should check CAP_DAC_OVERRIDE.
 		// but it does not matter for tests.
-		t.Skipf("running as a superuser")
+		t.Skipf("running as a superuser or windows")
 	}
 	if err := IsDirWriteable(tmpdir); err == nil {
 		t.Fatalf("expected IsDirWriteable to error")

@@ -103,6 +103,9 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 
 	// create a purge barrier at 5
 	l, err := NewLock(path.Join(dir, fmt.Sprintf("%d.test", 5)))
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = l.Lock()
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +159,6 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 
 	if runtime.GOOS == "windows" {
 		// windows gets file access denied error
-		// from concurrent ReadDir calls
 		t.Skipf("skip TestPurgeFileHoldingLock, OS = %s", runtime.GOOS)
 	}
 
