@@ -207,13 +207,12 @@ func TestBlockProposal(t *testing.T) {
 	}
 
 	n.Campaign(context.TODO())
-	testutil.WaitSchedule()
 	select {
 	case err := <-errc:
 		if err != nil {
 			t.Errorf("err = %v, want %v", err, nil)
 		}
-	default:
+	case <-time.After(10 * time.Second):
 		t.Errorf("blocking proposal, want unblocking")
 	}
 }
