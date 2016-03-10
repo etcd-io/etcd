@@ -39,6 +39,7 @@ type Client struct {
 	Lease
 	Watcher
 	Auth
+	Maintenance
 
 	conn   *grpc.ClientConn
 	cfg    Config
@@ -178,6 +179,7 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Lease = NewLease(client)
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
+	client.Maintenance = &maintenance{c: client}
 
 	return client, nil
 }

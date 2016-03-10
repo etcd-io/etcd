@@ -56,6 +56,7 @@ func init() {
 		command.NewDelCommand(),
 		command.NewTxnCommand(),
 		command.NewCompactionCommand(),
+		command.NewDefragCommand(),
 		command.NewWatchCommand(),
 		command.NewVersionCommand(),
 		command.NewLeaseCommand(),
