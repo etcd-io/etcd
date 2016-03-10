@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/url"
 	"os"
@@ -259,7 +260,10 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		curl := url.URL{Scheme: clientScheme, Host: fmt.Sprintf("localhost:%d", port)}
 		purl := url.URL{Scheme: peerScheme, Host: fmt.Sprintf("localhost:%d", port+1)}
 		name := fmt.Sprintf("testname%d", i)
-		dataDirPath := name + ".etcd"
+		dataDirPath, derr := ioutil.TempDir("", name+".etcd")
+		if derr != nil {
+			panic("could not get tempdir for datadir")
+		}
 		initialCluster[i] = fmt.Sprintf("%s=%s", name, purl.String())
 
 		args := []string{
@@ -284,7 +288,10 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		port := etcdProcessBasePort + 2*cfg.clusterSize + i + 1
 		curl := url.URL{Scheme: clientScheme, Host: fmt.Sprintf("localhost:%d", port)}
 		name := fmt.Sprintf("testname-proxy%d", i)
-		dataDirPath := name + ".etcd"
+		dataDirPath, derr := ioutil.TempDir("", name+".etcd")
+		if derr != nil {
+			panic("could not get tempdir for datadir")
+		}
 		args := []string{
 			"--name", name,
 			"--proxy", "on",
