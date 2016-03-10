@@ -835,6 +835,9 @@ Below is a list of public, open source projects that use Bolt:
   backed by boltdb.
 * [buckets](https://github.com/joyrexus/buckets) - a bolt wrapper streamlining
   simple tx and key scans.
+* [mbuckets](https://github.com/abhigupta912/mbuckets) - A Bolt wrapper that allows easy operations on multi level (nested) buckets.
 * [Request Baskets](https://github.com/darklynx/request-baskets) - A web service to collect arbitrary HTTP requests and inspect them via REST API or simple web UI, similar to [RequestBin](http://requestb.in/) service
+* [Go Report Card](https://goreportcard.com/) - Go code quality report cards as a (free and open source) service.
+* [Boltdb Boilerplate](https://github.com/bobintornado/boltdb-boilerplate) - Boilerplate wrapper around bolt aiming to make simple calls one-liners.
 
 If you are using Bolt in a project please send a pull request to add it to the list.
