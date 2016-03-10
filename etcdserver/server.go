@@ -24,6 +24,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -173,6 +174,7 @@ type EtcdServer struct {
 
 	kv     dstorage.ConsistentWatchableKV
 	lessor lease.Lessor
+	bemu   sync.Mutex
 	be     backend.Backend
 
 	stats  *stats.ServerStats
@@ -604,6 +606,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		// Closing old backend might block until all the txns
 		// on the backend are finished.
 		// We do not want to wait on closing the old backend.
+		s.bemu.Lock()
 		oldbe := s.be
 		go func() {
 			if err := oldbe.Close(); err != nil {
@@ -612,6 +615,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		}()
 
 		s.be = newbe
+		s.bemu.Unlock()
 	}
 	if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 		plog.Panicf("recovery store error: %v", err)
@@ -1313,3 +1317,8 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 }
 
 func (s *EtcdServer) getKV() dstorage.ConsistentWatchableKV { return s.kv }
+func (s *EtcdServer) Backend() backend.Backend {
+	s.bemu.Lock()
+	defer s.bemu.Unlock()
+	return s.be
+}

@@ -50,6 +50,8 @@
 		MemberUpdateResponse
 		MemberListRequest
 		MemberListResponse
+		DefragmentRequest
+		DefragmentResponse
 		AuthEnableRequest
 		AuthDisableRequest
 		AuthenticateRequest
