@@ -76,6 +76,11 @@ service Cluster {
   rpc MemberList(MemberListRequest) returns (MemberListResponse) {}
 }
 
+service Maintenance {
+  // TODO: move Hash from kv to Maintenance
+  rpc Defragment(DefragmentRequest) returns (DefragmentResponse) {}
+}
+
 service Auth {
   // AuthEnable enables authentication.
   rpc AuthEnable(AuthEnableRequest) returns (AuthEnableResponse) {}
@@ -423,6 +428,14 @@ message MemberListRequest {
 message MemberListResponse {
   ResponseHeader header = 1;
   repeated Member members = 2;
+}
+
+message DefragmentRequest {
+
+}
+
+message DefragmentResponse {
+  ResponseHeader header = 1;
 }
 
 message AuthEnableRequest {
