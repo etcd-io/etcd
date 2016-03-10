@@ -297,12 +297,34 @@ func (tx *Tx) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	defer func() { _ = f.Close() }()
 
-	// Copy the meta pages.
-	tx.db.metalock.Lock()
-	n, err = io.CopyN(w, f, int64(tx.db.pageSize*2))
-	tx.db.metalock.Unlock()
+	// Generate a meta page. We use the same page data for both meta pages.
+	buf := make([]byte, tx.db.pageSize)
+	page := (*page)(unsafe.Pointer(&buf[0]))
+	page.flags = metaPageFlag
+	*page.meta() = *tx.meta
+
+	// Write meta 0.
+	page.id = 0
+	page.meta().checksum = page.meta().sum64()
+	nn, err := w.Write(buf)
+	n += int64(nn)
 	if err != nil {
-		return n, fmt.Errorf("meta copy: %s", err)
+		return n, fmt.Errorf("meta 0 copy: %s", err)
+	}
+
+	// Write meta 1 with a lower transaction id.
+	page.id = 1
+	page.meta().txid -= 1
+	page.meta().checksum = page.meta().sum64()
+	nn, err = w.Write(buf)
+	n += int64(nn)
+	if err != nil {
+		return n, fmt.Errorf("meta 1 copy: %s", err)
+	}
+
+	// Move past the meta pages in the file.
+	if _, err := f.Seek(int64(tx.db.pageSize*2), os.SEEK_SET); err != nil {
+		return n, fmt.Errorf("seek: %s", err)
 	}
 
 	// Copy data pages.
