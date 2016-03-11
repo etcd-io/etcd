@@ -596,8 +596,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 			plog.Panicf("rename snapshot file error: %v", err)
 		}
 
-		// TODO: recover lessor
-
 		newbe := backend.NewDefaultBackend(fn)
 		if err := s.kv.Restore(newbe); err != nil {
 			plog.Panicf("restore KV error: %v", err)
@@ -618,7 +616,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		s.bemu.Unlock()
 
 		if s.lessor != nil {
-			s.lessor.Recover(s.be, s.kv)
+			s.lessor.Recover(newbe, s.kv)
 		}
 	}
 	if err := s.store.Recovery(apply.snapshot.Data); err != nil {
