@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: support arm64
-// +build amd64
-
 package etcdmain
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -79,6 +77,8 @@ var (
 )
 
 func Main() {
+	checkSupport()
+
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
 	if err != nil {
@@ -553,4 +553,27 @@ func setupLogging(cfg *config) {
 		}
 		repoLog.SetLogLevel(settings)
 	}
+}
+
+func checkSupport() {
+	// TODO support arm64
+	if runtime.GOARCH == "amd64" {
+		return
+	}
+	fs := flag.NewFlagSet("etcd-unsupported", flag.ContinueOnError)
+	isUnsupportSet := false
+	fs.BoolVar(&isUnsupportSet, "unsupported", false, "Use unsupported/experimental etcd.")
+	fs.Parse(os.Args[1:])
+	if isUnsupportSet {
+		// remove unsupported flag from args so config won't complain
+		for i := range os.Args {
+			if strings.Contains(os.Args[i], "unsupported") {
+				os.Args = append(os.Args[0:i], os.Args[i+1:]...)
+				break
+			}
+		}
+		return
+	}
+	plog.Errorf("etcd on unsupported platform without --unsupported set.")
+	os.Exit(1)
 }
