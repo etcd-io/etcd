@@ -616,6 +616,10 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 		s.be = newbe
 		s.bemu.Unlock()
+
+		if s.lessor != nil {
+			s.lessor.Recover(s.be, s.kv)
+		}
 	}
 	if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 		plog.Panicf("recovery store error: %v", err)
