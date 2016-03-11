@@ -93,6 +93,9 @@ type Lessor interface {
 	// ExpiredLeasesC returns a chan that is used to receive expired leases.
 	ExpiredLeasesC() <-chan []*Lease
 
+	// Recover recovers the lessor state from the given backend and RangeDeleter.
+	Recover(b backend.Backend, rd RangeDeleter)
+
 	// Stop stops the lessor for managing leases. The behavior of calling Stop multiple
 	// times is undefined.
 	Stop()
@@ -476,8 +479,7 @@ func int64ToBytes(n int64) []byte {
 
 // FakeLessor is a fake implementation of Lessor interface.
 // Used for testing only.
-type FakeLessor struct {
-}
+type FakeLessor struct{}
 
 func (fl *FakeLessor) SetRangeDeleter(dr RangeDeleter) {}
 
@@ -498,5 +500,7 @@ func (fl *FakeLessor) Renew(id LeaseID) (int64, error) { return 10, nil }
 func (le *FakeLessor) Lookup(id LeaseID) *Lease { return nil }
 
 func (fl *FakeLessor) ExpiredLeasesC() <-chan []*Lease { return nil }
+
+func (fl *FakeLessor) Recover(b backend.Backend, rd RangeDeleter) {}
 
 func (fl *FakeLessor) Stop() {}
