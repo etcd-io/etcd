@@ -32,10 +32,11 @@ func main() {
 	stressKeySuffixRange := flag.Int("stress-key-count", 250000, "the count of key range written into etcd.")
 	limit := flag.Int("limit", 3, "the limit of rounds to run failure set.")
 	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")
+	isDebug := flag.Bool("debug", false, "'true' to enable etcd debug mode.")
 	flag.Parse()
 
 	endpoints := strings.Split(*endpointStr, ",")
-	c, err := newCluster(endpoints, *datadir, *stressKeySize, *stressKeySuffixRange, *isV2Only)
+	c, err := newCluster(endpoints, *datadir, *stressKeySize, *stressKeySuffixRange, *isV2Only, *isDebug)
 	if err != nil {
 		plog.Fatal(err)
 	}

@@ -34,6 +34,7 @@ const peerURLPort = 2380
 
 type cluster struct {
 	v2Only bool // to be deprecated
+	debug  bool // debug log for etcd
 
 	agentEndpoints       []string
 	datadir              string
@@ -53,9 +54,10 @@ type ClusterStatus struct {
 }
 
 // newCluster starts and returns a new cluster. The caller should call Terminate when finished, to shut it down.
-func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int, isV2Only bool) (*cluster, error) {
+func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int, isV2Only, isDebug bool) (*cluster, error) {
 	c := &cluster{
 		v2Only:               isV2Only,
+		debug:                isDebug,
 		agentEndpoints:       agentEndpoints,
 		datadir:              datadir,
 		stressKeySize:        stressKeySize,
@@ -112,6 +114,9 @@ func (c *cluster) Bootstrap() error {
 			"--initial-cluster-token", token,
 			"--initial-cluster", clusterStr,
 			"--initial-cluster-state", "new",
+		}
+		if c.debug {
+			flags = append(flags, "--debug")
 		}
 		if !c.v2Only {
 			flags = append(flags,
