@@ -94,6 +94,7 @@ Roles are granted access to various parts of the keyspace, a single path at a ti
 Reading a path is simple; if the path ends in `*`, that key **and all keys prefixed with it**, are granted to holders of this role. If it does not end in `*`, only that key and that key alone is granted.
 
 Access can be granted as either read, write, or both, as in the following examples:
+
 ```
 # Give read access to keys under the /foo directory
 $ etcdctl role grant myrolename -path '/foo/*' -read
