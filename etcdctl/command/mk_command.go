@@ -30,6 +30,7 @@ func NewMakeCommand() cli.Command {
 		Usage:     "make a new key with a given value",
 		ArgsUsage: "<key> <value>",
 		Flags: []cli.Flag{
+			cli.BoolFlag{Name: "in-order", Usage: "create in-order key under directory <key>"},
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
 		Action: func(c *cli.Context) {
@@ -50,13 +51,21 @@ func mkCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	}
 
 	ttl := c.Int("ttl")
+	inorder := c.Bool("in-order")
 
+	var resp *client.Response
 	ctx, cancel := contextWithTotalTimeout(c)
-	// Since PrevNoExist means that the Node must not exist previously,
-	// this Set method always creates a new key. Therefore, mk command
-	// succeeds only if the key did not previously exist, and the command
-	// prevents one from overwriting values accidentally.
-	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevNoExist})
+	if !inorder {
+		// Since PrevNoExist means that the Node must not exist previously,
+		// this Set method always creates a new key. Therefore, mk command
+		// succeeds only if the key did not previously exist, and the command
+		// prevents one from overwriting values accidentally.
+		resp, err = ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevNoExist})
+	} else {
+		// If in-order flag is specified then create an inorder key under
+		// the directory identified by the key argument.
+		resp, err = ki.CreateInOrder(ctx, key, value, &client.CreateInOrderOptions{TTL: time.Duration(ttl) * time.Second})
+	}
 	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)

@@ -110,6 +110,12 @@ $ etcdctl mk /foo/new_bar "Hello world"
 Hello world
 ```
 
+Create a new in-order key under dir `/fooDir`:
+
+```
+$ etcdctl mk --in-order /fooDir "Hello world"
+```
+
 Create a new dir `/fooDir`, only if the key did not previously exist:
 
 ```
