@@ -47,18 +47,14 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("txn command does not accept argument."))
 	}
 
-	if !txnInteractive {
-		ExitWithError(ExitBadFeature, fmt.Errorf("txn command only supports interactive mode"))
-	}
-
 	reader := bufio.NewReader(os.Stdin)
 
 	txn := mustClientFromCmd(cmd).Txn(context.Background())
-	fmt.Println("compares:")
+	promptInteractive("compares:")
 	txn.If(readCompares(reader)...)
-	fmt.Println("success requests (get, put, delete):")
+	promptInteractive("success requests (get, put, delete):")
 	txn.Then(readOps(reader)...)
-	fmt.Println("failure requests (get, put, delete):")
+	promptInteractive("failure requests (get, put, delete):")
 	txn.Else(readOps(reader)...)
 
 	resp, err := txn.Commit()
@@ -67,6 +63,12 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	display.Txn(*resp)
+}
+
+func promptInteractive(s string) {
+	if txnInteractive {
+		fmt.Println(s)
+	}
 }
 
 func readCompares(r *bufio.Reader) (cmps []clientv3.Cmp) {

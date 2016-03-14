@@ -129,16 +129,16 @@ OK
 
 ### TXN [options]
 
-TXN applies multiple etcd requests as a single atomic transaction. A transaction consists of list of conditions, a list of requests to apply if all the conditions are true, and a list of requests to apply if any condition is false.
+TXN reads multiple etcd requests from standard input and applies them as a single atomic transaction.
+A transaction consists of list of conditions, a list of requests to apply if all the conditions are true, and a list of requests to apply if any condition is false.
 
 #### Options
 
 - hex -- print out keys and values as hex encoded string
 
-- interactive -- input transaction with interactive mode
+- interactive -- input transaction with interactive prompting
 
 #### Input Format
-Interactive mode:
 ```ebnf
 <Txn> ::= <CMP>* "\n" <THEN> "\n" <ELSE> "\n"
 <CMP> ::= (<CMPCREATE>|<CMPMOD>|<CMPVAL>|<CMPVER>) "\n"
@@ -155,8 +155,6 @@ Interactive mode:
 <REVISION> ::= "\""[0-9]+"\""
 <VERSION> ::= "\""[0-9]+"\""
 ```
-
-TODO: non-interactive mode
 
 #### Return value
 
@@ -178,6 +176,7 @@ The protobuf encoding of the Txn [RPC response][etcdrpc].
 
 #### Examples
 
+txn in interactive mode:
 ``` bash
 ./etcdctl txn -i
 mod("key1") > "0"
@@ -194,10 +193,22 @@ OK
 OK
 ```
 
-#### Notes
+txn in non-interactive mode:
+```
+./etcdctl txn <<<'mod("key1") > "0"
 
-TODO: non-interactive mode
+put key1 "overwrote-key1"
 
+put key1 "created-key1"
+put key2 "some extra key"
+
+'
+FAILURE
+
+OK
+
+OK
+````
 
 ### WATCH [options] [key or prefix]
 
