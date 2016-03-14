@@ -19,6 +19,7 @@ package fileutil
 import (
 	"errors"
 	"os"
+	"syscall"
 )
 
 var (
@@ -39,11 +40,22 @@ func (l *lock) TryLock() error {
 }
 
 func (l *lock) Lock() error {
+	p, err := syscall.UTF16PtrFromString(l.file.Name())
+	if err != nil {
+		return err
+	}
+	_, err = syscall.CreateFile(p, syscall.GENERIC_READ|syscall.GENERIC_WRITE,
+		0, nil, syscall.OPEN_ALWAYS,
+		syscall.FILE_ATTRIBUTE_NORMAL,
+		0)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (l *lock) Unlock() error {
-	return nil
+	return syscall.Close(syscall.Handle(l.fd))
 }
 
 func (l *lock) Destroy() error {
@@ -55,6 +67,7 @@ func NewLock(file string) (Lock, error) {
 	if err != nil {
 		return nil, err
 	}
+	f.Close()
 	l := &lock{int(f.Fd()), f}
 	return l, nil
 }
