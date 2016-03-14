@@ -26,9 +26,9 @@ import (
 var RootCmd = &cobra.Command{
 	Use:   "benchmark",
 	Short: "A low-level benchmark tool for etcd3",
-	Long: `benchmark is a low-level benchmakr tool for etcd3.
+	Long: `benchmark is a low-level benchmark tool for etcd3.
 It uses gRPC client directly and does not depend on 
-etcd client libray.
+etcd client library.
 	`,
 }
 
