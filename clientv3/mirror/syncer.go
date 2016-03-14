@@ -105,5 +105,5 @@ func (s *syncer) SyncUpdates(ctx context.Context) clientv3.WatchChan {
 	if s.rev == 0 {
 		panic("unexpected revision = 0. Calling SyncUpdates before SyncBase finishes?")
 	}
-	return s.c.Watch(ctx, s.prefix, clientv3.WithPrefix(), clientv3.WithRev(s.rev))
+	return s.c.Watch(ctx, s.prefix, clientv3.WithPrefix(), clientv3.WithRev(s.rev+1))
 }
