@@ -178,8 +178,11 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 }
 
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
-	plog.Info("EtcdServer.AuthEnable isn't implemented yet")
-	return &pb.AuthEnableResponse{}, nil
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthEnable: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.AuthEnableResponse), result.err
 }
 
 type applyResult struct {
@@ -248,8 +251,7 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
 	case r.LeaseRevoke != nil:
 		ar.resp, ar.err = applyLeaseRevoke(le, r.LeaseRevoke)
 	case r.AuthEnable != nil:
-		plog.Info("AuthEnable is not implemented yet")
-		ar.resp, ar.err = nil, nil
+		ar.resp, ar.err = applyAuthEnable(s)
 	default:
 		panic("not implemented")
 	}
@@ -652,4 +654,9 @@ func compareInt64(a, b int64) int {
 // sending empty byte strings as nil; >= is encoded in the range end as '\0'.
 func isGteRange(rangeEnd []byte) bool {
 	return len(rangeEnd) == 1 && rangeEnd[0] == 0
+}
+
+func applyAuthEnable(s *EtcdServer) (*pb.AuthEnableResponse, error) {
+	s.AuthStore().AuthEnable()
+	return &pb.AuthEnableResponse{}, nil
 }
