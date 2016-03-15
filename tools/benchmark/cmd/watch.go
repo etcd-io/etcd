@@ -80,6 +80,7 @@ func init() {
 	watchCmd.Flags().IntVar(&watchKeySize, "key-size", 32, "Key size of watch request")
 	watchCmd.Flags().IntVar(&watchKeySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	watchCmd.Flags().BoolVar(&watchSeqKeys, "sequential-keys", false, "Use sequential keys")
+	watchCmd.Flags().BoolVar(&sample, "sample", false, "'true' to sample requests for every second")
 }
 
 func watchFunc(cmd *cobra.Command, args []string) {
@@ -184,7 +185,7 @@ func doWatch(stream v3.Watcher, requests <-chan string) {
 		if wch == nil {
 			errStr = "could not open watch channel"
 		}
-		results <- result{errStr: errStr, duration: time.Since(st)}
+		results <- result{errStr: errStr, duration: time.Since(st), happened: time.Now()}
 		bar.Increment()
 		go recvWatchChan(wch)
 	}
@@ -204,7 +205,7 @@ func recvWatchChan(wch v3.WatchChan) {
 		}
 
 		st := time.Now()
-		results <- result{duration: time.Since(st)}
+		results <- result{duration: time.Since(st), happened: time.Now()}
 		bar.Increment()
 
 		atomic.AddInt32(&nrRecvCompleted, 1)
