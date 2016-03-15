@@ -12,17 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !linux
+// +build !linux,!darwin
 
 package fileutil
 
 import "os"
 
-// Preallocate tries to allocate the space for given
-// file. This operation is only supported on linux by a
-// few filesystems (btrfs, ext4, etc.).
-// If the operation is unsupported, no error will be returned.
-// Otherwise, the error encountered will be returned.
-func Preallocate(f *os.File, sizeInBytes int) error {
-	return nil
+func preallocExtend(f *os.File, sizeInBytes int64) error {
+	return preallocExtendTrunc(f, sizeInBytes)
 }
+
+func preallocFixed(f *os.File, sizeInBytes int64) error { return nil }

@@ -192,7 +192,7 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) 
 			rc.Close()
 			return nil, err
 		}
-		if err := fileutil.Preallocate(w.tail().File, segmentSizeBytes); err != nil {
+		if err := fileutil.Preallocate(w.tail().File, segmentSizeBytes, false); err != nil {
 			rc.Close()
 			plog.Errorf("failed to allocate space when creating new wal file (%v)", err)
 			return nil, err
@@ -350,7 +350,7 @@ func (w *WAL) cut() error {
 	prevCrc = w.encoder.crc.Sum32()
 	w.encoder = newEncoder(w.tail(), prevCrc)
 
-	if err = fileutil.Preallocate(w.tail().File, segmentSizeBytes); err != nil {
+	if err = fileutil.Preallocate(w.tail().File, segmentSizeBytes, false); err != nil {
 		plog.Errorf("failed to allocate space when creating new wal file (%v)", err)
 		return err
 	}
