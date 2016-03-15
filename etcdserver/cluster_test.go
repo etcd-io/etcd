@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/pkg/mock/mockstore"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -406,7 +407,7 @@ func TestClusterGenID(t *testing.T) {
 	}
 	previd := cs.ID()
 
-	cs.SetStore(store.NewNop())
+	cs.SetStore(mockstore.NewNop())
 	cs.AddMember(newTestMember(3, nil, "", nil))
 	cs.genID()
 	if cs.ID() == previd {
@@ -447,7 +448,7 @@ func TestNodeToMemberBad(t *testing.T) {
 }
 
 func TestClusterAddMember(t *testing.T) {
-	st := store.NewRecorder()
+	st := mockstore.NewRecorder()
 	c := newTestCluster(nil)
 	c.SetStore(st)
 	c.AddMember(newTestMember(1, nil, "node1", nil))
@@ -492,7 +493,7 @@ func TestClusterMembers(t *testing.T) {
 }
 
 func TestClusterRemoveMember(t *testing.T) {
-	st := store.NewRecorder()
+	st := mockstore.NewRecorder()
 	c := newTestCluster(nil)
 	c.SetStore(st)
 	c.RemoveMember(1)
