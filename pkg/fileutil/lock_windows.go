@@ -16,45 +16,17 @@
 
 package fileutil
 
-import (
-	"errors"
-	"os"
-)
+import "os"
 
-var (
-	ErrLocked = errors.New("file already locked")
-)
-
-type lock struct {
-	fd   int
-	file *os.File
+func TryLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
+	return LockFile(path, flag, perm)
 }
 
-func (l *lock) Name() string {
-	return l.file.Name()
-}
-
-func (l *lock) TryLock() error {
-	return nil
-}
-
-func (l *lock) Lock() error {
-	return nil
-}
-
-func (l *lock) Unlock() error {
-	return nil
-}
-
-func (l *lock) Destroy() error {
-	return l.file.Close()
-}
-
-func NewLock(file string) (Lock, error) {
-	f, err := os.Open(file)
+func LockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
+	// TODO make this actually work
+	f, err := os.OpenFile(path, flag, perm)
 	if err != nil {
 		return nil, err
 	}
-	l := &lock{int(f.Fd()), f}
-	return l, nil
+	return &LockedFile{f}, nil
 }

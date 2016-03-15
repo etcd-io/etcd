@@ -80,7 +80,7 @@ func TestPurgeFile(t *testing.T) {
 	close(stop)
 }
 
-func TestPurgeFileHoldingLock(t *testing.T) {
+func TestPurgeFileHoldingLockFile(t *testing.T) {
 	dir, err := ioutil.TempDir("", "purgefile")
 	if err != nil {
 		t.Fatal(err)
@@ -95,8 +95,8 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 	}
 
 	// create a purge barrier at 5
-	l, err := NewLock(path.Join(dir, fmt.Sprintf("%d.test", 5)))
-	err = l.Lock()
+	p := path.Join(dir, fmt.Sprintf("%d.test", 5))
+	l, err := LockFile(p, os.O_WRONLY, 0600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,12 +127,7 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 	}
 
 	// remove the purge barrier
-	err = l.Unlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = l.Destroy()
-	if err != nil {
+	if err = l.Close(); err != nil {
 		t.Fatal(err)
 	}
 
