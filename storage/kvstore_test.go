@@ -139,13 +139,13 @@ func TestStorePut(t *testing.T) {
 		}
 
 		wact := []testutil.Action{
-			{"put", []interface{}{keyBucketName, tt.wkey, data}},
+			{"seqput", []interface{}{keyBucketName, tt.wkey, data}},
 		}
 
 		if tt.rr != nil {
 			wact = []testutil.Action{
 				{"range", []interface{}{keyBucketName, newTestKeyBytes(tt.r.rev, false), []byte(nil), int64(0)}},
-				{"put", []interface{}{keyBucketName, tt.wkey, data}},
+				{"seqput", []interface{}{keyBucketName, tt.wkey, data}},
 			}
 		}
 
@@ -305,7 +305,7 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
 		wact := []testutil.Action{
-			{"put", []interface{}{keyBucketName, tt.wkey, data}},
+			{"seqput", []interface{}{keyBucketName, tt.wkey, data}},
 			{"range", []interface{}{keyBucketName, newTestKeyBytes(revision{2, 0}, false), []byte(nil), int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
@@ -572,6 +572,9 @@ func (b *fakeBatchTx) Unlock()                        {}
 func (b *fakeBatchTx) UnsafeCreateBucket(name []byte) {}
 func (b *fakeBatchTx) UnsafePut(bucketName []byte, key []byte, value []byte) {
 	b.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{bucketName, key, value}})
+}
+func (b *fakeBatchTx) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
+	b.Recorder.Record(testutil.Action{Name: "seqput", Params: []interface{}{bucketName, key, value}})
 }
 func (b *fakeBatchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte) {
 	b.Recorder.Record(testutil.Action{Name: "range", Params: []interface{}{bucketName, key, endKey, limit}})

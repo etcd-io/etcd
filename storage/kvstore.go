@@ -453,7 +453,7 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 		log.Fatalf("storage: cannot marshal event: %v", err)
 	}
 
-	s.tx.UnsafePut(keyBucketName, ibytes, d)
+	s.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	s.kvindex.Put(key, revision{main: rev, sub: s.currentRev.sub})
 	s.changes = append(s.changes, kv)
 	s.currentRev.sub += 1
@@ -514,7 +514,7 @@ func (s *store) delete(key []byte, rev revision) {
 		log.Fatalf("storage: cannot marshal event: %v", err)
 	}
 
-	s.tx.UnsafePut(keyBucketName, ibytes, d)
+	s.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	err = s.kvindex.Tombstone(key, revision{main: mainrev, sub: s.currentRev.sub})
 	if err != nil {
 		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
