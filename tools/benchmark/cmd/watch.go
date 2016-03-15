@@ -80,7 +80,6 @@ func init() {
 	watchCmd.Flags().IntVar(&watchKeySize, "key-size", 32, "Key size of watch request")
 	watchCmd.Flags().IntVar(&watchKeySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	watchCmd.Flags().BoolVar(&watchSeqKeys, "sequential-keys", false, "Use sequential keys")
-	watchCmd.Flags().BoolVar(&sample, "sample", false, "'true' to sample requests for every second")
 }
 
 func watchFunc(cmd *cobra.Command, args []string) {

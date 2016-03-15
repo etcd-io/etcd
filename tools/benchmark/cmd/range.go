@@ -42,7 +42,6 @@ func init() {
 	RootCmd.AddCommand(rangeCmd)
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
-	rangeCmd.Flags().BoolVar(&sample, "sample", false, "'true' to sample requests for every second")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
