@@ -46,8 +46,6 @@ var (
 
 	compactInterval   time.Duration
 	compactIndexDelta int64
-
-	sample bool
 )
 
 func init() {
@@ -59,7 +57,6 @@ func init() {
 	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
 	putCmd.Flags().DurationVar(&compactInterval, "compact-interval", 0, `Interval to compact database (do not duplicate this with etcd's 'auto-compaction-retention' flag) (e.g. --compact-interval=5m compacts every 5-minute)`)
 	putCmd.Flags().Int64Var(&compactIndexDelta, "compact-index-delta", 1000, "Delta between current revision and compact revision (e.g. current revision 10000, compact at 9000)")
-	putCmd.Flags().BoolVar(&sample, "sample", false, "'true' to sample requests for every second")
 }
 
 func putFunc(cmd *cobra.Command, args []string) {
