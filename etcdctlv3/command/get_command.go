@@ -28,6 +28,7 @@ var (
 	getSortOrder  string
 	getSortTarget string
 	getPrefix     bool
+	getFromKey    bool
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -41,8 +42,8 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().StringVar(&getSortOrder, "order", "", "order of results; ASCEND or DESCEND")
 	cmd.Flags().StringVar(&getSortTarget, "sort-by", "", "sort target; CREATE, KEY, MODIFY, VALUE, or VERSION")
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "maximum number of results")
-	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "enable keys with matching prefix")
-	// TODO: add fromkey.
+	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "get keys with matching prefix")
+	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "get keys that are greater than or equal to the given key")
 	// TODO: add consistency.
 	return cmd
 }
@@ -63,11 +64,15 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("range command needs arguments."))
 	}
 
+	if getPrefix && getFromKey {
+		ExitWithError(ExitBadArgs, fmt.Errorf("`--prefix` and `--from-key` cannot be set at the same time, choose one."))
+	}
+
 	opts := []clientv3.OpOption{}
 	key := args[0]
 	if len(args) > 1 {
-		if getPrefix {
-			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments for range with prefix, only accept one."))
+		if getPrefix || getFromKey {
+			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments, only accept one arguement when `--prefix` or `--from-key` is set."))
 		}
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}
@@ -110,6 +115,10 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 
 	if getPrefix {
 		opts = append(opts, clientv3.WithPrefix())
+	}
+
+	if getFromKey {
+		opts = append(opts, clientv3.WithFromKey())
 	}
 
 	return key, opts
