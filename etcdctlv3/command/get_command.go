@@ -27,6 +27,7 @@ var (
 	getLimit      int64
 	getSortOrder  string
 	getSortTarget string
+	getPrefix     bool
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -40,8 +41,8 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().StringVar(&getSortOrder, "order", "", "order of results; ASCEND or DESCEND")
 	cmd.Flags().StringVar(&getSortTarget, "sort-by", "", "sort target; CREATE, KEY, MODIFY, VALUE, or VERSION")
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "maximum number of results")
+	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "enable keys with matching prefix")
 	// TODO: add fromkey.
-	// TODO: add prefix.
 	// TODO: add consistency.
 	return cmd
 }
@@ -65,8 +66,12 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	opts := []clientv3.OpOption{}
 	key := args[0]
 	if len(args) > 1 {
+		if getPrefix {
+			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments for range with prefix, only accept one."))
+		}
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}
+
 	opts = append(opts, clientv3.WithLimit(getLimit))
 
 	sortByOrder := clientv3.SortNone
@@ -102,5 +107,10 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	}
 
 	opts = append(opts, clientv3.WithSort(sortByTarget, sortByOrder))
+
+	if getPrefix {
+		opts = append(opts, clientv3.WithPrefix())
+	}
+
 	return key, opts
 }
