@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/pkg/mock/mockstorage"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -153,7 +154,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	n := newNopReadyNode()
 	r := raftNode{
 		Node:        n,
-		storage:     newStorageRecorder(""),
+		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
 	}
