@@ -313,6 +313,11 @@ func startNode(cfg *ServerConfig, cl *cluster, ids []types.ID) (id types.ID, n r
 		MaxSizePerMsg:   maxSizePerMsg,
 		MaxInflightMsgs: maxInflightMsgs,
 	}
+
+	if cfg.V3demo {
+		c.CheckQuorum = true
+	}
+
 	n = raft.StartNode(c, peers)
 	raftStatusMu.Lock()
 	raftStatus = n.Status
@@ -345,6 +350,11 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *clust
 		MaxSizePerMsg:   maxSizePerMsg,
 		MaxInflightMsgs: maxInflightMsgs,
 	}
+
+	if cfg.V3demo {
+		c.CheckQuorum = true
+	}
+
 	n := raft.RestartNode(c)
 	raftStatusMu.Lock()
 	raftStatus = n.Status
