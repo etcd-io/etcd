@@ -60,7 +60,7 @@ var (
 	crcTable            = crc32.MakeTable(crc32.Castagnoli)
 )
 
-// WAL is a logical repersentation of the stable storage.
+// WAL is a logical representation of the stable storage.
 // WAL is either in read mode or append mode but not both.
 // A newly created WAL is in append mode, and ready for appending records.
 // A just opened WAL is in read mode, and ready for reading records.
@@ -98,6 +98,8 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+
 	l, err := fileutil.NewLock(f.Name())
 	if err != nil {
 		return nil, err
