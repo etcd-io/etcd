@@ -79,8 +79,12 @@ previously-persisted entries with Index >= i must be discarded.
 2. Send all Messages to the nodes named in the To field. It is important that
 no messages be sent until after the latest HardState has been persisted to disk,
 and all Entries written by any previous Ready batch (Messages may be sent while
-entries from the same batch are being persisted). If any Message has type MsgSnap,
-call Node.ReportSnapshot() after it has been sent (these messages may be large).
+entries from the same batch are being persisted). To reduce the I/O latency, an
+optimization can be applied to make leader write to disk in parallel with its
+followers (as explained at section 10.2.1 in Raft thesis). If any Message has type
+MsgSnap, call Node.ReportSnapshot() after it has been sent (these messages may be
+large).
+
 Note: Marshalling messages is not thread-safe; it is important that you
 make sure that no new entries are persisted while marshalling.
 The easiest way to achieve this is to serialise the messages directly inside
