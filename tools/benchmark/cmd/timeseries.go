@@ -16,7 +16,9 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/csv"
 	"fmt"
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -82,10 +84,25 @@ func (sp *secondPoints) getTimeSeries() TimeSeries {
 
 func (ts TimeSeries) String() string {
 	buf := new(bytes.Buffer)
-	buf.WriteString("Sample in one second (unix latency throughput):\n")
-	for i := range ts {
-		buf.WriteString(fmt.Sprintf("%7d   %10s   %5d\n", ts[i].timestamp, ts[i].avgLatency, ts[i].throughPut))
+	wr := csv.NewWriter(buf)
+	if err := wr.Write([]string{"unix_ts", "avg_latency", "throughput"}); err != nil {
+		log.Fatal(err)
 	}
-	buf.WriteString("\n")
-	return buf.String()
+	rows := [][]string{}
+	for i := range ts {
+		row := []string{
+			fmt.Sprintf("%d", ts[i].timestamp),
+			fmt.Sprintf("%s", ts[i].avgLatency),
+			fmt.Sprintf("%d", ts[i].throughPut),
+		}
+		rows = append(rows, row)
+	}
+	if err := wr.WriteAll(rows); err != nil {
+		log.Fatal(err)
+	}
+	wr.Flush()
+	if err := wr.Error(); err != nil {
+		log.Fatal(err)
+	}
+	return fmt.Sprintf("\nSample in one second (unix latency throughput):\n%s", buf.String())
 }
