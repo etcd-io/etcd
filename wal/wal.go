@@ -98,6 +98,8 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+
 	l, err := fileutil.NewLock(f.Name())
 	if err != nil {
 		return nil, err
