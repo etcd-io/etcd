@@ -21,6 +21,8 @@
 // etcd binary, work in the `github.com/coreos/etcd/etcdmain` package.
 //
 
+// +build !windows
+
 package main
 
 import "github.com/coreos/etcd/etcdmain"
