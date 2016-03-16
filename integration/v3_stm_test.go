@@ -19,7 +19,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/coreos/etcd/contrib/recipes"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	v3 "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/concurrency"
 )
 
 // TestSTMConflict tests that conflicts are retried.
@@ -28,33 +30,26 @@ func TestSTMConflict(t *testing.T) {
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
-	keys := make([]*recipe.RemoteKV, 5)
+	keys := make([]string, 5)
 	for i := 0; i < len(keys); i++ {
-		rk, err := recipe.NewKV(etcdc, fmt.Sprintf("foo-%d", i), "100", 0)
-		if err != nil {
+		keys[i] = fmt.Sprintf("foo-%d", i)
+		if _, err := etcdc.Put(context.TODO(), keys[i], "100"); err != nil {
 			t.Fatalf("could not make key (%v)", err)
 		}
-		keys[i] = rk
 	}
 
-	errc := make([]<-chan error, len(keys))
-	for i, rk := range keys {
+	errc := make(chan error)
+	for i := range keys {
 		curEtcdc := clus.RandClient()
-		srcKey := rk.Key()
-		applyf := func(stm *recipe.STM) error {
-			src, err := stm.Get(srcKey)
-			if err != nil {
-				return err
-			}
+		srcKey := keys[i]
+		applyf := func(stm concurrency.STM) error {
+			src := stm.Get(srcKey)
 			// must be different key to avoid double-adding
 			dstKey := srcKey
 			for dstKey == srcKey {
-				dstKey = keys[rand.Intn(len(keys))].Key()
+				dstKey = keys[rand.Intn(len(keys))]
 			}
-			dst, err := stm.Get(dstKey)
-			if err != nil {
-				return err
-			}
+			dst := stm.Get(dstKey)
 			srcV, _ := strconv.ParseInt(src, 10, 64)
 			dstV, _ := strconv.ParseInt(dst, 10, 64)
 			xfer := int64(rand.Intn(int(srcV)) / 2)
@@ -62,24 +57,27 @@ func TestSTMConflict(t *testing.T) {
 			stm.Put(dstKey, fmt.Sprintf("%d", dstV+xfer))
 			return nil
 		}
-		errc[i] = recipe.NewSTM(curEtcdc, applyf)
+		go func() {
+			_, err := concurrency.NewSTMRepeatable(context.TODO(), curEtcdc, applyf)
+			errc <- err
+		}()
 	}
 
 	// wait for txns
-	for _, ch := range errc {
-		if err := <-ch; err != nil {
+	for range keys {
+		if err := <-errc; err != nil {
 			t.Fatalf("apply failed (%v)", err)
 		}
 	}
 
 	// ensure sum matches initial sum
 	sum := 0
-	for _, oldRK := range keys {
-		rk, err := recipe.GetRemoteKV(etcdc, oldRK.Key())
+	for _, oldkey := range keys {
+		rk, err := etcdc.Get(context.TODO(), oldkey)
 		if err != nil {
-			t.Fatalf("couldn't fetch key %s (%v)", oldRK.Key(), err)
+			t.Fatalf("couldn't fetch key %s (%v)", oldkey, err)
 		}
-		v, _ := strconv.ParseInt(rk.Value(), 10, 64)
+		v, _ := strconv.ParseInt(string(rk.Kvs[0].Value), 10, 64)
 		sum += int(v)
 	}
 	if sum != len(keys)*100 {
@@ -93,21 +91,20 @@ func TestSTMPutNewKey(t *testing.T) {
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
-	applyf := func(stm *recipe.STM) error {
+	applyf := func(stm concurrency.STM) error {
 		stm.Put("foo", "bar")
 		return nil
 	}
-	errc := recipe.NewSTM(etcdc, applyf)
-	if err := <-errc; err != nil {
+	if _, err := concurrency.NewSTMRepeatable(context.TODO(), etcdc, applyf); err != nil {
 		t.Fatalf("error on stm txn (%v)", err)
 	}
 
-	rk, err := recipe.GetRemoteKV(etcdc, "foo")
+	resp, err := etcdc.Get(context.TODO(), "foo")
 	if err != nil {
 		t.Fatalf("error fetching key (%v)", err)
 	}
-	if rk.Value() != "bar" {
-		t.Fatalf("bad value. got %v, expected bar", rk.Value())
+	if string(resp.Kvs[0].Value) != "bar" {
+		t.Fatalf("bad value. got %+v, expected 'bar' value", resp)
 	}
 }
 
@@ -117,22 +114,81 @@ func TestSTMAbort(t *testing.T) {
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
-	applyf := func(stm *recipe.STM) error {
+	ctx, cancel := context.WithCancel(context.TODO())
+	applyf := func(stm concurrency.STM) error {
 		stm.Put("foo", "baz")
-		stm.Abort()
-		stm.Put("foo", "baz")
+		cancel()
+		stm.Put("foo", "bap")
 		return nil
 	}
-	errc := recipe.NewSTM(etcdc, applyf)
-	if err := <-errc; err != nil {
-		t.Fatalf("error on stm txn (%v)", err)
+	if _, err := concurrency.NewSTMRepeatable(ctx, etcdc, applyf); err == nil {
+		t.Fatalf("no error on stm txn")
 	}
 
-	rk, err := recipe.GetRemoteKV(etcdc, "foo")
+	resp, err := etcdc.Get(context.TODO(), "foo")
 	if err != nil {
 		t.Fatalf("error fetching key (%v)", err)
 	}
-	if rk.Value() != "" {
-		t.Fatalf("bad value. got %v, expected empty string", rk.Value())
+	if len(resp.Kvs) != 0 {
+		t.Fatalf("bad value. got %+v, expected nothing", resp)
+	}
+}
+
+// TestSTMSerialize tests that serialization is honored when serializable.
+func TestSTMSerialize(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	etcdc := clus.RandClient()
+
+	// set up initial keys
+	keys := make([]string, 5)
+	for i := 0; i < len(keys); i++ {
+		keys[i] = fmt.Sprintf("foo-%d", i)
+	}
+
+	// update keys in full batches
+	updatec := make(chan struct{})
+	go func() {
+		defer close(updatec)
+		for i := 0; i < 5; i++ {
+			s := fmt.Sprintf("%d", i)
+			ops := []v3.Op{}
+			for _, k := range keys {
+				ops = append(ops, v3.OpPut(k, s))
+			}
+			if _, err := etcdc.Txn(context.TODO()).Then(ops...).Commit(); err != nil {
+				t.Fatalf("couldn't put keys (%v)", err)
+			}
+			updatec <- struct{}{}
+		}
+	}()
+
+	// read all keys in txn, make sure all values match
+	errc := make(chan error)
+	for range updatec {
+		curEtcdc := clus.RandClient()
+		applyf := func(stm concurrency.STM) error {
+			vs := []string{}
+			for i := range keys {
+				vs = append(vs, stm.Get(keys[i]))
+			}
+			for i := range vs {
+				if vs[0] != vs[i] {
+					return fmt.Errorf("got vs[%d] = %v, want %v", i, vs[i], vs[0])
+				}
+			}
+			return nil
+		}
+		go func() {
+			_, err := concurrency.NewSTMSerializable(context.TODO(), curEtcdc, applyf)
+			errc <- err
+		}()
+	}
+
+	for i := 0; i < 5; i++ {
+		if err := <-errc; err != nil {
+			t.Error(err)
+		}
 	}
 }
