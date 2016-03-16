@@ -63,17 +63,27 @@ func actionMemberList(c *cli.Context) {
 	mAPI := mustNewMembersAPI(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	defer cancel()
+
 	members, err := mAPI.List(ctx)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
+	leader, err := mAPI.Leader(ctx)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to get leader: ", err)
+		os.Exit(1)
+	}
 
 	for _, m := range members {
+		isLeader := false
+		if m.ID == leader.ID {
+			isLeader = true
+		}
 		if len(m.Name) == 0 {
 			fmt.Printf("%s[unstarted]: peerURLs=%s\n", m.ID, strings.Join(m.PeerURLs, ","))
 		} else {
-			fmt.Printf("%s: name=%s peerURLs=%s clientURLs=%s\n", m.ID, m.Name, strings.Join(m.PeerURLs, ","), strings.Join(m.ClientURLs, ","))
+			fmt.Printf("%s: name=%s peerURLs=%s clientURLs=%s isLeader=%v\n", m.ID, m.Name, strings.Join(m.PeerURLs, ","), strings.Join(m.ClientURLs, ","), isLeader)
 		}
 	}
 }
