@@ -55,6 +55,9 @@ func Repair(dirpath string) bool {
 			continue
 		case io.EOF:
 			return true
+		case ErrZeroTrailer:
+			plog.Noticef("found zero trailer in %v", f.Name())
+			fallthrough
 		case io.ErrUnexpectedEOF:
 			plog.Noticef("repairing %v", f.Name())
 			bf, bferr := os.Create(f.Name() + ".broken")

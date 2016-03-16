@@ -16,6 +16,7 @@ package wal
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -42,8 +43,19 @@ func TestNew(t *testing.T) {
 		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
 	}
 	defer w.Close()
-	gd, err := ioutil.ReadFile(w.tail().Name())
+
+	// file is preallocated to segment size; only read data written by wal
+	off, err := w.tail().Seek(0, os.SEEK_CUR)
 	if err != nil {
+		t.Fatal(err)
+	}
+	gd := make([]byte, off)
+	f, err := os.Open(w.tail().Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if _, err = io.ReadFull(f, gd); err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
 
