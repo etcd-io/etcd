@@ -78,7 +78,8 @@ type Lessor interface {
 
 	// Promote promotes the lessor to be the primary lessor. Primary lessor manages
 	// the expiration and renew of leases.
-	Promote()
+	// Newly promoted lessor renew the TTL of all lease to extend + previous TTL.
+	Promote(extend time.Duration)
 
 	// Demote demotes the lessor from being the primary lessor.
 	Demote()
@@ -188,7 +189,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	}
 
 	if le.primary {
-		l.refresh()
+		l.refresh(0)
 	} else {
 		l.forever()
 	}
@@ -240,7 +241,7 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 		return -1, ErrLeaseNotFound
 	}
 
-	l.refresh()
+	l.refresh(0)
 	return l.TTL, nil
 }
 
@@ -253,7 +254,7 @@ func (le *lessor) Lookup(id LeaseID) *Lease {
 	return nil
 }
 
-func (le *lessor) Promote() {
+func (le *lessor) Promote(extend time.Duration) {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
@@ -261,7 +262,7 @@ func (le *lessor) Promote() {
 
 	// refresh the expiries of all leases.
 	for _, l := range le.leaseMap {
-		l.refresh()
+		l.refresh(extend)
 	}
 }
 
@@ -452,11 +453,11 @@ func (l Lease) removeFrom(b backend.Backend) {
 
 // refresh refreshes the expiry of the lease. It extends the expiry at least
 // minLeaseTTL second.
-func (l *Lease) refresh() {
+func (l *Lease) refresh(extend time.Duration) {
 	if l.TTL < minLeaseTTL {
 		l.TTL = minLeaseTTL
 	}
-	l.expiry = time.Now().Add(time.Second * time.Duration(l.TTL))
+	l.expiry = time.Now().Add(extend + time.Second*time.Duration(l.TTL))
 }
 
 // forever sets the expiry of lease to be forever.
@@ -491,7 +492,7 @@ func (fl *FakeLessor) Attach(id LeaseID, items []LeaseItem) error { return nil }
 
 func (fl *FakeLessor) Detach(id LeaseID, items []LeaseItem) error { return nil }
 
-func (fl *FakeLessor) Promote() {}
+func (fl *FakeLessor) Promote(extend time.Duration) {}
 
 func (fl *FakeLessor) Demote() {}
 

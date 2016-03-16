@@ -134,6 +134,10 @@ func (c *ServerConfig) ReqTimeout() time.Duration {
 	return 5*time.Second + 2*time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
 }
 
+func (c *ServerConfig) electionTimeout() time.Duration {
+	return time.Duration(c.ElectionTicks) * time.Duration(c.TickMs) * time.Millisecond
+}
+
 func (c *ServerConfig) peerDialTimeout() time.Duration {
 	// 1s for queue wait and system delay
 	// + one RTT, which is smaller than 1/5 election timeout

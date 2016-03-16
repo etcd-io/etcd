@@ -165,7 +165,7 @@ func (r *raftNode) start(s *EtcdServer) {
 						// it promotes or demotes instead of modifying server directly.
 						syncC = r.s.SyncTicker
 						if r.s.lessor != nil {
-							r.s.lessor.Promote()
+							r.s.lessor.Promote(r.s.cfg.electionTimeout())
 						}
 						// TODO: remove the nil checking
 						// current test utility does not provide the stats

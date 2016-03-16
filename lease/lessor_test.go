@@ -34,7 +34,7 @@ func TestLessorGrant(t *testing.T) {
 	defer be.Close()
 
 	le := newLessor(be)
-	le.Promote()
+	le.Promote(0)
 
 	l, err := le.Grant(1, 1)
 	if err != nil {
@@ -128,7 +128,7 @@ func TestLessorRenew(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	le := newLessor(be)
-	le.Promote()
+	le.Promote(0)
 
 	l, err := le.Grant(1, 5)
 	if err != nil {
