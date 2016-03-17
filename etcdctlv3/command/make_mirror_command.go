@@ -24,7 +24,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/mirror"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/storage/storagepb"
 )
 
@@ -98,7 +98,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 
 	for wr := range wc {
 		if wr.CompactRevision != 0 {
-			return v3rpc.ErrCompacted
+			return rpctypes.ErrCompacted
 		}
 
 		var rev int64

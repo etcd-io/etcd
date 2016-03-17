@@ -12,20 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v3rpc
+package rpctypes
 
 import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
-	"github.com/coreos/etcd/storage"
 )
 
 var (
 	ErrEmptyKey     = grpc.Errorf(codes.InvalidArgument, "etcdserver: key is not provided")
 	ErrTooManyOps   = grpc.Errorf(codes.InvalidArgument, "etcdserver: too many operations in txn request")
 	ErrDuplicateKey = grpc.Errorf(codes.InvalidArgument, "etcdserver: duplicate key given in txn request")
-	ErrCompacted    = grpc.Errorf(codes.OutOfRange, "etcdserver: "+storage.ErrCompacted.Error())
-	ErrFutureRev    = grpc.Errorf(codes.OutOfRange, "etcdserver: "+storage.ErrFutureRev.Error())
+	ErrCompacted    = grpc.Errorf(codes.OutOfRange, "etcdserver: storage: required revision has been compacted")
+	ErrFutureRev    = grpc.Errorf(codes.OutOfRange, "etcdserver: storage: required revision is a future revision")
 
 	ErrLeaseNotFound = grpc.Errorf(codes.NotFound, "etcdserver: requested lease not found")
 	ErrLeaseExist    = grpc.Errorf(codes.FailedPrecondition, "etcdserver: lease already exists")

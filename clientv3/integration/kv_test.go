@@ -22,7 +22,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -344,8 +344,8 @@ func TestKVCompact(t *testing.T) {
 		t.Fatalf("couldn't compact kv space (%v)", err)
 	}
 	err = kv.Compact(ctx, 7)
-	if err == nil || err != v3rpc.ErrCompacted {
-		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
+	if err == nil || err != rpctypes.ErrCompacted {
+		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
 	}
 
 	wc := clientv3.NewWatcher(clus.RandClient())
@@ -360,8 +360,8 @@ func TestKVCompact(t *testing.T) {
 	}
 
 	err = kv.Compact(ctx, 1000)
-	if err == nil || err != v3rpc.ErrFutureRev {
-		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
+	if err == nil || err != rpctypes.ErrFutureRev {
+		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
 	}
 }
 

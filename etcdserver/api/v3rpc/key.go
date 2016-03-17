@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/storage"
@@ -152,33 +153,33 @@ func (s *kvServer) fillInHeader(h *pb.ResponseHeader) {
 
 func checkRangeRequest(r *pb.RangeRequest) error {
 	if len(r.Key) == 0 {
-		return ErrEmptyKey
+		return rpctypes.ErrEmptyKey
 	}
 	return nil
 }
 
 func checkPutRequest(r *pb.PutRequest) error {
 	if len(r.Key) == 0 {
-		return ErrEmptyKey
+		return rpctypes.ErrEmptyKey
 	}
 	return nil
 }
 
 func checkDeleteRequest(r *pb.DeleteRangeRequest) error {
 	if len(r.Key) == 0 {
-		return ErrEmptyKey
+		return rpctypes.ErrEmptyKey
 	}
 	return nil
 }
 
 func checkTxnRequest(r *pb.TxnRequest) error {
 	if len(r.Compare) > MaxOpsPerTxn || len(r.Success) > MaxOpsPerTxn || len(r.Failure) > MaxOpsPerTxn {
-		return ErrTooManyOps
+		return rpctypes.ErrTooManyOps
 	}
 
 	for _, c := range r.Compare {
 		if len(c.Key) == 0 {
-			return ErrEmptyKey
+			return rpctypes.ErrEmptyKey
 		}
 	}
 
@@ -203,7 +204,7 @@ func checkTxnRequest(r *pb.TxnRequest) error {
 	return nil
 }
 
-// checkRequestDupKeys gives ErrDuplicateKey if the same key is modified twice
+// checkRequestDupKeys gives rpctypes.ErrDuplicateKey if the same key is modified twice
 func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 	// check put overlap
 	keys := make(map[string]struct{})
@@ -218,7 +219,7 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 		}
 		key := string(preq.Key)
 		if _, ok := keys[key]; ok {
-			return ErrDuplicateKey
+			return rpctypes.ErrDuplicateKey
 		}
 		keys[key] = struct{}{}
 	}
@@ -248,14 +249,14 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 		key := string(dreq.Key)
 		if dreq.RangeEnd == nil {
 			if _, found := keys[key]; found {
-				return ErrDuplicateKey
+				return rpctypes.ErrDuplicateKey
 			}
 		} else {
 			lo := sort.SearchStrings(sortedKeys, key)
 			hi := sort.SearchStrings(sortedKeys, string(dreq.RangeEnd))
 			if lo != hi {
 				// element between lo and hi => overlap
-				return ErrDuplicateKey
+				return rpctypes.ErrDuplicateKey
 			}
 		}
 	}
@@ -288,14 +289,14 @@ func checkRequestUnion(u *pb.RequestUnion) error {
 func togRPCError(err error) error {
 	switch err {
 	case storage.ErrCompacted:
-		return ErrCompacted
+		return rpctypes.ErrCompacted
 	case storage.ErrFutureRev:
-		return ErrFutureRev
+		return rpctypes.ErrFutureRev
 	case lease.ErrLeaseNotFound:
-		return ErrLeaseNotFound
+		return rpctypes.ErrLeaseNotFound
 	// TODO: handle error from raft and timeout
 	case etcdserver.ErrRequestTooLarge:
-		return ErrRequestTooLarge
+		return rpctypes.ErrRequestTooLarge
 	default:
 		return grpc.Errorf(codes.Internal, err.Error())
 	}

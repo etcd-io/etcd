@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/storage/storagepb"
@@ -105,7 +105,7 @@ func TestV3LeaseCreateByID(t *testing.T) {
 	lresp, err = toGRPC(clus.RandClient()).Lease.LeaseCreate(
 		context.TODO(),
 		&pb.LeaseCreateRequest{ID: 1, TTL: 1})
-	if err != v3rpc.ErrLeaseExist {
+	if err != rpctypes.ErrLeaseExist {
 		t.Error(err)
 	}
 
@@ -241,8 +241,8 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 	badLeaseID := int64(0x12345678)
 	putr := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: badLeaseID}
 	_, err := toGRPC(clus.RandClient()).KV.Put(ctx, putr)
-	if err != v3rpc.ErrLeaseNotFound {
-		t.Errorf("err = %v, want %v", err, v3rpc.ErrCompacted)
+	if err != rpctypes.ErrLeaseNotFound {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrCompacted)
 	}
 }
 
@@ -364,7 +364,7 @@ func leaseExist(t *testing.T, clus *ClusterV3, leaseID int64) bool {
 		return false
 	}
 
-	if err == v3rpc.ErrLeaseExist {
+	if err == rpctypes.ErrLeaseExist {
 		return true
 	}
 	t.Fatalf("unexpecter error %v", err)

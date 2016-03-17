@@ -20,7 +20,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -70,8 +70,8 @@ func TestLeaseRevoke(t *testing.T) {
 	}
 
 	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
-	if err != v3rpc.ErrLeaseNotFound {
-		t.Fatalf("err = %v, want %v", err, v3rpc.ErrLeaseNotFound)
+	if err != rpctypes.ErrLeaseNotFound {
+		t.Fatalf("err = %v, want %v", err, rpctypes.ErrLeaseNotFound)
 	}
 }
 

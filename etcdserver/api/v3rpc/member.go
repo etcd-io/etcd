@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
 )
@@ -42,7 +43,7 @@ func NewClusterServer(s *etcdserver.EtcdServer) *ClusterServer {
 func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) (*pb.MemberAddResponse, error) {
 	urls, err := types.NewURLs(r.PeerURLs)
 	if err != nil {
-		return nil, ErrMemberBadURLs
+		return nil, rpctypes.ErrMemberBadURLs
 	}
 
 	now := time.Now()
@@ -50,9 +51,9 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 	err = cs.server.AddMember(ctx, *m)
 	switch {
 	case err == etcdserver.ErrIDExists:
-		return nil, ErrMemberExist
+		return nil, rpctypes.ErrMemberExist
 	case err == etcdserver.ErrPeerURLexists:
-		return nil, ErrPeerURLExist
+		return nil, rpctypes.ErrPeerURLExist
 	case err != nil:
 		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
@@ -69,7 +70,7 @@ func (cs *ClusterServer) MemberRemove(ctx context.Context, r *pb.MemberRemoveReq
 	case err == etcdserver.ErrIDRemoved:
 		fallthrough
 	case err == etcdserver.ErrIDNotFound:
-		return nil, ErrMemberNotFound
+		return nil, rpctypes.ErrMemberNotFound
 	case err != nil:
 		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
@@ -85,9 +86,9 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 	err := cs.server.UpdateMember(ctx, m)
 	switch {
 	case err == etcdserver.ErrPeerURLexists:
-		return nil, ErrPeerURLExist
+		return nil, rpctypes.ErrPeerURLExist
 	case err == etcdserver.ErrIDNotFound:
-		return nil, ErrMemberNotFound
+		return nil, rpctypes.ErrMemberNotFound
 	case err != nil:
 		return nil, grpc.Errorf(codes.Internal, err.Error())
 	}
