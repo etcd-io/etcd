@@ -16,11 +16,9 @@ package command
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/olekukonko/tablewriter"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
@@ -168,24 +166,5 @@ func memberListCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs", "Is Leader"})
-
-	for _, m := range resp.Members {
-		status := "started"
-		if len(m.Name) == 0 {
-			status = "unstarted"
-		}
-
-		table.Append([]string{
-			fmt.Sprintf("%x", m.ID),
-			status,
-			m.Name,
-			strings.Join(m.PeerURLs, ","),
-			strings.Join(m.ClientURLs, ","),
-			fmt.Sprint(m.IsLeader),
-		})
-	}
-
-	table.Render()
+	display.MemberList(*resp)
 }
