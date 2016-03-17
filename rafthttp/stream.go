@@ -252,6 +252,7 @@ type streamReader struct {
 	errorc        chan<- error
 
 	mu     sync.Mutex
+	paused bool
 	cancel func()
 	closer io.Closer
 	stopc  chan struct{}
@@ -329,6 +330,14 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			cr.close()
 			cr.mu.Unlock()
 			return err
+		}
+
+		cr.mu.Lock()
+		paused := cr.paused
+		cr.mu.Unlock()
+
+		if paused {
+			continue
 		}
 
 		if isLinkHeartbeatMessage(m) {
@@ -461,6 +470,18 @@ func (cr *streamReader) close() {
 		cr.closer.Close()
 	}
 	cr.closer = nil
+}
+
+func (cr *streamReader) pause() {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+	cr.paused = true
+}
+
+func (cr *streamReader) resume() {
+	cr.mu.Lock()
+	defer cr.mu.Unlock()
+	cr.paused = false
 }
 
 func isClosedConnectionError(err error) bool {
