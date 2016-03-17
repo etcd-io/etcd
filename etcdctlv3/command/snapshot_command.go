@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/mirror"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
@@ -100,7 +100,7 @@ func snapshot(w io.Writer, c *clientv3.Client, rev int64) int64 {
 
 	err := <-errc
 	if err != nil {
-		if err == v3rpc.ErrCompacted {
+		if err == rpctypes.ErrCompacted {
 			// will get correct compact revision on retry
 			return rev + 1
 		}

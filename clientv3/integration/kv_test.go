@@ -22,9 +22,8 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/storage/storagepb"
 )
@@ -48,10 +47,10 @@ func TestKVPut(t *testing.T) {
 
 	tests := []struct {
 		key, val string
-		leaseID  lease.LeaseID
+		leaseID  clientv3.LeaseID
 	}{
-		{"foo", "bar", lease.NoLease},
-		{"hello", "world", lease.LeaseID(resp.ID)},
+		{"foo", "bar", clientv3.NoLease},
+		{"hello", "world", clientv3.LeaseID(resp.ID)},
 	}
 
 	for i, tt := range tests {
@@ -68,7 +67,7 @@ func TestKVPut(t *testing.T) {
 		if !bytes.Equal([]byte(tt.val), resp.Kvs[0].Value) {
 			t.Errorf("#%d: val = %s, want %s", i, tt.val, resp.Kvs[0].Value)
 		}
-		if tt.leaseID != lease.LeaseID(resp.Kvs[0].Lease) {
+		if tt.leaseID != clientv3.LeaseID(resp.Kvs[0].Lease) {
 			t.Errorf("#%d: val = %d, want %d", i, tt.leaseID, resp.Kvs[0].Lease)
 		}
 	}
@@ -344,8 +343,8 @@ func TestKVCompact(t *testing.T) {
 		t.Fatalf("couldn't compact kv space (%v)", err)
 	}
 	err = kv.Compact(ctx, 7)
-	if err == nil || err != v3rpc.ErrCompacted {
-		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
+	if err == nil || err != rpctypes.ErrCompacted {
+		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
 	}
 
 	wc := clientv3.NewWatcher(clus.RandClient())
@@ -360,8 +359,8 @@ func TestKVCompact(t *testing.T) {
 	}
 
 	err = kv.Compact(ctx, 1000)
-	if err == nil || err != v3rpc.ErrFutureRev {
-		t.Fatalf("error got %v, want %v", err, v3rpc.ErrFutureRev)
+	if err == nil || err != rpctypes.ErrFutureRev {
+		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
 	}
 }
 

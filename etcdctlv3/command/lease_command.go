@@ -21,7 +21,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/lease"
+	v3 "github.com/coreos/etcd/clientv3"
 )
 
 // NewLeaseCommand returns the cobra command for "lease".
@@ -92,7 +92,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
 
-	_, err = mustClientFromCmd(cmd).Revoke(context.TODO(), lease.LeaseID(id))
+	_, err = mustClientFromCmd(cmd).Revoke(context.TODO(), v3.LeaseID(id))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to revoke lease (%v)\n", err)
 		return
@@ -123,7 +123,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
 
-	respc, kerr := mustClientFromCmd(cmd).KeepAlive(context.TODO(), lease.LeaseID(id))
+	respc, kerr := mustClientFromCmd(cmd).KeepAlive(context.TODO(), v3.LeaseID(id))
 	if kerr != nil {
 		ExitWithError(ExitBadConnection, kerr)
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	storagepb "github.com/coreos/etcd/storage/storagepb"
@@ -362,7 +363,7 @@ func TestWatchCompactRevision(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected wresp, but got closed channel")
 	}
-	if wresp.Err() != v3rpc.ErrCompacted {
+	if wresp.Err() != rpctypes.ErrCompacted {
 		t.Fatalf("wresp.Err() expected ErrCompacteed, but got %v", wresp.Err())
 	}
 

@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 )
@@ -130,8 +131,8 @@ func TestV3TxnTooManyOps(t *testing.T) {
 		}
 
 		_, err := kvc.Txn(context.Background(), txn)
-		if err != v3rpc.ErrTooManyOps {
-			t.Errorf("#%d: err = %v, want %v", i, err, v3rpc.ErrTooManyOps)
+		if err != rpctypes.ErrTooManyOps {
+			t.Errorf("#%d: err = %v, want %v", i, err, rpctypes.ErrTooManyOps)
 		}
 	}
 }
@@ -170,17 +171,17 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 		{
 			txnSuccess: []*pb.RequestUnion{putreq, putreq},
 
-			werr: v3rpc.ErrDuplicateKey,
+			werr: rpctypes.ErrDuplicateKey,
 		},
 		{
 			txnSuccess: []*pb.RequestUnion{putreq, delKeyReq},
 
-			werr: v3rpc.ErrDuplicateKey,
+			werr: rpctypes.ErrDuplicateKey,
 		},
 		{
 			txnSuccess: []*pb.RequestUnion{putreq, delInRangeReq},
 
-			werr: v3rpc.ErrDuplicateKey,
+			werr: rpctypes.ErrDuplicateKey,
 		},
 		{
 			txnSuccess: []*pb.RequestUnion{delKeyReq, delInRangeReq, delKeyReq, delInRangeReq},
@@ -401,15 +402,15 @@ func TestV3TxnInvaildRange(t *testing.T) {
 		Request: &pb.RequestUnion_RequestRange{
 			RequestRange: rreq}})
 
-	if _, err := kvc.Txn(context.TODO(), txn); err != v3rpc.ErrFutureRev {
-		t.Errorf("err = %v, want %v", err, v3rpc.ErrFutureRev)
+	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrFutureRev {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrFutureRev)
 	}
 
 	// compacted rev
 	tv, _ := txn.Success[1].Request.(*pb.RequestUnion_RequestRange)
 	tv.RequestRange.Revision = 1
-	if _, err := kvc.Txn(context.TODO(), txn); err != v3rpc.ErrCompacted {
-		t.Errorf("err = %v, want %v", err, v3rpc.ErrCompacted)
+	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrCompacted {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrCompacted)
 	}
 }
 
@@ -426,8 +427,8 @@ func TestV3TooLargeRequest(t *testing.T) {
 	preq := &pb.PutRequest{Key: []byte("foo"), Value: largeV}
 
 	_, err := kvc.Put(context.Background(), preq)
-	if err != v3rpc.ErrRequestTooLarge {
-		t.Errorf("err = %v, want %v", err, v3rpc.ErrRequestTooLarge)
+	if err != rpctypes.ErrRequestTooLarge {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrRequestTooLarge)
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 )
@@ -34,7 +35,7 @@ func NewLeaseServer(le etcdserver.Lessor) pb.LeaseServer {
 func (ls *LeaseServer) LeaseCreate(ctx context.Context, cr *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
 	resp, err := ls.le.LeaseCreate(ctx, cr)
 	if err == lease.ErrLeaseExists {
-		return nil, ErrLeaseExist
+		return nil, rpctypes.ErrLeaseExist
 	}
 	return resp, err
 }
@@ -42,7 +43,7 @@ func (ls *LeaseServer) LeaseCreate(ctx context.Context, cr *pb.LeaseCreateReques
 func (ls *LeaseServer) LeaseRevoke(ctx context.Context, rr *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
 	r, err := ls.le.LeaseRevoke(ctx, rr)
 	if err != nil {
-		return nil, ErrLeaseNotFound
+		return nil, rpctypes.ErrLeaseNotFound
 	}
 	return r, nil
 }
@@ -59,7 +60,7 @@ func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) erro
 
 		ttl, err := ls.le.LeaseRenew(lease.LeaseID(req.ID))
 		if err == lease.ErrLeaseNotFound {
-			return ErrLeaseNotFound
+			return rpctypes.ErrLeaseNotFound
 		}
 
 		if err != nil && err != lease.ErrLeaseNotFound {

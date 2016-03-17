@@ -111,8 +111,22 @@ function fmt_tests {
 	fi
 }
 
-# fail fast on formatting tests
+function dep_tests {
+	echo "Checking package dependencies..."
+	# don't pull in etcdserver package
+	pushd clientv3 >/dev/null
+	badpkg="(etcdserver|storage)"
+	deps=`go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | egrep "${badpkg}" | egrep -v "${badpkg}/" || echo ""`
+	popd >/dev/null
+	if [ ! -z "$deps" ]; then
+		echo -e "clientv3 has masked dependencies:\n${deps}"
+		exit 255
+	fi
+}
+
+# fail fast on static tests
 fmt_tests
+dep_tests
 
 unit_tests
 if [ -n "$INTEGRATION" ]; then
