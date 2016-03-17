@@ -80,6 +80,7 @@ type WAL struct {
 	encoder *encoder // encoder to encode records
 
 	locks []*fileutil.LockedFile // the locked files the WAL holds (the name is increasing)
+	fp    *filePipeline
 }
 
 // Create creates a WAL ready for appending records. The given metadata is
@@ -109,6 +110,7 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 		dir:      dirpath,
 		metadata: metadata,
 		encoder:  newEncoder(f, 0),
+		fp:       newFilePipeline(dirpath, segmentSizeBytes),
 	}
 	w.locks = append(w.locks, f)
 	if err := w.saveCrc(0); err != nil {
@@ -206,6 +208,7 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) 
 			plog.Errorf("failed to allocate space when creating new wal file (%v)", err)
 			return nil, err
 		}
+		w.fp = newFilePipeline(w.dir, segmentSizeBytes)
 	}
 
 	return w, nil
@@ -332,10 +335,9 @@ func (w *WAL) cut() error {
 	}
 
 	fpath := path.Join(w.dir, walName(w.seq()+1, w.enti+1))
-	ftpath := fpath + ".tmp"
 
 	// create a temp wal file with name sequence + 1, or truncate the existing one
-	newTail, err := fileutil.LockFile(ftpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	newTail, err := w.fp.Open()
 	if err != nil {
 		return err
 	}
@@ -357,7 +359,13 @@ func (w *WAL) cut() error {
 	if err = w.sync(); err != nil {
 		return err
 	}
-	if err = os.Rename(ftpath, fpath); err != nil {
+
+	off, err = w.tail().Seek(0, os.SEEK_CUR)
+	if err != nil {
+		return err
+	}
+
+	if err = os.Rename(newTail.Name(), fpath); err != nil {
 		return err
 	}
 	newTail.Close()
@@ -365,7 +373,7 @@ func (w *WAL) cut() error {
 	if newTail, err = fileutil.LockFile(fpath, os.O_WRONLY, 0600); err != nil {
 		return err
 	}
-	if _, err = newTail.Seek(0, os.SEEK_END); err != nil {
+	if _, err = newTail.Seek(off, os.SEEK_SET); err != nil {
 		return err
 	}
 
@@ -373,11 +381,6 @@ func (w *WAL) cut() error {
 
 	prevCrc = w.encoder.crc.Sum32()
 	w.encoder = newEncoder(w.tail(), prevCrc)
-
-	if err = fileutil.Preallocate(w.tail().File, segmentSizeBytes, true); err != nil {
-		plog.Errorf("failed to allocate space when creating new wal file (%v)", err)
-		return err
-	}
 
 	plog.Infof("segmented wal file %v is created", fpath)
 	return nil
@@ -442,6 +445,11 @@ func (w *WAL) ReleaseLockTo(index uint64) error {
 func (w *WAL) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
+	if w.fp != nil {
+		w.fp.Close()
+		w.fp = nil
+	}
 
 	if w.tail() != nil {
 		if err := w.sync(); err != nil {
