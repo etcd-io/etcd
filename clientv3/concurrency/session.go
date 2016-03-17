@@ -18,7 +18,6 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/lease"
 )
 
 // only keep one ephemeral lease per client
@@ -35,7 +34,7 @@ type clientSessionMgr struct {
 // Fault-tolerant applications may use sessions to reason about liveness.
 type Session struct {
 	client *v3.Client
-	id     lease.LeaseID
+	id     v3.LeaseID
 
 	cancel context.CancelFunc
 	donec  <-chan struct{}
@@ -53,7 +52,7 @@ func NewSession(client *v3.Client) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	id := lease.LeaseID(resp.ID)
+	id := v3.LeaseID(resp.ID)
 
 	ctx, cancel := context.WithCancel(client.Ctx())
 	keepAlive, err := client.KeepAlive(ctx, id)
@@ -82,7 +81,7 @@ func NewSession(client *v3.Client) (*Session, error) {
 }
 
 // Lease is the lease ID for keys bound to the session.
-func (s *Session) Lease() lease.LeaseID { return s.id }
+func (s *Session) Lease() v3.LeaseID { return s.id }
 
 // Done returns a channel that closes when the lease is orphaned, expires, or
 // is otherwise no longer being refreshed.

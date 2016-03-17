@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/lease"
 )
 
 var (
@@ -83,7 +82,7 @@ func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpO
 
 	opts := []clientv3.OpOption{}
 	if id != 0 {
-		opts = append(opts, clientv3.WithLease(lease.LeaseID(id)))
+		opts = append(opts, clientv3.WithLease(clientv3.LeaseID(id)))
 	}
 
 	return key, value, opts

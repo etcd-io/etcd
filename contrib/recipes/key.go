@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	"github.com/coreos/etcd/lease"
 )
 
 // Key is a key/revision pair created by the client and stored on etcd
@@ -33,11 +32,11 @@ type RemoteKV struct {
 	val string
 }
 
-func NewKey(kv v3.KV, key string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func NewKey(kv v3.KV, key string, leaseID v3.LeaseID) (*RemoteKV, error) {
 	return NewKV(kv, key, "", leaseID)
 }
 
-func NewKV(kv v3.KV, key, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func NewKV(kv v3.KV, key, val string, leaseID v3.LeaseID) (*RemoteKV, error) {
 	rev, err := putNewKV(kv, key, val, leaseID)
 	if err != nil {
 		return nil, err
@@ -63,7 +62,7 @@ func NewUniqueKey(kv v3.KV, prefix string) (*RemoteKV, error) {
 	return NewUniqueKV(kv, prefix, "", 0)
 }
 
-func NewUniqueKV(kv v3.KV, prefix string, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func NewUniqueKV(kv v3.KV, prefix string, val string, leaseID v3.LeaseID) (*RemoteKV, error) {
 	for {
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
 		rev, err := putNewKV(kv, newKey, val, 0)
@@ -78,7 +77,7 @@ func NewUniqueKV(kv v3.KV, prefix string, val string, leaseID lease.LeaseID) (*R
 
 // putNewKV attempts to create the given key, only succeeding if the key did
 // not yet exist.
-func putNewKV(kv v3.KV, key, val string, leaseID lease.LeaseID) (int64, error) {
+func putNewKV(kv v3.KV, key, val string, leaseID v3.LeaseID) (int64, error) {
 	cmp := v3.Compare(v3.Version(key), "=", 0)
 	req := v3.OpPut(key, val, v3.WithLease(leaseID))
 	txnresp, err := kv.Txn(context.TODO()).If(cmp).Then(req).Commit()
@@ -98,7 +97,7 @@ func NewSequentialKV(kv v3.KV, prefix, val string) (*RemoteKV, error) {
 
 // newSequentialKV allocates a new sequential key <prefix>/nnnnn with a given
 // value and lease.  Note: a bookkeeping node __<prefix> is also allocated.
-func newSequentialKV(kv v3.KV, prefix, val string, leaseID lease.LeaseID) (*RemoteKV, error) {
+func newSequentialKV(kv v3.KV, prefix, val string, leaseID v3.LeaseID) (*RemoteKV, error) {
 	resp, err := kv.Get(context.TODO(), prefix, v3.WithLastKey()...)
 	if err != nil {
 		return nil, err

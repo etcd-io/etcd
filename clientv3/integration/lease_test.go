@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
-	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
@@ -42,7 +41,7 @@ func TestLeaseCreate(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
+	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
 	if err != nil {
 		t.Fatalf("failed to create key with lease %v", err)
 	}
@@ -64,12 +63,12 @@ func TestLeaseRevoke(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	_, err = lapi.Revoke(context.Background(), lease.LeaseID(resp.ID))
+	_, err = lapi.Revoke(context.Background(), clientv3.LeaseID(resp.ID))
 	if err != nil {
 		t.Errorf("failed to revoke lease %v", err)
 	}
 
-	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(lease.LeaseID(resp.ID)))
+	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
 	if err != rpctypes.ErrLeaseNotFound {
 		t.Fatalf("err = %v, want %v", err, rpctypes.ErrLeaseNotFound)
 	}
@@ -89,7 +88,7 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	_, err = lapi.KeepAliveOnce(context.Background(), lease.LeaseID(resp.ID))
+	_, err = lapi.KeepAliveOnce(context.Background(), clientv3.LeaseID(resp.ID))
 	if err != nil {
 		t.Errorf("failed to keepalive lease %v", err)
 	}
@@ -108,7 +107,7 @@ func TestLeaseKeepAlive(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	rc, kerr := lapi.KeepAlive(context.Background(), lease.LeaseID(resp.ID))
+	rc, kerr := lapi.KeepAlive(context.Background(), clientv3.LeaseID(resp.ID))
 	if kerr != nil {
 		t.Errorf("failed to keepalive lease %v", kerr)
 	}
@@ -148,7 +147,7 @@ func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	rc, kerr := lapi.KeepAlive(context.Background(), lease.LeaseID(resp.ID))
+	rc, kerr := lapi.KeepAlive(context.Background(), clientv3.LeaseID(resp.ID))
 	if kerr != nil {
 		t.Errorf("failed to keepalive lease %v", kerr)
 	}

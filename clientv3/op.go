@@ -16,7 +16,6 @@ package clientv3
 
 import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/lease"
 )
 
 type opType int
@@ -51,7 +50,7 @@ type Op struct {
 
 	// for put
 	val     []byte
-	leaseID lease.LeaseID
+	leaseID LeaseID
 }
 
 func (op Op) toRequestUnion() *pb.RequestUnion {
@@ -146,7 +145,7 @@ func (op *Op) applyOpts(opts []OpOption) {
 type OpOption func(*Op)
 
 // WithLease attaches a lease ID to a key in 'Put' request.
-func WithLease(leaseID lease.LeaseID) OpOption {
+func WithLease(leaseID LeaseID) OpOption {
 	return func(op *Op) { op.leaseID = leaseID }
 }
 
