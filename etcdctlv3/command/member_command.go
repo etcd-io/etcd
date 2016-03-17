@@ -16,9 +16,11 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/olekukonko/tablewriter"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 )
@@ -166,12 +168,24 @@ func memberListCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	// use https://github.com/olekukonko/tablewriter to print out a pretty table?
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs", "Is Leader"})
+
 	for _, m := range resp.Members {
+		status := "started"
 		if len(m.Name) == 0 {
-			fmt.Printf("%16x[unstarted]: peerURLs=%s\n", m.ID, strings.Join(m.PeerURLs, ","))
-		} else {
-			fmt.Printf("%16x: name=%s peerURLs=%s clientURLs=%s isLeader=%v\n", m.ID, m.Name, strings.Join(m.PeerURLs, ","), strings.Join(m.ClientURLs, ","), m.IsLeader)
+			status = "unstarted"
 		}
+
+		table.Append([]string{
+			fmt.Sprintf("%x", m.ID),
+			status,
+			m.Name,
+			strings.Join(m.PeerURLs, ","),
+			strings.Join(m.ClientURLs, ","),
+			fmt.Sprint(m.IsLeader),
+		})
 	}
+
+	table.Render()
 }
