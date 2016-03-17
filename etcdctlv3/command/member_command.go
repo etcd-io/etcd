@@ -166,12 +166,5 @@ func memberListCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	// use https://github.com/olekukonko/tablewriter to print out a pretty table?
-	for _, m := range resp.Members {
-		if len(m.Name) == 0 {
-			fmt.Printf("%16x[unstarted]: peerURLs=%s\n", m.ID, strings.Join(m.PeerURLs, ","))
-		} else {
-			fmt.Printf("%16x: name=%s peerURLs=%s clientURLs=%s isLeader=%v\n", m.ID, m.Name, strings.Join(m.PeerURLs, ","), strings.Join(m.ClientURLs, ","), m.IsLeader)
-		}
-	}
+	display.MemberList(*resp)
 }

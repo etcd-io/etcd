@@ -16,12 +16,15 @@ package command
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	spb "github.com/coreos/etcd/storage/storagepb"
+	"github.com/olekukonko/tablewriter"
 )
 
 type printer interface {
@@ -30,6 +33,8 @@ type printer interface {
 	Put(v3.PutResponse)
 	Txn(v3.TxnResponse)
 	Watch(v3.WatchResponse)
+
+	MemberList(v3.MemberListResponse)
 }
 
 func NewPrinter(printerType string, isHex bool) printer {
@@ -91,6 +96,29 @@ func (s *simplePrinter) Watch(resp v3.WatchResponse) {
 	}
 }
 
+func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs", "Is Leader"})
+
+	for _, m := range resp.Members {
+		status := "started"
+		if len(m.Name) == 0 {
+			status = "unstarted"
+		}
+
+		table.Append([]string{
+			fmt.Sprintf("%x", m.ID),
+			status,
+			m.Name,
+			strings.Join(m.PeerURLs, ","),
+			strings.Join(m.ClientURLs, ","),
+			fmt.Sprint(m.IsLeader),
+		})
+	}
+
+	table.Render()
+}
+
 type jsonPrinter struct{}
 
 func (p *jsonPrinter) Del(r v3.DeleteResponse) { printJSON(r) }
@@ -99,9 +127,10 @@ func (p *jsonPrinter) Get(r v3.GetResponse) {
 		printJSON(kv)
 	}
 }
-func (p *jsonPrinter) Put(r v3.PutResponse)     { printJSON(r) }
-func (p *jsonPrinter) Txn(r v3.TxnResponse)     { printJSON(r) }
-func (p *jsonPrinter) Watch(r v3.WatchResponse) { printJSON(r) }
+func (p *jsonPrinter) Put(r v3.PutResponse)               { printJSON(r) }
+func (p *jsonPrinter) Txn(r v3.TxnResponse)               { printJSON(r) }
+func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }
+func (p *jsonPrinter) MemberList(r v3.MemberListResponse) { printJSON(r) }
 
 func printJSON(v interface{}) {
 	b, err := json.Marshal(v)
@@ -121,19 +150,27 @@ type pbMarshal interface {
 func (p *pbPrinter) Del(r v3.DeleteResponse) {
 	printPB((*pb.DeleteRangeResponse)(&r))
 }
+
 func (p *pbPrinter) Get(r v3.GetResponse) {
 	printPB((*pb.RangeResponse)(&r))
 }
+
 func (p *pbPrinter) Put(r v3.PutResponse) {
 	printPB((*pb.PutResponse)(&r))
 }
+
 func (p *pbPrinter) Txn(r v3.TxnResponse) {
 	printPB((*pb.TxnResponse)(&r))
 }
+
 func (p *pbPrinter) Watch(r v3.WatchResponse) {
 	for _, ev := range r.Events {
 		printPB((*spb.Event)(ev))
 	}
+}
+
+func (pb *pbPrinter) MemberList(r v3.MemberListResponse) {
+	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 
 func printPB(m pbMarshal) {

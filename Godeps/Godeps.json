@@ -103,8 +103,17 @@
 			"Rev": "f7ee69f31298ecbe5d2b349c711e2547a617d398"
 		},
 		{
+			"ImportPath": "github.com/mattn/go-runewidth",
+			"Comment": "travisish-46-gd6bea18",
+			"Rev": "d6bea18f789704b5f83375793155289da36a3c7f"
+		},
+		{
 			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 			"Rev": "fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a"
+		},
+		{
+			"ImportPath": "github.com/olekukonko/tablewriter",
+			"Rev": "cca8bbc0798408af109aaaa239cbd2634846b340"
 		},
 		{
 			"ImportPath": "github.com/olekukonko/ts",
