@@ -6,11 +6,11 @@ The procedure includes some manual steps for sanity checking but it can probably
 
 ## Prepare Release
 
-Set desired version as environment variable for following steps. Here is an example to release 2.1.3:
+Set desired version as environment variable for following steps. Here is an example to release 2.3.0:
 
 ```
-export VERSION=v2.1.3
-export PREV_VERSION=v2.1.2
+export VERSION=v2.3.0
+export PREV_VERSION=v2.2.5
 ```
 
 All releases version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
@@ -29,7 +29,6 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 - Cherry-pick these commits starting from the oldest one into stable branch.
 
 ## Write Release Note
-
 
 - Write introduction for the new release. For example, what major bug we fix, what new features we introduce or what performance improvement we make.
 - Write changelog for the last release. ChangeLog should be straightforward and easy to understand for the end-user.
@@ -61,16 +60,14 @@ It generates all release binaries and images under directory ./release.
 
 ## Sign Binaries and Images
 
-Choose appropriate private key to sign the generated binaries and images.
+etcd project key must be used to sign the generated binaries and images.`$SUBKEYID` is the key ID of etcd project Yubikey. Connect the key and run `gpg2 --card-status` to get the ID.
 
 The following commands are used for public release sign:
 
 ```
 cd release
-# personal GPG is okay for now
-for i in etcd-*{.zip,.tar.gz}; do gpg --sign ${i}; done
-# use `CoreOS ACI Builder <release@coreos.com>` secret key
-gpg -u 88182190 -a --output etcd-${VERSION}-linux-amd64.aci.asc --detach-sig etcd-${VERSION}-linux-amd64.aci
+for i in etcd-*{.zip,.tar.gz}; do gpg2 --default-key $SUBKEYID --output ${i}.asc --detach-sign ${i}; done
+for i in etcd-*{.zip,.tar.gz}; do gpg2 --verify ${i}.asc ${i}; done
 ```
 
 ## Publish Release Page in GitHub
