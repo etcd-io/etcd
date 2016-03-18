@@ -66,8 +66,9 @@ The following commands are used for public release sign:
 
 ```
 cd release
-for i in etcd-*{.zip,.tar.gz}; do gpg2 --default-key $SUBKEYID --output ${i}.asc --detach-sign ${i}; done
-for i in etcd-*{.zip,.tar.gz}; do gpg2 --verify ${i}.asc ${i}; done
+for i in etcd-*{.zip,.tar.gz}; do gpg --default-key $SUBKEYID --sign ${i}; done
+gpg2 --default-key $SUBKEYID --output etcd-${VERSION}-linux-amd64.aci.asc --detach-sign etcd-${VERSION}-linux-amd64.aci
+gpg2 --verify etcd-${VERSION}-linux-amd64.aci.asc etcd-${VERSION}-linux-amd64.aci
 ```
 
 ## Publish Release Page in GitHub
