@@ -44,38 +44,27 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-
 	dialTimeout := dialTimeoutFromCmd(cmd)
-
-	var cert, key, cacert string
-	if cert, err = cmd.Flags().GetString("cert"); err != nil {
-		ExitWithError(ExitBadArgs, err)
-	} else if cert == "" && cmd.Flags().Changed("cert") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cert option"))
-	}
-
-	if key, err = cmd.Flags().GetString("key"); err != nil {
-		ExitWithError(ExitBadArgs, err)
-	} else if key == "" && cmd.Flags().Changed("key") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --key option"))
-	}
-
-	if cacert, err = cmd.Flags().GetString("cacert"); err != nil {
-		ExitWithError(ExitBadArgs, err)
-	} else if cacert == "" && cmd.Flags().Changed("cacert") {
-		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cacert option"))
-	}
-
-	isHex, _ := cmd.Flags().GetBool("hex")
-	outputType, _ := cmd.Flags().GetString("write-out")
-	if display = NewPrinter(outputType, isHex); display == nil {
-		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
-	}
+	cert, key, cacert := keyAndCertFromCmd(cmd)
 
 	return mustClient(endpoints, dialTimeout, cert, key, cacert)
 }
 
 func mustClient(endpoints []string, dialTimeout time.Duration, cert, key, cacert string) *clientv3.Client {
+	cfg, err := newClientCfg(endpoints, dialTimeout, cert, key, cacert)
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
+	}
+
+	client, err := clientv3.New(*cfg)
+	if err != nil {
+		ExitWithError(ExitBadConnection, err)
+	}
+
+	return client
+}
+
+func newClientCfg(endpoints []string, dialTimeout time.Duration, cert, key, cacert string) (*clientv3.Config, error) {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tls := transport.TLSInfo{}
@@ -95,24 +84,19 @@ func mustClient(endpoints []string, dialTimeout time.Duration, cert, key, cacert
 		cfgtls = &tls
 	}
 
-	cfg := clientv3.Config{
+	cfg := &clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 	}
 	if cfgtls != nil {
 		clientTLS, err := cfgtls.ClientConfig()
 		if err != nil {
-			ExitWithError(ExitBadArgs, err)
+			return nil, err
 		}
 		cfg.TLS = clientTLS
 	}
 
-	client, err := clientv3.New(cfg)
-	if err != nil {
-		ExitWithError(ExitBadConnection, err)
-	}
-
-	return client
+	return cfg, nil
 }
 
 func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
@@ -132,4 +116,27 @@ func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 		ExitWithError(ExitError, err)
 	}
 	return dialTimeout
+}
+
+func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {
+	var err error
+	if cert, err = cmd.Flags().GetString("cert"); err != nil {
+		ExitWithError(ExitBadArgs, err)
+	} else if cert == "" && cmd.Flags().Changed("cert") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cert option"))
+	}
+
+	if key, err = cmd.Flags().GetString("key"); err != nil {
+		ExitWithError(ExitBadArgs, err)
+	} else if key == "" && cmd.Flags().Changed("key") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --key option"))
+	}
+
+	if cacert, err = cmd.Flags().GetString("cacert"); err != nil {
+		ExitWithError(ExitBadArgs, err)
+	} else if cacert == "" && cmd.Flags().Changed("cacert") {
+		ExitWithError(ExitBadArgs, errors.New("empty string is passed to --cacert option"))
+	}
+
+	return cert, key, cacert
 }

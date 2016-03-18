@@ -66,6 +66,7 @@ func init() {
 		command.NewVersionCommand(),
 		command.NewLeaseCommand(),
 		command.NewMemberCommand(),
+		command.NewEpHealthCommand(),
 		command.NewSnapshotCommand(),
 		command.NewMakeMirrorCommand(),
 		command.NewLockCommand(),
