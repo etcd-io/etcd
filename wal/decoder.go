@@ -31,14 +31,12 @@ type decoder struct {
 	mu sync.Mutex
 	br *bufio.Reader
 
-	c   io.Closer
 	crc hash.Hash32
 }
 
-func newDecoder(rc io.ReadCloser) *decoder {
+func newDecoder(r io.Reader) *decoder {
 	return &decoder{
-		br:  bufio.NewReader(rc),
-		c:   rc,
+		br:  bufio.NewReader(r),
 		crc: crc.New(0, crcTable),
 	}
 }
@@ -78,10 +76,6 @@ func (d *decoder) updateCRC(prevCrc uint32) {
 
 func (d *decoder) lastCRC() uint32 {
 	return d.crc.Sum32()
-}
-
-func (d *decoder) close() error {
-	return d.c.Close()
 }
 
 func mustUnmarshalEntry(d []byte) raftpb.Entry {
