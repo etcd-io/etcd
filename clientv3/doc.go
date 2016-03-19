@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// clientv3 is the official Go etcd client for v3.
+// Package clientv3 implements the official Go etcd client for v3.
 //
 // Create client using `clientv3.New`:
 //

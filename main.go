@@ -20,7 +20,6 @@
 // This package should NOT be extended or modified in any way; to modify the
 // etcd binary, work in the `github.com/coreos/etcd/etcdmain` package.
 //
-
 package main
 
 import "github.com/coreos/etcd/etcdmain"
