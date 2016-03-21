@@ -41,9 +41,9 @@ For this you need your CA certificate (`ca.crt`) and signed key pair (`server.cr
 Let us configure etcd to provide simple HTTPS transport security step by step:
 
 ```sh
-$ etcd -name infra0 -data-dir infra0 \
-  -cert-file=/path/to/server.crt -key-file=/path/to/server.key \
-  -advertise-client-urls=https://127.0.0.1:2379 -listen-client-urls=https://127.0.0.1:2379
+$ etcd --name infra0 --data-dir infra0 \
+  --cert-file=/path/to/server.crt --key-file=/path/to/server.key \
+  --advertise-client-urls=https://127.0.0.1:2379 --listen-client-urls=https://127.0.0.1:2379
 ```
 
 This should start up fine and you can now test the configuration by speaking HTTPS to etcd:
@@ -69,9 +69,9 @@ The clients will provide their certificates to the server and the server will ch
 You need the same files mentioned in the first example for this, as well as a key pair for the client (`client.crt`, `client.key`) signed by the same certificate authority.
 
 ```sh
-$ etcd -name infra0 -data-dir infra0 \
-  -client-cert-auth -trusted-ca-file=/path/to/ca.crt -cert-file=/path/to/server.crt -key-file=/path/to/server.key \
-  -advertise-client-urls https://127.0.0.1:2379 -listen-client-urls https://127.0.0.1:2379
+$ etcd --name infra0 --data-dir infra0 \
+  --client-cert-auth --trusted-ca-file=/path/to/ca.crt --cert-file=/path/to/server.crt --key-file=/path/to/server.key \
+  --advertise-client-urls https://127.0.0.1:2379 --listen-client-urls https://127.0.0.1:2379
 ```
 
 Now try the same request as above to this server:
@@ -129,16 +129,16 @@ Assuming we have our `ca.crt` and two members with their own keypairs (`member1.
 DISCOVERY_URL=... # from https://discovery.etcd.io/new
 
 # member1
-$ etcd -name infra1 -data-dir infra1 \
-  -peer-client-cert-auth -peer-trusted-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member1.crt -peer-key-file=/path/to/member1.key \
-  -initial-advertise-peer-urls=https://10.0.1.10:2380 -listen-peer-urls=https://10.0.1.10:2380 \
-  -discovery ${DISCOVERY_URL}
+$ etcd --name infra1 --data-dir infra1 \
+  --peer-client-cert-auth --peer-trusted-ca-file=/path/to/ca.crt --peer-cert-file=/path/to/member1.crt --peer-key-file=/path/to/member1.key \
+  --initial-advertise-peer-urls=https://10.0.1.10:2380 --listen-peer-urls=https://10.0.1.10:2380 \
+  --discovery ${DISCOVERY_URL}
 
 # member2
-$ etcd -name infra2 -data-dir infra2 \
-  -peer-client-cert-auth -peer-trusted-ca-file=/path/to/ca.crt -peer-cert-file=/path/to/member2.crt -peer-key-file=/path/to/member2.key \
-  -initial-advertise-peer-urls=https://10.0.1.11:2380 -listen-peer-urls=https://10.0.1.11:2380 \
-  -discovery ${DISCOVERY_URL}
+$ etcd --name infra2 --data-dir infra2 \
+  --peer-client-cert-auth --peer-trusted-ca-file=/path/to/ca.crt --peer-cert-file=/path/to/member2.crt --peer-key-file=/path/to/member2.key \
+  --initial-advertise-peer-urls=https://10.0.1.11:2380 --listen-peer-urls=https://10.0.1.11:2380 \
+  --discovery ${DISCOVERY_URL}
 ```
 
 The etcd members will form a cluster and all communication between members in the cluster will be encrypted and authenticated using the client certificates. You will see in the output of etcd that the addresses it connects to use HTTPS.

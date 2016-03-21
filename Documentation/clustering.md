@@ -192,7 +192,7 @@ ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573d
 ```
 
 ```
--discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
+--discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
 **Each member must have a different name flag specified. `Hostname` or `machine-id` can be a good choice. Or discovery will fail due to duplicated name.**

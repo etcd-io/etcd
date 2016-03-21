@@ -181,7 +181,7 @@ func actionUserRevoke(c *cli.Context) {
 func userGrantRevoke(c *cli.Context, grant bool) {
 	roles := c.StringSlice("roles")
 	if len(roles) == 0 {
-		fmt.Fprintln(os.Stderr, "No roles specified; please use `-roles`")
+		fmt.Fprintln(os.Stderr, "No roles specified; please use `--roles`")
 		os.Exit(1)
 	}
 
