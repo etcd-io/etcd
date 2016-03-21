@@ -44,6 +44,10 @@ func TestRepair(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	offset, err := w.tail().Seek(0, os.SEEK_CUR)
+	if err != nil {
+		t.Fatal(err)
+	}
 	w.Close()
 
 	// break the wal.
@@ -51,11 +55,7 @@ func TestRepair(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	offset, err := f.Seek(-4, os.SEEK_END)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = f.Truncate(offset)
+	err = f.Truncate(offset - 4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestRepair(t *testing.T) {
 	}
 	_, _, _, err = w.ReadAll()
 	if err != io.ErrUnexpectedEOF {
-		t.Fatalf("err = %v, want %v", err, io.ErrUnexpectedEOF)
+		t.Fatalf("err = %v, want error %v", err, io.ErrUnexpectedEOF)
 	}
 	w.Close()
 

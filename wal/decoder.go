@@ -28,30 +28,58 @@ import (
 )
 
 type decoder struct {
-	mu sync.Mutex
-	br *bufio.Reader
+	mu  sync.Mutex
+	brs []*bufio.Reader
 
-	crc hash.Hash32
+	// lastValidOff file offset following the last valid decoded record
+	lastValidOff int64
+	crc          hash.Hash32
 }
 
-func newDecoder(r io.Reader) *decoder {
+func newDecoder(r ...io.Reader) *decoder {
+	readers := make([]*bufio.Reader, len(r))
+	for i := range r {
+		readers[i] = bufio.NewReader(r[i])
+	}
 	return &decoder{
-		br:  bufio.NewReader(r),
+		brs: readers,
 		crc: crc.New(0, crcTable),
 	}
 }
 
 func (d *decoder) decode(rec *walpb.Record) error {
+	rec.Reset()
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	return d.decodeRecord(rec)
+}
 
-	rec.Reset()
-	l, err := readInt64(d.br)
+func (d *decoder) decodeRecord(rec *walpb.Record) error {
+	if len(d.brs) == 0 {
+		return io.EOF
+	}
+
+	l, err := readInt64(d.brs[0])
+	if err == io.EOF {
+		d.brs = d.brs[1:]
+		d.lastValidOff = 0
+		return d.decodeRecord(rec)
+	}
+
 	if err != nil {
 		return err
 	}
+	if l == 0 {
+		// hit preallocated space
+		d.brs = d.brs[1:]
+		if len(d.brs) == 0 {
+			return io.EOF
+		}
+		d.lastValidOff = 0
+		return d.decodeRecord(rec)
+	}
 	data := make([]byte, l)
-	if _, err = io.ReadFull(d.br, data); err != nil {
+	if _, err = io.ReadFull(d.brs[0], data); err != nil {
 		// ReadFull returns io.EOF only if no bytes were read
 		// the decoder should treat this as an ErrUnexpectedEOF instead.
 		if err == io.EOF {
@@ -62,12 +90,17 @@ func (d *decoder) decode(rec *walpb.Record) error {
 	if err := rec.Unmarshal(data); err != nil {
 		return err
 	}
+
 	// skip crc checking if the record type is crcType
-	if rec.Type == crcType {
-		return nil
+	if rec.Type != crcType {
+		d.crc.Write(rec.Data)
+		if err := rec.Validate(d.crc.Sum32()); err != nil {
+			return err
+		}
 	}
-	d.crc.Write(rec.Data)
-	return rec.Validate(d.crc.Sum32())
+	// record decoded as valid; point last valid offset to end of record
+	d.lastValidOff += l + 8
+	return nil
 }
 
 func (d *decoder) updateCRC(prevCrc uint32) {
@@ -77,6 +110,8 @@ func (d *decoder) updateCRC(prevCrc uint32) {
 func (d *decoder) lastCRC() uint32 {
 	return d.crc.Sum32()
 }
+
+func (d *decoder) lastOffset() int64 { return d.lastValidOff }
 
 func mustUnmarshalEntry(d []byte) raftpb.Entry {
 	var e raftpb.Entry
