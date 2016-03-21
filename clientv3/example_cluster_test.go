@@ -113,7 +113,7 @@ func ExampleCluster_memberUpdate() {
 		log.Fatal(err)
 	}
 
-	peerURLs := []string{"http://localhost:12378"}
+	peerURLs := []string{"http://localhost:12380"}
 	_, err = cli.MemberUpdate(context.Background(), resp.Members[0].ID, peerURLs)
 	if err != nil {
 		log.Fatal(err)

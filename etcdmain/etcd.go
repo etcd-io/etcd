@@ -35,6 +35,7 @@ import (
 	systemdutil "github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/util"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
@@ -281,15 +282,6 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		clns = append(clns, l)
 	}
 
-	var v3l net.Listener
-	if cfg.v3demo {
-		v3l, err = net.Listen("tcp", cfg.gRPCAddr)
-		if err != nil {
-			plog.Fatal(err)
-		}
-		plog.Infof("listening for client rpc on %s", cfg.gRPCAddr)
-	}
-
 	srvcfg := &etcdserver.ServerConfig{
 		Name:                    cfg.name,
 		ClientURLs:              cfg.acurls,
@@ -329,10 +321,26 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		Info:    cfg.corsInfo,
 	}
 	ph := etcdhttp.NewPeerHandler(s)
+
+	var grpcS *grpc.Server
+	if cfg.v3demo {
+		// set up v3 demo rpc
+		tls := &cfg.clientTLSInfo
+		if cfg.clientTLSInfo.Empty() {
+			tls = nil
+		}
+		grpcS, err = v3rpc.Server(s, tls)
+		if err != nil {
+			s.Stop()
+			<-s.StopNotify()
+			return nil, err
+		}
+	}
+
 	// Start the peer server in a goroutine
 	for _, l := range plns {
 		go func(l net.Listener) {
-			plog.Fatal(serveHTTP(l, ph, 5*time.Minute))
+			plog.Fatal(serve(l, nil, ph, 5*time.Minute))
 		}(l)
 	}
 	// Start a client server goroutine for each listen address
@@ -340,23 +348,8 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		go func(l net.Listener) {
 			// read timeout does not work with http close notify
 			// TODO: https://github.com/golang/go/issues/9524
-			plog.Fatal(serveHTTP(l, ch, 0))
+			plog.Fatal(serve(l, grpcS, ch, 0))
 		}(l)
-	}
-
-	if cfg.v3demo {
-		// set up v3 demo rpc
-		tls := &cfg.clientTLSInfo
-		if cfg.clientTLSInfo.Empty() {
-			tls = nil
-		}
-		grpcServer, err := v3rpc.Server(s, tls)
-		if err != nil {
-			s.Stop()
-			<-s.StopNotify()
-			return nil, err
-		}
-		go func() { plog.Fatal(grpcServer.Serve(v3l)) }()
 	}
 
 	return s.StopNotify(), nil
