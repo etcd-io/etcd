@@ -36,7 +36,7 @@ func serve(l net.Listener, grpcS *grpc.Server, handler http.Handler, readTimeout
 		m := cmux.New(l)
 		grpcl := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
 		httpl = m.Match(cmux.Any())
-		go plog.Fatal(m.Serve())
+		go func() { plog.Fatal(m.Serve()) }()
 		go plog.Fatal(grpcS.Serve(grpcl))
 	}
 
