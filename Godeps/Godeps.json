@@ -32,6 +32,10 @@
 			"Rev": "da1f27ad1d9509b16f65f52fd9d8138b0f2dc7b2"
 		},
 		{
+			"ImportPath": "github.com/cockroachdb/cmux",
+			"Rev": "112f0506e7743d64a6eb8fedbcff13d9979bbf92"
+		},
+		{
 			"ImportPath": "github.com/codegangsta/cli",
 			"Comment": "1.2.0-183-gb5232bb",
 			"Rev": "b5232bb2934f606f9f27a1305f1eea224e8e8b88"
