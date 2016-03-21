@@ -21,10 +21,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/olekukonko/tablewriter"
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	spb "github.com/coreos/etcd/storage/storagepb"
-	"github.com/olekukonko/tablewriter"
 )
 
 type printer interface {
