@@ -123,7 +123,6 @@ type config struct {
 	printVersion bool
 
 	v3demo                  bool
-	gRPCAddr                string
 	autoCompactionRetention int
 
 	enablePprof bool
@@ -226,7 +225,6 @@ func NewConfig() *config {
 
 	// demo flag
 	fs.BoolVar(&cfg.v3demo, "experimental-v3demo", false, "Enable experimental v3 demo API.")
-	fs.StringVar(&cfg.gRPCAddr, "experimental-gRPC-addr", "127.0.0.1:2378", "gRPC address for experimental v3 demo API.")
 	fs.IntVar(&cfg.autoCompactionRetention, "experimental-auto-compaction-retention", 0, "Auto compaction retention in hour. 0 means disable auto compaction.")
 
 	// backwards-compatibility with v0.4.6

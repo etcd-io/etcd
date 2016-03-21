@@ -20,14 +20,25 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/cockroachdb/cmux"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 )
 
-// serveHTTP accepts incoming HTTP connections on the listener l,
+// serve accepts incoming connections on the listener l,
 // creating a new service goroutine for each. The service goroutines
 // read requests and then call handler to reply to them.
-func serveHTTP(l net.Listener, handler http.Handler, readTimeout time.Duration) error {
+func serve(l net.Listener, grpcS *grpc.Server, handler http.Handler, readTimeout time.Duration) error {
 	// TODO: assert net.Listener type? Arbitrary listener might break HTTPS server which
 	// expect a TLS Conn type.
+	httpl := l
+	if grpcS != nil {
+		m := cmux.New(l)
+		grpcl := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+		httpl = m.Match(cmux.Any())
+		go plog.Fatal(m.Serve())
+		go plog.Fatal(grpcS.Serve(grpcl))
+	}
 
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 	// TODO: add debug flag; enable logging when debug flag is set
@@ -36,5 +47,5 @@ func serveHTTP(l net.Listener, handler http.Handler, readTimeout time.Duration) 
 		ReadTimeout: readTimeout,
 		ErrorLog:    logger, // do not log user error
 	}
-	return srv.Serve(l)
+	return srv.Serve(httpl)
 }
