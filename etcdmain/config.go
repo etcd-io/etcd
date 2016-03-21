@@ -69,7 +69,7 @@ var (
 
 	ErrConflictBootstrapFlags = fmt.Errorf("multiple discovery or bootstrap flags are set. " +
 		"Choose one of \"initial-cluster\", \"discovery\" or \"discovery-srv\"")
-	errUnsetAdvertiseClientURLsFlag = fmt.Errorf("-advertise-client-urls is required when -listen-client-urls is set explicitly")
+	errUnsetAdvertiseClientURLsFlag = fmt.Errorf("-advertise-client-urls is required when --listen-client-urls is set explicitly")
 )
 
 type config struct {
@@ -228,12 +228,12 @@ func NewConfig() *config {
 	fs.IntVar(&cfg.autoCompactionRetention, "experimental-auto-compaction-retention", 0, "Auto compaction retention in hour. 0 means disable auto compaction.")
 
 	// backwards-compatibility with v0.4.6
-	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use -advertise-client-urls instead.")
-	fs.Var(&flags.IPAddressPort{}, "bind-addr", "DEPRECATED: Use -listen-client-urls instead.")
-	fs.Var(&flags.IPAddressPort{}, "peer-addr", "DEPRECATED: Use -initial-advertise-peer-urls instead.")
-	fs.Var(&flags.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use -listen-peer-urls instead.")
-	fs.Var(&flags.DeprecatedFlag{Name: "peers"}, "peers", "DEPRECATED: Use -initial-cluster instead.")
-	fs.Var(&flags.DeprecatedFlag{Name: "peers-file"}, "peers-file", "DEPRECATED: Use -initial-cluster instead.")
+	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use --advertise-client-urls instead.")
+	fs.Var(&flags.IPAddressPort{}, "bind-addr", "DEPRECATED: Use --listen-client-urls instead.")
+	fs.Var(&flags.IPAddressPort{}, "peer-addr", "DEPRECATED: Use --initial-advertise-peer-urls instead.")
+	fs.Var(&flags.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use --listen-peer-urls instead.")
+	fs.Var(&flags.DeprecatedFlag{Name: "peers"}, "peers", "DEPRECATED: Use --initial-cluster instead.")
+	fs.Var(&flags.DeprecatedFlag{Name: "peers-file"}, "peers-file", "DEPRECATED: Use --initial-cluster instead.")
 
 	// pprof profiler via HTTP
 	fs.BoolVar(&cfg.enablePprof, "enable-pprof", false, "Enable runtime profiling data via HTTP server. Address is at client URL + \"/debug/pprof\"")
@@ -306,7 +306,7 @@ func (cfg *config) Parse(arguments []string) error {
 		return err
 	}
 
-	// when etcd runs in member mode user needs to set -advertise-client-urls if -listen-client-urls is set.
+	// when etcd runs in member mode user needs to set --advertise-client-urls if --listen-client-urls is set.
 	// TODO(yichengq): check this for joining through discovery service case
 	mayFallbackToProxy := flags.IsSet(cfg.FlagSet, "discovery") && cfg.fallback.String() == fallbackFlagProxy
 	mayBeProxy := cfg.proxy.String() != proxyFlagOff || mayFallbackToProxy
@@ -317,10 +317,10 @@ func (cfg *config) Parse(arguments []string) error {
 	}
 
 	if 5*cfg.TickMs > cfg.ElectionMs {
-		return fmt.Errorf("-election-timeout[%vms] should be at least as 5 times as -heartbeat-interval[%vms]", cfg.ElectionMs, cfg.TickMs)
+		return fmt.Errorf("--election-timeout[%vms] should be at least as 5 times as --heartbeat-interval[%vms]", cfg.ElectionMs, cfg.TickMs)
 	}
 	if cfg.ElectionMs > maxElectionMs {
-		return fmt.Errorf("-election-timeout[%vms] is too long, and should be set less than %vms", cfg.ElectionMs, maxElectionMs)
+		return fmt.Errorf("--election-timeout[%vms] is too long, and should be set less than %vms", cfg.ElectionMs, maxElectionMs)
 	}
 
 	return nil

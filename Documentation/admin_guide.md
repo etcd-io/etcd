@@ -201,10 +201,10 @@ $ tar -xzvf infra1.etcd.tar.gz -C %data_dir%
 ```
 
 ```
-etcd -name infra1 \
--listen-peer-urls http://10.0.1.13:2380 \
--listen-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379 \
--advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
+etcd --name infra1 \
+--listen-peer-urls http://10.0.1.13:2380 \
+--listen-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379 \
+--advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
 ```
 
 ### Disaster Recovery
@@ -220,9 +220,9 @@ To recover from such scenarios, etcd provides functionality to backup and restor
 The first step of the recovery is to backup the data directory on a functioning etcd node. To do this, use the `etcdctl backup` command, passing in the original data directory used by etcd. For example:
 
 ```sh
-    etcdctl backup \
-      --data-dir %data_dir% \
-      --backup-dir %backup_data_dir%
+etcdctl backup \
+  --data-dir %data_dir% \
+  --backup-dir %backup_data_dir%
 ```
 
 This command will rewrite some of the metadata contained in the backup (specifically, the node ID and cluster ID), which means that the node will lose its former identity. In order to recreate a cluster from the backup, you will need to start a new, single-node cluster. The metadata is rewritten to prevent the new node from inadvertently being joined onto an existing cluster.
@@ -232,10 +232,10 @@ This command will rewrite some of the metadata contained in the backup (specific
 To restore a backup using the procedure created above, start etcd with the `-force-new-cluster` option and pointing to the backup directory. This will initialize a new, single-member cluster with the default advertised peer URLs, but preserve the entire contents of the etcd data store. Continuing from the previous example:
 
 ```sh
-    etcd \
-      -data-dir=%backup_data_dir% \
-      -force-new-cluster \
-      ...
+etcd \
+  --data-dir=%backup_data_dir% \
+  --force-new-cluster \
+  ...
 ```
 
 Now etcd should be available on this node and serving the original datastore.
@@ -243,12 +243,12 @@ Now etcd should be available on this node and serving the original datastore.
 Once you have verified that etcd has started successfully, shut it down and move the data back to the previous location (you may wish to make another copy as well to be safe):
 
 ```sh
-    pkill etcd
-    rm -fr %data_dir%
-    mv %backup_data_dir% %data_dir%
-    etcd \
-      -data-dir=%data_dir% \
-      ...
+pkill etcd
+rm -fr %data_dir%
+mv %backup_data_dir% %data_dir%
+etcd \
+  --data-dir=%data_dir% \
+  ...
 ```
 
 #### Restoring the cluster

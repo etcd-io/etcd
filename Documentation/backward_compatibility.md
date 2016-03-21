@@ -8,14 +8,14 @@ The other main focus of this release was a more reliable Raft implementation, bu
 
 The major flag changes are to mostly related to bootstrapping. The `initial-*` flags provide an improved way to specify the required criteria to start the cluster. The advertised URLs now support a list of values instead of a single value, which allows etcd users to gracefully migrate to the new set of IANA-assigned ports (2379/client and 2380/peers) while maintaining backward compatibility with the old ports.
 
- - `-addr` is replaced by `-advertise-client-urls`.
- - `-bind-addr` is replaced by `-listen-client-urls`.
- - `-peer-addr` is replaced by `-initial-advertise-peer-urls`.
- - `-peer-bind-addr` is replaced by `-listen-peer-urls`.
- - `-peers` is replaced by `-initial-cluster`.
- - `-peers-file` is replaced by `-initial-cluster`.
- - `-peer-heartbeat-interval` is replaced by `-heartbeat-interval`.
- - `-peer-election-timeout` is replaced by `-election-timeout`.
+ - `addr` is replaced by `advertise-client-urls`.
+ - `bind-addr` is replaced by `listen-client-urls`.
+ - `peer-addr` is replaced by `initial-advertise-peer-urls`.
+ - `peer-bind-addr` is replaced by `listen-peer-urls`.
+ - `peers` is replaced by `initial-cluster`.
+ - `peers-file` is replaced by `initial-cluster`.
+ - `peer-heartbeat-interval` is replaced by `heartbeat-interval`.
+ - `peer-election-timeout` is replaced by `election-timeout`.
 
 The documentation of new command line flags can be found at
 https://github.com/coreos/etcd/blob/master/Documentation/configuration.md.

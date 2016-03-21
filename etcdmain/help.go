@@ -49,7 +49,7 @@ member flags:
 		maximum number of snapshot files to retain (0 is unlimited).
 	--max-wals '` + strconv.Itoa(defaultMaxWALs) + `'
 		maximum number of wal files to retain (0 is unlimited).
-	-cors ''
+	--cors ''
 		comma-separated whitelist of origins for CORS (cross-origin resource sharing).
 
 

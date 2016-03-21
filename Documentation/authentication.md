@@ -45,8 +45,8 @@ And there will be prompt for a new password.
 Roles can be granted and revoked for a user with
 
 ```
-$ etcdctl user grant myusername -roles foo,bar,baz
-$ etcdctl user revoke myusername -roles bar,baz
+$ etcdctl user grant myusername --roles foo,bar,baz
+$ etcdctl user revoke myusername --roles bar,baz
 ```
 
 We can look at this user with
@@ -95,20 +95,20 @@ Access can be granted as either read, write, or both, as in the following exampl
 
 ```
 # Give read access to keys under the /foo directory
-$ etcdctl role grant myrolename -path '/foo/*' -read
+$ etcdctl role grant myrolename --path '/foo/*' -read
 
 # Give write-only access to the key at /foo/bar
-$ etcdctl role grant myrolename -path '/foo/bar' -write
+$ etcdctl role grant myrolename --path '/foo/bar' -write
 
 # Give full access to keys under /pub
-$ etcdctl role grant myrolename -path '/pub/*' -readwrite
+$ etcdctl role grant myrolename --path '/pub/*' -readwrite
 ```
 
 Beware that 
 
 ```
 # Give full access to keys under /pub??
-$ etcdctl role grant myrolename -path '/pub*' -readwrite
+$ etcdctl role grant myrolename --path '/pub*' -readwrite
 ```
 
 Without the slash may include keys under `/publishing`, for example. To do both, grant `/pub` and `/pub/*`
@@ -122,7 +122,7 @@ $ etcdctl role get myrolename
 Revocation of permissions is done the same logical way:
 
 ```
-$ etcdctl role revoke myrolename -path '/foo/bar' -write
+$ etcdctl role revoke myrolename --path '/foo/bar' -write
 ```
 
 As is removing a role entirely

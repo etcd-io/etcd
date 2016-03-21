@@ -41,7 +41,7 @@ You can override the default values on the command line:
 
 ```sh
 # Command line arguments:
-$ etcd -heartbeat-interval=100 -election-timeout=500
+$ etcd --heartbeat-interval=100 --election-timeout=500
 
 # Environment variables:
 $ ETCD_HEARTBEAT_INTERVAL=100 ETCD_ELECTION_TIMEOUT=500 etcd
@@ -66,7 +66,7 @@ If etcd's memory usage and disk usage are too high, you can lower the snapshot t
 
 ```sh
 # Command line arguments:
-$ etcd -snapshot-count=5000
+$ etcd --snapshot-count=5000
 
 # Environment variables:
 $ ETCD_SNAPSHOT_COUNT=5000 etcd

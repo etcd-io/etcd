@@ -24,19 +24,19 @@ spec:
   containers:
   - command:
     - /etcd
-    - -name
+    - --name
     - etcd0
-    - -initial-advertise-peer-urls
+    - --initial-advertise-peer-urls
     - http://etcd0:2380
-    - -listen-peer-urls
+    - --listen-peer-urls
     - http://0.0.0.0:2380
-    - -listen-client-urls
+    - --listen-client-urls
     - http://0.0.0.0:2379
-    - -advertise-client-urls
+    - --advertise-client-urls
     - http://etcd0:2379
-    - -initial-cluster
+    - --initial-cluster
     - etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
-    - -initial-cluster-state
+    - --initial-cluster-state
     - new
     image: quay.io/coreos/etcd:latest
     name: etcd0
@@ -83,19 +83,19 @@ spec:
   containers:
   - command:
     - /etcd
-    - -name
+    - --name
     - etcd1
-    - -initial-advertise-peer-urls
+    - --initial-advertise-peer-urls
     - http://etcd1:2380
-    - -listen-peer-urls
+    - --listen-peer-urls
     - http://0.0.0.0:2380
-    - -listen-client-urls
+    - --listen-client-urls
     - http://0.0.0.0:2379
-    - -advertise-client-urls
+    - --advertise-client-urls
     - http://etcd1:2379
-    - -initial-cluster
+    - --initial-cluster
     - etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
-    - -initial-cluster-state
+    - --initial-cluster-state
     - new
     image: quay.io/coreos/etcd:latest
     name: etcd1
@@ -142,19 +142,19 @@ spec:
   containers:
   - command:
     - /etcd
-    - -name
+    - --name
     - etcd2
-    - -initial-advertise-peer-urls
+    - --initial-advertise-peer-urls
     - http://etcd2:2380
-    - -listen-peer-urls
+    - --listen-peer-urls
     - http://0.0.0.0:2380
-    - -listen-client-urls
+    - --listen-client-urls
     - http://0.0.0.0:2379
-    - -advertise-client-urls
+    - --advertise-client-urls
     - http://etcd2:2379
-    - -initial-cluster
+    - --initial-cluster
     - etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
-    - -initial-cluster-state
+    - --initial-cluster-state
     - new
     image: quay.io/coreos/etcd:latest
     name: etcd2

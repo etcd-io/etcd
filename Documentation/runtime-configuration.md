@@ -124,7 +124,7 @@ Now start the new etcd process with the relevant flags for the new member:
 $ export ETCD_NAME="infra3"
 $ export ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra3=http://10.0.1.13:2380"
 $ export ETCD_INITIAL_CLUSTER_STATE=existing
-$ etcd -listen-client-urls http://10.0.1.13:2379 -advertise-client-urls http://10.0.1.13:2379  -listen-peer-urls http://10.0.1.13:2380 -initial-advertise-peer-urls http://10.0.1.13:2380 -data-dir %data_dir%
+$ etcd --listen-client-urls http://10.0.1.13:2379 --advertise-client-urls http://10.0.1.13:2379 --listen-peer-urls http://10.0.1.13:2380 --initial-advertise-peer-urls http://10.0.1.13:2380 --data-dir %data_dir%
 ```
 
 The new member will run as a part of the cluster and immediately begin catching up with the rest of the cluster.
@@ -138,9 +138,9 @@ In the following case we have not included our new host in the list of enumerate
 If this is a new cluster, the node must be added to the list of initial cluster members.
 
 ```sh
-$ etcd -name infra3 \
-  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
-  -initial-cluster-state existing
+$ etcd --name infra3 \
+  --initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
+  --initial-cluster-state existing
 etcdserver: assign ids error: the member count is unequal
 exit 1
 ```
@@ -148,9 +148,9 @@ exit 1
 In this case we give a different address (10.0.1.14:2380) to the one that we used to join the cluster (10.0.1.13:2380).
 
 ```sh
-$ etcd -name infra4 \
-  -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra4=http://10.0.1.14:2380 \
-  -initial-cluster-state existing
+$ etcd --name infra4 \
+  --initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra4=http://10.0.1.14:2380 \
+  --initial-cluster-state existing
 etcdserver: assign ids error: unmatched member while checking PeerURLs
 exit 1
 ```
