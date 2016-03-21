@@ -70,6 +70,9 @@ for i in etcd-*{.zip,.tar.gz}; do gpg2 --default-key $SUBKEYID --output ${i}.asc
 for i in etcd-*{.zip,.tar.gz}; do gpg2 --verify ${i}.asc ${i}; done
 ```
 
+The public key for GPG signing can be found at [CoreOS Application Signing Key](https://coreos.com/security/app-signing-key)
+
+
 ## Publish Release Page in GitHub
 
 - Set release title as the version name.
