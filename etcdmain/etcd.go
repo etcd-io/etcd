@@ -257,7 +257,8 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 			return nil, err
 		}
 
-		if fdLimit, err := runtimeutil.FDLimit(); err == nil {
+		var fdLimit uint64
+		if fdLimit, err = runtimeutil.FDLimit(); err == nil {
 			if fdLimit <= reservedInternalFDNum {
 				plog.Fatalf("file descriptor limit[%d] of etcd process is too low, and should be set higher than %d to ensure internal usage", fdLimit, reservedInternalFDNum)
 			}
@@ -394,13 +395,15 @@ func startProxy(cfg *config) error {
 		peerURLs = urls.PeerURLs
 		plog.Infof("proxy: using peer urls %v from cluster file %q", peerURLs, clusterfile)
 	case os.IsNotExist(err):
-		urlsmap, _, err := getPeerURLsMapAndToken(cfg, "proxy")
+		var urlsmap types.URLsMap
+		urlsmap, _, err = getPeerURLsMapAndToken(cfg, "proxy")
 		if err != nil {
 			return fmt.Errorf("error setting up initial cluster: %v", err)
 		}
 
 		if cfg.durl != "" {
-			s, err := discovery.GetCluster(cfg.durl, cfg.dproxy)
+			var s string
+			s, err = discovery.GetCluster(cfg.durl, cfg.dproxy)
 			if err != nil {
 				return err
 			}
