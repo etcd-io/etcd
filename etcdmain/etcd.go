@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -36,6 +37,7 @@ import (
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/grpclog"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
@@ -553,6 +555,8 @@ func setupLogging(cfg *config) {
 	capnslog.SetGlobalLogLevel(capnslog.INFO)
 	if cfg.debug {
 		capnslog.SetGlobalLogLevel(capnslog.DEBUG)
+	} else {
+		grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
 	}
 	if cfg.logPkgLevels != "" {
 		repoLog := capnslog.MustRepoLogger("github.com/coreos/etcd")
