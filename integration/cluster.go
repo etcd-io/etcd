@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -585,7 +586,16 @@ func (m *member) Launch() error {
 		m.hss = append(m.hss, hs)
 	}
 	if m.grpcListener != nil {
-		m.grpcServer, err = v3rpc.Server(m.s, m.ClientTLSInfo)
+		var (
+			tlscfg *tls.Config
+		)
+		if m.ClientTLSInfo != nil && !m.ClientTLSInfo.Empty() {
+			tlscfg, err = m.ClientTLSInfo.ServerConfig()
+			if err != nil {
+				return err
+			}
+		}
+		m.grpcServer = v3rpc.Server(m.s, tlscfg)
 		go m.grpcServer.Serve(m.grpcListener)
 	}
 	return nil

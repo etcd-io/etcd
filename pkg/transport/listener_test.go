@@ -58,7 +58,11 @@ func TestNewListenerTLSInfo(t *testing.T) {
 }
 
 func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
-	ln, err := NewListener("127.0.0.1:0", "https", tlsInfo)
+	tlscfg, err := tlsInfo.ServerConfig()
+	if err != nil {
+		t.Fatalf("unexpected serverConfig error: %v", err)
+	}
+	ln, err := NewListener("127.0.0.1:0", "https", tlscfg)
 	if err != nil {
 		t.Fatalf("unexpected NewListener error: %v", err)
 	}
@@ -76,22 +80,9 @@ func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
 }
 
 func TestNewListenerTLSEmptyInfo(t *testing.T) {
-	_, err := NewListener("127.0.0.1:0", "https", TLSInfo{})
+	_, err := NewListener("127.0.0.1:0", "https", nil)
 	if err == nil {
 		t.Errorf("err = nil, want not presented error")
-	}
-}
-
-func TestNewListenerTLSInfoNonexist(t *testing.T) {
-	tlsInfo := TLSInfo{CertFile: "@badname", KeyFile: "@badname"}
-	_, err := NewListener("127.0.0.1:0", "https", tlsInfo)
-	werr := &os.PathError{
-		Op:   "open",
-		Path: "@badname",
-		Err:  errors.New("no such file or directory"),
-	}
-	if err.Error() != werr.Error() {
-		t.Errorf("err = %v, want %v", err, werr)
 	}
 }
 
@@ -128,6 +119,19 @@ func TestNewTransportTLSInfo(t *testing.T) {
 		if trans.TLSClientConfig == nil {
 			t.Fatalf("#%d: want non-nil TLSClientConfig", i)
 		}
+	}
+}
+
+func TestTLSInfoNonexist(t *testing.T) {
+	tlsInfo := TLSInfo{CertFile: "@badname", KeyFile: "@badname"}
+	_, err := tlsInfo.ServerConfig()
+	werr := &os.PathError{
+		Op:   "open",
+		Path: "@badname",
+		Err:  errors.New("no such file or directory"),
+	}
+	if err.Error() != werr.Error() {
+		t.Errorf("err = %v, want %v", err, werr)
 	}
 }
 
@@ -247,7 +251,7 @@ func TestTLSInfoConfigFuncs(t *testing.T) {
 }
 
 func TestNewListenerUnixSocket(t *testing.T) {
-	l, err := NewListener("testsocket", "unix", TLSInfo{})
+	l, err := NewListener("testsocket", "unix", nil)
 	if err != nil {
 		t.Errorf("error listening on unix socket (%v)", err)
 	}
