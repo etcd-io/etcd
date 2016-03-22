@@ -33,7 +33,7 @@ func NewUniqueKV(ctx context.Context, kv v3.KV, pfx, val string, opts ...v3.OpOp
 	for {
 		newKey := fmt.Sprintf("%s/%v", pfx, time.Now().UnixNano())
 		put := v3.OpPut(newKey, val, opts...)
-		cmp := v3.Compare(v3.ModifiedRevision(newKey), "=", 0)
+		cmp := v3.Compare(v3.ModRevision(newKey), "=", 0)
 		resp, err := kv.Txn(ctx).If(cmp).Then(put).Commit()
 		if err != nil {
 			return "", 0, err
