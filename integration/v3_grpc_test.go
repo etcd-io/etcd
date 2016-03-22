@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/storage/backend"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -452,6 +453,94 @@ func TestV3Hash(t *testing.T) {
 	resp, err := kvc.Hash(context.Background(), &pb.HashRequest{})
 	if err != nil || resp.Hash == 0 {
 		t.Fatalf("couldn't hash (%v, hash %d)", err, resp.Hash)
+	}
+}
+
+// TestV3StorageQuotaAPI tests the V3 server respects quotas at the API layer
+func TestV3StorageQuotaAPI(t *testing.T) {
+	oldSize := backend.InitialMmapSize
+	defer func() {
+		backend.InitialMmapSize = oldSize
+		testutil.AfterTest(t)
+	}()
+
+	backend.InitialMmapSize = 64 * 1024
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+	kvc := toGRPC(clus.RandClient()).KV
+
+	key := []byte("abc")
+
+	// test small put that fits in quota
+	smallbuf := make([]byte, 512)
+	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err != nil {
+		t.Fatal(err)
+	}
+
+	// test big put
+	bigbuf := make([]byte, 64*1024)
+	_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: bigbuf})
+	if err == nil || err != rpctypes.ErrNoSpace {
+		t.Fatalf("big put got %v, expected %v", err, rpctypes.ErrNoSpace)
+	}
+
+	// test big txn
+	puttxn := &pb.RequestUnion{
+		Request: &pb.RequestUnion_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key:   key,
+				Value: bigbuf,
+			},
+		},
+	}
+	txnreq := &pb.TxnRequest{}
+	txnreq.Success = append(txnreq.Success, puttxn)
+	_, txnerr := kvc.Txn(context.TODO(), txnreq)
+	if txnerr == nil || err != rpctypes.ErrNoSpace {
+		t.Fatalf("big txn got %v, expected %v", err, rpctypes.ErrNoSpace)
+	}
+}
+
+// TestV3StorageQuotaApply tests the V3 server respects quotas during apply
+func TestV3StorageQuotaApply(t *testing.T) {
+	oldSize := backend.InitialMmapSize
+	defer func() {
+		backend.InitialMmapSize = oldSize
+		testutil.AfterTest(t)
+	}()
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 2})
+	defer clus.Terminate(t)
+	kvc0 := toGRPC(clus.Client(0)).KV
+	kvc1 := toGRPC(clus.Client(1)).KV
+
+	// force a node to have a different quota
+	backend.InitialMmapSize = 64 * 1024
+	clus.Members[0].Stop(t)
+	clus.Members[0].Restart(t)
+	clus.waitLeader(t, clus.Members)
+
+	key := []byte("abc")
+
+	// test small put still works
+	smallbuf := make([]byte, 1024)
+	_, serr := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
+	if serr != nil {
+		t.Fatal(serr)
+	}
+
+	// test big put
+	bigbuf := make([]byte, 64*1024)
+	_, err := kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: bigbuf})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// small quota machine should reject put
+	// first, synchronize with the cluster via quorum get
+	kvc0.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
+	if _, err := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
+		t.Fatalf("past-quota instance should reject put")
 	}
 }
 

@@ -394,6 +394,42 @@ func (a *applierV3backend) UserAdd(r *pb.UserAddRequest) (*pb.UserAddResponse, e
 	return a.s.AuthStore().UserAdd(r)
 }
 
+type quotaApplierV3 struct {
+	applierV3
+	q Quota
+}
+
+func newQuotaApplierV3(s *EtcdServer, app applierV3) applierV3 {
+	return &quotaApplierV3{app, NewBackendQuota(s)}
+}
+
+func (a *quotaApplierV3) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, error) {
+	ok := a.q.Available(p)
+	resp, err := a.applierV3.Put(txnID, p)
+	if err == nil && !ok {
+		err = ErrNoSpace
+	}
+	return resp, err
+}
+
+func (a *quotaApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
+	ok := a.q.Available(rt)
+	resp, err := a.applierV3.Txn(rt)
+	if err == nil && !ok {
+		err = ErrNoSpace
+	}
+	return resp, err
+}
+
+func (a *quotaApplierV3) LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+	ok := a.q.Available(lc)
+	resp, err := a.applierV3.LeaseCreate(lc)
+	if err == nil && !ok {
+		err = ErrNoSpace
+	}
+	return resp, err
+}
+
 type kvSort struct{ kvs []storagepb.KeyValue }
 
 func (s *kvSort) Swap(i, j int) {

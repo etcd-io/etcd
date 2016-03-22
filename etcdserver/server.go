@@ -374,7 +374,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
 	}
-	srv.applyV3 = &applierV3backend{srv}
+	srv.applyV3 = newQuotaApplierV3(srv, &applierV3backend{srv})
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
@@ -1007,13 +1007,17 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 				var r pb.Request
 				pbutil.MustUnmarshal(&r, e.Data)
 				s.w.Trigger(r.ID, s.applyRequest(r))
+			} else if raftReq.V2 != nil {
+				req := raftReq.V2
+				s.w.Trigger(req.ID, s.applyRequest(*req))
 			} else {
-				switch {
-				case raftReq.V2 != nil:
-					req := raftReq.V2
-					s.w.Trigger(req.ID, s.applyRequest(*req))
-				default:
-					s.w.Trigger(raftReq.ID, s.applyV3Request(&raftReq))
+				ar := s.applyV3Request(&raftReq)
+				s.w.Trigger(raftReq.ID, ar)
+				if ar.err == ErrNoSpace {
+					plog.Errorf("applying raft message exceeded backend quota")
+					// TODO: send alarm
+					s.errorc <- ar.err
+					return applied, true
 				}
 			}
 		case raftpb.EntryConfChange:

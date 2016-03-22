@@ -297,6 +297,8 @@ func togRPCError(err error) error {
 	// TODO: handle error from raft and timeout
 	case etcdserver.ErrRequestTooLarge:
 		return rpctypes.ErrRequestTooLarge
+	case etcdserver.ErrNoSpace:
+		return rpctypes.ErrNoSpace
 	default:
 		return grpc.Errorf(codes.Internal, err.Error())
 	}
