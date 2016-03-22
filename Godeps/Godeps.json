@@ -28,10 +28,6 @@
 			"Rev": "0fd4c0547d204c7b1cad6db6f3adad5f2cf453e5"
 		},
 		{
-			"ImportPath": "github.com/cheggaaa/pb",
-			"Rev": "da1f27ad1d9509b16f65f52fd9d8138b0f2dc7b2"
-		},
-		{
 			"ImportPath": "github.com/cockroachdb/cmux",
 			"Rev": "112f0506e7743d64a6eb8fedbcff13d9979bbf92"
 		},
@@ -120,10 +116,6 @@
 			"Rev": "cca8bbc0798408af109aaaa239cbd2634846b340"
 		},
 		{
-			"ImportPath": "github.com/olekukonko/ts",
-			"Rev": "ecf753e7c962639ab5a1fb46f7da627d4c0a04b8"
-		},
-		{
 			"ImportPath": "github.com/prometheus/client_golang/prometheus",
 			"Comment": "0.7.0-52-ge51041b",
 			"Rev": "e51041b3fa41cece0dca035740ba6411905be473"
@@ -209,6 +201,11 @@
 		{
 			"ImportPath": "google.golang.org/grpc",
 			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+		},
+		{
+			"ImportPath": "gopkg.in/cheggaaa/pb.v1",
+			"Comment": "v1.0.1",
+			"Rev": "29ad9b62f9e0274422d738242b94a5b89440bfa6"
 		}
 	]
 }

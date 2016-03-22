@@ -17,8 +17,8 @@ package cmd
 import (
 	"sync"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cheggaaa/pb"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
+	"github.com/coreos/etcd/Godeps/_workspace/src/gopkg.in/cheggaaa/pb.v1"
 	"github.com/coreos/etcd/pkg/transport"
 )
 
