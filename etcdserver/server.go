@@ -374,7 +374,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
 		srv.lessor = lease.NewLessor(srv.be)
 		srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
-		srv.authStore = auth.NewAuthStore(srv)
+		srv.authStore = auth.NewAuthStore(srv.be)
 		if h := cfg.AutoCompactionRetention; h != 0 {
 			srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 			srv.compactor.Run()
@@ -620,6 +620,10 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 		if s.lessor != nil {
 			s.lessor.Recover(newbe, s.kv)
+		}
+
+		if s.authStore != nil {
+			s.authStore.Recover(newbe)
 		}
 	}
 	if err := s.store.Recovery(apply.snapshot.Data); err != nil {

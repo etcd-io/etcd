@@ -19,10 +19,6 @@ import (
 	"github.com/coreos/etcd/storage/backend"
 )
 
-type backendGetter interface {
-	Backend() backend.Backend
-}
-
 var (
 	enableFlagKey  = []byte("authEnabled")
 	authBucketName = []byte("auth")
@@ -33,16 +29,19 @@ var (
 type AuthStore interface {
 	// AuthEnable() turns on the authentication feature
 	AuthEnable()
+
+	// Recover recovers the state of auth store from the given backend
+	Recover(b backend.Backend)
 }
 
 type authStore struct {
-	bgetter backendGetter
+	be backend.Backend
 }
 
 func (as *authStore) AuthEnable() {
 	value := []byte{1}
 
-	b := as.bgetter.Backend()
+	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
 	tx.UnsafePut(authBucketName, enableFlagKey, value)
@@ -52,15 +51,19 @@ func (as *authStore) AuthEnable() {
 	plog.Noticef("Authentication enabled")
 }
 
-func NewAuthStore(bgetter backendGetter) *authStore {
-	b := bgetter.Backend()
-	tx := b.BatchTx()
+func (as *authStore) Recover(be backend.Backend) {
+	as.be = be
+	// TODO(mitake): recovery process
+}
+
+func NewAuthStore(be backend.Backend) *authStore {
+	tx := be.BatchTx()
 	tx.Lock()
 	tx.UnsafeCreateBucket(authBucketName)
 	tx.Unlock()
-	b.ForceCommit()
+	be.ForceCommit()
 
 	return &authStore{
-		bgetter: bgetter,
+		be: be,
 	}
 }
