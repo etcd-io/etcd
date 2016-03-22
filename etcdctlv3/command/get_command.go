@@ -24,11 +24,12 @@ import (
 )
 
 var (
-	getLimit      int64
-	getSortOrder  string
-	getSortTarget string
-	getPrefix     bool
-	getFromKey    bool
+	getConsistency string
+	getLimit       int64
+	getSortOrder   string
+	getSortTarget  string
+	getPrefix      bool
+	getFromKey     bool
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -39,12 +40,12 @@ func NewGetCommand() *cobra.Command {
 		Run:   getCommandFunc,
 	}
 
+	cmd.Flags().StringVar(&getConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 	cmd.Flags().StringVar(&getSortOrder, "order", "", "order of results; ASCEND or DESCEND")
 	cmd.Flags().StringVar(&getSortTarget, "sort-by", "", "sort target; CREATE, KEY, MODIFY, VALUE, or VERSION")
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "maximum number of results")
 	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "get keys with matching prefix")
 	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "get keys that are greater than or equal to the given key")
-	// TODO: add consistency.
 	return cmd
 }
 
@@ -69,6 +70,14 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	}
 
 	opts := []clientv3.OpOption{}
+	switch getConsistency {
+	case "s":
+		opts = append(opts, clientv3.WithSerializable())
+	case "l":
+	default:
+		ExitWithError(ExitBadFeature, fmt.Errorf("unknown consistency flag %q", getConsistency))
+	}
+
 	key := args[0]
 	if len(args) > 1 {
 		if getPrefix || getFromKey {
