@@ -28,7 +28,8 @@ import (
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
-	Endpoints []string
+	Endpoints   []string
+	DialTimeout time.Duration
 
 	TLS transport.TLSInfo
 
@@ -43,6 +44,8 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+
+	dialTimeout := dialTimeoutFromCmd(cmd)
 
 	var cert, key, cacert string
 	if cert, err = cmd.Flags().GetString("cert"); err != nil {
@@ -69,10 +72,10 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
 	}
 
-	return mustClient(endpoints, cert, key, cacert)
+	return mustClient(endpoints, dialTimeout, cert, key, cacert)
 }
 
-func mustClient(endpoints []string, cert, key, cacert string) *clientv3.Client {
+func mustClient(endpoints []string, dialTimeout time.Duration, cert, key, cacert string) *clientv3.Client {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tls := transport.TLSInfo{}
@@ -94,7 +97,7 @@ func mustClient(endpoints []string, cert, key, cacert string) *clientv3.Client {
 
 	cfg := clientv3.Config{
 		Endpoints:   endpoints,
-		DialTimeout: 20 * time.Second,
+		DialTimeout: dialTimeout,
 	}
 	if cfgtls != nil {
 		clientTLS, err := cfgtls.ClientConfig()
@@ -121,4 +124,12 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 		return "", errors.New("no available argument and stdin")
 	}
 	return string(bytes), nil
+}
+
+func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
+	dialTimeout, err := cmd.Flags().GetDuration("dial-timeout")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return dialTimeout
 }
