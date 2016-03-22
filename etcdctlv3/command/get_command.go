@@ -100,7 +100,7 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	case sortTarget == "KEY":
 		sortByTarget = clientv3.SortByKey
 	case sortTarget == "MODIFY":
-		sortByTarget = clientv3.SortByModifiedRev
+		sortByTarget = clientv3.SortByModRevision
 	case sortTarget == "VALUE":
 		sortByTarget = clientv3.SortByValue
 	case sortTarget == "VERSION":

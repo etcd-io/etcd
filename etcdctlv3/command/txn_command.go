@@ -187,7 +187,7 @@ func parseCompare(line string) (*clientv3.Cmp, error) {
 		}
 	case "m", "mod":
 		if v, err = strconv.ParseInt(val, 10, 64); err == nil {
-			cmp = clientv3.Compare(clientv3.ModifiedRevision(key), op, v)
+			cmp = clientv3.Compare(clientv3.ModRevision(key), op, v)
 		}
 	case "val", "value":
 		cmp = clientv3.Compare(clientv3.Value(key), op, val)

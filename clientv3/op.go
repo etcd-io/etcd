@@ -221,10 +221,10 @@ func WithFirstKey() []OpOption { return withTop(SortByKey, SortAscend) }
 func WithLastKey() []OpOption { return withTop(SortByKey, SortDescend) }
 
 // WithFirstRev gets the key with the oldest modification revision in the request range.
-func WithFirstRev() []OpOption { return withTop(SortByModifiedRev, SortAscend) }
+func WithFirstRev() []OpOption { return withTop(SortByModRevision, SortAscend) }
 
 // WithLastRev gets the key with the latest modification revision in the request range.
-func WithLastRev() []OpOption { return withTop(SortByModifiedRev, SortDescend) }
+func WithLastRev() []OpOption { return withTop(SortByModRevision, SortDescend) }
 
 // withTop gets the first key over the get's prefix given a sort order
 func withTop(target SortTarget, order SortOrder) []OpOption {

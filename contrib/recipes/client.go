@@ -31,7 +31,7 @@ var (
 
 // deleteRevKey deletes a key by revision, returning false if key is missing
 func deleteRevKey(kv v3.KV, key string, rev int64) (bool, error) {
-	cmp := v3.Compare(v3.ModifiedRevision(key), "=", rev)
+	cmp := v3.Compare(v3.ModRevision(key), "=", rev)
 	req := v3.OpDelete(key)
 	txnresp, err := kv.Txn(context.TODO()).If(cmp).Then(req).Commit()
 	if err != nil {

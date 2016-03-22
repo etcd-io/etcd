@@ -76,7 +76,7 @@ func CreatedRevision(key string) Cmp {
 	return Cmp{Key: []byte(key), Target: pb.Compare_CREATE}
 }
 
-func ModifiedRevision(key string) Cmp {
+func ModRevision(key string) Cmp {
 	return Cmp{Key: []byte(key), Target: pb.Compare_MOD}
 }
 

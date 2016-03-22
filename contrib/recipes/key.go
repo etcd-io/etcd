@@ -123,7 +123,7 @@ func newSequentialKV(kv v3.KV, prefix, val string, leaseID v3.LeaseID) (*RemoteK
 	baseKey := "__" + prefix
 
 	// current revision might contain modification so +1
-	cmp := v3.Compare(v3.ModifiedRevision(baseKey), "<", resp.Header.Revision+1)
+	cmp := v3.Compare(v3.ModRevision(baseKey), "<", resp.Header.Revision+1)
 	reqPrefix := v3.OpPut(baseKey, "", v3.WithLease(leaseID))
 	reqNewKey := v3.OpPut(newKey, val, v3.WithLease(leaseID))
 

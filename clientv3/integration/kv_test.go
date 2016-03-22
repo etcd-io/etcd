@@ -163,11 +163,11 @@ func TestKVRange(t *testing.T) {
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
 			},
 		},
-		// range all with SortByModifiedRev, SortDescend
+		// range all with SortByModRevision, SortDescend
 		{
 			"a", "x",
 			0,
-			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByModifiedRev, clientv3.SortDescend)},
+			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByModRevision, clientv3.SortDescend)},
 
 			[]*storagepb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
