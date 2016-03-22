@@ -17,6 +17,7 @@ package main
 
 import (
 	"text/tabwriter"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/etcdctlv3/command"
@@ -25,6 +26,8 @@ import (
 const (
 	cliName        = "etcdctlv3"
 	cliDescription = "A simple command line client for etcd3."
+
+	defaultDialTimeout = 2 * time.Second
 )
 
 var (
@@ -45,6 +48,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.OutputFormat, "write-out", "w", "simple", "set the output format (simple, json, protobuf)")
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.IsHex, "hex", false, "print byte strings as hex encoded strings")
+
+	rootCmd.PersistentFlags().DurationVar(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
 
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.CertFile, "cert", "", "identify secure client using this TLS certificate file")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.KeyFile, "key", "", "identify secure client using this TLS key file")
