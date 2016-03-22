@@ -67,6 +67,7 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 	}
 
 	t := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
 			Timeout: dialtimeoutd,
 			// value taken from http.DefaultTransport
