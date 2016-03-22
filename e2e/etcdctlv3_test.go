@@ -23,6 +23,22 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
+func TestCtlV3Set(t *testing.T) {
+	testCtlV3Set(t, &configNoTLS, 3*time.Second, false)
+}
+
+func TestCtlV3SetZeroTimeout(t *testing.T) {
+	testCtlV3Set(t, &configNoTLS, 0, false)
+}
+
+func TestCtlV3SetTimeout(t *testing.T) {
+	testCtlV3Set(t, &configNoTLS, time.Nanosecond, false)
+}
+
+func TestCtlV3SetPeerTLS(t *testing.T) {
+	testCtlV3Set(t, &configPeerTLS, 3*time.Second, false)
+}
+
 func TestCtlV3SetQuorum(t *testing.T) {
 	testCtlV3Set(t, &configNoTLS, 3*time.Second, true)
 }
@@ -105,12 +121,10 @@ func ctlV3Put(clus *etcdProcessCluster, key, value string, dialTimeout time.Dura
 }
 
 func ctlV3Get(clus *etcdProcessCluster, key, value string, dialTimeout time.Duration, quorum bool) error {
-	if !quorum { // TODO: add serialized option
-		panic("serialized option is not implemented")
-	}
-
 	cmdArgs := append(ctlV3PrefixArgs(clus, dialTimeout), "get", key)
-
+	if !quorum {
+		cmdArgs = append(cmdArgs, "--consistency", "s")
+	}
 	// TODO: match by value. Currently it prints out both key and value in multi-lines.
 	return spawnWithExpectedString(cmdArgs, key)
 }
@@ -122,10 +136,6 @@ func mustCtlV3(t *testing.T) {
 }
 
 func setupCtlV3Test(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {
-	if !quorum { // TODO: add serialized option
-		panic("serialized option is not implemented")
-	}
-
 	mustCtlV3(t)
 	if !quorum {
 		cfg = configStandalone(*cfg)
