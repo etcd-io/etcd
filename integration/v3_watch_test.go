@@ -23,11 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/storage/storagepb"
+	"golang.org/x/net/context"
 )
 
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.

@@ -18,8 +18,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
+	"golang.org/x/net/context"
 )
 
 var (

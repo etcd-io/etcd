@@ -19,8 +19,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/jonboulle/clockwork"
 )
 
 // explanations of Compare function result

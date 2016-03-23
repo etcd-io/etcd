@@ -14,7 +14,7 @@
 
 package backend
 
-import "github.com/coreos/etcd/Godeps/_workspace/src/github.com/boltdb/bolt"
+import "github.com/boltdb/bolt"
 
 // TODO: support syscall.MAP_POPULATE in windows.
 // Need upstream patch from boltdb/bolt.

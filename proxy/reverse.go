@@ -28,9 +28,9 @@ import (
 
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/httputil"
+	"github.com/coreos/pkg/capnslog"
 )
 
 var (

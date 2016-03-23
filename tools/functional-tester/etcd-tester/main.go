@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-tester")

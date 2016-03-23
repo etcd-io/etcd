@@ -28,9 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
@@ -40,6 +37,9 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
+	"github.com/coreos/go-semver/semver"
+	"github.com/jonboulle/clockwork"
+	"golang.org/x/net/context"
 )
 
 func mustMarshalEvent(t *testing.T, ev *store.Event) string {

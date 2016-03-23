@@ -19,11 +19,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3/mirror"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/storage/storagepb"
+	"golang.org/x/net/context"
 )
 
 func TestMirrorSync(t *testing.T) {

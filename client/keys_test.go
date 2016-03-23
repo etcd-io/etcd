@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 func TestV2KeysURLHelper(t *testing.T) {

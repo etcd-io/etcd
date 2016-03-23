@@ -19,8 +19,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/etcdctlv3/command"
+	"github.com/spf13/cobra"
 )
 
 const (

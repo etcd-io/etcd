@@ -15,8 +15,8 @@
 package rpctypes
 
 import (
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc/codes"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 var (

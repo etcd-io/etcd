@@ -17,8 +17,8 @@ package command
 import (
 	"fmt"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/version"
+	"github.com/spf13/cobra"
 )
 
 // NewVersionCommand prints out the version of etcd.

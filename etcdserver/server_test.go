@@ -25,7 +25,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/idutil"
@@ -42,6 +41,7 @@ import (
 	dstorage "github.com/coreos/etcd/storage"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/store"
+	"golang.org/x/net/context"
 )
 
 // TestDoLocalAction tests requests which do not need to go through raft to be applied,

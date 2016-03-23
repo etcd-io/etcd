@@ -17,9 +17,9 @@ package cmd
 import (
 	"sync"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
-	"github.com/coreos/etcd/Godeps/_workspace/src/gopkg.in/cheggaaa/pb.v1"
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/spf13/cobra"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // This represents the base command when called without any subcommands

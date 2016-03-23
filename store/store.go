@@ -23,9 +23,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/jonboulle/clockwork"
 )
 
 // The default version to set when the store is first initialized.

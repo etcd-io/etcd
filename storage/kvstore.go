@@ -22,11 +22,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/schedule"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/storage/storagepb"
+	"golang.org/x/net/context"
 )
 
 var (

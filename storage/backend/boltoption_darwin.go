@@ -14,6 +14,6 @@
 
 package backend
 
-import "github.com/coreos/etcd/Godeps/_workspace/src/github.com/boltdb/bolt"
+import "github.com/boltdb/bolt"
 
 var boltOpenOptions *bolt.Options = nil

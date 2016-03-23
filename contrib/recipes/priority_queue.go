@@ -17,9 +17,9 @@ package recipe
 import (
 	"fmt"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/storage/storagepb"
+	"golang.org/x/net/context"
 )
 
 // PriorityQueue implements a multi-reader, multi-writer distributed queue.

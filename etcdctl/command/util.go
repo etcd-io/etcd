@@ -27,11 +27,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/bgentry/speakeasy"
+	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/transport"
+	"golang.org/x/net/context"
 )
 
 var (
