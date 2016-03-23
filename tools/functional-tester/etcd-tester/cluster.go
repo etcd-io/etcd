@@ -44,6 +44,7 @@ type cluster struct {
 	Agents     []client.Agent
 	Stressers  []Stresser
 	Names      []string
+	GRPCURLs   []string
 	ClientURLs []string
 }
 
@@ -158,6 +159,7 @@ func (c *cluster) Bootstrap() error {
 	c.Agents = agents
 	c.Stressers = stressers
 	c.Names = names
+	c.GRPCURLs = grpcURLs
 	c.ClientURLs = clientURLs
 	return nil
 }
@@ -168,7 +170,7 @@ func (c *cluster) WaitHealth() error {
 	// TODO: set it to a reasonable value. It is set that high because
 	// follower may use long time to catch up the leader when reboot under
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
-	healthFunc, urls := setHealthKey, c.ClientURLs
+	healthFunc, urls := setHealthKey, c.GRPCURLs
 	if c.v2Only {
 		healthFunc, urls = setHealthKeyV2, c.ClientURLs
 	}
@@ -188,7 +190,7 @@ func (c *cluster) GetLeader() (int, error) {
 		return 0, nil
 	}
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   c.ClientURLs,
+		Endpoints:   c.GRPCURLs,
 		DialTimeout: 5 * time.Second,
 	})
 	if err != nil {
@@ -300,7 +302,7 @@ func setHealthKeyV2(us []string) error {
 func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) {
 	revs := make(map[string]int64)
 	hashes := make(map[string]int64)
-	for _, u := range c.ClientURLs {
+	for _, u := range c.GRPCURLs {
 		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 		if err != nil {
 			return nil, nil, err
@@ -324,7 +326,7 @@ func (c *cluster) compactKV(rev int64) error {
 		conn *grpc.ClientConn
 		err  error
 	)
-	for _, u := range c.ClientURLs {
+	for _, u := range c.GRPCURLs {
 		conn, err = grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 		if err != nil {
 			continue
