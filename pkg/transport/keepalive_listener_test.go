@@ -31,7 +31,7 @@ func TestNewKeepAliveListener(t *testing.T) {
 		t.Fatalf("unexpected listen error: %v", err)
 	}
 
-	ln, err = NewKeepAliveListener(ln, "http", TLSInfo{})
+	ln, err = NewKeepAliveListener(ln, "http", nil)
 	if err != nil {
 		t.Fatalf("unexpected NewKeepAliveListener error: %v", err)
 	}
@@ -53,7 +53,11 @@ func TestNewKeepAliveListener(t *testing.T) {
 	defer os.Remove(tmp)
 	tlsInfo := TLSInfo{CertFile: tmp, KeyFile: tmp}
 	tlsInfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
-	tlsln, err := NewKeepAliveListener(ln, "https", tlsInfo)
+	tlscfg, err := tlsInfo.ServerConfig()
+	if err != nil {
+		t.Fatalf("unexpected serverConfig error: %v", err)
+	}
+	tlsln, err := NewKeepAliveListener(ln, "https", tlscfg)
 	if err != nil {
 		t.Fatalf("unexpected NewKeepAliveListener error: %v", err)
 	}
@@ -70,13 +74,13 @@ func TestNewKeepAliveListener(t *testing.T) {
 	tlsln.Close()
 }
 
-func TestNewKeepAliveListenerTLSEmptyInfo(t *testing.T) {
+func TestNewKeepAliveListenerTLSEmptyConfig(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("unexpected listen error: %v", err)
 	}
 
-	_, err = NewKeepAliveListener(ln, "https", TLSInfo{})
+	_, err = NewKeepAliveListener(ln, "https", nil)
 	if err == nil {
 		t.Errorf("err = nil, want not presented error")
 	}

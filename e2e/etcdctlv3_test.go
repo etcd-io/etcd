@@ -104,12 +104,12 @@ func ctlV3PrefixArgs(clus *etcdProcessCluster, dialTimeout time.Duration) []stri
 	if backends := clus.backends(); len(backends) != 0 {
 		es := []string{}
 		for _, b := range backends {
-			es = append(es, stripSchema(b.cfg.acurl.String()))
+			es = append(es, stripSchema(b.cfg.acurl))
 		}
 		endpoints = strings.Join(es, ",")
 	}
 	cmdArgs := []string{"../bin/etcdctlv3", "--endpoints", endpoints, "--dial-timeout", dialTimeout.String()}
-	if clus.cfg.isClientTLS {
+	if clus.cfg.clientTLS == clientTLS {
 		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 	}
 	return cmdArgs

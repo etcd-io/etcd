@@ -33,7 +33,7 @@ import (
 	"time"
 )
 
-func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error) {
+func NewListener(addr string, scheme string, tlscfg *tls.Config) (net.Listener, error) {
 	nettype := "tcp"
 	if scheme == "unix" {
 		// unix sockets via unix://laddr
@@ -46,15 +46,11 @@ func NewListener(addr string, scheme string, info TLSInfo) (net.Listener, error)
 	}
 
 	if scheme == "https" {
-		if info.Empty() {
+		if tlscfg == nil {
 			return nil, fmt.Errorf("cannot listen on TLS for %s: KeyFile and CertFile are not presented", scheme+"://"+addr)
 		}
-		cfg, err := info.ServerConfig()
-		if err != nil {
-			return nil, err
-		}
 
-		l = tls.NewListener(l, cfg)
+		l = tls.NewListener(l, tlscfg)
 	}
 
 	return l, nil
