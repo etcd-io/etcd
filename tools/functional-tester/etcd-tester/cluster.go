@@ -88,6 +88,7 @@ func (c *cluster) Bootstrap() error {
 		if err != nil {
 			return err
 		}
+		grpcURLs[i] = fmt.Sprintf("%s:2379", host)
 		clientURLs[i] = fmt.Sprintf("http://%s:2379", host)
 		peerURLs[i] = fmt.Sprintf("http://%s:%d", host, peerURLPort)
 
