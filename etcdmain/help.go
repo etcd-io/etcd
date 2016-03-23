@@ -135,8 +135,6 @@ given by the consensus protocol.
 
 experimental flags:
 
-	--experimental-v3demo 'false'
-		enable experimental v3 demo API.
 	--experimental-auto-compaction-retention '0'
 		auto compaction retention in hour. 0 means disable auto compaction.
 

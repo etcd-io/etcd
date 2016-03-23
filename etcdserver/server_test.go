@@ -822,6 +822,11 @@ func TestSyncTrigger(t *testing.T) {
 
 // snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	defer func() {
+		os.RemoveAll(tmpPath)
+	}()
+
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
 	st := mockstore.NewRecorder()
@@ -835,6 +840,9 @@ func TestSnapshot(t *testing.T) {
 		},
 		store: st,
 	}
+	srv.kv = dstorage.New(be, &lease.FakeLessor{}, &srv.consistIndex)
+	srv.be = be
+
 	srv.snapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
 	gaction, _ := st.Wait(2)
 	if len(gaction) != 2 {
@@ -857,6 +865,11 @@ func TestSnapshot(t *testing.T) {
 
 // Applied > SnapCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	defer func() {
+		os.RemoveAll(tmpPath)
+	}()
+
 	snapc := 10
 	st := mockstore.NewRecorder()
 	p := mockstorage.NewStorageRecorderStream("")
@@ -872,6 +885,9 @@ func TestTriggerSnap(t *testing.T) {
 		store:    st,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
+	srv.kv = dstorage.New(be, &lease.FakeLessor{}, &srv.consistIndex)
+	srv.be = be
+
 	srv.start()
 
 	donec := make(chan struct{})
@@ -922,7 +938,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	tr, snapDoneC := rafthttp.NewSnapTransporter(testdir)
 	s := &EtcdServer{
 		cfg: &ServerConfig{
-			V3demo:  true,
 			DataDir: testdir,
 		},
 		r: raftNode{
@@ -992,89 +1007,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	}
 	if outdated != 0 {
 		t.Errorf("outdated=%v, want 0", outdated)
-	}
-}
-
-// TestRecvSnapshot tests when it receives a snapshot from raft leader,
-// it should trigger storage.SaveSnap and also store.Recover.
-func TestRecvSnapshot(t *testing.T) {
-	n := newNopReadyNode()
-	st := mockstore.NewRecorder()
-	p := mockstorage.NewStorageRecorder("")
-	cl := newCluster("abc")
-	cl.SetStore(store.New())
-	s := &EtcdServer{
-		cfg: &ServerConfig{},
-		r: raftNode{
-			Node:        n,
-			transport:   rafthttp.NewNopTransporter(),
-			storage:     p,
-			raftStorage: raft.NewMemoryStorage(),
-		},
-		store:   st,
-		cluster: cl,
-	}
-
-	s.start()
-	n.readyc <- raft.Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}
-
-	// wait for actions happened on the storage
-	for len(p.Action()) == 0 {
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	s.Stop()
-
-	wactions := []testutil.Action{{Name: "Recovery"}}
-	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
-		t.Errorf("store action = %v, want %v", g, wactions)
-	}
-	wactions = []testutil.Action{{Name: "SaveSnap"}, {Name: "Save"}}
-	if g := p.Action(); !reflect.DeepEqual(g, wactions) {
-		t.Errorf("storage action = %v, want %v", g, wactions)
-	}
-}
-
-// TestApplySnapshotAndCommittedEntries tests that server applies snapshot
-// first and then committed entries.
-func TestApplySnapshotAndCommittedEntries(t *testing.T) {
-	n := newNopReadyNode()
-	st := mockstore.NewRecorderStream()
-	cl := newCluster("abc")
-	cl.SetStore(store.New())
-	storage := raft.NewMemoryStorage()
-	s := &EtcdServer{
-		cfg: &ServerConfig{},
-		r: raftNode{
-			Node:        n,
-			storage:     mockstorage.NewStorageRecorder(""),
-			raftStorage: storage,
-			transport:   rafthttp.NewNopTransporter(),
-		},
-		store:   st,
-		cluster: cl,
-	}
-
-	s.start()
-	req := &pb.Request{Method: "QGET"}
-	n.readyc <- raft.Ready{
-		Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}},
-		CommittedEntries: []raftpb.Entry{
-			{Index: 2, Data: pbutil.MustMarshal(req)},
-		},
-	}
-	// make goroutines move forward to receive snapshot
-	actions, _ := st.Wait(2)
-	s.Stop()
-
-	if len(actions) != 2 {
-		t.Fatalf("len(action) = %d, want 2", len(actions))
-	}
-	if actions[0].Name != "Recovery" {
-		t.Errorf("actions[0] = %s, want %s", actions[0].Name, "Recovery")
-	}
-	if actions[1].Name != "Get" {
-		t.Errorf("actions[1] = %s, want %s", actions[1].Name, "Get")
 	}
 }
 

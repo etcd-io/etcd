@@ -250,13 +250,6 @@ Follow the instructions when using these flags.
 + default: false
 + env variable: ETCD_FORCE_NEW_CLUSTER
 
-## Experimental Flags
-
-### --experimental-v3demo
-+ Enable experimental [v3 demo API][rfc-v3].
-+ default: false
-+ env variable: ETCD_EXPERIMENTAL_V3DEMO
-
 ## Miscellaneous Flags
 
 ### --version

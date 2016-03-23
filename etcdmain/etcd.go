@@ -333,7 +333,6 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		PeerTLSInfo:             cfg.peerTLSInfo,
 		TickMs:                  cfg.TickMs,
 		ElectionTicks:           cfg.electionTicks(),
-		V3demo:                  cfg.v3demo,
 		AutoCompactionRetention: cfg.autoCompactionRetention,
 		StrictReconfigCheck:     cfg.strictReconfigCheck,
 		EnablePprof:             cfg.enablePprof,

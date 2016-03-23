@@ -72,7 +72,6 @@ type ClusterConfig struct {
 	PeerTLS      *transport.TLSInfo
 	ClientTLS    *transport.TLSInfo
 	DiscoveryURL string
-	UseV3        bool
 	UseGRPC      bool
 }
 
@@ -199,7 +198,6 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 	name := c.name(rand.Int())
 	m := mustNewMember(t, name, c.cfg.PeerTLS, c.cfg.ClientTLS)
 	m.DiscoveryURL = c.cfg.DiscoveryURL
-	m.V3demo = c.cfg.UseV3
 	if c.cfg.UseGRPC {
 		if err := m.listenGRPC(); err != nil {
 			t.Fatal(err)
@@ -471,9 +469,6 @@ func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, client
 
 // listenGRPC starts a grpc server over a unix domain socket on the member
 func (m *member) listenGRPC() error {
-	if m.V3demo == false {
-		return fmt.Errorf("starting grpc server without v3 configured")
-	}
 	// prefix with localhost so cert has right domain
 	m.grpcAddr = "localhost:" + m.Name + ".sock"
 	if err := os.RemoveAll(m.grpcAddr); err != nil {
@@ -723,7 +718,6 @@ type ClusterV3 struct {
 // NewClusterV3 returns a launched cluster with a grpc client connection
 // for each cluster member.
 func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
-	cfg.UseV3 = true
 	cfg.UseGRPC = true
 	clus := &ClusterV3{cluster: NewClusterByConfig(t, cfg)}
 	for _, m := range clus.Members {

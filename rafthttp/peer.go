@@ -92,9 +92,8 @@ type Peer interface {
 // It is only used when the stream has not been established.
 type peer struct {
 	// id of the remote raft peer node
-	id     types.ID
-	r      Raft
-	v3demo bool
+	id types.ID
+	r  Raft
 
 	status *peerStatus
 
@@ -118,13 +117,12 @@ type peer struct {
 	stopc  chan struct{}
 }
 
-func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error, v3demo bool) *peer {
+func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
 	status := newPeerStatus(to)
 	picker := newURLPicker(urls)
 	p := &peer{
 		id:             to,
 		r:              r,
-		v3demo:         v3demo,
 		status:         status,
 		picker:         picker,
 		msgAppV2Writer: startStreamWriter(to, status, fs, r),
