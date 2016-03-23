@@ -1,6 +1,7 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v60",
 	"Packages": [
 		"./..."
 	],
@@ -8,7 +9,7 @@
 		{
 			"ImportPath": "bitbucket.org/ww/goautoneg",
 			"Comment": "null-5",
-			"Rev": "75cd24fc2f2c2a2088577d12123ddee5f54e0675"
+			"Rev": "'75cd24fc2f2c2a2088577d12123ddee5f54e0675'"
 		},
 		{
 			"ImportPath": "github.com/akrennmair/gopcap",
@@ -187,6 +188,10 @@
 			"Rev": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
 		{
+			"ImportPath": "golang.org/x/net/http2/hpack",
+			"Rev": "6acef71eb69611914f7a30939ea9f6e194c78172"
+		},
+		{
 			"ImportPath": "golang.org/x/net/internal/timeseries",
 			"Rev": "6acef71eb69611914f7a30939ea9f6e194c78172"
 		},
@@ -200,6 +205,34 @@
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
+			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/codes",
+			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/credentials",
+			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/grpclog",
+			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/metadata",
+			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/naming",
+			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/peer",
+			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/transport",
 			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
 		},
 		{

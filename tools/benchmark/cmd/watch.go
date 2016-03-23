@@ -24,9 +24,9 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/gopkg.in/cheggaaa/pb.v1"
+	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // watchCmd represents the watch command

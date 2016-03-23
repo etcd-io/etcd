@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	v3rpc "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	storagepb "github.com/coreos/etcd/storage/storagepb"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type WatchChan <-chan WatchResponse

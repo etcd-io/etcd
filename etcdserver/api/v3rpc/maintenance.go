@@ -15,10 +15,10 @@
 package v3rpc
 
 import (
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/storage/backend"
+	"golang.org/x/net/context"
 )
 
 type BackendGetter interface {

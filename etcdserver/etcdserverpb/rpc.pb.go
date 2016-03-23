@@ -7,7 +7,7 @@ package etcdserverpb
 import (
 	"fmt"
 
-	proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
+	proto "github.com/gogo/protobuf/proto"
 )
 
 import math "math"
@@ -15,8 +15,8 @@ import math "math"
 import storagepb "github.com/coreos/etcd/storage/storagepb"
 
 import (
-	context "github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	grpc "github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	context "golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
 )
 
 import io "io"

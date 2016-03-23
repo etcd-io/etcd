@@ -21,9 +21,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/testutil"
+	"golang.org/x/net/context"
 )
 
 func TestPauseMember(t *testing.T) {

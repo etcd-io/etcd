@@ -25,9 +25,9 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/pflag"
 	"github.com/coreos/etcd/version"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var (

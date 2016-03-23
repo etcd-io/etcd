@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
+	"golang.org/x/net/context"
 )
 
 // Key is a key/revision pair created by the client and stored on etcd

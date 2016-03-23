@@ -4,6 +4,7 @@ ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/etcd"
 
 export GOPATH=${PWD}/gopath
+export GO15VENDOREXPERIMENT="1"
 
 rm -f $GOPATH/src/${REPO_PATH}
 mkdir -p $GOPATH/src/${ORG_PATH}

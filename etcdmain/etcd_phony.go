@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/pkg/capnslog"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdmain")

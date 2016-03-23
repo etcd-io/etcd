@@ -20,9 +20,9 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/spf13/cobra"
 )
 
 // GlobalFlags are flags that defined globally

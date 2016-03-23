@@ -21,8 +21,8 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spf13/cobra"
 	"github.com/coreos/etcd/lease"
+	"github.com/spf13/cobra"
 )
 
 // storagePutCmd represents a storage put performance benchmarking tool

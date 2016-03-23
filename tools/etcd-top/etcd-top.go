@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/akrennmair/gopcap"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spacejam/loghisto"
+	"github.com/akrennmair/gopcap"
+	"github.com/spacejam/loghisto"
 )
 
 type nameSum struct {

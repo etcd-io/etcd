@@ -17,7 +17,7 @@ package rafthttp
 import (
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/xiang90/probing"
+	"github.com/xiang90/probing"
 )
 
 var (

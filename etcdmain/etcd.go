@@ -31,11 +31,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/daemon"
-	systemdutil "github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-systemd/util"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
@@ -50,6 +45,11 @@ import (
 	"github.com/coreos/etcd/proxy"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/version"
+	"github.com/coreos/go-systemd/daemon"
+	systemdutil "github.com/coreos/go-systemd/util"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
 )
 
 type dirType string

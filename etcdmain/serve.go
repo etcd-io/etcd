@@ -21,8 +21,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/cockroachdb/cmux"
-	"github.com/coreos/etcd/Godeps/_workspace/src/google.golang.org/grpc"
+	"github.com/cockroachdb/cmux"
+	"google.golang.org/grpc"
 )
 
 // serve accepts incoming connections on the listener l,

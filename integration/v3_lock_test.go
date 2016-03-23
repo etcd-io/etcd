@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/contrib/recipes"
+	"golang.org/x/net/context"
 )
 
 func TestMutexSingleNode(t *testing.T) {

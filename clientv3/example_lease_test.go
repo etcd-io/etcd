@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/clientv3"
+	"golang.org/x/net/context"
 )
 
 func ExampleLease_create() {

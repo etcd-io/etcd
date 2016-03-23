@@ -22,9 +22,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/version"
+	"github.com/coreos/go-semver/semver"
 )
 
 // isMemberBootstrapped tries to check if the given member has been bootstrapped

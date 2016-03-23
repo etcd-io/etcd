@@ -14,7 +14,7 @@
 
 package snap
 
-import "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
+import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	// TODO: save_fsync latency?

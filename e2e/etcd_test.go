@@ -23,9 +23,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/gexpect"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/gexpect"
 )
 
 const (
