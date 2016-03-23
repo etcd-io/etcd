@@ -226,11 +226,11 @@ func TestCtlV2RoleList(t *testing.T) {
 func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
 	endpoints := ""
 	if proxies := clus.proxies(); len(proxies) != 0 {
-		endpoints = proxies[0].cfg.acurl.String()
+		endpoints = proxies[0].cfg.acurl[0]
 	} else if backends := clus.backends(); len(backends) != 0 {
 		es := []string{}
 		for _, b := range backends {
-			es = append(es, b.cfg.acurl.String())
+			es = append(es, b.cfg.acurl[0])
 		}
 		endpoints = strings.Join(es, ",")
 	}

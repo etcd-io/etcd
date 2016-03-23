@@ -104,7 +104,7 @@ func ctlV3PrefixArgs(clus *etcdProcessCluster, dialTimeout time.Duration) []stri
 	if backends := clus.backends(); len(backends) != 0 {
 		es := []string{}
 		for _, b := range backends {
-			es = append(es, stripSchema(b.cfg.acurl.String()))
+			es = append(es, stripSchema(b.cfg.acurl[0]))
 		}
 		endpoints = strings.Join(es, ",")
 	}
