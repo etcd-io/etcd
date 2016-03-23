@@ -183,7 +183,7 @@ func parseCompare(line string) (*clientv3.Cmp, error) {
 		}
 	case "c", "create":
 		if v, err = strconv.ParseInt(val, 10, 64); err == nil {
-			cmp = clientv3.Compare(clientv3.CreatedRevision(key), op, v)
+			cmp = clientv3.Compare(clientv3.CreateRevision(key), op, v)
 		}
 	case "m", "mod":
 		if v, err = strconv.ParseInt(val, 10, 64); err == nil {

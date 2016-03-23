@@ -72,7 +72,7 @@ func Version(key string) Cmp {
 	return Cmp{Key: []byte(key), Target: pb.Compare_VERSION}
 }
 
-func CreatedRevision(key string) Cmp {
+func CreateRevision(key string) Cmp {
 	return Cmp{Key: []byte(key), Target: pb.Compare_CREATE}
 }
 
