@@ -209,10 +209,10 @@ func WithSerializable() OpOption {
 }
 
 // WithFirstCreate gets the key with the oldest creation revision in the request range.
-func WithFirstCreate() []OpOption { return withTop(SortByCreatedRev, SortAscend) }
+func WithFirstCreate() []OpOption { return withTop(SortByCreateRevision, SortAscend) }
 
 // WithLastCreate gets the key with the latest creation revision in the request range.
-func WithLastCreate() []OpOption { return withTop(SortByCreatedRev, SortDescend) }
+func WithLastCreate() []OpOption { return withTop(SortByCreateRevision, SortDescend) }
 
 // WithFirstKey gets the lexically first key in the request range.
 func WithFirstKey() []OpOption { return withTop(SortByKey, SortAscend) }
