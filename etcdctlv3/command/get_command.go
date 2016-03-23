@@ -105,7 +105,7 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	sortTarget := strings.ToUpper(getSortTarget)
 	switch {
 	case sortTarget == "CREATE":
-		sortByTarget = clientv3.SortByCreatedRev
+		sortByTarget = clientv3.SortByCreateRevision
 	case sortTarget == "KEY":
 		sortByTarget = clientv3.SortByKey
 	case sortTarget == "MODIFY":

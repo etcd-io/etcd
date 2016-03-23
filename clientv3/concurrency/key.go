@@ -74,7 +74,7 @@ func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) e
 
 // waitDeletes efficiently waits until all keys matched by Get(key, opts...) are deleted
 func waitDeletes(ctx context.Context, client *v3.Client, key string, opts ...v3.OpOption) error {
-	getOpts := []v3.OpOption{v3.WithSort(v3.SortByCreatedRev, v3.SortAscend)}
+	getOpts := []v3.OpOption{v3.WithSort(v3.SortByCreateRevision, v3.SortAscend)}
 	getOpts = append(getOpts, opts...)
 	resp, err := client.Get(ctx, key, getOpts...)
 	maxRev := int64(math.MaxInt64)
