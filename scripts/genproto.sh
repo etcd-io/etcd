@@ -17,7 +17,7 @@ if ! [[ $(protoc --version) =~ "3.0.0" ]]; then
 fi
 
 # directories containing protos to be built
-DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb ./lease/leasepb"
+DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb ./lease/leasepb ./auth/authpb"
 
 # exact version of protoc-gen-gogo to build
 SHA="c57e439bad574c2e0877ff18d514badcfced004d"

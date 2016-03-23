@@ -76,6 +76,7 @@ func init() {
 		command.NewLockCommand(),
 		command.NewAuthCommand(),
 		command.NewElectCommand(),
+		command.NewUserCommand(),
 	)
 }
 

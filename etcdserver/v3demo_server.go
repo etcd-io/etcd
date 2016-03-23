@@ -59,6 +59,7 @@ type Lessor interface {
 
 type Authenticator interface {
 	AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error)
+	UserAdd(ctx context.Context, r *pb.UserAddRequest) (*pb.UserAddResponse, error)
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -185,6 +186,14 @@ func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*
 	return result.resp.(*pb.AuthEnableResponse), result.err
 }
 
+func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.UserAddRequest) (*pb.UserAddResponse, error) {
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{UserAdd: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.UserAddResponse), result.err
+}
+
 type applyResult struct {
 	resp proto.Message
 	err  error
@@ -252,6 +261,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) interface{} {
 		ar.resp, ar.err = applyLeaseRevoke(le, r.LeaseRevoke)
 	case r.AuthEnable != nil:
 		ar.resp, ar.err = applyAuthEnable(s)
+	case r.UserAdd != nil:
+		ar.resp, ar.err = applyUserAdd(s, r.UserAdd)
 	default:
 		panic("not implemented")
 	}
@@ -659,4 +670,8 @@ func isGteRange(rangeEnd []byte) bool {
 func applyAuthEnable(s *EtcdServer) (*pb.AuthEnableResponse, error) {
 	s.AuthStore().AuthEnable()
 	return &pb.AuthEnableResponse{}, nil
+}
+
+func applyUserAdd(s *EtcdServer, r *pb.UserAddRequest) (*pb.UserAddResponse, error) {
+	return s.AuthStore().UserAdd(r)
 }
