@@ -172,6 +172,7 @@ type EtcdServer struct {
 
 	store store.Store
 
+	applyV3 applierV3
 	kv        dstorage.ConsistentWatchableKV
 	lessor    lease.Lessor
 	bemu      sync.Mutex
@@ -373,6 +374,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
 	}
+	srv.applyV3 = &applierV3backend{srv}
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
