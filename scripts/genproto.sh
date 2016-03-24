@@ -16,9 +16,6 @@ if ! [[ $(protoc --version) =~ "3.0.0" ]]; then
 	exit 255
 fi
 
-PREFIX="github.com/coreos/etcd/Godeps/_workspace/src"
-ESCAPED_PREFIX=$(echo $PREFIX | sed -e 's/[\/&]/\\&/g')
-
 # directories containing protos to be built
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb ./lease/leasepb"
 
@@ -51,9 +48,9 @@ popd
 for dir in ${DIRS}; do
 	pushd ${dir}
 		protoc --gogofast_out=plugins=grpc,import_prefix=github.com/coreos/:. -I=.:"${GOGOPROTO_PATH}":"${COREOS_ROOT}" *.proto
-		sed -i.bak -E "s/github\.com\/coreos\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/${ESCAPED_PREFIX}\/\1/g" *.pb.go
+		sed -i.bak -E "s/github\.com\/coreos\/(gogoproto|github\.com|golang\.org|google\.golang\.org)/\1/g" *.pb.go
 		sed -i.bak -E 's/github\.com\/coreos\/(errors|fmt|io)/\1/g' *.pb.go
-		sed -i.bak -E 's/import _ \"github\.com\/coreos\/etcd\/Godeps\/\_workspace\/src\/gogoproto\"//g' *.pb.go
+		sed -i.bak -E 's/import _ \"gogoproto\"//g' *.pb.go
 		sed -i.bak -E 's/import fmt \"fmt\"//g' *.pb.go
 		rm -f *.bak
 		goimports -w *.pb.go
