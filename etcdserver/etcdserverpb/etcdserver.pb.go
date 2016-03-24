@@ -52,6 +52,9 @@
 		MemberListResponse
 		DefragmentRequest
 		DefragmentResponse
+		AlarmRequest
+		AlarmMember
+		AlarmResponse
 		AuthEnableRequest
 		AuthDisableRequest
 		AuthenticateRequest

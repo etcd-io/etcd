@@ -173,6 +173,14 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 	return ttl, err
 }
 
+func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Alarm: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.AlarmResponse), result.err
+}
+
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthEnable: r})
 	if err != nil {

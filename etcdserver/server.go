@@ -27,6 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/etcd/alarm"
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/discovery"
@@ -172,12 +173,13 @@ type EtcdServer struct {
 
 	store store.Store
 
-	applyV3 applierV3
-	kv        dstorage.ConsistentWatchableKV
-	lessor    lease.Lessor
-	bemu      sync.Mutex
-	be        backend.Backend
-	authStore auth.AuthStore
+	applyV3    applierV3
+	kv         dstorage.ConsistentWatchableKV
+	lessor     lease.Lessor
+	bemu       sync.Mutex
+	be         backend.Backend
+	authStore  auth.AuthStore
+	alarmStore *alarm.AlarmStore
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -374,6 +376,12 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
 	}
+
+	as, aserr := alarm.NewAlarmStore(srv)
+	if aserr != nil {
+		return nil, aserr
+	}
+	srv.alarmStore = as
 	srv.applyV3 = newQuotaApplierV3(srv, &applierV3backend{srv})
 
 	// TODO: move transport initialization near the definition of remote

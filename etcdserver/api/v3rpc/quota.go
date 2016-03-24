@@ -18,44 +18,72 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/types"
 	"golang.org/x/net/context"
 )
 
 type quotaKVServer struct {
 	pb.KVServer
-	q etcdserver.Quota
+	qa quotaAlarmer
+}
+
+type quotaAlarmer struct {
+	q  etcdserver.Quota
+	a  Alarmer
+	id types.ID
+}
+
+// check whether request satisfies the quota. If there is not enough space,
+// ignore request and raise the free space alarm.
+func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
+	if qa.q.Available(r) {
+		return nil
+	}
+	req := &pb.AlarmRequest{
+		MemberID: int64(qa.id),
+		Action:   pb.AlarmRequest_ACTIVATE,
+		Alarm:    pb.AlarmType_NOSPACE,
+	}
+	qa.a.Alarm(ctx, req)
+	return rpctypes.ErrNoSpace
 }
 
 func NewQuotaKVServer(s *etcdserver.EtcdServer) pb.KVServer {
-	return &quotaKVServer{NewKVServer(s), etcdserver.NewBackendQuota(s)}
+	return &quotaKVServer{
+		NewKVServer(s),
+		quotaAlarmer{etcdserver.NewBackendQuota(s), s, s.ID()},
+	}
 }
 
 func (s *quotaKVServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	if !s.q.Available(r) {
-		return nil, rpctypes.ErrNoSpace
+	if err := s.qa.check(ctx, r); err != nil {
+		return nil, err
 	}
 	return s.KVServer.Put(ctx, r)
 }
 
 func (s *quotaKVServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	if !s.q.Available(r) {
-		return nil, rpctypes.ErrNoSpace
+	if err := s.qa.check(ctx, r); err != nil {
+		return nil, err
 	}
 	return s.KVServer.Txn(ctx, r)
 }
 
 type quotaLeaseServer struct {
 	pb.LeaseServer
-	q etcdserver.Quota
+	qa quotaAlarmer
 }
 
 func (s *quotaLeaseServer) LeaseCreate(ctx context.Context, cr *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
-	if !s.q.Available(cr) {
-		return nil, rpctypes.ErrNoSpace
+	if err := s.qa.check(ctx, cr); err != nil {
+		return nil, err
 	}
 	return s.LeaseServer.LeaseCreate(ctx, cr)
 }
 
 func NewQuotaLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {
-	return &quotaLeaseServer{NewLeaseServer(s), etcdserver.NewBackendQuota(s)}
+	return &quotaLeaseServer{
+		NewLeaseServer(s),
+		quotaAlarmer{etcdserver.NewBackendQuota(s), s, s.ID()},
+	}
 }

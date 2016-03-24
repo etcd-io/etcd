@@ -79,6 +79,9 @@ service Cluster {
 service Maintenance {
   // TODO: move Hash from kv to Maintenance
   rpc Defragment(DefragmentRequest) returns (DefragmentResponse) {}
+
+  // Alarm activates, deactivates, and queries alarms regarding cluster health.
+  rpc Alarm(AlarmRequest) returns (AlarmResponse) {}
 }
 
 service Auth {
@@ -436,6 +439,33 @@ message DefragmentRequest {
 
 message DefragmentResponse {
   ResponseHeader header = 1;
+}
+
+enum AlarmType {
+	NONE = 0; // default, used to query if any alarm is active
+	NOSPACE = 1;
+}
+
+message AlarmRequest {
+  enum AlarmAction {
+	GET = 0;
+	ACTIVATE = 1;
+	DEACTIVATE = 2;
+  }
+  AlarmAction action = 1;
+  // MemberID is the member raising the alarm request
+  int64 memberID = 2;
+  AlarmType alarm = 3;
+}
+
+message AlarmMember {
+	uint64	memberID = 1;
+	AlarmType alarm = 2;
+}
+
+message AlarmResponse {
+  ResponseHeader header = 1;
+  repeated AlarmMember alarms = 2;
 }
 
 message AuthEnableRequest {

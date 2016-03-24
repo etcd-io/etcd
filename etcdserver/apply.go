@@ -21,6 +21,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/pkg/types"
 	dstorage "github.com/coreos/etcd/storage"
 	"github.com/coreos/etcd/storage/storagepb"
 	"github.com/gogo/protobuf/proto"
@@ -47,6 +48,7 @@ type applierV3 interface {
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, error)
 	LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error)
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
+	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 	AuthEnable() (*pb.AuthEnableResponse, error)
 	UserAdd(ua *pb.UserAddRequest) (*pb.UserAddResponse, error)
 }
@@ -72,6 +74,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.LeaseCreate(r.LeaseCreate)
 	case r.LeaseRevoke != nil:
 		ar.resp, ar.err = s.applyV3.LeaseRevoke(r.LeaseRevoke)
+	case r.Alarm != nil:
+		ar.resp, ar.err = s.applyV3.Alarm(r.Alarm)
 	case r.AuthEnable != nil:
 		ar.resp, ar.err = s.applyV3.AuthEnable()
 	case r.UserAdd != nil:
@@ -383,6 +387,29 @@ func (a *applierV3backend) LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCrea
 func (a *applierV3backend) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
 	err := a.s.lessor.Revoke(lease.LeaseID(lc.ID))
 	return &pb.LeaseRevokeResponse{}, err
+}
+
+func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+	resp := &pb.AlarmResponse{}
+	switch ar.Action {
+	case pb.AlarmRequest_GET:
+		resp.Alarms = a.s.alarmStore.Get(ar.Alarm)
+		return resp, nil
+	case pb.AlarmRequest_ACTIVATE:
+		m := a.s.alarmStore.Activate(types.ID(ar.MemberID), ar.Alarm)
+		if m != nil {
+			resp.Alarms = append(resp.Alarms, m)
+		}
+		return resp, nil
+	case pb.AlarmRequest_DEACTIVATE:
+		m := a.s.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
+		if m != nil {
+			resp.Alarms = append(resp.Alarms, m)
+		}
+		return resp, nil
+	default:
+		return nil, nil
+	}
 }
 
 func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
