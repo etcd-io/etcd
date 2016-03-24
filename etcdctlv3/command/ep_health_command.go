@@ -21,7 +21,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 // NewEpHealthCommand returns the cobra command for "endpoint-health".
@@ -67,7 +66,9 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			st := time.Now()
 			// get a random key. As long as we can get the response without an error, the
 			// endpoint is health.
-			_, err = cli.Get(context.TODO(), "health")
+			ctx, cancel := commandCtx(cmd)
+			_, err = cli.Get(ctx, "health")
+			cancel()
 			if err != nil {
 				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)
 			} else {

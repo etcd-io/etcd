@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 // NewAuthCommand returns the cobra command for "auth".
@@ -47,7 +46,9 @@ func authEnableCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("auth enable command does not accept argument."))
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.AuthEnable(context.TODO())
+	ctx, cancel := commandCtx(cmd)
+	_, err := mustClientFromCmd(cmd).Auth.AuthEnable(ctx)
+	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

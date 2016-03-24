@@ -29,9 +29,10 @@ import (
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
-	Insecure    bool
-	Endpoints   []string
-	DialTimeout time.Duration
+	Insecure       bool
+	Endpoints      []string
+	DialTimeout    time.Duration
+	CommandTimeOut time.Duration
 
 	TLS transport.TLSInfo
 

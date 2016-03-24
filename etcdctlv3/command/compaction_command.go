@@ -19,7 +19,6 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 // NewCompactionCommand returns the cobra command for "compaction".
@@ -43,7 +42,10 @@ func compactionCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	c := mustClientFromCmd(cmd)
-	if cerr := c.Compact(context.TODO(), rev); cerr != nil {
+	ctx, cancel := commandCtx(cmd)
+	cerr := c.Compact(ctx, rev)
+	cancel()
+	if cerr != nil {
 		ExitWithError(ExitError, cerr)
 		return
 	}

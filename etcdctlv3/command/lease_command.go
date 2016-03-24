@@ -61,7 +61,9 @@ func leaseCreateCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad TTL (%v)", err))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Create(context.TODO(), ttl)
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).Create(ctx, ttl)
+	cancel()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create lease (%v)\n", err)
 		return
@@ -92,7 +94,9 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
 	}
 
-	_, err = mustClientFromCmd(cmd).Revoke(context.TODO(), v3.LeaseID(id))
+	ctx, cancel := commandCtx(cmd)
+	_, err = mustClientFromCmd(cmd).Revoke(ctx, v3.LeaseID(id))
+	cancel()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to revoke lease (%v)\n", err)
 		return

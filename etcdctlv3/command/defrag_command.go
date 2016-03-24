@@ -19,7 +19,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 // NewDefragCommand returns the cobra command for "Defrag".
@@ -34,7 +33,9 @@ func NewDefragCommand() *cobra.Command {
 func defragCommandFunc(cmd *cobra.Command, args []string) {
 	c := mustClientFromCmd(cmd)
 	for _, ep := range c.Endpoints() {
-		_, err := c.Defragment(context.TODO(), ep)
+		ctx, cancel := commandCtx(cmd)
+		_, err := c.Defragment(ctx, ep)
+		cancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s] (%v)\n", ep, err)
 		} else {
