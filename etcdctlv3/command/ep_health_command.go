@@ -41,11 +41,11 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	cert, key, cacert := keyAndCertFromCmd(cmd)
+	sec := secureCfgFromCmd(cmd)
 	dt := dialTimeoutFromCmd(cmd)
 	cfgs := []*clientv3.Config{}
 	for _, ep := range endpoints {
-		cfg, err := newClientCfg([]string{ep}, dt, cert, key, cacert)
+		cfg, err := newClientCfg([]string{ep}, dt, sec)
 		if err != nil {
 			ExitWithError(ExitBadArgs, err)
 		}

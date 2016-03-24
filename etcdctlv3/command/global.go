@@ -15,6 +15,7 @@
 package command
 
 import (
+	"crypto/tls"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -28,6 +29,7 @@ import (
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
+	Insecure    bool
 	Endpoints   []string
 	DialTimeout time.Duration
 
@@ -35,6 +37,14 @@ type GlobalFlags struct {
 
 	OutputFormat string
 	IsHex        bool
+}
+
+type secureCfg struct {
+	cert   string
+	key    string
+	cacert string
+
+	insecureTransport bool
 }
 
 var display printer = &simplePrinter{}
@@ -45,13 +55,13 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 		ExitWithError(ExitError, err)
 	}
 	dialTimeout := dialTimeoutFromCmd(cmd)
-	cert, key, cacert := keyAndCertFromCmd(cmd)
+	sec := secureCfgFromCmd(cmd)
 
-	return mustClient(endpoints, dialTimeout, cert, key, cacert)
+	return mustClient(endpoints, dialTimeout, sec)
 }
 
-func mustClient(endpoints []string, dialTimeout time.Duration, cert, key, cacert string) *clientv3.Client {
-	cfg, err := newClientCfg(endpoints, dialTimeout, cert, key, cacert)
+func mustClient(endpoints []string, dialTimeout time.Duration, scfg *secureCfg) *clientv3.Client {
+	cfg, err := newClientCfg(endpoints, dialTimeout, scfg)
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
@@ -64,24 +74,23 @@ func mustClient(endpoints []string, dialTimeout time.Duration, cert, key, cacert
 	return client
 }
 
-func newClientCfg(endpoints []string, dialTimeout time.Duration, cert, key, cacert string) (*clientv3.Config, error) {
+func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg) (*clientv3.Config, error) {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
-	tls := transport.TLSInfo{}
-	var file string
-	if cert != "" {
-		tls.CertFile = cert
-		cfgtls = &tls
+	tlsinfo := transport.TLSInfo{}
+	if scfg.cert != "" {
+		tlsinfo.CertFile = scfg.cert
+		cfgtls = &tlsinfo
 	}
 
-	if key != "" {
-		tls.KeyFile = key
-		cfgtls = &tls
+	if scfg.key != "" {
+		tlsinfo.KeyFile = scfg.key
+		cfgtls = &tlsinfo
 	}
 
-	if cacert != "" {
-		tls.CAFile = file
-		cfgtls = &tls
+	if scfg.cacert != "" {
+		tlsinfo.CAFile = scfg.cacert
+		cfgtls = &tlsinfo
 	}
 
 	cfg := &clientv3.Config{
@@ -94,6 +103,12 @@ func newClientCfg(endpoints []string, dialTimeout time.Duration, cert, key, cace
 			return nil, err
 		}
 		cfg.TLS = clientTLS
+	}
+	// if key/cert is not given but user wants secure connection, we
+	// should still setup an empty tls configuration for gRPC to setup
+	// secure connection.
+	if cfg.TLS == nil && !scfg.insecureTransport {
+		cfg.TLS = &tls.Config{}
 	}
 
 	return cfg, nil
@@ -116,6 +131,27 @@ func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 		ExitWithError(ExitError, err)
 	}
 	return dialTimeout
+}
+
+func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
+	cert, key, cacert := keyAndCertFromCmd(cmd)
+	insecureTr := insecureTransportFromCmd(cmd)
+
+	return &secureCfg{
+		cert:   cert,
+		key:    key,
+		cacert: cacert,
+
+		insecureTransport: insecureTr,
+	}
+}
+
+func insecureTransportFromCmd(cmd *cobra.Command) bool {
+	insecureTr, err := cmd.Flags().GetBool("insecure-transport")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return insecureTr
 }
 
 func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {

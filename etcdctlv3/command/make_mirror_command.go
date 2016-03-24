@@ -29,10 +29,11 @@ import (
 )
 
 var (
-	mmcert   string
-	mmkey    string
-	mmcacert string
-	mmprefix string
+	mminsecureTr bool
+	mmcert       string
+	mmkey        string
+	mmcacert     string
+	mmprefix     string
 )
 
 // NewMakeMirrorCommand returns the cobra command for "makeMirror".
@@ -48,6 +49,8 @@ func NewMakeMirrorCommand() *cobra.Command {
 	c.Flags().StringVar(&mmcert, "dest-cert", "", "identify secure client using this TLS certificate file for the destination cluster")
 	c.Flags().StringVar(&mmkey, "dest-key", "", "identify secure client using this TLS key file")
 	c.Flags().StringVar(&mmcacert, "dest-cacert", "", "verify certificates of TLS enabled secure servers using this CA bundle")
+	// TODO: secure by default when etcd enables secure gRPC by default.
+	c.Flags().BoolVar(&mminsecureTr, "dest-insecure-transport", true, "disable transport security for client connections")
 
 	return c
 }
@@ -58,8 +61,14 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	dialTimeout := dialTimeoutFromCmd(cmd)
+	sec := &secureCfg{
+		cert:              mmcert,
+		key:               mmkey,
+		cacert:            mmcacert,
+		insecureTransport: mminsecureTr,
+	}
 
-	dc := mustClient([]string{args[0]}, dialTimeout, mmcert, mmkey, mmcacert)
+	dc := mustClient([]string{args[0]}, dialTimeout, sec)
 	c := mustClientFromCmd(cmd)
 
 	err := makeMirror(context.TODO(), c, dc)
