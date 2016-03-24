@@ -1911,6 +1911,261 @@ func TestCommitAfterRemoveNode(t *testing.T) {
 	}
 }
 
+// TestLeaderTransferToUpToDateNode verifies transfering should succeed
+// if the transferee has the most up-to-date log entires when transfer starts.
+func TestLeaderTransferToUpToDateNode(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	lead := nt.peers[1].(*raft)
+
+	if lead.lead != 1 {
+		t.Fatalf("after election leader is %x, want 1", lead.lead)
+	}
+
+	// Transfer leadership to 2.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateFollower, 2)
+
+	// After some log replication, transfer leadership back to 1.
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+
+	nt.send(pb.Message{From: 1, To: 2, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
+func TestLeaderTransferToSlowFollower(t *testing.T) {
+	defaultLogger.EnableDebug()
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.isolate(3)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+
+	nt.recover()
+	lead := nt.peers[1].(*raft)
+	if lead.prs[3].Match != 1 {
+		t.Fatalf("node 1 has match %x for node 3, want %x", lead.prs[3].Match, 1)
+	}
+
+	// Transfer leadership to 3 when node 3 is lack of log.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateFollower, 3)
+}
+
+func TestLeaderTransferAfterSnapshot(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.isolate(3)
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+	lead := nt.peers[1].(*raft)
+	nextEnts(lead, nt.storage[1])
+	nt.storage[1].CreateSnapshot(lead.raftLog.applied, &pb.ConfState{Nodes: lead.nodes()}, nil)
+	nt.storage[1].Compact(lead.raftLog.applied)
+
+	nt.recover()
+	if lead.prs[3].Match != 1 {
+		t.Fatalf("node 1 has match %x for node 3, want %x", lead.prs[3].Match, 1)
+	}
+
+	// Transfer leadership to 3 when node 3 is lack of snapshot.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	// Send pb.MsgHeartbeatResp to leader to trigger a snapshot for node 3.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgHeartbeatResp})
+
+	checkLeaderTransferState(t, lead, StateFollower, 3)
+}
+
+func TestLeaderTransferToSelf(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	lead := nt.peers[1].(*raft)
+
+	// Transfer leadership to self, there will be noop.
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgTransferLeader})
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
+func TestLeaderTransferToNonExistingNode(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	lead := nt.peers[1].(*raft)
+	// Transfer leadership to non-existing node, there will be noop.
+	nt.send(pb.Message{From: 4, To: 1, Type: pb.MsgTransferLeader})
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
+func TestLeaderTransferTimeout(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.isolate(3)
+
+	lead := nt.peers[1].(*raft)
+
+	// Transfer leadership to isolated node, wait for timeout.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+	for i := 0; i < lead.heartbeatTimeout; i++ {
+		lead.tick()
+	}
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+
+	for i := 0; i < lead.electionTimeout-lead.heartbeatTimeout; i++ {
+		lead.tick()
+	}
+
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
+func TestLeaderTransferIgnoreProposal(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.isolate(3)
+
+	lead := nt.peers[1].(*raft)
+
+	// Transfer leadership to isolated node to let transfer pending, then send proposal.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+
+	if lead.prs[1].Match != 1 {
+		t.Fatalf("node 1 has match %x, want %x", lead.prs[1].Match, 1)
+	}
+}
+
+func TestLeaderTransferReceiveHigherTermVote(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.isolate(3)
+
+	lead := nt.peers[1].(*raft)
+
+	// Transfer leadership to isolated node to let transfer pending.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup, Index: 1, Term: 2})
+
+	checkLeaderTransferState(t, lead, StateFollower, 2)
+}
+
+func TestLeaderTransferRemoveNode(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.ignore(pb.MsgTimeoutNow)
+
+	lead := nt.peers[1].(*raft)
+
+	// The leadTransferee is removed when leadship transfering.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+
+	lead.removeNode(3)
+
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
+// TestLeaderTransferBack verifies leadership can transfer back to self when last transfer is pending.
+func TestLeaderTransferBack(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.isolate(3)
+
+	lead := nt.peers[1].(*raft)
+
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+
+	// Transfer leadership back to self.
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
+// TestLeaderTransferSecondTransferToAnotherNode verifies leader can transfer to another node
+// when last transfer is pending.
+func TestLeaderTransferSecondTransferToAnotherNode(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.isolate(3)
+
+	lead := nt.peers[1].(*raft)
+
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+
+	// Transfer leadership to another node.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateFollower, 2)
+}
+
+// TestLeaderTransferSecondTransferToSameNode verifies second transfer leader request
+// to the same node should not extend the timeout while the first one is pending.
+func TestLeaderTransferSecondTransferToSameNode(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	nt.isolate(3)
+
+	lead := nt.peers[1].(*raft)
+
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+	if lead.leadTransferee != 3 {
+		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
+	}
+
+	for i := 0; i < lead.heartbeatTimeout; i++ {
+		lead.tick()
+	}
+	// Second transfer leadership request to the same node.
+	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
+
+	for i := 0; i < lead.electionTimeout-lead.heartbeatTimeout; i++ {
+		lead.tick()
+	}
+
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
+func checkLeaderTransferState(t *testing.T, r *raft, state StateType, lead uint64) {
+	if r.state != state || r.lead != lead {
+		t.Fatalf("after transfering, node has state %v lead %v, want state %v lead %v", r.state, r.lead, state, lead)
+	}
+	if r.leadTransferee != None {
+		t.Fatalf("after transfering, node has leadTransferee %v, want leadTransferee %v", r.leadTransferee, None)
+	}
+}
+
 func ents(terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
