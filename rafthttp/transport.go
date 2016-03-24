@@ -111,7 +111,6 @@ type Transport struct {
 	// When an error is received from ErrorC, user should stop raft state
 	// machine and thus stop the Transport.
 	ErrorC chan error
-	V3demo bool
 
 	streamRt   http.RoundTripper // roundTripper used by streams
 	pipelineRt http.RoundTripper // roundTripper used by pipelines
@@ -232,7 +231,7 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
 	fs := t.LeaderStats.Follower(id.String())
-	t.peers[id] = startPeer(t, urls, t.ID, id, t.ClusterID, t.Raft, fs, t.ErrorC, t.V3demo)
+	t.peers[id] = startPeer(t, urls, t.ID, id, t.ClusterID, t.Raft, fs, t.ErrorC)
 	addPeerToProber(t.prober, id.String(), us)
 }
 

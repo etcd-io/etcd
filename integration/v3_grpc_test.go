@@ -629,7 +629,6 @@ func TestV3RangeRequest(t *testing.T) {
 }
 
 func newClusterV3NoClients(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
-	cfg.UseV3 = true
 	cfg.UseGRPC = true
 	clus := &ClusterV3{cluster: NewClusterByConfig(t, cfg)}
 	clus.Launch(t)

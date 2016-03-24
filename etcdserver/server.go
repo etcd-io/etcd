@@ -16,7 +16,6 @@ package etcdserver
 
 import (
 	"encoding/json"
-	"errors"
 	"expvar"
 	"fmt"
 	"math/rand"
@@ -221,10 +220,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		return nil, fmt.Errorf("cannot access data directory: %v", terr)
 	}
 
-	if !cfg.V3demo && fileutil.Exist(path.Join(cfg.SnapDir(), databaseFilename)) {
-		return nil, errors.New("experimental-v3demo cannot be disabled once it is enabled")
-	}
-
 	// Run the migrations.
 	dataVer, err := version.DetectDataDir(cfg.DataDir)
 	if err != nil {
@@ -370,15 +365,13 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
 	}
 
-	if cfg.V3demo {
-		srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
-		srv.lessor = lease.NewLessor(srv.be)
-		srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
-		srv.authStore = auth.NewAuthStore(srv.be)
-		if h := cfg.AutoCompactionRetention; h != 0 {
-			srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
-			srv.compactor.Run()
-		}
+	srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
+	srv.lessor = lease.NewLessor(srv.be)
+	srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
+	srv.authStore = auth.NewAuthStore(srv.be)
+	if h := cfg.AutoCompactionRetention; h != 0 {
+		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
+		srv.compactor.Run()
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -393,7 +386,6 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		ServerStats: sstats,
 		LeaderStats: lstats,
 		ErrorC:      srv.errorc,
-		V3demo:      cfg.V3demo,
 	}
 	if err := tr.Start(); err != nil {
 		return nil, err
@@ -588,44 +580,43 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 			apply.snapshot.Metadata.Index, ep.appliedi)
 	}
 
-	if s.cfg.V3demo {
-		snapfn, err := s.r.storage.DBFilePath(apply.snapshot.Metadata.Index)
-		if err != nil {
-			plog.Panicf("get database snapshot file path error: %v", err)
-		}
-
-		fn := path.Join(s.cfg.SnapDir(), databaseFilename)
-		if err := os.Rename(snapfn, fn); err != nil {
-			plog.Panicf("rename snapshot file error: %v", err)
-		}
-
-		newbe := backend.NewDefaultBackend(fn)
-		if err := s.kv.Restore(newbe); err != nil {
-			plog.Panicf("restore KV error: %v", err)
-		}
-
-		// Closing old backend might block until all the txns
-		// on the backend are finished.
-		// We do not want to wait on closing the old backend.
-		s.bemu.Lock()
-		oldbe := s.be
-		go func() {
-			if err := oldbe.Close(); err != nil {
-				plog.Panicf("close backend error: %v", err)
-			}
-		}()
-
-		s.be = newbe
-		s.bemu.Unlock()
-
-		if s.lessor != nil {
-			s.lessor.Recover(newbe, s.kv)
-		}
-
-		if s.authStore != nil {
-			s.authStore.Recover(newbe)
-		}
+	snapfn, err := s.r.storage.DBFilePath(apply.snapshot.Metadata.Index)
+	if err != nil {
+		plog.Panicf("get database snapshot file path error: %v", err)
 	}
+
+	fn := path.Join(s.cfg.SnapDir(), databaseFilename)
+	if err := os.Rename(snapfn, fn); err != nil {
+		plog.Panicf("rename snapshot file error: %v", err)
+	}
+
+	newbe := backend.NewDefaultBackend(fn)
+	if err := s.kv.Restore(newbe); err != nil {
+		plog.Panicf("restore KV error: %v", err)
+	}
+
+	// Closing old backend might block until all the txns
+	// on the backend are finished.
+	// We do not want to wait on closing the old backend.
+	s.bemu.Lock()
+	oldbe := s.be
+	go func() {
+		if err := oldbe.Close(); err != nil {
+			plog.Panicf("close backend error: %v", err)
+		}
+	}()
+
+	s.be = newbe
+	s.bemu.Unlock()
+
+	if s.lessor != nil {
+		s.lessor.Recover(newbe, s.kv)
+	}
+
+	if s.authStore != nil {
+		s.authStore.Recover(newbe)
+	}
+
 	if err := s.store.Recovery(apply.snapshot.Data); err != nil {
 		plog.Panicf("recovery store error: %v", err)
 	}
@@ -938,20 +929,17 @@ func (s *EtcdServer) send(ms []raftpb.Message) {
 			ms[i].To = 0
 		}
 
-		if s.cfg.V3demo {
-			if ms[i].Type == raftpb.MsgSnap {
-				// There are two separate data store when v3 demo is enabled: the store for v2,
-				// and the KV for v3.
-				// The msgSnap only contains the most recent snapshot of store without KV.
-				// So we need to redirect the msgSnap to etcd server main loop for merging in the
-				// current store snapshot and KV snapshot.
-				select {
-				case s.msgSnapC <- ms[i]:
-				default:
-					// drop msgSnap if the inflight chan if full.
-				}
-				ms[i].To = 0
+		if ms[i].Type == raftpb.MsgSnap {
+			// There are two separate data store: the store for v2, and the KV for v3.
+			// The msgSnap only contains the most recent snapshot of store without KV.
+			// So we need to redirect the msgSnap to etcd server main loop for merging in the
+			// current store snapshot and KV snapshot.
+			select {
+			case s.msgSnapC <- ms[i]:
+			default:
+				// drop msgSnap if the inflight chan if full.
 			}
+			ms[i].To = 0
 		}
 		if ms[i].Type == raftpb.MsgHeartbeat {
 			ok, exceed := s.r.td.Observe(ms[i].To)
@@ -1182,11 +1170,9 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			plog.Panicf("unexpected create snapshot error %v", err)
 		}
-		if s.cfg.V3demo {
-			// commit v3 storage because WAL file before snapshot index
-			// could be removed after SaveSnap.
-			s.getKV().Commit()
-		}
+		// commit v3 storage because WAL file before snapshot index
+		// could be removed after SaveSnap.
+		s.getKV().Commit()
 		// SaveSnap saves the snapshot and releases the locked wal files
 		// to the snapshot index.
 		if err = s.r.storage.SaveSnap(snap); err != nil {

@@ -141,7 +141,6 @@ func setupCtlV3Test(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) *e
 		cfg = configStandalone(*cfg)
 	}
 	copied := *cfg
-	copied.isV3 = true
 	epc, err := newEtcdProcessCluster(&copied)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)

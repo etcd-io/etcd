@@ -229,7 +229,6 @@ type etcdProcessClusterConfig struct {
 	isPeerTLS     bool
 	isPeerAutoTLS bool
 	initialToken  string
-	isV3          bool
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -341,9 +340,6 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			"--initial-advertise-peer-urls", purl.String(),
 			"--initial-cluster-token", cfg.initialToken,
 			"--data-dir", dataDirPath,
-		}
-		if cfg.isV3 {
-			args = append(args, "--experimental-v3demo")
 		}
 
 		args = append(args, cfg.tlsArgs()...)

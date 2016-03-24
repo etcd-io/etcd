@@ -113,10 +113,6 @@ func (c *cluster) Bootstrap() error {
 			"--initial-cluster", clusterStr,
 			"--initial-cluster-state", "new",
 		}
-		if !c.v2Only {
-			flags = append(flags,
-				"--experimental-v3demo")
-		}
 
 		if _, err := a.Start(flags...); err != nil {
 			// cleanup

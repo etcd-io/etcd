@@ -122,7 +122,6 @@ type config struct {
 
 	printVersion bool
 
-	v3demo                  bool
 	autoCompactionRetention int
 
 	enablePprof bool
@@ -224,7 +223,6 @@ func NewConfig() *config {
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")
 
 	// demo flag
-	fs.BoolVar(&cfg.v3demo, "experimental-v3demo", false, "Enable experimental v3 demo API.")
 	fs.IntVar(&cfg.autoCompactionRetention, "experimental-auto-compaction-retention", 0, "Auto compaction retention in hour. 0 means disable auto compaction.")
 
 	// backwards-compatibility with v0.4.6
