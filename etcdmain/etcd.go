@@ -262,8 +262,11 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 	sctxs := make(map[string]*serveCtx)
 	for _, u := range cfg.lcurls {
-		if u.Scheme == "http" && !cfg.clientTLSInfo.Empty() {
-			plog.Warningf("The scheme of client url %s is http while client key/cert files are presented. Ignored client key/cert files.", u.String())
+		if u.Scheme == "http" && ctlscfg != nil {
+			plog.Warningf("The scheme of client url %s is HTTP while client key/cert files are presented. Ignored client key/cert files.", u.String())
+		}
+		if u.Scheme == "https" && ctlscfg == nil {
+			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPs scheme", u.String())
 		}
 
 		ctx := &serveCtx{host: u.Host}
