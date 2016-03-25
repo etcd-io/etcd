@@ -19,7 +19,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 // NewDelCommand returns the cobra command for "del".
@@ -34,7 +33,9 @@ func NewDelCommand() *cobra.Command {
 // delCommandFunc executes the "del" command.
 func delCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getDelOp(cmd, args)
-	resp, err := mustClientFromCmd(cmd).Delete(context.TODO(), key, opts...)
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).Delete(ctx, key, opts...)
+	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

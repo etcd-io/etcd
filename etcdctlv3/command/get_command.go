@@ -20,7 +20,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (
@@ -52,7 +51,9 @@ func NewGetCommand() *cobra.Command {
 // getCommandFunc executes the "get" command.
 func getCommandFunc(cmd *cobra.Command, args []string) {
 	key, opts := getGetOp(cmd, args)
-	resp, err := mustClientFromCmd(cmd).Get(context.TODO(), key, opts...)
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).Get(ctx, key, opts...)
+	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

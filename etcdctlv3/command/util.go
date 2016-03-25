@@ -20,6 +20,8 @@ import (
 	"regexp"
 
 	pb "github.com/coreos/etcd/storage/storagepb"
+	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 func printKV(isHex bool, kv *pb.KeyValue) {
@@ -46,4 +48,12 @@ func addHexPrefix(s string) string {
 func argify(s string) []string {
 	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
 	return r.FindAllString(s, -1)
+}
+
+func commandCtx(cmd *cobra.Command) (context.Context, context.CancelFunc) {
+	timeOut, err := cmd.Flags().GetDuration("command-timeout")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return context.WithTimeout(context.Background(), timeOut)
 }

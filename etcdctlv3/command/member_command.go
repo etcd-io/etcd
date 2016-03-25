@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (
@@ -106,8 +105,9 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	urls := strings.Split(memberPeerURLs, ",")
-
-	resp, err := mustClientFromCmd(cmd).MemberAdd(context.TODO(), urls)
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).MemberAdd(ctx, urls)
+	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -126,7 +126,9 @@ func memberRemoveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("bad member ID arg (%v), expecting ID in Hex", err))
 	}
 
-	resp, err := mustClientFromCmd(cmd).MemberRemove(context.TODO(), id)
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).MemberRemove(ctx, id)
+	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -151,7 +153,9 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 
 	urls := strings.Split(memberPeerURLs, ",")
 
-	resp, err := mustClientFromCmd(cmd).MemberUpdate(context.TODO(), id, urls)
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).MemberUpdate(ctx, id, urls)
+	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -161,7 +165,9 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 
 // memberListCommandFunc executes the "member list" command.
 func memberListCommandFunc(cmd *cobra.Command, args []string) {
-	resp, err := mustClientFromCmd(cmd).MemberList(context.TODO())
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).MemberList(ctx)
+	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

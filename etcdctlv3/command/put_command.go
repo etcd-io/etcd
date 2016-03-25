@@ -21,7 +21,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (
@@ -57,7 +56,9 @@ will store the content of the file to <key>.
 func putCommandFunc(cmd *cobra.Command, args []string) {
 	key, value, opts := getPutOp(cmd, args)
 
-	resp, err := mustClientFromCmd(cmd).Put(context.TODO(), key, value, opts...)
+	ctx, cancel := commandCtx(cmd)
+	resp, err := mustClientFromCmd(cmd).Put(ctx, key, value, opts...)
+	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
