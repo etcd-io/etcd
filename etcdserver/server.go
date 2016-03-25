@@ -377,12 +377,9 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		srv.compactor.Run()
 	}
 
-	as, aserr := alarm.NewAlarmStore(srv)
-	if aserr != nil {
-		return nil, aserr
+	if err := srv.restoreAlarms(); err != nil {
+		return nil, err
 	}
-	srv.alarmStore = as
-	srv.applyV3 = newQuotaApplierV3(srv, &applierV3backend{srv})
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
@@ -621,6 +618,10 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	if s.lessor != nil {
 		s.lessor.Recover(newbe, s.kv)
+	}
+
+	if err := s.restoreAlarms(); err != nil {
+		plog.Panicf("restore alarms error: %v", err)
 	}
 
 	if s.authStore != nil {
@@ -1020,13 +1021,21 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 				s.w.Trigger(req.ID, s.applyRequest(*req))
 			} else {
 				ar := s.applyV3Request(&raftReq)
-				s.w.Trigger(raftReq.ID, ar)
-				if ar.err == ErrNoSpace {
-					plog.Errorf("applying raft message exceeded backend quota")
-					// TODO: send alarm
-					s.errorc <- ar.err
-					return applied, true
+				if ar.err != ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
+					s.w.Trigger(raftReq.ID, ar)
+					break
 				}
+				plog.Errorf("applying raft message exceeded backend quota")
+				go func() {
+					a := &pb.AlarmRequest{
+						MemberID: int64(s.ID()),
+						Action:   pb.AlarmRequest_ACTIVATE,
+						Alarm:    pb.AlarmType_NOSPACE,
+					}
+					r := pb.InternalRaftRequest{Alarm: a}
+					s.processInternalRaftRequest(context.TODO(), r)
+					s.w.Trigger(raftReq.ID, ar)
+				}()
 			}
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
@@ -1333,3 +1342,17 @@ func (s *EtcdServer) Backend() backend.Backend {
 }
 
 func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
+
+func (s *EtcdServer) restoreAlarms() error {
+	s.applyV3 = newQuotaApplierV3(s, &applierV3backend{s})
+
+	as, err := alarm.NewAlarmStore(s)
+	if err != nil {
+		return err
+	}
+	s.alarmStore = as
+	if len(as.Get(pb.AlarmType_NOSPACE)) > 0 {
+		s.applyV3 = newApplierV3Capped(s.applyV3)
+	}
+	return nil
+}

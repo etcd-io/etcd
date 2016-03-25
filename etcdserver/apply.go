@@ -394,22 +394,57 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 	switch ar.Action {
 	case pb.AlarmRequest_GET:
 		resp.Alarms = a.s.alarmStore.Get(ar.Alarm)
-		return resp, nil
 	case pb.AlarmRequest_ACTIVATE:
 		m := a.s.alarmStore.Activate(types.ID(ar.MemberID), ar.Alarm)
-		if m != nil {
-			resp.Alarms = append(resp.Alarms, m)
+		if m == nil {
+			break
 		}
-		return resp, nil
+		resp.Alarms = append(resp.Alarms, m)
+		switch m.Alarm {
+		case pb.AlarmType_NOSPACE:
+			if len(a.s.alarmStore.Get(m.Alarm)) == 1 {
+				a.s.applyV3 = newApplierV3Capped(a)
+			}
+		default:
+			plog.Warningf("unimplemented alarm activation (%+v)", m)
+		}
 	case pb.AlarmRequest_DEACTIVATE:
 		m := a.s.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
-		if m != nil {
-			resp.Alarms = append(resp.Alarms, m)
+		if m == nil {
+			break
 		}
-		return resp, nil
+		resp.Alarms = append(resp.Alarms, m)
+		if m.Alarm == pb.AlarmType_NOSPACE && len(a.s.alarmStore.Get(ar.Alarm)) == 0 {
+			a.s.applyV3 = newQuotaApplierV3(a.s, &applierV3backend{a.s})
+		}
 	default:
 		return nil, nil
 	}
+	return resp, nil
+}
+
+type applierV3Capped struct {
+	applierV3
+	q backendQuota
+}
+
+// newApplierV3Capped creates an applyV3 that will reject Puts and transactions
+// with Puts so that the number of keys in the store is capped.
+func newApplierV3Capped(base applierV3) applierV3 { return &applierV3Capped{applierV3: base} }
+
+func (a *applierV3Capped) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, error) {
+	return nil, ErrNoSpace
+}
+
+func (a *applierV3Capped) Txn(r *pb.TxnRequest) (*pb.TxnResponse, error) {
+	if a.q.Cost(r) > 0 {
+		return nil, ErrNoSpace
+	}
+	return a.applierV3.Txn(r)
+}
+
+func (a *applierV3Capped) LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+	return nil, ErrNoSpace
 }
 
 func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
