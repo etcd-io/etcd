@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/spf13/cobra"
 )
@@ -51,6 +52,8 @@ type secureCfg struct {
 var display printer = &simplePrinter{}
 
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
+	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
+
 	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
 	if err != nil {
 		ExitWithError(ExitError, err)

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/flags"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +36,7 @@ func NewEpHealthCommand() *cobra.Command {
 
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
+	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
 	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
 	if err != nil {
 		ExitWithError(ExitError, err)
