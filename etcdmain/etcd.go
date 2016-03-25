@@ -221,8 +221,13 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 	plns := make([]net.Listener, 0)
 	for _, u := range cfg.lpurls {
-		if u.Scheme == "http" && !cfg.peerTLSInfo.Empty() {
-			plog.Warningf("The scheme of peer url %s is http while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
+		if u.Scheme == "http" {
+			if !cfg.peerTLSInfo.Empty() {
+				plog.Warningf("The scheme of peer url %s is HTTP while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
+			}
+			if cfg.peerTLSInfo.ClientCertAuth {
+				plog.Warningf("The scheme of peer url %s is HTTP while client cert auth (--peer-client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
+			}
 		}
 		var (
 			l      net.Listener
@@ -262,8 +267,13 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 	sctxs := make(map[string]*serveCtx)
 	for _, u := range cfg.lcurls {
-		if u.Scheme == "http" && ctlscfg != nil {
-			plog.Warningf("The scheme of client url %s is HTTP while client key/cert files are presented. Ignored client key/cert files.", u.String())
+		if u.Scheme == "http" {
+			if !cfg.clientTLSInfo.Empty() {
+				plog.Warningf("The scheme of client url %s is HTTP while peer key/cert files are presented. Ignored key/cert files.", u.String())
+			}
+			if cfg.clientTLSInfo.ClientCertAuth {
+				plog.Warningf("The scheme of client url %s is HTTP while client cert auth (--client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
+			}
 		}
 		if u.Scheme == "https" && ctlscfg == nil {
 			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPs scheme", u.String())
