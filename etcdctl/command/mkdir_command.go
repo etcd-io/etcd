@@ -30,6 +30,7 @@ func NewMakeDirCommand() cli.Command {
 		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
+			cli.BoolFlag{Name: "p", Usage: "only make the directory if it does not exist"},
 		},
 		Action: func(c *cli.Context) {
 			mkdirCommandFunc(c, mustNewKeyAPI(c), client.PrevNoExist)
@@ -45,6 +46,13 @@ func mkdirCommandFunc(c *cli.Context, ki client.KeysAPI, prevExist client.PrevEx
 
 	key := c.Args()[0]
 	ttl := c.Int("ttl")
+	p := c.Bool("p")
+
+	// p allows "mkdir" to succeed even when the directory already exists.
+	_, err := client.Get(key, false, false)
+	if err == nil && p {
+		return nil, nil
+	}
 
 	ctx, cancel := contextWithTotalTimeout(c)
 	_, err := ki.Set(ctx, key, "", &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: prevExist})
