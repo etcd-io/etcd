@@ -16,6 +16,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -31,6 +32,8 @@ func main() {
 	stressKeySize := flag.Int("stress-key-size", 100, "the size of each key written into etcd.")
 	stressKeySuffixRange := flag.Int("stress-key-count", 250000, "the count of key range written into etcd.")
 	limit := flag.Int("limit", 3, "the limit of rounds to run failure set.")
+	schedCases := flag.String("schedule-cases", "", "test case schedule")
+
 	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")
 	flag.Parse()
 
@@ -41,19 +44,35 @@ func main() {
 	}
 	defer c.Terminate()
 
+	failures := []failure{
+		newFailureKillAll(),
+		newFailureKillMajority(),
+		newFailureKillOne(),
+		newFailureKillLeader(),
+		newFailureKillOneForLongTime(),
+		newFailureKillLeaderForLongTime(),
+		newFailureIsolate(),
+		newFailureIsolateAll(),
+	}
+
+	schedule := failures
+	if schedCases != nil && *schedCases != "" {
+		cases := strings.Split(*schedCases, " ")
+		schedule = make([]failure, len(cases))
+		for i := range cases {
+			caseNum := 0
+			n, err := fmt.Sscanf(cases[i], "%d", &caseNum)
+			if n == 0 || err != nil {
+				plog.Fatalf(`couldn't parse case "%s" (%v)`, cases[i], err)
+			}
+			schedule[i] = failures[caseNum]
+		}
+	}
+
 	t := &tester{
-		failures: []failure{
-			newFailureKillAll(),
-			newFailureKillMajority(),
-			newFailureKillOne(),
-			newFailureKillLeader(),
-			newFailureKillOneForLongTime(),
-			newFailureKillLeaderForLongTime(),
-			newFailureIsolate(),
-			newFailureIsolateAll(),
-		},
-		cluster: c,
-		limit:   *limit,
+		failures: schedule,
+		cluster:  c,
+		limit:    *limit,
 	}
 
 	sh := statusHandler{status: &t.status}
