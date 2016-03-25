@@ -265,7 +265,7 @@ func (cfg *config) Parse(arguments []string) error {
 		os.Exit(0)
 	}
 
-	err := flags.SetFlagsFromEnv(cfg.FlagSet)
+	err := flags.SetFlagsFromEnv("ETCD", cfg.FlagSet)
 	if err != nil {
 		plog.Fatalf("%v", err)
 	}

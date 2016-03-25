@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -68,29 +69,46 @@ func (f *IgnoredFlag) String() string {
 // SetFlagsFromEnv parses all registered flags in the given flagset,
 // and if they are not already set it attempts to set their values from
 // environment variables. Environment variables take the name of the flag but
-// are UPPERCASE, have the prefix "ETCD_", and any dashes are replaced by
+// are UPPERCASE, have the given prefix  and any dashes are replaced by
 // underscores - for example: some-flag => ETCD_SOME_FLAG
-func SetFlagsFromEnv(fs *flag.FlagSet) error {
+func SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error {
 	var err error
 	alreadySet := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
-		alreadySet[flagToEnv(f.Name)] = true
+		alreadySet[flagToEnv(prefix, f.Name)] = true
 	})
 	usedEnvKey := make(map[string]bool)
 	fs.VisitAll(func(f *flag.Flag) {
-		key := flagToEnv(f.Name)
-		if !alreadySet[key] {
-			val := os.Getenv(key)
-			if val != "" {
-				usedEnvKey[key] = true
-				if serr := fs.Set(f.Name, val); serr != nil {
-					err = fmt.Errorf("invalid value %q for %s: %v", val, key, serr)
-				}
-				plog.Infof("recognized and used environment variable %s=%s", key, val)
-			}
-		}
+		err = setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, true)
 	})
 
+	verifyEnv(prefix, usedEnvKey, alreadySet)
+
+	return err
+}
+
+// SetPflagsFromEnv is similar to SetFlagsFromEnv. However, the accepted flagset type is pflag.FlagSet
+// and it does not do any logging.
+func SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error {
+	var err error
+	alreadySet := make(map[string]bool)
+	usedEnvKey := make(map[string]bool)
+	fs.VisitAll(func(f *pflag.Flag) {
+		if f.Changed {
+			alreadySet[flagToEnv(prefix, f.Name)] = true
+		}
+		if serr := setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, false); serr != nil {
+			err = serr
+		}
+	})
+	return err
+}
+
+func flagToEnv(prefix, name string) string {
+	return prefix + "_" + strings.ToUpper(strings.Replace(name, "-", "_", -1))
+}
+
+func verifyEnv(prefix string, usedEnvKey, alreadySet map[string]bool) {
 	for _, env := range os.Environ() {
 		kv := strings.SplitN(env, "=", 2)
 		if len(kv) != 2 {
@@ -103,16 +121,31 @@ func SetFlagsFromEnv(fs *flag.FlagSet) error {
 			plog.Infof("recognized environment variable %s, but unused: shadowed by corresponding flag ", kv[0])
 			continue
 		}
-		if strings.HasPrefix(env, "ETCD_") {
+		if strings.HasPrefix(env, prefix) {
 			plog.Warningf("unrecognized environment variable %s", env)
 		}
 	}
-
-	return err
 }
 
-func flagToEnv(name string) string {
-	return "ETCD_" + strings.ToUpper(strings.Replace(name, "-", "_", -1))
+type flagSetter interface {
+	Set(fk string, fv string) error
+}
+
+func setFlagFromEnv(fs flagSetter, prefix, fname string, usedEnvKey, alreadySet map[string]bool, log bool) error {
+	key := flagToEnv(prefix, fname)
+	if !alreadySet[key] {
+		val := os.Getenv(key)
+		if val != "" {
+			usedEnvKey[key] = true
+			if serr := fs.Set(fname, val); serr != nil {
+				return fmt.Errorf("invalid value %q for %s: %v", val, key, serr)
+			}
+			if log {
+				plog.Infof("recognized and used environment variable %s=%s", key, val)
+			}
+		}
+	}
+	return nil
 }
 
 // SetBindAddrFromAddr sets the value of bindAddr flag from the value
