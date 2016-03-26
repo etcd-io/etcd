@@ -30,10 +30,11 @@ import (
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
 type GlobalFlags struct {
-	Insecure       bool
-	Endpoints      []string
-	DialTimeout    time.Duration
-	CommandTimeOut time.Duration
+	Insecure           bool
+	InsecureSkipVerify bool
+	Endpoints          []string
+	DialTimeout        time.Duration
+	CommandTimeOut     time.Duration
 
 	TLS transport.TLSInfo
 
@@ -46,7 +47,8 @@ type secureCfg struct {
 	key    string
 	cacert string
 
-	insecureTransport bool
+	insecureTransport  bool
+	insecureSkipVerify bool
 }
 
 var display printer = &simplePrinter{}
@@ -115,6 +117,11 @@ func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg
 		cfg.TLS = &tls.Config{}
 	}
 
+	// If the user wants to skip TLS verification then we should set
+	// the InsecureSkipVerify flag in tls configuration.
+	if scfg.insecureSkipVerify && cfg.TLS != nil {
+		cfg.TLS.InsecureSkipVerify = true
+	}
 	return cfg, nil
 }
 
@@ -140,13 +147,15 @@ func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
 	cert, key, cacert := keyAndCertFromCmd(cmd)
 	insecureTr := insecureTransportFromCmd(cmd)
+	skipVerify := insecureSkipVerifyFromCmd(cmd)
 
 	return &secureCfg{
 		cert:   cert,
 		key:    key,
 		cacert: cacert,
 
-		insecureTransport: insecureTr,
+		insecureTransport:  insecureTr,
+		insecureSkipVerify: skipVerify,
 	}
 }
 
@@ -156,6 +165,14 @@ func insecureTransportFromCmd(cmd *cobra.Command) bool {
 		ExitWithError(ExitError, err)
 	}
 	return insecureTr
+}
+
+func insecureSkipVerifyFromCmd(cmd *cobra.Command) bool {
+	skipVerify, err := cmd.Flags().GetBool("insecure-skip-tls-verify")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return skipVerify
 }
 
 func keyAndCertFromCmd(cmd *cobra.Command) (cert, key, cacert string) {
