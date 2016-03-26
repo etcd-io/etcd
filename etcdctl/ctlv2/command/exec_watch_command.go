@@ -34,7 +34,7 @@ func NewExecWatchCommand() cli.Command {
 		ArgsUsage: "<key> <command> [args...]",
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
-			cli.BoolFlag{Name: "recursive", Usage: "watch all values for key and child keys"},
+			cli.BoolFlag{Name: "recursive, r", Usage: "watch all values for key and child keys"},
 		},
 		Action: func(c *cli.Context) {
 			execWatchCommandFunc(c, mustNewKeyAPI(c))

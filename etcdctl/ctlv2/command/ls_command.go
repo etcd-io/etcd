@@ -28,9 +28,9 @@ func NewLsCommand() cli.Command {
 		ArgsUsage: "[key]",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
-			cli.BoolFlag{Name: "recursive", Usage: "returns all key names recursively for the given path"},
+			cli.BoolFlag{Name: "recursive, r", Usage: "returns all key names recursively for the given path"},
 			cli.BoolFlag{Name: "p", Usage: "append slash (/) to directories"},
-			cli.BoolFlag{Name: "quorum", Usage: "require quorum for get request"},
+			cli.BoolFlag{Name: "quorum, q", Usage: "require quorum for get request"},
 		},
 		Action: func(c *cli.Context) {
 			lsCommandFunc(c, mustNewKeyAPI(c))
