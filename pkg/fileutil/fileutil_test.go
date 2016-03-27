@@ -20,6 +20,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -41,10 +42,11 @@ func TestIsDirWriteable(t *testing.T) {
 		// http://stackoverflow.com/questions/20609415/cross-compiling-user-current-not-implemented-on-linux-amd64
 		t.Skipf("failed to get current user: %v", err)
 	}
-	if me.Name == "root" || me.Name == "Administrator" {
+	if me.Name == "root" || runtime.GOOS == "windows" {
 		// ideally we should check CAP_DAC_OVERRIDE.
 		// but it does not matter for tests.
-		t.Skipf("running as a superuser")
+		// Chmod is not supported under windows.
+		t.Skipf("running as a superuser or in windows")
 	}
 	if err := IsDirWriteable(tmpdir); err == nil {
 		t.Fatalf("expected IsDirWriteable to error")
