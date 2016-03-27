@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"io"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -72,6 +73,8 @@ type serverWatchStream struct {
 	// progress tracks the watchID that stream might need to send
 	// progress to.
 	progress map[storage.WatchID]bool
+	// mu protects progress
+	mu sync.Mutex
 
 	// closec indicates the stream is closed.
 	closec chan struct{}
@@ -145,7 +148,9 @@ func (sws *serverWatchStream) recvLoop() error {
 						WatchId:  id,
 						Canceled: true,
 					}
+					sws.mu.Lock()
 					delete(sws.progress, storage.WatchID(id))
+					sws.mu.Unlock()
 				}
 			}
 			// TODO: do we need to return error back to client?
@@ -200,9 +205,11 @@ func (sws *serverWatchStream) sendLoop() {
 				return
 			}
 
+			sws.mu.Lock()
 			if _, ok := sws.progress[wresp.WatchID]; ok {
 				sws.progress[wresp.WatchID] = false
 			}
+			sws.mu.Unlock()
 
 		case c, ok := <-sws.ctrlStream:
 			if !ok {
