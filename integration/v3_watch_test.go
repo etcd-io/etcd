@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -922,10 +923,12 @@ func waitResponse(wc pb.Watch_WatchClient, timeout time.Duration) (bool, *pb.Wat
 }
 
 func TestWatchWithProgressNotify(t *testing.T) {
+	// accelerate report interval so test terminates quickly
+	oldpi := v3rpc.ProgressReportIntervalMilliseconds
+	// using atomics to avoid race warnings
+	atomic.StoreInt32(&v3rpc.ProgressReportIntervalMilliseconds, 3*1000)
 	testInterval := 3 * time.Second
-	pi := v3rpc.ProgressReportInterval
-	v3rpc.ProgressReportInterval = testInterval
-	defer func() { v3rpc.ProgressReportInterval = pi }()
+	defer func() { v3rpc.ProgressReportIntervalMilliseconds = oldpi }()
 
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})

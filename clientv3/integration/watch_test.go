@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -379,16 +380,18 @@ func TestWatchWithProgressNotifyNoEvent(t *testing.T) { testWatchWithProgressNot
 func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	defer testutil.AfterTest(t)
 
+	// accelerate report interval so test terminates quickly
+	oldpi := v3rpc.ProgressReportIntervalMilliseconds
+	// using atomics to avoid race warnings
+	atomic.StoreInt32(&v3rpc.ProgressReportIntervalMilliseconds, 3*1000)
+	pi := 3 * time.Second
+	defer func() { v3rpc.ProgressReportIntervalMilliseconds = oldpi }()
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	wc := clientv3.NewWatcher(clus.RandClient())
 	defer wc.Close()
-
-	testInterval := 3 * time.Second
-	pi := v3rpc.ProgressReportInterval
-	v3rpc.ProgressReportInterval = testInterval
-	defer func() { v3rpc.ProgressReportInterval = pi }()
 
 	opts := []clientv3.OpOption{clientv3.WithProgressNotify()}
 	if watchOnPut {

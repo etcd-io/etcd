@@ -42,8 +42,9 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 
 var (
 	// expose for testing purpose. External test can change this to a
-	// small value to finish fast.
-	ProgressReportInterval = 10 * time.Minute
+	// small value to finish fast. The type is int32 instead of time.Duration
+	// in order to placate the race detector by setting the value with atomic stores.
+	ProgressReportIntervalMilliseconds = int32(10 * 60 * 1000) // 10 minutes
 )
 
 const (
@@ -160,7 +161,8 @@ func (sws *serverWatchStream) sendLoop() {
 	// watch responses pending on a watch id creation message
 	pending := make(map[storage.WatchID][]*pb.WatchResponse)
 
-	progressTicker := time.NewTicker(ProgressReportInterval)
+	interval := time.Duration(ProgressReportIntervalMilliseconds) * time.Millisecond
+	progressTicker := time.NewTicker(interval)
 	defer progressTicker.Stop()
 
 	for {
