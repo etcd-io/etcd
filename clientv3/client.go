@@ -17,6 +17,8 @@ package clientv3
 import (
 	"crypto/tls"
 	"errors"
+	"io/ioutil"
+	"log"
 	"net"
 	"net/url"
 	"strings"
@@ -26,11 +28,14 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/grpclog"
 )
 
 var (
 	ErrNoAvailableEndpoints = errors.New("etcdclient: no available endpoints")
 )
+
+type Logger grpclog.Logger
 
 // Client provides and manages an etcd v3 client session.
 type Client struct {
@@ -49,6 +54,8 @@ type Client struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	logger Logger
 }
 
 // EndpointDialer is a policy for choosing which endpoint to dial next
@@ -66,6 +73,9 @@ type Config struct {
 
 	// TLS holds the client secure credentials, if any.
 	TLS *tls.Config
+
+	// Logger is the logger used by client library.
+	Logger Logger
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -180,6 +190,14 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
 	client.Maintenance = &maintenance{c: client}
+	if cfg.Logger == nil {
+		client.logger = log.New(ioutil.Discard, "", 0)
+		// disable client side grpc by default
+		grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
+	} else {
+		client.logger = cfg.Logger
+		grpclog.SetLogger(cfg.Logger)
+	}
 
 	return client, nil
 }
