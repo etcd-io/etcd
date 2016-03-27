@@ -448,6 +448,8 @@ message AuthenticateRequest {
 }
 
 message UserAddRequest {
+  string name = 1;
+  string password = 2;
 }
 
 message UserGetRequest {

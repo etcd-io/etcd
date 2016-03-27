@@ -22,11 +22,15 @@ import (
 
 type (
 	AuthEnableResponse pb.AuthEnableResponse
+	UserAddResponse    pb.UserAddResponse
 )
 
 type Auth interface {
-	// AuthEnable enables auth of a etcd cluster.
+	// AuthEnable enables auth of an etcd cluster.
 	AuthEnable(ctx context.Context) (*AuthEnableResponse, error)
+
+	// UserAdd adds a new user to an etcd cluster.
+	UserAdd(ctx context.Context, name string, password string) (*UserAddResponse, error)
 }
 
 type auth struct {
@@ -48,4 +52,9 @@ func NewAuth(c *Client) Auth {
 func (auth *auth) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
 	resp, err := auth.remote.AuthEnable(ctx, &pb.AuthEnableRequest{})
 	return (*AuthEnableResponse)(resp), err
+}
+
+func (auth *auth) UserAdd(ctx context.Context, name string, password string) (*UserAddResponse, error) {
+	resp, err := auth.remote.UserAdd(ctx, &pb.UserAddRequest{Name: name, Password: password})
+	return (*UserAddResponse)(resp), err
 }

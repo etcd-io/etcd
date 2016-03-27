@@ -68,8 +68,7 @@ func (as *AuthServer) RoleGrant(ctx context.Context, r *pb.RoleGrantRequest) (*p
 }
 
 func (as *AuthServer) UserAdd(ctx context.Context, r *pb.UserAddRequest) (*pb.UserAddResponse, error) {
-	plog.Info("not implemented yet")
-	return nil, nil
+	return as.authenticator.UserAdd(ctx, r)
 }
 
 func (as *AuthServer) UserDelete(ctx context.Context, r *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
