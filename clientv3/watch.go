@@ -240,11 +240,11 @@ func (w *watcher) addStream(resp *pb.WatchResponse, pendingReq *watchRequest) {
 	w.streams[ws.id] = ws
 	w.mu.Unlock()
 
-	// send messages to subscriber
-	go w.serveStream(ws)
-
 	// pass back the subscriber channel for the watcher
 	pendingReq.retc <- ret
+
+	// send messages to subscriber
+	go w.serveStream(ws)
 }
 
 // closeStream closes the watcher resources and removes it
