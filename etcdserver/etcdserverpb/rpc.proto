@@ -289,6 +289,10 @@ message TxnResponse {
 // revision.
 message CompactionRequest {
   int64 revision = 1;
+  // physical is set so the RPC will wait until the compaction is physically
+  // applied to the local database such that compacted entries are totally
+  // removed from the backing store.
+  bool physical = 2;
 }
 
 message CompactionResponse {

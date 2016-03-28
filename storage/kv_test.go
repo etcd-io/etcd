@@ -186,7 +186,7 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	defer cleanup(s, b, tmpPath)
 
 	put3TestKVs(s)
-	if err := s.Compact(4); err != nil {
+	if _, err := s.Compact(4); err != nil {
 		t.Fatalf("compact error (%v)", err)
 	}
 
@@ -566,7 +566,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		err := s.Compact(tt.rev)
+		_, err := s.Compact(tt.rev)
 		if err != nil {
 			t.Errorf("#%d: unexpect compact error %v", i, err)
 		}
@@ -602,7 +602,7 @@ func TestKVCompactBad(t *testing.T) {
 		{100, ErrFutureRev},
 	}
 	for i, tt := range tests {
-		err := s.Compact(tt.rev)
+		_, err := s.Compact(tt.rev)
 		if err != tt.werr {
 			t.Errorf("#%d: compact error = %v, want %v", i, err, tt.werr)
 		}

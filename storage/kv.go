@@ -67,7 +67,7 @@ type KV interface {
 	TxnPut(txnID int64, key, value []byte, lease lease.LeaseID) (rev int64, err error)
 	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
 
-	Compact(rev int64) error
+	Compact(rev int64) (<-chan struct{}, error)
 
 	// Hash retrieves the hash of KV state.
 	// This method is designed for consistency checking purpose.

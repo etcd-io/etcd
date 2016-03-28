@@ -234,7 +234,7 @@ func TestWatchCompacted(t *testing.T) {
 	for i := 0; i < maxRev; i++ {
 		s.Put(testKey, testValue, lease.NoLease)
 	}
-	err := s.Compact(compactRev)
+	_, err := s.Compact(compactRev)
 	if err != nil {
 		t.Fatalf("failed to compact kv (%v)", err)
 	}

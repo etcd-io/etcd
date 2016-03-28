@@ -37,6 +37,10 @@ const (
 type applyResult struct {
 	resp proto.Message
 	err  error
+	// physc signals the physical effect of the request has completed in addition
+	// to being logically reflected by the node. Currently only used for
+	// Compaction requests.
+	physc <-chan struct{}
 }
 
 // applierV3 is the interface for processing V3 raft messages
@@ -45,7 +49,7 @@ type applierV3 interface {
 	Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResponse, error)
 	DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error)
-	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, error)
+	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error)
 	LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error)
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
@@ -69,7 +73,7 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 	case r.Txn != nil:
 		ar.resp, ar.err = s.applyV3.Txn(r.Txn)
 	case r.Compaction != nil:
-		ar.resp, ar.err = s.applyV3.Compaction(r.Compaction)
+		ar.resp, ar.physc, ar.err = s.applyV3.Compaction(r.Compaction)
 	case r.LeaseCreate != nil:
 		ar.resp, ar.err = s.applyV3.LeaseCreate(r.LeaseCreate)
 	case r.LeaseRevoke != nil:
@@ -362,16 +366,16 @@ func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestUnion) *pb.R
 
 }
 
-func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, error) {
+func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error) {
 	resp := &pb.CompactionResponse{}
 	resp.Header = &pb.ResponseHeader{}
-	err := a.s.KV().Compact(compaction.Revision)
+	ch, err := a.s.KV().Compact(compaction.Revision)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// get the current revision. which key to get is not important.
 	_, resp.Header.Revision, _ = a.s.KV().Range([]byte("compaction"), nil, 1, 0)
-	return resp, err
+	return resp, ch, err
 }
 
 func (a *applierV3backend) LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
