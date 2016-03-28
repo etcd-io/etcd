@@ -1,6 +1,8 @@
 etcdctl
 ========
 
+TODO: merge into README.md.
+
 ## Commands
 
 ### PUT [options] \<key\> \<value\>
@@ -277,7 +279,7 @@ bar
 
 ### LOCK \<lockname\>
 
-LOCK acquires a distributed named mutex with a given name. Once the lock is acquired, it will be held until etcdctlv3 is terminated.
+LOCK acquires a distributed named mutex with a given name. Once the lock is acquired, it will be held until etcdctl is terminated.
 
 #### Return value
 

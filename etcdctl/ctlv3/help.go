@@ -14,7 +14,7 @@
 
 // copied from https://github.com/coreos/rkt/blob/master/rkt/help.go
 
-package main
+package ctlv3
 
 import (
 	"bytes"
