@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// etcdctlv3 is a command line application that utilizes v3 API.
-package main
+// Package ctlv3 contains the main entry point for the etcdctl for v3 API.
+package ctlv3
 
 import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/coreos/etcd/etcdctlv3/command"
+	"github.com/coreos/etcd/etcdctl/ctlv3/command"
 	"github.com/spf13/cobra"
 )
 
 const (
-	cliName        = "etcdctlv3"
+	cliName        = "etcdctl"
 	cliDescription = "A simple command line client for etcd3."
 
 	defaultDialTimeout    = 2 * time.Second
@@ -40,7 +40,7 @@ var (
 	rootCmd = &cobra.Command{
 		Use:        cliName,
 		Short:      cliDescription,
-		SuggestFor: []string{"etcctlv3", "etcdcltv3", "etlctlv3"},
+		SuggestFor: []string{"etcdctl"},
 	}
 )
 
@@ -85,7 +85,7 @@ func init() {
 	cobra.EnablePrefixMatching = true
 }
 
-func main() {
+func Start() {
 	rootCmd.SetUsageFunc(usageFunc)
 
 	// Make help just show the usage

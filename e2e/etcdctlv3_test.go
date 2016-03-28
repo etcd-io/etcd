@@ -15,11 +15,11 @@
 package e2e
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
@@ -58,8 +58,10 @@ func TestCtlV3SetPeerTLSQuorum(t *testing.T) {
 func testCtlV3Set(t *testing.T, cfg *etcdProcessClusterConfig, dialTimeout time.Duration, quorum bool) {
 	defer testutil.AfterTest(t)
 
+	os.Setenv("ETCDCTL_API", "3")
 	epc := setupCtlV3Test(t, cfg, quorum)
 	defer func() {
+		os.Unsetenv("ETCDCTL_API")
 		if errC := epc.Close(); errC != nil {
 			t.Fatalf("error closing etcd processes (%v)", errC)
 		}
@@ -108,7 +110,7 @@ func ctlV3PrefixArgs(clus *etcdProcessCluster, dialTimeout time.Duration) []stri
 		}
 		endpoints = strings.Join(es, ",")
 	}
-	cmdArgs := []string{"../bin/etcdctlv3", "--endpoints", endpoints, "--dial-timeout", dialTimeout.String()}
+	cmdArgs := []string{"../bin/etcdctl", "--endpoints", endpoints, "--dial-timeout", dialTimeout.String()}
 	if clus.cfg.clientTLS == clientTLS {
 		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 	}
@@ -129,14 +131,8 @@ func ctlV3Get(clus *etcdProcessCluster, key, value string, dialTimeout time.Dura
 	return spawnWithExpectedString(cmdArgs, key)
 }
 
-func mustCtlV3(t *testing.T) {
-	if !fileutil.Exist("../bin/etcdctlv3") {
-		t.Fatalf("could not find etcdctlv3 binary")
-	}
-}
-
 func setupCtlV3Test(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {
-	mustCtlV3(t)
+	mustEtcdctl(t)
 	if !quorum {
 		cfg = configStandalone(*cfg)
 	}

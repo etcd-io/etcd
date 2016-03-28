@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,55 +16,31 @@
 package main
 
 import (
+	"fmt"
 	"os"
-	"time"
 
-	"github.com/codegangsta/cli"
-	"github.com/coreos/etcd/etcdctl/command"
-	"github.com/coreos/etcd/version"
+	"github.com/coreos/etcd/etcdctl/ctlv2"
+	"github.com/coreos/etcd/etcdctl/ctlv3"
+)
+
+const (
+	apiEnv = "ETCDCTL_API"
 )
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "etcdctl"
-	app.Version = version.Version
-	app.Usage = "A simple command line client for etcd."
-	app.Flags = []cli.Flag{
-		cli.BoolFlag{Name: "debug", Usage: "output cURL commands which can be used to reproduce the request"},
-		cli.BoolFlag{Name: "no-sync", Usage: "don't synchronize cluster information before sending request"},
-		cli.StringFlag{Name: "output, o", Value: "simple", Usage: "output response in the given format (`simple`, `extended` or `json`)"},
-		cli.StringFlag{Name: "discovery-srv, D", Usage: "domain name to query for SRV records describing cluster endpoints"},
-		cli.StringFlag{Name: "peers, C", Value: "", Usage: "DEPRECATED - \"--endpoints\" should be used instead"},
-		cli.StringFlag{Name: "endpoint", Value: "", Usage: "DEPRECATED - \"--endpoints\" should be used instead"},
-		cli.StringFlag{Name: "endpoints", Value: "", Usage: "a comma-delimited list of machine addresses in the cluster (default: \"http://127.0.0.1:2379,http://127.0.0.1:4001\")"},
-		cli.StringFlag{Name: "cert-file", Value: "", Usage: "identify HTTPS client using this SSL certificate file"},
-		cli.StringFlag{Name: "key-file", Value: "", Usage: "identify HTTPS client using this SSL key file"},
-		cli.StringFlag{Name: "ca-file", Value: "", Usage: "verify certificates of HTTPS-enabled servers using this CA bundle"},
-		cli.StringFlag{Name: "username, u", Value: "", Usage: "provide username[:password] and prompt if password is not supplied."},
-		cli.DurationFlag{Name: "timeout", Value: time.Second, Usage: "connection timeout per request"},
-		cli.DurationFlag{Name: "total-timeout", Value: 5 * time.Second, Usage: "timeout for the command execution (except watch)"},
-	}
-	app.Commands = []cli.Command{
-		command.NewBackupCommand(),
-		command.NewClusterHealthCommand(),
-		command.NewMakeCommand(),
-		command.NewMakeDirCommand(),
-		command.NewRemoveCommand(),
-		command.NewRemoveDirCommand(),
-		command.NewGetCommand(),
-		command.NewLsCommand(),
-		command.NewSetCommand(),
-		command.NewSetDirCommand(),
-		command.NewUpdateCommand(),
-		command.NewUpdateDirCommand(),
-		command.NewWatchCommand(),
-		command.NewExecWatchCommand(),
-		command.NewMemberCommand(),
-		command.NewImportSnapCommand(),
-		command.NewUserCommands(),
-		command.NewRoleCommands(),
-		command.NewAuthCommands(),
+	apiv := os.Getenv(apiEnv)
+	// unset apiEnv to avoid side-effect for future env and flag parsing.
+	os.Unsetenv(apiv)
+	if len(apiv) == 0 || apiv == "2" {
+		ctlv2.Start()
+		return
 	}
 
-	app.Run(os.Args)
+	if apiv == "3" {
+		ctlv3.Start()
+		return
+	}
+
+	fmt.Fprintln(os.Stderr, "unsupported API version", apiv)
+	os.Exit(1)
 }
