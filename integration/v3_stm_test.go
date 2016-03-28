@@ -53,6 +53,10 @@ func TestSTMConflict(t *testing.T) {
 			dst := stm.Get(dstKey)
 			srcV, _ := strconv.ParseInt(src, 10, 64)
 			dstV, _ := strconv.ParseInt(dst, 10, 64)
+			if srcV == 0 {
+				// can't rand.Intn on 0, so skip this transaction
+				return nil
+			}
 			xfer := int64(rand.Intn(int(srcV)) / 2)
 			stm.Put(srcKey, fmt.Sprintf("%d", srcV-xfer))
 			stm.Put(dstKey, fmt.Sprintf("%d", dstV+xfer))
