@@ -15,6 +15,7 @@
 package v3rpc
 
 import (
+	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/lease"
@@ -36,6 +37,8 @@ func togRPCError(err error) error {
 		return rpctypes.ErrRequestTooLarge
 	case etcdserver.ErrNoSpace:
 		return rpctypes.ErrNoSpace
+	case auth.ErrUserAlreadyExist:
+		return rpctypes.ErrUserAlreadyExist
 	default:
 		return grpc.Errorf(codes.Internal, err.Error())
 	}

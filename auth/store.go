@@ -15,8 +15,9 @@
 package auth
 
 import (
+	"errors"
+
 	"github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/pkg/capnslog"
@@ -29,6 +30,8 @@ var (
 	authUsersBucketName = []byte("authUsers")
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "auth")
+
+	ErrUserAlreadyExist = errors.New("auth: user already exists")
 )
 
 type AuthStore interface {
@@ -79,7 +82,7 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 
 	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
 	if len(vs) != 0 {
-		return &pb.AuthUserAddResponse{}, rpctypes.ErrUserAlreadyExist
+		return &pb.AuthUserAddResponse{}, ErrUserAlreadyExist
 	}
 
 	newUser := authpb.User{
