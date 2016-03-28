@@ -27,6 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/coreos/etcd/alarm"
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/compactor"
 	"github.com/coreos/etcd/discovery"
@@ -172,11 +173,13 @@ type EtcdServer struct {
 
 	store store.Store
 
-	kv        dstorage.ConsistentWatchableKV
-	lessor    lease.Lessor
-	bemu      sync.Mutex
-	be        backend.Backend
-	authStore auth.AuthStore
+	applyV3    applierV3
+	kv         dstorage.ConsistentWatchableKV
+	lessor     lease.Lessor
+	bemu       sync.Mutex
+	be         backend.Backend
+	authStore  auth.AuthStore
+	alarmStore *alarm.AlarmStore
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -372,6 +375,10 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	if h := cfg.AutoCompactionRetention; h != 0 {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
+	}
+
+	if err := srv.restoreAlarms(); err != nil {
+		return nil, err
 	}
 
 	// TODO: move transport initialization near the definition of remote
@@ -611,6 +618,10 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	if s.lessor != nil {
 		s.lessor.Recover(newbe, s.kv)
+	}
+
+	if err := s.restoreAlarms(); err != nil {
+		plog.Panicf("restore alarms error: %v", err)
 	}
 
 	if s.authStore != nil {
@@ -1005,14 +1016,26 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 				var r pb.Request
 				pbutil.MustUnmarshal(&r, e.Data)
 				s.w.Trigger(r.ID, s.applyRequest(r))
+			} else if raftReq.V2 != nil {
+				req := raftReq.V2
+				s.w.Trigger(req.ID, s.applyRequest(*req))
 			} else {
-				switch {
-				case raftReq.V2 != nil:
-					req := raftReq.V2
-					s.w.Trigger(req.ID, s.applyRequest(*req))
-				default:
-					s.w.Trigger(raftReq.ID, s.applyV3Request(&raftReq))
+				ar := s.applyV3Request(&raftReq)
+				if ar.err != ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
+					s.w.Trigger(raftReq.ID, ar)
+					break
 				}
+				plog.Errorf("applying raft message exceeded backend quota")
+				go func() {
+					a := &pb.AlarmRequest{
+						MemberID: int64(s.ID()),
+						Action:   pb.AlarmRequest_ACTIVATE,
+						Alarm:    pb.AlarmType_NOSPACE,
+					}
+					r := pb.InternalRaftRequest{Alarm: a}
+					s.processInternalRaftRequest(context.TODO(), r)
+					s.w.Trigger(raftReq.ID, ar)
+				}()
 			}
 		case raftpb.EntryConfChange:
 			var cc raftpb.ConfChange
@@ -1319,3 +1342,17 @@ func (s *EtcdServer) Backend() backend.Backend {
 }
 
 func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
+
+func (s *EtcdServer) restoreAlarms() error {
+	s.applyV3 = newQuotaApplierV3(s, &applierV3backend{s})
+
+	as, err := alarm.NewAlarmStore(s)
+	if err != nil {
+		return err
+	}
+	s.alarmStore = as
+	if len(as.Get(pb.AlarmType_NOSPACE)) > 0 {
+		s.applyV3 = newApplierV3Capped(s.applyV3)
+	}
+	return nil
+}

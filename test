@@ -21,7 +21,7 @@ TESTABLE_AND_FORMATTABLE="client clientv3 discovery error etcdctl/ctlv2 etcdctl/
 # TODO: add it to race testing when the issue is resolved
 # https://github.com/golang/go/issues/9946
 NO_RACE_TESTABLE="rafthttp"
-FORMATTABLE="$TESTABLE_AND_FORMATTABLE $NO_RACE_TESTABLE *.go etcdctl/ integration clientv3/integration e2e"
+FORMATTABLE="$TESTABLE_AND_FORMATTABLE $NO_RACE_TESTABLE *.go etcdctl/ integration clientv3/integration e2e alarm"
 
 # user has not provided PKG override
 if [ -z "$PKG" ]; then

@@ -757,6 +757,8 @@ type grpcAPI struct {
 	Lease pb.LeaseClient
 	// Watch is the watch API for the client's connection.
 	Watch pb.WatchClient
+	// Maintenance is the maintenance API for the client's connection.
+	Maintenance pb.MaintenanceClient
 }
 
 func toGRPC(c *clientv3.Client) grpcAPI {
@@ -765,5 +767,6 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 		pb.NewKVClient(c.ActiveConnection()),
 		pb.NewLeaseClient(c.ActiveConnection()),
 		pb.NewWatchClient(c.ActiveConnection()),
+		pb.NewMaintenanceClient(c.ActiveConnection()),
 	}
 }

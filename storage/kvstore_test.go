@@ -584,6 +584,9 @@ func (b *fakeBatchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit i
 func (b *fakeBatchTx) UnsafeDelete(bucketName []byte, key []byte) {
 	b.Recorder.Record(testutil.Action{Name: "delete", Params: []interface{}{bucketName, key}})
 }
+func (b *fakeBatchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
+	return nil
+}
 func (b *fakeBatchTx) Commit()        {}
 func (b *fakeBatchTx) CommitAndStop() {}
 

@@ -27,6 +27,8 @@ message InternalRaftRequest {
 
   AuthEnableRequest auth_enable = 10;
   UserAddRequest user_add = 11;
+
+  AlarmRequest alarm = 12;
 }
 
 message EmptyResponse {

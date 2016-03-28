@@ -33,6 +33,7 @@ type InternalRaftRequest struct {
 	LeaseRevoke *LeaseRevokeRequest `protobuf:"bytes,9,opt,name=lease_revoke" json:"lease_revoke,omitempty"`
 	AuthEnable  *AuthEnableRequest  `protobuf:"bytes,10,opt,name=auth_enable" json:"auth_enable,omitempty"`
 	UserAdd     *UserAddRequest     `protobuf:"bytes,11,opt,name=user_add" json:"user_add,omitempty"`
+	Alarm       *AlarmRequest       `protobuf:"bytes,12,opt,name=alarm" json:"alarm,omitempty"`
 }
 
 func (m *InternalRaftRequest) Reset()         { *m = InternalRaftRequest{} }
@@ -170,6 +171,16 @@ func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n10
 	}
+	if m.Alarm != nil {
+		data[i] = 0x62
+		i++
+		i = encodeVarintRaftInternal(data, i, uint64(m.Alarm.Size()))
+		n11, err := m.Alarm.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n11
+	}
 	return i, nil
 }
 
@@ -262,6 +273,10 @@ func (m *InternalRaftRequest) Size() (n int) {
 	}
 	if m.UserAdd != nil {
 		l = m.UserAdd.Size()
+		n += 1 + l + sovRaftInternal(uint64(l))
+	}
+	if m.Alarm != nil {
+		l = m.Alarm.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
 	return n
@@ -661,6 +676,39 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 				m.UserAdd = &UserAddRequest{}
 			}
 			if err := m.UserAdd.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Alarm", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaftInternal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRaftInternal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Alarm == nil {
+				m.Alarm = &AlarmRequest{}
+			}
+			if err := m.Alarm.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
