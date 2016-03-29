@@ -295,7 +295,7 @@ func TestSimpleHTTPClientDoHeaderTimeout(t *testing.T) {
 			t.Fatalf("expected non-nil error, got nil")
 		}
 	case <-time.After(time.Second):
-		t.Fatalf("unexpected timeout when waitting for the test to finish")
+		t.Fatalf("unexpected timeout when waiting for the test to finish")
 	}
 }
 
@@ -444,7 +444,51 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 			t.Errorf("err = %+v, want %+v", err, context.DeadlineExceeded)
 		}
 	case <-time.After(time.Second):
-		t.Fatalf("unexpected timeout when waitting for request to deadline exceed")
+		t.Fatalf("unexpected timeout when waiting for request to deadline exceed")
+	}
+}
+
+type fakeCancelContext struct{}
+
+var fakeCancelContextError = errors.New("fake context canceled")
+
+func (f fakeCancelContext) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (f fakeCancelContext) Done() <-chan struct{} {
+	d := make(chan struct{}, 1)
+	d <- struct{}{}
+	return d
+}
+func (f fakeCancelContext) Err() error                        { return fakeCancelContextError }
+func (f fakeCancelContext) Value(key interface{}) interface{} { return 1 }
+
+func withTimeout(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	return parent, func() { parent = nil }
+}
+
+func TestHTTPClusterClientDoCanceledContext(t *testing.T) {
+	fakeURL := url.URL{}
+	tr := newFakeTransport()
+	tr.finishCancel <- struct{}{}
+	c := &httpClusterClient{
+		clientFactory: newHTTPClientFactory(tr, DefaultCheckRedirect, 0),
+		endpoints:     []url.URL{fakeURL},
+	}
+
+	errc := make(chan error)
+	go func() {
+		ctx, cancel := withTimeout(fakeCancelContext{}, time.Millisecond)
+		cancel()
+		_, _, err := c.Do(ctx, &fakeAction{})
+		errc <- err
+	}()
+
+	select {
+	case err := <-errc:
+		if err != fakeCancelContextError {
+			t.Errorf("err = %+v, want %+v", err, fakeCancelContextError)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected timeout when waiting for request to fake context canceled")
 	}
 }
 
