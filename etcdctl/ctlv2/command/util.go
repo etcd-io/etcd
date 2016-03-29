@@ -163,6 +163,22 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		keyfile = os.Getenv("ETCDCTL_KEY_FILE")
 	}
 
+	if cafile == "" || certfile == "" || keyfile == "" {
+		eps, err := getEndpoints(c)
+		if err != nil {
+			return nil, err
+		}
+		for _, ep := range eps {
+			u, err := url.Parse(ep)
+			if err != nil {
+				return nil, err
+			}
+			if u.Scheme == "https" {
+				return nil, fmt.Errorf("Please specify TLS certs.")
+			}
+		}
+	}
+
 	tls := transport.TLSInfo{
 		CAFile:   cafile,
 		CertFile: certfile,
