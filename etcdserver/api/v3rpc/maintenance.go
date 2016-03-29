@@ -30,12 +30,13 @@ type Alarmer interface {
 }
 
 type maintenanceServer struct {
-	bg BackendGetter
-	a  Alarmer
+	bg  BackendGetter
+	a   Alarmer
+	hdr header
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	return &maintenanceServer{bg: s, a: s}
+	return &maintenanceServer{bg: s, a: s, hdr: newHeader(s)}
 }
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
@@ -47,6 +48,16 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 	}
 	plog.Noticef("finished defragmenting the storage backend")
 	return &pb.DefragmentResponse{}, nil
+}
+
+func (s *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
+	h, err := s.bg.Backend().Hash()
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	resp := &pb.HashResponse{Header: &pb.ResponseHeader{Revision: s.hdr.rev()}, Hash: h}
+	s.hdr.fill(resp.Header)
+	return resp, nil
 }
 
 func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {

@@ -303,9 +303,9 @@ func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) 
 		if err != nil {
 			return nil, nil, err
 		}
-		kvc := pb.NewKVClient(conn)
+		m := pb.NewMaintenanceClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		resp, err := kvc.Hash(ctx, &pb.HashRequest{})
+		resp, err := m.Hash(ctx, &pb.HashRequest{})
 		cancel()
 		conn.Close()
 		if err != nil {
