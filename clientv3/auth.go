@@ -21,8 +21,8 @@ import (
 )
 
 type (
-	AuthEnableResponse pb.AuthEnableResponse
-	UserAddResponse    pb.UserAddResponse
+	AuthEnableResponse  pb.AuthEnableResponse
+	AuthUserAddResponse pb.AuthUserAddResponse
 )
 
 type Auth interface {
@@ -30,7 +30,7 @@ type Auth interface {
 	AuthEnable(ctx context.Context) (*AuthEnableResponse, error)
 
 	// UserAdd adds a new user to an etcd cluster.
-	UserAdd(ctx context.Context, name string, password string) (*UserAddResponse, error)
+	UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error)
 }
 
 type auth struct {
@@ -54,7 +54,7 @@ func (auth *auth) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
 	return (*AuthEnableResponse)(resp), err
 }
 
-func (auth *auth) UserAdd(ctx context.Context, name string, password string) (*UserAddResponse, error) {
-	resp, err := auth.remote.UserAdd(ctx, &pb.UserAddRequest{Name: name, Password: password})
-	return (*UserAddResponse)(resp), err
+func (auth *auth) UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error) {
+	resp, err := auth.remote.UserAdd(ctx, &pb.AuthUserAddRequest{Name: name, Password: password})
+	return (*AuthUserAddResponse)(resp), err
 }

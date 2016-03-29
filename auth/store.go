@@ -39,7 +39,7 @@ type AuthStore interface {
 	Recover(b backend.Backend)
 
 	// UserAdd adds a new user
-	UserAdd(r *pb.UserAddRequest) (*pb.UserAddResponse, error)
+	UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 }
 
 type authStore struct {
@@ -64,7 +64,7 @@ func (as *authStore) Recover(be backend.Backend) {
 	// TODO(mitake): recovery process
 }
 
-func (as *authStore) UserAdd(r *pb.UserAddRequest) (*pb.UserAddResponse, error) {
+func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
 	plog.Noticef("adding a new user: %s", r.Name)
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), bcrypt.DefaultCost)
@@ -79,7 +79,7 @@ func (as *authStore) UserAdd(r *pb.UserAddRequest) (*pb.UserAddResponse, error) 
 
 	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
 	if len(vs) != 0 {
-		return &pb.UserAddResponse{}, rpctypes.ErrUserAlreadyExist
+		return &pb.AuthUserAddResponse{}, rpctypes.ErrUserAlreadyExist
 	}
 
 	newUser := authpb.User{
@@ -97,7 +97,7 @@ func (as *authStore) UserAdd(r *pb.UserAddRequest) (*pb.UserAddResponse, error) 
 
 	plog.Noticef("added a new user: %s", r.Name)
 
-	return &pb.UserAddResponse{}, nil
+	return &pb.AuthUserAddResponse{}, nil
 }
 
 func NewAuthStore(be backend.Backend) *authStore {
