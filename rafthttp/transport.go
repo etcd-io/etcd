@@ -165,10 +165,11 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 		to := types.ID(m.To)
 
 		t.mu.RLock()
-		p, ok := t.peers[to]
+		p, pok := t.peers[to]
+		g, rok := t.remotes[to]
 		t.mu.RUnlock()
 
-		if ok {
+		if pok {
 			if m.Type == raftpb.MsgApp {
 				t.ServerStats.SendAppendReq(m.Size())
 			}
@@ -176,8 +177,7 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 
-		g, ok := t.remotes[to]
-		if ok {
+		if rok {
 			g.send(m)
 			continue
 		}

@@ -28,14 +28,11 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/grpclog"
 )
 
 var (
 	ErrNoAvailableEndpoints = errors.New("etcdclient: no available endpoints")
 )
-
-type Logger grpclog.Logger
 
 // Client provides and manages an etcd v3 client session.
 type Client struct {
@@ -54,8 +51,6 @@ type Client struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
-
-	logger Logger
 }
 
 // EndpointDialer is a policy for choosing which endpoint to dial next
@@ -190,13 +185,11 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
 	client.Maintenance = &maintenance{c: client}
-	if cfg.Logger == nil {
-		client.logger = log.New(ioutil.Discard, "", 0)
-		// disable client side grpc by default
-		grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
+	if cfg.Logger != nil {
+		logger.Set(cfg.Logger)
 	} else {
-		client.logger = cfg.Logger
-		grpclog.SetLogger(cfg.Logger)
+		// disable client side grpc by default
+		logger.Set(log.New(ioutil.Discard, "", 0))
 	}
 
 	return client, nil

@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"io"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -42,8 +43,9 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 
 var (
 	// expose for testing purpose. External test can change this to a
-	// small value to finish fast.
-	ProgressReportInterval = 10 * time.Minute
+	// small value to finish fast. The type is int32 instead of time.Duration
+	// in order to placate the race detector by setting the value with atomic stores.
+	ProgressReportIntervalMilliseconds = int32(10 * 60 * 1000) // 10 minutes
 )
 
 const (
@@ -71,6 +73,8 @@ type serverWatchStream struct {
 	// progress tracks the watchID that stream might need to send
 	// progress to.
 	progress map[storage.WatchID]bool
+	// mu protects progress
+	mu sync.Mutex
 
 	// closec indicates the stream is closed.
 	closec chan struct{}
@@ -144,7 +148,9 @@ func (sws *serverWatchStream) recvLoop() error {
 						WatchId:  id,
 						Canceled: true,
 					}
+					sws.mu.Lock()
 					delete(sws.progress, storage.WatchID(id))
+					sws.mu.Unlock()
 				}
 			}
 			// TODO: do we need to return error back to client?
@@ -160,7 +166,8 @@ func (sws *serverWatchStream) sendLoop() {
 	// watch responses pending on a watch id creation message
 	pending := make(map[storage.WatchID][]*pb.WatchResponse)
 
-	progressTicker := time.NewTicker(ProgressReportInterval)
+	interval := time.Duration(ProgressReportIntervalMilliseconds) * time.Millisecond
+	progressTicker := time.NewTicker(interval)
 	defer progressTicker.Stop()
 
 	for {
@@ -198,9 +205,11 @@ func (sws *serverWatchStream) sendLoop() {
 				return
 			}
 
+			sws.mu.Lock()
 			if _, ok := sws.progress[wresp.WatchID]; ok {
 				sws.progress[wresp.WatchID] = false
 			}
+			sws.mu.Unlock()
 
 		case c, ok := <-sws.ctrlStream:
 			if !ok {
