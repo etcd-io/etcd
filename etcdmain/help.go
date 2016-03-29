@@ -116,6 +116,8 @@ security flags:
 		enable peer client cert authentication.
 	--peer-trusted-ca-file ''
 		path to the peer server TLS trusted CA file.
+	--peer-auto-tls 'false'
+		peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
 
 logging flags
 
