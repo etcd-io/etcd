@@ -38,6 +38,9 @@
 //	}
 //	// use the response
 //
+// The Client has internal state (watchers and leases), so Clients should be reused instead of created as needed.
+// Clients are safe for concurrent use by multiple goroutines.
+//
 // etcd client returns 2 types of errors:
 //
 //	1. context error: canceled or deadline exceeded.
