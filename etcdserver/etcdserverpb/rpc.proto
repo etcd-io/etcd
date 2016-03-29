@@ -30,11 +30,6 @@ service KV {
   // Compact compacts the event history in etcd. User should compact the
   // event history periodically, or it will grow infinitely.
   rpc Compact(CompactionRequest) returns (CompactionResponse) {}
-
-  // Hash returns the hash of local KV state for consistency checking purpose.
-  // This is designed for testing purpose. Do not use this in production when there
-  // are ongoing transactions.
-  rpc Hash(HashRequest) returns (HashResponse) {}
 }
 
 service Watch {
@@ -77,11 +72,15 @@ service Cluster {
 }
 
 service Maintenance {
-  // TODO: move Hash from kv to Maintenance
-  rpc Defragment(DefragmentRequest) returns (DefragmentResponse) {}
-
   // Alarm activates, deactivates, and queries alarms regarding cluster health.
   rpc Alarm(AlarmRequest) returns (AlarmResponse) {}
+
+  rpc Defragment(DefragmentRequest) returns (DefragmentResponse) {}
+
+  // Hash returns the hash of the local KV state for consistency checking purpose.
+  // This is designed for testing; do not use this in production when there
+  // are ongoing transactions.
+  rpc Hash(HashRequest) returns (HashResponse) {}
 }
 
 service Auth {

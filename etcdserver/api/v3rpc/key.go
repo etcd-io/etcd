@@ -38,20 +38,12 @@ var (
 )
 
 type kvServer struct {
-	clusterID int64
-	memberID  int64
-	raftTimer etcdserver.RaftTimer
-
-	kv etcdserver.RaftKV
+	hdr header
+	kv  etcdserver.RaftKV
 }
 
 func NewKVServer(s *etcdserver.EtcdServer) pb.KVServer {
-	return &kvServer{
-		clusterID: int64(s.Cluster().ID()),
-		memberID:  int64(s.ID()),
-		raftTimer: s,
-		kv:        s,
-	}
+	return &kvServer{hdr: newHeader(s), kv: s}
 }
 
 func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -67,7 +59,7 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 	if resp.Header == nil {
 		plog.Panic("unexpected nil resp.Header")
 	}
-	s.fillInHeader(resp.Header)
+	s.hdr.fill(resp.Header)
 	return resp, err
 }
 
@@ -84,7 +76,7 @@ func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, 
 	if resp.Header == nil {
 		plog.Panic("unexpected nil resp.Header")
 	}
-	s.fillInHeader(resp.Header)
+	s.hdr.fill(resp.Header)
 	return resp, err
 }
 
@@ -101,7 +93,7 @@ func (s *kvServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*
 	if resp.Header == nil {
 		plog.Panic("unexpected nil resp.Header")
 	}
-	s.fillInHeader(resp.Header)
+	s.hdr.fill(resp.Header)
 	return resp, err
 }
 
@@ -118,7 +110,7 @@ func (s *kvServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, 
 	if resp.Header == nil {
 		plog.Panic("unexpected nil resp.Header")
 	}
-	s.fillInHeader(resp.Header)
+	s.hdr.fill(resp.Header)
 	return resp, err
 }
 
@@ -131,24 +123,8 @@ func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Co
 	if resp.Header == nil {
 		plog.Panic("unexpected nil resp.Header")
 	}
-	s.fillInHeader(resp.Header)
+	s.hdr.fill(resp.Header)
 	return resp, nil
-}
-
-func (s *kvServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
-	resp, err := s.kv.Hash(ctx, r)
-	if err != nil {
-		return nil, togRPCError(err)
-	}
-	s.fillInHeader(resp.Header)
-	return resp, nil
-}
-
-// fillInHeader populates pb.ResponseHeader from kvServer, except Revision.
-func (s *kvServer) fillInHeader(h *pb.ResponseHeader) {
-	h.ClusterId = uint64(s.clusterID)
-	h.MemberId = uint64(s.memberID)
-	h.RaftTerm = s.raftTimer.Term()
 }
 
 func checkRangeRequest(r *pb.RangeRequest) error {

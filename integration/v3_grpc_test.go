@@ -440,7 +440,10 @@ func TestV3Hash(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	kvc := toGRPC(clus.RandClient()).KV
+	cli := clus.RandClient()
+	kvc := toGRPC(cli).KV
+	m := toGRPC(cli).Maintenance
+
 	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 
 	for i := 0; i < 3; i++ {
@@ -450,7 +453,7 @@ func TestV3Hash(t *testing.T) {
 		}
 	}
 
-	resp, err := kvc.Hash(context.Background(), &pb.HashRequest{})
+	resp, err := m.Hash(context.Background(), &pb.HashRequest{})
 	if err != nil || resp.Hash == 0 {
 		t.Fatalf("couldn't hash (%v, hash %d)", err, resp.Hash)
 	}

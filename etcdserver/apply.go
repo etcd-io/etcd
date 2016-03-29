@@ -94,7 +94,7 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 		err error
 	)
 	if txnID != noTxn {
-		rev, err = a.s.getKV().TxnPut(txnID, p.Key, p.Value, lease.LeaseID(p.Lease))
+		rev, err = a.s.KV().TxnPut(txnID, p.Key, p.Value, lease.LeaseID(p.Lease))
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +105,7 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 				return nil, lease.ErrLeaseNotFound
 			}
 		}
-		rev = a.s.getKV().Put(p.Key, p.Value, leaseID)
+		rev = a.s.KV().Put(p.Key, p.Value, leaseID)
 	}
 	resp.Header.Revision = rev
 	return resp, nil
@@ -126,12 +126,12 @@ func (a *applierV3backend) DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (
 	}
 
 	if txnID != noTxn {
-		n, rev, err = a.s.getKV().TxnDeleteRange(txnID, dr.Key, dr.RangeEnd)
+		n, rev, err = a.s.KV().TxnDeleteRange(txnID, dr.Key, dr.RangeEnd)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		n, rev = a.s.getKV().DeleteRange(dr.Key, dr.RangeEnd)
+		n, rev = a.s.KV().DeleteRange(dr.Key, dr.RangeEnd)
 	}
 
 	resp.Deleted = n
@@ -164,12 +164,12 @@ func (a *applierV3backend) Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResp
 	}
 
 	if txnID != noTxn {
-		kvs, rev, err = a.s.getKV().TxnRange(txnID, r.Key, r.RangeEnd, limit, r.Revision)
+		kvs, rev, err = a.s.KV().TxnRange(txnID, r.Key, r.RangeEnd, limit, r.Revision)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		kvs, rev, err = a.s.getKV().Range(r.Key, r.RangeEnd, limit, r.Revision)
+		kvs, rev, err = a.s.KV().Range(r.Key, r.RangeEnd, limit, r.Revision)
 		if err != nil {
 			return nil, err
 		}
@@ -235,9 +235,9 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 
 	// When executing the operations of txn, we need to hold the txn lock.
 	// So the reader will not see any intermediate results.
-	txnID := a.s.getKV().TxnBegin()
+	txnID := a.s.KV().TxnBegin()
 	defer func() {
-		err := a.s.getKV().TxnEnd(txnID)
+		err := a.s.KV().TxnEnd(txnID)
 		if err != nil {
 			panic(fmt.Sprint("unexpected error when closing txn", txnID))
 		}
@@ -264,7 +264,7 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 // It returns the revision at which the comparison happens. If the comparison
 // succeeds, the it returns true. Otherwise it returns false.
 func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
-	ckvs, rev, err := a.s.getKV().Range(c.Key, nil, 1, 0)
+	ckvs, rev, err := a.s.KV().Range(c.Key, nil, 1, 0)
 	if err != nil {
 		if err == dstorage.ErrTxnIDMismatch {
 			panic("unexpected txn ID mismatch error")
@@ -365,12 +365,12 @@ func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestUnion) *pb.R
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	resp := &pb.CompactionResponse{}
 	resp.Header = &pb.ResponseHeader{}
-	err := a.s.getKV().Compact(compaction.Revision)
+	err := a.s.KV().Compact(compaction.Revision)
 	if err != nil {
 		return nil, err
 	}
 	// get the current revision. which key to get is not important.
-	_, resp.Header.Revision, _ = a.s.getKV().Range([]byte("compaction"), nil, 1, 0)
+	_, resp.Header.Revision, _ = a.s.KV().Range([]byte("compaction"), nil, 1, 0)
 	return resp, err
 }
 
@@ -559,10 +559,10 @@ func (a *applierV3backend) checkRequestRange(reqs []*pb.RequestUnion) error {
 			continue
 		}
 
-		if greq.Revision > a.s.getKV().Rev() {
+		if greq.Revision > a.s.KV().Rev() {
 			return dstorage.ErrFutureRev
 		}
-		if greq.Revision < a.s.getKV().FirstRev() {
+		if greq.Revision < a.s.KV().FirstRev() {
 			return dstorage.ErrCompacted
 		}
 	}

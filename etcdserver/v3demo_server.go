@@ -38,7 +38,6 @@ type RaftKV interface {
 	DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error)
 	Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error)
-	Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error)
 }
 
 type Lessor interface {
@@ -107,14 +106,6 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 	}
 	resp.Header.Revision = s.kv.Rev()
 	return resp, result.err
-}
-
-func (s *EtcdServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
-	h, err := s.be.Hash()
-	if err != nil {
-		return nil, err
-	}
-	return &pb.HashResponse{Header: &pb.ResponseHeader{Revision: s.kv.Rev()}, Hash: h}, nil
 }
 
 func (s *EtcdServer) LeaseCreate(ctx context.Context, r *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
@@ -225,6 +216,4 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 }
 
 // Watchable returns a watchable interface attached to the etcdserver.
-func (s *EtcdServer) Watchable() dstorage.Watchable {
-	return s.getKV()
-}
+func (s *EtcdServer) Watchable() dstorage.Watchable { return s.KV() }

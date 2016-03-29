@@ -1657,10 +1657,6 @@ type KVClient interface {
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
 	Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error)
-	// Hash returns the hash of local KV state for consistency checking purpose.
-	// This is designed for testing purpose. Do not use this in production when there
-	// are ongoing transactions.
-	Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error)
 }
 
 type kVClient struct {
@@ -1716,15 +1712,6 @@ func (c *kVClient) Compact(ctx context.Context, in *CompactionRequest, opts ...g
 	return out, nil
 }
 
-func (c *kVClient) Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error) {
-	out := new(HashResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.KV/Hash", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // Server API for KV service
 
 type KVServer interface {
@@ -1746,10 +1733,6 @@ type KVServer interface {
 	// Compact compacts the event history in etcd. User should compact the
 	// event history periodically, or it will grow infinitely.
 	Compact(context.Context, *CompactionRequest) (*CompactionResponse, error)
-	// Hash returns the hash of local KV state for consistency checking purpose.
-	// This is designed for testing purpose. Do not use this in production when there
-	// are ongoing transactions.
-	Hash(context.Context, *HashRequest) (*HashResponse, error)
 }
 
 func RegisterKVServer(s *grpc.Server, srv KVServer) {
@@ -1816,18 +1799,6 @@ func _KV_Compact_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return out, nil
 }
 
-func _KV_Hash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(HashRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(KVServer).Hash(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 var _KV_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "etcdserverpb.KV",
 	HandlerType: (*KVServer)(nil),
@@ -1851,10 +1822,6 @@ var _KV_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Compact",
 			Handler:    _KV_Compact_Handler,
-		},
-		{
-			MethodName: "Hash",
-			Handler:    _KV_Hash_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -2274,10 +2241,13 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 // Client API for Maintenance service
 
 type MaintenanceClient interface {
-	// TODO: move Hash from kv to Maintenance
-	Defragment(ctx context.Context, in *DefragmentRequest, opts ...grpc.CallOption) (*DefragmentResponse, error)
 	// Alarm activates, deactivates, and queries alarms regarding cluster health.
 	Alarm(ctx context.Context, in *AlarmRequest, opts ...grpc.CallOption) (*AlarmResponse, error)
+	Defragment(ctx context.Context, in *DefragmentRequest, opts ...grpc.CallOption) (*DefragmentResponse, error)
+	// Hash returns the hash of the local KV state for consistency checking purpose.
+	// This is designed for testing; do not use this in production when there
+	// are ongoing transactions.
+	Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error)
 }
 
 type maintenanceClient struct {
@@ -2286,15 +2256,6 @@ type maintenanceClient struct {
 
 func NewMaintenanceClient(cc *grpc.ClientConn) MaintenanceClient {
 	return &maintenanceClient{cc}
-}
-
-func (c *maintenanceClient) Defragment(ctx context.Context, in *DefragmentRequest, opts ...grpc.CallOption) (*DefragmentResponse, error) {
-	out := new(DefragmentResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/Defragment", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *maintenanceClient) Alarm(ctx context.Context, in *AlarmRequest, opts ...grpc.CallOption) (*AlarmResponse, error) {
@@ -2306,29 +2267,38 @@ func (c *maintenanceClient) Alarm(ctx context.Context, in *AlarmRequest, opts ..
 	return out, nil
 }
 
-// Server API for Maintenance service
-
-type MaintenanceServer interface {
-	// TODO: move Hash from kv to Maintenance
-	Defragment(context.Context, *DefragmentRequest) (*DefragmentResponse, error)
-	// Alarm activates, deactivates, and queries alarms regarding cluster health.
-	Alarm(context.Context, *AlarmRequest) (*AlarmResponse, error)
-}
-
-func RegisterMaintenanceServer(s *grpc.Server, srv MaintenanceServer) {
-	s.RegisterService(&_Maintenance_serviceDesc, srv)
-}
-
-func _Maintenance_Defragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(DefragmentRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(MaintenanceServer).Defragment(ctx, in)
+func (c *maintenanceClient) Defragment(ctx context.Context, in *DefragmentRequest, opts ...grpc.CallOption) (*DefragmentResponse, error) {
+	out := new(DefragmentResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/Defragment", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *maintenanceClient) Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error) {
+	out := new(HashResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.Maintenance/Hash", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for Maintenance service
+
+type MaintenanceServer interface {
+	// Alarm activates, deactivates, and queries alarms regarding cluster health.
+	Alarm(context.Context, *AlarmRequest) (*AlarmResponse, error)
+	Defragment(context.Context, *DefragmentRequest) (*DefragmentResponse, error)
+	// Hash returns the hash of the local KV state for consistency checking purpose.
+	// This is designed for testing; do not use this in production when there
+	// are ongoing transactions.
+	Hash(context.Context, *HashRequest) (*HashResponse, error)
+}
+
+func RegisterMaintenanceServer(s *grpc.Server, srv MaintenanceServer) {
+	s.RegisterService(&_Maintenance_serviceDesc, srv)
 }
 
 func _Maintenance_Alarm_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
@@ -2343,17 +2313,45 @@ func _Maintenance_Alarm_Handler(srv interface{}, ctx context.Context, dec func(i
 	return out, nil
 }
 
+func _Maintenance_Defragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(DefragmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(MaintenanceServer).Defragment(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _Maintenance_Hash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(HashRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(MaintenanceServer).Hash(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 var _Maintenance_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "etcdserverpb.Maintenance",
 	HandlerType: (*MaintenanceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "Alarm",
+			Handler:    _Maintenance_Alarm_Handler,
+		},
+		{
 			MethodName: "Defragment",
 			Handler:    _Maintenance_Defragment_Handler,
 		},
 		{
-			MethodName: "Alarm",
-			Handler:    _Maintenance_Alarm_Handler,
+			MethodName: "Hash",
+			Handler:    _Maintenance_Hash_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

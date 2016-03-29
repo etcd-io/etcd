@@ -1195,7 +1195,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		}
 		// commit v3 storage because WAL file before snapshot index
 		// could be removed after SaveSnap.
-		s.getKV().Commit()
+		s.KV().Commit()
 		// SaveSnap saves the snapshot and releases the locked wal files
 		// to the snapshot index.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
@@ -1334,7 +1334,7 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 	}
 }
 
-func (s *EtcdServer) getKV() dstorage.ConsistentWatchableKV { return s.kv }
+func (s *EtcdServer) KV() dstorage.ConsistentWatchableKV { return s.kv }
 func (s *EtcdServer) Backend() backend.Backend {
 	s.bemu.Lock()
 	defer s.bemu.Unlock()
