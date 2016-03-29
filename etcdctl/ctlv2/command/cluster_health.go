@@ -34,7 +34,7 @@ func NewClusterHealthCommand() cli.Command {
 		Usage:     "check the health of the etcd cluster",
 		ArgsUsage: " ",
 		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "forever", Usage: "forever check the health every 10 second until CTRL+C"},
+			cli.BoolFlag{Name: "forever, f", Usage: "forever check the health every 10 second until CTRL+C"},
 		},
 		Action: handleClusterHealth,
 	}

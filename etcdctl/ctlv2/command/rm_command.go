@@ -29,7 +29,7 @@ func NewRemoveCommand() cli.Command {
 		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "dir", Usage: "removes the key if it is an empty directory or a key-value pair"},
-			cli.BoolFlag{Name: "recursive", Usage: "removes the key and all child keys(if it is a directory)"},
+			cli.BoolFlag{Name: "recursive, r", Usage: "removes the key and all child keys(if it is a directory)"},
 			cli.StringFlag{Name: "with-value", Value: "", Usage: "previous value"},
 			cli.IntFlag{Name: "with-index", Value: 0, Usage: "previous index"},
 		},

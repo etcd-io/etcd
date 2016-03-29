@@ -32,9 +32,9 @@ func NewWatchCommand() cli.Command {
 		Usage:     "watch a key for changes",
 		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
-			cli.BoolFlag{Name: "forever", Usage: "forever watch a key until CTRL+C"},
+			cli.BoolFlag{Name: "forever, f", Usage: "forever watch a key until CTRL+C"},
 			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
-			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
+			cli.BoolFlag{Name: "recursive, r", Usage: "returns all values for key and child keys"},
 		},
 		Action: func(c *cli.Context) {
 			watchCommandFunc(c, mustNewKeyAPI(c))

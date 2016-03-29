@@ -31,7 +31,7 @@ func NewGetCommand() cli.Command {
 		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
-			cli.BoolFlag{Name: "quorum", Usage: "require quorum for get request"},
+			cli.BoolFlag{Name: "quorum, q", Usage: "require quorum for get request"},
 		},
 		Action: func(c *cli.Context) {
 			getCommandFunc(c, mustNewKeyAPI(c))
