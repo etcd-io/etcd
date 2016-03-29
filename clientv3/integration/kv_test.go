@@ -347,7 +347,11 @@ func TestKVCompact(t *testing.T) {
 		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
 	}
 
-	wc := clientv3.NewWatcher(clus.RandClient())
+	wcli := clus.RandClient()
+	// new watcher could precede receiving the compaction without quorum first
+	wcli.Get(ctx, "quorum-get")
+
+	wc := clientv3.NewWatcher(wcli)
 	defer wc.Close()
 	wchan := wc.Watch(ctx, "foo", clientv3.WithRev(3))
 
