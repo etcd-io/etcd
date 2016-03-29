@@ -140,11 +140,23 @@ func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r
 	go func() {
 		for {
 			select {
-			case mm := <-p.propc:
+			case mm := <-p.recvc:
 				if err := r.Process(ctx, mm); err != nil {
 					plog.Warningf("failed to process raft message (%v)", err)
 				}
-			case mm := <-p.recvc:
+			case <-p.stopc:
+				return
+			}
+		}
+	}()
+
+	// r.Process might block for processing proposal when there is no leader.
+	// Thus propc must be put into a separate routine with recvc to avoid blocking
+	// processing other raft messages.
+	go func() {
+		for {
+			select {
+			case mm := <-p.propc:
 				if err := r.Process(ctx, mm); err != nil {
 					plog.Warningf("failed to process raft message (%v)", err)
 				}
