@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -69,23 +70,22 @@ func testCtlV3Set(t *testing.T, cfg *etcdProcessClusterConfig, dialTimeout time.
 
 	key, value := "foo", "bar"
 
-	donec := make(chan struct{})
+	errc := make(chan error, 1)
+	expectTimeout := dialTimeout > 0 && dialTimeout <= time.Nanosecond
 	go func() {
+		defer close(errc)
 		if err := ctlV3Put(epc, key, value, dialTimeout); err != nil {
-			if dialTimeout > 0 && dialTimeout <= time.Nanosecond && isGRPCTimedout(err) { // timeout expected
-				donec <- struct{}{}
+			if expectTimeout && isGRPCTimedout(err) {
+				errc <- fmt.Errorf("put error (%v)", err)
 				return
 			}
-			t.Fatalf("put error (%v)", err)
 		}
 		if err := ctlV3Get(epc, key, value, dialTimeout, quorum); err != nil {
-			if dialTimeout > 0 && dialTimeout <= time.Nanosecond && isGRPCTimedout(err) { // timeout expected
-				donec <- struct{}{}
+			if expectTimeout && isGRPCTimedout(err) {
+				errc <- fmt.Errorf("get error (%v)", err)
 				return
 			}
-			t.Fatalf("get error (%v)", err)
 		}
-		donec <- struct{}{}
 	}()
 
 	select {
@@ -93,7 +93,10 @@ func testCtlV3Set(t *testing.T, cfg *etcdProcessClusterConfig, dialTimeout time.
 		if dialTimeout > 0 {
 			t.Fatalf("test timed out for %v", dialTimeout)
 		}
-	case <-donec:
+	case err := <-errc:
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -119,7 +122,7 @@ func ctlV3PrefixArgs(clus *etcdProcessCluster, dialTimeout time.Duration) []stri
 
 func ctlV3Put(clus *etcdProcessCluster, key, value string, dialTimeout time.Duration) error {
 	cmdArgs := append(ctlV3PrefixArgs(clus, dialTimeout), "put", key, value)
-	return spawnWithExpectedString(cmdArgs, "OK")
+	return spawnWithExpect(cmdArgs, "OK")
 }
 
 func ctlV3Get(clus *etcdProcessCluster, key, value string, dialTimeout time.Duration, quorum bool) error {
@@ -128,7 +131,7 @@ func ctlV3Get(clus *etcdProcessCluster, key, value string, dialTimeout time.Dura
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
 	// TODO: match by value. Currently it prints out both key and value in multi-lines.
-	return spawnWithExpectedString(cmdArgs, key)
+	return spawnWithExpect(cmdArgs, key)
 }
 
 func setupCtlV3Test(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {
