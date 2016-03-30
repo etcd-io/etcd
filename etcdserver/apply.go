@@ -391,6 +391,8 @@ func (a *applierV3backend) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevo
 
 func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
 	resp := &pb.AlarmResponse{}
+	oldCount := len(a.s.alarmStore.Get(ar.Alarm))
+
 	switch ar.Action {
 	case pb.AlarmRequest_GET:
 		resp.Alarms = a.s.alarmStore.Get(ar.Alarm)
@@ -400,13 +402,17 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 			break
 		}
 		resp.Alarms = append(resp.Alarms, m)
+		activated := oldCount == 0 && len(a.s.alarmStore.Get(m.Alarm)) == 1
+		if !activated {
+			break
+		}
+
 		switch m.Alarm {
 		case pb.AlarmType_NOSPACE:
-			if len(a.s.alarmStore.Get(m.Alarm)) == 1 {
-				a.s.applyV3 = newApplierV3Capped(a)
-			}
+			plog.Warningf("alarm raised %+v", m)
+			a.s.applyV3 = newApplierV3Capped(a)
 		default:
-			plog.Warningf("unimplemented alarm activation (%+v)", m)
+			plog.Errorf("unimplemented alarm activation (%+v)", m)
 		}
 	case pb.AlarmRequest_DEACTIVATE:
 		m := a.s.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
@@ -414,8 +420,17 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 			break
 		}
 		resp.Alarms = append(resp.Alarms, m)
-		if m.Alarm == pb.AlarmType_NOSPACE && len(a.s.alarmStore.Get(ar.Alarm)) == 0 {
+		deactivated := oldCount > 0 && len(a.s.alarmStore.Get(ar.Alarm)) == 0
+		if !deactivated {
+			break
+		}
+
+		switch m.Alarm {
+		case pb.AlarmType_NOSPACE:
+			plog.Infof("alarm disarmed %+v", ar)
 			a.s.applyV3 = newQuotaApplierV3(a.s, &applierV3backend{a.s})
+		default:
+			plog.Errorf("unimplemented alarm deactivation (%+v)", m)
 		}
 	default:
 		return nil, nil
