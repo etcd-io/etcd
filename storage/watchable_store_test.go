@@ -28,7 +28,7 @@ import (
 
 func TestWatch(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b, &lease.FakeLessor{})
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
 
 	defer func() {
 		s.store.Close()
@@ -50,7 +50,7 @@ func TestWatch(t *testing.T) {
 
 func TestNewWatcherCancel(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b, &lease.FakeLessor{})
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
 
 	defer func() {
 		s.store.Close()
@@ -82,7 +82,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
-		store:    NewStore(b, &lease.FakeLessor{}),
+		store:    NewStore(b, &lease.FakeLessor{}, nil),
 		unsynced: newWatcherGroup(),
 
 		// to make the test not crash from assigning to nil map.
@@ -137,7 +137,7 @@ func TestSyncWatchers(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 
 	s := &watchableStore{
-		store:    NewStore(b, &lease.FakeLessor{}),
+		store:    NewStore(b, &lease.FakeLessor{}, nil),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
 	}
@@ -220,7 +220,7 @@ func TestSyncWatchers(t *testing.T) {
 // TestWatchCompacted tests a watcher that watches on a compacted revision.
 func TestWatchCompacted(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b, &lease.FakeLessor{})
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
 
 	defer func() {
 		s.store.Close()
@@ -257,7 +257,7 @@ func TestWatchCompacted(t *testing.T) {
 
 func TestWatchFutureRev(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b, &lease.FakeLessor{})
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
 
 	defer func() {
 		s.store.Close()
@@ -297,7 +297,7 @@ func TestWatchFutureRev(t *testing.T) {
 // TestWatchBatchUnsynced tests batching on unsynced watchers
 func TestWatchBatchUnsynced(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := newWatchableStore(b, &lease.FakeLessor{})
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
 
 	oldMaxRevs := watchBatchMaxRevs
 	defer func() {

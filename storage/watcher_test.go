@@ -29,7 +29,7 @@ import (
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -81,7 +81,7 @@ func TestWatcherWatchID(t *testing.T) {
 // and returns events with matching prefixes.
 func TestWatcherWatchPrefix(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -155,7 +155,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
-	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}))
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
 	defer cleanup(s, b, tmpPath)
 
 	w := s.NewWatchStream()
@@ -198,7 +198,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
 	s := &watchableStore{
-		store:    NewStore(b, &lease.FakeLessor{}),
+		store:    NewStore(b, &lease.FakeLessor{}, nil),
 		unsynced: newWatcherGroup(),
 		synced:   newWatcherGroup(),
 	}

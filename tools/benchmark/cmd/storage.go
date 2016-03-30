@@ -33,7 +33,7 @@ var (
 
 func initStorage() {
 	be := backend.New("storage-bench", time.Duration(batchInterval), batchLimit)
-	s = storage.NewStore(be, &lease.FakeLessor{})
+	s = storage.NewStore(be, &lease.FakeLessor{}, nil)
 	os.Remove("storage-bench") // boltDB has an opened fd, so removing the file is ok
 }
 

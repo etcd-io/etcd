@@ -371,6 +371,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	srv.be = backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
 	srv.lessor = lease.NewLessor(srv.be)
 	srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
+	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
 	srv.authStore = auth.NewAuthStore(srv.be)
 	if h := cfg.AutoCompactionRetention; h != 0 {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
@@ -601,6 +602,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	if err := s.kv.Restore(newbe); err != nil {
 		plog.Panicf("restore KV error: %v", err)
 	}
+	s.consistIndex.setConsistentIndex(s.kv.ConsistentIndex())
 
 	// Closing old backend might block until all the txns
 	// on the backend are finished.
@@ -997,8 +999,6 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 	var shouldstop bool
 	for i := range es {
 		e := es[i]
-		// set the consistent index of current executing entry
-		s.consistIndex.setConsistentIndex(e.Index)
 		switch e.Type {
 		case raftpb.EntryNormal:
 			// raft state machine may generate noop entry when leader confirmation.
@@ -1020,6 +1020,12 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 				req := raftReq.V2
 				s.w.Trigger(req.ID, s.applyRequest(*req))
 			} else {
+				// do not re-apply applied entries.
+				if e.Index <= s.consistIndex.ConsistentIndex() {
+					break
+				}
+				// set the consistent index of current executing entry
+				s.consistIndex.setConsistentIndex(e.Index)
 				ar := s.applyV3Request(&raftReq)
 				if ar.err != ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
 					s.w.Trigger(raftReq.ID, ar)

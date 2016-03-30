@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"encoding/binary"
 	"errors"
 	"log"
 	"math"
@@ -40,6 +41,7 @@ var (
 	markBytePosition       = markedRevBytesLen - 1
 	markTombstone     byte = 't'
 
+	consistentIndexKeyName  = []byte("consistent_index")
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
@@ -49,8 +51,17 @@ var (
 	ErrCanceled      = errors.New("storage: watcher is canceled")
 )
 
+// ConsistentIndexGetter is an interface that wraps the Get method.
+// Consistent index is the offset of an entry in a consistent replicated log.
+type ConsistentIndexGetter interface {
+	// ConsistentIndex returns the consistent index of current executing entry.
+	ConsistentIndex() uint64
+}
+
 type store struct {
 	mu sync.Mutex // guards the following
+
+	ig ConsistentIndexGetter
 
 	b       backend.Backend
 	kvindex index
@@ -72,9 +83,10 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // storage pkg. It should only be used for testing externally.
-func NewStore(b backend.Backend, le lease.Lessor) *store {
+func NewStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *store {
 	s := &store{
 		b:       b,
+		ig:      ig,
 		kvindex: newTreeIndex(),
 
 		le: le,
@@ -155,6 +167,7 @@ func (s *store) TxnBegin() int64 {
 	s.currentRev.sub = 0
 	s.tx = s.b.BatchTx()
 	s.tx.Lock()
+	s.saveIndex()
 
 	s.txnID = rand.Int63()
 	return s.txnID
@@ -544,6 +557,31 @@ func (s *store) getChanges() []storagepb.KeyValue {
 	changes := s.changes
 	s.changes = make([]storagepb.KeyValue, 0, 128)
 	return changes
+}
+
+func (s *store) saveIndex() {
+	if s.ig == nil {
+		return
+	}
+	tx := s.tx
+	// TODO: avoid this unnecessary allocation
+	bs := make([]byte, 8)
+	binary.BigEndian.PutUint64(bs, s.ig.ConsistentIndex())
+	// put the index into the underlying backend
+	// tx has been locked in TxnBegin, so there is no need to lock it again
+	tx.UnsafePut(metaBucketName, consistentIndexKeyName, bs)
+}
+
+func (s *store) ConsistentIndex() uint64 {
+	// TODO: cache index in a uint64 field?
+	tx := s.b.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	_, vs := tx.UnsafeRange(metaBucketName, consistentIndexKeyName, nil, 0)
+	if len(vs) == 0 {
+		return 0
+	}
+	return binary.BigEndian.Uint64(vs[0])
 }
 
 // appendMarkTombstone appends tombstone mark to normal revision bytes.
