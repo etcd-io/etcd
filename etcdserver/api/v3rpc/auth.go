@@ -29,7 +29,11 @@ func NewAuthServer(s *etcdserver.EtcdServer) *AuthServer {
 }
 
 func (as *AuthServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
-	return as.authenticator.AuthEnable(ctx, r)
+	resp, err := as.authenticator.AuthEnable(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
 }
 
 func (as *AuthServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
@@ -68,7 +72,11 @@ func (as *AuthServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest)
 }
 
 func (as *AuthServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
-	return as.authenticator.UserAdd(ctx, r)
+	resp, err := as.authenticator.UserAdd(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
 }
 
 func (as *AuthServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {

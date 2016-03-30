@@ -21,12 +21,8 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/storage"
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -260,22 +256,4 @@ func checkRequestUnion(u *pb.RequestUnion) error {
 		return nil
 	}
 	return nil
-}
-
-func togRPCError(err error) error {
-	switch err {
-	case storage.ErrCompacted:
-		return rpctypes.ErrCompacted
-	case storage.ErrFutureRev:
-		return rpctypes.ErrFutureRev
-	case lease.ErrLeaseNotFound:
-		return rpctypes.ErrLeaseNotFound
-	// TODO: handle error from raft and timeout
-	case etcdserver.ErrRequestTooLarge:
-		return rpctypes.ErrRequestTooLarge
-	case etcdserver.ErrNoSpace:
-		return rpctypes.ErrNoSpace
-	default:
-		return grpc.Errorf(codes.Internal, err.Error())
-	}
 }
