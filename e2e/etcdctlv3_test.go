@@ -127,8 +127,7 @@ func ctlV3Get(clus *etcdProcessCluster, key, value string, dialTimeout time.Dura
 	if !quorum {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
-	// TODO: match by value. Currently it prints out both key and value in multi-lines.
-	return spawnWithExpectedString(cmdArgs, key)
+	return spawnWithExpect(cmdArgs, value)
 }
 
 func setupCtlV3Test(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {
