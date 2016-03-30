@@ -453,7 +453,7 @@ message AlarmRequest {
   }
   AlarmAction action = 1;
   // MemberID is the member raising the alarm request
-  int64 memberID = 2;
+  uint64 memberID = 2;
   AlarmType alarm = 3;
 }
 

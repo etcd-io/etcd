@@ -1028,7 +1028,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 				plog.Errorf("applying raft message exceeded backend quota")
 				go func() {
 					a := &pb.AlarmRequest{
-						MemberID: int64(s.ID()),
+						MemberID: uint64(s.ID()),
 						Action:   pb.AlarmRequest_ACTIVATE,
 						Alarm:    pb.AlarmType_NOSPACE,
 					}

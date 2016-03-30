@@ -1205,7 +1205,7 @@ func (m *DefragmentResponse) GetHeader() *ResponseHeader {
 type AlarmRequest struct {
 	Action AlarmRequest_AlarmAction `protobuf:"varint,1,opt,name=action,proto3,enum=etcdserverpb.AlarmRequest_AlarmAction" json:"action,omitempty"`
 	// MemberID is the member raising the alarm request
-	MemberID int64     `protobuf:"varint,2,opt,name=memberID,proto3" json:"memberID,omitempty"`
+	MemberID uint64    `protobuf:"varint,2,opt,name=memberID,proto3" json:"memberID,omitempty"`
 	Alarm    AlarmType `protobuf:"varint,3,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
 }
 
@@ -10085,7 +10085,7 @@ func (m *AlarmRequest) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.MemberID |= (int64(b) & 0x7F) << shift
+				m.MemberID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
