@@ -31,6 +31,12 @@ type Quota interface {
 	Remaining() int64
 }
 
+type passthroughQuota struct{}
+
+func (*passthroughQuota) Available(interface{}) bool { return true }
+func (*passthroughQuota) Cost(interface{}) int       { return 0 }
+func (*passthroughQuota) Remaining() int64           { return 1 }
+
 type backendQuota struct {
 	s               *EtcdServer
 	maxBackendBytes int64
@@ -44,7 +50,20 @@ const (
 )
 
 func NewBackendQuota(s *EtcdServer) Quota {
-	return &backendQuota{s, backend.InitialMmapSize}
+	if s.cfg.QuotaBackendBytes < 0 {
+		// disable quotas if negative
+		plog.Warningf("disabling backend quota")
+		return &passthroughQuota{}
+	}
+	if s.cfg.QuotaBackendBytes == 0 {
+		// use default size if no quota size given
+		return &backendQuota{s, backend.DefaultQuotaBytes}
+	}
+	if s.cfg.QuotaBackendBytes > backend.MaxQuotaBytes {
+		plog.Warningf("backend quota %v exceeds maximum quota %v; using maximum", s.cfg.QuotaBackendBytes, backend.MaxQuotaBytes)
+		return &backendQuota{s, backend.MaxQuotaBytes}
+	}
+	return &backendQuota{s, s.cfg.QuotaBackendBytes}
 }
 
 func (b *backendQuota) Available(v interface{}) bool {

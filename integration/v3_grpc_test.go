@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/storage/backend"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -461,16 +460,16 @@ func TestV3Hash(t *testing.T) {
 
 // TestV3StorageQuotaAPI tests the V3 server respects quotas at the API layer
 func TestV3StorageQuotaAPI(t *testing.T) {
-	oldSize := backend.InitialMmapSize
-	defer func() {
-		backend.InitialMmapSize = oldSize
-		testutil.AfterTest(t)
-	}()
+	defer testutil.AfterTest(t)
 
-	backend.InitialMmapSize = 64 * 1024
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+
+	clus.Members[0].QuotaBackendBytes = 64 * 1024
+	clus.Members[0].Stop(t)
+	clus.Members[0].Restart(t)
+
 	defer clus.Terminate(t)
-	kvc := toGRPC(clus.RandClient()).KV
+	kvc := toGRPC(clus.Client(0)).KV
 
 	key := []byte("abc")
 
@@ -506,11 +505,7 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply
 func TestV3StorageQuotaApply(t *testing.T) {
-	oldSize := backend.InitialMmapSize
-	defer func() {
-		backend.InitialMmapSize = oldSize
-		testutil.AfterTest(t)
-	}()
+	testutil.AfterTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
@@ -518,7 +513,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	kvc1 := toGRPC(clus.Client(1)).KV
 
 	// force a node to have a different quota
-	backend.InitialMmapSize = 64 * 1024
+	clus.Members[0].QuotaBackendBytes = 64 * 1024
 	clus.Members[0].Stop(t)
 	clus.Members[0].Restart(t)
 	clus.waitLeader(t, clus.Members)
@@ -552,7 +547,6 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	}
 
 	// reset large quota node to ensure alarm persisted
-	backend.InitialMmapSize = oldSize
 	clus.Members[1].Stop(t)
 	clus.Members[1].Restart(t)
 	clus.waitLeader(t, clus.Members)

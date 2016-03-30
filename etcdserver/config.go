@@ -51,6 +51,7 @@ type ServerConfig struct {
 	BootstrapTimeout time.Duration
 
 	AutoCompactionRetention int
+	QuotaBackendBytes       int64
 
 	StrictReconfigCheck bool
 
