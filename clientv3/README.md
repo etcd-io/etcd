@@ -40,6 +40,11 @@ if err != nil {
 // use the response
 ```
 
+etcd uses go's `vendor` directory to manage external dependencies. If `clientv3` is imported
+outside of etcd, simply copy `clientv3` to the `vendor` directory or use tools like godep to
+manage your own dependency, as in [vendor directories](https://golang.org/cmd/go/#hdr-Vendor_Directories).
+For more detail, please read [Go vendor design](https://golang.org/s/go15vendor).
+
 ## Error Handling
 
 etcd client returns 2 types of errors:

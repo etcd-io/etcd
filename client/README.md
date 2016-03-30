@@ -4,6 +4,11 @@ etcd/client is the Go client library for etcd.
 
 [![GoDoc](https://godoc.org/github.com/coreos/etcd/client?status.png)](https://godoc.org/github.com/coreos/etcd/client)
 
+etcd uses go's `vendor` directory to manage external dependencies. If `client` is imported
+outside of etcd, simply copy `client` to the `vendor` directory or use tools like godep to
+manage your own dependency, as in [vendor directories](https://golang.org/cmd/go/#hdr-Vendor_Directories).
+For more detail, please read [Go vendor design](https://golang.org/s/go15vendor).
+
 ## Install
 
 ```bash
