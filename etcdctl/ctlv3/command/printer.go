@@ -35,6 +35,8 @@ type printer interface {
 	Watch(v3.WatchResponse)
 
 	MemberList(v3.MemberListResponse)
+
+	Alarm(v3.AlarmResponse)
 }
 
 func NewPrinter(printerType string, isHex bool) printer {
@@ -96,6 +98,12 @@ func (s *simplePrinter) Watch(resp v3.WatchResponse) {
 	}
 }
 
+func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
+	for _, e := range resp.Alarms {
+		fmt.Printf("%+v\n", e)
+	}
+}
+
 func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs", "Is Leader"})
@@ -130,6 +138,7 @@ func (p *jsonPrinter) Get(r v3.GetResponse) {
 func (p *jsonPrinter) Put(r v3.PutResponse)               { printJSON(r) }
 func (p *jsonPrinter) Txn(r v3.TxnResponse)               { printJSON(r) }
 func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }
+func (p *jsonPrinter) Alarm(r v3.AlarmResponse)           { printJSON(r) }
 func (p *jsonPrinter) MemberList(r v3.MemberListResponse) { printJSON(r) }
 
 func printJSON(v interface{}) {
@@ -167,6 +176,10 @@ func (p *pbPrinter) Watch(r v3.WatchResponse) {
 	for _, ev := range r.Events {
 		printPB((*spb.Event)(ev))
 	}
+}
+
+func (p *pbPrinter) Alarm(r v3.AlarmResponse) {
+	printPB((*pb.AlarmResponse)(&r))
 }
 
 func (pb *pbPrinter) MemberList(r v3.MemberListResponse) {
