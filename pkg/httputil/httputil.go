@@ -7,7 +7,11 @@
 // Package httputil provides HTTP utility functions.
 package httputil
 
-import "net/http"
+import (
+	"io"
+	"io/ioutil"
+	"net/http"
+)
 
 func RequestCanceler(rt http.RoundTripper, req *http.Request) func() {
 	ch := make(chan struct{})
@@ -16,4 +20,12 @@ func RequestCanceler(rt http.RoundTripper, req *http.Request) func() {
 	return func() {
 		close(ch)
 	}
+}
+
+// GracefulClose drains http.Response.Body until it hits EOF
+// and closes it. This prevents TCP/TLS connections from closing,
+// therefore available for reuse.
+func GracefulClose(resp *http.Response) {
+	io.Copy(ioutil.Discard, resp.Body)
+	resp.Body.Close()
 }
