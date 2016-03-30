@@ -1095,6 +1095,8 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 				ok := s.cluster.UpdateAttributes(id, attr)
 				if !ok {
 					return Response{}
+				} else {
+					return f(s.store.Get(r.Path, r.Recursive, r.Sorted))
 				}
 			}
 			if r.Path == path.Join(StoreClusterPrefix, "version") {
