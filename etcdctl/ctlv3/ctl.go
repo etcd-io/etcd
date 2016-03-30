@@ -66,6 +66,7 @@ func init() {
 		command.NewDelCommand(),
 		command.NewTxnCommand(),
 		command.NewCompactionCommand(),
+		command.NewAlarmCommand(),
 		command.NewDefragCommand(),
 		command.NewWatchCommand(),
 		command.NewVersionCommand(),

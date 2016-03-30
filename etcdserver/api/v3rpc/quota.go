@@ -40,7 +40,7 @@ func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
 		return nil
 	}
 	req := &pb.AlarmRequest{
-		MemberID: int64(qa.id),
+		MemberID: uint64(qa.id),
 		Action:   pb.AlarmRequest_ACTIVATE,
 		Alarm:    pb.AlarmType_NOSPACE,
 	}

@@ -184,7 +184,7 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Lease = NewLease(client)
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
-	client.Maintenance = &maintenance{c: client}
+	client.Maintenance = NewMaintenance(client)
 	if cfg.Logger != nil {
 		logger.Set(cfg.Logger)
 	} else {

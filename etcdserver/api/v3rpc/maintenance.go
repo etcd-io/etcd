@@ -61,6 +61,5 @@ func (s *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.Ha
 }
 
 func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
-	plog.Warningf("alarming %+v", ar)
 	return ms.a.Alarm(ctx, ar)
 }
