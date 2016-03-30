@@ -222,7 +222,9 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if rev <= s.compactMainRev {
-		return nil, ErrCompacted
+		ch := make(chan struct{})
+		s.fifoSched.Schedule(func(context.Context) { close(ch) })
+		return ch, ErrCompacted
 	}
 	if rev > s.currentRev.main {
 		return nil, ErrFutureRev
