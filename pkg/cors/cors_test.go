@@ -91,7 +91,7 @@ func TestCORSHandler(t *testing.T) {
 		return http.Header{
 			"Access-Control-Allow-Methods": []string{"POST, GET, OPTIONS, PUT, DELETE"},
 			"Access-Control-Allow-Origin":  []string{origin},
-			"Access-Control-Allow-Headers": []string{"accept, content-type"},
+			"Access-Control-Allow-Headers": []string{"accept, content-type, authorization"},
 		}
 	}
 	tests := []struct {

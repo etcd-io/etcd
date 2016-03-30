@@ -28,7 +28,7 @@ func TestFIFOSchedule(t *testing.T) {
 	jobCreator := func(i int) Job {
 		return func(ctx context.Context) {
 			if next != i {
-				t.Fatalf("job#%d: got %d, want %d", next, i)
+				t.Fatalf("job#%d: got %d, want %d", i, next, i)
 			}
 			next = i + 1
 		}
