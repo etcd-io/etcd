@@ -53,7 +53,7 @@ type Lessor interface {
 
 type Authenticator interface {
 	AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error)
-	UserAdd(ctx context.Context, r *pb.UserAddRequest) (*pb.UserAddResponse, error)
+	UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -180,12 +180,12 @@ func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*
 	return result.resp.(*pb.AuthEnableResponse), result.err
 }
 
-func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.UserAddRequest) (*pb.UserAddResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{UserAdd: r})
+func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserAdd: r})
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.UserAddResponse), result.err
+	return result.resp.(*pb.AuthUserAddResponse), result.err
 }
 
 func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {

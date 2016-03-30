@@ -32,7 +32,7 @@ type InternalRaftRequest struct {
 	LeaseCreate *LeaseCreateRequest `protobuf:"bytes,8,opt,name=lease_create" json:"lease_create,omitempty"`
 	LeaseRevoke *LeaseRevokeRequest `protobuf:"bytes,9,opt,name=lease_revoke" json:"lease_revoke,omitempty"`
 	AuthEnable  *AuthEnableRequest  `protobuf:"bytes,10,opt,name=auth_enable" json:"auth_enable,omitempty"`
-	UserAdd     *UserAddRequest     `protobuf:"bytes,11,opt,name=user_add" json:"user_add,omitempty"`
+	AuthUserAdd *AuthUserAddRequest `protobuf:"bytes,11,opt,name=auth_user_add" json:"auth_user_add,omitempty"`
 	Alarm       *AlarmRequest       `protobuf:"bytes,12,opt,name=alarm" json:"alarm,omitempty"`
 }
 
@@ -161,11 +161,11 @@ func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n9
 	}
-	if m.UserAdd != nil {
+	if m.AuthUserAdd != nil {
 		data[i] = 0x5a
 		i++
-		i = encodeVarintRaftInternal(data, i, uint64(m.UserAdd.Size()))
-		n10, err := m.UserAdd.MarshalTo(data[i:])
+		i = encodeVarintRaftInternal(data, i, uint64(m.AuthUserAdd.Size()))
+		n10, err := m.AuthUserAdd.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -271,8 +271,8 @@ func (m *InternalRaftRequest) Size() (n int) {
 		l = m.AuthEnable.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
-	if m.UserAdd != nil {
-		l = m.UserAdd.Size()
+	if m.AuthUserAdd != nil {
+		l = m.AuthUserAdd.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
 	if m.Alarm != nil {
@@ -648,7 +648,7 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 11:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UserAdd", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field AuthUserAdd", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -672,10 +672,10 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.UserAdd == nil {
-				m.UserAdd = &UserAddRequest{}
+			if m.AuthUserAdd == nil {
+				m.AuthUserAdd = &AuthUserAddRequest{}
 			}
-			if err := m.UserAdd.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.AuthUserAdd.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

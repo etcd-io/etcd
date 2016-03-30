@@ -50,7 +50,7 @@ type applierV3 interface {
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 	AuthEnable() (*pb.AuthEnableResponse, error)
-	UserAdd(ua *pb.UserAddRequest) (*pb.UserAddResponse, error)
+	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 }
 
 type applierV3backend struct {
@@ -78,8 +78,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.Alarm(r.Alarm)
 	case r.AuthEnable != nil:
 		ar.resp, ar.err = s.applyV3.AuthEnable()
-	case r.UserAdd != nil:
-		ar.resp, ar.err = s.applyV3.UserAdd(r.UserAdd)
+	case r.AuthUserAdd != nil:
+		ar.resp, ar.err = s.applyV3.UserAdd(r.AuthUserAdd)
 	default:
 		panic("not implemented")
 	}
@@ -452,7 +452,7 @@ func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
 	return &pb.AuthEnableResponse{}, nil
 }
 
-func (a *applierV3backend) UserAdd(r *pb.UserAddRequest) (*pb.UserAddResponse, error) {
+func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
 	return a.s.AuthStore().UserAdd(r)
 }
 

@@ -42,56 +42,56 @@ func (as *AuthServer) Authenticate(ctx context.Context, r *pb.AuthenticateReques
 	return nil, nil
 }
 
-func (as *AuthServer) RoleAdd(ctx context.Context, r *pb.RoleAddRequest) (*pb.RoleAddResponse, error) {
+func (as *AuthServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) RoleDelete(ctx context.Context, r *pb.RoleDeleteRequest) (*pb.RoleDeleteResponse, error) {
+func (as *AuthServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) RoleGet(ctx context.Context, r *pb.RoleGetRequest) (*pb.RoleGetResponse, error) {
+func (as *AuthServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) RoleRevoke(ctx context.Context, r *pb.RoleRevokeRequest) (*pb.RoleRevokeResponse, error) {
+func (as *AuthServer) RoleRevoke(ctx context.Context, r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) RoleGrant(ctx context.Context, r *pb.RoleGrantRequest) (*pb.RoleGrantResponse, error) {
+func (as *AuthServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) UserAdd(ctx context.Context, r *pb.UserAddRequest) (*pb.UserAddResponse, error) {
+func (as *AuthServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
 	return as.authenticator.UserAdd(ctx, r)
 }
 
-func (as *AuthServer) UserDelete(ctx context.Context, r *pb.UserDeleteRequest) (*pb.UserDeleteResponse, error) {
+func (as *AuthServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) UserGet(ctx context.Context, r *pb.UserGetRequest) (*pb.UserGetResponse, error) {
+func (as *AuthServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) UserGrant(ctx context.Context, r *pb.UserGrantRequest) (*pb.UserGrantResponse, error) {
+func (as *AuthServer) UserGrant(ctx context.Context, r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) UserRevoke(ctx context.Context, r *pb.UserRevokeRequest) (*pb.UserRevokeResponse, error) {
+func (as *AuthServer) UserRevoke(ctx context.Context, r *pb.AuthUserRevokeRequest) (*pb.AuthUserRevokeResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
 
-func (as *AuthServer) UserChangePassword(ctx context.Context, r *pb.UserChangePasswordRequest) (*pb.UserChangePasswordResponse, error) {
+func (as *AuthServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
 	plog.Info("not implemented yet")
 	return nil, nil
 }
