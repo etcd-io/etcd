@@ -103,6 +103,14 @@ func (a *AlarmStore) Deactivate(id types.ID, at pb.AlarmType) *pb.AlarmMember {
 func (a *AlarmStore) Get(at pb.AlarmType) (ret []*pb.AlarmMember) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if at == pb.AlarmType_NONE {
+		for _, t := range a.types {
+			for _, m := range t {
+				ret = append(ret, m)
+			}
+		}
+		return ret
+	}
 	for _, m := range a.types[at] {
 		ret = append(ret, m)
 	}
