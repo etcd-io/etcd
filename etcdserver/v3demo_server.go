@@ -94,11 +94,11 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Compaction: r})
-	if err != nil {
-		return nil, err
-	}
 	if r.Physical && result.physc != nil {
 		<-result.physc
+	}
+	if err != nil {
+		return nil, err
 	}
 	resp := result.resp.(*pb.CompactionResponse)
 	if resp == nil {
