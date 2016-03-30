@@ -62,7 +62,7 @@ func TestScheduleCompaction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b, tmpPath := backend.NewDefaultTmpBackend()
-		s := NewStore(b, &lease.FakeLessor{})
+		s := NewStore(b, &lease.FakeLessor{}, nil)
 		tx := s.b.BatchTx()
 
 		tx.Lock()

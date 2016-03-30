@@ -101,4 +101,6 @@ type Watchable interface {
 // this entry are skipped and return empty response.
 type ConsistentWatchableKV interface {
 	WatchableKV
+	// ConsistentIndex returns the current consistent index of the KV.
+	ConsistentIndex() uint64
 }
