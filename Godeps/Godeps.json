@@ -38,10 +38,6 @@
 			"Rev": "b5232bb2934f606f9f27a1305f1eea224e8e8b88"
 		},
 		{
-			"ImportPath": "github.com/coreos/gexpect",
-			"Rev": "5173270e159f5aa8fbc999dc7e3dcb50f4098a69"
-		},
-		{
 			"ImportPath": "github.com/coreos/go-semver/semver",
 			"Rev": "568e959cd89871e61434c1143528d9162da89ef2"
 		},
