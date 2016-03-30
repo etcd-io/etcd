@@ -149,8 +149,15 @@ func (tt *tester) runLoop() {
 		}
 		plog.Printf("[round#%d] compacted storage", i)
 
-		// TODO: make sure compaction is finished
-		time.Sleep(30 * time.Second)
+		plog.Printf("[round#%d] check compaction at %d", i, revToCompact)
+		if err := tt.cluster.checkCompact(revToCompact); err != nil {
+			plog.Printf("[round#%d] checkCompact error (%v)", i, err)
+			if err := tt.cleanup(i, 0); err != nil {
+				plog.Printf("[round#%d] cleanup error: %v", i, err)
+				return
+			}
+		}
+		plog.Printf("[round#%d] confirmed compaction at %d", i, revToCompact)
 	}
 }
 

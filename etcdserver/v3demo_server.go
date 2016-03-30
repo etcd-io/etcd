@@ -97,6 +97,9 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 	if err != nil {
 		return nil, err
 	}
+	if r.Physical && result.physc != nil {
+		<-result.physc
+	}
 	resp := result.resp.(*pb.CompactionResponse)
 	if resp == nil {
 		resp = &pb.CompactionResponse{}

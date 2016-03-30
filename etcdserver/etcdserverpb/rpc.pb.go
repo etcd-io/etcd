@@ -765,6 +765,10 @@ func (m *TxnResponse) GetResponses() []*ResponseUnion {
 // revision.
 type CompactionRequest struct {
 	Revision int64 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
+	// physical is set so the RPC will wait until the compaction is physically
+	// applied to the local database such that compacted entries are totally
+	// removed from the backing store.
+	Physical bool `protobuf:"varint,2,opt,name=physical,proto3" json:"physical,omitempty"`
 }
 
 func (m *CompactionRequest) Reset()         { *m = CompactionRequest{} }
@@ -3411,6 +3415,16 @@ func (m *CompactionRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Revision))
 	}
+	if m.Physical {
+		data[i] = 0x10
+		i++
+		if m.Physical {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
 	return i, nil
 }
 
@@ -5317,6 +5331,9 @@ func (m *CompactionRequest) Size() (n int) {
 	_ = l
 	if m.Revision != 0 {
 		n += 1 + sovRpc(uint64(m.Revision))
+	}
+	if m.Physical {
+		n += 2
 	}
 	return n
 }
@@ -7660,6 +7677,26 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Physical", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Physical = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])

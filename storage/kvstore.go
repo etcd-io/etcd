@@ -218,14 +218,14 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	return n, rev, nil
 }
 
-func (s *store) Compact(rev int64) error {
+func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if rev <= s.compactMainRev {
-		return ErrCompacted
+		return nil, ErrCompacted
 	}
 	if rev > s.currentRev.main {
-		return ErrFutureRev
+		return nil, ErrFutureRev
 	}
 
 	start := time.Now()
@@ -243,8 +243,9 @@ func (s *store) Compact(rev int64) error {
 	s.b.ForceCommit()
 
 	keep := s.kvindex.Compact(rev)
-
+	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
+		defer close(ch)
 		select {
 		case <-ctx.Done():
 			return
@@ -256,7 +257,7 @@ func (s *store) Compact(rev int64) error {
 	s.fifoSched.Schedule(j)
 
 	indexCompactionPauseDurations.Observe(float64(time.Now().Sub(start) / time.Millisecond))
-	return nil
+	return ch, nil
 }
 
 func (s *store) Hash() (uint32, error) {
