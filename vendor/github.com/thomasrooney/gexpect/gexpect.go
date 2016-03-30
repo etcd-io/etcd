@@ -1,3 +1,5 @@
+// +build !windows
+
 package gexpect
 
 import (
@@ -13,6 +15,11 @@ import (
 
 	shell "github.com/kballard/go-shellquote"
 	"github.com/kr/pty"
+)
+
+var (
+	ErrEmptySearch = errors.New("empty search string")
+	ErrTimeout     = errors.New("expect timed out")
 )
 
 type ExpectSubprocess struct {
@@ -141,7 +148,13 @@ func Spawn(command string) (*ExpectSubprocess, error) {
 }
 
 func (expect *ExpectSubprocess) Close() error {
-	return expect.Cmd.Process.Kill()
+	if err := expect.Cmd.Process.Kill(); err != nil {
+		return err
+	}
+	if err := expect.buf.f.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (expect *ExpectSubprocess) AsyncInteractChannels() (send chan string, receive chan string) {
@@ -202,6 +215,15 @@ func (expect *ExpectSubprocess) expectRegexFind(regex string, output bool) ([]st
 
 	if len(result) == 0 {
 		err = fmt.Errorf("ExpectRegex didn't find regex '%v'.", regex)
+	} else {
+		// The number in pairs[1] is an index of a first
+		// character outside the whole match
+		putBackIdx := pairs[1]
+		if len(stringIndexedInto) > putBackIdx {
+			stringToPutBack := stringIndexedInto[putBackIdx:]
+			stringIndexedInto = stringIndexedInto[:putBackIdx]
+			expect.buf.PutBack([]byte(stringToPutBack))
+		}
 	}
 	return result, stringIndexedInto, err
 }
@@ -282,8 +304,11 @@ func (expect *ExpectSubprocess) ExpectTimeout(searchString string, timeout time.
 }
 
 func (expect *ExpectSubprocess) Expect(searchString string) (e error) {
-	chunk := make([]byte, len(searchString)*2)
 	target := len(searchString)
+	if target < 1 {
+		return ErrEmptySearch
+	}
+	chunk := make([]byte, target*2)
 	if expect.outputBuffer != nil {
 		expect.outputBuffer = expect.outputBuffer[0:]
 	}
@@ -294,7 +319,6 @@ func (expect *ExpectSubprocess) Expect(searchString string) (e error) {
 
 	for {
 		n, err := expect.buf.Read(chunk)
-
 		if err != nil {
 			return err
 		}
@@ -355,26 +379,25 @@ func (expect *ExpectSubprocess) Interact() {
 }
 
 func (expect *ExpectSubprocess) ReadUntil(delim byte) ([]byte, error) {
-	join := make([]byte, 1, 512)
+	join := make([]byte, 0, 512)
 	chunk := make([]byte, 255)
 
 	for {
-
 		n, err := expect.buf.Read(chunk)
-
-		if err != nil {
-			return join, err
-		}
 
 		for i := 0; i < n; i++ {
 			if chunk[i] == delim {
 				if len(chunk) > i+1 {
-					expect.buf.PutBack(chunk[i+1:])
+					expect.buf.PutBack(chunk[i+1:n])
 				}
 				return join, nil
 			} else {
 				join = append(join, chunk[i])
 			}
+		}
+
+		if err != nil {
+			return join, err
 		}
 	}
 }
@@ -385,10 +408,7 @@ func (expect *ExpectSubprocess) Wait() error {
 
 func (expect *ExpectSubprocess) ReadLine() (string, error) {
 	str, err := expect.ReadUntil('\n')
-	if err != nil {
-		return "", err
-	}
-	return string(str), nil
+	return string(str), err
 }
 
 func _start(expect *ExpectSubprocess) (*ExpectSubprocess, error) {

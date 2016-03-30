@@ -25,7 +25,7 @@ import (
 
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/gexpect"
+	"github.com/thomasrooney/gexpect"
 )
 
 const (

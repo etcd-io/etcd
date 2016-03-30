@@ -35,9 +35,9 @@ It makes it simpler to create and control other terminal applications.
 `AsyncInteractChannels` spawns two go routines to pipe into and from `stdout`/`stdin`, allowing for some usecases to be a little simpler.
 
 	child := gexpect.spawn("sh")
-	sender, reciever := child.AsyncInteractChannels()
+	sender, receiver := child.AsyncInteractChannels()
 	sender <- "echo Hello World\n" // Send to stdin
-	line, open := <- reciever // Recieve a line from stdout/stderr
+	line, open := <- receiver // Recieve a line from stdout/stderr
 	// When the subprocess stops (e.g. with child.Close()) , receiver is closed
 	if open {
 		fmt.Printf("Received %s", line)]
