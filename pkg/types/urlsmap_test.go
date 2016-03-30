@@ -98,7 +98,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-// This is only tested in Go1.5+ because Go1.4 doesn't support literal IPv6 address with zone in
+// TestNewURLsMapIPV6 is only tested in Go1.5+ because Go1.4 doesn't support literal IPv6 address with zone in
 // URI (https://github.com/golang/go/issues/6530).
 func TestNewURLsMapIPV6(t *testing.T) {
 	c, err := NewURLsMap("mem1=http://[2001:db8::1]:2380,mem1=http://[fe80::6e40:8ff:feb1:58e4%25en0]:2380,mem2=http://[fe80::92e2:baff:fe7c:3224%25ext0]:2380")

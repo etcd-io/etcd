@@ -243,15 +243,15 @@ func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
 
 func etcdctlSet(clus *etcdProcessCluster, key, value string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "set", key, value)
-	return spawnWithExpectedString(cmdArgs, value)
+	return spawnWithExpect(cmdArgs, value)
 }
 
 func etcdctlMk(clus *etcdProcessCluster, key, value string, first bool) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "mk", key, value)
 	if first {
-		return spawnWithExpectedString(cmdArgs, value)
+		return spawnWithExpect(cmdArgs, value)
 	}
-	return spawnWithExpectedString(cmdArgs, "Error:  105: Key already exists")
+	return spawnWithExpect(cmdArgs, "Error:  105: Key already exists")
 }
 
 func etcdctlGet(clus *etcdProcessCluster, key, value string, quorum bool) error {
@@ -259,13 +259,13 @@ func etcdctlGet(clus *etcdProcessCluster, key, value string, quorum bool) error 
 	if quorum {
 		cmdArgs = append(cmdArgs, "--quorum")
 	}
-	return spawnWithExpectedString(cmdArgs, value)
+	return spawnWithExpect(cmdArgs, value)
 }
 
 func etcdctlRm(clus *etcdProcessCluster, key, value string, first bool) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "rm", key)
 	if first {
-		return spawnWithExpectedString(cmdArgs, "PrevNode.Value: "+value)
+		return spawnWithExpect(cmdArgs, "PrevNode.Value: "+value)
 	}
 	return spawnWithExpect(cmdArgs, "Error:  100: Key not found")
 }
@@ -292,32 +292,32 @@ func etcdctlWatch(clus *etcdProcessCluster, key, value string, noSync bool) <-ch
 
 func etcdctlRoleAdd(clus *etcdProcessCluster, role string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "role", "add", role)
-	return spawnWithExpectedString(cmdArgs, role)
+	return spawnWithExpect(cmdArgs, role)
 }
 
 func etcdctlRoleList(clus *etcdProcessCluster, expectedRole string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "role", "list")
-	return spawnWithExpectedString(cmdArgs, expectedRole)
+	return spawnWithExpect(cmdArgs, expectedRole)
 }
 
 func etcdctlUserAdd(clus *etcdProcessCluster, user, pass string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "user", "add", user+":"+pass)
-	return spawnWithExpectedString(cmdArgs, "User "+user+" created")
+	return spawnWithExpect(cmdArgs, "User "+user+" created")
 }
 
 func etcdctlUserGrant(clus *etcdProcessCluster, user, role string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "user", "grant", "--roles", role, user)
-	return spawnWithExpectedString(cmdArgs, "User "+user+" updated")
+	return spawnWithExpect(cmdArgs, "User "+user+" updated")
 }
 
 func etcdctlUserGet(clus *etcdProcessCluster, user string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "user", "get", user)
-	return spawnWithExpectedString(cmdArgs, "User: "+user)
+	return spawnWithExpect(cmdArgs, "User: "+user)
 }
 
 func etcdctlUserList(clus *etcdProcessCluster, expectedUser string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "user", "list")
-	return spawnWithExpectedString(cmdArgs, expectedUser)
+	return spawnWithExpect(cmdArgs, expectedUser)
 }
 
 func mustEtcdctl(t *testing.T) {

@@ -400,7 +400,7 @@ func (ivt *IntervalTree) MaxHeight() int {
 	return int((2 * math.Log2(float64(ivt.Len()+1))) + 0.5)
 }
 
-// InternalVisitor is used on tree searchs; return false to stop searching.
+// IntervalVisitor is used on tree searchs; return false to stop searching.
 type IntervalVisitor func(n *IntervalValue) bool
 
 // Visit calls a visitor function on every tree node intersecting the given interval.

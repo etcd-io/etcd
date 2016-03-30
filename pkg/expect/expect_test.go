@@ -12,39 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package schedule
+// build !windows
+
+package expect
 
 import (
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
-func TestFIFOSchedule(t *testing.T) {
-	s := NewFIFOScheduler()
-	defer s.Stop()
-
-	next := 0
-	jobCreator := func(i int) Job {
-		return func(ctx context.Context) {
-			if next != i {
-				t.Fatalf("job#%d: got %d, want %d", i, next, i)
-			}
-			next = i + 1
-		}
+func TestEcho(t *testing.T) {
+	ep, err := NewExpect("/bin/echo", "hello world")
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	var jobs []Job
-	for i := 0; i < 100; i++ {
-		jobs = append(jobs, jobCreator(i))
+	l, eerr := ep.Expect("world")
+	if eerr != nil {
+		t.Fatal(eerr)
 	}
-
-	for _, j := range jobs {
-		s.Schedule(j)
+	wstr := "hello world"
+	if l[:len(wstr)] != wstr {
+		t.Fatalf(`got "%v", expected "%v"`, l, wstr)
 	}
-
-	s.WaitFinish(100)
-	if s.Scheduled() != 100 {
-		t.Errorf("scheduled = %d, want %d", s.Scheduled(), 100)
+	if cerr := ep.Close(); cerr != nil {
+		t.Fatal(cerr)
+	}
+	if _, eerr = ep.Expect("..."); eerr == nil {
+		t.Fatalf("expected error on closed expect process")
 	}
 }

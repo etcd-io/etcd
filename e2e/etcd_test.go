@@ -23,9 +23,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos/etcd/pkg/expect"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/gexpect"
 )
 
 const (
@@ -190,15 +190,15 @@ func cURLPrefixArgsUseTLS(clus *etcdProcessCluster, key string) []string {
 
 func cURLPut(clus *etcdProcessCluster, key, val, expected string) error {
 	args := append(cURLPrefixArgs(clus, key), "-XPUT", "-d", "value="+val)
-	return spawnWithExpectedString(args, expected)
+	return spawnWithExpect(args, expected)
 }
 
 func cURLGet(clus *etcdProcessCluster, key, expected string) error {
-	return spawnWithExpectedString(cURLPrefixArgs(clus, key), expected)
+	return spawnWithExpect(cURLPrefixArgs(clus, key), expected)
 }
 
 func cURLGetUseTLS(clus *etcdProcessCluster, key, expected string) error {
-	return spawnWithExpectedString(cURLPrefixArgsUseTLS(clus, key), expected)
+	return spawnWithExpect(cURLPrefixArgsUseTLS(clus, key), expected)
 }
 
 type etcdProcessCluster struct {
@@ -208,7 +208,7 @@ type etcdProcessCluster struct {
 
 type etcdProcess struct {
 	cfg   *etcdProcessConfig
-	proc  *gexpect.ExpectSubprocess
+	proc  *expect.ExpectProcess
 	donec chan struct{} // closed when Interact() terminates
 }
 
@@ -260,17 +260,8 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 				// rs = "proxy: listening for client requests on"
 				rs = "proxy: endpoints found"
 			}
-			ok, err := etcdp.proc.ExpectRegex(rs)
-			if err != nil {
-				readyC <- err
-			} else if !ok {
-				readyC <- fmt.Errorf("couldn't get expected output: '%s'", rs)
-			} else {
-				readyC <- nil
-			}
-			etcdp.proc.ReadLine()
-			etcdp.proc.Interact() // this blocks(leaks) if another goroutine is reading
-			etcdp.proc.ReadLine() // wait for leaky goroutine to accept an EOF
+			_, err := etcdp.proc.Expect(rs)
+			readyC <- err
 			close(etcdp.donec)
 		}(epc.procs[i])
 	}
@@ -424,10 +415,10 @@ func (epc *etcdProcessCluster) Close() (err error) {
 	return err
 }
 
-func spawnCmd(args []string) (*gexpect.ExpectSubprocess, error) {
-	// redirect stderr to stdout since gexpect only uses stdout
-	cmd := `/bin/sh -c "` + strings.Join(args, " ") + ` 2>&1 "`
-	return gexpect.Spawn(cmd)
+func spawnCmd(args []string) (*expect.ExpectProcess, error) {
+	// redirect stderr to stdout since expect only uses stdout
+	cmdargs := append([]string{"-c"}, strings.Join(append(args, "2>&1"), " "))
+	return expect.NewExpect("/bin/sh", cmdargs...)
 }
 
 func spawnWithExpect(args []string, expected string) error {
@@ -435,32 +426,10 @@ func spawnWithExpect(args []string, expected string) error {
 	if err != nil {
 		return err
 	}
-	ok, err := proc.ExpectRegex(expected)
+	_, err = proc.Expect(expected)
 	perr := proc.Close()
 	if err != nil {
 		return err
-	}
-	if !ok {
-		return fmt.Errorf("couldn't get expected output: '%s'", expected)
-	}
-	return perr
-}
-
-// spawnWithExpectedString compares outputs in string format.
-// This is useful when gexpect does not match regex correctly with
-// some UTF-8 format characters.
-func spawnWithExpectedString(args []string, expected string) error {
-	proc, err := spawnCmd(args)
-	if err != nil {
-		return err
-	}
-	s, err := proc.ReadLine()
-	perr := proc.Close()
-	if err != nil {
-		return err
-	}
-	if !strings.Contains(s, expected) {
-		return fmt.Errorf("expected %q, got %q", expected, s)
 	}
 	return perr
 }
