@@ -97,6 +97,8 @@ func userAddCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+
+	fmt.Printf("User %s created\n", args[0])
 }
 
 // userDeleteCommandFunc executes the "user delete" command.
@@ -109,4 +111,6 @@ func userDeleteCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+
+	fmt.Printf("User %s deleted\n", args[0])
 }

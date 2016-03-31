@@ -52,4 +52,6 @@ func authEnableCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+
+	fmt.Println("Authentication Enabled")
 }
