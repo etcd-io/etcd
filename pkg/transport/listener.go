@@ -23,7 +23,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net"
 	"net/http"
@@ -31,6 +30,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/coreos/etcd/pkg/tlsutil"
 )
 
 func NewListener(addr string, scheme string, tlscfg *tls.Config) (net.Listener, error) {
@@ -176,28 +177,13 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		return nil, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
 	}
 
-	cert, err := ioutil.ReadFile(info.CertFile)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := ioutil.ReadFile(info.KeyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	parseFunc := info.parseFunc
-	if parseFunc == nil {
-		parseFunc = tls.X509KeyPair
-	}
-
-	tlsCert, err := parseFunc(cert, key)
+	tlsCert, err := tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := &tls.Config{
-		Certificates: []tls.Certificate{tlsCert},
+		Certificates: []tls.Certificate{*tlsCert},
 		MinVersion:   tls.VersionTLS10,
 	}
 	return cfg, nil
@@ -229,7 +215,7 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 
 	CAFiles := info.cafiles()
 	if len(CAFiles) > 0 {
-		cp, err := newCertPool(CAFiles)
+		cp, err := tlsutil.NewCertPool(CAFiles)
 		if err != nil {
 			return nil, err
 		}
@@ -255,7 +241,7 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 
 	CAFiles := info.cafiles()
 	if len(CAFiles) > 0 {
-		cfg.RootCAs, err = newCertPool(CAFiles)
+		cfg.RootCAs, err = tlsutil.NewCertPool(CAFiles)
 		if err != nil {
 			return nil, err
 		}
@@ -265,31 +251,4 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 		cfg.InsecureSkipVerify = true
 	}
 	return cfg, nil
-}
-
-// newCertPool creates x509 certPool with provided CA files.
-func newCertPool(CAFiles []string) (*x509.CertPool, error) {
-	certPool := x509.NewCertPool()
-
-	for _, CAFile := range CAFiles {
-		pemByte, err := ioutil.ReadFile(CAFile)
-		if err != nil {
-			return nil, err
-		}
-
-		for {
-			var block *pem.Block
-			block, pemByte = pem.Decode(pemByte)
-			if block == nil {
-				break
-			}
-			cert, err := x509.ParseCertificate(block.Bytes)
-			if err != nil {
-				return nil, err
-			}
-			certPool.AddCert(cert)
-		}
-	}
-
-	return certPool, nil
 }
