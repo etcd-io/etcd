@@ -422,11 +422,20 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 }
 
 func spawnWithExpect(args []string, expected string) error {
+	return spawnWithExpects(args, []string{expected}...)
+}
+
+func spawnWithExpects(args []string, xs ...string) error {
 	proc, err := spawnCmd(args)
 	if err != nil {
 		return err
 	}
-	_, err = proc.Expect(expected)
+	for _, txt := range xs {
+		_, err = proc.Expect(txt)
+		if err != nil {
+			return err
+		}
+	}
 	perr := proc.Close()
 	if err != nil {
 		return err
