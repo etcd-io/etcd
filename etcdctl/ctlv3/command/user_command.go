@@ -32,6 +32,7 @@ func NewUserCommand() *cobra.Command {
 
 	ac.AddCommand(NewUserAddCommand())
 	ac.AddCommand(NewUserDeleteCommand())
+	ac.AddCommand(NewUserChangePasswordCommand())
 
 	return ac
 }
@@ -60,6 +61,18 @@ func NewUserDeleteCommand() *cobra.Command {
 	}
 }
 
+func NewUserChangePasswordCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "passwd <user name>",
+		Short: "change password of user",
+		Run:   userChangePasswordCommandFunc,
+	}
+
+	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "read password from stdin instead of interactive terminal")
+
+	return &cmd
+}
+
 // userAddCommandFunc executes the "user add" command.
 func userAddCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
@@ -71,26 +84,7 @@ func userAddCommandFunc(cmd *cobra.Command, args []string) {
 	if !passwordInteractive {
 		fmt.Scanf("%s", &password)
 	} else {
-		prompt1 := fmt.Sprintf("Password of %s: ", args[0])
-		password1, err1 := speakeasy.Ask(prompt1)
-		if err1 != nil {
-			ExitWithError(ExitBadArgs, fmt.Errorf("failed to ask password: %s.", err1))
-		}
-
-		if len(password1) == 0 {
-			ExitWithError(ExitBadArgs, fmt.Errorf("empty password"))
-		}
-
-		prompt2 := fmt.Sprintf("Type password of %s again for confirmation: ", args[0])
-		password2, err2 := speakeasy.Ask(prompt2)
-		if err2 != nil {
-			ExitWithError(ExitBadArgs, fmt.Errorf("failed to ask password: %s.", err2))
-		}
-
-		if strings.Compare(password1, password2) != 0 {
-			ExitWithError(ExitBadArgs, fmt.Errorf("given passwords are different."))
-		}
-		password = password1
+		password = readPasswordInteractive(args[0])
 	}
 
 	_, err := mustClientFromCmd(cmd).Auth.UserAdd(context.TODO(), args[0], password)
@@ -113,4 +107,50 @@ func userDeleteCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("User %s deleted\n", args[0])
+}
+
+// userChangePasswordCommandFunc executes the "user passwd" command.
+func userChangePasswordCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user passwd command requires user name as its argument."))
+	}
+
+	var password string
+
+	if !passwordInteractive {
+		fmt.Scanf("%s", &password)
+	} else {
+		password = readPasswordInteractive(args[0])
+	}
+
+	_, err := mustClientFromCmd(cmd).Auth.UserChangePassword(context.TODO(), args[0], password)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Println("Password updated")
+}
+
+func readPasswordInteractive(name string) string {
+	prompt1 := fmt.Sprintf("Password of %s: ", name)
+	password1, err1 := speakeasy.Ask(prompt1)
+	if err1 != nil {
+		ExitWithError(ExitBadArgs, fmt.Errorf("failed to ask password: %s.", err1))
+	}
+
+	if len(password1) == 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("empty password"))
+	}
+
+	prompt2 := fmt.Sprintf("Type password of %s again for confirmation: ", name)
+	password2, err2 := speakeasy.Ask(prompt2)
+	if err2 != nil {
+		ExitWithError(ExitBadArgs, fmt.Errorf("failed to ask password: %s.", err2))
+	}
+
+	if strings.Compare(password1, password2) != 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("given passwords are different."))
+	}
+
+	return password1
 }
