@@ -47,6 +47,9 @@ type AuthStore interface {
 
 	// UserDelete deletes a user
 	UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
+
+	// UserChangePassword changes a password of a user
+	UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
 }
 
 type authStore struct {
@@ -122,6 +125,42 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 	plog.Noticef("deleted a user: %s", r.Name)
 
 	return &pb.AuthUserDeleteResponse{}, nil
+}
+
+func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
+	// TODO(mitake): measure the cost of bcrypt.GenerateFromPassword()
+	// If the cost is too high, we should move the encryption to outside of the raft
+	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), bcrypt.DefaultCost)
+	if err != nil {
+		plog.Errorf("failed to hash password: %s", err)
+		return nil, err
+	}
+
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
+	if len(vs) != 1 {
+		return &pb.AuthUserChangePasswordResponse{}, ErrUserNotFound
+	}
+
+	updatedUser := authpb.User{
+		Name:     []byte(r.Name),
+		Password: hashed,
+	}
+
+	marshaledUser, merr := updatedUser.Marshal()
+	if merr != nil {
+		plog.Errorf("failed to marshal a new user data: %s", merr)
+		return nil, merr
+	}
+
+	tx.UnsafePut(authUsersBucketName, []byte(r.Name), marshaledUser)
+
+	plog.Noticef("changed a password of a user: %s", r.Name)
+
+	return &pb.AuthUserChangePasswordResponse{}, nil
 }
 
 func NewAuthStore(be backend.Backend) *authStore {

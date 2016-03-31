@@ -56,6 +56,7 @@ type applierV3 interface {
 	AuthEnable() (*pb.AuthEnableResponse, error)
 	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
+	UserChangePassword(ua *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
 }
 
 type applierV3backend struct {
@@ -87,6 +88,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.UserAdd(r.AuthUserAdd)
 	case r.AuthUserDelete != nil:
 		ar.resp, ar.err = s.applyV3.UserDelete(r.AuthUserDelete)
+	case r.AuthUserChangePassword != nil:
+		ar.resp, ar.err = s.applyV3.UserChangePassword(r.AuthUserChangePassword)
 	default:
 		panic("not implemented")
 	}
@@ -480,6 +483,10 @@ func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddRes
 
 func (a *applierV3backend) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
 	return a.s.AuthStore().UserDelete(r)
+}
+
+func (a *applierV3backend) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
+	return a.s.AuthStore().UserChangePassword(r)
 }
 
 type quotaApplierV3 struct {

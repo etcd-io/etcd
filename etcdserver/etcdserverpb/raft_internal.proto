@@ -28,8 +28,9 @@ message InternalRaftRequest {
   AuthEnableRequest auth_enable = 10;
   AuthUserAddRequest auth_user_add = 11;
   AuthUserDeleteRequest auth_user_delete = 12;
+  AuthUserChangePasswordRequest auth_user_change_password = 13;
 
-  AlarmRequest alarm = 13;
+  AlarmRequest alarm = 14;
 }
 
 message EmptyResponse {

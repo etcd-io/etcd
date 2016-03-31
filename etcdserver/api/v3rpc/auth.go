@@ -103,6 +103,9 @@ func (as *AuthServer) UserRevoke(ctx context.Context, r *pb.AuthUserRevokeReques
 }
 
 func (as *AuthServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
-	plog.Info("not implemented yet")
-	return nil, nil
+	resp, err := as.authenticator.UserChangePassword(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
 }

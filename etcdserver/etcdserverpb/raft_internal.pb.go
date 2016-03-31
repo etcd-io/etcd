@@ -22,19 +22,20 @@ var _ = math.Inf
 // An InternalRaftRequest is the union of all requests which can be
 // sent via raft.
 type InternalRaftRequest struct {
-	ID             uint64                 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
-	V2             *Request               `protobuf:"bytes,2,opt,name=v2" json:"v2,omitempty"`
-	Range          *RangeRequest          `protobuf:"bytes,3,opt,name=range" json:"range,omitempty"`
-	Put            *PutRequest            `protobuf:"bytes,4,opt,name=put" json:"put,omitempty"`
-	DeleteRange    *DeleteRangeRequest    `protobuf:"bytes,5,opt,name=delete_range" json:"delete_range,omitempty"`
-	Txn            *TxnRequest            `protobuf:"bytes,6,opt,name=txn" json:"txn,omitempty"`
-	Compaction     *CompactionRequest     `protobuf:"bytes,7,opt,name=compaction" json:"compaction,omitempty"`
-	LeaseCreate    *LeaseCreateRequest    `protobuf:"bytes,8,opt,name=lease_create" json:"lease_create,omitempty"`
-	LeaseRevoke    *LeaseRevokeRequest    `protobuf:"bytes,9,opt,name=lease_revoke" json:"lease_revoke,omitempty"`
-	AuthEnable     *AuthEnableRequest     `protobuf:"bytes,10,opt,name=auth_enable" json:"auth_enable,omitempty"`
-	AuthUserAdd    *AuthUserAddRequest    `protobuf:"bytes,11,opt,name=auth_user_add" json:"auth_user_add,omitempty"`
-	AuthUserDelete *AuthUserDeleteRequest `protobuf:"bytes,12,opt,name=auth_user_delete" json:"auth_user_delete,omitempty"`
-	Alarm          *AlarmRequest          `protobuf:"bytes,13,opt,name=alarm" json:"alarm,omitempty"`
+	ID                     uint64                         `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	V2                     *Request                       `protobuf:"bytes,2,opt,name=v2" json:"v2,omitempty"`
+	Range                  *RangeRequest                  `protobuf:"bytes,3,opt,name=range" json:"range,omitempty"`
+	Put                    *PutRequest                    `protobuf:"bytes,4,opt,name=put" json:"put,omitempty"`
+	DeleteRange            *DeleteRangeRequest            `protobuf:"bytes,5,opt,name=delete_range" json:"delete_range,omitempty"`
+	Txn                    *TxnRequest                    `protobuf:"bytes,6,opt,name=txn" json:"txn,omitempty"`
+	Compaction             *CompactionRequest             `protobuf:"bytes,7,opt,name=compaction" json:"compaction,omitempty"`
+	LeaseCreate            *LeaseCreateRequest            `protobuf:"bytes,8,opt,name=lease_create" json:"lease_create,omitempty"`
+	LeaseRevoke            *LeaseRevokeRequest            `protobuf:"bytes,9,opt,name=lease_revoke" json:"lease_revoke,omitempty"`
+	AuthEnable             *AuthEnableRequest             `protobuf:"bytes,10,opt,name=auth_enable" json:"auth_enable,omitempty"`
+	AuthUserAdd            *AuthUserAddRequest            `protobuf:"bytes,11,opt,name=auth_user_add" json:"auth_user_add,omitempty"`
+	AuthUserDelete         *AuthUserDeleteRequest         `protobuf:"bytes,12,opt,name=auth_user_delete" json:"auth_user_delete,omitempty"`
+	AuthUserChangePassword *AuthUserChangePasswordRequest `protobuf:"bytes,13,opt,name=auth_user_change_password" json:"auth_user_change_password,omitempty"`
+	Alarm                  *AlarmRequest                  `protobuf:"bytes,14,opt,name=alarm" json:"alarm,omitempty"`
 }
 
 func (m *InternalRaftRequest) Reset()         { *m = InternalRaftRequest{} }
@@ -182,15 +183,25 @@ func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n11
 	}
-	if m.Alarm != nil {
+	if m.AuthUserChangePassword != nil {
 		data[i] = 0x6a
 		i++
-		i = encodeVarintRaftInternal(data, i, uint64(m.Alarm.Size()))
-		n12, err := m.Alarm.MarshalTo(data[i:])
+		i = encodeVarintRaftInternal(data, i, uint64(m.AuthUserChangePassword.Size()))
+		n12, err := m.AuthUserChangePassword.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n12
+	}
+	if m.Alarm != nil {
+		data[i] = 0x72
+		i++
+		i = encodeVarintRaftInternal(data, i, uint64(m.Alarm.Size()))
+		n13, err := m.Alarm.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n13
 	}
 	return i, nil
 }
@@ -288,6 +299,10 @@ func (m *InternalRaftRequest) Size() (n int) {
 	}
 	if m.AuthUserDelete != nil {
 		l = m.AuthUserDelete.Size()
+		n += 1 + l + sovRaftInternal(uint64(l))
+	}
+	if m.AuthUserChangePassword != nil {
+		l = m.AuthUserChangePassword.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
 	if m.Alarm != nil {
@@ -728,6 +743,39 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 13:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AuthUserChangePassword", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaftInternal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRaftInternal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.AuthUserChangePassword == nil {
+				m.AuthUserChangePassword = &AuthUserChangePasswordRequest{}
+			}
+			if err := m.AuthUserChangePassword.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 14:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Alarm", wireType)
 			}
