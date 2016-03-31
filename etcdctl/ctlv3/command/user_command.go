@@ -31,6 +31,7 @@ func NewUserCommand() *cobra.Command {
 	}
 
 	ac.AddCommand(NewUserAddCommand())
+	ac.AddCommand(NewUserDeleteCommand())
 
 	return ac
 }
@@ -49,6 +50,14 @@ func NewUserAddCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "read password from stdin instead of interactive terminal")
 
 	return &cmd
+}
+
+func NewUserDeleteCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete <user name>",
+		Short: "delete a user",
+		Run:   userDeleteCommandFunc,
+	}
 }
 
 // userAddCommandFunc executes the "user add" command.
@@ -85,6 +94,18 @@ func userAddCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	_, err := mustClientFromCmd(cmd).Auth.UserAdd(context.TODO(), args[0], password)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+}
+
+// userDeleteCommandFunc executes the "user delete" command.
+func userDeleteCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user delete command requires user name as its argument."))
+	}
+
+	_, err := mustClientFromCmd(cmd).Auth.UserDelete(context.TODO(), args[0])
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

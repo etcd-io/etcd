@@ -489,6 +489,7 @@ message AuthUserGetRequest {
 }
 
 message AuthUserDeleteRequest {
+  string name = 1;
 }
 
 message AuthUserChangePasswordRequest {
