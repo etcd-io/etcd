@@ -39,6 +39,8 @@ func togRPCError(err error) error {
 		return rpctypes.ErrNoSpace
 	case auth.ErrUserAlreadyExist:
 		return rpctypes.ErrUserAlreadyExist
+	case auth.ErrUserNotFound:
+		return rpctypes.ErrUserNotFound
 	default:
 		return grpc.Errorf(codes.Internal, err.Error())
 	}

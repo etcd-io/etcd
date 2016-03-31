@@ -32,6 +32,7 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "auth")
 
 	ErrUserAlreadyExist = errors.New("auth: user already exists")
+	ErrUserNotFound     = errors.New("auth: user not found")
 )
 
 type AuthStore interface {
@@ -43,6 +44,9 @@ type AuthStore interface {
 
 	// UserAdd adds a new user
 	UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
+
+	// UserDelete deletes a user
+	UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
 }
 
 type authStore struct {
@@ -101,6 +105,23 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 	plog.Noticef("added a new user: %s", r.Name)
 
 	return &pb.AuthUserAddResponse{}, nil
+}
+
+func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
+	if len(vs) != 1 {
+		return &pb.AuthUserDeleteResponse{}, ErrUserNotFound
+	}
+
+	tx.UnsafeDelete(authUsersBucketName, []byte(r.Name))
+
+	plog.Noticef("deleted a user: %s", r.Name)
+
+	return &pb.AuthUserDeleteResponse{}, nil
 }
 
 func NewAuthStore(be backend.Backend) *authStore {

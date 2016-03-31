@@ -38,4 +38,5 @@ var (
 	ErrRequestTooLarge = grpc.Errorf(codes.InvalidArgument, "etcdserver: request is too large")
 
 	ErrUserAlreadyExist = grpc.Errorf(codes.FailedPrecondition, "etcdserver: user name already exists")
+	ErrUserNotFound     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: user name not found")
 )

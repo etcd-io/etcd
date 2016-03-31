@@ -55,6 +55,7 @@ type applierV3 interface {
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 	AuthEnable() (*pb.AuthEnableResponse, error)
 	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
+	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
 }
 
 type applierV3backend struct {
@@ -84,6 +85,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.AuthEnable()
 	case r.AuthUserAdd != nil:
 		ar.resp, ar.err = s.applyV3.UserAdd(r.AuthUserAdd)
+	case r.AuthUserDelete != nil:
+		ar.resp, ar.err = s.applyV3.UserDelete(r.AuthUserDelete)
 	default:
 		panic("not implemented")
 	}
@@ -473,6 +476,10 @@ func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
 
 func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
 	return a.s.AuthStore().UserAdd(r)
+}
+
+func (a *applierV3backend) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
+	return a.s.AuthStore().UserDelete(r)
 }
 
 type quotaApplierV3 struct {
