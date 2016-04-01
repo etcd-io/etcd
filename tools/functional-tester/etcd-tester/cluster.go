@@ -327,18 +327,21 @@ func (c *cluster) compactKV(rev int64) error {
 		return nil
 	}
 
-	for _, u := range c.GRPCURLs {
+	for i, u := range c.GRPCURLs {
 		conn, err = grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 		if err != nil {
 			continue
 		}
 		kvc := pb.NewKVClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		_, err = kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev, Physical: true})
 		cancel()
 		conn.Close()
-		if err == nil {
-			return nil
+		if err != nil {
+			if strings.Contains(err.Error(), "required revision has been compacted") && i > 0 {
+				plog.Printf("%s is already compacted with %d (%v)", u, rev, err)
+				err = nil // in case compact was requested more than once
+			}
 		}
 	}
 	return err
