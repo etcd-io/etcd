@@ -75,7 +75,7 @@ func main() {
 		fmt.Println("Start dupmping log entries from snapshot.")
 	}
 
-	w, err := wal.Open(walDir(*from), walsnap)
+	w, err := wal.OpenForRead(walDir(*from), walsnap)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}
