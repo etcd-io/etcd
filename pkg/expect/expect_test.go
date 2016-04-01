@@ -16,9 +16,7 @@
 
 package expect
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestEcho(t *testing.T) {
 	ep, err := NewExpect("/bin/echo", "hello world")
@@ -38,5 +36,20 @@ func TestEcho(t *testing.T) {
 	}
 	if _, eerr = ep.Expect("..."); eerr == nil {
 		t.Fatalf("expected error on closed expect process")
+	}
+}
+
+func TestSendLine(t *testing.T) {
+	ep, err := NewExpect("/usr/bin/tr", "a", "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ep.Close()
+	if err := ep.SendLine("a"); err != nil {
+		t.Fatal(err)
+	}
+	_, eerr := ep.Expect("b")
+	if eerr != nil {
+		t.Fatal(eerr)
 	}
 }

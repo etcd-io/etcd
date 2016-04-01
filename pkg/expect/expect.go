@@ -17,6 +17,7 @@ package expect
 
 import (
 	"bufio"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -110,5 +111,10 @@ func (ep *ExpectProcess) Close() error {
 		err = nil
 	}
 	ep.cmd = nil
+	return err
+}
+
+func (ep *ExpectProcess) SendLine(command string) error {
+	_, err := io.WriteString(ep.fpty, command+"\r\n")
 	return err
 }
