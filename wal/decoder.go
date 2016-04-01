@@ -60,17 +60,8 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 	}
 
 	l, err := readInt64(d.brs[0])
-	if err == io.EOF {
-		d.brs = d.brs[1:]
-		d.lastValidOff = 0
-		return d.decodeRecord(rec)
-	}
-
-	if err != nil {
-		return err
-	}
-	if l == 0 {
-		// hit preallocated space
+	if err == io.EOF || (err == nil && l == 0) {
+		// hit end of file or preallocated space
 		d.brs = d.brs[1:]
 		if len(d.brs) == 0 {
 			return io.EOF
@@ -78,6 +69,10 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 		d.lastValidOff = 0
 		return d.decodeRecord(rec)
 	}
+	if err != nil {
+		return err
+	}
+
 	data := make([]byte, l)
 	if _, err = io.ReadFull(d.brs[0], data); err != nil {
 		// ReadFull returns io.EOF only if no bytes were read

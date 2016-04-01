@@ -533,3 +533,69 @@ func TestReleaseLockTo(t *testing.T) {
 		t.Errorf("lockindex = %d, want %d", lockIndex, 10)
 	}
 }
+
+// TestTailWriteNoSlackSpace ensures that tail writes append if there's no preallocated space.
+func TestTailWriteNoSlackSpace(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	// create initial WAL
+	w, err := Create(p, []byte("metadata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// write some entries
+	for i := 1; i <= 5; i++ {
+		es := []raftpb.Entry{{Index: uint64(i), Term: 1, Data: []byte{byte(i)}}}
+		if err = w.Save(raftpb.HardState{Term: 1}, es); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// get rid of slack space by truncating file
+	off, serr := w.tail().Seek(0, os.SEEK_CUR)
+	if serr != nil {
+		t.Fatal(serr)
+	}
+	if terr := w.tail().Truncate(off); terr != nil {
+		t.Fatal(terr)
+	}
+	w.Close()
+
+	// open, write more
+	w, err = Open(p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ents, rerr := w.ReadAll()
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if len(ents) != 5 {
+		t.Fatalf("got entries %+v, expected 5 entries", ents)
+	}
+	// write more entries
+	for i := 6; i <= 10; i++ {
+		es := []raftpb.Entry{{Index: uint64(i), Term: 1, Data: []byte{byte(i)}}}
+		if err = w.Save(raftpb.HardState{Term: 1}, es); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w.Close()
+
+	// confirm all writes
+	w, err = Open(p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ents, rerr = w.ReadAll()
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if len(ents) != 10 {
+		t.Fatalf("got entries %+v, expected 10 entries", ents)
+	}
+	w.Close()
+}
