@@ -25,14 +25,17 @@ import (
 )
 
 var (
-	enableFlagKey       = []byte("authEnabled")
+	enableFlagKey = []byte("authEnabled")
+
 	authBucketName      = []byte("auth")
 	authUsersBucketName = []byte("authUsers")
+	authRolesBucketName = []byte("authRoles")
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "auth")
 
 	ErrUserAlreadyExist = errors.New("auth: user already exists")
 	ErrUserNotFound     = errors.New("auth: user not found")
+	ErrRoleAlreadyExist = errors.New("auth: role already exists")
 )
 
 type AuthStore interface {
@@ -50,6 +53,9 @@ type AuthStore interface {
 
 	// UserChangePassword changes a password of a user
 	UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
+
+	// RoleAdd adds a new role
+	RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
 }
 
 type authStore struct {
@@ -163,12 +169,39 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	return &pb.AuthUserChangePasswordResponse{}, nil
 }
 
+func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Name), nil, 0)
+	if len(vs) != 0 {
+		return nil, ErrRoleAlreadyExist
+	}
+
+	newRole := &authpb.Role{
+		Name: []byte(r.Name),
+	}
+
+	marshaledRole, err := newRole.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	tx.UnsafePut(authRolesBucketName, []byte(r.Name), marshaledRole)
+
+	plog.Noticef("Role %s is created", r.Name)
+
+	return &pb.AuthRoleAddResponse{}, nil
+}
+
 func NewAuthStore(be backend.Backend) *authStore {
 	tx := be.BatchTx()
 	tx.Lock()
 
 	tx.UnsafeCreateBucket(authBucketName)
 	tx.UnsafeCreateBucket(authUsersBucketName)
+	tx.UnsafeCreateBucket(authRolesBucketName)
 
 	tx.Unlock()
 	be.ForceCommit()

@@ -25,6 +25,7 @@ type (
 	AuthUserAddResponse            pb.AuthUserAddResponse
 	AuthUserDeleteResponse         pb.AuthUserDeleteResponse
 	AuthUserChangePasswordResponse pb.AuthUserChangePasswordResponse
+	AuthRoleAddResponse            pb.AuthRoleAddResponse
 )
 
 type Auth interface {
@@ -39,6 +40,9 @@ type Auth interface {
 
 	// UserChangePassword changes a password of a user.
 	UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error)
+
+	// RoleAdd adds a new user to an etcd cluster.
+	RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error)
 }
 
 type auth struct {
@@ -75,4 +79,9 @@ func (auth *auth) UserDelete(ctx context.Context, name string) (*AuthUserDeleteR
 func (auth *auth) UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error) {
 	resp, err := auth.remote.UserChangePassword(ctx, &pb.AuthUserChangePasswordRequest{Name: name, Password: password})
 	return (*AuthUserChangePasswordResponse)(resp), err
+}
+
+func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error) {
+	resp, err := auth.remote.RoleAdd(ctx, &pb.AuthRoleAddRequest{Name: name})
+	return (*AuthRoleAddResponse)(resp), err
 }
