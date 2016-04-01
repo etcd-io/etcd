@@ -57,7 +57,6 @@ var (
 	ErrCRCMismatch      = errors.New("wal: crc mismatch")
 	ErrSnapshotMismatch = errors.New("wal: snapshot mismatch")
 	ErrSnapshotNotFound = errors.New("wal: snapshot not found")
-	ErrZeroTrailer      = errors.New("wal: zero trailer")
 	crcTable            = crc32.MakeTable(crc32.Castagnoli)
 )
 
@@ -273,9 +272,6 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		}
 	}
 
-	if err == ErrZeroTrailer {
-		err = io.EOF
-	}
 	switch w.tail() {
 	case nil:
 		// We do not have to read out all entries in read mode.
