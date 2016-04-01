@@ -98,6 +98,12 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Compaction: r})
 	if r.Physical && result.physc != nil {
 		<-result.physc
+		// The compaction is done deleting keys; the hash is now settled
+		// but the data is not necessarily committed. If there's a crash,
+		// the hash may revert to a hash prior to compaction completing
+		// if the compaction resumes. Force the finished compaction to
+		// commit so it won't resume following a crash.
+		s.be.ForceCommit()
 	}
 	if err != nil {
 		return nil, err

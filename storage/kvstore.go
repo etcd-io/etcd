@@ -357,15 +357,20 @@ func (s *store) restore() error {
 	}
 
 	_, scheduledCompactBytes := tx.UnsafeRange(metaBucketName, scheduledCompactKeyName, nil, 0)
+	scheduledCompact := int64(0)
 	if len(scheduledCompactBytes) != 0 {
-		scheduledCompact := bytesToRev(scheduledCompactBytes[0]).main
-		if scheduledCompact > s.compactMainRev {
-			log.Printf("storage: resume scheduled compaction at %d", scheduledCompact)
-			go s.Compact(scheduledCompact)
+		scheduledCompact = bytesToRev(scheduledCompactBytes[0]).main
+		if scheduledCompact <= s.compactMainRev {
+			scheduledCompact = 0
 		}
 	}
 
 	tx.Unlock()
+
+	if scheduledCompact != 0 {
+		s.Compact(scheduledCompact)
+		log.Printf("storage: resume scheduled compaction at %d", scheduledCompact)
+	}
 
 	return nil
 }
