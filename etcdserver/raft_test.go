@@ -152,23 +152,23 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 
 func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	n := newNopReadyNode()
-	r := raftNode{
+	srv := &EtcdServer{r: raftNode{
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
-	}
-	r.start(&EtcdServer{r: r})
+	}}
+	srv.r.start(srv)
 	n.readyc <- raft.Ready{}
 	select {
-	case <-r.applyc:
+	case <-srv.r.applyc:
 	case <-time.After(time.Second):
 		t.Fatalf("failed to receive apply struct")
 	}
 
-	r.stopped <- struct{}{}
+	srv.r.stopped <- struct{}{}
 	select {
-	case <-r.done:
+	case <-srv.r.done:
 	case <-time.After(time.Second):
 		t.Fatalf("failed to stop raft loop")
 	}
