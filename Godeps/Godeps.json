@@ -66,6 +66,10 @@
 			"Rev": "71acacd42f85e5e82f70a55327789582a5200a90"
 		},
 		{
+			"ImportPath": "github.com/ghodss/yaml",
+			"Rev": "73d445a93680fa1a78ae23a5839bad48f32ba1ee"
+		},
+		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
 			"Comment": "v0.1-118-ge8904f5",
 			"Rev": "e8904f58e872a473a5b91bc9bf3377d223555263"
@@ -235,6 +239,10 @@
 			"ImportPath": "gopkg.in/cheggaaa/pb.v1",
 			"Comment": "v1.0.1",
 			"Rev": "29ad9b62f9e0274422d738242b94a5b89440bfa6"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "53feefa2559fb8dfa8d81baad31be332c97d6c77"
 		}
 	]
 }
