@@ -754,9 +754,10 @@ func TestIsElectionTimeout(t *testing.T) {
 		round        bool
 	}{
 		{5, 0, false},
-		{13, 0.3, true},
-		{15, 0.5, true},
-		{18, 0.8, true},
+		{10, 0.1, true},
+		{13, 0.4, true},
+		{15, 0.6, true},
+		{18, 0.9, true},
 		{20, 1, false},
 	}
 
@@ -765,7 +766,8 @@ func TestIsElectionTimeout(t *testing.T) {
 		sm.electionElapsed = tt.elapse
 		c := 0
 		for j := 0; j < 10000; j++ {
-			if sm.isElectionTimeout() {
+			sm.resetRandomizedElectionTimeout()
+			if sm.pastElectionTimeout() {
 				c++
 			}
 		}
