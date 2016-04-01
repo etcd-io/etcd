@@ -22,7 +22,6 @@ import (
 func TestInflightsAdd(t *testing.T) {
 	// no rotating case
 	in := &inflights{
-		size:   10,
 		buffer: make([]uint64, 10),
 	}
 
@@ -33,7 +32,6 @@ func TestInflightsAdd(t *testing.T) {
 	wantIn := &inflights{
 		start: 0,
 		count: 5,
-		size:  10,
 		//               ↓------------
 		buffer: []uint64{0, 1, 2, 3, 4, 0, 0, 0, 0, 0},
 	}
@@ -49,7 +47,6 @@ func TestInflightsAdd(t *testing.T) {
 	wantIn2 := &inflights{
 		start: 0,
 		count: 10,
-		size:  10,
 		//               ↓---------------------------
 		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
@@ -61,7 +58,6 @@ func TestInflightsAdd(t *testing.T) {
 	// rotating case
 	in2 := &inflights{
 		start:  5,
-		size:   10,
 		buffer: make([]uint64, 10),
 	}
 
@@ -72,7 +68,6 @@ func TestInflightsAdd(t *testing.T) {
 	wantIn21 := &inflights{
 		start: 5,
 		count: 5,
-		size:  10,
 		//                              ↓------------
 		buffer: []uint64{0, 0, 0, 0, 0, 0, 1, 2, 3, 4},
 	}
@@ -88,7 +83,6 @@ func TestInflightsAdd(t *testing.T) {
 	wantIn22 := &inflights{
 		start: 5,
 		count: 10,
-		size:  10,
 		//               -------------- ↓------------
 		buffer: []uint64{5, 6, 7, 8, 9, 0, 1, 2, 3, 4},
 	}
@@ -110,7 +104,6 @@ func TestInflightFreeTo(t *testing.T) {
 	wantIn := &inflights{
 		start: 5,
 		count: 5,
-		size:  10,
 		//                              ↓------------
 		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
@@ -124,7 +117,6 @@ func TestInflightFreeTo(t *testing.T) {
 	wantIn2 := &inflights{
 		start: 9,
 		count: 1,
-		size:  10,
 		//                                          ↓
 		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
@@ -143,7 +135,6 @@ func TestInflightFreeTo(t *testing.T) {
 	wantIn3 := &inflights{
 		start: 3,
 		count: 2,
-		size:  10,
 		//                           ↓-----
 		buffer: []uint64{10, 11, 12, 13, 14, 5, 6, 7, 8, 9},
 	}
@@ -157,7 +148,6 @@ func TestInflightFreeTo(t *testing.T) {
 	wantIn4 := &inflights{
 		start: 5,
 		count: 0,
-		size:  10,
 		//                                   ↓
 		buffer: []uint64{10, 11, 12, 13, 14, 5, 6, 7, 8, 9},
 	}
@@ -178,7 +168,6 @@ func TestInflightFreeFirstOne(t *testing.T) {
 	wantIn := &inflights{
 		start: 1,
 		count: 9,
-		size:  10,
 		//                  ↓------------------------
 		buffer: []uint64{0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
 	}
