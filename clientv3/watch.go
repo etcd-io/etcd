@@ -521,7 +521,7 @@ func (w *watcher) resumeWatchers(wc pb.Watch_WatchClient) error {
 		resp, err := wc.Recv()
 		if err != nil {
 			return err
-		} else if len(resp.Events) != 0 || resp.Created != true {
+		} else if len(resp.Events) != 0 || !resp.Created {
 			return fmt.Errorf("watcher: unexpected response (%+v)", resp)
 		}
 

@@ -563,7 +563,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	if shouldStop != false {
+	if shouldStop {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, false)
 	}
 
@@ -573,7 +573,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error %v", err)
 	}
-	if shouldStop != true {
+	if !shouldStop {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
 	}
 }
@@ -610,7 +610,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	}
 
 	_, shouldStop := srv.apply(ents, &raftpb.ConfState{})
-	if shouldStop == false {
+	if !shouldStop {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
 	}
 }

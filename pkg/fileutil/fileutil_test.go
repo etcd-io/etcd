@@ -87,12 +87,12 @@ func TestExist(t *testing.T) {
 	}
 	f.Close()
 
-	if g := Exist(f.Name()); g != true {
+	if g := Exist(f.Name()); !g {
 		t.Errorf("exist = %v, want true", g)
 	}
 
 	os.Remove(f.Name())
-	if g := Exist(f.Name()); g != false {
+	if g := Exist(f.Name()); g {
 		t.Errorf("exist = %v, want false", g)
 	}
 }

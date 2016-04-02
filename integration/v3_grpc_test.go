@@ -362,7 +362,7 @@ func TestV3DeleteRange(t *testing.T) {
 		for j := range rresp.Kvs {
 			keys = append(keys, rresp.Kvs[j].Key)
 		}
-		if reflect.DeepEqual(tt.wantSet, keys) == false {
+		if !reflect.DeepEqual(tt.wantSet, keys) {
 			t.Errorf("expected %v on test %v, got %v", tt.wantSet, i, keys)
 		}
 

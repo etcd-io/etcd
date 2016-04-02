@@ -124,7 +124,7 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 			got = append(got, string(ev.Kv.Value))
 		}
 		sort.Strings(got)
-		if reflect.DeepEqual(expected, got) == false {
+		if !reflect.DeepEqual(expected, got) {
 			t.Errorf("got %v, expected %v", got, expected)
 		}
 
