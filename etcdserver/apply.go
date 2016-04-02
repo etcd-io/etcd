@@ -377,7 +377,7 @@ func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.Com
 	resp.Header = &pb.ResponseHeader{}
 	ch, err := a.s.KV().Compact(compaction.Revision)
 	if err != nil {
-		return nil, nil, err
+		return nil, ch, err
 	}
 	// get the current revision. which key to get is not important.
 	_, resp.Header.Revision, _ = a.s.KV().Range([]byte("compaction"), nil, 1, 0)

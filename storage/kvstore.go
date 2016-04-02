@@ -231,12 +231,28 @@ func (s *store) TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err 
 	return n, rev, nil
 }
 
+func (s *store) compactBarrier(ctx context.Context, ch chan struct{}) {
+	if ctx == nil || ctx.Err() != nil {
+		s.mu.Lock()
+		select {
+		case <-s.stopc:
+		default:
+			f := func(ctx context.Context) { s.compactBarrier(ctx, ch) }
+			s.fifoSched.Schedule(f)
+		}
+		s.mu.Unlock()
+		return
+	}
+	close(ch)
+}
+
 func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if rev <= s.compactMainRev {
 		ch := make(chan struct{})
-		s.fifoSched.Schedule(func(context.Context) { close(ch) })
+		f := func(ctx context.Context) { s.compactBarrier(ctx, ch) }
+		s.fifoSched.Schedule(f)
 		return ch, ErrCompacted
 	}
 	if rev > s.currentRev.main {
@@ -260,13 +276,15 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	keep := s.kvindex.Compact(rev)
 	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
-		defer close(ch)
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
+			s.compactBarrier(ctx, ch)
 			return
-		default:
 		}
-		s.scheduleCompaction(rev, keep)
+		if !s.scheduleCompaction(rev, keep) {
+			s.compactBarrier(nil, ch)
+			return
+		}
+		close(ch)
 	}
 
 	s.fifoSched.Schedule(j)
