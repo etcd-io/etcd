@@ -243,7 +243,7 @@ func TestLogMaybeAppend(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					if tt.wpanic != true {
+					if !tt.wpanic {
 						t.Errorf("%d: panic = %v, want %v", i, true, tt.wpanic)
 					}
 				}
@@ -455,7 +455,7 @@ func TestCommitTo(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					if tt.wpanic != true {
+					if !tt.wpanic {
 						t.Errorf("%d: panic = %v, want %v", i, true, tt.wpanic)
 					}
 				}
@@ -548,7 +548,7 @@ func TestCompaction(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					if tt.wallow == true {
+					if tt.wallow {
 						t.Errorf("%d: allow = %v, want %v: %v", i, false, true, r)
 					}
 				}

@@ -250,12 +250,12 @@ func TestProgressResume(t *testing.T) {
 		Paused: true,
 	}
 	p.maybeDecrTo(1, 1)
-	if p.Paused != false {
+	if p.Paused {
 		t.Errorf("paused= %v, want false", p.Paused)
 	}
 	p.Paused = true
 	p.maybeUpdate(2)
-	if p.Paused != false {
+	if p.Paused {
 		t.Errorf("paused= %v, want false", p.Paused)
 	}
 }
@@ -268,7 +268,7 @@ func TestProgressResumeByHeartbeat(t *testing.T) {
 	r.prs[2].Paused = true
 
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
-	if r.prs[2].Paused != false {
+	if r.prs[2].Paused {
 		t.Errorf("paused = %v, want false", r.prs[2].Paused)
 	}
 }
@@ -792,7 +792,7 @@ func TestStepIgnoreOldTermMsg(t *testing.T) {
 	sm.step = fakeStep
 	sm.Term = 2
 	sm.Step(pb.Message{Type: pb.MsgApp, Term: sm.Term - 1})
-	if called == true {
+	if called {
 		t.Errorf("stepFunc called = %v , want %v", called, false)
 	}
 }
@@ -1092,7 +1092,7 @@ func TestStateTransition(t *testing.T) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					if tt.wallow == true {
+					if tt.wallow {
 						t.Errorf("%d: allow = %v, want %v", i, false, true)
 					}
 				}
@@ -1416,7 +1416,7 @@ func TestSendAppendForProgressProbe(t *testing.T) {
 			t.Errorf("index = %d, want %d", msg[0].Index, 0)
 		}
 
-		if r.prs[2].Paused != true {
+		if !r.prs[2].Paused {
 			t.Errorf("paused = %v, want true", r.prs[2].Paused)
 		}
 		for j := 0; j < 10; j++ {
@@ -1686,7 +1686,7 @@ func TestStepConfig(t *testing.T) {
 	if g := r.raftLog.lastIndex(); g != index+1 {
 		t.Errorf("index = %d, want %d", g, index+1)
 	}
-	if r.pendingConf != true {
+	if !r.pendingConf {
 		t.Errorf("pendingConf = %v, want true", r.pendingConf)
 	}
 }
@@ -1759,7 +1759,7 @@ func TestAddNode(t *testing.T) {
 	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
 	r.pendingConf = true
 	r.addNode(2)
-	if r.pendingConf != false {
+	if r.pendingConf {
 		t.Errorf("pendingConf = %v, want false", r.pendingConf)
 	}
 	nodes := r.nodes()
@@ -1775,7 +1775,7 @@ func TestRemoveNode(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
 	r.pendingConf = true
 	r.removeNode(2)
-	if r.pendingConf != false {
+	if r.pendingConf {
 		t.Errorf("pendingConf = %v, want false", r.pendingConf)
 	}
 	w := []uint64{1}

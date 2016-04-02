@@ -410,14 +410,14 @@ func TestSortableNodes(t *testing.T) {
 	for _, n := range sns.Nodes {
 		cis = append(cis, int(n.CreatedIndex))
 	}
-	if sort.IntsAreSorted(cis) != true {
+	if !sort.IntsAreSorted(cis) {
 		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
 	}
 	cis = make([]int, 0)
 	for _, n := range ns {
 		cis = append(cis, int(n.CreatedIndex))
 	}
-	if sort.IntsAreSorted(cis) != true {
+	if !sort.IntsAreSorted(cis) {
 		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
 	}
 }

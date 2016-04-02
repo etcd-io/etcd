@@ -88,7 +88,7 @@ func TestRejectStaleTermMessage(t *testing.T) {
 
 	r.Step(pb.Message{Type: pb.MsgApp, Term: r.Term - 1})
 
-	if called == true {
+	if called {
 		t.Errorf("stepFunc called = %v, want %v", called, false)
 	}
 }
@@ -169,7 +169,7 @@ func testNonleaderStartElection(t *testing.T, state StateType) {
 	if r.state != StateCandidate {
 		t.Errorf("state = %s, want %s", r.state, StateCandidate)
 	}
-	if r.votes[r.id] != true {
+	if !r.votes[r.id] {
 		t.Errorf("vote for self = false, want true")
 	}
 	msgs := r.readMessages()
@@ -326,7 +326,7 @@ func testNonleaderElectionTimeoutRandomized(t *testing.T, state StateType) {
 	}
 
 	for d := et + 1; d < 2*et; d++ {
-		if timeouts[d] != true {
+		if !timeouts[d] {
 			t.Errorf("timeout in %d ticks should happen", d)
 		}
 	}

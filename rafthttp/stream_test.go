@@ -38,7 +38,7 @@ import (
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 	sw := startStreamWriter(types.ID(1), newPeerStatus(types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 	// the expected initial state of streamWriter is not working
-	if _, ok := sw.writec(); ok != false {
+	if _, ok := sw.writec(); ok {
 		t.Errorf("initial working status = %v, want false", ok)
 	}
 
@@ -54,28 +54,28 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 		for j := 0; j < 3; j++ {
 			testutil.WaitSchedule()
 			// previous attached connection should be closed
-			if prevwfc != nil && prevwfc.Closed() != true {
+			if prevwfc != nil && !prevwfc.Closed() {
 				continue
 			}
 			// write chan is available
-			if _, ok := sw.writec(); ok != true {
+			if _, ok := sw.writec(); !ok {
 				continue
 			}
 		}
 
 		// previous attached connection should be closed
-		if prevwfc != nil && prevwfc.Closed() != true {
+		if prevwfc != nil && !prevwfc.Closed() {
 			t.Errorf("#%d: close of previous connection = %v, want true", i, prevwfc.Closed())
 		}
 		// write chan is available
-		if _, ok := sw.writec(); ok != true {
+		if _, ok := sw.writec(); !ok {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
 
 		sw.msgc <- raftpb.Message{}
 		testutil.WaitSchedule()
 		// write chan is available
-		if _, ok := sw.writec(); ok != true {
+		if _, ok := sw.writec(); !ok {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
 		if wfc.Written() == 0 {
@@ -85,10 +85,10 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 
 	sw.stop()
 	// write chan is unavailable since the writer is stopped.
-	if _, ok := sw.writec(); ok != false {
+	if _, ok := sw.writec(); ok {
 		t.Errorf("working status after stop = %v, want false", ok)
 	}
-	if wfc.Closed() != true {
+	if !wfc.Closed() {
 		t.Errorf("failed to close the underlying connection")
 	}
 }
@@ -104,10 +104,10 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 	sw.msgc <- raftpb.Message{}
 	testutil.WaitSchedule()
 	// no longer working
-	if _, ok := sw.writec(); ok != false {
+	if _, ok := sw.writec(); ok {
 		t.Errorf("working = %v, want false", ok)
 	}
-	if wfc.Closed() != true {
+	if !wfc.Closed() {
 		t.Errorf("failed to close the underlying connection")
 	}
 }

@@ -27,10 +27,12 @@ type Comparable interface {
 	Compare(c Comparable) int
 }
 
-type rbcolor bool
+type rbcolor int
 
-const black = true
-const red = false
+const (
+	black rbcolor = iota
+	red
+)
 
 // Interval implements a Comparable interval [begin, end)
 // TODO: support different sorts of intervals: (a,b), [a,b], (a, b]
