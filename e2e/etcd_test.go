@@ -275,7 +275,7 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 }
 
 func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
-	if fileutil.Exist("../bin/etcd") == false {
+	if !fileutil.Exist("../bin/etcd") {
 		return nil, fmt.Errorf("could not find etcd binary")
 	}
 	if err := os.RemoveAll(cfg.dataDirPath); err != nil {

@@ -95,7 +95,7 @@ func OpDelete(key string, opts ...OpOption) Op {
 		panic("unexpected revision in delete")
 	case ret.sort != nil:
 		panic("unexpected sort in delete")
-	case ret.serializable != false:
+	case ret.serializable:
 		panic("unexpected serializable in delete")
 	}
 	return ret
@@ -113,7 +113,7 @@ func OpPut(key, val string, opts ...OpOption) Op {
 		panic("unexpected revision in put")
 	case ret.sort != nil:
 		panic("unexpected sort in put")
-	case ret.serializable != false:
+	case ret.serializable:
 		panic("unexpected serializable in delete")
 	}
 	return ret
@@ -129,7 +129,7 @@ func opWatch(key string, opts ...OpOption) Op {
 		panic("unexpected limit in watch")
 	case ret.sort != nil:
 		panic("unexpected sort in watch")
-	case ret.serializable != false:
+	case ret.serializable:
 		panic("unexpected serializable in watch")
 	}
 	return ret

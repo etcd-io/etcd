@@ -226,7 +226,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			t.Errorf("#%d: wStream.Recv error: %v", i, err)
 			continue
 		}
-		if cresp.Created != true {
+		if !cresp.Created {
 			t.Errorf("#%d: did not create watchid, got +%v", i, cresp)
 			continue
 		}
