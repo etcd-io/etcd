@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"time"
 	"unsafe"
 )
@@ -202,8 +203,17 @@ func (tx *Tx) Commit() error {
 	// If strict mode is enabled then perform a consistency check.
 	// Only the first consistency error is reported in the panic.
 	if tx.db.StrictMode {
-		if err, ok := <-tx.Check(); ok {
-			panic("check fail: " + err.Error())
+		ch := tx.Check()
+		var errs []string
+		for {
+			err, ok := <-ch
+			if !ok {
+				break
+			}
+			errs = append(errs, err.Error())
+		}
+		if len(errs) > 0 {
+			panic("check fail: " + strings.Join(errs, "\n"))
 		}
 	}
 
