@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -346,35 +345,36 @@ func ctlV3Get(cx ctlCtx, key string, kvs ...kv) error {
 }
 
 func ctlV3Watch(cx ctlCtx, key, value string) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "watch")
-	if !cx.interactive {
-		if cx.watchRevision > 0 {
-			cmdArgs = append(cmdArgs, "--rev", strconv.Itoa(cx.watchRevision))
-		}
-		cmdArgs = append(cmdArgs, key)
-		return spawnWithExpects(cmdArgs, key, value)
+	watchCmd := []string{"watch", key}
+	if cx.watchRevision > 0 {
+		watchCmd = append(watchCmd, "--rev", strconv.Itoa(cx.watchRevision))
 	}
-	cmdArgs = append(cmdArgs, "--interactive")
+
+	cmdArgs := ctlV3PrefixArgs(cx.epc, cx.dialTimeout)
+	if cx.interactive {
+		cmdArgs = append(cmdArgs, "watch", "--interactive")
+	} else {
+		cmdArgs = append(cmdArgs, watchCmd...)
+	}
+
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return err
 	}
-	watchLine := fmt.Sprintf("watch %s", key)
-	if cx.watchRevision > 0 {
-		watchLine = fmt.Sprintf("watch %s --rev %d", key, cx.watchRevision)
+
+	if cx.interactive {
+		if err = proc.Send(strings.Join(watchCmd, " ") + "\r"); err != nil {
+			return err
+		}
 	}
-	if err = proc.Send(watchLine + "\r"); err != nil {
+
+	if _, err = proc.Expect(key); err != nil {
 		return err
 	}
-	_, err = proc.Expect(key)
-	if err != nil {
+	if _, err = proc.Expect(value); err != nil {
 		return err
 	}
-	_, err = proc.Expect(value)
-	if err != nil {
-		return err
-	}
-	return proc.Close()
+	return proc.Stop()
 }
 
 type txnRequests struct {

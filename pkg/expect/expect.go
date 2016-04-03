@@ -95,20 +95,34 @@ func (ep *ExpectProcess) Expect(s string) (string, error) {
 	return "", ep.err
 }
 
-// Close waits for the expect process to close
-func (ep *ExpectProcess) Close() error {
+// Stop kills the expect process and waits for it to exit.
+func (ep *ExpectProcess) Stop() error { return ep.close(true) }
+
+// Close waits for the expect process to exit.
+func (ep *ExpectProcess) Close() error { return ep.close(false) }
+
+func (ep *ExpectProcess) close(kill bool) error {
 	if ep.cmd == nil {
-		return nil
+		return ep.err
 	}
-	ep.cmd.Process.Kill()
+	if kill {
+		ep.cmd.Process.Kill()
+	}
+
+	err := ep.cmd.Wait()
 	ep.ptyMu.Lock()
 	ep.fpty.Close()
 	ep.ptyMu.Unlock()
-	err := ep.cmd.Wait()
 	ep.wg.Wait()
-	if err != nil && strings.Contains(err.Error(), "signal:") {
-		// ignore signal errors; expected from pty
-		err = nil
+
+	if err != nil {
+		ep.err = err
+		if !kill && strings.Contains(err.Error(), "exit status") {
+			// non-zero exit code
+			err = nil
+		} else if kill && strings.Contains(err.Error(), "signal:") {
+			err = nil
+		}
 	}
 	ep.cmd = nil
 	return err
