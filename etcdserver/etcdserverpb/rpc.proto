@@ -75,6 +75,9 @@ service Maintenance {
   // Alarm activates, deactivates, and queries alarms regarding cluster health.
   rpc Alarm(AlarmRequest) returns (AlarmResponse) {}
 
+  // Status gets the status of the member.
+  rpc Status(StatusRequest) returns (StatusResponse) {}
+
   rpc Defragment(DefragmentRequest) returns (DefragmentResponse) {}
 
   // Hash returns the hash of the local KV state for consistency checking purpose.
@@ -469,6 +472,14 @@ message AlarmMember {
 message AlarmResponse {
   ResponseHeader header = 1;
   repeated AlarmMember alarms = 2;
+}
+
+message StatusRequest {
+}
+
+message StatusResponse {
+  ResponseHeader header = 1;
+  string version = 2;
 }
 
 message AuthEnableRequest {
