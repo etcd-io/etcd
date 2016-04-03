@@ -376,3 +376,20 @@ func (c *cluster) checkCompact(rev int64) error {
 	}
 	return nil
 }
+
+func (c *cluster) defrag() error {
+	for _, u := range c.GRPCURLs {
+		plog.Printf("defragmenting %s\n", u)
+		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if err != nil {
+			return err
+		}
+		mt := pb.NewMaintenanceClient(conn)
+		if _, err = mt.Defragment(context.Background(), &pb.DefragmentRequest{}); err != nil {
+			return err
+		}
+		conn.Close()
+		plog.Printf("defragmented %s\n", u)
+	}
+	return nil
+}
