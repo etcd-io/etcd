@@ -114,7 +114,7 @@ func (ep *ExpectProcess) Close() error {
 	return err
 }
 
-func (ep *ExpectProcess) SendLine(command string) error {
-	_, err := io.WriteString(ep.fpty, command+"\r\n")
+func (ep *ExpectProcess) Send(command string) error {
+	_, err := io.WriteString(ep.fpty, command)
 	return err
 }

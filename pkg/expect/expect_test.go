@@ -39,13 +39,13 @@ func TestEcho(t *testing.T) {
 	}
 }
 
-func TestSendLine(t *testing.T) {
+func TestSend(t *testing.T) {
 	ep, err := NewExpect("/usr/bin/tr", "a", "b")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ep.Close()
-	if err := ep.SendLine("a"); err != nil {
+	if err := ep.Send("a\r"); err != nil {
 		t.Fatal(err)
 	}
 	_, eerr := ep.Expect("b")
