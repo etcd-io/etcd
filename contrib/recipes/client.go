@@ -36,7 +36,7 @@ func deleteRevKey(kv v3.KV, key string, rev int64) (bool, error) {
 	txnresp, err := kv.Txn(context.TODO()).If(cmp).Then(req).Commit()
 	if err != nil {
 		return false, err
-	} else if txnresp.Succeeded == false {
+	} else if !txnresp.Succeeded {
 		return false, nil
 	}
 	return true, nil
