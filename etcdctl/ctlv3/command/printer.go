@@ -55,10 +55,8 @@ type simplePrinter struct {
 	isHex bool
 }
 
-func (s *simplePrinter) Del(v3.DeleteResponse) {
-	// TODO: add number of key removed into the response of delete.
-	// TODO: print out the number of removed keys.
-	fmt.Println(0)
+func (s *simplePrinter) Del(resp v3.DeleteResponse) {
+	fmt.Println(resp.Deleted)
 }
 
 func (s *simplePrinter) Get(resp v3.GetResponse) {
