@@ -158,6 +158,29 @@ func (tt *tester) runLoop() {
 			}
 		}
 		plog.Printf("[round#%d] confirmed compaction at %d", i, revToCompact)
+
+		if i > 0 && i%500 == 0 { // every 500 rounds
+			plog.Printf("[round#%d] canceling the stressers...", i)
+			for _, s := range tt.cluster.Stressers {
+				s.Cancel()
+			}
+			plog.Printf("[round#%d] canceled stressers", i)
+
+			plog.Printf("[round#%d] deframenting...", i)
+			if err := tt.cluster.defrag(); err != nil {
+				plog.Printf("[round#%d] defrag error (%v)", i, err)
+				if err := tt.cleanup(i, 0); err != nil {
+					plog.Printf("[round#%d] cleanup error: %v", i, err)
+					return
+				}
+			}
+			plog.Printf("[round#%d] deframented...", i)
+
+			plog.Printf("[round#%d] restarting the stressers...", i)
+			for _, s := range tt.cluster.Stressers {
+				go s.Stress()
+			}
+		}
 	}
 }
 
