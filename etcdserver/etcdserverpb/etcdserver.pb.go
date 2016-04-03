@@ -55,6 +55,8 @@
 		AlarmRequest
 		AlarmMember
 		AlarmResponse
+		StatusRequest
+		StatusResponse
 		AuthEnableRequest
 		AuthDisableRequest
 		AuthenticateRequest
