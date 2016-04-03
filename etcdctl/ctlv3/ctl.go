@@ -68,6 +68,7 @@ func init() {
 		command.NewCompactionCommand(),
 		command.NewAlarmCommand(),
 		command.NewDefragCommand(),
+		command.NewStatusCommand(),
 		command.NewWatchCommand(),
 		command.NewVersionCommand(),
 		command.NewLeaseCommand(),

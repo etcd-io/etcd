@@ -26,6 +26,7 @@ type (
 	DefragmentResponse pb.DefragmentResponse
 	AlarmResponse      pb.AlarmResponse
 	AlarmMember        pb.AlarmMember
+	StatusResponse     pb.StatusResponse
 )
 
 type Maintenance interface {
@@ -43,6 +44,9 @@ type Maintenance interface {
 	// To defragment multiple members in the cluster, user need to call defragment multiple
 	// times with different endpoints.
 	Defragment(ctx context.Context, endpoint string) (*DefragmentResponse, error)
+
+	// Status gets the status of the member.
+	Status(ctx context.Context, endpoint string) (*StatusResponse, error)
 }
 
 type maintenance struct {
@@ -126,6 +130,19 @@ func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*Defragm
 		return nil, err
 	}
 	return (*DefragmentResponse)(resp), nil
+}
+
+func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusResponse, error) {
+	conn, err := m.c.Dial(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	remote := pb.NewMaintenanceClient(conn)
+	resp, err := remote.Status(ctx, &pb.StatusRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return (*StatusResponse)(resp), nil
 }
 
 func (m *maintenance) getRemote() pb.MaintenanceClient {

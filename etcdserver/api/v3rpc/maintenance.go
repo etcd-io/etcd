@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/storage/backend"
+	"github.com/coreos/etcd/version"
 	"golang.org/x/net/context"
 )
 
@@ -50,16 +51,22 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 	return &pb.DefragmentResponse{}, nil
 }
 
-func (s *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
-	h, err := s.bg.Backend().Hash()
+func (ms *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
+	h, err := ms.bg.Backend().Hash()
 	if err != nil {
 		return nil, togRPCError(err)
 	}
-	resp := &pb.HashResponse{Header: &pb.ResponseHeader{Revision: s.hdr.rev()}, Hash: h}
-	s.hdr.fill(resp.Header)
+	resp := &pb.HashResponse{Header: &pb.ResponseHeader{Revision: ms.hdr.rev()}, Hash: h}
+	ms.hdr.fill(resp.Header)
 	return resp, nil
 }
 
 func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
 	return ms.a.Alarm(ctx, ar)
+}
+
+func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
+	resp := &pb.StatusResponse{Header: &pb.ResponseHeader{Revision: ms.hdr.rev()}, Version: version.Version}
+	ms.hdr.fill(resp.Header)
+	return resp, nil
 }

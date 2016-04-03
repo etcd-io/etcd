@@ -36,6 +36,8 @@ type printer interface {
 
 	MemberList(v3.MemberListResponse)
 
+	MemberStatus([]statusInfo)
+
 	Alarm(v3.AlarmResponse)
 }
 
@@ -125,6 +127,21 @@ func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 	table.Render()
 }
 
+func (s *simplePrinter) MemberStatus(statusList []statusInfo) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"endpoint", "ID", "version"})
+
+	for _, status := range statusList {
+		table.Append([]string{
+			fmt.Sprint(status.ep),
+			fmt.Sprintf("%x", status.resp.Header.MemberId),
+			fmt.Sprint(status.resp.Version),
+		})
+	}
+
+	table.Render()
+}
+
 type jsonPrinter struct{}
 
 func (p *jsonPrinter) Del(r v3.DeleteResponse) { printJSON(r) }
@@ -138,6 +155,7 @@ func (p *jsonPrinter) Txn(r v3.TxnResponse)               { printJSON(r) }
 func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }
 func (p *jsonPrinter) Alarm(r v3.AlarmResponse)           { printJSON(r) }
 func (p *jsonPrinter) MemberList(r v3.MemberListResponse) { printJSON(r) }
+func (p *jsonPrinter) MemberStatus(r []statusInfo)        { printJSON(r) }
 
 func printJSON(v interface{}) {
 	b, err := json.Marshal(v)
@@ -181,6 +199,10 @@ func (p *pbPrinter) Alarm(r v3.AlarmResponse) {
 }
 
 func (pb *pbPrinter) MemberList(r v3.MemberListResponse) {
+	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
+}
+
+func (pb *pbPrinter) MemberStatus(r []statusInfo) {
 	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 
