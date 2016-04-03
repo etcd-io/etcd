@@ -44,12 +44,13 @@ func TestSend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer ep.Close()
 	if err := ep.Send("a\r"); err != nil {
 		t.Fatal(err)
 	}
-	_, eerr := ep.Expect("b")
-	if eerr != nil {
-		t.Fatal(eerr)
+	if _, err := ep.Expect("b"); err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.Stop(); err != nil {
+		t.Fatal(err)
 	}
 }

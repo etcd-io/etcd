@@ -403,7 +403,7 @@ func (epc *etcdProcessCluster) Close() (err error) {
 			continue
 		}
 		os.RemoveAll(p.cfg.dataDirPath)
-		if curErr := p.proc.Close(); curErr != nil {
+		if curErr := p.proc.Stop(); curErr != nil {
 			if err != nil {
 				err = fmt.Errorf("%v; %v", err, curErr)
 			} else {
