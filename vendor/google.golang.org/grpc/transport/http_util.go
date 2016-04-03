@@ -69,6 +69,7 @@ var (
 		http2.ErrCodeInternal:           codes.Internal,
 		http2.ErrCodeFlowControl:        codes.ResourceExhausted,
 		http2.ErrCodeSettingsTimeout:    codes.Internal,
+		http2.ErrCodeStreamClosed:       codes.Internal,
 		http2.ErrCodeFrameSize:          codes.Internal,
 		http2.ErrCodeRefusedStream:      codes.Unavailable,
 		http2.ErrCodeCancel:             codes.Canceled,
@@ -272,7 +273,7 @@ type framer struct {
 
 func newFramer(conn net.Conn) *framer {
 	f := &framer{
-		reader: conn,
+		reader: bufio.NewReaderSize(conn, http2IOBufSize),
 		writer: bufio.NewWriterSize(conn, http2IOBufSize),
 	}
 	f.fr = http2.NewFramer(f.writer, f.reader)
@@ -403,4 +404,8 @@ func (f *framer) flushWrite() error {
 
 func (f *framer) readFrame() (http2.Frame, error) {
 	return f.fr.ReadFrame()
+}
+
+func (f *framer) errorDetail() error {
+	return f.fr.ErrorDetail()
 }

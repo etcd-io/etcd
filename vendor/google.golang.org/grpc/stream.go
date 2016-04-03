@@ -67,7 +67,8 @@ type Stream interface {
 	// breaks.
 	// On error, it aborts the stream and returns an RPC status on client
 	// side. On server side, it simply returns the error to the caller.
-	// SendMsg is called by generated code.
+	// SendMsg is called by generated code. Also Users can call SendMsg
+	// directly when it is really needed in their use cases.
 	SendMsg(m interface{}) error
 	// RecvMsg blocks until it receives a message or the stream is
 	// done. On client side, it returns io.EOF when the stream is done. On
@@ -257,7 +258,7 @@ func (cs *clientStream) RecvMsg(m interface{}) (err error) {
 				cs.finish(err)
 				return nil
 			}
-			return Errorf(cs.s.StatusCode(), cs.s.StatusDesc())
+			return Errorf(cs.s.StatusCode(), "%s", cs.s.StatusDesc())
 		}
 		return toRPCErr(err)
 	}
@@ -269,7 +270,7 @@ func (cs *clientStream) RecvMsg(m interface{}) (err error) {
 			// Returns io.EOF to indicate the end of the stream.
 			return
 		}
-		return Errorf(cs.s.StatusCode(), cs.s.StatusDesc())
+		return Errorf(cs.s.StatusCode(), "%s", cs.s.StatusDesc())
 	}
 	return toRPCErr(err)
 }

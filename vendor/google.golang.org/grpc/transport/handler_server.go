@@ -118,7 +118,7 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTr
 
 // serverHandlerTransport is an implementation of ServerTransport
 // which replies to exactly one gRPC request (exactly one HTTP request),
-// using the net/http.Handler interface. This http.Handler is guranteed
+// using the net/http.Handler interface. This http.Handler is guaranteed
 // at this point to be speaking over HTTP/2, so it's able to speak valid
 // gRPC.
 type serverHandlerTransport struct {
