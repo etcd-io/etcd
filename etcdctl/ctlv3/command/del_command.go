@@ -21,13 +21,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	delPrefix bool
+)
+
 // NewDelCommand returns the cobra command for "del".
 func NewDelCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "del [options] <key> [range_end]",
 		Short: "Removes the specified key or range of keys [key, range_end).",
 		Run:   delCommandFunc,
 	}
+
+	cmd.Flags().BoolVar(&delPrefix, "prefix", false, "delete keys with matching prefix")
+	return cmd
 }
 
 // delCommandFunc executes the "del" command.
@@ -49,7 +56,15 @@ func getDelOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	opts := []clientv3.OpOption{}
 	key := args[0]
 	if len(args) > 1 {
+		if delPrefix {
+			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments, only accept one arguement when `--prefix` is set."))
+		}
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}
+
+	if delPrefix {
+		opts = append(opts, clientv3.WithPrefix())
+	}
+
 	return key, opts
 }

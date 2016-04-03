@@ -42,6 +42,13 @@ func TestCtlV3GetPrefix(t *testing.T)      { testCtl(t, getTest, withPrefix()) }
 func TestCtlV3GetPrefixLimit(t *testing.T) { testCtl(t, getTest, withPrefix(), withLimit(2)) }
 func TestCtlV3GetQuorum(t *testing.T)      { testCtl(t, getTest, withQuorum()) }
 
+func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
+func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoTLS)) }
+func TestCtlV3DelClientTLS(t *testing.T) { testCtl(t, delTest, withCfg(configClientTLS)) }
+func TestCtlV3DelPeerTLS(t *testing.T)   { testCtl(t, delTest, withCfg(configPeerTLS)) }
+
+func TestCtlV3DelPrefix(t *testing.T) { testCtl(t, delTest, withPrefix()) }
+
 func TestCtlV3Watch(t *testing.T)          { testCtl(t, watchTest) }
 func TestCtlV3WatchNoTLS(t *testing.T)     { testCtl(t, watchTest, withCfg(configNoTLS)) }
 func TestCtlV3WatchClientTLS(t *testing.T) { testCtl(t, watchTest, withCfg(configClientTLS)) }
@@ -193,54 +200,23 @@ func putTest(cx ctlCtx) {
 
 	if err := ctlV3Put(cx, key, value); err != nil {
 		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
-			cx.t.Fatalf("putTest error (%v)", err)
+			cx.t.Fatalf("putTest ctlV3Put error (%v)", err)
 		}
 	}
 	if err := ctlV3Get(cx, key, kv{key, value}); err != nil {
 		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
-			cx.t.Fatalf("putTest error (%v)", err)
+			cx.t.Fatalf("putTest ctlV3Get error (%v)", err)
 		}
-	}
-}
-
-func watchTest(cx ctlCtx) {
-	defer close(cx.errc)
-
-	key, value := "foo", "bar"
-
-	go func() {
-		if err := ctlV3Put(cx, key, value); err != nil {
-			cx.t.Fatalf("watchTest error (%v)", err)
-		}
-	}()
-
-	if err := ctlV3Watch(cx, key, value); err != nil {
-		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
-			cx.t.Fatalf("watchTest error (%v)", err)
-		}
-	}
-}
-
-func versionTest(cx ctlCtx) {
-	defer close(cx.errc)
-
-	if err := ctlV3Version(cx); err != nil {
-		cx.t.Fatalf("versionTest error (%v)", err)
 	}
 }
 
 func getTest(cx ctlCtx) {
 	defer close(cx.errc)
 
-	var (
-		kvs = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
-	)
-
+	kvs := []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
 	for i := range kvs {
 		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val); err != nil {
-			if cx.dialTimeout > 0 && isGRPCTimedout(err) {
-				cx.t.Fatalf("getTest error (%v)", err)
-			}
+			cx.t.Fatalf("getTest ctlV3Put error (%v)", err)
 		}
 	}
 
@@ -256,8 +232,58 @@ func getTest(cx ctlCtx) {
 
 	if err := ctlV3Get(cx, keyToGet, kvs...); err != nil {
 		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
-			cx.t.Fatalf("getTest error (%v)", err)
+			cx.t.Fatalf("getTest ctlV3Get error (%v)", err)
 		}
+	}
+}
+
+func delTest(cx ctlCtx) {
+	defer close(cx.errc)
+
+	kvs := []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
+	for i := range kvs {
+		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val); err != nil {
+			cx.t.Fatalf("delTest ctlV3Put error (%v)", err)
+		}
+	}
+
+	var (
+		keyToDel   = "key"
+		deletedNum = 3
+	)
+	if !cx.prefix {
+		keyToDel = "key1"
+		deletedNum = 1
+	}
+
+	if err := ctlV3Del(cx, keyToDel, deletedNum); err != nil {
+		cx.t.Fatalf("delTest ctlV3Del error (%v)", err)
+	}
+}
+
+func watchTest(cx ctlCtx) {
+	defer close(cx.errc)
+
+	key, value := "foo", "bar"
+
+	go func() {
+		if err := ctlV3Put(cx, key, value); err != nil {
+			cx.t.Fatalf("watchTest ctlV3Put error (%v)", err)
+		}
+	}()
+
+	if err := ctlV3Watch(cx, key, value); err != nil {
+		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+			cx.t.Fatalf("watchTest ctlV3Watch error (%v)", err)
+		}
+	}
+}
+
+func versionTest(cx ctlCtx) {
+	defer close(cx.errc)
+
+	if err := ctlV3Version(cx); err != nil {
+		cx.t.Fatalf("versionTest ctlV3Version error (%v)", err)
 	}
 }
 
@@ -265,10 +291,10 @@ func txnTestSuccess(cx ctlCtx) {
 	defer close(cx.errc)
 
 	if err := ctlV3Put(cx, "key1", "value1"); err != nil {
-		cx.t.Fatalf("txnTestSuccess error (%v)", err)
+		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
 	}
 	if err := ctlV3Put(cx, "key2", "value2"); err != nil {
-		cx.t.Fatalf("txnTestSuccess error (%v)", err)
+		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
 	}
 
 	rqs := txnRequests{
@@ -343,6 +369,14 @@ func ctlV3Get(cx ctlCtx, key string, kvs ...kv) error {
 		lines = append(lines, elem.key, elem.val)
 	}
 	return spawnWithExpects(cmdArgs, lines...)
+}
+
+func ctlV3Del(cx ctlCtx, key string, num int) error {
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "del", key)
+	if cx.prefix {
+		cmdArgs = append(cmdArgs, "--prefix")
+	}
+	return spawnWithExpects(cmdArgs, fmt.Sprintf("%d", num))
 }
 
 func ctlV3Watch(cx ctlCtx, key, value string) error {
