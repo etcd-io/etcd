@@ -295,6 +295,7 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 					return err
 				}
 				tmpb = tmptx.Bucket(next)
+				count = 0
 			}
 			err = tmpb.Put(k, v)
 			if err != nil {
