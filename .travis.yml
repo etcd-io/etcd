@@ -25,7 +25,7 @@ before_install:
 
 # disable godep restore override
 install:
- - go get -t -v ./...
+ - pushd cmd/ && go get -t -v ./... && popd
 
 script:
  - ./test
