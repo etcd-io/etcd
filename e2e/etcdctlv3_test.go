@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/version"
 )
 
 func TestCtlV3Put(t *testing.T)          { testCtl(t, putTest) }
@@ -58,6 +59,27 @@ func TestCtlV3WatchInteractiveClientTLS(t *testing.T) {
 func TestCtlV3WatchInteractivePeerTLS(t *testing.T) {
 	testCtl(t, watchTest, withInteractive(), withCfg(configPeerTLS))
 }
+
+// TODO: watch by prefix
+
+func TestCtlV3TxnInteractiveSuccess(t *testing.T) {
+	testCtl(t, txnTestSuccess, withInteractive())
+}
+func TestCtlV3TxnInteractiveSuccessNoTLS(t *testing.T) {
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configNoTLS))
+}
+func TestCtlV3TxnInteractiveSuccessClientTLS(t *testing.T) {
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configClientTLS))
+}
+func TestCtlV3TxnInteractiveSuccessPeerTLS(t *testing.T) {
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configPeerTLS))
+}
+
+func TestCtlV3TxnInteractiveFail(t *testing.T) {
+	testCtl(t, txnTestFail, withInteractive())
+}
+
+func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
 
 type ctlCtx struct {
 	t   *testing.T
@@ -199,6 +221,14 @@ func watchTest(cx ctlCtx) {
 	}
 }
 
+func versionTest(cx ctlCtx) {
+	defer close(cx.errc)
+
+	if err := ctlV3Version(cx); err != nil {
+		cx.t.Fatalf("versionTest error (%v)", err)
+	}
+}
+
 func getTest(cx ctlCtx) {
 	defer close(cx.errc)
 
@@ -230,6 +260,42 @@ func getTest(cx ctlCtx) {
 		}
 	}
 }
+
+func txnTestSuccess(cx ctlCtx) {
+	defer close(cx.errc)
+
+	if err := ctlV3Put(cx, "key1", "value1"); err != nil {
+		cx.t.Fatalf("txnTestSuccess error (%v)", err)
+	}
+	if err := ctlV3Put(cx, "key2", "value2"); err != nil {
+		cx.t.Fatalf("txnTestSuccess error (%v)", err)
+	}
+
+	rqs := txnRequests{
+		compare:  []string{`version("key1") = "1"`, `version("key2") = "1"`},
+		ifSucess: []string{"get key1", "get key2"},
+		ifFail:   []string{`put key1 "fail"`, `put key2 "fail"`},
+		results:  []string{"SUCCESS", "key1", "value1", "key2", "value2"},
+	}
+	if err := ctlV3Txn(cx, rqs); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func txnTestFail(cx ctlCtx) {
+	defer close(cx.errc)
+
+	rqs := txnRequests{
+		compare:  []string{`version("key") < "0"`},
+		ifSucess: []string{`put key "success"`},
+		ifFail:   []string{`put key "fail"`},
+		results:  []string{"FAILURE", "OK"},
+	}
+	if err := ctlV3Txn(cx, rqs); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
 func ctlV3PrefixArgs(clus *etcdProcessCluster, dialTimeout time.Duration) []string {
 	if len(clus.proxies()) > 0 { // TODO: add proxy check as in v2
 		panic("v3 proxy not implemented")
@@ -297,7 +363,7 @@ func ctlV3Watch(cx ctlCtx, key, value string) error {
 	if cx.watchRevision > 0 {
 		watchLine = fmt.Sprintf("watch %s --rev %d", key, cx.watchRevision)
 	}
-	if err = proc.SendLine(watchLine); err != nil {
+	if err = proc.Send(watchLine + "\r"); err != nil {
 		return err
 	}
 	_, err = proc.Expect(key)
@@ -309,6 +375,76 @@ func ctlV3Watch(cx ctlCtx, key, value string) error {
 		return err
 	}
 	return proc.Close()
+}
+
+type txnRequests struct {
+	compare  []string
+	ifSucess []string
+	ifFail   []string
+	results  []string
+}
+
+func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
+	// TODO: support non-interactive mode
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "txn")
+	if cx.interactive {
+		cmdArgs = append(cmdArgs, "--interactive")
+	}
+	proc, err := spawnCmd(cmdArgs)
+	if err != nil {
+		return err
+	}
+	_, err = proc.Expect("compares:")
+	if err != nil {
+		return err
+	}
+	for _, req := range rqs.compare {
+		if err = proc.Send(req + "\r"); err != nil {
+			return err
+		}
+	}
+	if err = proc.Send("\r"); err != nil {
+		return err
+	}
+
+	_, err = proc.Expect("success requests (get, put, delete):")
+	if err != nil {
+		return err
+	}
+	for _, req := range rqs.ifSucess {
+		if err = proc.Send(req + "\r"); err != nil {
+			return err
+		}
+	}
+	if err = proc.Send("\r"); err != nil {
+		return err
+	}
+
+	_, err = proc.Expect("failure requests (get, put, delete):")
+	if err != nil {
+		return err
+	}
+	for _, req := range rqs.ifFail {
+		if err = proc.Send(req + "\r"); err != nil {
+			return err
+		}
+	}
+	if err = proc.Send("\r"); err != nil {
+		return err
+	}
+
+	for _, line := range rqs.results {
+		_, err = proc.Expect(line)
+		if err != nil {
+			return err
+		}
+	}
+	return proc.Close()
+}
+
+func ctlV3Version(cx ctlCtx) error {
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "version")
+	return spawnWithExpect(cmdArgs, version.Version)
 }
 
 func isGRPCTimedout(err error) bool {
