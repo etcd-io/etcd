@@ -34,7 +34,7 @@ import (
 
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/etcdhttp"
+	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
 	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
@@ -363,10 +363,10 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		plog.Infof("cors = %s", cfg.corsInfo)
 	}
 	ch := http.Handler(&cors.CORSHandler{
-		Handler: etcdhttp.NewClientHandler(s, srvcfg.ReqTimeout()),
+		Handler: v2http.NewClientHandler(s, srvcfg.ReqTimeout()),
 		Info:    cfg.corsInfo,
 	})
-	ph := etcdhttp.NewPeerHandler(s)
+	ph := v2http.NewPeerHandler(s)
 
 	// Start the peer server in a goroutine
 	for _, l := range plns {

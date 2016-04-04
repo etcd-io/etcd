@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package etcdhttp provides etcd client and server implementations.
-package etcdhttp
+// Package v2http provides etcd client and server implementations.
+package v2http

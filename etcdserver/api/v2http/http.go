@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdhttp
+package v2http
 
 import (
 	"errors"
@@ -23,8 +23,8 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/auth"
-	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/pkg/capnslog"
 )
@@ -35,9 +35,9 @@ const (
 )
 
 var (
-	plog      = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdhttp")
+	plog      = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver/api", "v2http")
 	mlog      = logutil.NewMergeLogger(plog)
-	errClosed = errors.New("etcdhttp: client closed connection")
+	errClosed = errors.New("v2http: client closed connection")
 )
 
 // writeError logs and writes the given Error to the ResponseWriter

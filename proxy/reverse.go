@@ -28,7 +28,7 @@ import (
 
 	"time"
 
-	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
+	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/pkg/capnslog"
 )
