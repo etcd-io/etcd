@@ -87,11 +87,29 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
+	if isTxnSerializable(r) {
+		return s.applyV3.Txn(r)
+	}
+
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
 	}
 	return result.resp.(*pb.TxnResponse), result.err
+}
+
+func isTxnSerializable(r *pb.TxnRequest) bool {
+	for _, u := range r.Success {
+		if r := u.GetRequestRange(); r == nil || !r.Serializable {
+			return false
+		}
+	}
+	for _, u := range r.Failure {
+		if r := u.GetRequestRange(); r == nil || !r.Serializable {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
