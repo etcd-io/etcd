@@ -60,6 +60,8 @@ GET gets the key or a range of keys [key, range_end) if `range-end` is given.
 
 - limit -- maximum number of results
 
+- prefix -- get keys by matching prefix
+
 - order -- order of results; ASCEND or DESCEND
 
 - sort-by -- sort target; CREATE, KEY, MODIFY, VALUE, or VERSION
@@ -101,7 +103,9 @@ Removes the specified key or range of keys [key, range_end) if `range-end` is gi
 
 #### Options
 
-TODO: --prefix, --from
+- prefix -- delete keys by matching prefix
+
+TODO: --from
 
 #### Return value
 
