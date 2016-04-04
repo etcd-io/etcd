@@ -8,16 +8,15 @@ import (
 	"fmt"
 
 	proto "github.com/gogo/protobuf/proto"
-)
 
-import math "math"
+	math "math"
 
-import storagepb "github.com/coreos/etcd/storage/storagepb"
-
-import (
 	context "golang.org/x/net/context"
+
 	grpc "google.golang.org/grpc"
 )
+
+import storagepb "github.com/coreos/etcd/storage/storagepb"
 
 import io "io"
 
