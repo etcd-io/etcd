@@ -53,6 +53,7 @@ func TestCtlV3Watch(t *testing.T)          { testCtl(t, watchTest) }
 func TestCtlV3WatchNoTLS(t *testing.T)     { testCtl(t, watchTest, withCfg(configNoTLS)) }
 func TestCtlV3WatchClientTLS(t *testing.T) { testCtl(t, watchTest, withCfg(configClientTLS)) }
 func TestCtlV3WatchPeerTLS(t *testing.T)   { testCtl(t, watchTest, withCfg(configPeerTLS)) }
+func TestCtlV3WatchPrefix(t *testing.T)    { testCtl(t, watchTest, withPrefix()) }
 
 func TestCtlV3WatchInteractive(t *testing.T) {
 	testCtl(t, watchTest, withInteractive())
@@ -66,8 +67,9 @@ func TestCtlV3WatchInteractiveClientTLS(t *testing.T) {
 func TestCtlV3WatchInteractivePeerTLS(t *testing.T) {
 	testCtl(t, watchTest, withInteractive(), withCfg(configPeerTLS))
 }
-
-// TODO: watch by prefix
+func TestCtlV3WatchInteractivePrefix(t *testing.T) {
+	testCtl(t, watchTest, withInteractive(), withPrefix())
+}
 
 func TestCtlV3TxnInteractiveSuccess(t *testing.T) {
 	testCtl(t, txnTestSuccess, withInteractive())
@@ -264,15 +266,21 @@ func delTest(cx ctlCtx) {
 func watchTest(cx ctlCtx) {
 	defer close(cx.errc)
 
-	key, value := "foo", "bar"
-
+	kvs := []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
 	go func() {
-		if err := ctlV3Put(cx, key, value); err != nil {
-			cx.t.Fatalf("watchTest ctlV3Put error (%v)", err)
+		for i := range kvs {
+			if err := ctlV3Put(cx, kvs[i].key, kvs[i].val); err != nil {
+				cx.t.Fatalf("delTest ctlV3Put error (%v)", err)
+			}
 		}
 	}()
 
-	if err := ctlV3Watch(cx, key, value); err != nil {
+	keyToWatch := "key"
+	if !cx.prefix {
+		keyToWatch = "key1"
+		kvs = kvs[:1]
+	}
+	if err := ctlV3Watch(cx, keyToWatch, kvs...); err != nil {
 		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
 			cx.t.Fatalf("watchTest ctlV3Watch error (%v)", err)
 		}
@@ -379,35 +387,45 @@ func ctlV3Del(cx ctlCtx, key string, num int) error {
 	return spawnWithExpects(cmdArgs, fmt.Sprintf("%d", num))
 }
 
-func ctlV3Watch(cx ctlCtx, key, value string) error {
-	watchCmd := []string{"watch", key}
-	if cx.watchRevision > 0 {
-		watchCmd = append(watchCmd, "--rev", strconv.Itoa(cx.watchRevision))
-	}
-
-	cmdArgs := ctlV3PrefixArgs(cx.epc, cx.dialTimeout)
+func ctlV3Watch(cx ctlCtx, key string, kvs ...kv) error {
+	watchCmd := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "watch")
 	if cx.interactive {
-		cmdArgs = append(cmdArgs, "watch", "--interactive")
+		watchCmd = append(watchCmd, "--interactive")
 	} else {
-		cmdArgs = append(cmdArgs, watchCmd...)
+		if cx.watchRevision > 0 {
+			watchCmd = append(watchCmd, "--rev", strconv.Itoa(cx.watchRevision))
+		}
+		if cx.prefix {
+			watchCmd = append(watchCmd, "--prefix")
+		}
 	}
 
-	proc, err := spawnCmd(cmdArgs)
+	proc, err := spawnCmd(watchCmd)
 	if err != nil {
 		return err
 	}
 
 	if cx.interactive {
-		if err = proc.Send(strings.Join(watchCmd, " ") + "\r"); err != nil {
+		ws := []string{"watch", key}
+		if cx.watchRevision > 0 {
+			ws = append(ws, "--rev", strconv.Itoa(cx.watchRevision))
+		}
+		if cx.prefix {
+			ws = append(ws, "--prefix")
+		}
+		wl := strings.Join(ws, " ") + "\r"
+		if err = proc.Send(wl); err != nil {
 			return err
 		}
 	}
 
-	if _, err = proc.Expect(key); err != nil {
-		return err
-	}
-	if _, err = proc.Expect(value); err != nil {
-		return err
+	for _, elem := range kvs {
+		if _, err = proc.Expect(elem.key); err != nil {
+			return err
+		}
+		if _, err = proc.Expect(elem.val); err != nil {
+			return err
+		}
 	}
 	return proc.Stop()
 }
