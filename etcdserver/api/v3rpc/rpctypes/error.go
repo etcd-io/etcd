@@ -39,4 +39,5 @@ var (
 
 	ErrUserAlreadyExist = grpc.Errorf(codes.FailedPrecondition, "etcdserver: user name already exists")
 	ErrUserNotFound     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: user name not found")
+	ErrRoleAlreadyExist = grpc.Errorf(codes.FailedPrecondition, "etcdserver: role name already exists")
 )

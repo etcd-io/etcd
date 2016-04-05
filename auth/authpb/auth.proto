@@ -15,3 +15,8 @@ message User {
   bytes password = 2;
   int64 tombstone = 3;
 }
+
+// Role is a single entry in the bucket authRoles
+message Role {
+  bytes name = 2;
+}
