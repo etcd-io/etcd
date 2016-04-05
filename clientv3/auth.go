@@ -15,6 +15,10 @@
 package clientv3
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -26,6 +30,15 @@ type (
 	AuthUserDeleteResponse         pb.AuthUserDeleteResponse
 	AuthUserChangePasswordResponse pb.AuthUserChangePasswordResponse
 	AuthRoleAddResponse            pb.AuthRoleAddResponse
+	AuthRoleGrantResponse          pb.AuthRoleGrantResponse
+
+	PermissionType authpb.Permission_Type
+)
+
+const (
+	PermRead      = authpb.READ
+	PermWrite     = authpb.WRITE
+	PermReadWrite = authpb.READWRITE
 )
 
 type Auth interface {
@@ -41,8 +54,11 @@ type Auth interface {
 	// UserChangePassword changes a password of a user.
 	UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error)
 
-	// RoleAdd adds a new user to an etcd cluster.
+	// RoleAdd adds a new role to an etcd cluster.
 	RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error)
+
+	// RoleGrant grants a permission to a role.
+	RoleGrant(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantResponse, error)
 }
 
 type auth struct {
@@ -84,4 +100,21 @@ func (auth *auth) UserChangePassword(ctx context.Context, name string, password 
 func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error) {
 	resp, err := auth.remote.RoleAdd(ctx, &pb.AuthRoleAddRequest{Name: name})
 	return (*AuthRoleAddResponse)(resp), err
+}
+
+func (auth *auth) RoleGrant(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantResponse, error) {
+	perm := &authpb.Permission{
+		Key:      []byte(key),
+		PermType: authpb.Permission_Type(permType),
+	}
+	resp, err := auth.remote.RoleGrant(ctx, &pb.AuthRoleGrantRequest{Name: name, Perm: perm})
+	return (*AuthRoleGrantResponse)(resp), err
+}
+
+func StrToPermissionType(s string) (PermissionType, error) {
+	val, ok := authpb.Permission_Type_value[strings.ToUpper(s)]
+	if ok {
+		return PermissionType(val), nil
+	}
+	return PermissionType(-1), fmt.Errorf("invalid permission type: %s", s)
 }

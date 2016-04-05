@@ -36,7 +36,8 @@ type InternalRaftRequest struct {
 	AuthUserDelete         *AuthUserDeleteRequest         `protobuf:"bytes,12,opt,name=auth_user_delete" json:"auth_user_delete,omitempty"`
 	AuthUserChangePassword *AuthUserChangePasswordRequest `protobuf:"bytes,13,opt,name=auth_user_change_password" json:"auth_user_change_password,omitempty"`
 	AuthRoleAdd            *AuthRoleAddRequest            `protobuf:"bytes,14,opt,name=auth_role_add" json:"auth_role_add,omitempty"`
-	Alarm                  *AlarmRequest                  `protobuf:"bytes,15,opt,name=alarm" json:"alarm,omitempty"`
+	AuthRoleGrant          *AuthRoleGrantRequest          `protobuf:"bytes,15,opt,name=auth_role_grant" json:"auth_role_grant,omitempty"`
+	Alarm                  *AlarmRequest                  `protobuf:"bytes,16,opt,name=alarm" json:"alarm,omitempty"`
 }
 
 func (m *InternalRaftRequest) Reset()         { *m = InternalRaftRequest{} }
@@ -204,15 +205,27 @@ func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n13
 	}
-	if m.Alarm != nil {
+	if m.AuthRoleGrant != nil {
 		data[i] = 0x7a
 		i++
-		i = encodeVarintRaftInternal(data, i, uint64(m.Alarm.Size()))
-		n14, err := m.Alarm.MarshalTo(data[i:])
+		i = encodeVarintRaftInternal(data, i, uint64(m.AuthRoleGrant.Size()))
+		n14, err := m.AuthRoleGrant.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n14
+	}
+	if m.Alarm != nil {
+		data[i] = 0x82
+		i++
+		data[i] = 0x1
+		i++
+		i = encodeVarintRaftInternal(data, i, uint64(m.Alarm.Size()))
+		n15, err := m.Alarm.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n15
 	}
 	return i, nil
 }
@@ -320,9 +333,13 @@ func (m *InternalRaftRequest) Size() (n int) {
 		l = m.AuthRoleAdd.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
+	if m.AuthRoleGrant != nil {
+		l = m.AuthRoleGrant.Size()
+		n += 1 + l + sovRaftInternal(uint64(l))
+	}
 	if m.Alarm != nil {
 		l = m.Alarm.Size()
-		n += 1 + l + sovRaftInternal(uint64(l))
+		n += 2 + l + sovRaftInternal(uint64(l))
 	}
 	return n
 }
@@ -824,6 +841,39 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AuthRoleGrant", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaftInternal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRaftInternal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.AuthRoleGrant == nil {
+				m.AuthRoleGrant = &AuthRoleGrantRequest{}
+			}
+			if err := m.AuthRoleGrant.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 16:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Alarm", wireType)
 			}

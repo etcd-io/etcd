@@ -16,6 +16,7 @@ package auth
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -36,6 +37,7 @@ var (
 	ErrUserAlreadyExist = errors.New("auth: user already exists")
 	ErrUserNotFound     = errors.New("auth: user not found")
 	ErrRoleAlreadyExist = errors.New("auth: role already exists")
+	ErrRoleNotFound     = errors.New("auth: role not found")
 )
 
 type AuthStore interface {
@@ -56,6 +58,9 @@ type AuthStore interface {
 
 	// RoleAdd adds a new role
 	RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
+
+	// RoleGrant grants a permission to a role
+	RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
 }
 
 type authStore struct {
@@ -193,6 +198,56 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	plog.Noticef("Role %s is created", r.Name)
 
 	return &pb.AuthRoleAddResponse{}, nil
+}
+
+func (as *authStore) RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Name), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrRoleNotFound
+	}
+
+	role := &authpb.Role{}
+	err := role.Unmarshal(vs[0])
+	if err != nil {
+		plog.Errorf("failed to unmarshal a role %s: %s", r.Name, err)
+		return nil, err
+	}
+
+	if !updateExistingPermission(role.KeyPermission, string(r.Perm.Key), r.Perm.PermType) {
+		newPerm := &authpb.Permission{
+			Key:      []byte(r.Perm.Key),
+			PermType: r.Perm.PermType,
+		}
+
+		role.KeyPermission = append(role.KeyPermission, newPerm)
+	}
+
+	marshaledRole, merr := role.Marshal()
+	if merr != nil {
+		plog.Errorf("failed to marshal updated role %s: %s", r.Name, merr)
+		return nil, merr
+	}
+
+	tx.UnsafePut(authRolesBucketName, []byte(r.Name), marshaledRole)
+
+	plog.Noticef("role %s's permission of key %s is updated as %s", r.Name, r.Perm.Key, authpb.Permission_Type_name[int32(r.Perm.PermType)])
+
+	return &pb.AuthRoleGrantResponse{}, nil
+}
+
+func updateExistingPermission(perms []*authpb.Permission, key string, newPerm authpb.Permission_Type) bool {
+	for _, perm := range perms {
+		if strings.Compare(string(perm.Key), key) == 0 {
+			perm.PermType = newPerm
+			return true
+		}
+	}
+
+	return false
 }
 
 func NewAuthStore(be backend.Backend) *authStore {
