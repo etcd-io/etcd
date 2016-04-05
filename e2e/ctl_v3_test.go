@@ -196,6 +196,7 @@ func getTest(cx ctlCtx) {
 		wkv []kv
 	}{
 		{[]string{"key1"}, []kv{{"key1", "val1"}}},
+		{[]string{"this_key_does_not_exist"}, nil},
 		{[]string{"key", "--prefix"}, kvs},
 		{[]string{"key", "--prefix", "--limit=2"}, kvs[:2]},
 		{[]string{"key", "--prefix", "--order=ASCEND", "--sort-by=MODIFY"}, kvs},
@@ -385,6 +386,9 @@ func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
 	cmdArgs = append(cmdArgs, args...)
 	if !cx.quorum {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
+	}
+	if len(kvs) == 0 {
+		return spawnWithExpect(cmdArgs, fmt.Sprintf("Error: %q does not exist", args[0]))
 	}
 	var lines []string
 	for _, elem := range kvs {

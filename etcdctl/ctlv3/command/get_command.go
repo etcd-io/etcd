@@ -58,6 +58,9 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
+	if len(resp.Kvs) == 0 {
+		ExitWithError(ExitSuccess, fmt.Errorf("%q does not exist", key))
+	}
 	display.Get(*resp)
 }
 
