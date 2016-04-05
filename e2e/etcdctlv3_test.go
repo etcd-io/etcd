@@ -30,17 +30,14 @@ func TestCtlV3Put(t *testing.T)          { testCtl(t, putTest) }
 func TestCtlV3PutNoTLS(t *testing.T)     { testCtl(t, putTest, withCfg(configNoTLS)) }
 func TestCtlV3PutClientTLS(t *testing.T) { testCtl(t, putTest, withCfg(configClientTLS)) }
 func TestCtlV3PutPeerTLS(t *testing.T)   { testCtl(t, putTest, withCfg(configPeerTLS)) }
-
-func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDialTimeout(0)) }
+func TestCtlV3PutTimeout(t *testing.T)   { testCtl(t, putTest, withDialTimeout(0)) }
 
 func TestCtlV3Get(t *testing.T)          { testCtl(t, getTest) }
 func TestCtlV3GetNoTLS(t *testing.T)     { testCtl(t, getTest, withCfg(configNoTLS)) }
 func TestCtlV3GetClientTLS(t *testing.T) { testCtl(t, getTest, withCfg(configClientTLS)) }
 func TestCtlV3GetPeerTLS(t *testing.T)   { testCtl(t, getTest, withCfg(configPeerTLS)) }
-
-func TestCtlV3GetPrefix(t *testing.T)      { testCtl(t, getTest, withPrefix()) }
-func TestCtlV3GetPrefixLimit(t *testing.T) { testCtl(t, getTest, withPrefix(), withLimit(2)) }
-func TestCtlV3GetQuorum(t *testing.T)      { testCtl(t, getTest, withQuorum()) }
+func TestCtlV3GetQuorum(t *testing.T)    { testCtl(t, getTest, withQuorum()) }
+func TestCtlV3GetTimeout(t *testing.T)   { testCtl(t, getTest, withDialTimeout(0)) }
 
 func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
 func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoTLS)) }
@@ -102,8 +99,6 @@ type ctlCtx struct {
 	quorum        bool // if true, set up 3-node cluster and linearizable read
 	interactive   bool
 	watchRevision int
-
-	limit int
 }
 
 type ctlOption func(*ctlCtx)
@@ -136,10 +131,6 @@ func withInteractive() ctlOption {
 
 func withWatchRevision(rev int) ctlOption {
 	return func(cx *ctlCtx) { cx.watchRevision = rev }
-}
-
-func withLimit(limit int) ctlOption {
-	return func(cx *ctlCtx) { cx.limit = limit }
 }
 
 func setupCtlV3Test(t *testing.T, cfg etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {
@@ -205,7 +196,7 @@ func putTest(cx ctlCtx) {
 			cx.t.Fatalf("putTest ctlV3Put error (%v)", err)
 		}
 	}
-	if err := ctlV3Get(cx, key, kv{key, value}); err != nil {
+	if err := ctlV3Get(cx, []string{key}, kv{key, value}); err != nil {
 		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
 			cx.t.Fatalf("putTest ctlV3Get error (%v)", err)
 		}
@@ -215,26 +206,35 @@ func putTest(cx ctlCtx) {
 func getTest(cx ctlCtx) {
 	defer close(cx.errc)
 
-	kvs := []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
+	var (
+		kvs    = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
+		revkvs = []kv{{"key3", "val3"}, {"key2", "val2"}, {"key1", "val1"}}
+	)
+
+	tests := []struct {
+		args []string
+
+		wkv []kv
+	}{
+		{[]string{"key1"}, []kv{{"key1", "val1"}}},
+		{[]string{"key", "--prefix"}, kvs},
+		{[]string{"key", "--prefix", "--limit=2"}, kvs[:2]},
+		{[]string{"key", "--prefix", "--order=ASCEND", "--sort-by=MODIFY"}, kvs},
+		{[]string{"key", "--prefix", "--order=ASCEND", "--sort-by=VERSION"}, kvs},
+		{[]string{"key", "--prefix", "--order=DESCEND", "--sort-by=CREATE"}, revkvs},
+		{[]string{"key", "--prefix", "--order=DESCEND", "--sort-by=KEY"}, revkvs},
+	}
+
 	for i := range kvs {
 		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val); err != nil {
-			cx.t.Fatalf("getTest ctlV3Put error (%v)", err)
+			cx.t.Fatalf("getTest #%d: ctlV3Put error (%v)", i, err)
 		}
 	}
-
-	if cx.limit > 0 {
-		kvs = kvs[:cx.limit]
-	}
-	keyToGet := "key"
-	if !cx.prefix {
-		keyToGet = "key1"
-		kvs = kvs[:1]
-	}
-	// TODO: configure order, sort-by
-
-	if err := ctlV3Get(cx, keyToGet, kvs...); err != nil {
-		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
-			cx.t.Fatalf("getTest ctlV3Get error (%v)", err)
+	for i, tt := range tests {
+		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
+			if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+				cx.t.Errorf("getTest #%d: ctlV3Get error (%v)", i, err)
+			}
 		}
 	}
 }
@@ -359,19 +359,12 @@ type kv struct {
 	key, val string
 }
 
-func ctlV3Get(cx ctlCtx, key string, kvs ...kv) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "get", key)
+func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "get")
+	cmdArgs = append(cmdArgs, args...)
 	if !cx.quorum {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
-	if cx.prefix {
-		cmdArgs = append(cmdArgs, "--prefix")
-	}
-	if cx.limit > 0 {
-		cmdArgs = append(cmdArgs, "--limit", strconv.Itoa(cx.limit))
-	}
-	// TODO: configure order, sort-by
-
 	var lines []string
 	for _, elem := range kvs {
 		lines = append(lines, elem.key, elem.val)
