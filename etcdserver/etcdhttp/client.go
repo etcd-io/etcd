@@ -384,7 +384,7 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 			}
 		}
 
-		http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+		http.Error(w, `{"health": "false"}`, http.StatusInternalServerError)
 		return
 	}
 }
