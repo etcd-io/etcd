@@ -877,7 +877,7 @@ func (r *raft) pastElectionTimeout() bool {
 }
 
 func (r *raft) resetRandomizedElectionTimeout() {
-	r.randomizedElectionTimeout = r.electionTimeout + r.rand.Int()%r.electionTimeout
+	r.randomizedElectionTimeout = r.electionTimeout + r.rand.Intn(r.electionTimeout)
 }
 
 // checkQuorumActive returns true if the quorum is active from
