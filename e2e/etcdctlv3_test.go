@@ -17,7 +17,6 @@ package e2e
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -36,22 +35,20 @@ func TestCtlV3Get(t *testing.T)          { testCtl(t, getTest) }
 func TestCtlV3GetNoTLS(t *testing.T)     { testCtl(t, getTest, withCfg(configNoTLS)) }
 func TestCtlV3GetClientTLS(t *testing.T) { testCtl(t, getTest, withCfg(configClientTLS)) }
 func TestCtlV3GetPeerTLS(t *testing.T)   { testCtl(t, getTest, withCfg(configPeerTLS)) }
-func TestCtlV3GetQuorum(t *testing.T)    { testCtl(t, getTest, withQuorum()) }
 func TestCtlV3GetTimeout(t *testing.T)   { testCtl(t, getTest, withDialTimeout(0)) }
+func TestCtlV3GetQuorum(t *testing.T)    { testCtl(t, getTest, withQuorum()) }
 
 func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
 func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoTLS)) }
 func TestCtlV3DelClientTLS(t *testing.T) { testCtl(t, delTest, withCfg(configClientTLS)) }
 func TestCtlV3DelPeerTLS(t *testing.T)   { testCtl(t, delTest, withCfg(configPeerTLS)) }
-
-func TestCtlV3DelPrefix(t *testing.T) { testCtl(t, delTest, withPrefix()) }
+func TestCtlV3DelTimeout(t *testing.T)   { testCtl(t, delTest, withDialTimeout(0)) }
 
 func TestCtlV3Watch(t *testing.T)          { testCtl(t, watchTest) }
 func TestCtlV3WatchNoTLS(t *testing.T)     { testCtl(t, watchTest, withCfg(configNoTLS)) }
 func TestCtlV3WatchClientTLS(t *testing.T) { testCtl(t, watchTest, withCfg(configClientTLS)) }
 func TestCtlV3WatchPeerTLS(t *testing.T)   { testCtl(t, watchTest, withCfg(configPeerTLS)) }
-func TestCtlV3WatchPrefix(t *testing.T)    { testCtl(t, watchTest, withPrefix()) }
-
+func TestCtlV3WatchTimeout(t *testing.T)   { testCtl(t, watchTest, withDialTimeout(0)) }
 func TestCtlV3WatchInteractive(t *testing.T) {
 	testCtl(t, watchTest, withInteractive())
 }
@@ -63,9 +60,6 @@ func TestCtlV3WatchInteractiveClientTLS(t *testing.T) {
 }
 func TestCtlV3WatchInteractivePeerTLS(t *testing.T) {
 	testCtl(t, watchTest, withInteractive(), withCfg(configPeerTLS))
-}
-func TestCtlV3WatchInteractivePrefix(t *testing.T) {
-	testCtl(t, watchTest, withInteractive(), withPrefix())
 }
 
 func TestCtlV3TxnInteractiveSuccess(t *testing.T) {
@@ -80,12 +74,12 @@ func TestCtlV3TxnInteractiveSuccessClientTLS(t *testing.T) {
 func TestCtlV3TxnInteractiveSuccessPeerTLS(t *testing.T) {
 	testCtl(t, txnTestSuccess, withInteractive(), withCfg(configPeerTLS))
 }
-
 func TestCtlV3TxnInteractiveFail(t *testing.T) {
 	testCtl(t, txnTestFail, withInteractive())
 }
 
-func TestCtlV3Version(t *testing.T) { testCtl(t, versionTest) }
+func TestCtlV3Version(t *testing.T)        { testCtl(t, versionTest) }
+func TestCtlV3EpHealthQuorum(t *testing.T) { testCtl(t, epHealthTest, withQuorum()) }
 
 type ctlCtx struct {
 	t   *testing.T
@@ -95,10 +89,8 @@ type ctlCtx struct {
 	errc        chan error
 	dialTimeout time.Duration
 
-	prefix        bool
-	quorum        bool // if true, set up 3-node cluster and linearizable read
-	interactive   bool
-	watchRevision int
+	quorum      bool // if true, set up 3-node cluster and linearizable read
+	interactive bool
 }
 
 type ctlOption func(*ctlCtx)
@@ -117,20 +109,12 @@ func withDialTimeout(timeout time.Duration) ctlOption {
 	return func(cx *ctlCtx) { cx.dialTimeout = timeout }
 }
 
-func withPrefix() ctlOption {
-	return func(cx *ctlCtx) { cx.prefix = true }
-}
-
 func withQuorum() ctlOption {
 	return func(cx *ctlCtx) { cx.quorum = true }
 }
 
 func withInteractive() ctlOption {
 	return func(cx *ctlCtx) { cx.interactive = true }
-}
-
-func withWatchRevision(rev int) ctlOption {
-	return func(cx *ctlCtx) { cx.watchRevision = rev }
 }
 
 func setupCtlV3Test(t *testing.T, cfg etcdProcessClusterConfig, quorum bool) *etcdProcessCluster {
@@ -148,16 +132,11 @@ func setupCtlV3Test(t *testing.T, cfg etcdProcessClusterConfig, quorum bool) *et
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	defer testutil.AfterTest(t)
 
-	var (
-		defaultDialTimeout   = 7 * time.Second
-		defaultWatchRevision = 1
-	)
 	ret := ctlCtx{
-		t:             t,
-		cfg:           configAutoTLS,
-		errc:          make(chan error, 1),
-		dialTimeout:   defaultDialTimeout,
-		watchRevision: defaultWatchRevision,
+		t:           t,
+		cfg:         configAutoTLS,
+		errc:        make(chan error, 1),
+		dialTimeout: 7 * time.Second,
 	}
 	ret.applyOpts(opts)
 
@@ -242,47 +221,81 @@ func getTest(cx ctlCtx) {
 func delTest(cx ctlCtx) {
 	defer close(cx.errc)
 
-	kvs := []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
-	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val); err != nil {
-			cx.t.Fatalf("delTest ctlV3Put error (%v)", err)
+	tests := []struct {
+		puts []kv
+		args []string
+
+		deletedNum int
+	}{
+		{
+			[]kv{{"this", "value"}},
+			[]string{"that"},
+			0,
+		},
+		{
+			[]kv{{"sample", "value"}},
+			[]string{"sample"},
+			1,
+		},
+		{
+			[]kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
+			[]string{"key", "--prefix"},
+			3,
+		},
+	}
+
+	for i, tt := range tests {
+		for j := range tt.puts {
+			if err := ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val); err != nil {
+				cx.t.Fatalf("delTest #%d-%d: ctlV3Put error (%v)", i, j, err)
+			}
 		}
-	}
-
-	var (
-		keyToDel   = "key"
-		deletedNum = 3
-	)
-	if !cx.prefix {
-		keyToDel = "key1"
-		deletedNum = 1
-	}
-
-	if err := ctlV3Del(cx, keyToDel, deletedNum); err != nil {
-		cx.t.Fatalf("delTest ctlV3Del error (%v)", err)
+		if err := ctlV3Del(cx, tt.args, tt.deletedNum); err != nil {
+			if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+				cx.t.Fatalf("delTest #%d: ctlV3Del error (%v)", i, err)
+			}
+		}
 	}
 }
 
 func watchTest(cx ctlCtx) {
 	defer close(cx.errc)
 
-	kvs := []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
-	go func() {
-		for i := range kvs {
-			if err := ctlV3Put(cx, kvs[i].key, kvs[i].val); err != nil {
-				cx.t.Fatalf("delTest ctlV3Put error (%v)", err)
-			}
-		}
-	}()
+	tests := []struct {
+		puts []kv
+		args []string
 
-	keyToWatch := "key"
-	if !cx.prefix {
-		keyToWatch = "key1"
-		kvs = kvs[:1]
+		wkv []kv
+	}{
+		{
+			[]kv{{"sample", "value"}},
+			[]string{"sample", "--rev", "1"},
+			[]kv{{"sample", "value"}},
+		},
+		{
+			[]kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
+			[]string{"key", "--rev", "1", "--prefix"},
+			[]kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
+		},
+		{
+			[]kv{{"etcd", "revision_1"}, {"etcd", "revision_2"}, {"etcd", "revision_3"}},
+			[]string{"etcd", "--rev", "2"},
+			[]kv{{"etcd", "revision_2"}, {"etcd", "revision_3"}},
+		},
 	}
-	if err := ctlV3Watch(cx, keyToWatch, kvs...); err != nil {
-		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
-			cx.t.Fatalf("watchTest ctlV3Watch error (%v)", err)
+
+	for i, tt := range tests {
+		go func() {
+			for j := range tt.puts {
+				if err := ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val); err != nil {
+					cx.t.Fatalf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
+				}
+			}
+		}()
+		if err := ctlV3Watch(cx, tt.args, tt.wkv...); err != nil {
+			if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
+			}
 		}
 	}
 }
@@ -292,6 +305,14 @@ func versionTest(cx ctlCtx) {
 
 	if err := ctlV3Version(cx); err != nil {
 		cx.t.Fatalf("versionTest ctlV3Version error (%v)", err)
+	}
+}
+
+func epHealthTest(cx ctlCtx) {
+	defer close(cx.errc)
+
+	if err := ctlV3EpHealth(cx); err != nil {
+		cx.t.Fatalf("epHealthTest ctlV3EpHealth error (%v)", err)
 	}
 }
 
@@ -372,41 +393,27 @@ func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
 	return spawnWithExpects(cmdArgs, lines...)
 }
 
-func ctlV3Del(cx ctlCtx, key string, num int) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "del", key)
-	if cx.prefix {
-		cmdArgs = append(cmdArgs, "--prefix")
-	}
+func ctlV3Del(cx ctlCtx, args []string, num int) error {
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "del")
+	cmdArgs = append(cmdArgs, args...)
 	return spawnWithExpects(cmdArgs, fmt.Sprintf("%d", num))
 }
 
-func ctlV3Watch(cx ctlCtx, key string, kvs ...kv) error {
-	watchCmd := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "watch")
+func ctlV3Watch(cx ctlCtx, args []string, kvs ...kv) error {
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "watch")
 	if cx.interactive {
-		watchCmd = append(watchCmd, "--interactive")
+		cmdArgs = append(cmdArgs, "--interactive")
 	} else {
-		if cx.watchRevision > 0 {
-			watchCmd = append(watchCmd, "--rev", strconv.Itoa(cx.watchRevision))
-		}
-		if cx.prefix {
-			watchCmd = append(watchCmd, "--prefix")
-		}
+		cmdArgs = append(cmdArgs, args...)
 	}
 
-	proc, err := spawnCmd(watchCmd)
+	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return err
 	}
 
 	if cx.interactive {
-		ws := []string{"watch", key}
-		if cx.watchRevision > 0 {
-			ws = append(ws, "--rev", strconv.Itoa(cx.watchRevision))
-		}
-		if cx.prefix {
-			ws = append(ws, "--prefix")
-		}
-		wl := strings.Join(ws, " ") + "\r"
+		wl := strings.Join(append([]string{"watch"}, args...), " ") + "\r"
 		if err = proc.Send(wl); err != nil {
 			return err
 		}
@@ -491,6 +498,15 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 func ctlV3Version(cx ctlCtx) error {
 	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "version")
 	return spawnWithExpect(cmdArgs, version.Version)
+}
+
+func ctlV3EpHealth(cx ctlCtx) error {
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "endpoint-health")
+	lines := make([]string, cx.epc.cfg.clusterSize)
+	for i := range lines {
+		lines[i] = "is healthy"
+	}
+	return spawnWithExpects(cmdArgs, lines...)
 }
 
 func isGRPCTimedout(err error) bool {
