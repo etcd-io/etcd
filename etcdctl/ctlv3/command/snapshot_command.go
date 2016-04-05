@@ -16,12 +16,14 @@ package command
 
 import (
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/mirror"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/storage/backend"
+	spb "github.com/coreos/etcd/storage/storagepb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -56,29 +58,50 @@ func snapshotToStdout(c *clientv3.Client) {
 	if wr.Err() == nil {
 		wr.CompactRevision = 1
 	}
-	if rev := snapshot(os.Stdout, c, wr.CompactRevision+1); rev != 0 {
+
+	wch := make(chan []*spb.Event)
+	donec := make(chan struct{})
+	go func() {
+		for evs := range wch {
+			display.Watch(clientv3.WatchResponse{Events: evs})
+		}
+		os.Stdout.Sync()
+		close(donec)
+	}()
+	if rev := snapshot(wch, c, wr.CompactRevision+1); rev != 0 {
 		err := fmt.Errorf("snapshot interrupted by compaction %v", rev)
 		ExitWithError(ExitInterrupted, err)
 	}
-	os.Stdout.Sync()
+	close(wch)
+	<-donec
 }
 
 // snapshotToFile atomically writes a snapshot to a file
 func snapshotToFile(c *clientv3.Client, path string) {
+	var b backend.Backend
 	partpath := path + ".part"
-	f, err := os.Create(partpath)
-	defer f.Close()
-	if err != nil {
-		exiterr := fmt.Errorf("could not open %s (%v)", partpath, err)
-		ExitWithError(ExitBadArgs, exiterr)
-	}
 	rev := int64(1)
 	for rev != 0 {
-		f.Seek(0, 0)
-		f.Truncate(0)
-		rev = snapshot(f, c, rev)
+		if b != nil {
+			os.Remove(partpath)
+			b.Close()
+		}
+		b = backend.NewDefaultBackend(partpath)
+
+		wch := make(chan []*spb.Event)
+		donec := make(chan struct{})
+		go func() {
+			if err := storage.WriteBackend(b, wch); err != nil {
+				ExitWithError(ExitIO, err)
+			}
+			close(donec)
+		}()
+		rev = snapshot(wch, c, rev)
+		close(wch)
+		<-donec
 	}
-	f.Sync()
+	b.Close()
+
 	if err := os.Rename(partpath, path); err != nil {
 		exiterr := fmt.Errorf("could not rename %s to %s (%v)", partpath, path, err)
 		ExitWithError(ExitIO, exiterr)
@@ -86,16 +109,16 @@ func snapshotToFile(c *clientv3.Client, path string) {
 }
 
 // snapshot reads all of a watcher; returns compaction revision if incomplete
-// TODO: stabilize snapshot format
-func snapshot(w io.Writer, c *clientv3.Client, rev int64) int64 {
+func snapshot(wch chan<- []*spb.Event, c *clientv3.Client, rev int64) int64 {
 	s := mirror.NewSyncer(c, "", rev)
 
 	rc, errc := s.SyncBase(context.TODO())
-
 	for r := range rc {
-		for _, kv := range r.Kvs {
-			fmt.Fprintln(w, kv)
+		evs := make([]*spb.Event, len(r.Kvs))
+		for i, kv := range r.Kvs {
+			evs[i] = &spb.Event{Type: spb.PUT, Kv: kv}
 		}
+		wch <- evs
 	}
 
 	err := <-errc
@@ -114,13 +137,11 @@ func snapshot(w io.Writer, c *clientv3.Client, rev int64) int64 {
 		if wr.Err() != nil {
 			return wr.CompactRevision
 		}
-		for _, ev := range wr.Events {
-			fmt.Fprintln(w, ev)
-		}
 		rev := wr.Events[len(wr.Events)-1].Kv.ModRevision
 		if rev >= wr.Header.Revision {
 			break
 		}
+		wch <- wr.Events
 	}
 
 	return 0
