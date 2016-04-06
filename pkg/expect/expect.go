@@ -35,6 +35,7 @@ type ExpectProcess struct {
 	cond  *sync.Cond // for broadcasting updates are avaiable
 	mu    sync.Mutex // protects lines and err
 	lines []string
+	count int // increment whenever new line gets added
 	err   error
 }
 
@@ -65,6 +66,7 @@ func (ep *ExpectProcess) read() {
 		ep.err = rerr
 		if l != "" {
 			ep.lines = append(ep.lines, l)
+			ep.count++
 			if len(ep.lines) == 1 {
 				ep.cond.Signal()
 			}
@@ -74,8 +76,8 @@ func (ep *ExpectProcess) read() {
 	ep.cond.Signal()
 }
 
-// Expect returns the first line containing the given string.
-func (ep *ExpectProcess) Expect(s string) (string, error) {
+// ExpectFunc returns the first line satisfying the function f.
+func (ep *ExpectProcess) ExpectFunc(f func(string) bool) (string, error) {
 	ep.mu.Lock()
 	for {
 		for len(ep.lines) == 0 && ep.err == nil {
@@ -86,13 +88,26 @@ func (ep *ExpectProcess) Expect(s string) (string, error) {
 		}
 		l := ep.lines[0]
 		ep.lines = ep.lines[1:]
-		if strings.Contains(l, s) {
+		if f(l) {
 			ep.mu.Unlock()
 			return l, nil
 		}
 	}
 	ep.mu.Unlock()
 	return "", ep.err
+}
+
+// Expect returns the first line containing the given string.
+func (ep *ExpectProcess) Expect(s string) (string, error) {
+	return ep.ExpectFunc(func(txt string) bool { return strings.Contains(txt, s) })
+}
+
+// LineCount returns the number of recorded lines since
+// the beginning of the process.
+func (ep *ExpectProcess) LineCount() int {
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+	return ep.count
 }
 
 // Stop kills the expect process and waits for it to exit.
