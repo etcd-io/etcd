@@ -1,7 +1,6 @@
 {
-	"ImportPath": "github.com/coreos/etcd",
+	"ImportPath": "github.com/coreos/etcd/cmd",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v60",
 	"Packages": [
 		"./..."
 	],

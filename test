@@ -16,6 +16,12 @@ COVER=${COVER:-"-cover"}
 GO_BUILD_FLAGS=-a
 source ./build
 
+# Set up gopath so tests use vendored dependencies
+export GOPATH=${PWD}/gopath
+rm -f $GOPATH/src
+mkdir -p $GOPATH
+ln -s ${PWD}/cmd/vendor $GOPATH/src
+
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
 PKGS=`ls pkg/*/*go  | cut -f1,2 -d/ | sort | uniq`
 TESTABLE_AND_FORMATTABLE="client clientv3 discovery error etcdctl/ctlv2 etcdctl/ctlv3 etcdmain etcdserver etcdserver/auth etcdserver/api/v2http etcdserver/api/v2http/httptypes $PKGS proxy raft snap storage storage/backend store version wal"
@@ -102,7 +108,7 @@ function fmt_tests {
 	fi
 
 	echo "Checking for license header..."
-	licRes=$(for file in $(find . -type f -iname '*.go' ! -path './vendor/*'); do
+	licRes=$(for file in $(find . -type f -iname '*.go' ! -path './cmd/*'); do
 			head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" || echo -e "  ${file}"
 		done;)
 	if [ -n "${licRes}" ]; then
