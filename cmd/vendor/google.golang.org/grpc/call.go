@@ -97,8 +97,9 @@ func sendRequest(ctx context.Context, codec Codec, compressor Compressor, callHd
 	return stream, nil
 }
 
-// Invoke is called by the generated code. It sends the RPC request on the
-// wire and returns after response is received.
+// Invoke sends the RPC request on the wire and returns after response is received.
+// Invoke is called by generated code. Also users can call Invoke directly when it
+// is really needed in their use cases.
 func Invoke(ctx context.Context, method string, args, reply interface{}, cc *ClientConn, opts ...CallOption) (err error) {
 	var c callInfo
 	for _, o := range opts {
@@ -185,6 +186,6 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 		if lastErr != nil {
 			return toRPCErr(lastErr)
 		}
-		return Errorf(stream.StatusCode(), stream.StatusDesc())
+		return Errorf(stream.StatusCode(), "%s", stream.StatusDesc())
 	}
 }

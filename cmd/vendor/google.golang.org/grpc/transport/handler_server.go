@@ -118,7 +118,7 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTr
 
 // serverHandlerTransport is an implementation of ServerTransport
 // which replies to exactly one gRPC request (exactly one HTTP request),
-// using the net/http.Handler interface. This http.Handler is guranteed
+// using the net/http.Handler interface. This http.Handler is guaranteed
 // at this point to be speaking over HTTP/2, so it's able to speak valid
 // gRPC.
 type serverHandlerTransport struct {
@@ -313,15 +313,21 @@ func (ht *serverHandlerTransport) HandleStreams(startStream func(*Stream)) {
 	readerDone := make(chan struct{})
 	go func() {
 		defer close(readerDone)
-		for {
-			buf := make([]byte, 1024) // TODO: minimize garbage, optimize recvBuffer code/ownership
+
+		// TODO: minimize garbage, optimize recvBuffer code/ownership
+		const readSize = 8196
+		for buf := make([]byte, readSize); ; {
 			n, err := req.Body.Read(buf)
 			if n > 0 {
-				s.buf.put(&recvMsg{data: buf[:n]})
+				s.buf.put(&recvMsg{data: buf[:n:n]})
+				buf = buf[n:]
 			}
 			if err != nil {
 				s.buf.put(&recvMsg{err: mapRecvMsgError(err)})
 				return
+			}
+			if len(buf) == 0 {
+				buf = make([]byte, readSize)
 			}
 		}
 	}()

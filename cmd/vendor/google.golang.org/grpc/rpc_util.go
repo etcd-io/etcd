@@ -325,7 +325,7 @@ type rpcError struct {
 }
 
 func (e rpcError) Error() string {
-	return fmt.Sprintf("rpc error: code = %d desc = %q", e.code, e.desc)
+	return fmt.Sprintf("rpc error: code = %d desc = %s", e.code, e.desc)
 }
 
 // Code returns the error code for err if it was produced by the rpc system.
@@ -442,3 +442,11 @@ func backoff(retries int) (t time.Duration) {
 	}
 	return time.Duration(backoff)
 }
+
+// SupportPackageIsVersion1 is referenced from generated protocol buffer files
+// to assert that that code is compatible with this version of the grpc package.
+//
+// This constant may be renamed in the future if a change in the generated code
+// requires a synchronised update of grpc-go and protoc-gen-go. This constant
+// should not be referenced from any other code.
+const SupportPackageIsVersion1 = true
