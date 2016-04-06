@@ -747,7 +747,7 @@ func TestCommit(t *testing.T) {
 	}
 }
 
-func TestIsElectionTimeout(t *testing.T) {
+func TestPastElectionTimeout(t *testing.T) {
 	tests := []struct {
 		elapse       int
 		wprobability float64
@@ -776,7 +776,7 @@ func TestIsElectionTimeout(t *testing.T) {
 			got = math.Floor(got*10+0.5) / 10.0
 		}
 		if got != tt.wprobability {
-			t.Errorf("#%d: possibility = %v, want %v", i, got, tt.wprobability)
+			t.Errorf("#%d: probability = %v, want %v", i, got, tt.wprobability)
 		}
 	}
 }
