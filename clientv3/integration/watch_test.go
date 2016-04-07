@@ -161,7 +161,7 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 
 // TestWatchRange tests watcher creates ranges
 func TestWatchRange(t *testing.T) {
-	runWatchTest(t, testWatchReconnInit)
+	runWatchTest(t, testWatchRange)
 }
 
 func testWatchRange(t *testing.T, wctx *watchctx) {
