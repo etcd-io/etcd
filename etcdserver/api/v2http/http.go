@@ -23,6 +23,7 @@ import (
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
+
 	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/pkg/capnslog"

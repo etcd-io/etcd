@@ -32,6 +32,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -103,7 +104,7 @@ func (s *serverRecorder) Process(_ context.Context, m raftpb.Message) error {
 	s.actions = append(s.actions, action{name: "Process", params: []interface{}{m}})
 	return nil
 }
-func (s *serverRecorder) AddMember(_ context.Context, m etcdserver.Member) error {
+func (s *serverRecorder) AddMember(_ context.Context, m membership.Member) error {
 	s.actions = append(s.actions, action{name: "AddMember", params: []interface{}{m}})
 	return nil
 }
@@ -112,7 +113,7 @@ func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) error {
 	return nil
 }
 
-func (s *serverRecorder) UpdateMember(_ context.Context, m etcdserver.Member) error {
+func (s *serverRecorder) UpdateMember(_ context.Context, m membership.Member) error {
 	s.actions = append(s.actions, action{name: "UpdateMember", params: []interface{}{m}})
 	return nil
 }
@@ -149,9 +150,9 @@ func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.R
 	return rs.res, nil
 }
 func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error         { return nil }
-func (rs *resServer) AddMember(_ context.Context, _ etcdserver.Member) error    { return nil }
+func (rs *resServer) AddMember(_ context.Context, _ membership.Member) error    { return nil }
 func (rs *resServer) RemoveMember(_ context.Context, _ uint64) error            { return nil }
-func (rs *resServer) UpdateMember(_ context.Context, _ etcdserver.Member) error { return nil }
+func (rs *resServer) UpdateMember(_ context.Context, _ membership.Member) error { return nil }
 func (rs *resServer) ClusterVersion() *semver.Version                           { return nil }
 
 func boolp(b bool) *bool { return &b }
@@ -600,11 +601,11 @@ func TestGoodParseRequest(t *testing.T) {
 }
 
 func TestServeMembers(t *testing.T) {
-	memb1 := etcdserver.Member{ID: 12, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
-	memb2 := etcdserver.Member{ID: 13, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
+	memb1 := membership.Member{ID: 12, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
+	memb2 := membership.Member{ID: 13, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
 		id:      1,
-		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
+		members: map[uint64]*membership.Member{1: &memb1, 2: &memb2},
 	}
 	h := &membersHandler{
 		server:  &serverRecorder{},
@@ -653,11 +654,11 @@ func TestServeMembers(t *testing.T) {
 
 // TODO: consolidate **ALL** fake server implementations and add no leader test case.
 func TestServeLeader(t *testing.T) {
-	memb1 := etcdserver.Member{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
-	memb2 := etcdserver.Member{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
+	memb1 := membership.Member{ID: 1, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
+	memb2 := membership.Member{ID: 2, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
 		id:      1,
-		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
+		members: map[uint64]*membership.Member{1: &memb1, 2: &memb2},
 	}
 	h := &membersHandler{
 		server:  &serverRecorder{},
@@ -741,9 +742,9 @@ func TestServeMembersCreate(t *testing.T) {
 		t.Errorf("got body=%q, want %q", g, wb)
 	}
 
-	wm := etcdserver.Member{
+	wm := membership.Member{
 		ID: 3064321551348478165,
-		RaftAttributes: etcdserver.RaftAttributes{
+		RaftAttributes: membership.RaftAttributes{
 			PeerURLs: []string{"http://127.0.0.1:1"},
 		},
 	}
@@ -816,9 +817,9 @@ func TestServeMembersUpdate(t *testing.T) {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
 
-	wm := etcdserver.Member{
+	wm := membership.Member{
 		ID: 1,
-		RaftAttributes: etcdserver.RaftAttributes{
+		RaftAttributes: membership.RaftAttributes{
 			PeerURLs: []string{"http://127.0.0.1:1"},
 		},
 	}
@@ -913,7 +914,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				etcdserver.ErrIDExists,
+				membership.ErrIDExists,
 			},
 
 			http.StatusConflict,
@@ -927,7 +928,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				etcdserver.ErrPeerURLexists,
+				membership.ErrPeerURLexists,
 			},
 
 			http.StatusConflict,
@@ -951,7 +952,7 @@ func TestServeMembersFail(t *testing.T) {
 				Method: "DELETE",
 			},
 			&errServer{
-				etcdserver.ErrIDRemoved,
+				membership.ErrIDRemoved,
 			},
 
 			http.StatusGone,
@@ -963,7 +964,7 @@ func TestServeMembersFail(t *testing.T) {
 				Method: "DELETE",
 			},
 			&errServer{
-				etcdserver.ErrIDNotFound,
+				membership.ErrIDNotFound,
 			},
 
 			http.StatusNotFound,
@@ -1047,7 +1048,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				etcdserver.ErrPeerURLexists,
+				membership.ErrPeerURLexists,
 			},
 
 			http.StatusConflict,
@@ -1061,7 +1062,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				etcdserver.ErrIDNotFound,
+				membership.ErrIDNotFound,
 			},
 
 			http.StatusNotFound,
@@ -1963,16 +1964,16 @@ func TestTrimPrefix(t *testing.T) {
 }
 
 func TestNewMemberCollection(t *testing.T) {
-	fixture := []*etcdserver.Member{
+	fixture := []*membership.Member{
 		{
 			ID:             12,
-			Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
-			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
+			Attributes:     membership.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
+			RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
 		},
 		{
 			ID:             13,
-			Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:9090", "http://localhost:9091"}},
-			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:9092", "http://localhost:9093"}},
+			Attributes:     membership.Attributes{ClientURLs: []string{"http://localhost:9090", "http://localhost:9091"}},
+			RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:9092", "http://localhost:9093"}},
 		},
 	}
 	got := newMemberCollection(fixture)
@@ -1996,10 +1997,10 @@ func TestNewMemberCollection(t *testing.T) {
 }
 
 func TestNewMember(t *testing.T) {
-	fixture := &etcdserver.Member{
+	fixture := &membership.Member{
 		ID:             12,
-		Attributes:     etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
-		RaftAttributes: etcdserver.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
+		Attributes:     membership.Attributes{ClientURLs: []string{"http://localhost:8080", "http://localhost:8081"}},
+		RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:8082", "http://localhost:8083"}},
 	}
 	got := newMember(fixture)
 

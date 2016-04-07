@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package membership
 
 import (
 	"encoding/json"
@@ -274,7 +274,7 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 }
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
-	cl := newCluster("")
+	cl := NewCluster("")
 	cl.SetStore(store.New())
 	for i := 1; i <= 4; i++ {
 		attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", i)}}
@@ -457,7 +457,7 @@ func TestClusterAddMember(t *testing.T) {
 		{
 			Name: "Create",
 			Params: []interface{}{
-				path.Join(storeMembersPrefix, "1", "raftAttributes"),
+				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
 				false,
 				`{"peerURLs":null}`,
 				false,
@@ -471,7 +471,7 @@ func TestClusterAddMember(t *testing.T) {
 }
 
 func TestClusterMembers(t *testing.T) {
-	cls := &cluster{
+	cls := &RaftCluster{
 		members: map[types.ID]*Member{
 			1:   {ID: 1},
 			20:  {ID: 20},
@@ -499,8 +499,8 @@ func TestClusterRemoveMember(t *testing.T) {
 	c.RemoveMember(1)
 
 	wactions := []testutil.Action{
-		{Name: "Delete", Params: []interface{}{memberStoreKey(1), true, true}},
-		{Name: "Create", Params: []interface{}{removedMemberStoreKey(1), false, "", false, store.TTLOptionSet{ExpireTime: store.Permanent}}},
+		{Name: "Delete", Params: []interface{}{MemberStoreKey(1), true, true}},
+		{Name: "Create", Params: []interface{}{RemovedMemberStoreKey(1), false, "", false, store.TTLOptionSet{ExpireTime: store.Permanent}}},
 	}
 	if !reflect.DeepEqual(st.Action(), wactions) {
 		t.Errorf("actions = %v, want %v", st.Action(), wactions)
@@ -558,8 +558,8 @@ func TestNodeToMember(t *testing.T) {
 	}
 }
 
-func newTestCluster(membs []*Member) *cluster {
-	c := &cluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+func newTestCluster(membs []*Member) *RaftCluster {
+	c := &RaftCluster{members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
 	for _, m := range membs {
 		c.members[m.ID] = m
 	}
@@ -642,7 +642,7 @@ func TestIsReadyToAddNewMember(t *testing.T) {
 	}
 	for i, tt := range tests {
 		c := newTestCluster(tt.members)
-		if got := c.isReadyToAddNewMember(); got != tt.want {
+		if got := c.IsReadyToAddNewMember(); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 		}
 	}
@@ -727,7 +727,7 @@ func TestIsReadyToRemoveMember(t *testing.T) {
 	}
 	for i, tt := range tests {
 		c := newTestCluster(tt.members)
-		if got := c.isReadyToRemoveMember(tt.removeID); got != tt.want {
+		if got := c.IsReadyToRemoveMember(tt.removeID); got != tt.want {
 			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 		}
 	}
