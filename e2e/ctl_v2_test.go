@@ -169,10 +169,6 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 		}
 	}()
 
-	// wait for the server capabilities to be updated based on the version;
-	// the update loop has a delay of 500ms, so 1s should be enough wait time
-	time.Sleep(time.Second)
-
 	if err := etcdctlRoleAdd(epc, "foo"); err != nil {
 		t.Fatalf("failed to add role (%v)", err)
 	}
