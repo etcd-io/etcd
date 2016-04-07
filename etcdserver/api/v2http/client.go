@@ -30,6 +30,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -133,7 +134,7 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 type keysHandler struct {
 	sec     auth.Store
 	server  etcdserver.Server
-	cluster etcdserver.Cluster
+	cluster api.Cluster
 	timer   etcdserver.RaftTimer
 	timeout time.Duration
 }
@@ -186,7 +187,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type deprecatedMachinesHandler struct {
-	cluster etcdserver.Cluster
+	cluster api.Cluster
 }
 
 func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -200,7 +201,7 @@ func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 type membersHandler struct {
 	sec     auth.Store
 	server  etcdserver.Server
-	cluster etcdserver.Cluster
+	cluster api.Cluster
 	timeout time.Duration
 	clock   clockwork.Clock
 }
@@ -389,7 +390,7 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	}
 }
 
-func versionHandler(c etcdserver.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+func versionHandler(c api.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := c.Version()
 		if v != nil {

@@ -19,6 +19,7 @@ import (
 	"net/http"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/rafthttp"
 )
@@ -37,7 +38,7 @@ func NewPeerHandler(s *etcdserver.EtcdServer) http.Handler {
 	return newPeerHandler(s.Cluster(), s.RaftHandler(), lh)
 }
 
-func newPeerHandler(cluster etcdserver.Cluster, raftHandler http.Handler, leaseHandler http.Handler) http.Handler {
+func newPeerHandler(cluster api.Cluster, raftHandler http.Handler, leaseHandler http.Handler) http.Handler {
 	mh := &peerMembersHandler{
 		cluster: cluster,
 	}
@@ -55,7 +56,7 @@ func newPeerHandler(cluster etcdserver.Cluster, raftHandler http.Handler, leaseH
 }
 
 type peerMembersHandler struct {
-	cluster etcdserver.Cluster
+	cluster api.Cluster
 }
 
 func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

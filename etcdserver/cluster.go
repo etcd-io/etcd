@@ -39,24 +39,6 @@ const (
 	attributesSuffix     = "attributes"
 )
 
-type Cluster interface {
-	// ID returns the cluster ID
-	ID() types.ID
-	// ClientURLs returns an aggregate set of all URLs on which this
-	// cluster is listening for client requests
-	ClientURLs() []string
-	// Members returns a slice of members sorted by their ID
-	Members() []*Member
-	// Member retrieves a particular member based on ID, or nil if the
-	// member does not exist in the cluster
-	Member(id types.ID) *Member
-	// IsIDRemoved checks whether the given ID has been removed from this
-	// cluster at some point in the past
-	IsIDRemoved(id types.ID) bool
-	// Version is the cluster-wide minimum major.minor version.
-	Version() *semver.Version
-}
-
 // Cluster is a list of Members that belong to the same raft cluster
 type cluster struct {
 	id    types.ID
