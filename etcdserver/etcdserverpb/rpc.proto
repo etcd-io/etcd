@@ -41,11 +41,11 @@ service Watch {
 }
 
 service Lease {
-  // LeaseCreate creates a lease. A lease has a TTL. The lease will expire if the
+  // LeaseGrant creates a lease. A lease has a TTL. The lease will expire if the
   // server does not receive a keepAlive within TTL from the lease holder.
   // All keys attached to the lease will be expired and deleted if the lease expires.
   // The key expiration generates an event in event history.
-  rpc LeaseCreate(LeaseCreateRequest) returns (LeaseCreateResponse) {}
+  rpc LeaseGrant(LeaseGrantRequest) returns (LeaseGrantResponse) {}
 
   // LeaseRevoke revokes a lease. All the key attached to the lease will be expired and deleted.
   rpc LeaseRevoke(LeaseRevokeRequest) returns (LeaseRevokeResponse) {}
@@ -361,14 +361,14 @@ message WatchResponse {
   repeated storagepb.Event events = 11;
 }
 
-message LeaseCreateRequest {
+message LeaseGrantRequest {
   // advisory ttl in seconds
   int64 TTL = 1;
   // requested ID to create; 0 lets lessor choose
   int64 ID = 2;
 }
 
-message LeaseCreateResponse {
+message LeaseGrantResponse {
   ResponseHeader header = 1;
   int64 ID = 2;
   // server decided ttl in second

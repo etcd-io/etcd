@@ -8,9 +8,9 @@ import (
 	"fmt"
 
 	proto "github.com/gogo/protobuf/proto"
-)
 
-import math "math"
+	math "math"
+)
 
 import io "io"
 
@@ -29,7 +29,7 @@ type InternalRaftRequest struct {
 	DeleteRange            *DeleteRangeRequest            `protobuf:"bytes,5,opt,name=delete_range" json:"delete_range,omitempty"`
 	Txn                    *TxnRequest                    `protobuf:"bytes,6,opt,name=txn" json:"txn,omitempty"`
 	Compaction             *CompactionRequest             `protobuf:"bytes,7,opt,name=compaction" json:"compaction,omitempty"`
-	LeaseCreate            *LeaseCreateRequest            `protobuf:"bytes,8,opt,name=lease_create" json:"lease_create,omitempty"`
+	LeaseGrant             *LeaseGrantRequest             `protobuf:"bytes,8,opt,name=lease_grant" json:"lease_grant,omitempty"`
 	LeaseRevoke            *LeaseRevokeRequest            `protobuf:"bytes,9,opt,name=lease_revoke" json:"lease_revoke,omitempty"`
 	AuthEnable             *AuthEnableRequest             `protobuf:"bytes,10,opt,name=auth_enable" json:"auth_enable,omitempty"`
 	AuthUserAdd            *AuthUserAddRequest            `protobuf:"bytes,11,opt,name=auth_user_add" json:"auth_user_add,omitempty"`
@@ -134,11 +134,11 @@ func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n6
 	}
-	if m.LeaseCreate != nil {
+	if m.LeaseGrant != nil {
 		data[i] = 0x42
 		i++
-		i = encodeVarintRaftInternal(data, i, uint64(m.LeaseCreate.Size()))
-		n7, err := m.LeaseCreate.MarshalTo(data[i:])
+		i = encodeVarintRaftInternal(data, i, uint64(m.LeaseGrant.Size()))
+		n7, err := m.LeaseGrant.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -292,8 +292,8 @@ func (m *InternalRaftRequest) Size() (n int) {
 		l = m.Compaction.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
-	if m.LeaseCreate != nil {
-		l = m.LeaseCreate.Size()
+	if m.LeaseGrant != nil {
+		l = m.LeaseGrant.Size()
 		n += 1 + l + sovRaftInternal(uint64(l))
 	}
 	if m.LeaseRevoke != nil {
@@ -594,7 +594,7 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 8:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LeaseCreate", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field LeaseGrant", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -618,10 +618,10 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.LeaseCreate == nil {
-				m.LeaseCreate = &LeaseCreateRequest{}
+			if m.LeaseGrant == nil {
+				m.LeaseGrant = &LeaseGrantRequest{}
 			}
-			if err := m.LeaseCreate.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.LeaseGrant.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

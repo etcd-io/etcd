@@ -25,7 +25,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func TestLeaseCreate(t *testing.T) {
+func TestLeaseGrant(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
@@ -36,7 +36,7 @@ func TestLeaseCreate(t *testing.T) {
 
 	kv := clientv3.NewKV(clus.RandClient())
 
-	resp, err := lapi.Create(context.Background(), 10)
+	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
@@ -58,7 +58,7 @@ func TestLeaseRevoke(t *testing.T) {
 
 	kv := clientv3.NewKV(clus.RandClient())
 
-	resp, err := lapi.Create(context.Background(), 10)
+	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
@@ -83,7 +83,7 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 	lapi := clientv3.NewLease(clus.RandClient())
 	defer lapi.Close()
 
-	resp, err := lapi.Create(context.Background(), 10)
+	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
@@ -102,7 +102,7 @@ func TestLeaseKeepAlive(t *testing.T) {
 
 	lapi := clientv3.NewLease(clus.RandClient())
 
-	resp, err := lapi.Create(context.Background(), 10)
+	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
@@ -142,7 +142,7 @@ func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 	// TODO: change this line to get a cluster client
 	lapi := clientv3.NewLease(clus.RandClient())
 
-	resp, err := lapi.Create(context.Background(), 10)
+	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}

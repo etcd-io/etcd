@@ -77,7 +77,7 @@ func (b *backendQuota) Cost(v interface{}) int {
 		return costPut(r)
 	case *pb.TxnRequest:
 		return costTxn(r)
-	case *pb.LeaseCreateRequest:
+	case *pb.LeaseGrantRequest:
 		return leaseOverhead
 	default:
 		panic("unexpected cost")

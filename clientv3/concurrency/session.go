@@ -49,7 +49,7 @@ func NewSession(client *v3.Client) (*Session, error) {
 		return s, nil
 	}
 
-	resp, err := client.Create(client.Ctx(), sessionTTL)
+	resp, err := client.Grant(client.Ctx(), sessionTTL)
 	if err != nil {
 		return nil, err
 	}

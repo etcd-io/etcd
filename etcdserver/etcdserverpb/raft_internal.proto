@@ -22,7 +22,7 @@ message InternalRaftRequest {
   TxnRequest txn = 6;
   CompactionRequest compaction = 7;
 
-  LeaseCreateRequest lease_create = 8;
+  LeaseGrantRequest lease_grant = 8;
   LeaseRevokeRequest lease_revoke = 9;
 
   AuthEnableRequest auth_enable = 10;

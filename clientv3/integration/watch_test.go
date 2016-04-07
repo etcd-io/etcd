@@ -448,7 +448,7 @@ func TestWatchEventType(t *testing.T) {
 	if _, err := client.Delete(ctx, "/toDelete"); err != nil {
 		t.Fatalf("Delete failed: %v", err)
 	}
-	lcr, err := client.Lease.Create(ctx, 1)
+	lcr, err := client.Lease.Grant(ctx, 1)
 	if err != nil {
 		t.Fatalf("lease create failed: %v", err)
 	}
