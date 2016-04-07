@@ -330,6 +330,8 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 		t.hEnc.WriteField(hpack.HeaderField{Name: "grpc-timeout", Value: timeoutEncode(timeout)})
 	}
 	for k, v := range authData {
+		// Capital header names are illegal in HTTP/2.
+		k = strings.ToLower(k)
 		t.hEnc.WriteField(hpack.HeaderField{Name: k, Value: v})
 	}
 	var (
@@ -634,6 +636,7 @@ func (t *http2Client) handleRSTStream(f *http2.RSTStreamFrame) {
 	s.statusCode, ok = http2ErrConvTab[http2.ErrCode(f.ErrCode)]
 	if !ok {
 		grpclog.Println("transport: http2Client.handleRSTStream found no mapped gRPC status for the received http2 error ", f.ErrCode)
+		s.statusCode = codes.Unknown
 	}
 	s.mu.Unlock()
 	s.write(recvMsg{err: io.EOF})
@@ -719,6 +722,16 @@ func (t *http2Client) operateHeaders(frame *http2.MetaHeadersFrame) {
 	s.write(recvMsg{err: io.EOF})
 }
 
+func handleMalformedHTTP2(s *Stream, err error) {
+	s.mu.Lock()
+	if !s.headerDone {
+		close(s.headerChan)
+		s.headerDone = true
+	}
+	s.mu.Unlock()
+	s.write(recvMsg{err: err})
+}
+
 // reader runs as a separate goroutine in charge of reading data from network
 // connection.
 //
@@ -743,8 +756,23 @@ func (t *http2Client) reader() {
 	for {
 		frame, err := t.framer.readFrame()
 		if err != nil {
-			t.notifyError(err)
-			return
+			// Abort an active stream if the http2.Framer returns a
+			// http2.StreamError. This can happen only if the server's response
+			// is malformed http2.
+			if se, ok := err.(http2.StreamError); ok {
+				t.mu.Lock()
+				s := t.activeStreams[se.StreamID]
+				t.mu.Unlock()
+				if s != nil {
+					// use error detail to provide better err message
+					handleMalformedHTTP2(s, StreamErrorf(http2ErrConvTab[se.Code], "%v", t.framer.errorDetail()))
+				}
+				continue
+			} else {
+				// Transport error.
+				t.notifyError(err)
+				return
+			}
 		}
 		switch frame := frame.(type) {
 		case *http2.MetaHeadersFrame:
@@ -846,17 +874,6 @@ func (t *http2Client) Error() <-chan struct{} {
 func (t *http2Client) notifyError(err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-
-	// Abort an active stream if the http2.Framer returns a
-	// http2.StreamError. This can happen only if the server's response
-	// is malformed http2.
-	if se, ok := err.(http2.StreamError); ok {
-		if s, ok := t.activeStreams[se.StreamID]; ok {
-			s.write(recvMsg{err: StreamErrorf(http2ErrConvTab[se.Code], "%v", err)})
-			return
-		}
-	}
-
 	// make sure t.errorChan is closed only once.
 	if t.state == reachable {
 		t.state = unreachable

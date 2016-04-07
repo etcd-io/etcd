@@ -1,8 +1,9 @@
 {
-	"ImportPath": "github.com/coreos/etcd/cmd",
+	"ImportPath": "github.com/coreos/etcd",
 	"GoVersion": "go1.6",
+	"GodepVersion": "v60",
 	"Packages": [
-		"./..."
+		"./cmd/..."
 	],
 	"Deps": [
 		{
@@ -104,7 +105,7 @@
 		},
 		{
 			"ImportPath": "github.com/mattn/go-runewidth",
-			"Comment": "travisish-46-gd6bea18",
+			"Comment": "v0.0.1",
 			"Rev": "d6bea18f789704b5f83375793155289da36a3c7f"
 		},
 		{
@@ -204,35 +205,39 @@
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
-			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/codes",
-			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/credentials",
-			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/grpclog",
-			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+		},
+		{
+			"ImportPath": "google.golang.org/grpc/internal",
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/metadata",
-			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/naming",
-			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/peer",
-			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/transport",
-			"Rev": "b88c12e7caf74af3928de99a864aaa9916fa5aad"
+			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
 		},
 		{
 			"ImportPath": "gopkg.in/cheggaaa/pb.v1",

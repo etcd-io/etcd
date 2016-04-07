@@ -246,6 +246,16 @@ func (t *http2Server) HandleStreams(handle func(*Stream)) {
 	for {
 		frame, err := t.framer.readFrame()
 		if err != nil {
+			if se, ok := err.(http2.StreamError); ok {
+				t.mu.Lock()
+				s := t.activeStreams[se.StreamID]
+				t.mu.Unlock()
+				if s != nil {
+					t.closeStream(s)
+				}
+				t.controlBuf.put(&resetStream{se.StreamID, se.Code})
+				continue
+			}
 			t.Close()
 			return
 		}

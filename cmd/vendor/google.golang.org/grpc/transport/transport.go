@@ -63,13 +63,11 @@ type recvMsg struct {
 	err error
 }
 
-func (recvMsg) isItem() bool {
-	return true
-}
+func (*recvMsg) item() {}
 
 // All items in an out of a recvBuffer should be the same type.
 type item interface {
-	isItem() bool
+	item()
 }
 
 // recvBuffer is an unbounded channel of item.
@@ -89,12 +87,14 @@ func newRecvBuffer() *recvBuffer {
 func (b *recvBuffer) put(r item) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.backlog = append(b.backlog, r)
-	select {
-	case b.c <- b.backlog[0]:
-		b.backlog = b.backlog[1:]
-	default:
+	if len(b.backlog) == 0 {
+		select {
+		case b.c <- r:
+			return
+		default:
+		}
 	}
+	b.backlog = append(b.backlog, r)
 }
 
 func (b *recvBuffer) load() {
@@ -299,20 +299,18 @@ func (s *Stream) Read(p []byte) (n int, err error) {
 	return
 }
 
-type key int
-
 // The key to save transport.Stream in the context.
-const streamKey = key(0)
+type streamKey struct{}
 
 // newContextWithStream creates a new context from ctx and attaches stream
 // to it.
 func newContextWithStream(ctx context.Context, stream *Stream) context.Context {
-	return context.WithValue(ctx, streamKey, stream)
+	return context.WithValue(ctx, streamKey{}, stream)
 }
 
 // StreamFromContext returns the stream saved in ctx.
 func StreamFromContext(ctx context.Context) (s *Stream, ok bool) {
-	s, ok = ctx.Value(streamKey).(*Stream)
+	s, ok = ctx.Value(streamKey{}).(*Stream)
 	return
 }
 
