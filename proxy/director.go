@@ -56,10 +56,8 @@ func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterv
 					plog.Infof("endpoints found %q", sl)
 				})
 			}
-			select {
-			case <-time.After(ri):
-				d.refresh()
-			}
+			time.Sleep(ri)
+			d.refresh()
 		}
 	}()
 	return d

@@ -63,6 +63,7 @@ type reverseProxy struct {
 }
 
 func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request) {
+	reportIncomingRequest(clientreq)
 	proxyreq := new(http.Request)
 	*proxyreq = *clientreq
 	startTime := time.Now()
