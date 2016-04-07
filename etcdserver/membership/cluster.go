@@ -29,6 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/go-semver/semver"
@@ -38,7 +39,9 @@ import (
 type RaftCluster struct {
 	id    types.ID
 	token string
+
 	store store.Store
+	be    backend.Backend
 
 	sync.Mutex // guards the fields below
 	version    *semver.Version
@@ -279,15 +282,12 @@ func (c *RaftCluster) AddMember(m *Member) {
 	c.Lock()
 	defer c.Unlock()
 	if c.store != nil {
-		b, err := json.Marshal(m.RaftAttributes)
-		if err != nil {
-			plog.Panicf("marshal raftAttributes should never fail: %v", err)
-		}
-		p := path.Join(MemberStoreKey(m.ID), raftAttributesSuffix)
-		if _, err := c.store.Create(p, false, string(b), false, store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
-			plog.Panicf("create raftAttributes should never fail: %v", err)
-		}
+		mustSaveMemberToStore(c.store, m)
 	}
+	if c.be != nil {
+		mustSaveMemberToBackend(c.be, m)
+	}
+
 	c.members[m.ID] = m
 }
 
@@ -297,16 +297,13 @@ func (c *RaftCluster) RemoveMember(id types.ID) {
 	c.Lock()
 	defer c.Unlock()
 	if c.store != nil {
-		if _, err := c.store.Delete(MemberStoreKey(id), true, true); err != nil {
-			plog.Panicf("delete member should never fail: %v", err)
-		}
+		mustDeleteMemberFromStore(c.store, id)
 	}
+	if c.be != nil {
+		mustDeleteMemberFromBackend(c.be, id)
+	}
+
 	delete(c.members, id)
-	if c.store != nil {
-		if _, err := c.store.Create(RemovedMemberStoreKey(id), false, "", false, store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
-			plog.Panicf("create removedMember should never fail: %v", err)
-		}
-	}
 	c.removed[id] = true
 }
 
@@ -331,17 +328,13 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes)
 	c.Lock()
 	defer c.Unlock()
 
-	if c.store != nil {
-		b, err := json.Marshal(raftAttr)
-		if err != nil {
-			plog.Panicf("marshal raftAttributes should never fail: %v", err)
-		}
-		p := path.Join(MemberStoreKey(id), raftAttributesSuffix)
-		if _, err := c.store.Update(p, string(b), store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
-			plog.Panicf("update raftAttributes should never fail: %v", err)
-		}
-	}
 	c.members[id].RaftAttributes = raftAttr
+	if c.store != nil {
+		mustUpdateMemberInStore(c.store, c.members[id])
+	}
+	if c.be != nil {
+		mustSaveMemberToBackend(c.be, c.members[id])
+	}
 }
 
 func (c *RaftCluster) Version() *semver.Version {

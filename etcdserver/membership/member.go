@@ -17,33 +17,17 @@ package membership
 import (
 	"crypto/sha1"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"math/rand"
-	"path"
 	"sort"
 	"time"
 
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/store"
 	"github.com/coreos/pkg/capnslog"
 )
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver", "membership")
-
-	StoreMembersPrefix        = path.Join(storePrefix, "members")
-	storeRemovedMembersPrefix = path.Join(storePrefix, "removed_members")
-)
-
-const (
-	// TODO: make this private after moving all membership storage logic
-	// from etcdserver pkg
-	AttributesSuffix     = "attributes"
-	raftAttributesSuffix = "raftAttributes"
-
-	// the prefix for stroing membership related information in store provided by store pkg.
-	storePrefix = "/0"
 )
 
 // RaftAttributes represents the raft related attributes of an etcd member.
@@ -121,54 +105,6 @@ func (m *Member) Clone() *Member {
 
 func (m *Member) IsStarted() bool {
 	return len(m.Name) != 0
-}
-
-func MemberStoreKey(id types.ID) string {
-	return path.Join(StoreMembersPrefix, id.String())
-}
-
-func MemberAttributesStorePath(id types.ID) string {
-	return path.Join(MemberStoreKey(id), AttributesSuffix)
-}
-
-func MustParseMemberIDFromKey(key string) types.ID {
-	id, err := types.IDFromString(path.Base(key))
-	if err != nil {
-		plog.Panicf("unexpected parse member id error: %v", err)
-	}
-	return id
-}
-
-func RemovedMemberStoreKey(id types.ID) string {
-	return path.Join(storeRemovedMembersPrefix, id.String())
-}
-
-// NodeToMember builds member from a key value node.
-// the child nodes of the given node MUST be sorted by key.
-func nodeToMember(n *store.NodeExtern) (*Member, error) {
-	m := &Member{ID: MustParseMemberIDFromKey(n.Key)}
-	attrs := make(map[string][]byte)
-	raftAttrKey := path.Join(n.Key, raftAttributesSuffix)
-	attrKey := path.Join(n.Key, AttributesSuffix)
-	for _, nn := range n.Nodes {
-		if nn.Key != raftAttrKey && nn.Key != attrKey {
-			return nil, fmt.Errorf("unknown key %q", nn.Key)
-		}
-		attrs[nn.Key] = []byte(*nn.Value)
-	}
-	if data := attrs[raftAttrKey]; data != nil {
-		if err := json.Unmarshal(data, &m.RaftAttributes); err != nil {
-			return nil, fmt.Errorf("unmarshal raftAttributes error: %v", err)
-		}
-	} else {
-		return nil, fmt.Errorf("raftAttributes key doesn't exist")
-	}
-	if data := attrs[attrKey]; data != nil {
-		if err := json.Unmarshal(data, &m.Attributes); err != nil {
-			return m, fmt.Errorf("unmarshal attributes error: %v", err)
-		}
-	}
-	return m, nil
 }
 
 // MembersByID implements sort by ID interface
