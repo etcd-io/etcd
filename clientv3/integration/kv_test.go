@@ -40,7 +40,7 @@ func TestKVPut(t *testing.T) {
 	kv := clientv3.NewKV(clus.RandClient())
 	ctx := context.TODO()
 
-	resp, err := lapi.Create(context.Background(), 10)
+	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Fatalf("failed to create lease %v", err)
 	}

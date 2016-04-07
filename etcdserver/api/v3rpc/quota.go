@@ -74,11 +74,11 @@ type quotaLeaseServer struct {
 	qa quotaAlarmer
 }
 
-func (s *quotaLeaseServer) LeaseCreate(ctx context.Context, cr *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+func (s *quotaLeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	if err := s.qa.check(ctx, cr); err != nil {
 		return nil, err
 	}
-	return s.LeaseServer.LeaseCreate(ctx, cr)
+	return s.LeaseServer.LeaseGrant(ctx, cr)
 }
 
 func NewQuotaLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {

@@ -28,9 +28,9 @@ func leaseTestKeepAlive(cx ctlCtx) {
 	defer close(cx.errc)
 
 	// put with TTL 10 seconds and keep-alive
-	leaseID, err := ctlV3LeaseCreate(cx, 10)
+	leaseID, err := ctlV3LeaseGrant(cx, 10)
 	if err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3LeaseCreate error (%v)", err)
+		cx.t.Fatalf("leaseTestKeepAlive: ctlV3LeaseGrant error (%v)", err)
 	}
 	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
 		cx.t.Fatalf("leaseTestKeepAlive: ctlV3Put error (%v)", err)
@@ -47,9 +47,9 @@ func leaseTestRevoke(cx ctlCtx) {
 	defer close(cx.errc)
 
 	// put with TTL 10 seconds and revoke
-	leaseID, err := ctlV3LeaseCreate(cx, 10)
+	leaseID, err := ctlV3LeaseGrant(cx, 10)
 	if err != nil {
-		cx.t.Fatalf("leaseTestRevoke: ctlV3LeaseCreate error (%v)", err)
+		cx.t.Fatalf("leaseTestRevoke: ctlV3LeaseGrant error (%v)", err)
 	}
 	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
 		cx.t.Fatalf("leaseTestRevoke: ctlV3Put error (%v)", err)
@@ -62,14 +62,14 @@ func leaseTestRevoke(cx ctlCtx) {
 	}
 }
 
-func ctlV3LeaseCreate(cx ctlCtx, ttl int) (string, error) {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "lease", "create", strconv.Itoa(ttl))
+func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "lease", "grant", strconv.Itoa(ttl))
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return "", err
 	}
 
-	line, err := proc.Expect(" created with TTL(")
+	line, err := proc.Expect(" granted with TTL(")
 	if err != nil {
 		return "", err
 	}
@@ -77,10 +77,10 @@ func ctlV3LeaseCreate(cx ctlCtx, ttl int) (string, error) {
 		return "", err
 	}
 
-	// parse 'line LEASE_ID created with TTL(5s)' to get lease ID
+	// parse 'line LEASE_ID granted with TTL(5s)' to get lease ID
 	hs := strings.Split(line, " ")
 	if len(hs) < 2 {
-		return "", fmt.Errorf("lease create failed with %q", line)
+		return "", fmt.Errorf("lease grant failed with %q", line)
 	}
 	return hs[1], nil
 }

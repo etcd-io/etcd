@@ -8,16 +8,15 @@ import (
 	"fmt"
 
 	proto "github.com/gogo/protobuf/proto"
-)
 
-import math "math"
+	math "math"
 
-import storagepb "github.com/coreos/etcd/storage/storagepb"
-
-import (
 	context "golang.org/x/net/context"
+
 	grpc "google.golang.org/grpc"
 )
+
+import storagepb "github.com/coreos/etcd/storage/storagepb"
 
 import io "io"
 
@@ -983,18 +982,18 @@ func (m *WatchResponse) GetEvents() []*storagepb.Event {
 	return nil
 }
 
-type LeaseCreateRequest struct {
+type LeaseGrantRequest struct {
 	// advisory ttl in seconds
 	TTL int64 `protobuf:"varint,1,opt,name=TTL,proto3" json:"TTL,omitempty"`
 	// requested ID to create; 0 lets lessor choose
 	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
-func (m *LeaseCreateRequest) Reset()         { *m = LeaseCreateRequest{} }
-func (m *LeaseCreateRequest) String() string { return proto.CompactTextString(m) }
-func (*LeaseCreateRequest) ProtoMessage()    {}
+func (m *LeaseGrantRequest) Reset()         { *m = LeaseGrantRequest{} }
+func (m *LeaseGrantRequest) String() string { return proto.CompactTextString(m) }
+func (*LeaseGrantRequest) ProtoMessage()    {}
 
-type LeaseCreateResponse struct {
+type LeaseGrantResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	ID     int64           `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
 	// server decided ttl in second
@@ -1002,11 +1001,11 @@ type LeaseCreateResponse struct {
 	Error string `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *LeaseCreateResponse) Reset()         { *m = LeaseCreateResponse{} }
-func (m *LeaseCreateResponse) String() string { return proto.CompactTextString(m) }
-func (*LeaseCreateResponse) ProtoMessage()    {}
+func (m *LeaseGrantResponse) Reset()         { *m = LeaseGrantResponse{} }
+func (m *LeaseGrantResponse) String() string { return proto.CompactTextString(m) }
+func (*LeaseGrantResponse) ProtoMessage()    {}
 
-func (m *LeaseCreateResponse) GetHeader() *ResponseHeader {
+func (m *LeaseGrantResponse) GetHeader() *ResponseHeader {
 	if m != nil {
 		return m.Header
 	}
@@ -1607,8 +1606,8 @@ func init() {
 	proto.RegisterType((*WatchCreateRequest)(nil), "etcdserverpb.WatchCreateRequest")
 	proto.RegisterType((*WatchCancelRequest)(nil), "etcdserverpb.WatchCancelRequest")
 	proto.RegisterType((*WatchResponse)(nil), "etcdserverpb.WatchResponse")
-	proto.RegisterType((*LeaseCreateRequest)(nil), "etcdserverpb.LeaseCreateRequest")
-	proto.RegisterType((*LeaseCreateResponse)(nil), "etcdserverpb.LeaseCreateResponse")
+	proto.RegisterType((*LeaseGrantRequest)(nil), "etcdserverpb.LeaseGrantRequest")
+	proto.RegisterType((*LeaseGrantResponse)(nil), "etcdserverpb.LeaseGrantResponse")
 	proto.RegisterType((*LeaseRevokeRequest)(nil), "etcdserverpb.LeaseRevokeRequest")
 	proto.RegisterType((*LeaseRevokeResponse)(nil), "etcdserverpb.LeaseRevokeResponse")
 	proto.RegisterType((*LeaseKeepAliveRequest)(nil), "etcdserverpb.LeaseKeepAliveRequest")
@@ -1966,11 +1965,11 @@ var _Watch_serviceDesc = grpc.ServiceDesc{
 // Client API for Lease service
 
 type LeaseClient interface {
-	// LeaseCreate creates a lease. A lease has a TTL. The lease will expire if the
+	// LeaseGrant creates a lease. A lease has a TTL. The lease will expire if the
 	// server does not receive a keepAlive within TTL from the lease holder.
 	// All keys attached to the lease will be expired and deleted if the lease expires.
 	// The key expiration generates an event in event history.
-	LeaseCreate(ctx context.Context, in *LeaseCreateRequest, opts ...grpc.CallOption) (*LeaseCreateResponse, error)
+	LeaseGrant(ctx context.Context, in *LeaseGrantRequest, opts ...grpc.CallOption) (*LeaseGrantResponse, error)
 	// LeaseRevoke revokes a lease. All the key attached to the lease will be expired and deleted.
 	LeaseRevoke(ctx context.Context, in *LeaseRevokeRequest, opts ...grpc.CallOption) (*LeaseRevokeResponse, error)
 	// KeepAlive keeps the lease alive.
@@ -1985,9 +1984,9 @@ func NewLeaseClient(cc *grpc.ClientConn) LeaseClient {
 	return &leaseClient{cc}
 }
 
-func (c *leaseClient) LeaseCreate(ctx context.Context, in *LeaseCreateRequest, opts ...grpc.CallOption) (*LeaseCreateResponse, error) {
-	out := new(LeaseCreateResponse)
-	err := grpc.Invoke(ctx, "/etcdserverpb.Lease/LeaseCreate", in, out, c.cc, opts...)
+func (c *leaseClient) LeaseGrant(ctx context.Context, in *LeaseGrantRequest, opts ...grpc.CallOption) (*LeaseGrantResponse, error) {
+	out := new(LeaseGrantResponse)
+	err := grpc.Invoke(ctx, "/etcdserverpb.Lease/LeaseGrant", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2037,11 +2036,11 @@ func (x *leaseLeaseKeepAliveClient) Recv() (*LeaseKeepAliveResponse, error) {
 // Server API for Lease service
 
 type LeaseServer interface {
-	// LeaseCreate creates a lease. A lease has a TTL. The lease will expire if the
+	// LeaseGrant creates a lease. A lease has a TTL. The lease will expire if the
 	// server does not receive a keepAlive within TTL from the lease holder.
 	// All keys attached to the lease will be expired and deleted if the lease expires.
 	// The key expiration generates an event in event history.
-	LeaseCreate(context.Context, *LeaseCreateRequest) (*LeaseCreateResponse, error)
+	LeaseGrant(context.Context, *LeaseGrantRequest) (*LeaseGrantResponse, error)
 	// LeaseRevoke revokes a lease. All the key attached to the lease will be expired and deleted.
 	LeaseRevoke(context.Context, *LeaseRevokeRequest) (*LeaseRevokeResponse, error)
 	// KeepAlive keeps the lease alive.
@@ -2052,12 +2051,12 @@ func RegisterLeaseServer(s *grpc.Server, srv LeaseServer) {
 	s.RegisterService(&_Lease_serviceDesc, srv)
 }
 
-func _Lease_LeaseCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(LeaseCreateRequest)
+func _Lease_LeaseGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(LeaseGrantRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(LeaseServer).LeaseCreate(ctx, in)
+	out, err := srv.(LeaseServer).LeaseGrant(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -2107,8 +2106,8 @@ var _Lease_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*LeaseServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "LeaseCreate",
-			Handler:    _Lease_LeaseCreate_Handler,
+			MethodName: "LeaseGrant",
+			Handler:    _Lease_LeaseGrant_Handler,
 		},
 		{
 			MethodName: "LeaseRevoke",
@@ -3760,7 +3759,7 @@ func (m *WatchResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *LeaseCreateRequest) Marshal() (data []byte, err error) {
+func (m *LeaseGrantRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -3770,7 +3769,7 @@ func (m *LeaseCreateRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *LeaseCreateRequest) MarshalTo(data []byte) (int, error) {
+func (m *LeaseGrantRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -3788,7 +3787,7 @@ func (m *LeaseCreateRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *LeaseCreateResponse) Marshal() (data []byte, err error) {
+func (m *LeaseGrantResponse) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -3798,7 +3797,7 @@ func (m *LeaseCreateResponse) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *LeaseCreateResponse) MarshalTo(data []byte) (int, error) {
+func (m *LeaseGrantResponse) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -5589,7 +5588,7 @@ func (m *WatchResponse) Size() (n int) {
 	return n
 }
 
-func (m *LeaseCreateRequest) Size() (n int) {
+func (m *LeaseGrantRequest) Size() (n int) {
 	var l int
 	_ = l
 	if m.TTL != 0 {
@@ -5601,7 +5600,7 @@ func (m *LeaseCreateRequest) Size() (n int) {
 	return n
 }
 
-func (m *LeaseCreateResponse) Size() (n int) {
+func (m *LeaseGrantResponse) Size() (n int) {
 	var l int
 	_ = l
 	if m.Header != nil {
@@ -8649,7 +8648,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
+func (m *LeaseGrantRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8672,10 +8671,10 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: LeaseCreateRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: LeaseGrantRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LeaseCreateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: LeaseGrantRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -8737,7 +8736,7 @@ func (m *LeaseCreateRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
+func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -8760,10 +8759,10 @@ func (m *LeaseCreateResponse) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: LeaseCreateResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: LeaseGrantResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: LeaseCreateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: LeaseGrantResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

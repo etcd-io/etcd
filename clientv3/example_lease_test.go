@@ -22,7 +22,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func ExampleLease_create() {
+func ExampleLease_grant() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
@@ -33,7 +33,7 @@ func ExampleLease_create() {
 	defer cli.Close()
 
 	// minimum lease TTL is 5-second
-	resp, err := cli.Create(context.TODO(), 5)
+	resp, err := cli.Grant(context.TODO(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func ExampleLease_revoke() {
 	}
 	defer cli.Close()
 
-	resp, err := cli.Create(context.TODO(), 5)
+	resp, err := cli.Grant(context.TODO(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func ExampleLease_keepAlive() {
 	}
 	defer cli.Close()
 
-	resp, err := cli.Create(context.TODO(), 5)
+	resp, err := cli.Grant(context.TODO(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func ExampleLease_keepAliveOnce() {
 	}
 	defer cli.Close()
 
-	resp, err := cli.Create(context.TODO(), 5)
+	resp, err := cli.Grant(context.TODO(), 5)
 	if err != nil {
 		log.Fatal(err)
 	}

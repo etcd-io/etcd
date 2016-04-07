@@ -35,8 +35,8 @@
 		WatchCreateRequest
 		WatchCancelRequest
 		WatchResponse
-		LeaseCreateRequest
-		LeaseCreateResponse
+		LeaseGrantRequest
+		LeaseGrantResponse
 		LeaseRevokeRequest
 		LeaseRevokeResponse
 		LeaseKeepAliveRequest
@@ -92,9 +92,9 @@ import (
 	"fmt"
 
 	proto "github.com/gogo/protobuf/proto"
-)
 
-import math "math"
+	math "math"
+)
 
 import io "io"
 

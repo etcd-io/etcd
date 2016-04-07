@@ -50,7 +50,7 @@ type applierV3 interface {
 	DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error)
-	LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error)
+	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 	AuthEnable() (*pb.AuthEnableResponse, error)
@@ -77,8 +77,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.Txn(r.Txn)
 	case r.Compaction != nil:
 		ar.resp, ar.physc, ar.err = s.applyV3.Compaction(r.Compaction)
-	case r.LeaseCreate != nil:
-		ar.resp, ar.err = s.applyV3.LeaseCreate(r.LeaseCreate)
+	case r.LeaseGrant != nil:
+		ar.resp, ar.err = s.applyV3.LeaseGrant(r.LeaseGrant)
 	case r.LeaseRevoke != nil:
 		ar.resp, ar.err = s.applyV3.LeaseRevoke(r.LeaseRevoke)
 	case r.Alarm != nil:
@@ -387,9 +387,9 @@ func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.Com
 	return resp, ch, err
 }
 
-func (a *applierV3backend) LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+func (a *applierV3backend) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	l, err := a.s.lessor.Grant(lease.LeaseID(lc.ID), lc.TTL)
-	resp := &pb.LeaseCreateResponse{}
+	resp := &pb.LeaseGrantResponse{}
 	if err == nil {
 		resp.ID = int64(l.ID)
 		resp.TTL = l.TTL
@@ -471,7 +471,7 @@ func (a *applierV3Capped) Txn(r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	return a.applierV3.Txn(r)
 }
 
-func (a *applierV3Capped) LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+func (a *applierV3Capped) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	return nil, ErrNoSpace
 }
 
@@ -523,9 +523,9 @@ func (a *quotaApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	return resp, err
 }
 
-func (a *quotaApplierV3) LeaseCreate(lc *pb.LeaseCreateRequest) (*pb.LeaseCreateResponse, error) {
+func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	ok := a.q.Available(lc)
-	resp, err := a.applierV3.LeaseCreate(lc)
+	resp, err := a.applierV3.LeaseGrant(lc)
 	if err == nil && !ok {
 		err = ErrNoSpace
 	}
