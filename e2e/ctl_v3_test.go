@@ -170,13 +170,13 @@ func putTest(cx ctlCtx) {
 
 	key, value := "foo", "bar"
 
-	if err := ctlV3Put(cx, key, value); err != nil {
-		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+	if err := ctlV3Put(cx, key, value, ""); err != nil {
+		if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 			cx.t.Fatalf("putTest ctlV3Put error (%v)", err)
 		}
 	}
 	if err := ctlV3Get(cx, []string{key}, kv{key, value}); err != nil {
-		if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+		if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 			cx.t.Fatalf("putTest ctlV3Get error (%v)", err)
 		}
 	}
@@ -205,13 +205,13 @@ func getTest(cx ctlCtx) {
 	}
 
 	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val); err != nil {
+		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
 			cx.t.Fatalf("getTest #%d: ctlV3Put error (%v)", i, err)
 		}
 	}
 	for i, tt := range tests {
 		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
-			if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("getTest #%d: ctlV3Get error (%v)", i, err)
 			}
 		}
@@ -246,12 +246,12 @@ func delTest(cx ctlCtx) {
 
 	for i, tt := range tests {
 		for j := range tt.puts {
-			if err := ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val); err != nil {
+			if err := ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val, ""); err != nil {
 				cx.t.Fatalf("delTest #%d-%d: ctlV3Put error (%v)", i, j, err)
 			}
 		}
 		if err := ctlV3Del(cx, tt.args, tt.deletedNum); err != nil {
-			if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Fatalf("delTest #%d: ctlV3Del error (%v)", i, err)
 			}
 		}
@@ -287,13 +287,13 @@ func watchTest(cx ctlCtx) {
 	for i, tt := range tests {
 		go func() {
 			for j := range tt.puts {
-				if err := ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val); err != nil {
+				if err := ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val, ""); err != nil {
 					cx.t.Fatalf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
 				}
 			}
 		}()
 		if err := ctlV3Watch(cx, tt.args, tt.wkv...); err != nil {
-			if cx.dialTimeout > 0 && isGRPCTimedout(err) {
+			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
 			}
 		}
@@ -319,10 +319,10 @@ func epHealthTest(cx ctlCtx) {
 func txnTestSuccess(cx ctlCtx) {
 	defer close(cx.errc)
 
-	if err := ctlV3Put(cx, "key1", "value1"); err != nil {
+	if err := ctlV3Put(cx, "key1", "value1", ""); err != nil {
 		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
 	}
-	if err := ctlV3Put(cx, "key2", "value2"); err != nil {
+	if err := ctlV3Put(cx, "key2", "value2", ""); err != nil {
 		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
 	}
 
@@ -371,8 +371,11 @@ func ctlV3PrefixArgs(clus *etcdProcessCluster, dialTimeout time.Duration) []stri
 	return cmdArgs
 }
 
-func ctlV3Put(cx ctlCtx, key, value string) error {
+func ctlV3Put(cx ctlCtx, key, value, leaseID string) error {
 	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "put", key, value)
+	if leaseID != "" {
+		cmdArgs = append(cmdArgs, "--lease", leaseID)
+	}
 	return spawnWithExpect(cmdArgs, "OK")
 }
 

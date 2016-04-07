@@ -416,8 +416,7 @@ func (epc *etcdProcessCluster) Close() (err error) {
 }
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	// redirect stderr to stdout since expect only uses stdout
-	cmdargs := append([]string{"-c"}, strings.Join(append(args, "2>&1"), " "))
+	cmdargs := append([]string{"-c"}, strings.Join(args, " "))
 	return expect.NewExpect("/bin/sh", cmdargs...)
 }
 
@@ -430,15 +429,30 @@ func spawnWithExpects(args []string, xs ...string) error {
 	if err != nil {
 		return err
 	}
+	// process until either stdout or stderr contains
+	// the expected string
+	var (
+		lines    []string
+		lineFunc = func(txt string) bool { return true }
+	)
 	for _, txt := range xs {
-		_, err = proc.Expect(txt)
-		if err != nil {
-			return err
+		for {
+			l, err := proc.ExpectFunc(lineFunc)
+			if err != nil {
+				return fmt.Errorf("%v (expected %s, got %q)", err, txt, lines)
+			}
+			lines = append(lines, l)
+			if strings.Contains(l, txt) {
+				break
+			}
 		}
 	}
 	perr := proc.Close()
 	if err != nil {
 		return err
+	}
+	if len(xs) == 0 && proc.LineCount() != 0 { // expect no output
+		return fmt.Errorf("unexpected output (got lines %q, line count %d)", lines, proc.LineCount())
 	}
 	return perr
 }
