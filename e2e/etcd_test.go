@@ -439,7 +439,7 @@ func spawnWithExpects(args []string, xs ...string) error {
 		for {
 			l, err := proc.ExpectFunc(lineFunc)
 			if err != nil {
-				return fmt.Errorf("%v (expected %s, got %q)", err, txt, lines)
+				return fmt.Errorf("%v (expected %q, got %q)", err, txt, lines)
 			}
 			lines = append(lines, l)
 			if strings.Contains(l, txt) {
