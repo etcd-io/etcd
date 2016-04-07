@@ -25,6 +25,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	EventTypeDelete = storagepb.DELETE
+	EventTypePut    = storagepb.PUT
+)
+
+type Event storagepb.Event
+
 type WatchChan <-chan WatchResponse
 
 type Watcher interface {
@@ -41,7 +48,7 @@ type Watcher interface {
 
 type WatchResponse struct {
 	Header pb.ResponseHeader
-	Events []*storagepb.Event
+	Events []*Event
 
 	// CompactRevision is the minimum revision the watcher may receive.
 	CompactRevision int64
@@ -50,6 +57,16 @@ type WatchResponse struct {
 	// If the watch failed and the stream was about to close, before the channel is closed,
 	// the channel sends a final response that has Canceled set to true with a non-nil Err().
 	Canceled bool
+}
+
+// IsCreate returns true if the event tells that the key is newly created.
+func (e *Event) IsCreate() bool {
+	return e.Type == EventTypePut && e.Kv.CreateRevision == e.Kv.ModRevision
+}
+
+// IsModify returns true if the event tells that a new value is put on existing key.
+func (e *Event) IsModify() bool {
+	return e.Type == EventTypePut && e.Kv.CreateRevision != e.Kv.ModRevision
 }
 
 // Err is the error value if this WatchResponse holds an error.
@@ -352,10 +369,14 @@ func (w *watcher) dispatchEvent(pbresp *pb.WatchResponse) bool {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	ws, ok := w.streams[pbresp.WatchId]
+	events := make([]*Event, len(pbresp.Events))
+	for i, ev := range pbresp.Events {
+		events[i] = (*Event)(ev)
+	}
 	if ok {
 		wr := &WatchResponse{
 			Header:          *pbresp.Header,
-			Events:          pbresp.Events,
+			Events:          events,
 			CompactRevision: pbresp.CompactRevision,
 			Canceled:        pbresp.Canceled}
 		ws.recvc <- wr

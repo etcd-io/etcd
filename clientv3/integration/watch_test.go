@@ -101,7 +101,7 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 			t.Fatalf("expected watcher channel, got nil")
 		}
 		readyc <- struct{}{}
-		evs := []*storagepb.Event{}
+		evs := []*clientv3.Event{}
 		for i := 0; i < numKeyUpdates*2; i++ {
 			resp, ok := <-prefixc
 			if !ok {
@@ -428,5 +428,77 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 		}
 	case <-time.After(2 * pi):
 		t.Fatalf("watch response expected in %v, but timed out", pi)
+	}
+}
+
+func TestWatchEventType(t *testing.T) {
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	client := cluster.RandClient()
+	ctx := context.Background()
+	watchChan := client.Watch(ctx, "/", clientv3.WithPrefix())
+
+	if _, err := client.Put(ctx, "/toDelete", "foo"); err != nil {
+		t.Fatalf("Put failed: %v", err)
+	}
+	if _, err := client.Put(ctx, "/toDelete", "bar"); err != nil {
+		t.Fatalf("Put failed: %v", err)
+	}
+	if _, err := client.Delete(ctx, "/toDelete"); err != nil {
+		t.Fatalf("Delete failed: %v", err)
+	}
+	lcr, err := client.Lease.Create(ctx, 1)
+	if err != nil {
+		t.Fatalf("lease create failed: %v", err)
+	}
+	if _, err := client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(clientv3.LeaseID(lcr.ID))); err != nil {
+		t.Fatalf("Put failed: %v", err)
+	}
+
+	tests := []struct {
+		et       storagepb.Event_EventType
+		isCreate bool
+		isModify bool
+	}{{
+		et:       clientv3.EventTypePut,
+		isCreate: true,
+	}, {
+		et:       clientv3.EventTypePut,
+		isModify: true,
+	}, {
+		et: clientv3.EventTypeDelete,
+	}, {
+		et:       clientv3.EventTypePut,
+		isCreate: true,
+	}, {
+		et: clientv3.EventTypeDelete,
+	}}
+
+	var res []*clientv3.Event
+
+	for {
+		select {
+		case wres := <-watchChan:
+			res = append(res, wres.Events...)
+		case <-time.After(10 * time.Second):
+			t.Fatalf("Should receive %d events and then break out loop", len(tests))
+		}
+		if len(res) == len(tests) {
+			break
+		}
+	}
+
+	for i, tt := range tests {
+		ev := res[i]
+		if tt.et != ev.Type {
+			t.Errorf("#%d: event type want=%s, get=%s", i, tt.et, ev.Type)
+		}
+		if tt.isCreate && !ev.IsCreate() {
+			t.Errorf("#%d: event should be CreateEvent", i)
+		}
+		if tt.isModify && !ev.IsModify() {
+			t.Errorf("#%d: event should be ModifyEvent", i)
+		}
 	}
 }
