@@ -99,7 +99,7 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 
 // getRemotePeerURLs returns peer urls of remote members in the cluster. The
 // returned list is sorted in ascending lexicographical order.
-func getRemotePeerURLs(cl Cluster, local string) []string {
+func getRemotePeerURLs(cl *cluster, local string) []string {
 	us := make([]string, 0)
 	for _, m := range cl.Members() {
 		if m.Name == local {
@@ -115,7 +115,7 @@ func getRemotePeerURLs(cl Cluster, local string) []string {
 // The key of the returned map is the member's ID. The value of the returned map
 // is the semver versions string, including server and cluster.
 // If it fails to get the version of a member, the key will be nil.
-func getVersions(cl Cluster, local types.ID, rt http.RoundTripper) map[string]*version.Versions {
+func getVersions(cl *cluster, local types.ID, rt http.RoundTripper) map[string]*version.Versions {
 	members := cl.Members()
 	vers := make(map[string]*version.Versions)
 	for _, m := range members {
@@ -173,7 +173,7 @@ func decideClusterVersion(vers map[string]*version.Versions) *semver.Version {
 // cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
-func isCompatibleWithCluster(cl Cluster, local types.ID, rt http.RoundTripper) bool {
+func isCompatibleWithCluster(cl *cluster, local types.ID, rt http.RoundTripper) bool {
 	vers := getVersions(cl, local, rt)
 	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
 	maxV := semver.Must(semver.NewVersion(version.Version))

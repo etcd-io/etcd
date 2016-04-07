@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/types"
@@ -27,7 +28,7 @@ import (
 )
 
 type ClusterServer struct {
-	cluster   etcdserver.Cluster
+	cluster   api.Cluster
 	server    etcdserver.Server
 	raftTimer etcdserver.RaftTimer
 }

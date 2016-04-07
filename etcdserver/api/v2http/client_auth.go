@@ -20,14 +20,14 @@ import (
 	"path"
 	"strings"
 
-	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/auth"
 )
 
 type authHandler struct {
 	sec     auth.Store
-	cluster etcdserver.Cluster
+	cluster api.Cluster
 }
 
 func hasWriteRootAccess(sec auth.Store, r *http.Request) bool {
