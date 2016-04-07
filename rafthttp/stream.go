@@ -374,12 +374,6 @@ func (cr *streamReader) stop() {
 	<-cr.done
 }
 
-func (cr *streamReader) isWorking() bool {
-	cr.mu.Lock()
-	defer cr.mu.Unlock()
-	return cr.closer != nil
-}
-
 func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	u := cr.picker.pick()
 	uu := u
@@ -499,9 +493,4 @@ func checkStreamSupport(v *semver.Version, t streamType) bool {
 		}
 	}
 	return false
-}
-
-func isNetworkTimeoutError(err error) bool {
-	nerr, ok := err.(net.Error)
-	return ok && nerr.Timeout()
 }

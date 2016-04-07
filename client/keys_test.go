@@ -1246,7 +1246,6 @@ func TestHTTPKeysAPIGetResponse(t *testing.T) {
 func TestHTTPKeysAPIDeleteAction(t *testing.T) {
 	tests := []struct {
 		key        string
-		value      string
 		opts       *DeleteOptions
 		wantAction httpAction
 	}{
