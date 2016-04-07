@@ -1,4 +1,5 @@
 # FAQ
+
 ## 1) How come I can read an old version of the data when a majority of the members are down?  
 
 In situations where a client connects to a minority, etcd
