@@ -26,6 +26,7 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/mock/mockstorage"
@@ -166,7 +167,7 @@ func TestApplyRepeat(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := store.New()
 	cl.SetStore(store.New())
-	cl.AddMember(&Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234})
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -457,7 +458,7 @@ func TestApplyRequest(t *testing.T) {
 }
 
 func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
-	cl := newTestCluster([]*Member{{ID: 1}})
+	cl := newTestCluster([]*membership.Member{{ID: 1}})
 	srv := &EtcdServer{
 		store:   mockstore.NewRecorder(),
 		cluster: cl,
@@ -465,21 +466,21 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 	req := pb.Request{
 		Method: "PUT",
 		ID:     1,
-		Path:   path.Join(storeMembersPrefix, strconv.FormatUint(1, 16), attributesSuffix),
+		Path:   path.Join(membership.StoreMembersPrefix, strconv.FormatUint(1, 16), membership.AttributesSuffix),
 		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
 	}
 	srv.applyRequest(req)
-	w := Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
+	w := membership.Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
 	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
 		t.Errorf("attributes = %v, want %v", g, w)
 	}
 }
 
 func TestApplyConfChangeError(t *testing.T) {
-	cl := newCluster("")
+	cl := membership.NewCluster("")
 	cl.SetStore(store.New())
 	for i := 1; i <= 4; i++ {
-		cl.AddMember(&Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
 	cl.RemoveMember(4)
 
@@ -492,28 +493,28 @@ func TestApplyConfChangeError(t *testing.T) {
 				Type:   raftpb.ConfChangeAddNode,
 				NodeID: 4,
 			},
-			ErrIDRemoved,
+			membership.ErrIDRemoved,
 		},
 		{
 			raftpb.ConfChange{
 				Type:   raftpb.ConfChangeUpdateNode,
 				NodeID: 4,
 			},
-			ErrIDRemoved,
+			membership.ErrIDRemoved,
 		},
 		{
 			raftpb.ConfChange{
 				Type:   raftpb.ConfChangeAddNode,
 				NodeID: 1,
 			},
-			ErrIDExists,
+			membership.ErrIDExists,
 		},
 		{
 			raftpb.ConfChange{
 				Type:   raftpb.ConfChangeRemoveNode,
 				NodeID: 5,
 			},
-			ErrIDNotFound,
+			membership.ErrIDNotFound,
 		},
 	}
 	for i, tt := range tests {
@@ -541,10 +542,10 @@ func TestApplyConfChangeError(t *testing.T) {
 }
 
 func TestApplyConfChangeShouldStop(t *testing.T) {
-	cl := newCluster("")
+	cl := membership.NewCluster("")
 	cl.SetStore(store.New())
 	for i := 1; i <= 3; i++ {
-		cl.AddMember(&Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
 	srv := &EtcdServer{
 		id: 1,
@@ -581,10 +582,10 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 // TestApplyMultiConfChangeShouldStop ensures that apply will return shouldStop
 // if the local member is removed along with other conf updates.
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
-	cl := newCluster("")
+	cl := membership.NewCluster("")
 	cl.SetStore(store.New())
 	for i := 1; i <= 5; i++ {
-		cl.AddMember(&Member{ID: types.ID(i)})
+		cl.AddMember(&membership.Member{ID: types.ID(i)})
 	}
 	srv := &EtcdServer{
 		id: 2,
@@ -922,8 +923,9 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		maxInFlightMsgSnap = 16
 	)
 	n := newNopReadyNode()
-	cl := newCluster("abc")
-	cl.SetStore(store.New())
+	st := store.New()
+	cl := membership.NewCluster("abc")
+	cl.SetStore(st)
 
 	testdir, err := ioutil.TempDir(os.TempDir(), "testsnapdir")
 	if err != nil {
@@ -946,7 +948,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 			storage:     mockstorage.NewStorageRecorder(testdir),
 			raftStorage: rs,
 		},
-		store:    cl.store,
+		store:    st,
 		cluster:  cl,
 		msgSnapC: make(chan raftpb.Message, maxInFlightMsgSnap),
 	}
@@ -1032,7 +1034,7 @@ func TestAddMember(t *testing.T) {
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
-	m := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"foo"}}}
+	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
 	err := s.AddMember(context.TODO(), m)
 	gaction := n.Action()
 	s.Stop()
@@ -1058,7 +1060,7 @@ func TestRemoveMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := store.New()
 	cl.SetStore(store.New())
-	cl.AddMember(&Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234})
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -1097,7 +1099,7 @@ func TestUpdateMember(t *testing.T) {
 	cl := newTestCluster(nil)
 	st := store.New()
 	cl.SetStore(st)
-	cl.AddMember(&Member{ID: 1234})
+	cl.AddMember(&membership.Member{ID: 1234})
 	s := &EtcdServer{
 		r: raftNode{
 			Node:        n,
@@ -1110,7 +1112,7 @@ func TestUpdateMember(t *testing.T) {
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	s.start()
-	wm := Member{ID: 1234, RaftAttributes: RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
+	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
 	err := s.UpdateMember(context.TODO(), wm)
 	gaction := n.Action()
 	s.Stop()
@@ -1139,8 +1141,8 @@ func TestPublish(t *testing.T) {
 		cfg:        &ServerConfig{TickMs: 1},
 		id:         1,
 		r:          raftNode{Node: n},
-		attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
-		cluster:    &cluster{},
+		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
+		cluster:    &membership.RaftCluster{},
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 	}
@@ -1161,11 +1163,11 @@ func TestPublish(t *testing.T) {
 	if r.Method != "PUT" {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}
-	wm := Member{ID: 1, Attributes: Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}}}
-	if wpath := path.Join(memberStoreKey(wm.ID), attributesSuffix); r.Path != wpath {
+	wm := membership.Member{ID: 1, Attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}}}
+	if wpath := membership.MemberAttributesStorePath(wm.ID); r.Path != wpath {
 		t.Errorf("path = %s, want %s", r.Path, wpath)
 	}
-	var gattr Attributes
+	var gattr membership.Attributes
 	if err := json.Unmarshal([]byte(r.Val), &gattr); err != nil {
 		t.Fatalf("unmarshal val error: %v", err)
 	}
@@ -1182,7 +1184,7 @@ func TestPublishStopped(t *testing.T) {
 			Node:      newNodeNop(),
 			transport: rafthttp.NewNopTransporter(),
 		},
-		cluster:  &cluster{},
+		cluster:  &membership.RaftCluster{},
 		w:        mockwait.NewNop(),
 		done:     make(chan struct{}),
 		stop:     make(chan struct{}),
@@ -1223,8 +1225,8 @@ func TestUpdateVersion(t *testing.T) {
 		id:         1,
 		cfg:        &ServerConfig{TickMs: 1},
 		r:          raftNode{Node: n},
-		attributes: Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
-		cluster:    &cluster{},
+		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
+		cluster:    &membership.RaftCluster{},
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 	}
@@ -1279,39 +1281,36 @@ func TestStopNotify(t *testing.T) {
 
 func TestGetOtherPeerURLs(t *testing.T) {
 	tests := []struct {
-		membs []*Member
-		self  string
+		membs []*membership.Member
 		wurls []string
 	}{
 		{
-			[]*Member{
-				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
+			[]*membership.Member{
+				membership.NewMember("1", types.MustNewURLs([]string{"http://10.0.0.1:1"}), "a", nil),
 			},
-			"a",
 			[]string{},
 		},
 		{
-			[]*Member{
-				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
-				newTestMember(2, []string{"http://10.0.0.2"}, "b", nil),
-				newTestMember(3, []string{"http://10.0.0.3"}, "c", nil),
+			[]*membership.Member{
+				membership.NewMember("1", types.MustNewURLs([]string{"http://10.0.0.1:1"}), "a", nil),
+				membership.NewMember("2", types.MustNewURLs([]string{"http://10.0.0.2:2"}), "a", nil),
+				membership.NewMember("3", types.MustNewURLs([]string{"http://10.0.0.3:3"}), "a", nil),
 			},
-			"a",
-			[]string{"http://10.0.0.2", "http://10.0.0.3"},
+			[]string{"http://10.0.0.2:2", "http://10.0.0.3:3"},
 		},
 		{
-			[]*Member{
-				newTestMember(1, []string{"http://10.0.0.1"}, "a", nil),
-				newTestMember(3, []string{"http://10.0.0.3"}, "c", nil),
-				newTestMember(2, []string{"http://10.0.0.2"}, "b", nil),
+			[]*membership.Member{
+				membership.NewMember("1", types.MustNewURLs([]string{"http://10.0.0.1:1"}), "a", nil),
+				membership.NewMember("3", types.MustNewURLs([]string{"http://10.0.0.3:3"}), "a", nil),
+				membership.NewMember("2", types.MustNewURLs([]string{"http://10.0.0.2:2"}), "a", nil),
 			},
-			"a",
-			[]string{"http://10.0.0.2", "http://10.0.0.3"},
+			[]string{"http://10.0.0.2:2", "http://10.0.0.3:3"},
 		},
 	}
 	for i, tt := range tests {
-		cl := newClusterFromMembers("", types.ID(0), tt.membs)
-		urls := getRemotePeerURLs(cl, tt.self)
+		cl := membership.NewClusterFromMembers("", types.ID(0), tt.membs)
+		self := "1"
+		urls := getRemotePeerURLs(cl, self)
 		if !reflect.DeepEqual(urls, tt.wurls) {
 			t.Errorf("#%d: urls = %+v, want %+v", i, urls, tt.wurls)
 		}
@@ -1439,4 +1438,12 @@ func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
 		CommittedEntries: ents,
 	}
 	return nil
+}
+
+func newTestCluster(membs []*membership.Member) *membership.RaftCluster {
+	c := membership.NewCluster("")
+	for _, m := range membs {
+		c.AddMember(m)
+	}
+	return c
 }

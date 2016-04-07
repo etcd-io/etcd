@@ -15,7 +15,7 @@
 package api
 
 import (
-	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/coreos/go-semver/semver"
@@ -29,10 +29,10 @@ type Cluster interface {
 	// cluster is listening for client requests
 	ClientURLs() []string
 	// Members returns a slice of members sorted by their ID
-	Members() []*etcdserver.Member
+	Members() []*membership.Member
 	// Member retrieves a particular member based on ID, or nil if the
 	// member does not exist in the cluster
-	Member(id types.ID) *etcdserver.Member
+	Member(id types.ID) *membership.Member
 	// IsIDRemoved checks whether the given ID has been removed from this
 	// cluster at some point in the past
 	IsIDRemoved(id types.ID) bool

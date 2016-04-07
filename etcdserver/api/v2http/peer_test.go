@@ -22,7 +22,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/rafthttp"
 )
@@ -85,14 +85,14 @@ func TestServeMembersFails(t *testing.T) {
 }
 
 func TestServeMembersGet(t *testing.T) {
-	memb1 := etcdserver.Member{ID: 1, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
-	memb2 := etcdserver.Member{ID: 2, Attributes: etcdserver.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
+	memb1 := membership.Member{ID: 1, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8080"}}}
+	memb2 := membership.Member{ID: 2, Attributes: membership.Attributes{ClientURLs: []string{"http://localhost:8081"}}}
 	cluster := &fakeCluster{
 		id:      1,
-		members: map[uint64]*etcdserver.Member{1: &memb1, 2: &memb2},
+		members: map[uint64]*membership.Member{1: &memb1, 2: &memb2},
 	}
 	h := &peerMembersHandler{cluster: cluster}
-	msb, err := json.Marshal([]etcdserver.Member{memb1, memb2})
+	msb, err := json.Marshal([]membership.Member{memb1, memb2})
 	if err != nil {
 		t.Fatal(err)
 	}

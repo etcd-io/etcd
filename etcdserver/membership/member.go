@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package membership
 
 import (
 	"crypto/sha1"
@@ -26,11 +26,24 @@ import (
 
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/pkg/capnslog"
 )
 
 var (
-	storeMembersPrefix        = path.Join(StoreClusterPrefix, "members")
-	storeRemovedMembersPrefix = path.Join(StoreClusterPrefix, "removed_members")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver", "membership")
+
+	StoreMembersPrefix        = path.Join(storePrefix, "members")
+	storeRemovedMembersPrefix = path.Join(storePrefix, "removed_members")
+)
+
+const (
+	// TODO: make this private after moving all membership storage logic
+	// from etcdserver pkg
+	AttributesSuffix     = "attributes"
+	raftAttributesSuffix = "raftAttributes"
+
+	// the prefix for stroing membership related information in store provided by store pkg.
+	storePrefix = "/0"
 )
 
 // RaftAttributes represents the raft related attributes of an etcd member.
@@ -110,15 +123,15 @@ func (m *Member) IsStarted() bool {
 	return len(m.Name) != 0
 }
 
-func memberStoreKey(id types.ID) string {
-	return path.Join(storeMembersPrefix, id.String())
+func MemberStoreKey(id types.ID) string {
+	return path.Join(StoreMembersPrefix, id.String())
 }
 
 func MemberAttributesStorePath(id types.ID) string {
-	return path.Join(memberStoreKey(id), attributesSuffix)
+	return path.Join(MemberStoreKey(id), AttributesSuffix)
 }
 
-func mustParseMemberIDFromKey(key string) types.ID {
+func MustParseMemberIDFromKey(key string) types.ID {
 	id, err := types.IDFromString(path.Base(key))
 	if err != nil {
 		plog.Panicf("unexpected parse member id error: %v", err)
@@ -126,17 +139,17 @@ func mustParseMemberIDFromKey(key string) types.ID {
 	return id
 }
 
-func removedMemberStoreKey(id types.ID) string {
+func RemovedMemberStoreKey(id types.ID) string {
 	return path.Join(storeRemovedMembersPrefix, id.String())
 }
 
-// nodeToMember builds member from a key value node.
+// NodeToMember builds member from a key value node.
 // the child nodes of the given node MUST be sorted by key.
 func nodeToMember(n *store.NodeExtern) (*Member, error) {
-	m := &Member{ID: mustParseMemberIDFromKey(n.Key)}
+	m := &Member{ID: MustParseMemberIDFromKey(n.Key)}
 	attrs := make(map[string][]byte)
 	raftAttrKey := path.Join(n.Key, raftAttributesSuffix)
-	attrKey := path.Join(n.Key, attributesSuffix)
+	attrKey := path.Join(n.Key, AttributesSuffix)
 	for _, nn := range n.Nodes {
 		if nn.Key != raftAttrKey && nn.Key != attrKey {
 			return nil, fmt.Errorf("unknown key %q", nn.Key)

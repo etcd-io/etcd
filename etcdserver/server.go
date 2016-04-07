@@ -33,6 +33,7 @@ import (
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -82,7 +83,7 @@ const (
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdserver")
 
-	storeMemberAttributeRegexp = regexp.MustCompile(path.Join(storeMembersPrefix, "[[:xdigit:]]{1,16}", attributesSuffix))
+	storeMemberAttributeRegexp = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
 )
 
 func init() {
@@ -126,7 +127,7 @@ type Server interface {
 	// AddMember attempts to add a member into the cluster. It will return
 	// ErrIDRemoved if member ID is removed from the cluster, or return
 	// ErrIDExists if member ID exists in the cluster.
-	AddMember(ctx context.Context, memb Member) error
+	AddMember(ctx context.Context, memb membership.Member) error
 	// RemoveMember attempts to remove a member from the cluster. It will
 	// return ErrIDRemoved if member ID is removed from the cluster, or return
 	// ErrIDNotFound if member ID is not in the cluster.
@@ -134,7 +135,7 @@ type Server interface {
 
 	// UpdateMember attempts to update an existing member in the cluster. It will
 	// return ErrIDNotFound if the member ID does not exist.
-	UpdateMember(ctx context.Context, updateMemb Member) error
+	UpdateMember(ctx context.Context, updateMemb membership.Member) error
 
 	// ClusterVersion is the cluster-wide minimum major.minor version.
 	// Cluster version is set to the min version that an etcd member is
@@ -167,9 +168,9 @@ type EtcdServer struct {
 	done       chan struct{}
 	errorc     chan error
 	id         types.ID
-	attributes Attributes
+	attributes membership.Attributes
 
-	cluster *cluster
+	cluster *membership.RaftCluster
 
 	store store.Store
 
@@ -216,7 +217,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		n  raft.Node
 		s  *raft.MemoryStorage
 		id types.ID
-		cl *cluster
+		cl *membership.RaftCluster
 	)
 
 	if terr := fileutil.TouchDirAll(cfg.DataDir); terr != nil {
@@ -239,13 +240,13 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	var remotes []*Member
+	var remotes []*membership.Member
 	switch {
 	case !haveWAL && !cfg.NewCluster:
 		if err := cfg.VerifyJoinExisting(); err != nil {
 			return nil, err
 		}
-		cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+		cl, err = membership.NewClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +254,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", err)
 		}
-		if err := ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
+		if err := membership.ValidateClusterAndAssignIDs(cl, existingCluster); err != nil {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
 		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, prt) {
@@ -261,7 +262,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		}
 
 		remotes = existingCluster.Members()
-		cl.SetID(existingCluster.id)
+		cl.SetID(existingCluster.ID())
 		cl.SetStore(st)
 		cfg.Print()
 		id, n, s, w = startNode(cfg, cl, nil)
@@ -269,7 +270,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 		if err := cfg.VerifyBootstrap(); err != nil {
 			return nil, err
 		}
-		cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
+		cl, err = membership.NewClusterFromURLsMap(cfg.InitialClusterToken, cfg.InitialPeerURLsMap)
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +292,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			if checkDuplicateURL(urlsmap) {
 				return nil, fmt.Errorf("discovery cluster %s has duplicate url", urlsmap)
 			}
-			if cl, err = newClusterFromURLsMap(cfg.InitialClusterToken, urlsmap); err != nil {
+			if cl, err = membership.NewClusterFromURLsMap(cfg.InitialClusterToken, urlsmap); err != nil {
 				return nil, err
 			}
 		}
@@ -357,7 +358,7 @@ func NewServer(cfg *ServerConfig) (*EtcdServer, error) {
 			storage:     NewStorage(w, ss),
 		},
 		id:            id,
-		attributes:    Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
+		attributes:    membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:       cl,
 		stats:         sstats,
 		lstats:        lstats,
@@ -466,7 +467,7 @@ func (s *EtcdServer) purgeFile() {
 
 func (s *EtcdServer) ID() types.ID { return s.id }
 
-func (s *EtcdServer) Cluster() *cluster { return s.cluster }
+func (s *EtcdServer) Cluster() *membership.RaftCluster { return s.cluster }
 
 func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
 
@@ -792,8 +793,8 @@ func (s *EtcdServer) LeaderStats() []byte {
 
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
-func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
-	if s.cfg.StrictReconfigCheck && !s.cluster.isReadyToAddNewMember() {
+func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) error {
+	if s.cfg.StrictReconfigCheck && !s.cluster.IsReadyToAddNewMember() {
 		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
 		// In such a case adding a new member is allowed unconditionally
 		return ErrNotEnoughStartedMembers
@@ -813,7 +814,7 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb Member) error {
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
-	if s.cfg.StrictReconfigCheck && !s.cluster.isReadyToRemoveMember(id) {
+	if s.cfg.StrictReconfigCheck && !s.cluster.IsReadyToRemoveMember(id) {
 		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
 		// In such a case removing a member is allowed unconditionally
 		return ErrNotEnoughStartedMembers
@@ -826,7 +827,7 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
 	return s.configure(ctx, cc)
 }
 
-func (s *EtcdServer) UpdateMember(ctx context.Context, memb Member) error {
+func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) error {
 	b, err := json.Marshal(memb)
 	if err != nil {
 		return err
@@ -914,7 +915,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 	}
 	req := pb.Request{
 		Method: "PUT",
-		Path:   MemberAttributesStorePath(s.id),
+		Path:   membership.MemberAttributesStorePath(s.id),
 		Val:    string(b),
 	}
 
@@ -1093,8 +1094,8 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 			// TODO (yicheng): cluster should be the owner of cluster prefix store
 			// we should not modify cluster store here.
 			if storeMemberAttributeRegexp.MatchString(r.Path) {
-				id := mustParseMemberIDFromKey(path.Dir(r.Path))
-				var attr Attributes
+				id := membership.MustParseMemberIDFromKey(path.Dir(r.Path))
+				var attr membership.Attributes
 				if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
 					plog.Panicf("unmarshal %s should never fail: %v", r.Val, err)
 				}
@@ -1137,7 +1138,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	*confState = *s.r.ApplyConfChange(cc)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode:
-		m := new(Member)
+		m := new(membership.Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
 			plog.Panicf("unmarshal member should never fail: %v", err)
 		}
@@ -1161,7 +1162,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 			plog.Noticef("removed member %s from cluster %s", id, s.cluster.ID())
 		}
 	case raftpb.ConfChangeUpdateNode:
-		m := new(Member)
+		m := new(membership.Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
 			plog.Panicf("unmarshal member should never fail: %v", err)
 		}

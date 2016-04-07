@@ -252,7 +252,7 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 
 	// wait for cluster to start
 	readyC := make(chan error, cfg.clusterSize+cfg.proxySize)
-	readyStr := "etcdserver: set the initial cluster version to"
+	readyStr := "membership: set the initial cluster version to"
 	for i := range etcdCfgs {
 		go func(etcdp *etcdProcess) {
 			rs := readyStr

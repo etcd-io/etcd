@@ -34,6 +34,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -248,10 +249,10 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		now := h.clock.Now()
-		m := etcdserver.NewMember("", req.PeerURLs, "", &now)
+		m := membership.NewMember("", req.PeerURLs, "", &now)
 		err := h.server.AddMember(ctx, *m)
 		switch {
-		case err == etcdserver.ErrIDExists || err == etcdserver.ErrPeerURLexists:
+		case err == membership.ErrIDExists || err == membership.ErrPeerURLexists:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
 			return
 		case err != nil:
@@ -272,9 +273,9 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		err := h.server.RemoveMember(ctx, uint64(id))
 		switch {
-		case err == etcdserver.ErrIDRemoved:
+		case err == membership.ErrIDRemoved:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusGone, fmt.Sprintf("Member permanently removed: %s", id)))
-		case err == etcdserver.ErrIDNotFound:
+		case err == membership.ErrIDNotFound:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", id)))
 		case err != nil:
 			plog.Errorf("error removing member %s (%v)", id, err)
@@ -291,15 +292,15 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if ok := unmarshalRequest(r, &req, w); !ok {
 			return
 		}
-		m := etcdserver.Member{
+		m := membership.Member{
 			ID:             id,
-			RaftAttributes: etcdserver.RaftAttributes{PeerURLs: req.PeerURLs.StringSlice()},
+			RaftAttributes: membership.RaftAttributes{PeerURLs: req.PeerURLs.StringSlice()},
 		}
 		err := h.server.UpdateMember(ctx, m)
 		switch {
-		case err == etcdserver.ErrPeerURLexists:
+		case err == membership.ErrPeerURLexists:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
-		case err == etcdserver.ErrIDNotFound:
+		case err == membership.ErrIDNotFound:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", id)))
 		case err != nil:
 			plog.Errorf("error updating member %s (%v)", m.ID, err)
@@ -804,7 +805,7 @@ func trimPrefix(p, prefix string) (s string) {
 	return
 }
 
-func newMemberCollection(ms []*etcdserver.Member) *httptypes.MemberCollection {
+func newMemberCollection(ms []*membership.Member) *httptypes.MemberCollection {
 	c := httptypes.MemberCollection(make([]httptypes.Member, len(ms)))
 
 	for i, m := range ms {
@@ -814,7 +815,7 @@ func newMemberCollection(ms []*etcdserver.Member) *httptypes.MemberCollection {
 	return &c
 }
 
-func newMember(m *etcdserver.Member) httptypes.Member {
+func newMember(m *membership.Member) httptypes.Member {
 	tm := httptypes.Member{
 		ID:         m.ID.String(),
 		Name:       m.Name,

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package membership
 
 import (
 	"bytes"
@@ -34,13 +34,8 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
-const (
-	raftAttributesSuffix = "raftAttributes"
-	attributesSuffix     = "attributes"
-)
-
-// Cluster is a list of Members that belong to the same raft cluster
-type cluster struct {
+// RaftCluster is a list of Members that belong to the same raft cluster
+type RaftCluster struct {
 	id    types.ID
 	token string
 	store store.Store
@@ -53,8 +48,8 @@ type cluster struct {
 	removed map[types.ID]bool
 }
 
-func newClusterFromURLsMap(token string, urlsmap types.URLsMap) (*cluster, error) {
-	c := newCluster(token)
+func NewClusterFromURLsMap(token string, urlsmap types.URLsMap) (*RaftCluster, error) {
+	c := NewCluster(token)
 	for name, urls := range urlsmap {
 		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
@@ -69,8 +64,8 @@ func newClusterFromURLsMap(token string, urlsmap types.URLsMap) (*cluster, error
 	return c, nil
 }
 
-func newClusterFromMembers(token string, id types.ID, membs []*Member) *cluster {
-	c := newCluster(token)
+func NewClusterFromMembers(token string, id types.ID, membs []*Member) *RaftCluster {
+	c := NewCluster(token)
 	c.id = id
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -78,17 +73,17 @@ func newClusterFromMembers(token string, id types.ID, membs []*Member) *cluster 
 	return c
 }
 
-func newCluster(token string) *cluster {
-	return &cluster{
+func NewCluster(token string) *RaftCluster {
+	return &RaftCluster{
 		token:   token,
 		members: make(map[types.ID]*Member),
 		removed: make(map[types.ID]bool),
 	}
 }
 
-func (c *cluster) ID() types.ID { return c.id }
+func (c *RaftCluster) ID() types.ID { return c.id }
 
-func (c *cluster) Members() []*Member {
+func (c *RaftCluster) Members() []*Member {
 	c.Lock()
 	defer c.Unlock()
 	var ms MembersByID
@@ -99,7 +94,7 @@ func (c *cluster) Members() []*Member {
 	return []*Member(ms)
 }
 
-func (c *cluster) Member(id types.ID) *Member {
+func (c *RaftCluster) Member(id types.ID) *Member {
 	c.Lock()
 	defer c.Unlock()
 	return c.members[id].Clone()
@@ -107,7 +102,7 @@ func (c *cluster) Member(id types.ID) *Member {
 
 // MemberByName returns a Member with the given name if exists.
 // If more than one member has the given name, it will panic.
-func (c *cluster) MemberByName(name string) *Member {
+func (c *RaftCluster) MemberByName(name string) *Member {
 	c.Lock()
 	defer c.Unlock()
 	var memb *Member
@@ -122,7 +117,7 @@ func (c *cluster) MemberByName(name string) *Member {
 	return memb.Clone()
 }
 
-func (c *cluster) MemberIDs() []types.ID {
+func (c *RaftCluster) MemberIDs() []types.ID {
 	c.Lock()
 	defer c.Unlock()
 	var ids []types.ID
@@ -133,7 +128,7 @@ func (c *cluster) MemberIDs() []types.ID {
 	return ids
 }
 
-func (c *cluster) IsIDRemoved(id types.ID) bool {
+func (c *RaftCluster) IsIDRemoved(id types.ID) bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.removed[id]
@@ -141,7 +136,7 @@ func (c *cluster) IsIDRemoved(id types.ID) bool {
 
 // PeerURLs returns a list of all peer addresses.
 // The returned list is sorted in ascending lexicographical order.
-func (c *cluster) PeerURLs() []string {
+func (c *RaftCluster) PeerURLs() []string {
 	c.Lock()
 	defer c.Unlock()
 	urls := make([]string, 0)
@@ -156,7 +151,7 @@ func (c *cluster) PeerURLs() []string {
 
 // ClientURLs returns a list of all client addresses.
 // The returned list is sorted in ascending lexicographical order.
-func (c *cluster) ClientURLs() []string {
+func (c *RaftCluster) ClientURLs() []string {
 	c.Lock()
 	defer c.Unlock()
 	urls := make([]string, 0)
@@ -169,7 +164,7 @@ func (c *cluster) ClientURLs() []string {
 	return urls
 }
 
-func (c *cluster) String() string {
+func (c *RaftCluster) String() string {
 	c.Lock()
 	defer c.Unlock()
 	b := &bytes.Buffer{}
@@ -187,7 +182,7 @@ func (c *cluster) String() string {
 	return b.String()
 }
 
-func (c *cluster) genID() {
+func (c *RaftCluster) genID() {
 	mIDs := c.MemberIDs()
 	b := make([]byte, 8*len(mIDs))
 	for i, id := range mIDs {
@@ -197,17 +192,17 @@ func (c *cluster) genID() {
 	c.id = types.ID(binary.BigEndian.Uint64(hash[:8]))
 }
 
-func (c *cluster) SetID(id types.ID) { c.id = id }
+func (c *RaftCluster) SetID(id types.ID) { c.id = id }
 
-func (c *cluster) SetStore(st store.Store) { c.store = st }
+func (c *RaftCluster) SetStore(st store.Store) { c.store = st }
 
-func (c *cluster) Recover() {
+func (c *RaftCluster) Recover() {
 	c.Lock()
 	defer c.Unlock()
 
 	c.members, c.removed = membersFromStore(c.store)
 	c.version = clusterVersionFromStore(c.store)
-	MustDetectDowngrade(c.version)
+	mustDetectDowngrade(c.version)
 
 	for _, m := range c.members {
 		plog.Infof("added member %s %v to cluster %s from store", m.ID, m.PeerURLs, c.id)
@@ -219,7 +214,7 @@ func (c *cluster) Recover() {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	members, removed := membersFromStore(c.store)
 	id := types.ID(cc.NodeID)
 	if removed[id] {
@@ -280,36 +275,42 @@ func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 // AddMember adds a new Member into the cluster, and saves the given member's
 // raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
-func (c *cluster) AddMember(m *Member) {
+func (c *RaftCluster) AddMember(m *Member) {
 	c.Lock()
 	defer c.Unlock()
-	b, err := json.Marshal(m.RaftAttributes)
-	if err != nil {
-		plog.Panicf("marshal raftAttributes should never fail: %v", err)
-	}
-	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
-	if _, err := c.store.Create(p, false, string(b), false, store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
-		plog.Panicf("create raftAttributes should never fail: %v", err)
+	if c.store != nil {
+		b, err := json.Marshal(m.RaftAttributes)
+		if err != nil {
+			plog.Panicf("marshal raftAttributes should never fail: %v", err)
+		}
+		p := path.Join(MemberStoreKey(m.ID), raftAttributesSuffix)
+		if _, err := c.store.Create(p, false, string(b), false, store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
+			plog.Panicf("create raftAttributes should never fail: %v", err)
+		}
 	}
 	c.members[m.ID] = m
 }
 
 // RemoveMember removes a member from the store.
 // The given id MUST exist, or the function panics.
-func (c *cluster) RemoveMember(id types.ID) {
+func (c *RaftCluster) RemoveMember(id types.ID) {
 	c.Lock()
 	defer c.Unlock()
-	if _, err := c.store.Delete(memberStoreKey(id), true, true); err != nil {
-		plog.Panicf("delete member should never fail: %v", err)
+	if c.store != nil {
+		if _, err := c.store.Delete(MemberStoreKey(id), true, true); err != nil {
+			plog.Panicf("delete member should never fail: %v", err)
+		}
 	}
 	delete(c.members, id)
-	if _, err := c.store.Create(removedMemberStoreKey(id), false, "", false, store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
-		plog.Panicf("create removedMember should never fail: %v", err)
+	if c.store != nil {
+		if _, err := c.store.Create(RemovedMemberStoreKey(id), false, "", false, store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
+			plog.Panicf("create removedMember should never fail: %v", err)
+		}
 	}
 	c.removed[id] = true
 }
 
-func (c *cluster) UpdateAttributes(id types.ID, attr Attributes) bool {
+func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) bool {
 	c.Lock()
 	defer c.Unlock()
 	if m, ok := c.members[id]; ok {
@@ -326,21 +327,24 @@ func (c *cluster) UpdateAttributes(id types.ID, attr Attributes) bool {
 	return false
 }
 
-func (c *cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
+func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	c.Lock()
 	defer c.Unlock()
-	b, err := json.Marshal(raftAttr)
-	if err != nil {
-		plog.Panicf("marshal raftAttributes should never fail: %v", err)
-	}
-	p := path.Join(memberStoreKey(id), raftAttributesSuffix)
-	if _, err := c.store.Update(p, string(b), store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
-		plog.Panicf("update raftAttributes should never fail: %v", err)
+
+	if c.store != nil {
+		b, err := json.Marshal(raftAttr)
+		if err != nil {
+			plog.Panicf("marshal raftAttributes should never fail: %v", err)
+		}
+		p := path.Join(MemberStoreKey(id), raftAttributesSuffix)
+		if _, err := c.store.Update(p, string(b), store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
+			plog.Panicf("update raftAttributes should never fail: %v", err)
+		}
 	}
 	c.members[id].RaftAttributes = raftAttr
 }
 
-func (c *cluster) Version() *semver.Version {
+func (c *RaftCluster) Version() *semver.Version {
 	c.Lock()
 	defer c.Unlock()
 	if c.version == nil {
@@ -349,7 +353,7 @@ func (c *cluster) Version() *semver.Version {
 	return semver.Must(semver.NewVersion(c.version.String()))
 }
 
-func (c *cluster) SetVersion(ver *semver.Version) {
+func (c *RaftCluster) SetVersion(ver *semver.Version) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
@@ -358,10 +362,10 @@ func (c *cluster) SetVersion(ver *semver.Version) {
 		plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
 	}
 	c.version = ver
-	MustDetectDowngrade(c.version)
+	mustDetectDowngrade(c.version)
 }
 
-func (c *cluster) isReadyToAddNewMember() bool {
+func (c *RaftCluster) IsReadyToAddNewMember() bool {
 	nmembers := 1
 	nstarted := 0
 
@@ -389,7 +393,7 @@ func (c *cluster) isReadyToAddNewMember() bool {
 	return true
 }
 
-func (c *cluster) isReadyToRemoveMember(id uint64) bool {
+func (c *RaftCluster) IsReadyToRemoveMember(id uint64) bool {
 	nmembers := 0
 	nstarted := 0
 
@@ -416,7 +420,7 @@ func (c *cluster) isReadyToRemoveMember(id uint64) bool {
 func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {
 	members := make(map[types.ID]*Member)
 	removed := make(map[types.ID]bool)
-	e, err := st.Get(storeMembersPrefix, true, true)
+	e, err := st.Get(StoreMembersPrefix, true, true)
 	if err != nil {
 		if isKeyNotFound(err) {
 			return members, removed
@@ -440,13 +444,13 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		plog.Panicf("get storeRemovedMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
-		removed[mustParseMemberIDFromKey(n.Key)] = true
+		removed[MustParseMemberIDFromKey(n.Key)] = true
 	}
 	return members, removed
 }
 
 func clusterVersionFromStore(st store.Store) *semver.Version {
-	e, err := st.Get(path.Join(StoreClusterPrefix, "version"), false, false)
+	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
 	if err != nil {
 		if isKeyNotFound(err) {
 			return nil
@@ -460,7 +464,7 @@ func clusterVersionFromStore(st store.Store) *semver.Version {
 // with the existing cluster. If the validation succeeds, it assigns the IDs
 // from the existing cluster to the local cluster.
 // If the validation fails, an error will be returned.
-func ValidateClusterAndAssignIDs(local *cluster, existing *cluster) error {
+func ValidateClusterAndAssignIDs(local *RaftCluster, existing *RaftCluster) error {
 	ems := existing.Members()
 	lms := local.Members()
 	if len(ems) != len(lms) {
@@ -480,4 +484,13 @@ func ValidateClusterAndAssignIDs(local *cluster, existing *cluster) error {
 		local.members[m.ID] = m
 	}
 	return nil
+}
+
+func mustDetectDowngrade(cv *semver.Version) {
+	lv := semver.Must(semver.NewVersion(version.Version))
+	// only keep major.minor version for comparison against cluster version
+	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
+	if cv != nil && lv.LessThan(*cv) {
+		plog.Fatalf("cluster cannot be downgraded (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
+	}
 }
