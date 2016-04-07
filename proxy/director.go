@@ -67,10 +67,9 @@ func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterv
 
 type director struct {
 	sync.Mutex
-	ep              []*endpoint
-	uf              GetProxyURLs
-	failureWait     time.Duration
-	refreshInterval time.Duration
+	ep          []*endpoint
+	uf          GetProxyURLs
+	failureWait time.Duration
 }
 
 func (d *director) refresh() {

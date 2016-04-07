@@ -15,7 +15,6 @@
 package v2http
 
 import (
-	"errors"
 	"math"
 	"net/http"
 	"strings"
@@ -35,9 +34,8 @@ const (
 )
 
 var (
-	plog      = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver/api", "v2http")
-	mlog      = logutil.NewMergeLogger(plog)
-	errClosed = errors.New("v2http: client closed connection")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver/api", "v2http")
+	mlog = logutil.NewMergeLogger(plog)
 )
 
 // writeError logs and writes the given Error to the ResponseWriter

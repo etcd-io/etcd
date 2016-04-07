@@ -16,7 +16,6 @@
 package ctlv3
 
 import (
-	"text/tabwriter"
 	"time"
 
 	"github.com/coreos/etcd/etcdctl/ctlv3/command"
@@ -32,7 +31,6 @@ const (
 )
 
 var (
-	tabOut      *tabwriter.Writer
 	globalFlags = command.GlobalFlags{}
 )
 

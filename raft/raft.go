@@ -29,8 +29,6 @@ import (
 const None uint64 = 0
 const noLimit = math.MaxUint64
 
-var errNoLeader = errors.New("no leader")
-
 var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unavailable")
 
 // Possible values for StateType.

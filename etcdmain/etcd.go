@@ -400,7 +400,7 @@ func startProxy(cfg *config) error {
 	}
 
 	cfg.dir = path.Join(cfg.dir, "proxy")
-	err = os.MkdirAll(cfg.dir, 0700)
+	err = os.MkdirAll(cfg.dir, privateDirMode)
 	if err != nil {
 		return err
 	}
