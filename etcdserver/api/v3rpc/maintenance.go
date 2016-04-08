@@ -15,6 +15,8 @@
 package v3rpc
 
 import (
+	"io"
+
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/storage/backend"
@@ -49,6 +51,41 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 	}
 	plog.Noticef("finished defragmenting the storage backend")
 	return &pb.DefragmentResponse{}, nil
+}
+
+func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance_SnapshotServer) error {
+	snap := ms.bg.Backend().Snapshot()
+	pr, pw := io.Pipe()
+
+	defer pr.Close()
+
+	go func() {
+		snap.WriteTo(pw)
+		if err := snap.Close(); err != nil {
+			plog.Errorf("error closing snapshot (%v)", err)
+		}
+		pw.Close()
+	}()
+
+	br := int64(0)
+	buf := make([]byte, 32*1024)
+	sz := snap.Size()
+	for br < sz {
+		n, err := io.ReadFull(pr, buf)
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			return togRPCError(err)
+		}
+		br += int64(n)
+		resp := &pb.SnapshotResponse{
+			RemainingBytes: uint64(sz - br),
+			Blob:           buf[:n],
+		}
+		if err = srv.Send(resp); err != nil {
+			return togRPCError(err)
+		}
+	}
+
+	return nil
 }
 
 func (ms *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
