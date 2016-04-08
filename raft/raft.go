@@ -29,8 +29,6 @@ import (
 const None uint64 = 0
 const noLimit = math.MaxUint64
 
-var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unavailable")
-
 // Possible values for StateType.
 const (
 	StateFollower StateType = iota
@@ -231,7 +229,7 @@ func newRaft(c *Config) *raft {
 	}
 	r.becomeFollower(r.Term, None)
 
-	nodesStrs := make([]string, 0)
+	var nodesStrs []string
 	for _, n := range r.nodes() {
 		nodesStrs = append(nodesStrs, fmt.Sprintf("%x", n))
 	}
