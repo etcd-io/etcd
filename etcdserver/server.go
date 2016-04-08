@@ -1091,18 +1091,15 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 		case r.PrevIndex > 0 || r.PrevValue != "":
 			return f(s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
 		default:
-			// TODO (yicheng): cluster should be the owner of cluster prefix store
-			// we should not modify cluster store here.
 			if storeMemberAttributeRegexp.MatchString(r.Path) {
 				id := membership.MustParseMemberIDFromKey(path.Dir(r.Path))
 				var attr membership.Attributes
 				if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
 					plog.Panicf("unmarshal %s should never fail: %v", r.Val, err)
 				}
-				ok := s.cluster.UpdateAttributes(id, attr)
-				if !ok {
-					return Response{}
-				}
+				s.cluster.UpdateAttributes(id, attr)
+				// return an empty response since there is no consumer.
+				return Response{}
 			}
 			if r.Path == path.Join(StoreClusterPrefix, "version") {
 				s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)))

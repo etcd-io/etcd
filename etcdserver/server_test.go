@@ -21,7 +21,6 @@ import (
 	"os"
 	"path"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
@@ -466,7 +465,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 	req := pb.Request{
 		Method: "PUT",
 		ID:     1,
-		Path:   path.Join(membership.StoreMembersPrefix, strconv.FormatUint(1, 16), membership.AttributesSuffix),
+		Path:   membership.MemberAttributesStorePath(1),
 		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
 	}
 	srv.applyRequest(req)

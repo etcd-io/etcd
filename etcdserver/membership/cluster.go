@@ -307,21 +307,21 @@ func (c *RaftCluster) RemoveMember(id types.ID) {
 	c.removed[id] = true
 }
 
-func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) bool {
+func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 	c.Lock()
 	defer c.Unlock()
 	if m, ok := c.members[id]; ok {
 		m.Attributes = attr
-		return true
+		if c.store != nil {
+			mustUpdateMemberAttrInStore(c.store, m)
+		}
+		return
 	}
 	_, ok := c.removed[id]
-	if ok {
-		plog.Warningf("skipped updating attributes of removed member %s", id)
-	} else {
+	if !ok {
 		plog.Panicf("error updating attributes of unknown member %s", id)
 	}
-	// TODO: update store in this function
-	return false
+	plog.Warningf("skipped updating attributes of removed member %s", id)
 }
 
 func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
