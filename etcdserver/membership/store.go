@@ -25,9 +25,7 @@ import (
 )
 
 const (
-	// TODO: make this private after moving all membership storage logic
-	// from etcdserver pkg
-	AttributesSuffix     = "attributes"
+	attributesSuffix     = "attributes"
 	raftAttributesSuffix = "raftAttributes"
 
 	// the prefix for stroing membership related information in store provided by store pkg.
@@ -96,13 +94,24 @@ func mustUpdateMemberInStore(s store.Store, m *Member) {
 	}
 }
 
+func mustUpdateMemberAttrInStore(s store.Store, m *Member) {
+	b, err := json.Marshal(m.Attributes)
+	if err != nil {
+		plog.Panicf("marshal raftAttributes should never fail: %v", err)
+	}
+	p := path.Join(MemberStoreKey(m.ID), attributesSuffix)
+	if _, err := s.Set(p, false, string(b), store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
+		plog.Panicf("update raftAttributes should never fail: %v", err)
+	}
+}
+
 // nodeToMember builds member from a key value node.
 // the child nodes of the given node MUST be sorted by key.
 func nodeToMember(n *store.NodeExtern) (*Member, error) {
 	m := &Member{ID: MustParseMemberIDFromKey(n.Key)}
 	attrs := make(map[string][]byte)
 	raftAttrKey := path.Join(n.Key, raftAttributesSuffix)
-	attrKey := path.Join(n.Key, AttributesSuffix)
+	attrKey := path.Join(n.Key, attributesSuffix)
 	for _, nn := range n.Nodes {
 		if nn.Key != raftAttrKey && nn.Key != attrKey {
 			return nil, fmt.Errorf("unknown key %q", nn.Key)
@@ -133,7 +142,7 @@ func MemberStoreKey(id types.ID) string {
 }
 
 func MemberAttributesStorePath(id types.ID) string {
-	return path.Join(MemberStoreKey(id), AttributesSuffix)
+	return path.Join(MemberStoreKey(id), attributesSuffix)
 }
 
 func MustParseMemberIDFromKey(key string) types.ID {
