@@ -81,9 +81,11 @@ func restoreEtcd() error {
 	return runCommands(10, 2*time.Second)
 }
 
-var clusterHealthRegex = regexp.MustCompile(".*cluster is healthy.*")
-var lineSplit = regexp.MustCompile("\n+")
-var colonSplit = regexp.MustCompile("\\:")
+var (
+	clusterHealthRegex = regexp.MustCompile(".*cluster is healthy.*")
+	lineSplit          = regexp.MustCompile("\n+")
+	colonSplit         = regexp.MustCompile(`\:`)
+)
 
 func runCommands(maxRetry int, interval time.Duration) error {
 	var retryCnt int

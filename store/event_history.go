@@ -117,10 +117,7 @@ func (eh *EventHistory) clone() *EventHistory {
 		Back:     eh.Queue.Back,
 	}
 
-	for i, e := range eh.Queue.Events {
-		clonedQueue.Events[i] = e
-	}
-
+	copy(clonedQueue.Events, eh.Queue.Events)
 	return &EventHistory{
 		StartIndex: eh.StartIndex,
 		Queue:      clonedQueue,

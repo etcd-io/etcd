@@ -57,7 +57,7 @@ func (ss *ServerStats) JSON() []byte {
 	ss.Lock()
 	stats := *ss
 	ss.Unlock()
-	stats.LeaderInfo.Uptime = time.Now().Sub(stats.LeaderInfo.StartTime).String()
+	stats.LeaderInfo.Uptime = time.Since(stats.LeaderInfo.StartTime).String()
 	stats.SendingPkgRate, stats.SendingBandwidthRate = stats.SendRates()
 	stats.RecvingPkgRate, stats.RecvingBandwidthRate = stats.RecvRates()
 	b, err := json.Marshal(stats)

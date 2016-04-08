@@ -22,10 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	memberID       uint64
-	memberPeerURLs string
-)
+var memberPeerURLs string
 
 // NewMemberCommand returns the cobra command for "member".
 func NewMemberCommand() *cobra.Command {

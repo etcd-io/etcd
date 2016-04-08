@@ -45,16 +45,6 @@ func NewUniqueKV(ctx context.Context, kv v3.KV, pfx, val string, opts ...v3.OpOp
 	}
 }
 
-func waitUpdate(ctx context.Context, client *v3.Client, key string, opts ...v3.OpOption) error {
-	cctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	wresp, ok := <-client.Watch(cctx, key, opts...)
-	if !ok {
-		return ctx.Err()
-	}
-	return wresp.Err()
-}
-
 func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) error {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
