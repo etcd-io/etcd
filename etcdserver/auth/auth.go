@@ -335,11 +335,7 @@ func (s *store) GetRole(name string) (Role, error) {
 	}
 	var r Role
 	err = json.Unmarshal([]byte(*resp.Event.Node.Value), &r)
-	if err != nil {
-		return r, err
-	}
-
-	return r, nil
+	return r, err
 }
 
 func (s *store) CreateRole(role Role) error {
@@ -497,10 +493,7 @@ func (r Role) merge(n Role) (Role, error) {
 		return out, err
 	}
 	out.Permissions, err = out.Permissions.Revoke(n.Revoke)
-	if err != nil {
-		return out, err
-	}
-	return out, nil
+	return out, err
 }
 
 func (r Role) HasKeyAccess(key string, write bool) bool {

@@ -66,11 +66,7 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	err = st.WAL.ReleaseLockTo(snap.Metadata.Index)
-	if err != nil {
-		return err
-	}
-	return nil
+	return st.WAL.ReleaseLockTo(snap.Metadata.Index)
 }
 
 func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {

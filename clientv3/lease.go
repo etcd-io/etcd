@@ -381,11 +381,7 @@ func (l *lessor) switchRemoteAndStream(prevErr error) error {
 	l.remote = pb.NewLeaseClient(l.conn)
 	l.mu.Unlock()
 
-	serr := l.newStream()
-	if serr != nil {
-		return serr
-	}
-	return nil
+	return l.newStream()
 }
 
 func (l *lessor) newStream() error {

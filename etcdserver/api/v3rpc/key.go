@@ -169,11 +169,7 @@ func checkTxnRequest(r *pb.TxnRequest) error {
 			return err
 		}
 	}
-	if err := checkRequestDupKeys(r.Failure); err != nil {
-		return err
-	}
-
-	return nil
+	return checkRequestDupKeys(r.Failure)
 }
 
 // checkRequestDupKeys gives rpctypes.ErrDuplicateKey if the same key is modified twice

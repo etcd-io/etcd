@@ -257,10 +257,7 @@ func newFailureIsolate() *failureIsolate {
 
 func (f *failureIsolate) Inject(c *cluster, round int) error {
 	i := round % c.Size
-	if err := c.Agents[i].DropPort(peerURLPort); err != nil {
-		return err
-	}
-	return nil
+	return c.Agents[i].DropPort(peerURLPort)
 }
 
 func (f *failureIsolate) Recover(c *cluster, round int) error {
