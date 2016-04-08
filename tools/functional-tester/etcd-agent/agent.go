@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -40,8 +39,6 @@ type Agent struct {
 	cmd         *exec.Cmd
 	logfile     *os.File
 	etcdLogPath string
-
-	l net.Listener
 }
 
 func newAgent(etcd, etcdLogPath string) (*Agent, error) {

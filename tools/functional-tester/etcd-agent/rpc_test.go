@@ -25,11 +25,11 @@ import (
 )
 
 func init() {
-	defaultAgent, err := newAgent(etcdPath)
+	defaultAgent, err := newAgent(etcdPath, "etcd.log")
 	if err != nil {
 		log.Panic(err)
 	}
-	defaultAgent.serveRPC()
+	defaultAgent.serveRPC(":9027")
 }
 
 func TestRPCStart(t *testing.T) {

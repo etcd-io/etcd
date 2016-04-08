@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-const etcdPath = filepath.Join(os.Getenv("GOPATH"), "bin/etcd")
+var etcdPath = filepath.Join(os.Getenv("GOPATH"), "bin/etcd")
 
 func TestAgentStart(t *testing.T) {
 	defer os.Remove("etcd.log")
