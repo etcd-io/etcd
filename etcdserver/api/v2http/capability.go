@@ -63,6 +63,7 @@ func capabilityLoop(s *etcdserver.EtcdServer) {
 			enableMapMu.Lock()
 			enabledMap = capabilityMaps[pv.String()]
 			enableMapMu.Unlock()
+			plog.Infof("enabled capabilities for version %s", pv)
 		}
 
 		select {
