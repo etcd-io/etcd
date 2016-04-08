@@ -32,7 +32,7 @@ type ExpectProcess struct {
 	wg   sync.WaitGroup
 
 	ptyMu sync.Mutex // protects accessing fpty
-	cond  *sync.Cond // for broadcasting updates are avaiable
+	cond  *sync.Cond // for broadcasting updates are available
 	mu    sync.Mutex // protects lines and err
 	lines []string
 	count int // increment whenever new line gets added

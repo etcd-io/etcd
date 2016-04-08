@@ -241,7 +241,7 @@ func (wg *watcherGroup) scanMinRev(curRev int64, compactRev int64) int64 {
 	return minRev
 }
 
-// watcherSetByKey gets the set of watchers that recieve events on the given key.
+// watcherSetByKey gets the set of watchers that receive events on the given key.
 func (wg *watcherGroup) watcherSetByKey(key string) watcherSet {
 	wkeys := wg.keyWatchers[key]
 	wranges := wg.ranges.Stab(adt.NewStringAffinePoint(key))
