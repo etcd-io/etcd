@@ -418,7 +418,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 			t.Fatalf("resp.Header.Revision expected 2, got %d", resp.Header.Revision)
 		}
 		if watchOnPut { // wait for put if watch on the put key
-			ev := []*storagepb.Event{{Type: storagepb.PUT,
+			ev := []*clientv3.Event{{Type: clientv3.EventTypePut,
 				Kv: &storagepb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}}
 			if !reflect.DeepEqual(ev, resp.Events) {
 				t.Fatalf("expected %+v, got %+v", ev, resp.Events)
