@@ -96,10 +96,7 @@ func (a *agent) RecoverPort(port int) error {
 func (a *agent) Status() (Status, error) {
 	var s Status
 	err := a.rpcClient.Call("Agent.RPCStatus", struct{}{}, &s)
-	if err != nil {
-		return s, err
-	}
-	return s, nil
+	return s, err
 }
 
 func (a *agent) ID() uint64 {
