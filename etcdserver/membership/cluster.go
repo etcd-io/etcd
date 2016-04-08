@@ -311,6 +311,9 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 		if c.store != nil {
 			mustUpdateMemberAttrInStore(c.store, m)
 		}
+		if c.be != nil {
+			mustSaveMemberToBackend(c.be, m)
+		}
 		return
 	}
 	_, ok := c.removed[id]
