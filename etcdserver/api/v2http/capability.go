@@ -55,15 +55,13 @@ func capabilityLoop(s *etcdserver.EtcdServer) {
 	var pv *semver.Version
 	for {
 		if v := s.ClusterVersion(); v != pv {
-			if pv == nil {
+			if pv == nil || (v != nil && pv.LessThan(*v)) {
 				pv = v
-			} else if v != nil && pv.LessThan(*v) {
-				pv = v
+				enableMapMu.Lock()
+				enabledMap = capabilityMaps[pv.String()]
+				enableMapMu.Unlock()
+				plog.Infof("enabled capabilities for version %s", pv)
 			}
-			enableMapMu.Lock()
-			enabledMap = capabilityMaps[pv.String()]
-			enableMapMu.Unlock()
-			plog.Infof("enabled capabilities for version %s", pv)
 		}
 
 		select {
