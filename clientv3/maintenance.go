@@ -15,6 +15,7 @@
 package clientv3
 
 import (
+	"io"
 	"sync"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -47,6 +48,9 @@ type Maintenance interface {
 
 	// Status gets the status of the member.
 	Status(ctx context.Context, endpoint string) (*StatusResponse, error)
+
+	// Snapshot provides a reader for a snapshot of a backend.
+	Snapshot(ctx context.Context) (io.ReadCloser, error)
 }
 
 type maintenance struct {
@@ -143,6 +147,33 @@ func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusRespo
 		return nil, err
 	}
 	return (*StatusResponse)(resp), nil
+}
+
+func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
+	ss, err := m.getRemote().Snapshot(ctx, &pb.SnapshotRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	pr, pw := io.Pipe()
+	go func() {
+		for {
+			resp, err := ss.Recv()
+			if err != nil {
+				pw.CloseWithError(err)
+				return
+			}
+			if resp == nil && err == nil {
+				break
+			}
+			if _, werr := pw.Write(resp.Blob); werr != nil {
+				pw.CloseWithError(werr)
+				return
+			}
+		}
+		pw.Close()
+	}()
+	return pr, nil
 }
 
 func (m *maintenance) getRemote() pb.MaintenanceClient {
