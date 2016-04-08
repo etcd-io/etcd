@@ -416,7 +416,7 @@ func TestCreateAndUpdateUser(t *testing.T) {
 
 	s := store{server: d, timeout: testTimeout, ensuredOnce: true, PasswordStore: fastPasswordStore{}}
 	out, created, err := s.CreateOrUpdateUser(user)
-	if created == false {
+	if !created {
 		t.Error("Should have created user, instead updated?")
 	}
 	if err != nil {
@@ -427,7 +427,7 @@ func TestCreateAndUpdateUser(t *testing.T) {
 		t.Error("UpdateUser doesn't match given update. Got", out, "expected", expected)
 	}
 	out, created, err = s.CreateOrUpdateUser(update)
-	if created == true {
+	if created {
 		t.Error("Should have updated user, instead created?")
 	}
 	if err != nil {
@@ -572,6 +572,7 @@ func TestEnableAuth(t *testing.T) {
 		t.Error("Unexpected error", err)
 	}
 }
+
 func TestDisableAuth(t *testing.T) {
 	trueval := "true"
 	falseval := "false"

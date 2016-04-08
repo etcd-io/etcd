@@ -345,7 +345,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	}
 
 	// recursive implies dir
-	if recursive == true {
+	if recursive {
 		dir = true
 	}
 

@@ -289,7 +289,7 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 
 	s.fifoSched.Schedule(j)
 
-	indexCompactionPauseDurations.Observe(float64(time.Now().Sub(start) / time.Millisecond))
+	indexCompactionPauseDurations.Observe(float64(time.Since(start) / time.Millisecond))
 	return ch, nil
 }
 

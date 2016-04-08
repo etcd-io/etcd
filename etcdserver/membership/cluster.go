@@ -144,9 +144,7 @@ func (c *RaftCluster) PeerURLs() []string {
 	defer c.Unlock()
 	urls := make([]string, 0)
 	for _, p := range c.members {
-		for _, addr := range p.PeerURLs {
-			urls = append(urls, addr)
-		}
+		urls = append(urls, p.PeerURLs...)
 	}
 	sort.Strings(urls)
 	return urls
@@ -159,9 +157,7 @@ func (c *RaftCluster) ClientURLs() []string {
 	defer c.Unlock()
 	urls := make([]string, 0)
 	for _, p := range c.members {
-		for _, url := range p.ClientURLs {
-			urls = append(urls, url)
-		}
+		urls = append(urls, p.ClientURLs...)
 	}
 	sort.Strings(urls)
 	return urls
