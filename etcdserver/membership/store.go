@@ -42,7 +42,7 @@ var (
 
 func mustSaveMemberToBackend(be backend.Backend, m *Member) {
 	mkey := backendMemberKey(m.ID)
-	mvalue, err := json.Marshal(m.RaftAttributes)
+	mvalue, err := json.Marshal(m)
 	if err != nil {
 		plog.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
@@ -134,7 +134,7 @@ func nodeToMember(n *store.NodeExtern) (*Member, error) {
 }
 
 func backendMemberKey(id types.ID) []byte {
-	return []byte(path.Join(id.String(), raftAttributesSuffix))
+	return []byte(id.String())
 }
 
 func MemberStoreKey(id types.ID) string {
