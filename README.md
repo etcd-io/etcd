@@ -137,12 +137,15 @@ curl -L http://127.0.0.1:2379/version
 
 The `v2` API responses should not change after the 2.0.0 release but new features will be added over time.
 
-#### 32-bit systems
+#### 32-bit and other unsupported systems
 
 etcd has known issues on 32-bit systems due to a bug in the Go runtime. See #[358][358] for more information.
 
-To avoid inadvertantly producing an unstable etcd server, 32-bit builds emit an `etcd` that prints
-a warning message and immediately exits.
+To avoid inadvertantly running a possibly unstable etcd server, `etcd` on unsupported architectures will print
+a warning message and immediately exit if the environment variable `ETCD_UNSUPPORTED_ARCH` is not set to
+the target architecture.
+
+Currently only the amd64 architecture is officially supported by `etcd`.
 
 [358]: https://github.com/coreos/etcd/issues/358
 
