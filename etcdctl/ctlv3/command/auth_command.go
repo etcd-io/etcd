@@ -27,12 +27,12 @@ func NewAuthCommand() *cobra.Command {
 		Short: "Enable or disable authentication.",
 	}
 
-	ac.AddCommand(NewAuthEnableCommand())
+	ac.AddCommand(newAuthEnableCommand())
 
 	return ac
 }
 
-func NewAuthEnableCommand() *cobra.Command {
+func newAuthEnableCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "enable",
 		Short: "enable authentication",
