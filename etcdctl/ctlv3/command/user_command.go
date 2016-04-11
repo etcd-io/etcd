@@ -30,9 +30,9 @@ func NewUserCommand() *cobra.Command {
 		Short: "user related command",
 	}
 
-	ac.AddCommand(NewUserAddCommand())
-	ac.AddCommand(NewUserDeleteCommand())
-	ac.AddCommand(NewUserChangePasswordCommand())
+	ac.AddCommand(newUserAddCommand())
+	ac.AddCommand(newUserDeleteCommand())
+	ac.AddCommand(newUserChangePasswordCommand())
 
 	return ac
 }
@@ -41,7 +41,7 @@ var (
 	passwordInteractive bool
 )
 
-func NewUserAddCommand() *cobra.Command {
+func newUserAddCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "add <user name>",
 		Short: "add a new user",
@@ -53,7 +53,7 @@ func NewUserAddCommand() *cobra.Command {
 	return &cmd
 }
 
-func NewUserDeleteCommand() *cobra.Command {
+func newUserDeleteCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <user name>",
 		Short: "delete a user",
@@ -61,7 +61,7 @@ func NewUserDeleteCommand() *cobra.Command {
 	}
 }
 
-func NewUserChangePasswordCommand() *cobra.Command {
+func newUserChangePasswordCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "passwd <user name>",
 		Short: "change password of user",
