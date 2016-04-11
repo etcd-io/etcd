@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"encoding/json"
 	"expvar"
-	"os"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -289,9 +288,6 @@ func startNode(cfg *ServerConfig, cl *membership.RaftCluster, ids []types.ID) (i
 			ClusterID: uint64(cl.ID()),
 		},
 	)
-	if err = os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil {
-		plog.Fatalf("create snapshot directory error: %v", err)
-	}
 	if w, err = wal.Create(cfg.WALDir(), metadata); err != nil {
 		plog.Fatalf("create wal error: %v", err)
 	}

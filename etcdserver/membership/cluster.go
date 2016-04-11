@@ -195,6 +195,11 @@ func (c *RaftCluster) SetID(id types.ID) { c.id = id }
 
 func (c *RaftCluster) SetStore(st store.Store) { c.store = st }
 
+func (c *RaftCluster) SetBackend(be backend.Backend) {
+	c.be = be
+	mustCreateBackendMemberBucket(c.be)
+}
+
 func (c *RaftCluster) Recover() {
 	c.Lock()
 	defer c.Unlock()

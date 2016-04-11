@@ -137,6 +137,14 @@ func backendMemberKey(id types.ID) []byte {
 	return []byte(id.String())
 }
 
+func mustCreateBackendMemberBucket(be backend.Backend) {
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafeCreateBucket(membersBucketName)
+	tx.UnsafeCreateBucket(membersRemovedBuckedName)
+}
+
 func MemberStoreKey(id types.ID) string {
 	return path.Join(StoreMembersPrefix, id.String())
 }
