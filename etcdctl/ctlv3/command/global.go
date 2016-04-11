@@ -63,6 +63,18 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	dialTimeout := dialTimeoutFromCmd(cmd)
 	sec := secureCfgFromCmd(cmd)
 
+	isHex, err := cmd.Flags().GetBool("hex")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	outputType, err := cmd.Flags().GetString("write-out")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	if display = NewPrinter(outputType, isHex); display == nil {
+		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
+	}
+
 	return mustClient(endpoints, dialTimeout, sec)
 }
 
