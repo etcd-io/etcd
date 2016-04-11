@@ -181,6 +181,9 @@ func (l *lessor) KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 		if err == nil {
 			return resp, err
 		}
+		if isHalted(ctx, err) {
+			return resp, err
+		}
 
 		nerr := l.switchRemoteAndStream(err)
 		if nerr != nil {
