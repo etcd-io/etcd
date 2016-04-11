@@ -510,6 +510,8 @@ message AuthUserChangePasswordRequest {
 }
 
 message AuthUserGrantRequest {
+  string user = 1;
+  string role = 2;
 }
 
 message AuthUserRevokeRequest {

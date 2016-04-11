@@ -29,6 +29,7 @@ type (
 	AuthUserAddResponse            pb.AuthUserAddResponse
 	AuthUserDeleteResponse         pb.AuthUserDeleteResponse
 	AuthUserChangePasswordResponse pb.AuthUserChangePasswordResponse
+	AuthUserGrantResponse          pb.AuthUserGrantResponse
 	AuthRoleAddResponse            pb.AuthRoleAddResponse
 	AuthRoleGrantResponse          pb.AuthRoleGrantResponse
 
@@ -53,6 +54,9 @@ type Auth interface {
 
 	// UserChangePassword changes a password of a user.
 	UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error)
+
+	// UserGrant grants a role to a user.
+	UserGrant(ctx context.Context, user string, role string) (*AuthUserGrantResponse, error)
 
 	// RoleAdd adds a new role to an etcd cluster.
 	RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error)
@@ -95,6 +99,11 @@ func (auth *auth) UserDelete(ctx context.Context, name string) (*AuthUserDeleteR
 func (auth *auth) UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error) {
 	resp, err := auth.remote.UserChangePassword(ctx, &pb.AuthUserChangePasswordRequest{Name: name, Password: password})
 	return (*AuthUserChangePasswordResponse)(resp), err
+}
+
+func (auth *auth) UserGrant(ctx context.Context, user string, role string) (*AuthUserGrantResponse, error) {
+	resp, err := auth.remote.UserGrant(ctx, &pb.AuthUserGrantRequest{User: user, Role: role})
+	return (*AuthUserGrantResponse)(resp), err
 }
 
 func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error) {
