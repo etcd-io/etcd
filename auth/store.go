@@ -16,6 +16,7 @@ package auth
 
 import (
 	"errors"
+	"sort"
 	"strings"
 
 	"github.com/coreos/etcd/auth/authpb"
@@ -55,6 +56,9 @@ type AuthStore interface {
 
 	// UserChangePassword changes a password of a user
 	UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
+
+	// UserGrant grants a role to the user
+	UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error)
 
 	// RoleAdd adds a new role
 	RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
@@ -172,6 +176,47 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	plog.Noticef("changed a password of a user: %s", r.Name)
 
 	return &pb.AuthUserChangePasswordResponse{}, nil
+}
+
+func (as *authStore) UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.User), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrUserNotFound
+	}
+
+	user := &authpb.User{}
+	err := user.Unmarshal(vs[0])
+	if err != nil {
+		return nil, err
+	}
+
+	_, vs = tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrRoleNotFound
+	}
+
+	idx := sort.SearchStrings(user.Roles, r.Role)
+	if idx < len(user.Roles) && strings.Compare(user.Roles[idx], r.Role) == 0 {
+		plog.Warningf("user %s is already granted role %s", r.User, r.Role)
+		return &pb.AuthUserGrantResponse{}, nil
+	}
+
+	user.Roles = append(user.Roles, r.Role)
+	sort.Sort(sort.StringSlice(user.Roles))
+
+	marshaledUser, merr := user.Marshal()
+	if merr != nil {
+		return nil, merr
+	}
+
+	tx.UnsafePut(authUsersBucketName, user.Name, marshaledUser)
+
+	plog.Noticef("granted role %s to user %s", r.Role, r.User)
+	return &pb.AuthUserGrantResponse{}, nil
 }
 
 func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {

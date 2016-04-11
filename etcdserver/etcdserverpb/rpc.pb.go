@@ -1329,6 +1329,8 @@ func (m *AuthUserChangePasswordRequest) String() string { return proto.CompactTe
 func (*AuthUserChangePasswordRequest) ProtoMessage()    {}
 
 type AuthUserGrantRequest struct {
+	User string `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
 }
 
 func (m *AuthUserGrantRequest) Reset()         { *m = AuthUserGrantRequest{} }
@@ -4640,6 +4642,18 @@ func (m *AuthUserGrantRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.User) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.User)))
+		i += copy(data[i:], m.User)
+	}
+	if len(m.Role) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Role)))
+		i += copy(data[i:], m.Role)
+	}
 	return i, nil
 }
 
@@ -5956,6 +5970,14 @@ func (m *AuthUserChangePasswordRequest) Size() (n int) {
 func (m *AuthUserGrantRequest) Size() (n int) {
 	var l int
 	_ = l
+	l = len(m.User)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
+	}
+	l = len(m.Role)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
+	}
 	return n
 }
 
@@ -11260,6 +11282,64 @@ func (m *AuthUserGrantRequest) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: AuthUserGrantRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field User", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthRpc
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.User = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Role", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthRpc
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Role = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])

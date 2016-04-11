@@ -55,8 +55,9 @@ func (x Permission_Type) String() string {
 
 // User is a single entry in the bucket authUsers
 type User struct {
-	Name     []byte `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Password []byte `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Name     []byte   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Password []byte   `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Roles    []string `protobuf:"bytes,3,rep,name=roles" json:"roles,omitempty"`
 }
 
 func (m *User) Reset()         { *m = User{} }
@@ -118,6 +119,21 @@ func (m *User) MarshalTo(data []byte) (int, error) {
 			i++
 			i = encodeVarintAuth(data, i, uint64(len(m.Password)))
 			i += copy(data[i:], m.Password)
+		}
+	}
+	if len(m.Roles) > 0 {
+		for _, s := range m.Roles {
+			data[i] = 0x1a
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
 		}
 	}
 	return i, nil
@@ -231,6 +247,12 @@ func (m *User) Size() (n int) {
 	if m.Password != nil {
 		l = len(m.Password)
 		if l > 0 {
+			n += 1 + l + sovAuth(uint64(l))
+		}
+	}
+	if len(m.Roles) > 0 {
+		for _, s := range m.Roles {
+			l = len(s)
 			n += 1 + l + sovAuth(uint64(l))
 		}
 	}
@@ -373,6 +395,35 @@ func (m *User) Unmarshal(data []byte) error {
 			if m.Password == nil {
 				m.Password = []byte{}
 			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Roles", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAuth
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Roles = append(m.Roles, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
