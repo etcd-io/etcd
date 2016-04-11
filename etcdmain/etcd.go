@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: support arm64
-// +build amd64
-
 package etcdmain
 
 import (
@@ -79,6 +76,8 @@ var (
 )
 
 func Main() {
+	checkSupportArch()
+
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
 	if err != nil {
@@ -604,4 +603,17 @@ func setupLogging(cfg *config) {
 		}
 		repoLog.SetLogLevel(settings)
 	}
+}
+
+func checkSupportArch() {
+	// TODO qualify arm64
+	if runtime.GOARCH == "amd64" {
+		return
+	}
+	if env, ok := os.LookupEnv("ETCD_UNSUPPORTED_ARCH"); ok && env == runtime.GOARCH {
+		plog.Warningf("running etcd on unsupported architecture %q since ETCD_UNSUPPORTED_ARCH is set", env)
+		return
+	}
+	plog.Errorf("etcd on unsupported platform without ETCD_UNSUPPORTED_ARCH=%s set.", runtime.GOARCH)
+	os.Exit(1)
 }
