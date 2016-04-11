@@ -156,9 +156,13 @@ type Server interface {
 
 // EtcdServer is the production implementation of the Server interface
 type EtcdServer struct {
-	// r must be the first element to keep 64-bit alignment for atomic
+	// r and inflightSnapshots must be the first elements to keep 64-bit alignment for atomic
 	// access to fields
-	r raftNode
+
+	// count the number of inflight snapshots.
+	// MUST use atomic operation to access this field.
+	inflightSnapshots int64
+	r                 raftNode
 
 	cfg       *ServerConfig
 	snapCount uint64
@@ -202,10 +206,6 @@ type EtcdServer struct {
 	forceVersionC chan struct{}
 
 	msgSnapC chan raftpb.Message
-
-	// count the number of inflight snapshots.
-	// MUST use atomic operation to access this field.
-	inflightSnapshots int64
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
