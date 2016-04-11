@@ -951,9 +951,18 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 
 // TODO: move this function into raft.go
 func (s *EtcdServer) send(ms []raftpb.Message) {
-	for i := range ms {
+	sentAppResp := false
+	for i := len(ms) - 1; i >= 0; i-- {
 		if s.cluster.IsIDRemoved(types.ID(ms[i].To)) {
 			ms[i].To = 0
+		}
+
+		if ms[i].Type == raftpb.MsgAppResp {
+			if sentAppResp {
+				ms[i].To = 0
+			} else {
+				sentAppResp = true
+			}
 		}
 
 		if ms[i].Type == raftpb.MsgSnap {
