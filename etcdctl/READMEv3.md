@@ -370,6 +370,70 @@ Simple reply
 [mirror]: ./doc/mirror_maker.md
 
 
+### SNAPSHOT \<subcommand\>
+
+SNAPSHOT provides commands to restore a snapshot of a running etcd server into a fresh cluster.
+
+### SNAPSHOT SAVE \<filename\>
+
+SNAPSHOT SAVE writes a point-in-time snapshot of the etcd backend database to a file.
+
+#### Return value
+
+- On success, the backend snapshot is written to the given file path.
+
+- Error string if snapshotting failed. Exit code is non-zero.
+
+#### Example
+
+Save a snapshot to "snapshot.db":
+```
+./etcdctl snapshot save snapshot.db
+```
+
+
+### SNAPSHOT RESTORE [options] \<filename\>
+
+SNAPSHOT RESTORE creates an etcd data directory for an etcd cluster member from a backend database snapshot and a new cluster configuration. Restoring the snapshot into each member for a new cluster configuration will initialize a new etcd cluster preloaded by the snapshot data.
+
+#### Options
+
+The snapshot restore options closely resemble to those used in the `etcd` command for defining a cluster.
+
+- data-dir -- Path to the data directory. Uses \<name\>.etcd if none given.
+
+- initial-cluster -- The initial cluster configuration for the restored etcd cluster.
+
+- initial-cluster-token -- Initial cluster token for the restored etcd cluster.
+
+- initial-advertise-peer-urls -- List of peer URLs for the member being restored.
+
+- name -- Human-readable name for the etcd cluster member being restored.
+
+#### Return value
+
+- On success, a new etcd data directory is initialized.
+
+- Error string if the data directory could not be completely initialized. Exit code is non-zero.
+
+#### Example
+
+Save a snapshot, restore into a new 3 node cluster, and start the cluster:
+```
+./etcdctl snapshot save snapshot.db
+
+# restore members
+bin/etcdctl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:12380  --name sshot1 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+bin/etcdctl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:22380  --name sshot2 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+bin/etcdctl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:32380  --name sshot3 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+
+# launch members
+bin/etcd --name sshot1 --listen-client-urls http://127.0.0.1:2379 --advertise-client-urls http://127.0.0.1:2379 --listen-peer-urls http://127.0.0.1:12380 &
+bin/etcd --name sshot2 --listen-client-urls http://127.0.0.1:22379 --advertise-client-urls http://127.0.0.1:22379 --listen-peer-urls http://127.0.0.1:22380 &
+bin/etcd --name sshot3 --listen-client-urls http://127.0.0.1:32379 --advertise-client-urls http://127.0.0.1:32379 --listen-peer-urls http://127.0.0.1:32380 &
+```
+
+
 ## Notes
 
 - JSON encoding for keys and values uses base64 since they are byte strings.
