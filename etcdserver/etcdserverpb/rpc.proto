@@ -3,6 +3,7 @@ package etcdserverpb;
 
 import "gogoproto/gogo.proto";
 import "etcd/storage/storagepb/kv.proto";
+import "etcd/auth/authpb/auth.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;
@@ -525,6 +526,8 @@ message AuthRoleDeleteRequest {
 }
 
 message AuthRoleGrantRequest {
+  string name = 1;
+  authpb.Permission perm = 2;
 }
 
 message AuthRoleRevokeRequest {

@@ -10,6 +10,7 @@
 
 	It has these top-level messages:
 		User
+		Permission
 		Role
 */
 package authpb
@@ -29,6 +30,29 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+type Permission_Type int32
+
+const (
+	READ      Permission_Type = 0
+	WRITE     Permission_Type = 1
+	READWRITE Permission_Type = 2
+)
+
+var Permission_Type_name = map[int32]string{
+	0: "READ",
+	1: "WRITE",
+	2: "READWRITE",
+}
+var Permission_Type_value = map[string]int32{
+	"READ":      0,
+	"WRITE":     1,
+	"READWRITE": 2,
+}
+
+func (x Permission_Type) String() string {
+	return proto.EnumName(Permission_Type_name, int32(x))
+}
+
 // User is a single entry in the bucket authUsers
 type User struct {
 	Name      []byte `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -40,9 +64,20 @@ func (m *User) Reset()         { *m = User{} }
 func (m *User) String() string { return proto.CompactTextString(m) }
 func (*User) ProtoMessage()    {}
 
+// Permission is a single entity
+type Permission struct {
+	Key      []byte          `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	PermType Permission_Type `protobuf:"varint,2,opt,name=permType,proto3,enum=authpb.Permission_Type" json:"permType,omitempty"`
+}
+
+func (m *Permission) Reset()         { *m = Permission{} }
+func (m *Permission) String() string { return proto.CompactTextString(m) }
+func (*Permission) ProtoMessage()    {}
+
 // Role is a single entry in the bucket authRoles
 type Role struct {
-	Name []byte `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Name          []byte        `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	KeyPermission []*Permission `protobuf:"bytes,2,rep,name=keyPermission" json:"keyPermission,omitempty"`
 }
 
 func (m *Role) Reset()         { *m = Role{} }
@@ -51,7 +86,9 @@ func (*Role) ProtoMessage()    {}
 
 func init() {
 	proto.RegisterType((*User)(nil), "authpb.User")
+	proto.RegisterType((*Permission)(nil), "authpb.Permission")
 	proto.RegisterType((*Role)(nil), "authpb.Role")
+	proto.RegisterEnum("authpb.Permission_Type", Permission_Type_name, Permission_Type_value)
 }
 func (m *User) Marshal() (data []byte, err error) {
 	size := m.Size()
@@ -92,6 +129,37 @@ func (m *User) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Permission) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Permission) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Key != nil {
+		if len(m.Key) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintAuth(data, i, uint64(len(m.Key)))
+			i += copy(data[i:], m.Key)
+		}
+	}
+	if m.PermType != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintAuth(data, i, uint64(m.PermType))
+	}
+	return i, nil
+}
+
 func (m *Role) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -109,10 +177,22 @@ func (m *Role) MarshalTo(data []byte) (int, error) {
 	_ = l
 	if m.Name != nil {
 		if len(m.Name) > 0 {
-			data[i] = 0x12
+			data[i] = 0xa
 			i++
 			i = encodeVarintAuth(data, i, uint64(len(m.Name)))
 			i += copy(data[i:], m.Name)
+		}
+	}
+	if len(m.KeyPermission) > 0 {
+		for _, msg := range m.KeyPermission {
+			data[i] = 0x12
+			i++
+			i = encodeVarintAuth(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
 		}
 	}
 	return i, nil
@@ -166,12 +246,33 @@ func (m *User) Size() (n int) {
 	return n
 }
 
+func (m *Permission) Size() (n int) {
+	var l int
+	_ = l
+	if m.Key != nil {
+		l = len(m.Key)
+		if l > 0 {
+			n += 1 + l + sovAuth(uint64(l))
+		}
+	}
+	if m.PermType != 0 {
+		n += 1 + sovAuth(uint64(m.PermType))
+	}
+	return n
+}
+
 func (m *Role) Size() (n int) {
 	var l int
 	_ = l
 	if m.Name != nil {
 		l = len(m.Name)
 		if l > 0 {
+			n += 1 + l + sovAuth(uint64(l))
+		}
+	}
+	if len(m.KeyPermission) > 0 {
+		for _, e := range m.KeyPermission {
+			l = e.Size()
 			n += 1 + l + sovAuth(uint64(l))
 		}
 	}
@@ -322,6 +423,106 @@ func (m *User) Unmarshal(data []byte) error {
 	}
 	return nil
 }
+func (m *Permission) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAuth
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Permission: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Permission: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthAuth
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			if m.Key == nil {
+				m.Key = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PermType", wireType)
+			}
+			m.PermType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.PermType |= (Permission_Type(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAuth(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAuth
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *Role) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -351,7 +552,7 @@ func (m *Role) Unmarshal(data []byte) error {
 			return fmt.Errorf("proto: Role: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 2:
+		case 1:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
 			}
@@ -380,6 +581,37 @@ func (m *Role) Unmarshal(data []byte) error {
 			m.Name = append(m.Name[:0], data[iNdEx:postIndex]...)
 			if m.Name == nil {
 				m.Name = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field KeyPermission", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuth
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthAuth
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.KeyPermission = append(m.KeyPermission, &Permission{})
+			if err := m.KeyPermission[len(m.KeyPermission)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:

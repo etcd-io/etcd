@@ -16,7 +16,21 @@ message User {
   int64 tombstone = 3;
 }
 
+// Permission is a single entity
+message Permission {
+  bytes key = 1;
+
+  enum Type {
+    READ = 0;
+    WRITE = 1;
+    READWRITE = 2;
+  }
+  Type permType = 2;
+}
+
 // Role is a single entry in the bucket authRoles
 message Role {
-  bytes name = 2;
+  bytes name = 1;
+
+  repeated Permission keyPermission = 2;
 }
