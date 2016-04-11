@@ -55,9 +55,8 @@ func (x Permission_Type) String() string {
 
 // User is a single entry in the bucket authUsers
 type User struct {
-	Name      []byte `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Password  []byte `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
-	Tombstone int64  `protobuf:"varint,3,opt,name=tombstone,proto3" json:"tombstone,omitempty"`
+	Name     []byte `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Password []byte `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 }
 
 func (m *User) Reset()         { *m = User{} }
@@ -120,11 +119,6 @@ func (m *User) MarshalTo(data []byte) (int, error) {
 			i = encodeVarintAuth(data, i, uint64(len(m.Password)))
 			i += copy(data[i:], m.Password)
 		}
-	}
-	if m.Tombstone != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintAuth(data, i, uint64(m.Tombstone))
 	}
 	return i, nil
 }
@@ -239,9 +233,6 @@ func (m *User) Size() (n int) {
 		if l > 0 {
 			n += 1 + l + sovAuth(uint64(l))
 		}
-	}
-	if m.Tombstone != 0 {
-		n += 1 + sovAuth(uint64(m.Tombstone))
 	}
 	return n
 }
@@ -383,25 +374,6 @@ func (m *User) Unmarshal(data []byte) error {
 				m.Password = []byte{}
 			}
 			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Tombstone", wireType)
-			}
-			m.Tombstone = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAuth
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Tombstone |= (int64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipAuth(data[iNdEx:])
