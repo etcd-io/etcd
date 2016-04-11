@@ -23,6 +23,8 @@ import (
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 func TestLeaseGrant(t *testing.T) {
@@ -91,6 +93,11 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 	_, err = lapi.KeepAliveOnce(context.Background(), clientv3.LeaseID(resp.ID))
 	if err != nil {
 		t.Errorf("failed to keepalive lease %v", err)
+	}
+
+	_, err = lapi.KeepAliveOnce(context.Background(), clientv3.LeaseID(0))
+	if grpc.Code(err) != codes.NotFound {
+		t.Errorf("invalid error returned %v", err)
 	}
 }
 
