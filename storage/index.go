@@ -168,7 +168,7 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	available := make(map[revision]struct{})
-	emptyki := make([]*keyIndex, 0)
+	var emptyki []*keyIndex
 	log.Printf("store.index: compact %d", rev)
 	// TODO: do not hold the lock for long time?
 	// This is probably OK. Compacting 10M keys takes O(10ms).

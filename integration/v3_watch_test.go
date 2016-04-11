@@ -226,11 +226,11 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			continue
 		}
 		if !cresp.Created {
-			t.Errorf("#%d: did not create watchid, got +%v", i, cresp)
+			t.Errorf("#%d: did not create watchid, got %+v", i, cresp)
 			continue
 		}
 		if cresp.Canceled {
-			t.Errorf("#%d: canceled watcher on create", i, cresp)
+			t.Errorf("#%d: canceled watcher on create %+v", i, cresp)
 			continue
 		}
 
@@ -317,7 +317,7 @@ func TestV3WatchFutureRevision(t *testing.T) {
 		t.Fatalf("wStream.Recv error: %v", err)
 	}
 	if !cresp.Created {
-		t.Fatal("create = %v, want %v", cresp.Created, true)
+		t.Fatalf("create %v, want %v", cresp.Created, true)
 	}
 
 	kvc := toGRPC(clus.RandClient()).KV

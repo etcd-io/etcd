@@ -203,7 +203,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	}
 
 	if cfg.peerAutoTLS && cfg.peerTLSInfo.Empty() {
-		phosts := make([]string, 0)
+		var phosts []string
 		for _, u := range cfg.lpurls {
 			phosts = append(phosts, u.Host)
 		}
@@ -218,7 +218,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	if !cfg.peerTLSInfo.Empty() {
 		plog.Infof("peerTLS: %s", cfg.peerTLSInfo)
 	}
-	plns := make([]net.Listener, 0)
+	var plns []net.Listener
 	for _, u := range cfg.lpurls {
 		if u.Scheme == "http" {
 			if !cfg.peerTLSInfo.Empty() {

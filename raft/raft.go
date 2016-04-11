@@ -903,7 +903,7 @@ func (r *raft) removeNode(id uint64) {
 	if r.maybeCommit() {
 		r.bcastAppend()
 	}
-	// If the removed node is the leadTransferee, then abort the leadership transfering.
+	// If the removed node is the leadTransferee, then abort the leadership transferring.
 	if r.state == StateLeader && r.leadTransferee == id {
 		r.abortLeaderTransfer()
 	}

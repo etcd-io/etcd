@@ -76,7 +76,7 @@ func TestPeriodicPause(t *testing.T) {
 
 	select {
 	case a := <-compactable.Chan():
-		t.Fatal("unexpected action %v", a)
+		t.Fatalf("unexpected action %v", a)
 	case <-time.After(10 * time.Millisecond):
 	}
 
