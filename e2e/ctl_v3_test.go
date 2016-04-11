@@ -38,6 +38,8 @@ func TestCtlV3GetPeerTLS(t *testing.T)   { testCtl(t, getTest, withCfg(configPee
 func TestCtlV3GetTimeout(t *testing.T)   { testCtl(t, getTest, withDialTimeout(0)) }
 func TestCtlV3GetQuorum(t *testing.T)    { testCtl(t, getTest, withQuorum()) }
 
+func TestCtlV3GetFormat(t *testing.T) { testCtl(t, getFormatTest) }
+
 func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
 func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoTLS)) }
 func TestCtlV3DelClientTLS(t *testing.T) { testCtl(t, delTest, withCfg(configClientTLS)) }
@@ -214,6 +216,32 @@ func getTest(cx ctlCtx) {
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("getTest #%d: ctlV3Get error (%v)", i, err)
 			}
+		}
+	}
+}
+
+func getFormatTest(cx ctlCtx) {
+	defer close(cx.errc)
+	if err := ctlV3Put(cx, "abc", "123", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	tests := []struct {
+		format string
+
+		wstr string
+	}{
+		{"simple", "abc"},
+		{"json", "\"key\":\"YWJj\""},
+		{"protobuf", "\x17\b\x93\xe7\xf6\x93\xd4ņ\xe14\x10\xed"},
+	}
+
+	for i, tt := range tests {
+		cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "get")
+		cmdArgs = append(cmdArgs, "--write-out="+tt.format)
+		cmdArgs = append(cmdArgs, "abc")
+		if err := spawnWithExpect(cmdArgs, tt.wstr); err != nil {
+			cx.t.Errorf("#%d: error (%v), wanted %v", i, err, tt.wstr)
 		}
 	}
 }
