@@ -125,7 +125,12 @@ func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 
 // UnsafeForEach must be called holding the lock on the tx.
 func (t *batchTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
-	return t.tx.Bucket(bucketName).ForEach(visitor)
+	b := t.tx.Bucket(bucketName)
+	if b == nil {
+		// bucket does not exist
+		return nil
+	}
+	return b.ForEach(visitor)
 }
 
 // Commit commits a previous tx and begins a new writable one.
