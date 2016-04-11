@@ -1911,7 +1911,7 @@ func TestCommitAfterRemoveNode(t *testing.T) {
 	}
 }
 
-// TestLeaderTransferToUpToDateNode verifies transfering should succeed
+// TestLeaderTransferToUpToDateNode verifies transferring should succeed
 // if the transferee has the most up-to-date log entires when transfer starts.
 func TestLeaderTransferToUpToDateNode(t *testing.T) {
 	nt := newNetwork(nil, nil, nil)
@@ -2077,7 +2077,7 @@ func TestLeaderTransferRemoveNode(t *testing.T) {
 
 	lead := nt.peers[1].(*raft)
 
-	// The leadTransferee is removed when leadship transfering.
+	// The leadTransferee is removed when leadship transferring.
 	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
 	if lead.leadTransferee != 3 {
 		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
@@ -2159,10 +2159,10 @@ func TestLeaderTransferSecondTransferToSameNode(t *testing.T) {
 
 func checkLeaderTransferState(t *testing.T, r *raft, state StateType, lead uint64) {
 	if r.state != state || r.lead != lead {
-		t.Fatalf("after transfering, node has state %v lead %v, want state %v lead %v", r.state, r.lead, state, lead)
+		t.Fatalf("after transferring, node has state %v lead %v, want state %v lead %v", r.state, r.lead, state, lead)
 	}
 	if r.leadTransferee != None {
-		t.Fatalf("after transfering, node has leadTransferee %v, want leadTransferee %v", r.leadTransferee, None)
+		t.Fatalf("after transferring, node has leadTransferee %v, want leadTransferee %v", r.leadTransferee, None)
 	}
 }
 
