@@ -134,7 +134,7 @@ function fmt_tests {
 	if which unused >/dev/null; then
 		echo "unused is installed..."
 		for path in $GOSIMPLE_UNUSED_PATHS; do
-			unusedResult=$(unused  $REPO_PATH/${path})
+			unusedResult=`unused $REPO_PATH/${path} || true`
 			if [ -n "${unusedResult}" ]; then
 				echo -e "unused checking ${path} failed:\n${unusedResult}"
 				exit 255
