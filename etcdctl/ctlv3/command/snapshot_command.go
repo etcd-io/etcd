@@ -15,13 +15,16 @@
 package command
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"os"
 	"path"
 	"strings"
 
+	"github.com/boltdb/bolt"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
@@ -56,6 +59,7 @@ func NewSnapshotCommand() *cobra.Command {
 	}
 	cmd.AddCommand(NewSnapshotSaveCommand())
 	cmd.AddCommand(NewSnapshotRestoreCommand())
+	cmd.AddCommand(newSnapshotStatusCommand())
 	return cmd
 }
 
@@ -67,10 +71,18 @@ func NewSnapshotSaveCommand() *cobra.Command {
 	}
 }
 
+func newSnapshotStatusCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status <filename>",
+		Short: "status gets backend snapshot status of a given file.",
+		Run:   snapshotStatusCommandFunc,
+	}
+}
+
 func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restore <filename>",
-		Short: "restore an etcd node snapshot to an etcd directory",
+		Short: "restore an etcd member snapshot to an etcd directory",
 		Run:   snapshotRestoreCommandFunc,
 	}
 	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the data directory.")
@@ -117,9 +129,18 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	}
 }
 
+func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		err := fmt.Errorf("snapshot status requires exactly one argument")
+		ExitWithError(ExitBadArgs, err)
+	}
+	ds := dbStatus(args[0])
+	display.DBStatus(ds)
+}
+
 func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		err := fmt.Errorf("snapshot restore exactly one argument")
+		err := fmt.Errorf("snapshot restore requires exactly one argument")
 		ExitWithError(ExitBadArgs, err)
 	}
 
@@ -265,4 +286,65 @@ func makeDB(snapdir, dbfile string) {
 	s.TxnEnd(id)
 	s.Commit()
 	s.Close()
+}
+
+type dbstatus struct {
+	hash      uint32
+	revision  int64
+	totalKey  int
+	totalSize int64
+}
+
+func dbStatus(p string) dbstatus {
+	ds := dbstatus{}
+
+	db, err := bolt.Open(p, 0600, nil)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
+
+	err = db.View(func(tx *bolt.Tx) error {
+		ds.totalSize = tx.Size()
+		c := tx.Cursor()
+		for next, _ := c.First(); next != nil; next, _ = c.Next() {
+			b := tx.Bucket(next)
+			if b == nil {
+				return fmt.Errorf("cannot get hash of bucket %s", string(next))
+			}
+			h.Write(next)
+			iskeyb := (string(next) == "key")
+			b.ForEach(func(k, v []byte) error {
+				h.Write(k)
+				h.Write(v)
+				if iskeyb {
+					rev := bytesToRev(k)
+					ds.revision = rev.main
+				}
+				ds.totalKey++
+				return nil
+			})
+		}
+		return nil
+	})
+
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	ds.hash = h.Sum32()
+	return ds
+}
+
+type revision struct {
+	main int64
+	sub  int64
+}
+
+func bytesToRev(bytes []byte) revision {
+	return revision{
+		main: int64(binary.BigEndian.Uint64(bytes[0:8])),
+		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
+	}
 }

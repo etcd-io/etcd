@@ -24,6 +24,7 @@ import (
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	spb "github.com/coreos/etcd/storage/storagepb"
+	"github.com/dustin/go-humanize"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -39,6 +40,7 @@ type printer interface {
 	MemberStatus([]statusInfo)
 
 	Alarm(v3.AlarmResponse)
+	DBStatus(dbstatus)
 }
 
 func NewPrinter(printerType string, isHex bool) printer {
@@ -142,6 +144,20 @@ func (s *simplePrinter) MemberStatus(statusList []statusInfo) {
 	table.Render()
 }
 
+func (s *simplePrinter) DBStatus(ds dbstatus) {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"hash", "revision", "total keys", "total size"})
+
+	table.Append([]string{
+		fmt.Sprintf("%x", ds.hash),
+		fmt.Sprint(ds.revision),
+		fmt.Sprint(ds.totalKey),
+		humanize.Bytes(uint64(ds.totalSize)),
+	})
+
+	table.Render()
+}
+
 type jsonPrinter struct{}
 
 func (p *jsonPrinter) Del(r v3.DeleteResponse) { printJSON(r) }
@@ -156,6 +172,7 @@ func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }
 func (p *jsonPrinter) Alarm(r v3.AlarmResponse)           { printJSON(r) }
 func (p *jsonPrinter) MemberList(r v3.MemberListResponse) { printJSON(r) }
 func (p *jsonPrinter) MemberStatus(r []statusInfo)        { printJSON(r) }
+func (p *jsonPrinter) DBStatus(r dbstatus)                { printJSON(r) }
 
 func printJSON(v interface{}) {
 	b, err := json.Marshal(v)
@@ -203,6 +220,10 @@ func (pb *pbPrinter) MemberList(r v3.MemberListResponse) {
 }
 
 func (pb *pbPrinter) MemberStatus(r []statusInfo) {
+	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
+}
+
+func (pb *pbPrinter) DBStatus(r dbstatus) {
 	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 
