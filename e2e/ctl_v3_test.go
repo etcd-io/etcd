@@ -532,7 +532,7 @@ func ctlV3Version(cx ctlCtx) error {
 }
 
 func ctlV3EpHealth(cx ctlCtx) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "endpoint-health")
+	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "endpoint health")
 	lines := make([]string, cx.epc.cfg.clusterSize)
 	for i := range lines {
 		lines[i] = "is healthy"

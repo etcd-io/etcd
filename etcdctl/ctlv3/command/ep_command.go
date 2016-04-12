@@ -16,22 +16,43 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
+	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/spf13/cobra"
 )
 
-// NewEpHealthCommand returns the cobra command for "endpoint-health".
-func NewEpHealthCommand() *cobra.Command {
+// NewEndpointCommand returns the cobra command for "endpoint".
+func NewEndpointCommand() *cobra.Command {
+	ec := &cobra.Command{
+		Use:   "endpoint",
+		Short: "endpoint is used to check endpoints.",
+	}
+
+	ec.AddCommand(newEpHealthCommand())
+	ec.AddCommand(newEpStatusCommand())
+
+	return ec
+}
+
+func newEpHealthCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "endpoint-health",
-		Short: "endpoint-health checks the healthiness of endpoints specified in `--endpoints` flag",
+		Use:   "health",
+		Short: "health checks the healthiness of endpoints specified in `--endpoints` flag",
 		Run:   epHealthCommandFunc,
 	}
 	return cmd
+}
+
+func newEpStatusCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "status prints out the status of endpoints specified in `--endpoints` flag",
+		Run:   epStatusCommandFunc,
+	}
 }
 
 // epHealthCommandFunc executes the "endpoint-health" command.
@@ -44,7 +65,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 
 	sec := secureCfgFromCmd(cmd)
 	dt := dialTimeoutFromCmd(cmd)
-	cfgs := []*clientv3.Config{}
+	cfgs := []*v3.Config{}
 	for _, ep := range endpoints {
 		cfg, err := newClientCfg([]string{ep}, dt, sec)
 		if err != nil {
@@ -57,10 +78,10 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 
 	for _, cfg := range cfgs {
 		wg.Add(1)
-		go func(cfg *clientv3.Config) {
+		go func(cfg *v3.Config) {
 			defer wg.Done()
 			ep := cfg.Endpoints[0]
-			cli, err := clientv3.New(*cfg)
+			cli, err := v3.New(*cfg)
 			if err != nil {
 				fmt.Printf("%s is unhealthy: failed to connect: %v\n", ep, err)
 				return
@@ -80,4 +101,33 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	wg.Wait()
+}
+
+type epStatus struct {
+	ep   string
+	resp *v3.StatusResponse
+}
+
+func epStatusCommandFunc(cmd *cobra.Command, args []string) {
+	c := mustClientFromCmd(cmd)
+
+	statusList := []epStatus{}
+	var err error
+	for _, ep := range c.Endpoints() {
+		ctx, cancel := commandCtx(cmd)
+		resp, serr := c.Status(ctx, ep)
+		cancel()
+		if serr != nil {
+			err = serr
+			fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", ep, serr)
+			continue
+		}
+		statusList = append(statusList, epStatus{ep: ep, resp: resp})
+	}
+
+	display.EndpointStatus(statusList)
+
+	if err != nil {
+		os.Exit(ExitError)
+	}
 }
