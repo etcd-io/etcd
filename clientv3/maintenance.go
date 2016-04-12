@@ -46,7 +46,7 @@ type Maintenance interface {
 	// times with different endpoints.
 	Defragment(ctx context.Context, endpoint string) (*DefragmentResponse, error)
 
-	// Status gets the status of the member.
+	// Status gets the status of the endpoint.
 	Status(ctx context.Context, endpoint string) (*StatusResponse, error)
 
 	// Snapshot provides a reader for a snapshot of a backend.

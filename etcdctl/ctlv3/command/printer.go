@@ -37,7 +37,7 @@ type printer interface {
 
 	MemberList(v3.MemberListResponse)
 
-	MemberStatus([]statusInfo)
+	EndpointStatus([]epStatus)
 
 	Alarm(v3.AlarmResponse)
 	DBStatus(dbstatus)
@@ -129,7 +129,7 @@ func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 	table.Render()
 }
 
-func (s *simplePrinter) MemberStatus(statusList []statusInfo) {
+func (s *simplePrinter) EndpointStatus(statusList []epStatus) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index"})
 
@@ -175,7 +175,7 @@ func (p *jsonPrinter) Txn(r v3.TxnResponse)               { printJSON(r) }
 func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }
 func (p *jsonPrinter) Alarm(r v3.AlarmResponse)           { printJSON(r) }
 func (p *jsonPrinter) MemberList(r v3.MemberListResponse) { printJSON(r) }
-func (p *jsonPrinter) MemberStatus(r []statusInfo)        { printJSON(r) }
+func (p *jsonPrinter) EndpointStatus(r []epStatus)        { printJSON(r) }
 func (p *jsonPrinter) DBStatus(r dbstatus)                { printJSON(r) }
 
 func printJSON(v interface{}) {
@@ -223,7 +223,7 @@ func (pb *pbPrinter) MemberList(r v3.MemberListResponse) {
 	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 
-func (pb *pbPrinter) MemberStatus(r []statusInfo) {
+func (pb *pbPrinter) EndpointStatus(statusList []epStatus) {
 	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 
