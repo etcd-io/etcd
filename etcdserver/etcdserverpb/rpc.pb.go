@@ -1286,8 +1286,12 @@ func (m *StatusRequest) String() string { return proto.CompactTextString(m) }
 func (*StatusRequest) ProtoMessage()    {}
 
 type StatusResponse struct {
-	Header  *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Version string          `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Header    *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	Version   string          `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	DbSize    int64           `protobuf:"varint,3,opt,name=dbSize,proto3" json:"dbSize,omitempty"`
+	Leader    uint64          `protobuf:"varint,4,opt,name=leader,proto3" json:"leader,omitempty"`
+	RaftIndex uint64          `protobuf:"varint,5,opt,name=raftIndex,proto3" json:"raftIndex,omitempty"`
+	RaftTerm  uint64          `protobuf:"varint,6,opt,name=raftTerm,proto3" json:"raftTerm,omitempty"`
 }
 
 func (m *StatusResponse) Reset()         { *m = StatusResponse{} }
@@ -4619,6 +4623,26 @@ func (m *StatusResponse) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintRpc(data, i, uint64(len(m.Version)))
 		i += copy(data[i:], m.Version)
 	}
+	if m.DbSize != 0 {
+		data[i] = 0x18
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.DbSize))
+	}
+	if m.Leader != 0 {
+		data[i] = 0x20
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.Leader))
+	}
+	if m.RaftIndex != 0 {
+		data[i] = 0x28
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.RaftIndex))
+	}
+	if m.RaftTerm != 0 {
+		data[i] = 0x30
+		i++
+		i = encodeVarintRpc(data, i, uint64(m.RaftTerm))
+	}
 	return i, nil
 }
 
@@ -6077,6 +6101,18 @@ func (m *StatusResponse) Size() (n int) {
 	l = len(m.Version)
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
+	}
+	if m.DbSize != 0 {
+		n += 1 + sovRpc(uint64(m.DbSize))
+	}
+	if m.Leader != 0 {
+		n += 1 + sovRpc(uint64(m.Leader))
+	}
+	if m.RaftIndex != 0 {
+		n += 1 + sovRpc(uint64(m.RaftIndex))
+	}
+	if m.RaftTerm != 0 {
+		n += 1 + sovRpc(uint64(m.RaftTerm))
 	}
 	return n
 }
@@ -11096,6 +11132,82 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 			}
 			m.Version = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DbSize", wireType)
+			}
+			m.DbSize = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.DbSize |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Leader", wireType)
+			}
+			m.Leader = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Leader |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftIndex", wireType)
+			}
+			m.RaftIndex = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.RaftIndex |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftTerm", wireType)
+			}
+			m.RaftTerm = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRpc
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.RaftTerm |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRpc(data[iNdEx:])

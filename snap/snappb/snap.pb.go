@@ -17,9 +17,9 @@ import (
 	"fmt"
 
 	proto "github.com/gogo/protobuf/proto"
-
-	math "math"
 )
+
+import math "math"
 
 import io "io"
 
