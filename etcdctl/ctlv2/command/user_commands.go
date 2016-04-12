@@ -17,8 +17,6 @@ package command
 import (
 	"fmt"
 	"os"
-	"reflect"
-	"sort"
 	"strings"
 
 	"github.com/bgentry/speakeasy"
@@ -195,21 +193,12 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 		os.Exit(1)
 	}
 
-	var newUser *client.User
 	if grant {
-		newUser, err = api.GrantUser(ctx, user, roles)
+		_, err = api.GrantUser(ctx, user, roles)
 	} else {
-		newUser, err = api.RevokeUser(ctx, user, roles)
+		_, err = api.RevokeUser(ctx, user, roles)
 	}
-	sort.Strings(newUser.Roles)
-	sort.Strings(currentUser.Roles)
-	if reflect.DeepEqual(newUser.Roles, currentUser.Roles) {
-		if grant {
-			fmt.Printf("User unchanged; roles already granted")
-		} else {
-			fmt.Printf("User unchanged; roles already revoked")
-		}
-	}
+
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
