@@ -15,6 +15,7 @@
 package auth
 
 import (
+	"bytes"
 	"errors"
 	"sort"
 	"strings"
@@ -90,8 +91,6 @@ func (as *authStore) Recover(be backend.Backend) {
 }
 
 func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
-	plog.Noticef("adding a new user: %s", r.Name)
-
 	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), bcrypt.DefaultCost)
 	if err != nil {
 		plog.Errorf("failed to hash password: %s", err)
@@ -245,6 +244,20 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	return &pb.AuthRoleAddResponse{}, nil
 }
 
+type permSlice []*authpb.Permission
+
+func (perms permSlice) Len() int {
+	return len(perms)
+}
+
+func (perms permSlice) Less(i, j int) bool {
+	return bytes.Compare(perms[i].Key, perms[j].Key) < 0
+}
+
+func (perms permSlice) Swap(i, j int) {
+	perms[i], perms[j] = perms[j], perms[i]
+}
+
 func (as *authStore) RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error) {
 	tx := as.be.BatchTx()
 	tx.Lock()
@@ -262,13 +275,22 @@ func (as *authStore) RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantRes
 		return nil, err
 	}
 
-	if !updateExistingPermission(role.KeyPermission, string(r.Perm.Key), r.Perm.PermType) {
+	idx := sort.Search(len(role.KeyPermission), func(i int) bool {
+		return bytes.Compare(role.KeyPermission[i].Key, []byte(r.Perm.Key)) >= 0
+	})
+
+	if bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) {
+		// update existing permission
+		role.KeyPermission[idx].PermType = r.Perm.PermType
+	} else {
+		// append new permission to the role
 		newPerm := &authpb.Permission{
 			Key:      []byte(r.Perm.Key),
 			PermType: r.Perm.PermType,
 		}
 
 		role.KeyPermission = append(role.KeyPermission, newPerm)
+		sort.Sort(permSlice(role.KeyPermission))
 	}
 
 	marshaledRole, merr := role.Marshal()
@@ -282,17 +304,6 @@ func (as *authStore) RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantRes
 	plog.Noticef("role %s's permission of key %s is updated as %s", r.Name, r.Perm.Key, authpb.Permission_Type_name[int32(r.Perm.PermType)])
 
 	return &pb.AuthRoleGrantResponse{}, nil
-}
-
-func updateExistingPermission(perms []*authpb.Permission, key string, newPerm authpb.Permission_Type) bool {
-	for _, perm := range perms {
-		if strings.Compare(string(perm.Key), key) == 0 {
-			perm.PermType = newPerm
-			return true
-		}
-	}
-
-	return false
 }
 
 func NewAuthStore(be backend.Backend) *authStore {
