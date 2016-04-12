@@ -183,7 +183,10 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	}
 }
 
-func TestCtlV2UserList(t *testing.T) {
+func TestCtlV2UserListUsername(t *testing.T) { testCtlV2UserList(t, "username") }
+func TestCtlV2UserListRoot(t *testing.T)     { testCtlV2UserList(t, "root") }
+
+func testCtlV2UserList(t *testing.T, username string) {
 	defer testutil.AfterTest(t)
 
 	epc := setupEtcdctlTest(t, &configWithProxy, false)
@@ -193,10 +196,10 @@ func TestCtlV2UserList(t *testing.T) {
 		}
 	}()
 
-	if err := etcdctlUserAdd(epc, "username", "password"); err != nil {
+	if err := etcdctlUserAdd(epc, username, "password"); err != nil {
 		t.Fatalf("failed to add user (%v)", err)
 	}
-	if err := etcdctlUserList(epc, "username"); err != nil {
+	if err := etcdctlUserList(epc, username); err != nil {
 		t.Fatalf("failed to list users (%v)", err)
 	}
 }
