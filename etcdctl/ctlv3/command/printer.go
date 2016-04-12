@@ -131,13 +131,17 @@ func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 
 func (s *simplePrinter) MemberStatus(statusList []statusInfo) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"endpoint", "ID", "version"})
+	table.SetHeader([]string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index"})
 
 	for _, status := range statusList {
 		table.Append([]string{
 			fmt.Sprint(status.ep),
 			fmt.Sprintf("%x", status.resp.Header.MemberId),
 			fmt.Sprint(status.resp.Version),
+			fmt.Sprint(humanize.Bytes(uint64(status.resp.DbSize))),
+			fmt.Sprint(status.resp.Leader == status.resp.Header.MemberId),
+			fmt.Sprint(status.resp.RaftTerm),
+			fmt.Sprint(status.resp.RaftIndex),
 		})
 	}
 
