@@ -19,6 +19,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -68,16 +69,41 @@ func (sp *secondPoints) getTimeSeries() TimeSeries {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 
-	tslice := make(TimeSeries, len(sp.tm))
-	i := 0
+	var (
+		minTs int64 = math.MaxInt64
+		maxTs int64 = -1
+	)
+	for k := range sp.tm {
+		if minTs > k {
+			minTs = k
+		}
+		if maxTs < k {
+			maxTs = k
+		}
+	}
+	for ti := minTs; ti < maxTs; ti++ {
+		if _, ok := sp.tm[ti]; !ok { // fill-in empties
+			sp.tm[ti] = secondPoint{totalLatency: 0, count: 0}
+		}
+	}
+
+	var (
+		tslice = make(TimeSeries, len(sp.tm))
+		i      int
+	)
 	for k, v := range sp.tm {
+		var lat time.Duration
+		if v.count > 0 {
+			lat = time.Duration(v.totalLatency) / time.Duration(v.count)
+		}
 		tslice[i] = timeSeries{
 			timestamp:  k,
-			avgLatency: time.Duration(v.totalLatency) / time.Duration(v.count),
+			avgLatency: lat,
 			throughPut: v.count,
 		}
 		i++
 	}
+
 	sort.Sort(tslice)
 	return tslice
 }
