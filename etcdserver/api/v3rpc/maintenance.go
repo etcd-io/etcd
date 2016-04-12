@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/version"
 	"golang.org/x/net/context"
@@ -32,14 +33,21 @@ type Alarmer interface {
 	Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 }
 
+type RaftStatusGetter interface {
+	Index() uint64
+	Term() uint64
+	Leader() types.ID
+}
+
 type maintenanceServer struct {
+	rg  RaftStatusGetter
 	bg  BackendGetter
 	a   Alarmer
 	hdr header
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	return &maintenanceServer{bg: s, a: s, hdr: newHeader(s)}
+	return &maintenanceServer{rg: s, bg: s, a: s, hdr: newHeader(s)}
 }
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
@@ -103,7 +111,14 @@ func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*p
 }
 
 func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
-	resp := &pb.StatusResponse{Header: &pb.ResponseHeader{Revision: ms.hdr.rev()}, Version: version.Version}
+	resp := &pb.StatusResponse{
+		Header:    &pb.ResponseHeader{Revision: ms.hdr.rev()},
+		Version:   version.Version,
+		DbSize:    ms.bg.Backend().Size(),
+		Leader:    uint64(ms.rg.Leader()),
+		RaftIndex: ms.rg.Index(),
+		RaftTerm:  ms.rg.Term(),
+	}
 	ms.hdr.fill(resp.Header)
 	return resp, nil
 }
