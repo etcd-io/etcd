@@ -204,6 +204,44 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 	}
 }
 
+// Testv3TxnRevision tests that the transaction header revision is set as expected.
+func TestV3TxnRevision(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := toGRPC(clus.RandClient()).KV
+	pr := &pb.PutRequest{Key: []byte("abc"), Value: []byte("def")}
+	presp, err := kvc.Put(context.TODO(), pr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txnget := &pb.RequestUnion{Request: &pb.RequestUnion_RequestRange{RequestRange: &pb.RangeRequest{Key: []byte("abc")}}}
+	txn := &pb.TxnRequest{Success: []*pb.RequestUnion{txnget}}
+	tresp, err := kvc.Txn(context.TODO(), txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// did not update revision
+	if presp.Header.Revision != tresp.Header.Revision {
+		t.Fatalf("got rev %d, wanted rev %d", tresp.Header.Revision, presp.Header.Revision)
+	}
+
+	txnput := &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("123")}}}
+	txn = &pb.TxnRequest{Success: []*pb.RequestUnion{txnput}}
+	tresp, err = kvc.Txn(context.TODO(), txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// updated revision
+	if tresp.Header.Revision != presp.Header.Revision+1 {
+		t.Fatalf("got rev %d, wanted rev %d", tresp.Header.Revision, presp.Header.Revision+1)
+	}
+}
+
 // TestV3PutMissingLease ensures that a Put on a key with a bogus lease fails.
 func TestV3PutMissingLease(t *testing.T) {
 	defer testutil.AfterTest(t)

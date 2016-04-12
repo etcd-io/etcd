@@ -229,11 +229,9 @@ func (a *applierV3backend) Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResp
 }
 
 func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
-	var revision int64
-
 	ok := true
 	for _, c := range rt.Compare {
-		if revision, ok = a.applyCompare(c); !ok {
+		if _, ok = a.applyCompare(c); !ok {
 			break
 		}
 	}
@@ -252,6 +250,8 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 		return nil, err
 	}
 
+	revision := a.s.KV().Rev()
+
 	// When executing the operations of txn, we need to hold the txn lock.
 	// So the reader will not see any intermediate results.
 	txnID := a.s.KV().TxnBegin()
@@ -263,11 +263,15 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	}()
 
 	resps := make([]*pb.ResponseUnion, len(reqs))
+	changedKV := false
 	for i := range reqs {
+		if reqs[i].GetRequestRange() == nil {
+			changedKV = true
+		}
 		resps[i] = a.applyUnion(txnID, reqs[i])
 	}
 
-	if len(resps) != 0 {
+	if changedKV {
 		revision += 1
 	}
 
