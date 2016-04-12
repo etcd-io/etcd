@@ -499,6 +499,10 @@ message StatusRequest {
 message StatusResponse {
   ResponseHeader header = 1;
   string version = 2;
+  int64 dbSize = 3;
+  uint64 leader = 4;
+  uint64 raftIndex = 5;
+  uint64 raftTerm = 6;
 }
 
 message AuthEnableRequest {
