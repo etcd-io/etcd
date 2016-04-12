@@ -58,7 +58,7 @@ const (
 // Data format of MsgApp:
 // | offset | bytes | description |
 // +--------+-------+-------------+
-// | 0      | 1     | \x01        |
+// | 0      | 1     | \x02        |
 // | 1      | 8     | length of encoded message |
 // | 9      | n     | encoded message |
 type msgAppV2Encoder struct {
