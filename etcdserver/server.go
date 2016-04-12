@@ -1123,8 +1123,10 @@ func (s *EtcdServer) applyRequest(r pb.Request) Response {
 				// return an empty response since there is no consumer.
 				return Response{}
 			}
-			if r.Path == path.Join(StoreClusterPrefix, "version") {
+			if r.Path == membership.StoreClusterVersionKey() {
 				s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)))
+				// return an empty response since there is no consumer.
+				return Response{}
 			}
 			return f(s.store.Set(r.Path, r.Dir, r.Val, ttlOptions))
 		}
@@ -1312,7 +1314,7 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 	}
 	req := pb.Request{
 		Method: "PUT",
-		Path:   path.Join(StoreClusterPrefix, "version"),
+		Path:   membership.StoreClusterVersionKey(),
 		Val:    ver,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ReqTimeout())
