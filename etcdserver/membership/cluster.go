@@ -197,7 +197,7 @@ func (c *RaftCluster) SetStore(st store.Store) { c.store = st }
 
 func (c *RaftCluster) SetBackend(be backend.Backend) {
 	c.be = be
-	mustCreateBackendMemberBucket(c.be)
+	mustCreateBackendBuckets(c.be)
 }
 
 func (c *RaftCluster) Recover() {
@@ -360,6 +360,12 @@ func (c *RaftCluster) SetVersion(ver *semver.Version) {
 	}
 	c.version = ver
 	mustDetectDowngrade(c.version)
+	if c.store != nil {
+		mustSaveClusterVersionToStore(c.store, ver)
+	}
+	if c.be != nil {
+		mustSaveClusterVersionToBackend(c.be, ver)
+	}
 }
 
 func (c *RaftCluster) IsReadyToAddNewMember() bool {

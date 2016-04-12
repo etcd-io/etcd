@@ -22,6 +22,8 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/store"
+
+	"github.com/coreos/go-semver/semver"
 )
 
 const (
@@ -35,6 +37,7 @@ const (
 var (
 	membersBucketName        = []byte("members")
 	membersRemovedBuckedName = []byte("members_removed")
+	clusterBucketName        = []byte("cluster")
 
 	StoreMembersPrefix        = path.Join(storePrefix, "members")
 	storeRemovedMembersPrefix = path.Join(storePrefix, "removed_members")
@@ -61,6 +64,15 @@ func mustDeleteMemberFromBackend(be backend.Backend, id types.ID) {
 	tx.UnsafeDelete(membersBucketName, mkey)
 	tx.UnsafePut(membersRemovedBuckedName, mkey, []byte("removed"))
 	tx.Unlock()
+}
+
+func mustSaveClusterVersionToBackend(be backend.Backend, ver *semver.Version) {
+	ckey := backendClusterVersionKey()
+
+	tx := be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+	tx.UnsafePut(clusterBucketName, ckey, []byte(ver.String()))
 }
 
 func mustSaveMemberToStore(s store.Store, m *Member) {
@@ -105,6 +117,12 @@ func mustUpdateMemberAttrInStore(s store.Store, m *Member) {
 	}
 }
 
+func mustSaveClusterVersionToStore(s store.Store, ver *semver.Version) {
+	if _, err := s.Set(StoreClusterVersionKey(), false, ver.String(), store.TTLOptionSet{ExpireTime: store.Permanent}); err != nil {
+		plog.Panicf("save cluster version should never fail: %v", err)
+	}
+}
+
 // nodeToMember builds member from a key value node.
 // the child nodes of the given node MUST be sorted by key.
 func nodeToMember(n *store.NodeExtern) (*Member, error) {
@@ -137,16 +155,25 @@ func backendMemberKey(id types.ID) []byte {
 	return []byte(id.String())
 }
 
-func mustCreateBackendMemberBucket(be backend.Backend) {
+func backendClusterVersionKey() []byte {
+	return []byte("clusterVersion")
+}
+
+func mustCreateBackendBuckets(be backend.Backend) {
 	tx := be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
 	tx.UnsafeCreateBucket(membersBucketName)
 	tx.UnsafeCreateBucket(membersRemovedBuckedName)
+	tx.UnsafeCreateBucket(clusterBucketName)
 }
 
 func MemberStoreKey(id types.ID) string {
 	return path.Join(StoreMembersPrefix, id.String())
+}
+
+func StoreClusterVersionKey() string {
+	return path.Join(storePrefix, "version")
 }
 
 func MemberAttributesStorePath(id types.ID) string {
