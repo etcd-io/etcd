@@ -39,6 +39,7 @@ func TestCtlV3GetTimeout(t *testing.T)   { testCtl(t, getTest, withDialTimeout(0
 func TestCtlV3GetQuorum(t *testing.T)    { testCtl(t, getTest, withQuorum()) }
 
 func TestCtlV3GetFormat(t *testing.T) { testCtl(t, getFormatTest) }
+func TestCtlV3GetRev(t *testing.T)    { testCtl(t, getRevTest) }
 
 func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
 func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoTLS)) }
@@ -185,6 +186,11 @@ func getTest(cx ctlCtx) {
 		kvs    = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
 		revkvs = []kv{{"key3", "val3"}, {"key2", "val2"}, {"key1", "val1"}}
 	)
+	for i := range kvs {
+		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
+			cx.t.Fatalf("getTest #%d: ctlV3Put error (%v)", i, err)
+		}
+	}
 
 	tests := []struct {
 		args []string
@@ -198,12 +204,6 @@ func getTest(cx ctlCtx) {
 		{[]string{"key", "--prefix", "--order=ASCEND", "--sort-by=VERSION"}, kvs},
 		{[]string{"key", "--prefix", "--order=DESCEND", "--sort-by=CREATE"}, revkvs},
 		{[]string{"key", "--prefix", "--order=DESCEND", "--sort-by=KEY"}, revkvs},
-	}
-
-	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatalf("getTest #%d: ctlV3Put error (%v)", i, err)
-		}
 	}
 	for i, tt := range tests {
 		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
@@ -235,6 +235,33 @@ func getFormatTest(cx ctlCtx) {
 		cmdArgs = append(cmdArgs, "abc")
 		if err := spawnWithExpect(cmdArgs, tt.wstr); err != nil {
 			cx.t.Errorf("#%d: error (%v), wanted %v", i, err, tt.wstr)
+		}
+	}
+}
+
+func getRevTest(cx ctlCtx) {
+	var (
+		kvs = []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
+	)
+	for i := range kvs {
+		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
+			cx.t.Fatalf("getRevTest #%d: ctlV3Put error (%v)", i, err)
+		}
+	}
+
+	tests := []struct {
+		args []string
+
+		wkv []kv
+	}{
+		{[]string{"key", "--rev", "2"}, kvs[:1]},
+		{[]string{"key", "--rev", "3"}, kvs[1:2]},
+		{[]string{"key", "--rev", "4"}, kvs[2:]},
+	}
+
+	for i, tt := range tests {
+		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
+			cx.t.Errorf("getTest #%d: ctlV3Get error (%v)", i, err)
 		}
 	}
 }
