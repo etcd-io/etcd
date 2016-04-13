@@ -113,6 +113,11 @@ func (ep *ExpectProcess) LineCount() int {
 // Stop kills the expect process and waits for it to exit.
 func (ep *ExpectProcess) Stop() error { return ep.close(true) }
 
+// Signal sends a signal to the expect process
+func (ep *ExpectProcess) Signal(sig os.Signal) error {
+	return ep.cmd.Process.Signal(sig)
+}
+
 // Close waits for the expect process to exit.
 func (ep *ExpectProcess) Close() error { return ep.close(false) }
 

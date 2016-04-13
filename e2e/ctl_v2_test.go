@@ -284,7 +284,7 @@ func etcdctlLs(clus *etcdProcessCluster, key string, quorum bool) error {
 }
 
 func etcdctlWatch(clus *etcdProcessCluster, key, value string, noSync bool) <-chan error {
-	cmdArgs := append(etcdctlPrefixArgs(clus), "watch", "--after-index 1", key)
+	cmdArgs := append(etcdctlPrefixArgs(clus), "watch", "--after-index=1", key)
 	if noSync {
 		cmdArgs = append(cmdArgs, "--no-sync")
 	}

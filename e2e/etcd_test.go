@@ -416,8 +416,7 @@ func (epc *etcdProcessCluster) Close() (err error) {
 }
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	cmdargs := append([]string{"-c"}, strings.Join(args, " "))
-	return expect.NewExpect("/bin/sh", cmdargs...)
+	return expect.NewExpect(args[0], args[1:]...)
 }
 
 func spawnWithExpect(args []string, expected string) error {
