@@ -88,7 +88,6 @@ type ctlCtx struct {
 	cfg etcdProcessClusterConfig
 	epc *etcdProcessCluster
 
-	errc        chan error
 	dialTimeout time.Duration
 
 	quorum      bool // if true, set up 3-node cluster and linearizable read
@@ -137,7 +136,6 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	ret := ctlCtx{
 		t:           t,
 		cfg:         configAutoTLS,
-		errc:        make(chan error, 1),
 		dialTimeout: 7 * time.Second,
 	}
 	ret.applyOpts(opts)
@@ -152,24 +150,22 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 		}
 	}()
 
-	go testFunc(ret)
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		testFunc(ret)
+	}()
 
 	select {
 	case <-time.After(2*ret.dialTimeout + time.Second):
 		if ret.dialTimeout > 0 {
 			t.Fatalf("test timed out for %v", ret.dialTimeout)
 		}
-	case err := <-ret.errc:
-		if err != nil {
-			t.Fatal(err)
-		}
+	case <-donec:
 	}
-	return
 }
 
 func putTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	key, value := "foo", "bar"
 
 	if err := ctlV3Put(cx, key, value, ""); err != nil {
@@ -185,8 +181,6 @@ func putTest(cx ctlCtx) {
 }
 
 func getTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	var (
 		kvs    = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
 		revkvs = []kv{{"key3", "val3"}, {"key2", "val2"}, {"key1", "val1"}}
@@ -221,7 +215,6 @@ func getTest(cx ctlCtx) {
 }
 
 func getFormatTest(cx ctlCtx) {
-	defer close(cx.errc)
 	if err := ctlV3Put(cx, "abc", "123", ""); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -237,7 +230,7 @@ func getFormatTest(cx ctlCtx) {
 	}
 
 	for i, tt := range tests {
-		cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "get")
+		cmdArgs := append(cx.PrefixArgs(), "get")
 		cmdArgs = append(cmdArgs, "--write-out="+tt.format)
 		cmdArgs = append(cmdArgs, "abc")
 		if err := spawnWithExpect(cmdArgs, tt.wstr); err != nil {
@@ -247,8 +240,6 @@ func getFormatTest(cx ctlCtx) {
 }
 
 func delTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	tests := []struct {
 		puts []kv
 		args []string
@@ -287,8 +278,6 @@ func delTest(cx ctlCtx) {
 }
 
 func watchTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	tests := []struct {
 		puts []kv
 		args []string
@@ -329,24 +318,18 @@ func watchTest(cx ctlCtx) {
 }
 
 func versionTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	if err := ctlV3Version(cx); err != nil {
 		cx.t.Fatalf("versionTest ctlV3Version error (%v)", err)
 	}
 }
 
 func epHealthTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	if err := ctlV3EpHealth(cx); err != nil {
 		cx.t.Fatalf("epHealthTest ctlV3EpHealth error (%v)", err)
 	}
 }
 
 func txnTestSuccess(cx ctlCtx) {
-	defer close(cx.errc)
-
 	if err := ctlV3Put(cx, "key1", "value1", ""); err != nil {
 		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
 	}
@@ -366,8 +349,6 @@ func txnTestSuccess(cx ctlCtx) {
 }
 
 func txnTestFail(cx ctlCtx) {
-	defer close(cx.errc)
-
 	rqs := txnRequests{
 		compare:  []string{`version("key") < "0"`},
 		ifSucess: []string{`put key "success"`},
@@ -379,28 +360,28 @@ func txnTestFail(cx ctlCtx) {
 	}
 }
 
-func ctlV3PrefixArgs(clus *etcdProcessCluster, dialTimeout time.Duration) []string {
-	if len(clus.proxies()) > 0 { // TODO: add proxy check as in v2
+func (cx *ctlCtx) PrefixArgs() []string {
+	if len(cx.epc.proxies()) > 0 { // TODO: add proxy check as in v2
 		panic("v3 proxy not implemented")
 	}
 
 	endpoints := ""
-	if backends := clus.backends(); len(backends) != 0 {
+	if backends := cx.epc.backends(); len(backends) != 0 {
 		es := []string{}
 		for _, b := range backends {
 			es = append(es, stripSchema(b.cfg.acurl))
 		}
 		endpoints = strings.Join(es, ",")
 	}
-	cmdArgs := []string{"../bin/etcdctl", "--endpoints", endpoints, "--dial-timeout", dialTimeout.String()}
-	if clus.cfg.clientTLS == clientTLS {
+	cmdArgs := []string{"../bin/etcdctl", "--endpoints", endpoints, "--dial-timeout", cx.dialTimeout.String()}
+	if cx.epc.cfg.clientTLS == clientTLS {
 		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 	}
 	return cmdArgs
 }
 
 func ctlV3Put(cx ctlCtx, key, value, leaseID string) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "put", key, value)
+	cmdArgs := append(cx.PrefixArgs(), "put", key, value)
 	if leaseID != "" {
 		cmdArgs = append(cmdArgs, "--lease", leaseID)
 	}
@@ -412,7 +393,7 @@ type kv struct {
 }
 
 func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "get")
+	cmdArgs := append(cx.PrefixArgs(), "get")
 	cmdArgs = append(cmdArgs, args...)
 	if !cx.quorum {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
@@ -425,13 +406,13 @@ func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
 }
 
 func ctlV3Del(cx ctlCtx, args []string, num int) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "del")
+	cmdArgs := append(cx.PrefixArgs(), "del")
 	cmdArgs = append(cmdArgs, args...)
 	return spawnWithExpects(cmdArgs, fmt.Sprintf("%d", num))
 }
 
 func ctlV3Watch(cx ctlCtx, args []string, kvs ...kv) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "watch")
+	cmdArgs := append(cx.PrefixArgs(), "watch")
 	if cx.interactive {
 		cmdArgs = append(cmdArgs, "--interactive")
 	} else {
@@ -470,7 +451,7 @@ type txnRequests struct {
 
 func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 	// TODO: support non-interactive mode
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "txn")
+	cmdArgs := append(cx.PrefixArgs(), "txn")
 	if cx.interactive {
 		cmdArgs = append(cmdArgs, "--interactive")
 	}
@@ -527,12 +508,12 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 }
 
 func ctlV3Version(cx ctlCtx) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "version")
+	cmdArgs := append(cx.PrefixArgs(), "version")
 	return spawnWithExpect(cmdArgs, version.Version)
 }
 
 func ctlV3EpHealth(cx ctlCtx) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "endpoint health")
+	cmdArgs := append(cx.PrefixArgs(), "endpoint health")
 	lines := make([]string, cx.epc.cfg.clusterSize)
 	for i := range lines {
 		lines[i] = "is healthy"
