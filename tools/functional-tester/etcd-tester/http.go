@@ -26,8 +26,19 @@ type statusHandler struct {
 func (sh statusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	en := json.NewEncoder(w)
-	err := en.Encode(sh.status.get())
-	if err != nil {
+
+	sh.status.mu.Lock()
+	defer sh.status.mu.Unlock()
+
+	if err := en.Encode(Status{
+		Since:      sh.status.Since,
+		Failures:   sh.status.Failures,
+		RoundLimit: sh.status.RoundLimit,
+		Cluster:    sh.status.cluster.Status(),
+		cluster:    sh.status.cluster,
+		Round:      sh.status.Round,
+		Case:       sh.status.Case,
+	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
