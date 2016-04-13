@@ -16,7 +16,6 @@ package command
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	v3 "github.com/coreos/etcd/clientv3"
@@ -41,7 +40,7 @@ func NewLeaseCommand() *cobra.Command {
 // NewLeaseGrantCommand returns the cobra command for "lease grant".
 func NewLeaseGrantCommand() *cobra.Command {
 	lc := &cobra.Command{
-		Use:   "grant",
+		Use:   "grant <ttl>",
 		Short: "grant is used to create leases.",
 
 		Run: leaseGrantCommandFunc,
@@ -65,8 +64,7 @@ func leaseGrantCommandFunc(cmd *cobra.Command, args []string) {
 	resp, err := mustClientFromCmd(cmd).Grant(ctx, ttl)
 	cancel()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to grant lease (%v)\n", err)
-		return
+		ExitWithError(ExitError, fmt.Errorf("failed to grant lease (%v)\n", err))
 	}
 	fmt.Printf("lease %016x granted with TTL(%ds)\n", resp.ID, resp.TTL)
 }
@@ -74,7 +72,7 @@ func leaseGrantCommandFunc(cmd *cobra.Command, args []string) {
 // NewLeaseRevokeCommand returns the cobra command for "lease revoke".
 func NewLeaseRevokeCommand() *cobra.Command {
 	lc := &cobra.Command{
-		Use:   "revoke",
+		Use:   "revoke <leaseID>",
 		Short: "revoke is used to revoke leases.",
 
 		Run: leaseRevokeCommandFunc,
@@ -98,8 +96,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 	_, err = mustClientFromCmd(cmd).Revoke(ctx, v3.LeaseID(id))
 	cancel()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to revoke lease (%v)\n", err)
-		return
+		ExitWithError(ExitError, fmt.Errorf("failed to revoke lease (%v)\n", err))
 	}
 	fmt.Printf("lease %016x revoked\n", id)
 }
@@ -107,7 +104,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 // NewLeaseKeepAliveCommand returns the cobra command for "lease keep-alive".
 func NewLeaseKeepAliveCommand() *cobra.Command {
 	lc := &cobra.Command{
-		Use:   "keep-alive",
+		Use:   "keep-alive <leaseID>",
 		Short: "keep-alive is used to keep leases alive.",
 
 		Run: leaseKeepAliveCommandFunc,
