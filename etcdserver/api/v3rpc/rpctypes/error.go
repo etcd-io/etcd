@@ -41,4 +41,5 @@ var (
 	ErrUserNotFound     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: user name not found")
 	ErrRoleAlreadyExist = grpc.Errorf(codes.FailedPrecondition, "etcdserver: role name already exists")
 	ErrRoleNotFound     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: role name not found")
+	ErrAuthFailed       = grpc.Errorf(codes.InvalidArgument, "etcdserver: authentication failed, invalid user ID or password")
 )
