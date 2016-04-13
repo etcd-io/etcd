@@ -134,6 +134,7 @@ func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 		err := fmt.Errorf("snapshot status requires exactly one argument")
 		ExitWithError(ExitBadArgs, err)
 	}
+	initDisplayFromCmd(cmd)
 	ds := dbStatus(args[0])
 	display.DBStatus(ds)
 }
@@ -289,10 +290,10 @@ func makeDB(snapdir, dbfile string) {
 }
 
 type dbstatus struct {
-	hash      uint32
-	revision  int64
-	totalKey  int
-	totalSize int64
+	Hash      uint32 `json:"hash"`
+	Revision  int64  `json:"revision"`
+	TotalKey  int    `json:"totalKey"`
+	TotalSize int64  `json:"totalSize"`
 }
 
 func dbStatus(p string) dbstatus {
@@ -306,7 +307,7 @@ func dbStatus(p string) dbstatus {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
 	err = db.View(func(tx *bolt.Tx) error {
-		ds.totalSize = tx.Size()
+		ds.TotalSize = tx.Size()
 		c := tx.Cursor()
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
@@ -320,9 +321,9 @@ func dbStatus(p string) dbstatus {
 				h.Write(v)
 				if iskeyb {
 					rev := bytesToRev(k)
-					ds.revision = rev.main
+					ds.Revision = rev.main
 				}
-				ds.totalKey++
+				ds.TotalKey++
 				return nil
 			})
 		}
@@ -333,7 +334,7 @@ func dbStatus(p string) dbstatus {
 		ExitWithError(ExitError, err)
 	}
 
-	ds.hash = h.Sum32()
+	ds.Hash = h.Sum32()
 	return ds
 }
 
