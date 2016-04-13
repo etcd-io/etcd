@@ -3,7 +3,7 @@
 	"GoVersion": "go1.6",
 	"GodepVersion": "v60",
 	"Packages": [
-		"./cmd/..."
+		"./..."
 	],
 	"Deps": [
 		{
@@ -109,7 +109,7 @@
 		},
 		{
 			"ImportPath": "github.com/mattn/go-runewidth",
-			"Comment": "v0.0.1",
+			"Comment": "travisish-46-gd6bea18",
 			"Rev": "d6bea18f789704b5f83375793155289da36a3c7f"
 		},
 		{
@@ -209,39 +209,39 @@
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/codes",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/credentials",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/grpclog",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/internal",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/metadata",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/naming",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/peer",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/transport",
-			"Rev": "e3d8dfd9076c03272c6e3c7a0ac8671a0e0b374e"
+			"Rev": "9ac074585f926c8506b6351bfdc396d2b19b1cb1"
 		},
 		{
 			"ImportPath": "gopkg.in/cheggaaa/pb.v1",

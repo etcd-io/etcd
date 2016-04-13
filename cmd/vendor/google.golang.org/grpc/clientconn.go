@@ -75,6 +75,7 @@ type dialOptions struct {
 	codec    Codec
 	cp       Compressor
 	dc       Decompressor
+	bs       backoffStrategy
 	picker   Picker
 	block    bool
 	insecure bool
@@ -111,6 +112,22 @@ func WithDecompressor(dc Decompressor) DialOption {
 func WithPicker(p Picker) DialOption {
 	return func(o *dialOptions) {
 		o.picker = p
+	}
+}
+
+// WithBackoffConfig configures the dialer to use the provided backoff
+// parameters after connection failures.
+func WithBackoffConfig(b *BackoffConfig) DialOption {
+	return withBackoff(b)
+}
+
+// withBackoff sets the backoff strategy used for retries after a
+// failed connection attempt.
+//
+// This can be exported if arbitrary backoff strategies are allowed by GRPC.
+func withBackoff(bs backoffStrategy) DialOption {
+	return func(o *dialOptions) {
+		o.bs = bs
 	}
 }
 
@@ -180,6 +197,11 @@ func Dial(target string, opts ...DialOption) (*ClientConn, error) {
 		// Set the default codec.
 		cc.dopts.codec = protoCodec{}
 	}
+
+	if cc.dopts.bs == nil {
+		cc.dopts.bs = DefaultBackoffConfig
+	}
+
 	if cc.dopts.picker == nil {
 		cc.dopts.picker = &unicastPicker{
 			target: target,
@@ -415,7 +437,7 @@ func (cc *Conn) resetTransport(closeTransport bool) error {
 				return ErrClientConnTimeout
 			}
 		}
-		sleepTime := backoff(retries)
+		sleepTime := cc.dopts.bs.backoff(retries)
 		timeout := sleepTime
 		if timeout < minConnectTimeout {
 			timeout = minConnectTimeout

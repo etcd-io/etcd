@@ -236,9 +236,9 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 	var timeout time.Duration
 	if dl, ok := ctx.Deadline(); ok {
 		timeout = dl.Sub(time.Now())
-		if timeout <= 0 {
-			return nil, ContextErr(context.DeadlineExceeded)
-		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, ContextErr(err)
 	}
 	pr := &peer.Peer{
 		Addr: t.conn.RemoteAddr(),
@@ -571,11 +571,19 @@ func (t *http2Client) updateWindow(s *Stream, n uint32) {
 
 func (t *http2Client) handleData(f *http2.DataFrame) {
 	// Select the right stream to dispatch.
+	size := len(f.Data())
 	s, ok := t.getStream(f)
 	if !ok {
+		cwu, err := t.fc.adjustConnPendingUpdate(uint32(size))
+		if err != nil {
+			t.notifyError(err)
+			return
+		}
+		if cwu > 0 {
+			t.controlBuf.put(&windowUpdate{0, cwu})
+		}
 		return
 	}
-	size := len(f.Data())
 	if size > 0 {
 		if err := s.fc.onData(uint32(size)); err != nil {
 			if _, ok := err.(ConnectionError); ok {
