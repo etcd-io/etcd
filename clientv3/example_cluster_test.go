@@ -40,24 +40,6 @@ func ExampleCluster_memberList() {
 	// members: 3
 }
 
-func ExampleCluster_memberLeader() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
-
-	resp, err := cli.MemberLeader(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("leader:", resp.Name)
-	// leader: infra1
-}
-
 func ExampleCluster_memberAdd() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints[:2],
