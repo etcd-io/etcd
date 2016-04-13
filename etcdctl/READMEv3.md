@@ -66,6 +66,8 @@ GET gets the key or a range of keys [key, range_end) if `range-end` is given.
 
 - sort-by -- sort target; CREATE, KEY, MODIFY, VALUE, or VERSION
 
+- rev -- specify the kv revision
+
 TODO: add consistency, from, prefix
 
 #### Return value

@@ -29,6 +29,7 @@ var (
 	getSortTarget  string
 	getPrefix      bool
 	getFromKey     bool
+	getRev         int64
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -45,6 +46,7 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "maximum number of results")
 	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "get keys with matching prefix")
 	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "get keys that are greater than or equal to the given key")
+	cmd.Flags().Int64Var(&getRev, "rev", 0, "specify the kv revision")
 	return cmd
 }
 
@@ -88,6 +90,9 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	}
 
 	opts = append(opts, clientv3.WithLimit(getLimit))
+	if getRev > 0 {
+		opts = append(opts, clientv3.WithRev(getRev))
+	}
 
 	sortByOrder := clientv3.SortNone
 	sortOrder := strings.ToUpper(getSortOrder)
