@@ -324,7 +324,7 @@ func TestIssue3699(t *testing.T) {
 	default:
 	}
 	// must waitLeader so goroutines don't leak on terminate
-	leaderID = c.waitLeader(t, c.Members)
+	c.waitLeader(t, c.Members)
 
 	// try to participate in cluster
 	cc := mustNewHTTPClient(t, []string{c.URL(0)}, c.cfg.ClientTLS)
