@@ -153,10 +153,10 @@ func (s *simplePrinter) DBStatus(ds dbstatus) {
 	table.SetHeader([]string{"hash", "revision", "total keys", "total size"})
 
 	table.Append([]string{
-		fmt.Sprintf("%x", ds.hash),
-		fmt.Sprint(ds.revision),
-		fmt.Sprint(ds.totalKey),
-		humanize.Bytes(uint64(ds.totalSize)),
+		fmt.Sprintf("%x", ds.Hash),
+		fmt.Sprint(ds.Revision),
+		fmt.Sprint(ds.TotalKey),
+		humanize.Bytes(uint64(ds.TotalSize)),
 	})
 
 	table.Render()

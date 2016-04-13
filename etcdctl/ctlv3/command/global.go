@@ -53,16 +53,7 @@ type secureCfg struct {
 
 var display printer = &simplePrinter{}
 
-func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
-	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
-
-	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	dialTimeout := dialTimeoutFromCmd(cmd)
-	sec := secureCfgFromCmd(cmd)
-
+func initDisplayFromCmd(cmd *cobra.Command) {
 	isHex, err := cmd.Flags().GetBool("hex")
 	if err != nil {
 		ExitWithError(ExitError, err)
@@ -74,6 +65,19 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	if display = NewPrinter(outputType, isHex); display == nil {
 		ExitWithError(ExitBadFeature, errors.New("unsupported output format"))
 	}
+}
+
+func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
+	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
+
+	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	dialTimeout := dialTimeoutFromCmd(cmd)
+	sec := secureCfgFromCmd(cmd)
+
+	initDisplayFromCmd(cmd)
 
 	return mustClient(endpoints, dialTimeout, sec)
 }
