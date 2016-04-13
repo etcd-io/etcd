@@ -53,6 +53,9 @@ func main() {
 		newFailureKillLeaderForLongTime(),
 		newFailureIsolate(),
 		newFailureIsolateAll(),
+		newFailureSlowNetworkOneMember(),
+		newFailureSlowNetworkLeader(),
+		newFailureSlowNetworkAll(),
 	}
 
 	schedule := failures
