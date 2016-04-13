@@ -108,7 +108,7 @@ func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
 
 func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs", "Is Leader"})
+	table.SetHeader([]string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs"})
 
 	for _, m := range resp.Members {
 		status := "started"
@@ -122,7 +122,6 @@ func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
 			m.Name,
 			strings.Join(m.PeerURLs, ","),
 			strings.Join(m.ClientURLs, ","),
-			fmt.Sprint(m.IsLeader),
 		})
 	}
 

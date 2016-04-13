@@ -185,24 +185,27 @@ func (c *cluster) GetLeader() (int, error) {
 	if c.v2Only {
 		return 0, nil
 	}
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   c.GRPCURLs,
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		return 0, err
-	}
-	defer cli.Close()
-	clus := clientv3.NewCluster(cli)
-	mem, err := clus.MemberLeader(context.Background())
-	if err != nil {
-		return 0, err
-	}
-	for i, name := range c.Names {
-		if name == mem.Name {
+
+	for i, ep := range c.GRPCURLs {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   []string{ep},
+			DialTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			return 0, err
+		}
+		defer cli.Close()
+
+		mapi := clientv3.NewMaintenance(cli)
+		resp, err := mapi.Status(context.Background(), ep)
+		if err != nil {
+			return 0, err
+		}
+		if resp.Header.MemberId == resp.Leader {
 			return i, nil
 		}
 	}
+
 	return 0, fmt.Errorf("no leader found")
 }
 

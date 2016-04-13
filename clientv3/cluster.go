@@ -34,9 +34,6 @@ type Cluster interface {
 	// MemberList lists the current cluster membership.
 	MemberList(ctx context.Context) (*MemberListResponse, error)
 
-	// MemberLeader returns the current leader member.
-	MemberLeader(ctx context.Context) (*Member, error)
-
 	// MemberAdd adds a new member into the cluster.
 	MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error)
 
@@ -133,19 +130,6 @@ func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 			return nil, err
 		}
 	}
-}
-
-func (c *cluster) MemberLeader(ctx context.Context) (*Member, error) {
-	resp, err := c.MemberList(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, m := range resp.Members {
-		if m.IsLeader {
-			return (*Member)(m), nil
-		}
-	}
-	return nil, nil
 }
 
 func (c *cluster) getRemote() pb.ClusterClient {

@@ -8,19 +8,20 @@ import (
 	"fmt"
 
 	proto "github.com/gogo/protobuf/proto"
+
+	math "math"
+
+	authpb "github.com/coreos/etcd/auth/authpb"
+
+	io "io"
 )
 
-import math "math"
-
 import storagepb "github.com/coreos/etcd/storage/storagepb"
-import authpb "github.com/coreos/etcd/auth/authpb"
 
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
-
-import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -1094,11 +1095,10 @@ type Member struct {
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	// If the member is not started, name will be an empty string.
 	Name     string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	IsLeader bool     `protobuf:"varint,3,opt,name=IsLeader,proto3" json:"IsLeader,omitempty"`
-	PeerURLs []string `protobuf:"bytes,4,rep,name=peerURLs" json:"peerURLs,omitempty"`
+	PeerURLs []string `protobuf:"bytes,3,rep,name=peerURLs" json:"peerURLs,omitempty"`
 	// If the member is not started, client_URLs will be an zero length
 	// string array.
-	ClientURLs []string `protobuf:"bytes,5,rep,name=clientURLs" json:"clientURLs,omitempty"`
+	ClientURLs []string `protobuf:"bytes,4,rep,name=clientURLs" json:"clientURLs,omitempty"`
 }
 
 func (m *Member) Reset()         { *m = Member{} }
@@ -4138,19 +4138,9 @@ func (m *Member) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
 		i += copy(data[i:], m.Name)
 	}
-	if m.IsLeader {
-		data[i] = 0x18
-		i++
-		if m.IsLeader {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
-	}
 	if len(m.PeerURLs) > 0 {
 		for _, s := range m.PeerURLs {
-			data[i] = 0x22
+			data[i] = 0x1a
 			i++
 			l = len(s)
 			for l >= 1<<7 {
@@ -4165,7 +4155,7 @@ func (m *Member) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.ClientURLs) > 0 {
 		for _, s := range m.ClientURLs {
-			data[i] = 0x2a
+			data[i] = 0x22
 			i++
 			l = len(s)
 			for l >= 1<<7 {
@@ -5915,9 +5905,6 @@ func (m *Member) Size() (n int) {
 	l = len(m.Name)
 	if l > 0 {
 		n += 1 + l + sovRpc(uint64(l))
-	}
-	if m.IsLeader {
-		n += 2
 	}
 	if len(m.PeerURLs) > 0 {
 		for _, s := range m.PeerURLs {
@@ -9759,26 +9746,6 @@ func (m *Member) Unmarshal(data []byte) error {
 			m.Name = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IsLeader", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowRpc
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.IsLeader = bool(v != 0)
-		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PeerURLs", wireType)
 			}
@@ -9807,7 +9774,7 @@ func (m *Member) Unmarshal(data []byte) error {
 			}
 			m.PeerURLs = append(m.PeerURLs, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 5:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClientURLs", wireType)
 			}
