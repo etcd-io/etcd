@@ -32,8 +32,6 @@ type userCmdDesc struct {
 }
 
 func userAddTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	cmdSet := []userCmdDesc{
 		// Adds a user name.
 		{
@@ -59,8 +57,6 @@ func userAddTest(cx ctlCtx) {
 }
 
 func userDelTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	cmdSet := []userCmdDesc{
 		// Adds a user name.
 		{
@@ -88,8 +84,6 @@ func userDelTest(cx ctlCtx) {
 }
 
 func userPasswdTest(cx ctlCtx) {
-	defer close(cx.errc)
-
 	cmdSet := []userCmdDesc{
 		// Adds a user name.
 		{
@@ -113,7 +107,7 @@ func userPasswdTest(cx ctlCtx) {
 }
 
 func ctlV3User(cx ctlCtx, args []string, expStr string, stdIn []string) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "user")
+	cmdArgs := append(cx.PrefixArgs(), "user")
 	cmdArgs = append(cmdArgs, args...)
 
 	proc, err := spawnCmd(cmdArgs)

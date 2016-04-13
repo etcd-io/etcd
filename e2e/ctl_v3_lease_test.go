@@ -25,8 +25,6 @@ func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
 func TestCtlV3LeaseRevoke(t *testing.T)    { testCtl(t, leaseTestRevoke) }
 
 func leaseTestKeepAlive(cx ctlCtx) {
-	defer close(cx.errc)
-
 	// put with TTL 10 seconds and keep-alive
 	leaseID, err := ctlV3LeaseGrant(cx, 10)
 	if err != nil {
@@ -44,8 +42,6 @@ func leaseTestKeepAlive(cx ctlCtx) {
 }
 
 func leaseTestRevoke(cx ctlCtx) {
-	defer close(cx.errc)
-
 	// put with TTL 10 seconds and revoke
 	leaseID, err := ctlV3LeaseGrant(cx, 10)
 	if err != nil {
@@ -63,7 +59,7 @@ func leaseTestRevoke(cx ctlCtx) {
 }
 
 func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "lease", "grant", strconv.Itoa(ttl))
+	cmdArgs := append(cx.PrefixArgs(), "lease", "grant", strconv.Itoa(ttl))
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
 		return "", err
@@ -86,7 +82,7 @@ func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {
 }
 
 func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "lease", "keep-alive", leaseID)
+	cmdArgs := append(cx.PrefixArgs(), "lease", "keep-alive", leaseID)
 
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
@@ -100,6 +96,6 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 }
 
 func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
-	cmdArgs := append(ctlV3PrefixArgs(cx.epc, cx.dialTimeout), "lease", "revoke", leaseID)
+	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
 	return spawnWithExpect(cmdArgs, fmt.Sprintf("lease %s revoked", leaseID))
 }
