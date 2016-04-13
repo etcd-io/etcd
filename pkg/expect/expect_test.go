@@ -16,7 +16,11 @@
 
 package expect
 
-import "testing"
+import (
+	"os"
+	"testing"
+	"time"
+)
 
 func TestExpectFunc(t *testing.T) {
 	ep, err := NewExpect("/bin/echo", "hello world")
@@ -91,5 +95,26 @@ func TestSend(t *testing.T) {
 	}
 	if err := ep.Stop(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSignal(t *testing.T) {
+	ep, err := NewExpect("/bin/sleep", "100")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ep.Signal(os.Interrupt)
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		werr := "signal: interrupt"
+		if cerr := ep.Close(); cerr == nil || cerr.Error() != werr {
+			t.Fatalf("got error %v, wanted error %s", cerr, werr)
+		}
+	}()
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("signal test timed out")
+	case <-donec:
 	}
 }
