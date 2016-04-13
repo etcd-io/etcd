@@ -720,20 +720,19 @@ func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
 	// Since the *Event may reference one in the store history
 	// history, we must copy it before modifying
 	e := ev.Clone()
-	e.Node = trimNodeExternPrefix(e.Node, prefix)
-	e.PrevNode = trimNodeExternPrefix(e.PrevNode, prefix)
+	trimNodeExternPrefix(e.Node, prefix)
+	trimNodeExternPrefix(e.PrevNode, prefix)
 	return e
 }
 
-func trimNodeExternPrefix(n *store.NodeExtern, prefix string) *store.NodeExtern {
+func trimNodeExternPrefix(n *store.NodeExtern, prefix string) {
 	if n == nil {
-		return nil
+		return
 	}
 	n.Key = strings.TrimPrefix(n.Key, prefix)
 	for _, nn := range n.Nodes {
-		nn = trimNodeExternPrefix(nn, prefix)
+		trimNodeExternPrefix(nn, prefix)
 	}
-	return n
 }
 
 func trimErrorPrefix(err error, prefix string) error {
