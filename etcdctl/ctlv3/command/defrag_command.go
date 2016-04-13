@@ -31,6 +31,7 @@ func NewDefragCommand() *cobra.Command {
 }
 
 func defragCommandFunc(cmd *cobra.Command, args []string) {
+	failures := 0
 	c := mustClientFromCmd(cmd)
 	for _, ep := range c.Endpoints() {
 		ctx, cancel := commandCtx(cmd)
@@ -38,8 +39,13 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 		cancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s] (%v)\n", ep, err)
+			failures++
 		} else {
 			fmt.Printf("Finished defragmenting etcd member[%s]\n", ep)
 		}
+	}
+
+	if failures != 0 {
+		os.Exit(ExitError)
 	}
 }
