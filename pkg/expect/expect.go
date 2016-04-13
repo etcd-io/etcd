@@ -143,6 +143,11 @@ func (ep *ExpectProcess) close(kill bool) error {
 	return err
 }
 
+// Signal sends a signal to the expect process
+func (ep *ExpectProcess) Signal(sig os.Signal) error {
+	return ep.cmd.Process.Signal(sig)
+}
+
 // Pid returns the pid of the expect process.
 func (ep *ExpectProcess) Pid() int {
 	return ep.cmd.Process.Pid

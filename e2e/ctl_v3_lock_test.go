@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"syscall"
 	"testing"
@@ -46,24 +47,25 @@ func lockTest(cx ctlCtx) {
 		}
 	}
 	// TODO: exec.Cmd.Process.Pid is actually ppid in this case. Does not work.
-	// if err := blocked.Signal(os.Interrupt); err != nil {
-	// 	cx.t.Fatal(err)
-	// }
-	// if err = blocked.Close(); err != nil {
-	// 	cx.t.Fatal(err)
-	// }
-	bid, err := syscall.Getpgid(blocked.Pid())
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if err = syscall.Kill(-bid, syscall.SIGINT); err != nil {
+	if err := blocked.Signal(os.Interrupt); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err = blocked.Close(); err != nil {
-		if !strings.Contains(err.Error(), "interrupt") {
-			cx.t.Fatal(err)
-		}
+		cx.t.Fatal(err)
 	}
+	//
+	// bid, err := syscall.Getpgid(blocked.Pid())
+	// if err != nil {
+	// 	cx.t.Fatal(err)
+	// }
+	// if err = syscall.Kill(-bid, syscall.SIGINT); err != nil {
+	// 	cx.t.Fatal(err)
+	// }
+	// if err = blocked.Close(); err != nil {
+	// 	if !strings.Contains(err.Error(), "interrupt") {
+	// 		cx.t.Fatal(err)
+	// 	}
+	// }
 
 	// kill the node1 holding the lock
 	pgid, err := syscall.Getpgid(node1.Pid())
