@@ -208,16 +208,6 @@ type Status struct {
 	Case  int
 }
 
-// get gets a copy of status
-func (s *Status) get() Status {
-	s.mu.Lock()
-	got := *s
-	cluster := s.cluster
-	s.mu.Unlock()
-	got.Cluster = cluster.Status()
-	return got
-}
-
 func (s *Status) setRound(r int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
