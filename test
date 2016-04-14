@@ -28,7 +28,7 @@ ln -s ${PWD}/cmd/vendor $GOPATH/src
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
 PKGS=`ls pkg/*/*go  | cut -f1,2 -d/ | sort | uniq`
-TESTABLE_AND_FORMATTABLE="client clientv3 discovery error etcdctl/ctlv2 etcdctl/ctlv3 etcdmain etcdserver etcdserver/auth etcdserver/api/v2http etcdserver/api/v2http/httptypes $PKGS proxy raft snap storage storage/backend store version wal"
+TESTABLE_AND_FORMATTABLE="client clientv3 discovery error etcdctl/ctlv2 etcdctl/ctlv3 etcdmain etcdserver etcdserver/auth etcdserver/api/v2http etcdserver/api/v2http/httptypes $PKGS proxy/httpproxy raft snap storage storage/backend store version wal"
 # TODO: add it to race testing when the issue is resolved
 # https://github.com/golang/go/issues/9946
 NO_RACE_TESTABLE="rafthttp"
