@@ -1,6 +1,33 @@
 # etcd3 API
 
-TODO: API doc
+TODO: finish API doc
+
+## Key-Value API
+
+Key-Value API is used to manipulate key-value pairs stored inside etcd. The key-value API is defined as a [gRPC service][kv-service]. The Key-Value pair is defined as structured data in [protobuf format][kv-proto].
+
+### Key-Value Pair
+
+A key-value pair is the smallest unit that the key-value API can manipulate. Each key-value pair has a number of fields:
+
+```protobuf
+message KeyValue {
+  bytes key = 1;
+  int64 create_revision = 2;
+  int64 mod_revision = 3;
+  int64 version = 4;
+  bytes value = 5;
+  int64 lease = 6;
+}
+```
+
+* Key - key in bytes. An empty key is not allowed.
+* Value - value in bytes.
+* Version - version is the version of the key. A deletion resets the version to zero and any modification of the key increases its version.
+* Create_Revision - revision of the last creation on the key.
+* Mod_Revision - revision of the last modification on the key.
+* Lease - the ID of the lease attached to the key. If lease is 0, then no lease is attached to the key.
+
 
 ## Data Model
 
@@ -83,10 +110,12 @@ etcd does not ensure linearizability for watch operations. Users are expected to
 
 etcd ensures linearizability for all other operations by default. Linearizability comes with a cost, however, because linearized requests must go through the Raft consensus process. To obtain lower latencies and higher throughput for read requests, clients can configure a request’s consistency mode to `serializable`, which may access stale data with respect to quorum, but removes the performance penalty of linearized accesses' reliance on live consensus.
 
-[persistent-ds]: [https://en.wikipedia.org/wiki/Persistent_data_structure]
-[btree]: [https://en.wikipedia.org/wiki/B-tree]
-[b+tree]: [https://en.wikipedia.org/wiki/B%2B_tree]
-[seq_consistency]: [https://en.wikipedia.org/wiki/Consistency_model#Sequential_consistency]
-[strict_consistency]: [https://en.wikipedia.org/wiki/Consistency_model#Strict_consistency]
-[serializable_isolation]: [https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable]
-[Linearizability]: [#Linearizability]
+[persistent-ds]: https://en.wikipedia.org/wiki/Persistent_data_structure
+[btree]: https://en.wikipedia.org/wiki/B-tree
+[b+tree]: https://en.wikipedia.org/wiki/B%2B_tree
+[seq_consistency]: https://en.wikipedia.org/wiki/Consistency_model#Sequential_consistency
+[strict_consistency]: https://en.wikipedia.org/wiki/Consistency_model#Strict_consistency
+[serializable_isolation]: https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable
+[Linearizability]: #Linearizability
+[kv-proto]: https://github.com/coreos/etcd/blob/master/storage/storagepb/kv.proto
+[kv-service]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
