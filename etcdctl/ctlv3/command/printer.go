@@ -134,13 +134,13 @@ func (s *simplePrinter) EndpointStatus(statusList []epStatus) {
 
 	for _, status := range statusList {
 		table.Append([]string{
-			fmt.Sprint(status.ep),
-			fmt.Sprintf("%x", status.resp.Header.MemberId),
-			fmt.Sprint(status.resp.Version),
-			fmt.Sprint(humanize.Bytes(uint64(status.resp.DbSize))),
-			fmt.Sprint(status.resp.Leader == status.resp.Header.MemberId),
-			fmt.Sprint(status.resp.RaftTerm),
-			fmt.Sprint(status.resp.RaftIndex),
+			fmt.Sprint(status.Ep),
+			fmt.Sprintf("%x", status.Resp.Header.MemberId),
+			fmt.Sprint(status.Resp.Version),
+			fmt.Sprint(humanize.Bytes(uint64(status.Resp.DbSize))),
+			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
+			fmt.Sprint(status.Resp.RaftTerm),
+			fmt.Sprint(status.Resp.RaftIndex),
 		})
 	}
 

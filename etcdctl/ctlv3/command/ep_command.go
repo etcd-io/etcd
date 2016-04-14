@@ -104,8 +104,8 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 type epStatus struct {
-	ep   string
-	resp *v3.StatusResponse
+	Ep   string             `json:"Endpoint"`
+	Resp *v3.StatusResponse `json:"Status"`
 }
 
 func epStatusCommandFunc(cmd *cobra.Command, args []string) {
@@ -122,7 +122,7 @@ func epStatusCommandFunc(cmd *cobra.Command, args []string) {
 			fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", ep, serr)
 			continue
 		}
-		statusList = append(statusList, epStatus{ep: ep, resp: resp})
+		statusList = append(statusList, epStatus{Ep: ep, Resp: resp})
 	}
 
 	display.EndpointStatus(statusList)
