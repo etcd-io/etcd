@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package proxy implements etcd proxy node. The etcd proxy acts as a reverse
-// proxy forwarding client requests to active etcd cluster members, and does
+// Package httpproxy implements etcd httpproxy. The etcd proxy acts as a reverse
+// http proxy forwarding client requests to active etcd cluster members, and does
 // not participate in consensus.
-package proxy
+package httpproxy

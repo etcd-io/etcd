@@ -39,7 +39,7 @@ import (
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/proxy"
+	"github.com/coreos/etcd/proxy/httpproxy"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/go-systemd/daemon"
@@ -391,7 +391,7 @@ func startProxy(cfg *config) error {
 	if err != nil {
 		return err
 	}
-	pt.MaxIdleConnsPerHost = proxy.DefaultMaxIdleConnsPerHost
+	pt.MaxIdleConnsPerHost = httpproxy.DefaultMaxIdleConnsPerHost
 
 	tr, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, time.Duration(cfg.proxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.proxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
@@ -484,14 +484,14 @@ func startProxy(cfg *config) error {
 
 		return clientURLs
 	}
-	ph := proxy.NewHandler(pt, uf, time.Duration(cfg.proxyFailureWaitMs)*time.Millisecond, time.Duration(cfg.proxyRefreshIntervalMs)*time.Millisecond)
+	ph := httpproxy.NewHandler(pt, uf, time.Duration(cfg.proxyFailureWaitMs)*time.Millisecond, time.Duration(cfg.proxyRefreshIntervalMs)*time.Millisecond)
 	ph = &cors.CORSHandler{
 		Handler: ph,
 		Info:    cfg.corsInfo,
 	}
 
 	if cfg.isReadonlyProxy() {
-		ph = proxy.NewReadonlyHandler(ph)
+		ph = httpproxy.NewReadonlyHandler(ph)
 	}
 	// Start a proxy server goroutine for each listen address
 	for _, u := range cfg.lcurls {
