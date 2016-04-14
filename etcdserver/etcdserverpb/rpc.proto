@@ -290,10 +290,8 @@ message TxnResponse {
   repeated ResponseUnion responses = 3;
 }
 
-// Compaction compacts the kv store upto the given revision (including).
-// It removes the old versions of a key. It keeps the newest version of
-// the key even if its latest modification revision is smaller than the given
-// revision.
+// Compaction compacts the kv store upto a given revision. All superseded keys
+// with a revision less than the compaction revision will be removed.
 message CompactionRequest {
   int64 revision = 1;
   // physical is set so the RPC will wait until the compaction is physically

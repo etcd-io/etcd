@@ -194,9 +194,11 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 		rev  int64
 		werr error
 	}{
-		{-1, ErrCompacted},
+		{-1, nil}, // <= 0 is most recent store
+		{0, nil},
 		{1, ErrCompacted},
 		{2, ErrCompacted},
+		{4, nil},
 		{5, ErrFutureRev},
 		{100, ErrFutureRev},
 	}

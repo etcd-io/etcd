@@ -67,6 +67,7 @@ type KV interface {
 	TxnPut(txnID int64, key, value []byte, lease lease.LeaseID) (rev int64, err error)
 	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
 
+	// Compact frees all superseded keys with revisions less than rev.
 	Compact(rev int64) (<-chan struct{}, error)
 
 	// Hash retrieves the hash of KV state.
