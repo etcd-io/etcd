@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Builds statically compiled test binaries. Useful for cross-compiling.
+#
+# The build produces the file "static-tests.tar.gz" which is meant to be
+# untarred on the target. After untarring, run ./scripts/static-tests to
+# start the extracted tests.
+
+# Some options that were useful for arm64:
+# GOARCH=arm64 ETCD_UNSUPPORTED_ARCH=arm64 ./scripts/static-tests
+
+set -eo pipefail
+
+OUTDIR="static-tests"
+
+if [ -e "$OUTDIR" ]; then
+	echo "found "$OUTDIR"/ running tests..."
+	pushd "$OUTDIR"/test/
+	for t in *.test; do
+		echo running $t....
+		./$t -test.v -test.cpu 1,2,4
+	done
+	popd
+	exit 0
+fi
+
+export GO15VENDOREXPERIMENT=1
+
+tmpgopath="${PWD}/gopath"
+trap "rm -rf $tmpgopath $OUTDIR" EXIT
+
+# use vendoring for building tests
+export GOPATH="$tmpgopath"
+rm -rf $GOPATH
+mkdir -p $GOPATH
+ln -s ${PWD}/cmd/vendor $GOPATH/src
+
+function build_bins {
+	echo building bins...
+	GO_BUILD_FLAGS="-v" ./build
+	cp bin/etcd bin/etcdctl "$OUTDIR"/bin
+}
+
+function build_tests {
+	TESTPKGS=`find . -name \*_test.go | xargs dirname | sort | uniq | cut -f2- -d'/'`
+	for a in $TESTPKGS; do
+		echo building $a...
+		out=`echo "$a.test" | sed "s|/|_|g"`
+		x=`ls -l "$a"/*test.go 2>/dev/null`
+		if [ -z "$x" ]; then echo skipping $a; continue; fi
+		CGO_ENABLED=0 go test -installsuffix cgo -ldflags "-s" -c -o "$OUTDIR"/test/$out ./$a
+	done
+}
+
+mkdir -p "$OUTDIR"/{bin,test,integration}
+cp -r integration/fixtures "$OUTDIR"/integration/
+cp -r integration/fixtures "$OUTDIR"/test/
+
+build_bins
+build_tests
+
+echo building static-tests.tar.gz
+tar cvzf static-tests.tar.gz ./scripts/static-tests "$OUTDIR"/
