@@ -17,15 +17,12 @@ package e2e
 import (
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/url"
 	"os"
 	"strings"
-	"testing"
 
 	"github.com/coreos/etcd/pkg/expect"
 	"github.com/coreos/etcd/pkg/fileutil"
-	"github.com/coreos/etcd/pkg/testutil"
 )
 
 const (
@@ -108,97 +105,6 @@ func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
 	ret := cfg
 	ret.clusterSize = 1
 	return &ret
-}
-
-func TestBasicOpsNoTLS(t *testing.T)        { testBasicOpsPutGet(t, &configNoTLS) }
-func TestBasicOpsAutoTLS(t *testing.T)      { testBasicOpsPutGet(t, &configAutoTLS) }
-func TestBasicOpsAllTLS(t *testing.T)       { testBasicOpsPutGet(t, &configTLS) }
-func TestBasicOpsPeerTLS(t *testing.T)      { testBasicOpsPutGet(t, &configPeerTLS) }
-func TestBasicOpsClientTLS(t *testing.T)    { testBasicOpsPutGet(t, &configClientTLS) }
-func TestBasicOpsProxyNoTLS(t *testing.T)   { testBasicOpsPutGet(t, &configWithProxy) }
-func TestBasicOpsProxyTLS(t *testing.T)     { testBasicOpsPutGet(t, &configWithProxyTLS) }
-func TestBasicOpsProxyPeerTLS(t *testing.T) { testBasicOpsPutGet(t, &configWithProxyPeerTLS) }
-func TestBasicOpsClientBoth(t *testing.T)   { testBasicOpsPutGet(t, &configClientBoth) }
-
-func testBasicOpsPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
-	defer testutil.AfterTest(t)
-
-	// test doesn't use quorum gets, so ensure there are no followers to avoid
-	// stale reads that will break the test
-	cfg = configStandalone(*cfg)
-
-	epc, err := newEtcdProcessCluster(cfg)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
-	defer func() {
-		if err := epc.Close(); err != nil {
-			t.Fatalf("error closing etcd processes (%v)", err)
-		}
-	}()
-
-	expectPut := `{"action":"set","node":{"key":"/testKey","value":"foo","`
-	expectGet := `{"action":"get","node":{"key":"/testKey","value":"foo","`
-
-	if cfg.clientTLS == clientTLSAndNonTLS {
-		if err := cURLPut(epc, "testKey", "foo", expectPut); err != nil {
-			t.Fatalf("failed put with curl (%v)", err)
-		}
-
-		if err := cURLGet(epc, "testKey", expectGet); err != nil {
-			t.Fatalf("failed get with curl (%v)", err)
-		}
-		if err := cURLGetUseTLS(epc, "testKey", expectGet); err != nil {
-			t.Fatalf("failed get with curl (%v)", err)
-		}
-	} else {
-		if err := cURLPut(epc, "testKey", "foo", expectPut); err != nil {
-			t.Fatalf("failed put with curl (%v)", err)
-		}
-
-		if err := cURLGet(epc, "testKey", expectGet); err != nil {
-			t.Fatalf("failed get with curl (%v)", err)
-		}
-	}
-}
-
-// cURLPrefixArgs builds the beginning of a curl command for a given key
-// addressed to a random URL in the given cluster.
-func cURLPrefixArgs(clus *etcdProcessCluster, key string) []string {
-	cmdArgs := []string{"curl"}
-	acurl := clus.procs[rand.Intn(clus.cfg.clusterSize)].cfg.acurl
-
-	if clus.cfg.clientTLS == clientTLS {
-		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
-	}
-	keyURL := acurl + "/v2/keys/testKey"
-	cmdArgs = append(cmdArgs, "-L", keyURL)
-	return cmdArgs
-}
-
-func cURLPrefixArgsUseTLS(clus *etcdProcessCluster, key string) []string {
-	cmdArgs := []string{"curl"}
-	if clus.cfg.clientTLS != clientTLSAndNonTLS {
-		panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
-	}
-	cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
-	acurl := clus.procs[rand.Intn(clus.cfg.clusterSize)].cfg.acurltls
-	keyURL := acurl + "/v2/keys/testKey"
-	cmdArgs = append(cmdArgs, "-L", keyURL)
-	return cmdArgs
-}
-
-func cURLPut(clus *etcdProcessCluster, key, val, expected string) error {
-	args := append(cURLPrefixArgs(clus, key), "-XPUT", "-d", "value="+val)
-	return spawnWithExpect(args, expected)
-}
-
-func cURLGet(clus *etcdProcessCluster, key, expected string) error {
-	return spawnWithExpect(cURLPrefixArgs(clus, key), expected)
-}
-
-func cURLGetUseTLS(clus *etcdProcessCluster, key, expected string) error {
-	return spawnWithExpect(cURLPrefixArgsUseTLS(clus, key), expected)
 }
 
 type etcdProcessCluster struct {
@@ -463,4 +369,12 @@ func (epc *etcdProcessCluster) proxies() []*etcdProcess {
 
 func (epc *etcdProcessCluster) backends() []*etcdProcess {
 	return epc.procs[:epc.cfg.clusterSize]
+}
+
+func (epc *etcdProcessCluster) endpoints() []string {
+	eps := make([]string, epc.cfg.clusterSize)
+	for i, ep := range epc.backends() {
+		eps[i] = ep.cfg.acurl
+	}
+	return eps
 }
