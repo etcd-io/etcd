@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 )
 
-func ExampleMaintenance_Status() {
+func ExampleMaintenance_status() {
 	for _, ep := range endpoints {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   []string{ep},
