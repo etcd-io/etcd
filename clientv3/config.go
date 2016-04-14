@@ -45,7 +45,7 @@ type Config struct {
 	Logger Logger
 }
 
-type YamlConfig struct {
+type yamlConfig struct {
 	Endpoints             []string      `json:"endpoints"`
 	DialTimeout           time.Duration `json:"dial-timeout"`
 	InsecureTransport     bool          `json:"insecure-transport"`
@@ -61,7 +61,7 @@ func configFromFile(fpath string) (*Config, error) {
 		return nil, err
 	}
 
-	yc := &YamlConfig{}
+	yc := &yamlConfig{}
 
 	err = yaml.Unmarshal(b, yc)
 	if err != nil {
