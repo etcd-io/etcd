@@ -24,6 +24,7 @@ func TestCtlV3UserAddTimeout(t *testing.T)   { testCtl(t, userAddTest, withDialT
 
 func TestCtlV3UserDelete(t *testing.T) { testCtl(t, userDelTest) }
 func TestCtlV3UserPasswd(t *testing.T) { testCtl(t, userPasswdTest) }
+func TestCtlV3UserGrant(t *testing.T)  { testCtl(t, userGrantTest) }
 
 type userCmdDesc struct {
 	args        []string
@@ -96,6 +97,43 @@ func userPasswdTest(cx ctlCtx) {
 			args:        []string{"passwd", "username", "--interactive=false"},
 			expectedStr: "Password updated",
 			stdIn:       []string{"password1"},
+		},
+	}
+
+	for i, cmd := range cmdSet {
+		if err := ctlV3User(cx, cmd.args, cmd.expectedStr, cmd.stdIn); err != nil {
+			cx.t.Fatalf("userPasswdTest #%d: ctlV3User error (%v)", i, err)
+		}
+	}
+}
+
+func userGrantTest(cx ctlCtx) {
+	// Add a role.
+	if err := ctlV3Role(cx, []string{"add", "root"}, "Role root created"); err != nil {
+		cx.t.Fatalf("userGrantTest: ctlV3Role error (%v)", err)
+	}
+
+	cmdSet := []userCmdDesc{
+		// Add a user name.
+		{
+			args:        []string{"add", "username", "--interactive=false"},
+			expectedStr: "User username created",
+			stdIn:       []string{"password"},
+		},
+		// Grant the previously added user a role.
+		{
+			args:        []string{"grant", "username", "root"},
+			expectedStr: "Role root is granted to user username",
+		},
+		// Supply a wrong user name.
+		{
+			args:        []string{"grant", "username1", "root"},
+			expectedStr: "user name not found",
+		},
+		// Supply a wrong role name.
+		{
+			args:        []string{"grant", "username", "root1"},
+			expectedStr: "role name not found",
 		},
 	}
 
