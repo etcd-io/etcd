@@ -32,22 +32,22 @@ var (
 
 func TestConfigFromFile(t *testing.T) {
 	tests := []struct {
-		ym *YamlConfig
+		ym *yamlConfig
 
 		werr bool
 	}{
 		{
-			&YamlConfig{},
+			&yamlConfig{},
 			false,
 		},
 		{
-			&YamlConfig{
+			&yamlConfig{
 				InsecureTransport: true,
 			},
 			false,
 		},
 		{
-			&YamlConfig{
+			&yamlConfig{
 				Keyfile:               privateKeyPath,
 				Certfile:              certPath,
 				CAfile:                caPath,
@@ -56,14 +56,14 @@ func TestConfigFromFile(t *testing.T) {
 			false,
 		},
 		{
-			&YamlConfig{
+			&yamlConfig{
 				Keyfile:  "bad",
 				Certfile: "bad",
 			},
 			true,
 		},
 		{
-			&YamlConfig{
+			&yamlConfig{
 				Keyfile:  privateKeyPath,
 				Certfile: certPath,
 				CAfile:   "bad",
