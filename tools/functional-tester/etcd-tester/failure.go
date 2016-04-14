@@ -20,7 +20,11 @@ import (
 	"time"
 )
 
-const snapshotCount = 10000
+const (
+	snapshotCount      = 10000
+	slowNetworkLatency = 1000 // 1-second
+	randomVariation    = 50
+)
 
 type failure interface {
 	// Inject injeccts the failure into the testing cluster at the given
@@ -290,6 +294,97 @@ func (f *failureIsolateAll) Inject(c *cluster, round int) error {
 func (f *failureIsolateAll) Recover(c *cluster, round int) error {
 	for _, a := range c.Agents {
 		if err := a.RecoverPort(peerURLPort); err != nil {
+			return err
+		}
+	}
+	return c.WaitHealth()
+}
+
+type failureSlowNetworkOneMember struct {
+	description
+}
+
+func newFailureSlowNetworkOneMember() *failureSlowNetworkOneMember {
+	desc := fmt.Sprintf("slow down one member's network by adding %d ms latency", slowNetworkLatency)
+	return &failureSlowNetworkOneMember{
+		description: description(desc),
+	}
+}
+
+func (f *failureSlowNetworkOneMember) Inject(c *cluster, round int) error {
+	i := round % c.Size
+	if err := c.Agents[i].SetLatency(slowNetworkLatency, randomVariation); err != nil {
+		c.Agents[i].RemoveLatency() // roll back
+		return err
+	}
+	return nil
+}
+
+func (f *failureSlowNetworkOneMember) Recover(c *cluster, round int) error {
+	i := round % c.Size
+	if err := c.Agents[i].RemoveLatency(); err != nil {
+		return err
+	}
+	return c.WaitHealth()
+}
+
+type failureSlowNetworkLeader struct {
+	description
+	idx int
+}
+
+func newFailureSlowNetworkLeader() *failureSlowNetworkLeader {
+	desc := fmt.Sprintf("slow down leader's network by adding %d ms latency", slowNetworkLatency)
+	return &failureSlowNetworkLeader{
+		description: description(desc),
+	}
+}
+
+func (f *failureSlowNetworkLeader) Inject(c *cluster, round int) error {
+	idx, err := c.GetLeader()
+	if err != nil {
+		return err
+	}
+	f.idx = idx
+	if err := c.Agents[idx].SetLatency(slowNetworkLatency, randomVariation); err != nil {
+		c.Agents[idx].RemoveLatency() // roll back
+		return err
+	}
+	return nil
+}
+
+func (f *failureSlowNetworkLeader) Recover(c *cluster, round int) error {
+	if err := c.Agents[f.idx].RemoveLatency(); err != nil {
+		return err
+	}
+	return c.WaitHealth()
+}
+
+type failureSlowNetworkAll struct {
+	description
+}
+
+func newFailureSlowNetworkAll() *failureSlowNetworkAll {
+	return &failureSlowNetworkAll{
+		description: "slow down all members' network",
+	}
+}
+
+func (f *failureSlowNetworkAll) Inject(c *cluster, round int) error {
+	for i, a := range c.Agents {
+		if err := a.SetLatency(slowNetworkLatency, randomVariation); err != nil {
+			for j := 0; j < i; j++ { // roll back
+				c.Agents[j].RemoveLatency()
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *failureSlowNetworkAll) Recover(c *cluster, round int) error {
+	for _, a := range c.Agents {
+		if err := a.RemoveLatency(); err != nil {
 			return err
 		}
 	}

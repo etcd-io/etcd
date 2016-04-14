@@ -172,6 +172,13 @@ func (a *Agent) recoverPort(port int) error {
 	return netutil.RecoverPort(port)
 }
 
+func (a *Agent) setLatency(ms, rv int) error {
+	if ms == 0 {
+		return netutil.RemoveLatency()
+	}
+	return netutil.SetLatency(ms, rv)
+}
+
 func (a *Agent) status() client.Status {
 	return client.Status{State: a.state}
 }

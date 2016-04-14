@@ -38,6 +38,10 @@ type Agent interface {
 	DropPort(port int) error
 	// RecoverPort stops dropping all network packets at the given port.
 	RecoverPort(port int) error
+	// SetLatency slows down network by introducing latency.
+	SetLatency(ms, rv int) error
+	// RemoveLatency removes latency introduced by SetLatency.
+	RemoveLatency() error
 	// Status returns the status of etcd on the agent
 	Status() (Status, error)
 }
@@ -91,6 +95,14 @@ func (a *agent) DropPort(port int) error {
 
 func (a *agent) RecoverPort(port int) error {
 	return a.rpcClient.Call("Agent.RPCRecoverPort", port, nil)
+}
+
+func (a *agent) SetLatency(ms, rv int) error {
+	return a.rpcClient.Call("Agent.RPCSetLatency", []int{ms, rv}, nil)
+}
+
+func (a *agent) RemoveLatency() error {
+	return a.rpcClient.Call("Agent.RPCRemoveLatency", struct{}{}, nil)
 }
 
 func (a *agent) Status() (Status, error) {

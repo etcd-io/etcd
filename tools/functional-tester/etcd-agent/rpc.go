@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -98,6 +99,27 @@ func (a *Agent) RPCRecoverPort(port int, reply *struct{}) error {
 	err := a.recoverPort(port)
 	if err != nil {
 		plog.Println("error recovering port", err)
+	}
+	return nil
+}
+
+func (a *Agent) RPCSetLatency(args []int, reply *struct{}) error {
+	if len(args) != 2 {
+		return fmt.Errorf("SetLatency needs two args, got (%v)", args)
+	}
+	plog.Printf("set latency of %dms (+/- %dms)", args[0], args[1])
+	err := a.setLatency(args[0], args[1])
+	if err != nil {
+		plog.Println("error setting latency", err)
+	}
+	return nil
+}
+
+func (a *Agent) RPCRemoveLatency(args struct{}, reply *struct{}) error {
+	plog.Println("removing latency")
+	err := a.setLatency(0, 0)
+	if err != nil {
+		plog.Println("error removing latency")
 	}
 	return nil
 }
