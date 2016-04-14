@@ -425,7 +425,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 	} else {
 		rev = rangeRev
 	}
-	if rev <= s.compactMainRev {
+	if rev < s.compactMainRev {
 		return nil, 0, ErrCompacted
 	}
 

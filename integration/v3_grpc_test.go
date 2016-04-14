@@ -74,6 +74,31 @@ func TestV3PutOverwrite(t *testing.T) {
 	}
 }
 
+// TestV3CompactCurrentRev ensures keys are present when compacting on current revision.
+func TestV3CompactCurrentRev(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := toGRPC(clus.RandClient()).KV
+	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+	for i := 0; i < 3; i++ {
+		if _, err := kvc.Put(context.Background(), preq); err != nil {
+			t.Fatalf("couldn't put key (%v)", err)
+		}
+	}
+	// compact on current revision
+	_, err := kvc.Compact(context.Background(), &pb.CompactionRequest{Revision: 4})
+	if err != nil {
+		t.Fatalf("couldn't compact kv space (%v)", err)
+	}
+	// key still exists?
+	_, err = kvc.Range(context.Background(), &pb.RangeRequest{Key: []byte("foo")})
+	if err != nil {
+		t.Fatalf("couldn't get key after compaction (%v)", err)
+	}
+}
+
 func TestV3TxnTooManyOps(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})

@@ -440,12 +440,11 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	// wait for scheduled compaction to be finished
 	time.Sleep(100 * time.Millisecond)
 
-	if _, _, err := s1.Range([]byte("foo"), nil, 0, 2); err != ErrCompacted {
+	if _, _, err := s1.Range([]byte("foo"), nil, 0, 1); err != ErrCompacted {
 		t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
 	}
 	// check the key in backend is deleted
 	revbytes := newRevBytes()
-	// TODO: compact should delete main=2 key too
 	revToBytes(revision{main: 1}, revbytes)
 
 	// The disk compaction is done asynchronously and requires more time on slow disk.
