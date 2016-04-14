@@ -69,6 +69,37 @@ func ExampleKV_get() {
 	// foo : bar
 }
 
+func ExampleKV_getWithRev() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	_, err = cli.Put(context.TODO(), "foo", "bar1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = cli.Put(context.TODO(), "foo", "bar2")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	resp, err := cli.Get(ctx, "foo", clientv3.WithRev(2))
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, ev := range resp.Kvs {
+		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+	}
+	// foo : bar1
+}
+
 func ExampleKV_getSortedPrefix() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
