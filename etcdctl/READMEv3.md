@@ -281,7 +281,220 @@ foo
 bar
 ```
 
+### LEASE \<subcommand\>
+
+LEASE provides commands for key lease management.
+
+### LEASE GRANT \<ttl\>
+
+LEASE GRANT creates a fresh lease with a server-selected time-to-live in seconds
+greater than or equal to the requested TTL value.
+
+#### Return value
+
+- On success, prints a message with the granted lease ID.
+
+- On failure, prints an error message and returns with a non-zero exit code.
+
+#### Example
+
+```bash
+./etcdctl lease grant 10
+lease 32695410dcc0ca06 granted with TTL(10s)
+```
+
+### LEASE REVOKE \<leaseID\>
+
+LEASE REVOKE destroys a given lease, deleting all attached keys.
+
+#### Return value
+
+- On success, prints a message indicating the lease is revoked.
+
+- On failure, prints an error message and returns with a non-zero exit code.
+
+#### Example
+
+```bash
+./etcdctl lease revoke 32695410dcc0ca06
+lease 32695410dcc0ca06 revoked
+```
+
+### LEASE KEEP-ALIVE \<leaseID\>
+
+LEASE KEEP-ALIVE periodically refreshes a lease so it does not expire.
+
+#### Return value
+
+- On success, prints a message for every keep alive sent.
+
+- On failure, returns a non-zero exit code if a keep-alive channel could not be established. Otherwise, prints a message indicating the lease is gone.
+
+#### Example
+```bash
+/etcdctl lease keep-alive 32695410dcc0ca0
+lease 32695410dcc0ca0 keepalived with TTL(100)
+lease 32695410dcc0ca0 keepalived with TTL(100)
+lease 32695410dcc0ca0 keepalived with TTL(100)
+...
+```
+
+
+### MEMBER \<subcommand\>
+
+MEMBER provides commands for managing etcd cluster membership.
+
+### MEMBER ADD \<memberName\>
+
+MEMBER ADD introduces a new member into the etcd cluster as a new peer.
+
+#### Options
+
+- peerURLs -- comma separated list of URLs to associate with the new member.
+
+#### Return value
+
+- On success, prints the member ID of the new member and the cluster ID.
+
+- On failure, prints an error message and returns with a non-zero exit code.
+
+#### Example
+
+```bash
+./etcdctl member add newMember --peerURLs=https://127.0.0.1:12345
+Member 2be1eb8f84b7f63e added to cluster ef37ad9dc622a7c4
+```
+
+
+### MEMBER UPDATE \<memberID\>
+
+MEMBER UPDATE sets the peer URLs for an existing member in the etcd cluster.
+
+#### Options
+
+- peerURLs -- comma separated list of URLs to associate with the updated member.
+
+#### Return value
+
+- On success, prints the member ID of the updated member and the cluster ID.
+
+- On failure, prints an error message and returns with a non-zero exit code.
+
+#### Example
+
+```bash
+./etcdctl member update 2be1eb8f84b7f63e --peerURLs=https://127.0.0.1:11112
+Member 2be1eb8f84b7f63e updated in cluster ef37ad9dc622a7c4
+```
+
+
+### MEMBER REMOVE \<memberID\>
+
+MEMBER REMOVE removes a member of an etcd cluster from participating in cluster consensus.
+
+#### Return value
+
+- On success, prints the member ID of the removed member and the cluster ID.
+
+- On failure, prints an error message and returns with a non-zero exit code.
+
+#### Example
+
+```bash
+./etcdctl member remove 2be1eb8f84b7f63e
+Member 2be1eb8f84b7f63e removed from cluster ef37ad9dc622a7c4
+```
+
+### MEMBER LIST
+
+MEMBER LIST prints the member details for all members associated with an etcd cluster.
+
+#### Return value
+
+##### Simple reply
+
+On success, prints a humanized table of the member IDs, statuses, names, peer addresses, and client addresses. On failure, prints an error message and returns with a non-zero exit code.
+
+##### JSON reply
+
+On success, prints a JSON listing of the member IDs, statuses, names, peer addresses, and client addresses. On failure, prints an error message and returns with a non-zero exit code.
+
+#### Examples
+
+```bash
+./etcdctl member list
++------------------+---------+--------+------------------------+------------------------+
+|        ID        | STATUS  |  NAME  |       PEER ADDRS       |      CLIENT ADDRS      |
++------------------+---------+--------+------------------------+------------------------+
+| 8211f1d0f64f3269 | started | infra1 | http://127.0.0.1:12380 | http://127.0.0.1:2379  |
+| 91bc3c398fb3c146 | started | infra2 | http://127.0.0.1:22380 | http://127.0.0.1:22379 |
+| fd422379fda50e48 | started | infra3 | http://127.0.0.1:32380 | http://127.0.0.1:32379 |
++------------------+---------+--------+------------------------+------------------------+
+```
+
+```bash
+./etcdctl -w json member list
+{"header":{"cluster_id":17237436991929493444,"member_id":9372538179322589801,"raft_term":2},"members":[{"ID":9372538179322589801,"name":"infra1","peerURLs":["http://127.0.0.1:12380"],"clientURLs":["http://127.0.0.1:2379"]},{"ID":10501334649042878790,"name":"infra2","peerURLs":["http://127.0.0.1:22380"],"clientURLs":["http://127.0.0.1:22379"]},{"ID":18249187646912138824,"name":"infra3","peerURLs":["http://127.0.0.1:32380"],"clientURLs":["http://127.0.0.1:32379"]}]}
+```
+
 ## Utility Commands
+
+### ENDPOINT \<subcommand\>
+
+ENDPOINT provides commands for querying individual endpoints.
+
+### ENDPOINT HEALTH
+
+ENDPOINT HEALTH checks the health of the list of endpoints with respect to cluster. An endpoint is unhealthy
+when it cannot participate in consensus with the rest of the cluster.
+
+#### Return value
+
+- If an endpoint can participate in consensus, prints a message indicating the endpoint is healthy.
+
+- If an endpoint fails to participate in consensus, prints a message indicating the endpoint is unhealthy.
+
+#### Example
+
+```bash
+./etcdctl endpoint health
+127.0.0.1:32379 is healthy: successfully committed proposal: took = 2.130877ms
+127.0.0.1:2379 is healthy: successfully committed proposal: took = 2.095242ms
+127.0.0.1:22379 is healthy: successfully committed proposal: took = 2.083263ms
+```
+
+### ENDPOINT STATUS
+
+ENDPOINT STATUS queries the status of each endpoint in the given endpoint list.
+
+#### Return value
+
+##### Simple reply
+
+On success, prints a humanized table of each endpoint URL, ID, version, database size, leadership status, raft term, and raft status. On failure, returns with a non-zero exit code.
+
+##### JSON reply
+
+On success, prints a line of JSON encoding each endpoint URL, ID, version, database size, leadership status, raft term, and raft status. On failure, returns with a non-zero exit code.
+
+#### Examples
+
+```bash
+./etcdctl endpoint status
++-----------------+------------------+-----------+---------+-----------+-----------+------------+
+|    ENDPOINT     |        ID        |  VERSION  | DB SIZE | IS LEADER | RAFT TERM | RAFT INDEX |
++-----------------+------------------+-----------+---------+-----------+-----------+------------+
+| 127.0.0.1:2379  | 8211f1d0f64f3269 | 2.3.0+git | 25 kB   | false     |         2 |      31563 |
+| 127.0.0.1:22379 | 91bc3c398fb3c146 | 2.3.0+git | 25 kB   | false     |         2 |      31563 |
+| 127.0.0.1:32379 | fd422379fda50e48 | 2.3.0+git | 25 kB   | true      |         2 |      31563 |
++-----------------+------------------+-----------+---------+-----------+-----------+------------+
+```
+
+```bash
+./etcdctl -w json endpoint status
+[{"Endpoint":"127.0.0.1:2379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":9372538179322589801,"revision":2,"raft_term":2},"version":"2.3.0+git","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}},{"Endpoint":"127.0.0.1:22379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":10501334649042878790,"revision":2,"raft_term":2},"version":"2.3.0+git","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}},{"Endpoint":"127.0.0.1:32379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":18249187646912138824,"revision":2,"raft_term":2},"version":"2.3.0+git","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}}]
+```
+
 
 ### LOCK \<lockname\>
 
@@ -301,7 +514,7 @@ mylock/1234534535445
 
 ```
 
-### Notes
+#### Notes
 
 The lease length of a lock defaults to 60 seconds. If LOCK is abnormally terminated, lock progress may be delayed
 by up to 60 seconds.
@@ -333,10 +546,50 @@ foo
 
 ```
 
-### Notes
+#### Notes
 
 The lease length of a leader defaults to 60 seconds. If a candidate is abnormally terminated, election
 progress may be delayed by up to 60 seconds.
+
+
+### COMPACTION \<revision\>
+
+COMPACTION discards all etcd event history prior to a given revision. Since etcd uses a multiversion concurrency control
+model, it preserves all key updates as event history. When the event history up to some revision is no longer needed,
+all superseded keys may be compacted away to reclaim storage space in the etcd backend database.
+
+#### Return value
+
+- On success, prints the compacted revision and returns a zero exit code.
+
+- On failure, prints an error message and returns with a non-zero exit code.
+
+#### Example
+```bash
+./etcdctl compaction 1234
+compacted revision 1234
+```
+
+### DEFRAG
+
+DEFRAG defragments the backend database file for a set of given endpoints. When an etcd member reclaims storage space
+from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting
+the database, the etcd member releases this free space back to the file system.
+
+#### Return value
+
+- If successfully defragmented an endpoint, prints a message indicating success for that endpoint.
+
+- If failed defragmenting an endpoint, prints a message indicating failure for that endpoint.
+
+- DEFRAG returns a zero exit code only if it succeeded defragmenting all given endpoints.
+
+#### Example
+```bash
+./etcdctl --endpoints=localhost:2379,badendpoint:2379 defrag
+Finished defragmenting etcd member[localhost:2379]
+Failed to defragment etcd member[badendpoint:2379] (grpc: timed out trying to connect)
+```
 
 
 ### MAKE-MIRROR [options] \<destination\>
@@ -435,6 +688,34 @@ bin/etcd --name sshot2 --listen-client-urls http://127.0.0.1:22379 --advertise-c
 bin/etcd --name sshot3 --listen-client-urls http://127.0.0.1:32379 --advertise-client-urls http://127.0.0.1:32379 --listen-peer-urls http://127.0.0.1:32380 &
 ```
 
+### SNAPSHOT STATUS \<filename\>
+
+SNAPSHOT STATUS lists information about a given backend database snapshot file.
+
+#### Return value
+
+##### Simple Reply
+
+On success, prints a humanized table of the database hash, revision, total keys, and size. On failure, return with a non-zero exit code.
+
+##### JSON reply
+
+On success, prints a line of JSON encoding the database hash, revision, total keys, and size. On failure, return with a non-zero exit code.
+
+#### Examples
+```bash
+./etcdctl snapshot status file.db
++----------+----------+------------+------------+
+|   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
++----------+----------+------------+------------+
+| cf1550fb |        3 |          3 | 25 kB      |
++----------+----------+------------+------------+
+```
+
+```bash
+./etcdctl -write-out=json snapshot status file.db
+{"hash":3474280699,"revision":3,"totalKey":3,"totalSize":24576}
+```
 
 ## Notes
 
