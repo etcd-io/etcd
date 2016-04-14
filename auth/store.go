@@ -279,7 +279,7 @@ func (as *authStore) RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantRes
 		return bytes.Compare(role.KeyPermission[i].Key, []byte(r.Perm.Key)) >= 0
 	})
 
-	if bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) {
+	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) {
 		// update existing permission
 		role.KeyPermission[idx].PermType = r.Perm.PermType
 	} else {
