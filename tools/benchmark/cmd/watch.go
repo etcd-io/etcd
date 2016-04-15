@@ -64,7 +64,6 @@ var (
 	nrWatchCompleted       int32
 	nrRecvCompleted        int32
 	watchCompletedNotifier chan struct{}
-	putStartNotifier       chan struct{}
 	recvCompletedNotifier  chan struct{}
 )
 
@@ -108,8 +107,6 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		streams[i] = v3.NewWatcher(clients[i%len(clients)])
 	}
 
-	putStartNotifier = make(chan struct{})
-
 	// watching phase
 	results = make(chan result)
 	bar = pb.New(watchTotal)
@@ -150,7 +147,6 @@ func watchFunc(cmd *cobra.Command, args []string) {
 
 	atomic.StoreInt32(&nrRecvCompleted, 0)
 	recvCompletedNotifier = make(chan struct{})
-	close(putStartNotifier)
 
 	putreqc := make(chan v3.Op)
 
@@ -169,7 +165,9 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		close(putreqc)
 	}()
 
-	<-recvCompletedNotifier
+	for range streams {
+		<-recvCompletedNotifier
+	}
 	bar.Finish()
 	fmt.Printf("Watch events received summary:\n")
 	close(results)
@@ -192,8 +190,6 @@ func doWatch(stream v3.Watcher, requests <-chan string) {
 	if atomic.LoadInt32(&nrWatchCompleted) == int32(watchTotalStreams) {
 		watchCompletedNotifier <- struct{}{}
 	}
-
-	<-putStartNotifier
 }
 
 func recvWatchChan(wch v3.WatchChan) {
