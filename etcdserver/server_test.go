@@ -654,11 +654,11 @@ func TestDoProposal(t *testing.T) {
 }
 
 func TestDoProposalCancelled(t *testing.T) {
-	wait := mockwait.NewRecorder()
+	wt := mockwait.NewRecorder()
 	srv := &EtcdServer{
 		cfg:      &ServerConfig{TickMs: 1},
 		r:        raftNode{Node: newNodeNop()},
-		w:        wait,
+		w:        wt,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -669,8 +669,8 @@ func TestDoProposalCancelled(t *testing.T) {
 		t.Fatalf("err = %v, want %v", err, ErrCanceled)
 	}
 	w := []testutil.Action{{Name: "Register"}, {Name: "Trigger"}}
-	if !reflect.DeepEqual(wait.Action(), w) {
-		t.Errorf("wait.action = %+v, want %+v", wait.Action(), w)
+	if !reflect.DeepEqual(wt.Action(), w) {
+		t.Errorf("wt.action = %+v, want %+v", wt.Action(), w)
 	}
 }
 

@@ -184,7 +184,7 @@ func TestCut(t *testing.T) {
 		t.Fatal(err)
 	}
 	snap := walpb.Snapshot{Index: 2, Term: 1}
-	if err := w.SaveSnapshot(snap); err != nil {
+	if err = w.SaveSnapshot(snap); err != nil {
 		t.Fatal(err)
 	}
 	wname = walName(2, 2)
@@ -506,7 +506,8 @@ func TestReleaseLockTo(t *testing.T) {
 		t.Errorf("len(w.locks) = %d, want %d", len(w.locks), 7)
 	}
 	for i, l := range w.locks {
-		_, lockIndex, err := parseWalName(path.Base(l.Name()))
+		var lockIndex uint64
+		_, lockIndex, err = parseWalName(path.Base(l.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}
