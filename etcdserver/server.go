@@ -296,7 +296,8 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 			if err != nil {
 				return nil, &DiscoveryError{Op: "join", Err: err}
 			}
-			urlsmap, err := types.NewURLsMap(str)
+			var urlsmap types.URLsMap
+			urlsmap, err = types.NewURLsMap(str)
 			if err != nil {
 				return nil, err
 			}
@@ -329,7 +330,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 			return nil, err
 		}
 		if snapshot != nil {
-			if err := st.Recovery(snapshot.Data); err != nil {
+			if err = st.Recovery(snapshot.Data); err != nil {
 				plog.Panicf("recovered store from snapshot error: %v", err)
 			}
 			plog.Infof("recovered store from snapshot at index %d", snapshot.Metadata.Index)

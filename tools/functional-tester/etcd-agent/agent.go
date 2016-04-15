@@ -95,16 +95,16 @@ func sigtermAndWait(cmd *exec.Cmd) error {
 
 	errc := make(chan error)
 	go func() {
-		_, err := cmd.Process.Wait()
-		errc <- err
+		_, ew := cmd.Process.Wait()
+		errc <- ew
 		close(errc)
 	}()
 
 	select {
 	case <-time.After(5 * time.Second):
 		cmd.Process.Kill()
-	case err := <-errc:
-		return err
+	case e := <-errc:
+		return e
 	}
 	err = <-errc
 	return err
