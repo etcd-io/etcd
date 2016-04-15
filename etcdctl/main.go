@@ -30,7 +30,7 @@ const (
 func main() {
 	apiv := os.Getenv(apiEnv)
 	// unset apiEnv to avoid side-effect for future env and flag parsing.
-	os.Unsetenv(apiv)
+	os.Unsetenv(apiEnv)
 	if len(apiv) == 0 || apiv == "2" {
 		ctlv2.Start()
 		return
