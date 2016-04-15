@@ -297,6 +297,10 @@ type dbstatus struct {
 }
 
 func dbStatus(p string) dbstatus {
+	if _, err := os.Stat(p); err != nil {
+		ExitWithError(ExitError, err)
+	}
+
 	ds := dbstatus{}
 
 	db, err := bolt.Open(p, 0600, nil)
