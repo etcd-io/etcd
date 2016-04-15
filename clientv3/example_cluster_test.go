@@ -37,7 +37,7 @@ func ExampleCluster_memberList() {
 		log.Fatal(err)
 	}
 	fmt.Println("members:", len(resp.Members))
-	// members: 3
+	// Output: members: 3
 }
 
 func ExampleCluster_memberAdd() {

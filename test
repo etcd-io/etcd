@@ -57,7 +57,8 @@ fi
 
 function unit_tests {
 	echo "Running tests..."
-	go test -timeout 3m ${COVER} ${RACE} -cpu 1,2,4 $@ ${TEST}
+	# only -run=Test so examples can run in integration tests
+	go test -timeout 3m ${COVER} ${RACE} -cpu 1,2,4 -run=Test $@ ${TEST}
 }
 
 function integration_tests {
@@ -66,6 +67,7 @@ function integration_tests {
 	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration
 	go test -timeout 10m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
 	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
+	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
 }
 
 function fmt_tests {
