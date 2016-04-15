@@ -41,7 +41,7 @@ func ExampleWatcher_watch() {
 	// PUT "foo" : "bar"
 }
 
-func ExampleWatcher_watchPrefix() {
+func ExampleWatcher_watchWithPrefix() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
@@ -60,7 +60,29 @@ func ExampleWatcher_watchPrefix() {
 	// PUT "foo1" : "bar"
 }
 
-func ExampleWatcher_watchProgressNotify() {
+func ExampleWatcher_watchWithRange() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	// watches within ['foo1', 'foo4'), in lexicographical order
+	rch := cli.Watch(context.Background(), "foo1", clientv3.WithRange("foo4"))
+	for wresp := range rch {
+		for _, ev := range wresp.Events {
+			fmt.Printf("%s %q : %q\n", ev.Type, ev.Kv.Key, ev.Kv.Value)
+		}
+	}
+	// PUT "foo1" : "bar"
+	// PUT "foo2" : "bar"
+	// PUT "foo3" : "bar"
+}
+
+func ExampleWatcher_watchWithProgressNotify() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
