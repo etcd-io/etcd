@@ -2,6 +2,30 @@
 
 TODO: finish API doc
 
+## Response Header
+
+All Responses from etcd API have a [response header][response_header] attached. The response header includes the metadata of the response.
+
+```proto
+message ResponseHeader {
+  uint64 cluster_id = 1;
+  uint64 member_id = 2;
+  int64 revision = 3;
+  uint64 raft_term = 4;
+}
+```
+
+* Cluster_ID - the ID of the cluster that generates the response
+* Member_ID - the ID of the member that generates the response
+* Revision - the revision of the key-value store when the response is generated
+* Raft_Term - the Raft term of the member when the response is generated
+
+An application may read the Cluster_ID (Member_ID) field to ensure it is communicating with the intended cluster (member).
+
+Applications can use the `Revision` to know the latest revision of the key-value store. This is especially useful when applications specify a historical revision to make time `travel query` and wishes to know the latest revision at the time of the request.
+
+Applications can use `Raft_Term` to detect when the cluster completes a new leader election.
+
 ## Key-Value API
 
 Key-Value API is used to manipulate key-value pairs stored inside etcd. The key-value API is defined as a [gRPC service][kv-service]. The Key-Value pair is defined as structured data in [protobuf format][kv-proto].
@@ -119,3 +143,4 @@ etcd ensures linearizability for all other operations by default. Linearizabilit
 [Linearizability]: #Linearizability
 [kv-proto]: https://github.com/coreos/etcd/blob/master/storage/storagepb/kv.proto
 [kv-service]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
+[response_header]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
