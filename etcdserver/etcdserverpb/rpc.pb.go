@@ -173,11 +173,13 @@ func (x AlarmRequest_AlarmAction) String() string {
 }
 
 type ResponseHeader struct {
+	// cluster_id is the ID of the cluster which sent the response.
 	ClusterId uint64 `protobuf:"varint,1,opt,name=cluster_id,proto3" json:"cluster_id,omitempty"`
-	MemberId  uint64 `protobuf:"varint,2,opt,name=member_id,proto3" json:"member_id,omitempty"`
-	// revision of the store when the request was applied.
+	// member_id is the ID of the member which sent the response.
+	MemberId uint64 `protobuf:"varint,2,opt,name=member_id,proto3" json:"member_id,omitempty"`
+	// revision is the key-value store revision when the request was applied.
 	Revision int64 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
-	// term of raft when the request was applied.
+	// raft_term is the raft term when the request was applied.
 	RaftTerm uint64 `protobuf:"varint,4,opt,name=raft_term,proto3" json:"raft_term,omitempty"`
 }
 
@@ -186,27 +188,27 @@ func (m *ResponseHeader) String() string { return proto.CompactTextString(m) }
 func (*ResponseHeader) ProtoMessage()    {}
 
 type RangeRequest struct {
-	// if the range_end is not given, the request returns the key.
+	// key is the first key for the range. If range_end is not given, the request only looks up key.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// if the range_end is given, it gets the keys in range [key, range_end)
-	// if range_end is nonempty, otherwise it returns all keys >= key.
+	// range_end is the upper bound on the requested range [key, range_end).
+	// If range_end is '\0', the range is all keys >= key.
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
-	// limit the number of keys returned.
+	// limit is a limit on the number of keys returned for the request.
 	Limit int64 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	// range over the store at the given revision.
-	// if revision is less or equal to zero, range over the newest store.
-	// if the revision has been compacted, ErrCompaction will be returned in
-	// response.
+	// revision is the point-in-time of the key-value store to use for the range.
+	// If revision is less or equal to zero, the range is over the newest key-value store.
+	// If the revision has been compacted, ErrCompaction is returned as a response.
 	Revision int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
-	// sort_order is the requested order for returned the results
+	// sort_order is the order for returned sorted results.
 	SortOrder RangeRequest_SortOrder `protobuf:"varint,5,opt,name=sort_order,proto3,enum=etcdserverpb.RangeRequest_SortOrder" json:"sort_order,omitempty"`
-	// sort_target is the kv field to use for sorting
+	// sort_target is the key-value field to use for sorting.
 	SortTarget RangeRequest_SortTarget `protobuf:"varint,6,opt,name=sort_target,proto3,enum=etcdserverpb.RangeRequest_SortTarget" json:"sort_target,omitempty"`
-	// range request is linearizable by default. Linearizable requests has a higher
-	// latency and lower throughput than serializable request.
-	// To reduce latency, serializable can be set. If serializable is set, range request
-	// will be serializable, but not linearizable with other requests.
-	// Serializable range can be served locally without waiting for other nodes in the cluster.
+	// serializable sets the range request to use serializable member-local reads.
+	// Range requests are linearizable by default; linearizable requests have higher
+	// latency and lower throughput than serializable requests but reflect the current
+	// consensus of the cluster. For better performance, in exchange for possible stale reads,
+	// a serializable range request is served locally without needing to reach consensus
+	// with other nodes in the cluster.
 	Serializable bool `protobuf:"varint,7,opt,name=serializable,proto3" json:"serializable,omitempty"`
 }
 
@@ -215,8 +217,9 @@ func (m *RangeRequest) String() string { return proto.CompactTextString(m) }
 func (*RangeRequest) ProtoMessage()    {}
 
 type RangeResponse struct {
-	Header *ResponseHeader       `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Kvs    []*storagepb.KeyValue `protobuf:"bytes,2,rep,name=kvs" json:"kvs,omitempty"`
+	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	// kvs is the list of key-value pairs matched by the range request.
+	Kvs []*storagepb.KeyValue `protobuf:"bytes,2,rep,name=kvs" json:"kvs,omitempty"`
 	// more indicates if there are more keys to return in the requested range.
 	More bool `protobuf:"varint,3,opt,name=more,proto3" json:"more,omitempty"`
 }
@@ -240,9 +243,13 @@ func (m *RangeResponse) GetKvs() []*storagepb.KeyValue {
 }
 
 type PutRequest struct {
-	Key   []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// key is the key, in bytes, to put into the key-value store.
+	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// value is the value, in bytes, to associate with the key in the key-value store.
 	Value []byte `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	Lease int64  `protobuf:"varint,3,opt,name=lease,proto3" json:"lease,omitempty"`
+	// lease is the lease ID to associate with the key in the key-value store. A lease
+	// value of 0 indicates no lease.
+	Lease int64 `protobuf:"varint,3,opt,name=lease,proto3" json:"lease,omitempty"`
 }
 
 func (m *PutRequest) Reset()         { *m = PutRequest{} }
@@ -265,9 +272,11 @@ func (m *PutResponse) GetHeader() *ResponseHeader {
 }
 
 type DeleteRangeRequest struct {
-	// if the range_end is not given, the request deletes the key.
+	// key is the first key to delete in the range.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// if the range_end is given, it deletes the keys in range [key, range_end).
+	// range_end is the key following the last key to delete for the range [key, range_end).
+	// If range_end is not given, the range is defined to contain only the key argument.
+	// If range_end is '\0', the range is all keys greater than or equal to the key argument.
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
 }
 
@@ -277,7 +286,7 @@ func (*DeleteRangeRequest) ProtoMessage()    {}
 
 type DeleteRangeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	// Deleted is the number of keys that got deleted.
+	// Deleted is the number of keys deleted by the delete range request.
 	Deleted int64 `protobuf:"varint,2,opt,name=deleted,proto3" json:"deleted,omitempty"`
 }
 
@@ -293,6 +302,8 @@ func (m *DeleteRangeResponse) GetHeader() *ResponseHeader {
 }
 
 type RequestUnion struct {
+	// request is a union of request types accepted by a transaction.
+	//
 	// Types that are valid to be assigned to Request:
 	//	*RequestUnion_RequestRange
 	//	*RequestUnion_RequestPut
@@ -420,6 +431,8 @@ func _RequestUnion_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.B
 }
 
 type ResponseUnion struct {
+	// response is a union of response types returned by a transaction.
+	//
 	// Types that are valid to be assigned to Response:
 	//	*ResponseUnion_ResponseRange
 	//	*ResponseUnion_ResponsePut
@@ -547,9 +560,11 @@ func _ResponseUnion_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.
 }
 
 type Compare struct {
+	// result is logical comparison operation for this comparison.
 	Result Compare_CompareResult `protobuf:"varint,1,opt,name=result,proto3,enum=etcdserverpb.Compare_CompareResult" json:"result,omitempty"`
+	// target is the key-value field to inspect for the comparison.
 	Target Compare_CompareTarget `protobuf:"varint,2,opt,name=target,proto3,enum=etcdserverpb.Compare_CompareTarget" json:"target,omitempty"`
-	// key path
+	// key is the subject key for the comparison operation.
 	Key []byte `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
 	// Types that are valid to be assigned to TargetUnion:
 	//	*Compare_Version
@@ -707,8 +722,15 @@ func _Compare_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer
 // true.
 // 3. A list of database operations called f op. Like t op, but executed if guard evaluates to false.
 type TxnRequest struct {
-	Compare []*Compare      `protobuf:"bytes,1,rep,name=compare" json:"compare,omitempty"`
+	// Compare is a list of predicates representing a conjunction of terms.
+	// If the comparisons succeed, then the success requests will be processed in order,
+	// and the response will contain their respective responses in order.
+	// If the comparisons fail, then the failure requests will be processed in order,
+	// and the response will contain their respective responses in order.
+	Compare []*Compare `protobuf:"bytes,1,rep,name=compare" json:"compare,omitempty"`
+	// success is a list of requests which will be applied when compare evaluates to true.
 	Success []*RequestUnion `protobuf:"bytes,2,rep,name=success" json:"success,omitempty"`
+	// failure is a list of requests which will be applied when compare evaluates to false.
 	Failure []*RequestUnion `protobuf:"bytes,3,rep,name=failure" json:"failure,omitempty"`
 }
 
@@ -738,8 +760,11 @@ func (m *TxnRequest) GetFailure() []*RequestUnion {
 }
 
 type TxnResponse struct {
-	Header    *ResponseHeader  `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Succeeded bool             `protobuf:"varint,2,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
+	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	// succeeded is set to true if the compare evaluated to true or false otherwise.
+	Succeeded bool `protobuf:"varint,2,opt,name=succeeded,proto3" json:"succeeded,omitempty"`
+	// responses is a list of responses corresponding to the results from applying
+	// success if succeeded is true or failure if succeeded is false.
 	Responses []*ResponseUnion `protobuf:"bytes,3,rep,name=responses" json:"responses,omitempty"`
 }
 
@@ -761,15 +786,14 @@ func (m *TxnResponse) GetResponses() []*ResponseUnion {
 	return nil
 }
 
-// Compaction compacts the kv store upto the given revision (including).
-// It removes the old versions of a key. It keeps the newest version of
-// the key even if its latest modification revision is smaller than the given
-// revision.
+// CompactionRequest compacts the key-value store upto a given revision. All superseded keys
+// with a revision less than the compaction revision will be removed.
 type CompactionRequest struct {
+	// revision is the key-value store revision for the compation operation.
 	Revision int64 `protobuf:"varint,1,opt,name=revision,proto3" json:"revision,omitempty"`
 	// physical is set so the RPC will wait until the compaction is physically
 	// applied to the local database such that compacted entries are totally
-	// removed from the backing store.
+	// removed from the backend database.
 	Physical bool `protobuf:"varint,2,opt,name=physical,proto3" json:"physical,omitempty"`
 }
 
@@ -801,7 +825,8 @@ func (*HashRequest) ProtoMessage()    {}
 
 type HashResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Hash   uint32          `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	// hash is the hash value computed from the responding member's key-value store.
+	Hash uint32 `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
 }
 
 func (m *HashResponse) Reset()         { *m = HashResponse{} }
@@ -823,12 +848,12 @@ func (m *SnapshotRequest) String() string { return proto.CompactTextString(m) }
 func (*SnapshotRequest) ProtoMessage()    {}
 
 type SnapshotResponse struct {
-	// header has the current store information. The first header in the snapshot
+	// header has the current key-value store information. The first header in the snapshot
 	// stream indicates the point in time of the snapshot.
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// remaining_bytes is the number of blob bytes to be sent after this message
 	RemainingBytes uint64 `protobuf:"varint,2,opt,name=remaining_bytes,proto3" json:"remaining_bytes,omitempty"`
-	// blob has the next chunk of the snapshot in the snapshot stream.
+	// blob contains the next chunk of the snapshot in the snapshot stream.
 	Blob []byte `protobuf:"bytes,3,opt,name=blob,proto3" json:"blob,omitempty"`
 }
 
@@ -844,6 +869,8 @@ func (m *SnapshotResponse) GetHeader() *ResponseHeader {
 }
 
 type WatchRequest struct {
+	// request_union is a request to either create a new watcher or cancel an existing watcher.
+	//
 	// Types that are valid to be assigned to RequestUnion:
 	//	*WatchRequest_CreateRequest
 	//	*WatchRequest_CancelRequest
@@ -945,17 +972,18 @@ func _WatchRequest_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.B
 }
 
 type WatchCreateRequest struct {
-	// the key to be watched
+	// key is the key to register for watching.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// if the range_end is given, keys in [key, range_end) are watched
-	// NOTE: only range_end == prefixEnd(key) is accepted now
+	// range_end is the end of the range [key, range_end) to watch. If range_end is not given,
+	// only the key argument is watched. If range_end is equal to '\0', all keys greater than
+	// or equal to the key argument are watched.
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
-	// start_revision is an optional revision (including) to watch from. No start_revision is "now".
+	// start_revision is an optional revision to watch from (inclusive). No start_revision is "now".
 	StartRevision int64 `protobuf:"varint,3,opt,name=start_revision,proto3" json:"start_revision,omitempty"`
-	// if progress_notify is set, etcd server sends WatchResponse with empty events to the
-	// created watcher when there are no recent events. It is useful when clients want always to be
-	// able to recover a disconnected watcher from a recent known revision.
-	// etcdsever can decide how long it should send a notification based on current load.
+	// progress_notify is set so that the etcd server will periodically send a WatchResponse with
+	// no events to the new watcher if there are no recent events. It is useful when clients
+	// wish to recover a disconnected watcher starting from a recent known revision.
+	// The etcd server may decide how often it will send notifications based on current load.
 	ProgressNotify bool `protobuf:"varint,4,opt,name=progress_notify,proto3" json:"progress_notify,omitempty"`
 }
 
@@ -964,6 +992,7 @@ func (m *WatchCreateRequest) String() string { return proto.CompactTextString(m)
 func (*WatchCreateRequest) ProtoMessage()    {}
 
 type WatchCancelRequest struct {
+	// watch_id is the watcher id to cancel so that no more events are transmitted.
 	WatchId int64 `protobuf:"varint,1,opt,name=watch_id,proto3" json:"watch_id,omitempty"`
 }
 
@@ -973,24 +1002,24 @@ func (*WatchCancelRequest) ProtoMessage()    {}
 
 type WatchResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	// watch_id is the ID of the watching the response sent to.
+	// watch_id is the ID of the watcher that corresponds to the response.
 	WatchId int64 `protobuf:"varint,2,opt,name=watch_id,proto3" json:"watch_id,omitempty"`
-	// If the response is for a create watch request, created is set to true.
-	// Client should record the watch_id and prepare for receiving events for
-	// that watching from the same stream.
-	// All events sent to the created watching will attach with the same watch_id.
+	// created is set to true if the response is for a create watch request.
+	// The client should record the watch_id and expect to receive events for
+	// the created watcher from the same stream.
+	// All events sent to the created watcher will attach with the same watch_id.
 	Created bool `protobuf:"varint,3,opt,name=created,proto3" json:"created,omitempty"`
-	// If the response is for a cancel watch request, cancel is set to true.
-	// No further events will be sent to the canceled watching.
+	// canceled is set to true if the response is for a cancel watch request.
+	// No further events will be sent to the canceled watcher.
 	Canceled bool `protobuf:"varint,4,opt,name=canceled,proto3" json:"canceled,omitempty"`
-	// CompactRevision is set to the minimum index if a watching tries to watch
+	// compact_revision is set to the minimum index if a watcher tries to watch
 	// at a compacted index.
 	//
-	// This happens when creating a watching at a compacted revision or the watching cannot
-	// catch up with the progress of the KV.
+	// This happens when creating a watcher at a compacted revision or the watcher cannot
+	// catch up with the progress of the key-value store.
 	//
-	// Client should treat the watching as canceled and should not try to create any
-	// watching with same start_revision again.
+	// The client should treat the watcher as canceled and should not try to create any
+	// watcher with the same start_revision again.
 	CompactRevision int64              `protobuf:"varint,5,opt,name=compact_revision,proto3" json:"compact_revision,omitempty"`
 	Events          []*storagepb.Event `protobuf:"bytes,11,rep,name=events" json:"events,omitempty"`
 }
@@ -1014,9 +1043,9 @@ func (m *WatchResponse) GetEvents() []*storagepb.Event {
 }
 
 type LeaseGrantRequest struct {
-	// advisory ttl in seconds
+	// TTL is the advisory time-to-live in seconds.
 	TTL int64 `protobuf:"varint,1,opt,name=TTL,proto3" json:"TTL,omitempty"`
-	// requested ID to create; 0 lets lessor choose
+	// ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID.
 	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
@@ -1026,8 +1055,9 @@ func (*LeaseGrantRequest) ProtoMessage()    {}
 
 type LeaseGrantResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	ID     int64           `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
-	// server decided ttl in second
+	// ID is the lease ID for the granted lease.
+	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	// TTL is the server chosen lease time-to-live in seconds.
 	TTL   int64  `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
 	Error string `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
 }
@@ -1044,6 +1074,7 @@ func (m *LeaseGrantResponse) GetHeader() *ResponseHeader {
 }
 
 type LeaseRevokeRequest struct {
+	// ID is the lease ID to revoke. When the ID is revoked, all associated keys will be deleted.
 	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
@@ -1067,6 +1098,7 @@ func (m *LeaseRevokeResponse) GetHeader() *ResponseHeader {
 }
 
 type LeaseKeepAliveRequest struct {
+	// ID is the lease ID for the lease to keep alive.
 	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
@@ -1076,8 +1108,10 @@ func (*LeaseKeepAliveRequest) ProtoMessage()    {}
 
 type LeaseKeepAliveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	ID     int64           `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
-	TTL    int64           `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
+	// ID is the lease ID from the keep alive request.
+	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	// TTL is the new time-to-live for the lease.
+	TTL int64 `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
 }
 
 func (m *LeaseKeepAliveResponse) Reset()         { *m = LeaseKeepAliveResponse{} }
@@ -1092,12 +1126,13 @@ func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 }
 
 type Member struct {
+	// ID is the member ID for this member.
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
-	// If the member is not started, name will be an empty string.
-	Name     string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// name is the human-readable name of the member. If the member is not started, the name will be an empty string.
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// peerURLs is the list of URLs the member exposes to the cluster for communication.
 	PeerURLs []string `protobuf:"bytes,3,rep,name=peerURLs" json:"peerURLs,omitempty"`
-	// If the member is not started, client_URLs will be an zero length
-	// string array.
+	// clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty.
 	ClientURLs []string `protobuf:"bytes,4,rep,name=clientURLs" json:"clientURLs,omitempty"`
 }
 
@@ -1106,6 +1141,7 @@ func (m *Member) String() string { return proto.CompactTextString(m) }
 func (*Member) ProtoMessage()    {}
 
 type MemberAddRequest struct {
+	// peerURLs is the list of URLs the added member will use to communicate with the cluster.
 	PeerURLs []string `protobuf:"bytes,1,rep,name=peerURLs" json:"peerURLs,omitempty"`
 }
 
@@ -1115,7 +1151,8 @@ func (*MemberAddRequest) ProtoMessage()    {}
 
 type MemberAddResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Member *Member         `protobuf:"bytes,2,opt,name=member" json:"member,omitempty"`
+	// member is the member information for the added member.
+	Member *Member `protobuf:"bytes,2,opt,name=member" json:"member,omitempty"`
 }
 
 func (m *MemberAddResponse) Reset()         { *m = MemberAddResponse{} }
@@ -1137,6 +1174,7 @@ func (m *MemberAddResponse) GetMember() *Member {
 }
 
 type MemberRemoveRequest struct {
+	// ID is the member ID of the member to remove.
 	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 }
 
@@ -1160,7 +1198,9 @@ func (m *MemberRemoveResponse) GetHeader() *ResponseHeader {
 }
 
 type MemberUpdateRequest struct {
-	ID       uint64   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	// ID is the member ID of the member to update.
+	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	// peerURLs is the new list of URLs the member will use to communicate with the cluster.
 	PeerURLs []string `protobuf:"bytes,2,rep,name=peerURLs" json:"peerURLs,omitempty"`
 }
 
@@ -1191,8 +1231,9 @@ func (m *MemberListRequest) String() string { return proto.CompactTextString(m) 
 func (*MemberListRequest) ProtoMessage()    {}
 
 type MemberListResponse struct {
-	Header  *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Members []*Member       `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
+	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	// members is a list of all members associated with the cluster.
+	Members []*Member `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
 }
 
 func (m *MemberListResponse) Reset()         { *m = MemberListResponse{} }
@@ -1236,10 +1277,15 @@ func (m *DefragmentResponse) GetHeader() *ResponseHeader {
 }
 
 type AlarmRequest struct {
+	// action is the kind of alarm request to issue. The action
+	// may GET alarm statuses, ACTIVATE an alarm, or DEACTIVATE a
+	// raised alarm.
 	Action AlarmRequest_AlarmAction `protobuf:"varint,1,opt,name=action,proto3,enum=etcdserverpb.AlarmRequest_AlarmAction" json:"action,omitempty"`
-	// MemberID is the member raising the alarm request
-	MemberID uint64    `protobuf:"varint,2,opt,name=memberID,proto3" json:"memberID,omitempty"`
-	Alarm    AlarmType `protobuf:"varint,3,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
+	// memberID is the ID of the member associated with the alarm. If memberID is 0, the
+	// alarm request covers all members.
+	MemberID uint64 `protobuf:"varint,2,opt,name=memberID,proto3" json:"memberID,omitempty"`
+	// alarm is the type of alarm to consider for this request.
+	Alarm AlarmType `protobuf:"varint,3,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
 }
 
 func (m *AlarmRequest) Reset()         { *m = AlarmRequest{} }
@@ -1247,8 +1293,10 @@ func (m *AlarmRequest) String() string { return proto.CompactTextString(m) }
 func (*AlarmRequest) ProtoMessage()    {}
 
 type AlarmMember struct {
-	MemberID uint64    `protobuf:"varint,1,opt,name=memberID,proto3" json:"memberID,omitempty"`
-	Alarm    AlarmType `protobuf:"varint,2,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
+	// memberID is the ID of the member associated with the raised alarm.
+	MemberID uint64 `protobuf:"varint,1,opt,name=memberID,proto3" json:"memberID,omitempty"`
+	// alarm is the type of alarm which has been raised.
+	Alarm AlarmType `protobuf:"varint,2,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
 }
 
 func (m *AlarmMember) Reset()         { *m = AlarmMember{} }
@@ -1257,7 +1305,8 @@ func (*AlarmMember) ProtoMessage()    {}
 
 type AlarmResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Alarms []*AlarmMember  `protobuf:"bytes,2,rep,name=alarms" json:"alarms,omitempty"`
+	// alarms is a list of alarms associated with the alarm request.
+	Alarms []*AlarmMember `protobuf:"bytes,2,rep,name=alarms" json:"alarms,omitempty"`
 }
 
 func (m *AlarmResponse) Reset()         { *m = AlarmResponse{} }
@@ -1286,12 +1335,17 @@ func (m *StatusRequest) String() string { return proto.CompactTextString(m) }
 func (*StatusRequest) ProtoMessage()    {}
 
 type StatusResponse struct {
-	Header    *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	Version   string          `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
-	DbSize    int64           `protobuf:"varint,3,opt,name=dbSize,proto3" json:"dbSize,omitempty"`
-	Leader    uint64          `protobuf:"varint,4,opt,name=leader,proto3" json:"leader,omitempty"`
-	RaftIndex uint64          `protobuf:"varint,5,opt,name=raftIndex,proto3" json:"raftIndex,omitempty"`
-	RaftTerm  uint64          `protobuf:"varint,6,opt,name=raftTerm,proto3" json:"raftTerm,omitempty"`
+	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
+	// version is the cluster protocol version used by the responding member.
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// dbSize is the size of the backend database, in bytes, of the responding member.
+	DbSize int64 `protobuf:"varint,3,opt,name=dbSize,proto3" json:"dbSize,omitempty"`
+	// leader is the member ID which the responding member believes is the current leader.
+	Leader uint64 `protobuf:"varint,4,opt,name=leader,proto3" json:"leader,omitempty"`
+	// raftIndex is the current raft index of the responding member.
+	RaftIndex uint64 `protobuf:"varint,5,opt,name=raftIndex,proto3" json:"raftIndex,omitempty"`
+	// raftTerm is the current raft term of the responding member.
+	RaftTerm uint64 `protobuf:"varint,6,opt,name=raftTerm,proto3" json:"raftTerm,omitempty"`
 }
 
 func (m *StatusResponse) Reset()         { *m = StatusResponse{} }
@@ -1343,6 +1397,7 @@ func (m *AuthUserGetRequest) String() string { return proto.CompactTextString(m)
 func (*AuthUserGetRequest) ProtoMessage()    {}
 
 type AuthUserDeleteRequest struct {
+	// name is the name of the user to delete.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -1351,7 +1406,9 @@ func (m *AuthUserDeleteRequest) String() string { return proto.CompactTextString
 func (*AuthUserDeleteRequest) ProtoMessage()    {}
 
 type AuthUserChangePasswordRequest struct {
-	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// name is the name of the user whose password is being changed.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// password is the new password for the user.
 	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 }
 
@@ -1360,7 +1417,9 @@ func (m *AuthUserChangePasswordRequest) String() string { return proto.CompactTe
 func (*AuthUserChangePasswordRequest) ProtoMessage()    {}
 
 type AuthUserGrantRequest struct {
+	// user is the name of the user which should be granted a given role.
 	User string `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	// role is the name of the role to grant to the user.
 	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
 }
 
@@ -1376,6 +1435,7 @@ func (m *AuthUserRevokeRequest) String() string { return proto.CompactTextString
 func (*AuthUserRevokeRequest) ProtoMessage()    {}
 
 type AuthRoleAddRequest struct {
+	// name is the name of the role to add to the authentication system.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 }
 
@@ -1398,7 +1458,9 @@ func (m *AuthRoleDeleteRequest) String() string { return proto.CompactTextString
 func (*AuthRoleDeleteRequest) ProtoMessage()    {}
 
 type AuthRoleGrantRequest struct {
-	Name string             `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// name is the name of the role which will be granted the permission.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// perm is the permission to grant to the role.
 	Perm *authpb.Permission `protobuf:"bytes,2,opt,name=perm" json:"perm,omitempty"`
 }
 
@@ -1718,23 +1780,24 @@ var _ grpc.ClientConn
 // Client API for KV service
 
 type KVClient interface {
-	// Range gets the keys in the range from the store.
+	// Range gets the keys in the range from the key-value store.
 	Range(ctx context.Context, in *RangeRequest, opts ...grpc.CallOption) (*RangeResponse, error)
-	// Put puts the given key into the store.
-	// A put request increases the revision of the store,
+	// Put puts the given key into the key-value store.
+	// A put request increments the revision of the key-value store
 	// and generates one event in the event history.
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error)
-	// Delete deletes the given range from the store.
-	// A delete request increase the revision of the store,
-	// and generates one event in the event history.
+	// Delete deletes the given range from the key-value store.
+	// A delete request increments the revision of the key-value store
+	// and generates a delete event in the event history for every deleted key.
 	DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts ...grpc.CallOption) (*DeleteRangeResponse, error)
-	// Txn processes all the requests in one transaction.
-	// A txn request increases the revision of the store,
-	// and generates events with the same revision in the event history.
+	// Txn processes multiple requests in a single transaction.
+	// A txn request increments the revision of the key-value store
+	// and generates events with the same revision for every completed request.
 	// It is not allowed to modify the same key several times within one txn.
 	Txn(ctx context.Context, in *TxnRequest, opts ...grpc.CallOption) (*TxnResponse, error)
-	// Compact compacts the event history in etcd. User should compact the
-	// event history periodically, or it will grow infinitely.
+	// Compact compacts the event history in the etcd key-value store. The key-value
+	// store should be periodically compacted or the event history will continue to grow
+	// indefinitely.
 	Compact(ctx context.Context, in *CompactionRequest, opts ...grpc.CallOption) (*CompactionResponse, error)
 }
 
@@ -1794,23 +1857,24 @@ func (c *kVClient) Compact(ctx context.Context, in *CompactionRequest, opts ...g
 // Server API for KV service
 
 type KVServer interface {
-	// Range gets the keys in the range from the store.
+	// Range gets the keys in the range from the key-value store.
 	Range(context.Context, *RangeRequest) (*RangeResponse, error)
-	// Put puts the given key into the store.
-	// A put request increases the revision of the store,
+	// Put puts the given key into the key-value store.
+	// A put request increments the revision of the key-value store
 	// and generates one event in the event history.
 	Put(context.Context, *PutRequest) (*PutResponse, error)
-	// Delete deletes the given range from the store.
-	// A delete request increase the revision of the store,
-	// and generates one event in the event history.
+	// Delete deletes the given range from the key-value store.
+	// A delete request increments the revision of the key-value store
+	// and generates a delete event in the event history for every deleted key.
 	DeleteRange(context.Context, *DeleteRangeRequest) (*DeleteRangeResponse, error)
-	// Txn processes all the requests in one transaction.
-	// A txn request increases the revision of the store,
-	// and generates events with the same revision in the event history.
+	// Txn processes multiple requests in a single transaction.
+	// A txn request increments the revision of the key-value store
+	// and generates events with the same revision for every completed request.
 	// It is not allowed to modify the same key several times within one txn.
 	Txn(context.Context, *TxnRequest) (*TxnResponse, error)
-	// Compact compacts the event history in etcd. User should compact the
-	// event history periodically, or it will grow infinitely.
+	// Compact compacts the event history in the etcd key-value store. The key-value
+	// store should be periodically compacted or the event history will continue to grow
+	// indefinitely.
 	Compact(context.Context, *CompactionRequest) (*CompactionResponse, error)
 }
 
@@ -1909,10 +1973,11 @@ var _KV_serviceDesc = grpc.ServiceDesc{
 // Client API for Watch service
 
 type WatchClient interface {
-	// Watch watches the events happening or happened. Both input and output
-	// are stream. One watch rpc can watch for multiple keys or prefixs and
-	// get a stream of events. The whole events history can be watched unless
-	// compacted.
+	// Watch watches for events happening or that have happened. Both input and output
+	// are streams; the input stream is for creating and canceling watchers and the output
+	// stream sends events. One watch RPC can watch on multiple key ranges, streaming events
+	// for several watches at once. The entire event history can be watched starting from the
+	// last compaction revision.
 	Watch(ctx context.Context, opts ...grpc.CallOption) (Watch_WatchClient, error)
 }
 
@@ -1958,10 +2023,11 @@ func (x *watchWatchClient) Recv() (*WatchResponse, error) {
 // Server API for Watch service
 
 type WatchServer interface {
-	// Watch watches the events happening or happened. Both input and output
-	// are stream. One watch rpc can watch for multiple keys or prefixs and
-	// get a stream of events. The whole events history can be watched unless
-	// compacted.
+	// Watch watches for events happening or that have happened. Both input and output
+	// are streams; the input stream is for creating and canceling watchers and the output
+	// stream sends events. One watch RPC can watch on multiple key ranges, streaming events
+	// for several watches at once. The entire event history can be watched starting from the
+	// last compaction revision.
 	Watch(Watch_WatchServer) error
 }
 
@@ -2012,14 +2078,14 @@ var _Watch_serviceDesc = grpc.ServiceDesc{
 // Client API for Lease service
 
 type LeaseClient interface {
-	// LeaseGrant creates a lease. A lease has a TTL. The lease will expire if the
-	// server does not receive a keepAlive within TTL from the lease holder.
-	// All keys attached to the lease will be expired and deleted if the lease expires.
-	// The key expiration generates an event in event history.
+	// LeaseGrant creates a lease which expires if the server does not receive a keepAlive
+	// within a given time to live period. All keys attached to the lease will be expired and
+	// deleted if the lease expires. Each expired key generates a delete event in the event history.
 	LeaseGrant(ctx context.Context, in *LeaseGrantRequest, opts ...grpc.CallOption) (*LeaseGrantResponse, error)
-	// LeaseRevoke revokes a lease. All the key attached to the lease will be expired and deleted.
+	// LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.
 	LeaseRevoke(ctx context.Context, in *LeaseRevokeRequest, opts ...grpc.CallOption) (*LeaseRevokeResponse, error)
-	// KeepAlive keeps the lease alive.
+	// LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client
+	// to the server and streaming keep alive responses from the server to the client.
 	LeaseKeepAlive(ctx context.Context, opts ...grpc.CallOption) (Lease_LeaseKeepAliveClient, error)
 }
 
@@ -2083,14 +2149,14 @@ func (x *leaseLeaseKeepAliveClient) Recv() (*LeaseKeepAliveResponse, error) {
 // Server API for Lease service
 
 type LeaseServer interface {
-	// LeaseGrant creates a lease. A lease has a TTL. The lease will expire if the
-	// server does not receive a keepAlive within TTL from the lease holder.
-	// All keys attached to the lease will be expired and deleted if the lease expires.
-	// The key expiration generates an event in event history.
+	// LeaseGrant creates a lease which expires if the server does not receive a keepAlive
+	// within a given time to live period. All keys attached to the lease will be expired and
+	// deleted if the lease expires. Each expired key generates a delete event in the event history.
 	LeaseGrant(context.Context, *LeaseGrantRequest) (*LeaseGrantResponse, error)
-	// LeaseRevoke revokes a lease. All the key attached to the lease will be expired and deleted.
+	// LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.
 	LeaseRevoke(context.Context, *LeaseRevokeRequest) (*LeaseRevokeResponse, error)
-	// KeepAlive keeps the lease alive.
+	// LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client
+	// to the server and streaming keep alive responses from the server to the client.
 	LeaseKeepAlive(Lease_LeaseKeepAliveServer) error
 }
 
@@ -2324,12 +2390,13 @@ type MaintenanceClient interface {
 	Alarm(ctx context.Context, in *AlarmRequest, opts ...grpc.CallOption) (*AlarmResponse, error)
 	// Status gets the status of the member.
 	Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	// Defragment defragments a member's backend database to recover storage space.
 	Defragment(ctx context.Context, in *DefragmentRequest, opts ...grpc.CallOption) (*DefragmentResponse, error)
 	// Hash returns the hash of the local KV state for consistency checking purpose.
 	// This is designed for testing; do not use this in production when there
 	// are ongoing transactions.
 	Hash(ctx context.Context, in *HashRequest, opts ...grpc.CallOption) (*HashResponse, error)
-	// Snapshot sends a snapshot of the entire backend
+	// Snapshot sends a snapshot of the entire backend from a member over a stream to a client.
 	Snapshot(ctx context.Context, in *SnapshotRequest, opts ...grpc.CallOption) (Maintenance_SnapshotClient, error)
 }
 
@@ -2416,12 +2483,13 @@ type MaintenanceServer interface {
 	Alarm(context.Context, *AlarmRequest) (*AlarmResponse, error)
 	// Status gets the status of the member.
 	Status(context.Context, *StatusRequest) (*StatusResponse, error)
+	// Defragment defragments a member's backend database to recover storage space.
 	Defragment(context.Context, *DefragmentRequest) (*DefragmentResponse, error)
 	// Hash returns the hash of the local KV state for consistency checking purpose.
 	// This is designed for testing; do not use this in production when there
 	// are ongoing transactions.
 	Hash(context.Context, *HashRequest) (*HashResponse, error)
-	// Snapshot sends a snapshot of the entire backend
+	// Snapshot sends a snapshot of the entire backend from a member over a stream to a client.
 	Snapshot(*SnapshotRequest, Maintenance_SnapshotServer) error
 }
 
@@ -2535,15 +2603,15 @@ type AuthClient interface {
 	AuthEnable(ctx context.Context, in *AuthEnableRequest, opts ...grpc.CallOption) (*AuthEnableResponse, error)
 	// AuthDisable disables authentication.
 	AuthDisable(ctx context.Context, in *AuthDisableRequest, opts ...grpc.CallOption) (*AuthDisableResponse, error)
-	// Authenticate processes authenticate request.
+	// Authenticate processes an authenticate request.
 	Authenticate(ctx context.Context, in *AuthenticateRequest, opts ...grpc.CallOption) (*AuthenticateResponse, error)
 	// UserAdd adds a new user.
 	UserAdd(ctx context.Context, in *AuthUserAddRequest, opts ...grpc.CallOption) (*AuthUserAddResponse, error)
-	// UserGet gets a detailed information of a user or lists entire users.
+	// UserGet gets detailed user information or lists all users.
 	UserGet(ctx context.Context, in *AuthUserGetRequest, opts ...grpc.CallOption) (*AuthUserGetResponse, error)
 	// UserDelete deletes a specified user.
 	UserDelete(ctx context.Context, in *AuthUserDeleteRequest, opts ...grpc.CallOption) (*AuthUserDeleteResponse, error)
-	// UserChangePassword changes password of a specified user.
+	// UserChangePassword changes the password of a specified user.
 	UserChangePassword(ctx context.Context, in *AuthUserChangePasswordRequest, opts ...grpc.CallOption) (*AuthUserChangePasswordResponse, error)
 	// UserGrant grants a role to a specified user.
 	UserGrant(ctx context.Context, in *AuthUserGrantRequest, opts ...grpc.CallOption) (*AuthUserGrantResponse, error)
@@ -2551,7 +2619,7 @@ type AuthClient interface {
 	UserRevoke(ctx context.Context, in *AuthUserRevokeRequest, opts ...grpc.CallOption) (*AuthUserRevokeResponse, error)
 	// RoleAdd adds a new role.
 	RoleAdd(ctx context.Context, in *AuthRoleAddRequest, opts ...grpc.CallOption) (*AuthRoleAddResponse, error)
-	// RoleGet gets a detailed information of a role or lists entire roles.
+	// RoleGet gets detailed role information or lists all roles.
 	RoleGet(ctx context.Context, in *AuthRoleGetRequest, opts ...grpc.CallOption) (*AuthRoleGetResponse, error)
 	// RoleDelete deletes a specified role.
 	RoleDelete(ctx context.Context, in *AuthRoleDeleteRequest, opts ...grpc.CallOption) (*AuthRoleDeleteResponse, error)
@@ -2702,15 +2770,15 @@ type AuthServer interface {
 	AuthEnable(context.Context, *AuthEnableRequest) (*AuthEnableResponse, error)
 	// AuthDisable disables authentication.
 	AuthDisable(context.Context, *AuthDisableRequest) (*AuthDisableResponse, error)
-	// Authenticate processes authenticate request.
+	// Authenticate processes an authenticate request.
 	Authenticate(context.Context, *AuthenticateRequest) (*AuthenticateResponse, error)
 	// UserAdd adds a new user.
 	UserAdd(context.Context, *AuthUserAddRequest) (*AuthUserAddResponse, error)
-	// UserGet gets a detailed information of a user or lists entire users.
+	// UserGet gets detailed user information or lists all users.
 	UserGet(context.Context, *AuthUserGetRequest) (*AuthUserGetResponse, error)
 	// UserDelete deletes a specified user.
 	UserDelete(context.Context, *AuthUserDeleteRequest) (*AuthUserDeleteResponse, error)
-	// UserChangePassword changes password of a specified user.
+	// UserChangePassword changes the password of a specified user.
 	UserChangePassword(context.Context, *AuthUserChangePasswordRequest) (*AuthUserChangePasswordResponse, error)
 	// UserGrant grants a role to a specified user.
 	UserGrant(context.Context, *AuthUserGrantRequest) (*AuthUserGrantResponse, error)
@@ -2718,7 +2786,7 @@ type AuthServer interface {
 	UserRevoke(context.Context, *AuthUserRevokeRequest) (*AuthUserRevokeResponse, error)
 	// RoleAdd adds a new role.
 	RoleAdd(context.Context, *AuthRoleAddRequest) (*AuthRoleAddResponse, error)
-	// RoleGet gets a detailed information of a role or lists entire roles.
+	// RoleGet gets detailed role information or lists all roles.
 	RoleGet(context.Context, *AuthRoleGetRequest) (*AuthRoleGetResponse, error)
 	// RoleDelete deletes a specified role.
 	RoleDelete(context.Context, *AuthRoleDeleteRequest) (*AuthRoleDeleteResponse, error)
