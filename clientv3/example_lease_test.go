@@ -76,7 +76,7 @@ func ExampleLease_revoke() {
 		log.Fatal(err)
 	}
 	fmt.Println("number of keys:", len(gresp.Kvs))
-	// number of keys: 0
+	// Output: number of keys: 0
 }
 
 func ExampleLease_keepAlive() {
@@ -100,10 +100,14 @@ func ExampleLease_keepAlive() {
 	}
 
 	// the key 'foo' will be kept forever
-	_, err = cli.KeepAlive(context.TODO(), resp.ID)
-	if err != nil {
-		log.Fatal(err)
+	ch, kaerr := cli.KeepAlive(context.TODO(), resp.ID)
+	if kaerr != nil {
+		log.Fatal(kaerr)
 	}
+
+	ka := <-ch
+	fmt.Println("ttl:", ka.TTL)
+	// Output: ttl: 5
 }
 
 func ExampleLease_keepAliveOnce() {
@@ -127,8 +131,11 @@ func ExampleLease_keepAliveOnce() {
 	}
 
 	// to renew the lease only once
-	_, err = cli.KeepAliveOnce(context.TODO(), resp.ID)
-	if err != nil {
-		log.Fatal(err)
+	ka, kaerr := cli.KeepAliveOnce(context.TODO(), resp.ID)
+	if kaerr != nil {
+		log.Fatal(kaerr)
 	}
+
+	fmt.Println("ttl:", ka.TTL)
+	// Output: ttl: 5
 }

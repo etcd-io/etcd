@@ -33,13 +33,11 @@ func ExampleKV_put() {
 	defer cli.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := cli.Put(ctx, "sample_key", "sample_value")
+	_, err = cli.Put(ctx, "sample_key", "sample_value")
 	cancel()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("current revision:", resp.Header.Revision) // revision start at 1
-	// current revision: 2
 }
 
 func ExampleKV_get() {
@@ -66,7 +64,7 @@ func ExampleKV_get() {
 	for _, ev := range resp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
-	// foo : bar
+	// Output: foo : bar
 }
 
 func ExampleKV_getWithRev() {
@@ -79,7 +77,7 @@ func ExampleKV_getWithRev() {
 	}
 	defer cli.Close()
 
-	_, err = cli.Put(context.TODO(), "foo", "bar1")
+	presp, err := cli.Put(context.TODO(), "foo", "bar1")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,7 +87,7 @@ func ExampleKV_getWithRev() {
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := cli.Get(ctx, "foo", clientv3.WithRev(2))
+	resp, err := cli.Get(ctx, "foo", clientv3.WithRev(presp.Header.Revision))
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -97,7 +95,7 @@ func ExampleKV_getWithRev() {
 	for _, ev := range resp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
-	// foo : bar1
+	// Output: foo : bar1
 }
 
 func ExampleKV_getSortedPrefix() {
@@ -128,6 +126,7 @@ func ExampleKV_getSortedPrefix() {
 	for _, ev := range resp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
+	// Output:
 	// key_2 : value
 	// key_1 : value
 	// key_0 : value
@@ -144,13 +143,23 @@ func ExampleKV_delete() {
 	defer cli.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := cli.Delete(ctx, "key", clientv3.WithPrefix())
-	cancel()
+	defer cancel()
+
+	// count keys about to be deleted
+	gresp, err := cli.Get(ctx, "key", clientv3.WithPrefix())
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Deleted", resp.Deleted, "keys")
-	// Deleted n keys
+
+	// delete the keys
+	dresp, err := cli.Delete(ctx, "key", clientv3.WithPrefix())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Deleted all keys:", int64(len(gresp.Kvs)) == dresp.Deleted)
+	// Output:
+	// Deleted all keys: true
 }
 
 func ExampleKV_compact() {
@@ -215,7 +224,7 @@ func ExampleKV_txn() {
 	for _, ev := range gresp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
-	// key : XYZ
+	// Output: key : XYZ
 }
 
 func ExampleKV_do() {
