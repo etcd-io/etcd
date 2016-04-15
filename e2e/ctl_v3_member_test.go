@@ -14,9 +14,18 @@
 
 package e2e
 
-import "testing"
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"strings"
+	"testing"
 
-func TestCtlV3MemberList(t *testing.T) { testCtl(t, memberListTest) }
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+)
+
+func TestCtlV3MemberList(t *testing.T)   { testCtl(t, memberListTest) }
+func TestCtlV3MemberRemove(t *testing.T) { testCtl(t, memberRemoveTest, withQuorum()) }
 
 func memberListTest(cx ctlCtx) {
 	if err := ctlV3MemberList(cx); err != nil {
@@ -31,4 +40,64 @@ func ctlV3MemberList(cx ctlCtx) error {
 		lines[i] = "started"
 	}
 	return spawnWithExpects(cmdArgs, lines...)
+}
+
+func getMemberList(cx ctlCtx) (etcdserverpb.MemberListResponse, error) {
+	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "member", "list")
+
+	proc, err := spawnCmd(cmdArgs)
+	if err != nil {
+		return etcdserverpb.MemberListResponse{}, err
+	}
+	var txt string
+	txt, err = proc.Expect("members")
+	if err != nil {
+		return etcdserverpb.MemberListResponse{}, err
+	}
+	if err = proc.Close(); err != nil {
+		return etcdserverpb.MemberListResponse{}, err
+	}
+
+	resp := etcdserverpb.MemberListResponse{}
+	dec := json.NewDecoder(strings.NewReader(txt))
+	if err := dec.Decode(&resp); err == io.EOF {
+		return etcdserverpb.MemberListResponse{}, err
+	}
+	return resp, nil
+}
+
+func memberRemoveTest(cx ctlCtx) {
+	n1 := cx.cfg.clusterSize
+	if n1 < 2 {
+		cx.t.Fatalf("%d-node is too small to test 'member remove'", n1)
+	}
+	resp, err := getMemberList(cx)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	if n1 != len(resp.Members) {
+		cx.t.Fatalf("expected %d, got %d", n1, len(resp.Members))
+	}
+
+	var (
+		n2            = n1 - 1
+		memIDToRemove = fmt.Sprintf("%x", resp.Header.MemberId)
+		cluserID      = fmt.Sprintf("%x", resp.Header.ClusterId)
+	)
+	if err = ctlV3MemberRemove(cx, memIDToRemove, cluserID); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	resp, err = getMemberList(cx)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	if n2 != len(resp.Members) {
+		cx.t.Fatalf("expected %d, got %d", n2, len(resp.Members))
+	}
+}
+
+func ctlV3MemberRemove(cx ctlCtx, memberID, clusterID string) error {
+	cmdArgs := append(cx.PrefixArgs(), "member", "remove", memberID)
+	return spawnWithExpect(cmdArgs, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
 }
