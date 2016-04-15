@@ -39,7 +39,7 @@ func ExampleLease_grant() {
 	}
 
 	// after 5 seconds, the key 'foo' will be removed
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,13 +60,13 @@ func ExampleLease_revoke() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// revoking lease expires the key attached to its lease ID
-	_, err = cli.Revoke(context.TODO(), clientv3.LeaseID(resp.ID))
+	_, err = cli.Revoke(context.TODO(), resp.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -94,13 +94,13 @@ func ExampleLease_keepAlive() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// the key 'foo' will be kept forever
-	_, err = cli.KeepAlive(context.TODO(), clientv3.LeaseID(resp.ID))
+	_, err = cli.KeepAlive(context.TODO(), resp.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -121,13 +121,13 @@ func ExampleLease_keepAliveOnce() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// to renew the lease only once
-	_, err = cli.KeepAliveOnce(context.TODO(), clientv3.LeaseID(resp.ID))
+	_, err = cli.KeepAliveOnce(context.TODO(), resp.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
