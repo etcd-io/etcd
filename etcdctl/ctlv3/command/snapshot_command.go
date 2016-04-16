@@ -127,6 +127,7 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		exiterr := fmt.Errorf("could not rename %s to %s (%v)", partpath, path, rerr)
 		ExitWithError(ExitIO, exiterr)
 	}
+	fmt.Printf("Snapshot saved at %s\n", path)
 }
 
 func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
