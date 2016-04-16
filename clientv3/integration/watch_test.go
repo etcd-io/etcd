@@ -452,7 +452,7 @@ func TestWatchEventType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lease create failed: %v", err)
 	}
-	if _, err := client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(clientv3.LeaseID(lcr.ID))); err != nil {
+	if _, err := client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(lcr.ID)); err != nil {
 		t.Fatalf("Put failed: %v", err)
 	}
 
