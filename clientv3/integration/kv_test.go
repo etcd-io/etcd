@@ -50,7 +50,7 @@ func TestKVPut(t *testing.T) {
 		leaseID  clientv3.LeaseID
 	}{
 		{"foo", "bar", clientv3.NoLease},
-		{"hello", "world", clientv3.LeaseID(resp.ID)},
+		{"hello", "world", resp.ID},
 	}
 
 	for i, tt := range tests {
