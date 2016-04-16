@@ -333,7 +333,6 @@ func (s *store) restore() error {
 		log.Printf("storage: restore compact to %d", s.compactMainRev)
 	}
 
-	// TODO: limit N to reduce max memory usage
 	keys, vals := tx.UnsafeRange(keyBucketName, min, max, 0)
 	for i, key := range keys {
 		var kv storagepb.KeyValue
