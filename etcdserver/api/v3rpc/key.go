@@ -185,11 +185,10 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 		if preq == nil {
 			continue
 		}
-		key := string(preq.Key)
-		if _, ok := keys[key]; ok {
+		if _, ok := keys[string(preq.Key)]; ok {
 			return rpctypes.ErrDuplicateKey
 		}
-		keys[key] = struct{}{}
+		keys[string(preq.Key)] = struct{}{}
 	}
 
 	// no need to check deletes if no puts; delete overlaps are permitted
@@ -214,13 +213,12 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 		if dreq == nil {
 			continue
 		}
-		key := string(dreq.Key)
 		if dreq.RangeEnd == nil {
-			if _, found := keys[key]; found {
+			if _, found := keys[string(dreq.Key)]; found {
 				return rpctypes.ErrDuplicateKey
 			}
 		} else {
-			lo := sort.SearchStrings(sortedKeys, key)
+			lo := sort.SearchStrings(sortedKeys, string(dreq.Key))
 			hi := sort.SearchStrings(sortedKeys, string(dreq.RangeEnd))
 			if lo != hi {
 				// element between lo and hi => overlap
