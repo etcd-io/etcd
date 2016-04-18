@@ -73,6 +73,7 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 			continue
 		}
 		b, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			if logerr {
 				plog.Warningf("could not read the body of cluster response: %v", err)
