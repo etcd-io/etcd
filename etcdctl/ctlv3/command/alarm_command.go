@@ -69,7 +69,7 @@ func NewAlarmListCommand() *cobra.Command {
 // alarmListCommandFunc executes the "alarm list" command.
 func alarmListCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("alarm disarm command accepts no arguments"))
+		ExitWithError(ExitBadArgs, fmt.Errorf("alarm list command accepts no arguments"))
 	}
 	ctx, cancel := commandCtx(cmd)
 	resp, err := mustClientFromCmd(cmd).AlarmList(ctx)
