@@ -28,6 +28,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -121,7 +122,7 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitInterrupted, rerr)
 	}
 
-	f.Sync()
+	fileutil.Fsync(f)
 
 	if rerr := os.Rename(partpath, path); rerr != nil {
 		exiterr := fmt.Errorf("could not rename %s to %s (%v)", partpath, path, rerr)
