@@ -53,6 +53,7 @@ func (x Event_EventType) String() string {
 }
 
 type KeyValue struct {
+	// key is the key in bytes. An empty key is not allowed.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// create_revision is the revision of last creation on this key.
 	CreateRevision int64 `protobuf:"varint,2,opt,name=create_revision,proto3" json:"create_revision,omitempty"`
@@ -61,10 +62,12 @@ type KeyValue struct {
 	// version is the version of the key. A deletion resets
 	// the version to zero and any modification of the key
 	// increases its version.
-	Version int64  `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
-	Value   []byte `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
+	Version int64 `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
+	// value is the value held by the key, in bytes.
+	Value []byte `protobuf:"bytes,5,opt,name=value,proto3" json:"value,omitempty"`
 	// lease is the ID of the lease that attached to key.
 	// When the attached lease expires, the key will be deleted.
+	// If lease is 0, then no lease is attached to the key.
 	Lease int64 `protobuf:"varint,6,opt,name=lease,proto3" json:"lease,omitempty"`
 }
 
@@ -73,7 +76,11 @@ func (m *KeyValue) String() string { return proto.CompactTextString(m) }
 func (*KeyValue) ProtoMessage()    {}
 
 type Event struct {
+	// type is the kind of event. If type is a PUT, it indicates
+	// new data has been stored to the key. If type is a DELETE,
+	// it indicates the key was deleted.
 	Type Event_EventType `protobuf:"varint,1,opt,name=type,proto3,enum=storagepb.Event_EventType" json:"type,omitempty"`
+	// kv holds the KeyValue for the event.
 	// A PUT event contains current kv pair.
 	// A PUT event with kv.Version=1 indicates the creation of a key.
 	// A DELETE/EXPIRE event contains the deleted key with
