@@ -137,6 +137,7 @@ The total state machine handling loop will look something like this:
           cc.Unmarshal(entry.Data)
           s.Node.ApplyConfChange(cc)
         }
+      }
       s.Node.Advance()
     case <-s.done:
       return
