@@ -181,3 +181,63 @@ compacted revision 5
 $ etcdctl get --rev=4 foo
 Error:  rpc error: code = 11 desc = etcdserver: storage: required revision has been compacted
 ```
+
+## Grant leases
+
+Applications can grant leases for keys from an etcd cluster. When a key is attached to a lease, its lifetime is bound to the lease's lifetime which in turn is governed by a time-to-live (TTL). Each lease has a minimum time-to-live (TTL) value specified by the application at grant time. The lease's actual TTL value is at least the minimum TTL and is chosen by the etcd cluster. Once a lease's TTL elapses, the lease expires and all attached keys are deleted.
+
+Here is the command to grant a lease:
+
+```
+# grant a lease with 10 second TTL
+$ etcdctl lease grant 10
+lease 32695410dcc0ca06 granted with TTL(10s)
+
+# attach key foo to lease 32695410dcc0ca06
+$ etcdctl put --lease=32695410dcc0ca06 foo bar
+OK
+```
+
+## Revoke leases
+
+Applications revoke leases by lease ID. Revoking a lease deletes all of its attached keys.
+
+Suppose we finished the following sequence of operations:
+
+```
+$ etcdctl lease grant 10
+lease 32695410dcc0ca06 granted with TTL(10s)
+$ etcdctl put --lease=32695410dcc0ca06 foo bar
+OK
+```
+
+Here is the command to revoke the same lease:
+
+```
+$ etcdctl lease revoke 32695410dcc0ca06
+lease 32695410dcc0ca06 revoked
+
+$ etcdctl get foo
+# empty response since foo is deleted due to lease revocation
+```
+
+## Keep leases alive
+
+Applications can keep a lease alive by refreshing its TTL so it does not expire.
+
+Suppose we finished the following sequence of operations:
+
+```
+$ etcdctl lease grant 10
+lease 32695410dcc0ca06 granted with TTL(10s)
+```
+
+Here is the command to keep the same lease alive:
+
+```
+$ etcdctl lease keep-alive 32695410dcc0ca0
+lease 32695410dcc0ca0 keepalived with TTL(100)
+lease 32695410dcc0ca0 keepalived with TTL(100)
+lease 32695410dcc0ca0 keepalived with TTL(100)
+...
+```
