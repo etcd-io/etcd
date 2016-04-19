@@ -78,7 +78,7 @@ func Repair(dirpath string) bool {
 				plog.Errorf("could not repair %v, failed to truncate file", f.Name())
 				return false
 			}
-			if err = f.Sync(); err != nil {
+			if err = fileutil.Fsync(f); err != nil {
 				plog.Errorf("could not repair %v, failed to sync file", f.Name())
 				return false
 			}

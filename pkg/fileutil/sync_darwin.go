@@ -12,18 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !linux,!darwin
+// +build darwin
 
 package fileutil
 
-import "os"
+import (
+	"os"
+	"syscall"
+)
 
-// Fsync is a wrapper around file.Sync(). Special handling is needed on darwin platform.
+// Fsync on HFS/OSX flushes the data on to the physical drive but the drive
+// may not write it to the persistent media for quite sometime and it may be
+// written in out-of-order sequence. Using F_FULLFSYNC ensures that the
+// physical drive's buffer will also get flushed to the media.
 func Fsync(f *os.File) error {
-	return f.Sync()
+	_, _, errno := syscall.Syscall(syscall.SYS_FCNTL, f.Fd(), uintptr(syscall.F_FULLFSYNC), uintptr(0))
+	if errno == 0 {
+		return nil
+	}
+	return errno
 }
 
-// Fdatasync is a wrapper around file.Sync(). Special handling is needed on linux platform.
+// Fdatasync on darwin platform invokes fcntl(F_FULLFSYNC) for actual persistence
+// on physical drive media.
 func Fdatasync(f *os.File) error {
-	return f.Sync()
+	return Fsync(f)
 }
