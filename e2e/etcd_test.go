@@ -129,12 +129,13 @@ type etcdProcessConfig struct {
 }
 
 type etcdProcessClusterConfig struct {
-	clusterSize   int
-	proxySize     int
-	clientTLS     clientConnType
-	isPeerTLS     bool
-	isPeerAutoTLS bool
-	initialToken  string
+	clusterSize       int
+	proxySize         int
+	clientTLS         clientConnType
+	isPeerTLS         bool
+	isPeerAutoTLS     bool
+	initialToken      string
+	quotaBackendBytes int64
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -237,6 +238,11 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			"--initial-advertise-peer-urls", purl.String(),
 			"--initial-cluster-token", cfg.initialToken,
 			"--data-dir", dataDirPath,
+		}
+		if cfg.quotaBackendBytes > 0 {
+			args = append(args,
+				"--quota-backend-bytes", fmt.Sprintf("%d", cfg.quotaBackendBytes),
+			)
 		}
 
 		args = append(args, cfg.tlsArgs()...)
