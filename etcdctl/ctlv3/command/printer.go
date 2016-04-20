@@ -163,12 +163,8 @@ func (s *simplePrinter) DBStatus(ds dbstatus) {
 
 type jsonPrinter struct{}
 
-func (p *jsonPrinter) Del(r v3.DeleteResponse) { printJSON(r) }
-func (p *jsonPrinter) Get(r v3.GetResponse) {
-	for _, kv := range r.Kvs {
-		printJSON(kv)
-	}
-}
+func (p *jsonPrinter) Del(r v3.DeleteResponse)            { printJSON(r) }
+func (p *jsonPrinter) Get(r v3.GetResponse)               { printJSON(r) }
 func (p *jsonPrinter) Put(r v3.PutResponse)               { printJSON(r) }
 func (p *jsonPrinter) Txn(r v3.TxnResponse)               { printJSON(r) }
 func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }

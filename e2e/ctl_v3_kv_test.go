@@ -100,7 +100,7 @@ func getFormatTest(cx ctlCtx) {
 		wstr string
 	}{
 		{"simple", "abc"},
-		{"json", "\"key\":\"YWJj\""},
+		{"json", `"kvs":[{"key":"YWJj"`},
 		{"protobuf", "\x17\b\x93\xe7\xf6\x93\xd4ņ\xe14\x10\xed"},
 	}
 
