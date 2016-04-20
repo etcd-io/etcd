@@ -160,6 +160,7 @@ func (t *batchTx) commit(stop bool) {
 	// commit the last tx
 	if t.tx != nil {
 		if t.pending == 0 && !stop {
+			atomic.StoreInt64(&t.backend.size, t.tx.Size())
 			return
 		}
 		err = t.tx.Commit()

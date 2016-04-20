@@ -129,6 +129,17 @@ func TestBackendDefrag(t *testing.T) {
 	tx.Unlock()
 	b.ForceCommit()
 
+	// remove some keys to ensure the disk space will be reclaimed after defrag
+	tx = b.BatchTx()
+	tx.Lock()
+	for i := 0; i < 50; i++ {
+		tx.UnsafeDelete([]byte("test"), []byte(fmt.Sprintf("foo_%d", i)))
+	}
+	tx.Unlock()
+	b.ForceCommit()
+
+	size := b.Size()
+
 	// shrink and check hash
 	oh, err := b.Hash()
 	if err != nil {
@@ -146,6 +157,11 @@ func TestBackendDefrag(t *testing.T) {
 	}
 	if oh != nh {
 		t.Errorf("hash = %v, want %v", nh, oh)
+	}
+
+	nsize := b.Size()
+	if nsize >= size {
+		t.Errorf("new size = %v, want < %d", nsize, size)
 	}
 
 	// try put more keys after shrink.
