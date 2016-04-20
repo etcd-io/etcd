@@ -38,8 +38,10 @@ func ctlV3Version(cx ctlCtx) error {
 }
 
 type ctlCtx struct {
-	t   *testing.T
-	cfg etcdProcessClusterConfig
+	t                 *testing.T
+	cfg               etcdProcessClusterConfig
+	quotaBackendBytes int64
+
 	epc *etcdProcessCluster
 
 	dialTimeout time.Duration
@@ -72,6 +74,10 @@ func withInteractive() ctlOption {
 	return func(cx *ctlCtx) { cx.interactive = true }
 }
 
+func withQuota(b int64) ctlOption {
+	return func(cx *ctlCtx) { cx.quotaBackendBytes = b }
+}
+
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	defer testutil.AfterTest(t)
 
@@ -87,6 +93,10 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	if !ret.quorum {
 		ret.cfg = *configStandalone(ret.cfg)
 	}
+	if ret.quotaBackendBytes > 0 {
+		ret.cfg.quotaBackendBytes = ret.quotaBackendBytes
+	}
+
 	epc, err := newEtcdProcessCluster(&ret.cfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
