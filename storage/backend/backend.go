@@ -251,6 +251,8 @@ func (b *backend) Defrag() error {
 	if err != nil {
 		log.Fatalf("backend: cannot begin tx (%s)", err)
 	}
+	// commit to update metadata like db.size
+	b.batchTx.commit(false)
 
 	return nil
 }
