@@ -80,7 +80,7 @@ TODO: add consistency, from, prefix
 
 ##### JSON reply
 
-The JSON encoding of the [RPC message][etcdrpc] for a key-value pair for each fetched key-value.
+The JSON encoding of the [RPC response][etcdrpc] for the GET's Range request.
 
 ##### Protobuf reply
 
