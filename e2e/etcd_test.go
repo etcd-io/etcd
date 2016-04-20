@@ -130,6 +130,7 @@ type etcdProcessConfig struct {
 
 type etcdProcessClusterConfig struct {
 	clusterSize       int
+	basePort          int
 	proxySize         int
 	clientTLS         clientConnType
 	isPeerTLS         bool
@@ -196,6 +197,10 @@ func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
 }
 
 func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
+	if cfg.basePort == 0 {
+		cfg.basePort = etcdProcessBasePort
+	}
+
 	clientScheme := "http"
 	if cfg.clientTLS == clientTLS {
 		clientScheme = "https"
@@ -210,7 +215,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 	for i := 0; i < cfg.clusterSize; i++ {
 		var curls []string
 		var curl, curltls string
-		port := etcdProcessBasePort + 2*i
+		port := cfg.basePort + 2*i
 
 		switch cfg.clientTLS {
 		case clientNonTLS, clientTLS:
@@ -255,7 +260,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		}
 	}
 	for i := 0; i < cfg.proxySize; i++ {
-		port := etcdProcessBasePort + 2*cfg.clusterSize + i + 1
+		port := cfg.basePort + 2*cfg.clusterSize + i + 1
 		curl := url.URL{Scheme: clientScheme, Host: fmt.Sprintf("localhost:%d", port)}
 		name := fmt.Sprintf("testname-proxy%d", i)
 		dataDirPath, derr := ioutil.TempDir("", name+".etcd")
