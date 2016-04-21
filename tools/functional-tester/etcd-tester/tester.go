@@ -38,7 +38,10 @@ func (tt *tester) runLoop() {
 		tt.status.setRound(i)
 		roundTotalCounter.Inc()
 
-		var currentRevision int64
+		var (
+			currentRevision int64
+			success         bool
+		)
 		for j, f := range tt.failures {
 			caseTotalCounter.WithLabelValues(f.Desc()).Inc()
 
@@ -50,7 +53,7 @@ func (tt *tester) runLoop() {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
-				continue
+				break
 			}
 			plog.Printf("[round#%d case#%d] start failure %s", i, j, f.Desc())
 
@@ -61,7 +64,7 @@ func (tt *tester) runLoop() {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
-				continue
+				break
 			}
 			plog.Printf("[round#%d case#%d] injected failure", i, j)
 
@@ -72,7 +75,7 @@ func (tt *tester) runLoop() {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
-				continue
+				break
 			}
 			plog.Printf("[round#%d case#%d] recovered failure", i, j)
 
@@ -109,23 +112,23 @@ func (tt *tester) runLoop() {
 				plog.Printf("[round#%d case#%d.%d] inconsistent current revisions %+v", i, j, k, revs)
 			}
 			if !ok || rerr != nil {
-				plog.Printf("[round#%d case#%d] checking current revisions failed (%v)", i, j, revs)
+				plog.Printf("[round#%d case#%d] checking current revisions failed [revisions: %v]", i, j, revs)
 				if err := tt.cleanup(i, j); err != nil {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
-				continue
+				break
 			}
-			plog.Printf("[round#%d case#%d] all members are consistent with current revisions", i, j)
+			plog.Printf("[round#%d case#%d] all members are consistent with current revisions [revisions: %v]", i, j, revs)
 
 			plog.Printf("[round#%d case#%d] checking current storage hashes...", i, j)
 			if _, ok = getSameValue(hashes); !ok {
-				plog.Printf("[round#%d case#%d] checking current storage hashes failed (%v)", i, j, hashes)
+				plog.Printf("[round#%d case#%d] checking current storage hashes failed [hashes: %v]", i, j, hashes)
 				if err := tt.cleanup(i, j); err != nil {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
-				continue
+				break
 			}
 			plog.Printf("[round#%d case#%d] all members are consistent with storage hashes", i, j)
 
@@ -135,8 +138,12 @@ func (tt *tester) runLoop() {
 			}
 
 			plog.Printf("[round#%d case#%d] succeed!", i, j)
+			success = true
 		}
 
+		if !success {
+			continue
+		}
 		revToCompact := max(0, currentRevision-10000)
 		plog.Printf("[round#%d] compacting storage at %d (current revision %d)", i, revToCompact, currentRevision)
 		if err := tt.cluster.compactKV(revToCompact); err != nil {
