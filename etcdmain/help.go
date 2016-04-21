@@ -51,7 +51,8 @@ member flags:
 		maximum number of wal files to retain (0 is unlimited).
 	--cors ''
 		comma-separated whitelist of origins for CORS (cross-origin resource sharing).
-
+	--quota-backend-bytes '0'
+		raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
 
 clustering flags:
 
