@@ -53,6 +53,7 @@ type Lessor interface {
 
 type Authenticator interface {
 	AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error)
+	Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error)
 	UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 	UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
 	UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
@@ -210,6 +211,14 @@ func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*
 		return nil, err
 	}
 	return result.resp.(*pb.AuthEnableResponse), result.err
+}
+
+func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Authenticate: r})
+	if err != nil {
+		return nil, err
+	}
+	return result.resp.(*pb.AuthenticateResponse), result.err
 }
 
 func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {

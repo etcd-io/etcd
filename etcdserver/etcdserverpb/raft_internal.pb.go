@@ -38,7 +38,8 @@ type InternalRaftRequest struct {
 	AuthUserGrant          *AuthUserGrantRequest          `protobuf:"bytes,14,opt,name=auth_user_grant" json:"auth_user_grant,omitempty"`
 	AuthRoleAdd            *AuthRoleAddRequest            `protobuf:"bytes,15,opt,name=auth_role_add" json:"auth_role_add,omitempty"`
 	AuthRoleGrant          *AuthRoleGrantRequest          `protobuf:"bytes,16,opt,name=auth_role_grant" json:"auth_role_grant,omitempty"`
-	Alarm                  *AlarmRequest                  `protobuf:"bytes,17,opt,name=alarm" json:"alarm,omitempty"`
+	Authenticate           *AuthenticateRequest           `protobuf:"bytes,17,opt,name=authenticate" json:"authenticate,omitempty"`
+	Alarm                  *AlarmRequest                  `protobuf:"bytes,18,opt,name=alarm" json:"alarm,omitempty"`
 }
 
 func (m *InternalRaftRequest) Reset()         { *m = InternalRaftRequest{} }
@@ -228,17 +229,29 @@ func (m *InternalRaftRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n15
 	}
-	if m.Alarm != nil {
+	if m.Authenticate != nil {
 		data[i] = 0x8a
 		i++
 		data[i] = 0x1
 		i++
-		i = encodeVarintRaftInternal(data, i, uint64(m.Alarm.Size()))
-		n16, err := m.Alarm.MarshalTo(data[i:])
+		i = encodeVarintRaftInternal(data, i, uint64(m.Authenticate.Size()))
+		n16, err := m.Authenticate.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n16
+	}
+	if m.Alarm != nil {
+		data[i] = 0x92
+		i++
+		data[i] = 0x1
+		i++
+		i = encodeVarintRaftInternal(data, i, uint64(m.Alarm.Size()))
+		n17, err := m.Alarm.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n17
 	}
 	return i, nil
 }
@@ -352,6 +365,10 @@ func (m *InternalRaftRequest) Size() (n int) {
 	}
 	if m.AuthRoleGrant != nil {
 		l = m.AuthRoleGrant.Size()
+		n += 2 + l + sovRaftInternal(uint64(l))
+	}
+	if m.Authenticate != nil {
+		l = m.Authenticate.Size()
 		n += 2 + l + sovRaftInternal(uint64(l))
 	}
 	if m.Alarm != nil {
@@ -924,6 +941,39 @@ func (m *InternalRaftRequest) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 17:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Authenticate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaftInternal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRaftInternal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Authenticate == nil {
+				m.Authenticate = &AuthenticateRequest{}
+			}
+			if err := m.Authenticate.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 18:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Alarm", wireType)
 			}

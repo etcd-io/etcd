@@ -40,11 +40,18 @@ var (
 	ErrUserNotFound     = errors.New("auth: user not found")
 	ErrRoleAlreadyExist = errors.New("auth: role already exists")
 	ErrRoleNotFound     = errors.New("auth: role not found")
+	ErrAuthFailed       = errors.New("auth: authentication failed, invalid user ID or password")
 )
 
 type AuthStore interface {
 	// AuthEnable() turns on the authentication feature
 	AuthEnable()
+
+	// Authenticate() does authentication based on given user name and password,
+	// and returns a token for successful case.
+	// Note that the generated token is valid only for the member the client
+	// connected to within fixed time duration. Reauth is required after the duration.
+	Authenticate(name string, password string) (*pb.AuthenticateResponse, error)
 
 	// Recover recovers the state of auth store from the given backend
 	Recover(b backend.Backend)
@@ -83,6 +90,38 @@ func (as *authStore) AuthEnable() {
 	b.ForceCommit()
 
 	plog.Noticef("Authentication enabled")
+}
+
+func (as *authStore) Authenticate(name string, password string) (*pb.AuthenticateResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(name), nil, 0)
+	if len(vs) != 1 {
+		plog.Noticef("authentication failed, user %s doesn't exist", name)
+		return &pb.AuthenticateResponse{}, ErrAuthFailed
+	}
+
+	user := &authpb.User{}
+	err := user.Unmarshal(vs[0])
+	if err != nil {
+		return nil, err
+	}
+
+	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
+		plog.Noticef("authentication failed, invalid password for user %s", name)
+		return &pb.AuthenticateResponse{}, ErrAuthFailed
+	}
+
+	token, err := genSimpleTokenForUser(name)
+	if err != nil {
+		plog.Errorf("failed to generate simple token: %s", err)
+		return nil, err
+	}
+
+	plog.Infof("authorized %s, token is %s", name, token)
+	return &pb.AuthenticateResponse{Token: token}, nil
 }
 
 func (as *authStore) Recover(be backend.Backend) {
