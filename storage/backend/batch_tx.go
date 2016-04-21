@@ -160,6 +160,8 @@ func (t *batchTx) commit(stop bool) {
 	// commit the last tx
 	if t.tx != nil {
 		if t.pending == 0 && !stop {
+			t.backend.mu.RLock()
+			defer t.backend.mu.RUnlock()
 			atomic.StoreInt64(&t.backend.size, t.tx.Size())
 			return
 		}

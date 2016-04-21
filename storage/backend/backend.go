@@ -201,6 +201,18 @@ func (b *backend) Commits() int64 {
 }
 
 func (b *backend) Defrag() error {
+	err := b.defrag()
+	if err != nil {
+		return err
+	}
+
+	// commit to update metadata like db.size
+	b.batchTx.Commit()
+
+	return nil
+}
+
+func (b *backend) defrag() error {
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then
 	// close previous ongoing tx.
@@ -251,8 +263,6 @@ func (b *backend) Defrag() error {
 	if err != nil {
 		log.Fatalf("backend: cannot begin tx (%s)", err)
 	}
-	// commit to update metadata like db.size
-	b.batchTx.commit(false)
 
 	return nil
 }
