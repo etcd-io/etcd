@@ -203,6 +203,10 @@ type EtcdServer struct {
 	// count the number of inflight snapshots.
 	// MUST use atomic operation to access this field.
 	inflightSnapshots int64
+
+	// wg is used to wait for the go routines that depends on the server state
+	// to exit when stopping the server.
+	wg sync.WaitGroup
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -517,6 +521,8 @@ func (s *EtcdServer) run() {
 	defer func() {
 		s.r.stop()
 		sched.Stop()
+
+		s.wg.Wait()
 
 		// kv, lessor and backend can be nil if running without v3 enabled
 		// or running unit tests.
@@ -1162,7 +1168,10 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	clone := s.store.Clone()
 
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
+
 		d, err := clone.SaveNoCopy()
 		// TODO: current store will never fail to do a snapshot
 		// what should we do if the store might fail?
