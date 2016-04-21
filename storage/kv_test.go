@@ -771,9 +771,6 @@ func TestWatchableKVWatch(t *testing.T) {
 		if !reflect.DeepEqual(ev, wev[0]) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev[0])
 		}
-	case <-time.After(5 * time.Second):
-		// CPU might be too slow, and the routine is not able to switch around
-		testutil.FatalStack(t, "failed to watch the event")
 	}
 
 	s.Put([]byte("foo1"), []byte("bar1"), 2)
@@ -786,8 +783,6 @@ func TestWatchableKVWatch(t *testing.T) {
 		if !reflect.DeepEqual(ev, wev[1]) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev[1])
 		}
-	case <-time.After(5 * time.Second):
-		testutil.FatalStack(t, "failed to watch the event")
 	}
 
 	w = s.NewWatchStream()
@@ -802,8 +797,6 @@ func TestWatchableKVWatch(t *testing.T) {
 		if !reflect.DeepEqual(ev, wev[1]) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev[1])
 		}
-	case <-time.After(5 * time.Second):
-		testutil.FatalStack(t, "failed to watch the event")
 	}
 
 	s.Put([]byte("foo1"), []byte("bar11"), 3)
@@ -816,8 +809,6 @@ func TestWatchableKVWatch(t *testing.T) {
 		if !reflect.DeepEqual(ev, wev[2]) {
 			t.Errorf("watched event = %+v, want %+v", ev, wev[2])
 		}
-	case <-time.After(5 * time.Second):
-		testutil.FatalStack(t, "failed to watch the event")
 	}
 }
 
