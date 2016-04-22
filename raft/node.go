@@ -325,7 +325,7 @@ func (n *node) run(r *raft) {
 				// block incoming proposal when local node is
 				// removed
 				if cc.NodeID == r.id {
-					n.propc = nil
+					propc = nil
 				}
 				r.removeNode(cc.NodeID)
 			case pb.ConfChangeUpdateNode:
