@@ -56,3 +56,32 @@ for dir in ${DIRS}; do
 		goimports -w *.pb.go
 	popd
 done
+
+
+# install protodoc
+# go get -v -u github.com/coreos/protodoc
+#
+# by default, do not run this option.
+# only run when './scripts/genproto.sh -g'
+#
+if [ "$1" = "-g" ]; then
+	echo "protodoc is auto-generating Protocol Buffer documentation..."
+	go get -v -u github.com/coreos/protodoc
+	SHA_PROTODOC="4cd8db83c5595ac514169fda607d1ccb5eef669b"
+	PROTODOC_PATH="${GOPATH}/src/github.com/coreos/protodoc"
+	pushd "${PROTODOC_PATH}"
+		git reset --hard "${SHA_PROTODOC}"
+		go install
+		echo "protodoc is updated"
+	popd
+
+	protodoc --directories="etcdserver/etcdserverpb=service_message,storage/storagepb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
+		--title="Protocol Buffer API" \
+		--output="Documentation/api_reference_v3.md" \
+		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto"
+
+	echo "protodoc is finished..."
+else
+	echo "skipping Protocol Buffer document auto-generation..."
+fi
+
