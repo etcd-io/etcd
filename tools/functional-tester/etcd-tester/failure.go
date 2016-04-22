@@ -22,8 +22,14 @@ import (
 
 const (
 	snapshotCount      = 10000
-	slowNetworkLatency = 1000 // 1-second
+	slowNetworkLatency = 500 // 500 millisecond
 	randomVariation    = 50
+
+	// Wait more when it recovers from slow network, because network layer
+	// needs extra time to propogate traffic control (tc command) change.
+	// Otherwise, we get different hash values from the previous revision.
+	// For more detail, please see https://github.com/coreos/etcd/issues/5121.
+	waitRecover = 5 * time.Second
 )
 
 type failure interface {
@@ -325,6 +331,7 @@ func (f *failureSlowNetworkOneMember) Recover(c *cluster, round int) error {
 	if err := c.Agents[i].RemoveLatency(); err != nil {
 		return err
 	}
+	time.Sleep(waitRecover)
 	return c.WaitHealth()
 }
 
@@ -357,6 +364,7 @@ func (f *failureSlowNetworkLeader) Recover(c *cluster, round int) error {
 	if err := c.Agents[f.idx].RemoveLatency(); err != nil {
 		return err
 	}
+	time.Sleep(waitRecover)
 	return c.WaitHealth()
 }
 
@@ -388,5 +396,6 @@ func (f *failureSlowNetworkAll) Recover(c *cluster, round int) error {
 			return err
 		}
 	}
+	time.Sleep(waitRecover)
 	return c.WaitHealth()
 }
