@@ -142,6 +142,9 @@ func (ss *ServerStats) SendAppendReq(reqSize int) {
 }
 
 func (ss *ServerStats) BecomeLeader() {
+	ss.Lock()
+	defer ss.Unlock()
+
 	if ss.State != raft.StateLeader {
 		ss.State = raft.StateLeader
 		ss.LeaderInfo.Name = ss.ID
