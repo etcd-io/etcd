@@ -305,10 +305,11 @@ func dbStatus(p string) dbstatus {
 
 	ds := dbstatus{}
 
-	db, err := bolt.Open(p, 0600, nil)
+	db, err := bolt.Open(p, 0400, nil)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+	defer db.Close()
 
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
