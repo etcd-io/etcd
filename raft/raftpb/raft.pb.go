@@ -230,6 +230,7 @@ type Message struct {
 	Snapshot         Snapshot    `protobuf:"bytes,9,opt,name=snapshot" json:"snapshot"`
 	Reject           bool        `protobuf:"varint,10,opt,name=reject" json:"reject"`
 	RejectHint       uint64      `protobuf:"varint,11,opt,name=rejectHint" json:"rejectHint"`
+	TraceContext     []byte      `protobuf:"bytes,12,opt,name=traceContext" json:"traceContext,omitempty"`
 	XXX_unrecognized []byte      `json:"-"`
 }
 
@@ -458,6 +459,12 @@ func (m *Message) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x58
 	i++
 	i = encodeVarintRaft(data, i, uint64(m.RejectHint))
+	if m.TraceContext != nil {
+		data[i] = 0x62
+		i++
+		i = encodeVarintRaft(data, i, uint64(len(m.TraceContext)))
+		i += copy(data[i:], m.TraceContext)
+	}
 	if m.XXX_unrecognized != nil {
 		i += copy(data[i:], m.XXX_unrecognized)
 	}
@@ -649,6 +656,10 @@ func (m *Message) Size() (n int) {
 	n += 1 + l + sovRaft(uint64(l))
 	n += 2
 	n += 1 + sovRaft(uint64(m.RejectHint))
+	if m.TraceContext != nil {
+		l = len(m.TraceContext)
+		n += 1 + l + sovRaft(uint64(l))
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -1342,6 +1353,37 @@ func (m *Message) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TraceContext", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthRaft
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TraceContext = append(m.TraceContext[:0], data[iNdEx:postIndex]...)
+			if m.TraceContext == nil {
+				m.TraceContext = []byte{}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRaft(data[iNdEx:])

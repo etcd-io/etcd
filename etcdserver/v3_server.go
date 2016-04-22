@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -67,6 +68,8 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Range")
+	defer sp.Finish()
 	if r.Serializable {
 		return s.applyV3.Range(noTxn, r)
 	}
@@ -79,6 +82,9 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Put")
+	defer sp.Finish()
+
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
@@ -87,6 +93,9 @@ func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/DeleteRange")
+	defer sp.Finish()
+
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
 		return nil, err
@@ -95,6 +104,9 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Txn")
+	defer sp.Finish()
+
 	if isTxnSerializable(r) {
 		return s.applyV3.Txn(r)
 	}
@@ -121,6 +133,9 @@ func isTxnSerializable(r *pb.TxnRequest) bool {
 }
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Compact")
+	defer sp.Finish()
+
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Compaction: r})
 	if r.Physical && result != nil && result.physc != nil {
 		<-result.physc
@@ -146,6 +161,8 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 }
 
 func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/LeaseGrant")
+	defer sp.Finish()
 	// no id given? choose one
 	for r.ID == int64(lease.NoLease) {
 		// only use positive int64 id's
@@ -159,6 +176,8 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/LeaseRevoke")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
 		return nil, err
@@ -202,6 +221,8 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 }
 
 func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Alarm")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Alarm: r})
 	if err != nil {
 		return nil, err
@@ -210,6 +231,8 @@ func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmRe
 }
 
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/AuthEnable")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthEnable: r})
 	if err != nil {
 		return nil, err
@@ -218,6 +241,8 @@ func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*
 }
 
 func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Authenticate")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthDisable: r})
 	if err != nil {
 		return nil, err
@@ -226,6 +251,8 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Authenticate")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Authenticate: r})
 	if err != nil {
 		return nil, err
@@ -234,6 +261,8 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 }
 
 func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/UserAdd")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserAdd: r})
 	if err != nil {
 		return nil, err
@@ -242,6 +271,8 @@ func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb
 }
 
 func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/UserDelete")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserDelete: r})
 	if err != nil {
 		return nil, err
@@ -250,6 +281,8 @@ func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest
 }
 
 func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/UserChangePassword")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserChangePassword: r})
 	if err != nil {
 		return nil, err
@@ -258,6 +291,8 @@ func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChang
 }
 
 func (s *EtcdServer) UserGrant(ctx context.Context, r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/UserGrant")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthUserGrant: r})
 	if err != nil {
 		return nil, err
@@ -266,6 +301,8 @@ func (s *EtcdServer) UserGrant(ctx context.Context, r *pb.AuthUserGrantRequest) 
 }
 
 func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/RoleAdd")
+	defer sp.Finish()
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleAdd: r})
 	if err != nil {
 		return nil, err
@@ -274,6 +311,9 @@ func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb
 }
 
 func (s *EtcdServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/RoleGrant")
+	defer sp.Finish()
+
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleGrant: r})
 	if err != nil {
 		return nil, err
@@ -282,6 +322,8 @@ func (s *EtcdServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) 
 }
 
 func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/processInternalRaftRequest")
+	defer sp.Finish()
 	r.ID = s.reqIDGen.Next()
 
 	data, err := r.Marshal()

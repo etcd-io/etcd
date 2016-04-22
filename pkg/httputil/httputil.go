@@ -11,6 +11,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 func RequestCanceler(rt http.RoundTripper, req *http.Request) func() {
@@ -28,4 +30,13 @@ func RequestCanceler(rt http.RoundTripper, req *http.Request) func() {
 func GracefulClose(resp *http.Response) {
 	io.Copy(ioutil.Discard, resp.Body)
 	resp.Body.Close()
+}
+
+func JoinOrCreateSpanFromHeader(op string, h http.Header) opentracing.Span {
+	t := opentracing.GlobalTracer()
+	sp, err := t.Join(op, opentracing.TextMap, opentracing.HTTPHeaderTextMapCarrier(h))
+	if err != nil {
+		return t.StartSpan(op)
+	}
+	return sp
 }

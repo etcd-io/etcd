@@ -45,7 +45,12 @@ import (
 	"github.com/coreos/go-systemd/daemon"
 	systemdutil "github.com/coreos/go-systemd/util"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/lightstep/lightstep-tracer-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"sourcegraph.com/sourcegraph/appdash"
+	appdashot "sourcegraph.com/sourcegraph/appdash/opentracing"
 )
 
 type dirType string
@@ -106,6 +111,27 @@ func startEtcdOrProxyV2() {
 	if cfg.Dir == "" {
 		cfg.Dir = fmt.Sprintf("%v.etcd", cfg.Name)
 		plog.Warningf("no data-dir provided, using default data-dir ./%s", cfg.Dir)
+	}
+
+	// The global tracer is noop by default.
+	if cfg.TracingLightstepToken != "" {
+		plog.Warningf("Using lightstep %s %s", cfg.TracingLightstepToken, cfg.TracingLightstepCollector)
+		opentracing.InitGlobalTracer(lightstep.NewTracer(lightstep.Options{
+			AccessToken: cfg.TracingLightstepToken,
+			Collector: lightstep.Endpoint{
+				Host: cfg.TracingLightstepCollector,
+			},
+			Tags: opentracing.Tags{"component": "etcd"},
+		}))
+	} else if cfg.TracingAppdashHost != "" {
+		collector := appdash.NewRemoteCollector(cfg.TracingAppdashHost)
+		tracer := appdashot.NewTracerWithOptions(collector, appdashot.Options{
+			ShouldSample: func(traceID uint64) bool {
+				return traceID%cfg.TracingAppdashSamplingRate == 0
+			},
+			Verbose: cfg.TracingAppdashVerbose,
+		})
+		opentracing.InitGlobalTracer(tracer)
 	}
 
 	which := identifyDataDirOrDie(cfg.Dir)

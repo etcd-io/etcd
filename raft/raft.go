@@ -22,7 +22,11 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/net/context"
+
+	"github.com/coreos/etcd/pkg/pbutil"
 	pb "github.com/coreos/etcd/raft/raftpb"
+	"github.com/opentracing/opentracing-go"
 )
 
 // None is a placeholder node ID used when there is no leader.
@@ -275,13 +279,17 @@ func (r *raft) send(m pb.Message) {
 }
 
 // sendAppend sends RPC, with entries to the given peer.
-func (r *raft) sendAppend(to uint64) {
+func (r *raft) sendAppend(ctx context.Context, to uint64) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/sendAppend")
+	defer sp.Finish()
+
 	pr := r.prs[to]
 	if pr.isPaused() {
 		return
 	}
 	m := pb.Message{}
 	m.To = to
+	pbutil.InjectSpanIntoMessage(sp, &m)
 
 	term, errt := r.raftLog.term(pr.Next - 1)
 	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
@@ -341,23 +349,26 @@ func (r *raft) sendHeartbeat(to uint64) {
 	// or it might not have all the committed entries.
 	// The leader MUST NOT forward the follower's commit to
 	// an unmatched index.
+	sp := opentracing.StartSpan("raft/sendHeartbeat")
+	defer sp.Finish()
 	commit := min(r.prs[to].Match, r.raftLog.committed)
 	m := pb.Message{
 		To:     to,
 		Type:   pb.MsgHeartbeat,
 		Commit: commit,
 	}
+	pbutil.InjectSpanIntoMessage(sp, &m)
 	r.send(m)
 }
 
 // bcastAppend sends RPC, with entries to all peers that are not up-to-date
 // according to the progress recorded in r.prs.
-func (r *raft) bcastAppend() {
+func (r *raft) bcastAppend(ctx context.Context) {
 	for id := range r.prs {
 		if id == r.id {
 			continue
 		}
-		r.sendAppend(id)
+		r.sendAppend(ctx, id)
 	}
 }
 
@@ -423,26 +434,37 @@ func (r *raft) appendEntry(es ...pb.Entry) {
 
 // tickElection is run by followers and candidates after r.electionTimeout.
 func (r *raft) tickElection() {
+	sp := opentracing.StartSpan("raft/tickElection")
+	defer sp.Finish()
+
 	if !r.promotable() {
 		r.electionElapsed = 0
 		return
 	}
 	r.electionElapsed++
 	if r.pastElectionTimeout() {
+
 		r.electionElapsed = 0
-		r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
+		msg := pb.Message{From: r.id, Type: pb.MsgHup}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.Step(msg)
 	}
 }
 
 // tickHeartbeat is run by leaders to send a MsgBeat after r.heartbeatTimeout.
 func (r *raft) tickHeartbeat() {
+	sp := opentracing.StartSpan("raft/tickHeartBeat")
+	defer sp.Finish()
+
 	r.heartbeatElapsed++
 	r.electionElapsed++
 
 	if r.electionElapsed >= r.electionTimeout {
 		r.electionElapsed = 0
 		if r.checkQuorum {
-			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum})
+			msg := pb.Message{From: r.id, Type: pb.MsgCheckQuorum}
+			pbutil.InjectSpanIntoMessage(sp, &msg)
+			r.Step(msg)
 		}
 		// If current leader cannot transfer leadership in electionTimeout, it becomes leader again.
 		if r.state == StateLeader && r.leadTransferee != None {
@@ -456,7 +478,9 @@ func (r *raft) tickHeartbeat() {
 
 	if r.heartbeatElapsed >= r.heartbeatTimeout {
 		r.heartbeatElapsed = 0
-		r.Step(pb.Message{From: r.id, Type: pb.MsgBeat})
+		msg := pb.Message{From: r.id, Type: pb.MsgBeat}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.Step(msg)
 	}
 }
 
@@ -482,7 +506,9 @@ func (r *raft) becomeCandidate() {
 	r.logger.Infof("%x became candidate at term %d", r.id, r.Term)
 }
 
-func (r *raft) becomeLeader() {
+func (r *raft) becomeLeader(ctx context.Context) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/becomeLeader")
+	defer sp.Finish()
 	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == StateFollower {
 		panic("invalid transition [follower -> leader]")
@@ -510,19 +536,27 @@ func (r *raft) becomeLeader() {
 	r.logger.Infof("%x became leader at term %d", r.id, r.Term)
 }
 
-func (r *raft) campaign() {
+func (r *raft) campaign(ctx context.Context) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/raftCampaign")
+	defer sp.Finish()
+
 	r.becomeCandidate()
 	if r.quorum() == r.poll(r.id, true) {
-		r.becomeLeader()
+		r.becomeLeader(ctx)
+		sp.LogEvent("Became leader")
 		return
 	}
+
 	for id := range r.prs {
 		if id == r.id {
 			continue
 		}
 		r.logger.Infof("%x [logterm: %d, index: %d] sent vote request to %x at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), id, r.Term)
-		r.send(pb.Message{To: id, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
+
+		msg := pb.Message{To: id, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.send(msg)
 	}
 }
 
@@ -544,10 +578,13 @@ func (r *raft) poll(id uint64, v bool) (granted int) {
 }
 
 func (r *raft) Step(m pb.Message) error {
+	sp := pbutil.StartSpanFromMessage("raft/Step", m)
+	ctx := opentracing.BackgroundContextWithSpan(sp)
+	defer sp.Finish()
 	if m.Type == pb.MsgHup {
 		if r.state != StateLeader {
 			r.logger.Infof("%x is starting a new election at term %d", r.id, r.Term)
-			r.campaign()
+			r.campaign(ctx)
 		} else {
 			r.logger.Debugf("%x ignoring MsgHup because already leader", r.id)
 		}
@@ -576,13 +613,16 @@ func (r *raft) Step(m pb.Message) error {
 			r.id, r.Term, m.Type, m.From, m.Term)
 		return nil
 	}
-	r.step(r, m)
+	r.step(ctx, r, m)
 	return nil
 }
 
-type stepFunc func(r *raft, m pb.Message)
+type stepFunc func(ctx context.Context, r *raft, m pb.Message)
 
-func stepLeader(r *raft, m pb.Message) {
+func stepLeader(ctx context.Context, r *raft, m pb.Message) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/stepLeader")
+	defer sp.Finish()
+	pbutil.InjectSpanIntoMessage(sp, &m)
 	// These message types do not require any progress for m.From.
 	switch m.Type {
 	case pb.MsgBeat:
@@ -618,12 +658,15 @@ func stepLeader(r *raft, m pb.Message) {
 			}
 		}
 		r.appendEntry(m.Entries...)
-		r.bcastAppend()
+		r.bcastAppend(ctx)
 		return
 	case pb.MsgVote:
 		r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
+
+		msg := pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.send(msg)
 		return
 	}
 
@@ -645,7 +688,7 @@ func stepLeader(r *raft, m pb.Message) {
 				if pr.State == ProgressStateReplicate {
 					pr.becomeProbe()
 				}
-				r.sendAppend(m.From)
+				r.sendAppend(ctx, m.From)
 			}
 		} else {
 			oldPaused := pr.isPaused()
@@ -661,11 +704,11 @@ func stepLeader(r *raft, m pb.Message) {
 				}
 
 				if r.maybeCommit() {
-					r.bcastAppend()
+					r.bcastAppend(ctx)
 				} else if oldPaused {
 					// update() reset the wait state on this node. If we had delayed sending
 					// an update before, send it now.
-					r.sendAppend(m.From)
+					r.sendAppend(ctx, m.From)
 				}
 				// Transfer leadership is in progress.
 				if m.From == r.leadTransferee && pr.Match == r.raftLog.lastIndex() {
@@ -682,7 +725,7 @@ func stepLeader(r *raft, m pb.Message) {
 			pr.ins.freeFirstOne()
 		}
 		if pr.Match < r.raftLog.lastIndex() {
-			r.sendAppend(m.From)
+			r.sendAppend(ctx, m.From)
 		}
 	case pb.MsgSnapStatus:
 		if pr.State != ProgressStateSnapshot {
@@ -732,36 +775,42 @@ func stepLeader(r *raft, m pb.Message) {
 			r.sendTimeoutNow(leadTransferee)
 			r.logger.Infof("%x sends MsgTimeoutNow to %x immediately as %x already has up-to-date log", r.id, leadTransferee, leadTransferee)
 		} else {
-			r.sendAppend(leadTransferee)
+			r.sendAppend(ctx, leadTransferee)
 		}
 	}
 }
 
-func stepCandidate(r *raft, m pb.Message) {
+func stepCandidate(ctx context.Context, r *raft, m pb.Message) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/stepCandidate")
+	defer sp.Finish()
+
 	switch m.Type {
 	case pb.MsgProp:
 		r.logger.Infof("%x no leader at term %d; dropping proposal", r.id, r.Term)
 		return
 	case pb.MsgApp:
 		r.becomeFollower(r.Term, m.From)
-		r.handleAppendEntries(m)
+		r.handleAppendEntries(ctx, m)
 	case pb.MsgHeartbeat:
 		r.becomeFollower(r.Term, m.From)
-		r.handleHeartbeat(m)
+		r.handleHeartbeat(ctx, m)
 	case pb.MsgSnap:
 		r.becomeFollower(m.Term, m.From)
-		r.handleSnapshot(m)
+		r.handleSnapshot(ctx, m)
 	case pb.MsgVote:
 		r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
+
+		msg := pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.send(msg)
 	case pb.MsgVoteResp:
 		gr := r.poll(m.From, !m.Reject)
 		r.logger.Infof("%x [quorum:%d] has received %d votes and %d vote rejections", r.id, r.quorum(), gr, len(r.votes)-gr)
 		switch r.quorum() {
 		case gr:
-			r.becomeLeader()
-			r.bcastAppend()
+			r.becomeLeader(ctx)
+			r.bcastAppend(ctx)
 		case len(r.votes) - gr:
 			r.becomeFollower(r.Term, None)
 		}
@@ -770,7 +819,11 @@ func stepCandidate(r *raft, m pb.Message) {
 	}
 }
 
-func stepFollower(r *raft, m pb.Message) {
+func stepFollower(ctx context.Context, r *raft, m pb.Message) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/stepFollower")
+	pbutil.InjectSpanIntoMessage(sp, &m)
+	defer sp.Finish()
+
 	switch m.Type {
 	case pb.MsgProp:
 		if r.lead == None {
@@ -782,62 +835,86 @@ func stepFollower(r *raft, m pb.Message) {
 	case pb.MsgApp:
 		r.electionElapsed = 0
 		r.lead = m.From
-		r.handleAppendEntries(m)
+		r.handleAppendEntries(ctx, m)
 	case pb.MsgHeartbeat:
 		r.electionElapsed = 0
 		r.lead = m.From
-		r.handleHeartbeat(m)
+		r.handleHeartbeat(ctx, m)
 	case pb.MsgSnap:
 		r.electionElapsed = 0
-		r.handleSnapshot(m)
+		r.handleSnapshot(ctx, m)
 	case pb.MsgVote:
+		sp.SetOperationName("MsgVote")
 		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			r.electionElapsed = 0
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] voted for %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 			r.Vote = m.From
-			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp})
+			msg := pb.Message{To: m.From, Type: pb.MsgVoteResp}
+			pbutil.InjectSpanIntoMessage(sp, &msg)
+			r.send(msg)
 		} else {
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
+
+			msg := pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true}
+			pbutil.InjectSpanIntoMessage(sp, &msg)
+			r.send(msg)
 		}
 	case pb.MsgTimeoutNow:
 		r.logger.Infof("%x [term %d] received MsgTimeoutNow from %x and starts an election to get leadership.", r.id, r.Term, m.From)
-		r.campaign()
+		r.campaign(ctx)
 	}
 }
 
-func (r *raft) handleAppendEntries(m pb.Message) {
+func (r *raft) handleAppendEntries(ctx context.Context, m pb.Message) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/handleAppendEntries")
+	defer sp.Finish()
 	if m.Index < r.raftLog.committed {
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
+		msg := pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.send(msg)
 		return
 	}
 
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
+		msg := pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.send(msg)
 	} else {
 		r.logger.Debugf("%x [logterm: %d, index: %d] rejected msgApp [logterm: %d, index: %d] from %x",
 			r.id, r.raftLog.zeroTermOnErrCompacted(r.raftLog.term(m.Index)), m.Index, m.LogTerm, m.Index, m.From)
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()})
+		msg := pb.Message{To: m.From, Type: pb.MsgAppResp, Index: m.Index, Reject: true, RejectHint: r.raftLog.lastIndex()}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.send(msg)
 	}
 }
 
-func (r *raft) handleHeartbeat(m pb.Message) {
+func (r *raft) handleHeartbeat(ctx context.Context, m pb.Message) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/handleHeartbeat")
+	defer sp.Finish()
 	r.raftLog.commitTo(m.Commit)
-	r.send(pb.Message{To: m.From, Type: pb.MsgHeartbeatResp})
+	msg := pb.Message{To: m.From, Type: pb.MsgHeartbeatResp}
+	pbutil.InjectSpanIntoMessage(sp, &msg)
+	r.send(msg)
 }
 
-func (r *raft) handleSnapshot(m pb.Message) {
+func (r *raft) handleSnapshot(ctx context.Context, m pb.Message) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raft/handleSnapshot")
+	defer sp.Finish()
 	sindex, sterm := m.Snapshot.Metadata.Index, m.Snapshot.Metadata.Term
 	if r.restore(m.Snapshot) {
 		r.logger.Infof("%x [commit: %d] restored snapshot [index: %d, term: %d]",
 			r.id, r.raftLog.committed, sindex, sterm)
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
+		msg := pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.send(msg)
 	} else {
 		r.logger.Infof("%x [commit: %d] ignored snapshot [index: %d, term: %d]",
 			r.id, r.raftLog.committed, sindex, sterm)
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
+		msg := pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed}
+		pbutil.InjectSpanIntoMessage(sp, &msg)
+		r.send(msg)
 	}
 }
 
@@ -902,7 +979,7 @@ func (r *raft) removeNode(id uint64) {
 	// The quorum size is now smaller, so see if any pending entries can
 	// be committed.
 	if r.maybeCommit() {
-		r.bcastAppend()
+		r.bcastAppend(context.TODO())
 	}
 	// If the removed node is the leadTransferee, then abort the leadership transferring.
 	if r.state == StateLeader && r.leadTransferee == id {

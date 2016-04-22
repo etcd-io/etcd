@@ -22,12 +22,14 @@ import (
 	"path"
 	"strings"
 
+	"github.com/coreos/etcd/pkg/httputil"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
+	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/version"
-	"golang.org/x/net/context"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 const (
@@ -116,7 +118,11 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(len(b)))
 
-	if err := h.r.Process(context.TODO(), m); err != nil {
+	sp := pbutil.StartSpanFromMessage("ServeHTTP", m)
+	defer sp.Finish()
+	sp.SetTag("component", "pipelineHandler")
+	sp.SetBaggageItem("Cluster-ID", h.cid.String())
+	if err := h.r.Process(opentracing.BackgroundContextWithSpan(sp), m); err != nil {
 		switch v := err.(type) {
 		case writerToResponse:
 			v.WriteTo(w)
@@ -187,6 +193,10 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(m.Size()))
+	sp := pbutil.StartSpanFromMessage("ServeHTTP", m)
+	defer sp.Finish()
+	sp.SetTag("component", "snapshotHandler")
+	sp.SetBaggageItem("Cluster-ID", h.cid.String())
 
 	if m.Type != raftpb.MsgSnap {
 		plog.Errorf("unexpected raft message type %s on snapshot path", m.Type)
@@ -206,7 +216,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		plog.Infof("received and saved database snapshot [index: %d, from: %s] successfully", m.Snapshot.Metadata.Index, types.ID(m.From))
 	}
 
-	if err := h.r.Process(context.TODO(), m); err != nil {
+	if err := h.r.Process(opentracing.BackgroundContextWithSpan(sp), m); err != nil {
 		switch v := err.(type) {
 		// Process may return writerToResponse error when doing some
 		// additional checks before calling raft.Node.Step.
@@ -243,6 +253,9 @@ func newStreamHandler(tr *Transport, pg peerGetter, r Raft, id, cid types.ID) ht
 }
 
 func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	sp := httputil.JoinOrCreateSpanFromHeader("streamHandler/http", r.Header)
+	defer sp.Finish()
+
 	if r.Method != "GET" {
 		w.Header().Set("Allow", "GET")
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -251,6 +264,7 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("X-Server-Version", version.Version)
 	w.Header().Set("X-Etcd-Cluster-ID", h.cid.String())
+	sp.SetBaggageItem("Cluster-ID", h.cid.String())
 
 	if err := checkClusterCompatibilityFromHeader(r.Header, h.cid); err != nil {
 		http.Error(w, err.Error(), http.StatusPreconditionFailed)
