@@ -76,7 +76,7 @@ if [ "$1" = "-g" ]; then
 	popd
 
 	protodoc --directories="etcdserver/etcdserverpb=service_message,storage/storagepb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
-		--title="Protocol Buffer API" \
+		--title="etcd API Reference" \
 		--output="Documentation/api_reference_v3.md" \
 		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto"
 
