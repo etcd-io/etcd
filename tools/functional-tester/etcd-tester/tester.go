@@ -40,11 +40,10 @@ func (tt *tester) runLoop() {
 
 		var (
 			currentRevision int64
-			success         bool
+			failed          bool
 		)
 		for j, f := range tt.failures {
 			caseTotalCounter.WithLabelValues(f.Desc()).Inc()
-
 			tt.status.setCase(j)
 
 			if err := tt.cluster.WaitHealth(); err != nil {
@@ -53,6 +52,7 @@ func (tt *tester) runLoop() {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
+				failed = true
 				break
 			}
 			plog.Printf("[round#%d case#%d] start failure %s", i, j, f.Desc())
@@ -64,6 +64,7 @@ func (tt *tester) runLoop() {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
+				failed = true
 				break
 			}
 			plog.Printf("[round#%d case#%d] injected failure", i, j)
@@ -75,6 +76,7 @@ func (tt *tester) runLoop() {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
+				failed = true
 				break
 			}
 			plog.Printf("[round#%d case#%d] recovered failure", i, j)
@@ -117,6 +119,7 @@ func (tt *tester) runLoop() {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
+				failed = true
 				break
 			}
 			plog.Printf("[round#%d case#%d] all members are consistent with current revisions [revisions: %v]", i, j, revs)
@@ -128,6 +131,7 @@ func (tt *tester) runLoop() {
 					plog.Printf("[round#%d case#%d] cleanup error: %v", i, j, err)
 					return
 				}
+				failed = true
 				break
 			}
 			plog.Printf("[round#%d case#%d] all members are consistent with storage hashes", i, j)
@@ -138,10 +142,9 @@ func (tt *tester) runLoop() {
 			}
 
 			plog.Printf("[round#%d case#%d] succeed!", i, j)
-			success = true
 		}
 
-		if !success {
+		if failed {
 			continue
 		}
 		revToCompact := max(0, currentRevision-10000)
