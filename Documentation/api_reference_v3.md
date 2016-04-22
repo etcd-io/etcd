@@ -1,47 +1,4 @@
-### Protocol Buffer API
-
-
-##### message `Lease` (lease/leasepb/lease.proto)
-
-| Field | Description | Type |
-| ----- | ----------- | ---- |
-| ID |  | int64 |
-| TTL |  | int64 |
-
-
-
-##### message `Permission` (auth/authpb/auth.proto)
-
-Permission is a single entity
-
-| Field | Description | Type |
-| ----- | ----------- | ---- |
-| key |  | bytes |
-| permType |  | Type |
-
-
-
-##### message `Role` (auth/authpb/auth.proto)
-
-Role is a single entry in the bucket authRoles
-
-| Field | Description | Type |
-| ----- | ----------- | ---- |
-| name |  | bytes |
-| keyPermission |  | (slice of) Permission |
-
-
-
-##### message `User` (auth/authpb/auth.proto)
-
-User is a single entry in the bucket authUsers
-
-| Field | Description | Type |
-| ----- | ----------- | ---- |
-| name |  | bytes |
-| password |  | bytes |
-| roles |  | (slice of) string |
-
+### etcd API Reference
 
 
 ##### service `Auth` (etcdserver/etcdserverpb/rpc.proto)
@@ -766,6 +723,49 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | version | version is the version of the key. A deletion resets the version to zero and any modification of the key increases its version. | int64 |
 | value | value is the value held by the key, in bytes. | bytes |
 | lease | lease is the ID of the lease that attached to key. When the attached lease expires, the key will be deleted. If lease is 0, then no lease is attached to the key. | int64 |
+
+
+
+##### message `Lease` (lease/leasepb/lease.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| ID |  | int64 |
+| TTL |  | int64 |
+
+
+
+##### message `Permission` (auth/authpb/auth.proto)
+
+Permission is a single entity
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| key |  | bytes |
+| permType |  | Type |
+
+
+
+##### message `Role` (auth/authpb/auth.proto)
+
+Role is a single entry in the bucket authRoles
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| name |  | bytes |
+| keyPermission |  | (slice of) Permission |
+
+
+
+##### message `User` (auth/authpb/auth.proto)
+
+User is a single entry in the bucket authUsers
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| name |  | bytes |
+| password |  | bytes |
+| roles |  | (slice of) string |
 
 
 
