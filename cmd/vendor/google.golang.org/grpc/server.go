@@ -57,7 +57,7 @@ import (
 	"google.golang.org/grpc/transport"
 )
 
-type methodHandler func(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error)
+type methodHandler func(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor UnaryServerInterceptor) (interface{}, error)
 
 // MethodDesc represents an RPC service's method specification.
 type MethodDesc struct {
@@ -99,6 +99,8 @@ type options struct {
 	codec                Codec
 	cp                   Compressor
 	dc                   Decompressor
+	unaryInt             UnaryServerInterceptor
+	streamInt            StreamServerInterceptor
 	maxConcurrentStreams uint32
 	useHandlerImpl       bool // use http.Handler-based server
 }
@@ -137,6 +139,29 @@ func MaxConcurrentStreams(n uint32) ServerOption {
 func Creds(c credentials.Credentials) ServerOption {
 	return func(o *options) {
 		o.creds = c
+	}
+}
+
+// UnaryInterceptor returns a ServerOption that sets the UnaryServerInterceptor for the
+// server. Only one unary interceptor can be installed. The construction of multiple
+// interceptors (e.g., chaining) can be implemented at the caller.
+func UnaryInterceptor(i UnaryServerInterceptor) ServerOption {
+	return func(o *options) {
+		if o.unaryInt != nil {
+			panic("The unary server interceptor has been set.")
+		}
+		o.unaryInt = i
+	}
+}
+
+// StreamInterceptor returns a ServerOption that sets the StreamServerInterceptor for the
+// server. Only one stream interceptor can be installed.
+func StreamInterceptor(i StreamServerInterceptor) ServerOption {
+	return func(o *options) {
+		if o.streamInt != nil {
+			panic("The stream server interceptor has been set.")
+		}
+		o.streamInt = i
 	}
 }
 
@@ -494,7 +519,7 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 			}
 			return nil
 		}
-		reply, appErr := md.Handler(srv.server, stream.Context(), df)
+		reply, appErr := md.Handler(srv.server, stream.Context(), df, s.opts.unaryInt)
 		if appErr != nil {
 			if err, ok := appErr.(rpcError); ok {
 				statusCode = err.code
@@ -572,7 +597,18 @@ func (s *Server) processStreamingRPC(t transport.ServerTransport, stream *transp
 			ss.mu.Unlock()
 		}()
 	}
-	if appErr := sd.Handler(srv.server, ss); appErr != nil {
+	var appErr error
+	if s.opts.streamInt == nil {
+		appErr = sd.Handler(srv.server, ss)
+	} else {
+		info := &StreamServerInfo{
+			FullMethod:     stream.Method(),
+			IsClientStream: sd.ClientStreams,
+			IsServerStream: sd.ServerStreams,
+		}
+		appErr = s.opts.streamInt(srv.server, ss, info, sd.Handler)
+	}
+	if appErr != nil {
 		if err, ok := appErr.(rpcError); ok {
 			ss.statusCode = err.code
 			ss.statusDesc = err.desc
