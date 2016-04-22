@@ -329,11 +329,11 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 			}
 			if lead != 0 && lead != m.s.Lead() {
 				lead = 0
+				time.Sleep(10 * tickDuration)
 				break
 			}
 			lead = m.s.Lead()
 		}
-		time.Sleep(10 * tickDuration)
 	}
 
 	for i, m := range membs {
