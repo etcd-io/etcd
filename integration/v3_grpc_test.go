@@ -597,9 +597,31 @@ func TestV3StorageQuotaApply(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// quorum get should work regardless of whether alarm is raised
+	_, err = kvc0.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// wait until alarm is raised for sure-- poll the alarms
+	stopc := time.After(5 * time.Second)
+	for {
+		req := &pb.AlarmRequest{Action: pb.AlarmRequest_GET}
+		resp, aerr := clus.Members[0].s.Alarm(context.TODO(), req)
+		if aerr != nil {
+			t.Fatal(aerr)
+		}
+		if len(resp.Alarms) != 0 {
+			break
+		}
+		select {
+		case <-stopc:
+			t.Fatalf("timed out waiting for alarm")
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+
 	// small quota machine should reject put
-	// first, synchronize with the cluster via quorum get
-	kvc0.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
 	if _, err := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
 		t.Fatalf("past-quota instance should reject put")
 	}
