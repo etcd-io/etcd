@@ -61,6 +61,7 @@ func TestRestartMember(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
 	clusterMustProgress(t, c.Members)
 }
 
@@ -105,6 +106,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 	m.Stop(t)
 	m.Restart(t)
 
+	m.WaitOK(t)
 	for i := 0; i < 120; i++ {
 		cc := mustNewHTTPClient(t, []string{m.URL()}, nil)
 		kapi := client.NewKeysAPI(cc)

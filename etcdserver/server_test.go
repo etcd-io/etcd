@@ -1155,6 +1155,7 @@ func TestPublish(t *testing.T) {
 	ch <- Response{}
 	w := wait.NewWithResponse(ch)
 	srv := &EtcdServer{
+		readych:    make(chan struct{}),
 		cfg:        &ServerConfig{TickMs: 1},
 		id:         1,
 		r:          raftNode{Node: n},
