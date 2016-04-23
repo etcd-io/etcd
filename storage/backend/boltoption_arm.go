@@ -12,21 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build linux,!arm,!386
+// +build linux,arm
 
 package backend
 
 import (
+	"math"
 	"syscall"
 
-	"github.com/boltdb/bolt"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/boltdb/bolt"
 )
 
 var (
 	// InitialMmapSize is the initial size of the mmapped region. Setting this larger than
 	// the potential max db size can prevent writer from blocking reader.
-	// This only works for linux.
-	InitialMmapSize = int64(10 * 1024 * 1024 * 1024)
+	// This only works for linux and only on arm 32-bit
+	// This sets InitialMmapSize to 2GB, or (2 * 1024 * 1024 * 1024) - 1
+	InitialMmapSize = math.MaxInt32
 )
 
 // syscall.MAP_POPULATE on linux 2.6.23+ does sequential read-ahead
@@ -37,5 +39,5 @@ var (
 // silently ignore this flag. Please update your kernel to prevent this.
 var boltOpenOptions = &bolt.Options{
 	MmapFlags:       syscall.MAP_POPULATE,
-	InitialMmapSize: int(InitialMmapSize),
+	InitialMmapSize: InitialMmapSize,
 }

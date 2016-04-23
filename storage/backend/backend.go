@@ -34,11 +34,6 @@ var (
 	defaultBatchInterval = 100 * time.Millisecond
 
 	defragLimit = 10000
-
-	// InitialMmapSize is the initial size of the mmapped region. Setting this larger than
-	// the potential max db size can prevent writer from blocking reader.
-	// This only works for linux.
-	InitialMmapSize = int64(10 * 1024 * 1024 * 1024)
 )
 
 const (
