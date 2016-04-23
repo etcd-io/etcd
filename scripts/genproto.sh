@@ -65,7 +65,7 @@ done
 # only run when './scripts/genproto.sh -g'
 #
 if [ "$1" = "-g" ]; then
-	echo "protodoc is auto-generating Protocol Buffer documentation..."
+	echo "protodoc is auto-generating grpc API reference documentation..."
 	go get -v -u github.com/coreos/protodoc
 	SHA_PROTODOC="4cd8db83c5595ac514169fda607d1ccb5eef669b"
 	PROTODOC_PATH="${GOPATH}/src/github.com/coreos/protodoc"
@@ -77,11 +77,11 @@ if [ "$1" = "-g" ]; then
 
 	protodoc --directories="etcdserver/etcdserverpb=service_message,storage/storagepb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
 		--title="etcd API Reference" \
-		--output="Documentation/api_reference_v3.md" \
+		--output="Documentation/dev-guide/api_reference_v3.md" \
 		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto"
 
 	echo "protodoc is finished..."
 else
-	echo "skipping Protocol Buffer document auto-generation..."
+	echo "skipping grpc API reference document auto-generation..."
 fi
 
