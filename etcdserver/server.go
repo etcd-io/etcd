@@ -537,8 +537,11 @@ func (s *EtcdServer) run() {
 	}
 
 	defer func() {
-		s.r.stop()
 		sched.Stop()
+
+		// must stop raft after scheduler-- etcdserver can leak rafthttp pipelines
+		// by adding a peer after raft stops the transport
+		s.r.stop()
 
 		s.wg.Wait()
 
