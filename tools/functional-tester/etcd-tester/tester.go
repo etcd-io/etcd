@@ -20,9 +20,10 @@ import (
 )
 
 type tester struct {
-	failures []failure
-	cluster  *cluster
-	limit    int
+	failures         []failure
+	cluster          *cluster
+	limit            int
+	consistencyCheck bool
 
 	status Status
 }
@@ -81,6 +82,9 @@ func (tt *tester) runLoop() {
 			}
 			plog.Printf("[round#%d case#%d] recovered failure", i, j)
 
+			if !tt.consistencyCheck {
+				continue
+			}
 			if tt.cluster.v2Only {
 				plog.Printf("[round#%d case#%d] succeed!", i, j)
 				continue
