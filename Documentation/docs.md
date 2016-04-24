@@ -23,7 +23,7 @@ Want to operate etcd clusters? Start by setting up a cluster on multiple machine
  - Security
  - Monitoring
  - [Maintenance][maintenance]
- - Disaster recovery
+ - [Disaster recovery][recovery]
  - Performance
 
 ## Learning
@@ -45,3 +45,4 @@ Want to learn more about the concepts and internals behind etcd? Read the follow
 [interacting]: dev-guide/interacting_v3.md
 [local_cluster]: dev-guide/local_cluster.md
 [maintenance]: op_guide/maintenance.md
+[recovery]: op_guide/recovery.md
