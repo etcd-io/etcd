@@ -24,6 +24,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/pkg/compress"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -120,6 +122,17 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 		opts = append(opts, grpc.WithTransportCredentials(*c.creds))
 	} else {
 		opts = append(opts, grpc.WithInsecure())
+	}
+
+	switch c.cfg.CompressType {
+	case compress.Gzip:
+		opts = append(opts,
+			grpc.WithCompressor(compress.NewGzipCompressor()),
+			grpc.WithDecompressor(compress.NewGzipDecompressor()))
+	case compress.Snappy:
+		opts = append(opts,
+			grpc.WithCompressor(compress.NewSnappyCompressor()),
+			grpc.WithDecompressor(compress.NewSnappyDecompressor()))
 	}
 
 	proto := "tcp"
