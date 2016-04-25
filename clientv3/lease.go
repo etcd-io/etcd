@@ -250,7 +250,10 @@ func (l *lessor) keepAliveCtxCloser(id LeaseID, ctx context.Context, donec <-cha
 }
 
 func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAliveResponse, error) {
-	stream, err := l.getRemote().LeaseKeepAlive(ctx)
+	cctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	stream, err := l.getRemote().LeaseKeepAlive(cctx)
 	if err != nil {
 		return nil, err
 	}
