@@ -135,11 +135,12 @@ given by the consensus protocol.
 	--force-new-cluster 'false'
 		force to create a new one-member cluster.
 
-
 experimental flags:
 
 	--experimental-auto-compaction-retention '0'
 		auto compaction retention in hour. 0 means disable auto compaction.
+	--experimental-compression ''
+		compression algorithm (gzip, snappy)
 
 profiling flags:
 	--enable-pprof 'false'

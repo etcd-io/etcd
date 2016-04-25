@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/compress"
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/spf13/cobra"
@@ -38,8 +39,9 @@ type GlobalFlags struct {
 
 	TLS transport.TLSInfo
 
-	OutputFormat string
-	IsHex        bool
+	OutputFormat    string
+	IsHex           bool
+	CompressTypeTxt string
 }
 
 type secureCfg struct {
@@ -76,14 +78,15 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	}
 	dialTimeout := dialTimeoutFromCmd(cmd)
 	sec := secureCfgFromCmd(cmd)
+	compressType := compressTypeFromCmd(cmd)
 
 	initDisplayFromCmd(cmd)
 
-	return mustClient(endpoints, dialTimeout, sec)
+	return mustClient(endpoints, dialTimeout, sec, compressType)
 }
 
-func mustClient(endpoints []string, dialTimeout time.Duration, scfg *secureCfg) *clientv3.Client {
-	cfg, err := newClientCfg(endpoints, dialTimeout, scfg)
+func mustClient(endpoints []string, dialTimeout time.Duration, scfg *secureCfg, ct compress.Type) *clientv3.Client {
+	cfg, err := newClientCfg(endpoints, dialTimeout, scfg, ct)
 	if err != nil {
 		ExitWithError(ExitBadArgs, err)
 	}
@@ -96,7 +99,7 @@ func mustClient(endpoints []string, dialTimeout time.Duration, scfg *secureCfg) 
 	return client
 }
 
-func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg) (*clientv3.Config, error) {
+func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg, ct compress.Type) (*clientv3.Config, error) {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tlsinfo := transport.TLSInfo{}
@@ -116,8 +119,9 @@ func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg
 	}
 
 	cfg := &clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
+		Endpoints:    endpoints,
+		DialTimeout:  dialTimeout,
+		CompressType: ct,
 	}
 	if cfgtls != nil {
 		clientTLS, err := cfgtls.ClientConfig()
@@ -158,6 +162,14 @@ func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
 		ExitWithError(ExitError, err)
 	}
 	return dialTimeout
+}
+
+func compressTypeFromCmd(cmd *cobra.Command) compress.Type {
+	opt, err := cmd.Flags().GetString("compression")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return compress.ParseType(opt)
 }
 
 func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {

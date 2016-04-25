@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v60",
+	"GodepVersion": "v62",
 	"Packages": [
 		"./..."
 	],
@@ -87,6 +87,10 @@
 			"Rev": "6aaa8d47701fa6cf07e914ec01fde3d4a1fe79c3"
 		},
 		{
+			"ImportPath": "github.com/golang/snappy",
+			"Rev": "ec642410cd033af63620b66a91ccbd3c69c2c59a"
+		},
+		{
 			"ImportPath": "github.com/google/btree",
 			"Rev": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
@@ -109,7 +113,7 @@
 		},
 		{
 			"ImportPath": "github.com/mattn/go-runewidth",
-			"Comment": "travisish-46-gd6bea18",
+			"Comment": "v0.0.1",
 			"Rev": "d6bea18f789704b5f83375793155289da36a3c7f"
 		},
 		{
