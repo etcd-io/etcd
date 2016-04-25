@@ -16,10 +16,10 @@ Want to develop applications with etcd? Start by [setting up a local cluster][lo
 
 ## Operating etcd clusters
 
-Want to operate etcd clusters? Start by setting up a cluster on multiple machines!
+Want to operate etcd clusters? Start by [setting up a cluster on multiple machines][clustering]!
 
- - Setting up clusters
- - Configuration
+ - [Setting up clusters][clustering]
+ - [Configuration][conf]
  - Security
  - Monitoring
  - [Maintenance][maintenance]
@@ -40,9 +40,11 @@ Want to learn more about the concepts and internals behind etcd? Read the follow
 ## Troubleshooting
 
 [api_ref]: dev-guide/api_reference_v3.md
+[clustering]: op-guide/clustering.md
+[conf]: op-guide/configuration.md
 [download_build]: dl_build.md
 [glossary]: learning/glossary.md
 [interacting]: dev-guide/interacting_v3.md
 [local_cluster]: dev-guide/local_cluster.md
-[maintenance]: op_guide/maintenance.md
-[recovery]: op_guide/recovery.md
+[recovery]: op-guide/recovery.md
+[maintenance]: op-guide/maintenance.md

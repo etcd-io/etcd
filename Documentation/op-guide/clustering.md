@@ -142,8 +142,6 @@ $ curl -X PUT https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0
 
 By setting the size key to the URL, you create a discovery URL with an expected cluster size of 3.
 
-If you bootstrap an etcd cluster using discovery service with more than the expected number of etcd members, the extra etcd processes will [fall back][fall-back] to being [proxies][proxy] by default.
-
 The URL you will use in this case will be `https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83` and the etcd members will use the `https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83` directory for registration as they start.
 
 **Each member must have a different name flag specified. `Hostname` or `machine-id` can be a good choice. Or discovery will fail due to duplicated name.**
@@ -184,8 +182,6 @@ https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
 This will create the cluster with an initial expected size of 3 members. If you do not specify a size, a default of 3 will be used.
-
-If you bootstrap an etcd cluster using discovery service with more than the expected number of etcd members, the extra etcd processes will [fall back][fall-back] to being [proxies][proxy] by default.
 
 ```
 ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
@@ -237,21 +233,6 @@ $ etcd --name infra0 --initial-advertise-peer-urls http://10.0.1.10:2380 \
   --advertise-client-urls http://10.0.1.10:2379 \
   --discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 etcd: error: the cluster doesn’t have a size configuration value in https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de/_config
-exit 1
-```
-
-##### User Errors
-
-This error will occur if the discovery cluster already has the configured number of members, and `discovery-fallback` is explicitly disabled
-
-```
-$ etcd --name infra0 --initial-advertise-peer-urls http://10.0.1.10:2380 \
-  --listen-peer-urls http://10.0.1.10:2380 \
-  --listen-client-urls http://10.0.1.10:2379,http://127.0.0.1:2379 \
-  --advertise-client-urls http://10.0.1.10:2379 \
-  --discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de \
-  --discovery-fallback exit
-etcd: discovery: cluster is full
 exit 1
 ```
 
@@ -383,52 +364,17 @@ $ etcd --name infra2 \
 --listen-peer-urls http://10.0.1.12:2380
 ```
 
-#### etcd proxy configuration
+### Proxy
 
-DNS SRV records can also be used to configure the list of peers for an etcd server running in proxy mode:
+When the `--proxy` flag is set, etcd runs in [proxy mode][proxy]. This proxy mode only supports the etcd v2 API; there are no plans to support the v3 API. Instead, for v3 API support, there will be a new proxy with enhanced features following the etcd 3.0 release.
 
-```
-$ etcd --proxy on --discovery-srv example.com
-```
+To setup an etcd cluster with proxies of v2 API, please read the the [clustering doc in etcd 2.3 release][clustering_etcd2].
 
-#### etcd client configuration
-
-DNS SRV records can also be used to help clients discover the etcd cluster.
-
-The official [etcd/client][client] supports [DNS Discovery][client-discoverer].
-
-`etcdctl` also supports DNS Discovery by specifying the `--discovery-srv` option.
-
-```
-$ etcdctl --discovery-srv example.com set foo bar
-```
-
-#### Error Cases
-
-You might see an error like `cannot find local etcd $name from SRV records.`. That means the etcd member fails to find itself from the cluster defined in SRV records. The resolved address in `--initial-advertise-peer-urls` *must match* one of the resolved addresses in the SRV targets.
-
-# 0.4 to 2.0+ Migration Guide
-
-In etcd 2.0 we introduced the ability to listen on more than one address and to advertise multiple addresses. This makes using etcd easier when you have complex networking, such as private and public networks on various cloud providers.
-
-To make understanding this feature easier, we changed the naming of some flags, but we support the old flags to make the migration from the old to new version easier.
-
-|Old Flag    |New Flag    |Migration Behavior                  |
-|-----------------------|-----------------------|---------------------------------------------------------------------------------------|
-|-peer-addr    |--initial-advertise-peer-urls   |If specified, peer-addr will be used as the only peer URL. Error if both flags specified.|
-|-addr      |--advertise-client-urls  |If specified, addr will be used as the only client URL. Error if both flags specified.|
-|-peer-bind-addr  |--listen-peer-urls  |If specified, peer-bind-addr will be used as the only peer bind URL. Error if both flags specified.|
-|-bind-addr    |--listen-client-urls  |If specified, bind-addr will be used as the only client bind URL. Error if both flags specified.|
-|-peers      |none      |Deprecated. The --initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
-|-peers-file    |none      |Deprecated. The --initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
-
-[client]: /client
-[client-discoverer]: https://godoc.org/github.com/coreos/etcd/client#Discoverer
 [conf-adv-client]: configuration.md#-advertise-client-urls
 [conf-listen-client]: configuration.md#-listen-client-urls
-[discovery-proto]: discovery_protocol.md
-[fall-back]: proxy.md#fallback-to-proxy-mode-with-discovery-service
-[proxy]: proxy.md
+[discovery-proto]: dev-internal/discovery_protocol.md
 [rfc-srv]: http://www.ietf.org/rfc/rfc2052.txt
 [runtime-conf]: runtime-configuration.md
 [runtime-reconf-design]: runtime-reconf-design.md
+[proxy]: https://github.com/coreos/etcd/blob/release-2.3/Documentation/proxy.md
+[clustering_etcd2]: https://github.com/coreos/etcd/blob/release-2.3/Documentation/clustering.md
