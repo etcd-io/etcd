@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"errors"
 	"sync"
 
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 var (
-	ErrWatcherNotExist = errors.New("storage: watcher does not exist")
+	ErrWatcherNotExist = errors.New("mvcc: watcher does not exist")
 )
 
 type WatchID int64
@@ -66,7 +66,7 @@ type WatchResponse struct {
 	WatchID WatchID
 
 	// Events contains all the events that needs to send.
-	Events []storagepb.Event
+	Events []mvccpb.Event
 
 	// Revision is the revision of the KV when the watchResponse is created.
 	// For a normal response, the revision should be the same as the last

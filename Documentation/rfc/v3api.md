@@ -208,4 +208,4 @@ WatchResponse {
 ```
 
 [api-protobuf]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
-[kv-protobuf]: https://github.com/coreos/etcd/blob/master/storage/storagepb/kv.proto
+[kv-protobuf]: https://github.com/coreos/etcd/blob/master/mvcc/mvccpb/kv.proto

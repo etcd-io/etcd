@@ -25,8 +25,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
+	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	storagepb "github.com/coreos/etcd/storage/storagepb"
 	"golang.org/x/net/context"
 )
 
@@ -419,7 +419,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 		}
 		if watchOnPut { // wait for put if watch on the put key
 			ev := []*clientv3.Event{{Type: clientv3.EventTypePut,
-				Kv: &storagepb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}}
+				Kv: &mvccpb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}}
 			if !reflect.DeepEqual(ev, resp.Events) {
 				t.Fatalf("expected %+v, got %+v", ev, resp.Events)
 			}
@@ -457,7 +457,7 @@ func TestWatchEventType(t *testing.T) {
 	}
 
 	tests := []struct {
-		et       storagepb.Event_EventType
+		et       mvccpb.Event_EventType
 		isCreate bool
 		isModify bool
 	}{{

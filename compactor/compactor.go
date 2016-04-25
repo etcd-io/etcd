@@ -19,7 +19,7 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/jonboulle/clockwork"
 	"golang.org/x/net/context"
@@ -96,7 +96,7 @@ func (t *Periodic) Run() {
 
 			plog.Noticef("Starting auto-compaction at revision %d", rev)
 			_, err := t.c.Compact(t.ctx, &pb.CompactionRequest{Revision: rev})
-			if err == nil || err == storage.ErrCompacted {
+			if err == nil || err == mvcc.ErrCompacted {
 				t.revs = make([]int64, 0)
 				last = clock.Now()
 				plog.Noticef("Finished auto-compaction at revision %d", rev)

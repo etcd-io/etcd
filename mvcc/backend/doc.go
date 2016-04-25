@@ -12,27 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
-
-import (
-	"fmt"
-	"testing"
-
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/storage/backend"
-)
-
-func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
-	be, tmpPath := backend.NewDefaultTmpBackend()
-	watchable := newWatchableStore(be, &lease.FakeLessor{}, nil)
-
-	defer cleanup(watchable, be, tmpPath)
-
-	w := watchable.NewWatchStream()
-
-	b.ReportAllocs()
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		w.Watch([]byte(fmt.Sprint("foo", i)), nil, 0)
-	}
-}
+// Package backend defines a standard interface for etcd's backend MVCC storage.
+package backend

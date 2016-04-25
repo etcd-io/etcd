@@ -27,6 +27,8 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/mock/mockstorage"
 	"github.com/coreos/etcd/pkg/mock/mockstore"
@@ -38,8 +40,6 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	dstorage "github.com/coreos/etcd/storage"
-	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/store"
 	"golang.org/x/net/context"
 )
@@ -855,7 +855,7 @@ func TestSnapshot(t *testing.T) {
 		},
 		store: st,
 	}
-	srv.kv = dstorage.New(be, &lease.FakeLessor{}, &srv.consistIndex)
+	srv.kv = mvcc.New(be, &lease.FakeLessor{}, &srv.consistIndex)
 	srv.be = be
 
 	srv.snapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
@@ -902,7 +902,7 @@ func TestTriggerSnap(t *testing.T) {
 	}
 	srv.applyV2 = &applierV2store{srv}
 
-	srv.kv = dstorage.New(be, &lease.FakeLessor{}, &srv.consistIndex)
+	srv.kv = mvcc.New(be, &lease.FakeLessor{}, &srv.consistIndex)
 	srv.be = be
 
 	srv.start()
@@ -974,7 +974,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
-	s.kv = dstorage.New(be, &lease.FakeLessor{}, &s.consistIndex)
+	s.kv = mvcc.New(be, &lease.FakeLessor{}, &s.consistIndex)
 	s.be = be
 
 	s.start()

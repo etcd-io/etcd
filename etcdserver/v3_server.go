@@ -20,7 +20,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
-	dstorage "github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/mvcc"
 	"golang.org/x/net/context"
 )
 
@@ -297,4 +297,4 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 }
 
 // Watchable returns a watchable interface attached to the etcdserver.
-func (s *EtcdServer) Watchable() dstorage.Watchable { return s.KV() }
+func (s *EtcdServer) Watchable() mvcc.Watchable { return s.KV() }

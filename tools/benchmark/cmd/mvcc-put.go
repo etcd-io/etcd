@@ -25,12 +25,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// storagePutCmd represents a storage put performance benchmarking tool
-var storagePutCmd = &cobra.Command{
+// mvccPutCmd represents a storage put performance benchmarking tool
+var mvccPutCmd = &cobra.Command{
 	Use:   "put",
 	Short: "Benchmark put performance of storage",
 
-	Run: storagePutFunc,
+	Run: mvccPutFunc,
 }
 
 var (
@@ -41,16 +41,16 @@ var (
 )
 
 func init() {
-	storageCmd.AddCommand(storagePutCmd)
+	mvccCmd.AddCommand(mvccPutCmd)
 
-	storagePutCmd.Flags().IntVar(&totalNrKeys, "total", 100, "a total number of keys to put")
-	storagePutCmd.Flags().IntVar(&storageKeySize, "key-size", 64, "a size of key (Byte)")
-	storagePutCmd.Flags().IntVar(&valueSize, "value-size", 64, "a size of value (Byte)")
-	storagePutCmd.Flags().BoolVar(&txn, "txn", false, "put a key in transaction or not")
+	mvccPutCmd.Flags().IntVar(&totalNrKeys, "total", 100, "a total number of keys to put")
+	mvccPutCmd.Flags().IntVar(&storageKeySize, "key-size", 64, "a size of key (Byte)")
+	mvccPutCmd.Flags().IntVar(&valueSize, "value-size", 64, "a size of value (Byte)")
+	mvccPutCmd.Flags().BoolVar(&txn, "txn", false, "put a key in transaction or not")
 
 	// TODO: after the PR https://github.com/spf13/cobra/pull/220 is merged, the below pprof related flags should be moved to RootCmd
-	storagePutCmd.Flags().StringVar(&cpuProfPath, "cpuprofile", "", "the path of file for storing cpu profile result")
-	storagePutCmd.Flags().StringVar(&memProfPath, "memprofile", "", "the path of file for storing heap profile result")
+	mvccPutCmd.Flags().StringVar(&cpuProfPath, "cpuprofile", "", "the path of file for storing cpu profile result")
+	mvccPutCmd.Flags().StringVar(&memProfPath, "memprofile", "", "the path of file for storing heap profile result")
 
 }
 
@@ -65,7 +65,7 @@ func createBytesSlice(bytesN, sliceN int) [][]byte {
 	return rs
 }
 
-func storagePutFunc(cmd *cobra.Command, args []string) {
+func mvccPutFunc(cmd *cobra.Command, args []string) {
 	if cpuProfPath != "" {
 		f, err := os.Create(cpuProfPath)
 		if err != nil {

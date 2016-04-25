@@ -16,7 +16,7 @@ package recipe
 
 import (
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
 
@@ -61,7 +61,7 @@ func (q *Queue) Dequeue() (string, error) {
 		q.client,
 		q.keyPrefix,
 		resp.Header.Revision,
-		[]storagepb.Event_EventType{storagepb.PUT})
+		[]mvccpb.Event_EventType{mvccpb.PUT})
 	if err != nil {
 		return "", err
 	}

@@ -567,7 +567,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
-| kvs | kvs is the list of key-value pairs matched by the range request. | (slice of) storagepb.KeyValue |
+| kvs | kvs is the list of key-value pairs matched by the range request. | (slice of) mvccpb.KeyValue |
 | more | more indicates if there are more keys to return in the requested range. | bool |
 
 
@@ -700,11 +700,11 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | created | created is set to true if the response is for a create watch request. The client should record the watch_id and expect to receive events for the created watcher from the same stream. All events sent to the created watcher will attach with the same watch_id. | bool |
 | canceled | canceled is set to true if the response is for a cancel watch request. No further events will be sent to the canceled watcher. | bool |
 | compact_revision | compact_revision is set to the minimum index if a watcher tries to watch at a compacted index.  This happens when creating a watcher at a compacted revision or the watcher cannot catch up with the progress of the key-value store.  The client should treat the watcher as canceled and should not try to create any watcher with the same start_revision again. | int64 |
-| events |  | (slice of) storagepb.Event |
+| events |  | (slice of) mvccpb.Event |
 
 
 
-##### message `Event` (storage/storagepb/kv.proto)
+##### message `Event` (mvcc/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -713,7 +713,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
-##### message `KeyValue` (storage/storagepb/kv.proto)
+##### message `KeyValue` (mvcc/mvccpb/kv.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |

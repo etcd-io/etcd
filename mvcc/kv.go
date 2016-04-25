@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/storage/backend"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 type KV interface {
@@ -37,7 +37,7 @@ type KV interface {
 	// If `end` is not nil and empty, it gets the keys greater than or equal to key.
 	// Limit limits the number of keys returned.
 	// If the required rev is compacted, ErrCompacted will be returned.
-	Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
+	Range(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, rev int64, err error)
 
 	// Put puts the given key, value into the store. Put also takes additional argument lease to
 	// attach a lease to a key-value pair as meta-data. KV implementation does not validate the lease
@@ -63,7 +63,7 @@ type KV interface {
 	// TxnEnd ends the on-going txn with txn ID. If the on-going txn ID is not matched, error is returned.
 	TxnEnd(txnID int64) error
 	// TxnRange returns the current revision of the KV when the operation is executed.
-	TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error)
+	TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, rev int64, err error)
 	TxnPut(txnID int64, key, value []byte, lease lease.LeaseID) (rev int64, err error)
 	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
 

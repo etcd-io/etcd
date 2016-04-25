@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/storage/backend"
-	"github.com/coreos/etcd/storage/storagepb"
 )
 
 // Functional tests for features implemented in v3 store. It treats v3 store
@@ -33,16 +33,16 @@ import (
 // TODO: add similar tests on operations in one txn/rev
 
 type (
-	rangeFunc       func(kv KV, key, end []byte, limit, rangeRev int64) ([]storagepb.KeyValue, int64, error)
+	rangeFunc       func(kv KV, key, end []byte, limit, rangeRev int64) ([]mvccpb.KeyValue, int64, error)
 	putFunc         func(kv KV, key, value []byte, lease lease.LeaseID) int64
 	deleteRangeFunc func(kv KV, key, end []byte) (n, rev int64)
 )
 
 var (
-	normalRangeFunc = func(kv KV, key, end []byte, limit, rangeRev int64) ([]storagepb.KeyValue, int64, error) {
+	normalRangeFunc = func(kv KV, key, end []byte, limit, rangeRev int64) ([]mvccpb.KeyValue, int64, error) {
 		return kv.Range(key, end, limit, rangeRev)
 	}
-	txnRangeFunc = func(kv KV, key, end []byte, limit, rangeRev int64) ([]storagepb.KeyValue, int64, error) {
+	txnRangeFunc = func(kv KV, key, end []byte, limit, rangeRev int64) ([]mvccpb.KeyValue, int64, error) {
 		id := kv.TxnBegin()
 		defer kv.TxnEnd(id)
 		return kv.TxnRange(id, key, end, limit, rangeRev)
@@ -88,7 +88,7 @@ func testKVRange(t *testing.T, f rangeFunc) {
 	wrev := int64(4)
 	tests := []struct {
 		key, end []byte
-		wkvs     []storagepb.KeyValue
+		wkvs     []mvccpb.KeyValue
 	}{
 		// get no keys
 		{
@@ -154,7 +154,7 @@ func testKVRangeRev(t *testing.T, f rangeFunc) {
 	tests := []struct {
 		rev  int64
 		wrev int64
-		wkvs []storagepb.KeyValue
+		wkvs []mvccpb.KeyValue
 	}{
 		{-1, 4, kvs},
 		{0, 4, kvs},
@@ -223,7 +223,7 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	wrev := int64(4)
 	tests := []struct {
 		limit int64
-		wkvs  []storagepb.KeyValue
+		wkvs  []mvccpb.KeyValue
 	}{
 		// no limit
 		{-1, kvs},
@@ -268,7 +268,7 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		wkvs := []storagepb.KeyValue{
+		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: base + 1, Version: base, Lease: base},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
@@ -372,7 +372,7 @@ func TestKVOperationInSequence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		wkvs := []storagepb.KeyValue{
+		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1, Lease: int64(lease.NoLease)},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
@@ -494,7 +494,7 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		wkvs := []storagepb.KeyValue{
+		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1, Lease: int64(lease.NoLease)},
 		}
 		if !reflect.DeepEqual(kvs, wkvs) {
@@ -542,17 +542,17 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 	tests := []struct {
 		rev int64
 		// wanted kvs right after the compacted rev
-		wkvs []storagepb.KeyValue
+		wkvs []mvccpb.KeyValue
 	}{
 		{
 			1,
-			[]storagepb.KeyValue{
+			[]mvccpb.KeyValue{
 				{Key: []byte("foo"), Value: []byte("bar0"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 1},
 			},
 		},
 		{
 			2,
-			[]storagepb.KeyValue{
+			[]mvccpb.KeyValue{
 				{Key: []byte("foo"), Value: []byte("bar1"), CreateRevision: 2, ModRevision: 3, Version: 2, Lease: 2},
 			},
 		},
@@ -562,7 +562,7 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		},
 		{
 			4,
-			[]storagepb.KeyValue{
+			[]mvccpb.KeyValue{
 				{Key: []byte("foo"), Value: []byte("bar2"), CreateRevision: 5, ModRevision: 5, Version: 1, Lease: 3},
 			},
 		},
@@ -656,7 +656,7 @@ func TestKVRestore(t *testing.T) {
 		b, tmpPath := backend.NewDefaultTmpBackend()
 		s := NewStore(b, &lease.FakeLessor{}, nil)
 		tt(s)
-		var kvss [][]storagepb.KeyValue
+		var kvss [][]mvccpb.KeyValue
 		for k := int64(0); k < 10; k++ {
 			kvs, _, _ := s.Range([]byte("a"), []byte("z"), 0, k)
 			kvss = append(kvss, kvs)
@@ -667,7 +667,7 @@ func TestKVRestore(t *testing.T) {
 		ns := NewStore(b, &lease.FakeLessor{}, nil)
 		// wait for possible compaction to finish
 		testutil.WaitSchedule()
-		var nkvss [][]storagepb.KeyValue
+		var nkvss [][]mvccpb.KeyValue
 		for k := int64(0); k < 10; k++ {
 			nkvs, _, _ := ns.Range([]byte("a"), []byte("z"), 0, k)
 			nkvss = append(nkvss, nkvs)
@@ -726,9 +726,9 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	wid := w.Watch([]byte("foo"), []byte("fop"), 0)
 
-	wev := []storagepb.Event{
-		{Type: storagepb.PUT,
-			Kv: &storagepb.KeyValue{
+	wev := []mvccpb.Event{
+		{Type: mvccpb.PUT,
+			Kv: &mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
 				CreateRevision: 2,
@@ -738,8 +738,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 		},
 		{
-			Type: storagepb.PUT,
-			Kv: &storagepb.KeyValue{
+			Type: mvccpb.PUT,
+			Kv: &mvccpb.KeyValue{
 				Key:            []byte("foo1"),
 				Value:          []byte("bar1"),
 				CreateRevision: 3,
@@ -749,8 +749,8 @@ func TestWatchableKVWatch(t *testing.T) {
 			},
 		},
 		{
-			Type: storagepb.PUT,
-			Kv: &storagepb.KeyValue{
+			Type: mvccpb.PUT,
+			Kv: &mvccpb.KeyValue{
 				Key:            []byte("foo1"),
 				Value:          []byte("bar11"),
 				CreateRevision: 3,
@@ -827,11 +827,11 @@ func cleanup(s KV, b backend.Backend, path string) {
 	os.Remove(path)
 }
 
-func put3TestKVs(s KV) []storagepb.KeyValue {
+func put3TestKVs(s KV) []mvccpb.KeyValue {
 	s.Put([]byte("foo"), []byte("bar"), 1)
 	s.Put([]byte("foo1"), []byte("bar1"), 2)
 	s.Put([]byte("foo2"), []byte("bar2"), 3)
-	return []storagepb.KeyValue{
+	return []mvccpb.KeyValue{
 		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1, Lease: 1},
 		{Key: []byte("foo1"), Value: []byte("bar1"), CreateRevision: 3, ModRevision: 3, Version: 1, Lease: 2},
 		{Key: []byte("foo2"), Value: []byte("bar2"), CreateRevision: 4, ModRevision: 4, Version: 1, Lease: 3},

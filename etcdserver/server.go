@@ -36,6 +36,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -47,8 +49,6 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/snap"
-	dstorage "github.com/coreos/etcd/storage"
-	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
@@ -181,7 +181,7 @@ type EtcdServer struct {
 	applyV2 applierV2
 
 	applyV3    applierV3
-	kv         dstorage.ConsistentWatchableKV
+	kv         mvcc.ConsistentWatchableKV
 	lessor     lease.Lessor
 	bemu       sync.Mutex
 	be         backend.Backend
@@ -392,7 +392,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 
 	srv.be = be
 	srv.lessor = lease.NewLessor(srv.be)
-	srv.kv = dstorage.New(srv.be, srv.lessor, &srv.consistIndex)
+	srv.kv = mvcc.New(srv.be, srv.lessor, &srv.consistIndex)
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
 	srv.authStore = auth.NewAuthStore(srv.be)
 	if h := cfg.AutoCompactionRetention; h != 0 {
@@ -1258,7 +1258,7 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 	}
 }
 
-func (s *EtcdServer) KV() dstorage.ConsistentWatchableKV { return s.kv }
+func (s *EtcdServer) KV() mvcc.ConsistentWatchableKV { return s.kv }
 func (s *EtcdServer) Backend() backend.Backend {
 	s.bemu.Lock()
 	defer s.bemu.Unlock()

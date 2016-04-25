@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/storage/backend"
+	"github.com/coreos/etcd/mvcc/backend"
 )
 
 // TestWatcherWatchID tests that each watcher provides unique watchID,

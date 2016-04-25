@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/lease/leasepb"
-	"github.com/coreos/etcd/storage/backend"
+	"github.com/coreos/etcd/mvcc/backend"
 )
 
 const (
@@ -47,7 +47,7 @@ type LeaseID int64
 
 // RangeDeleter defines an interface with DeleteRange method.
 // We define this interface only for lessor to limit the number
-// of methods of storage.KV to what lessor actually needs.
+// of methods of mvcc.KV to what lessor actually needs.
 //
 // Having a minimum interface makes testing easy.
 type RangeDeleter interface {

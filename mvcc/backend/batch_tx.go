@@ -52,7 +52,7 @@ func newBatchTx(backend *backend) *batchTx {
 func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	_, err := t.tx.CreateBucket(name)
 	if err != nil && err != bolt.ErrBucketExists {
-		log.Fatalf("storage: cannot create bucket %s (%v)", string(name), err)
+		log.Fatalf("mvcc: cannot create bucket %s (%v)", string(name), err)
 	}
 	t.pending++
 }
@@ -70,7 +70,7 @@ func (t *batchTx) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
 func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq bool) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
-		log.Fatalf("storage: bucket %s does not exist", string(bucketName))
+		log.Fatalf("mvcc: bucket %s does not exist", string(bucketName))
 	}
 	if seq {
 		// it is useful to increase fill percent when the workloads are mostly append-only.
@@ -78,7 +78,7 @@ func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq boo
 		bucket.FillPercent = 0.9
 	}
 	if err := bucket.Put(key, value); err != nil {
-		log.Fatalf("storage: cannot put key into bucket (%v)", err)
+		log.Fatalf("mvcc: cannot put key into bucket (%v)", err)
 	}
 	t.pending++
 }
@@ -87,7 +87,7 @@ func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq boo
 func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
-		log.Fatalf("storage: bucket %s does not exist", string(bucketName))
+		log.Fatalf("mvcc: bucket %s does not exist", string(bucketName))
 	}
 
 	if len(endKey) == 0 {
@@ -114,11 +114,11 @@ func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64
 func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
-		log.Fatalf("storage: bucket %s does not exist", string(bucketName))
+		log.Fatalf("mvcc: bucket %s does not exist", string(bucketName))
 	}
 	err := bucket.Delete(key)
 	if err != nil {
-		log.Fatalf("storage: cannot delete key from bucket (%v)", err)
+		log.Fatalf("mvcc: cannot delete key from bucket (%v)", err)
 	}
 	t.pending++
 }
@@ -170,7 +170,7 @@ func (t *batchTx) commit(stop bool) {
 
 		t.pending = 0
 		if err != nil {
-			log.Fatalf("storage: cannot commit tx (%s)", err)
+			log.Fatalf("mvcc: cannot commit tx (%s)", err)
 		}
 	}
 
@@ -183,7 +183,7 @@ func (t *batchTx) commit(stop bool) {
 	// begin a new tx
 	t.tx, err = t.backend.db.Begin(true)
 	if err != nil {
-		log.Fatalf("storage: cannot begin tx (%s)", err)
+		log.Fatalf("mvcc: cannot begin tx (%s)", err)
 	}
 	atomic.StoreInt64(&t.backend.size, t.tx.Size())
 }

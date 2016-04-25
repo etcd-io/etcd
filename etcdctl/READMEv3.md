@@ -723,7 +723,7 @@ On success, prints a line of JSON encoding the database hash, revision, total ke
 
 
 [etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
-[storagerpc]: ../storage/storagepb/kv.proto
+[storagerpc]: ../mvcc/mvccpb/kv.proto
 
 ## Compatibility Support
 

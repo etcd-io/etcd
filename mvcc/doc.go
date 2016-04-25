@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package backend defines a standard interface for etcd's backend storage.
-package backend
+// Package mvcc defines etcd's stable MVCC storage.
+package mvcc

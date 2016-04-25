@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"encoding/binary"
@@ -24,9 +24,9 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/schedule"
-	"github.com/coreos/etcd/storage/backend"
-	"github.com/coreos/etcd/storage/storagepb"
 	"golang.org/x/net/context"
 )
 
@@ -45,10 +45,10 @@ var (
 	scheduledCompactKeyName = []byte("scheduledCompactRev")
 	finishedCompactKeyName  = []byte("finishedCompactRev")
 
-	ErrTxnIDMismatch = errors.New("storage: txn id mismatch")
-	ErrCompacted     = errors.New("storage: required revision has been compacted")
-	ErrFutureRev     = errors.New("storage: required revision is a future revision")
-	ErrCanceled      = errors.New("storage: watcher is canceled")
+	ErrTxnIDMismatch = errors.New("mvcc: txn id mismatch")
+	ErrCompacted     = errors.New("mvcc: required revision has been compacted")
+	ErrFutureRev     = errors.New("mvcc: required revision is a future revision")
+	ErrCanceled      = errors.New("mvcc: watcher is canceled")
 )
 
 // ConsistentIndexGetter is an interface that wraps the Get method.
@@ -75,14 +75,14 @@ type store struct {
 	tx    backend.BatchTx
 	txnID int64 // tracks the current txnID to verify txn operations
 
-	changes   []storagepb.KeyValue
+	changes   []mvccpb.KeyValue
 	fifoSched schedule.Scheduler
 
 	stopc chan struct{}
 }
 
 // NewStore returns a new store. It is useful to create a store inside
-// storage pkg. It should only be used for testing externally.
+// mvcc pkg. It should only be used for testing externally.
 func NewStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *store {
 	s := &store{
 		b:       b,
@@ -142,7 +142,7 @@ func (s *store) Put(key, value []byte, lease lease.LeaseID) int64 {
 	return int64(s.currentRev.main)
 }
 
-func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
+func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, rev int64, err error) {
 	id := s.TxnBegin()
 	kvs, rev, err = s.rangeKeys(key, end, limit, rangeRev)
 	s.txnEnd(id)
@@ -201,7 +201,7 @@ func (s *store) txnEnd(txnID int64) error {
 	return nil
 }
 
-func (s *store) TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, rev int64, err error) {
+func (s *store) TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, rev int64, err error) {
 	if txnID != s.txnID {
 		return nil, 0, ErrTxnIDMismatch
 	}
@@ -330,15 +330,15 @@ func (s *store) restore() error {
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
-		log.Printf("storage: restore compact to %d", s.compactMainRev)
+		log.Printf("mvcc: restore compact to %d", s.compactMainRev)
 	}
 
 	// TODO: limit N to reduce max memory usage
 	keys, vals := tx.UnsafeRange(keyBucketName, min, max, 0)
 	for i, key := range keys {
-		var kv storagepb.KeyValue
+		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(vals[i]); err != nil {
-			log.Fatalf("storage: cannot unmarshal event: %v", err)
+			log.Fatalf("mvcc: cannot unmarshal event: %v", err)
 		}
 
 		rev := bytesToRev(key[:revBytesLen])
@@ -350,7 +350,7 @@ func (s *store) restore() error {
 			if lease.LeaseID(kv.Lease) != lease.NoLease {
 				err := s.le.Detach(lease.LeaseID(kv.Lease), []lease.LeaseItem{{Key: string(kv.Key)}})
 				if err != nil && err != lease.ErrLeaseNotFound {
-					log.Fatalf("storage: unexpected Detach error %v", err)
+					log.Fatalf("mvcc: unexpected Detach error %v", err)
 				}
 			}
 		default:
@@ -387,7 +387,7 @@ func (s *store) restore() error {
 
 	if scheduledCompact != 0 {
 		s.Compact(scheduledCompact)
-		log.Printf("storage: resume scheduled compaction at %d", scheduledCompact)
+		log.Printf("mvcc: resume scheduled compaction at %d", scheduledCompact)
 	}
 
 	return nil
@@ -410,7 +410,7 @@ func (a *store) Equal(b *store) bool {
 }
 
 // range is a keyword in Go, add Keys suffix.
-func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storagepb.KeyValue, curRev int64, err error) {
+func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, curRev int64, err error) {
 	curRev = int64(s.currentRev.main)
 	if s.currentRev.sub > 0 {
 		curRev += 1
@@ -439,12 +439,12 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []storage
 
 		_, vs := s.tx.UnsafeRange(keyBucketName, start, end, 0)
 		if len(vs) != 1 {
-			log.Fatalf("storage: range cannot find rev (%d,%d)", revpair.main, revpair.sub)
+			log.Fatalf("mvcc: range cannot find rev (%d,%d)", revpair.main, revpair.sub)
 		}
 
-		var kv storagepb.KeyValue
+		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(vs[0]); err != nil {
-			log.Fatalf("storage: cannot unmarshal event: %v", err)
+			log.Fatalf("mvcc: cannot unmarshal event: %v", err)
 		}
 		kvs = append(kvs, kv)
 		if limit > 0 && len(kvs) >= int(limit) {
@@ -467,9 +467,9 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 		ibytes := newRevBytes()
 		revToBytes(grev, ibytes)
 		_, vs := s.tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
-		var kv storagepb.KeyValue
+		var kv mvccpb.KeyValue
 		if err = kv.Unmarshal(vs[0]); err != nil {
-			log.Fatalf("storage: cannot unmarshal value: %v", err)
+			log.Fatalf("mvcc: cannot unmarshal value: %v", err)
 		}
 		oldLease = lease.LeaseID(kv.Lease)
 	}
@@ -478,7 +478,7 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 	revToBytes(revision{main: rev, sub: s.currentRev.sub}, ibytes)
 
 	ver = ver + 1
-	kv := storagepb.KeyValue{
+	kv := mvccpb.KeyValue{
 		Key:            key,
 		Value:          value,
 		CreateRevision: c,
@@ -489,7 +489,7 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		log.Fatalf("storage: cannot marshal event: %v", err)
+		log.Fatalf("mvcc: cannot marshal event: %v", err)
 	}
 
 	s.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
@@ -544,19 +544,19 @@ func (s *store) delete(key []byte, rev revision) {
 	revToBytes(revision{main: mainrev, sub: s.currentRev.sub}, ibytes)
 	ibytes = appendMarkTombstone(ibytes)
 
-	kv := storagepb.KeyValue{
+	kv := mvccpb.KeyValue{
 		Key: key,
 	}
 
 	d, err := kv.Marshal()
 	if err != nil {
-		log.Fatalf("storage: cannot marshal event: %v", err)
+		log.Fatalf("mvcc: cannot marshal event: %v", err)
 	}
 
 	s.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	err = s.kvindex.Tombstone(key, revision{main: mainrev, sub: s.currentRev.sub})
 	if err != nil {
-		log.Fatalf("storage: cannot tombstone an existing key (%s): %v", string(key), err)
+		log.Fatalf("mvcc: cannot tombstone an existing key (%s): %v", string(key), err)
 	}
 	s.changes = append(s.changes, kv)
 	s.currentRev.sub += 1
@@ -567,20 +567,20 @@ func (s *store) delete(key []byte, rev revision) {
 
 	kv.Reset()
 	if err = kv.Unmarshal(vs[0]); err != nil {
-		log.Fatalf("storage: cannot unmarshal value: %v", err)
+		log.Fatalf("mvcc: cannot unmarshal value: %v", err)
 	}
 
 	if lease.LeaseID(kv.Lease) != lease.NoLease {
 		err = s.le.Detach(lease.LeaseID(kv.Lease), []lease.LeaseItem{{Key: string(kv.Key)}})
 		if err != nil {
-			log.Fatalf("storage: cannot detach %v", err)
+			log.Fatalf("mvcc: cannot detach %v", err)
 		}
 	}
 }
 
-func (s *store) getChanges() []storagepb.KeyValue {
+func (s *store) getChanges() []mvccpb.KeyValue {
 	changes := s.changes
-	s.changes = make([]storagepb.KeyValue, 0, 128)
+	s.changes = make([]mvccpb.KeyValue, 0, 128)
 	return changes
 }
 

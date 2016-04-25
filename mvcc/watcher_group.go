@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"math"
 
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/adt"
-	"github.com/coreos/etcd/storage/storagepb"
 )
 
 var (
@@ -30,14 +30,14 @@ var (
 
 type eventBatch struct {
 	// evs is a batch of revision-ordered events
-	evs []storagepb.Event
+	evs []mvccpb.Event
 	// revs is the minimum unique revisions observed for this batch
 	revs int
 	// moreRev is first revision with more events following this batch
 	moreRev int64
 }
 
-func (eb *eventBatch) add(ev storagepb.Event) {
+func (eb *eventBatch) add(ev mvccpb.Event) {
 	if eb.revs > watchBatchMaxRevs {
 		// maxed out batch size
 		return
@@ -66,7 +66,7 @@ func (eb *eventBatch) add(ev storagepb.Event) {
 
 type watcherBatch map[*watcher]*eventBatch
 
-func (wb watcherBatch) add(w *watcher, ev storagepb.Event) {
+func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
 	eb := wb[w]
 	if eb == nil {
 		eb = &eventBatch{}
@@ -82,7 +82,7 @@ func (wb watcherBatch) contains(w *watcher) bool {
 
 // newWatcherBatch maps watchers to their matched events. It enables quick
 // events look up by watcher.
-func newWatcherBatch(wg *watcherGroup, evs []storagepb.Event) watcherBatch {
+func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
 	wb := make(watcherBatch)
 	for _, ev := range evs {
 		for w := range wg.watcherSetByKey(string(ev.Kv.Key)) {

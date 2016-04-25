@@ -141,6 +141,6 @@ etcd ensures linearizability for all other operations by default. Linearizabilit
 [strict_consistency]: https://en.wikipedia.org/wiki/Consistency_model#Strict_consistency
 [serializable_isolation]: https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable
 [Linearizability]: #Linearizability
-[kv-proto]: https://github.com/coreos/etcd/blob/master/storage/storagepb/kv.proto
+[kv-proto]: https://github.com/coreos/etcd/blob/master/mvcc/mvccpb/kv.proto
 [kv-service]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
 [response_header]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto

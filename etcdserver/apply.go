@@ -21,9 +21,9 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/types"
-	dstorage "github.com/coreos/etcd/storage"
-	"github.com/coreos/etcd/storage/storagepb"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -166,7 +166,7 @@ func (a *applierV3backend) Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResp
 	resp.Header = &pb.ResponseHeader{}
 
 	var (
-		kvs []storagepb.KeyValue
+		kvs []mvccpb.KeyValue
 		rev int64
 		err error
 	)
@@ -292,12 +292,12 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
 	ckvs, rev, err := a.s.KV().Range(c.Key, nil, 1, 0)
 	if err != nil {
-		if err == dstorage.ErrTxnIDMismatch {
+		if err == mvcc.ErrTxnIDMismatch {
 			panic("unexpected txn ID mismatch error")
 		}
 		return rev, false
 	}
-	var ckv storagepb.KeyValue
+	var ckv mvccpb.KeyValue
 	if len(ckvs) != 0 {
 		ckv = ckvs[0]
 	} else {
@@ -557,7 +557,7 @@ func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 	return resp, err
 }
 
-type kvSort struct{ kvs []storagepb.KeyValue }
+type kvSort struct{ kvs []mvccpb.KeyValue }
 
 func (s *kvSort) Swap(i, j int) {
 	t := s.kvs[i]
@@ -625,10 +625,10 @@ func (a *applierV3backend) checkRequestRange(reqs []*pb.RequestUnion) error {
 		}
 
 		if greq.Revision > a.s.KV().Rev() {
-			return dstorage.ErrFutureRev
+			return mvcc.ErrFutureRev
 		}
 		if greq.Revision < a.s.KV().FirstRev() {
-			return dstorage.ErrCompacted
+			return mvcc.ErrCompacted
 		}
 	}
 	return nil

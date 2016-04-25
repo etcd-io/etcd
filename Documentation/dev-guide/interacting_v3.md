@@ -179,7 +179,7 @@ compacted revision 5
 
 # any revisions before the compacted one are not accessible
 $ etcdctl get --rev=4 foo
-Error:  rpc error: code = 11 desc = etcdserver: storage: required revision has been compacted
+Error:  rpc error: code = 11 desc = etcdserver: mvcc: required revision has been compacted
 ```
 
 ## Grant leases

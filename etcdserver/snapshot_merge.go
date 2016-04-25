@@ -18,9 +18,9 @@ import (
 	"io"
 	"log"
 
+	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
-	"github.com/coreos/etcd/storage/backend"
 )
 
 // createMergedSnapshotMessage creates a snapshot message that contains: raft status (term, conf),

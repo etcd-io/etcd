@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/mirror"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -125,10 +125,10 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 				ops = []clientv3.Op{}
 			}
 			switch ev.Type {
-			case storagepb.PUT:
+			case mvccpb.PUT:
 				ops = append(ops, clientv3.OpPut(string(ev.Kv.Key), string(ev.Kv.Value)))
 				atomic.AddInt64(&total, 1)
-			case storagepb.DELETE, storagepb.EXPIRE:
+			case mvccpb.DELETE, mvccpb.EXPIRE:
 				ops = append(ops, clientv3.OpDelete(string(ev.Kv.Key)))
 				atomic.AddInt64(&total, 1)
 			default:

@@ -17,7 +17,7 @@ if ! [[ $(protoc --version) =~ "3.0.0" ]]; then
 fi
 
 # directories containing protos to be built
-DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb ./lease/leasepb ./auth/authpb"
+DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb"
 
 # exact version of protoc-gen-gogo to build
 SHA="c3995ae437bb78d1189f4f147dfe5f87ad3596e4"
@@ -75,7 +75,7 @@ if [ "$1" = "-g" ]; then
 		echo "protodoc is updated"
 	popd
 
-	protodoc --directories="etcdserver/etcdserverpb=service_message,storage/storagepb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
+	protodoc --directories="etcdserver/etcdserverpb=service_message,mvcc/mvccpb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
 		--title="etcd API Reference" \
 		--output="Documentation/dev-guide/api_reference_v3.md" \
 		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto"
