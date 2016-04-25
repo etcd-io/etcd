@@ -87,8 +87,9 @@ type config struct {
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
 	// make ticks a cluster wide configuration.
-	TickMs     uint
-	ElectionMs uint
+	TickMs            uint
+	ElectionMs        uint
+	quotaBackendBytes int64
 
 	// clustering
 	apurls, acurls      []url.URL
@@ -123,7 +124,6 @@ type config struct {
 	printVersion bool
 
 	autoCompactionRetention int
-	quotaBackendBytes       int64
 
 	enablePprof bool
 
@@ -167,6 +167,7 @@ func NewConfig() *config {
 	fs.Uint64Var(&cfg.snapCount, "snapshot-count", etcdserver.DefaultSnapCount, "Number of committed transactions to trigger a snapshot to disk.")
 	fs.UintVar(&cfg.TickMs, "heartbeat-interval", 100, "Time (in milliseconds) of a heartbeat interval.")
 	fs.UintVar(&cfg.ElectionMs, "election-timeout", 1000, "Time (in milliseconds) for an election to timeout.")
+	fs.Int64Var(&cfg.quotaBackendBytes, "quota-backend-bytes", 0, "Raise alarms when backend size exceeds the given quota. 0 means use the default quota.")
 
 	// clustering
 	fs.Var(flags.NewURLsValue(defaultInitialAdvertisePeerURLs), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster.")
@@ -225,7 +226,6 @@ func NewConfig() *config {
 
 	// demo flag
 	fs.IntVar(&cfg.autoCompactionRetention, "experimental-auto-compaction-retention", 0, "Auto compaction retention in hour. 0 means disable auto compaction.")
-	fs.Int64Var(&cfg.quotaBackendBytes, "quota-backend-bytes", 0, "Raise alarms when backend size exceeds the given quota. 0 means use the default quota.")
 
 	// backwards-compatibility with v0.4.6
 	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use --advertise-client-urls instead.")
