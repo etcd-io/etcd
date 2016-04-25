@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/compress"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -27,6 +28,17 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config) *grpc.Server {
 	var opts []grpc.ServerOption
 	if tls != nil {
 		opts = append(opts, grpc.Creds(credentials.NewTLS(tls)))
+	}
+
+	switch s.CompressType {
+	case compress.Gzip:
+		opts = append(opts,
+			grpc.RPCCompressor(compress.NewGzipCompressor()),
+			grpc.RPCDecompressor(compress.NewGzipDecompressor()))
+	case compress.Snappy:
+		opts = append(opts,
+			grpc.RPCCompressor(compress.NewSnappyCompressor()),
+			grpc.RPCDecompressor(compress.NewSnappyDecompressor()))
 	}
 
 	grpcServer := grpc.NewServer(opts...)

@@ -36,6 +36,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/pkg/compress"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -211,7 +212,8 @@ type EtcdServer struct {
 
 	// wg is used to wait for the go routines that depends on the server state
 	// to exit when stopping the server.
-	wg sync.WaitGroup
+	wg           sync.WaitGroup
+	CompressType compress.Type
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -365,6 +367,24 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	sstats.Initialize()
 	lstats := stats.NewLeaderStats(id.String())
 
+	// enable compression:
+	//	1. etcdserver/api/v3rpc grpc.Server
+	//
+	//	TODO(skip compression for now)
+	//	rafthttp messageEncoder, messageDecoder (need to set header)
+	//	rafthttp newSnapshotHandler
+	//	rafthttp msgAppV2Encoder, msgAppV2Decoder
+	//	rafthttp newPipelineHandler
+	//	rafthttp newStreamHandler
+	//	etcdserver/api/v2http NewClientHandler
+	//	etcdserver/api/v2http NewPeerHandler
+	//
+	if cfg.CompressType != compress.NoCompress {
+		plog.Infof("enabling compression %s", cfg.CompressType)
+	} else {
+		plog.Info("no compression enabled")
+	}
+
 	srv = &EtcdServer{
 		cfg:       cfg,
 		snapCount: cfg.SnapCount,
@@ -386,6 +406,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		reqIDGen:      idutil.NewGenerator(uint16(id), time.Now()),
 		forceVersionC: make(chan struct{}),
 		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
+		CompressType:  cfg.CompressType,
 	}
 
 	srv.applyV2 = &applierV2store{srv}
