@@ -45,7 +45,7 @@ func NewMakeMirrorCommand() *cobra.Command {
 	}
 
 	c.Flags().StringVar(&mmprefix, "prefix", "", "the key-value prefix to mirror")
-	// TODO: add dest-prefix to mirror a prefix to a different prefix in the destionation cluster?
+	// TODO: add dest-prefix to mirror a prefix to a different prefix in the destination cluster?
 	c.Flags().StringVar(&mmcert, "dest-cert", "", "identify secure client using this TLS certificate file for the destination cluster")
 	c.Flags().StringVar(&mmkey, "dest-key", "", "identify secure client using this TLS key file")
 	c.Flags().StringVar(&mmcacert, "dest-cacert", "", "verify certificates of TLS enabled secure servers using this CA bundle")
@@ -57,7 +57,7 @@ func NewMakeMirrorCommand() *cobra.Command {
 
 func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, errors.New("make-mirror takes one destination arguement."))
+		ExitWithError(ExitBadArgs, errors.New("make-mirror takes one destination argument."))
 	}
 
 	dialTimeout := dialTimeoutFromCmd(cmd)
