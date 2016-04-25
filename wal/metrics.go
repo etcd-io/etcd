@@ -18,14 +18,14 @@ import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	syncDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "etcd",
+		Namespace: "etcd_debugging",
 		Subsystem: "wal",
 		Name:      "fsync_durations_seconds",
 		Help:      "The latency distributions of fsync called by wal.",
 		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
 	lastIndexSaved = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd",
+		Namespace: "etcd_debugging",
 		Subsystem: "wal",
 		Name:      "last_index_saved",
 		Help:      "The index of the last entry saved by wal.",

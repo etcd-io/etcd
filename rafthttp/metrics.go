@@ -29,7 +29,7 @@ var (
 	// time range than other type of messages.
 	msgSentDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "rafthttp",
 			Name:      "message_sent_latency_seconds",
 			Help:      "message sent latency distributions.",
@@ -39,7 +39,7 @@ var (
 	)
 
 	msgSentFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "etcd",
+		Namespace: "etcd_debugging",
 		Subsystem: "rafthttp",
 		Name:      "message_sent_failed_total",
 		Help:      "The total number of failed messages sent.",

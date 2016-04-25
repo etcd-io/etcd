@@ -21,7 +21,7 @@ import (
 var (
 	rangeCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "range_total",
 			Help:      "Total number of ranges seen by this member.",
@@ -29,7 +29,7 @@ var (
 
 	putCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "put_total",
 			Help:      "Total number of puts seen by this member.",
@@ -37,7 +37,7 @@ var (
 
 	deleteCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "delete_total",
 			Help:      "Total number of deletes seen by this member.",
@@ -45,7 +45,7 @@ var (
 
 	txnCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "txn_total",
 			Help:      "Total number of txns seen by this member.",
@@ -53,7 +53,7 @@ var (
 
 	keysGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "keys_total",
 			Help:      "Total number of keys.",
@@ -61,7 +61,7 @@ var (
 
 	watchStreamGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "watch_stream_total",
 			Help:      "Total number of watch streams.",
@@ -69,7 +69,7 @@ var (
 
 	watcherGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "watcher_total",
 			Help:      "Total number of watchers.",
@@ -77,7 +77,7 @@ var (
 
 	slowWatcherGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "slow_watcher_total",
 			Help:      "Total number of unsynced slow watchers.",
@@ -85,7 +85,7 @@ var (
 
 	totalEventsCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "events_total",
 			Help:      "Total number of events sent by this member.",
@@ -93,7 +93,7 @@ var (
 
 	pendingEventsGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "pending_events_total",
 			Help:      "Total number of pending events to be sent.",
@@ -101,7 +101,7 @@ var (
 
 	indexCompactionPauseDurations = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "index_compaction_pause_duration_milliseconds",
 			Help:      "Bucketed histogram of index compaction pause duration.",
@@ -111,7 +111,7 @@ var (
 
 	dbCompactionPauseDurations = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "db_compaction_pause_duration_milliseconds",
 			Help:      "Bucketed histogram of db compaction pause duration.",
@@ -121,7 +121,7 @@ var (
 
 	dbCompactionTotalDurations = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Namespace: "etcd",
+			Namespace: "etcd_debugging",
 			Subsystem: "mvcc",
 			Name:      "db_compaction_total_duration_milliseconds",
 			Help:      "Bucketed histogram of db compaction total duration.",
@@ -130,7 +130,7 @@ var (
 		})
 
 	dbTotalSize = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd",
+		Namespace: "etcd_debugging",
 		Subsystem: "mvcc",
 		Name:      "db_total_size_in_bytes",
 		Help:      "Total size of the underlying database in bytes.",
