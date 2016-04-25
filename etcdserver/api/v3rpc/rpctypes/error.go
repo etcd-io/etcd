@@ -23,9 +23,9 @@ var (
 	ErrEmptyKey     = grpc.Errorf(codes.InvalidArgument, "etcdserver: key is not provided")
 	ErrTooManyOps   = grpc.Errorf(codes.InvalidArgument, "etcdserver: too many operations in txn request")
 	ErrDuplicateKey = grpc.Errorf(codes.InvalidArgument, "etcdserver: duplicate key given in txn request")
-	ErrCompacted    = grpc.Errorf(codes.OutOfRange, "etcdserver: storage: required revision has been compacted")
-	ErrFutureRev    = grpc.Errorf(codes.OutOfRange, "etcdserver: storage: required revision is a future revision")
-	ErrNoSpace      = grpc.Errorf(codes.ResourceExhausted, "etcdserver: storage: database space exceeded")
+	ErrCompacted    = grpc.Errorf(codes.OutOfRange, "etcdserver: mvcc: required revision has been compacted")
+	ErrFutureRev    = grpc.Errorf(codes.OutOfRange, "etcdserver: mvcc: required revision is a future revision")
+	ErrNoSpace      = grpc.Errorf(codes.ResourceExhausted, "etcdserver: mvcc: database space exceeded")
 
 	ErrLeaseNotFound = grpc.Errorf(codes.NotFound, "etcdserver: requested lease not found")
 	ErrLeaseExist    = grpc.Errorf(codes.FailedPrecondition, "etcdserver: lease already exists")

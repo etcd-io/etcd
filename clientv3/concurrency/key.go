@@ -20,7 +20,7 @@ import (
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
 
@@ -51,7 +51,7 @@ func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) e
 	wch := client.Watch(cctx, key, v3.WithRev(rev))
 	for wr := range wch {
 		for _, ev := range wr.Events {
-			if ev.Type == storagepb.DELETE {
+			if ev.Type == mvccpb.DELETE {
 				return nil
 			}
 		}

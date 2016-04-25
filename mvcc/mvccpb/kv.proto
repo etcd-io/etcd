@@ -1,5 +1,5 @@
 syntax = "proto3";
-package storagepb;
+package mvccpb;
 
 import "gogoproto/gogo.proto";
 

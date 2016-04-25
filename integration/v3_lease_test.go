@@ -21,8 +21,8 @@ import (
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/storage/storagepb"
 	"golang.org/x/net/context"
 )
 
@@ -158,7 +158,7 @@ func TestV3LeaseExpire(t *testing.T) {
 				errc <- err
 			case len(resp.Events) != 1:
 				fallthrough
-			case resp.Events[0].Type != storagepb.DELETE:
+			case resp.Events[0].Type != mvccpb.DELETE:
 				errc <- fmt.Errorf("expected key delete, got %v", resp)
 			default:
 				errc <- nil

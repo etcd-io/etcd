@@ -16,7 +16,7 @@ package recipe
 
 import (
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
 
@@ -60,6 +60,6 @@ func (b *Barrier) Wait() error {
 		b.client,
 		b.key,
 		resp.Header.Revision,
-		[]storagepb.Event_EventType{storagepb.PUT, storagepb.DELETE})
+		[]mvccpb.Event_EventType{mvccpb.PUT, mvccpb.DELETE})
 	return err
 }

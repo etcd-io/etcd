@@ -12,5 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package storage defines etcd's stable storage.
-package storage
+package mvcc
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/mvcc/backend"
+)
+
+func BenchmarkKVWatcherMemoryUsage(b *testing.B) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	watchable := newWatchableStore(be, &lease.FakeLessor{}, nil)
+
+	defer cleanup(watchable, be, tmpPath)
+
+	w := watchable.NewWatchStream()
+
+	b.ReportAllocs()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		w.Watch([]byte(fmt.Sprint("foo", i)), nil, 0)
+	}
+}

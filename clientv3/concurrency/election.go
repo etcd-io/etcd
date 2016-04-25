@@ -18,7 +18,7 @@ import (
 	"errors"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
 
@@ -128,7 +128,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 			return
 		}
 
-		var kv *storagepb.KeyValue
+		var kv *mvccpb.KeyValue
 
 		cctx, cancel := context.WithCancel(ctx)
 		if len(resp.Kvs) == 0 {
@@ -144,7 +144,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 				}
 				// only accept PUTs; a DELETE will make observe() spin
 				for _, ev := range wr.Events {
-					if ev.Type == storagepb.PUT {
+					if ev.Type == mvccpb.PUT {
 						kv = ev.Kv
 						break
 					}
@@ -162,12 +162,12 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 				return
 			}
 			for _, ev := range wr.Events {
-				if ev.Type == storagepb.DELETE {
+				if ev.Type == mvccpb.DELETE {
 					keyDeleted = true
 					break
 				}
 				resp.Header = &wr.Header
-				resp.Kvs = []*storagepb.KeyValue{ev.Kv}
+				resp.Kvs = []*mvccpb.KeyValue{ev.Kv}
 				select {
 				case ch <- *resp:
 				case <-cctx.Done():

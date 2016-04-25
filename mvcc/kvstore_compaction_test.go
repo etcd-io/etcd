@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/storage/backend"
+	"github.com/coreos/etcd/mvcc/backend"
 )
 
 func TestScheduleCompaction(t *testing.T) {

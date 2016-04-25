@@ -16,7 +16,7 @@ package etcdserver
 
 import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/storage/backend"
+	"github.com/coreos/etcd/mvcc/backend"
 )
 
 // Quota represents an arbitrary quota against arbitrary requests. Each request

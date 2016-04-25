@@ -20,17 +20,17 @@ import (
 
 	v3rpc "github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	storagepb "github.com/coreos/etcd/storage/storagepb"
+	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 const (
-	EventTypeDelete = storagepb.DELETE
-	EventTypePut    = storagepb.PUT
+	EventTypeDelete = mvccpb.DELETE
+	EventTypePut    = mvccpb.PUT
 )
 
-type Event storagepb.Event
+type Event mvccpb.Event
 
 type WatchChan <-chan WatchResponse
 

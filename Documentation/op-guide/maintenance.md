@@ -31,7 +31,7 @@ Revisions prior to the compaction revision become inaccessible:
 
 ```sh
 $ etcdctl get --rev=2 somekey
-Error:  rpc error: code = 11 desc = etcdserver: storage: required revision has been compacted
+Error:  rpc error: code = 11 desc = etcdserver: mvcc: required revision has been compacted
 ```
 
 ## Defragmentation
@@ -64,7 +64,7 @@ The space quota can be triggered with a loop:
 # fill keyspace
 $ while [ 1 ]; do dd if=/dev/urandom bs=1024 count=1024  | etcdctl put key  || break; done
 ...
-Error:  rpc error: code = 8 desc = etcdserver: storage: database space exceeded
+Error:  rpc error: code = 8 desc = etcdserver: mvcc: database space exceeded
 # confirm quota space is exceeded
 $ etcdctl endpoint status
 +----------------+------------------+-----------+---------+-----------+-----------+------------+

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"log"
@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/storage/backend"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 const (
@@ -88,11 +88,11 @@ func (s *watchableStore) Put(key, value []byte, lease lease.LeaseID) (rev int64)
 		log.Panicf("unexpected len(changes) != 1 after put")
 	}
 
-	ev := storagepb.Event{
-		Type: storagepb.PUT,
+	ev := mvccpb.Event{
+		Type: mvccpb.PUT,
 		Kv:   &changes[0],
 	}
-	s.notify(rev, []storagepb.Event{ev})
+	s.notify(rev, []mvccpb.Event{ev})
 	return rev
 }
 
@@ -111,10 +111,10 @@ func (s *watchableStore) DeleteRange(key, end []byte) (n, rev int64) {
 		return n, rev
 	}
 
-	evs := make([]storagepb.Event, n)
+	evs := make([]mvccpb.Event, n)
 	for i, change := range changes {
-		evs[i] = storagepb.Event{
-			Type: storagepb.DELETE,
+		evs[i] = mvccpb.Event{
+			Type: mvccpb.DELETE,
 			Kv:   &change}
 		evs[i].Kv.ModRevision = rev
 	}
@@ -140,17 +140,17 @@ func (s *watchableStore) TxnEnd(txnID int64) error {
 	}
 
 	rev := s.store.Rev()
-	evs := make([]storagepb.Event, len(changes))
+	evs := make([]mvccpb.Event, len(changes))
 	for i, change := range changes {
 		switch change.CreateRevision {
 		case 0:
-			evs[i] = storagepb.Event{
-				Type: storagepb.DELETE,
+			evs[i] = mvccpb.Event{
+				Type: mvccpb.DELETE,
 				Kv:   &changes[i]}
 			evs[i].Kv.ModRevision = rev
 		default:
-			evs[i] = storagepb.Event{
-				Type: storagepb.PUT,
+			evs[i] = mvccpb.Event{
+				Type: mvccpb.PUT,
 				Kv:   &changes[i]}
 		}
 	}
@@ -308,34 +308,34 @@ func (s *watchableStore) syncWatchers() {
 }
 
 // kvsToEvents gets all events for the watchers from all key-value pairs
-func kvsToEvents(wg *watcherGroup, revs, vals [][]byte) (evs []storagepb.Event) {
+func kvsToEvents(wg *watcherGroup, revs, vals [][]byte) (evs []mvccpb.Event) {
 	for i, v := range vals {
-		var kv storagepb.KeyValue
+		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(v); err != nil {
-			log.Panicf("storage: cannot unmarshal event: %v", err)
+			log.Panicf("mvcc: cannot unmarshal event: %v", err)
 		}
 
 		if !wg.contains(string(kv.Key)) {
 			continue
 		}
 
-		ty := storagepb.PUT
+		ty := mvccpb.PUT
 		if isTombstone(revs[i]) {
-			ty = storagepb.DELETE
+			ty = mvccpb.DELETE
 			// patch in mod revision so watchers won't skip
 			kv.ModRevision = bytesToRev(revs[i]).main
 		}
-		evs = append(evs, storagepb.Event{Kv: &kv, Type: ty})
+		evs = append(evs, mvccpb.Event{Kv: &kv, Type: ty})
 	}
 	return evs
 }
 
 // notify notifies the fact that given event at the given rev just happened to
 // watchers that watch on the key of the event.
-func (s *watchableStore) notify(rev int64, evs []storagepb.Event) {
+func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 	for w, eb := range newWatcherBatch(&s.synced, evs) {
 		if eb.revs != 1 {
-			panic("unexpected multiple revisions in notification")
+			log.Panicf("mvcc: unexpected multiple revisions in notification")
 		}
 		select {
 		case w.ch <- WatchResponse{WatchID: w.id, Events: eb.evs, Revision: s.Rev()}:

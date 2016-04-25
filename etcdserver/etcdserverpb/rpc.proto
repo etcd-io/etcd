@@ -2,7 +2,7 @@ syntax = "proto3";
 package etcdserverpb;
 
 import "gogoproto/gogo.proto";
-import "etcd/storage/storagepb/kv.proto";
+import "etcd/mvcc/mvccpb/kv.proto";
 import "etcd/auth/authpb/auth.proto";
 
 option (gogoproto.marshaler_all) = true;
@@ -192,7 +192,7 @@ message RangeRequest {
 message RangeResponse {
   ResponseHeader header = 1;
   // kvs is the list of key-value pairs matched by the range request.
-  repeated storagepb.KeyValue kvs = 2;
+  repeated mvccpb.KeyValue kvs = 2;
   // more indicates if there are more keys to return in the requested range.
   bool more = 3;
 }
@@ -401,7 +401,7 @@ message WatchResponse {
   // watcher with the same start_revision again.
   int64 compact_revision  = 5;
 
-  repeated storagepb.Event events = 11;
+  repeated mvccpb.Event events = 11;
 }
 
 message LeaseGrantRequest {

@@ -19,8 +19,8 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/version"
 	"golang.org/x/net/context"
 )

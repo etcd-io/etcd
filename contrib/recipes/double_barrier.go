@@ -16,7 +16,7 @@ package recipe
 
 import (
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
 
@@ -67,7 +67,7 @@ func (b *DoubleBarrier) Enter() error {
 		b.client,
 		b.key+"/ready",
 		ek.Revision(),
-		[]storagepb.Event_EventType{storagepb.PUT})
+		[]mvccpb.Event_EventType{mvccpb.PUT})
 	return err
 }
 
@@ -109,7 +109,7 @@ func (b *DoubleBarrier) Leave() error {
 			b.client,
 			string(highest.Key),
 			highest.ModRevision,
-			[]storagepb.Event_EventType{storagepb.DELETE})
+			[]mvccpb.Event_EventType{mvccpb.DELETE})
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ func (b *DoubleBarrier) Leave() error {
 		b.client,
 		key,
 		lowest.ModRevision,
-		[]storagepb.Event_EventType{storagepb.DELETE})
+		[]mvccpb.Event_EventType{mvccpb.DELETE})
 	if err != nil {
 		return err
 	}

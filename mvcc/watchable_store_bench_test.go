@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storage
+package mvcc
 
 import (
 	"math/rand"
@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/storage/backend"
+	"github.com/coreos/etcd/mvcc/backend"
 )
 
 // Benchmarks on cancel function performance for unsynced watchers

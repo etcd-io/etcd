@@ -19,16 +19,16 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/storage"
+	"github.com/coreos/etcd/mvcc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
 func togRPCError(err error) error {
 	switch err {
-	case storage.ErrCompacted:
+	case mvcc.ErrCompacted:
 		return rpctypes.ErrCompacted
-	case storage.ErrFutureRev:
+	case mvcc.ErrFutureRev:
 		return rpctypes.ErrFutureRev
 	case lease.ErrLeaseNotFound:
 		return rpctypes.ErrLeaseNotFound

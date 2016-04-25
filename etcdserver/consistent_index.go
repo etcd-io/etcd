@@ -19,7 +19,7 @@ import (
 )
 
 // consistentIndex represents the offset of an entry in a consistent replica log.
-// It implements the storage.ConsistentIndexGetter interface.
+// It implements the mvcc.ConsistentIndexGetter interface.
 // It is always set to the offset of current entry before executing the entry,
 // so ConsistentWatchableKV could get the consistent index from it.
 type consistentIndex uint64

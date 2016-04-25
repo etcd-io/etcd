@@ -21,15 +21,15 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/storage"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 type watchServer struct {
 	clusterID int64
 	memberID  int64
 	raftTimer etcdserver.RaftTimer
-	watchable storage.Watchable
+	watchable mvcc.Watchable
 }
 
 func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
@@ -71,7 +71,7 @@ const (
 )
 
 // serverWatchStream is an etcd server side stream. It receives requests
-// from client side gRPC stream. It receives watch events from storage.WatchStream,
+// from client side gRPC stream. It receives watch events from mvcc.WatchStream,
 // and creates responses that forwarded to gRPC stream.
 // It also forwards control message like watch created and canceled.
 type serverWatchStream struct {
@@ -80,12 +80,12 @@ type serverWatchStream struct {
 	raftTimer etcdserver.RaftTimer
 
 	gRPCStream  pb.Watch_WatchServer
-	watchStream storage.WatchStream
+	watchStream mvcc.WatchStream
 	ctrlStream  chan *pb.WatchResponse
 
 	// progress tracks the watchID that stream might need to send
 	// progress to.
-	progress map[storage.WatchID]bool
+	progress map[mvcc.WatchID]bool
 	// mu protects progress
 	mu sync.Mutex
 
@@ -102,7 +102,7 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) error {
 		watchStream: ws.watchable.NewWatchStream(),
 		// chan for sending control response like watcher created and canceled.
 		ctrlStream: make(chan *pb.WatchResponse, ctrlStreamBufLen),
-		progress:   make(map[storage.WatchID]bool),
+		progress:   make(map[mvcc.WatchID]bool),
 		closec:     make(chan struct{}),
 	}
 	defer sws.close()
@@ -154,7 +154,7 @@ func (sws *serverWatchStream) recvLoop() error {
 		case *pb.WatchRequest_CancelRequest:
 			if uv.CancelRequest != nil {
 				id := uv.CancelRequest.WatchId
-				err := sws.watchStream.Cancel(storage.WatchID(id))
+				err := sws.watchStream.Cancel(mvcc.WatchID(id))
 				if err == nil {
 					sws.ctrlStream <- &pb.WatchResponse{
 						Header:   sws.newResponseHeader(sws.watchStream.Rev()),
@@ -162,7 +162,7 @@ func (sws *serverWatchStream) recvLoop() error {
 						Canceled: true,
 					}
 					sws.mu.Lock()
-					delete(sws.progress, storage.WatchID(id))
+					delete(sws.progress, mvcc.WatchID(id))
 					sws.mu.Unlock()
 				}
 			}
@@ -175,9 +175,9 @@ func (sws *serverWatchStream) recvLoop() error {
 
 func (sws *serverWatchStream) sendLoop() {
 	// watch ids that are currently active
-	ids := make(map[storage.WatchID]struct{})
+	ids := make(map[mvcc.WatchID]struct{})
 	// watch responses pending on a watch id creation message
-	pending := make(map[storage.WatchID][]*pb.WatchResponse)
+	pending := make(map[mvcc.WatchID][]*pb.WatchResponse)
 
 	interval := GetProgressReportInterval()
 	progressTicker := time.NewTicker(interval)
@@ -190,11 +190,11 @@ func (sws *serverWatchStream) sendLoop() {
 				return
 			}
 
-			// TODO: evs is []storagepb.Event type
-			// either return []*storagepb.Event from storage package
-			// or define protocol buffer with []storagepb.Event.
+			// TODO: evs is []mvccpb.Event type
+			// either return []*mvccpb.Event from the mvcc package
+			// or define protocol buffer with []mvccpb.Event.
 			evs := wresp.Events
-			events := make([]*storagepb.Event, len(evs))
+			events := make([]*mvccpb.Event, len(evs))
 			for i := range evs {
 				events[i] = &evs[i]
 			}
@@ -213,7 +213,7 @@ func (sws *serverWatchStream) sendLoop() {
 				continue
 			}
 
-			storage.ReportEventReceived()
+			mvcc.ReportEventReceived()
 			if err := sws.gRPCStream.Send(wr); err != nil {
 				return
 			}
@@ -234,7 +234,7 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 
 			// track id creation
-			wid := storage.WatchID(c.WatchId)
+			wid := mvcc.WatchID(c.WatchId)
 			if c.Canceled {
 				delete(ids, wid)
 				continue
@@ -243,7 +243,7 @@ func (sws *serverWatchStream) sendLoop() {
 				// flush buffered events
 				ids[wid] = struct{}{}
 				for _, v := range pending[wid] {
-					storage.ReportEventReceived()
+					mvcc.ReportEventReceived()
 					if err := sws.gRPCStream.Send(v); err != nil {
 						return
 					}
@@ -260,11 +260,11 @@ func (sws *serverWatchStream) sendLoop() {
 		case <-sws.closec:
 			// drain the chan to clean up pending events
 			for range sws.watchStream.Chan() {
-				storage.ReportEventReceived()
+				mvcc.ReportEventReceived()
 			}
 			for _, wrs := range pending {
 				for range wrs {
-					storage.ReportEventReceived()
+					mvcc.ReportEventReceived()
 				}
 			}
 		}

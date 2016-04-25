@@ -28,12 +28,12 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/storage"
-	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/wal"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -275,7 +275,7 @@ func makeDB(snapdir, dbfile string) {
 	// update consistentIndex so applies go through on etcdserver despite
 	// having a new raft instance
 	be := backend.NewDefaultBackend(dbpath)
-	s := storage.NewStore(be, nil, &initIndex{})
+	s := mvcc.NewStore(be, nil, &initIndex{})
 	id := s.TxnBegin()
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {
