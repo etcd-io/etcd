@@ -20,7 +20,7 @@ Administrators who need to create reliable and scalable key-value stores for the
 
  - [Setting up clusters][clustering]
  - [Configuration][conf]
- - Security
+ - [Security][security]
  - Monitoring
  - [Maintenance][maintenance]
  - [Disaster recovery][recovery]
@@ -48,3 +48,4 @@ To learn more about the concepts and internals behind etcd, read the following p
 [local_cluster]: dev-guide/local_cluster.md
 [recovery]: op-guide/recovery.md
 [maintenance]: op-guide/maintenance.md
+[security]: op-guide/security.md
