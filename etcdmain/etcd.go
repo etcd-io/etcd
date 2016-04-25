@@ -32,6 +32,7 @@ import (
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
+	"github.com/coreos/etcd/pkg/compress"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
 	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
@@ -346,6 +347,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		TickMs:                  cfg.TickMs,
 		ElectionTicks:           cfg.electionTicks(),
 		AutoCompactionRetention: cfg.autoCompactionRetention,
+		CompressType:            compress.ParseType(cfg.compressionAlgorithm),
 		QuotaBackendBytes:       cfg.quotaBackendBytes,
 		StrictReconfigCheck:     cfg.strictReconfigCheck,
 		EnablePprof:             cfg.enablePprof,
