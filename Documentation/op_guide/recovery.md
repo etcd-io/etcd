@@ -4,6 +4,8 @@ etcd is designed to withstand machine failures. An etcd cluster automatically re
 
 To recover from disastrous failure, etcd provides snapshot and restore facilities to recreate the cluster without data loss.
 
+TODO(xiangli): add note to clarify this only recovers for the kv store of etcd3.
+
 ### Snapshotting the keyspace
 
 Recovering a cluster first needs a snapshot of the keyspace from an etcd member. A snapshot may either be taken from a live member with the `etcdctl snapshot save` command or by copying the `member/snap/db` file from an etcd data directory. For example, the following command snapshots the keyspace served by `$ENDPOINT` to the file `snapshot.db`:
@@ -57,4 +59,3 @@ $ etcd \
 ```
 
 Now the restored etcd cluster should be available and serving the keyspace given by the snapshot.
-
