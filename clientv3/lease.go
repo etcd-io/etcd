@@ -388,32 +388,38 @@ func (l *lessor) getKeepAliveStream() pb.Lease_LeaseKeepAliveClient {
 }
 
 func (l *lessor) switchRemoteAndStream(prevErr error) error {
-	l.mu.Lock()
-	conn := l.conn
-	l.mu.Unlock()
+	for {
+		l.mu.Lock()
+		conn := l.conn
+		l.mu.Unlock()
 
-	var (
-		err     error
-		newConn *grpc.ClientConn
-	)
+		var (
+			err     error
+			newConn *grpc.ClientConn
+		)
 
-	if prevErr != nil {
-		conn.Close()
-		newConn, err = l.c.retryConnection(conn, prevErr)
-		if err != nil {
-			return err
+		if prevErr != nil {
+			conn.Close()
+			newConn, err = l.c.retryConnection(conn, prevErr)
+			if err != nil {
+				return err
+			}
 		}
+
+		l.mu.Lock()
+		if newConn != nil {
+			l.conn = newConn
+		}
+
+		l.remote = pb.NewLeaseClient(l.conn)
+		l.mu.Unlock()
+
+		prevErr = l.newStream()
+		if prevErr != nil {
+			continue
+		}
+		return nil
 	}
-
-	l.mu.Lock()
-	if newConn != nil {
-		l.conn = newConn
-	}
-
-	l.remote = pb.NewLeaseClient(l.conn)
-	l.mu.Unlock()
-
-	return l.newStream()
 }
 
 func (l *lessor) newStream() error {
