@@ -20,7 +20,7 @@ fi
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./storage/storagepb ./lease/leasepb ./auth/authpb"
 
 # exact version of protoc-gen-gogo to build
-SHA="c57e439bad574c2e0877ff18d514badcfced004d"
+SHA="c3995ae437bb78d1189f4f147dfe5f87ad3596e4"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath
