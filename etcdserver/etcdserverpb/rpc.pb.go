@@ -47,6 +47,7 @@ var AlarmType_value = map[string]int32{
 func (x AlarmType) String() string {
 	return proto.EnumName(AlarmType_name, int32(x))
 }
+func (AlarmType) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{0} }
 
 type RangeRequest_SortOrder int32
 
@@ -70,6 +71,7 @@ var RangeRequest_SortOrder_value = map[string]int32{
 func (x RangeRequest_SortOrder) String() string {
 	return proto.EnumName(RangeRequest_SortOrder_name, int32(x))
 }
+func (RangeRequest_SortOrder) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{1, 0} }
 
 type RangeRequest_SortTarget int32
 
@@ -99,6 +101,7 @@ var RangeRequest_SortTarget_value = map[string]int32{
 func (x RangeRequest_SortTarget) String() string {
 	return proto.EnumName(RangeRequest_SortTarget_name, int32(x))
 }
+func (RangeRequest_SortTarget) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{1, 1} }
 
 type Compare_CompareResult int32
 
@@ -122,6 +125,7 @@ var Compare_CompareResult_value = map[string]int32{
 func (x Compare_CompareResult) String() string {
 	return proto.EnumName(Compare_CompareResult_name, int32(x))
 }
+func (Compare_CompareResult) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{9, 0} }
 
 type Compare_CompareTarget int32
 
@@ -148,6 +152,7 @@ var Compare_CompareTarget_value = map[string]int32{
 func (x Compare_CompareTarget) String() string {
 	return proto.EnumName(Compare_CompareTarget_name, int32(x))
 }
+func (Compare_CompareTarget) EnumDescriptor() ([]byte, []int) { return fileDescriptorRpc, []int{9, 1} }
 
 type AlarmRequest_AlarmAction int32
 
@@ -171,28 +176,32 @@ var AlarmRequest_AlarmAction_value = map[string]int32{
 func (x AlarmRequest_AlarmAction) String() string {
 	return proto.EnumName(AlarmRequest_AlarmAction_name, int32(x))
 }
+func (AlarmRequest_AlarmAction) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptorRpc, []int{39, 0}
+}
 
 type ResponseHeader struct {
 	// cluster_id is the ID of the cluster which sent the response.
-	ClusterId uint64 `protobuf:"varint,1,opt,name=cluster_id,proto3" json:"cluster_id,omitempty"`
+	ClusterId uint64 `protobuf:"varint,1,opt,name=cluster_id,json=clusterId,proto3" json:"cluster_id,omitempty"`
 	// member_id is the ID of the member which sent the response.
-	MemberId uint64 `protobuf:"varint,2,opt,name=member_id,proto3" json:"member_id,omitempty"`
+	MemberId uint64 `protobuf:"varint,2,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"`
 	// revision is the key-value store revision when the request was applied.
 	Revision int64 `protobuf:"varint,3,opt,name=revision,proto3" json:"revision,omitempty"`
 	// raft_term is the raft term when the request was applied.
-	RaftTerm uint64 `protobuf:"varint,4,opt,name=raft_term,proto3" json:"raft_term,omitempty"`
+	RaftTerm uint64 `protobuf:"varint,4,opt,name=raft_term,json=raftTerm,proto3" json:"raft_term,omitempty"`
 }
 
-func (m *ResponseHeader) Reset()         { *m = ResponseHeader{} }
-func (m *ResponseHeader) String() string { return proto.CompactTextString(m) }
-func (*ResponseHeader) ProtoMessage()    {}
+func (m *ResponseHeader) Reset()                    { *m = ResponseHeader{} }
+func (m *ResponseHeader) String() string            { return proto.CompactTextString(m) }
+func (*ResponseHeader) ProtoMessage()               {}
+func (*ResponseHeader) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{0} }
 
 type RangeRequest struct {
 	// key is the first key for the range. If range_end is not given, the request only looks up key.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// range_end is the upper bound on the requested range [key, range_end).
 	// If range_end is '\0', the range is all keys >= key.
-	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
+	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
 	// limit is a limit on the number of keys returned for the request.
 	Limit int64 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// revision is the point-in-time of the key-value store to use for the range.
@@ -200,9 +209,9 @@ type RangeRequest struct {
 	// If the revision has been compacted, ErrCompaction is returned as a response.
 	Revision int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
 	// sort_order is the order for returned sorted results.
-	SortOrder RangeRequest_SortOrder `protobuf:"varint,5,opt,name=sort_order,proto3,enum=etcdserverpb.RangeRequest_SortOrder" json:"sort_order,omitempty"`
+	SortOrder RangeRequest_SortOrder `protobuf:"varint,5,opt,name=sort_order,json=sortOrder,proto3,enum=etcdserverpb.RangeRequest_SortOrder" json:"sort_order,omitempty"`
 	// sort_target is the key-value field to use for sorting.
-	SortTarget RangeRequest_SortTarget `protobuf:"varint,6,opt,name=sort_target,proto3,enum=etcdserverpb.RangeRequest_SortTarget" json:"sort_target,omitempty"`
+	SortTarget RangeRequest_SortTarget `protobuf:"varint,6,opt,name=sort_target,json=sortTarget,proto3,enum=etcdserverpb.RangeRequest_SortTarget" json:"sort_target,omitempty"`
 	// serializable sets the range request to use serializable member-local reads.
 	// Range requests are linearizable by default; linearizable requests have higher
 	// latency and lower throughput than serializable requests but reflect the current
@@ -212,9 +221,10 @@ type RangeRequest struct {
 	Serializable bool `protobuf:"varint,7,opt,name=serializable,proto3" json:"serializable,omitempty"`
 }
 
-func (m *RangeRequest) Reset()         { *m = RangeRequest{} }
-func (m *RangeRequest) String() string { return proto.CompactTextString(m) }
-func (*RangeRequest) ProtoMessage()    {}
+func (m *RangeRequest) Reset()                    { *m = RangeRequest{} }
+func (m *RangeRequest) String() string            { return proto.CompactTextString(m) }
+func (*RangeRequest) ProtoMessage()               {}
+func (*RangeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{1} }
 
 type RangeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -224,9 +234,10 @@ type RangeResponse struct {
 	More bool `protobuf:"varint,3,opt,name=more,proto3" json:"more,omitempty"`
 }
 
-func (m *RangeResponse) Reset()         { *m = RangeResponse{} }
-func (m *RangeResponse) String() string { return proto.CompactTextString(m) }
-func (*RangeResponse) ProtoMessage()    {}
+func (m *RangeResponse) Reset()                    { *m = RangeResponse{} }
+func (m *RangeResponse) String() string            { return proto.CompactTextString(m) }
+func (*RangeResponse) ProtoMessage()               {}
+func (*RangeResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{2} }
 
 func (m *RangeResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -252,17 +263,19 @@ type PutRequest struct {
 	Lease int64 `protobuf:"varint,3,opt,name=lease,proto3" json:"lease,omitempty"`
 }
 
-func (m *PutRequest) Reset()         { *m = PutRequest{} }
-func (m *PutRequest) String() string { return proto.CompactTextString(m) }
-func (*PutRequest) ProtoMessage()    {}
+func (m *PutRequest) Reset()                    { *m = PutRequest{} }
+func (m *PutRequest) String() string            { return proto.CompactTextString(m) }
+func (*PutRequest) ProtoMessage()               {}
+func (*PutRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{3} }
 
 type PutResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *PutResponse) Reset()         { *m = PutResponse{} }
-func (m *PutResponse) String() string { return proto.CompactTextString(m) }
-func (*PutResponse) ProtoMessage()    {}
+func (m *PutResponse) Reset()                    { *m = PutResponse{} }
+func (m *PutResponse) String() string            { return proto.CompactTextString(m) }
+func (*PutResponse) ProtoMessage()               {}
+func (*PutResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{4} }
 
 func (m *PutResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -277,12 +290,13 @@ type DeleteRangeRequest struct {
 	// range_end is the key following the last key to delete for the range [key, range_end).
 	// If range_end is not given, the range is defined to contain only the key argument.
 	// If range_end is '\0', the range is all keys greater than or equal to the key argument.
-	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
+	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
 }
 
-func (m *DeleteRangeRequest) Reset()         { *m = DeleteRangeRequest{} }
-func (m *DeleteRangeRequest) String() string { return proto.CompactTextString(m) }
-func (*DeleteRangeRequest) ProtoMessage()    {}
+func (m *DeleteRangeRequest) Reset()                    { *m = DeleteRangeRequest{} }
+func (m *DeleteRangeRequest) String() string            { return proto.CompactTextString(m) }
+func (*DeleteRangeRequest) ProtoMessage()               {}
+func (*DeleteRangeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{5} }
 
 type DeleteRangeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -290,9 +304,10 @@ type DeleteRangeResponse struct {
 	Deleted int64 `protobuf:"varint,2,opt,name=deleted,proto3" json:"deleted,omitempty"`
 }
 
-func (m *DeleteRangeResponse) Reset()         { *m = DeleteRangeResponse{} }
-func (m *DeleteRangeResponse) String() string { return proto.CompactTextString(m) }
-func (*DeleteRangeResponse) ProtoMessage()    {}
+func (m *DeleteRangeResponse) Reset()                    { *m = DeleteRangeResponse{} }
+func (m *DeleteRangeResponse) String() string            { return proto.CompactTextString(m) }
+func (*DeleteRangeResponse) ProtoMessage()               {}
+func (*DeleteRangeResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{6} }
 
 func (m *DeleteRangeResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -311,9 +326,10 @@ type RequestUnion struct {
 	Request isRequestUnion_Request `protobuf_oneof:"request"`
 }
 
-func (m *RequestUnion) Reset()         { *m = RequestUnion{} }
-func (m *RequestUnion) String() string { return proto.CompactTextString(m) }
-func (*RequestUnion) ProtoMessage()    {}
+func (m *RequestUnion) Reset()                    { *m = RequestUnion{} }
+func (m *RequestUnion) String() string            { return proto.CompactTextString(m) }
+func (*RequestUnion) ProtoMessage()               {}
+func (*RequestUnion) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{7} }
 
 type isRequestUnion_Request interface {
 	isRequestUnion_Request()
@@ -322,13 +338,13 @@ type isRequestUnion_Request interface {
 }
 
 type RequestUnion_RequestRange struct {
-	RequestRange *RangeRequest `protobuf:"bytes,1,opt,name=request_range,oneof"`
+	RequestRange *RangeRequest `protobuf:"bytes,1,opt,name=request_range,json=requestRange,oneof"`
 }
 type RequestUnion_RequestPut struct {
-	RequestPut *PutRequest `protobuf:"bytes,2,opt,name=request_put,oneof"`
+	RequestPut *PutRequest `protobuf:"bytes,2,opt,name=request_put,json=requestPut,oneof"`
 }
 type RequestUnion_RequestDeleteRange struct {
-	RequestDeleteRange *DeleteRangeRequest `protobuf:"bytes,3,opt,name=request_delete_range,oneof"`
+	RequestDeleteRange *DeleteRangeRequest `protobuf:"bytes,3,opt,name=request_delete_range,json=requestDeleteRange,oneof"`
 }
 
 func (*RequestUnion_RequestRange) isRequestUnion_Request()       {}
@@ -364,8 +380,8 @@ func (m *RequestUnion) GetRequestDeleteRange() *DeleteRangeRequest {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*RequestUnion) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _RequestUnion_OneofMarshaler, _RequestUnion_OneofUnmarshaler, []interface{}{
+func (*RequestUnion) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _RequestUnion_OneofMarshaler, _RequestUnion_OneofUnmarshaler, _RequestUnion_OneofSizer, []interface{}{
 		(*RequestUnion_RequestRange)(nil),
 		(*RequestUnion_RequestPut)(nil),
 		(*RequestUnion_RequestDeleteRange)(nil),
@@ -430,6 +446,32 @@ func _RequestUnion_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.B
 	}
 }
 
+func _RequestUnion_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*RequestUnion)
+	// request
+	switch x := m.Request.(type) {
+	case *RequestUnion_RequestRange:
+		s := proto.Size(x.RequestRange)
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *RequestUnion_RequestPut:
+		s := proto.Size(x.RequestPut)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *RequestUnion_RequestDeleteRange:
+		s := proto.Size(x.RequestDeleteRange)
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type ResponseUnion struct {
 	// response is a union of response types returned by a transaction.
 	//
@@ -440,9 +482,10 @@ type ResponseUnion struct {
 	Response isResponseUnion_Response `protobuf_oneof:"response"`
 }
 
-func (m *ResponseUnion) Reset()         { *m = ResponseUnion{} }
-func (m *ResponseUnion) String() string { return proto.CompactTextString(m) }
-func (*ResponseUnion) ProtoMessage()    {}
+func (m *ResponseUnion) Reset()                    { *m = ResponseUnion{} }
+func (m *ResponseUnion) String() string            { return proto.CompactTextString(m) }
+func (*ResponseUnion) ProtoMessage()               {}
+func (*ResponseUnion) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{8} }
 
 type isResponseUnion_Response interface {
 	isResponseUnion_Response()
@@ -451,13 +494,13 @@ type isResponseUnion_Response interface {
 }
 
 type ResponseUnion_ResponseRange struct {
-	ResponseRange *RangeResponse `protobuf:"bytes,1,opt,name=response_range,oneof"`
+	ResponseRange *RangeResponse `protobuf:"bytes,1,opt,name=response_range,json=responseRange,oneof"`
 }
 type ResponseUnion_ResponsePut struct {
-	ResponsePut *PutResponse `protobuf:"bytes,2,opt,name=response_put,oneof"`
+	ResponsePut *PutResponse `protobuf:"bytes,2,opt,name=response_put,json=responsePut,oneof"`
 }
 type ResponseUnion_ResponseDeleteRange struct {
-	ResponseDeleteRange *DeleteRangeResponse `protobuf:"bytes,3,opt,name=response_delete_range,oneof"`
+	ResponseDeleteRange *DeleteRangeResponse `protobuf:"bytes,3,opt,name=response_delete_range,json=responseDeleteRange,oneof"`
 }
 
 func (*ResponseUnion_ResponseRange) isResponseUnion_Response()       {}
@@ -493,8 +536,8 @@ func (m *ResponseUnion) GetResponseDeleteRange() *DeleteRangeResponse {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*ResponseUnion) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _ResponseUnion_OneofMarshaler, _ResponseUnion_OneofUnmarshaler, []interface{}{
+func (*ResponseUnion) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _ResponseUnion_OneofMarshaler, _ResponseUnion_OneofUnmarshaler, _ResponseUnion_OneofSizer, []interface{}{
 		(*ResponseUnion_ResponseRange)(nil),
 		(*ResponseUnion_ResponsePut)(nil),
 		(*ResponseUnion_ResponseDeleteRange)(nil),
@@ -559,6 +602,32 @@ func _ResponseUnion_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.
 	}
 }
 
+func _ResponseUnion_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*ResponseUnion)
+	// response
+	switch x := m.Response.(type) {
+	case *ResponseUnion_ResponseRange:
+		s := proto.Size(x.ResponseRange)
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *ResponseUnion_ResponsePut:
+		s := proto.Size(x.ResponsePut)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *ResponseUnion_ResponseDeleteRange:
+		s := proto.Size(x.ResponseDeleteRange)
+		n += proto.SizeVarint(3<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type Compare struct {
 	// result is logical comparison operation for this comparison.
 	Result Compare_CompareResult `protobuf:"varint,1,opt,name=result,proto3,enum=etcdserverpb.Compare_CompareResult" json:"result,omitempty"`
@@ -574,9 +643,10 @@ type Compare struct {
 	TargetUnion isCompare_TargetUnion `protobuf_oneof:"target_union"`
 }
 
-func (m *Compare) Reset()         { *m = Compare{} }
-func (m *Compare) String() string { return proto.CompactTextString(m) }
-func (*Compare) ProtoMessage()    {}
+func (m *Compare) Reset()                    { *m = Compare{} }
+func (m *Compare) String() string            { return proto.CompactTextString(m) }
+func (*Compare) ProtoMessage()               {}
+func (*Compare) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{9} }
 
 type isCompare_TargetUnion interface {
 	isCompare_TargetUnion()
@@ -588,10 +658,10 @@ type Compare_Version struct {
 	Version int64 `protobuf:"varint,4,opt,name=version,proto3,oneof"`
 }
 type Compare_CreateRevision struct {
-	CreateRevision int64 `protobuf:"varint,5,opt,name=create_revision,proto3,oneof"`
+	CreateRevision int64 `protobuf:"varint,5,opt,name=create_revision,json=createRevision,proto3,oneof"`
 }
 type Compare_ModRevision struct {
-	ModRevision int64 `protobuf:"varint,6,opt,name=mod_revision,proto3,oneof"`
+	ModRevision int64 `protobuf:"varint,6,opt,name=mod_revision,json=modRevision,proto3,oneof"`
 }
 type Compare_Value struct {
 	Value []byte `protobuf:"bytes,7,opt,name=value,proto3,oneof"`
@@ -638,8 +708,8 @@ func (m *Compare) GetValue() []byte {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*Compare) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _Compare_OneofMarshaler, _Compare_OneofUnmarshaler, []interface{}{
+func (*Compare) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _Compare_OneofMarshaler, _Compare_OneofUnmarshaler, _Compare_OneofSizer, []interface{}{
 		(*Compare_Version)(nil),
 		(*Compare_CreateRevision)(nil),
 		(*Compare_ModRevision)(nil),
@@ -706,6 +776,30 @@ func _Compare_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer
 	}
 }
 
+func _Compare_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*Compare)
+	// target_union
+	switch x := m.TargetUnion.(type) {
+	case *Compare_Version:
+		n += proto.SizeVarint(4<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.Version))
+	case *Compare_CreateRevision:
+		n += proto.SizeVarint(5<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.CreateRevision))
+	case *Compare_ModRevision:
+		n += proto.SizeVarint(6<<3 | proto.WireVarint)
+		n += proto.SizeVarint(uint64(x.ModRevision))
+	case *Compare_Value:
+		n += proto.SizeVarint(7<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(len(x.Value)))
+		n += len(x.Value)
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 // From google paxosdb paper:
 // Our implementation hinges around a powerful primitive which we call MultiOp. All other database
 // operations except for iteration are implemented as a single call to MultiOp. A MultiOp is applied atomically
@@ -734,9 +828,10 @@ type TxnRequest struct {
 	Failure []*RequestUnion `protobuf:"bytes,3,rep,name=failure" json:"failure,omitempty"`
 }
 
-func (m *TxnRequest) Reset()         { *m = TxnRequest{} }
-func (m *TxnRequest) String() string { return proto.CompactTextString(m) }
-func (*TxnRequest) ProtoMessage()    {}
+func (m *TxnRequest) Reset()                    { *m = TxnRequest{} }
+func (m *TxnRequest) String() string            { return proto.CompactTextString(m) }
+func (*TxnRequest) ProtoMessage()               {}
+func (*TxnRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{10} }
 
 func (m *TxnRequest) GetCompare() []*Compare {
 	if m != nil {
@@ -768,9 +863,10 @@ type TxnResponse struct {
 	Responses []*ResponseUnion `protobuf:"bytes,3,rep,name=responses" json:"responses,omitempty"`
 }
 
-func (m *TxnResponse) Reset()         { *m = TxnResponse{} }
-func (m *TxnResponse) String() string { return proto.CompactTextString(m) }
-func (*TxnResponse) ProtoMessage()    {}
+func (m *TxnResponse) Reset()                    { *m = TxnResponse{} }
+func (m *TxnResponse) String() string            { return proto.CompactTextString(m) }
+func (*TxnResponse) ProtoMessage()               {}
+func (*TxnResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{11} }
 
 func (m *TxnResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -797,17 +893,19 @@ type CompactionRequest struct {
 	Physical bool `protobuf:"varint,2,opt,name=physical,proto3" json:"physical,omitempty"`
 }
 
-func (m *CompactionRequest) Reset()         { *m = CompactionRequest{} }
-func (m *CompactionRequest) String() string { return proto.CompactTextString(m) }
-func (*CompactionRequest) ProtoMessage()    {}
+func (m *CompactionRequest) Reset()                    { *m = CompactionRequest{} }
+func (m *CompactionRequest) String() string            { return proto.CompactTextString(m) }
+func (*CompactionRequest) ProtoMessage()               {}
+func (*CompactionRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{12} }
 
 type CompactionResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *CompactionResponse) Reset()         { *m = CompactionResponse{} }
-func (m *CompactionResponse) String() string { return proto.CompactTextString(m) }
-func (*CompactionResponse) ProtoMessage()    {}
+func (m *CompactionResponse) Reset()                    { *m = CompactionResponse{} }
+func (m *CompactionResponse) String() string            { return proto.CompactTextString(m) }
+func (*CompactionResponse) ProtoMessage()               {}
+func (*CompactionResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{13} }
 
 func (m *CompactionResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -819,9 +917,10 @@ func (m *CompactionResponse) GetHeader() *ResponseHeader {
 type HashRequest struct {
 }
 
-func (m *HashRequest) Reset()         { *m = HashRequest{} }
-func (m *HashRequest) String() string { return proto.CompactTextString(m) }
-func (*HashRequest) ProtoMessage()    {}
+func (m *HashRequest) Reset()                    { *m = HashRequest{} }
+func (m *HashRequest) String() string            { return proto.CompactTextString(m) }
+func (*HashRequest) ProtoMessage()               {}
+func (*HashRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{14} }
 
 type HashResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -829,9 +928,10 @@ type HashResponse struct {
 	Hash uint32 `protobuf:"varint,2,opt,name=hash,proto3" json:"hash,omitempty"`
 }
 
-func (m *HashResponse) Reset()         { *m = HashResponse{} }
-func (m *HashResponse) String() string { return proto.CompactTextString(m) }
-func (*HashResponse) ProtoMessage()    {}
+func (m *HashResponse) Reset()                    { *m = HashResponse{} }
+func (m *HashResponse) String() string            { return proto.CompactTextString(m) }
+func (*HashResponse) ProtoMessage()               {}
+func (*HashResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{15} }
 
 func (m *HashResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -843,23 +943,25 @@ func (m *HashResponse) GetHeader() *ResponseHeader {
 type SnapshotRequest struct {
 }
 
-func (m *SnapshotRequest) Reset()         { *m = SnapshotRequest{} }
-func (m *SnapshotRequest) String() string { return proto.CompactTextString(m) }
-func (*SnapshotRequest) ProtoMessage()    {}
+func (m *SnapshotRequest) Reset()                    { *m = SnapshotRequest{} }
+func (m *SnapshotRequest) String() string            { return proto.CompactTextString(m) }
+func (*SnapshotRequest) ProtoMessage()               {}
+func (*SnapshotRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{16} }
 
 type SnapshotResponse struct {
 	// header has the current key-value store information. The first header in the snapshot
 	// stream indicates the point in time of the snapshot.
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// remaining_bytes is the number of blob bytes to be sent after this message
-	RemainingBytes uint64 `protobuf:"varint,2,opt,name=remaining_bytes,proto3" json:"remaining_bytes,omitempty"`
+	RemainingBytes uint64 `protobuf:"varint,2,opt,name=remaining_bytes,json=remainingBytes,proto3" json:"remaining_bytes,omitempty"`
 	// blob contains the next chunk of the snapshot in the snapshot stream.
 	Blob []byte `protobuf:"bytes,3,opt,name=blob,proto3" json:"blob,omitempty"`
 }
 
-func (m *SnapshotResponse) Reset()         { *m = SnapshotResponse{} }
-func (m *SnapshotResponse) String() string { return proto.CompactTextString(m) }
-func (*SnapshotResponse) ProtoMessage()    {}
+func (m *SnapshotResponse) Reset()                    { *m = SnapshotResponse{} }
+func (m *SnapshotResponse) String() string            { return proto.CompactTextString(m) }
+func (*SnapshotResponse) ProtoMessage()               {}
+func (*SnapshotResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{17} }
 
 func (m *SnapshotResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -877,9 +979,10 @@ type WatchRequest struct {
 	RequestUnion isWatchRequest_RequestUnion `protobuf_oneof:"request_union"`
 }
 
-func (m *WatchRequest) Reset()         { *m = WatchRequest{} }
-func (m *WatchRequest) String() string { return proto.CompactTextString(m) }
-func (*WatchRequest) ProtoMessage()    {}
+func (m *WatchRequest) Reset()                    { *m = WatchRequest{} }
+func (m *WatchRequest) String() string            { return proto.CompactTextString(m) }
+func (*WatchRequest) ProtoMessage()               {}
+func (*WatchRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{18} }
 
 type isWatchRequest_RequestUnion interface {
 	isWatchRequest_RequestUnion()
@@ -888,10 +991,10 @@ type isWatchRequest_RequestUnion interface {
 }
 
 type WatchRequest_CreateRequest struct {
-	CreateRequest *WatchCreateRequest `protobuf:"bytes,1,opt,name=create_request,oneof"`
+	CreateRequest *WatchCreateRequest `protobuf:"bytes,1,opt,name=create_request,json=createRequest,oneof"`
 }
 type WatchRequest_CancelRequest struct {
-	CancelRequest *WatchCancelRequest `protobuf:"bytes,2,opt,name=cancel_request,oneof"`
+	CancelRequest *WatchCancelRequest `protobuf:"bytes,2,opt,name=cancel_request,json=cancelRequest,oneof"`
 }
 
 func (*WatchRequest_CreateRequest) isWatchRequest_RequestUnion() {}
@@ -919,8 +1022,8 @@ func (m *WatchRequest) GetCancelRequest() *WatchCancelRequest {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*WatchRequest) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), []interface{}) {
-	return _WatchRequest_OneofMarshaler, _WatchRequest_OneofUnmarshaler, []interface{}{
+func (*WatchRequest) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
+	return _WatchRequest_OneofMarshaler, _WatchRequest_OneofUnmarshaler, _WatchRequest_OneofSizer, []interface{}{
 		(*WatchRequest_CreateRequest)(nil),
 		(*WatchRequest_CancelRequest)(nil),
 	}
@@ -971,39 +1074,62 @@ func _WatchRequest_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.B
 	}
 }
 
+func _WatchRequest_OneofSizer(msg proto.Message) (n int) {
+	m := msg.(*WatchRequest)
+	// request_union
+	switch x := m.RequestUnion.(type) {
+	case *WatchRequest_CreateRequest:
+		s := proto.Size(x.CreateRequest)
+		n += proto.SizeVarint(1<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case *WatchRequest_CancelRequest:
+		s := proto.Size(x.CancelRequest)
+		n += proto.SizeVarint(2<<3 | proto.WireBytes)
+		n += proto.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type WatchCreateRequest struct {
 	// key is the key to register for watching.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// range_end is the end of the range [key, range_end) to watch. If range_end is not given,
 	// only the key argument is watched. If range_end is equal to '\0', all keys greater than
 	// or equal to the key argument are watched.
-	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,proto3" json:"range_end,omitempty"`
+	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
 	// start_revision is an optional revision to watch from (inclusive). No start_revision is "now".
-	StartRevision int64 `protobuf:"varint,3,opt,name=start_revision,proto3" json:"start_revision,omitempty"`
+	StartRevision int64 `protobuf:"varint,3,opt,name=start_revision,json=startRevision,proto3" json:"start_revision,omitempty"`
 	// progress_notify is set so that the etcd server will periodically send a WatchResponse with
 	// no events to the new watcher if there are no recent events. It is useful when clients
 	// wish to recover a disconnected watcher starting from a recent known revision.
 	// The etcd server may decide how often it will send notifications based on current load.
-	ProgressNotify bool `protobuf:"varint,4,opt,name=progress_notify,proto3" json:"progress_notify,omitempty"`
+	ProgressNotify bool `protobuf:"varint,4,opt,name=progress_notify,json=progressNotify,proto3" json:"progress_notify,omitempty"`
 }
 
-func (m *WatchCreateRequest) Reset()         { *m = WatchCreateRequest{} }
-func (m *WatchCreateRequest) String() string { return proto.CompactTextString(m) }
-func (*WatchCreateRequest) ProtoMessage()    {}
+func (m *WatchCreateRequest) Reset()                    { *m = WatchCreateRequest{} }
+func (m *WatchCreateRequest) String() string            { return proto.CompactTextString(m) }
+func (*WatchCreateRequest) ProtoMessage()               {}
+func (*WatchCreateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{19} }
 
 type WatchCancelRequest struct {
 	// watch_id is the watcher id to cancel so that no more events are transmitted.
-	WatchId int64 `protobuf:"varint,1,opt,name=watch_id,proto3" json:"watch_id,omitempty"`
+	WatchId int64 `protobuf:"varint,1,opt,name=watch_id,json=watchId,proto3" json:"watch_id,omitempty"`
 }
 
-func (m *WatchCancelRequest) Reset()         { *m = WatchCancelRequest{} }
-func (m *WatchCancelRequest) String() string { return proto.CompactTextString(m) }
-func (*WatchCancelRequest) ProtoMessage()    {}
+func (m *WatchCancelRequest) Reset()                    { *m = WatchCancelRequest{} }
+func (m *WatchCancelRequest) String() string            { return proto.CompactTextString(m) }
+func (*WatchCancelRequest) ProtoMessage()               {}
+func (*WatchCancelRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{20} }
 
 type WatchResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// watch_id is the ID of the watcher that corresponds to the response.
-	WatchId int64 `protobuf:"varint,2,opt,name=watch_id,proto3" json:"watch_id,omitempty"`
+	WatchId int64 `protobuf:"varint,2,opt,name=watch_id,json=watchId,proto3" json:"watch_id,omitempty"`
 	// created is set to true if the response is for a create watch request.
 	// The client should record the watch_id and expect to receive events for
 	// the created watcher from the same stream.
@@ -1020,13 +1146,14 @@ type WatchResponse struct {
 	//
 	// The client should treat the watcher as canceled and should not try to create any
 	// watcher with the same start_revision again.
-	CompactRevision int64              `protobuf:"varint,5,opt,name=compact_revision,proto3" json:"compact_revision,omitempty"`
+	CompactRevision int64              `protobuf:"varint,5,opt,name=compact_revision,json=compactRevision,proto3" json:"compact_revision,omitempty"`
 	Events          []*storagepb.Event `protobuf:"bytes,11,rep,name=events" json:"events,omitempty"`
 }
 
-func (m *WatchResponse) Reset()         { *m = WatchResponse{} }
-func (m *WatchResponse) String() string { return proto.CompactTextString(m) }
-func (*WatchResponse) ProtoMessage()    {}
+func (m *WatchResponse) Reset()                    { *m = WatchResponse{} }
+func (m *WatchResponse) String() string            { return proto.CompactTextString(m) }
+func (*WatchResponse) ProtoMessage()               {}
+func (*WatchResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{21} }
 
 func (m *WatchResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1044,27 +1171,29 @@ func (m *WatchResponse) GetEvents() []*storagepb.Event {
 
 type LeaseGrantRequest struct {
 	// TTL is the advisory time-to-live in seconds.
-	TTL int64 `protobuf:"varint,1,opt,name=TTL,proto3" json:"TTL,omitempty"`
+	TTL int64 `protobuf:"varint,1,opt,name=TTL,json=tTL,proto3" json:"TTL,omitempty"`
 	// ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID.
-	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID int64 `protobuf:"varint,2,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 }
 
-func (m *LeaseGrantRequest) Reset()         { *m = LeaseGrantRequest{} }
-func (m *LeaseGrantRequest) String() string { return proto.CompactTextString(m) }
-func (*LeaseGrantRequest) ProtoMessage()    {}
+func (m *LeaseGrantRequest) Reset()                    { *m = LeaseGrantRequest{} }
+func (m *LeaseGrantRequest) String() string            { return proto.CompactTextString(m) }
+func (*LeaseGrantRequest) ProtoMessage()               {}
+func (*LeaseGrantRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{22} }
 
 type LeaseGrantResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// ID is the lease ID for the granted lease.
-	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID int64 `protobuf:"varint,2,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 	// TTL is the server chosen lease time-to-live in seconds.
-	TTL   int64  `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
+	TTL   int64  `protobuf:"varint,3,opt,name=TTL,json=tTL,proto3" json:"TTL,omitempty"`
 	Error string `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
 }
 
-func (m *LeaseGrantResponse) Reset()         { *m = LeaseGrantResponse{} }
-func (m *LeaseGrantResponse) String() string { return proto.CompactTextString(m) }
-func (*LeaseGrantResponse) ProtoMessage()    {}
+func (m *LeaseGrantResponse) Reset()                    { *m = LeaseGrantResponse{} }
+func (m *LeaseGrantResponse) String() string            { return proto.CompactTextString(m) }
+func (*LeaseGrantResponse) ProtoMessage()               {}
+func (*LeaseGrantResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{23} }
 
 func (m *LeaseGrantResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1075,20 +1204,22 @@ func (m *LeaseGrantResponse) GetHeader() *ResponseHeader {
 
 type LeaseRevokeRequest struct {
 	// ID is the lease ID to revoke. When the ID is revoked, all associated keys will be deleted.
-	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID int64 `protobuf:"varint,1,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 }
 
-func (m *LeaseRevokeRequest) Reset()         { *m = LeaseRevokeRequest{} }
-func (m *LeaseRevokeRequest) String() string { return proto.CompactTextString(m) }
-func (*LeaseRevokeRequest) ProtoMessage()    {}
+func (m *LeaseRevokeRequest) Reset()                    { *m = LeaseRevokeRequest{} }
+func (m *LeaseRevokeRequest) String() string            { return proto.CompactTextString(m) }
+func (*LeaseRevokeRequest) ProtoMessage()               {}
+func (*LeaseRevokeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{24} }
 
 type LeaseRevokeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *LeaseRevokeResponse) Reset()         { *m = LeaseRevokeResponse{} }
-func (m *LeaseRevokeResponse) String() string { return proto.CompactTextString(m) }
-func (*LeaseRevokeResponse) ProtoMessage()    {}
+func (m *LeaseRevokeResponse) Reset()                    { *m = LeaseRevokeResponse{} }
+func (m *LeaseRevokeResponse) String() string            { return proto.CompactTextString(m) }
+func (*LeaseRevokeResponse) ProtoMessage()               {}
+func (*LeaseRevokeResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{25} }
 
 func (m *LeaseRevokeResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1099,24 +1230,26 @@ func (m *LeaseRevokeResponse) GetHeader() *ResponseHeader {
 
 type LeaseKeepAliveRequest struct {
 	// ID is the lease ID for the lease to keep alive.
-	ID int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID int64 `protobuf:"varint,1,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 }
 
-func (m *LeaseKeepAliveRequest) Reset()         { *m = LeaseKeepAliveRequest{} }
-func (m *LeaseKeepAliveRequest) String() string { return proto.CompactTextString(m) }
-func (*LeaseKeepAliveRequest) ProtoMessage()    {}
+func (m *LeaseKeepAliveRequest) Reset()                    { *m = LeaseKeepAliveRequest{} }
+func (m *LeaseKeepAliveRequest) String() string            { return proto.CompactTextString(m) }
+func (*LeaseKeepAliveRequest) ProtoMessage()               {}
+func (*LeaseKeepAliveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{26} }
 
 type LeaseKeepAliveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 	// ID is the lease ID from the keep alive request.
-	ID int64 `protobuf:"varint,2,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID int64 `protobuf:"varint,2,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 	// TTL is the new time-to-live for the lease.
-	TTL int64 `protobuf:"varint,3,opt,name=TTL,proto3" json:"TTL,omitempty"`
+	TTL int64 `protobuf:"varint,3,opt,name=TTL,json=tTL,proto3" json:"TTL,omitempty"`
 }
 
-func (m *LeaseKeepAliveResponse) Reset()         { *m = LeaseKeepAliveResponse{} }
-func (m *LeaseKeepAliveResponse) String() string { return proto.CompactTextString(m) }
-func (*LeaseKeepAliveResponse) ProtoMessage()    {}
+func (m *LeaseKeepAliveResponse) Reset()                    { *m = LeaseKeepAliveResponse{} }
+func (m *LeaseKeepAliveResponse) String() string            { return proto.CompactTextString(m) }
+func (*LeaseKeepAliveResponse) ProtoMessage()               {}
+func (*LeaseKeepAliveResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{27} }
 
 func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1127,7 +1260,7 @@ func (m *LeaseKeepAliveResponse) GetHeader() *ResponseHeader {
 
 type Member struct {
 	// ID is the member ID for this member.
-	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID uint64 `protobuf:"varint,1,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 	// name is the human-readable name of the member. If the member is not started, the name will be an empty string.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// peerURLs is the list of URLs the member exposes to the cluster for communication.
@@ -1136,18 +1269,20 @@ type Member struct {
 	ClientURLs []string `protobuf:"bytes,4,rep,name=clientURLs" json:"clientURLs,omitempty"`
 }
 
-func (m *Member) Reset()         { *m = Member{} }
-func (m *Member) String() string { return proto.CompactTextString(m) }
-func (*Member) ProtoMessage()    {}
+func (m *Member) Reset()                    { *m = Member{} }
+func (m *Member) String() string            { return proto.CompactTextString(m) }
+func (*Member) ProtoMessage()               {}
+func (*Member) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{28} }
 
 type MemberAddRequest struct {
 	// peerURLs is the list of URLs the added member will use to communicate with the cluster.
 	PeerURLs []string `protobuf:"bytes,1,rep,name=peerURLs" json:"peerURLs,omitempty"`
 }
 
-func (m *MemberAddRequest) Reset()         { *m = MemberAddRequest{} }
-func (m *MemberAddRequest) String() string { return proto.CompactTextString(m) }
-func (*MemberAddRequest) ProtoMessage()    {}
+func (m *MemberAddRequest) Reset()                    { *m = MemberAddRequest{} }
+func (m *MemberAddRequest) String() string            { return proto.CompactTextString(m) }
+func (*MemberAddRequest) ProtoMessage()               {}
+func (*MemberAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{29} }
 
 type MemberAddResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1155,9 +1290,10 @@ type MemberAddResponse struct {
 	Member *Member `protobuf:"bytes,2,opt,name=member" json:"member,omitempty"`
 }
 
-func (m *MemberAddResponse) Reset()         { *m = MemberAddResponse{} }
-func (m *MemberAddResponse) String() string { return proto.CompactTextString(m) }
-func (*MemberAddResponse) ProtoMessage()    {}
+func (m *MemberAddResponse) Reset()                    { *m = MemberAddResponse{} }
+func (m *MemberAddResponse) String() string            { return proto.CompactTextString(m) }
+func (*MemberAddResponse) ProtoMessage()               {}
+func (*MemberAddResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{30} }
 
 func (m *MemberAddResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1175,20 +1311,22 @@ func (m *MemberAddResponse) GetMember() *Member {
 
 type MemberRemoveRequest struct {
 	// ID is the member ID of the member to remove.
-	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID uint64 `protobuf:"varint,1,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 }
 
-func (m *MemberRemoveRequest) Reset()         { *m = MemberRemoveRequest{} }
-func (m *MemberRemoveRequest) String() string { return proto.CompactTextString(m) }
-func (*MemberRemoveRequest) ProtoMessage()    {}
+func (m *MemberRemoveRequest) Reset()                    { *m = MemberRemoveRequest{} }
+func (m *MemberRemoveRequest) String() string            { return proto.CompactTextString(m) }
+func (*MemberRemoveRequest) ProtoMessage()               {}
+func (*MemberRemoveRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{31} }
 
 type MemberRemoveResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *MemberRemoveResponse) Reset()         { *m = MemberRemoveResponse{} }
-func (m *MemberRemoveResponse) String() string { return proto.CompactTextString(m) }
-func (*MemberRemoveResponse) ProtoMessage()    {}
+func (m *MemberRemoveResponse) Reset()                    { *m = MemberRemoveResponse{} }
+func (m *MemberRemoveResponse) String() string            { return proto.CompactTextString(m) }
+func (*MemberRemoveResponse) ProtoMessage()               {}
+func (*MemberRemoveResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{32} }
 
 func (m *MemberRemoveResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1199,22 +1337,24 @@ func (m *MemberRemoveResponse) GetHeader() *ResponseHeader {
 
 type MemberUpdateRequest struct {
 	// ID is the member ID of the member to update.
-	ID uint64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	ID uint64 `protobuf:"varint,1,opt,name=ID,json=iD,proto3" json:"ID,omitempty"`
 	// peerURLs is the new list of URLs the member will use to communicate with the cluster.
 	PeerURLs []string `protobuf:"bytes,2,rep,name=peerURLs" json:"peerURLs,omitempty"`
 }
 
-func (m *MemberUpdateRequest) Reset()         { *m = MemberUpdateRequest{} }
-func (m *MemberUpdateRequest) String() string { return proto.CompactTextString(m) }
-func (*MemberUpdateRequest) ProtoMessage()    {}
+func (m *MemberUpdateRequest) Reset()                    { *m = MemberUpdateRequest{} }
+func (m *MemberUpdateRequest) String() string            { return proto.CompactTextString(m) }
+func (*MemberUpdateRequest) ProtoMessage()               {}
+func (*MemberUpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{33} }
 
 type MemberUpdateResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *MemberUpdateResponse) Reset()         { *m = MemberUpdateResponse{} }
-func (m *MemberUpdateResponse) String() string { return proto.CompactTextString(m) }
-func (*MemberUpdateResponse) ProtoMessage()    {}
+func (m *MemberUpdateResponse) Reset()                    { *m = MemberUpdateResponse{} }
+func (m *MemberUpdateResponse) String() string            { return proto.CompactTextString(m) }
+func (*MemberUpdateResponse) ProtoMessage()               {}
+func (*MemberUpdateResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{34} }
 
 func (m *MemberUpdateResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1226,9 +1366,10 @@ func (m *MemberUpdateResponse) GetHeader() *ResponseHeader {
 type MemberListRequest struct {
 }
 
-func (m *MemberListRequest) Reset()         { *m = MemberListRequest{} }
-func (m *MemberListRequest) String() string { return proto.CompactTextString(m) }
-func (*MemberListRequest) ProtoMessage()    {}
+func (m *MemberListRequest) Reset()                    { *m = MemberListRequest{} }
+func (m *MemberListRequest) String() string            { return proto.CompactTextString(m) }
+func (*MemberListRequest) ProtoMessage()               {}
+func (*MemberListRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{35} }
 
 type MemberListResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1236,9 +1377,10 @@ type MemberListResponse struct {
 	Members []*Member `protobuf:"bytes,2,rep,name=members" json:"members,omitempty"`
 }
 
-func (m *MemberListResponse) Reset()         { *m = MemberListResponse{} }
-func (m *MemberListResponse) String() string { return proto.CompactTextString(m) }
-func (*MemberListResponse) ProtoMessage()    {}
+func (m *MemberListResponse) Reset()                    { *m = MemberListResponse{} }
+func (m *MemberListResponse) String() string            { return proto.CompactTextString(m) }
+func (*MemberListResponse) ProtoMessage()               {}
+func (*MemberListResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{36} }
 
 func (m *MemberListResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1257,17 +1399,19 @@ func (m *MemberListResponse) GetMembers() []*Member {
 type DefragmentRequest struct {
 }
 
-func (m *DefragmentRequest) Reset()         { *m = DefragmentRequest{} }
-func (m *DefragmentRequest) String() string { return proto.CompactTextString(m) }
-func (*DefragmentRequest) ProtoMessage()    {}
+func (m *DefragmentRequest) Reset()                    { *m = DefragmentRequest{} }
+func (m *DefragmentRequest) String() string            { return proto.CompactTextString(m) }
+func (*DefragmentRequest) ProtoMessage()               {}
+func (*DefragmentRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{37} }
 
 type DefragmentResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *DefragmentResponse) Reset()         { *m = DefragmentResponse{} }
-func (m *DefragmentResponse) String() string { return proto.CompactTextString(m) }
-func (*DefragmentResponse) ProtoMessage()    {}
+func (m *DefragmentResponse) Reset()                    { *m = DefragmentResponse{} }
+func (m *DefragmentResponse) String() string            { return proto.CompactTextString(m) }
+func (*DefragmentResponse) ProtoMessage()               {}
+func (*DefragmentResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{38} }
 
 func (m *DefragmentResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1288,9 +1432,10 @@ type AlarmRequest struct {
 	Alarm AlarmType `protobuf:"varint,3,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
 }
 
-func (m *AlarmRequest) Reset()         { *m = AlarmRequest{} }
-func (m *AlarmRequest) String() string { return proto.CompactTextString(m) }
-func (*AlarmRequest) ProtoMessage()    {}
+func (m *AlarmRequest) Reset()                    { *m = AlarmRequest{} }
+func (m *AlarmRequest) String() string            { return proto.CompactTextString(m) }
+func (*AlarmRequest) ProtoMessage()               {}
+func (*AlarmRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{39} }
 
 type AlarmMember struct {
 	// memberID is the ID of the member associated with the raised alarm.
@@ -1299,9 +1444,10 @@ type AlarmMember struct {
 	Alarm AlarmType `protobuf:"varint,2,opt,name=alarm,proto3,enum=etcdserverpb.AlarmType" json:"alarm,omitempty"`
 }
 
-func (m *AlarmMember) Reset()         { *m = AlarmMember{} }
-func (m *AlarmMember) String() string { return proto.CompactTextString(m) }
-func (*AlarmMember) ProtoMessage()    {}
+func (m *AlarmMember) Reset()                    { *m = AlarmMember{} }
+func (m *AlarmMember) String() string            { return proto.CompactTextString(m) }
+func (*AlarmMember) ProtoMessage()               {}
+func (*AlarmMember) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{40} }
 
 type AlarmResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1309,9 +1455,10 @@ type AlarmResponse struct {
 	Alarms []*AlarmMember `protobuf:"bytes,2,rep,name=alarms" json:"alarms,omitempty"`
 }
 
-func (m *AlarmResponse) Reset()         { *m = AlarmResponse{} }
-func (m *AlarmResponse) String() string { return proto.CompactTextString(m) }
-func (*AlarmResponse) ProtoMessage()    {}
+func (m *AlarmResponse) Reset()                    { *m = AlarmResponse{} }
+func (m *AlarmResponse) String() string            { return proto.CompactTextString(m) }
+func (*AlarmResponse) ProtoMessage()               {}
+func (*AlarmResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{41} }
 
 func (m *AlarmResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1330,9 +1477,10 @@ func (m *AlarmResponse) GetAlarms() []*AlarmMember {
 type StatusRequest struct {
 }
 
-func (m *StatusRequest) Reset()         { *m = StatusRequest{} }
-func (m *StatusRequest) String() string { return proto.CompactTextString(m) }
-func (*StatusRequest) ProtoMessage()    {}
+func (m *StatusRequest) Reset()                    { *m = StatusRequest{} }
+func (m *StatusRequest) String() string            { return proto.CompactTextString(m) }
+func (*StatusRequest) ProtoMessage()               {}
+func (*StatusRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{42} }
 
 type StatusResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
@@ -1348,9 +1496,10 @@ type StatusResponse struct {
 	RaftTerm uint64 `protobuf:"varint,6,opt,name=raftTerm,proto3" json:"raftTerm,omitempty"`
 }
 
-func (m *StatusResponse) Reset()         { *m = StatusResponse{} }
-func (m *StatusResponse) String() string { return proto.CompactTextString(m) }
-func (*StatusResponse) ProtoMessage()    {}
+func (m *StatusResponse) Reset()                    { *m = StatusResponse{} }
+func (m *StatusResponse) String() string            { return proto.CompactTextString(m) }
+func (*StatusResponse) ProtoMessage()               {}
+func (*StatusResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{43} }
 
 func (m *StatusResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1362,50 +1511,56 @@ func (m *StatusResponse) GetHeader() *ResponseHeader {
 type AuthEnableRequest struct {
 }
 
-func (m *AuthEnableRequest) Reset()         { *m = AuthEnableRequest{} }
-func (m *AuthEnableRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthEnableRequest) ProtoMessage()    {}
+func (m *AuthEnableRequest) Reset()                    { *m = AuthEnableRequest{} }
+func (m *AuthEnableRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthEnableRequest) ProtoMessage()               {}
+func (*AuthEnableRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{44} }
 
 type AuthDisableRequest struct {
 }
 
-func (m *AuthDisableRequest) Reset()         { *m = AuthDisableRequest{} }
-func (m *AuthDisableRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthDisableRequest) ProtoMessage()    {}
+func (m *AuthDisableRequest) Reset()                    { *m = AuthDisableRequest{} }
+func (m *AuthDisableRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthDisableRequest) ProtoMessage()               {}
+func (*AuthDisableRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{45} }
 
 type AuthenticateRequest struct {
 	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 }
 
-func (m *AuthenticateRequest) Reset()         { *m = AuthenticateRequest{} }
-func (m *AuthenticateRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthenticateRequest) ProtoMessage()    {}
+func (m *AuthenticateRequest) Reset()                    { *m = AuthenticateRequest{} }
+func (m *AuthenticateRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthenticateRequest) ProtoMessage()               {}
+func (*AuthenticateRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{46} }
 
 type AuthUserAddRequest struct {
 	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
 }
 
-func (m *AuthUserAddRequest) Reset()         { *m = AuthUserAddRequest{} }
-func (m *AuthUserAddRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthUserAddRequest) ProtoMessage()    {}
+func (m *AuthUserAddRequest) Reset()                    { *m = AuthUserAddRequest{} }
+func (m *AuthUserAddRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserAddRequest) ProtoMessage()               {}
+func (*AuthUserAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{47} }
 
 type AuthUserGetRequest struct {
 }
 
-func (m *AuthUserGetRequest) Reset()         { *m = AuthUserGetRequest{} }
-func (m *AuthUserGetRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthUserGetRequest) ProtoMessage()    {}
+func (m *AuthUserGetRequest) Reset()                    { *m = AuthUserGetRequest{} }
+func (m *AuthUserGetRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserGetRequest) ProtoMessage()               {}
+func (*AuthUserGetRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{48} }
 
 type AuthUserDeleteRequest struct {
 	// name is the name of the user to delete.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 }
 
-func (m *AuthUserDeleteRequest) Reset()         { *m = AuthUserDeleteRequest{} }
-func (m *AuthUserDeleteRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthUserDeleteRequest) ProtoMessage()    {}
+func (m *AuthUserDeleteRequest) Reset()                    { *m = AuthUserDeleteRequest{} }
+func (m *AuthUserDeleteRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserDeleteRequest) ProtoMessage()               {}
+func (*AuthUserDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{49} }
 
 type AuthUserChangePasswordRequest struct {
 	// name is the name of the user whose password is being changed.
@@ -1417,6 +1572,9 @@ type AuthUserChangePasswordRequest struct {
 func (m *AuthUserChangePasswordRequest) Reset()         { *m = AuthUserChangePasswordRequest{} }
 func (m *AuthUserChangePasswordRequest) String() string { return proto.CompactTextString(m) }
 func (*AuthUserChangePasswordRequest) ProtoMessage()    {}
+func (*AuthUserChangePasswordRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptorRpc, []int{50}
+}
 
 type AuthUserGrantRequest struct {
 	// user is the name of the user which should be granted a given role.
@@ -1425,39 +1583,44 @@ type AuthUserGrantRequest struct {
 	Role string `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
 }
 
-func (m *AuthUserGrantRequest) Reset()         { *m = AuthUserGrantRequest{} }
-func (m *AuthUserGrantRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthUserGrantRequest) ProtoMessage()    {}
+func (m *AuthUserGrantRequest) Reset()                    { *m = AuthUserGrantRequest{} }
+func (m *AuthUserGrantRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserGrantRequest) ProtoMessage()               {}
+func (*AuthUserGrantRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{51} }
 
 type AuthUserRevokeRequest struct {
 }
 
-func (m *AuthUserRevokeRequest) Reset()         { *m = AuthUserRevokeRequest{} }
-func (m *AuthUserRevokeRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthUserRevokeRequest) ProtoMessage()    {}
+func (m *AuthUserRevokeRequest) Reset()                    { *m = AuthUserRevokeRequest{} }
+func (m *AuthUserRevokeRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserRevokeRequest) ProtoMessage()               {}
+func (*AuthUserRevokeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{52} }
 
 type AuthRoleAddRequest struct {
 	// name is the name of the role to add to the authentication system.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 }
 
-func (m *AuthRoleAddRequest) Reset()         { *m = AuthRoleAddRequest{} }
-func (m *AuthRoleAddRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleAddRequest) ProtoMessage()    {}
+func (m *AuthRoleAddRequest) Reset()                    { *m = AuthRoleAddRequest{} }
+func (m *AuthRoleAddRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleAddRequest) ProtoMessage()               {}
+func (*AuthRoleAddRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{53} }
 
 type AuthRoleGetRequest struct {
 }
 
-func (m *AuthRoleGetRequest) Reset()         { *m = AuthRoleGetRequest{} }
-func (m *AuthRoleGetRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleGetRequest) ProtoMessage()    {}
+func (m *AuthRoleGetRequest) Reset()                    { *m = AuthRoleGetRequest{} }
+func (m *AuthRoleGetRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleGetRequest) ProtoMessage()               {}
+func (*AuthRoleGetRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{54} }
 
 type AuthRoleDeleteRequest struct {
 }
 
-func (m *AuthRoleDeleteRequest) Reset()         { *m = AuthRoleDeleteRequest{} }
-func (m *AuthRoleDeleteRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleDeleteRequest) ProtoMessage()    {}
+func (m *AuthRoleDeleteRequest) Reset()                    { *m = AuthRoleDeleteRequest{} }
+func (m *AuthRoleDeleteRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleDeleteRequest) ProtoMessage()               {}
+func (*AuthRoleDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{55} }
 
 type AuthRoleGrantRequest struct {
 	// name is the name of the role which will be granted the permission.
@@ -1466,9 +1629,10 @@ type AuthRoleGrantRequest struct {
 	Perm *authpb.Permission `protobuf:"bytes,2,opt,name=perm" json:"perm,omitempty"`
 }
 
-func (m *AuthRoleGrantRequest) Reset()         { *m = AuthRoleGrantRequest{} }
-func (m *AuthRoleGrantRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleGrantRequest) ProtoMessage()    {}
+func (m *AuthRoleGrantRequest) Reset()                    { *m = AuthRoleGrantRequest{} }
+func (m *AuthRoleGrantRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleGrantRequest) ProtoMessage()               {}
+func (*AuthRoleGrantRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{56} }
 
 func (m *AuthRoleGrantRequest) GetPerm() *authpb.Permission {
 	if m != nil {
@@ -1480,17 +1644,19 @@ func (m *AuthRoleGrantRequest) GetPerm() *authpb.Permission {
 type AuthRoleRevokeRequest struct {
 }
 
-func (m *AuthRoleRevokeRequest) Reset()         { *m = AuthRoleRevokeRequest{} }
-func (m *AuthRoleRevokeRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleRevokeRequest) ProtoMessage()    {}
+func (m *AuthRoleRevokeRequest) Reset()                    { *m = AuthRoleRevokeRequest{} }
+func (m *AuthRoleRevokeRequest) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleRevokeRequest) ProtoMessage()               {}
+func (*AuthRoleRevokeRequest) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{57} }
 
 type AuthEnableResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthEnableResponse) Reset()         { *m = AuthEnableResponse{} }
-func (m *AuthEnableResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthEnableResponse) ProtoMessage()    {}
+func (m *AuthEnableResponse) Reset()                    { *m = AuthEnableResponse{} }
+func (m *AuthEnableResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthEnableResponse) ProtoMessage()               {}
+func (*AuthEnableResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{58} }
 
 func (m *AuthEnableResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1503,9 +1669,10 @@ type AuthDisableResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthDisableResponse) Reset()         { *m = AuthDisableResponse{} }
-func (m *AuthDisableResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthDisableResponse) ProtoMessage()    {}
+func (m *AuthDisableResponse) Reset()                    { *m = AuthDisableResponse{} }
+func (m *AuthDisableResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthDisableResponse) ProtoMessage()               {}
+func (*AuthDisableResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{59} }
 
 func (m *AuthDisableResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1520,9 +1687,10 @@ type AuthenticateResponse struct {
 	Token string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
 }
 
-func (m *AuthenticateResponse) Reset()         { *m = AuthenticateResponse{} }
-func (m *AuthenticateResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthenticateResponse) ProtoMessage()    {}
+func (m *AuthenticateResponse) Reset()                    { *m = AuthenticateResponse{} }
+func (m *AuthenticateResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthenticateResponse) ProtoMessage()               {}
+func (*AuthenticateResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{60} }
 
 func (m *AuthenticateResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1535,9 +1703,10 @@ type AuthUserAddResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthUserAddResponse) Reset()         { *m = AuthUserAddResponse{} }
-func (m *AuthUserAddResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthUserAddResponse) ProtoMessage()    {}
+func (m *AuthUserAddResponse) Reset()                    { *m = AuthUserAddResponse{} }
+func (m *AuthUserAddResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserAddResponse) ProtoMessage()               {}
+func (*AuthUserAddResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{61} }
 
 func (m *AuthUserAddResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1550,9 +1719,10 @@ type AuthUserGetResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthUserGetResponse) Reset()         { *m = AuthUserGetResponse{} }
-func (m *AuthUserGetResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthUserGetResponse) ProtoMessage()    {}
+func (m *AuthUserGetResponse) Reset()                    { *m = AuthUserGetResponse{} }
+func (m *AuthUserGetResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserGetResponse) ProtoMessage()               {}
+func (*AuthUserGetResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{62} }
 
 func (m *AuthUserGetResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1565,9 +1735,10 @@ type AuthUserDeleteResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthUserDeleteResponse) Reset()         { *m = AuthUserDeleteResponse{} }
-func (m *AuthUserDeleteResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthUserDeleteResponse) ProtoMessage()    {}
+func (m *AuthUserDeleteResponse) Reset()                    { *m = AuthUserDeleteResponse{} }
+func (m *AuthUserDeleteResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserDeleteResponse) ProtoMessage()               {}
+func (*AuthUserDeleteResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{63} }
 
 func (m *AuthUserDeleteResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1583,6 +1754,9 @@ type AuthUserChangePasswordResponse struct {
 func (m *AuthUserChangePasswordResponse) Reset()         { *m = AuthUserChangePasswordResponse{} }
 func (m *AuthUserChangePasswordResponse) String() string { return proto.CompactTextString(m) }
 func (*AuthUserChangePasswordResponse) ProtoMessage()    {}
+func (*AuthUserChangePasswordResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptorRpc, []int{64}
+}
 
 func (m *AuthUserChangePasswordResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1595,9 +1769,10 @@ type AuthUserGrantResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthUserGrantResponse) Reset()         { *m = AuthUserGrantResponse{} }
-func (m *AuthUserGrantResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthUserGrantResponse) ProtoMessage()    {}
+func (m *AuthUserGrantResponse) Reset()                    { *m = AuthUserGrantResponse{} }
+func (m *AuthUserGrantResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserGrantResponse) ProtoMessage()               {}
+func (*AuthUserGrantResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{65} }
 
 func (m *AuthUserGrantResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1610,9 +1785,10 @@ type AuthUserRevokeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthUserRevokeResponse) Reset()         { *m = AuthUserRevokeResponse{} }
-func (m *AuthUserRevokeResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthUserRevokeResponse) ProtoMessage()    {}
+func (m *AuthUserRevokeResponse) Reset()                    { *m = AuthUserRevokeResponse{} }
+func (m *AuthUserRevokeResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthUserRevokeResponse) ProtoMessage()               {}
+func (*AuthUserRevokeResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{66} }
 
 func (m *AuthUserRevokeResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1625,9 +1801,10 @@ type AuthRoleAddResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthRoleAddResponse) Reset()         { *m = AuthRoleAddResponse{} }
-func (m *AuthRoleAddResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleAddResponse) ProtoMessage()    {}
+func (m *AuthRoleAddResponse) Reset()                    { *m = AuthRoleAddResponse{} }
+func (m *AuthRoleAddResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleAddResponse) ProtoMessage()               {}
+func (*AuthRoleAddResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{67} }
 
 func (m *AuthRoleAddResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1640,9 +1817,10 @@ type AuthRoleGetResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthRoleGetResponse) Reset()         { *m = AuthRoleGetResponse{} }
-func (m *AuthRoleGetResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleGetResponse) ProtoMessage()    {}
+func (m *AuthRoleGetResponse) Reset()                    { *m = AuthRoleGetResponse{} }
+func (m *AuthRoleGetResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleGetResponse) ProtoMessage()               {}
+func (*AuthRoleGetResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{68} }
 
 func (m *AuthRoleGetResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1655,9 +1833,10 @@ type AuthRoleDeleteResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthRoleDeleteResponse) Reset()         { *m = AuthRoleDeleteResponse{} }
-func (m *AuthRoleDeleteResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleDeleteResponse) ProtoMessage()    {}
+func (m *AuthRoleDeleteResponse) Reset()                    { *m = AuthRoleDeleteResponse{} }
+func (m *AuthRoleDeleteResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleDeleteResponse) ProtoMessage()               {}
+func (*AuthRoleDeleteResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{69} }
 
 func (m *AuthRoleDeleteResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1670,9 +1849,10 @@ type AuthRoleGrantResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthRoleGrantResponse) Reset()         { *m = AuthRoleGrantResponse{} }
-func (m *AuthRoleGrantResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleGrantResponse) ProtoMessage()    {}
+func (m *AuthRoleGrantResponse) Reset()                    { *m = AuthRoleGrantResponse{} }
+func (m *AuthRoleGrantResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleGrantResponse) ProtoMessage()               {}
+func (*AuthRoleGrantResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{70} }
 
 func (m *AuthRoleGrantResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1685,9 +1865,10 @@ type AuthRoleRevokeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
 }
 
-func (m *AuthRoleRevokeResponse) Reset()         { *m = AuthRoleRevokeResponse{} }
-func (m *AuthRoleRevokeResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthRoleRevokeResponse) ProtoMessage()    {}
+func (m *AuthRoleRevokeResponse) Reset()                    { *m = AuthRoleRevokeResponse{} }
+func (m *AuthRoleRevokeResponse) String() string            { return proto.CompactTextString(m) }
+func (*AuthRoleRevokeResponse) ProtoMessage()               {}
+func (*AuthRoleRevokeResponse) Descriptor() ([]byte, []int) { return fileDescriptorRpc, []int{71} }
 
 func (m *AuthRoleRevokeResponse) GetHeader() *ResponseHeader {
 	if m != nil {
@@ -1780,6 +1961,10 @@ func init() {
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
 
 // Client API for KV service
 
@@ -1886,64 +2071,94 @@ func RegisterKVServer(s *grpc.Server, srv KVServer) {
 	s.RegisterService(&_KV_serviceDesc, srv)
 }
 
-func _KV_Range_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _KV_Range_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RangeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(KVServer).Range(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(KVServer).Range(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.KV/Range",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KVServer).Range(ctx, req.(*RangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _KV_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _KV_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(KVServer).Put(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(KVServer).Put(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.KV/Put",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KVServer).Put(ctx, req.(*PutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _KV_DeleteRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _KV_DeleteRange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteRangeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(KVServer).DeleteRange(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(KVServer).DeleteRange(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.KV/DeleteRange",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KVServer).DeleteRange(ctx, req.(*DeleteRangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _KV_Txn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _KV_Txn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TxnRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(KVServer).Txn(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(KVServer).Txn(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.KV/Txn",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KVServer).Txn(ctx, req.(*TxnRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _KV_Compact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _KV_Compact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CompactionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(KVServer).Compact(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(KVServer).Compact(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.KV/Compact",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KVServer).Compact(ctx, req.(*CompactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _KV_serviceDesc = grpc.ServiceDesc{
@@ -2168,28 +2383,40 @@ func RegisterLeaseServer(s *grpc.Server, srv LeaseServer) {
 	s.RegisterService(&_Lease_serviceDesc, srv)
 }
 
-func _Lease_LeaseGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Lease_LeaseGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LeaseGrantRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(LeaseServer).LeaseGrant(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(LeaseServer).LeaseGrant(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Lease/LeaseGrant",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LeaseServer).LeaseGrant(ctx, req.(*LeaseGrantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Lease_LeaseRevoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Lease_LeaseRevoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LeaseRevokeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(LeaseServer).LeaseRevoke(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(LeaseServer).LeaseRevoke(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Lease/LeaseRevoke",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LeaseServer).LeaseRevoke(ctx, req.(*LeaseRevokeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Lease_LeaseKeepAlive_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -2315,52 +2542,76 @@ func RegisterClusterServer(s *grpc.Server, srv ClusterServer) {
 	s.RegisterService(&_Cluster_serviceDesc, srv)
 }
 
-func _Cluster_MemberAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_MemberAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MemberAddRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).MemberAdd(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).MemberAdd(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Cluster/MemberAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).MemberAdd(ctx, req.(*MemberAddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_MemberRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_MemberRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MemberRemoveRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).MemberRemove(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).MemberRemove(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Cluster/MemberRemove",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).MemberRemove(ctx, req.(*MemberRemoveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_MemberUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_MemberUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MemberUpdateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).MemberUpdate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).MemberUpdate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Cluster/MemberUpdate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).MemberUpdate(ctx, req.(*MemberUpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Cluster_MemberList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Cluster_MemberList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(MemberListRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(ClusterServer).MemberList(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(ClusterServer).MemberList(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Cluster/MemberList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClusterServer).MemberList(ctx, req.(*MemberListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _Cluster_serviceDesc = grpc.ServiceDesc{
@@ -2501,52 +2752,76 @@ func RegisterMaintenanceServer(s *grpc.Server, srv MaintenanceServer) {
 	s.RegisterService(&_Maintenance_serviceDesc, srv)
 }
 
-func _Maintenance_Alarm_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Maintenance_Alarm_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AlarmRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(MaintenanceServer).Alarm(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(MaintenanceServer).Alarm(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Maintenance/Alarm",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaintenanceServer).Alarm(ctx, req.(*AlarmRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Maintenance_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Maintenance_Status_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(MaintenanceServer).Status(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(MaintenanceServer).Status(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Maintenance/Status",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaintenanceServer).Status(ctx, req.(*StatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Maintenance_Defragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Maintenance_Defragment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DefragmentRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(MaintenanceServer).Defragment(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(MaintenanceServer).Defragment(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Maintenance/Defragment",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaintenanceServer).Defragment(ctx, req.(*DefragmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Maintenance_Hash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Maintenance_Hash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HashRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(MaintenanceServer).Hash(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(MaintenanceServer).Hash(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Maintenance/Hash",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MaintenanceServer).Hash(ctx, req.(*HashRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _Maintenance_Snapshot_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -2804,172 +3079,256 @@ func RegisterAuthServer(s *grpc.Server, srv AuthServer) {
 	s.RegisterService(&_Auth_serviceDesc, srv)
 }
 
-func _Auth_AuthEnable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_AuthEnable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthEnableRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).AuthEnable(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).AuthEnable(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/AuthEnable",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).AuthEnable(ctx, req.(*AuthEnableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_AuthDisable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_AuthDisable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthDisableRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).AuthDisable(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).AuthDisable(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/AuthDisable",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).AuthDisable(ctx, req.(*AuthDisableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_Authenticate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_Authenticate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthenticateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).Authenticate(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).Authenticate(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/Authenticate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).Authenticate(ctx, req.(*AuthenticateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_UserAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_UserAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthUserAddRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).UserAdd(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).UserAdd(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/UserAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).UserAdd(ctx, req.(*AuthUserAddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_UserGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_UserGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthUserGetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).UserGet(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).UserGet(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/UserGet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).UserGet(ctx, req.(*AuthUserGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_UserDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_UserDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthUserDeleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).UserDelete(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).UserDelete(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/UserDelete",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).UserDelete(ctx, req.(*AuthUserDeleteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_UserChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_UserChangePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthUserChangePasswordRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).UserChangePassword(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).UserChangePassword(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/UserChangePassword",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).UserChangePassword(ctx, req.(*AuthUserChangePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_UserGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_UserGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthUserGrantRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).UserGrant(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).UserGrant(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/UserGrant",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).UserGrant(ctx, req.(*AuthUserGrantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_UserRevoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_UserRevoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthUserRevokeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).UserRevoke(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).UserRevoke(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/UserRevoke",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).UserRevoke(ctx, req.(*AuthUserRevokeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_RoleAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_RoleAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthRoleAddRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).RoleAdd(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).RoleAdd(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/RoleAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).RoleAdd(ctx, req.(*AuthRoleAddRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_RoleGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_RoleGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthRoleGetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).RoleGet(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).RoleGet(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/RoleGet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).RoleGet(ctx, req.(*AuthRoleGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_RoleDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_RoleDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthRoleDeleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).RoleDelete(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).RoleDelete(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/RoleDelete",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).RoleDelete(ctx, req.(*AuthRoleDeleteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_RoleGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_RoleGrant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthRoleGrantRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).RoleGrant(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).RoleGrant(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/RoleGrant",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).RoleGrant(ctx, req.(*AuthRoleGrantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _Auth_RoleRevoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _Auth_RoleRevoke_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthRoleRevokeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(AuthServer).RoleRevoke(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(AuthServer).RoleRevoke(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/etcdserverpb.Auth/RoleRevoke",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).RoleRevoke(ctx, req.(*AuthRoleRevokeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _Auth_serviceDesc = grpc.ServiceDesc{
@@ -3089,21 +3448,17 @@ func (m *RangeRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Key != nil {
-		if len(m.Key) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-			i += copy(data[i:], m.Key)
-		}
+	if len(m.Key) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
+		i += copy(data[i:], m.Key)
 	}
-	if m.RangeEnd != nil {
-		if len(m.RangeEnd) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
-			i += copy(data[i:], m.RangeEnd)
-		}
+	if len(m.RangeEnd) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
+		i += copy(data[i:], m.RangeEnd)
 	}
 	if m.Limit != 0 {
 		data[i] = 0x18
@@ -3203,21 +3558,17 @@ func (m *PutRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Key != nil {
-		if len(m.Key) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-			i += copy(data[i:], m.Key)
-		}
+	if len(m.Key) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
+		i += copy(data[i:], m.Key)
 	}
-	if m.Value != nil {
-		if len(m.Value) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Value)))
-			i += copy(data[i:], m.Value)
-		}
+	if len(m.Value) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Value)))
+		i += copy(data[i:], m.Value)
 	}
 	if m.Lease != 0 {
 		data[i] = 0x18
@@ -3270,21 +3621,17 @@ func (m *DeleteRangeRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Key != nil {
-		if len(m.Key) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-			i += copy(data[i:], m.Key)
-		}
+	if len(m.Key) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
+		i += copy(data[i:], m.Key)
 	}
-	if m.RangeEnd != nil {
-		if len(m.RangeEnd) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
-			i += copy(data[i:], m.RangeEnd)
-		}
+	if len(m.RangeEnd) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
+		i += copy(data[i:], m.RangeEnd)
 	}
 	return i, nil
 }
@@ -3481,13 +3828,11 @@ func (m *Compare) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.Target))
 	}
-	if m.Key != nil {
-		if len(m.Key) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-			i += copy(data[i:], m.Key)
-		}
+	if len(m.Key) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
+		i += copy(data[i:], m.Key)
 	}
 	if m.TargetUnion != nil {
 		nn12, err := m.TargetUnion.MarshalTo(data[i:])
@@ -3794,13 +4139,11 @@ func (m *SnapshotResponse) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintRpc(data, i, uint64(m.RemainingBytes))
 	}
-	if m.Blob != nil {
-		if len(m.Blob) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Blob)))
-			i += copy(data[i:], m.Blob)
-		}
+	if len(m.Blob) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Blob)))
+		i += copy(data[i:], m.Blob)
 	}
 	return i, nil
 }
@@ -3873,21 +4216,17 @@ func (m *WatchCreateRequest) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Key != nil {
-		if len(m.Key) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-			i += copy(data[i:], m.Key)
-		}
+	if len(m.Key) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
+		i += copy(data[i:], m.Key)
 	}
-	if m.RangeEnd != nil {
-		if len(m.RangeEnd) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
-			i += copy(data[i:], m.RangeEnd)
-		}
+	if len(m.RangeEnd) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
+		i += copy(data[i:], m.RangeEnd)
 	}
 	if m.StartRevision != 0 {
 		data[i] = 0x18
@@ -5482,17 +5821,13 @@ func (m *ResponseHeader) Size() (n int) {
 func (m *RangeRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Key != nil {
-		l = len(m.Key)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
-	if m.RangeEnd != nil {
-		l = len(m.RangeEnd)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.RangeEnd)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
 	if m.Limit != 0 {
 		n += 1 + sovRpc(uint64(m.Limit))
@@ -5534,17 +5869,13 @@ func (m *RangeResponse) Size() (n int) {
 func (m *PutRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Key != nil {
-		l = len(m.Key)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
-	if m.Value != nil {
-		l = len(m.Value)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
 	if m.Lease != 0 {
 		n += 1 + sovRpc(uint64(m.Lease))
@@ -5565,17 +5896,13 @@ func (m *PutResponse) Size() (n int) {
 func (m *DeleteRangeRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Key != nil {
-		l = len(m.Key)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
-	if m.RangeEnd != nil {
-		l = len(m.RangeEnd)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.RangeEnd)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
 	return n
 }
@@ -5674,11 +6001,9 @@ func (m *Compare) Size() (n int) {
 	if m.Target != 0 {
 		n += 1 + sovRpc(uint64(m.Target))
 	}
-	if m.Key != nil {
-		l = len(m.Key)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
 	if m.TargetUnion != nil {
 		n += m.TargetUnion.Size()
@@ -5813,11 +6138,9 @@ func (m *SnapshotResponse) Size() (n int) {
 	if m.RemainingBytes != 0 {
 		n += 1 + sovRpc(uint64(m.RemainingBytes))
 	}
-	if m.Blob != nil {
-		l = len(m.Blob)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.Blob)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
 	return n
 }
@@ -5852,17 +6175,13 @@ func (m *WatchRequest_CancelRequest) Size() (n int) {
 func (m *WatchCreateRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.Key != nil {
-		l = len(m.Key)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
-	if m.RangeEnd != nil {
-		l = len(m.RangeEnd)
-		if l > 0 {
-			n += 1 + l + sovRpc(uint64(l))
-		}
+	l = len(m.RangeEnd)
+	if l > 0 {
+		n += 1 + l + sovRpc(uint64(l))
 	}
 	if m.StartRevision != 0 {
 		n += 1 + sovRpc(uint64(m.StartRevision))
@@ -13645,3 +13964,169 @@ var (
 	ErrInvalidLengthRpc = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowRpc   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorRpc = []byte{
+	// 2577 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x5a, 0xcd, 0x72, 0x1b, 0xc7,
+	0x11, 0x26, 0x7e, 0x08, 0x10, 0x0d, 0x10, 0xa2, 0x86, 0x94, 0x4c, 0x43, 0xb6, 0x24, 0xaf, 0x24,
+	0x5b, 0x89, 0x1d, 0x2a, 0x66, 0x9c, 0x43, 0x2a, 0x2e, 0xa5, 0x40, 0x02, 0x96, 0x68, 0x52, 0xa4,
+	0xbc, 0x04, 0xa9, 0xf8, 0xc4, 0x5a, 0x02, 0x23, 0x12, 0x25, 0xfc, 0x79, 0x77, 0x41, 0x89, 0x3a,
+	0xa5, 0x52, 0x95, 0x27, 0x70, 0x4e, 0xa9, 0xbc, 0x40, 0x1e, 0x20, 0xef, 0x90, 0xca, 0x25, 0x79,
+	0x82, 0x24, 0x95, 0x63, 0x72, 0xc8, 0x3d, 0xb9, 0xa4, 0xe7, 0x77, 0x67, 0x07, 0xbb, 0x94, 0x9c,
+	0x65, 0x0e, 0x14, 0x77, 0x7a, 0xba, 0xbf, 0xe9, 0xee, 0xe9, 0xe9, 0xe9, 0x1e, 0x0a, 0x2a, 0xfe,
+	0xa4, 0xbb, 0x36, 0xf1, 0xc7, 0xe1, 0x98, 0xd4, 0x68, 0xd8, 0xed, 0x05, 0xd4, 0x3f, 0xa3, 0xfe,
+	0xe4, 0xb8, 0xb1, 0x72, 0x32, 0x3e, 0x19, 0xf3, 0x89, 0x07, 0xec, 0x4b, 0xf0, 0x34, 0x6e, 0x31,
+	0x9e, 0x07, 0x41, 0x38, 0xf6, 0xbd, 0x13, 0xaa, 0x7e, 0x4f, 0x8e, 0x1f, 0xbc, 0x38, 0x93, 0x0c,
+	0x37, 0x38, 0x83, 0x37, 0x0d, 0x4f, 0xf9, 0x3f, 0x38, 0xc5, 0x7e, 0x89, 0x49, 0xe7, 0x57, 0x39,
+	0xa8, 0xbb, 0x34, 0x98, 0x8c, 0x47, 0x01, 0x7d, 0x4c, 0xbd, 0x1e, 0xf5, 0xc9, 0xfb, 0x00, 0xdd,
+	0xc1, 0x34, 0x08, 0xa9, 0x7f, 0xd4, 0xef, 0xad, 0xe6, 0x6e, 0xe7, 0xee, 0x17, 0xdd, 0x8a, 0xa4,
+	0x6c, 0xf5, 0xc8, 0x0d, 0xa8, 0x0c, 0xe9, 0xf0, 0x58, 0xcc, 0xe6, 0xf9, 0xec, 0x82, 0x20, 0xe0,
+	0x64, 0x03, 0x16, 0x7c, 0x7a, 0xd6, 0x0f, 0xfa, 0xe3, 0xd1, 0x6a, 0x01, 0xe7, 0x0a, 0xae, 0x1e,
+	0x33, 0x41, 0xdf, 0x7b, 0x1e, 0x1e, 0x21, 0xcc, 0x70, 0xb5, 0x28, 0x04, 0x19, 0xa1, 0x83, 0x63,
+	0xe7, 0xd7, 0x05, 0xa8, 0xb9, 0xde, 0xe8, 0x84, 0xba, 0xf4, 0x9b, 0x29, 0x0d, 0x42, 0xb2, 0x04,
+	0x85, 0x17, 0xf4, 0x9c, 0x2f, 0x5f, 0x73, 0xd9, 0xa7, 0x90, 0x47, 0x8e, 0x23, 0x3a, 0x12, 0x0b,
+	0xd7, 0x98, 0x3c, 0x12, 0xda, 0xa3, 0x1e, 0x59, 0x81, 0xf9, 0x41, 0x7f, 0xd8, 0x0f, 0xe5, 0xaa,
+	0x62, 0x10, 0x53, 0xa7, 0x68, 0xa9, 0xb3, 0x09, 0x10, 0x8c, 0xfd, 0xf0, 0x68, 0xec, 0xa3, 0xd1,
+	0xab, 0xf3, 0x38, 0x5b, 0x5f, 0xbf, 0xbb, 0x66, 0x3a, 0x7c, 0xcd, 0x54, 0x68, 0x6d, 0x1f, 0x99,
+	0xf7, 0x18, 0xaf, 0x5b, 0x09, 0xd4, 0x27, 0xf9, 0x02, 0xaa, 0x1c, 0x24, 0xf4, 0xfc, 0x13, 0x1a,
+	0xae, 0x96, 0x38, 0xca, 0xbd, 0x37, 0xa0, 0x74, 0x38, 0xb3, 0xcb, 0x97, 0x17, 0xdf, 0xc4, 0x81,
+	0x1a, 0xf2, 0xf7, 0xbd, 0x41, 0xff, 0xb5, 0x77, 0x3c, 0xa0, 0xab, 0x65, 0x04, 0x5a, 0x70, 0x63,
+	0x34, 0x67, 0x0d, 0x2a, 0x5a, 0x07, 0xb2, 0x00, 0xc5, 0xdd, 0xbd, 0xdd, 0xf6, 0xd2, 0x1c, 0x01,
+	0x28, 0x35, 0xf7, 0x37, 0xdb, 0xbb, 0xad, 0xa5, 0x1c, 0xa9, 0x42, 0xb9, 0xd5, 0x16, 0x83, 0xbc,
+	0xb3, 0x01, 0x10, 0xad, 0x46, 0xca, 0x50, 0xd8, 0x6e, 0x7f, 0x8d, 0xfc, 0xc8, 0x73, 0xd8, 0x76,
+	0xf7, 0xb7, 0xf6, 0x76, 0x51, 0x00, 0x85, 0x37, 0xdd, 0x76, 0xb3, 0xd3, 0x5e, 0xca, 0x33, 0x8e,
+	0x27, 0x7b, 0xad, 0xa5, 0x02, 0xa9, 0xc0, 0xfc, 0x61, 0x73, 0xe7, 0xa0, 0xbd, 0x54, 0x74, 0x7e,
+	0x91, 0x83, 0x45, 0xa9, 0xbf, 0x88, 0x11, 0xf2, 0x19, 0x94, 0x4e, 0x79, 0x9c, 0xf0, 0xad, 0xa9,
+	0xae, 0xbf, 0x67, 0x19, 0x1b, 0x8b, 0x25, 0x57, 0xf2, 0x92, 0x7b, 0xb8, 0x9b, 0x67, 0x01, 0xee,
+	0x5a, 0x01, 0x45, 0x96, 0xd7, 0x74, 0x94, 0xae, 0x6d, 0xd3, 0xf3, 0x43, 0x6f, 0x30, 0xa5, 0x2e,
+	0x9b, 0x27, 0x04, 0x8a, 0xc3, 0xb1, 0x4f, 0xf9, 0x26, 0x2e, 0xb8, 0xfc, 0xdb, 0xf9, 0x12, 0xe0,
+	0xe9, 0x34, 0x4c, 0x0f, 0x0b, 0xdc, 0xf9, 0x33, 0x86, 0x20, 0x43, 0x42, 0x0c, 0x78, 0x3c, 0x50,
+	0x2f, 0xa0, 0x3a, 0x1e, 0xd8, 0xc0, 0xd9, 0x84, 0x2a, 0xc7, 0xca, 0x62, 0x0b, 0x82, 0x90, 0x16,
+	0x1d, 0xd0, 0x90, 0x66, 0x88, 0x57, 0x87, 0xc2, 0x72, 0x0c, 0x24, 0x93, 0x77, 0x57, 0xa1, 0xdc,
+	0xe3, 0x60, 0x62, 0x9d, 0x82, 0xab, 0x86, 0xce, 0xbf, 0x72, 0x78, 0xac, 0x84, 0x86, 0x07, 0x23,
+	0x16, 0xf5, 0x4d, 0x58, 0xf4, 0xc5, 0xf8, 0x88, 0xeb, 0x22, 0xd7, 0x69, 0xa4, 0x87, 0xec, 0xe3,
+	0x39, 0xb7, 0x26, 0x45, 0x38, 0x99, 0xfc, 0x14, 0xaa, 0x0a, 0x62, 0x32, 0x0d, 0xf9, 0x8a, 0xd5,
+	0xf5, 0xd5, 0x38, 0x40, 0xb4, 0x63, 0x28, 0x0e, 0x92, 0x1d, 0x89, 0xa4, 0x03, 0x2b, 0x4a, 0x58,
+	0xe8, 0x28, 0xd5, 0x28, 0x70, 0x94, 0xdb, 0x71, 0x94, 0x59, 0x37, 0x23, 0x1a, 0x91, 0xf2, 0xc6,
+	0xe4, 0x46, 0x05, 0xca, 0x92, 0xea, 0xfc, 0x9b, 0x45, 0xac, 0x74, 0x93, 0x30, 0xb9, 0x05, 0x75,
+	0x5f, 0x12, 0x62, 0x36, 0xdf, 0x48, 0xb4, 0x59, 0x3a, 0x78, 0xce, 0x5d, 0x54, 0x42, 0xc2, 0xea,
+	0x87, 0x50, 0xd3, 0x28, 0x91, 0xd9, 0xef, 0x26, 0x98, 0xad, 0x11, 0xaa, 0x4a, 0x80, 0x19, 0xfe,
+	0x0c, 0xae, 0x69, 0xf9, 0x04, 0xcb, 0x3f, 0xb8, 0xc0, 0x72, 0x0d, 0xb8, 0xac, 0x10, 0x4c, 0xdb,
+	0x81, 0xe5, 0x38, 0x41, 0x76, 0x7e, 0x53, 0x80, 0xf2, 0xe6, 0x78, 0x38, 0xf1, 0x7c, 0xb6, 0x4d,
+	0x25, 0xa4, 0x4f, 0x07, 0x21, 0x37, 0xb7, 0xbe, 0x7e, 0x27, 0xbe, 0x82, 0x64, 0x53, 0xbf, 0x5d,
+	0xce, 0xea, 0x4a, 0x11, 0x26, 0x2c, 0x53, 0x5a, 0xfe, 0x2d, 0x84, 0x65, 0x42, 0x93, 0x22, 0xea,
+	0x28, 0x14, 0xa2, 0xa3, 0xd0, 0x80, 0x32, 0x0a, 0x46, 0x69, 0x18, 0x6d, 0x51, 0x04, 0xf2, 0x3d,
+	0xb8, 0xd2, 0xf5, 0xa9, 0xc7, 0xfc, 0xa1, 0x52, 0xf5, 0xbc, 0xe4, 0xa9, 0x8b, 0x09, 0x57, 0xa5,
+	0xec, 0x3b, 0x50, 0x1b, 0x8e, 0x7b, 0x11, 0x5f, 0x49, 0xf2, 0x55, 0x91, 0xaa, 0x99, 0xae, 0xab,
+	0x7c, 0xc0, 0x72, 0x68, 0x0d, 0x67, 0xc5, 0xd0, 0xf9, 0x14, 0x16, 0x63, 0xb6, 0xb2, 0x34, 0xd7,
+	0xfe, 0xea, 0xa0, 0xb9, 0x23, 0x72, 0xe2, 0x23, 0x9e, 0x06, 0x5d, 0xcc, 0x89, 0x98, 0x5a, 0x77,
+	0xda, 0xfb, 0xfb, 0x98, 0x41, 0x3f, 0xd7, 0x22, 0x32, 0x89, 0x1a, 0xb9, 0x73, 0xce, 0xc8, 0x9d,
+	0x39, 0x95, 0x3b, 0xf3, 0x51, 0xee, 0x2c, 0x6c, 0xd4, 0xa1, 0x26, 0x1c, 0x72, 0x34, 0x65, 0x71,
+	0xe8, 0xfc, 0x2e, 0x07, 0xd0, 0x79, 0x35, 0x52, 0x09, 0xe3, 0x01, 0x94, 0xbb, 0x02, 0x1c, 0x37,
+	0x88, 0xa5, 0xc5, 0x6b, 0x89, 0x3e, 0x76, 0x15, 0x17, 0xe6, 0x86, 0x72, 0x30, 0xed, 0x76, 0x69,
+	0xa0, 0xf2, 0xa8, 0x7d, 0x68, 0x8d, 0x73, 0xee, 0x2a, 0x56, 0x26, 0xf5, 0xdc, 0xeb, 0x0f, 0xa6,
+	0x3c, 0xab, 0xbe, 0x51, 0x4a, 0xb2, 0x3a, 0xbf, 0xcd, 0x41, 0x95, 0xeb, 0x9a, 0x29, 0x2f, 0xbd,
+	0x07, 0x15, 0xae, 0x06, 0xed, 0xc9, 0xcc, 0xb4, 0xe0, 0x46, 0x04, 0xf2, 0x13, 0xcc, 0x8f, 0x52,
+	0x2e, 0x90, 0xba, 0xdd, 0x48, 0x86, 0x15, 0xca, 0x45, 0xdc, 0xce, 0x36, 0x5c, 0xe5, 0xee, 0xe9,
+	0x86, 0x6c, 0x42, 0x3a, 0xd4, 0xbc, 0xec, 0x73, 0xd6, 0x65, 0x8f, 0x73, 0x93, 0xd3, 0xf3, 0xa0,
+	0xdf, 0xf5, 0x06, 0x52, 0x11, 0x3d, 0xc6, 0x0b, 0x86, 0x98, 0x60, 0x99, 0xee, 0x86, 0x45, 0xa8,
+	0x3e, 0xf6, 0x82, 0x53, 0xa9, 0x92, 0xf3, 0x73, 0xa8, 0x89, 0x61, 0x26, 0x37, 0xe2, 0xad, 0x78,
+	0x8a, 0x28, 0x5c, 0xf1, 0x45, 0x97, 0x7f, 0x3b, 0x57, 0xe1, 0xca, 0xfe, 0xc8, 0x9b, 0x04, 0xa7,
+	0x63, 0x95, 0x68, 0x59, 0x29, 0xb7, 0x14, 0xd1, 0x32, 0xad, 0xf8, 0x11, 0x5c, 0xf1, 0xe9, 0xd0,
+	0xeb, 0x8f, 0xfa, 0xa3, 0x93, 0xa3, 0xe3, 0xf3, 0x90, 0x06, 0xb2, 0xd2, 0xab, 0x6b, 0xf2, 0x06,
+	0xa3, 0x32, 0xd5, 0x8e, 0x07, 0xe3, 0x63, 0x79, 0xd6, 0xf9, 0xb7, 0xf3, 0x7b, 0xbc, 0x73, 0x9e,
+	0x79, 0x61, 0x57, 0x79, 0x81, 0x6c, 0x41, 0x5d, 0x9f, 0x70, 0x4e, 0x91, 0xba, 0x58, 0xd9, 0x9e,
+	0xcb, 0x6c, 0xca, 0x13, 0xaf, 0xb2, 0xfd, 0x62, 0xd7, 0x24, 0x70, 0x28, 0x6f, 0xd4, 0xa5, 0x03,
+	0x0d, 0x95, 0x4f, 0x87, 0xe2, 0x8c, 0x26, 0x94, 0x49, 0xd8, 0xb8, 0x12, 0xdd, 0x84, 0xe2, 0x7c,
+	0x7e, 0x9b, 0x03, 0x32, 0xab, 0xc3, 0x77, 0x2d, 0x44, 0xef, 0x41, 0x3d, 0xc0, 0x63, 0x1f, 0x1e,
+	0x59, 0x75, 0xf0, 0x22, 0xa7, 0xea, 0x2c, 0x85, 0x1e, 0xc6, 0x02, 0xfc, 0x04, 0x43, 0x3a, 0x38,
+	0x1a, 0x8d, 0xc3, 0xfe, 0xf3, 0x73, 0x9e, 0x19, 0x17, 0xdc, 0xba, 0x22, 0xef, 0x72, 0xaa, 0xf3,
+	0x40, 0x29, 0x65, 0x2a, 0x4f, 0xde, 0x85, 0x85, 0x97, 0x8c, 0xaa, 0x2a, 0x74, 0xbc, 0xf2, 0xf9,
+	0x78, 0xab, 0xe7, 0xfc, 0x13, 0x2f, 0x40, 0xe9, 0xfe, 0x4c, 0x31, 0x60, 0x2e, 0x91, 0x8f, 0x2d,
+	0xc1, 0xea, 0x0d, 0xb1, 0x2d, 0x3d, 0x59, 0xa9, 0xa9, 0x21, 0x3b, 0x67, 0xc2, 0xcb, 0x38, 0x25,
+	0xec, 0xd1, 0x63, 0x4c, 0xf4, 0x4b, 0x5d, 0x71, 0xce, 0xac, 0x4c, 0xef, 0x5e, 0x91, 0x74, 0xed,
+	0x9d, 0xfb, 0x50, 0xa2, 0x67, 0x74, 0x14, 0x06, 0xab, 0x55, 0x9e, 0x17, 0x96, 0x8c, 0x8a, 0xb1,
+	0xcd, 0x26, 0x5c, 0x39, 0xef, 0xfc, 0x18, 0xae, 0xee, 0xb0, 0xd2, 0xee, 0x11, 0x6e, 0x80, 0x59,
+	0x24, 0x76, 0x3a, 0x3b, 0xd2, 0x31, 0x85, 0xb0, 0xb3, 0x43, 0xea, 0x90, 0xdf, 0x6a, 0x49, 0x33,
+	0xf2, 0xfd, 0x96, 0xf3, 0x4b, 0xdc, 0x6b, 0x53, 0x2e, 0x93, 0xa7, 0x2c, 0x70, 0xb5, 0x7c, 0x21,
+	0x5a, 0x1e, 0xab, 0x51, 0xea, 0xfb, 0x63, 0x9f, 0xfb, 0xa4, 0xe2, 0x8a, 0x81, 0x73, 0x57, 0xea,
+	0x80, 0x66, 0x8f, 0x5f, 0xe8, 0x78, 0x13, 0x68, 0x39, 0xad, 0xea, 0x36, 0x2c, 0xc7, 0xb8, 0x32,
+	0xe5, 0xa7, 0x8f, 0xe0, 0x1a, 0x07, 0xdb, 0xa6, 0x74, 0xd2, 0x1c, 0xf4, 0xcf, 0x52, 0x57, 0x9d,
+	0xc0, 0x75, 0x9b, 0xf1, 0xff, 0xeb, 0x23, 0xe7, 0x14, 0x4a, 0x4f, 0x78, 0x1b, 0x69, 0xe8, 0x52,
+	0xe4, 0xbc, 0x98, 0x64, 0x46, 0xde, 0x50, 0x14, 0xf8, 0x15, 0x97, 0x7f, 0xf3, 0x84, 0x4e, 0xa9,
+	0x7f, 0xe0, 0xee, 0x88, 0xbb, 0xa3, 0xe2, 0xea, 0x31, 0xb9, 0xc9, 0x1a, 0xd8, 0x3e, 0x86, 0x07,
+	0x9f, 0x2d, 0xf2, 0x59, 0x83, 0x82, 0x8d, 0xd4, 0x92, 0x58, 0xa9, 0xd9, 0xeb, 0x19, 0x97, 0x87,
+	0xc6, 0xcb, 0xc5, 0xf1, 0x9c, 0x97, 0x70, 0xd5, 0xe0, 0xcf, 0xe4, 0x86, 0x4f, 0xa0, 0x24, 0x7a,
+	0x65, 0x99, 0xb7, 0x56, 0xe2, 0x52, 0x62, 0x19, 0x57, 0xf2, 0x38, 0xf7, 0x60, 0x59, 0x52, 0xe8,
+	0x70, 0x9c, 0xb4, 0x57, 0xdc, 0x3f, 0xce, 0x0e, 0xac, 0xc4, 0xd9, 0x32, 0x85, 0x48, 0x53, 0x2d,
+	0x7a, 0x30, 0xe9, 0x19, 0x69, 0xd0, 0xde, 0x14, 0xd3, 0x61, 0x79, 0xcb, 0x61, 0x5a, 0x21, 0x05,
+	0x91, 0x49, 0xa1, 0x65, 0xe5, 0xfe, 0x9d, 0x7e, 0xa0, 0x2f, 0xbb, 0xd7, 0x40, 0x4c, 0x62, 0xa6,
+	0x4d, 0x59, 0x83, 0xb2, 0x70, 0xb8, 0x2a, 0xac, 0x92, 0x77, 0x45, 0x31, 0x31, 0x85, 0x5a, 0xf4,
+	0x39, 0xa6, 0xa3, 0x21, 0xd5, 0x39, 0x87, 0x55, 0x11, 0x26, 0x31, 0x93, 0xc5, 0x7f, 0xc2, 0x1b,
+	0xb4, 0x39, 0xf0, 0xfc, 0xa1, 0x72, 0xfe, 0x43, 0x28, 0x89, 0xf2, 0x44, 0xd6, 0xf2, 0x1f, 0xc6,
+	0x61, 0x4c, 0x5e, 0x31, 0x68, 0x8a, 0x62, 0x46, 0x4a, 0xb1, 0xcd, 0x92, 0x4f, 0x34, 0x2d, 0xeb,
+	0xc9, 0xa6, 0x45, 0x7e, 0x00, 0xf3, 0x1e, 0x13, 0xe1, 0x67, 0xb1, 0xbe, 0xfe, 0x4e, 0x02, 0x74,
+	0xe7, 0x7c, 0x42, 0x5d, 0xc1, 0xe5, 0x7c, 0x06, 0x55, 0x63, 0x05, 0x56, 0xf8, 0x3e, 0x6a, 0x77,
+	0xb0, 0x1a, 0xae, 0xc1, 0x42, 0x73, 0xb3, 0xb3, 0x75, 0x28, 0xea, 0xe1, 0x3a, 0x40, 0xab, 0xad,
+	0xc7, 0x79, 0x2c, 0x84, 0x84, 0x94, 0x3c, 0xe1, 0xa6, 0x3e, 0xb9, 0x34, 0x7d, 0xf2, 0x6f, 0xa5,
+	0xcf, 0x2b, 0x58, 0x94, 0xe6, 0x67, 0x8a, 0x81, 0x4f, 0xd1, 0xc3, 0x0c, 0x46, 0x85, 0xc0, 0xbb,
+	0x09, 0xcb, 0xaa, 0xd3, 0x29, 0x18, 0x1d, 0x2c, 0x20, 0xf6, 0x43, 0x2f, 0x9c, 0x06, 0x2a, 0x04,
+	0xfe, 0x98, 0x83, 0xba, 0xa2, 0x64, 0xed, 0xe7, 0x55, 0xbb, 0x24, 0x72, 0x9e, 0x6e, 0x96, 0xae,
+	0x43, 0xa9, 0x77, 0xbc, 0xdf, 0x7f, 0xad, 0xde, 0x35, 0xe4, 0x88, 0xd1, 0x07, 0x62, 0x1d, 0xf1,
+	0xb0, 0x26, 0x47, 0xac, 0x02, 0x67, 0x4f, 0x6c, 0x5b, 0xa3, 0x1e, 0x7d, 0xc5, 0x2f, 0xdb, 0xa2,
+	0x1b, 0x11, 0x78, 0xc5, 0x2c, 0x1f, 0xe0, 0x78, 0x2f, 0x65, 0x3e, 0xc8, 0x61, 0x90, 0x37, 0xa7,
+	0xe1, 0x69, 0x7b, 0xc4, 0xde, 0x9e, 0x94, 0x85, 0x2b, 0x40, 0x18, 0xb1, 0xd5, 0x0f, 0x4c, 0x6a,
+	0x1b, 0x96, 0x19, 0x15, 0xe3, 0x1e, 0xeb, 0xe9, 0x28, 0x63, 0xa8, 0xb4, 0x9d, 0xb3, 0xd2, 0xb6,
+	0x17, 0x04, 0x2f, 0xc7, 0x7e, 0x4f, 0x9a, 0xa6, 0xc7, 0x4e, 0x4b, 0x80, 0x1f, 0x04, 0xb1, 0xc4,
+	0xfc, 0x5d, 0x51, 0x56, 0x22, 0x94, 0x47, 0x54, 0x9f, 0xce, 0x8f, 0xe1, 0x9a, 0xa2, 0xca, 0xde,
+	0x39, 0x1d, 0xde, 0xd9, 0x83, 0xf7, 0x15, 0xf3, 0xe6, 0x29, 0xab, 0xeb, 0x9e, 0x4a, 0xf0, 0xff,
+	0x55, 0xa7, 0x87, 0xb0, 0xa2, 0x75, 0x32, 0xeb, 0x14, 0xc4, 0x99, 0x06, 0x32, 0x36, 0x10, 0x87,
+	0x7d, 0x33, 0x9a, 0x3f, 0x1e, 0xe8, 0xcb, 0x8e, 0x7d, 0x3b, 0xef, 0x44, 0xda, 0xc7, 0x6a, 0x05,
+	0xe7, 0xbe, 0x30, 0xd6, 0x45, 0xa6, 0x8b, 0x5d, 0xa6, 0xdc, 0xc2, 0x38, 0x0d, 0xb7, 0x48, 0x60,
+	0x46, 0x8d, 0xb9, 0xc5, 0x71, 0x85, 0xc6, 0x9c, 0xdd, 0xd2, 0x78, 0xc6, 0xf2, 0x0f, 0xa1, 0x38,
+	0xa1, 0xf2, 0xbc, 0x56, 0xd7, 0xc9, 0x9a, 0x78, 0x64, 0x5e, 0x7b, 0x8a, 0xb4, 0x7e, 0xc0, 0xa2,
+	0xd6, 0xe5, 0xf3, 0xe6, 0x62, 0x71, 0x2b, 0xbe, 0x14, 0xba, 0xa9, 0x50, 0xcb, 0x94, 0x3a, 0xb7,
+	0x45, 0x2c, 0xea, 0x08, 0xcd, 0x04, 0x76, 0x2c, 0xbc, 0x10, 0x05, 0x76, 0xa6, 0x53, 0x8d, 0x45,
+	0x60, 0x88, 0x56, 0xab, 0x33, 0x2d, 0x06, 0x4a, 0x61, 0x1d, 0xf5, 0x97, 0x61, 0xbd, 0x0e, 0xfe,
+	0x4c, 0x60, 0xbb, 0x70, 0xdd, 0x3e, 0x33, 0x99, 0xf0, 0x0e, 0xe1, 0x66, 0xda, 0xb1, 0xca, 0x84,
+	0xfb, 0x24, 0x3a, 0x1d, 0x97, 0x50, 0xcd, 0x9b, 0x66, 0x5f, 0x4a, 0xc9, 0x2d, 0xf7, 0x44, 0x9f,
+	0xd1, 0xcb, 0x02, 0xbb, 0xb4, 0x0d, 0x36, 0x4f, 0xff, 0x65, 0x6c, 0x84, 0x91, 0x34, 0x2e, 0x4b,
+	0xbd, 0xcb, 0xd8, 0x88, 0xef, 0x3b, 0x50, 0xd1, 0xd5, 0x83, 0xf1, 0xf7, 0x93, 0x2a, 0x94, 0x77,
+	0xf7, 0xf6, 0x9f, 0x36, 0x37, 0xb1, 0x6e, 0x59, 0xff, 0x47, 0x1e, 0xf2, 0xdb, 0x87, 0x64, 0x03,
+	0xe6, 0xc5, 0xab, 0xef, 0x05, 0xef, 0xe2, 0x8d, 0x8b, 0xde, 0x8f, 0x9d, 0x39, 0xf2, 0x39, 0x14,
+	0xd8, 0xbb, 0x6f, 0xea, 0xc3, 0x78, 0x23, 0xfd, 0xed, 0x18, 0xa5, 0x3b, 0x50, 0x35, 0x1e, 0x79,
+	0xc9, 0x1b, 0x1f, 0xc6, 0x1b, 0x6f, 0x7e, 0x40, 0x16, 0x3a, 0x75, 0x5e, 0x8d, 0x6c, 0x9d, 0xa2,
+	0x47, 0x49, 0x5b, 0x27, 0xe3, 0x09, 0x10, 0xa5, 0x77, 0xe5, 0xe3, 0x72, 0x37, 0x24, 0xb7, 0x12,
+	0xde, 0x2a, 0xcd, 0xc7, 0xb8, 0xc6, 0xed, 0x74, 0x06, 0x85, 0xb7, 0xbe, 0x07, 0xf3, 0xfc, 0xa1,
+	0x82, 0x7c, 0xa1, 0x3e, 0x1a, 0x09, 0xcf, 0x38, 0x29, 0xee, 0x8e, 0x3d, 0x71, 0x38, 0x73, 0xf7,
+	0x73, 0x3f, 0xcc, 0xad, 0x7f, 0x9b, 0x87, 0x79, 0xde, 0xb5, 0x92, 0xaf, 0x00, 0xa2, 0xf6, 0xde,
+	0xd6, 0x76, 0xe6, 0xc1, 0xc0, 0xd6, 0x76, 0xf6, 0x65, 0x40, 0xec, 0x88, 0xd1, 0x87, 0x93, 0x24,
+	0x91, 0xd8, 0xb5, 0x66, 0xef, 0x48, 0x42, 0x13, 0x8f, 0xa8, 0x1e, 0xd4, 0xe3, 0x7d, 0x36, 0xb9,
+	0x93, 0x20, 0x66, 0xb7, 0xeb, 0x8d, 0xbb, 0x17, 0x33, 0xc5, 0xbc, 0xf2, 0x97, 0x3c, 0xee, 0x9b,
+	0xf8, 0xf3, 0x2d, 0x6e, 0x61, 0x45, 0xb7, 0xb2, 0xe4, 0x66, 0x52, 0x9b, 0x13, 0xd5, 0x11, 0x8d,
+	0x5b, 0xa9, 0xf3, 0x5a, 0xfd, 0x67, 0x50, 0x33, 0x5b, 0x4f, 0xf2, 0x41, 0x62, 0xe7, 0x64, 0x76,
+	0xaf, 0x0d, 0xe7, 0x22, 0x96, 0x59, 0x60, 0xd1, 0x42, 0x26, 0x03, 0xc7, 0x3a, 0xd4, 0x64, 0xe0,
+	0x78, 0x07, 0x8a, 0xc0, 0x18, 0x19, 0x51, 0xe3, 0x48, 0x12, 0x4d, 0x34, 0xfa, 0x4c, 0x3b, 0x32,
+	0x66, 0x7b, 0x4e, 0x8c, 0xe3, 0xff, 0xe4, 0xa1, 0xfa, 0xc4, 0xeb, 0x8f, 0x42, 0x3a, 0x62, 0x6f,
+	0x5d, 0x2c, 0x7b, 0xf0, 0x44, 0x63, 0x87, 0xb3, 0xd9, 0xa6, 0xd9, 0xe1, 0x1c, 0xeb, 0x61, 0x50,
+	0xcd, 0x36, 0x94, 0x44, 0x2b, 0x41, 0x2c, 0xc6, 0x58, 0xcb, 0xd1, 0x78, 0x2f, 0x79, 0xd2, 0xb4,
+	0x36, 0xea, 0x4a, 0x6d, 0x6b, 0x67, 0x9a, 0xd8, 0xc6, 0xed, 0x74, 0x06, 0x0d, 0xf9, 0x33, 0x28,
+	0xb2, 0x37, 0x6d, 0x62, 0xa5, 0x0a, 0xe3, 0xd9, 0xbb, 0xd1, 0x48, 0x9a, 0xd2, 0x00, 0x4f, 0x60,
+	0x41, 0x3d, 0x53, 0x93, 0xf7, 0x2d, 0xfd, 0xe3, 0x4f, 0xda, 0x8d, 0x9b, 0x69, 0xd3, 0x0a, 0x0c,
+	0xc3, 0xfb, 0xaf, 0x15, 0x28, 0xb2, 0x7b, 0x82, 0xd9, 0x1a, 0x95, 0x91, 0xb6, 0xad, 0x33, 0xbd,
+	0x8c, 0x6d, 0xeb, 0x6c, 0x05, 0x2a, 0xce, 0xbc, 0x51, 0x4d, 0x92, 0x04, 0x91, 0x78, 0x2b, 0x64,
+	0x9f, 0xf9, 0x84, 0x52, 0x54, 0xc4, 0xb6, 0x59, 0x56, 0x92, 0x04, 0x21, 0xab, 0x97, 0xb2, 0x63,
+	0x3b, 0xa9, 0x2a, 0x45, 0xe0, 0xa7, 0x50, 0x96, 0x75, 0x64, 0x92, 0xaa, 0xf1, 0xc6, 0x2a, 0x49,
+	0x55, 0xab, 0x08, 0x8d, 0x10, 0xb1, 0xd6, 0x48, 0x43, 0x8c, 0xba, 0x89, 0x34, 0x44, 0xa3, 0x50,
+	0x41, 0xc4, 0xaf, 0x01, 0xa2, 0x8a, 0xd2, 0x4e, 0x76, 0x89, 0x3d, 0x9a, 0x9d, 0xec, 0x92, 0x8b,
+	0x52, 0x84, 0xfe, 0x06, 0xc8, 0x6c, 0x71, 0x49, 0x3e, 0x4e, 0x96, 0x4e, 0xec, 0xec, 0x1a, 0x9f,
+	0xbc, 0x1d, 0xb3, 0x5e, 0xf2, 0x10, 0x2a, 0xba, 0xee, 0x24, 0x4e, 0x8a, 0xfd, 0xe6, 0x4d, 0x73,
+	0xe7, 0x42, 0x1e, 0xdb, 0x4b, 0xf2, 0xae, 0x49, 0x11, 0x8a, 0x5f, 0x37, 0x77, 0x2f, 0x66, 0x32,
+	0xb7, 0x54, 0xd6, 0xa2, 0x49, 0x5b, 0x1a, 0x6f, 0x25, 0x93, 0xb6, 0xd4, 0x2a, 0x64, 0x23, 0xc4,
+	0x94, 0x20, 0x89, 0xb7, 0x9c, 0x69, 0x88, 0x33, 0x41, 0x12, 0x55, 0xa5, 0x49, 0xe6, 0xcf, 0x74,
+	0xac, 0x49, 0xe6, 0xcf, 0x16, 0xb6, 0x62, 0xc7, 0x74, 0x81, 0x9a, 0xb4, 0x63, 0x76, 0xcb, 0xdb,
+	0xb8, 0x73, 0x21, 0x8f, 0xad, 0x72, 0xfa, 0x8e, 0xcd, 0xf4, 0xbd, 0x69, 0x2a, 0xdb, 0x3b, 0xb6,
+	0x51, 0xfb, 0xc3, 0xdf, 0x6f, 0xe6, 0xfe, 0x8c, 0x3f, 0x7f, 0xc3, 0x9f, 0xe3, 0x12, 0xff, 0x8f,
+	0x5b, 0x3f, 0xfa, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x05, 0x71, 0xf8, 0x4c, 0x27, 0x26, 0x00,
+	0x00,
+}

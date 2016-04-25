@@ -29,6 +29,10 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.GoGoProtoPackageIsVersion1
+
 type Event_EventType int32
 
 const (
@@ -51,14 +55,15 @@ var Event_EventType_value = map[string]int32{
 func (x Event_EventType) String() string {
 	return proto.EnumName(Event_EventType_name, int32(x))
 }
+func (Event_EventType) EnumDescriptor() ([]byte, []int) { return fileDescriptorKv, []int{1, 0} }
 
 type KeyValue struct {
 	// key is the key in bytes. An empty key is not allowed.
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// create_revision is the revision of last creation on this key.
-	CreateRevision int64 `protobuf:"varint,2,opt,name=create_revision,proto3" json:"create_revision,omitempty"`
+	CreateRevision int64 `protobuf:"varint,2,opt,name=create_revision,json=createRevision,proto3" json:"create_revision,omitempty"`
 	// mod_revision is the revision of last modification on this key.
-	ModRevision int64 `protobuf:"varint,3,opt,name=mod_revision,proto3" json:"mod_revision,omitempty"`
+	ModRevision int64 `protobuf:"varint,3,opt,name=mod_revision,json=modRevision,proto3" json:"mod_revision,omitempty"`
 	// version is the version of the key. A deletion resets
 	// the version to zero and any modification of the key
 	// increases its version.
@@ -71,9 +76,10 @@ type KeyValue struct {
 	Lease int64 `protobuf:"varint,6,opt,name=lease,proto3" json:"lease,omitempty"`
 }
 
-func (m *KeyValue) Reset()         { *m = KeyValue{} }
-func (m *KeyValue) String() string { return proto.CompactTextString(m) }
-func (*KeyValue) ProtoMessage()    {}
+func (m *KeyValue) Reset()                    { *m = KeyValue{} }
+func (m *KeyValue) String() string            { return proto.CompactTextString(m) }
+func (*KeyValue) ProtoMessage()               {}
+func (*KeyValue) Descriptor() ([]byte, []int) { return fileDescriptorKv, []int{0} }
 
 type Event struct {
 	// type is the kind of event. If type is a PUT, it indicates
@@ -88,9 +94,10 @@ type Event struct {
 	Kv *KeyValue `protobuf:"bytes,2,opt,name=kv" json:"kv,omitempty"`
 }
 
-func (m *Event) Reset()         { *m = Event{} }
-func (m *Event) String() string { return proto.CompactTextString(m) }
-func (*Event) ProtoMessage()    {}
+func (m *Event) Reset()                    { *m = Event{} }
+func (m *Event) String() string            { return proto.CompactTextString(m) }
+func (*Event) ProtoMessage()               {}
+func (*Event) Descriptor() ([]byte, []int) { return fileDescriptorKv, []int{1} }
 
 func init() {
 	proto.RegisterType((*KeyValue)(nil), "storagepb.KeyValue")
@@ -112,13 +119,11 @@ func (m *KeyValue) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Key != nil {
-		if len(m.Key) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintKv(data, i, uint64(len(m.Key)))
-			i += copy(data[i:], m.Key)
-		}
+	if len(m.Key) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintKv(data, i, uint64(len(m.Key)))
+		i += copy(data[i:], m.Key)
 	}
 	if m.CreateRevision != 0 {
 		data[i] = 0x10
@@ -135,13 +140,11 @@ func (m *KeyValue) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintKv(data, i, uint64(m.Version))
 	}
-	if m.Value != nil {
-		if len(m.Value) > 0 {
-			data[i] = 0x2a
-			i++
-			i = encodeVarintKv(data, i, uint64(len(m.Value)))
-			i += copy(data[i:], m.Value)
-		}
+	if len(m.Value) > 0 {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintKv(data, i, uint64(len(m.Value)))
+		i += copy(data[i:], m.Value)
 	}
 	if m.Lease != 0 {
 		data[i] = 0x30
@@ -214,11 +217,9 @@ func encodeVarintKv(data []byte, offset int, v uint64) int {
 func (m *KeyValue) Size() (n int) {
 	var l int
 	_ = l
-	if m.Key != nil {
-		l = len(m.Key)
-		if l > 0 {
-			n += 1 + l + sovKv(uint64(l))
-		}
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovKv(uint64(l))
 	}
 	if m.CreateRevision != 0 {
 		n += 1 + sovKv(uint64(m.CreateRevision))
@@ -229,11 +230,9 @@ func (m *KeyValue) Size() (n int) {
 	if m.Version != 0 {
 		n += 1 + sovKv(uint64(m.Version))
 	}
-	if m.Value != nil {
-		l = len(m.Value)
-		if l > 0 {
-			n += 1 + l + sovKv(uint64(l))
-		}
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovKv(uint64(l))
 	}
 	if m.Lease != 0 {
 		n += 1 + sovKv(uint64(m.Lease))
@@ -661,3 +660,25 @@ var (
 	ErrInvalidLengthKv = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowKv   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorKv = []byte{
+	// 288 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0xc8, 0x2e, 0xd3, 0x2b,
+	0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x2c, 0x2e, 0xc9, 0x2f, 0x4a, 0x4c, 0x4f, 0x2d, 0x48, 0x92,
+	0x12, 0x49, 0xcf, 0x4f, 0xcf, 0x07, 0x8b, 0xea, 0x83, 0x58, 0x10, 0x05, 0x4a, 0xeb, 0x18, 0xb9,
+	0x38, 0xbc, 0x53, 0x2b, 0xc3, 0x12, 0x73, 0x4a, 0x53, 0x85, 0x04, 0xb8, 0x98, 0xb3, 0x53, 0x2b,
+	0x25, 0x18, 0x15, 0x18, 0x35, 0x78, 0x82, 0x40, 0x4c, 0x21, 0x75, 0x2e, 0xfe, 0xe4, 0xa2, 0xd4,
+	0xc4, 0x92, 0xd4, 0xf8, 0xa2, 0xd4, 0xb2, 0xcc, 0xe2, 0xcc, 0xfc, 0x3c, 0x09, 0x26, 0xa0, 0x2c,
+	0x73, 0x10, 0x1f, 0x44, 0x38, 0x08, 0x2a, 0x2a, 0xa4, 0xc8, 0xc5, 0x93, 0x9b, 0x9f, 0x82, 0x50,
+	0xc5, 0x0c, 0x56, 0xc5, 0x0d, 0x14, 0x83, 0x2b, 0x91, 0xe0, 0x62, 0x2f, 0x4b, 0x2d, 0x02, 0xcb,
+	0xb2, 0x80, 0x65, 0x61, 0x5c, 0x21, 0x11, 0x2e, 0xd6, 0x32, 0x90, 0x03, 0x24, 0x58, 0xc1, 0x36,
+	0x43, 0x38, 0x20, 0xd1, 0x9c, 0xd4, 0xc4, 0xe2, 0x54, 0x09, 0x36, 0xb0, 0x6a, 0x08, 0x47, 0xa9,
+	0x8b, 0x91, 0x8b, 0xd5, 0xb5, 0x2c, 0x35, 0xaf, 0x44, 0x48, 0x8f, 0x8b, 0xa5, 0xa4, 0xb2, 0x20,
+	0x15, 0xec, 0x5c, 0x3e, 0x23, 0x29, 0x3d, 0xb8, 0x57, 0xf5, 0xc0, 0xf2, 0x10, 0x32, 0x04, 0xa8,
+	0x22, 0x08, 0xac, 0x4e, 0x48, 0x99, 0x8b, 0x29, 0xbb, 0x0c, 0xec, 0x7c, 0x6e, 0x23, 0x61, 0x24,
+	0xd5, 0x30, 0xef, 0x07, 0x01, 0xa5, 0x95, 0x74, 0xb8, 0x38, 0xe1, 0xfa, 0x84, 0xd8, 0xb9, 0x98,
+	0x03, 0x42, 0x43, 0x04, 0x18, 0x84, 0xb8, 0xb8, 0xd8, 0x5c, 0x5c, 0x7d, 0x5c, 0x43, 0x5c, 0x05,
+	0x18, 0x41, 0x6c, 0xd7, 0x88, 0x00, 0xcf, 0x20, 0x57, 0x01, 0x26, 0x27, 0x91, 0x13, 0x0f, 0xe5,
+	0x18, 0x2e, 0x00, 0xf1, 0x89, 0x47, 0x72, 0x8c, 0x17, 0x80, 0xf8, 0x01, 0x10, 0x27, 0xb1, 0x81,
+	0x83, 0xd6, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x15, 0x18, 0xeb, 0x9b, 0x87, 0x01, 0x00, 0x00,
+}

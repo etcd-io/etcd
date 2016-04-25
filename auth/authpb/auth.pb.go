@@ -30,6 +30,10 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.GoGoProtoPackageIsVersion1
+
 type Permission_Type int32
 
 const (
@@ -52,6 +56,7 @@ var Permission_Type_value = map[string]int32{
 func (x Permission_Type) String() string {
 	return proto.EnumName(Permission_Type_name, int32(x))
 }
+func (Permission_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptorAuth, []int{1, 0} }
 
 // User is a single entry in the bucket authUsers
 type User struct {
@@ -60,9 +65,10 @@ type User struct {
 	Roles    []string `protobuf:"bytes,3,rep,name=roles" json:"roles,omitempty"`
 }
 
-func (m *User) Reset()         { *m = User{} }
-func (m *User) String() string { return proto.CompactTextString(m) }
-func (*User) ProtoMessage()    {}
+func (m *User) Reset()                    { *m = User{} }
+func (m *User) String() string            { return proto.CompactTextString(m) }
+func (*User) ProtoMessage()               {}
+func (*User) Descriptor() ([]byte, []int) { return fileDescriptorAuth, []int{0} }
 
 // Permission is a single entity
 type Permission struct {
@@ -70,9 +76,10 @@ type Permission struct {
 	PermType Permission_Type `protobuf:"varint,2,opt,name=permType,proto3,enum=authpb.Permission_Type" json:"permType,omitempty"`
 }
 
-func (m *Permission) Reset()         { *m = Permission{} }
-func (m *Permission) String() string { return proto.CompactTextString(m) }
-func (*Permission) ProtoMessage()    {}
+func (m *Permission) Reset()                    { *m = Permission{} }
+func (m *Permission) String() string            { return proto.CompactTextString(m) }
+func (*Permission) ProtoMessage()               {}
+func (*Permission) Descriptor() ([]byte, []int) { return fileDescriptorAuth, []int{1} }
 
 // Role is a single entry in the bucket authRoles
 type Role struct {
@@ -80,9 +87,10 @@ type Role struct {
 	KeyPermission []*Permission `protobuf:"bytes,2,rep,name=keyPermission" json:"keyPermission,omitempty"`
 }
 
-func (m *Role) Reset()         { *m = Role{} }
-func (m *Role) String() string { return proto.CompactTextString(m) }
-func (*Role) ProtoMessage()    {}
+func (m *Role) Reset()                    { *m = Role{} }
+func (m *Role) String() string            { return proto.CompactTextString(m) }
+func (*Role) ProtoMessage()               {}
+func (*Role) Descriptor() ([]byte, []int) { return fileDescriptorAuth, []int{2} }
 
 func init() {
 	proto.RegisterType((*User)(nil), "authpb.User")
@@ -105,21 +113,17 @@ func (m *User) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Name != nil {
-		if len(m.Name) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintAuth(data, i, uint64(len(m.Name)))
-			i += copy(data[i:], m.Name)
-		}
+	if len(m.Name) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAuth(data, i, uint64(len(m.Name)))
+		i += copy(data[i:], m.Name)
 	}
-	if m.Password != nil {
-		if len(m.Password) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintAuth(data, i, uint64(len(m.Password)))
-			i += copy(data[i:], m.Password)
-		}
+	if len(m.Password) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintAuth(data, i, uint64(len(m.Password)))
+		i += copy(data[i:], m.Password)
 	}
 	if len(m.Roles) > 0 {
 		for _, s := range m.Roles {
@@ -154,13 +158,11 @@ func (m *Permission) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Key != nil {
-		if len(m.Key) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintAuth(data, i, uint64(len(m.Key)))
-			i += copy(data[i:], m.Key)
-		}
+	if len(m.Key) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAuth(data, i, uint64(len(m.Key)))
+		i += copy(data[i:], m.Key)
 	}
 	if m.PermType != 0 {
 		data[i] = 0x10
@@ -185,13 +187,11 @@ func (m *Role) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Name != nil {
-		if len(m.Name) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintAuth(data, i, uint64(len(m.Name)))
-			i += copy(data[i:], m.Name)
-		}
+	if len(m.Name) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintAuth(data, i, uint64(len(m.Name)))
+		i += copy(data[i:], m.Name)
 	}
 	if len(m.KeyPermission) > 0 {
 		for _, msg := range m.KeyPermission {
@@ -238,17 +238,13 @@ func encodeVarintAuth(data []byte, offset int, v uint64) int {
 func (m *User) Size() (n int) {
 	var l int
 	_ = l
-	if m.Name != nil {
-		l = len(m.Name)
-		if l > 0 {
-			n += 1 + l + sovAuth(uint64(l))
-		}
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovAuth(uint64(l))
 	}
-	if m.Password != nil {
-		l = len(m.Password)
-		if l > 0 {
-			n += 1 + l + sovAuth(uint64(l))
-		}
+	l = len(m.Password)
+	if l > 0 {
+		n += 1 + l + sovAuth(uint64(l))
 	}
 	if len(m.Roles) > 0 {
 		for _, s := range m.Roles {
@@ -262,11 +258,9 @@ func (m *User) Size() (n int) {
 func (m *Permission) Size() (n int) {
 	var l int
 	_ = l
-	if m.Key != nil {
-		l = len(m.Key)
-		if l > 0 {
-			n += 1 + l + sovAuth(uint64(l))
-		}
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovAuth(uint64(l))
 	}
 	if m.PermType != 0 {
 		n += 1 + sovAuth(uint64(m.PermType))
@@ -277,11 +271,9 @@ func (m *Permission) Size() (n int) {
 func (m *Role) Size() (n int) {
 	var l int
 	_ = l
-	if m.Name != nil {
-		l = len(m.Name)
-		if l > 0 {
-			n += 1 + l + sovAuth(uint64(l))
-		}
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovAuth(uint64(l))
 	}
 	if len(m.KeyPermission) > 0 {
 		for _, e := range m.KeyPermission {
@@ -762,3 +754,23 @@ var (
 	ErrInvalidLengthAuth = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowAuth   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorAuth = []byte{
+	// 254 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x4a, 0x2c, 0x2d, 0xc9,
+	0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x03, 0xb1, 0x0b, 0x92, 0xa4, 0x44, 0xd2, 0xf3,
+	0xd3, 0xf3, 0xc1, 0x42, 0xfa, 0x20, 0x16, 0x44, 0x56, 0xc9, 0x87, 0x8b, 0x25, 0xb4, 0x38, 0xb5,
+	0x48, 0x48, 0x88, 0x8b, 0x25, 0x2f, 0x31, 0x37, 0x55, 0x82, 0x51, 0x81, 0x51, 0x83, 0x27, 0x08,
+	0xcc, 0x16, 0x92, 0xe2, 0xe2, 0x28, 0x48, 0x2c, 0x2e, 0x2e, 0xcf, 0x2f, 0x4a, 0x91, 0x60, 0x02,
+	0x8b, 0xc3, 0xf9, 0x42, 0x22, 0x5c, 0xac, 0x45, 0xf9, 0x39, 0xa9, 0xc5, 0x12, 0xcc, 0x0a, 0xcc,
+	0x1a, 0x9c, 0x41, 0x10, 0x8e, 0x52, 0x3d, 0x17, 0x57, 0x40, 0x6a, 0x51, 0x6e, 0x66, 0x71, 0x71,
+	0x66, 0x7e, 0x9e, 0x90, 0x00, 0x17, 0x73, 0x76, 0x6a, 0x25, 0xd4, 0x48, 0x10, 0x53, 0xc8, 0x18,
+	0x68, 0x22, 0x50, 0x3e, 0xa4, 0xb2, 0x20, 0x15, 0x6c, 0x22, 0x9f, 0x91, 0xb8, 0x1e, 0xc4, 0x79,
+	0x7a, 0x08, 0x7d, 0x7a, 0x20, 0xe9, 0x20, 0xb8, 0x42, 0x25, 0x2d, 0x2e, 0x16, 0x10, 0x2d, 0xc4,
+	0xc1, 0xc5, 0x12, 0xe4, 0xea, 0xe8, 0x22, 0xc0, 0x20, 0xc4, 0xc9, 0xc5, 0x1a, 0x1e, 0xe4, 0x19,
+	0xe2, 0x2a, 0xc0, 0x28, 0xc4, 0xcb, 0xc5, 0x09, 0x12, 0x84, 0x70, 0x99, 0x94, 0x42, 0x80, 0x6a,
+	0x80, 0x2e, 0xc1, 0xea, 0x1d, 0x0b, 0x2e, 0x5e, 0xa0, 0x1b, 0x10, 0xf6, 0x00, 0x5d, 0xc0, 0xac,
+	0xc1, 0x6d, 0x24, 0x84, 0xe9, 0x82, 0x20, 0x54, 0x85, 0x4e, 0x22, 0x27, 0x1e, 0xca, 0x31, 0x5c,
+	0x00, 0xe2, 0x13, 0x8f, 0xe4, 0x18, 0x2f, 0x00, 0xf1, 0x03, 0x20, 0x4e, 0x62, 0x03, 0x87, 0xa0,
+	0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0x92, 0x06, 0xa1, 0xed, 0x6d, 0x01, 0x00, 0x00,
+}

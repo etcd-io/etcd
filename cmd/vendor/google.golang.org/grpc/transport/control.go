@@ -162,10 +162,6 @@ func (qb *quotaPool) acquire() <-chan int {
 type inFlow struct {
 	// The inbound flow control limit for pending data.
 	limit uint32
-	// conn points to the shared connection-level inFlow that is shared
-	// by all streams on that conn. It is nil for the inFlow on the conn
-	// directly.
-	conn *inFlow
 
 	mu sync.Mutex
 	// pendingData is the overall data which have been received but not been
@@ -176,97 +172,39 @@ type inFlow struct {
 	pendingUpdate uint32
 }
 
-// onData is invoked when some data frame is received. It increments not only its
-// own pendingData but also that of the associated connection-level flow.
+// onData is invoked when some data frame is received. It updates pendingData.
 func (f *inFlow) onData(n uint32) error {
-	if n == 0 {
-		return nil
-	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.pendingData+f.pendingUpdate+n > f.limit {
-		return fmt.Errorf("received %d-bytes data exceeding the limit %d bytes", f.pendingData+f.pendingUpdate+n, f.limit)
-	}
-	if f.conn != nil {
-		if err := f.conn.onData(n); err != nil {
-			return ConnectionErrorf("%v", err)
-		}
-	}
 	f.pendingData += n
+	if f.pendingData+f.pendingUpdate > f.limit {
+		return fmt.Errorf("received %d-bytes data exceeding the limit %d bytes", f.pendingData+f.pendingUpdate, f.limit)
+	}
 	return nil
 }
 
-// adjustConnPendingUpdate increments the connection level pending updates by n.
-// This is called to make the proper connection level window updates when
-// receiving data frame targeting the canceled RPCs.
-func (f *inFlow) adjustConnPendingUpdate(n uint32) (uint32, error) {
-	if n == 0 || f.conn != nil {
-		return 0, nil
-	}
+// onRead is invoked when the application reads the data. It returns the window size
+// to be sent to the peer.
+func (f *inFlow) onRead(n uint32) uint32 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.pendingData+f.pendingUpdate+n > f.limit {
-		return 0, ConnectionErrorf("received %d-bytes data exceeding the limit %d bytes", f.pendingData+f.pendingUpdate+n, f.limit)
-	}
-	f.pendingUpdate += n
-	if f.pendingUpdate >= f.limit/4 {
-		ret := f.pendingUpdate
-		f.pendingUpdate = 0
-		return ret, nil
-	}
-	return 0, nil
-
-}
-
-// connOnRead updates the connection level states when the application consumes data.
-func (f *inFlow) connOnRead(n uint32) uint32 {
-	if n == 0 || f.conn != nil {
+	if f.pendingData == 0 {
 		return 0
 	}
-	f.mu.Lock()
-	defer f.mu.Unlock()
 	f.pendingData -= n
 	f.pendingUpdate += n
 	if f.pendingUpdate >= f.limit/4 {
-		ret := f.pendingUpdate
+		wu := f.pendingUpdate
 		f.pendingUpdate = 0
-		return ret
+		return wu
 	}
 	return 0
 }
 
-// onRead is invoked when the application reads the data. It returns the window updates
-// for both stream and connection level.
-func (f *inFlow) onRead(n uint32) (swu, cwu uint32) {
-	if n == 0 {
-		return
-	}
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.pendingData == 0 {
-		// pendingData has been adjusted by restoreConn.
-		return
-	}
-	f.pendingData -= n
-	f.pendingUpdate += n
-	if f.pendingUpdate >= f.limit/4 {
-		swu = f.pendingUpdate
-		f.pendingUpdate = 0
-	}
-	cwu = f.conn.connOnRead(n)
-	return
-}
-
-// restoreConn is invoked when a stream is terminated. It removes its stake in
-// the connection-level flow and resets its own state.
-func (f *inFlow) restoreConn() uint32 {
-	if f.conn == nil {
-		return 0
-	}
+func (f *inFlow) resetPendingData() uint32 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	n := f.pendingData
 	f.pendingData = 0
-	f.pendingUpdate = 0
-	return f.conn.connOnRead(n)
+	return n
 }
