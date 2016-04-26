@@ -15,6 +15,7 @@
 package concurrency
 
 import (
+	"fmt"
 	"sync"
 
 	v3 "github.com/coreos/etcd/clientv3"
@@ -37,12 +38,26 @@ func NewMutex(client *v3.Client, pfx string) *Mutex {
 // Lock locks the mutex with a cancellable context. If the context is cancelled
 // while trying to acquire the lock, the mutex tries to clean its stale lock entry.
 func (m *Mutex) Lock(ctx context.Context) error {
-	s, err := NewSession(m.client)
+	s, serr := NewSession(m.client)
+	if serr != nil {
+		return serr
+	}
+
+	m.myKey = fmt.Sprintf("%s/%x", m.pfx, s.Lease())
+	cmp := v3.Compare(v3.CreateRevision(m.myKey), "=", 0)
+	// put self in lock waiters via myKey; oldest waiter holds lock
+	put := v3.OpPut(m.myKey, "", v3.WithLease(s.Lease()))
+	// reuse key in case this session already holds the lock
+	get := v3.OpGet(m.myKey)
+	resp, err := m.client.Txn(ctx).If(cmp).Then(put).Else(get).Commit()
 	if err != nil {
 		return err
 	}
-	// put self in lock waiters via myKey; oldest waiter holds lock
-	m.myKey, m.myRev, err = NewUniqueKey(ctx, m.client, m.pfx, v3.WithLease(s.Lease()))
+	m.myRev = resp.Header.Revision
+	if !resp.Succeeded {
+		m.myRev = resp.Responses[0].GetResponseRange().Kvs[0].CreateRevision
+	}
+
 	// wait for deletion revisions prior to myKey
 	err = waitDeletes(ctx, m.client, m.pfx, v3.WithPrefix(), v3.WithRev(m.myRev-1))
 	// release lock key if cancelled
