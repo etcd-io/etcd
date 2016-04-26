@@ -158,7 +158,6 @@ func testCtlV2Watch(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 
 func TestCtlV2GetRoleUser(t *testing.T)          { testCtlV2GetRoleUser(t, &configNoTLS) }
 func TestCtlV2GetRoleUserWithProxy(t *testing.T) { testCtlV2GetRoleUser(t, &configWithProxy) }
-
 func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	defer testutil.AfterTest(t)
 
@@ -181,6 +180,7 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	if err := etcdctlUserGet(epc, "username"); err != nil {
 		t.Fatalf("failed to get user (%v)", err)
 	}
+
 	// ensure double grant gives an error; was crashing in 2.3.1
 	regrantArgs := etcdctlPrefixArgs(epc)
 	regrantArgs = append(regrantArgs, "user", "grant", "--roles", "foo", "username")
@@ -191,7 +191,6 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 
 func TestCtlV2UserListUsername(t *testing.T) { testCtlV2UserList(t, "username") }
 func TestCtlV2UserListRoot(t *testing.T)     { testCtlV2UserList(t, "root") }
-
 func testCtlV2UserList(t *testing.T, username string) {
 	defer testutil.AfterTest(t)
 
@@ -323,6 +322,11 @@ func etcdctlUserGet(clus *etcdProcessCluster, user string) error {
 func etcdctlUserList(clus *etcdProcessCluster, expectedUser string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "user", "list")
 	return spawnWithExpect(cmdArgs, expectedUser)
+}
+
+func etcdctlAuthEnable(clus *etcdProcessCluster) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus), "auth", "enable")
+	return spawnWithExpect(cmdArgs, "Authentication Enabled")
 }
 
 func mustEtcdctl(t *testing.T) {
