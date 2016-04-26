@@ -1,4 +1,4 @@
-# etcd
+# etcd2
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/coreos/etcd)](https://goreportcard.com/report/github.com/coreos/etcd)
 [![Build Status](https://travis-ci.org/coreos/etcd.svg?branch=master)](https://travis-ci.org/coreos/etcd)
@@ -7,22 +7,21 @@
 
 **Note**: The `master` branch may be in an *unstable or even broken state* during development. Please use [releases][github-release] instead of the `master` branch in order to get stable binaries.
 
-*the etcd v2 [documentation](Documentation/v2/README.md) has moved*
-
-![etcd Logo](logos/etcd-horizontal-color.png)
+![etcd Logo](../../logos/etcd-horizontal-color.png)
 
 etcd is a distributed, consistent key-value store for shared configuration and service discovery, with a focus on being:
 
-* *Simple*: well-defined, user-facing API (gRPC)
+* *Simple*: curl'able user-facing API (HTTP+JSON)
 * *Secure*: optional SSL client cert authentication
 * *Fast*: benchmarked 1000s of writes/s per instance
 * *Reliable*: properly distributed using Raft
 
 etcd is written in Go and uses the [Raft][raft] consensus algorithm to manage a highly-available replicated log.
 
-etcd is used [in production by many companies](./Documentation/production-users.md), and the development team stands behind it in critical deployment scenarios, where etcd is frequently teamed with applications such as [Kubernetes][k8s], [fleet][fleet], [locksmith][locksmith], [vulcand][vulcand], and many others.
+etcd is used [in production by many companies](./production-users.md), and the development team stands behind it in critical deployment scenarios, where etcd is frequently teamed with applications such as [Kubernetes][k8s], [fleet][fleet], [locksmith][locksmith], [vulcand][vulcand], and many others.
 
 See [etcdctl][etcdctl] for a simple command line client.
+Or feel free to just use `curl`, as in the examples below.
 
 [raft]: https://raft.github.io/
 [k8s]: http://kubernetes.io/
@@ -31,7 +30,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 [vulcand]: https://github.com/vulcand/vulcand
 [etcdctl]: https://github.com/coreos/etcd/tree/master/etcdctl
 
-## Getting started
+## Getting Started
 
 ### Getting etcd
 
@@ -43,7 +42,7 @@ All development occurs on `master`, including new features and bug fixes.
 Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
 
 [github-release]: https://github.com/coreos/etcd/releases/
-[branch-management]: ./Documentation/branch_management.md
+[branch-management]: branch_management.md
 
 ### Running etcd
 
@@ -58,23 +57,23 @@ This will bring up etcd listening on port 2379 for client communication and on p
 Next, let's set a single key, and then retrieve it:
 
 ```
-ETCDCTL_API=3 etcdctl put mykey "this is awesome"
-ETCDCTL_API=3 etcdctl put mykey
+curl -L http://127.0.0.1:2379/v2/keys/mykey -XPUT -d value="this is awesome"
+curl -L http://127.0.0.1:2379/v2/keys/mykey
 ```
 
-That's it-- etcd is running and serving keys.
+You have successfully started an etcd and written a key to the store.
 
 ### etcd TCP ports
 
-The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication. 
+The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication. To maintain compatibility, some etcd configuration and documentation continues to refer to the legacy ports 4001 and 7001, but all new etcd use and discussion should adopt the IANA-assigned ports. The legacy ports 4001 and 7001 will be fully deprecated, and support for their use removed, in future etcd releases.
 
 [iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
 
-### Running a local etcd cluster
+### Running local etcd cluster
 
 First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
 
-Our [Procfile script](./Procfile) will set up a local example cluster. Start it with:
+Our [Procfile script](./Procfile) will set up a local example cluster. You can start it with:
 
 ```sh
 goreman start
@@ -82,61 +81,61 @@ goreman start
 
 This will bring up 3 etcd members `infra1`, `infra2` and `infra3` and etcd proxy `proxy`, which runs locally and composes a cluster.
 
-Every cluster member and proxy accepts key value reads and key value writes.
+You can write a key to the cluster and retrieve the value back from any member or proxy.
 
-### Next steps
+### Next Steps
 
 Now it's time to dig into the full etcd API and other guides.
 
-- Read the full [documentation][fulldoc].
-- Explore the full gRPC [API][api].
+- Explore the full [API][api].
 - Set up a [multi-machine cluster][clustering].
 - Learn the [config format, env variables and flags][configuration].
 - Find [language bindings and tools][libraries-and-tools].
 - Use TLS to [secure an etcd cluster][security].
 - [Tune etcd][tuning].
+- [Upgrade from 0.4.9+ to 2.2.0][upgrade].
 
-[fulldoc]: ./Documentation/docs.md
-[api]: ./Documentation/dev-guide/api_reference_v3.md
-[clustering]: ./Documentation/op-guide/clustering.md
-[configuration]: op-guide/configuration.md
-[libraries-and-tools]: ./Documentation/libraries-and-tools.md
-[security]: ./Documentation/op-guide/security.md
-[tuning]: ./Documentation/tuning.md
+[api]: ./api.md
+[clustering]: ./clustering.md
+[configuration]: ./configuration.md
+[libraries-and-tools]: ./libraries-and-tools.md
+[security]: ./security.md
+[tuning]: ./tuning.md
+[upgrade]: ./04_to_2_snapshot_migration.md
 
 ## Contact
 
 - Mailing list: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
 - IRC: #[etcd](irc://irc.freenode.org:6667/#etcd) on freenode.org
-- Planning/Roadmap: [milestones](https://github.com/coreos/etcd/milestones), [roadmap](./ROADMAP.md)
+- Planning/Roadmap: [milestones](https://github.com/coreos/etcd/milestones), [roadmap](../../ROADMAP.md)
 - Bugs: [issues](https://github.com/coreos/etcd/issues)
 
 ## Contributing
 
-See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
+See [CONTRIBUTING](../../CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
 
 ## Reporting bugs
 
-See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issue you may encounter.
+See [reporting bugs](reporting_bugs.md) for details about reporting any issue you may encounter.
 
-## Project details
+## Project Details
 
 ### Versioning
 
-#### Service versioning
+#### Service Versioning
 
 etcd uses [semantic versioning](http://semver.org)
 New minor versions may add additional features to the API.
 
-Get the running etcd cluster version with `etcdctl`:
+You can get the version of etcd by issuing a request to /version:
 
 ```sh
-ETCDCTL_API=3 etcdctl --endpoints=127.0.0.1:2379 endpoint status
+curl -L http://127.0.0.1:2379/version
 ```
 
-#### API versioning
+#### API Versioning
 
-The `v3` API responses should not change after the 3.0.0 release but new features will be added over time.
+The `v2` API responses should not change after the 2.0.0 release but new features will be added over time.
 
 #### 32-bit and other unsupported systems
 
