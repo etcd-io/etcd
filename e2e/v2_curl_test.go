@@ -15,7 +15,9 @@
 package e2e
 
 import (
+	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/coreos/etcd/pkg/testutil"
@@ -30,7 +32,6 @@ func TestV2CurlProxyNoTLS(t *testing.T)   { testCurlPutGet(t, &configWithProxy) 
 func TestV2CurlProxyTLS(t *testing.T)     { testCurlPutGet(t, &configWithProxyTLS) }
 func TestV2CurlProxyPeerTLS(t *testing.T) { testCurlPutGet(t, &configWithProxyPeerTLS) }
 func TestV2CurlClientBoth(t *testing.T)   { testCurlPutGet(t, &configClientBoth) }
-
 func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 	defer testutil.AfterTest(t)
 
@@ -48,66 +49,124 @@ func testCurlPutGet(t *testing.T, cfg *etcdProcessClusterConfig) {
 		}
 	}()
 
-	expectPut := `{"action":"set","node":{"key":"/testKey","value":"foo","`
-	expectGet := `{"action":"get","node":{"key":"/testKey","value":"foo","`
-
+	var (
+		expectPut = `{"action":"set","node":{"key":"/foo","value":"bar","`
+		expectGet = `{"action":"get","node":{"key":"/foo","value":"bar","`
+	)
+	if err := cURLPut(epc, cURLReq{endpoint: "/v2/keys/foo", value: "bar", expected: expectPut}); err != nil {
+		t.Fatalf("failed put with curl (%v)", err)
+	}
+	if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo", expected: expectGet}); err != nil {
+		t.Fatalf("failed get with curl (%v)", err)
+	}
 	if cfg.clientTLS == clientTLSAndNonTLS {
-		if err := cURLPut(epc, "testKey", "foo", expectPut); err != nil {
-			t.Fatalf("failed put with curl (%v)", err)
-		}
-
-		if err := cURLGet(epc, "testKey", expectGet); err != nil {
-			t.Fatalf("failed get with curl (%v)", err)
-		}
-		if err := cURLGetUseTLS(epc, "testKey", expectGet); err != nil {
-			t.Fatalf("failed get with curl (%v)", err)
-		}
-	} else {
-		if err := cURLPut(epc, "testKey", "foo", expectPut); err != nil {
-			t.Fatalf("failed put with curl (%v)", err)
-		}
-
-		if err := cURLGet(epc, "testKey", expectGet); err != nil {
+		if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo", expected: expectGet, isTLS: true}); err != nil {
 			t.Fatalf("failed get with curl (%v)", err)
 		}
 	}
+}
+
+func TestV2CurlIssue5182(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	epc := setupEtcdctlTest(t, &configNoTLS, false)
+	defer func() {
+		if err := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", err)
+		}
+	}()
+
+	expectPut := `{"action":"set","node":{"key":"/foo","value":"bar","`
+	if err := cURLPut(epc, cURLReq{endpoint: "/v2/keys/foo", value: "bar", expected: expectPut}); err != nil {
+		t.Fatal(err)
+	}
+
+	expectUserAdd := `{"user":"foo","roles":null}`
+	if err := cURLPut(epc, cURLReq{endpoint: "/v2/auth/users/foo", value: `{"user":"foo", "password":"pass"}`, expected: expectUserAdd}); err != nil {
+		t.Fatal(err)
+	}
+	expectRoleAdd := `{"role":"foo","permissions":{"kv":{"read":["/foo/*"],"write":null}}`
+	if err := cURLPut(epc, cURLReq{endpoint: "/v2/auth/roles/foo", value: `{"role":"foo", "permissions": {"kv": {"read": ["/foo/*"]}}}`, expected: expectRoleAdd}); err != nil {
+		t.Fatal(err)
+	}
+	expectUserUpdate := `{"user":"foo","roles":["foo"]}`
+	if err := cURLPut(epc, cURLReq{endpoint: "/v2/auth/users/foo", value: `{"user": "foo", "grant": ["foo"]}`, expected: expectUserUpdate}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := etcdctlUserAdd(epc, "root", "a"); err != nil {
+		t.Fatal(err)
+	}
+	if err := etcdctlAuthEnable(epc); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo/", username: "root", password: "a", expected: "bar"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo/", username: "foo", password: "pass", expected: "bar"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := cURLGet(epc, cURLReq{endpoint: "/v2/keys/foo/", username: "foo", password: "", expected: "bar"}); err != nil {
+		if !strings.Contains(err.Error(), `The request requires user authentication`) {
+			t.Fatalf("expected 'The request requires user authentication' error, got %v", err)
+		}
+	} else {
+		t.Fatalf("expected 'The request requires user authentication' error")
+	}
+}
+
+type cURLReq struct {
+	username string
+	password string
+
+	isTLS bool
+
+	endpoint string
+
+	value    string
+	expected string
 }
 
 // cURLPrefixArgs builds the beginning of a curl command for a given key
 // addressed to a random URL in the given cluster.
-func cURLPrefixArgs(clus *etcdProcessCluster, key string) []string {
-	cmdArgs := []string{"curl"}
-	acurl := clus.procs[rand.Intn(clus.cfg.clusterSize)].cfg.acurl
-
-	if clus.cfg.clientTLS == clientTLS {
+func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []string {
+	var (
+		cmdArgs = []string{"curl"}
+		acurl   = clus.procs[rand.Intn(clus.cfg.clusterSize)].cfg.acurl
+	)
+	if req.isTLS {
+		if clus.cfg.clientTLS != clientTLSAndNonTLS {
+			panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
+		}
+		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+		acurl = clus.procs[rand.Intn(clus.cfg.clusterSize)].cfg.acurltls
+	} else if clus.cfg.clientTLS == clientTLS {
 		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 	}
-	keyURL := acurl + "/v2/keys/testKey"
-	cmdArgs = append(cmdArgs, "-L", keyURL)
-	return cmdArgs
-}
+	ep := acurl + req.endpoint
 
-func cURLPrefixArgsUseTLS(clus *etcdProcessCluster, key string) []string {
-	cmdArgs := []string{"curl"}
-	if clus.cfg.clientTLS != clientTLSAndNonTLS {
-		panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
+	if req.username != "" || req.password != "" {
+		cmdArgs = append(cmdArgs, "-L", "-u", fmt.Sprintf("%s:%s", req.username, req.password), ep)
+	} else {
+		cmdArgs = append(cmdArgs, "-L", ep)
 	}
-	cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
-	acurl := clus.procs[rand.Intn(clus.cfg.clusterSize)].cfg.acurltls
-	keyURL := acurl + "/v2/keys/testKey"
-	cmdArgs = append(cmdArgs, "-L", keyURL)
+
+	switch method {
+	case "PUT":
+		dt := req.value
+		if !strings.HasPrefix(dt, "{") { // for non-JSON value
+			dt = "value=" + dt
+		}
+		cmdArgs = append(cmdArgs, "-XPUT", "-d", dt)
+	}
 	return cmdArgs
 }
 
-func cURLPut(clus *etcdProcessCluster, key, val, expected string) error {
-	args := append(cURLPrefixArgs(clus, key), "-XPUT", "-d", "value="+val)
-	return spawnWithExpect(args, expected)
+func cURLPut(clus *etcdProcessCluster, req cURLReq) error {
+	return spawnWithExpect(cURLPrefixArgs(clus, "PUT", req), req.expected)
 }
 
-func cURLGet(clus *etcdProcessCluster, key, expected string) error {
-	return spawnWithExpect(cURLPrefixArgs(clus, key), expected)
-}
-
-func cURLGetUseTLS(clus *etcdProcessCluster, key, expected string) error {
-	return spawnWithExpect(cURLPrefixArgsUseTLS(clus, key), expected)
+func cURLGet(clus *etcdProcessCluster, req cURLReq) error {
+	return spawnWithExpect(cURLPrefixArgs(clus, "GET", req), req.expected)
 }
