@@ -281,13 +281,7 @@ func (s *store) UpdateUser(user User) (User, error) {
 		return old, err
 	}
 
-	hash, err := s.HashPassword(user.Password)
-	if err != nil {
-		return old, err
-	}
-	user.Password = hash
-
-	newUser, err := old.merge(user)
+	newUser, err := old.merge(user, s.PasswordStore)
 	if err != nil {
 		return old, err
 	}
@@ -448,29 +442,33 @@ func (s *store) DisableAuth() error {
 // is called and returns a new User with these modifications applied. Think of
 // all Users as immutable sets of data. Merge allows you to perform the set
 // operations (desired grants and revokes) atomically
-func (u User) merge(n User) (User, error) {
+func (ou User) merge(nu User, s PasswordStore) (User, error) {
 	var out User
-	if u.User != n.User {
-		return out, authErr(http.StatusConflict, "Merging user data with conflicting usernames: %s %s", u.User, n.User)
+	if ou.User != nu.User {
+		return out, authErr(http.StatusConflict, "Merging user data with conflicting usernames: %s %s", ou.User, nu.User)
 	}
-	out.User = u.User
-	if n.Password != "" {
-		out.Password = n.Password
+	out.User = ou.User
+	if nu.Password != "" {
+		hash, err := s.HashPassword(nu.Password)
+		if err != nil {
+			return ou, err
+		}
+		out.Password = hash
 	} else {
-		out.Password = u.Password
+		out.Password = ou.Password
 	}
-	currentRoles := types.NewUnsafeSet(u.Roles...)
-	for _, g := range n.Grant {
+	currentRoles := types.NewUnsafeSet(ou.Roles...)
+	for _, g := range nu.Grant {
 		if currentRoles.Contains(g) {
-			plog.Noticef("granting duplicate role %s for user %s", g, n.User)
-			return User{}, authErr(http.StatusConflict, fmt.Sprintf("Granting duplicate role %s for user %s", g, n.User))
+			plog.Noticef("granting duplicate role %s for user %s", g, nu.User)
+			return User{}, authErr(http.StatusConflict, fmt.Sprintf("Granting duplicate role %s for user %s", g, nu.User))
 		}
 		currentRoles.Add(g)
 	}
-	for _, r := range n.Revoke {
+	for _, r := range nu.Revoke {
 		if !currentRoles.Contains(r) {
-			plog.Noticef("revoking ungranted role %s for user %s", r, n.User)
-			return User{}, authErr(http.StatusConflict, fmt.Sprintf("Revoking ungranted role %s for user %s", r, n.User))
+			plog.Noticef("revoking ungranted role %s for user %s", r, nu.User)
+			return User{}, authErr(http.StatusConflict, fmt.Sprintf("Revoking ungranted role %s for user %s", r, nu.User))
 		}
 		currentRoles.Remove(r)
 	}

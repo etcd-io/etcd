@@ -26,6 +26,21 @@ import (
 	"golang.org/x/net/context"
 )
 
+type fakeDoer struct{}
+
+func (_ fakeDoer) Do(context.Context, etcdserverpb.Request) (etcdserver.Response, error) {
+	return etcdserver.Response{}, nil
+}
+
+func TestCheckPassword(t *testing.T) {
+	st := NewStore(fakeDoer{}, 5*time.Second)
+	u := User{Password: "$2a$10$I3iddh1D..EIOXXQtsra4u8AjOtgEa2ERxVvYGfXFBJDo1omXwP.q"}
+	matched := st.CheckPassword(u, "foo")
+	if matched {
+		t.Fatalf("expected false, got %v", matched)
+	}
+}
+
 const testTimeout = time.Millisecond
 
 func TestMergeUser(t *testing.T) {
@@ -71,16 +86,16 @@ func TestMergeUser(t *testing.T) {
 			User{User: "foo", Roles: []string{"role1", "role2"}},
 			false,
 		},
-		{
-			User{User: "foo"},
-			User{User: "foo", Password: "$2a$10$aUPOdbOGNawaVSusg3g2wuC3AH6XxIr9/Ms4VgDvzrAVOJPYzZILa"},
-			User{User: "foo", Roles: []string{}, Password: "$2a$10$aUPOdbOGNawaVSusg3g2wuC3AH6XxIr9/Ms4VgDvzrAVOJPYzZILa"},
+		{ // empty password will not overwrite the previous password
+			User{User: "foo", Password: "foo", Roles: []string{}},
+			User{User: "foo", Password: ""},
+			User{User: "foo", Password: "foo", Roles: []string{}},
 			false,
 		},
 	}
 
 	for i, tt := range tbl {
-		out, err := tt.input.merge(tt.merge)
+		out, err := tt.input.merge(tt.merge, passwordStore{})
 		if err != nil && !tt.iserr {
 			t.Fatalf("Got unexpected error on item %d", i)
 		}
