@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -198,6 +199,9 @@ func (l *lessor) KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 	for {
 		resp, err := l.keepAliveOnce(cctx, id)
 		if err == nil {
+			if resp.TTL == 0 {
+				err = rpctypes.ErrLeaseNotFound
+			}
 			return resp, err
 		}
 		if isHalted(ctx, err) {

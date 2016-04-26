@@ -188,3 +188,48 @@ func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 		t.Errorf("chan is not closed, want lease Close() closes chan")
 	}
 }
+
+type leaseCh struct {
+	lid clientv3.LeaseID
+	ch  <-chan *clientv3.LeaseKeepAliveResponse
+}
+
+// TestLeaseKeepAliveNotFound ensures a revoked lease won't stop other keep alives
+func TestLeaseKeepAliveNotFound(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+	lchs := []leaseCh{}
+	for i := 0; i < 3; i++ {
+		resp, rerr := cli.Grant(context.TODO(), 5)
+		if rerr != nil {
+			t.Fatal(rerr)
+		}
+		kach, kaerr := cli.KeepAlive(context.Background(), resp.ID)
+		if kaerr != nil {
+			t.Fatal(kaerr)
+		}
+		lchs = append(lchs, leaseCh{resp.ID, kach})
+	}
+
+	if _, err := cli.Revoke(context.TODO(), lchs[1].lid); err != nil {
+		t.Fatal(err)
+	}
+
+	<-lchs[0].ch
+	if _, ok := <-lchs[0].ch; !ok {
+		t.Fatalf("closed keepalive on wrong lease")
+	}
+
+	timec := time.After(5 * time.Second)
+	for range lchs[1].ch {
+		select {
+		case <-timec:
+			t.Fatalf("revoke did not close keep alive")
+		default:
+		}
+	}
+}
