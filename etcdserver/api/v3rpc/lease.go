@@ -38,6 +38,9 @@ func (ls *LeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequest)
 	if err == lease.ErrLeaseExists {
 		return nil, rpctypes.ErrLeaseExist
 	}
+	if err != nil {
+		return nil, err
+	}
 	ls.hdr.fill(resp.Header)
 	return resp, err
 }
