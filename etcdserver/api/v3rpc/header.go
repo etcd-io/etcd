@@ -40,4 +40,7 @@ func (h *header) fill(rh *pb.ResponseHeader) {
 	rh.ClusterId = uint64(h.clusterID)
 	rh.MemberId = uint64(h.memberID)
 	rh.RaftTerm = h.raftTimer.Term()
+	if rh.Revision == 0 {
+		rh.Revision = h.rev()
+	}
 }
