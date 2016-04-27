@@ -97,7 +97,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 			handleError(ExitServerError, err)
 		}
 		if resp.Node.Dir {
-			fmt.Fprintf(os.Stderr, "Ignored dir %s change", resp.Node.Key)
+			fmt.Fprintf(os.Stderr, "Ignored dir %s change\n", resp.Node.Key)
 			continue
 		}
 
