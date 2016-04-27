@@ -44,10 +44,10 @@ var (
 )
 
 type AuthStore interface {
-	// AuthEnable() turns on the authentication feature
+	// AuthEnable turns on the authentication feature
 	AuthEnable()
 
-	// Authenticate() does authentication based on given user name and password,
+	// Authenticate does authentication based on given user name and password,
 	// and returns a token for successful case.
 	// Note that the generated token is valid only for the member the client
 	// connected to within fixed time duration. Reauth is required after the duration.
