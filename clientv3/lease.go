@@ -351,6 +351,8 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 	for {
 		select {
 		case <-time.After(500 * time.Millisecond):
+		case <-stream.Context().Done():
+			return
 		case <-l.donec:
 			return
 		case <-l.stopCtx.Done():
