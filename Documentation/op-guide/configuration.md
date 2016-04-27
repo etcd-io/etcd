@@ -268,7 +268,7 @@ Follow the instructions when using these flags.
 [iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
 [proxy]: ../v2/proxy.md
 [reconfig]: runtime-configuration.md
-[restore]: admin_guide.md#restoring-a-backup
+[restore]: ../v2/admin_guide.md#restoring-a-backup
 [rfc-v3]: rfc/v3api.md
 [security]: security.md
 [systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
