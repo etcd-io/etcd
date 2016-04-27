@@ -25,10 +25,12 @@ import (
 	"time"
 
 	clientV2 "github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/transport"
 )
 
 func init() {
@@ -61,7 +63,8 @@ type stresser struct {
 }
 
 func (s *stresser) Stress() error {
-	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	// TODO: add backoff option
+	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, s.Endpoint)
 	}
@@ -93,13 +96,29 @@ func (s *stresser) Stress() error {
 				})
 				putcancel()
 				if err != nil {
-					if grpc.ErrorDesc(err) == context.DeadlineExceeded.Error() {
+					shouldContinue := false
+					switch grpc.ErrorDesc(err) {
+					case context.DeadlineExceeded.Error():
 						// This retries when request is triggered at the same time as
 						// leader failure. When we terminate the leader, the request to
 						// that leader cannot be processed, and times out. Also requests
 						// to followers cannot be forwarded to the old leader, so timing out
 						// as well. We want to keep stressing until the cluster elects a
 						// new leader and start processing requests again.
+						shouldContinue = true
+					case etcdserver.ErrStopped.Error():
+						// one of the etcd nodes stopped from failure injection
+						shouldContinue = true
+					case transport.ErrConnClosing.Desc:
+						// server closed the transport (failure injected node)
+						shouldContinue = true
+
+						// default:
+						// errors from stresser.Cancel method:
+						// rpc error: code = 1 desc = context canceled (type grpc.rpcError)
+						// rpc error: code = 2 desc = grpc: the client connection is closing (type grpc.rpcError)
+					}
+					if shouldContinue {
 						continue
 					}
 					return
