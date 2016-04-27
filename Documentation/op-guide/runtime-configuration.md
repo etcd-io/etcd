@@ -177,10 +177,10 @@ It is recommended to enable this option. However, it is disabled by default beca
 [cluster-reconf]: #cluster-reconfiguration-operations
 [conf-adv-peer]: configuration.md#-initial-advertise-peer-urls
 [conf-name]: configuration.md#-name
-[disaster recovery]: admin_guide.md#disaster-recovery
-[fault tolerance table]: admin_guide.md#fault-tolerance-table
+[disaster recovery]: recovery.md
+[fault tolerance table]: ../v2/admin_guide.md#fault-tolerance-table
 [majority failure]: #restart-cluster-from-majority-failure
 [member-api]: ../v2/members_api.md
-[member migration]: admin_guide.md#member-migration
+[member migration]: ../v2/admin_guide.md#member-migration
 [remove member]: #remove-a-member
 [runtime-reconf]: runtime-reconf-design.md
