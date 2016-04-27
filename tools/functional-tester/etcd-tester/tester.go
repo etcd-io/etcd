@@ -217,9 +217,10 @@ type Status struct {
 	Cluster ClusterStatus
 	cluster *cluster
 
-	mu    sync.Mutex // guards Round and Case
-	Round int
-	Case  int
+	mu            sync.Mutex // guards Round and Case
+	Round         int
+	Case          int
+	GitCommitHash string
 }
 
 func (s *Status) setRound(r int) {

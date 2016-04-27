@@ -20,7 +20,8 @@ import (
 )
 
 type statusHandler struct {
-	status *Status
+	status        *Status
+	gitCommitHash string
 }
 
 func (sh statusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -31,13 +32,14 @@ func (sh statusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer sh.status.mu.Unlock()
 
 	if err := en.Encode(Status{
-		Since:      sh.status.Since,
-		Failures:   sh.status.Failures,
-		RoundLimit: sh.status.RoundLimit,
-		Cluster:    sh.status.cluster.Status(),
-		cluster:    sh.status.cluster,
-		Round:      sh.status.Round,
-		Case:       sh.status.Case,
+		Since:         sh.status.Since,
+		Failures:      sh.status.Failures,
+		RoundLimit:    sh.status.RoundLimit,
+		Cluster:       sh.status.cluster.Status(),
+		cluster:       sh.status.cluster,
+		Round:         sh.status.Round,
+		Case:          sh.status.Case,
+		GitCommitHash: sh.gitCommitHash,
 	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

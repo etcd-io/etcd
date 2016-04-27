@@ -35,6 +35,7 @@ func main() {
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
 	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
 	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")
+	gitCommitHash := flag.String("git-commit-hash", "", "git commit SHA hash at the time of deployment")
 	flag.Parse()
 
 	endpoints := strings.Split(*endpointStr, ",")
@@ -79,7 +80,7 @@ func main() {
 		consistencyCheck: *consistencyCheck,
 	}
 
-	sh := statusHandler{status: &t.status}
+	sh := statusHandler{status: &t.status, gitCommitHash: *gitCommitHash}
 	http.Handle("/status", sh)
 	http.Handle("/metrics", prometheus.Handler())
 	go func() { plog.Fatal(http.ListenAndServe(":9028", nil)) }()
