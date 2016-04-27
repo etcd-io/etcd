@@ -108,7 +108,7 @@ You can check the status for this discovery token, including the machines that h
 
 The repository is located at https://github.com/coreos/discovery.etcd.io. You could use it to build your own public discovery service.
 
-[api]: api.md#waiting-for-a-change
+[api]: ../v2/api.md#waiting-for-a-change
 [cluster-size]: admin_guide.md#optimal-cluster-size
 [expected-cluster-size]: #specifying-the-expected-cluster-size
 [new-discovery-token]: #creating-a-new-discovery-token

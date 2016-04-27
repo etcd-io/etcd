@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package error describes errors in etcd project. When any change happens,
-// Documentation/errorcode.md needs to be updated correspondingly.
+// Documentation/v2/errorcode.md needs to be updated correspondingly.
 package error
 
 import (

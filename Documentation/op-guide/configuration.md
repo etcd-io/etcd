@@ -266,7 +266,7 @@ Follow the instructions when using these flags.
 [reconfig]: runtime-configuration.md
 [discovery]: clustering.md#discovery
 [iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
-[proxy]: proxy.md
+[proxy]: ../v2/proxy.md
 [reconfig]: runtime-configuration.md
 [restore]: admin_guide.md#restoring-a-backup
 [rfc-v3]: rfc/v3api.md
