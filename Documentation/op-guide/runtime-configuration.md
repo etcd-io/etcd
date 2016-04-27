@@ -50,6 +50,8 @@ All changes to the cluster are done one at a time:
 All of these examples will use the `etcdctl` command line tool that ships with etcd.
 If you want to use the members API directly you can find the documentation [here][member-api].
 
+TODO: v3 member API documentation
+
 ### Update a Member
 
 #### Update advertise client URLs
@@ -178,7 +180,7 @@ It is recommended to enable this option. However, it is disabled by default beca
 [disaster recovery]: admin_guide.md#disaster-recovery
 [fault tolerance table]: admin_guide.md#fault-tolerance-table
 [majority failure]: #restart-cluster-from-majority-failure
-[member-api]: members_api.md
+[member-api]: ../v2/members_api.md
 [member migration]: admin_guide.md#member-migration
 [remove member]: #remove-a-member
 [runtime-reconf]: runtime-reconf-design.md
