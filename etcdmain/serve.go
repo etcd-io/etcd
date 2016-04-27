@@ -42,6 +42,9 @@ type serveCtx struct {
 func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler http.Handler) error {
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 
+	<-s.ReadyNotify()
+	plog.Info("ready to serve client requests")
+
 	m := cmux.New(sctx.l)
 
 	if sctx.insecure {

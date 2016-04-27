@@ -162,7 +162,9 @@ type EtcdServer struct {
 	// count the number of inflight snapshots.
 	// MUST use atomic operation to access this field.
 	inflightSnapshots int64
-	r                 raftNode
+
+	readych chan struct{}
+	r       raftNode
 
 	cfg       *ServerConfig
 	snapCount uint64
@@ -366,6 +368,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	lstats := stats.NewLeaderStats(id.String())
 
 	srv = &EtcdServer{
+		readych:   make(chan struct{}),
 		cfg:       cfg,
 		snapCount: cfg.SnapCount,
 		errorc:    make(chan error, 1),
@@ -729,6 +732,10 @@ func (s *EtcdServer) Stop() {
 	<-s.done
 }
 
+// ReadyNotify returns a channel that will be closed when the server
+// is ready to serve client requests
+func (s *EtcdServer) ReadyNotify() <-chan struct{} { return s.readych }
+
 func (s *EtcdServer) stopWithDelay(d time.Duration, err error) {
 	select {
 	case <-time.After(d):
@@ -888,6 +895,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 		cancel()
 		switch err {
 		case nil:
+			close(s.readych)
 			plog.Infof("published %+v to cluster %s", s.attributes, s.cluster.ID())
 			return
 		case ErrStopped:
