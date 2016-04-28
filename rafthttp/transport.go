@@ -202,11 +202,19 @@ func (t *Transport) Stop() {
 	if tr, ok := t.pipelineRt.(*http.Transport); ok {
 		tr.CloseIdleConnections()
 	}
+	t.peers = nil
+	t.remotes = nil
 }
 
 func (t *Transport) AddRemote(id types.ID, us []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.remotes == nil {
+		// there's no clean way to shutdown the golang http server
+		// (see: https://github.com/golang/go/issues/4674) before
+		// stopping the transport; ignore any new connections.
+		return
+	}
 	if _, ok := t.peers[id]; ok {
 		return
 	}
@@ -223,6 +231,9 @@ func (t *Transport) AddRemote(id types.ID, us []string) {
 func (t *Transport) AddPeer(id types.ID, us []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.peers == nil {
+		panic("transport stopped")
+	}
 	if _, ok := t.peers[id]; ok {
 		return
 	}

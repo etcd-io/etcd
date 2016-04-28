@@ -21,6 +21,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -301,7 +302,6 @@ func TestIssue3699(t *testing.T) {
 
 	// make node a unavailable
 	c.Members[0].Stop(t)
-	<-c.Members[0].s.StopNotify()
 
 	// add node d
 	c.AddMember(t)
@@ -317,11 +317,16 @@ func TestIssue3699(t *testing.T) {
 
 	// bring back node a
 	// node a will remain useless as long as d is the leader.
-	err := c.Members[0].Restart(t)
+	if err := c.Members[0].Restart(t); err != nil {
+		t.Fatal(err)
+	}
 	select {
+	// waiting for ReadyNotify can take several seconds
+	case <-time.After(10 * time.Second):
+		t.Fatalf("waited too long for ready notification")
 	case <-c.Members[0].s.StopNotify():
 		t.Fatalf("should not be stopped")
-	default:
+	case <-c.Members[0].s.ReadyNotify():
 	}
 	// must waitLeader so goroutines don't leak on terminate
 	c.waitLeader(t, c.Members)
@@ -330,11 +335,10 @@ func TestIssue3699(t *testing.T) {
 	cc := mustNewHTTPClient(t, []string{c.URL(0)}, c.cfg.ClientTLS)
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	_, err = kapi.Set(ctx, "/foo", "bar", nil)
-	cancel()
-	if err != nil {
+	if _, err := kapi.Set(ctx, "/foo", "bar", nil); err != nil {
 		t.Fatalf("unexpected error on Set (%v)", err)
 	}
+	cancel()
 }
 
 // clusterMustProgress ensures that cluster can make progress. It creates
