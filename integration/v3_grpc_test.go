@@ -16,6 +16,7 @@ package integration
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"testing"
 	"time"
@@ -71,6 +72,41 @@ func TestV3PutOverwrite(t *testing.T) {
 	}
 	if !reflect.DeepEqual(reqput.Value, kv.Value) {
 		t.Errorf("expected value %v, got %v", reqput.Value, kv.Value)
+	}
+}
+
+// TestPutRestart checks if a put after an unrelated member restart succeeds
+func TestV3PutRestart(t *testing.T) {
+	// this test might block for 5 seconds, make it parallel to speed up the test.
+	t.Parallel()
+
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	kvIdx := rand.Intn(3)
+	kvc := toGRPC(clus.Client(kvIdx)).KV
+
+	stopIdx := kvIdx
+	for stopIdx == kvIdx {
+		stopIdx = rand.Intn(3)
+	}
+
+	clus.clients[stopIdx].Close()
+	clus.Members[stopIdx].Stop(t)
+	clus.Members[stopIdx].Restart(t)
+	c, cerr := NewClientV3(clus.Members[stopIdx])
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	clus.clients[stopIdx] = c
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	defer cancel()
+	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+	_, err := kvc.Put(ctx, reqput)
+	if err != nil && err == ctx.Err() {
+		t.Fatalf("expected grpc error, got local ctx error (%v)", err)
 	}
 }
 

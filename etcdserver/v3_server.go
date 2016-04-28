@@ -30,6 +30,9 @@ const (
 	// accept large request which might block raft stream. User
 	// specify a large value might end up with shooting in the foot.
 	maxRequestBytes = 1.5 * 1024 * 1024
+
+	// max timeout for waiting a v3 request to go through raft.
+	maxV3RequestTimeout = 5 * time.Second
 )
 
 type RaftKV interface {
@@ -283,14 +286,17 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 
 	ch := s.w.Register(r.ID)
 
-	s.r.Propose(ctx, data)
+	cctx, cancel := context.WithTimeout(ctx, maxV3RequestTimeout)
+	defer cancel()
+
+	s.r.Propose(cctx, data)
 
 	select {
 	case x := <-ch:
 		return x.(*applyResult), nil
-	case <-ctx.Done():
+	case <-cctx.Done():
 		s.w.Trigger(r.ID, nil) // GC wait
-		return nil, ctx.Err()
+		return nil, cctx.Err()
 	case <-s.done:
 		return nil, ErrStopped
 	}
