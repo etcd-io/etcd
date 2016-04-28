@@ -235,9 +235,9 @@ func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 	return nil, err
 }
 
-// isHalted returns true if the given error and context indicate no forward
+// isHaltErr returns true if the given error and context indicate no forward
 // progress can be made, even after reconnecting.
-func isHalted(ctx context.Context, err error) bool {
+func isHaltErr(ctx context.Context, err error) bool {
 	isRPCError := strings.HasPrefix(grpc.ErrorDesc(err), "etcdserver: ")
 	return isRPCError || ctx.Err() != nil
 }

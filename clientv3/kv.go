@@ -17,6 +17,7 @@ package clientv3
 import (
 	"sync"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -96,17 +97,17 @@ func NewKV(c *Client) KV {
 
 func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
 	r, err := kv.Do(ctx, OpPut(key, val, opts...))
-	return r.put, err
+	return r.put, rpctypes.Error(err)
 }
 
 func (kv *kv) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
 	r, err := kv.Do(ctx, OpGet(key, opts...))
-	return r.get, err
+	return r.get, rpctypes.Error(err)
 }
 
 func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
 	r, err := kv.Do(ctx, OpDelete(key, opts...))
-	return r.del, err
+	return r.del, rpctypes.Error(err)
 }
 
 func (kv *kv) Compact(ctx context.Context, rev int64) error {
@@ -116,12 +117,12 @@ func (kv *kv) Compact(ctx context.Context, rev int64) error {
 		return nil
 	}
 
-	if isHalted(ctx, err) {
-		return err
+	if isHaltErr(ctx, err) {
+		return rpctypes.Error(err)
 	}
 
 	go kv.switchRemote(err)
-	return err
+	return rpctypes.Error(err)
 }
 
 func (kv *kv) Txn(ctx context.Context) Txn {
@@ -166,14 +167,14 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 			panic("Unknown op")
 		}
 
-		if isHalted(ctx, err) {
-			return OpResponse{}, err
+		if isHaltErr(ctx, err) {
+			return OpResponse{}, rpctypes.Error(err)
 		}
 
 		// do not retry on modifications
 		if op.isWrite() {
 			go kv.switchRemote(err)
-			return OpResponse{}, err
+			return OpResponse{}, rpctypes.Error(err)
 		}
 
 		if nerr := kv.switchRemote(err); nerr != nil {
@@ -192,7 +193,7 @@ func (kv *kv) switchRemote(prevErr error) error {
 
 	newConn, err := kv.c.retryConnection(kv.conn, prevErr)
 	if err != nil {
-		return err
+		return rpctypes.Error(err)
 	}
 
 	kv.conn = newConn
