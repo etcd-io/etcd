@@ -17,6 +17,7 @@ package integration
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,6 +28,42 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
 )
+
+func TestKVPutError(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	var (
+		maxReqBytes = 1.5 * 1024 * 1024
+		quota       = int64(maxReqBytes * 1.2)
+	)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, QuotaBackendBytes: quota})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
+
+	_, err := kv.Put(ctx, "", "bar")
+	if err != rpctypes.ErrEmptyKey {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrEmptyKey, err)
+	}
+
+	_, err = kv.Put(ctx, "key", strings.Repeat("a", int(maxReqBytes+100))) // 1.5MB
+	if err != rpctypes.ErrRequestTooLarge {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrRequestTooLarge, err)
+	}
+
+	_, err = kv.Put(ctx, "foo1", strings.Repeat("a", int(maxReqBytes-50)))
+	if err != nil { // below quota
+		t.Fatal(err)
+	}
+
+	time.Sleep(500 * time.Millisecond) // give enough time for commit
+
+	_, err = kv.Put(ctx, "foo2", strings.Repeat("a", int(maxReqBytes-50)))
+	if err != rpctypes.ErrNoSpace { // over quota
+		t.Fatalf("expected %v, got %v", rpctypes.ErrNoSpace, err)
+	}
+}
 
 func TestKVPut(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -320,6 +357,36 @@ func TestKVDelete(t *testing.T) {
 	}
 	if len(gresp.Kvs) > 0 {
 		t.Fatalf("gresp.Kvs got %+v, want none", gresp.Kvs)
+	}
+}
+
+func TestKVCompactError(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
+
+	for i := 0; i < 5; i++ {
+		if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
+			t.Fatalf("couldn't put 'foo' (%v)", err)
+		}
+	}
+	err := kv.Compact(ctx, 6)
+	if err != nil {
+		t.Fatalf("couldn't compact 6 (%v)", err)
+	}
+
+	err = kv.Compact(ctx, 6)
+	if err != rpctypes.ErrCompacted {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrCompacted, err)
+	}
+
+	err = kv.Compact(ctx, 100)
+	if err != rpctypes.ErrFutureRev {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrFutureRev, err)
 	}
 }
 
