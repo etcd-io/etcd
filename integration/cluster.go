@@ -68,11 +68,12 @@ var (
 )
 
 type ClusterConfig struct {
-	Size         int
-	PeerTLS      *transport.TLSInfo
-	ClientTLS    *transport.TLSInfo
-	DiscoveryURL string
-	UseGRPC      bool
+	Size              int
+	PeerTLS           *transport.TLSInfo
+	ClientTLS         *transport.TLSInfo
+	DiscoveryURL      string
+	UseGRPC           bool
+	QuotaBackendBytes int64
 }
 
 type cluster struct {
@@ -196,7 +197,7 @@ func (c *cluster) HTTPMembers() []client.Member {
 
 func (c *cluster) mustNewMember(t *testing.T) *member {
 	name := c.name(rand.Int())
-	m := mustNewMember(t, name, c.cfg.PeerTLS, c.cfg.ClientTLS)
+	m := mustNewMember(t, name, c.cfg.PeerTLS, c.cfg.ClientTLS, c.cfg.QuotaBackendBytes)
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
 		if err := m.listenGRPC(); err != nil {
@@ -417,7 +418,7 @@ type member struct {
 
 // mustNewMember return an inited member with the given name. If peerTLS is
 // set, it will use https scheme to communicate between peers.
-func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, clientTLS *transport.TLSInfo) *member {
+func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, clientTLS *transport.TLSInfo, quotaBackendBytes int64) *member {
 	var err error
 	m := &member{}
 
@@ -464,6 +465,7 @@ func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, client
 	}
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
+	m.QuotaBackendBytes = quotaBackendBytes
 	return m
 }
 

@@ -18,6 +18,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -81,8 +82,8 @@ func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
 		if err == nil {
 			return (*AlarmResponse)(resp), nil
 		}
-		if isHalted(ctx, err) {
-			return nil, err
+		if isHaltErr(ctx, err) {
+			return nil, rpctypes.Error(err)
 		}
 		if err = m.switchRemote(err); err != nil {
 			return nil, err
@@ -100,13 +101,13 @@ func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmR
 	if req.MemberID == 0 && req.Alarm == pb.AlarmType_NONE {
 		ar, err := m.AlarmList(ctx)
 		if err != nil {
-			return nil, err
+			return nil, rpctypes.Error(err)
 		}
 		ret := AlarmResponse{}
 		for _, am := range ar.Alarms {
 			dresp, derr := m.AlarmDisarm(ctx, (*AlarmMember)(am))
 			if derr != nil {
-				return nil, derr
+				return nil, rpctypes.Error(derr)
 			}
 			ret.Alarms = append(ret.Alarms, dresp.Alarms...)
 		}
@@ -117,21 +118,21 @@ func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmR
 	if err == nil {
 		return (*AlarmResponse)(resp), nil
 	}
-	if !isHalted(ctx, err) {
+	if isHaltErr(ctx, err) {
 		go m.switchRemote(err)
 	}
-	return nil, err
+	return nil, rpctypes.Error(err)
 }
 
 func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*DefragmentResponse, error) {
 	conn, err := m.c.Dial(endpoint)
 	if err != nil {
-		return nil, err
+		return nil, rpctypes.Error(err)
 	}
 	remote := pb.NewMaintenanceClient(conn)
 	resp, err := remote.Defragment(ctx, &pb.DefragmentRequest{})
 	if err != nil {
-		return nil, err
+		return nil, rpctypes.Error(err)
 	}
 	return (*DefragmentResponse)(resp), nil
 }
@@ -139,12 +140,12 @@ func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*Defragm
 func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusResponse, error) {
 	conn, err := m.c.Dial(endpoint)
 	if err != nil {
-		return nil, err
+		return nil, rpctypes.Error(err)
 	}
 	remote := pb.NewMaintenanceClient(conn)
 	resp, err := remote.Status(ctx, &pb.StatusRequest{})
 	if err != nil {
-		return nil, err
+		return nil, rpctypes.Error(err)
 	}
 	return (*StatusResponse)(resp), nil
 }
@@ -152,7 +153,7 @@ func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusRespo
 func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 	ss, err := m.getRemote().Snapshot(ctx, &pb.SnapshotRequest{})
 	if err != nil {
-		return nil, err
+		return nil, rpctypes.Error(err)
 	}
 
 	pr, pw := io.Pipe()
@@ -187,7 +188,7 @@ func (m *maintenance) switchRemote(prevErr error) error {
 	defer m.mu.Unlock()
 	newConn, err := m.c.retryConnection(m.conn, prevErr)
 	if err != nil {
-		return err
+		return rpctypes.Error(err)
 	}
 	m.conn = newConn
 	m.remote = pb.NewMaintenanceClient(m.conn)

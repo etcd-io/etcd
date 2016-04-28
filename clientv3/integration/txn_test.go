@@ -15,14 +15,41 @@
 package integration
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
 )
+
+func TestTxnError(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
+
+	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar1"), clientv3.OpPut("foo", "bar2")).Commit()
+	if err != rpctypes.ErrDuplicateKey {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrDuplicateKey, err)
+	}
+
+	ops := make([]clientv3.Op, v3rpc.MaxOpsPerTxn+10)
+	for i := range ops {
+		ops[i] = clientv3.OpPut(fmt.Sprintf("foo%d", i), "")
+	}
+	_, err = kv.Txn(ctx).Then(ops...).Commit()
+	if err != rpctypes.ErrTooManyOps {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrTooManyOps, err)
+	}
+}
 
 func TestTxnWriteFail(t *testing.T) {
 	defer testutil.AfterTest(t)

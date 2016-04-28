@@ -27,6 +27,23 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+func TestLeastNotFoundError(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	lapi := clientv3.NewLease(clus.RandClient())
+	defer lapi.Close()
+
+	kv := clientv3.NewKV(clus.RandClient())
+
+	_, err := kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(500)))
+	if err != rpctypes.ErrLeaseNotFound {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
+	}
+}
+
 func TestLeaseGrant(t *testing.T) {
 	defer testutil.AfterTest(t)
 

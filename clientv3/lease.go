@@ -134,9 +134,10 @@ func (l *lessor) Grant(ctx context.Context, ttl int64) (*LeaseGrantResponse, err
 			}
 			return gresp, nil
 		}
-		if isHalted(cctx, err) {
-			return nil, err
+		if isHaltErr(cctx, err) {
+			return nil, rpctypes.Error(err)
 		}
+
 		if nerr := l.switchRemoteAndStream(err); nerr != nil {
 			return nil, nerr
 		}
@@ -155,8 +156,8 @@ func (l *lessor) Revoke(ctx context.Context, id LeaseID) (*LeaseRevokeResponse, 
 		if err == nil {
 			return (*LeaseRevokeResponse)(resp), nil
 		}
-		if isHalted(ctx, err) {
-			return nil, err
+		if isHaltErr(ctx, err) {
+			return nil, rpctypes.Error(err)
 		}
 
 		if nerr := l.switchRemoteAndStream(err); nerr != nil {
@@ -204,8 +205,8 @@ func (l *lessor) KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 			}
 			return resp, err
 		}
-		if isHalted(ctx, err) {
-			return resp, err
+		if isHaltErr(ctx, err) {
+			return nil, rpctypes.Error(err)
 		}
 
 		nerr := l.switchRemoteAndStream(err)
@@ -259,17 +260,17 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 
 	stream, err := l.getRemote().LeaseKeepAlive(cctx)
 	if err != nil {
-		return nil, err
+		return nil, rpctypes.Error(err)
 	}
 
 	err = stream.Send(&pb.LeaseKeepAliveRequest{ID: int64(id)})
 	if err != nil {
-		return nil, err
+		return nil, rpctypes.Error(err)
 	}
 
 	resp, rerr := stream.Recv()
 	if rerr != nil {
-		return nil, rerr
+		return nil, rpctypes.Error(rerr)
 	}
 
 	karesp := &LeaseKeepAliveResponse{
@@ -296,7 +297,7 @@ func (l *lessor) recvKeepAliveLoop() {
 	for serr == nil {
 		resp, err := stream.Recv()
 		if err != nil {
-			if isHalted(l.stopCtx, err) {
+			if isHaltErr(l.stopCtx, err) {
 				return
 			}
 			stream, serr = l.resetRecv()
@@ -411,7 +412,7 @@ func (l *lessor) switchRemoteAndStream(prevErr error) error {
 			conn.Close()
 			newConn, err = l.c.retryConnection(conn, prevErr)
 			if err != nil {
-				return err
+				return rpctypes.Error(err)
 			}
 		}
 
@@ -436,7 +437,7 @@ func (l *lessor) newStream() error {
 	stream, err := l.getRemote().LeaseKeepAlive(sctx)
 	if err != nil {
 		cancel()
-		return err
+		return rpctypes.Error(err)
 	}
 
 	l.mu.Lock()

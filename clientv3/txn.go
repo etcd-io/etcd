@@ -17,6 +17,7 @@ package clientv3
 import (
 	"sync"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 )
@@ -146,13 +147,13 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 			return (*TxnResponse)(resp), nil
 		}
 
-		if isHalted(txn.ctx, err) {
-			return nil, err
+		if isHaltErr(txn.ctx, err) {
+			return nil, rpctypes.Error(err)
 		}
 
 		if txn.isWrite {
 			go kv.switchRemote(err)
-			return nil, err
+			return nil, rpctypes.Error(err)
 		}
 
 		if nerr := kv.switchRemote(err); nerr != nil {

@@ -17,6 +17,7 @@ package clientv3
 import (
 	"sync"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -70,12 +71,12 @@ func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAdd
 		return (*MemberAddResponse)(resp), nil
 	}
 
-	if isHalted(ctx, err) {
-		return nil, err
+	if isHaltErr(ctx, err) {
+		return nil, rpctypes.Error(err)
 	}
 
 	go c.switchRemote(err)
-	return nil, err
+	return nil, rpctypes.Error(err)
 }
 
 func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error) {
@@ -85,12 +86,12 @@ func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveRes
 		return (*MemberRemoveResponse)(resp), nil
 	}
 
-	if isHalted(ctx, err) {
-		return nil, err
+	if isHaltErr(ctx, err) {
+		return nil, rpctypes.Error(err)
 	}
 
 	go c.switchRemote(err)
-	return nil, err
+	return nil, rpctypes.Error(err)
 }
 
 func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error) {
@@ -102,13 +103,13 @@ func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []strin
 			return (*MemberUpdateResponse)(resp), nil
 		}
 
-		if isHalted(ctx, err) {
-			return nil, err
+		if isHaltErr(ctx, err) {
+			return nil, rpctypes.Error(err)
 		}
 
 		err = c.switchRemote(err)
 		if err != nil {
-			return nil, err
+			return nil, rpctypes.Error(err)
 		}
 	}
 }
@@ -121,13 +122,13 @@ func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 			return (*MemberListResponse)(resp), nil
 		}
 
-		if isHalted(ctx, err) {
-			return nil, err
+		if isHaltErr(ctx, err) {
+			return nil, rpctypes.Error(err)
 		}
 
 		err = c.switchRemote(err)
 		if err != nil {
-			return nil, err
+			return nil, rpctypes.Error(err)
 		}
 	}
 }
