@@ -57,7 +57,7 @@ var (
 
 	// integration test uses well-known ports to listen for each running member,
 	// which ensures restarted member could listen on specific port again.
-	nextListenPort int64 = 20000
+	nextListenPort int64 = 21000
 
 	testTLSInfo = transport.TLSInfo{
 		KeyFile:        "./fixtures/server.key.insecure",
