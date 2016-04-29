@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"golang.org/x/net/context"
 )
 
@@ -38,6 +39,34 @@ func ExampleKV_put() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func ExampleKV_putErrorHandling() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	_, err = cli.Put(ctx, "", "sample_value")
+	cancel()
+	if err != nil {
+		switch err {
+		case context.Canceled:
+			fmt.Printf("ctx is canceled by another routine: %v\n", err)
+		case context.DeadlineExceeded:
+			fmt.Printf("ctx is attached with a deadline is exceeded: %v\n", err)
+		case rpctypes.ErrEmptyKey:
+			fmt.Printf("client-side error: %v\n", err)
+		default:
+			fmt.Printf("bad cluster endpoints, which are not etcd servers: %v\n", err)
+		}
+	}
+	// Output: client-side error: etcdserver: key is not provided
 }
 
 func ExampleKV_get() {
