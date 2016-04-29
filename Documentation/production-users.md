@@ -56,7 +56,7 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 - *Order of Data Size*: kilobytes
 - *Operator*: Vonage [devAdmin][raoofm]
 - *Environment*: VMWare, AWS
-- *Backups*: None, all data can be recreated if necessary. Backups done for upgrades.
+- *Backups*: Daily snapshots on VMs. Backups done for upgrades.
 
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
