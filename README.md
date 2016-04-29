@@ -59,7 +59,7 @@ Next, let's set a single key, and then retrieve it:
 
 ```
 ETCDCTL_API=3 etcdctl put mykey "this is awesome"
-ETCDCTL_API=3 etcdctl put mykey
+ETCDCTL_API=3 etcdctl get mykey
 ```
 
 That's it-- etcd is running and serving keys.
