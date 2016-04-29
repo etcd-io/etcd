@@ -112,10 +112,10 @@ func (s *watchableStore) DeleteRange(key, end []byte) (n, rev int64) {
 	}
 
 	evs := make([]mvccpb.Event, n)
-	for i, change := range changes {
+	for i := range changes {
 		evs[i] = mvccpb.Event{
 			Type: mvccpb.DELETE,
-			Kv:   &change}
+			Kv:   &changes[i]}
 		evs[i].Kv.ModRevision = rev
 	}
 	s.notify(rev, evs)
