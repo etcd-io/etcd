@@ -17,7 +17,7 @@ GOSIMPLE_UNUSED_PATHS=$(go list ./... | sed -e 's/github.com\/coreos\/etcd\///g'
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
 
-GO_BUILD_FLAGS=-a
+GO_BUILD_FLAGS="-a -v"
 source ./build
 
 # Set up gopath so tests use vendored dependencies
