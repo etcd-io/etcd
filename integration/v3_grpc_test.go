@@ -193,8 +193,8 @@ func TestV3TxnTooManyOps(t *testing.T) {
 		}
 
 		_, err := kvc.Txn(context.Background(), txn)
-		if err != rpctypes.ErrTooManyOps {
-			t.Errorf("#%d: err = %v, want %v", i, err, rpctypes.ErrTooManyOps)
+		if err != rpctypes.ErrGRPCTooManyOps {
+			t.Errorf("#%d: err = %v, want %v", i, err, rpctypes.ErrGRPCTooManyOps)
 		}
 	}
 }
@@ -233,17 +233,17 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 		{
 			txnSuccess: []*pb.RequestUnion{putreq, putreq},
 
-			werr: rpctypes.ErrDuplicateKey,
+			werr: rpctypes.ErrGRPCDuplicateKey,
 		},
 		{
 			txnSuccess: []*pb.RequestUnion{putreq, delKeyReq},
 
-			werr: rpctypes.ErrDuplicateKey,
+			werr: rpctypes.ErrGRPCDuplicateKey,
 		},
 		{
 			txnSuccess: []*pb.RequestUnion{putreq, delInRangeReq},
 
-			werr: rpctypes.ErrDuplicateKey,
+			werr: rpctypes.ErrGRPCDuplicateKey,
 		},
 		{
 			txnSuccess: []*pb.RequestUnion{delKeyReq, delInRangeReq, delKeyReq, delInRangeReq},
@@ -502,15 +502,15 @@ func TestV3TxnInvaildRange(t *testing.T) {
 		Request: &pb.RequestUnion_RequestRange{
 			RequestRange: rreq}})
 
-	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrFutureRev {
-		t.Errorf("err = %v, want %v", err, rpctypes.ErrFutureRev)
+	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrGRPCFutureRev {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCFutureRev)
 	}
 
 	// compacted rev
 	tv, _ := txn.Success[1].Request.(*pb.RequestUnion_RequestRange)
 	tv.RequestRange.Revision = 1
-	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrCompacted {
-		t.Errorf("err = %v, want %v", err, rpctypes.ErrCompacted)
+	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrGRPCCompacted {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCCompacted)
 	}
 }
 
@@ -527,8 +527,8 @@ func TestV3TooLargeRequest(t *testing.T) {
 	preq := &pb.PutRequest{Key: []byte("foo"), Value: largeV}
 
 	_, err := kvc.Put(context.Background(), preq)
-	if err != rpctypes.ErrRequestTooLarge {
-		t.Errorf("err = %v, want %v", err, rpctypes.ErrRequestTooLarge)
+	if err != rpctypes.ErrGRPCRequestTooLarge {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCRequestTooLarge)
 	}
 }
 
@@ -581,8 +581,8 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 	// test big put
 	bigbuf := make([]byte, 64*1024)
 	_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: bigbuf})
-	if err == nil || err != rpctypes.ErrNoSpace {
-		t.Fatalf("big put got %v, expected %v", err, rpctypes.ErrNoSpace)
+	if err == nil || err != rpctypes.ErrGRPCNoSpace {
+		t.Fatalf("big put got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
 	}
 
 	// test big txn
@@ -597,8 +597,8 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 	txnreq := &pb.TxnRequest{}
 	txnreq.Success = append(txnreq.Success, puttxn)
 	_, txnerr := kvc.Txn(context.TODO(), txnreq)
-	if txnerr == nil || err != rpctypes.ErrNoSpace {
-		t.Fatalf("big txn got %v, expected %v", err, rpctypes.ErrNoSpace)
+	if txnerr == nil || err != rpctypes.ErrGRPCNoSpace {
+		t.Fatalf("big txn got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
 	}
 }
 
@@ -696,8 +696,8 @@ func TestV3AlarmDeactivate(t *testing.T) {
 	key := []byte("abc")
 	smallbuf := make([]byte, 512)
 	_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
-	if err == nil && err != rpctypes.ErrNoSpace {
-		t.Fatalf("put got %v, expected %v", err, rpctypes.ErrNoSpace)
+	if err == nil && err != rpctypes.ErrGRPCNoSpace {
+		t.Fatalf("put got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
 	}
 
 	alarmReq.Action = pb.AlarmRequest_DEACTIVATE

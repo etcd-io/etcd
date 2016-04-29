@@ -196,8 +196,13 @@ func (c *cluster) HTTPMembers() []client.Member {
 }
 
 func (c *cluster) mustNewMember(t *testing.T) *member {
-	name := c.name(rand.Int())
-	m := mustNewMember(t, name, c.cfg.PeerTLS, c.cfg.ClientTLS, c.cfg.QuotaBackendBytes)
+	m := mustNewMember(t,
+		memberConfig{
+			name:              c.name(rand.Int()),
+			peerTLS:           c.cfg.PeerTLS,
+			clientTLS:         c.cfg.ClientTLS,
+			quotaBackendBytes: c.cfg.QuotaBackendBytes,
+		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
 		if err := m.listenGRPC(); err != nil {
@@ -416,17 +421,24 @@ type member struct {
 	grpcAddr   string
 }
 
+type memberConfig struct {
+	name              string
+	peerTLS           *transport.TLSInfo
+	clientTLS         *transport.TLSInfo
+	quotaBackendBytes int64
+}
+
 // mustNewMember return an inited member with the given name. If peerTLS is
 // set, it will use https scheme to communicate between peers.
-func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, clientTLS *transport.TLSInfo, quotaBackendBytes int64) *member {
+func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	var err error
 	m := &member{}
 
 	peerScheme, clientScheme := "http", "http"
-	if peerTLS != nil {
+	if mcfg.peerTLS != nil {
 		peerScheme = "https"
 	}
-	if clientTLS != nil {
+	if mcfg.clientTLS != nil {
 		clientScheme = "https"
 	}
 
@@ -436,7 +448,7 @@ func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, client
 	if err != nil {
 		t.Fatal(err)
 	}
-	m.PeerTLSInfo = peerTLS
+	m.PeerTLSInfo = mcfg.peerTLS
 
 	cln := newLocalListener(t)
 	m.ClientListeners = []net.Listener{cln}
@@ -444,15 +456,15 @@ func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, client
 	if err != nil {
 		t.Fatal(err)
 	}
-	m.ClientTLSInfo = clientTLS
+	m.ClientTLSInfo = mcfg.clientTLS
 
-	m.Name = name
+	m.Name = mcfg.name
 
 	m.DataDir, err = ioutil.TempDir(os.TempDir(), "etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
-	clusterStr := fmt.Sprintf("%s=%s://%s", name, peerScheme, pln.Addr().String())
+	clusterStr := fmt.Sprintf("%s=%s://%s", mcfg.name, peerScheme, pln.Addr().String())
 	m.InitialPeerURLsMap, err = types.NewURLsMap(clusterStr)
 	if err != nil {
 		t.Fatal(err)
@@ -465,7 +477,7 @@ func mustNewMember(t *testing.T, name string, peerTLS *transport.TLSInfo, client
 	}
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
-	m.QuotaBackendBytes = quotaBackendBytes
+	m.QuotaBackendBytes = mcfg.quotaBackendBytes
 	return m
 }
 
