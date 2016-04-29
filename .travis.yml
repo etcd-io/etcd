@@ -1,10 +1,19 @@
+dist: trusty
 language: go
+go_import_path: github.com/coreos/etcd
 sudo: false
 
 go:
   - 1.5
   - 1.6
   - tip
+
+env:
+  global:
+   - GO15VENDOREXPERIMENT=1
+  matrix:
+   - TARGET=amd64
+   - TARGET=arm64
 
 matrix:
   allow_failures:
@@ -17,9 +26,6 @@ addons:
     - libaspell-dev
     - libhunspell-dev
 
-env:
- - GO15VENDOREXPERIMENT=1
-
 before_install:
  - go get -v github.com/chzchzchz/goword
  - go get -v honnef.co/go/simple/cmd/gosimple
@@ -30,4 +36,9 @@ install:
  - pushd cmd/ && go get -t -v ./... && popd
 
 script:
- - ./test
+ - >
+        if [ "${TARGET}" == "amd64" ]; then
+                 GOARCH="${TARGET}" ./test;
+        elif [ "${TARGET}" == "arm64" ]; then
+                GOARCH="${TARGET}" ./build;
+        fi
