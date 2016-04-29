@@ -48,4 +48,15 @@ CyCore Systems provides architecture and engineering for computing systems.  Thi
 
 Radius Intelligence uses Kubernetes running CoreOS to containerize and scale internal toolsets. Examples include running [JetBrains TeamCity][teamcity] and internal AWS security and cost reporting tools. etcd clusters back these clusters as well as provide some basic environment bootstrapping configuration keys.
 
+## Vonage
+
+- *Application*: system configuration for microservices, scheduling, locks (future - service discovery) 
+- *Launched*: August 2015
+- *Cluster Size*: 2 clusters of 5 members in 2 DCs, n local proxies 1-to-1 with microservice, (ssl and SRV look up)
+- *Order of Data Size*: kilobytes
+- *Operator*: Vonage [devAdmin][raoofm]
+- *Environment*: VMWare, AWS
+- *Backups*: None, all data can be recreated if necessary. Backups done for upgrades.
+
 [teamcity]: https://www.jetbrains.com/teamcity/
+[raoofm]:https://github.com/raoofm
