@@ -141,8 +141,9 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 	kv := txn.kv
 
 	for {
+		remote := kv.getRemote()
 		r := &pb.TxnRequest{Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
-		resp, err := kv.getRemote().Txn(txn.ctx, r)
+		resp, err := remote.Txn(txn.ctx, r)
 		if err == nil {
 			return (*TxnResponse)(resp), nil
 		}
@@ -152,11 +153,11 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 		}
 
 		if txn.isWrite {
-			go kv.switchRemote(err)
+			go kv.switchRemote(remote, err)
 			return nil, rpctypes.Error(err)
 		}
 
-		if nerr := kv.switchRemote(err); nerr != nil {
+		if nerr := kv.switchRemote(remote, err); nerr != nil {
 			return nil, nerr
 		}
 	}
