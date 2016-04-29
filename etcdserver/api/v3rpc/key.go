@@ -125,33 +125,33 @@ func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Co
 
 func checkRangeRequest(r *pb.RangeRequest) error {
 	if len(r.Key) == 0 {
-		return rpctypes.ErrEmptyKey
+		return rpctypes.ErrGRPCEmptyKey
 	}
 	return nil
 }
 
 func checkPutRequest(r *pb.PutRequest) error {
 	if len(r.Key) == 0 {
-		return rpctypes.ErrEmptyKey
+		return rpctypes.ErrGRPCEmptyKey
 	}
 	return nil
 }
 
 func checkDeleteRequest(r *pb.DeleteRangeRequest) error {
 	if len(r.Key) == 0 {
-		return rpctypes.ErrEmptyKey
+		return rpctypes.ErrGRPCEmptyKey
 	}
 	return nil
 }
 
 func checkTxnRequest(r *pb.TxnRequest) error {
 	if len(r.Compare) > MaxOpsPerTxn || len(r.Success) > MaxOpsPerTxn || len(r.Failure) > MaxOpsPerTxn {
-		return rpctypes.ErrTooManyOps
+		return rpctypes.ErrGRPCTooManyOps
 	}
 
 	for _, c := range r.Compare {
 		if len(c.Key) == 0 {
-			return rpctypes.ErrEmptyKey
+			return rpctypes.ErrGRPCEmptyKey
 		}
 	}
 
@@ -172,7 +172,7 @@ func checkTxnRequest(r *pb.TxnRequest) error {
 	return checkRequestDupKeys(r.Failure)
 }
 
-// checkRequestDupKeys gives rpctypes.ErrDuplicateKey if the same key is modified twice
+// checkRequestDupKeys gives rpctypes.ErrGRPCDuplicateKey if the same key is modified twice
 func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 	// check put overlap
 	keys := make(map[string]struct{})
@@ -186,7 +186,7 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 			continue
 		}
 		if _, ok := keys[string(preq.Key)]; ok {
-			return rpctypes.ErrDuplicateKey
+			return rpctypes.ErrGRPCDuplicateKey
 		}
 		keys[string(preq.Key)] = struct{}{}
 	}
@@ -215,14 +215,14 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 		}
 		if dreq.RangeEnd == nil {
 			if _, found := keys[string(dreq.Key)]; found {
-				return rpctypes.ErrDuplicateKey
+				return rpctypes.ErrGRPCDuplicateKey
 			}
 		} else {
 			lo := sort.SearchStrings(sortedKeys, string(dreq.Key))
 			hi := sort.SearchStrings(sortedKeys, string(dreq.RangeEnd))
 			if lo != hi {
 				// element between lo and hi => overlap
-				return rpctypes.ErrDuplicateKey
+				return rpctypes.ErrGRPCDuplicateKey
 			}
 		}
 	}

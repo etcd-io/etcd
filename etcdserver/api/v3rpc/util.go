@@ -27,26 +27,26 @@ import (
 func togRPCError(err error) error {
 	switch err {
 	case mvcc.ErrCompacted:
-		return rpctypes.ErrCompacted
+		return rpctypes.ErrGRPCCompacted
 	case mvcc.ErrFutureRev:
-		return rpctypes.ErrFutureRev
+		return rpctypes.ErrGRPCFutureRev
 	case lease.ErrLeaseNotFound:
-		return rpctypes.ErrLeaseNotFound
+		return rpctypes.ErrGRPCLeaseNotFound
 	// TODO: handle error from raft and timeout
 	case etcdserver.ErrRequestTooLarge:
-		return rpctypes.ErrRequestTooLarge
+		return rpctypes.ErrGRPCRequestTooLarge
 	case etcdserver.ErrNoSpace:
-		return rpctypes.ErrNoSpace
+		return rpctypes.ErrGRPCNoSpace
 	case auth.ErrUserAlreadyExist:
-		return rpctypes.ErrUserAlreadyExist
+		return rpctypes.ErrGRPCUserAlreadyExist
 	case auth.ErrUserNotFound:
-		return rpctypes.ErrUserNotFound
+		return rpctypes.ErrGRPCUserNotFound
 	case auth.ErrRoleAlreadyExist:
-		return rpctypes.ErrRoleAlreadyExist
+		return rpctypes.ErrGRPCRoleAlreadyExist
 	case auth.ErrRoleNotFound:
-		return rpctypes.ErrRoleNotFound
+		return rpctypes.ErrGRPCRoleNotFound
 	case auth.ErrAuthFailed:
-		return rpctypes.ErrAuthFailed
+		return rpctypes.ErrGRPCAuthFailed
 	default:
 		return grpc.Errorf(codes.Internal, err.Error())
 	}

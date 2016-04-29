@@ -36,7 +36,7 @@ func NewLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {
 func (ls *LeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	resp, err := ls.le.LeaseGrant(ctx, cr)
 	if err == lease.ErrLeaseExists {
-		return nil, rpctypes.ErrLeaseExist
+		return nil, rpctypes.ErrGRPCLeaseExist
 	}
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (ls *LeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequest)
 func (ls *LeaseServer) LeaseRevoke(ctx context.Context, rr *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
 	resp, err := ls.le.LeaseRevoke(ctx, rr)
 	if err != nil {
-		return nil, rpctypes.ErrLeaseNotFound
+		return nil, rpctypes.ErrGRPCLeaseNotFound
 	}
 	ls.hdr.fill(resp.Header)
 	return resp, nil
