@@ -23,11 +23,9 @@ import (
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
-func TestLeastNotFoundError(t *testing.T) {
+func TestLeaseNotFoundError(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
@@ -113,8 +111,8 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 	}
 
 	_, err = lapi.KeepAliveOnce(context.Background(), clientv3.LeaseID(0))
-	if grpc.Code(err) != codes.NotFound {
-		t.Errorf("invalid error returned %v", err)
+	if err != rpctypes.ErrLeaseNotFound {
+		t.Errorf("expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
 	}
 }
 

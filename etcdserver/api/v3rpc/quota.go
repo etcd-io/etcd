@@ -45,7 +45,7 @@ func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
 		Alarm:    pb.AlarmType_NOSPACE,
 	}
 	qa.a.Alarm(ctx, req)
-	return rpctypes.ErrNoSpace
+	return rpctypes.ErrGRPCNoSpace
 }
 
 func NewQuotaKVServer(s *etcdserver.EtcdServer) pb.KVServer {

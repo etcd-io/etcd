@@ -23,7 +23,7 @@ import (
 
 func TestUpgradeMember(t *testing.T) {
 	defer testutil.AfterTest(t)
-	m := mustNewMember(t, "integration046", nil, nil)
+	m := mustNewMember(t, memberConfig{name: "integration046"})
 	cmd := exec.Command("cp", "-r", "testdata/integration046_data/conf", "testdata/integration046_data/log", "testdata/integration046_data/snapshot", m.DataDir)
 	err := cmd.Run()
 	if err != nil {

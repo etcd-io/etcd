@@ -28,7 +28,7 @@ ln -s ${PWD}/cmd/vendor $GOPATH/src
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
 PKGS=`ls pkg/*/*go  | cut -f1,2 -d/ | sort | uniq`
-TESTABLE_AND_FORMATTABLE="auth client clientv3 discovery error etcdctl/ctlv2 etcdctl/ctlv3 etcdmain etcdserver etcdserver/auth etcdserver/api/v2http etcdserver/api/v2http/httptypes $PKGS proxy/httpproxy proxy/tcpproxy raft snap mvcc mvcc/backend store version wal rafthttp"
+TESTABLE_AND_FORMATTABLE="auth client clientv3 discovery error etcdctl/ctlv2 etcdctl/ctlv3 etcdmain etcdserver etcdserver/auth etcdserver/api/v2http etcdserver/api/v2http/httptypes etcdserver/api/v3rpc etcdserver/api/v3rpc/rpctypes $PKGS proxy/httpproxy proxy/tcpproxy raft snap mvcc mvcc/backend store version wal rafthttp"
 FORMATTABLE="$TESTABLE_AND_FORMATTABLE *.go etcdctl/ integration clientv3/integration e2e alarm"
 
 # user has not provided PKG override
