@@ -33,8 +33,8 @@ var (
 	proposePending = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "server",
-		Name:      "pending_proposal_total",
-		Help:      "The total number of pending proposals.",
+		Name:      "proposals_pending",
+		Help:      "The current number of pending proposals.",
 	})
 	// This is number of proposal failed in client's view.
 	// The proposal might be later got committed in raft.
@@ -44,20 +44,12 @@ var (
 		Name:      "proposal_failed_total",
 		Help:      "The total number of failed proposals.",
 	})
-
-	fileDescriptorUsed = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd_debugging",
-		Subsystem: "server",
-		Name:      "file_descriptors_used_total",
-		Help:      "The total number of file descriptors used.",
-	})
 )
 
 func init() {
 	prometheus.MustRegister(proposeDurations)
 	prometheus.MustRegister(proposePending)
 	prometheus.MustRegister(proposeFailed)
-	prometheus.MustRegister(fileDescriptorUsed)
 }
 
 func monitorFileDescriptor(done <-chan struct{}) {
@@ -69,7 +61,6 @@ func monitorFileDescriptor(done <-chan struct{}) {
 			plog.Errorf("cannot monitor file descriptor usage (%v)", err)
 			return
 		}
-		fileDescriptorUsed.Set(float64(used))
 		limit, err := runtime.FDLimit()
 		if err != nil {
 			plog.Errorf("cannot monitor file descriptor usage (%v)", err)
