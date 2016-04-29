@@ -411,7 +411,7 @@ func TestKVCompact(t *testing.T) {
 	}
 	err = kv.Compact(ctx, 7)
 	if err == nil || err != rpctypes.ErrCompacted {
-		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
+		t.Fatalf("error got %v, want %v", err, rpctypes.ErrCompacted)
 	}
 
 	wcli := clus.RandClient()
