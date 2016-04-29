@@ -32,15 +32,13 @@ func Repair(dirpath string) bool {
 	}
 	defer f.Close()
 
-	n := 0
 	rec := &walpb.Record{}
-
 	decoder := newDecoder(f)
 	for {
+		lastOffset := decoder.lastOffset()
 		err := decoder.decode(rec)
 		switch err {
 		case nil:
-			n += 8 + rec.Size()
 			// update crc of the decoder when necessary
 			switch rec.Type {
 			case crcType:
@@ -74,7 +72,7 @@ func Repair(dirpath string) bool {
 				return false
 			}
 
-			if err = f.Truncate(int64(n)); err != nil {
+			if err = f.Truncate(int64(lastOffset)); err != nil {
 				plog.Errorf("could not repair %v, failed to truncate file", f.Name())
 				return false
 			}
