@@ -79,16 +79,13 @@ The metrics under the `etcd_debugging` prefix are for debugging. They are very i
 
 | Name                                    | Description                                      | Type      |
 |-----------------------------------------|--------------------------------------------------|-----------|
-| file_descriptors_used_total             | The total number of file descriptors used        | Gauge     |
 | proposal_durations_seconds              | The latency distributions of committing proposal | Histogram |
-| pending_proposal_total                  | The total number of pending proposals            | Gauge     |
+| proposals_pending                       | The current number of pending proposals          | Gauge     |
 | proposal_failed_total                   | The total number of failed proposals             | Counter   |
-
-Heavy file descriptor (`file_descriptors_used_total`) usage (i.e., near the process's file descriptor limit) indicates a potential file descriptor exhaustion issue. If the file descriptors are exhausted, etcd may panic because it cannot create new WAL files.
 
 [Proposal][glossary-proposal] durations (`proposal_durations_seconds`) provides a proposal commit latency histogram. The reported latency reflects network and disk IO delays in etcd.
 
-Pending proposal (`pending_proposal_total`) indicates how many proposals are queued for commit. A rising pending proposal total suggests there is a high client load or the cluster is unstable.
+Proposals pending (`proposals_pending`) indicates how many proposals are queued for commit. Rising pending proposals suggests there is a high client load or the cluster is unstable.
 
 Failed proposals (`proposal_failed_total`) are normally related to two issues: temporary failures related to a leader election or longer duration downtime caused by a loss of quorum in the cluster.
 
@@ -126,6 +123,17 @@ Label `sendingType` is the connection type to send messages. `message`, `msgapp`
 Label `msgType` is the type of raft message. `MsgApp` is log replication messages; `MsgSnap` is snapshot install messages; `MsgProp` is proposal forward messages; the others maintain internal raft status. Given large snapshots, a lengthy msgSnap transmission latency should be expected. For other types of messages, given enough network bandwidth, latencies comparable to ping latency should be expected.
 
 Label `remoteID` is the member ID of the message destination.
+
+## Prometheus supplied metrics
+
+The Prometheus client library provides a number of metrics under the `go` and `process` namespaces. There are a few that are particlarly interesting.
+
+| Name                              | Description                                | Type         |
+|-----------------------------------|--------------------------------------------|--------------|
+| process_open_fds                  | Number of open file descriptors.           | Gauge        |
+| process_max_fds                   | Maximum number of open file descriptors.   | Gauge        |
+
+Heavy file descriptor (`process_open_fds`) usage (i.e., near the process's file descriptor limit, `process_max_fds`) indicates a potential file descriptor exhaustion issue. If the file descriptors are exhausted, etcd may panic because it cannot create new WAL files.
 
 [glossary-proposal]: glossary.md#proposal
 [prometheus]: http://prometheus.io/
