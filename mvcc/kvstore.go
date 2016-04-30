@@ -580,7 +580,7 @@ func (s *store) delete(key []byte, rev revision) {
 
 func (s *store) getChanges() []mvccpb.KeyValue {
 	changes := s.changes
-	s.changes = make([]mvccpb.KeyValue, 0, 128)
+	s.changes = make([]mvccpb.KeyValue, 0, 4)
 	return changes
 }
 

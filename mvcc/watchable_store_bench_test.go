@@ -23,6 +23,22 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 )
 
+func BenchmarkWatchableStorePut(b *testing.B) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := New(be, &lease.FakeLessor{}, nil)
+	defer cleanup(s, be, tmpPath)
+
+	// arbitrary number of bytes
+	bytesN := 64
+	keys := createBytesSlice(bytesN, b.N)
+	vals := createBytesSlice(bytesN, b.N)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.Put(keys[i], vals[i], lease.NoLease)
+	}
+}
+
 // Benchmarks on cancel function performance for unsynced watchers
 // in a WatchableStore. It creates k*N watchers to populate unsynced
 // with a reasonably large number of watchers. And measures the time it
