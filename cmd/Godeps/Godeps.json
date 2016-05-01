@@ -87,6 +87,10 @@
 			"Rev": "6aaa8d47701fa6cf07e914ec01fde3d4a1fe79c3"
 		},
 		{
+			"ImportPath": "github.com/golang/snappy",
+			"Rev": "43fea289edce21979658cbbdb3925390890aa86e"
+		},
+		{
 			"ImportPath": "github.com/google/btree",
 			"Rev": "cc6329d4279e3f025a53a83c397d2339b5705c45"
 		},
