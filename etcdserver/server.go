@@ -38,6 +38,7 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/compress"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -214,6 +215,8 @@ type EtcdServer struct {
 	// wg is used to wait for the go routines that depends on the server state
 	// to exit when stopping the server.
 	wg sync.WaitGroup
+
+	CompressType compress.Type
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -367,6 +370,13 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	sstats.Initialize()
 	lstats := stats.NewLeaderStats(id.String())
 
+	// TODO: enable compression at other places (other than gRPC layer)
+	if cfg.CompressType != compress.NoCompress {
+		plog.Infof("enabling compression %s", cfg.CompressType)
+	} else {
+		plog.Info("no compression enabled")
+	}
+
 	srv = &EtcdServer{
 		readych:   make(chan struct{}),
 		cfg:       cfg,
@@ -389,6 +399,8 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		reqIDGen:      idutil.NewGenerator(uint16(id), time.Now()),
 		forceVersionC: make(chan struct{}),
 		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
+
+		CompressType: cfg.CompressType,
 	}
 
 	srv.applyV2 = &applierV2store{srv}
