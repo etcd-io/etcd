@@ -110,6 +110,30 @@ func TestKVPut(t *testing.T) {
 	}
 }
 
+func TestKVPutCompression(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, CompressType: "snappy"})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
+
+	if _, err := kv.Put(ctx, "snappy", "good"); err != nil {
+		t.Fatalf("couldn't put %q (%v)", "snappy", err)
+	}
+	resp, err := kv.Get(ctx, "snappy")
+	if err != nil {
+		t.Fatalf("couldn't get key (%v)", err)
+	}
+	if len(resp.Kvs) != 1 {
+		t.Fatalf("expected 1 key, got %d", len(resp.Kvs))
+	}
+	if !bytes.Equal([]byte("good"), resp.Kvs[0].Value) {
+		t.Errorf("val = %s, want %s", "good", resp.Kvs[0].Value)
+	}
+}
+
 func TestKVRange(t *testing.T) {
 	defer testutil.AfterTest(t)
 
