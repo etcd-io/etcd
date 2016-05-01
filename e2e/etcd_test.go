@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/etcd/pkg/compress"
 	"github.com/coreos/etcd/pkg/expect"
 	"github.com/coreos/etcd/pkg/fileutil"
 )
@@ -137,6 +138,7 @@ type etcdProcessClusterConfig struct {
 	isPeerAutoTLS     bool
 	initialToken      string
 	quotaBackendBytes int64
+	compressType      string
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -248,6 +250,13 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			args = append(args,
 				"--quota-backend-bytes", fmt.Sprintf("%d", cfg.quotaBackendBytes),
 			)
+		}
+		if cfg.compressType != "" {
+			if compress.ParseType(cfg.compressType) != compress.NoCompress {
+				args = append(args,
+					"--experimental-compression", cfg.compressType,
+				)
+			}
 		}
 
 		args = append(args, cfg.tlsArgs()...)

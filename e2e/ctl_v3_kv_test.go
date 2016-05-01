@@ -19,11 +19,12 @@ import (
 	"testing"
 )
 
-func TestCtlV3Put(t *testing.T)          { testCtl(t, putTest) }
-func TestCtlV3PutNoTLS(t *testing.T)     { testCtl(t, putTest, withCfg(configNoTLS)) }
-func TestCtlV3PutClientTLS(t *testing.T) { testCtl(t, putTest, withCfg(configClientTLS)) }
-func TestCtlV3PutPeerTLS(t *testing.T)   { testCtl(t, putTest, withCfg(configPeerTLS)) }
-func TestCtlV3PutTimeout(t *testing.T)   { testCtl(t, putTest, withDialTimeout(0)) }
+func TestCtlV3Put(t *testing.T)            { testCtl(t, putTest) }
+func TestCtlV3PutNoTLS(t *testing.T)       { testCtl(t, putTest, withCfg(configNoTLS)) }
+func TestCtlV3PutClientTLS(t *testing.T)   { testCtl(t, putTest, withCfg(configClientTLS)) }
+func TestCtlV3PutPeerTLS(t *testing.T)     { testCtl(t, putTest, withCfg(configPeerTLS)) }
+func TestCtlV3PutTimeout(t *testing.T)     { testCtl(t, putTest, withDialTimeout(0)) }
+func TestCtlV3PutCompression(t *testing.T) { testCtl(t, putTest, withCompressions("snappy")) }
 
 func TestCtlV3Get(t *testing.T)          { testCtl(t, getTest) }
 func TestCtlV3GetNoTLS(t *testing.T)     { testCtl(t, getTest, withCfg(configNoTLS)) }
