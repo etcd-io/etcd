@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/pkg/compress"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -50,8 +51,9 @@ type ServerConfig struct {
 	ElectionTicks    int
 	BootstrapTimeout time.Duration
 
-	AutoCompactionRetention int
 	QuotaBackendBytes       int64
+	AutoCompactionRetention int
+	CompressType            compress.Type
 
 	StrictReconfigCheck bool
 

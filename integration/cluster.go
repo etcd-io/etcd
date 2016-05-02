@@ -40,6 +40,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/compress"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -74,6 +75,7 @@ type ClusterConfig struct {
 	DiscoveryURL      string
 	UseGRPC           bool
 	QuotaBackendBytes int64
+	CompressType      string
 }
 
 type cluster struct {
@@ -202,6 +204,7 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 			peerTLS:           c.cfg.PeerTLS,
 			clientTLS:         c.cfg.ClientTLS,
 			quotaBackendBytes: c.cfg.QuotaBackendBytes,
+			compressType:      c.cfg.CompressType,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -426,6 +429,7 @@ type memberConfig struct {
 	peerTLS           *transport.TLSInfo
 	clientTLS         *transport.TLSInfo
 	quotaBackendBytes int64
+	compressType      string
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -478,6 +482,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
 	m.QuotaBackendBytes = mcfg.quotaBackendBytes
+	m.CompressType = compress.ParseType(mcfg.compressType)
 	return m
 }
 
@@ -504,8 +509,9 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	}
 
 	cfg := clientv3.Config{
-		Endpoints:   []string{m.grpcAddr},
-		DialTimeout: 5 * time.Second,
+		Endpoints:    []string{m.grpcAddr},
+		DialTimeout:  5 * time.Second,
+		CompressType: m.CompressType,
 	}
 
 	if m.ClientTLSInfo != nil {
@@ -545,8 +551,11 @@ func (m *member) Clone(t *testing.T) *member {
 	}
 	mm.InitialClusterToken = m.InitialClusterToken
 	mm.ElectionTicks = m.ElectionTicks
+	mm.TickMs = m.TickMs
 	mm.PeerTLSInfo = m.PeerTLSInfo
 	mm.ClientTLSInfo = m.ClientTLSInfo
+	mm.QuotaBackendBytes = m.QuotaBackendBytes
+	mm.CompressType = m.CompressType
 	return mm
 }
 

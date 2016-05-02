@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/pkg/compress"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/version"
 )
@@ -41,6 +42,7 @@ type ctlCtx struct {
 	t                 *testing.T
 	cfg               etcdProcessClusterConfig
 	quotaBackendBytes int64
+	compressType      string
 
 	epc *etcdProcessCluster
 
@@ -78,6 +80,10 @@ func withQuota(b int64) ctlOption {
 	return func(cx *ctlCtx) { cx.quotaBackendBytes = b }
 }
 
+func withCompressions(ct string) ctlOption {
+	return func(cx *ctlCtx) { cx.compressType = ct }
+}
+
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	defer testutil.AfterTest(t)
 
@@ -95,6 +101,9 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	}
 	if ret.quotaBackendBytes > 0 {
 		ret.cfg.quotaBackendBytes = ret.quotaBackendBytes
+	}
+	if ret.compressType != "" {
+		ret.cfg.compressType = ret.compressType
 	}
 
 	epc, err := newEtcdProcessCluster(&ret.cfg)
@@ -139,6 +148,14 @@ func (cx *ctlCtx) PrefixArgs() []string {
 		endpoints = strings.Join(es, ",")
 	}
 	cmdArgs := []string{"../bin/etcdctl", "--endpoints", endpoints, "--dial-timeout", cx.dialTimeout.String()}
+	if cx.compressType != "" {
+		if compress.ParseType(cx.compressType) != compress.NoCompress {
+			cmdArgs = append(cmdArgs,
+				"--compression",
+				cx.compressType,
+			)
+		}
+	}
 	if cx.epc.cfg.clientTLS == clientTLS {
 		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 	}

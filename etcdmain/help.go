@@ -140,6 +140,8 @@ experimental flags:
 
 	--experimental-auto-compaction-retention '0'
 		auto compaction retention in hour. 0 means disable auto compaction.
+	--experimental-compression ''
+		compression algorithm (snappy)
 
 profiling flags:
 	--enable-pprof 'false'

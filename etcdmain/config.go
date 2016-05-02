@@ -124,6 +124,7 @@ type config struct {
 	printVersion bool
 
 	autoCompactionRetention int
+	compressionAlgorithm    string
 
 	enablePprof bool
 
@@ -226,6 +227,7 @@ func NewConfig() *config {
 
 	// demo flag
 	fs.IntVar(&cfg.autoCompactionRetention, "experimental-auto-compaction-retention", 0, "Auto compaction retention in hour. 0 means disable auto compaction.")
+	fs.StringVar(&cfg.compressionAlgorithm, "experimental-compression", "", "Compression algorithm (snappy)")
 
 	// backwards-compatibility with v0.4.6
 	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use --advertise-client-urls instead.")
