@@ -440,7 +440,7 @@ func (w *watcher) serveStream(ws *watcherStream) {
 				return
 			}
 			// resume up to last seen event if disconnected
-			if resuming {
+			if resuming && wr.Err() == nil {
 				resuming = false
 				// trim events already seen
 				for i := 0; i < len(wr.Events); i++ {
@@ -454,6 +454,7 @@ func (w *watcher) serveStream(ws *watcherStream) {
 					break
 				}
 			}
+			resuming = false
 			// TODO don't keep buffering if subscriber stops reading
 			wrs = append(wrs, wr)
 		case resumeRev := <-ws.resumec:
