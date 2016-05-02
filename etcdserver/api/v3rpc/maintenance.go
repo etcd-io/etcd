@@ -19,11 +19,16 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/version"
 	"golang.org/x/net/context"
 )
+
+type KVGetter interface {
+	KV() mvcc.ConsistentWatchableKV
+}
 
 type BackendGetter interface {
 	Backend() backend.Backend
@@ -41,13 +46,14 @@ type RaftStatusGetter interface {
 
 type maintenanceServer struct {
 	rg  RaftStatusGetter
+	kg  KVGetter
 	bg  BackendGetter
 	a   Alarmer
 	hdr header
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	return &maintenanceServer{rg: s, bg: s, a: s, hdr: newHeader(s)}
+	return &maintenanceServer{rg: s, kg: s, bg: s, a: s, hdr: newHeader(s)}
 }
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
@@ -97,11 +103,11 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 }
 
 func (ms *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.HashResponse, error) {
-	h, err := ms.bg.Backend().Hash()
+	h, rev, err := ms.kg.KV().Hash()
 	if err != nil {
 		return nil, togRPCError(err)
 	}
-	resp := &pb.HashResponse{Header: &pb.ResponseHeader{Revision: ms.hdr.rev()}, Hash: h}
+	resp := &pb.HashResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: h}
 	ms.hdr.fill(resp.Header)
 	return resp, nil
 }

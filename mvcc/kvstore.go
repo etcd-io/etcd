@@ -293,9 +293,15 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	return ch, nil
 }
 
-func (s *store) Hash() (uint32, error) {
+func (s *store) Hash() (uint32, int64, error) {
 	s.b.ForceCommit()
-	return s.b.Hash()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	h, err := s.b.Hash()
+	rev := s.currentRev.main
+	return h, rev, err
 }
 
 func (s *store) Commit() { s.b.ForceCommit() }

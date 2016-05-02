@@ -70,9 +70,9 @@ type KV interface {
 	// Compact frees all superseded keys with revisions less than rev.
 	Compact(rev int64) (<-chan struct{}, error)
 
-	// Hash retrieves the hash of KV state.
+	// Hash retrieves the hash of KV state and revision.
 	// This method is designed for consistency checking purpose.
-	Hash() (uint32, error)
+	Hash() (hash uint32, revision int64, err error)
 
 	// Commit commits txns into the underlying backend.
 	Commit()
