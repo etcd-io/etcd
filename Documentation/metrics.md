@@ -12,64 +12,34 @@ The naming of metrics follows the suggested [Prometheus best practices][promethe
 
 The metrics under the `etcd` prefix are for monitoring and alerting. They are stable high level metrics. If there is any change of these metrics, it will be included in release notes.
 
-### http requests
+Metrics that are etcd2 related are documented [here][v2-http-metrics].
 
-These metrics describe the serving of requests (non-watch events) served by etcd members in non-proxy mode: total 
-incoming requests, request failures and processing latency (inc. raft rounds for storage). They are useful for tracking
- user-generated traffic hitting the etcd cluster . 
+### gRPC requests
 
-All these metrics are prefixed with `etcd_http_`
+These metrics describe the requests served by a specific etcd member: total received requests, total failed requests, and processing latency. They are useful for tracking user-generated traffic hitting the etcd cluster.
+
+All these metrics are prefixed with `etcd_grpc_`
 
 | Name                           | Description                                                                         | Type                   |
-|--------------------------------|-----------------------------------------------------------------------------------------|--------------------|
-| received_total                 | Total number of events after parsing and auth.                                      | Counter(method)        |
-| failed_total                   | Total number of failed events.                                                      | Counter(method,error)  |
-| successful_duration_second     |  Bucketed handling times of the requests, including raft rounds for writes.          | Histogram(method)      |
+|--------------------------------|-------------------------------------------------------------------------------------|------------------------|
+| requests_total                 | Total number of received requests                                                   | Counter(method)        |
+| requests_failed_total                   | Total number of failed requests.                                                    | Counter(method,error)  |
+| unary_requests_duration_seconds     | Bucketed handling duration of the requests.                                         | Histogram(method)      |
 
 
 Example Prometheus queries that may be useful from these metrics (across all etcd members):
  
- * `sum(rate(etcd_http_failed_total{job="etcd"}[1m]) by (method) / sum(rate(etcd_http_events_received_total{job="etcd"})[1m]) by (method)` 
+ * `sum(rate(etcd_grpc_requests_failed_total{job="etcd"}[1m]) by (grpc_method) / sum(rate(etcd_grpc_total{job="etcd"})[1m]) by (grpc_method)` 
     
-    Shows the fraction of events that failed by HTTP method across all members, across a time window of `1m`.
+    Shows the fraction of events that failed by gRPC method across all members, across a time window of `1m`.
  
- * `sum(rate(etcd_http_received_total{job="etcd",method="GET})[1m]) by (method)`
-   `sum(rate(etcd_http_received_total{job="etcd",method~="GET})[1m]) by (method)`
+ * `sum(rate(etcd_grpc_requests_total{job="etcd",grpc_method="PUT"})[1m]) by (grpc_method)`
     
-    Shows the rate of successful readonly/write queries across all servers, across a time window of `1m`.
+    Shows the rate of PUT requests across all members, across a time window of `1m`.
     
- * `histogram_quantile(0.9, sum(increase(etcd_http_successful_processing_seconds{job="etcd",method="GET"}[5m]) ) by (le))`
-   `histogram_quantile(0.9, sum(increase(etcd_http_successful_processing_seconds{job="etcd",method!="GET"}[5m]) ) by (le))`
+ * `histogram_quantile(0.9, sum(rate(etcd_grpc_unary_requests_duration_seconds{job="etcd",grpc_method="PUT"}[5m]) ) by (le))`
     
-    Show the 0.90-tile latency (in seconds) of read/write (respectively) event handling across all members, with a window of `5m`.      
-
-### proxy
-
-etcd members operating in proxy mode do not directly perform store operations. They forward all requests to cluster instances.
-
-Tracking the rate of requests coming from a proxy allows one to pin down which machine is performing most reads/writes.
-
-All these metrics are prefixed with `etcd_proxy_`
-
-| Name                      | Description                                                                         | Type                   |
-|---------------------------|-----------------------------------------------------------------------------------------|--------------------|
-| requests_total            | Total number of requests by this proxy instance.    .                               | Counter(method)        |
-| handled_total             | Total number of fully handled requests, with responses from etcd members.           | Counter(method)        |
-| dropped_total             | Total number of dropped requests due to forwarding errors to etcd members.          | Counter(method,error)  |
-| handling_duration_seconds | Bucketed handling times by HTTP method, including round trip to member instances.   | Histogram(method)      |  
-
-Example Prometheus queries that may be useful from these metrics (across all etcd servers):
-
- *  `sum(rate(etcd_proxy_handled_total{job="etcd"}[1m])) by (method)`
-    
-    Rate of requests (by HTTP method) handled by all proxies, across a window of `1m`. 
- * `histogram_quantile(0.9, sum(increase(etcd_proxy_events_handling_time_seconds_bucket{job="etcd",method="GET"}[5m])) by (le))`
-   `histogram_quantile(0.9, sum(increase(etcd_proxy_events_handling_time_seconds_bucket{job="etcd",method!="GET"}[5m])) by (le))`
-    
-    Show the 0.90-tile latency (in seconds) of handling of user requests across all proxy machines, with a window of `5m`.  
- * `sum(rate(etcd_proxy_dropped_total{job="etcd"}[1m])) by (proxying_error)`
-    
-    Number of failed request on the proxy. This should be 0, spikes here indicate connectivity issues to etcd cluster.
+    Show the 0.90-tile latency (in seconds) of PUT request handling across all members, with a window of `5m`.      
 
 ## etcd_debugging namespace metrics
 
@@ -79,32 +49,32 @@ The metrics under the `etcd_debugging` prefix are for debugging. They are very i
 
 | Name                                    | Description                                      | Type      |
 |-----------------------------------------|--------------------------------------------------|-----------|
-| proposal_durations_seconds              | The latency distributions of committing proposal | Histogram |
+| proposal_duration_seconds              | The latency distributions of committing proposal | Histogram |
 | proposals_pending                       | The current number of pending proposals          | Gauge     |
-| proposal_failed_total                   | The total number of failed proposals             | Counter   |
+| proposals_failed_total                   | The total number of failed proposals             | Counter   |
 
-[Proposal][glossary-proposal] durations (`proposal_durations_seconds`) provides a proposal commit latency histogram. The reported latency reflects network and disk IO delays in etcd.
+[Proposal][glossary-proposal] duration (`proposal_duration_seconds`) provides a proposal commit latency histogram. The reported latency reflects network and disk IO delays in etcd.
 
 Proposals pending (`proposals_pending`) indicates how many proposals are queued for commit. Rising pending proposals suggests there is a high client load or the cluster is unstable.
 
-Failed proposals (`proposal_failed_total`) are normally related to two issues: temporary failures related to a leader election or longer duration downtime caused by a loss of quorum in the cluster.
+Failed proposals (`proposals_failed_total`) are normally related to two issues: temporary failures related to a leader election or longer duration downtime caused by a loss of quorum in the cluster.
 
 ### wal
 
 | Name                               | Description                                      | Type      |
 |------------------------------------|--------------------------------------------------|-----------|
-| fsync_durations_seconds            | The latency distributions of fsync called by wal | Histogram |
+| fsync_duration_seconds            | The latency distributions of fsync called by wal | Histogram |
 | last_index_saved                   | The index of the last entry saved by wal         | Gauge     |
 
-Abnormally high fsync duration (`fsync_durations_seconds`) indicates disk issues and might cause the cluster to be unstable.
+Abnormally high fsync duration (`fsync_duration_seconds`) indicates disk issues and might cause the cluster to be unstable.
 
 ### snapshot
 
 | Name                                       | Description                                                | Type      |
 |--------------------------------------------|------------------------------------------------------------|-----------|
-| snapshot_save_total_durations_seconds      | The total latency distributions of save called by snapshot | Histogram |
+| snapshot_save_total_duration_seconds      | The total latency distributions of save called by snapshot | Histogram |
 
-Abnormally high snapshot duration (`snapshot_save_total_durations_seconds`) indicates disk issues and might cause the cluster to be unstable.
+Abnormally high snapshot duration (`snapshot_save_total_duration_seconds`) indicates disk issues and might cause the cluster to be unstable.
 
 ### rafthttp
 
@@ -135,7 +105,8 @@ The Prometheus client library provides a number of metrics under the `go` and `p
 
 Heavy file descriptor (`process_open_fds`) usage (i.e., near the process's file descriptor limit, `process_max_fds`) indicates a potential file descriptor exhaustion issue. If the file descriptors are exhausted, etcd may panic because it cannot create new WAL files.
 
-[glossary-proposal]: glossary.md#proposal
+[glossary-proposal]: learning/glossary.md#proposal
 [prometheus]: http://prometheus.io/
 [prometheus-getting-started]: http://prometheus.io/docs/introduction/getting_started/
 [prometheus-naming]: http://prometheus.io/docs/practices/naming/
+[v2-http-metrics]: v2/metrics.md#http-requests

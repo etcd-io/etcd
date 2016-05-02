@@ -28,6 +28,8 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config) *grpc.Server {
 	if tls != nil {
 		opts = append(opts, grpc.Creds(credentials.NewTLS(tls)))
 	}
+	opts = append(opts, grpc.UnaryInterceptor(metricsUnaryInterceptor))
+	opts = append(opts, grpc.StreamInterceptor(metricsStreamInterceptor))
 
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterKVServer(grpcServer, NewQuotaKVServer(s))
