@@ -318,6 +318,8 @@ func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
 	return
 }
 
+func (c *cluster) WaitLeader(t *testing.T) int { return c.waitLeader(t, c.Members) }
+
 func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
