@@ -107,6 +107,8 @@ security flags:
 		enable client cert authentication.
 	--trusted-ca-file ''
 		path to the client server TLS trusted CA key file.
+	--auto-tls 'false'
+		client TLS using generated certificates.
 	--peer-ca-file '' [DEPRECATED]
 		path to the peer server TLS CA file. '-peer-ca-file ca.crt' could be replaced by '-peer-trusted-ca-file ca.crt -peer-client-cert-auth' and etcd will perform the same.
 	--peer-cert-file ''
