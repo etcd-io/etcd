@@ -159,7 +159,7 @@ func testNonleaderStartElection(t *testing.T, state StateType) {
 		r.becomeCandidate()
 	}
 
-	for i := 0; i < 2*et; i++ {
+	for i := 1; i < 2*et; i++ {
 		r.tick()
 	}
 
@@ -785,7 +785,7 @@ func TestVoteRequest(t *testing.T) {
 		})
 		r.readMessages()
 
-		for i := 0; i < r.electionTimeout*2; i++ {
+		for i := 1; i < r.electionTimeout*2; i++ {
 			r.tickElection()
 		}
 
