@@ -207,7 +207,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		for _, u := range cfg.lpurls {
 			phosts = append(phosts, u.Host)
 		}
-		cfg.peerTLSInfo, err = transport.SelfCert(cfg.dir, phosts)
+		cfg.peerTLSInfo, err = transport.SelfCert(path.Join(cfg.dir, "fixtures/peer"), phosts)
 		if err != nil {
 			plog.Fatalf("could not get certs (%v)", err)
 		}
@@ -218,6 +218,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 	if !cfg.peerTLSInfo.Empty() {
 		plog.Infof("peerTLS: %s", cfg.peerTLSInfo)
 	}
+
 	var plns []net.Listener
 	for _, u := range cfg.lpurls {
 		if u.Scheme == "http" {
@@ -256,6 +257,19 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		plns = append(plns, l)
 	}
 
+	if cfg.clientAutoTLS && cfg.clientTLSInfo.Empty() {
+		var chosts []string
+		for _, u := range cfg.lcurls {
+			chosts = append(chosts, u.Host)
+		}
+		cfg.clientTLSInfo, err = transport.SelfCert(path.Join(cfg.dir, "fixtures/client"), chosts)
+		if err != nil {
+			plog.Fatalf("could not get certs (%v)", err)
+		}
+	} else if cfg.clientAutoTLS {
+		plog.Warningf("ignoring client auto TLS since certs given")
+	}
+
 	var ctlscfg *tls.Config
 	if !cfg.clientTLSInfo.Empty() {
 		plog.Infof("clientTLS: %s", cfg.clientTLSInfo)
@@ -264,6 +278,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 			return nil, err
 		}
 	}
+
 	sctxs := make(map[string]*serveCtx)
 	for _, u := range cfg.lcurls {
 		if u.Scheme == "http" {

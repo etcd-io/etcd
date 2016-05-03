@@ -201,6 +201,11 @@ The security flags help to [build a secure etcd cluster][security].
 + default: none
 + env variable: ETCD_TRUSTED_CA_FILE
 
+### --auto-tls
++ Client TLS using generated certificates
++ default: false
++ env variable: ETCD_AUTO_TLS
+
 ### --peer-ca-file [DEPRECATED]
 + Path to the peer server TLS CA file. `--peer-ca-file ca.crt` could be replaced by `--peer-trusted-ca-file ca.crt --peer-client-cert-auth` and etcd will perform the same.
 + default: none
@@ -225,6 +230,11 @@ The security flags help to [build a secure etcd cluster][security].
 + Path to the peer server TLS trusted CA file.
 + default: none
 + env variable: ETCD_PEER_TRUSTED_CA_FILE
+
+### --peer-auto-tls
++ Peer TLS using generated certificates
++ default: false
++ env variable: ETCD_PEER_AUTO_TLS
 
 ## Logging Flags
 

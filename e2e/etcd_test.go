@@ -44,7 +44,6 @@ var (
 	configNoTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    0,
-		isPeerTLS:    false,
 		initialToken: "new",
 	}
 	configAutoTLS = etcdProcessClusterConfig{
@@ -64,15 +63,20 @@ var (
 		clusterSize:  3,
 		proxySize:    0,
 		clientTLS:    clientTLS,
-		isPeerTLS:    false,
 		initialToken: "new",
 	}
 	configClientBoth = etcdProcessClusterConfig{
 		clusterSize:  1,
 		proxySize:    0,
 		clientTLS:    clientTLSAndNonTLS,
-		isPeerTLS:    false,
 		initialToken: "new",
+	}
+	configClientAutoTLS = etcdProcessClusterConfig{
+		clusterSize:     1,
+		proxySize:       0,
+		isClientAuthTLS: true,
+		clientTLS:       clientTLS,
+		initialToken:    "new",
 	}
 	configPeerTLS = etcdProcessClusterConfig{
 		clusterSize:  3,
@@ -83,7 +87,6 @@ var (
 	configWithProxy = etcdProcessClusterConfig{
 		clusterSize:  3,
 		proxySize:    1,
-		isPeerTLS:    false,
 		initialToken: "new",
 	}
 	configWithProxyTLS = etcdProcessClusterConfig{
@@ -135,6 +138,7 @@ type etcdProcessClusterConfig struct {
 	clientTLS         clientConnType
 	isPeerTLS         bool
 	isPeerAutoTLS     bool
+	isClientAuthTLS   bool
 	initialToken      string
 	quotaBackendBytes int64
 }
@@ -292,13 +296,18 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 
 func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 	if cfg.clientTLS != clientNonTLS {
-		tlsClientArgs := []string{
-			"--cert-file", certPath,
-			"--key-file", privateKeyPath,
-			"--ca-file", caPath,
+		if cfg.isClientAuthTLS {
+			args = append(args, "--auto-tls=true")
+		} else {
+			tlsClientArgs := []string{
+				"--cert-file", certPath,
+				"--key-file", privateKeyPath,
+				"--ca-file", caPath,
+			}
+			args = append(args, tlsClientArgs...)
 		}
-		args = append(args, tlsClientArgs...)
 	}
+
 	if cfg.isPeerTLS {
 		if cfg.isPeerAutoTLS {
 			args = append(args, "--peer-auto-tls=true")
