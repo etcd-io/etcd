@@ -60,7 +60,7 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 	plog.Noticef("starting to defragment the storage backend...")
 	err := ms.bg.Backend().Defrag()
 	if err != nil {
-		plog.Errorf("failed to deframent the storage backend (%v)", err)
+		plog.Errorf("failed to defragment the storage backend (%v)", err)
 		return nil, err
 	}
 	plog.Noticef("finished defragmenting the storage backend")
