@@ -321,11 +321,11 @@ Empty field.
 
 ##### message `CompactionRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-CompactionRequest compacts the key-value store upto a given revision. All superseded keys with a revision less than the compaction revision will be removed.
+CompactionRequest compacts the key-value store up to a given revision. All superseded keys with a revision less than the compaction revision will be removed.
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
-| revision | revision is the key-value store revision for the compation operation. | int64 |
+| revision | revision is the key-value store revision for the compaction operation. | int64 |
 | physical | physical is set so the RPC will wait until the compaction is physically applied to the local database such that compacted entries are totally removed from the backend database. | bool |
 
 
