@@ -140,8 +140,13 @@ func (cx *ctlCtx) PrefixArgs() []string {
 	}
 	cmdArgs := []string{"../bin/etcdctl", "--endpoints", endpoints, "--dial-timeout", cx.dialTimeout.String()}
 	if cx.epc.cfg.clientTLS == clientTLS {
-		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+		if cx.epc.cfg.isClientAuthTLS {
+			cmdArgs = append(cmdArgs, "--insecure-transport=false", "--insecure-skip-tls-verify")
+		} else {
+			cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+		}
 	}
+
 	return cmdArgs
 }
 
