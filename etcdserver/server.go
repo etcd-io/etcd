@@ -939,7 +939,7 @@ func (s *EtcdServer) send(ms []raftpb.Message) {
 			ok, exceed := s.r.td.Observe(ms[i].To)
 			if !ok {
 				// TODO: limit request rate.
-				plog.Warningf("failed to send out heartbeat on time (deadline exceeded for %v)", exceed)
+				plog.Warningf("failed to send out heartbeat on time (exceeded the %dms timeout for %v)", s.cfg.TickMs, exceed)
 				plog.Warningf("server is likely overloaded")
 			}
 		}
