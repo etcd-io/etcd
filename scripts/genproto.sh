@@ -67,7 +67,7 @@ done
 if [ "$1" = "-g" ]; then
 	echo "protodoc is auto-generating grpc API reference documentation..."
 	go get -v -u github.com/coreos/protodoc
-	SHA_PROTODOC="4cd8db83c5595ac514169fda607d1ccb5eef669b"
+	SHA_PROTODOC="58fed2ed069a962509b782b25f48d3e05146c3d9"
 	PROTODOC_PATH="${GOPATH}/src/github.com/coreos/protodoc"
 	pushd "${PROTODOC_PATH}"
 		git reset --hard "${SHA_PROTODOC}"
