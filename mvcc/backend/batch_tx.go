@@ -52,7 +52,7 @@ func newBatchTx(backend *backend) *batchTx {
 func (t *batchTx) UnsafeCreateBucket(name []byte) {
 	_, err := t.tx.CreateBucket(name)
 	if err != nil && err != bolt.ErrBucketExists {
-		log.Fatalf("mvcc: cannot create bucket %s (%v)", string(name), err)
+		log.Fatalf("mvcc: cannot create bucket %s (%v)", name, err)
 	}
 	t.pending++
 }
@@ -70,7 +70,7 @@ func (t *batchTx) UnsafeSeqPut(bucketName []byte, key []byte, value []byte) {
 func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq bool) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
-		log.Fatalf("mvcc: bucket %s does not exist", string(bucketName))
+		log.Fatalf("mvcc: bucket %s does not exist", bucketName)
 	}
 	if seq {
 		// it is useful to increase fill percent when the workloads are mostly append-only.
@@ -87,7 +87,7 @@ func (t *batchTx) unsafePut(bucketName []byte, key []byte, value []byte, seq boo
 func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64) (keys [][]byte, vs [][]byte) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
-		log.Fatalf("mvcc: bucket %s does not exist", string(bucketName))
+		log.Fatalf("mvcc: bucket %s does not exist", bucketName)
 	}
 
 	if len(endKey) == 0 {
@@ -114,7 +114,7 @@ func (t *batchTx) UnsafeRange(bucketName []byte, key, endKey []byte, limit int64
 func (t *batchTx) UnsafeDelete(bucketName []byte, key []byte) {
 	bucket := t.tx.Bucket(bucketName)
 	if bucket == nil {
-		log.Fatalf("mvcc: bucket %s does not exist", string(bucketName))
+		log.Fatalf("mvcc: bucket %s does not exist", bucketName)
 	}
 	err := bucket.Delete(key)
 	if err != nil {

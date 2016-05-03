@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	ErrRevisionNotFound = errors.New("stroage: revision not found")
+	ErrRevisionNotFound = errors.New("mvcc: revision not found")
 )
 
 // keyIndex stores the revisions of a key in the backend.
