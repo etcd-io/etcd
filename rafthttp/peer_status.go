@@ -28,10 +28,10 @@ type failureType struct {
 }
 
 type peerStatus struct {
-	id          types.ID
-	mu          sync.Mutex // protect variables below
-	active      bool
-	activeSince time.Time
+	id     types.ID
+	mu     sync.Mutex // protect variables below
+	active bool
+	since  time.Time
 }
 
 func newPeerStatus(id types.ID) *peerStatus {
@@ -46,7 +46,7 @@ func (s *peerStatus) activate() {
 	if !s.active {
 		plog.Infof("the connection with %s became active", s.id)
 		s.active = true
-		s.activeSince = time.Now()
+		s.since = time.Now()
 	}
 }
 
@@ -58,7 +58,7 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 		plog.Errorf(msg)
 		plog.Infof("the connection with %s became inactive", s.id)
 		s.active = false
-		s.activeSince = time.Time{}
+		s.since = time.Time{}
 		return
 	}
 	plog.Debugf(msg)
@@ -68,4 +68,10 @@ func (s *peerStatus) isActive() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.active
+}
+
+func (s *peerStatus) activeSince() time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.since
 }
