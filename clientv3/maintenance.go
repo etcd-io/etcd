@@ -16,7 +16,6 @@ package clientv3
 
 import (
 	"io"
-	"sync"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -57,18 +56,15 @@ type Maintenance interface {
 type maintenance struct {
 	c *Client
 
-	mu     sync.Mutex
-	conn   *grpc.ClientConn // conn in-use
+	rc     *remoteClient
 	remote pb.MaintenanceClient
 }
 
 func NewMaintenance(c *Client) Maintenance {
-	conn := c.ActiveConnection()
-	return &maintenance{
-		c:      c,
-		conn:   conn,
-		remote: pb.NewMaintenanceClient(conn),
-	}
+	ret := &maintenance{c: c}
+	f := func(conn *grpc.ClientConn) { ret.remote = pb.NewMaintenanceClient(conn) }
+	ret.rc = newRemoteClient(c, f)
+	return ret
 }
 
 func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
@@ -85,7 +81,7 @@ func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
 		if isHaltErr(ctx, err) {
 			return nil, rpctypes.Error(err)
 		}
-		if err = m.switchRemote(err); err != nil {
+		if err = m.rc.reconnectWait(ctx, err); err != nil {
 			return nil, err
 		}
 	}
@@ -118,8 +114,8 @@ func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmR
 	if err == nil {
 		return (*AlarmResponse)(resp), nil
 	}
-	if isHaltErr(ctx, err) {
-		go m.switchRemote(err)
+	if !isHaltErr(ctx, err) {
+		m.rc.reconnect(err)
 	}
 	return nil, rpctypes.Error(err)
 }
@@ -178,19 +174,7 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 }
 
 func (m *maintenance) getRemote() pb.MaintenanceClient {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.rc.mu.Lock()
+	defer m.rc.mu.Unlock()
 	return m.remote
-}
-
-func (m *maintenance) switchRemote(prevErr error) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	newConn, err := m.c.retryConnection(m.conn, prevErr)
-	if err != nil {
-		return rpctypes.Error(err)
-	}
-	m.conn = newConn
-	m.remote = pb.NewMaintenanceClient(m.conn)
-	return nil
 }

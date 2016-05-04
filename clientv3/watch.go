@@ -87,8 +87,7 @@ func (wr *WatchResponse) IsProgressNotify() bool {
 
 // watcher implements the Watcher interface
 type watcher struct {
-	c      *Client
-	conn   *grpc.ClientConn
+	rc     *remoteClient
 	remote pb.WatchClient
 
 	// ctx controls internal remote.Watch requests
@@ -142,13 +141,7 @@ type watcherStream struct {
 
 func NewWatcher(c *Client) Watcher {
 	ctx, cancel := context.WithCancel(context.Background())
-	conn := c.ActiveConnection()
-
 	w := &watcher{
-		c:      c,
-		conn:   conn,
-		remote: pb.NewWatchClient(conn),
-
 		ctx:     ctx,
 		cancel:  cancel,
 		streams: make(map[int64]*watcherStream),
@@ -159,6 +152,10 @@ func NewWatcher(c *Client) Watcher {
 		donec: make(chan struct{}),
 		errc:  make(chan error, 1),
 	}
+
+	f := func(conn *grpc.ClientConn) { w.remote = pb.NewWatchClient(conn) }
+	w.rc = newRemoteClient(c, f)
+
 	go w.run()
 	return w
 }
@@ -508,12 +505,9 @@ func (w *watcher) openWatchClient() (ws pb.Watch_WatchClient, err error) {
 		} else if isHaltErr(w.ctx, err) {
 			return nil, v3rpc.Error(err)
 		}
-		newConn, nerr := w.c.retryConnection(w.conn, nil)
-		if nerr != nil {
+		if nerr := w.remoteConn.reconnectWait(w.ctx, nil); nerr != nil {
 			return nil, nerr
 		}
-		w.conn = newConn
-		w.remote = pb.NewWatchClient(w.conn)
 	}
 	return ws, nil
 }

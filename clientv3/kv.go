@@ -15,8 +15,6 @@
 package clientv3
 
 import (
-	"sync"
-
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
@@ -76,23 +74,15 @@ type OpResponse struct {
 }
 
 type kv struct {
-	c *Client
-
-	mu     sync.Mutex       // guards all fields
-	conn   *grpc.ClientConn // conn in-use
+	rc     *remoteClient
 	remote pb.KVClient
 }
 
 func NewKV(c *Client) KV {
-	conn := c.ActiveConnection()
-	remote := pb.NewKVClient(conn)
-
-	return &kv{
-		conn:   c.ActiveConnection(),
-		remote: remote,
-
-		c: c,
-	}
+	ret := &kv{}
+	f := func(conn *grpc.ClientConn) { ret.remote = pb.NewKVClient(conn) }
+	ret.rc = newRemoteClient(c, f)
+	return ret
 }
 
 func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
@@ -111,17 +101,14 @@ func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*Delete
 }
 
 func (kv *kv) Compact(ctx context.Context, rev int64) error {
-	remote := kv.getRemote()
-	_, err := remote.Compact(ctx, &pb.CompactionRequest{Revision: rev})
+	_, err := kv.getRemote().Compact(ctx, &pb.CompactionRequest{Revision: rev})
 	if err == nil {
 		return nil
 	}
-
 	if isHaltErr(ctx, err) {
 		return rpctypes.Error(err)
 	}
-
-	go kv.switchRemote(remote, err)
+	kv.rc.reconnect(err)
 	return rpctypes.Error(err)
 }
 
@@ -174,36 +161,18 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 
 		// do not retry on modifications
 		if op.isWrite() {
-			go kv.switchRemote(remote, err)
+			kv.rc.reconnect(err)
 			return OpResponse{}, rpctypes.Error(err)
 		}
 
-		if nerr := kv.switchRemote(remote, err); nerr != nil {
+		if nerr := kv.rc.reconnectWait(ctx, err); nerr != nil {
 			return OpResponse{}, nerr
 		}
 	}
 }
 
-func (kv *kv) switchRemote(remote pb.KVClient, prevErr error) error {
-	kv.mu.Lock()
-	oldRemote := kv.remote
-	conn := kv.conn
-	kv.mu.Unlock()
-	if remote != oldRemote {
-		return nil
-	}
-	newConn, err := kv.c.retryConnection(conn, prevErr)
-	kv.mu.Lock()
-	defer kv.mu.Unlock()
-	if err == nil {
-		kv.conn = newConn
-		kv.remote = pb.NewKVClient(kv.conn)
-	}
-	return rpctypes.Error(err)
-}
-
 func (kv *kv) getRemote() pb.KVClient {
-	kv.mu.Lock()
-	defer kv.mu.Unlock()
+	kv.rc.mu.Lock()
+	defer kv.rc.mu.Unlock()
 	return kv.remote
 }

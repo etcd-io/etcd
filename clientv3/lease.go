@@ -71,14 +71,12 @@ type Lease interface {
 }
 
 type lessor struct {
-	c *Client
-
-	mu   sync.Mutex       // guards all fields
-	conn *grpc.ClientConn // conn in-use
+	mu sync.Mutex // guards all fields
 
 	// donec is closed when recvKeepAliveLoop stops
 	donec chan struct{}
 
+	rc     *remoteClient
 	remote pb.LeaseClient
 
 	stream       pb.Lease_LeaseKeepAliveClient
@@ -102,14 +100,12 @@ type keepAlive struct {
 
 func NewLease(c *Client) Lease {
 	l := &lessor{
-		c:    c,
-		conn: c.ActiveConnection(),
-
 		donec:      make(chan struct{}),
 		keepAlives: make(map[LeaseID]*keepAlive),
 	}
+	f := func(conn *grpc.ClientConn) { l.remote = pb.NewLeaseClient(conn) }
+	l.rc = newRemoteClient(c, f)
 
-	l.remote = pb.NewLeaseClient(l.conn)
 	l.stopCtx, l.stopCancel = context.WithCancel(context.Background())
 
 	go l.recvKeepAliveLoop()
@@ -386,8 +382,8 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 }
 
 func (l *lessor) getRemote() pb.LeaseClient {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	l.rc.mu.Lock()
+	defer l.rc.mu.Unlock()
 	return l.remote
 }
 
@@ -399,36 +395,15 @@ func (l *lessor) getKeepAliveStream() pb.Lease_LeaseKeepAliveClient {
 
 func (l *lessor) switchRemoteAndStream(prevErr error) error {
 	for {
-		l.mu.Lock()
-		conn := l.conn
-		l.mu.Unlock()
-
-		var (
-			err     error
-			newConn *grpc.ClientConn
-		)
-
 		if prevErr != nil {
-			conn.Close()
-			newConn, err = l.c.retryConnection(conn, prevErr)
+			err := l.rc.reconnectWait(l.stopCtx, prevErr)
 			if err != nil {
 				return rpctypes.Error(err)
 			}
 		}
-
-		l.mu.Lock()
-		if newConn != nil {
-			l.conn = newConn
+		if prevErr = l.newStream(); prevErr == nil {
+			return nil
 		}
-
-		l.remote = pb.NewLeaseClient(l.conn)
-		l.mu.Unlock()
-
-		prevErr = l.newStream()
-		if prevErr != nil {
-			continue
-		}
-		return nil
 	}
 }
 
