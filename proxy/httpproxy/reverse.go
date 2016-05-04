@@ -112,9 +112,10 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	closeNotifier, ok := rw.(http.CloseNotifier)
 	cancel := httputil.RequestCanceler(p.transport, proxyreq)
 	if ok {
+		closeCh := closeNotifier.CloseNotify()
 		go func() {
 			select {
-			case <-closeNotifier.CloseNotify():
+			case <-closeCh:
 				atomic.StoreInt32(&requestClosed, 1)
 				log.Printf("proxy: client %v closed request prematurely", clientreq.RemoteAddr)
 				cancel()
