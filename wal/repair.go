@@ -76,7 +76,7 @@ func Repair(dirpath string) bool {
 				plog.Errorf("could not repair %v, failed to truncate file", f.Name())
 				return false
 			}
-			if err = fileutil.Fsync(f); err != nil {
+			if err = fileutil.Fsync(f.File); err != nil {
 				plog.Errorf("could not repair %v, failed to sync file", f.Name())
 				return false
 			}
@@ -89,7 +89,7 @@ func Repair(dirpath string) bool {
 }
 
 // openLast opens the last wal file for read and write.
-func openLast(dirpath string) (*os.File, error) {
+func openLast(dirpath string) (*fileutil.LockedFile, error) {
 	names, err := fileutil.ReadDir(dirpath)
 	if err != nil {
 		return nil, err
@@ -99,5 +99,5 @@ func openLast(dirpath string) (*os.File, error) {
 		return nil, ErrFileNotFound
 	}
 	last := path.Join(dirpath, names[len(names)-1])
-	return os.OpenFile(last, os.O_RDWR, 0)
+	return fileutil.LockFile(last, os.O_RDWR, 0600)
 }

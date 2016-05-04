@@ -34,10 +34,8 @@ func TestRepairTruncate(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if terr := f.Truncate(offset - 4); terr != nil {
-			return terr
-		}
-		return nil
+		defer f.Close()
+		return f.Truncate(offset - 4)
 	}
 
 	testRepair(t, makeEnts(10), corruptf, 9)
@@ -140,6 +138,7 @@ func TestRepairWriteTearLast(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		defer f.Close()
 		// 512 bytes perfectly aligns the last record, so use 1024
 		if offset < 1024 {
 			return fmt.Errorf("got offset %d, expected >1024", offset)
@@ -163,6 +162,7 @@ func TestRepairWriteTearMiddle(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		defer f.Close()
 		// corrupt middle of 2nd record
 		_, werr := f.WriteAt(make([]byte, 512), 4096+512)
 		return werr
