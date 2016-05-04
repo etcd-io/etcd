@@ -29,6 +29,10 @@
 - [AdoHe/etcd4j](http://github.com/AdoHe/etcd4j) - Supports v2 (enhance for real production cluster)
 - [cdancy/etcd-rest](https://github.com/cdancy/etcd-rest) - Uses jclouds to provide a complete implementation of v2 API.
 
+**Scala libraries**
+
+- [maciej/etcd-client](https://github.com/maciej/etcd-client) - Supports v2. Akka HTTP-based fully async client
+
 **Python libraries**
 
 - [jplana/python-etcd](https://github.com/jplana/python-etcd) - Supports v2
