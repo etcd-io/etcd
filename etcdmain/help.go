@@ -25,6 +25,9 @@ var (
 
        etcd -h | --help
        show the help information about etcd
+
+       etcd --config-file
+       path to the server configuration file
 	`
 	flagsline = `
 member flags:
