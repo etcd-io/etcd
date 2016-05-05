@@ -69,25 +69,26 @@ type TTLOptionSet struct {
 }
 
 type store struct {
-	Root           *node
-	WatcherHub     *watcherHub
-	CurrentIndex   uint64
-	Stats          *Stats
-	CurrentVersion int
-	ttlKeyHeap     *ttlKeyHeap  // need to recovery manually
-	worldLock      sync.RWMutex // stop the world lock
-	clock          clockwork.Clock
-	readonlySet    types.Set
+	Root              *node
+	WatcherHub        *watcherHub
+	CurrentIndex      uint64
+	Stats             *Stats
+	CurrentVersion    int
+	ttlKeyHeap        *ttlKeyHeap  // need to recovery manually
+	worldLock         sync.RWMutex // stop the world lock
+	clock             clockwork.Clock
+	readonlySet       types.Set
+	UpdateParentIndex bool
 }
 
 // New creates a store where the given namespaces will be created as initial directories.
-func New(namespaces ...string) Store {
-	s := newStore(namespaces...)
+func New(updateparentidx bool, namespaces ...string) Store {
+	s := newStore(updateparentidx, namespaces...)
 	s.clock = clockwork.NewRealClock()
 	return s
 }
 
-func newStore(namespaces ...string) *store {
+func newStore(updateparentidx bool, namespaces ...string) *store {
 	s := new(store)
 	s.CurrentVersion = defaultVersion
 	s.Root = newDir(s, "/", s.CurrentIndex, nil, Permanent)
@@ -98,6 +99,7 @@ func newStore(namespaces ...string) *store {
 	s.WatcherHub = newWatchHub(1000)
 	s.ttlKeyHeap = newTtlKeyHeap()
 	s.readonlySet = types.NewUnsafeSet(append(namespaces, "/")...)
+	s.UpdateParentIndex = updateparentidx
 	return s
 }
 
@@ -304,7 +306,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	eNode := e.Node
 
 	// if test succeed, write the value
-	n.Write(value, s.CurrentIndex)
+	n.Write(value, s.CurrentIndex, s.UpdateParentIndex)
 	n.UpdateTTL(expireOpts.ExpireTime)
 
 	// copy the value for safety
@@ -522,7 +524,7 @@ func (s *store) Update(nodePath string, newValue string, expireOpts TTLOptionSet
 	e.PrevNode = n.Repr(false, false, s.clock)
 	eNode := e.Node
 
-	n.Write(newValue, nextIndex)
+	n.Write(newValue, nextIndex, s.UpdateParentIndex)
 
 	if n.IsDir() {
 		eNode.Dir = true
@@ -733,7 +735,7 @@ func (s *store) SaveNoCopy() ([]byte, error) {
 func (s *store) Clone() Store {
 	s.worldLock.Lock()
 
-	clonedStore := newStore()
+	clonedStore := newStore(s.UpdateParentIndex)
 	clonedStore.CurrentIndex = s.CurrentIndex
 	clonedStore.Root = s.Root.Clone()
 	clonedStore.WatcherHub = s.WatcherHub.clone()

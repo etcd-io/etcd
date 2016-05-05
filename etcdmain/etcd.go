@@ -361,6 +361,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		TickMs:                  cfg.TickMs,
 		ElectionTicks:           cfg.electionTicks(),
 		AutoCompactionRetention: cfg.autoCompactionRetention,
+		UpdateParentIndex:       cfg.updateParentIndex,
 		QuotaBackendBytes:       cfg.quotaBackendBytes,
 		StrictReconfigCheck:     cfg.strictReconfigCheck,
 		EnablePprof:             cfg.enablePprof,

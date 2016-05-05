@@ -116,13 +116,17 @@ func (n *node) Read() (string, *etcdErr.Error) {
 
 // Write function set the value of the node to the given value.
 // If the receiver node is a directory, a "Not A File" error will be returned.
-func (n *node) Write(value string, index uint64) *etcdErr.Error {
+func (n *node) Write(value string, index uint64, updateparentidx bool) *etcdErr.Error {
 	if n.IsDir() {
 		return etcdErr.NewError(etcdErr.EcodeNotFile, "", n.store.CurrentIndex)
 	}
 
 	n.Value = value
 	n.ModifiedIndex = index
+	if updateparentidx && n.Parent != nil {
+		// TODO: Should we recurse?
+		n.Parent.ModifiedIndex = index
+	}
 
 	return nil
 }

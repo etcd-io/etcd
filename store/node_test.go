@@ -50,14 +50,14 @@ func TestNewKVReadWriteCompare(t *testing.T) {
 		t.Errorf("value = %s and err = %v, want value = %s and err = nil", v, err, val)
 	}
 
-	if err := nd.Write(val1, nd.CreatedIndex+1); err != nil {
+	if err := nd.Write(val1, nd.CreatedIndex+1, false); err != nil {
 		t.Errorf("nd.Write error = %v, want = nil", err)
 	} else {
 		if v, err := nd.Read(); v != val1 || err != nil {
 			t.Errorf("value = %s and err = %v, want value = %s and err = nil", v, err, val1)
 		}
 	}
-	if err := nd.Write(val2, nd.CreatedIndex+2); err != nil {
+	if err := nd.Write(val2, nd.CreatedIndex+2, false); err != nil {
 		t.Errorf("nd.Write error = %v, want = nil", err)
 	} else {
 		if v, err := nd.Read(); v != val2 || err != nil {
@@ -126,14 +126,14 @@ func TestNewKVRemove(t *testing.T) {
 		t.Errorf("value = %s and err = %v, want value = %s and err = nil", v, err, val)
 	}
 
-	if err := nd.Write(val1, nd.CreatedIndex+1); err != nil {
+	if err := nd.Write(val1, nd.CreatedIndex+1, false); err != nil {
 		t.Errorf("nd.Write error = %v, want = nil", err)
 	} else {
 		if v, err := nd.Read(); v != val1 || err != nil {
 			t.Errorf("value = %s and err = %v, want value = %s and err = nil", v, err, val1)
 		}
 	}
-	if err := nd.Write(val2, nd.CreatedIndex+2); err != nil {
+	if err := nd.Write(val2, nd.CreatedIndex+2, false); err != nil {
 		t.Errorf("nd.Write error = %v, want = nil", err)
 	} else {
 		if v, err := nd.Read(); v != val2 || err != nil {
@@ -179,7 +179,7 @@ func TestNewDirReadWriteListReprClone(t *testing.T) {
 		t.Errorf("err = %v, want err != nil", err)
 	}
 
-	if err := nd.Write(val, nd.CreatedIndex+1); err == nil {
+	if err := nd.Write(val, nd.CreatedIndex+1, false); err == nil {
 		t.Errorf("err = %v, want err != nil", err)
 	}
 
@@ -233,12 +233,12 @@ func TestNewDirChild(t *testing.T) {
 }
 
 func newTestNode() *node {
-	nd := newKV(newStore(), key, val, 0, nil, time.Now().Add(expiration))
+	nd := newKV(newStore(false), key, val, 0, nil, time.Now().Add(expiration))
 	return nd
 }
 
 func newTestNodeDir() (*node, *node) {
-	s := newStore()
+	s := newStore(false)
 	nd := newDir(s, key, 0, nil, time.Now().Add(expiration))
 	cKey, cVal := "hello", "world"
 	child := newKV(s, cKey, cVal, 0, nd, time.Now().Add(expiration))

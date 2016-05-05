@@ -142,6 +142,9 @@ experimental flags:
 
 	--experimental-auto-compaction-retention '0'
 		auto compaction retention in hour. 0 means disable auto compaction.
+	
+	--experimental-update-parent-index 'false'
+		update the parent modified index on write. 
 
 profiling flags:
 	--enable-pprof 'false'

@@ -59,7 +59,7 @@ func handleImportSnap(c *cli.Context) {
 		os.Exit(1)
 	}
 
-	st := store.New()
+	st := store.New(false)
 	err = st.Recovery(d)
 
 	wg := &sync.WaitGroup{}
