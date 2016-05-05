@@ -14,22 +14,44 @@
 
 package main
 
-func getSameValue(vals map[string]int64) (int64, bool) {
-	var rv int64
-	for _, v := range vals {
-		if rv == 0 {
-			rv = v
-		}
-		if rv != v {
-			return rv, false
-		}
-	}
-	return rv, true
+import (
+	"sync"
+	"time"
+)
+
+type Status struct {
+	Since      time.Time
+	Failures   []string
+	RoundLimit int
+
+	Cluster ClusterStatus
+	cluster *cluster
+
+	mu    sync.Mutex // guards Round and Case
+	Round int
+	Case  int
 }
 
-func max(n1, n2 int64) int64 {
-	if n1 > n2 {
-		return n1
-	}
-	return n2
+func (s *Status) setRound(r int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Round = r
+}
+
+func (s *Status) getRound() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.Round
+}
+
+func (s *Status) setCase(c int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.Case = c
+}
+
+func (s *Status) getCase() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.Case
 }
