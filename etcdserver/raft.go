@@ -157,6 +157,7 @@ func (r *raftNode) start(s *EtcdServer) {
 						r.mu.Lock()
 						r.lt = time.Now()
 						r.mu.Unlock()
+						leaderChanges.Inc()
 					}
 					atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
 					if rd.RaftState == raft.StateLeader {
