@@ -20,7 +20,7 @@ var (
 	syncDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "wal",
-		Name:      "fsync_durations_seconds",
+		Name:      "fsync_duration_seconds",
 		Help:      "The latency distributions of fsync called by wal.",
 		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 14),
 	})

@@ -26,7 +26,7 @@ var (
 	proposeDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "server",
-		Name:      "proposal_durations_seconds",
+		Name:      "proposal_duration_seconds",
 		Help:      "The latency distributions of committing proposal.",
 		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
@@ -41,7 +41,7 @@ var (
 	proposeFailed = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "server",
-		Name:      "proposal_failed_total",
+		Name:      "proposals_failed_total",
 		Help:      "The total number of failed proposals.",
 	})
 )

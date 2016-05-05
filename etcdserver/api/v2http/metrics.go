@@ -48,7 +48,7 @@ var (
 		prometheus.HistogramOpts{
 			Namespace: "etcd",
 			Subsystem: "http",
-			Name:      "successful_duration_second",
+			Name:      "successful_duration_seconds",
 			Help:      "Bucketed histogram of processing time (s) of successfully handled requests (non-watches), by method (GET/PUT etc.).",
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 13),
 		}, []string{"method"})
