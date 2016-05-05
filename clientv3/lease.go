@@ -279,7 +279,6 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 
 func (l *lessor) recvKeepAliveLoop() {
 	defer func() {
-		l.stopCancel()
 		l.mu.Lock()
 		close(l.donec)
 		for _, ka := range l.keepAlives {
