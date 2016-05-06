@@ -48,7 +48,7 @@ func BenchmarkStoreSetWithJson4096Bytes(b *testing.B) {
 func BenchmarkStoreDelete(b *testing.B) {
 	b.StopTimer()
 
-	s := newStore()
+	s := newStore(false)
 	kvs, _ := generateNRandomKV(b.N, 128)
 
 	memStats := new(runtime.MemStats)
@@ -98,7 +98,7 @@ func BenchmarkStoreDelete(b *testing.B) {
 
 func BenchmarkWatch(b *testing.B) {
 	b.StopTimer()
-	s := newStore()
+	s := newStore(false)
 	kvs, _ := generateNRandomKV(b.N, 128)
 	b.StartTimer()
 
@@ -125,7 +125,7 @@ func BenchmarkWatch(b *testing.B) {
 
 func BenchmarkWatchWithSet(b *testing.B) {
 	b.StopTimer()
-	s := newStore()
+	s := newStore(false)
 	kvs, _ := generateNRandomKV(b.N, 128)
 	b.StartTimer()
 
@@ -139,7 +139,7 @@ func BenchmarkWatchWithSet(b *testing.B) {
 
 func BenchmarkWatchWithSetBatch(b *testing.B) {
 	b.StopTimer()
-	s := newStore()
+	s := newStore(false)
 	kvs, _ := generateNRandomKV(b.N, 128)
 	b.StartTimer()
 
@@ -160,7 +160,7 @@ func BenchmarkWatchWithSetBatch(b *testing.B) {
 }
 
 func BenchmarkWatchOneKey(b *testing.B) {
-	s := newStore()
+	s := newStore(false)
 	watchers := make([]Watcher, b.N)
 
 	for i := 0; i < b.N; i++ {
@@ -175,7 +175,7 @@ func BenchmarkWatchOneKey(b *testing.B) {
 }
 
 func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byte, error)) {
-	s := newStore()
+	s := newStore(false)
 	b.StopTimer()
 	kvs, size := generateNRandomKV(b.N, valueSize)
 	b.StartTimer()

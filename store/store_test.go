@@ -24,7 +24,7 @@ import (
 )
 
 func TestNewStoreWithNamespaces(t *testing.T) {
-	s := newStore("/0", "/1")
+	s := newStore(false, "/0", "/1")
 
 	_, err := s.Get("/0", false, false)
 	assert.Nil(t, err, "")
@@ -34,7 +34,7 @@ func TestNewStoreWithNamespaces(t *testing.T) {
 
 // Ensure that the store can retrieve an existing value.
 func TestStoreGetValue(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	var eidx uint64 = 1
 	e, err := s.Get("/foo", false, false)
@@ -47,7 +47,7 @@ func TestStoreGetValue(t *testing.T) {
 
 // Ensure that any TTL <= minExpireTime becomes Permanent
 func TestMinExpireTime(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := clockwork.NewFakeClock()
 	s.clock = fc
 	// FakeClock starts at 0, so minExpireTime should be far in the future.. but just in case
@@ -68,7 +68,7 @@ func TestMinExpireTime(t *testing.T) {
 // Ensure that the store can recursively retrieve a directory listing.
 // Note that hidden files should not be returned.
 func TestStoreGetDirectory(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := newFakeClock()
 	s.clock = fc
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
@@ -116,7 +116,7 @@ func TestStoreGetDirectory(t *testing.T) {
 
 // Ensure that the store can retrieve a directory in sorted order.
 func TestStoreGetSorted(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Create("/foo/x", false, "0", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Create("/foo/z", false, "0", false, TTLOptionSet{ExpireTime: Permanent})
@@ -149,7 +149,7 @@ func TestStoreGetSorted(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 
 	// Set /foo=""
 	var eidx uint64 = 1
@@ -219,7 +219,7 @@ func TestSet(t *testing.T) {
 
 // Ensure that the store can create a new key if it doesn't already exist.
 func TestStoreCreateValue(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	// Create /foo=bar
 	var eidx uint64 = 1
 	e, err := s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
@@ -252,7 +252,7 @@ func TestStoreCreateValue(t *testing.T) {
 
 // Ensure that the store can create a new directory if it doesn't already exist.
 func TestStoreCreateDirectory(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	e, err := s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	assert.Nil(t, err, "")
@@ -264,7 +264,7 @@ func TestStoreCreateDirectory(t *testing.T) {
 
 // Ensure that the store fails to create a key if it already exists.
 func TestStoreCreateFailsIfExists(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	// create /foo as dir
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 
@@ -280,7 +280,7 @@ func TestStoreCreateFailsIfExists(t *testing.T) {
 
 // Ensure that the store can update a key if it already exists.
 func TestStoreUpdateValue(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	// create /foo=bar
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	// update /foo="bzr"
@@ -328,7 +328,7 @@ func TestStoreUpdateValue(t *testing.T) {
 
 // Ensure that the store cannot update a directory.
 func TestStoreUpdateFailsIfDirectory(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.Update("/foo", "baz", TTLOptionSet{ExpireTime: Permanent})
 	err := _err.(*etcdErr.Error)
@@ -340,7 +340,7 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 
 // Ensure that the store can update the TTL on a value.
 func TestStoreUpdateValueTTL(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := newFakeClock()
 	s.clock = fc
 
@@ -359,7 +359,7 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 
 // Ensure that the store can update the TTL on a directory.
 func TestStoreUpdateDirTTL(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := newFakeClock()
 	s.clock = fc
 
@@ -382,7 +382,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 
 // Ensure that the store can delete a value.
 func TestStoreDeleteValue(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, err := s.Delete("/foo", false, false)
@@ -397,7 +397,7 @@ func TestStoreDeleteValue(t *testing.T) {
 
 // Ensure that the store can delete a directory if recursive is specified.
 func TestStoreDeleteDiretory(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	// create directory /foo
 	var eidx uint64 = 2
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
@@ -432,7 +432,7 @@ func TestStoreDeleteDiretory(t *testing.T) {
 // Ensure that the store cannot delete a directory if both of recursive
 // and dir are not specified.
 func TestStoreDeleteDiretoryFailsIfNonRecursiveAndDir(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.Delete("/foo", false, false)
 	err := _err.(*etcdErr.Error)
@@ -442,7 +442,7 @@ func TestStoreDeleteDiretoryFailsIfNonRecursiveAndDir(t *testing.T) {
 }
 
 func TestRootRdOnly(t *testing.T) {
-	s := newStore("/0")
+	s := newStore(false, "/0")
 
 	for _, tt := range []string{"/", "/0"} {
 		_, err := s.Set(tt, true, "", TTLOptionSet{ExpireTime: Permanent})
@@ -463,7 +463,7 @@ func TestRootRdOnly(t *testing.T) {
 }
 
 func TestStoreCompareAndDeletePrevValue(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, err := s.CompareAndDelete("/foo", "bar", 0)
@@ -481,7 +481,7 @@ func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 }
 
 func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.CompareAndDelete("/foo", "baz", 0)
@@ -495,7 +495,7 @@ func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
 }
 
 func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, err := s.CompareAndDelete("/foo", "", 1)
@@ -511,7 +511,7 @@ func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 }
 
 func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.CompareAndDelete("/foo", "", 100)
@@ -527,7 +527,7 @@ func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 
 // Ensure that the store cannot delete a directory.
 func TestStoreCompareAndDeleteDiretoryFail(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	_, _err := s.CompareAndDelete("/foo", "", 0)
 	assert.NotNil(t, _err, "")
@@ -537,7 +537,7 @@ func TestStoreCompareAndDeleteDiretoryFail(t *testing.T) {
 
 // Ensure that the store can conditionally update a key if it has a previous value.
 func TestStoreCompareAndSwapPrevValue(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, err := s.CompareAndSwap("/foo", "bar", 0, "baz", TTLOptionSet{ExpireTime: Permanent})
@@ -558,7 +558,7 @@ func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 
 // Ensure that the store cannot conditionally update a key if it has the wrong previous value.
 func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.CompareAndSwap("/foo", "wrong_value", 0, "baz", TTLOptionSet{ExpireTime: Permanent})
@@ -573,7 +573,7 @@ func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
 
 // Ensure that the store can conditionally update a key if it has a previous index.
 func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, err := s.CompareAndSwap("/foo", "", 1, "baz", TTLOptionSet{ExpireTime: Permanent})
@@ -595,7 +595,7 @@ func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
 
 // Ensure that the store cannot conditionally update a key if it has the wrong previous index.
 func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	e, _err := s.CompareAndSwap("/foo", "", 100, "baz", TTLOptionSet{ExpireTime: Permanent})
@@ -610,7 +610,7 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 
 // Ensure that the store can watch for key creation.
 func TestStoreWatchCreate(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 0
 	w, _ := s.Watch("/foo", false, false, 0)
 	c := w.EventChan()
@@ -627,7 +627,7 @@ func TestStoreWatchCreate(t *testing.T) {
 
 // Ensure that the store can watch for recursive key creation.
 func TestStoreWatchRecursiveCreate(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 0
 	w, _ := s.Watch("/foo", true, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
@@ -641,7 +641,7 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 
 // Ensure that the store can watch for key updates.
 func TestStoreWatchUpdate(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
@@ -656,7 +656,7 @@ func TestStoreWatchUpdate(t *testing.T) {
 
 // Ensure that the store can watch for recursive key updates.
 func TestStoreWatchRecursiveUpdate(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
@@ -671,7 +671,7 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 
 // Ensure that the store can watch for key deletions.
 func TestStoreWatchDelete(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
@@ -686,7 +686,7 @@ func TestStoreWatchDelete(t *testing.T) {
 
 // Ensure that the store can watch for recursive key deletions.
 func TestStoreWatchRecursiveDelete(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
@@ -701,7 +701,7 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 
 // Ensure that the store can watch for CAS updates.
 func TestStoreWatchCompareAndSwap(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", false, false, 0)
@@ -716,7 +716,7 @@ func TestStoreWatchCompareAndSwap(t *testing.T) {
 
 // Ensure that the store can watch for recursive CAS updates.
 func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
@@ -731,7 +731,7 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 
 // Ensure that the store can watch for key expiration.
 func TestStoreWatchExpire(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := newFakeClock()
 	s.clock = fc
 
@@ -762,7 +762,7 @@ func TestStoreWatchExpire(t *testing.T) {
 
 // Ensure that the store can watch for key expiration when refreshing.
 func TestStoreWatchExpireRefresh(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := newFakeClock()
 	s.clock = fc
 
@@ -798,7 +798,7 @@ func TestStoreWatchExpireRefresh(t *testing.T) {
 
 // Ensure that the store can watch for key expiration when refreshing with an empty value.
 func TestStoreWatchExpireEmptyRefresh(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := newFakeClock()
 	s.clock = fc
 
@@ -823,7 +823,7 @@ func TestStoreWatchExpireEmptyRefresh(t *testing.T) {
 
 // Ensure that the store can update the TTL on a value with refresh.
 func TestStoreRefresh(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := newFakeClock()
 	s.clock = fc
 
@@ -844,7 +844,7 @@ func TestStoreRefresh(t *testing.T) {
 
 // Ensure that the store can watch in streaming mode.
 func TestStoreWatchStream(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	w, _ := s.Watch("/foo", false, true, 0)
 	// first modification
@@ -870,7 +870,7 @@ func TestStoreWatchStream(t *testing.T) {
 
 // Ensure that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 4
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Create("/foo/x", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
@@ -878,7 +878,7 @@ func TestStoreRecover(t *testing.T) {
 	s.Create("/foo/y", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	b, err := s.Save()
 
-	s2 := newStore()
+	s2 := newStore(false)
 	s2.Recovery(b)
 
 	e, err := s.Get("/foo/x", false, false)
@@ -896,7 +896,7 @@ func TestStoreRecover(t *testing.T) {
 
 // Ensure that the store can recover from a previously saved state that includes an expiring key.
 func TestStoreRecoverWithExpiration(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.clock = newFakeClock()
 
 	fc := newFakeClock()
@@ -909,7 +909,7 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	s2 := newStore()
+	s2 := newStore(false)
 	s2.clock = fc
 
 	s2.Recovery(b)
@@ -929,7 +929,7 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 
 // Ensure that the store can watch for hidden keys as long as it's an exact path match.
 func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Create("/_foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
@@ -943,7 +943,7 @@ func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
 
 // Ensure that the store doesn't see hidden key creates without an exact path match in recursive mode.
 func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	w, _ := s.Watch("/foo", true, false, 0)
 	s.Create("/foo/_bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	e := nbselect(w.EventChan())
@@ -959,7 +959,7 @@ func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 
 // Ensure that the store doesn't see hidden key updates.
 func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Create("/_foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Update("/_foo", "baz", TTLOptionSet{ExpireTime: Permanent})
@@ -972,7 +972,7 @@ func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 
 // Ensure that the store doesn't see hidden key updates without an exact path match in recursive mode.
 func TestStoreWatchRecursiveUpdateWithHiddenKey(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Create("/foo/_bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
 	s.Update("/foo/_bar", "baz", TTLOptionSet{ExpireTime: Permanent})
@@ -982,7 +982,7 @@ func TestStoreWatchRecursiveUpdateWithHiddenKey(t *testing.T) {
 
 // Ensure that the store can watch for key deletions.
 func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 2
 	s.Create("/_foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/_foo", false, false, 0)
@@ -997,7 +997,7 @@ func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 
 // Ensure that the store doesn't see hidden key deletes without an exact path match in recursive mode.
 func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Create("/foo/_bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
 	w, _ := s.Watch("/foo", true, false, 0)
 	s.Delete("/foo/_bar", false, false)
@@ -1007,7 +1007,7 @@ func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
 
 // Ensure that the store doesn't see expirations of hidden keys.
 func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	fc := newFakeClock()
 	s.clock = fc
 
@@ -1031,7 +1031,7 @@ func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 
 // Ensure that the store does see hidden key creates if watching deeper than a hidden key in recursive mode.
 func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	var eidx uint64 = 1
 	w, _ := s.Watch("/_foo/bar", true, false, 0)
 	s.Create("/_foo/bar/baz", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
@@ -1051,7 +1051,7 @@ func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 // This test ensures that after closing the channel, the store can continue
 // to operate correctly.
 func TestStoreWatchSlowConsumer(t *testing.T) {
-	s := newStore()
+	s := newStore(false)
 	s.Watch("/foo", true, true, 0)                                 // stream must be true
 	s.Set("/foo", false, "1", TTLOptionSet{ExpireTime: Permanent}) // ok
 	s.Set("/foo", false, "2", TTLOptionSet{ExpireTime: Permanent}) // ok

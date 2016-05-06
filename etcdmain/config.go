@@ -123,8 +123,12 @@ type config struct {
 
 	printVersion bool
 
+	// experimental
 	autoCompactionRetention int
 
+	updateParentIndex bool
+
+	// profiling
 	enablePprof bool
 
 	ignored []string
@@ -225,8 +229,9 @@ func NewConfig() *config {
 	// version
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")
 
-	// demo flag
+	// experimental flag
 	fs.IntVar(&cfg.autoCompactionRetention, "experimental-auto-compaction-retention", 0, "Auto compaction retention in hour. 0 means disable auto compaction.")
+	fs.BoolVar(&cfg.updateParentIndex, "experimental-update-parent-index", false, "Updates the parent modified index on writes")
 
 	// backwards-compatibility with v0.4.6
 	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use --advertise-client-urls instead.")
