@@ -15,10 +15,14 @@
 package v2http
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path"
+	"sort"
 	"strings"
 	"testing"
 
@@ -43,7 +47,14 @@ type mockAuthStore struct {
 	enabled bool
 }
 
-func (s *mockAuthStore) AllUsers() ([]string, error) { return []string{"alice", "bob", "root"}, s.err }
+func (s *mockAuthStore) AllUsers() ([]string, error) {
+	var us []string
+	for u := range s.users {
+		us = append(us, u)
+	}
+	sort.Strings(us)
+	return us, s.err
+}
 func (s *mockAuthStore) GetUser(name string) (auth.User, error) {
 	u, ok := s.users[name]
 	if !ok {
@@ -67,9 +78,15 @@ func (s *mockAuthStore) UpdateUser(user auth.User) (auth.User, error) {
 func (s *mockAuthStore) AllRoles() ([]string, error) {
 	return []string{"awesome", "guest", "root"}, s.err
 }
-func (s *mockAuthStore) GetRole(name string) (auth.Role, error) { return *s.roles[name], s.err }
-func (s *mockAuthStore) CreateRole(role auth.Role) error        { return s.err }
-func (s *mockAuthStore) DeleteRole(name string) error           { return s.err }
+func (s *mockAuthStore) GetRole(name string) (auth.Role, error) {
+	r, ok := s.roles[name]
+	if ok {
+		return *r, s.err
+	}
+	return auth.Role{}, fmt.Errorf("%q does not exist (%v)", name, s.err)
+}
+func (s *mockAuthStore) CreateRole(role auth.Role) error { return s.err }
+func (s *mockAuthStore) DeleteRole(name string) error    { return s.err }
 func (s *mockAuthStore) UpdateRole(role auth.Role) (auth.Role, error) {
 	return *s.roles[role.Role], s.err
 }
@@ -358,6 +375,61 @@ func TestAuthFlow(t *testing.T) {
 		if g != tt.wbody {
 			t.Errorf("#%d: got body=%s, want %s", i, g, tt.wbody)
 		}
+	}
+}
+
+func TestGetUserGrantedWithNonexistingRole(t *testing.T) {
+	sh := &authHandler{
+		sec: &mockAuthStore{
+			users: map[string]*auth.User{
+				"root": {
+					User:  "root",
+					Roles: []string{"root", "foo"},
+				},
+			},
+			roles: map[string]*auth.Role{
+				"root": {
+					Role: "root",
+				},
+			},
+		},
+		cluster: &fakeCluster{id: 1},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(sh.baseUsers))
+	defer srv.Close()
+
+	req, err := http.NewRequest("GET", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.URL, err = url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	cli := http.DefaultClient
+	resp, err := cli.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	var uc usersCollections
+	if err := json.NewDecoder(resp.Body).Decode(&uc); err != nil {
+		t.Fatal(err)
+	}
+	if len(uc.Users) != 1 {
+		t.Fatalf("expected 1 user, got %+v", uc.Users)
+	}
+	if uc.Users[0].User != "root" {
+		t.Fatalf("expected 'root', got %q", uc.Users[0].User)
+	}
+	if len(uc.Users[0].Roles) != 1 {
+		t.Fatalf("expected 1 role, got %+v", uc.Users[0].Roles)
+	}
+	if uc.Users[0].Roles[0].Role != "root" {
+		t.Fatalf("expected 'root', got %q", uc.Users[0].Roles[0].Role)
 	}
 }
 

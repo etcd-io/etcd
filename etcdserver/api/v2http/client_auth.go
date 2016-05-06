@@ -285,6 +285,10 @@ type userWithRoles struct {
 	Roles []auth.Role `json:"roles,omitempty"`
 }
 
+type usersCollections struct {
+	Users []userWithRoles `json:"users"`
+}
+
 func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
@@ -311,9 +315,7 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var usersCollections struct {
-		Users []userWithRoles `json:"users"`
-	}
+	ucs := usersCollections{}
 	for _, userName := range users {
 		var user auth.User
 		user, err = sh.sec.GetUser(userName)
@@ -327,15 +329,14 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 			var role auth.Role
 			role, err = sh.sec.GetRole(roleName)
 			if err != nil {
-				writeError(w, r, err)
-				return
+				continue
 			}
 			uwr.Roles = append(uwr.Roles, role)
 		}
 
-		usersCollections.Users = append(usersCollections.Users, uwr)
+		ucs.Users = append(ucs.Users, uwr)
 	}
-	err = json.NewEncoder(w).Encode(usersCollections)
+	err = json.NewEncoder(w).Encode(ucs)
 
 	if err != nil {
 		plog.Warningf("baseUsers error encoding on %s", r.URL)
