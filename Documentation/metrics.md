@@ -20,9 +20,15 @@ These metrics describe the status of the etcd server. In order to detect outages
 
 All these metrics are prefixed with `etcd_server_`
 
-| Name                      | Description                       | Type    |
-|---------------------------|-----------------------------------|---------|
-| leader_changes_seen_total | The number of leader changes seen | Counter |
+| Name                      | Description                                              | Type    |
+|---------------------------|----------------------------------------------------------|---------|
+| has_leader                | Whether or not a leader exists. 1 is existence, 0 is not.| Gauge   |
+| leader_changes_seen_total | The number of leader changes seen.                       | Counter |
+
+
+`has_leader` indicates whether the member has a leader. If a member does not have a leader, it is
+totally unavailable. If all the members in the cluster do not have any leader, the entire cluster
+is totally unavailable.
 
 `leader_changes_seen_total` counts the number of leader changes the member has seen since its start. Rapid leadership changes impact the performance of etcd significantly. It also signals that the leader is unstable, perhaps due to network connectivity issues or excessive load hitting the etcd cluster.
 
