@@ -159,6 +159,13 @@ func (r *raftNode) start(s *EtcdServer) {
 						r.mu.Unlock()
 						leaderChanges.Inc()
 					}
+
+					if rd.SoftState.Lead == raft.None {
+						hasLeader.Set(0)
+					} else {
+						hasLeader.Set(1)
+					}
+
 					atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
 					if rd.RaftState == raft.StateLeader {
 						islead = true

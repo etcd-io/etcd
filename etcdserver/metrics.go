@@ -44,11 +44,19 @@ var (
 		Name:      "proposals_failed_total",
 		Help:      "The total number of failed proposals.",
 	})
+
+	// stable metrics for monitoring
+	hasLeader = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "has_leader",
+		Help:      "Whether or not a leader exists. 1 is existence, 0 is not.",
+	})
 	leaderChanges = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
 		Name:      "leader_changes_seen_total",
-		Help:      "The number of leader changes seen",
+		Help:      "The number of leader changes seen.",
 	})
 )
 
@@ -56,6 +64,7 @@ func init() {
 	prometheus.MustRegister(proposeDurations)
 	prometheus.MustRegister(proposePending)
 	prometheus.MustRegister(proposeFailed)
+	prometheus.MustRegister(hasLeader)
 	prometheus.MustRegister(leaderChanges)
 }
 
