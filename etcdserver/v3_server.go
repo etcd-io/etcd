@@ -121,7 +121,7 @@ func isTxnSerializable(r *pb.TxnRequest) bool {
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Compaction: r})
-	if r.Physical && result.physc != nil {
+	if r.Physical && result != nil && result.physc != nil {
 		<-result.physc
 		// The compaction is done deleting keys; the hash is now settled
 		// but the data is not necessarily committed. If there's a crash,
