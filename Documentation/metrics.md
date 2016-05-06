@@ -12,7 +12,19 @@ The naming of metrics follows the suggested [Prometheus best practices][promethe
 
 The metrics under the `etcd` prefix are for monitoring and alerting. They are stable high level metrics. If there is any change of these metrics, it will be included in release notes.
 
-Metrics that are etcd2 related are documented [here][v2-http-metrics].
+Metrics that are etcd2 related are documented [v2 metrics guide][v2-http-metrics].
+
+### server
+
+These metrics describe the status of the etcd server. In order to detect outages or problems for troubleshooting, the server metrics of every production etcd cluster should be closely monitored.
+
+All these metrics are prefixed with `etcd_server_`
+
+| Name                      | Description                       | Type    |
+|---------------------------|-----------------------------------|---------|
+| leader_changes_seen_total | The number of leader changes seen | Counter |
+
+`leader_changes_seen_total` counts the number of leader changes the member has seen since its start. Rapid leadership changes impact the performance of etcd significantly. It also signals that the leader is unstable, perhaps due to network connectivity issues or excessive load hitting the etcd cluster.
 
 ### gRPC requests
 
@@ -39,7 +51,7 @@ Example Prometheus queries that may be useful from these metrics (across all etc
     
  * `histogram_quantile(0.9, sum(rate(etcd_grpc_unary_requests_duration_seconds{job="etcd",grpc_method="PUT"}[5m]) ) by (le))`
     
-    Show the 0.90-tile latency (in seconds) of PUT request handling across all members, with a window of `5m`.      
+    Show the 0.90-tile latency (in seconds) of PUT request handling across all members, with a window of `5m`. 
 
 ## etcd_debugging namespace metrics
 

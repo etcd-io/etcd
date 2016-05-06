@@ -44,12 +44,19 @@ var (
 		Name:      "proposals_failed_total",
 		Help:      "The total number of failed proposals.",
 	})
+	leaderChanges = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "leader_changes_seen_total",
+		Help:      "The number of leader changes seen",
+	})
 )
 
 func init() {
 	prometheus.MustRegister(proposeDurations)
 	prometheus.MustRegister(proposePending)
 	prometheus.MustRegister(proposeFailed)
+	prometheus.MustRegister(leaderChanges)
 }
 
 func monitorFileDescriptor(done <-chan struct{}) {
