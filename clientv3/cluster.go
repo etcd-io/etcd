@@ -15,8 +15,6 @@
 package clientv3
 
 import (
-	"sync"
-
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
@@ -46,22 +44,15 @@ type Cluster interface {
 }
 
 type cluster struct {
-	c *Client
-
-	mu     sync.Mutex
-	conn   *grpc.ClientConn // conn in-use
+	rc     *remoteClient
 	remote pb.ClusterClient
 }
 
 func NewCluster(c *Client) Cluster {
-	conn := c.ActiveConnection()
-
-	return &cluster{
-		c: c,
-
-		conn:   conn,
-		remote: pb.NewClusterClient(conn),
-	}
+	ret := &cluster{}
+	f := func(conn *grpc.ClientConn) { ret.remote = pb.NewClusterClient(conn) }
+	ret.rc = newRemoteClient(c, f)
+	return ret
 }
 
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
@@ -75,7 +66,7 @@ func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAdd
 		return nil, rpctypes.Error(err)
 	}
 
-	go c.switchRemote(err)
+	c.rc.reconnect(err)
 	return nil, rpctypes.Error(err)
 }
 
@@ -90,7 +81,7 @@ func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveRes
 		return nil, rpctypes.Error(err)
 	}
 
-	go c.switchRemote(err)
+	c.rc.reconnect(err)
 	return nil, rpctypes.Error(err)
 }
 
@@ -107,8 +98,7 @@ func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []strin
 			return nil, rpctypes.Error(err)
 		}
 
-		err = c.switchRemote(err)
-		if err != nil {
+		if err = c.rc.reconnectWait(ctx, err); err != nil {
 			return nil, rpctypes.Error(err)
 		}
 	}
@@ -126,30 +116,14 @@ func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 			return nil, rpctypes.Error(err)
 		}
 
-		err = c.switchRemote(err)
-		if err != nil {
+		if err = c.rc.reconnectWait(ctx, err); err != nil {
 			return nil, rpctypes.Error(err)
 		}
 	}
 }
 
 func (c *cluster) getRemote() pb.ClusterClient {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+	c.rc.mu.Lock()
+	defer c.rc.mu.Unlock()
 	return c.remote
-}
-
-func (c *cluster) switchRemote(prevErr error) error {
-	newConn, err := c.c.retryConnection(c.conn, prevErr)
-	if err != nil {
-		return err
-	}
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.conn = newConn
-	c.remote = pb.NewClusterClient(c.conn)
-	return nil
 }
