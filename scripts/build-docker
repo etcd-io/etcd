@@ -10,6 +10,7 @@ cp ${BINARYDIR}/etcd ${BINARYDIR}/etcdctl ${IMAGEDIR}
 
 cat <<DF > ${IMAGEDIR}/Dockerfile
 FROM scratch
+USER 2379
 ADD etcd /
 ADD etcdctl /
 EXPOSE 4001 7001 2379 2380

@@ -1,2 +1,3 @@
 FROM golang:onbuild
+USER 2379
 EXPOSE 4001 7001 2379 2380
