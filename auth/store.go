@@ -47,6 +47,9 @@ type AuthStore interface {
 	// AuthEnable turns on the authentication feature
 	AuthEnable()
 
+	// AuthDisable turns off the authentication feature
+	AuthDisable()
+
 	// Authenticate does authentication based on given user name and password,
 	// and returns a token for successful case.
 	// Note that the generated token is valid only for the member the client
@@ -90,6 +93,19 @@ func (as *authStore) AuthEnable() {
 	b.ForceCommit()
 
 	plog.Noticef("Authentication enabled")
+}
+
+func (as *authStore) AuthDisable() {
+	value := []byte{0}
+
+	b := as.be
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafePut(authBucketName, enableFlagKey, value)
+	tx.Unlock()
+	b.ForceCommit()
+
+	plog.Noticef("Authentication disabled")
 }
 
 func (as *authStore) Authenticate(name string, password string) (*pb.AuthenticateResponse, error) {

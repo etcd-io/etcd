@@ -54,6 +54,7 @@ type applierV3 interface {
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 	AuthEnable() (*pb.AuthEnableResponse, error)
+	AuthDisable() (*pb.AuthDisableResponse, error)
 	Authenticate(r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error)
 	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
@@ -88,6 +89,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.Alarm(r.Alarm)
 	case r.AuthEnable != nil:
 		ar.resp, ar.err = s.applyV3.AuthEnable()
+	case r.AuthDisable != nil:
+		ar.resp, ar.err = s.applyV3.AuthDisable()
 	case r.Authenticate != nil:
 		ar.resp, ar.err = s.applyV3.Authenticate(r.Authenticate)
 	case r.AuthUserAdd != nil:
@@ -493,6 +496,11 @@ func (a *applierV3Capped) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRe
 func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
 	a.s.AuthStore().AuthEnable()
 	return &pb.AuthEnableResponse{}, nil
+}
+
+func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
+	a.s.AuthStore().AuthDisable()
+	return &pb.AuthDisableResponse{}, nil
 }
 
 func (a *applierV3backend) Authenticate(r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
