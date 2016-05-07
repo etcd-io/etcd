@@ -53,6 +53,7 @@ func monitorProbingStatus(s probing.Status, id string) {
 			if s.ClockDiff() > time.Second {
 				plog.Warningf("the clock difference against peer %s is too high [%v > %v]", id, s.ClockDiff(), time.Second)
 			}
+			rtts.WithLabelValues(id).Observe(s.SRTT().Seconds())
 		case <-s.StopNotify():
 			return
 		}

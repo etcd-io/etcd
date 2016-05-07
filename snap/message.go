@@ -31,13 +31,15 @@ import (
 type Message struct {
 	raftpb.Message
 	ReadCloser io.ReadCloser
+	TotalSize  int64
 	closeC     chan bool
 }
 
-func NewMessage(rs raftpb.Message, rc io.ReadCloser) *Message {
+func NewMessage(rs raftpb.Message, rc io.ReadCloser, rcSize int64) *Message {
 	return &Message{
 		Message:    rs,
 		ReadCloser: rc,
+		TotalSize:  int64(rs.Size()) + rcSize,
 		closeC:     make(chan bool, 1),
 	}
 }

@@ -26,10 +26,10 @@ import (
 
 // SaveDBFrom saves snapshot of the database from the given reader. It
 // guarantees the save operation is atomic.
-func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) error {
+func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 	f, err := ioutil.TempFile(s.dir, "tmp")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	var n int64
 	n, err = io.Copy(f, r)
@@ -39,22 +39,22 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) error {
 	f.Close()
 	if err != nil {
 		os.Remove(f.Name())
-		return err
+		return n, err
 	}
 	fn := path.Join(s.dir, fmt.Sprintf("%016x.snap.db", id))
 	if fileutil.Exist(fn) {
 		os.Remove(f.Name())
-		return nil
+		return n, nil
 	}
 	err = os.Rename(f.Name(), fn)
 	if err != nil {
 		os.Remove(f.Name())
-		return err
+		return n, err
 	}
 
 	plog.Infof("saved database snapshot to disk [total bytes: %d]", n)
 
-	return nil
+	return n, nil
 }
 
 // DBFilePath returns the file path for the snapshot of the database with
