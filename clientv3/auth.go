@@ -27,6 +27,7 @@ import (
 
 type (
 	AuthEnableResponse             pb.AuthEnableResponse
+	AuthDisableResponse            pb.AuthDisableResponse
 	AuthenticateResponse           pb.AuthenticateResponse
 	AuthUserAddResponse            pb.AuthUserAddResponse
 	AuthUserDeleteResponse         pb.AuthUserDeleteResponse
@@ -47,6 +48,9 @@ const (
 type Auth interface {
 	// AuthEnable enables auth of an etcd cluster.
 	AuthEnable(ctx context.Context) (*AuthEnableResponse, error)
+
+	// AuthDisable disables auth of an etcd cluster.
+	AuthDisable(ctx context.Context) (*AuthDisableResponse, error)
 
 	// Authenticate does authenticate with given user name and password.
 	Authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error)
@@ -89,6 +93,11 @@ func NewAuth(c *Client) Auth {
 func (auth *auth) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
 	resp, err := auth.remote.AuthEnable(ctx, &pb.AuthEnableRequest{})
 	return (*AuthEnableResponse)(resp), rpctypes.Error(err)
+}
+
+func (auth *auth) AuthDisable(ctx context.Context) (*AuthDisableResponse, error) {
+	resp, err := auth.remote.AuthDisable(ctx, &pb.AuthDisableRequest{})
+	return (*AuthDisableResponse)(resp), rpctypes.Error(err)
 }
 
 func (auth *auth) Authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error) {

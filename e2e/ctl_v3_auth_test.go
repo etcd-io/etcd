@@ -16,9 +16,8 @@ package e2e
 
 import "testing"
 
-func TestCtlV3AuthEnable(t *testing.T) { testCtl(t, authEnableTest) }
-
-// TODO: test auth disable
+func TestCtlV3AuthEnable(t *testing.T)  { testCtl(t, authEnableTest) }
+func TestCtlV3AuthDisable(t *testing.T) { testCtl(t, authDisableTest) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := ctlV3AuthEnable(cx); err != nil {
@@ -29,4 +28,15 @@ func authEnableTest(cx ctlCtx) {
 func ctlV3AuthEnable(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "enable")
 	return spawnWithExpect(cmdArgs, "Authentication Enabled")
+}
+
+func authDisableTest(cx ctlCtx) {
+	if err := ctlV3AuthDisable(cx); err != nil {
+		cx.t.Fatalf("authDisableTest ctlV3AuthDisable error (%v)", err)
+	}
+}
+
+func ctlV3AuthDisable(cx ctlCtx) error {
+	cmdArgs := append(cx.PrefixArgs(), "auth", "disable")
+	return spawnWithExpect(cmdArgs, "Authentication Disabled")
 }

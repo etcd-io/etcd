@@ -37,8 +37,11 @@ func (as *AuthServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (
 }
 
 func (as *AuthServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
-	plog.Info("not implemented yet")
-	return nil, nil
+	resp, err := as.authenticator.AuthDisable(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
 }
 
 func (as *AuthServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
