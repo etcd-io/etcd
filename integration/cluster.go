@@ -547,8 +547,10 @@ func (m *member) Clone(t *testing.T) *member {
 	}
 	mm.InitialClusterToken = m.InitialClusterToken
 	mm.ElectionTicks = m.ElectionTicks
+	mm.TickMs = m.TickMs
 	mm.PeerTLSInfo = m.PeerTLSInfo
 	mm.ClientTLSInfo = m.ClientTLSInfo
+	mm.QuotaBackendBytes = m.QuotaBackendBytes
 	return mm
 }
 
