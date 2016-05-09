@@ -40,6 +40,20 @@ func NewURLsMap(s string) (URLsMap, error) {
 	return cl, nil
 }
 
+// NewURLsMapFromStringMap takes a map of strings and returns a URLsMap. The
+// string values in the map can be multiple values separated by the sep string.
+func NewURLsMapFromStringMap(m map[string]string, sep string) (URLsMap, error) {
+	var err error
+	um := URLsMap{}
+	for k, v := range m {
+		um[k], err = NewURLs(strings.Split(v, sep))
+		if err != nil {
+			return nil, err
+		}
+	}
+	return um, nil
+}
+
 // String turns URLsMap into discovery-formatted name-to-URLs sorted by name.
 func (c URLsMap) String() string {
 	var pairs []string
