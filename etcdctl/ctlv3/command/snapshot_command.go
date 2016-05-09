@@ -76,7 +76,10 @@ func newSnapshotStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status <filename>",
 		Short: "status gets backend snapshot status of a given file.",
-		Run:   snapshotStatusCommandFunc,
+		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
+The items in the lists are hash, revision, total keys, total size.
+`,
+		Run: snapshotStatusCommandFunc,
 	}
 }
 
