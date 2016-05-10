@@ -156,7 +156,13 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		CertFile: certfile,
 		KeyFile:  keyfile,
 	}
-	return transport.NewTransport(tls, defaultDialTimeout)
+
+	dialTimeout := defaultDialTimeout
+	totalTimeout := c.GlobalDuration("total-timeout")
+	if totalTimeout != 0 && totalTimeout < dialTimeout {
+		dialTimeout = totalTimeout
+	}
+	return transport.NewTransport(tls, dialTimeout)
 }
 
 func getUsernamePasswordFromFlag(usernameFlag string) (username string, password string, err error) {
@@ -203,7 +209,7 @@ func mustNewClient(c *cli.Context) client.Client {
 		if debug {
 			fmt.Fprintf(os.Stderr, "start to sync cluster using endpoints(%s)\n", strings.Join(hc.Endpoints(), ","))
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+		ctx, cancel := contextWithTotalTimeout(c)
 		err := hc.Sync(ctx)
 		cancel()
 		if err != nil {
