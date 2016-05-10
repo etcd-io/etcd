@@ -178,10 +178,9 @@ func Main() {
 	if systemdutil.IsRunningSystemd() {
 		// At this point, the initialization of etcd is done.
 		// The listeners are listening on the TCP ports and ready
-		// for accepting connections.
-		// The http server is probably ready for serving incoming
-		// connections. If it is not, the connection might be pending
-		// for less than one second.
+		// for accepting connections. The etcd instance should be
+		// joined with the cluster and ready to serve incoming
+		// connections.
 		err := daemon.SdNotify("READY=1")
 		if err != nil {
 			plog.Errorf("failed to notify systemd for readiness: %v", err)
@@ -397,6 +396,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		}(sctx)
 	}
 
+	<-s.ReadyNotify()
 	return s.StopNotify(), nil
 }
 
