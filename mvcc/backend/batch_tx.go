@@ -19,6 +19,7 @@ import (
 	"log"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/boltdb/bolt"
 )
@@ -165,7 +166,9 @@ func (t *batchTx) commit(stop bool) {
 			atomic.StoreInt64(&t.backend.size, t.tx.Size())
 			return
 		}
+		start := time.Now()
 		err = t.tx.Commit()
+		commitDurations.Observe(time.Since(start).Seconds())
 		atomic.AddInt64(&t.backend.commits, 1)
 
 		t.pending = 0

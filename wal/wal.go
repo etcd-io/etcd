@@ -307,7 +307,6 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		// create encoder (chain crc with the decoder), enable appending
 		_, err = w.tail().Seek(w.decoder.lastOffset(), os.SEEK_SET)
 		w.encoder = newEncoder(w.tail(), w.decoder.lastCRC())
-		lastIndexSaved.Set(float64(w.enti))
 	}
 	w.decoder = nil
 
@@ -390,7 +389,7 @@ func (w *WAL) sync() error {
 	}
 	start := time.Now()
 	err := fileutil.Fdatasync(w.tail().File)
-	syncDurations.Observe(float64(time.Since(start)) / float64(time.Second))
+	syncDurations.Observe(time.Since(start).Seconds())
 	return err
 }
 
@@ -471,7 +470,6 @@ func (w *WAL) saveEntry(e *raftpb.Entry) error {
 		return err
 	}
 	w.enti = e.Index
-	lastIndexSaved.Set(float64(w.enti))
 	return nil
 }
 
@@ -534,7 +532,6 @@ func (w *WAL) SaveSnapshot(e walpb.Snapshot) error {
 	if w.enti < e.Index {
 		w.enti = e.Index
 	}
-	lastIndexSaved.Set(float64(w.enti))
 	return w.sync()
 }
 

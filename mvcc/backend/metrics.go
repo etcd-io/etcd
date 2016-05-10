@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wal
+package backend
 
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
-	syncDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
+	commitDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "disk",
-		Name:      "wal_fsync_duration_seconds",
-		Help:      "The latency distributions of fsync called by wal.",
+		Name:      "backend_commit_duration_seconds",
+		Help:      "The latency distributions of commit called by backend.",
 		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 14),
 	})
 )
 
 func init() {
-	prometheus.MustRegister(syncDurations)
+	prometheus.MustRegister(commitDurations)
 }
