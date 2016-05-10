@@ -226,6 +226,10 @@ func (r *raftNode) start(s *EtcdServer) {
 				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
 					plog.Fatalf("raft save state and entries error: %v", err)
 				}
+				if !raft.IsEmptyHardState(rd.HardState) {
+					proposalsCommitted.Set(float64(rd.HardState.Commit))
+				}
+
 				r.raftStorage.Append(rd.Entries)
 
 				if !islead {
