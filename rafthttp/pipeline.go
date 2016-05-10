@@ -96,7 +96,6 @@ func (p *pipeline) handle() {
 			if err != nil {
 				p.status.deactivate(failureType{source: pipelineMsg, action: "write"}, err.Error())
 
-				reportSentFailure(pipelineMsg, m)
 				if m.Type == raftpb.MsgApp && p.fs != nil {
 					p.fs.Fail()
 				}
@@ -114,7 +113,7 @@ func (p *pipeline) handle() {
 			if isMsgSnap(m) {
 				p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
 			}
-			reportSentDuration(pipelineMsg, m, time.Since(start))
+			sentBytes.WithLabelValues(types.ID(m.To).String()).Add(float64(m.Size()))
 		case <-p.stopc:
 			return
 		}

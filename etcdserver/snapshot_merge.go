@@ -39,8 +39,9 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapi uint64,
 		plog.Panicf("store save should never fail: %v", err)
 	}
 
+	dbsnap := s.be.Snapshot()
 	// get a snapshot of v3 KV as readCloser
-	rc := newSnapshotReaderCloser(s.be.Snapshot())
+	rc := newSnapshotReaderCloser(dbsnap)
 
 	// put the []byte snapshot of store into raft snapshot and return the merged snapshot with
 	// KV readCloser snapshot.
@@ -54,7 +55,7 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapi uint64,
 	}
 	m.Snapshot = snapshot
 
-	return *snap.NewMessage(m, rc)
+	return *snap.NewMessage(m, rc, dbsnap.Size())
 }
 
 func newSnapshotReaderCloser(snapshot backend.Snapshot) io.ReadCloser {

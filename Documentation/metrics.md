@@ -32,6 +32,22 @@ is totally unavailable.
 
 `leader_changes_seen_total` counts the number of leader changes the member has seen since its start. Rapid leadership changes impact the performance of etcd significantly. It also signals that the leader is unstable, perhaps due to network connectivity issues or excessive load hitting the etcd cluster.
 
+### network
+
+These metrics describe the status of the network.
+
+All these metrics are prefixed with `etcd_network_`
+
+| Name                      | Description                                                        | Type          |
+|---------------------------|--------------------------------------------------------------------|---------------|
+| sent_bytes_total          | The total number of bytes sent to the member with ID `TO`.         | Counter(To)   |
+| received_bytes_total      | The total number of bytes received from the member with ID `From`. | Counter(From) |
+| round_trip_time_seconds   | Round-Trip-Time histogram between members.                         | Histogram(To) |
+
+`sent_bytes_total` counts the total number of bytes sent to a specific member. Usually the leader member sends more data than other members since it is responsible for transmitting replicated data.
+
+`received_bytes_total` counts the total number of bytes received from a specific member. Usually follower members receive data only from the leader member.
+
 ### gRPC requests
 
 These metrics describe the requests served by a specific etcd member: total received requests, total failed requests, and processing latency. They are useful for tracking user-generated traffic hitting the etcd cluster.
@@ -93,24 +109,6 @@ Abnormally high fsync duration (`fsync_duration_seconds`) indicates disk issues 
 | snapshot_save_total_duration_seconds      | The total latency distributions of save called by snapshot | Histogram |
 
 Abnormally high snapshot duration (`snapshot_save_total_duration_seconds`) indicates disk issues and might cause the cluster to be unstable.
-
-### rafthttp
-
-| Name                              | Description                                | Type         | Labels                         |
-|-----------------------------------|--------------------------------------------|--------------|--------------------------------|
-| message_sent_latency_seconds      | The latency distributions of messages sent | HistogramVec | sendingType, msgType, remoteID |
-| message_sent_failed_total         | The total number of failed messages sent   | Summary      | sendingType, msgType, remoteID |
-
-
-Abnormally high message duration (`message_sent_latency_seconds`) indicates network issues and might cause the cluster to be unstable.
-
-An increase in message failures (`message_sent_failed_total`) indicates more severe network issues and might cause the cluster to be unstable.
-
-Label `sendingType` is the connection type to send messages. `message`, `msgapp` and `msgappv2` use HTTP streaming, while `pipeline` does HTTP request for each message.
-
-Label `msgType` is the type of raft message. `MsgApp` is log replication messages; `MsgSnap` is snapshot install messages; `MsgProp` is proposal forward messages; the others maintain internal raft status. Given large snapshots, a lengthy msgSnap transmission latency should be expected. For other types of messages, given enough network bandwidth, latencies comparable to ping latency should be expected.
-
-Label `remoteID` is the member ID of the message destination.
 
 ## Prometheus supplied metrics
 

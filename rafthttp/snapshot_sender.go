@@ -65,8 +65,6 @@ func (s *snapshotSender) stop() { close(s.stopc) }
 func (s *snapshotSender) send(merged snap.Message) {
 	m := merged.Message
 
-	start := time.Now()
-
 	body := createSnapBody(merged)
 	defer body.Close()
 
@@ -87,7 +85,6 @@ func (s *snapshotSender) send(merged snap.Message) {
 		}
 
 		s.picker.unreachable(u)
-		reportSentFailure(sendSnap, m)
 		s.status.deactivate(failureType{source: sendSnap, action: "post"}, err.Error())
 		s.r.ReportUnreachable(m.To)
 		// report SnapshotFailure to raft state machine. After raft state
@@ -96,10 +93,11 @@ func (s *snapshotSender) send(merged snap.Message) {
 		s.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 		return
 	}
-	reportSentDuration(sendSnap, m, time.Since(start))
 	s.status.activate()
 	s.r.ReportSnapshot(m.To, raft.SnapshotFinish)
 	plog.Infof("database snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
+
+	sentBytes.WithLabelValues(types.ID(m.To).String()).Add(float64(merged.TotalSize))
 }
 
 // post posts the given request.

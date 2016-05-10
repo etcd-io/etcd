@@ -139,40 +139,42 @@ func (cw *streamWriter) run() {
 		batched    int
 	)
 	tickc := time.Tick(ConnReadTimeout / 3)
+	unflushed := 0
 
 	for {
 		select {
 		case <-heartbeatc:
-			start := time.Now()
 			err := enc.encode(linkHeartbeatMessage)
+			unflushed += linkHeartbeatMessage.Size()
 			if err == nil {
 				flusher.Flush()
 				batched = 0
-				reportSentDuration(string(t), linkHeartbeatMessage, time.Since(start))
+				sentBytes.WithLabelValues(cw.id.String()).Add(float64(unflushed))
+				unflushed = 0
 				continue
 			}
 
-			reportSentFailure(string(t), linkHeartbeatMessage)
 			cw.status.deactivate(failureType{source: t.String(), action: "heartbeat"}, err.Error())
 			cw.close()
 			heartbeatc, msgc = nil, nil
 
 		case m := <-msgc:
-			start := time.Now()
 			err := enc.encode(m)
 			if err == nil {
+				unflushed += m.Size()
+
 				if len(msgc) == 0 || batched > streamBufSize/2 {
 					flusher.Flush()
+					sentBytes.WithLabelValues(cw.id.String()).Add(float64(unflushed))
+					unflushed = 0
 					batched = 0
 				} else {
 					batched++
 				}
 
-				reportSentDuration(string(t), m, time.Since(start))
 				continue
 			}
 
-			reportSentFailure(string(t), m)
 			cw.status.deactivate(failureType{source: t.String(), action: "write"}, err.Error())
 			cw.close()
 			heartbeatc, msgc = nil, nil
@@ -190,6 +192,7 @@ func (cw *streamWriter) run() {
 				plog.Panicf("unhandled stream type %s", conn.t)
 			}
 			flusher = conn.Flusher
+			unflushed = 0
 			cw.mu.Lock()
 			cw.status.activate()
 			cw.closer = conn.Closer
@@ -331,6 +334,8 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			cr.mu.Unlock()
 			return err
 		}
+
+		receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(m.Size()))
 
 		cr.mu.Lock()
 		paused := cr.paused
