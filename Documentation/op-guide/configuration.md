@@ -266,6 +266,10 @@ Follow the instructions when using these flags.
 + Print the version and exit.
 + default: false
 
+### --config-file
++ Load server configuration from a file.
++ default: none
+
 ## Profiling flags
 
 ### --enable-pprof
