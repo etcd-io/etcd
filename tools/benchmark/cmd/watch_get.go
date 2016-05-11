@@ -48,6 +48,7 @@ func init() {
 
 func watchGetFunc(cmd *cobra.Command, args []string) {
 	clients := mustCreateClients(totalClients, totalConns)
+	getClient := mustCreateClients(1, 1)
 
 	// setup keys for watchers
 	watchRev := int64(0)
@@ -78,7 +79,7 @@ func watchGetFunc(cmd *cobra.Command, args []string) {
 	wg.Add(len(streams))
 	ctx, cancel := context.WithCancel(context.TODO())
 	f := func() {
-		doSerializedGet(ctx, clients[0], results)
+		doSerializedGet(ctx, getClient[0], results)
 	}
 	for i := range streams {
 		go doUnsyncWatch(streams[i], watchRev, f)
