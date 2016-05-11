@@ -5,7 +5,7 @@ usage:
 ```
   -iface="eth0": interface for sniffing traffic on
   -period=1: seconds between submissions
-  -ports="2379,4001": etcd listening ports
+  -ports="2379": etcd listening ports
   -promiscuous=true: whether to perform promiscuous sniffing or not.
   -topk=10: submit stats for the top <K> sniffed paths
 ```

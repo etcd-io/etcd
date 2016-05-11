@@ -256,17 +256,17 @@ DNS [SRV records][rfc-srv] can be used as a discovery mechanism.
 The `-discovery-srv` flag can be used to set the DNS domain name where the discovery SRV records can be found.
 The following DNS SRV records are looked up in the listed order:
 
-* _etcd-server-ssl._tcp.example.com
+* _etcd-server-tls._tcp.example.com
 * _etcd-server._tcp.example.com
 
-If `_etcd-server-ssl._tcp.example.com` is found then etcd will attempt the bootstrapping process over SSL.
+If `_etcd-server-tls._tcp.example.com` is found then etcd will attempt the bootstrapping process over TLS.
 
 To help clients discover the etcd cluster, the following DNS SRV records are looked up in the listed order:
 
 * _etcd-client._tcp.example.com
-* _etcd-client-ssl._tcp.example.com
+* _etcd-client-tls._tcp.example.com
 
-If `_etcd-client-ssl._tcp.example.com` is found, clients will attempt to communicate with the etcd cluster over SSL.
+If `_etcd-client-tls._tcp.example.com` is found, clients will attempt to communicate with the etcd cluster over TLS.
 
 #### Create DNS SRV records
 

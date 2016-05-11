@@ -46,10 +46,10 @@ const (
 	clusterStateFlagExisting = "existing"
 
 	defaultName                     = "default"
-	defaultInitialAdvertisePeerURLs = "http://localhost:2380,http://localhost:7001"
-	defaultAdvertiseClientURLs      = "http://localhost:2379,http://localhost:4001"
-	defaultListenPeerURLs           = "http://localhost:2380,http://localhost:7001"
-	defaultListenClientURLs         = "http://localhost:2379,http://localhost:4001"
+	defaultInitialAdvertisePeerURLs = "http://localhost:2380"
+	defaultAdvertiseClientURLs      = "http://localhost:2379"
+	defaultListenPeerURLs           = "http://localhost:2380"
+	defaultListenClientURLs         = "http://localhost:2379"
 
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
@@ -471,7 +471,7 @@ func initialClusterFromName(name string) string {
 	if name == "" {
 		n = defaultName
 	}
-	return fmt.Sprintf("%s=http://localhost:2380,%s=http://localhost:7001", n, n)
+	return fmt.Sprintf("%s=http://localhost:2380", n)
 }
 
 func (cfg config) isNewCluster() bool          { return cfg.clusterState.String() == clusterStateFlagNew }

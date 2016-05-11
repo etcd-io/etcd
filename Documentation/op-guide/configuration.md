@@ -2,9 +2,9 @@
 
 etcd is configurable through command-line flags and environment variables. Options set on the command line take precedence over those from the environment.
 
-The format of environment variable for flag `--my-flag` is `ETCD_MY_FLAG`. It applies to all  flags.
+The format of environment variable for flag `--my-flag` is `ETCD_MY_FLAG`. It applies to all flags.
 
-The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication. Some legacy code and documentation still references ports 4001 and 7001, but all new etcd use and discussion should adopt the assigned ports.
+The [official etcd ports][iana-ports] are 2379 for client requests and 2380 for peer communication. The etcd ports can be set to accept TLS traffic, non-TLS traffic, or both TLS and non-TLS traffic.
 
 To start etcd automatically using custom settings at startup in Linux, using a [systemd][systemd-intro] unit is highly recommended.
 
@@ -16,7 +16,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + Human-readable name for this member.
 + default: "default"
 + env variable: ETCD_NAME
-+ This value is referenced as this node's own entries listed in the `--initial-cluster` flag (Ex: `default=http://localhost:2380` or `default=http://localhost:2380,default=http://localhost:7001`). This needs to match the key used in the flag if you're using [static bootstrapping][build-cluster]. When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
++ This value is referenced as this node's own entries listed in the `--initial-cluster` flag (e.g., `default=http://localhost:2380`). This needs to match the key used in the flag if you're using [static bootstrapping][build-cluster]. When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
 
 ### --data-dir
 + Path to the data directory.
@@ -45,14 +45,14 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --listen-peer-urls
 + List of URLs to listen on for peer traffic. This flag tells the etcd to accept incoming requests from its peers on the specified scheme://IP:port combinations. Scheme can be either http or https.If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces. If an IP address is given as well as a port, etcd will listen on the given port and interface. Multiple URLs may be used to specify a number of addresses and ports to listen on. The etcd will respond to requests from any of the listed addresses and ports.
-+ default: "http://localhost:2380,http://localhost:7001"
++ default: "http://localhost:2380"
 + env variable: ETCD_LISTEN_PEER_URLS
 + example: "http://10.0.0.1:2380"
 + invalid example: "http://example.com:2380" (domain name is invalid for binding)
 
 ### --listen-client-urls
 + List of URLs to listen on for client traffic. This flag tells the etcd to accept incoming requests from the clients on the specified scheme://IP:port combinations. Scheme can be either http or https. If 0.0.0.0 is specified as the IP, etcd listens to the given port on all interfaces. If an IP address is given as well as a port, etcd will listen on the given port and interface. Multiple URLs may be used to specify a number of addresses and ports to listen on. The etcd will respond to requests from any of the listed addresses and ports.
-+ default: "http://localhost:2379,http://localhost:4001"
++ default: "http://localhost:2379"
 + env variable: ETCD_LISTEN_CLIENT_URLS
 + example: "http://10.0.0.1:2379"
 + invalid example: "http://example.com:2379" (domain name is invalid for binding)
@@ -83,13 +83,13 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 ### --initial-advertise-peer-urls
 
 + List of this member's peer URLs to advertise to the rest of the cluster. These addresses are used for communicating etcd data around the cluster. At least one must be routable to all cluster members. These URLs can contain domain names.
-+ default: "http://localhost:2380,http://localhost:7001"
++ default: "http://localhost:2380"
 + env variable: ETCD_INITIAL_ADVERTISE_PEER_URLS
 + example: "http://example.com:2380, http://10.0.0.1:2380"
 
 ### --initial-cluster
 + Initial cluster configuration for bootstrapping.
-+ default: "default=http://localhost:2380,default=http://localhost:7001"
++ default: "default=http://localhost:2380"
 + env variable: ETCD_INITIAL_CLUSTER
 + The key is the value of the `--name` flag for each node provided. The default uses `default` for the key because this is the default for the `--name` flag.
 
@@ -107,7 +107,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --advertise-client-urls
 + List of this member's client URLs to advertise to the rest of the cluster. These URLs can contain domain names.
-+ default: "http://localhost:2379,http://localhost:4001"
++ default: "http://localhost:2379"
 + env variable: ETCD_ADVERTISE_CLIENT_URLS
 + example: "http://example.com:2379, http://10.0.0.1:2379"
 + Be careful if you are advertising URLs such as http://localhost:2379 from a cluster member and are using the proxy feature of etcd. This will cause loops, because the proxy will be forwarding requests to itself until its resources (memory, file descriptors) are eventually depleted.

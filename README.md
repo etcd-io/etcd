@@ -14,7 +14,7 @@
 etcd is a distributed, consistent key-value store for shared configuration and service discovery, with a focus on being:
 
 * *Simple*: well-defined, user-facing API (gRPC)
-* *Secure*: optional SSL client cert authentication
+* *Secure*: automatic TLS with optional client cert authentication
 * *Fast*: benchmarked 1000s of writes/s per instance
 * *Reliable*: properly distributed using Raft
 

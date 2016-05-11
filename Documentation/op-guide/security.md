@@ -1,6 +1,6 @@
 # Security Model
 
-etcd supports SSL/TLS as well as authentication through client certificates, both for clients to server as well as peer (server to server / cluster) communication.
+etcd supports automatic TLS as well as authentication through client certificates for both clients to server as well as peer (server to server / cluster) communication.
 
 To get up and running you first need to have a CA certificate and a signed key pair for one member. It is recommended to create and sign a new key pair for every member in a cluster.
 
@@ -52,7 +52,7 @@ This should start up fine and you can now test the configuration by speaking HTT
 $ curl --cacert /path/to/ca.crt https://127.0.0.1:2379/v2/keys/foo -XPUT -d value=bar -v
 ```
 
-You should be able to see the handshake succeed. Because we use self-signed certificates with our own certificate authorities you need to provide the CA to curl using the `--cacert` option. Another possibility would be to add your CA certificate to the trusted certificates on your system (usually in `/etc/ssl/certs`).
+You should be able to see the handshake succeed. Because we use self-signed certificates with our own certificate authorities you need to provide the CA to curl using the `--cacert` option. Another possibility would be to add your CA certificate to the trusted certificates on your system (usually in `/etc/pki/tls/certs` or `/etc/ssl/certs`).
 
 **OSX 10.9+ Users**: curl 7.30.0 on OSX 10.9+ doesn't understand certificates passed in on the command line.
 Instead you must import the dummy ca.crt directly into the keychain or add the `-k` flag to curl to ignore errors.
@@ -153,14 +153,7 @@ When client authentication is enabled for an etcd member, the administrator must
 
 ## Frequently Asked Questions
 
-### My cluster is not working with peer tls configuration?
-
-The internal protocol of etcd v2.0.x uses a lot of short-lived HTTP connections.
-So, when enabling TLS you may need to increase the heartbeat interval and election timeouts to reduce internal cluster connection churn.
-A reasonable place to start are these values: ` --heartbeat-interval 500 --election-timeout 2500`.
-These issues are resolved in the etcd v2.1.x series of releases which uses fewer connections.
-
-### I'm seeing a SSLv3 alert handshake failure when using SSL client authentication?
+### I'm seeing a SSLv3 alert handshake failure when using TLS client authentication?
 
 The `crypto/tls` package of `golang` checks the key usage of the certificate public key before using it.
 To use the certificate public key to do client auth, we need to add `clientAuth` to `Extended Key Usage` when creating the certificate public key.

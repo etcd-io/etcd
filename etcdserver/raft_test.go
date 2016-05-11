@@ -74,7 +74,7 @@ func TestGetIDs(t *testing.T) {
 func TestCreateConfigChangeEnts(t *testing.T) {
 	m := membership.Member{
 		ID:             types.ID(1),
-		RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:7001", "http://localhost:2380"}},
+		RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:2380"}},
 	}
 	ctx, err := json.Marshal(m)
 	if err != nil {

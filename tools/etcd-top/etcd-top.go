@@ -146,7 +146,7 @@ func streamRouter(ports []uint16, parsedPackets chan *pcap.Packet, processors []
 // 4. open the pcap handler
 // 5. hand off packets from the handler to the decoder
 func main() {
-	portsArg := flag.String("ports", "2379,4001", "etcd listening ports")
+	portsArg := flag.String("ports", "2379", "etcd listening ports")
 	iface := flag.String("iface", "eth0", "interface for sniffing traffic on")
 	promisc := flag.Bool("promiscuous", true, "promiscuous mode")
 	period := flag.Uint("period", 1, "seconds between submissions")
