@@ -75,11 +75,6 @@ func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
 	eb.add(ev)
 }
 
-func (wb watcherBatch) contains(w *watcher) bool {
-	_, ok := wb[w]
-	return ok
-}
-
 // newWatcherBatch maps watchers to their matched events. It enables quick
 // events look up by watcher.
 func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
@@ -219,7 +214,23 @@ func (wg *watcherGroup) delete(wa *watcher) bool {
 	return true
 }
 
-func (wg *watcherGroup) scanMinRev(curRev int64, compactRev int64) int64 {
+// choose selects watchers from the watcher group to update
+func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64) {
+	if len(wg.watchers) < maxWatchers {
+		return wg, wg.chooseAll(curRev, compactRev)
+	}
+	ret := newWatcherGroup()
+	for w := range wg.watchers {
+		if maxWatchers <= 0 {
+			break
+		}
+		maxWatchers--
+		ret.add(w)
+	}
+	return &ret, ret.chooseAll(curRev, compactRev)
+}
+
+func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 	minRev := int64(math.MaxInt64)
 	for w := range wg.watchers {
 		if w.cur > curRev {

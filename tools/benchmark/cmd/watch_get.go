@@ -35,19 +35,22 @@ var watchGetCmd = &cobra.Command{
 }
 
 var (
-	watchGetTotalStreams int
-	watchEvents          int
-	firstWatch           sync.Once
+	watchGetTotalWatchers int
+	watchGetTotalStreams  int
+	watchEvents           int
+	firstWatch            sync.Once
 )
 
 func init() {
 	RootCmd.AddCommand(watchGetCmd)
-	watchGetCmd.Flags().IntVar(&watchGetTotalStreams, "watchers", 10000, "Total number of watchers")
+	watchGetCmd.Flags().IntVar(&watchGetTotalWatchers, "watchers", 10000, "Total number of watchers")
+	watchGetCmd.Flags().IntVar(&watchGetTotalStreams, "streams", 1, "Total number of watcher streams")
 	watchGetCmd.Flags().IntVar(&watchEvents, "events", 8, "Number of events per watcher")
 }
 
 func watchGetFunc(cmd *cobra.Command, args []string) {
 	clients := mustCreateClients(totalClients, totalConns)
+	getClient := mustCreateClients(1, 1)
 
 	// setup keys for watchers
 	watchRev := int64(0)
@@ -70,18 +73,18 @@ func watchGetFunc(cmd *cobra.Command, args []string) {
 	// results from trying to do serialized gets with concurrent watchers
 	results = make(chan result)
 
-	bar = pb.New(watchGetTotalStreams * watchEvents)
+	bar = pb.New(watchGetTotalWatchers * watchEvents)
 	bar.Format("Bom !")
 	bar.Start()
 
 	pdoneC := printReport(results)
-	wg.Add(len(streams))
+	wg.Add(watchGetTotalWatchers)
 	ctx, cancel := context.WithCancel(context.TODO())
 	f := func() {
-		doSerializedGet(ctx, clients[0], results)
+		doSerializedGet(ctx, getClient[0], results)
 	}
-	for i := range streams {
-		go doUnsyncWatch(streams[i], watchRev, f)
+	for i := 0; i < watchGetTotalWatchers; i++ {
+		go doUnsyncWatch(streams[i%len(streams)], watchRev, f)
 	}
 	wg.Wait()
 	cancel()
