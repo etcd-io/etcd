@@ -146,10 +146,9 @@ func TestTransportErrorc(t *testing.T) {
 	}
 	tr.peers[1].send(raftpb.Message{})
 
-	testutil.WaitSchedule()
 	select {
 	case <-errorc:
-	default:
+	case <-time.After(1 * time.Second):
 		t.Fatalf("cannot receive error from errorc")
 	}
 }
