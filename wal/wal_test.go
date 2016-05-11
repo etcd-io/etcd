@@ -50,7 +50,7 @@ func TestNew(t *testing.T) {
 		t.Fatal(err)
 	}
 	gd := make([]byte, off)
-	f, err := os.Open(w.tail().Name())
+	f, err := os.Open(path.Join(p, path.Base(w.tail().Name())))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,4 +599,40 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 		t.Fatalf("got entries %+v, expected 10 entries", ents)
 	}
 	w.Close()
+}
+
+// TestRestartCreateWal ensures that an interrupted WAL initialization is clobbered on restart
+func TestRestartCreateWal(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	// make temporary directory so it looks like initialization is interrupted
+	tmpdir := path.Clean(p) + ".tmp"
+	if err = os.Mkdir(p+".tmp", 0755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = os.OpenFile(path.Join(tmpdir, "test"), os.O_WRONLY|os.O_CREATE, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	w, werr := Create(p, []byte("abc"))
+	if werr != nil {
+		t.Fatal(werr)
+	}
+	w.Close()
+	if Exist(tmpdir) {
+		t.Fatalf("got %q exists, expected it to not exist", tmpdir)
+	}
+
+	if w, err = OpenForRead(p, walpb.Snapshot{}); err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	if meta, _, _, rerr := w.ReadAll(); rerr != nil || string(meta) != "abc" {
+		t.Fatalf("got error %v and meta %q, expected nil and %q", rerr, meta, "abc")
+	}
 }

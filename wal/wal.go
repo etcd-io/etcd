@@ -89,11 +89,18 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 		return nil, os.ErrExist
 	}
 
-	if err := os.MkdirAll(dirpath, privateDirMode); err != nil {
+	// keep temporary wal directory so WAL initialization appears atomic
+	tmpdirpath := path.Clean(dirpath) + ".tmp"
+	if fileutil.Exist(tmpdirpath) {
+		if err := os.RemoveAll(tmpdirpath); err != nil {
+			return nil, err
+		}
+	}
+	if err := os.MkdirAll(tmpdirpath, privateDirMode); err != nil {
 		return nil, err
 	}
 
-	p := path.Join(dirpath, walName(0, 0))
+	p := path.Join(tmpdirpath, walName(0, 0))
 	f, err := fileutil.LockFile(p, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return nil, err
@@ -109,7 +116,6 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 		dir:      dirpath,
 		metadata: metadata,
 		encoder:  newEncoder(f, 0),
-		fp:       newFilePipeline(dirpath, segmentSizeBytes),
 	}
 	w.locks = append(w.locks, f)
 	if err := w.saveCrc(0); err != nil {
@@ -121,6 +127,15 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if err := w.SaveSnapshot(walpb.Snapshot{}); err != nil {
 		return nil, err
 	}
+
+	if err := os.RemoveAll(dirpath); err != nil {
+		return nil, err
+	}
+	if err := os.Rename(tmpdirpath, dirpath); err != nil {
+		return nil, err
+	}
+
+	w.fp = newFilePipeline(w.dir, segmentSizeBytes)
 	return w, nil
 }
 
