@@ -30,12 +30,12 @@ You can also build etcdctl from source using the build script found in the paren
 
 ### --peers
 + a comma-delimited list of machine addresses in the cluster
-+ default: `"http://127.0.0.1:4001,http://127.0.0.1:2379"`
++ default: `"http://127.0.0.1:2379"`
 + env variable: ETCDCTL_PEERS
 
 ### --endpoint
 + a comma-delimited list of machine addresses in the cluster
-+ default: `"http://127.0.0.1:4001,http://127.0.0.1:2379"`
++ default: `"http://127.0.0.1:2379"`
 + env variable: ETCDCTL_ENDPOINT
 + Without `--no-sync` flag, this will be overwritten by etcd cluster when it does internal sync.
 
