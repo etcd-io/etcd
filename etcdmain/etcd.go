@@ -75,9 +75,7 @@ var (
 	dirEmpty  = dirType("empty")
 )
 
-func Main() {
-	checkSupportArch()
-
+func startEtcdOrProxyV2() {
 	cfg := NewConfig()
 	err := cfg.Parse(os.Args[1:])
 	if err != nil {

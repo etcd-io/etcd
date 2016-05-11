@@ -21,16 +21,6 @@ import (
 	"time"
 )
 
-type tcpProxy struct {
-	l               net.Listener
-	monitorInterval time.Duration
-	donec           chan struct{}
-
-	mu         sync.Mutex // guards the following fields
-	remotes    []*remote
-	nextRemote int
-}
-
 type remote struct {
 	mu       sync.Mutex
 	addr     string
@@ -61,10 +51,30 @@ func (r *remote) isActive() bool {
 	return !r.inactive
 }
 
-func (tp *tcpProxy) run() error {
+type TCPProxy struct {
+	Listener        net.Listener
+	Endpoints       []string
+	MonitorInterval time.Duration
+
+	donec chan struct{}
+
+	mu         sync.Mutex // guards the following fields
+	remotes    []*remote
+	nextRemote int
+}
+
+func (tp *TCPProxy) Run() error {
+	tp.donec = make(chan struct{})
+	if tp.MonitorInterval == 0 {
+		tp.MonitorInterval = 5 * time.Minute
+	}
+	for _, ep := range tp.Endpoints {
+		tp.remotes = append(tp.remotes, &remote{addr: ep})
+	}
+
 	go tp.runMonitor()
 	for {
-		in, err := tp.l.Accept()
+		in, err := tp.Listener.Accept()
 		if err != nil {
 			return err
 		}
@@ -73,13 +83,13 @@ func (tp *tcpProxy) run() error {
 	}
 }
 
-func (tp *tcpProxy) numRemotes() int {
+func (tp *TCPProxy) numRemotes() int {
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
 	return len(tp.remotes)
 }
 
-func (tp *tcpProxy) serve(in net.Conn) {
+func (tp *TCPProxy) serve(in net.Conn) {
 	var (
 		err error
 		out net.Conn
@@ -115,7 +125,7 @@ func (tp *tcpProxy) serve(in net.Conn) {
 }
 
 // pick picks a remote in round-robin fashion
-func (tp *tcpProxy) pick() *remote {
+func (tp *TCPProxy) pick() *remote {
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
 
@@ -124,10 +134,10 @@ func (tp *tcpProxy) pick() *remote {
 	return picked
 }
 
-func (tp *tcpProxy) runMonitor() {
+func (tp *TCPProxy) runMonitor() {
 	for {
 		select {
-		case <-time.After(tp.monitorInterval):
+		case <-time.After(tp.MonitorInterval):
 			tp.mu.Lock()
 			for _, r := range tp.remotes {
 				if !r.isActive() {
@@ -141,9 +151,9 @@ func (tp *tcpProxy) runMonitor() {
 	}
 }
 
-func (tp *tcpProxy) stop() {
+func (tp *TCPProxy) Stop() {
 	// graceful shutdown?
 	// shutdown current connections?
-	tp.l.Close()
+	tp.Listener.Close()
 	close(tp.donec)
 }
