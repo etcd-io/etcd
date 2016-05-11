@@ -118,6 +118,17 @@ See [CONTRIBUTING](../../CONTRIBUTING.md) for details on submitting patches and 
 
 See [reporting bugs](reporting_bugs.md) for details about reporting any issue you may encounter.
 
+## Known bugs
+
+[GH518](https://github.com/coreos/etcd/issues/518) is a known bug. Issue is that:
+
+```
+curl http://127.0.0.1:2379/v2/keys/foo -XPUT -d value=bar
+curl http://127.0.0.1:2379/v2/keys/foo -XPUT -d dir=true -d prevExist=true
+```
+
+If the previous node is a key and client tries to overwrite it with `dir=true`, it does not give warnings such as `Not a directory`. Instead, the key is set to empty value.
+
 ## Project Details
 
 ### Versioning
