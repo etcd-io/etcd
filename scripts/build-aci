@@ -56,8 +56,6 @@ acbuild --debug set-exec -- /etcd
 
 acbuild --debug mount add data-dir /data-dir
 
-acbuild --debug port add legacy-client tcp 4001
-acbuild --debug port add legacy-peer tcp 7001
 acbuild --debug port add client tcp 2379
 acbuild --debug port add peer tcp 2380
 

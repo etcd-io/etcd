@@ -484,7 +484,7 @@ func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raf
 	if !found {
 		m := membership.Member{
 			ID:             types.ID(self),
-			RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:7001", "http://localhost:2380"}},
+			RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:2380"}},
 		}
 		ctx, err := json.Marshal(m)
 		if err != nil {

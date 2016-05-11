@@ -41,7 +41,7 @@ import (
 
 const (
 	defaultName                     = "default"
-	defaultInitialAdvertisePeerURLs = "http://localhost:2380,http://localhost:7001"
+	defaultInitialAdvertisePeerURLs = "http://localhost:2380"
 )
 
 var (
@@ -191,7 +191,7 @@ func initialClusterFromName(name string) string {
 	if name == "" {
 		n = defaultName
 	}
-	return fmt.Sprintf("%s=http://localhost:2380,%s=http://localhost:7001", n, n)
+	return fmt.Sprintf("%s=http://localhost:2380", n, n)
 }
 
 // makeWAL creates a WAL for the initial cluster
