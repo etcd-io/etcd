@@ -397,7 +397,7 @@ func (r *raft) reset(term uint64) {
 	r.heartbeatElapsed = 0
 	r.resetRandomizedElectionTimeout()
 
-	r.leadTransferee = None
+	r.abortLeaderTransfer()
 
 	r.votes = make(map[uint64]bool)
 	for id := range r.prs {
@@ -583,7 +583,6 @@ func (r *raft) Step(m pb.Message) error {
 type stepFunc func(r *raft, m pb.Message)
 
 func stepLeader(r *raft, m pb.Message) {
-
 	// These message types do not require any progress for m.From.
 	switch m.Type {
 	case pb.MsgBeat:
@@ -718,14 +717,10 @@ func stepLeader(r *raft, m pb.Message) {
 				return
 			}
 			r.abortLeaderTransfer()
-			r.logger.Infof("%x [term %d] abort transfer leadership to %x", r.id, r.Term, lastLeadTransferee)
+			r.logger.Infof("%x [term %d] abort previous transferring leadership to %x", r.id, r.Term, lastLeadTransferee)
 		}
 		if leadTransferee == r.id {
-			if lastLeadTransferee == None {
-				r.logger.Debugf("%x is already leader. Ignored transfer leadership to %x", r.id, r.id)
-			} else {
-				r.logger.Debugf("%x abort transfer leadership to %x, transfer to current leader %x.", r.id, lastLeadTransferee, r.id)
-			}
+			r.logger.Debugf("%x is already leader. Ignored transferring leadership to self", r.id)
 			return
 		}
 		// Transfer leadership to third party.
