@@ -89,18 +89,17 @@ function fmt_tests {
 		exit 255
 	fi
 
-	echo "Checking govet -shadow..."
+	echo "Checking 'go tool vet -shadow'..."
 	for path in $FMT; do
 		vetRes=$(go tool vet -shadow ${path})
 		if [ -n "${vetRes}" ]; then
-			echo -e "govet checking ${path} failed:\n${vetRes}"
+			echo -e "govet -shadow checking ${path} failed:\n${vetRes}"
 			exit 255
 		fi
 	done
 
-	echo "Checking goword..."
 	if which goword >/dev/null; then
-		echo "goword is installed..."
+		echo "Checking goword..."
 		# get all go files to process
 		gofiles=`find $FMT -iname '*.go' 2>/dev/null`
 		# ignore tests and protobuf files
@@ -112,12 +111,11 @@ function fmt_tests {
 			exit 255
 		fi
 	else
-		echo "gowrod does not exist... skipping..."
+		echo "Skipping goword..."
 	fi
 
-	echo "Checking gosimple"
 	if which gosimple >/dev/null; then
-		echo "gosimple is installed..."
+		echo "Checking gosimple..."
 		for path in $GOSIMPLE_UNUSED_PATHS; do
 			simplResult=`gosimple $REPO_PATH/${path} || true`
 			if [ -n "${simplResult}" ]; then
@@ -126,12 +124,11 @@ function fmt_tests {
 			fi
 		done
 	else
-		echo "gosimple does not exist... skipping..."
+		echo "Skipping gosimple..."
 	fi
-
-	echo "Checking unused"
+	
 	if which unused >/dev/null; then
-		echo "unused is installed..."
+		echo "Checking unused..."
 		for path in $GOSIMPLE_UNUSED_PATHS; do
 			unusedResult=`unused $REPO_PATH/${path} || true`
 			if [ -n "${unusedResult}" ]; then
@@ -140,7 +137,7 @@ function fmt_tests {
 			fi
 		done
 	else
-		echo "unused does not exist... skipping..."
+		echo "Skipping unused..."
 	fi
 
 	echo "Checking for license header..."
