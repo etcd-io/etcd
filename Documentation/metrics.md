@@ -35,6 +35,23 @@ is totally unavailable.
 
 `proposals_committed_total` records the total number of consensus proposals committed. This gauge should increase over time if the cluster is healthy. Several healthy members of an etcd cluster may have different total committed proposals at once. This discrepancy may be due to recovering from peers after starting, lagging behind the leader, or being the leader and therefore having the most commits. It is important to monitor this metric across all the members in the cluster; a consistently large lag between a single member and its leader indicates that member is slow or unhealthy.
 
+### disk
+
+These metrics describe the status of the disk operations.
+
+All these metrics are prefixed with `etcd_disk_`.
+
+| Name                               | Description                                           | Type      |
+|------------------------------------|-------------------------------------------------------|-----------|
+| wal_fsync_duration_seconds         | The latency distributions of fsync called by wal      | Histogram |
+| backend_commit_duration_seconds    | The latency distributions of commit called by backend.| Histogram |
+
+A `wal_fsync` is called when etcd persists its log entries to disk before applying them.
+
+A `backend_commit` is called when etcd commits an incremental snapshot of its most recent changes to disk.
+
+High disk operation latencies (`wal_fsync_duration_seconds` or `backend_commit_duration_seconds`) often indicate disk issues. It may cause high request latency or make the cluster unstable.
+
 ### network
 
 These metrics describe the status of the network.
@@ -95,15 +112,6 @@ The metrics under the `etcd_debugging` prefix are for debugging. They are very i
 Proposals pending (`proposals_pending`) indicates how many proposals are queued for commit. Rising pending proposals suggests there is a high client load or the cluster is unstable.
 
 Failed proposals (`proposals_failed_total`) are normally related to two issues: temporary failures related to a leader election or longer duration downtime caused by a loss of quorum in the cluster.
-
-### wal
-
-| Name                               | Description                                      | Type      |
-|------------------------------------|--------------------------------------------------|-----------|
-| fsync_duration_seconds            | The latency distributions of fsync called by wal | Histogram |
-| last_index_saved                   | The index of the last entry saved by wal         | Gauge     |
-
-Abnormally high fsync duration (`fsync_duration_seconds`) indicates disk issues and might cause the cluster to be unstable.
 
 ### snapshot
 
