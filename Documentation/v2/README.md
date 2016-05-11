@@ -152,7 +152,7 @@ The `v2` API responses should not change after the 2.0.0 release but new feature
 
 etcd has known issues on 32-bit systems due to a bug in the Go runtime. See #[358][358] for more information.
 
-To avoid inadvertantly running a possibly unstable etcd server, `etcd` on unsupported architectures will print
+To avoid inadvertently running a possibly unstable etcd server, `etcd` on unsupported architectures will print
 a warning message and immediately exit if the environment variable `ETCD_UNSUPPORTED_ARCH` is not set to
 the target architecture.
 
