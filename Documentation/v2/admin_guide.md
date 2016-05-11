@@ -217,12 +217,14 @@ To recover from such scenarios, etcd provides functionality to backup and restor
 
 **NB:** Windows users must stop etcd before running the backup command.
 
-The first step of the recovery is to backup the data directory on a functioning etcd node. To do this, use the `etcdctl backup` command, passing in the original data directory used by etcd. For example:
+The first step of the recovery is to backup the data directory and wal directory, if stored separately, on a functioning etcd node. To do this, use the `etcdctl backup` command, passing in the original data (and wal) directory used by etcd. For example:
 
 ```sh
     etcdctl backup \
       --data-dir %data_dir% \
+      [--wal-dir %wal_dir%] \
       --backup-dir %backup_data_dir%
+      [--backup-wal-dir %backup_wal_dir%]
 ```
 
 This command will rewrite some of the metadata contained in the backup (specifically, the node ID and cluster ID), which means that the node will lose its former identity. In order to recreate a cluster from the backup, you will need to start a new, single-node cluster. The metadata is rewritten to prevent the new node from inadvertently being joined onto an existing cluster.
@@ -234,20 +236,24 @@ To restore a backup using the procedure created above, start etcd with the `-for
 ```sh
     etcd \
       -data-dir=%backup_data_dir% \
+      [-wal-dir=%backup_wal_dir%] \
       -force-new-cluster \
       ...
 ```
 
 Now etcd should be available on this node and serving the original datastore.
 
-Once you have verified that etcd has started successfully, shut it down and move the data back to the previous location (you may wish to make another copy as well to be safe):
+Once you have verified that etcd has started successfully, shut it down and move the data and wal, if stored separately, back to the previous location (you may wish to make another copy as well to be safe):
 
 ```sh
     pkill etcd
     rm -fr %data_dir%
+    rm -fr %wal_dir%
     mv %backup_data_dir% %data_dir%
+    mv %backup_wal_dir% %wal_dir%
     etcd \
       -data-dir=%data_dir% \
+      [-wal-dir=%wal_dir%] \
       ...
 ```
 

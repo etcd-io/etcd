@@ -37,7 +37,9 @@ func NewBackupCommand() cli.Command {
 		ArgsUsage: " ",
 		Flags: []cli.Flag{
 			cli.StringFlag{Name: "data-dir", Value: "", Usage: "Path to the etcd data dir"},
+			cli.StringFlag{Name: "wal-dir", Value: "", Usage: "Path to the etcd wal dir"},
 			cli.StringFlag{Name: "backup-dir", Value: "", Usage: "Path to the backup dir"},
+			cli.StringFlag{Name: "backup-wal-dir", Value: "", Usage: "Path to the backup wal dir"},
 		},
 		Action: handleBackup,
 	}
@@ -45,10 +47,23 @@ func NewBackupCommand() cli.Command {
 
 // handleBackup handles a request that intends to do a backup.
 func handleBackup(c *cli.Context) {
+	var srcWAL string
+	var destWAL string
+
 	srcSnap := path.Join(c.String("data-dir"), "member", "snap")
 	destSnap := path.Join(c.String("backup-dir"), "member", "snap")
-	srcWAL := path.Join(c.String("data-dir"), "member", "wal")
-	destWAL := path.Join(c.String("backup-dir"), "member", "wal")
+
+	if c.String("wal-dir") != "" {
+		srcWAL = c.String("wal-dir")
+	} else {
+		srcWAL = path.Join(c.String("data-dir"), "member", "wal")
+	}
+
+	if c.String("backup-wal-dir") != "" {
+		destWAL = c.String("backup-wal-dir")
+	} else {
+		destWAL = path.Join(c.String("backup-dir"), "member", "wal")
+	}
 
 	if err := os.MkdirAll(destSnap, 0700); err != nil {
 		log.Fatalf("failed creating backup snapshot dir %v: %v", destSnap, err)
