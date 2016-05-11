@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 // TestV3PutOverwrite puts a key with the v3 api to a random cluster member,
@@ -974,5 +975,32 @@ func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 	if _, err := toGRPC(client).KV.Put(context.TODO(), reqput); err != nil {
 		t.Fatalf("unexpected error on put over tls (%v)", err)
+	}
+}
+
+func TestGRPCRequireLeader(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	cfg := ClusterConfig{Size: 3}
+	clus := newClusterV3NoClients(t, &cfg)
+	defer clus.Terminate(t)
+
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+
+	client, err := NewClientV3(clus.Members[0])
+	if err != nil {
+		t.Fatalf("expected tls client (%v)", err)
+	}
+	defer client.Close()
+
+	// wait for election timeout, then member[0] will not have a leader.
+	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
+
+	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
+	ctx := metadata.NewContext(context.Background(), md)
+	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
+	if _, err := toGRPC(client).KV.Put(ctx, reqput); grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
 	}
 }
