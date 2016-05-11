@@ -15,10 +15,9 @@
 package types
 
 import (
+	"github.com/coreos/etcd/pkg/testutil"
 	"reflect"
 	"testing"
-
-	"github.com/coreos/etcd/pkg/testutil"
 )
 
 func TestParseInitialCluster(t *testing.T) {
