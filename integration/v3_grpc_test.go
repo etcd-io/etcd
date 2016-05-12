@@ -98,7 +98,7 @@ func TestV3PutRestart(t *testing.T) {
 	clus.Members[stopIdx].Restart(t)
 	c, cerr := NewClientV3(clus.Members[stopIdx])
 	if cerr != nil {
-		t.Fatal(cerr)
+		t.Fatalf("cannot create client: %v", cerr)
 	}
 	clus.clients[stopIdx] = c
 
@@ -990,7 +990,7 @@ func TestGRPCRequireLeader(t *testing.T) {
 
 	client, err := NewClientV3(clus.Members[0])
 	if err != nil {
-		t.Fatalf("expected tls client (%v)", err)
+		t.Fatalf("cannot create client: %v", err)
 	}
 	defer client.Close()
 
