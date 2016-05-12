@@ -547,3 +547,16 @@ func TestKVGetCancel(t *testing.T) {
 		t.Fatalf("cancel on get broke client connection")
 	}
 }
+
+// TestKVStoppedServerClientClose ensures retying connections won't leak on client Close.
+func TestKVStoppedServerClientClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	// ensure connection is established
+	if _, err := clus.Client(0).Get(context.TODO(), "abc"); err != nil {
+		t.Fatal(err)
+	}
+	// force connection to fail and retry
+	clus.Members[0].Stop(t)
+}
