@@ -739,7 +739,7 @@ func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 	for _, m := range clus.Members {
 		client, err := NewClientV3(m)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("cannot create client: %v", err)
 		}
 		clus.clients = append(clus.clients, client)
 	}

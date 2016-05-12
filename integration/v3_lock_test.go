@@ -167,7 +167,7 @@ func makeClients(t *testing.T, clients *[]*clientv3.Client, choose func() *membe
 	return func() *clientv3.Client {
 		cli, err := NewClientV3(choose())
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("cannot create client: %v", err)
 		}
 		mu.Lock()
 		*clients = append(*clients, cli)
