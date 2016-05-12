@@ -979,6 +979,8 @@ func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 }
 
 func TestGRPCRequireLeader(t *testing.T) {
+	t.Parallel()
+
 	defer testutil.AfterTest(t)
 
 	cfg := ClusterConfig{Size: 3}
@@ -1002,5 +1004,69 @@ func TestGRPCRequireLeader(t *testing.T) {
 	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 	if _, err := toGRPC(client).KV.Put(ctx, reqput); grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
+	}
+}
+
+func TestGRPCStreamRequireLeader(t *testing.T) {
+	t.Parallel()
+
+	defer testutil.AfterTest(t)
+
+	cfg := ClusterConfig{Size: 3}
+	clus := newClusterV3NoClients(t, &cfg)
+	defer clus.Terminate(t)
+
+	client, err := NewClientV3(clus.Members[0])
+	if err != nil {
+		t.Fatalf("failed to create client (%v)", err)
+	}
+	defer client.Close()
+
+	wAPI := toGRPC(client).Watch
+	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
+	ctx := metadata.NewContext(context.Background(), md)
+	wStream, err := wAPI.Watch(ctx)
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+
+	// existing stream should be rejected
+	_, err = wStream.Recv()
+	if grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
+	}
+
+	// new stream should also be rejected
+	wStream, err = wAPI.Watch(ctx)
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+	_, err = wStream.Recv()
+	if grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
+	}
+
+	clus.Members[1].Restart(t)
+	clus.Members[2].Restart(t)
+
+	clus.waitLeader(t, clus.Members)
+	time.Sleep(time.Duration(2*electionTicks) * tickDuration)
+
+	// new stream should also be OK now after we restarted the other members
+	wStream, err = wAPI.Watch(ctx)
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+	wreq := &pb.WatchRequest{
+		RequestUnion: &pb.WatchRequest_CreateRequest{
+			CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")},
+		},
+	}
+	err = wStream.Send(wreq)
+	if err != nil {
+		t.Errorf("err = %v, want nil", err)
 	}
 }
