@@ -99,7 +99,7 @@ Now it's time to dig into the full etcd API and other guides.
 [fulldoc]: ./Documentation/docs.md
 [api]: ./Documentation/dev-guide/api_reference_v3.md
 [clustering]: ./Documentation/op-guide/clustering.md
-[configuration]: op-guide/configuration.md
+[configuration]: ./Documentation/op-guide/configuration.md
 [libraries-and-tools]: ./Documentation/libraries-and-tools.md
 [security]: ./Documentation/op-guide/security.md
 [tuning]: ./Documentation/tuning.md
