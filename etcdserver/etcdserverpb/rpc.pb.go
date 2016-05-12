@@ -300,7 +300,7 @@ func (*DeleteRangeRequest) Descriptor() ([]byte, []int) { return fileDescriptorR
 
 type DeleteRangeResponse struct {
 	Header *ResponseHeader `protobuf:"bytes,1,opt,name=header" json:"header,omitempty"`
-	// Deleted is the number of keys deleted by the delete range request.
+	// deleted is the number of keys deleted by the delete range request.
 	Deleted int64 `protobuf:"varint,2,opt,name=deleted,proto3" json:"deleted,omitempty"`
 }
 
@@ -816,7 +816,7 @@ func _Compare_OneofSizer(msg proto.Message) (n int) {
 // true.
 // 3. A list of database operations called f op. Like t op, but executed if guard evaluates to false.
 type TxnRequest struct {
-	// Compare is a list of predicates representing a conjunction of terms.
+	// compare is a list of predicates representing a conjunction of terms.
 	// If the comparisons succeed, then the success requests will be processed in order,
 	// and the response will contain their respective responses in order.
 	// If the comparisons fail, then the failure requests will be processed in order,
@@ -1975,7 +1975,7 @@ type KVClient interface {
 	// A put request increments the revision of the key-value store
 	// and generates one event in the event history.
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*PutResponse, error)
-	// Delete deletes the given range from the key-value store.
+	// DeleteRange deletes the given range from the key-value store.
 	// A delete request increments the revision of the key-value store
 	// and generates a delete event in the event history for every deleted key.
 	DeleteRange(ctx context.Context, in *DeleteRangeRequest, opts ...grpc.CallOption) (*DeleteRangeResponse, error)
@@ -2052,7 +2052,7 @@ type KVServer interface {
 	// A put request increments the revision of the key-value store
 	// and generates one event in the event history.
 	Put(context.Context, *PutRequest) (*PutResponse, error)
-	// Delete deletes the given range from the key-value store.
+	// DeleteRange deletes the given range from the key-value store.
 	// A delete request increments the revision of the key-value store
 	// and generates a delete event in the event history for every deleted key.
 	DeleteRange(context.Context, *DeleteRangeRequest) (*DeleteRangeResponse, error)

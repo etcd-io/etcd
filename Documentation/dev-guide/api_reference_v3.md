@@ -39,7 +39,7 @@
 | ------ | ------------ | ------------- | ----------- |
 | Range | RangeRequest | RangeResponse | Range gets the keys in the range from the key-value store. |
 | Put | PutRequest | PutResponse | Put puts the given key into the key-value store. A put request increments the revision of the key-value store and generates one event in the event history. |
-| DeleteRange | DeleteRangeRequest | DeleteRangeResponse | Delete deletes the given range from the key-value store. A delete request increments the revision of the key-value store and generates a delete event in the event history for every deleted key. |
+| DeleteRange | DeleteRangeRequest | DeleteRangeResponse | DeleteRange deletes the given range from the key-value store. A delete request increments the revision of the key-value store and generates a delete event in the event history for every deleted key. |
 | Txn | TxnRequest | TxnResponse | Txn processes multiple requests in a single transaction. A txn request increments the revision of the key-value store and generates events with the same revision for every completed request. It is not allowed to modify the same key several times within one txn. |
 | Compact | CompactionRequest | CompactionResponse | Compact compacts the event history in the etcd key-value store. The key-value store should be periodically compacted or the event history will continue to grow indefinitely. |
 
@@ -381,7 +381,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
-| deleted | Deleted is the number of keys deleted by the delete range request. | int64 |
+| deleted | deleted is the number of keys deleted by the delete range request. | int64 |
 
 
 
@@ -646,7 +646,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
-| compare | Compare is a list of predicates representing a conjunction of terms. If the comparisons succeed, then the success requests will be processed in order, and the response will contain their respective responses in order. If the comparisons fail, then the failure requests will be processed in order, and the response will contain their respective responses in order. | (slice of) Compare |
+| compare | compare is a list of predicates representing a conjunction of terms. If the comparisons succeed, then the success requests will be processed in order, and the response will contain their respective responses in order. If the comparisons fail, then the failure requests will be processed in order, and the response will contain their respective responses in order. | (slice of) Compare |
 | success | success is a list of requests which will be applied when compare evaluates to true. | (slice of) RequestUnion |
 | failure | failure is a list of requests which will be applied when compare evaluates to false. | (slice of) RequestUnion |
 
