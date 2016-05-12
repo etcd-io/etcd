@@ -44,6 +44,8 @@ var (
 	ErrGRPCRoleNotFound     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: role name not found")
 	ErrGRPCAuthFailed       = grpc.Errorf(codes.InvalidArgument, "etcdserver: authentication failed, invalid user ID or password")
 
+	ErrGRPCNoLeader = grpc.Errorf(codes.Unavailable, "etcdserver: no leader")
+
 	errStringToError = map[string]error{
 		grpc.ErrorDesc(ErrGRPCEmptyKey):     ErrGRPCEmptyKey,
 		grpc.ErrorDesc(ErrGRPCTooManyOps):   ErrGRPCTooManyOps,
@@ -67,6 +69,8 @@ var (
 		grpc.ErrorDesc(ErrGRPCRoleAlreadyExist): ErrGRPCRoleAlreadyExist,
 		grpc.ErrorDesc(ErrGRPCRoleNotFound):     ErrGRPCRoleNotFound,
 		grpc.ErrorDesc(ErrGRPCAuthFailed):       ErrGRPCAuthFailed,
+
+		grpc.ErrorDesc(ErrGRPCNoLeader): ErrGRPCNoLeader,
 	}
 
 	// client-side error
@@ -92,6 +96,8 @@ var (
 	ErrRoleAlreadyExist = Error(ErrGRPCRoleAlreadyExist)
 	ErrRoleNotFound     = Error(ErrGRPCRoleNotFound)
 	ErrAuthFailed       = Error(ErrGRPCAuthFailed)
+
+	ErrNoLeader = Error(ErrGRPCNoLeader)
 )
 
 // EtcdError defines gRPC server errors.

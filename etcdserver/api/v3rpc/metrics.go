@@ -14,15 +14,7 @@
 
 package v3rpc
 
-import (
-	"strings"
-	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
-
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-)
+import "github.com/prometheus/client_golang/prometheus"
 
 var (
 	receivedCounter = prometheus.NewCounterVec(
@@ -50,40 +42,6 @@ var (
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 13),
 		}, []string{"grpc_service", "grpc_method"})
 )
-
-func metricsUnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	service, method := splitMethodName(info.FullMethod)
-	receivedCounter.WithLabelValues(service, method).Inc()
-
-	start := time.Now()
-	resp, err = handler(ctx, req)
-	if err != nil {
-		failedCounter.WithLabelValues(service, method, grpc.Code(err).String()).Inc()
-	}
-	handlingDuration.WithLabelValues(service, method).Observe(time.Since(start).Seconds())
-
-	return resp, err
-}
-
-func metricsStreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	service, method := splitMethodName(info.FullMethod)
-	receivedCounter.WithLabelValues(service, method).Inc()
-
-	err := handler(srv, ss)
-	if err != nil {
-		failedCounter.WithLabelValues(service, method, grpc.Code(err).String()).Inc()
-	}
-
-	return err
-}
-
-func splitMethodName(fullMethodName string) (string, string) {
-	fullMethodName = strings.TrimPrefix(fullMethodName, "/") // remove leading slash
-	if i := strings.Index(fullMethodName, "/"); i >= 0 {
-		return fullMethodName[:i], fullMethodName[i+1:]
-	}
-	return "unknown", "unknown"
-}
 
 func init() {
 	prometheus.MustRegister(receivedCounter)
