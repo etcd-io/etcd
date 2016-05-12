@@ -547,3 +547,18 @@ func TestKVGetCancel(t *testing.T) {
 		t.Fatalf("cancel on get broke client connection")
 	}
 }
+
+// TestKVPutStoppedServerAndClose ensures closing after a failed Put works.
+func TestKVPutStoppedServerAndClose(t *testing.T) {
+	t.Parallel()
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	clus.Members[0].Stop(t)
+	// this Put fails and triggers an asynchronous connection retry
+	_, err := clus.Client(0).Put(context.TODO(), "abc", "123")
+	if err == nil || !strings.Contains(err.Error(), "connection is closing") {
+		t.Fatal(err)
+	}
+	// cluster will terminate and close the client with the retry in-flight
+}
