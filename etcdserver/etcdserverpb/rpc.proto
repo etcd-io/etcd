@@ -17,7 +17,7 @@ service KV {
   // and generates one event in the event history.
   rpc Put(PutRequest) returns (PutResponse) {}
 
-  // Delete deletes the given range from the key-value store.
+  // DeleteRange deletes the given range from the key-value store.
   // A delete request increments the revision of the key-value store
   // and generates a delete event in the event history for every deleted key.
   rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
@@ -222,7 +222,7 @@ message DeleteRangeRequest {
 
 message DeleteRangeResponse {
   ResponseHeader header = 1;
-  // Deleted is the number of keys deleted by the delete range request.
+  // deleted is the number of keys deleted by the delete range request.
   int64 deleted = 2;
 }
 
@@ -290,7 +290,7 @@ message Compare {
 // true.
 // 3. A list of database operations called f op. Like t op, but executed if guard evaluates to false.
 message TxnRequest {
-  // Compare is a list of predicates representing a conjunction of terms.
+  // compare is a list of predicates representing a conjunction of terms.
   // If the comparisons succeed, then the success requests will be processed in order,
   // and the response will contain their respective responses in order.
   // If the comparisons fail, then the failure requests will be processed in order,
