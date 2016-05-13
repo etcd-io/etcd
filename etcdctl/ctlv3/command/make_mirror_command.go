@@ -68,7 +68,7 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 		insecureTransport: mminsecureTr,
 	}
 
-	dc := mustClient([]string{args[0]}, dialTimeout, sec)
+	dc := mustClient([]string{args[0]}, dialTimeout, sec, nil)
 	c := mustClientFromCmd(cmd)
 
 	err := makeMirror(context.TODO(), c, dc)

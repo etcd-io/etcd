@@ -65,6 +65,11 @@ type Client struct {
 	// newconnc is closed on successful connect and set to a fresh channel
 	newconnc    chan struct{}
 	lastConnErr error
+
+	// Username is a username of authentication
+	Username string
+	// Password is a password of authentication
+	Password string
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -132,6 +137,20 @@ func (c *Client) Errors() (errs []error) {
 	return errs
 }
 
+type authTokenCredential struct {
+	token string
+}
+
+func (cred authTokenCredential) RequireTransportSecurity() bool {
+	return false
+}
+
+func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...string) (map[string]string, error) {
+	return map[string]string{
+		"token": cred.token,
+	}, nil
+}
+
 // Dial establishes a connection for a given endpoint using the client's config
 func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
@@ -160,6 +179,21 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 	}
 	opts = append(opts, grpc.WithDialer(f))
 
+	if c.Username != "" && c.Password != "" {
+		auth, err := newAuthenticator(endpoint, opts)
+		if err != nil {
+			return nil, err
+		}
+		defer auth.close()
+
+		resp, err := auth.authenticate(c.ctx, c.Username, c.Password)
+		if err != nil {
+			return nil, err
+		}
+
+		opts = append(opts, grpc.WithPerRPCCredentials(authTokenCredential{token: resp.Token}))
+	}
+
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return nil, err
@@ -183,9 +217,10 @@ func newClient(cfg *Config) (*Client, error) {
 		c := credentials.NewTLS(cfg.TLS)
 		creds = &c
 	}
+
 	// use a temporary skeleton client to bootstrap first connection
 	ctx, cancel := context.WithCancel(context.TODO())
-	conn, err := cfg.RetryDialer(&Client{cfg: *cfg, creds: creds, ctx: ctx})
+	conn, err := cfg.RetryDialer(&Client{cfg: *cfg, creds: creds, ctx: ctx, Username: cfg.Username, Password: cfg.Password})
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +232,11 @@ func newClient(cfg *Config) (*Client, error) {
 		cancel:   cancel,
 		reconnc:  make(chan error, 1),
 		newconnc: make(chan struct{}),
+	}
+
+	if cfg.Username != "" && cfg.Password != "" {
+		client.Username = cfg.Username
+		client.Password = cfg.Password
 	}
 
 	go client.connMonitor()
