@@ -145,8 +145,8 @@ GET/HEAD  /v2/auth/users
                   "role": "root",
                   "permissions": {
                     "kv": {
-                      "read": ["*"],
-                      "write": ["*"]
+                      "read": ["/*"],
+                      "write": ["/*"]
                     }
                   }
                 }
@@ -159,8 +159,8 @@ GET/HEAD  /v2/auth/users
                   "role": "guest",
                   "permissions": {
                     "kv": {
-                      "read": ["*"],
-                      "write": ["*"]
+                      "read": ["/*"],
+                      "write": ["/*"]
                     }
                   }
                 }
@@ -198,8 +198,8 @@ GET/HEAD  /v2/auth/users/alice
               "role": "etcd",
               "permissions" : {
                 "kv" : {
-                  "read": [ "*" ],
-                  "write": [ "*" ]
+                  "read": [ "/*" ],
+                  "write": [ "/*" ]
                 }
               }
             }
@@ -311,8 +311,8 @@ GET/HEAD  /v2/auth/roles
               "role": "etcd",
               "permissions": {
                 "kv": {
-                  "read": ["*"],
-                  "write": ["*"]
+                  "read": ["/*"],
+                  "write": ["/*"]
                 }
               }
             },
@@ -320,8 +320,8 @@ GET/HEAD  /v2/auth/roles
               "role": "quay",
               "permissions": {
                 "kv": {
-                  "read": ["*"],
-                  "write": ["*"]
+                  "read": ["/*"],
+                  "write": ["/*"]
                 }
               }
             }
@@ -393,7 +393,7 @@ PUT  /v2/auth/roles/guest
           "revoke" : {
             "kv" : {
               "write": [
-                "*"
+                "/*"
               ]
             }
           }
