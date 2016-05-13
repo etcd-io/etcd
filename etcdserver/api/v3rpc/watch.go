@@ -19,7 +19,10 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -105,10 +108,24 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) error {
 		progress:   make(map[mvcc.WatchID]bool),
 		closec:     make(chan struct{}),
 	}
-	defer sws.close()
 
 	go sws.sendLoop()
-	return sws.recvLoop()
+	errc := make(chan error, 1)
+	go func() {
+		errc <- sws.recvLoop()
+		sws.close()
+	}()
+	select {
+	case err := <-errc:
+		return err
+	case <-stream.Context().Done():
+		err := stream.Context().Err()
+		// the only server-side cancellation is noleader for now.
+		if err == context.Canceled {
+			return rpctypes.ErrGRPCNoLeader
+		}
+		return err
+	}
 }
 
 func (sws *serverWatchStream) recvLoop() error {

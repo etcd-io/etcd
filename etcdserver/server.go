@@ -162,11 +162,11 @@ type EtcdServer struct {
 	// count the number of inflight snapshots.
 	// MUST use atomic operation to access this field.
 	inflightSnapshots int64
+	Cfg               *ServerConfig
 
 	readych chan struct{}
 	r       raftNode
 
-	cfg       *ServerConfig
 	snapCount uint64
 
 	w          wait.Wait
@@ -369,7 +369,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 
 	srv = &EtcdServer{
 		readych:   make(chan struct{}),
-		cfg:       cfg,
+		Cfg:       cfg,
 		snapCount: cfg.SnapCount,
 		errorc:    make(chan error, 1),
 		store:     st,
@@ -444,7 +444,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 // It also starts a goroutine to publish its server information.
 func (s *EtcdServer) Start() {
 	s.start()
-	go s.publish(s.cfg.ReqTimeout())
+	go s.publish(s.Cfg.ReqTimeout())
 	go s.purgeFile()
 	go monitorFileDescriptor(s.done)
 	go s.monitorVersions()
@@ -473,11 +473,11 @@ func (s *EtcdServer) start() {
 
 func (s *EtcdServer) purgeFile() {
 	var serrc, werrc <-chan error
-	if s.cfg.MaxSnapFiles > 0 {
-		serrc = fileutil.PurgeFile(s.cfg.SnapDir(), "snap", s.cfg.MaxSnapFiles, purgeFileInterval, s.done)
+	if s.Cfg.MaxSnapFiles > 0 {
+		serrc = fileutil.PurgeFile(s.Cfg.SnapDir(), "snap", s.Cfg.MaxSnapFiles, purgeFileInterval, s.done)
 	}
-	if s.cfg.MaxWALFiles > 0 {
-		werrc = fileutil.PurgeFile(s.cfg.WALDir(), "wal", s.cfg.MaxWALFiles, purgeFileInterval, s.done)
+	if s.Cfg.MaxWALFiles > 0 {
+		werrc = fileutil.PurgeFile(s.Cfg.WALDir(), "wal", s.Cfg.MaxWALFiles, purgeFileInterval, s.done)
 	}
 	select {
 	case e := <-werrc:
@@ -623,7 +623,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		plog.Panicf("get database snapshot file path error: %v", err)
 	}
 
-	fn := path.Join(s.cfg.SnapDir(), databaseFilename)
+	fn := path.Join(s.Cfg.SnapDir(), databaseFilename)
 	if err := os.Rename(snapfn, fn); err != nil {
 		plog.Panicf("rename snapshot file error: %v", err)
 	}
@@ -764,7 +764,7 @@ func (s *EtcdServer) LeaderStats() []byte {
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) error {
-	if s.cfg.StrictReconfigCheck && !s.cluster.IsReadyToAddNewMember() {
+	if s.Cfg.StrictReconfigCheck && !s.cluster.IsReadyToAddNewMember() {
 		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
 		// In such a case adding a new member is allowed unconditionally
 		return ErrNotEnoughStartedMembers
@@ -784,7 +784,7 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) erro
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
-	if s.cfg.StrictReconfigCheck && !s.cluster.IsReadyToRemoveMember(id) {
+	if s.Cfg.StrictReconfigCheck && !s.cluster.IsReadyToRemoveMember(id) {
 		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
 		// In such a case removing a member is allowed unconditionally
 		return ErrNotEnoughStartedMembers
@@ -823,7 +823,7 @@ func (s *EtcdServer) Lead() uint64 { return atomic.LoadUint64(&s.r.lead) }
 
 func (s *EtcdServer) Leader() types.ID { return types.ID(s.Lead()) }
 
-func (s *EtcdServer) IsPprofEnabled() bool { return s.cfg.EnablePprof }
+func (s *EtcdServer) IsPprofEnabled() bool { return s.Cfg.EnablePprof }
 
 // configure sends a configuration change through consensus and
 // then waits for it to be applied to the server. It
@@ -939,7 +939,7 @@ func (s *EtcdServer) send(ms []raftpb.Message) {
 			ok, exceed := s.r.td.Observe(ms[i].To)
 			if !ok {
 				// TODO: limit request rate.
-				plog.Warningf("failed to send out heartbeat on time (exceeded the %dms timeout for %v)", s.cfg.TickMs, exceed)
+				plog.Warningf("failed to send out heartbeat on time (exceeded the %dms timeout for %v)", s.Cfg.TickMs, exceed)
 				plog.Warningf("server is likely overloaded")
 			}
 		}
@@ -1221,7 +1221,7 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 		Path:   membership.StoreClusterVersionKey(),
 		Val:    ver,
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ReqTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
 	_, err := s.Do(ctx, req)
 	cancel()
 	switch err {
@@ -1241,7 +1241,7 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 		return ErrCanceled
 	case context.DeadlineExceeded:
 		curLeadElected := s.r.leadElectedTime()
-		prevLeadLost := curLeadElected.Add(-2 * time.Duration(s.cfg.ElectionTicks) * time.Duration(s.cfg.TickMs) * time.Millisecond)
+		prevLeadLost := curLeadElected.Add(-2 * time.Duration(s.Cfg.ElectionTicks) * time.Duration(s.Cfg.TickMs) * time.Millisecond)
 		if start.After(prevLeadLost) && start.Before(curLeadElected) {
 			return ErrTimeoutDueToLeaderFail
 		}

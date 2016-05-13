@@ -179,7 +179,7 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 	leader := s.cluster.Member(s.Leader())
 	for i := 0; i < 5 && leader == nil; i++ {
 		// wait an election
-		dur := time.Duration(s.cfg.ElectionTicks) * time.Duration(s.cfg.TickMs) * time.Millisecond
+		dur := time.Duration(s.Cfg.ElectionTicks) * time.Duration(s.Cfg.TickMs) * time.Millisecond
 		select {
 		case <-time.After(dur):
 			leader = s.cluster.Member(s.Leader())
@@ -193,7 +193,7 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 
 	for _, url := range leader.PeerURLs {
 		lurl := url + "/leases"
-		ttl, err = leasehttp.RenewHTTP(id, lurl, s.peerRt, s.cfg.peerDialTimeout())
+		ttl, err = leasehttp.RenewHTTP(id, lurl, s.peerRt, s.Cfg.peerDialTimeout())
 		if err == nil {
 			break
 		}

@@ -134,8 +134,8 @@ func (r *raftNode) start(s *EtcdServer) {
 	r.done = make(chan struct{})
 
 	heartbeat := 200 * time.Millisecond
-	if s.cfg != nil {
-		heartbeat = time.Duration(s.cfg.TickMs) * time.Millisecond
+	if s.Cfg != nil {
+		heartbeat = time.Duration(s.Cfg.TickMs) * time.Millisecond
 	}
 	// set up contention detectors for raft heartbeat message.
 	// expect to send a heartbeat within 2 heartbeat intervals.
@@ -173,7 +173,7 @@ func (r *raftNode) start(s *EtcdServer) {
 						// it promotes or demotes instead of modifying server directly.
 						syncC = r.s.SyncTicker
 						if r.s.lessor != nil {
-							r.s.lessor.Promote(r.s.cfg.electionTimeout())
+							r.s.lessor.Promote(r.s.Cfg.electionTimeout())
 						}
 						// TODO: remove the nil checking
 						// current test utility does not provide the stats
@@ -238,7 +238,7 @@ func (r *raftNode) start(s *EtcdServer) {
 				raftDone <- struct{}{}
 				r.Advance()
 			case <-syncC:
-				r.s.sync(r.s.cfg.ReqTimeout())
+				r.s.sync(r.s.Cfg.ReqTimeout())
 			case <-r.stopped:
 				return
 			}
