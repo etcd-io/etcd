@@ -75,6 +75,8 @@ func getTest(cx ctlCtx) {
 		wkv []kv
 	}{
 		{[]string{"key1"}, []kv{{"key1", "val1"}}},
+		{[]string{"", "--prefix"}, kvs},
+		{[]string{"", "--from-key"}, kvs},
 		{[]string{"key", "--prefix"}, kvs},
 		{[]string{"key", "--prefix", "--limit=2"}, kvs[:2]},
 		{[]string{"key", "--prefix", "--order=ASCEND", "--sort-by=MODIFY"}, kvs},
