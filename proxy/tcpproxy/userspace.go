@@ -19,6 +19,12 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/coreos/pkg/capnslog"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/proxy", "tcpproxy")
 )
 
 type remote struct {
@@ -33,16 +39,16 @@ func (r *remote) inactivate() {
 	r.inactive = true
 }
 
-func (r *remote) tryReactivate() {
+func (r *remote) tryReactivate() error {
 	conn, err := net.Dial("tcp", r.addr)
 	if err != nil {
-		return
+		return err
 	}
 	conn.Close()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.inactive = false
-	return
+	return nil
 }
 
 func (r *remote) isActive() bool {
@@ -106,6 +112,7 @@ func (tp *TCPProxy) serve(in net.Conn) {
 			break
 		}
 		remote.inactivate()
+		plog.Warningf("deactivated endpoint [%s] due to %v for %v", remote.addr, err, tp.MonitorInterval)
 	}
 
 	if out == nil {
@@ -141,7 +148,13 @@ func (tp *TCPProxy) runMonitor() {
 			tp.mu.Lock()
 			for _, r := range tp.remotes {
 				if !r.isActive() {
-					go r.tryReactivate()
+					go func() {
+						if err := r.tryReactivate(); err != nil {
+							plog.Warningf("failed to activate endpoint [%s] due to %v (stay inactive for another %v)", r.addr, err, tp.MonitorInterval)
+						} else {
+							plog.Printf("activated %s", r.addr)
+						}
+					}()
 				}
 			}
 			tp.mu.Unlock()

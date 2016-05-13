@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
+	"time"
 
 	"github.com/coreos/etcd/proxy/tcpproxy"
 	"github.com/spf13/cobra"
@@ -26,7 +26,8 @@ import (
 
 var (
 	gatewayListenAddr string
-	gatewayEndpoints  string
+	gatewayEndpoints  []string
+	getewayRetryDelay time.Duration
 )
 
 var (
@@ -60,14 +61,13 @@ func newGatewayStartCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&gatewayListenAddr, "listen-addr", "127.0.0.1:23790", "listen address")
-	cmd.Flags().StringVar(&gatewayEndpoints, "endpoints", "127.0.0.1:2379", "comma separated etcd cluster endpoints")
+	cmd.Flags().StringSliceVar(&gatewayEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
+	cmd.Flags().DurationVar(&getewayRetryDelay, "retry-delay", time.Minute, "duration of delay before retrying failed endpoints")
 
 	return &cmd
 }
 
 func startGateway(cmd *cobra.Command, args []string) {
-	endpoints := strings.Split(gatewayEndpoints, ",")
-
 	l, err := net.Listen("tcp", gatewayListenAddr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -75,8 +75,9 @@ func startGateway(cmd *cobra.Command, args []string) {
 	}
 
 	tp := tcpproxy.TCPProxy{
-		Listener:  l,
-		Endpoints: endpoints,
+		Listener:        l,
+		Endpoints:       gatewayEndpoints,
+		MonitorInterval: getewayRetryDelay,
 	}
 
 	tp.Run()
