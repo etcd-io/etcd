@@ -95,7 +95,7 @@ func runElection(eps []string, rounds int) {
 			}
 		}
 		rcs[i].validate = func() error {
-			if l, err := e.Leader(); err == nil && l != observedLeader {
+			if l, err := e.Leader(context.TODO()); err == nil && l != observedLeader {
 				return fmt.Errorf("expected leader %q, got %q", observedLeader, l)
 			}
 			validatec <- struct{}{}
@@ -110,7 +110,7 @@ func runElection(eps []string, rounds int) {
 					return fmt.Errorf("waiting on followers")
 				}
 			}
-			if err := e.Resign(); err != nil {
+			if err := e.Resign(context.TODO()); err != nil {
 				return err
 			}
 			if observedLeader == v {
@@ -182,7 +182,7 @@ func runRacer(eps []string, round int) {
 			return nil
 		}
 		rcs[i].release = func() error {
-			if err := m.Unlock(); err != nil {
+			if err := m.Unlock(ctx); err != nil {
 				return err
 			}
 			cnt = 0

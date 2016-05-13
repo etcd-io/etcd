@@ -72,7 +72,7 @@ func TestElectionWait(t *testing.T) {
 				}
 			}
 			// let next leader take over
-			if err := e.Resign(); err != nil {
+			if err := e.Resign(context.TODO()); err != nil {
 				t.Fatalf("failed resign (%v)", err)
 			}
 			// tell followers to start listening for next leader

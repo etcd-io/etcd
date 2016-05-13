@@ -89,19 +89,19 @@ func (e *Election) Proclaim(ctx context.Context, val string) error {
 }
 
 // Resign lets a leader start a new election.
-func (e *Election) Resign() (err error) {
+func (e *Election) Resign(ctx context.Context) (err error) {
 	if e.leaderSession == nil {
 		return nil
 	}
-	_, err = e.client.Delete(e.client.Ctx(), e.leaderKey)
+	_, err = e.client.Delete(ctx, e.leaderKey)
 	e.leaderKey = ""
 	e.leaderSession = nil
 	return err
 }
 
 // Leader returns the leader value for the current election.
-func (e *Election) Leader() (string, error) {
-	resp, err := e.client.Get(e.client.Ctx(), e.keyPrefix, v3.WithFirstCreate()...)
+func (e *Election) Leader(ctx context.Context) (string, error) {
+	resp, err := e.client.Get(ctx, e.keyPrefix, v3.WithFirstCreate()...)
 	if err != nil {
 		return "", err
 	} else if len(resp.Kvs) == 0 {
