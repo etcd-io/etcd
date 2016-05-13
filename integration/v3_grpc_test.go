@@ -78,9 +78,6 @@ func TestV3PutOverwrite(t *testing.T) {
 
 // TestPutRestart checks if a put after an unrelated member restart succeeds
 func TestV3PutRestart(t *testing.T) {
-	// this test might block for 5 seconds, make it parallel to speed up the test.
-	t.Parallel()
-
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -979,8 +976,6 @@ func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 }
 
 func TestGRPCRequireLeader(t *testing.T) {
-	t.Parallel()
-
 	defer testutil.AfterTest(t)
 
 	cfg := ClusterConfig{Size: 3}
@@ -1008,8 +1003,6 @@ func TestGRPCRequireLeader(t *testing.T) {
 }
 
 func TestGRPCStreamRequireLeader(t *testing.T) {
-	t.Parallel()
-
 	defer testutil.AfterTest(t)
 
 	cfg := ClusterConfig{Size: 3}
