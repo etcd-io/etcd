@@ -89,19 +89,23 @@ func NewFromConfigFile(path string) (*Client, error) {
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.cancel == nil {
-		c.mu.Unlock()
 		return nil
 	}
 	c.cancel()
 	c.cancel = nil
-	err := c.conn.Close()
 	connc := c.newconnc
 	c.mu.Unlock()
+	c.connStartRetry(nil)
 	c.Watcher.Close()
 	c.Lease.Close()
 	<-connc
-	return err
+	c.mu.Lock()
+	if c.lastConnErr != c.ctx.Err() {
+		return c.lastConnErr
+	}
+	return nil
 }
 
 // Ctx is a context for "out of band" messages (e.g., for sending
@@ -213,15 +217,16 @@ func (c *Client) retryConnection(err error) (newConn *grpc.ClientConn, dialErr e
 	if err != nil {
 		c.errors = append(c.errors, err)
 	}
-	if c.cancel == nil {
-		return nil, c.ctx.Err()
-	}
 	if c.conn != nil {
 		c.conn.Close()
 		if st, _ := c.conn.State(); st != grpc.Shutdown {
 			// wait so grpc doesn't leak sleeping goroutines
-			c.conn.WaitForStateChange(c.ctx, st)
+			c.conn.WaitForStateChange(context.Background(), st)
 		}
+	}
+	if c.cancel == nil {
+		// client has called Close() so don't try to dial out
+		return nil, c.ctx.Err()
 	}
 
 	c.conn, dialErr = c.cfg.RetryDialer(c)
@@ -262,8 +267,9 @@ func (c *Client) connMonitor() {
 		select {
 		case err = <-c.reconnc:
 		case <-c.ctx.Done():
+			_, err = c.retryConnection(c.ctx.Err())
 			c.mu.Lock()
-			c.lastConnErr = c.ctx.Err()
+			c.lastConnErr = err
 			close(c.newconnc)
 			c.mu.Unlock()
 			return
