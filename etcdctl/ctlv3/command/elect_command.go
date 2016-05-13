@@ -128,5 +128,5 @@ func campaign(c *clientv3.Client, election string, prop string) error {
 		return errors.New("elect: session expired")
 	}
 
-	return e.Resign()
+	return e.Resign(context.TODO())
 }

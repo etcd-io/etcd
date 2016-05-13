@@ -80,7 +80,7 @@ func lockUntilSignal(c *clientv3.Client, lockname string) error {
 
 	select {
 	case <-donec:
-		return m.Unlock()
+		return m.Unlock(context.TODO())
 	case <-s.Done():
 	}
 

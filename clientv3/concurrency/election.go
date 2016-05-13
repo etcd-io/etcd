@@ -16,6 +16,7 @@ package concurrency
 
 import (
 	"errors"
+	"fmt"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -50,22 +51,39 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 		return serr
 	}
 
-	k, rev, err := NewUniqueKV(ctx, e.client, e.keyPrefix, val, v3.WithLease(s.Lease()))
-	if err == nil {
-		err = waitDeletes(ctx, e.client, e.keyPrefix, v3.WithPrefix(), v3.WithRev(rev-1))
+	k := fmt.Sprintf("%s/%x", e.keyPrefix, s.Lease())
+	txn := e.client.Txn(ctx).If(v3.Compare(v3.CreateRevision(k), "=", 0))
+	txn = txn.Then(v3.OpPut(k, val, v3.WithLease(s.Lease())))
+	txn = txn.Else(v3.OpGet(k))
+	resp, err := txn.Commit()
+	if err != nil {
+		return err
 	}
 
+	e.leaderKey, e.leaderRev, e.leaderSession = k, resp.Header.Revision, s
+	if !resp.Succeeded {
+		kv := resp.Responses[0].GetResponseRange().Kvs[0]
+		e.leaderRev = kv.CreateRevision
+		if string(kv.Value) != val {
+			if err = e.Proclaim(ctx, val); err != nil {
+				e.Resign(ctx)
+				return err
+			}
+		}
+	}
+
+	err = waitDeletes(ctx, e.client, e.keyPrefix, v3.WithPrefix(), v3.WithRev(e.leaderRev-1))
 	if err != nil {
 		// clean up in case of context cancel
 		select {
 		case <-ctx.Done():
-			e.client.Delete(e.client.Ctx(), k)
+			e.Resign(e.client.Ctx())
 		default:
+			e.leaderSession = nil
 		}
 		return err
 	}
 
-	e.leaderKey, e.leaderRev, e.leaderSession = k, rev, s
 	return nil
 }
 
@@ -89,19 +107,19 @@ func (e *Election) Proclaim(ctx context.Context, val string) error {
 }
 
 // Resign lets a leader start a new election.
-func (e *Election) Resign() (err error) {
+func (e *Election) Resign(ctx context.Context) (err error) {
 	if e.leaderSession == nil {
 		return nil
 	}
-	_, err = e.client.Delete(e.client.Ctx(), e.leaderKey)
+	_, err = e.client.Delete(ctx, e.leaderKey)
 	e.leaderKey = ""
 	e.leaderSession = nil
 	return err
 }
 
 // Leader returns the leader value for the current election.
-func (e *Election) Leader() (string, error) {
-	resp, err := e.client.Get(e.client.Ctx(), e.keyPrefix, v3.WithFirstCreate()...)
+func (e *Election) Leader(ctx context.Context) (string, error) {
+	resp, err := e.client.Get(ctx, e.keyPrefix, v3.WithFirstCreate()...)
 	if err != nil {
 		return "", err
 	} else if len(resp.Kvs) == 0 {

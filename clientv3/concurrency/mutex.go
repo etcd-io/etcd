@@ -63,14 +63,14 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	// release lock key if cancelled
 	select {
 	case <-ctx.Done():
-		m.Unlock()
+		m.Unlock(m.client.Ctx())
 	default:
 	}
 	return err
 }
 
-func (m *Mutex) Unlock() error {
-	if _, err := m.client.Delete(m.client.Ctx(), m.myKey); err != nil {
+func (m *Mutex) Unlock(ctx context.Context) error {
+	if _, err := m.client.Delete(ctx, m.myKey); err != nil {
 		return err
 	}
 	m.myKey = "\x00"
@@ -92,7 +92,7 @@ func (lm *lockerMutex) Lock() {
 	}
 }
 func (lm *lockerMutex) Unlock() {
-	if err := lm.Mutex.Unlock(); err != nil {
+	if err := lm.Mutex.Unlock(lm.client.Ctx()); err != nil {
 		panic(err)
 	}
 }

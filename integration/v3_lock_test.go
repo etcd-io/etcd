@@ -69,7 +69,7 @@ func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) 
 				t.Fatalf("lock %d followers did not wait", i)
 			default:
 			}
-			if err := m.Unlock(); err != nil {
+			if err := m.Unlock(context.TODO()); err != nil {
 				t.Fatalf("could not release lock (%v)", err)
 			}
 		}

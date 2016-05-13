@@ -72,7 +72,7 @@ func TestElectionWait(t *testing.T) {
 				}
 			}
 			// let next leader take over
-			if err := e.Resign(); err != nil {
+			if err := e.Resign(context.TODO()); err != nil {
 				t.Fatalf("failed resign (%v)", err)
 			}
 			// tell followers to start listening for next leader
@@ -145,4 +145,27 @@ func TestElectionFailover(t *testing.T) {
 
 	// leader must ack election (otherwise, Campaign may see closed conn)
 	<-electedc
+}
+
+// TestElectionSessionRelock ensures that campaigning twice on the same election
+// with the same lock will Proclaim instead of deadlocking.
+func TestElectionSessionRecampaign(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	cli := clus.RandClient()
+
+	e := concurrency.NewElection(cli, "test-elect")
+	if err := e.Campaign(context.TODO(), "abc"); err != nil {
+		t.Fatal(err)
+	}
+	e2 := concurrency.NewElection(cli, "test-elect")
+	if err := e2.Campaign(context.TODO(), "def"); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+	if resp := <-e.Observe(ctx); len(resp.Kvs) == 0 || string(resp.Kvs[0].Value) != "def" {
+		t.Fatalf("expected value=%q, got response %v", "def", resp)
+	}
 }
