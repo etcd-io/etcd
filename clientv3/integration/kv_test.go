@@ -111,9 +111,6 @@ func TestKVPut(t *testing.T) {
 }
 
 func TestKVPutWithRequireLeader(t *testing.T) {
-	// this test might block for a few seconds, make it parallel to speed up the test.
-	t.Parallel()
-
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
@@ -576,7 +573,6 @@ func TestKVGetCancel(t *testing.T) {
 
 // TestKVPutStoppedServerAndClose ensures closing after a failed Put works.
 func TestKVPutStoppedServerAndClose(t *testing.T) {
-	t.Parallel()
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
