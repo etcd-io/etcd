@@ -22,13 +22,12 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"os"
 	"sync"
 	"time"
 )
 
 func bridge(conn net.Conn, remoteAddr string) {
-	outconn, err := net.Dial("tcp", os.Args[2])
+	outconn, err := net.Dial("tcp", flag.Args()[1])
 	if err != nil {
 		log.Println("oops:", err)
 		return
@@ -45,7 +44,7 @@ func blackhole(conn net.Conn) {
 }
 
 func readRemoteOnly(conn net.Conn, remoteAddr string) {
-	outconn, err := net.Dial("tcp", os.Args[2])
+	outconn, err := net.Dial("tcp", flag.Args()[1])
 	if err != nil {
 		log.Println("oops:", err)
 		return
@@ -55,7 +54,7 @@ func readRemoteOnly(conn net.Conn, remoteAddr string) {
 }
 
 func writeRemoteOnly(conn net.Conn, remoteAddr string) {
-	outconn, err := net.Dial("tcp", os.Args[2])
+	outconn, err := net.Dial("tcp", flag.Args()[1])
 	if err != nil {
 		log.Println("oops:", err)
 		return
@@ -79,7 +78,7 @@ func randCopy(conn net.Conn, outconn net.Conn) {
 }
 
 func randomBlackhole(conn net.Conn, remoteAddr string) {
-	outconn, err := net.Dial("tcp", os.Args[2])
+	outconn, err := net.Dial("tcp", flag.Args()[1])
 	if err != nil {
 		log.Println("oops:", err)
 		return
