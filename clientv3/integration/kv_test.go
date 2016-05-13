@@ -110,6 +110,32 @@ func TestKVPut(t *testing.T) {
 	}
 }
 
+func TestKVPutWithRequireLeader(t *testing.T) {
+	// this test might block for a few seconds, make it parallel to speed up the test.
+	t.Parallel()
+
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+
+	// wait for election timeout, then member[0] will not have a leader.
+	var (
+		electionTicks = 10
+		tickDuration  = 10 * time.Millisecond
+	)
+	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
+
+	kv := clientv3.NewKV(clus.Client(0))
+	_, err := kv.Put(clientv3.WithRequireLeader(context.Background()), "foo", "bar")
+	if err != rpctypes.ErrNoLeader {
+		t.Fatal(err)
+	}
+}
+
 func TestKVRange(t *testing.T) {
 	defer testutil.AfterTest(t)
 
