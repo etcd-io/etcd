@@ -289,7 +289,10 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 		}
 	}
 	if _, err := wait(ctx, t.shutdownChan, t.writableChan); err != nil {
-		// t.streamsQuota will be updated when t.CloseStream is invoked.
+		// Return the quota back now because there is no stream returned to the caller.
+		if _, ok := err.(StreamError); ok && checkStreamsQuota {
+			t.streamsQuota.add(1)
+		}
 		return nil, err
 	}
 	t.mu.Lock()
@@ -579,6 +582,11 @@ func (t *http2Client) getStream(f http2.Frame) (*Stream, bool) {
 // Window updates will deliver to the controller for sending when
 // the cumulative quota exceeds the corresponding threshold.
 func (t *http2Client) updateWindow(s *Stream, n uint32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.state == streamDone {
+		return
+	}
 	if w := t.fc.onRead(n); w > 0 {
 		t.controlBuf.put(&windowUpdate{0, w})
 	}
