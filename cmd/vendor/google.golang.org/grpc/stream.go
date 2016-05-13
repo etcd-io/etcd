@@ -81,7 +81,7 @@ type Stream interface {
 
 // ClientStream defines the interface a client stream has to satify.
 type ClientStream interface {
-	// Header returns the header metedata received from the server if there
+	// Header returns the header metadata received from the server if there
 	// is any. It blocks if the metadata is not ready to read.
 	Header() (metadata.MD, error)
 	// Trailer returns the trailer metadata from the server. It must be called

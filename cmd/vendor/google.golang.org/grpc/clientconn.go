@@ -491,7 +491,10 @@ func (cc *Conn) resetTransport(closeTransport bool) error {
 				return ErrClientConnTimeout
 			}
 			closeTransport = false
-			time.Sleep(sleepTime)
+			select {
+			case <-time.After(sleepTime):
+			case <-cc.shutdownChan:
+			}
 			retries++
 			grpclog.Printf("grpc: Conn.resetTransport failed to create client transport: %v; Reconnecting to %q", err, cc.target)
 			continue
