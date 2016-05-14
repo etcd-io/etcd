@@ -73,6 +73,10 @@ type OpResponse struct {
 	del *DeleteResponse
 }
 
+func (op OpResponse) Put() *PutResponse    { return op.put }
+func (op OpResponse) Get() *GetResponse    { return op.get }
+func (op OpResponse) Del() *DeleteResponse { return op.del }
+
 type kv struct {
 	rc     *remoteClient
 	remote pb.KVClient
