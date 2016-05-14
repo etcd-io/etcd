@@ -423,6 +423,8 @@ type member struct {
 	grpcAddr   string
 }
 
+func (m *member) GRPCAddr() string { return m.grpcAddr }
+
 type memberConfig struct {
 	name              string
 	peerTLS           *transport.TLSInfo
