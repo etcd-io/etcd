@@ -15,10 +15,9 @@
 package types
 
 import (
+	"github.com/coreos/etcd/pkg/testutil"
 	"reflect"
 	"testing"
-
-	"github.com/coreos/etcd/pkg/testutil"
 )
 
 func TestParseInitialCluster(t *testing.T) {
@@ -111,5 +110,46 @@ func TestNewURLsMapIPV6(t *testing.T) {
 	})
 	if !reflect.DeepEqual(c, wc) {
 		t.Errorf("cluster = %#v, want %#v", c, wc)
+	}
+}
+
+func TestNewURLsMapFromStringMapEmpty(t *testing.T) {
+	mss := make(map[string]string)
+	urlsMap, err := NewURLsMapFromStringMap(mss, ",")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	s := ""
+	um, err := NewURLsMap(s)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if um.String() != urlsMap.String() {
+		t.Errorf("Expected:\n%+v\ngot:\n%+v", um, urlsMap)
+	}
+}
+
+func TestNewURLsMapFromStringMapNormal(t *testing.T) {
+	mss := make(map[string]string)
+	mss["host0"] = "http://127.0.0.1:2379,http://127.0.0.1:2380"
+	mss["host1"] = "http://127.0.0.1:2381,http://127.0.0.1:2382"
+	mss["host2"] = "http://127.0.0.1:2383,http://127.0.0.1:2384"
+	mss["host3"] = "http://127.0.0.1:2385,http://127.0.0.1:2386"
+	urlsMap, err := NewURLsMapFromStringMap(mss, ",")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	s := "host0=http://127.0.0.1:2379,host0=http://127.0.0.1:2380," +
+		"host1=http://127.0.0.1:2381,host1=http://127.0.0.1:2382," +
+		"host2=http://127.0.0.1:2383,host2=http://127.0.0.1:2384," +
+		"host3=http://127.0.0.1:2385,host3=http://127.0.0.1:2386"
+	um, err := NewURLsMap(s)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if um.String() != urlsMap.String() {
+		t.Errorf("Expected:\n%+v\ngot:\n%+v", um, urlsMap)
 	}
 }
