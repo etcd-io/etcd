@@ -15,6 +15,7 @@
 package command
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -50,6 +52,7 @@ var (
 	restoreDataDir      string
 	restorePeerURLs     string
 	restoreName         string
+	skipHashCheck       bool
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
@@ -94,6 +97,7 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap.")
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster.")
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member.")
+	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory).")
 
 	return cmd
 }
@@ -191,7 +195,7 @@ func initialClusterFromName(name string) string {
 	if name == "" {
 		n = defaultName
 	}
-	return fmt.Sprintf("%s=http://localhost:2380", n, n)
+	return fmt.Sprintf("%s=http://localhost:2380", n)
 }
 
 // makeWAL creates a WAL for the initial cluster
@@ -261,18 +265,65 @@ func makeDB(snapdir, dbfile string) {
 	}
 	defer f.Close()
 
+	// get snapshot integrity hash
+	if _, err := f.Seek(-sha256.Size, os.SEEK_END); err != nil {
+		ExitWithError(ExitIO, err)
+	}
+	sha := make([]byte, sha256.Size)
+	if _, err := f.Read(sha); err != nil {
+		ExitWithError(ExitIO, err)
+	}
+	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+		ExitWithError(ExitIO, err)
+	}
+
 	if err := os.MkdirAll(snapdir, 0755); err != nil {
 		ExitWithError(ExitIO, err)
 	}
 
 	dbpath := path.Join(snapdir, "db")
-	db, dberr := os.OpenFile(dbpath, os.O_WRONLY|os.O_CREATE, 0600)
+	db, dberr := os.OpenFile(dbpath, os.O_RDWR|os.O_CREATE, 0600)
 	if dberr != nil {
 		ExitWithError(ExitIO, dberr)
 	}
 	if _, err := io.Copy(db, f); err != nil {
 		ExitWithError(ExitIO, err)
 	}
+
+	// truncate away integrity hash, if any.
+	off, serr := db.Seek(0, os.SEEK_END)
+	if serr != nil {
+		ExitWithError(ExitIO, serr)
+	}
+	hasHash := (off % 512) == sha256.Size
+	if hasHash {
+		if err := db.Truncate(off - sha256.Size); err != nil {
+			ExitWithError(ExitIO, err)
+		}
+	}
+
+	if !hasHash && !skipHashCheck {
+		err := fmt.Errorf("snapshot missing hash but --skip-hash-check=false")
+		ExitWithError(ExitBadArgs, err)
+	}
+
+	if hasHash && !skipHashCheck {
+		// check for match
+		if _, err := db.Seek(0, os.SEEK_SET); err != nil {
+			ExitWithError(ExitIO, err)
+		}
+		h := sha256.New()
+		if _, err := io.Copy(h, db); err != nil {
+			ExitWithError(ExitIO, err)
+		}
+		dbsha := h.Sum(nil)
+		if !reflect.DeepEqual(sha, dbsha) {
+			err := fmt.Errorf("expected sha256 %v, got %v", sha, dbsha)
+			ExitWithError(ExitInvalidInput, err)
+		}
+	}
+
+	// db hash is OK, can now modify DB so it can be part of a new cluster
 	db.Close()
 
 	// update consistentIndex so applies go through on etcdserver despite
@@ -285,6 +336,7 @@ func makeDB(snapdir, dbfile string) {
 		_, _, err := s.TxnDeleteRange(id, k, nil)
 		return err
 	}
+
 	// delete stored members from old cluster since using new members
 	btx.UnsafeForEach([]byte("members"), del)
 	btx.UnsafeForEach([]byte("members_removed"), del)
