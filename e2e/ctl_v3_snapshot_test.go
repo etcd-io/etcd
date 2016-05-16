@@ -52,6 +52,38 @@ func snapshotTest(cx ctlCtx) {
 	}
 }
 
+func TestCtlV3SnapshotCorrupt(t *testing.T) { testCtl(t, snapshotCorruptTest) }
+
+func snapshotCorruptTest(cx ctlCtx) {
+	fpath := "test.snapshot"
+	defer os.RemoveAll(fpath)
+
+	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
+		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
+	}
+
+	// corrupt file
+	f, oerr := os.OpenFile(fpath, os.O_WRONLY, 0)
+	if oerr != nil {
+		cx.t.Fatal(oerr)
+	}
+	if _, err := f.Write(make([]byte, 512)); err != nil {
+		cx.t.Fatal(err)
+	}
+	f.Close()
+
+	defer os.RemoveAll("snap.etcd")
+	serr := spawnWithExpect(
+		append(cx.PrefixArgs(), "snapshot", "restore",
+			"--data-dir", "snap.etcd",
+			fpath),
+		"expected sha256")
+
+	if serr != nil {
+		cx.t.Fatal(serr)
+	}
+}
+
 func ctlV3SnapshotSave(cx ctlCtx, fpath string) error {
 	cmdArgs := append(cx.PrefixArgs(), "snapshot", "save", fpath)
 	return spawnWithExpect(cmdArgs, fmt.Sprintf("Snapshot saved at %s", fpath))
