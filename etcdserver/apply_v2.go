@@ -26,8 +26,8 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
-// applierV2 is the interface for processing V2 raft messages
-type applierV2 interface {
+// ApplierV2 is the interface for processing V2 raft messages
+type ApplierV2 interface {
 	Delete(r *pb.Request) Response
 	Post(r *pb.Request) Response
 	Put(r *pb.Request) Response
@@ -35,19 +35,26 @@ type applierV2 interface {
 	Sync(r *pb.Request) Response
 }
 
-type applierV2store struct{ s *EtcdServer }
+func NewApplierV2(s store.Store, c *membership.RaftCluster) ApplierV2 {
+	return &applierV2store{store: s, cluster: c}
+}
+
+type applierV2store struct {
+	store   store.Store
+	cluster *membership.RaftCluster
+}
 
 func (a *applierV2store) Delete(r *pb.Request) Response {
 	switch {
 	case r.PrevIndex > 0 || r.PrevValue != "":
-		return toResponse(a.s.store.CompareAndDelete(r.Path, r.PrevValue, r.PrevIndex))
+		return toResponse(a.store.CompareAndDelete(r.Path, r.PrevValue, r.PrevIndex))
 	default:
-		return toResponse(a.s.store.Delete(r.Path, r.Dir, r.Recursive))
+		return toResponse(a.store.Delete(r.Path, r.Dir, r.Recursive))
 	}
 }
 
 func (a *applierV2store) Post(r *pb.Request) Response {
-	return toResponse(a.s.store.Create(r.Path, r.Dir, r.Val, true, toTTLOptions(r)))
+	return toResponse(a.store.Create(r.Path, r.Dir, r.Val, true, toTTLOptions(r)))
 }
 
 func (a *applierV2store) Put(r *pb.Request) Response {
@@ -57,14 +64,14 @@ func (a *applierV2store) Put(r *pb.Request) Response {
 	case existsSet:
 		if exists {
 			if r.PrevIndex == 0 && r.PrevValue == "" {
-				return toResponse(a.s.store.Update(r.Path, r.Val, ttlOptions))
+				return toResponse(a.store.Update(r.Path, r.Val, ttlOptions))
 			} else {
-				return toResponse(a.s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
+				return toResponse(a.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
 			}
 		}
-		return toResponse(a.s.store.Create(r.Path, r.Dir, r.Val, false, ttlOptions))
+		return toResponse(a.store.Create(r.Path, r.Dir, r.Val, false, ttlOptions))
 	case r.PrevIndex > 0 || r.PrevValue != "":
-		return toResponse(a.s.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
+		return toResponse(a.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
 	default:
 		if storeMemberAttributeRegexp.MatchString(r.Path) {
 			id := membership.MustParseMemberIDFromKey(path.Dir(r.Path))
@@ -72,25 +79,29 @@ func (a *applierV2store) Put(r *pb.Request) Response {
 			if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
 				plog.Panicf("unmarshal %s should never fail: %v", r.Val, err)
 			}
-			a.s.cluster.UpdateAttributes(id, attr)
+			if a.cluster != nil {
+				a.cluster.UpdateAttributes(id, attr)
+			}
 			// return an empty response since there is no consumer.
 			return Response{}
 		}
 		if r.Path == membership.StoreClusterVersionKey() {
-			a.s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)))
+			if a.cluster != nil {
+				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)))
+			}
 			// return an empty response since there is no consumer.
 			return Response{}
 		}
-		return toResponse(a.s.store.Set(r.Path, r.Dir, r.Val, ttlOptions))
+		return toResponse(a.store.Set(r.Path, r.Dir, r.Val, ttlOptions))
 	}
 }
 
 func (a *applierV2store) QGet(r *pb.Request) Response {
-	return toResponse(a.s.store.Get(r.Path, r.Recursive, r.Sorted))
+	return toResponse(a.store.Get(r.Path, r.Recursive, r.Sorted))
 }
 
 func (a *applierV2store) Sync(r *pb.Request) Response {
-	a.s.store.DeleteExpiredKeys(time.Unix(0, r.Time))
+	a.store.DeleteExpiredKeys(time.Unix(0, r.Time))
 	return Response{}
 }
 

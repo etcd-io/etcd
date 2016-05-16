@@ -180,7 +180,7 @@ type EtcdServer struct {
 
 	store store.Store
 
-	applyV2 applierV2
+	applyV2 ApplierV2
 
 	applyV3    applierV3
 	kv         mvcc.ConsistentWatchableKV
@@ -391,7 +391,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		msgSnapC:      make(chan raftpb.Message, maxInFlightMsgSnap),
 	}
 
-	srv.applyV2 = &applierV2store{srv}
+	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	srv.be = be
 	srv.lessor = lease.NewLessor(srv.be)
