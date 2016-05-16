@@ -15,6 +15,7 @@
 package v3rpc
 
 import (
+	"crypto/sha256"
 	"io"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -81,6 +82,8 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		pw.Close()
 	}()
 
+	// send file data
+	h := sha256.New()
 	br := int64(0)
 	buf := make([]byte, 32*1024)
 	sz := snap.Size()
@@ -97,6 +100,14 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		if err = srv.Send(resp); err != nil {
 			return togRPCError(err)
 		}
+		h.Write(buf[:n])
+	}
+
+	// send sha
+	sha := h.Sum(nil)
+	hresp := &pb.SnapshotResponse{RemainingBytes: 0, Blob: sha}
+	if err := srv.Send(hresp); err != nil {
+		return togRPCError(err)
 	}
 
 	return nil
