@@ -1782,6 +1782,13 @@ func TestRemoveNode(t *testing.T) {
 	if g := r.nodes(); !reflect.DeepEqual(g, w) {
 		t.Errorf("nodes = %v, want %v", g, w)
 	}
+
+	// remove all nodes from cluster
+	r.removeNode(1)
+	w = []uint64{}
+	if g := r.nodes(); !reflect.DeepEqual(g, w) {
+		t.Errorf("nodes = %v, want %v", g, w)
+	}
 }
 
 func TestPromotable(t *testing.T) {

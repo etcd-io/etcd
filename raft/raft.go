@@ -893,6 +893,12 @@ func (r *raft) addNode(id uint64) {
 func (r *raft) removeNode(id uint64) {
 	r.delProgress(id)
 	r.pendingConf = false
+
+	// do not try to commit or abort transferring if there is no nodes in the cluster.
+	if len(r.prs) == 0 {
+		return
+	}
+
 	// The quorum size is now smaller, so see if any pending entries can
 	// be committed.
 	if r.maybeCommit() {
