@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
 	"golang.org/x/net/context"
 )
@@ -31,6 +32,8 @@ func TestElectionWait(t *testing.T) {
 
 	leaders := 3
 	followers := 3
+	var clients []*clientv3.Client
+	newClient := makeMultiNodeClients(t, clus.cluster, &clients)
 
 	electedc := make(chan string)
 	nextc := []chan struct{}{}
@@ -41,7 +44,7 @@ func TestElectionWait(t *testing.T) {
 		nextc = append(nextc, make(chan struct{}))
 		go func(ch chan struct{}) {
 			for j := 0; j < leaders; j++ {
-				b := concurrency.NewElection(clus.RandClient(), "test-election")
+				b := concurrency.NewElection(newClient(), "test-election")
 				cctx, cancel := context.WithCancel(context.TODO())
 				defer cancel()
 				s, ok := <-b.Observe(cctx)
@@ -59,7 +62,7 @@ func TestElectionWait(t *testing.T) {
 	// elect some leaders
 	for i := 0; i < leaders; i++ {
 		go func() {
-			e := concurrency.NewElection(clus.RandClient(), "test-election")
+			e := concurrency.NewElection(newClient(), "test-election")
 			ev := fmt.Sprintf("electval-%v", time.Now().UnixNano())
 			if err := e.Campaign(context.TODO(), ev); err != nil {
 				t.Fatalf("failed volunteer (%v)", err)
@@ -86,6 +89,8 @@ func TestElectionWait(t *testing.T) {
 	for i := 0; i < followers; i++ {
 		<-donec
 	}
+
+	closeClients(t, clients)
 }
 
 // TestElectionFailover tests that an election will
