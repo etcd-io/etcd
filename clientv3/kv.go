@@ -60,7 +60,7 @@ type KV interface {
 	// Do is useful when creating arbitrary operations to be issued at a
 	// later time; the user can range over the operations, calling Do to
 	// execute them. Get/Put/Delete, on the other hand, are best suited
-	// for when the	operation should be issued at the time of declaration.
+	// for when the operation should be issued at the time of declaration.
 	Do(ctx context.Context, op Op) (OpResponse, error)
 
 	// Txn creates a transaction.

@@ -39,7 +39,7 @@ type Watcher interface {
 	// through the returned channel.
 	// If the watch is slow or the required rev is compacted, the watch request
 	// might be canceled from the server-side and the chan will be closed.
-	// 'opts' can be: 'WithRev' and/or 'WitchPrefix'.
+	// 'opts' can be: 'WithRev' and/or 'WithPrefix'.
 	Watch(ctx context.Context, key string, opts ...OpOption) WatchChan
 
 	// Close closes the watcher and cancels all watch requests.
