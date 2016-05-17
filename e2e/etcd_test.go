@@ -74,7 +74,7 @@ var (
 	configClientAutoTLS = etcdProcessClusterConfig{
 		clusterSize:     1,
 		proxySize:       0,
-		isClientAuthTLS: true,
+		isClientAutoTLS: true,
 		clientTLS:       clientTLS,
 		initialToken:    "new",
 	}
@@ -138,7 +138,8 @@ type etcdProcessClusterConfig struct {
 	clientTLS         clientConnType
 	isPeerTLS         bool
 	isPeerAutoTLS     bool
-	isClientAuthTLS   bool
+	isClientAutoTLS   bool
+	forceNewCluster   bool
 	initialToken      string
 	quotaBackendBytes int64
 }
@@ -248,6 +249,9 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			"--initial-cluster-token", cfg.initialToken,
 			"--data-dir", dataDirPath,
 		}
+		if cfg.forceNewCluster {
+			args = append(args, "--force-new-cluster")
+		}
 		if cfg.quotaBackendBytes > 0 {
 			args = append(args,
 				"--quota-backend-bytes", fmt.Sprintf("%d", cfg.quotaBackendBytes),
@@ -296,7 +300,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 
 func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 	if cfg.clientTLS != clientNonTLS {
-		if cfg.isClientAuthTLS {
+		if cfg.isClientAutoTLS {
 			args = append(args, "--auto-tls=true")
 		} else {
 			tlsClientArgs := []string{
