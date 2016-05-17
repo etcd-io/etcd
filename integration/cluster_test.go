@@ -232,9 +232,14 @@ func TestIssue2681(t *testing.T) {
 }
 
 // Ensure we can remove a member after a snapshot then add a new one back.
-func TestIssue2746(t *testing.T) {
+func TestIssue2746(t *testing.T) { testIssue2746(t, 5) }
+
+// With 3 nodes TestIssue2476 sometimes had a shutdown with an inflight snapshot.
+func TestIssue2746WithThree(t *testing.T) { testIssue2746(t, 3) }
+
+func testIssue2746(t *testing.T, members int) {
 	defer testutil.AfterTest(t)
-	c := NewCluster(t, 5)
+	c := NewCluster(t, members)
 
 	for _, m := range c.Members {
 		m.SnapCount = 10
@@ -248,7 +253,7 @@ func TestIssue2746(t *testing.T) {
 		clusterMustProgress(t, c.Members)
 	}
 
-	c.RemoveMember(t, uint64(c.Members[4].s.ID()))
+	c.RemoveMember(t, uint64(c.Members[members-1].s.ID()))
 	c.waitLeader(t, c.Members)
 
 	c.AddMember(t)
