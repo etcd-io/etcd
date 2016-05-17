@@ -15,6 +15,8 @@
 package e2e
 
 import (
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -227,6 +229,52 @@ func TestCtlV2RoleList(t *testing.T) {
 	}
 }
 
+func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issues/5360
+	defer testutil.AfterTest(t)
+
+	var (
+		backupDirPrefix = "testbackup"
+		backupDir       = fmt.Sprintf("%s0.etcd", backupDirPrefix)
+	)
+	epc1 := setupEtcdctlTest(t, &configNoTLS, false)
+	if err := etcdctlSet(epc1, "foo1", "bar"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := etcdctlBackup(epc1, epc1.procs[0].cfg.dataDirPath, backupDir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(backupDir)
+
+	if err := epc1.Close(); err != nil {
+		t.Fatalf("error closing etcd processes (%v)", err)
+	}
+
+	// restart from the backup directory
+	cfg2 := configNoTLS
+	cfg2.dataDirPathPrefix = backupDirPrefix
+	cfg2.keepDataDir = true
+	cfg2.forceNewCluster = true
+	epc2 := setupEtcdctlTest(t, &cfg2, false)
+
+	// check if backup went through correctly
+	if err := etcdctlGet(epc2, "foo1", "bar", false); err != nil {
+		t.Fatal(err)
+	}
+
+	// check if it can serve client requests
+	if err := etcdctlSet(epc2, "foo2", "bar"); err != nil {
+		t.Fatal(err)
+	}
+	if err := etcdctlGet(epc2, "foo2", "bar", false); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := epc2.Close(); err != nil {
+		t.Fatalf("error closing etcd processes (%v)", err)
+	}
+}
+
 func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
 	endpoints := ""
 	if proxies := clus.proxies(); len(proxies) != 0 {
@@ -327,6 +375,11 @@ func etcdctlUserList(clus *etcdProcessCluster, expectedUser string) error {
 func etcdctlAuthEnable(clus *etcdProcessCluster) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "auth", "enable")
 	return spawnWithExpect(cmdArgs, "Authentication Enabled")
+}
+
+func etcdctlBackup(clus *etcdProcessCluster, dataDir, backupDir string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus), "backup", "--data-dir", dataDir, "--backup-dir", backupDir)
+	return spawnWithExpect(cmdArgs, "wal: ignored file")
 }
 
 func mustEtcdctl(t *testing.T) {

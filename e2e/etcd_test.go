@@ -122,9 +122,12 @@ type etcdProcess struct {
 }
 
 type etcdProcessConfig struct {
-	args        []string
+	args []string
+
 	dataDirPath string
-	acurl       string
+	keepDataDir bool
+
+	acurl string
 	// additional url for tls connection when the etcd process
 	// serves both http and https
 	acurltls string
@@ -132,6 +135,9 @@ type etcdProcessConfig struct {
 }
 
 type etcdProcessClusterConfig struct {
+	dataDirPathPrefix string
+	keepDataDir       bool
+
 	clusterSize       int
 	basePort          int
 	proxySize         int
@@ -191,9 +197,13 @@ func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
 	if !fileutil.Exist("../bin/etcd") {
 		return nil, fmt.Errorf("could not find etcd binary")
 	}
-	if err := os.RemoveAll(cfg.dataDirPath); err != nil {
-		return nil, err
+
+	if !cfg.keepDataDir {
+		if err := os.RemoveAll(cfg.dataDirPath); err != nil {
+			return nil, err
+		}
 	}
+
 	child, err := spawnCmd(append([]string{"../bin/etcd"}, cfg.args...))
 	if err != nil {
 		return nil, err
@@ -234,9 +244,15 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 
 		purl := url.URL{Scheme: peerScheme, Host: fmt.Sprintf("localhost:%d", port+1)}
 		name := fmt.Sprintf("testname%d", i)
-		dataDirPath, derr := ioutil.TempDir("", name+".etcd")
-		if derr != nil {
-			panic("could not get tempdir for datadir")
+		var dataDirPath string
+		if cfg.dataDirPathPrefix != "" {
+			dataDirPath = fmt.Sprintf("%s%d.etcd", cfg.dataDirPathPrefix, i)
+		} else {
+			var derr error
+			dataDirPath, derr = ioutil.TempDir("", name+".etcd")
+			if derr != nil {
+				panic("could not get tempdir for datadir")
+			}
 		}
 		initialCluster[i] = fmt.Sprintf("%s=%s", name, purl.String())
 
@@ -259,10 +275,10 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		}
 
 		args = append(args, cfg.tlsArgs()...)
-
 		etcdCfgs[i] = &etcdProcessConfig{
 			args:        args,
 			dataDirPath: dataDirPath,
+			keepDataDir: cfg.keepDataDir,
 			acurl:       curl,
 			acurltls:    curltls,
 		}
@@ -285,6 +301,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		etcdCfgs[cfg.clusterSize+i] = &etcdProcessConfig{
 			args:        args,
 			dataDirPath: dataDirPath,
+			keepDataDir: cfg.keepDataDir,
 			acurl:       curl.String(),
 			isProxy:     true,
 		}
