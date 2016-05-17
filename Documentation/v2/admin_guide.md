@@ -135,7 +135,7 @@ The data directory contains all the data to recover a member to its point-in-tim
 
 * Stop the member process.
 * Copy the data directory of the now-idle member to the new machine.
-* Update the peer URLs for the replaced member to reflect the new machine according to the [runtime reconfiguration instructions][update-member].
+* Update the peer URLs for the replaced member to reflect the new machine according to the [runtime reconfiguration instructions][update-a-member].
 * Start etcd on the new machine, using the same configuration and the copy of the data directory.
 
 This example will walk you through the process of migrating the infra1 member to a new machine:
@@ -259,7 +259,7 @@ Once you have verified that etcd has started successfully, shut it down and move
 
 #### Restoring the cluster
 
-Now that the node is running successfully, [change its advertised peer URLs][update-member], as the `--force-new-cluster` option has set the peer URL to the default listening on localhost.
+Now that the node is running successfully, [change its advertised peer URLs][update-a-member], as the `--force-new-cluster` option has set the peer URL to the default listening on localhost.
 
 You can then add more nodes to the cluster and restore resiliency. See the [add a new member][add-a-member] guide for more details. **NB:** If you are trying to restore your cluster using old failed etcd nodes, please make sure you have stopped old etcd instances and removed their old data directories specified by the data-dir configuration parameter.
 
