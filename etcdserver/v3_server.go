@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -332,8 +333,32 @@ func (s *EtcdServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) 
 	return result.resp.(*pb.AuthRoleGrantResponse), nil
 }
 
+func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {
+	md, mdexist := metadata.FromContext(ctx)
+	if mdexist {
+		token, texist := md["token"]
+		if texist {
+			username, uexist := s.AuthStore().UsernameFromToken(token[0])
+			if !uexist {
+				plog.Warningf("invalid auth token: %s", token[0])
+				return "", ErrInvalidAuthToken
+			}
+			return username, nil
+		}
+	}
+
+	return "", nil
+}
+
 func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
-	r.ID = s.reqIDGen.Next()
+	r.Header = &pb.RequestHeader{
+		ID: s.reqIDGen.Next(),
+	}
+	username, err := s.usernameFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r.Header.Username = username
 
 	data, err := r.Marshal()
 	if err != nil {
@@ -344,7 +369,11 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 		return nil, ErrRequestTooLarge
 	}
 
-	ch := s.w.Register(r.ID)
+	id := r.ID
+	if id == 0 {
+		id = r.Header.ID
+	}
+	ch := s.w.Register(id)
 
 	cctx, cancel := context.WithTimeout(ctx, maxV3RequestTimeout)
 	defer cancel()
@@ -355,7 +384,7 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 	case x := <-ch:
 		return x.(*applyResult), nil
 	case <-cctx.Done():
-		s.w.Trigger(r.ID, nil) // GC wait
+		s.w.Trigger(id, nil) // GC wait
 		return nil, cctx.Err()
 	case <-s.done:
 		return nil, ErrStopped

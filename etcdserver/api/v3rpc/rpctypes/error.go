@@ -43,6 +43,7 @@ var (
 	ErrGRPCRoleAlreadyExist = grpc.Errorf(codes.FailedPrecondition, "etcdserver: role name already exists")
 	ErrGRPCRoleNotFound     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: role name not found")
 	ErrGRPCAuthFailed       = grpc.Errorf(codes.InvalidArgument, "etcdserver: authentication failed, invalid user ID or password")
+	ErrGRPCPermissionDenied = grpc.Errorf(codes.FailedPrecondition, "etcdserver: permission denied")
 
 	ErrGRPCNoLeader   = grpc.Errorf(codes.Unavailable, "etcdserver: no leader")
 	ErrGRPCNotCapable = grpc.Errorf(codes.Unavailable, "etcdserver: not capable")

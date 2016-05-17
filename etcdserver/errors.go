@@ -30,6 +30,7 @@ var (
 	ErrNoLeader                   = errors.New("etcdserver: no leader")
 	ErrRequestTooLarge            = errors.New("etcdserver: request is too large")
 	ErrNoSpace                    = errors.New("etcdserver: no space")
+	ErrInvalidAuthToken           = errors.New("etcdserver: invalid auth token")
 )
 
 type DiscoveryError struct {
