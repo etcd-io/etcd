@@ -52,9 +52,6 @@ type Auth interface {
 	// AuthDisable disables auth of an etcd cluster.
 	AuthDisable(ctx context.Context) (*AuthDisableResponse, error)
 
-	// Authenticate does authenticate with given user name and password.
-	Authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error)
-
 	// UserAdd adds a new user to an etcd cluster.
 	UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error)
 
@@ -100,11 +97,6 @@ func (auth *auth) AuthDisable(ctx context.Context) (*AuthDisableResponse, error)
 	return (*AuthDisableResponse)(resp), rpctypes.Error(err)
 }
 
-func (auth *auth) Authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error) {
-	resp, err := auth.remote.Authenticate(ctx, &pb.AuthenticateRequest{Name: name, Password: password})
-	return (*AuthenticateResponse)(resp), rpctypes.Error(err)
-}
-
 func (auth *auth) UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error) {
 	resp, err := auth.remote.UserAdd(ctx, &pb.AuthUserAddRequest{Name: name, Password: password})
 	return (*AuthUserAddResponse)(resp), rpctypes.Error(err)
@@ -145,4 +137,30 @@ func StrToPermissionType(s string) (PermissionType, error) {
 		return PermissionType(val), nil
 	}
 	return PermissionType(-1), fmt.Errorf("invalid permission type: %s", s)
+}
+
+type authenticator struct {
+	conn   *grpc.ClientConn // conn in-use
+	remote pb.AuthClient
+}
+
+func (auth *authenticator) authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error) {
+	resp, err := auth.remote.Authenticate(ctx, &pb.AuthenticateRequest{Name: name, Password: password})
+	return (*AuthenticateResponse)(resp), rpctypes.Error(err)
+}
+
+func (auth *authenticator) close() {
+	auth.conn.Close()
+}
+
+func newAuthenticator(endpoint string, opts []grpc.DialOption) (*authenticator, error) {
+	conn, err := grpc.Dial(endpoint, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &authenticator{
+		conn:   conn,
+		remote: pb.NewAuthClient(conn),
+	}, nil
 }

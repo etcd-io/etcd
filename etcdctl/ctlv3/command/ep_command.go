@@ -70,7 +70,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	dt := dialTimeoutFromCmd(cmd)
 	cfgs := []*v3.Config{}
 	for _, ep := range endpoints {
-		cfg, err := newClientCfg([]string{ep}, dt, sec)
+		cfg, err := newClientCfg([]string{ep}, dt, sec, nil)
 		if err != nil {
 			ExitWithError(ExitBadArgs, err)
 		}
