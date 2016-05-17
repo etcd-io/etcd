@@ -131,8 +131,8 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 			n++
 			tr.Send([]raftpb.Message{{Type: raftpb.MsgHeartbeat, From: 1, To: 2, Term: 1, Commit: 3}})
 		case <-recvc:
-			if n > 10 {
-				t.Errorf("disconnection time = %dms, want < 10ms", n)
+			if n > 50 {
+				t.Errorf("disconnection time = %dms, want < 50ms", n)
 			}
 			return
 		}
