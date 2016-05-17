@@ -25,8 +25,8 @@
 		},
 		{
 			"ImportPath": "github.com/boltdb/bolt",
-			"Comment": "v1.2.0",
-			"Rev": "c6ba97b89e0454fec9aa92e1d33a4e2c5fc1f631"
+			"Comment": "v1.2.1",
+			"Rev": "dfb21201d9270c1082d5fb0f07f500311ff72f18"
 		},
 		{
 			"ImportPath": "github.com/cockroachdb/cmux",
