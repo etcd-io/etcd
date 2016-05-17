@@ -139,6 +139,7 @@ type etcdProcessClusterConfig struct {
 	isPeerTLS         bool
 	isPeerAutoTLS     bool
 	isClientAutoTLS   bool
+	forceNewCluster   bool
 	initialToken      string
 	quotaBackendBytes int64
 }
@@ -247,6 +248,9 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			"--initial-advertise-peer-urls", purl.String(),
 			"--initial-cluster-token", cfg.initialToken,
 			"--data-dir", dataDirPath,
+		}
+		if cfg.forceNewCluster {
+			args = append(args, "--force-new-cluster")
 		}
 		if cfg.quotaBackendBytes > 0 {
 			args = append(args,
