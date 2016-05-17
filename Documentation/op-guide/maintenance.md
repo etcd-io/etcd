@@ -66,7 +66,7 @@ $ while [ 1 ]; do dd if=/dev/urandom bs=1024 count=1024  | etcdctl put key  || b
 ...
 Error:  rpc error: code = 8 desc = etcdserver: mvcc: database space exceeded
 # confirm quota space is exceeded
-$ etcdctl endpoint status
+$ etcdctl --write-out=table endpoint status
 +----------------+------------------+-----------+---------+-----------+-----------+------------+
 |    ENDPOINT    |        ID        |  VERSION  | DB SIZE | IS LEADER | RAFT TERM | RAFT INDEX |
 +----------------+------------------+-----------+---------+-----------+-----------+------------+
@@ -105,7 +105,7 @@ A snapshot is taken with `etcdctl`:
 
 ```sh
 $ etcdctl snapshot save backup.db
-$ etcdctl snapshot status backup.db
+$ etcdctl --write-out=table snapshot status backup.db
 +----------+----------+------------+------------+
 |   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
 +----------+----------+------------+------------+

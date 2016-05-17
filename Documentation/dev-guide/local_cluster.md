@@ -45,7 +45,7 @@ To interact with the started cluster by using etcdctl:
 # use API version 3
 $ export ETCDCTL_API=3
 
-$ etcdctl --endpoints=localhost:12379 member list
+$ etcdctl --write-out=table --endpoints=localhost:12379 member list
 +------------------+---------+--------+------------------------+------------------------+
 |        ID        | STATUS  |  NAME  |       PEER ADDRS       |      CLIENT ADDRS      |
 +------------------+---------+--------+------------------------+------------------------+
