@@ -76,6 +76,9 @@ type AuthStore interface {
 
 	// RoleGrant grants a permission to a role
 	RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
+
+	// TokenToUserID gets a UserID from the given Token
+	TokenToUserID(token string) (string, bool)
 }
 
 type authStore struct {
@@ -297,6 +300,11 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	plog.Noticef("Role %s is created", r.Name)
 
 	return &pb.AuthRoleAddResponse{}, nil
+}
+
+func (as *authStore) TokenToUserID(token string) (string, bool) {
+	t, ok := simpleTokens[token]
+	return t, ok
 }
 
 type permSlice []*authpb.Permission

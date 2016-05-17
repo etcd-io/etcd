@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -615,6 +616,15 @@ func stepLeader(r *raft, m pb.Message) {
 					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
 				}
 				r.pendingConf = true
+			} else {
+				if e.Data == nil {
+					continue
+				}
+
+				var rr etcdserverpb.InternalRaftRequest
+				if err := rr.Unmarshal(e.Data); err == nil {
+					// TODO: check permission
+				}
 			}
 		}
 		r.appendEntry(m.Entries...)

@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -282,6 +283,21 @@ func (s *EtcdServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) 
 }
 
 func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+	// assume ctx is from gRPC callback
+	md, mdexist := metadata.FromContext(ctx)
+	if mdexist {
+		token, texist := md["token"]
+		if texist {
+			userID, uexist := s.AuthStore().TokenToUserID(token[0])
+			if uexist {
+				r.UserID = userID
+			} else {
+				plog.Warningf("invalid token: %s", token[0])
+				return nil, ErrInvalidToken
+			}
+		}
+	}
+
 	r.ID = s.reqIDGen.Next()
 
 	data, err := r.Marshal()
