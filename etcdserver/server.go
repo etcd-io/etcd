@@ -542,11 +542,12 @@ func (s *EtcdServer) run() {
 	defer func() {
 		sched.Stop()
 
+		// wait for snapshots before closing raft so wal stays open
+		s.wg.Wait()
+
 		// must stop raft after scheduler-- etcdserver can leak rafthttp pipelines
 		// by adding a peer after raft stops the transport
 		s.r.stop()
-
-		s.wg.Wait()
 
 		// kv, lessor and backend can be nil if running without v3 enabled
 		// or running unit tests.
