@@ -476,6 +476,16 @@ func TestDuelingCandidates(t *testing.T) {
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
+	sm := nt.peers[1].(*raft)
+	if sm.state != StateLeader {
+		t.Errorf("state = %s, want %s", sm.state, StateLeader)
+	}
+
+	sm = nt.peers[3].(*raft)
+	if sm.state != StateCandidate {
+		t.Errorf("state = %s, want %s", sm.state, StateCandidate)
+	}
+
 	nt.recover()
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
