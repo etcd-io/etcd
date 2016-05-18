@@ -75,6 +75,10 @@ type store struct {
 	tx    backend.BatchTx
 	txnID int64 // tracks the current txnID to verify txn operations
 
+	// bytesBuf8 is a byte slice of length 8
+	// to avoid a repetitive allocation in saveIndex.
+	bytesBuf8 []byte
+
 	changes   []mvccpb.KeyValue
 	fifoSched schedule.Scheduler
 
@@ -94,6 +98,7 @@ func NewStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *sto
 		currentRev:     revision{main: 1},
 		compactMainRev: -1,
 
+		bytesBuf8: make([]byte, 8, 8),
 		fifoSched: schedule.NewFIFOScheduler(),
 
 		stopc: make(chan struct{}),
@@ -595,8 +600,7 @@ func (s *store) saveIndex() {
 		return
 	}
 	tx := s.tx
-	// TODO: avoid this unnecessary allocation
-	bs := make([]byte, 8)
+	bs := s.bytesBuf8
 	binary.BigEndian.PutUint64(bs, s.ig.ConsistentIndex())
 	// put the index into the underlying backend
 	// tx has been locked in TxnBegin, so there is no need to lock it again
