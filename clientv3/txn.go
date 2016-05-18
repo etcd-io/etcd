@@ -137,27 +137,35 @@ func (txn *txn) Else(ops ...Op) Txn {
 func (txn *txn) Commit() (*TxnResponse, error) {
 	txn.mu.Lock()
 	defer txn.mu.Unlock()
-
-	kv := txn.kv
-
 	for {
-		r := &pb.TxnRequest{Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
-		resp, err := kv.getRemote().Txn(txn.ctx, r)
+		resp, err := txn.commit()
 		if err == nil {
-			return (*TxnResponse)(resp), nil
+			return resp, err
 		}
-
 		if isHaltErr(txn.ctx, err) {
 			return nil, rpctypes.Error(err)
 		}
-
 		if txn.isWrite {
-			kv.rc.reconnect(err)
+			txn.kv.rc.reconnect(err)
 			return nil, rpctypes.Error(err)
 		}
-
-		if nerr := kv.rc.reconnectWait(txn.ctx, err); nerr != nil {
+		if nerr := txn.kv.rc.reconnectWait(txn.ctx, err); nerr != nil {
 			return nil, nerr
 		}
 	}
+}
+
+func (txn *txn) commit() (*TxnResponse, error) {
+	rem, rerr := txn.kv.getRemote(txn.ctx)
+	if rerr != nil {
+		return nil, rerr
+	}
+	defer txn.kv.rc.release()
+
+	r := &pb.TxnRequest{Compare: txn.cmps, Success: txn.sus, Failure: txn.fas}
+	resp, err := rem.Txn(txn.ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return (*TxnResponse)(resp), nil
 }

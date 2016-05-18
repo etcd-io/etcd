@@ -105,7 +105,12 @@ func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*Delete
 }
 
 func (kv *kv) Compact(ctx context.Context, rev int64) error {
-	_, err := kv.getRemote().Compact(ctx, &pb.CompactionRequest{Revision: rev})
+	remote, err := kv.getRemote(ctx)
+	if err != nil {
+		return rpctypes.Error(err)
+	}
+	defer kv.rc.release()
+	_, err = remote.Compact(ctx, &pb.CompactionRequest{Revision: rev})
 	if err == nil {
 		return nil
 	}
@@ -125,58 +130,68 @@ func (kv *kv) Txn(ctx context.Context) Txn {
 
 func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 	for {
-		var err error
-		remote := kv.getRemote()
-		switch op.t {
-		// TODO: handle other ops
-		case tRange:
-			var resp *pb.RangeResponse
-			r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev, Serializable: op.serializable}
-			if op.sort != nil {
-				r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
-				r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
-			}
-
-			resp, err = remote.Range(ctx, r)
-			if err == nil {
-				return OpResponse{get: (*GetResponse)(resp)}, nil
-			}
-		case tPut:
-			var resp *pb.PutResponse
-			r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
-			resp, err = remote.Put(ctx, r)
-			if err == nil {
-				return OpResponse{put: (*PutResponse)(resp)}, nil
-			}
-		case tDeleteRange:
-			var resp *pb.DeleteRangeResponse
-			r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
-			resp, err = remote.DeleteRange(ctx, r)
-			if err == nil {
-				return OpResponse{del: (*DeleteResponse)(resp)}, nil
-			}
-		default:
-			panic("Unknown op")
+		resp, err := kv.do(ctx, op)
+		if err == nil {
+			return resp, nil
 		}
-
 		if isHaltErr(ctx, err) {
-			return OpResponse{}, rpctypes.Error(err)
+			return resp, rpctypes.Error(err)
 		}
-
 		// do not retry on modifications
 		if op.isWrite() {
 			kv.rc.reconnect(err)
-			return OpResponse{}, rpctypes.Error(err)
+			return resp, rpctypes.Error(err)
 		}
-
 		if nerr := kv.rc.reconnectWait(ctx, err); nerr != nil {
-			return OpResponse{}, nerr
+			return resp, rpctypes.Error(nerr)
 		}
 	}
 }
 
-func (kv *kv) getRemote() pb.KVClient {
-	kv.rc.mu.Lock()
-	defer kv.rc.mu.Unlock()
-	return kv.remote
+func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
+	remote, err := kv.getRemote(ctx)
+	if err != nil {
+		return OpResponse{}, err
+	}
+	defer kv.rc.release()
+
+	switch op.t {
+	// TODO: handle other ops
+	case tRange:
+		var resp *pb.RangeResponse
+		r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev, Serializable: op.serializable}
+		if op.sort != nil {
+			r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
+			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
+		}
+
+		resp, err = remote.Range(ctx, r)
+		if err == nil {
+			return OpResponse{get: (*GetResponse)(resp)}, nil
+		}
+	case tPut:
+		var resp *pb.PutResponse
+		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
+		resp, err = remote.Put(ctx, r)
+		if err == nil {
+			return OpResponse{put: (*PutResponse)(resp)}, nil
+		}
+	case tDeleteRange:
+		var resp *pb.DeleteRangeResponse
+		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
+		resp, err = remote.DeleteRange(ctx, r)
+		if err == nil {
+			return OpResponse{del: (*DeleteResponse)(resp)}, nil
+		}
+	default:
+		panic("Unknown op")
+	}
+	return OpResponse{}, err
+}
+
+func (kv *kv) getRemote(ctx context.Context) (pb.KVClient, error) {
+	if err := kv.rc.acquire(ctx); err != nil {
+		return nil, err
+	}
+	return kv.remote, nil
 }

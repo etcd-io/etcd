@@ -277,6 +277,7 @@ func (c *Client) retryConnection(err error) (newConn *grpc.ClientConn, dialErr e
 			// wait so grpc doesn't leak sleeping goroutines
 			c.conn.WaitForStateChange(context.Background(), st)
 		}
+		c.conn = nil
 	}
 	if c.cancel == nil {
 		// client has called Close() so don't try to dial out
