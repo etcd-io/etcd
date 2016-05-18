@@ -77,3 +77,22 @@ func (r *remoteClient) tryUpdate() bool {
 	r.updateConn(activeConn)
 	return true
 }
+
+func (r *remoteClient) acquire(ctx context.Context) error {
+	for {
+		r.client.mu.RLock()
+		c := r.client.conn
+		r.mu.Lock()
+		match := r.conn == c
+		r.mu.Unlock()
+		if match {
+			return nil
+		}
+		r.client.mu.RUnlock()
+		if err := r.reconnectWait(ctx, nil); err != nil {
+			return err
+		}
+	}
+}
+
+func (r *remoteClient) release() { r.client.mu.RUnlock() }

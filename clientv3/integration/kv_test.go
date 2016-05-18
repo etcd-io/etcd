@@ -579,7 +579,9 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	clus.Members[0].Stop(t)
 	// this Put fails and triggers an asynchronous connection retry
 	_, err := clus.Client(0).Put(context.TODO(), "abc", "123")
-	if err == nil || !strings.Contains(err.Error(), "connection is closing") {
+	if err == nil ||
+		(!strings.Contains(err.Error(), "connection is closing") &&
+			!strings.Contains(err.Error(), "transport is closing")) {
 		t.Fatal(err)
 	}
 	// cluster will terminate and close the client with the retry in-flight
