@@ -16,15 +16,23 @@ package mvcc
 
 import (
 	"log"
+	"sync/atomic"
 	"testing"
 
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
 )
 
+type fakeConsistentIndex uint64
+
+func (i *fakeConsistentIndex) ConsistentIndex() uint64 {
+	return atomic.LoadUint64((*uint64)(i))
+}
+
 func BenchmarkStorePut(b *testing.B) {
+	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(be, &lease.FakeLessor{}, nil)
+	s := NewStore(be, &lease.FakeLessor{}, &i)
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
@@ -42,8 +50,9 @@ func BenchmarkStorePut(b *testing.B) {
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.
 func BenchmarkStoreTxnPut(b *testing.B) {
+	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
-	s := NewStore(be, &lease.FakeLessor{}, nil)
+	s := NewStore(be, &lease.FakeLessor{}, &i)
 	defer cleanup(s, be, tmpPath)
 
 	// arbitrary number of bytes
