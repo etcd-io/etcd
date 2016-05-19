@@ -37,6 +37,7 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -746,6 +747,10 @@ func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 		clus.clients = append(clus.clients, client)
 	}
 	clus.Launch(t)
+
+	// manually enable v3 capability since we know we are starting a v3 cluster here.
+	api.EnableCapability(api.V3rpcCapability)
+
 	return clus
 }
 
