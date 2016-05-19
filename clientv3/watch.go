@@ -520,8 +520,8 @@ func (w *watcher) openWatchClient() (ws pb.Watch_WatchClient, err error) {
 
 // resumeWatchers rebuilds every registered watcher on a new client
 func (w *watcher) resumeWatchers(wc pb.Watch_WatchClient) error {
-	streams := []*watcherStream{}
 	w.mu.RLock()
+	streams := make([]*watcherStream, 0, len(w.streams))
 	for _, ws := range w.streams {
 		streams = append(streams, ws)
 	}
