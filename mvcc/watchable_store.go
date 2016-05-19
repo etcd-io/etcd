@@ -211,17 +211,15 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 
 	cancel := cancelFunc(func() {
 		s.mu.Lock()
-		defer s.mu.Unlock()
 		// remove references of the watcher
 		if s.unsynced.delete(wa) {
 			slowWatcherGauge.Dec()
 			watcherGauge.Dec()
-			return
-		}
-
-		if s.synced.delete(wa) {
+		} else if s.synced.delete(wa) {
 			watcherGauge.Dec()
 		}
+		s.mu.Unlock()
+
 		// If we cannot find it, it should have finished watch.
 	})
 
