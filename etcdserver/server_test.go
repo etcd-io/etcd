@@ -179,7 +179,7 @@ func TestApplyRepeat(t *testing.T) {
 		cluster:  cl,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	s.applyV2 = &applierV2store{s}
+	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
 	s.start()
 	req := &pb.Request{Method: "QGET", ID: uint64(1)}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
@@ -445,7 +445,7 @@ func TestApplyRequest(t *testing.T) {
 	for i, tt := range tests {
 		st := mockstore.NewRecorder()
 		srv := &EtcdServer{store: st}
-		srv.applyV2 = &applierV2store{srv}
+		srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 		resp := srv.applyV2Request(&tt.req)
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
@@ -464,7 +464,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 		store:   mockstore.NewRecorder(),
 		cluster: cl,
 	}
-	srv.applyV2 = &applierV2store{srv}
+	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	req := pb.Request{
 		Method: "PUT",
@@ -639,7 +639,7 @@ func TestDoProposal(t *testing.T) {
 			store:    st,
 			reqIDGen: idutil.NewGenerator(0, time.Time{}),
 		}
-		srv.applyV2 = &applierV2store{srv}
+		srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 		srv.start()
 		resp, err := srv.Do(context.Background(), tt)
 		srv.Stop()
@@ -666,7 +666,7 @@ func TestDoProposalCancelled(t *testing.T) {
 		w:        wt,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{srv}
+	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -688,7 +688,7 @@ func TestDoProposalTimeout(t *testing.T) {
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{srv}
+	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	ctx, _ := context.WithTimeout(context.Background(), 0)
 	_, err := srv.Do(ctx, pb.Request{Method: "PUT"})
@@ -704,7 +704,7 @@ func TestDoProposalStopped(t *testing.T) {
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{srv}
+	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	srv.done = make(chan struct{})
 	close(srv.done)
@@ -721,7 +721,7 @@ func TestSync(t *testing.T) {
 		r:        raftNode{Node: n},
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{srv}
+	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	// check that sync is non-blocking
 	done := make(chan struct{})
@@ -761,7 +761,7 @@ func TestSyncTimeout(t *testing.T) {
 		r:        raftNode{Node: n},
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{srv}
+	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	// check that sync is non-blocking
 	done := make(chan struct{})
@@ -900,7 +900,7 @@ func TestTriggerSnap(t *testing.T) {
 		store:    st,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	srv.applyV2 = &applierV2store{srv}
+	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	srv.kv = mvcc.New(be, &lease.FakeLessor{}, &srv.consistIndex)
 	srv.be = be
@@ -968,7 +968,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		cluster:  cl,
 		msgSnapC: make(chan raftpb.Message, maxInFlightMsgSnap),
 	}
-	s.applyV2 = &applierV2store{s}
+	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
 
 	be, tmpPath := backend.NewDefaultTmpBackend()
 	defer func() {
