@@ -67,7 +67,7 @@ func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 		default:
 			// We have missed a notification. Remove the watcher.
 			// Removing the watcher also closes the eventChan.
-			w.remove()
+			w.Remove()
 		}
 		return true
 	}
