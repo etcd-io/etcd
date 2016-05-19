@@ -735,6 +735,59 @@ cf1550fb, 3, 3, 25 kB
 +----------+----------+------------+------------+
 ```
 
+### MIGRATE [options]
+
+Migrate migrates keys in a v2 store to a mvcc store. Users should run migration command for all members in the cluster.
+
+#### Options
+
+- data-dir -- Path to the data directory
+
+- wal-dir -- Path to the WAL directory
+
+- transformer -- Path to the user-provided transformer program (default if not provided)
+
+#### Return value
+
+Simple reply
+
+- Exit code is zero when migration is finished successfully.
+
+- Error string if migration failed. Exit code is non-zero.
+
+#### Default transformer
+
+If user does not provide a transformer program, migrate command will use the default transformer. The default transformer transforms `storev2` formatted keys into `mvcc` formatted keys according to the following Go program:
+
+```go
+func transform(n *storev2.Node) *mvccpb.KeyValue {
+	if n.Dir {
+		return nil
+	}
+	kv := &mvccpb.KeyValue{
+		Key:            []byte(n.Key),
+		Value:          []byte(n.Value),
+		CreateRevision: int64(n.CreatedIndex),
+		ModRevision:    int64(n.ModifiedIndex),
+		Version:        1,
+	}
+	return kv
+}
+```
+
+#### User-provided transformer
+
+Users can provide a customized 1:n transformer function that transforms a key from the v2 store to any number of keys in the mvcc store. The migration program writes JSON formatted [v2 store keys][v2key] to the transformer program's stdin, reads protobuf formatted [mvcc keys][v3key] back from the transformer program's stdout, and finishes migration by saving the transformed keys into the mvcc store.
+
+The provided transformer should read until EOF and flush the stdout before exiting to ensure data integrity.
+
+#### Example
+
+```
+./etcdctl --data-dir=/var/etcd --transformer=k8s-transformer
+finished transforming keys
+```
+
 ## Notes
 
 - JSON encoding for keys and values uses base64 since they are byte strings.
@@ -758,3 +811,6 @@ We ensure compatibility for the `simple` output format of normal commands in non
 backward compatibility for `JSON` format and the format in non-interactive mode. Currently, we do not ensure backward compatibility of utility commands.
 
 ### TODO: compatibility with etcd server
+
+[v2key]: ../store/node_extern.go#L28-L37
+[v3key]: ../mvcc/mvccpb/kv.proto#L12-L29
