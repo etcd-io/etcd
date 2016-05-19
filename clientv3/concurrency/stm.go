@@ -139,11 +139,12 @@ func (s *stm) commit() *v3.TxnResponse {
 }
 
 // cmps guards the txn from updates to read set
-func (s *stm) cmps() (cmps []v3.Cmp) {
+func (s *stm) cmps() []v3.Cmp {
+	cmps := make([]v3.Cmp, 0, len(s.rset))
 	for k, rk := range s.rset {
 		cmps = append(cmps, isKeyCurrent(k, rk))
 	}
-	return
+	return cmps
 }
 
 func (s *stm) fetch(key string) *v3.GetResponse {
@@ -159,11 +160,12 @@ func (s *stm) fetch(key string) *v3.GetResponse {
 }
 
 // puts is the list of ops for all pending writes
-func (s *stm) puts() (puts []v3.Op) {
+func (s *stm) puts() []v3.Op {
+	puts := make([]v3.Op, 0, len(s.wset))
 	for _, v := range s.wset {
 		puts = append(puts, v.op)
 	}
-	return
+	return puts
 }
 
 func (s *stm) reset() {
@@ -201,12 +203,14 @@ func (s *stmSerializable) Rev(key string) int64 {
 	return s.stm.Rev(key)
 }
 
-func (s *stmSerializable) gets() (keys []string, ops []v3.Op) {
+func (s *stmSerializable) gets() ([]string, []v3.Op) {
+	keys := make([]string, 0, len(s.rset))
+	ops := make([]v3.Op, 0, len(s.rset))
 	for k := range s.rset {
 		keys = append(keys, k)
 		ops = append(ops, v3.OpGet(k))
 	}
-	return
+	return keys, ops
 }
 
 func (s *stmSerializable) commit() *v3.TxnResponse {
