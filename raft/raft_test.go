@@ -476,17 +476,23 @@ func TestDuelingCandidates(t *testing.T) {
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
+	// 1 becomes leader since it receives votes from 1 and 2
 	sm := nt.peers[1].(*raft)
 	if sm.state != StateLeader {
 		t.Errorf("state = %s, want %s", sm.state, StateLeader)
 	}
 
+	// 3 stays as candidate since it receives a vote from 3 and a rejection from 2
 	sm = nt.peers[3].(*raft)
 	if sm.state != StateCandidate {
 		t.Errorf("state = %s, want %s", sm.state, StateCandidate)
 	}
 
 	nt.recover()
+
+	// candidate 3 now increases its term and tries to vote again
+	// we expect it to disrupt the leader 1 since it has a higher term
+	// 3 will be follower again since both 1 and 2 rejects its vote request since 3 does not have a long enough log
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
 	wlog := &raftLog{
