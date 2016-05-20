@@ -39,6 +39,39 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 	}
 }
 
+// BenchmarkWatchableStoreWatchSyncPut benchmarks the case of
+// many synced watchers receiving a Put notification.
+func BenchmarkWatchableStoreWatchSyncPut(b *testing.B) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(be, &lease.FakeLessor{}, nil)
+	defer cleanup(s, be, tmpPath)
+
+	k := []byte("testkey")
+	v := []byte("testval")
+
+	w := s.NewWatchStream()
+	defer w.Close()
+	watchIDs := make([]WatchID, b.N)
+	for i := range watchIDs {
+		// non-0 value to keep watchers in unsynced
+		watchIDs[i] = w.Watch(k, nil, 1)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	// trigger watchers
+	s.Put(k, v, lease.NoLease)
+	for range watchIDs {
+		<-w.Chan()
+	}
+	select {
+	case wc := <-w.Chan():
+		b.Fatalf("unexpected data %v", wc)
+	default:
+	}
+}
+
 // Benchmarks on cancel function performance for unsynced watchers
 // in a WatchableStore. It creates k*N watchers to populate unsynced
 // with a reasonably large number of watchers. And measures the time it
