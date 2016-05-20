@@ -198,7 +198,7 @@ func WithRange(endKey string) OpOption {
 }
 
 // WithFromKey specifies the range of 'Get' or 'Delete' requests
-// to be equal or greater than they key in the argument.
+// to be equal or greater than the key in the argument.
 func WithFromKey() OpOption { return WithRange("\x00") }
 
 // WithSerializable makes 'Get' request serializable. By default,
