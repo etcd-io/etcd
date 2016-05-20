@@ -22,7 +22,7 @@ source ./build
 
 # Set up gopath so tests use vendored dependencies
 export GOPATH=${PWD}/gopath
-rm -f $GOPATH/src
+rm -rf $GOPATH/src
 mkdir -p $GOPATH
 ln -s ${PWD}/cmd/vendor $GOPATH/src
 
