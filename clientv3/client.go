@@ -66,9 +66,9 @@ type Client struct {
 	newconnc    chan struct{}
 	lastConnErr error
 
-	// Username is a username of authentication
+	// Username is a username for authentication
 	Username string
-	// Password is a password of authentication
+	// Password is a password for authentication
 	Password string
 }
 

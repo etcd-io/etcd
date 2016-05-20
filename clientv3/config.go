@@ -44,10 +44,10 @@ type Config struct {
 	// Logger is the logger used by client library.
 	Logger Logger
 
-	// Username is a username of authentication
+	// Username is a username for authentication
 	Username string
 
-	// Password is a password of authentication
+	// Password is a password for authentication
 	Password string
 }
 
