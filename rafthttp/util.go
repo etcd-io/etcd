@@ -197,9 +197,9 @@ func setPeerURLsHeader(req *http.Request, urls types.URLs) {
 		// often not set in unit tests
 		return
 	}
-	var peerURLs []string
-	for _, url := range urls {
-		peerURLs = append(peerURLs, url.String())
+	peerURLs := make([]string, urls.Len())
+	for i := range urls {
+		peerURLs[i] = urls[i].String()
 	}
 	req.Header.Set("X-PeerURLs", strings.Join(peerURLs, ","))
 }
