@@ -32,8 +32,9 @@ type Config struct {
 	// Endpoints is a list of URLs
 	Endpoints []string
 
-	// RetryDialer chooses the next endpoint to use
-	RetryDialer EndpointDialer
+	// retryDialer chooses the next endpoint to use
+	// keep private until the grpc rebalancer is sorted out
+	retryDialer EndpointDialer
 
 	// DialTimeout is the timeout for failing to establish a connection.
 	DialTimeout time.Duration
