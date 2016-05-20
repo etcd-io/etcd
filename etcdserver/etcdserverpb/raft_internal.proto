@@ -35,7 +35,8 @@ message InternalRaftRequest {
   AuthRoleGrantRequest auth_role_grant = 17;
   AuthenticateRequest authenticate = 18;
 
-  AlarmRequest alarm = 19;
+  string userID = 19;
+  AlarmRequest alarm = 20;
 }
 
 message EmptyResponse {
