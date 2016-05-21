@@ -15,7 +15,6 @@
 package mvcc
 
 import (
-	"log"
 	"sync/atomic"
 	"testing"
 
@@ -64,7 +63,7 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		id := s.TxnBegin()
 		if _, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease); err != nil {
-			log.Fatalf("txn put error: %v", err)
+			plog.Fatalf("txn put error: %v", err)
 		}
 		s.TxnEnd(id)
 	}

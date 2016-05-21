@@ -48,6 +48,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
 			tx.Unlock()
+			plog.Printf("finished scheduled compaction at %d (took %v)", compactMainRev, time.Since(totalStart))
 			return true
 		}
 

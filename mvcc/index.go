@@ -15,7 +15,6 @@
 package mvcc
 
 import (
-	"log"
 	"sort"
 	"sync"
 
@@ -169,7 +168,7 @@ func (ti *treeIndex) RangeSince(key, end []byte, rev int64) []revision {
 func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	available := make(map[revision]struct{})
 	var emptyki []*keyIndex
-	log.Printf("store.index: compact %d", rev)
+	plog.Printf("store.index: compact %d", rev)
 	// TODO: do not hold the lock for long time?
 	// This is probably OK. Compacting 10M keys takes O(10ms).
 	ti.Lock()
@@ -178,7 +177,7 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 	for _, ki := range emptyki {
 		item := ti.tree.Delete(ki)
 		if item == nil {
-			log.Panic("store.index: unexpected delete failure during compaction")
+			plog.Panic("store.index: unexpected delete failure during compaction")
 		}
 	}
 	return available

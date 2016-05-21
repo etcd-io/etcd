@@ -17,7 +17,6 @@ package mvcc
 import (
 	"encoding/binary"
 	"errors"
-	"log"
 	"math"
 	"math/rand"
 	"sync"
@@ -27,6 +26,7 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/schedule"
+	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/net/context"
 )
 
@@ -49,6 +49,8 @@ var (
 	ErrCompacted     = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev     = errors.New("mvcc: required revision is a future revision")
 	ErrCanceled      = errors.New("mvcc: watcher is canceled")
+
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "mvcc")
 )
 
 // ConsistentIndexGetter is an interface that wraps the Get method.
@@ -341,7 +343,7 @@ func (s *store) restore() error {
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
-		log.Printf("mvcc: restore compact to %d", s.compactMainRev)
+		plog.Printf("restore compact to %d", s.compactMainRev)
 	}
 
 	// TODO: limit N to reduce max memory usage
@@ -349,7 +351,7 @@ func (s *store) restore() error {
 	for i, key := range keys {
 		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(vals[i]); err != nil {
-			log.Fatalf("mvcc: cannot unmarshal event: %v", err)
+			plog.Fatalf("cannot unmarshal event: %v", err)
 		}
 
 		rev := bytesToRev(key[:revBytesLen])
@@ -361,7 +363,7 @@ func (s *store) restore() error {
 			if lease.LeaseID(kv.Lease) != lease.NoLease {
 				err := s.le.Detach(lease.LeaseID(kv.Lease), []lease.LeaseItem{{Key: string(kv.Key)}})
 				if err != nil && err != lease.ErrLeaseNotFound {
-					log.Fatalf("mvcc: unexpected Detach error %v", err)
+					plog.Fatalf("unexpected Detach error %v", err)
 				}
 			}
 		default:
@@ -398,7 +400,7 @@ func (s *store) restore() error {
 
 	if scheduledCompact != 0 {
 		s.Compact(scheduledCompact)
-		log.Printf("mvcc: resume scheduled compaction at %d", scheduledCompact)
+		plog.Printf("resume scheduled compaction at %d", scheduledCompact)
 	}
 
 	return nil
@@ -450,12 +452,12 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.
 
 		_, vs := s.tx.UnsafeRange(keyBucketName, start, end, 0)
 		if len(vs) != 1 {
-			log.Fatalf("mvcc: range cannot find rev (%d,%d)", revpair.main, revpair.sub)
+			plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
 		}
 
 		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(vs[0]); err != nil {
-			log.Fatalf("mvcc: cannot unmarshal event: %v", err)
+			plog.Fatalf("cannot unmarshal event: %v", err)
 		}
 		kvs = append(kvs, kv)
 		if limit > 0 && len(kvs) >= int(limit) {
@@ -480,7 +482,7 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 		_, vs := s.tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
 		var kv mvccpb.KeyValue
 		if err = kv.Unmarshal(vs[0]); err != nil {
-			log.Fatalf("mvcc: cannot unmarshal value: %v", err)
+			plog.Fatalf("cannot unmarshal value: %v", err)
 		}
 		oldLease = lease.LeaseID(kv.Lease)
 	}
@@ -500,7 +502,7 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		log.Fatalf("mvcc: cannot marshal event: %v", err)
+		plog.Fatalf("cannot marshal event: %v", err)
 	}
 
 	s.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
@@ -561,13 +563,13 @@ func (s *store) delete(key []byte, rev revision) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		log.Fatalf("mvcc: cannot marshal event: %v", err)
+		plog.Fatalf("cannot marshal event: %v", err)
 	}
 
 	s.tx.UnsafeSeqPut(keyBucketName, ibytes, d)
 	err = s.kvindex.Tombstone(key, revision{main: mainrev, sub: s.currentRev.sub})
 	if err != nil {
-		log.Fatalf("mvcc: cannot tombstone an existing key (%s): %v", string(key), err)
+		plog.Fatalf("cannot tombstone an existing key (%s): %v", string(key), err)
 	}
 	s.changes = append(s.changes, kv)
 	s.currentRev.sub += 1
@@ -578,13 +580,13 @@ func (s *store) delete(key []byte, rev revision) {
 
 	kv.Reset()
 	if err = kv.Unmarshal(vs[0]); err != nil {
-		log.Fatalf("mvcc: cannot unmarshal value: %v", err)
+		plog.Fatalf("cannot unmarshal value: %v", err)
 	}
 
 	if lease.LeaseID(kv.Lease) != lease.NoLease {
 		err = s.le.Detach(lease.LeaseID(kv.Lease), []lease.LeaseItem{{Key: string(kv.Key)}})
 		if err != nil {
-			log.Fatalf("mvcc: cannot detach %v", err)
+			plog.Fatalf("cannot detach %v", err)
 		}
 	}
 }
@@ -622,7 +624,7 @@ func (s *store) ConsistentIndex() uint64 {
 // appendMarkTombstone appends tombstone mark to normal revision bytes.
 func appendMarkTombstone(b []byte) []byte {
 	if len(b) != revBytesLen {
-		log.Panicf("cannot append mark to non normal revision bytes")
+		plog.Panicf("cannot append mark to non normal revision bytes")
 	}
 	return append(b, markTombstone)
 }
