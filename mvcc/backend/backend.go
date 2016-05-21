@@ -19,7 +19,6 @@ import (
 	"hash/crc32"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"sync"
@@ -27,6 +26,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/coreos/pkg/capnslog"
 )
 
 var (
@@ -39,6 +39,8 @@ var (
 	// the potential max db size can prevent writer from blocking reader.
 	// This only works for linux.
 	InitialMmapSize = int64(10 * 1024 * 1024 * 1024)
+
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/mvcc", "backend")
 )
 
 const (
@@ -101,7 +103,7 @@ func NewDefaultBackend(path string) Backend {
 func newBackend(path string, d time.Duration, limit int) *backend {
 	db, err := bolt.Open(path, 0600, boltOpenOptions)
 	if err != nil {
-		log.Panicf("backend: cannot open database at %s (%v)", path, err)
+		plog.Panicf("cannot open database at %s (%v)", path, err)
 	}
 
 	b := &backend{
@@ -137,7 +139,7 @@ func (b *backend) Snapshot() Snapshot {
 	defer b.mu.RUnlock()
 	tx, err := b.db.Begin(false)
 	if err != nil {
-		log.Fatalf("backend: cannot begin tx (%s)", err)
+		plog.Fatalf("cannot begin tx (%s)", err)
 	}
 	return &snapshot{tx}
 }
@@ -244,24 +246,24 @@ func (b *backend) defrag() error {
 
 	err = b.db.Close()
 	if err != nil {
-		log.Fatalf("backend: cannot close database (%s)", err)
+		plog.Fatalf("cannot close database (%s)", err)
 	}
 	err = tmpdb.Close()
 	if err != nil {
-		log.Fatalf("backend: cannot close database (%s)", err)
+		plog.Fatalf("cannot close database (%s)", err)
 	}
 	err = os.Rename(tdbp, dbp)
 	if err != nil {
-		log.Fatalf("backend: cannot rename database (%s)", err)
+		plog.Fatalf("cannot rename database (%s)", err)
 	}
 
 	b.db, err = bolt.Open(dbp, 0600, boltOpenOptions)
 	if err != nil {
-		log.Panicf("backend: cannot open database at %s (%v)", dbp, err)
+		plog.Panicf("cannot open database at %s (%v)", dbp, err)
 	}
 	b.batchTx.tx, err = b.db.Begin(true)
 	if err != nil {
-		log.Fatalf("backend: cannot begin tx (%s)", err)
+		plog.Fatalf("cannot begin tx (%s)", err)
 	}
 
 	return nil
@@ -320,7 +322,7 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, string) {
 	dir, err := ioutil.TempDir(os.TempDir(), "etcd_backend_test")
 	if err != nil {
-		log.Fatal(err)
+		plog.Fatal(err)
 	}
 	tmpPath := path.Join(dir, "database")
 	return newBackend(tmpPath, batchInterval, batchLimit), tmpPath

@@ -15,7 +15,6 @@
 package mvcc
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -94,7 +93,7 @@ func (s *watchableStore) Put(key, value []byte, lease lease.LeaseID) (rev int64)
 	rev = s.store.Put(key, value, lease)
 	changes := s.store.getChanges()
 	if len(changes) != 1 {
-		log.Panicf("unexpected len(changes) != 1 after put")
+		plog.Panicf("unexpected len(changes) != 1 after put")
 	}
 
 	ev := mvccpb.Event{
@@ -113,7 +112,7 @@ func (s *watchableStore) DeleteRange(key, end []byte) (n, rev int64) {
 	changes := s.store.getChanges()
 
 	if len(changes) != int(n) {
-		log.Panicf("unexpected len(changes) != n after deleteRange")
+		plog.Panicf("unexpected len(changes) != n after deleteRange")
 	}
 
 	if n == 0 {
@@ -432,7 +431,7 @@ func kvsToEvents(wg *watcherGroup, revs, vals [][]byte) (evs []mvccpb.Event) {
 	for i, v := range vals {
 		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(v); err != nil {
-			log.Panicf("mvcc: cannot unmarshal event: %v", err)
+			plog.Panicf("cannot unmarshal event: %v", err)
 		}
 
 		if !wg.contains(string(kv.Key)) {
@@ -456,7 +455,7 @@ func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 	var victim watcherBatch
 	for w, eb := range newWatcherBatch(&s.synced, evs) {
 		if eb.revs != 1 {
-			log.Panicf("mvcc: unexpected multiple revisions in notification")
+			plog.Panicf("unexpected multiple revisions in notification")
 		}
 		select {
 		case w.ch <- WatchResponse{WatchID: w.id, Events: eb.evs, Revision: s.Rev()}:

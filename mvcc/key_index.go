@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/btree"
 )
@@ -78,7 +77,7 @@ func (ki *keyIndex) put(main int64, sub int64) {
 	rev := revision{main: main, sub: sub}
 
 	if !rev.GreaterThan(ki.modified) {
-		log.Panicf("store.keyindex: put with unexpected smaller revision [%v / %v]", rev, ki.modified)
+		plog.Panicf("store.keyindex: put with unexpected smaller revision [%v / %v]", rev, ki.modified)
 	}
 	if len(ki.generations) == 0 {
 		ki.generations = append(ki.generations, generation{})
@@ -95,7 +94,7 @@ func (ki *keyIndex) put(main int64, sub int64) {
 
 func (ki *keyIndex) restore(created, modified revision, ver int64) {
 	if len(ki.generations) != 0 {
-		log.Panicf("store.keyindex: cannot restore non-empty keyIndex")
+		plog.Panicf("store.keyindex: cannot restore non-empty keyIndex")
 	}
 
 	ki.modified = modified
@@ -109,7 +108,7 @@ func (ki *keyIndex) restore(created, modified revision, ver int64) {
 // It returns ErrRevisionNotFound when tombstone on an empty generation.
 func (ki *keyIndex) tombstone(main int64, sub int64) error {
 	if ki.isEmpty() {
-		log.Panicf("store.keyindex: unexpected tombstone on empty keyIndex %s", string(ki.key))
+		plog.Panicf("store.keyindex: unexpected tombstone on empty keyIndex %s", string(ki.key))
 	}
 	if ki.generations[len(ki.generations)-1].isEmpty() {
 		return ErrRevisionNotFound
@@ -124,7 +123,7 @@ func (ki *keyIndex) tombstone(main int64, sub int64) error {
 // Rev must be higher than or equal to the given atRev.
 func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, err error) {
 	if ki.isEmpty() {
-		log.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
+		plog.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
 	}
 	g := ki.findGeneration(atRev)
 	if g.isEmpty() {
@@ -144,7 +143,7 @@ func (ki *keyIndex) get(atRev int64) (modified, created revision, ver int64, err
 // main revision.
 func (ki *keyIndex) since(rev int64) []revision {
 	if ki.isEmpty() {
-		log.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
+		plog.Panicf("store.keyindex: unexpected get on empty keyIndex %s", string(ki.key))
 	}
 	since := revision{rev, 0}
 	var gi int
@@ -185,7 +184,7 @@ func (ki *keyIndex) since(rev int64) []revision {
 // If a generation becomes empty during compaction, it will be removed.
 func (ki *keyIndex) compact(atRev int64, available map[revision]struct{}) {
 	if ki.isEmpty() {
-		log.Panicf("store.keyindex: unexpected compact on empty keyIndex %s", string(ki.key))
+		plog.Panicf("store.keyindex: unexpected compact on empty keyIndex %s", string(ki.key))
 	}
 
 	// walk until reaching the first revision that has an revision smaller or equal to
