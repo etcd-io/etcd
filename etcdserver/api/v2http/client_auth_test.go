@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/auth"
 )
 
@@ -103,10 +104,7 @@ func (s *mockAuthStore) HashPassword(password string) (string, error) {
 }
 
 func TestAuthFlow(t *testing.T) {
-	enableMapMu.Lock()
-	enabledMap = make(map[capability]bool)
-	enabledMap[authCapability] = true
-	enableMapMu.Unlock()
+	api.EnableCapability(api.AuthCapability)
 	var testCases = []struct {
 		req   *http.Request
 		store mockAuthStore

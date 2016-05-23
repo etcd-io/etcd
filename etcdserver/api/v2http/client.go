@@ -62,8 +62,6 @@ const (
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
 func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http.Handler {
-	go capabilityLoop(server)
-
 	sec := auth.NewStore(server, timeout)
 
 	kh := &keysHandler{
@@ -129,6 +127,7 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 		mux.Handle(pprofPrefix+"/block", pprof.Handler("block"))
 	}
 
+	api.RunCapabilityLoop(server)
 	return requestLogger(mux)
 }
 

@@ -25,7 +25,7 @@ import (
 
 func TestBarrierSingleNode(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	testBarrier(t, 5, func() *clientv3.Client { return clus.clients[0] })
 }
