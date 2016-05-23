@@ -37,6 +37,8 @@ To learn more about the concepts and internals behind etcd, read the following p
 
 ## Upgrading and compatibility
 
+ - [Migrate applications from using API v2 to API v3][v2_migration]
+
 ## Troubleshooting
 
 [api_ref]: dev-guide/api_reference_v3.md
@@ -51,3 +53,4 @@ To learn more about the concepts and internals behind etcd, read the following p
 [recovery]: op-guide/recovery.md
 [maintenance]: op-guide/maintenance.md
 [security]: op-guide/security.md
+[v2_migration]: op-guide/v2-migration.md
