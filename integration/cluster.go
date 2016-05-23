@@ -44,6 +44,7 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/pkg/capnslog"
 )
 
 const (
@@ -65,6 +66,8 @@ var (
 		TrustedCAFile:  "./fixtures/ca.crt",
 		ClientCertAuth: true,
 	}
+
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "integration")
 )
 
 type ClusterConfig struct {
@@ -557,6 +560,7 @@ func (m *member) Clone(t *testing.T) *member {
 // Launch starts a member based on ServerConfig, PeerListeners
 // and ClientListeners.
 func (m *member) Launch() error {
+	plog.Printf("launching %s (%s)", m.Name, m.grpcAddr)
 	var err error
 	if m.s, err = etcdserver.NewServer(&m.ServerConfig); err != nil {
 		return fmt.Errorf("failed to initialize the etcd server: %v", err)
@@ -611,6 +615,8 @@ func (m *member) Launch() error {
 		m.grpcServer = v3rpc.Server(m.s, tlscfg)
 		go m.grpcServer.Serve(m.grpcListener)
 	}
+
+	plog.Printf("launched %s (%s)", m.Name, m.grpcAddr)
 	return nil
 }
 
@@ -659,8 +665,10 @@ func (m *member) Close() {
 
 // Stop stops the member, but the data dir of the member is preserved.
 func (m *member) Stop(t *testing.T) {
+	plog.Printf("stopping %s (%s)", m.Name, m.grpcAddr)
 	m.Close()
 	m.hss = nil
+	plog.Printf("stopped %s (%s)", m.Name, m.grpcAddr)
 }
 
 // StopNotify unblocks when a member stop completes
@@ -670,6 +678,7 @@ func (m *member) StopNotify() <-chan struct{} {
 
 // Restart starts the member using the preserved data dir.
 func (m *member) Restart(t *testing.T) error {
+	plog.Printf("restarting %s (%s)", m.Name, m.grpcAddr)
 	newPeerListeners := make([]net.Listener, 0)
 	for _, ln := range m.PeerListeners {
 		newPeerListeners = append(newPeerListeners, newListenerWithAddr(t, ln.Addr().String()))
@@ -687,15 +696,19 @@ func (m *member) Restart(t *testing.T) error {
 		}
 	}
 
-	return m.Launch()
+	err := m.Launch()
+	plog.Printf("restarted %s (%s)", m.Name, m.grpcAddr)
+	return err
 }
 
 // Terminate stops the member and removes the data dir.
 func (m *member) Terminate(t *testing.T) {
+	plog.Printf("terminating %s (%s)", m.Name, m.grpcAddr)
 	m.Close()
 	if err := os.RemoveAll(m.ServerConfig.DataDir); err != nil {
 		t.Fatal(err)
 	}
+	plog.Printf("terminated %s (%s)", m.Name, m.grpcAddr)
 }
 
 func mustNewHTTPClient(t *testing.T, eps []string, tls *transport.TLSInfo) client.Client {
