@@ -130,8 +130,10 @@ type etcdProcessConfig struct {
 	acurl string
 	// additional url for tls connection when the etcd process
 	// serves both http and https
-	acurltls string
-	isProxy  bool
+	acurltls  string
+	acurlHost string
+
+	isProxy bool
 }
 
 type etcdProcessClusterConfig struct {
@@ -169,28 +171,7 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 		epc.procs[i] = proc
 	}
 
-	// wait for cluster to start
-	readyC := make(chan error, cfg.clusterSize+cfg.proxySize)
-	readyStr := "enabled capabilities for version"
-	for i := range etcdCfgs {
-		go func(etcdp *etcdProcess) {
-			rs := readyStr
-			if etcdp.cfg.isProxy {
-				// rs = "proxy: listening for client requests on"
-				rs = "proxy: endpoints found"
-			}
-			_, err := etcdp.proc.Expect(rs)
-			readyC <- err
-			close(etcdp.donec)
-		}(epc.procs[i])
-	}
-	for range etcdCfgs {
-		if err := <-readyC; err != nil {
-			epc.Close()
-			return nil, err
-		}
-	}
-	return epc, nil
+	return epc, epc.Start()
 }
 
 func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
@@ -231,14 +212,15 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		var curls []string
 		var curl, curltls string
 		port := cfg.basePort + 2*i
+		curlHost := fmt.Sprintf("localhost:%d", port)
 
 		switch cfg.clientTLS {
 		case clientNonTLS, clientTLS:
-			curl = (&url.URL{Scheme: clientScheme, Host: fmt.Sprintf("localhost:%d", port)}).String()
+			curl = (&url.URL{Scheme: clientScheme, Host: curlHost}).String()
 			curls = []string{curl}
 		case clientTLSAndNonTLS:
-			curl = (&url.URL{Scheme: "http", Host: fmt.Sprintf("localhost:%d", port)}).String()
-			curltls = (&url.URL{Scheme: "https", Host: fmt.Sprintf("localhost:%d", port)}).String()
+			curl = (&url.URL{Scheme: "http", Host: curlHost}).String()
+			curltls = (&url.URL{Scheme: "https", Host: curlHost}).String()
 			curls = []string{curl, curltls}
 		}
 
@@ -281,11 +263,13 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			keepDataDir: cfg.keepDataDir,
 			acurl:       curl,
 			acurltls:    curltls,
+			acurlHost:   curlHost,
 		}
 	}
 	for i := 0; i < cfg.proxySize; i++ {
 		port := cfg.basePort + 2*cfg.clusterSize + i + 1
-		curl := url.URL{Scheme: clientScheme, Host: fmt.Sprintf("localhost:%d", port)}
+		curlHost := fmt.Sprintf("localhost:%d", port)
+		curl := url.URL{Scheme: clientScheme, Host: curlHost}
 		name := fmt.Sprintf("testname-proxy%d", i)
 		dataDirPath, derr := ioutil.TempDir("", name+".etcd")
 		if derr != nil {
@@ -303,6 +287,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			dataDirPath: dataDirPath,
 			keepDataDir: cfg.keepDataDir,
 			acurl:       curl.String(),
+			acurlHost:   curlHost,
 			isProxy:     true,
 		}
 	}
@@ -344,12 +329,47 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 	return args
 }
 
-func (epc *etcdProcessCluster) Close() (err error) {
+func (epc *etcdProcessCluster) Start() (err error) {
+	readyC := make(chan error, epc.cfg.clusterSize+epc.cfg.proxySize)
+	readyStr := "enabled capabilities for version"
+	for i := range epc.procs {
+		go func(etcdp *etcdProcess) {
+			etcdp.donec = make(chan struct{})
+			rs := readyStr
+			if etcdp.cfg.isProxy {
+				rs = "proxy: endpoints found"
+			}
+			_, err := etcdp.proc.Expect(rs)
+			readyC <- err
+			close(etcdp.donec)
+		}(epc.procs[i])
+	}
+	for range epc.procs {
+		if err := <-readyC; err != nil {
+			epc.Close()
+			return err
+		}
+	}
+	return nil
+}
+
+func (epc *etcdProcessCluster) Restart() error {
+	for i := range epc.procs {
+		proc, err := newEtcdProcess(epc.procs[i].cfg)
+		if err != nil {
+			epc.Close()
+			return err
+		}
+		epc.procs[i] = proc
+	}
+	return epc.Start()
+}
+
+func (epc *etcdProcessCluster) Stop() (err error) {
 	for _, p := range epc.procs {
 		if p == nil {
 			continue
 		}
-		os.RemoveAll(p.cfg.dataDirPath)
 		if curErr := p.proc.Stop(); curErr != nil {
 			if err != nil {
 				err = fmt.Errorf("%v; %v", err, curErr)
@@ -358,6 +378,14 @@ func (epc *etcdProcessCluster) Close() (err error) {
 			}
 		}
 		<-p.donec
+	}
+	return err
+}
+
+func (epc *etcdProcessCluster) Close() error {
+	err := epc.Stop()
+	for _, p := range epc.procs {
+		os.RemoveAll(p.cfg.dataDirPath)
 	}
 	return err
 }
@@ -416,6 +444,14 @@ func (epc *etcdProcessCluster) endpoints() []string {
 	eps := make([]string, epc.cfg.clusterSize)
 	for i, ep := range epc.backends() {
 		eps[i] = ep.cfg.acurl
+	}
+	return eps
+}
+
+func (epc *etcdProcessCluster) grpcEndpoints() []string {
+	eps := make([]string, epc.cfg.clusterSize)
+	for i, ep := range epc.backends() {
+		eps[i] = ep.cfg.acurlHost
 	}
 	return eps
 }
