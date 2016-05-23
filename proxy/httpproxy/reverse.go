@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -76,8 +75,9 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	if clientreq.Body != nil {
 		proxybody, err = ioutil.ReadAll(clientreq.Body)
 		if err != nil {
-			msg := fmt.Sprintf("proxy: failed to read request body: %v", err)
-			e := httptypes.NewHTTPError(http.StatusInternalServerError, msg)
+			msg := fmt.Sprintf("failed to read request body: %v", err)
+			plog.Println(msg)
+			e := httptypes.NewHTTPError(http.StatusInternalServerError, "httpproxy: "+msg)
 			if we := e.WriteTo(rw); we != nil {
 				plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
 			}
@@ -95,12 +95,12 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 
 	endpoints := p.director.endpoints()
 	if len(endpoints) == 0 {
-		msg := "proxy: zero endpoints currently available"
+		msg := "zero endpoints currently available"
 		reportRequestDropped(clientreq, zeroEndpoints)
 
 		// TODO: limit the rate of the error logging.
-		log.Printf(msg)
-		e := httptypes.NewHTTPError(http.StatusServiceUnavailable, msg)
+		plog.Println(msg)
+		e := httptypes.NewHTTPError(http.StatusServiceUnavailable, "httpproxy: "+msg)
 		if we := e.WriteTo(rw); we != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
 		}
@@ -117,7 +117,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 			select {
 			case <-closeCh:
 				atomic.StoreInt32(&requestClosed, 1)
-				log.Printf("proxy: client %v closed request prematurely", clientreq.RemoteAddr)
+				plog.Printf("client %v closed request prematurely", clientreq.RemoteAddr)
 				cancel()
 			case <-completeCh:
 			}
@@ -142,7 +142,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		}
 		if err != nil {
 			reportRequestDropped(clientreq, failedSendingRequest)
-			log.Printf("proxy: failed to direct request to %s: %v", ep.URL.String(), err)
+			plog.Printf("failed to direct request to %s: %v", ep.URL.String(), err)
 			ep.Failed()
 			continue
 		}
@@ -152,10 +152,10 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 
 	if res == nil {
 		// TODO: limit the rate of the error logging.
-		msg := fmt.Sprintf("proxy: unable to get response from %d endpoint(s)", len(endpoints))
+		msg := fmt.Sprintf("unable to get response from %d endpoint(s)", len(endpoints))
 		reportRequestDropped(clientreq, failedGettingResponse)
-		log.Printf(msg)
-		e := httptypes.NewHTTPError(http.StatusBadGateway, msg)
+		plog.Println(msg)
+		e := httptypes.NewHTTPError(http.StatusBadGateway, "httpproxy: "+msg)
 		if we := e.WriteTo(rw); we != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", we, clientreq.RemoteAddr)
 		}
