@@ -337,7 +337,7 @@ func (epc *etcdProcessCluster) Start() (err error) {
 			etcdp.donec = make(chan struct{})
 			rs := readyStr
 			if etcdp.cfg.isProxy {
-				rs = "proxy: endpoints found"
+				rs = "httpproxy: endpoints found"
 			}
 			_, err := etcdp.proc.Expect(rs)
 			readyC <- err
