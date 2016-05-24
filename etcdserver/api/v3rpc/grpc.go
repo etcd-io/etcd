@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -32,7 +33,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config) *grpc.Server {
 	opts = append(opts, grpc.StreamInterceptor(newStreamInterceptor(s)))
 
 	grpcServer := grpc.NewServer(opts...)
-	pb.RegisterKVServer(grpcServer, NewQuotaKVServer(s))
+	pb.RegisterKVServer(grpcServer, NewTracedKVServer(opentracing.GlobalTracer(), NewQuotaKVServer(s)))
 	pb.RegisterWatchServer(grpcServer, NewWatchServer(s))
 	pb.RegisterLeaseServer(grpcServer, NewQuotaLeaseServer(s))
 	pb.RegisterClusterServer(grpcServer, NewClusterServer(s))

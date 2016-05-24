@@ -18,14 +18,10 @@ package v3rpc
 import (
 	"sort"
 
-	"google.golang.org/grpc/metadata"
-
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/pkg/capnslog"
-	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -47,9 +43,6 @@ func NewKVServer(s *etcdserver.EtcdServer) pb.KVServer {
 }
 
 func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	var sp opentracing.Span
-	var err error
-	defer sp.Finish()
 	if err := checkRangeRequest(r); err != nil {
 		return nil, err
 	}
@@ -67,8 +60,6 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 }
 
 func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	sp, ctx := startSpanFromMetadata(ctx, "kvServer/v3/Range")
-	defer sp.Finish()
 	if err := checkPutRequest(r); err != nil {
 		return nil, err
 	}
@@ -86,8 +77,6 @@ func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, 
 }
 
 func (s *kvServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	sp, ctx := startSpanFromMetadata(ctx, "kvServer/v3/Range")
-	defer sp.Finish()
 	if err := checkDeleteRequest(r); err != nil {
 		return nil, err
 	}
@@ -105,8 +94,6 @@ func (s *kvServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*
 }
 
 func (s *kvServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	sp, ctx := startSpanFromMetadata(ctx, "kvServer/v3/Range")
-	defer sp.Finish()
 	if err := checkTxnRequest(r); err != nil {
 		return nil, err
 	}
@@ -124,8 +111,6 @@ func (s *kvServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, 
 }
 
 func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	sp, ctx := startSpanFromMetadata(ctx, "kvServer/v3/Range")
-	defer sp.Finish()
 	resp, err := s.kv.Compact(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -265,19 +250,4 @@ func checkRequestUnion(u *pb.RequestUnion) error {
 		return nil
 	}
 	return nil
-}
-
-func startSpanFromMetadata(ctx context.Context, operationName string) (opentracing.Span, context.Context) {
-	md, ok := metadata.FromContext(ctx)
-	if ok {
-		sp, err := opentracing.GlobalTracer().Join(operationName, opentracing.TextMap, pbutil.MetadataReaderWriter{&md})
-		if err != nil {
-			plog.Warningf("Couldn't join trace %v", err)
-			return opentracing.StartSpanFromContext(ctx, operationName)
-		} else {
-			return sp, opentracing.ContextWithSpan(ctx, sp)
-		}
-	}
-	plog.Infof("Couldn't find metadata")
-	return opentracing.StartSpanFromContext(ctx, operationName)
 }
