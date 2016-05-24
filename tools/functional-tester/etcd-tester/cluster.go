@@ -175,6 +175,7 @@ func (c *cluster) WaitHealth() error {
 		if err == nil {
 			return nil
 		}
+		plog.Warningf("[WaitHealth #%d] setHealthKey error %q", i, err)
 		time.Sleep(time.Second)
 	}
 	return err
@@ -271,7 +272,7 @@ func setHealthKey(us []string) error {
 		cancel()
 		conn.Close()
 		if err != nil {
-			return err
+			return fmt.Errorf("%v (%s)", err, u)
 		}
 	}
 	return nil
@@ -360,11 +361,8 @@ func (c *cluster) checkCompact(rev int64) error {
 			return err
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		wch := cli.Watch(ctx, "\x00", clientv3.WithFromKey(), clientv3.WithRev(rev-1))
+		wch := cli.Watch(context.Background(), "\x00", clientv3.WithFromKey(), clientv3.WithRev(rev-1))
 		wr, ok := <-wch
-		cancel()
-
 		cli.Close()
 
 		if !ok {

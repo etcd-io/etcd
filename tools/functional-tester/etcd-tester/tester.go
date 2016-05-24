@@ -85,10 +85,18 @@ func (tt *tester) runLoop() {
 				continue
 			}
 
+			if !tt.consistencyCheck {
+				if err := tt.checkCurrentRevision(); err != nil {
+					plog.Warningf("%s functional-tester returning with tt.checkCurrentRevision error (%v)", tt.logPrefix(), err)
+					return
+				}
+				continue
+			}
+
 			var err error
-			failed, err = tt.updateCurrentRevisionHash(tt.consistencyCheck)
+			failed, err = tt.checkCurrentRevisionHash()
 			if err != nil {
-				plog.Warningf("%s functional-tester returning with error (%v)", tt.logPrefix(), err)
+				plog.Warningf("%s functional-tester returning with tt.checkCurrentRevisionHash error (%v)", tt.logPrefix(), err)
 				return
 			}
 			if failed {
@@ -101,6 +109,7 @@ func (tt *tester) runLoop() {
 		tt.status.setCase(-1)
 
 		if failed {
+			round++
 			continue
 		}
 
@@ -138,7 +147,11 @@ func (tt *tester) logPrefix() string {
 
 func (tt *tester) cleanup() error {
 	roundFailedTotalCounter.Inc()
-	caseFailedTotalCounter.WithLabelValues(tt.failures[tt.status.Case].Desc()).Inc()
+	desc := "compact/defrag"
+	if tt.status.Case != -1 {
+		desc = tt.failures[tt.status.Case].Desc()
+	}
+	caseFailedTotalCounter.WithLabelValues(desc).Inc()
 
 	plog.Printf("%s cleaning up...", tt.logPrefix())
 	if err := tt.cluster.Cleanup(); err != nil {
@@ -146,22 +159,6 @@ func (tt *tester) cleanup() error {
 		return err
 	}
 	return tt.cluster.Bootstrap()
-}
-
-func (tt *tester) cancelStressers() {
-	plog.Printf("%s canceling the stressers...", tt.logPrefix())
-	for _, s := range tt.cluster.Stressers {
-		s.Cancel()
-	}
-	plog.Printf("%s canceled stressers", tt.logPrefix())
-}
-
-func (tt *tester) startStressers() {
-	plog.Printf("%s starting the stressers...", tt.logPrefix())
-	for _, s := range tt.cluster.Stressers {
-		go s.Stress()
-	}
-	plog.Printf("%s started stressers", tt.logPrefix())
 }
 
 func (tt *tester) compact(rev int64) error {
@@ -189,9 +186,6 @@ func (tt *tester) compact(rev int64) error {
 }
 
 func (tt *tester) defrag() error {
-	tt.cancelStressers()
-	defer tt.startStressers()
-
 	plog.Printf("%s defragmenting...", tt.logPrefix())
 	if err := tt.cluster.defrag(); err != nil {
 		plog.Printf("%s defrag error (%v)", tt.logPrefix(), err)
@@ -205,11 +199,18 @@ func (tt *tester) defrag() error {
 	return nil
 }
 
-func (tt *tester) updateCurrentRevisionHash(check bool) (failed bool, err error) {
-	if check {
-		tt.cancelStressers()
-		defer tt.startStressers()
+func (tt *tester) checkCurrentRevision() error {
+	revs, _, err := tt.cluster.getRevisionHash()
+	for _, rev := range revs {
+		tt.currentRevision = rev
+		break
 	}
+	return err
+}
+
+func (tt *tester) checkCurrentRevisionHash() (failed bool, err error) {
+	tt.cancelStressers()
+	defer tt.startStressers()
 
 	plog.Printf("%s updating current revisions...", tt.logPrefix())
 	var (
@@ -229,18 +230,9 @@ func (tt *tester) updateCurrentRevisionHash(check bool) (failed bool, err error)
 		}
 
 		plog.Printf("%s #%d inconsistent current revisions %+v", tt.logPrefix(), i, revs)
-		if !check {
-			break // if consistency check is false, just try once
-		}
-
 		time.Sleep(time.Second)
 	}
 	plog.Printf("%s updated current revisions with %d", tt.logPrefix(), tt.currentRevision)
-
-	if !check {
-		failed = false
-		return
-	}
 
 	if !ok || rerr != nil {
 		plog.Printf("%s checking current revisions failed [revisions: %v]", tt.logPrefix(), revs)
@@ -258,5 +250,22 @@ func (tt *tester) updateCurrentRevisionHash(check bool) (failed bool, err error)
 		return
 	}
 	plog.Printf("%s all members are consistent with storage hashes", tt.logPrefix())
+
 	return
+}
+
+func (tt *tester) cancelStressers() {
+	plog.Printf("%s canceling the stressers...", tt.logPrefix())
+	for _, s := range tt.cluster.Stressers {
+		s.Cancel()
+	}
+	plog.Printf("%s canceled stressers", tt.logPrefix())
+}
+
+func (tt *tester) startStressers() {
+	plog.Printf("%s starting the stressers...", tt.logPrefix())
+	for _, s := range tt.cluster.Stressers {
+		go s.Stress()
+	}
+	plog.Printf("%s started stressers", tt.logPrefix())
 }
