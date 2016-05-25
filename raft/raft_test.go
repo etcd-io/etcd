@@ -1225,6 +1225,94 @@ func TestLeaderStepdownWhenQuorumLost(t *testing.T) {
 	}
 }
 
+func TestLeaderSupersedingWithoutCheckQuorum(t *testing.T) {
+	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	nt := newNetwork(a, b, c)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if c.state != StateFollower {
+		t.Errorf("state = %s, want %s", c.state, StateFollower)
+	}
+
+	nt.isolate(1)
+
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+	if c.state != StateLeader {
+		t.Errorf("state = %s, want %s", c.state, StateLeader)
+	}
+}
+
+func TestLeaderSupersedingWithCheckQuorum(t *testing.T) {
+	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	a.checkQuorum = true
+	b.checkQuorum = true
+	c.checkQuorum = true
+
+	nt := newNetwork(a, b, c)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if c.state != StateFollower {
+		t.Errorf("state = %s, want %s", c.state, StateFollower)
+	}
+
+	nt.isolate(1)
+
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+	if c.state != StateCandidate {
+		t.Errorf("state = %s, want %s", c.state, StateCandidate)
+	}
+
+	// Prevent campaigning from raft b
+	if b.randomizedElectionTimeout == b.electionTimeout {
+		b.randomizedElectionTimeout = b.electionTimeout + 1
+	}
+
+	for i := 0; i < b.electionTimeout; i++ {
+		b.tick()
+	}
+
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+	if c.state != StateLeader {
+		t.Errorf("state = %s, want %s", c.state, StateLeader)
+	}
+}
+
+func TestLeaderElectionWithCheckQuorum(t *testing.T) {
+	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	a.checkQuorum = true
+	b.checkQuorum = true
+	c.checkQuorum = true
+
+	nt := newNetwork(a, b, c)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	if b.randomizedElectionTimeout == b.electionTimeout {
+		b.randomizedElectionTimeout = b.electionTimeout + 1
+	}
+
+	for i := 0; i < b.electionTimeout; i++ {
+		a.tick()
+		b.tick()
+		c.tick()
+	}
+
+	if a.state != StateFollower {
+		t.Errorf("state = %s, want %s", a.state, StateFollower)
+	}
+
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+	if c.state != StateLeader {
+		t.Errorf("state = %s, want %s", c.state, StateLeader)
+	}
+}
+
 func TestLeaderAppResp(t *testing.T) {
 	// initial progress: match = 0; next = 3
 	tests := []struct {
