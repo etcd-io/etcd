@@ -119,8 +119,8 @@ func (s *store) Index() uint64 {
 func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 	var err *etcdErr.Error
 
-	s.worldLock.Lock()
-	defer s.worldLock.Unlock()
+	s.worldLock.RLock()
+	defer s.worldLock.RUnlock()
 
 	defer func() {
 		if err == nil {
