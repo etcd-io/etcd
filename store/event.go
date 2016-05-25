@@ -30,6 +30,7 @@ type Event struct {
 	Node      *NodeExtern `json:"node,omitempty"`
 	PrevNode  *NodeExtern `json:"prevNode,omitempty"`
 	EtcdIndex uint64      `json:"-"`
+	Refresh   bool        `json:"refresh,omitempty"`
 }
 
 func newEvent(action string, key string, modifiedIndex, createdIndex uint64) *Event {
@@ -63,4 +64,8 @@ func (e *Event) Clone() *Event {
 		Node:      e.Node.Clone(),
 		PrevNode:  e.PrevNode.Clone(),
 	}
+}
+
+func (e *Event) SetRefresh() {
+	e.Refresh = true
 }

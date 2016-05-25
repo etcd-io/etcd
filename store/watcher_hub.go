@@ -115,6 +115,10 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeInde
 	return w, nil
 }
 
+func (wh *watcherHub) add(e *Event) {
+	e = wh.EventHistory.addEvent(e)
+}
+
 // notify function accepts an event and notify to the watchers.
 func (wh *watcherHub) notify(e *Event) {
 	e = wh.EventHistory.addEvent(e) // add event into the eventHistory
