@@ -193,8 +193,8 @@ func TestSyncWatchers(t *testing.T) {
 	}
 
 	for w := range sws {
-		if w.cur != s.Rev() {
-			t.Errorf("w.cur = %d, want %d", w.cur, s.Rev())
+		if w.minRev != s.Rev()+1 {
+			t.Errorf("w.minRev = %d, want %d", w.minRev, s.Rev()+1)
 		}
 	}
 

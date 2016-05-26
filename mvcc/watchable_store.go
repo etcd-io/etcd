@@ -190,19 +190,19 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 	defer s.mu.Unlock()
 
 	wa := &watcher{
-		key: key,
-		end: end,
-		cur: startRev,
-		id:  id,
-		ch:  ch,
+		key:    key,
+		end:    end,
+		minRev: startRev,
+		id:     id,
+		ch:     ch,
 	}
 
 	s.store.mu.Lock()
 	synced := startRev > s.store.currentRev.main || startRev == 0
 	if synced {
-		wa.cur = s.store.currentRev.main + 1
-		if startRev > wa.cur {
-			wa.cur = startRev
+		wa.minRev = s.store.currentRev.main + 1
+		if startRev > wa.minRev {
+			wa.minRev = startRev
 		}
 	}
 	s.store.mu.Unlock()
@@ -214,30 +214,47 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 	}
 	watcherGauge.Inc()
 
-	cancel := cancelFunc(func() {
+	return wa, func() { s.cancelWatcher(wa) }
+}
+
+// cancelWatcher removes references of the watcher from the watchableStore
+func (s *watchableStore) cancelWatcher(wa *watcher) {
+	for {
 		s.mu.Lock()
-		// remove references of the watcher
+
 		if s.unsynced.delete(wa) {
 			slowWatcherGauge.Dec()
-			watcherGauge.Dec()
+			break
 		} else if s.synced.delete(wa) {
-			watcherGauge.Dec()
-		} else {
-			for _, wb := range s.victims {
-				if wb[wa] != nil {
-					slowWatcherGauge.Dec()
-					watcherGauge.Dec()
-					delete(wb, wa)
-					break
-				}
+			break
+		} else if wa.compacted {
+			break
+		}
+
+		if !wa.victim {
+			panic("watcher not victim but not in watch groups")
+		}
+
+		var victimBatch watcherBatch
+		for _, wb := range s.victims {
+			if wb[wa] != nil {
+				victimBatch = wb
+				break
 			}
 		}
+		if victimBatch != nil {
+			slowWatcherGauge.Dec()
+			delete(victimBatch, wa)
+			break
+		}
+
+		// victim being processed so not accessible; retry
 		s.mu.Unlock()
+		time.Sleep(time.Millisecond)
+	}
 
-		// If we cannot find it, it should have finished watch.
-	})
-
-	return wa, cancel
+	watcherGauge.Dec()
+	s.mu.Unlock()
 }
 
 // syncWatchersLoop syncs the watcher in the unsynced map every 100ms.
@@ -306,8 +323,10 @@ func (s *watchableStore) moveVictims() (moved int) {
 	for _, wb := range victims {
 		// try to send responses again
 		for w, eb := range wb {
+			// watcher has observed the store up to, but not including, w.minRev
+			rev := w.minRev - 1
 			select {
-			case w.ch <- WatchResponse{WatchID: w.id, Events: eb.evs, Revision: w.cur}:
+			case w.ch <- WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}:
 				pendingEventsGauge.Add(float64(len(eb.evs)))
 			default:
 				if newVictim == nil {
@@ -328,10 +347,11 @@ func (s *watchableStore) moveVictims() (moved int) {
 				// couldn't send watch response; stays victim
 				continue
 			}
+			w.victim = false
 			if eb.moreRev != 0 {
-				w.cur = eb.moreRev
+				w.minRev = eb.moreRev
 			}
-			if w.cur < curRev {
+			if w.minRev <= curRev {
 				s.unsynced.add(w)
 			} else {
 				slowWatcherGauge.Dec()
@@ -385,17 +405,20 @@ func (s *watchableStore) syncWatchers() {
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)
 	for w := range wg.watchers {
+		w.minRev = curRev + 1
+
 		eb, ok := wb[w]
 		if !ok {
 			// bring un-notified watcher to synced
-			w.cur = curRev
 			s.synced.add(w)
 			s.unsynced.delete(w)
 			continue
 		}
 
-		w.cur = curRev
-		isBlocked := false
+		if eb.moreRev != 0 {
+			w.minRev = eb.moreRev
+		}
+
 		select {
 		case w.ch <- WatchResponse{WatchID: w.id, Events: eb.evs, Revision: curRev}:
 			pendingEventsGauge.Add(float64(len(eb.evs)))
@@ -403,14 +426,14 @@ func (s *watchableStore) syncWatchers() {
 			if victims == nil {
 				victims = make(watcherBatch)
 			}
-			isBlocked = true
+			w.victim = true
 		}
 
-		if isBlocked {
+		if w.victim {
 			victims[w] = eb
 		} else {
 			if eb.moreRev != 0 {
-				w.cur = eb.moreRev
+				// stay unsynced; more to read
 				continue
 			}
 			s.synced.add(w)
@@ -458,14 +481,15 @@ func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 			plog.Panicf("unexpected multiple revisions in notification")
 		}
 		select {
-		case w.ch <- WatchResponse{WatchID: w.id, Events: eb.evs, Revision: s.Rev()}:
+		case w.ch <- WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}:
 			pendingEventsGauge.Add(float64(len(eb.evs)))
 		default:
 			// move slow watcher to victims
-			w.cur = rev
+			w.minRev = rev + 1
 			if victim == nil {
 				victim = make(watcherBatch)
 			}
+			w.victim = true
 			victim[w] = eb
 			s.synced.delete(w)
 			slowWatcherGauge.Inc()
@@ -508,12 +532,15 @@ type watcher struct {
 	// If end is set, the watcher is on a range.
 	end []byte
 
-	// cur is the current watcher revision of a unsynced watcher.
-	// cur will be updated for unsynced watcher while it is catching up.
-	// cur is startRev of a synced watcher.
-	// cur will not be updated for synced watcher.
-	cur int64
-	id  WatchID
+	// victim is set when ch is blocked and undergoing victim processing
+	victim bool
+
+	// compacted is set when the watcher is removed because of compaction
+	compacted bool
+
+	// minRev is the minimum revision update the watcher will accept
+	minRev int64
+	id     WatchID
 
 	// a chan to send out the watch response.
 	// The chan might be shared with other watchers.
