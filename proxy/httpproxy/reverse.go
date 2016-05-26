@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/pkg/capnslog"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 var (
@@ -62,6 +63,8 @@ type reverseProxy struct {
 }
 
 func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request) {
+	sp := httputil.JoinOrCreateSpanFromHeader("reverse-proxy", clientreq.Header)
+	defer sp.Finish()
 	reportIncomingRequest(clientreq)
 	proxyreq := new(http.Request)
 	*proxyreq = *clientreq
@@ -89,6 +92,10 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	proxyreq.Header = make(http.Header)
 	copyHeader(proxyreq.Header, clientreq.Header)
 
+	err = sp.Tracer().Inject(sp, opentracing.TextMap, opentracing.HTTPHeaderTextMapCarrier(proxyreq.Header))
+	if err != nil {
+		plog.Debugf("Error injecting header")
+	}
 	normalizeRequest(proxyreq)
 	removeSingleHopHeaders(&proxyreq.Header)
 	maybeSetForwardedFor(proxyreq)

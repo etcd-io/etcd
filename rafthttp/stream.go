@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/go-semver/semver"
+	"github.com/opentracing/opentracing-go"
 )
 
 const (
@@ -146,6 +147,8 @@ func (cw *streamWriter) run() {
 		case <-heartbeatc:
 			err := enc.encode(linkHeartbeatMessage)
 			unflushed += linkHeartbeatMessage.Size()
+			// TODO(bg): Rather than constantly tracing encoding decoding, i should just trace the
+			// the process boundaries.
 			if err == nil {
 				flusher.Flush()
 				batched = 0
@@ -380,6 +383,8 @@ func (cr *streamReader) stop() {
 }
 
 func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
+	sp := opentracing.StartSpan("streamReader/dial")
+	defer sp.Finish()
 	u := cr.picker.pick()
 	uu := u
 	uu.Path = path.Join(t.endpoint(), cr.local.String())
@@ -394,6 +399,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	req.Header.Set("X-Min-Cluster-Version", version.MinClusterVersion)
 	req.Header.Set("X-Etcd-Cluster-ID", cr.cid.String())
 	req.Header.Set("X-Raft-To", cr.remote.String())
+	sp.Tracer().Inject(sp, opentracing.TextMap, opentracing.HTTPHeaderTextMapCarrier(req.Header))
 
 	setPeerURLsHeader(req, cr.tr.URLs)
 

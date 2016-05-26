@@ -29,6 +29,8 @@ func NewAuthServer(s *etcdserver.EtcdServer) *AuthServer {
 }
 
 func (as *AuthServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/AuthEnable")
+	defer sp.Finish()
 	resp, err := as.authenticator.AuthEnable(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -37,6 +39,8 @@ func (as *AuthServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (
 }
 
 func (as *AuthServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/AuthDisable")
+	defer sp.Finish()
 	resp, err := as.authenticator.AuthDisable(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -45,6 +49,8 @@ func (as *AuthServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest)
 }
 
 func (as *AuthServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/Authenticate")
+	defer sp.Finish()
 	resp, err := as.authenticator.Authenticate(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -53,6 +59,8 @@ func (as *AuthServer) Authenticate(ctx context.Context, r *pb.AuthenticateReques
 }
 
 func (as *AuthServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/RoleAdd")
+	defer sp.Finish()
 	resp, err := as.authenticator.RoleAdd(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -76,6 +84,8 @@ func (as *AuthServer) RoleRevoke(ctx context.Context, r *pb.AuthRoleRevokeReques
 }
 
 func (as *AuthServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/RoleGrant")
+	defer sp.Finish()
 	resp, err := as.authenticator.RoleGrant(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -84,6 +94,8 @@ func (as *AuthServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest)
 }
 
 func (as *AuthServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/UserAdd")
+	defer sp.Finish()
 	resp, err := as.authenticator.UserAdd(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -92,6 +104,8 @@ func (as *AuthServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*p
 }
 
 func (as *AuthServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/UserDelete")
+	defer sp.Finish()
 	resp, err := as.authenticator.UserDelete(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -105,6 +119,8 @@ func (as *AuthServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*p
 }
 
 func (as *AuthServer) UserGrant(ctx context.Context, r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/UserGrant")
+	defer sp.Finish()
 	resp, err := as.authenticator.UserGrant(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
@@ -118,6 +134,8 @@ func (as *AuthServer) UserRevoke(ctx context.Context, r *pb.AuthUserRevokeReques
 }
 
 func (as *AuthServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
+	sp, ctx := startSpanFromMetadata(ctx, "authserver/UserChangePassword")
+	defer sp.Finish()
 	resp, err := as.authenticator.UserChangePassword(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)

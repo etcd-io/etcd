@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 const (
@@ -70,6 +72,7 @@ type msgAppV2Encoder struct {
 	buf       []byte
 	uint64buf []byte
 	uint8buf  []byte
+	tracebuf  []byte
 }
 
 func newMsgAppV2Encoder(w io.Writer, fs *stats.FollowerStats) *msgAppV2Encoder {
@@ -84,15 +87,31 @@ func newMsgAppV2Encoder(w io.Writer, fs *stats.FollowerStats) *msgAppV2Encoder {
 
 func (enc *msgAppV2Encoder) encode(m raftpb.Message) error {
 	start := time.Now()
+
+	// TODO(bg): This might not be necessary if we don't care about the encoding
+	// type. Instead, we can just use the embedded m.TraceContext.
+	sp := pbutil.StartSpanFromMessage("msgAppV2Encoder/encode", m)
+	defer sp.Finish()
+
+	traceBuf := bytes.NewBuffer(nil)
+	sp.Tracer().Inject(sp, opentracing.Binary, traceBuf)
+	enc.tracebuf = traceBuf.Bytes()
+
 	switch {
 	case isLinkHeartbeatMessage(m):
 		enc.uint8buf[0] = byte(msgTypeLinkHeartbeat)
 		if _, err := enc.w.Write(enc.uint8buf); err != nil {
 			return err
 		}
+		if _, err := enc.w.Write(enc.tracebuf); err != nil {
+			return err
+		}
 	case enc.index == m.Index && enc.term == m.LogTerm && m.LogTerm == m.Term:
 		enc.uint8buf[0] = byte(msgTypeAppEntries)
 		if _, err := enc.w.Write(enc.uint8buf); err != nil {
+			return err
+		}
+		if _, err := enc.w.Write(enc.tracebuf); err != nil {
 			return err
 		}
 		// write length of entries
@@ -128,6 +147,9 @@ func (enc *msgAppV2Encoder) encode(m raftpb.Message) error {
 		enc.fs.Succ(time.Since(start))
 	default:
 		if err := binary.Write(enc.w, binary.BigEndian, msgTypeApp); err != nil {
+			return err
+		}
+		if _, err := enc.w.Write(enc.tracebuf); err != nil {
 			return err
 		}
 		// write size of message
@@ -179,6 +201,14 @@ func (dec *msgAppV2Decoder) decode() (raftpb.Message, error) {
 	if _, err := io.ReadFull(dec.r, dec.uint8buf); err != nil {
 		return m, err
 	}
+
+	sp, err := opentracing.GlobalTracer().Join("msgAppV2Decoder/decode", opentracing.Binary, dec.r)
+	if err != nil {
+		sp = opentracing.StartSpan("msgAppV2Decoder/decode_root")
+	}
+
+	defer sp.Finish()
+
 	typ = uint8(dec.uint8buf[0])
 	switch typ {
 	case msgTypeLinkHeartbeat:
@@ -244,5 +274,6 @@ func (dec *msgAppV2Decoder) decode() (raftpb.Message, error) {
 	default:
 		return m, fmt.Errorf("failed to parse type %d in msgappv2 stream", typ)
 	}
+	pbutil.InjectSpanIntoMessage(sp, &m)
 	return m, nil
 }

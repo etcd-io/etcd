@@ -18,6 +18,7 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -33,22 +34,32 @@ type v2API interface {
 type v2apiStore struct{ s *EtcdServer }
 
 func (a *v2apiStore) Post(ctx context.Context, r *pb.Request) (Response, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "v2apiStore/Post")
+	defer sp.Finish()
 	return a.processRaftRequest(ctx, r)
 }
 
 func (a *v2apiStore) Put(ctx context.Context, r *pb.Request) (Response, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "v2apiStore/Put")
+	defer sp.Finish()
 	return a.processRaftRequest(ctx, r)
 }
 
 func (a *v2apiStore) Delete(ctx context.Context, r *pb.Request) (Response, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "v2apiStore/Delete")
+	defer sp.Finish()
 	return a.processRaftRequest(ctx, r)
 }
 
 func (a *v2apiStore) QGet(ctx context.Context, r *pb.Request) (Response, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "v2apiStore/QGet")
+	defer sp.Finish()
 	return a.processRaftRequest(ctx, r)
 }
 
 func (a *v2apiStore) processRaftRequest(ctx context.Context, r *pb.Request) (Response, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "v2apiStore/processRaftRequest")
+	defer sp.Finish()
 	data, err := r.Marshal()
 	if err != nil {
 		return Response{}, err
@@ -78,6 +89,8 @@ func (a *v2apiStore) processRaftRequest(ctx context.Context, r *pb.Request) (Res
 }
 
 func (a *v2apiStore) Get(ctx context.Context, r *pb.Request) (Response, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "v2apiStore/Get")
+	defer sp.Finish()
 	if r.Wait {
 		wc, err := a.s.store.Watch(r.Path, r.Recursive, r.Stream, r.Since)
 		if err != nil {
@@ -93,6 +106,9 @@ func (a *v2apiStore) Get(ctx context.Context, r *pb.Request) (Response, error) {
 }
 
 func (a *v2apiStore) Head(ctx context.Context, r *pb.Request) (Response, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "v2apiStore/Post")
+	defer sp.Finish()
+
 	ev, err := a.s.store.Get(r.Path, r.Recursive, r.Sorted)
 	if err != nil {
 		return Response{}, err
@@ -106,6 +122,8 @@ func (a *v2apiStore) Head(ctx context.Context, r *pb.Request) (Response, error) 
 // respective operation. Do will block until an action is performed or there is
 // an error.
 func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Do")
+	defer sp.Finish()
 	r.ID = s.reqIDGen.Next()
 	if r.Method == "GET" && r.Quorum {
 		r.Method = "QGET"

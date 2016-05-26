@@ -16,8 +16,11 @@ package raft
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/coreos/etcd/pkg/pbutil"
 	pb "github.com/coreos/etcd/raft/raftpb"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -384,13 +387,26 @@ func (n *node) Tick() {
 	}
 }
 
-func (n *node) Campaign(ctx context.Context) error { return n.step(ctx, pb.Message{Type: pb.MsgHup}) }
+func (n *node) Campaign(ctx context.Context) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raftnode/Campaign")
+	defer sp.Finish()
+
+	return n.step(ctx, pb.Message{Type: pb.MsgHup})
+}
 
 func (n *node) Propose(ctx context.Context, data []byte) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raftnode/Propose")
+	defer sp.Finish()
+	sp.SetTag("data", string(data))
+
 	return n.step(ctx, pb.Message{Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 }
 
 func (n *node) Step(ctx context.Context, m pb.Message) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raftnode/Step")
+	defer sp.Finish()
+
+	sp.SetTag("payload", fmt.Sprintf("%v", m))
 	// ignore unexpected local messages receiving over network
 	if IsLocalMsg(m.Type) {
 		// TODO: return an error?
@@ -400,6 +416,9 @@ func (n *node) Step(ctx context.Context, m pb.Message) error {
 }
 
 func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "raftnode/ProposeConfChange")
+	defer sp.Finish()
+
 	data, err := cc.Marshal()
 	if err != nil {
 		return err
@@ -410,6 +429,11 @@ func (n *node) ProposeConfChange(ctx context.Context, cc pb.ConfChange) error {
 // Step advances the state machine using msgs. The ctx.Err() will be returned,
 // if any.
 func (n *node) step(ctx context.Context, m pb.Message) error {
+	// Only inject the span if it exists.
+	if sp := opentracing.SpanFromContext(ctx); sp != nil {
+		pbutil.InjectSpanIntoMessage(sp, &m)
+	}
+
 	ch := n.recvc
 	if m.Type == pb.MsgProp {
 		ch = n.propc
@@ -454,8 +478,12 @@ func (n *node) Status() Status {
 }
 
 func (n *node) ReportUnreachable(id uint64) {
+	sp := opentracing.StartSpan("raftnode/ReportUnreachable")
+	defer sp.Finish()
+	msg := pb.Message{Type: pb.MsgUnreachable, From: id}
+	pbutil.InjectSpanIntoMessage(sp, &msg)
 	select {
-	case n.recvc <- pb.Message{Type: pb.MsgUnreachable, From: id}:
+	case n.recvc <- msg:
 	case <-n.done:
 	}
 }

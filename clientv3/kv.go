@@ -17,8 +17,11 @@ package clientv3
 import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 type (
@@ -90,21 +93,35 @@ func NewKV(c *Client) KV {
 }
 
 func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clientv3/Put")
+	defer sp.Finish()
 	r, err := kv.Do(ctx, OpPut(key, val, opts...))
 	return r.put, rpctypes.Error(err)
 }
 
 func (kv *kv) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clientv3/Get")
+	defer sp.Finish()
 	r, err := kv.Do(ctx, OpGet(key, opts...))
 	return r.get, rpctypes.Error(err)
 }
 
 func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clientv3/Delete")
+	defer sp.Finish()
 	r, err := kv.Do(ctx, OpDelete(key, opts...))
 	return r.del, rpctypes.Error(err)
 }
 
 func (kv *kv) Compact(ctx context.Context, rev int64) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clientv3/kv/Compact")
+	defer sp.Finish()
+	md := metadata.New(nil)
+	if err := sp.Tracer().Inject(sp, opentracing.TextMap, pbutil.MetadataReaderWriter{&md}); err != nil {
+		return err
+	}
+	ctx = metadata.NewContext(ctx, md)
+
 	remote, err := kv.getRemote(ctx)
 	if err != nil {
 		return rpctypes.Error(err)
@@ -129,6 +146,13 @@ func (kv *kv) Txn(ctx context.Context) Txn {
 }
 
 func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clientv3/Do")
+	defer sp.Finish()
+	md := metadata.New(nil)
+	if err := sp.Tracer().Inject(sp, opentracing.TextMap, pbutil.MetadataReaderWriter{&md}); err != nil {
+		return OpResponse{}, err
+	}
+	ctx = metadata.NewContext(ctx, md)
 	for {
 		resp, err := kv.do(ctx, op)
 		if err == nil {

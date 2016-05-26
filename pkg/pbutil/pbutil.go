@@ -15,7 +15,15 @@
 // Package pbutil defines interfaces for handling Protocol Buffer objects.
 package pbutil
 
-import "github.com/coreos/pkg/capnslog"
+import (
+	"bytes"
+
+	"google.golang.org/grpc/metadata"
+
+	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/opentracing/opentracing-go"
+)
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/pkg", "flags")
@@ -58,3 +66,43 @@ func GetBool(v *bool) (vv bool, set bool) {
 }
 
 func Boolp(b bool) *bool { return &b }
+
+func InjectSpanIntoMessage(sp opentracing.Span, msg *raftpb.Message) error {
+	buf := bytes.NewBuffer(nil)
+	err := sp.Tracer().Inject(sp, opentracing.Binary, buf)
+	if err != nil {
+		return err
+	}
+	msg.TraceContext = buf.Bytes()
+	return err
+}
+
+func StartSpanFromMessage(opName string, msg raftpb.Message) opentracing.Span {
+	buf := bytes.NewReader(msg.TraceContext)
+	sp, err := opentracing.GlobalTracer().Join(opName, opentracing.Binary, buf)
+	if err != nil {
+		return opentracing.StartSpan(opName)
+	}
+	return sp
+}
+
+// MetadataReaderWriter implements opentracing.TextMapReader
+// and opentracing.TextMapWriter. Used for gRPC metadata.
+type MetadataReaderWriter struct {
+	*metadata.MD
+}
+
+func (w MetadataReaderWriter) Set(key, val string) {
+	(*w.MD)[key] = append((*w.MD)[key], val)
+}
+
+func (w MetadataReaderWriter) ForeachKey(handler func(key, val string) error) error {
+	for k, vals := range *w.MD {
+		for _, v := range vals {
+			if err := handler(k, v); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

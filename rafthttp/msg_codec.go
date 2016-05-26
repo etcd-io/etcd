@@ -15,11 +15,13 @@
 package rafthttp
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/opentracing/opentracing-go"
 )
 
 // messageEncoder is a encoder that can encode all kinds of messages.
@@ -29,6 +31,16 @@ type messageEncoder struct {
 }
 
 func (enc *messageEncoder) encode(m raftpb.Message) error {
+	sp := pbutil.StartSpanFromMessage("msgAppEncoder/encode", m)
+	defer sp.Finish()
+
+	// TODO(bg): Might not be necessary if we don't care about the transport layer.
+	traceBuf := bytes.NewBuffer(nil)
+	sp.Tracer().Inject(sp, opentracing.Binary, traceBuf)
+	if err := binary.Write(enc.w, binary.BigEndian, traceBuf.Bytes()); err != nil {
+		return err
+	}
+
 	if err := binary.Write(enc.w, binary.BigEndian, uint64(m.Size())); err != nil {
 		return err
 	}
@@ -44,6 +56,13 @@ type messageDecoder struct {
 func (dec *messageDecoder) decode() (raftpb.Message, error) {
 	var m raftpb.Message
 	var l uint64
+
+	sp, err := opentracing.GlobalTracer().Join("msgAppDecoder/decode", opentracing.Binary, dec.r)
+	if err != nil {
+		sp = opentracing.StartSpan("msgAppDecoder/decode_root")
+	}
+	defer sp.Finish()
+
 	if err := binary.Read(dec.r, binary.BigEndian, &l); err != nil {
 		return m, err
 	}
@@ -51,5 +70,10 @@ func (dec *messageDecoder) decode() (raftpb.Message, error) {
 	if _, err := io.ReadFull(dec.r, buf); err != nil {
 		return m, err
 	}
-	return m, m.Unmarshal(buf)
+	// TODO(bg): ew
+	if err := m.Unmarshal(buf); err != nil {
+		return m, nil
+	}
+	pbutil.InjectSpanIntoMessage(sp, &m)
+	return m, nil
 }

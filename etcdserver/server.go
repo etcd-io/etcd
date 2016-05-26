@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -54,6 +55,7 @@ import (
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
+	opentracing "github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -498,6 +500,9 @@ func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler()
 func (s *EtcdServer) Lessor() lease.Lessor { return s.lessor }
 
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Process")
+	defer sp.Finish()
+
 	if s.cluster.IsIDRemoved(types.ID(m.From)) {
 		plog.Warningf("reject message from removed member %s", types.ID(m.From).String())
 		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message from removed member")
@@ -765,6 +770,9 @@ func (s *EtcdServer) LeaderStats() []byte {
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/AddMember")
+	defer sp.Finish()
+
 	if s.Cfg.StrictReconfigCheck && !s.cluster.IsReadyToAddNewMember() {
 		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
 		// In such a case adding a new member is allowed unconditionally
@@ -785,6 +793,9 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) erro
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/RemoveMember")
+	defer sp.Finish()
+
 	if s.Cfg.StrictReconfigCheck && !s.cluster.IsReadyToRemoveMember(id) {
 		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
 		// In such a case removing a member is allowed unconditionally
@@ -799,6 +810,9 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
 }
 
 func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/UpdateMember")
+	defer sp.Finish()
+
 	b, err := json.Marshal(memb)
 	if err != nil {
 		return err
@@ -830,6 +844,8 @@ func (s *EtcdServer) IsPprofEnabled() bool { return s.Cfg.EnablePprof }
 // then waits for it to be applied to the server. It
 // will block until the change is performed or there is an error.
 func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/configure")
+	defer sp.Finish()
 	cc.ID = s.reqIDGen.Next()
 	ch := s.w.Register(cc.ID)
 	start := time.Now()
@@ -859,16 +875,20 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error 
 // The request will be canceled after the given timeout.
 func (s *EtcdServer) sync(timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/Sync")
+
 	req := pb.Request{
 		Method: "SYNC",
 		ID:     s.reqIDGen.Next(),
 		Time:   time.Now().UnixNano(),
 	}
+	sp.SetBaggageItem("request-id", strconv.FormatUint(req.ID, 10))
 	data := pbutil.MustMarshal(&req)
 	// There is no promise that node has leader when do SYNC request,
 	// so it uses goroutine to propose.
 	go func() {
 		s.r.Propose(ctx, data)
+		defer sp.Finish()
 		cancel()
 	}()
 }
@@ -879,6 +899,9 @@ func (s *EtcdServer) sync(timeout time.Duration) {
 // The function keeps attempting to register until it succeeds,
 // or its server is stopped.
 func (s *EtcdServer) publish(timeout time.Duration) {
+	sp, ctx := opentracing.StartSpanFromContext(context.Background(), "etcdserver/publish")
+	defer sp.Finish()
+
 	b, err := json.Marshal(s.attributes)
 	if err != nil {
 		plog.Panicf("json marshal error: %v", err)
@@ -891,7 +914,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 	}
 
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(ctx, timeout)
 		_, err := s.Do(ctx, req)
 		cancel()
 		switch err {
@@ -989,6 +1012,7 @@ func (s *EtcdServer) apply(es []raftpb.Entry, confState *raftpb.ConfState) (uint
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState)
 			shouldstop = shouldstop || removedSelf
+			// TODO(bg): how do we model this?
 			s.w.Trigger(cc.ID, err)
 		default:
 			plog.Panicf("entry type should be either EntryNormal or EntryConfChange")
@@ -1016,6 +1040,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
 		var r pb.Request
 		pbutil.MustUnmarshal(&r, e.Data)
+		// TODO(bg): how do we model triggers?
 		s.w.Trigger(r.ID, s.applyV2Request(&r))
 		return
 	}
@@ -1223,6 +1248,10 @@ func (s *EtcdServer) updateClusterVersion(ver string) {
 		Val:    ver,
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
+
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "etcdserver/updateClusterVersion")
+	defer sp.Finish()
+
 	_, err := s.Do(ctx, req)
 	cancel()
 	switch err {

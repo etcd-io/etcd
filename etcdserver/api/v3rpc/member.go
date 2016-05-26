@@ -23,6 +23,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -43,6 +44,9 @@ func NewClusterServer(s *etcdserver.EtcdServer) *ClusterServer {
 }
 
 func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) (*pb.MemberAddResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clusterserver/MemberAdd")
+	defer sp.Finish()
+
 	urls, err := types.NewURLs(r.PeerURLs)
 	if err != nil {
 		return nil, rpctypes.ErrGRPCMemberBadURLs
@@ -67,6 +71,9 @@ func (cs *ClusterServer) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) 
 }
 
 func (cs *ClusterServer) MemberRemove(ctx context.Context, r *pb.MemberRemoveRequest) (*pb.MemberRemoveResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clusterserver/MemberRemove")
+	defer sp.Finish()
+
 	err := cs.server.RemoveMember(ctx, r.ID)
 	switch {
 	case err == membership.ErrIDRemoved:
@@ -81,6 +88,9 @@ func (cs *ClusterServer) MemberRemove(ctx context.Context, r *pb.MemberRemoveReq
 }
 
 func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateRequest) (*pb.MemberUpdateResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clusterserver/MemberUpdate")
+	defer sp.Finish()
+
 	m := membership.Member{
 		ID:             types.ID(r.ID),
 		RaftAttributes: membership.RaftAttributes{PeerURLs: r.PeerURLs},
@@ -99,6 +109,9 @@ func (cs *ClusterServer) MemberUpdate(ctx context.Context, r *pb.MemberUpdateReq
 }
 
 func (cs *ClusterServer) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "clusterserver/MemberList")
+	defer sp.Finish()
+
 	membs := cs.cluster.Members()
 
 	protoMembs := make([]*pb.Member, len(membs))

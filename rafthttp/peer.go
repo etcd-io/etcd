@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"bytes"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
+	opentracing "github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -141,9 +143,16 @@ func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r
 		for {
 			select {
 			case mm := <-p.recvc:
-				if err := r.Process(ctx, mm); err != nil {
+				buf := bytes.NewReader(mm.TraceContext)
+				sp, err := opentracing.GlobalTracer().Join("peer/recvc", opentracing.Binary, buf)
+				if err != nil {
+					plog.Infof("Could not join trace on recvc: %v", err)
+					sp = opentracing.StartSpan("peer/recvc")
+				}
+				if err := r.Process(opentracing.ContextWithSpan(ctx, sp), mm); err != nil {
 					plog.Warningf("failed to process raft message (%v)", err)
 				}
+				sp.Finish()
 			case <-p.stopc:
 				return
 			}
@@ -157,9 +166,16 @@ func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r
 		for {
 			select {
 			case mm := <-p.propc:
-				if err := r.Process(ctx, mm); err != nil {
+				buf := bytes.NewReader(mm.TraceContext)
+				sp, err := opentracing.GlobalTracer().Join("peer/propc", opentracing.Binary, buf)
+				if err != nil {
+					plog.Infof("Could not join trace on propc: %v", err)
+					sp = opentracing.StartSpan("peer/propc_root")
+				}
+				if err := r.Process(opentracing.ContextWithSpan(ctx, sp), mm); err != nil {
 					plog.Warningf("failed to process raft message (%v)", err)
 				}
+				sp.Finish()
 			case <-p.stopc:
 				return
 			}

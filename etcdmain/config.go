@@ -125,6 +125,14 @@ type config struct {
 	ProxyReadTimeoutMs     uint   `json:"proxy-read-timeout"`
 	ProxyCfgFile           string `json:"proxy"`
 
+	// tracing
+	TracingLightstepToken      string `json:"tracing-lightstep-token"`
+	TracingLightstepHost       string `json:"tracing-lighstep-host"`
+	TracingLightstepCollector  string `json:"tracing-lighstep-collector"`
+	TracingAppdashHost         string `json:"tracing-appdash-host"`
+	TracingAppdashVerbose      bool   `json:"tracing-appdash-verbose"`
+	TracingAppdashSamplingRate uint64 `json:"tracing-appdash-sampling-rate"`
+
 	// security
 	clientTLSInfo, peerTLSInfo transport.TLSInfo
 	ClientAutoTLS              bool
@@ -249,6 +257,14 @@ func NewConfig() *config {
 	// logging
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug-level logging for etcd.")
 	fs.StringVar(&cfg.LogPkgLevels, "log-package-levels", "", "Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
+
+	// tracing
+	fs.StringVar(&cfg.TracingLightstepToken, "tracing-lightstep-token", "", "Lightstep access token")
+	fs.StringVar(&cfg.TracingLightstepHost, "tracing-lightstep-host", "", "Lightstep API host")
+	fs.StringVar(&cfg.TracingLightstepCollector, "tracing-lightstep-collector", "", "Lightstep collector host")
+	fs.StringVar(&cfg.TracingAppdashHost, "tracing-appdash-host", "", "Appdash remote collector address (host:port)")
+	fs.Uint64Var(&cfg.TracingAppdashSamplingRate, "tracing-appdash-sampling-rate", 128, "Trace sampling rate for Appdash")
+	fs.BoolVar(&cfg.TracingAppdashVerbose, "tracing-appdash-verbose", false, "Enable verbose logging for Appdash")
 
 	// unsafe
 	fs.BoolVar(&cfg.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
