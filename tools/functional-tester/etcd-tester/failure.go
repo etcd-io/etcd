@@ -26,7 +26,7 @@ const (
 	randomVariation    = 50
 
 	// Wait more when it recovers from slow network, because network layer
-	// needs extra time to propogate traffic control (tc command) change.
+	// needs extra time to propagate traffic control (tc command) change.
 	// Otherwise, we get different hash values from the previous revision.
 	// For more detail, please see https://github.com/coreos/etcd/issues/5121.
 	waitRecover = 5 * time.Second
