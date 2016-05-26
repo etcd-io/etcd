@@ -40,16 +40,17 @@ func (tt *tester) runLoop() {
 	for _, f := range tt.failures {
 		tt.status.Failures = append(tt.status.Failures, f.Desc())
 	}
-	round := 0
+
+	var (
+		round          int
+		prevCompactRev int64
+	)
 	for {
 		tt.status.setRound(round)
 		tt.status.setCase(-1) // -1 so that logPrefix doesn't print out 'case'
 		roundTotalCounter.Inc()
 
-		var (
-			prevCompactRev int64
-			failed         bool
-		)
+		var failed bool
 		for j, f := range tt.failures {
 			caseTotalCounter.WithLabelValues(f.Desc()).Inc()
 			tt.status.setCase(j)
