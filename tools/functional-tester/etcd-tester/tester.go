@@ -91,10 +91,18 @@ func (tt *tester) runLoop() {
 				continue
 			}
 
+			if !tt.consistencyCheck {
+				if err := tt.updateRevision(); err != nil {
+					plog.Warningf("%s functional-tester returning with tt.updateRevision error (%v)", tt.logPrefix(), err)
+					return
+				}
+				continue
+			}
+
 			var err error
-			failed, err = tt.updateCurrentRevisionHash(tt.consistencyCheck)
+			failed, err = tt.checkConsistency()
 			if err != nil {
-				plog.Warningf("%s functional-tester returning with error (%v)", tt.logPrefix(), err)
+				plog.Warningf("%s functional-tester returning with tt.checkConsistency error (%v)", tt.logPrefix(), err)
 				return
 			}
 			if failed {
@@ -138,11 +146,18 @@ func (tt *tester) runLoop() {
 	}
 }
 
-func (tt *tester) updateCurrentRevisionHash(check bool) (failed bool, err error) {
-	if check {
-		tt.cancelStressers()
-		defer tt.startStressers()
+func (tt *tester) updateRevision() error {
+	revs, _, err := tt.cluster.getRevisionHash()
+	for _, rev := range revs {
+		tt.currentRevision = rev
+		break // just need get one of the current revisions
 	}
+	return err
+}
+
+func (tt *tester) checkConsistency() (failed bool, err error) {
+	tt.cancelStressers()
+	defer tt.startStressers()
 
 	plog.Printf("%s updating current revisions...", tt.logPrefix())
 	var (
@@ -152,6 +167,8 @@ func (tt *tester) updateCurrentRevisionHash(check bool) (failed bool, err error)
 		ok     bool
 	)
 	for i := 0; i < 7; i++ {
+		time.Sleep(time.Second)
+
 		revs, hashes, rerr = tt.cluster.getRevisionHash()
 		if rerr != nil {
 			plog.Printf("%s #%d failed to get current revisions (%v)", tt.logPrefix(), i, rerr)
@@ -162,18 +179,8 @@ func (tt *tester) updateCurrentRevisionHash(check bool) (failed bool, err error)
 		}
 
 		plog.Printf("%s #%d inconsistent current revisions %+v", tt.logPrefix(), i, revs)
-		if !check {
-			break // if consistency check is false, just try once
-		}
-
-		time.Sleep(time.Second)
 	}
 	plog.Printf("%s updated current revisions with %d", tt.logPrefix(), tt.currentRevision)
-
-	if !check {
-		failed = false
-		return
-	}
 
 	if !ok || rerr != nil {
 		plog.Printf("%s checking current revisions failed [revisions: %v]", tt.logPrefix(), revs)
