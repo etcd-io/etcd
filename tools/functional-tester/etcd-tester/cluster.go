@@ -175,6 +175,7 @@ func (c *cluster) WaitHealth() error {
 		if err == nil {
 			return nil
 		}
+		plog.Warningf("#%d setHealthKey error (%v)", i, err)
 		time.Sleep(time.Second)
 	}
 	return err
@@ -271,7 +272,7 @@ func setHealthKey(us []string) error {
 		cancel()
 		conn.Close()
 		if err != nil {
-			return err
+			return fmt.Errorf("%v (%s)", err, u)
 		}
 	}
 	return nil
