@@ -419,6 +419,10 @@ On success, prints a humanized table of the member IDs, statuses, names, peer ad
 
 On success, prints a JSON listing of the member IDs, statuses, names, peer addresses, and client addresses. On failure, prints an error message and returns with a non-zero exit code.
 
+##### Protobuf reply
+
+The protobuf encoding of the MEMBER LIST [RPC response][member_list_rpc].
+
 #### Examples
 
 ```bash
@@ -483,6 +487,10 @@ On success, prints a humanized table of each endpoint URL, ID, version, database
 ##### JSON reply
 
 On success, prints a line of JSON encoding each endpoint URL, ID, version, database size, leadership status, raft term, and raft status. On failure, returns with a non-zero exit code.
+
+##### Protobuf reply
+
+ENDPOINT STATUS does not support protobuf encoded output.
 
 #### Examples
 
@@ -715,6 +723,10 @@ On success, prints a humanized table of the database hash, revision, total keys,
 
 On success, prints a line of JSON encoding the database hash, revision, total keys, and size. On failure, return with a non-zero exit code.
 
+##### Protobuf reply
+
+SNAPSHOT STATUS does not support protobuf encoded output.
+
 #### Examples
 ```bash
 ./etcdctl snapshot status file.db
@@ -795,6 +807,7 @@ finished transforming keys
 
 [etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
 [storagerpc]: ../mvcc/mvccpb/kv.proto
+[member_list_rpc]: ../etcdserver/etcdserverpb/rpc.proto#L493-L497
 
 ## Compatibility Support
 
