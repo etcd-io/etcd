@@ -166,6 +166,9 @@ message RangeRequest {
   bytes key = 1;
   // range_end is the upper bound on the requested range [key, range_end).
   // If range_end is '\0', the range is all keys >= key.
+  // If the range_end is one bit larger than the given key,
+  // then the range requests get the all keys with the prefix (the given key).
+  // If both key and range_end are '\0', then range requests returns all keys.
   bytes range_end = 2;
   // limit is a limit on the number of keys returned for the request.
   int64 limit = 3;
