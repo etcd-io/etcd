@@ -253,7 +253,11 @@ func (tt *tester) logPrefix() string {
 
 func (tt *tester) cleanup() error {
 	roundFailedTotalCounter.Inc()
-	caseFailedTotalCounter.WithLabelValues(tt.failures[tt.status.Case].Desc()).Inc()
+	desc := "compact/defrag"
+	if tt.status.Case != -1 {
+		desc = tt.failures[tt.status.Case].Desc()
+	}
+	caseFailedTotalCounter.WithLabelValues(desc).Inc()
 
 	plog.Printf("%s cleaning up...", tt.logPrefix())
 	if err := tt.cluster.Cleanup(); err != nil {
