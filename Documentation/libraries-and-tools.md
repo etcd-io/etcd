@@ -128,3 +128,4 @@
 - [spf13/viper](https://github.com/spf13/viper) - Go configuration library, reads values from ENV, pflags, files, and etcd with optional encryption
 - [lytics/metafora](https://github.com/lytics/metafora) - Go distributed task library
 - [ryandoyle/nss-etcd](https://github.com/ryandoyle/nss-etcd) - A GNU libc NSS module for resolving names from etcd.
+- [Gru](https://github.com/dnaeon/gru) - Orchestration made easy with Go
