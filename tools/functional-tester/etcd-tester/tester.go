@@ -204,7 +204,6 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 func (tt *tester) compact(rev int64, timeout time.Duration) error {
 	plog.Printf("%s compacting storage (current revision %d, compact revision %d)", tt.logPrefix(), tt.currentRevision, rev)
 	if err := tt.cluster.compactKV(rev, timeout); err != nil {
-		plog.Printf("%s compactKV error (%v)", tt.logPrefix(), err)
 		if cerr := tt.cleanup(); cerr != nil {
 			return fmt.Errorf("%s, %s", err, cerr)
 		}
