@@ -15,7 +15,7 @@ etcd is a distributed, consistent key-value store for shared configuration and s
 
 * *Simple*: well-defined, user-facing API (gRPC)
 * *Secure*: automatic TLS with optional client cert authentication
-* *Fast*: benchmarked 40,000 writes/sec per instance
+* *Fast*: benchmarked 10,000 writes/sec
 * *Reliable*: properly distributed using Raft
 
 etcd is written in Go and uses the [Raft][raft] consensus algorithm to manage a highly-available replicated log.
