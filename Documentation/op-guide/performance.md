@@ -20,40 +20,51 @@ For some baseline performance numbers, we consider a three member etcd cluster w
 - Ubuntu 15.10
 - etcd v3 master branch (commit SHA d8f325d), Go 1.6.2
 
-With this configuration, etcd can approximately write::
+With this configuration, etcd can approximately write:
 
-| Number of keys | Key size in bytes | Value size in bytes | Number of connections | Number of clients | Target etcd server | Average write QPS | Memory |
-|----------------|-------------------|---------------------|-----------------------|-------------------|--------------------|-------------------|--------|
-| 100,000 | 8 | 256 | 100 | 1000 | leader only | 25,000 | 35 MB |
-| 100,000 | 8 | 256 | 100 | 1000 | all members | 33,000 | 35 MB |
+| Number of keys | Key size in bytes | Value size in bytes | Number of connections | Number of clients | Target etcd server | Average write QPS | Average latency per request | Memory |
+|----------------|-------------------|---------------------|-----------------------|-------------------|--------------------|-------------------|-----------------------------|--------|
+| 10,000 | 8 | 256 | 1 | 1 | leader only | 525 | 2ms | 35 MB |
+| 100,000 | 8 | 256 | 100 | 1000 | leader only | 25,000 | 30ms | 35 MB |
+| 100,000 | 8 | 256 | 100 | 1000 | all members | 33,000 | 25ms | 35 MB |
 
 Sample commands are:
 
 ```
 # assuming IP_1 is leader, write requests to the leader
-benchmark --endpoints={IP_1} --conns=100 --clients=1000 \
+benchmark --endpoints={IP_1} --conns=1 --clients=1 \
     put --key-size=8 --sequential-keys --total=10000 --val-size=256
+benchmark --endpoints={IP_1} --conns=100 --clients=1000 \
+    put --key-size=8 --sequential-keys --total=100000 --val-size=256
 
 # write to all members
 benchmark --endpoints={IP_1},{IP_2},{IP_3} --conns=100 --clients=1000 \
-    put --key-size=8 --sequential-keys --total=10000 --val-size=256
+    put --key-size=8 --sequential-keys --total=100000 --val-size=256
 ```
 
 Linearizable read requests go through a quorum of cluster members for consensus to fetch the most recent data. Serializable read requests are cheaper than linearizable reads since they are served by any single etcd member, instead of a quorum of members, in exchange for possibly serving stale data. etcd can read: 
 
-| Number of requests | Key size in bytes | Value size in bytes | Number of connections | Number of clients | Consistency | Average read QPS |
-|--------------------|-------------------|---------------------|-----------------------|-------------------|-------------|------------------|
-| 100,000 | 8 | 256 | 100 | 1000 | Linearizable | 43,000 |
-| 100,000 | 8 | 256 | 100 | 1000 | Serializable | 93,000 |
+| Number of requests | Key size in bytes | Value size in bytes | Number of connections | Number of clients | Consistency | Average latency per request | Average read QPS |
+|--------------------|-------------------|---------------------|-----------------------|-------------------|-------------|-----------------------------|------------------|
+| 10,000 | 8 | 256 | 1 | 1 | Linearizable | 2ms | 560 |
+| 10,000 | 8 | 256 | 1 | 1 | Serializable | 0.4ms | 7,500 |
+| 100,000 | 8 | 256 | 100 | 1000 | Linearizable | 15ms | 43,000 |
+| 100,000 | 8 | 256 | 100 | 1000 | Serializable | 9ms | 93,000 |
 
 Sample commands are:
 
 ```
 # Linearizable read requests
+benchmark --endpoints={IP_1},{IP_2},{IP_3} --conns=1 --clients=1 \
+    range YOUR_KEY --consistency=l --total=10000
 benchmark --endpoints={IP_1},{IP_2},{IP_3} --conns=100 --clients=1000 \
     range YOUR_KEY --consistency=l --total=100000
 
 # Serializable read requests for each member and sum up the numbers
+for endpoint in {IP_1} {IP_2} {IP_3}; do
+    benchmark --endpoints=$endpoint --conns=1 --clients=1 \
+        range YOUR_KEY --consistency=s --total=10000
+done
 for endpoint in {IP_1} {IP_2} {IP_3}; do
     benchmark --endpoints=$endpoint --conns=100 --clients=1000 \
         range YOUR_KEY --consistency=s --total=100000
