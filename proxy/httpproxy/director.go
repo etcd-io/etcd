@@ -27,6 +27,10 @@ const defaultRefreshInterval = 30000 * time.Millisecond
 
 var once sync.Once
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
 	d := &director{
 		uf:          urlsFunc,
