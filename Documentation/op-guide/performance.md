@@ -10,4 +10,54 @@ There are other sub-systems which impact the overall performance of etcd. Each s
 
 ## Benchmarks
 
-TODO
+Benchmarking etcd performance can be done with the [benchmark](https://github.com/coreos/etcd/tree/master/tools/benchmark) CLI tool included with etcd.
+
+For some baseline performance numbers, we consider a three member etcd cluster with the following hardware configuration:
+
+- Google Cloud Compute Engine
+- 3 machines of 8 vCPUs + 16GB Memory + 50GB SSD
+- 1 machine(client) of 16 vCPUs + 30GB Memory + 50GB SSD
+- Ubuntu 15.10
+- etcd v3 master branch (commit SHA d8f325d), Go 1.6.2
+
+With this configuration, etcd can approximately write::
+
+| Number of keys | Key size in bytes | Value size in bytes | Number of connections | Number of clients | Target etcd server | Average write QPS | Memory |
+|----------------|-------------------|---------------------|-----------------------|-------------------|--------------------|-------------------|--------|
+| 100,000 | 8 | 256 | 100 | 1000 | leader only | 25,000 | 35 MB |
+| 100,000 | 8 | 256 | 100 | 1000 | all members | 33,000 | 35 MB |
+
+Sample commands are:
+
+```
+# assuming IP_1 is leader, write requests to the leader
+benchmark --endpoints={IP_1} --conns=100 --clients=1000 \
+    put --key-size=8 --sequential-keys --total=10000 --val-size=256
+
+# write to all members
+benchmark --endpoints={IP_1},{IP_2},{IP_3} --conns=100 --clients=1000 \
+    put --key-size=8 --sequential-keys --total=10000 --val-size=256
+```
+
+Linearizable read requests go through a quorum of cluster members for consensus to fetch the most recent data. Serializable read requests are cheaper than linearizable reads since they are served by any single etcd member, instead of a quorum of members, in exchange for possibly serving stale data. etcd can read: 
+
+| Number of requests | Key size in bytes | Value size in bytes | Number of connections | Number of clients | Consistency | Average read QPS |
+|--------------------|-------------------|---------------------|-----------------------|-------------------|-------------|------------------|
+| 100,000 | 8 | 256 | 100 | 1000 | Linearizable | 43,000 |
+| 100,000 | 8 | 256 | 100 | 1000 | Serializable | 93,000 |
+
+Sample commands are:
+
+```
+# Linearizable read requests
+benchmark --endpoints={IP_1},{IP_2},{IP_3} --conns=100 --clients=1000 \
+    range YOUR_KEY --consistency=l --total=100000
+
+# Serializable read requests for each member and sum up the numbers
+for endpoint in {IP_1} {IP_2} {IP_3}; do
+    benchmark --endpoints=$endpoint --conns=100 --clients=1000 \
+        range YOUR_KEY --consistency=s --total=100000
+done
+```
+
+We encourage running the benchmark test when setting up an etcd cluster for the first time in a new environment to ensure the cluster achieves adequate performance; cluster latency and throughput can be sensitive to minor environment differences.
