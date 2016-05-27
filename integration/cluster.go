@@ -85,6 +85,11 @@ type cluster struct {
 	Members []*member
 }
 
+func init() {
+	// manually enable v3 capability since we know the cluster members all support v3.
+	api.EnableCapability(api.V3rpcCapability)
+}
+
 func (c *cluster) fillClusterForMembers() error {
 	if c.cfg.DiscoveryURL != "" {
 		// cluster will be discovered
@@ -760,9 +765,6 @@ func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 		clus.clients = append(clus.clients, client)
 	}
 	clus.Launch(t)
-
-	// manually enable v3 capability since we know we are starting a v3 cluster here.
-	api.EnableCapability(api.V3rpcCapability)
 
 	return clus
 }
