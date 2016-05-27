@@ -233,10 +233,11 @@ curl http://127.0.0.1:2379/v2/keys/foo -XPUT -d value=bar -d ttl= -d prevExist=t
 
 ### Refreshing key TTL
 
-Keys in etcd can be refreshed without notifying watchers
-this can be achieved by setting the refresh to true when updating a TTL
+Keys in etcd can be refreshed without notifying current watchers.
 
-You cannot update the value of a key when refreshing it
+This can be achieved by setting the refresh to true when updating a TTL.
+
+You cannot update the value of a key when refreshing it.
 
 ```sh
 curl http://127.0.0.1:2379/v2/keys/foo -XPUT -d value=bar -d ttl=5

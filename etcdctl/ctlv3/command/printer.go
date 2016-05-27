@@ -275,15 +275,15 @@ func (p *pbPrinter) Alarm(r v3.AlarmResponse) {
 	printPB((*pb.AlarmResponse)(&r))
 }
 
-func (pb *pbPrinter) MemberList(r v3.MemberListResponse) {
+func (p *pbPrinter) MemberList(r v3.MemberListResponse) {
+	printPB((*pb.MemberListResponse)(&r))
+}
+
+func (p *pbPrinter) EndpointStatus(statusList []epStatus) {
 	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 
-func (pb *pbPrinter) EndpointStatus(statusList []epStatus) {
-	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
-}
-
-func (pb *pbPrinter) DBStatus(r dbstatus) {
+func (p *pbPrinter) DBStatus(r dbstatus) {
 	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 

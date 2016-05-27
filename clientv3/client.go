@@ -15,7 +15,9 @@
 package clientv3
 
 import (
+	"crypto/tls"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -157,16 +159,25 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 		grpc.WithBlock(),
 		grpc.WithTimeout(c.cfg.DialTimeout),
 	}
-	if c.creds != nil {
-		opts = append(opts, grpc.WithTransportCredentials(*c.creds))
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
 
 	proto := "tcp"
-	if url, uerr := url.Parse(endpoint); uerr == nil && url.Scheme == "unix" {
-		proto = "unix"
-		// strip unix:// prefix so certs work
+	creds := c.creds
+	if url, uerr := url.Parse(endpoint); uerr == nil && strings.Contains(endpoint, "://") {
+		switch url.Scheme {
+		case "unix":
+			proto = "unix"
+		case "http":
+			creds = nil
+		case "https":
+			if creds == nil {
+				tlsconfig := &tls.Config{InsecureSkipVerify: true}
+				emptyCreds := credentials.NewTLS(tlsconfig)
+				creds = &emptyCreds
+			}
+		default:
+			return nil, fmt.Errorf("unknown scheme %q for %q", url.Scheme, endpoint)
+		}
+		// strip scheme:// prefix since grpc dials by host
 		endpoint = url.Host
 	}
 	f := func(a string, t time.Duration) (net.Conn, error) {
@@ -178,6 +189,12 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 		return net.DialTimeout(proto, a, t)
 	}
 	opts = append(opts, grpc.WithDialer(f))
+
+	if creds != nil {
+		opts = append(opts, grpc.WithTransportCredentials(*creds))
+	} else {
+		opts = append(opts, grpc.WithInsecure())
+	}
 
 	if c.Username != "" && c.Password != "" {
 		auth, err := newAuthenticator(endpoint, opts)
