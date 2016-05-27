@@ -329,20 +329,28 @@ func (c *cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 	for i, u := range c.GRPCURLs {
 		conn, derr := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
 		if derr != nil {
+			plog.Printf("[compact kv #%d] dial error %v (endpoint %s)", i, derr, u)
 			err = derr
 			continue
 		}
 		kvc := pb.NewKVClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		plog.Printf("[compact kv #%d] starting (endpoint %s)", i, u)
 		_, cerr := kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev, Physical: true})
 		cancel()
 		conn.Close()
+		succeed := true
 		if cerr != nil {
 			if strings.Contains(cerr.Error(), "required revision has been compacted") && i > 0 {
-				plog.Printf("%s is already compacted with %d (%v)", u, rev, cerr)
+				plog.Printf("[compact kv #%d] already compacted (endpoint %s)", i, u)
 			} else {
+				plog.Printf("[compact kv #%d] error %v (endpoint %s)", i, cerr, u)
 				err = cerr
+				succeed = false
 			}
+		}
+		if succeed {
+			plog.Printf("[compact kv #%d] done (endpoint %s)", i, u)
 		}
 	}
 	return err
@@ -358,7 +366,7 @@ func (c *cluster) checkCompact(rev int64) error {
 			DialTimeout: 5 * time.Second,
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("%v (endpoint %s)", err, u)
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -369,10 +377,10 @@ func (c *cluster) checkCompact(rev int64) error {
 		cli.Close()
 
 		if !ok {
-			return fmt.Errorf("watch channel terminated")
+			return fmt.Errorf("watch channel terminated (endpoint %s)", u)
 		}
 		if wr.CompactRevision != rev {
-			return fmt.Errorf("got compact revision %v, wanted %v", wr.CompactRevision, rev)
+			return fmt.Errorf("got compact revision %v, wanted %v (endpoint %s)", wr.CompactRevision, rev, u)
 		}
 	}
 	return nil
