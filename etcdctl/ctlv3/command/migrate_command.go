@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/client"
+	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
@@ -194,6 +195,10 @@ func toTTLOptions(r *pb.Request) store.TTLOptionSet {
 func writeStore(w io.Writer, st store.Store) uint64 {
 	all, err := st.Get("/1", true, true)
 	if err != nil {
+		if eerr, ok := err.(*etcdErr.Error); ok && eerr.ErrorCode == etcdErr.EcodeKeyNotFound {
+			fmt.Println("no v2 keys to migrate")
+			os.Exit(0)
+		}
 		ExitWithError(ExitError, err)
 	}
 	return writeKeys(w, all.Node)
