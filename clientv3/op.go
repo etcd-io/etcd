@@ -114,7 +114,7 @@ func OpPut(key, val string, opts ...OpOption) Op {
 	case ret.sort != nil:
 		panic("unexpected sort in put")
 	case ret.serializable:
-		panic("unexpected serializable in delete")
+		panic("unexpected serializable in put")
 	}
 	return ret
 }
