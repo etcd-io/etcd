@@ -156,13 +156,9 @@ func OpenForRead(dirpath string, snap walpb.Snapshot) (*WAL, error) {
 }
 
 func openAtIndex(dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) {
-	names, err := fileutil.ReadDir(dirpath)
+	names, err := readWalNames(dirpath)
 	if err != nil {
 		return nil, err
-	}
-	names = checkWalNames(names)
-	if len(names) == 0 {
-		return nil, ErrFileNotFound
 	}
 
 	nameIndex, ok := searchIndex(names, snap.Index)
