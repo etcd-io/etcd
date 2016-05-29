@@ -128,7 +128,7 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 			case mvccpb.PUT:
 				ops = append(ops, clientv3.OpPut(string(ev.Kv.Key), string(ev.Kv.Value)))
 				atomic.AddInt64(&total, 1)
-			case mvccpb.DELETE, mvccpb.EXPIRE:
+			case mvccpb.DELETE:
 				ops = append(ops, clientv3.OpDelete(string(ev.Kv.Key)))
 				atomic.AddInt64(&total, 1)
 			default:
