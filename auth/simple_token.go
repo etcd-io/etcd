@@ -20,6 +20,7 @@ package auth
 import (
 	"crypto/rand"
 	"math/big"
+	"sync"
 )
 
 const (
@@ -28,7 +29,8 @@ const (
 )
 
 var (
-	simpleTokens map[string]string // token -> user ID
+	simpleTokensMu sync.RWMutex
+	simpleTokens   map[string]string // token -> username
 )
 
 func init() {
@@ -50,7 +52,7 @@ func genSimpleToken() (string, error) {
 	return string(ret), nil
 }
 
-func genSimpleTokenForUser(userID string) (string, error) {
+func genSimpleTokenForUser(username string) (string, error) {
 	var token string
 	var err error
 
@@ -66,6 +68,9 @@ func genSimpleTokenForUser(userID string) (string, error) {
 		}
 	}
 
-	simpleTokens[token] = userID
+	simpleTokensMu.Lock()
+	simpleTokens[token] = username
+	simpleTokensMu.Unlock()
+
 	return token, nil
 }

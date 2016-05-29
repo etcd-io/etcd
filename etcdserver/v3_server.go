@@ -22,6 +22,7 @@ import (
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
 
 const (
@@ -75,7 +76,10 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.RangeResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.RangeResponse), nil
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
@@ -83,7 +87,10 @@ func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.PutResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.PutResponse), nil
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
@@ -91,7 +98,10 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.DeleteRangeResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.DeleteRangeResponse), nil
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
@@ -103,7 +113,10 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.TxnResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.TxnResponse), nil
 }
 
 func isTxnSerializable(r *pb.TxnRequest) bool {
@@ -134,6 +147,9 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 	if err != nil {
 		return nil, err
 	}
+	if result.err != nil {
+		return nil, result.err
+	}
 	resp := result.resp.(*pb.CompactionResponse)
 	if resp == nil {
 		resp = &pb.CompactionResponse{}
@@ -142,7 +158,7 @@ func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.
 		resp.Header = &pb.ResponseHeader{}
 	}
 	resp.Header.Revision = s.kv.Rev()
-	return resp, result.err
+	return resp, nil
 }
 
 func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
@@ -155,7 +171,10 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.LeaseGrantResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.LeaseGrantResponse), nil
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
@@ -163,7 +182,10 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.LeaseRevokeResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.LeaseRevokeResponse), nil
 }
 
 func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
@@ -206,7 +228,10 @@ func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmRe
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AlarmResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AlarmResponse), nil
 }
 
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
@@ -214,7 +239,10 @@ func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthEnableResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthEnableResponse), nil
 }
 
 func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) (*pb.AuthDisableResponse, error) {
@@ -222,7 +250,10 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthDisableResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthDisableResponse), nil
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
@@ -230,7 +261,10 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthenticateResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthenticateResponse), nil
 }
 
 func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
@@ -238,7 +272,10 @@ func (s *EtcdServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthUserAddResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthUserAddResponse), nil
 }
 
 func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
@@ -246,7 +283,10 @@ func (s *EtcdServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteRequest
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthUserDeleteResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthUserDeleteResponse), nil
 }
 
 func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
@@ -254,7 +294,10 @@ func (s *EtcdServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChang
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthUserChangePasswordResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthUserChangePasswordResponse), nil
 }
 
 func (s *EtcdServer) UserGrant(ctx context.Context, r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error) {
@@ -262,7 +305,10 @@ func (s *EtcdServer) UserGrant(ctx context.Context, r *pb.AuthUserGrantRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthUserGrantResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthUserGrantResponse), nil
 }
 
 func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
@@ -270,7 +316,10 @@ func (s *EtcdServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthRoleAddResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthRoleAddResponse), nil
 }
 
 func (s *EtcdServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error) {
@@ -278,11 +327,38 @@ func (s *EtcdServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return result.resp.(*pb.AuthRoleGrantResponse), result.err
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthRoleGrantResponse), nil
+}
+
+func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {
+	md, mdexist := metadata.FromContext(ctx)
+	if mdexist {
+		token, texist := md["token"]
+		if texist {
+			username, uexist := s.AuthStore().UsernameFromToken(token[0])
+			if !uexist {
+				plog.Warningf("invalid auth token: %s", token[0])
+				return "", ErrInvalidAuthToken
+			}
+			return username, nil
+		}
+	}
+
+	return "", nil
 }
 
 func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
-	r.ID = s.reqIDGen.Next()
+	r.Header = &pb.RequestHeader{
+		ID: s.reqIDGen.Next(),
+	}
+	username, err := s.usernameFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	r.Header.Username = username
 
 	data, err := r.Marshal()
 	if err != nil {
@@ -293,7 +369,11 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 		return nil, ErrRequestTooLarge
 	}
 
-	ch := s.w.Register(r.ID)
+	id := r.ID
+	if id == 0 {
+		id = r.Header.ID
+	}
+	ch := s.w.Register(id)
 
 	cctx, cancel := context.WithTimeout(ctx, maxV3RequestTimeout)
 	defer cancel()
@@ -304,7 +384,7 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 	case x := <-ch:
 		return x.(*applyResult), nil
 	case <-cctx.Done():
-		s.w.Trigger(r.ID, nil) // GC wait
+		s.w.Trigger(id, nil) // GC wait
 		return nil, cctx.Err()
 	case <-s.done:
 		return nil, ErrStopped

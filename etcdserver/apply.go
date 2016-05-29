@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
@@ -72,9 +73,17 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 	ar := &applyResult{}
 	switch {
 	case r.Range != nil:
-		ar.resp, ar.err = s.applyV3.Range(noTxn, r.Range)
+		if s.AuthStore().IsRangePermitted(r.Header, string(r.Range.Key)) {
+			ar.resp, ar.err = s.applyV3.Range(noTxn, r.Range)
+		} else {
+			ar.err = rpctypes.ErrGRPCPermissionDenied
+		}
 	case r.Put != nil:
-		ar.resp, ar.err = s.applyV3.Put(noTxn, r.Put)
+		if s.AuthStore().IsPutPermitted(r.Header, string(r.Put.Key)) {
+			ar.resp, ar.err = s.applyV3.Put(noTxn, r.Put)
+		} else {
+			ar.err = rpctypes.ErrGRPCPermissionDenied
+		}
 	case r.DeleteRange != nil:
 		ar.resp, ar.err = s.applyV3.DeleteRange(noTxn, r.DeleteRange)
 	case r.Txn != nil:

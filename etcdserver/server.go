@@ -1029,11 +1029,17 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	if e.Index <= s.consistIndex.ConsistentIndex() {
 		return
 	}
+
+	id := raftReq.ID
+	if id == 0 {
+		id = raftReq.Header.ID
+	}
+
 	// set the consistent index of current executing entry
 	s.consistIndex.setConsistentIndex(e.Index)
 	ar := s.applyV3Request(&raftReq)
 	if ar.err != ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
-		s.w.Trigger(raftReq.ID, ar)
+		s.w.Trigger(id, ar)
 		return
 	}
 
@@ -1046,7 +1052,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		}
 		r := pb.InternalRaftRequest{Alarm: a}
 		s.processInternalRaftRequest(context.TODO(), r)
-		s.w.Trigger(raftReq.ID, ar)
+		s.w.Trigger(id, ar)
 	}()
 }
 

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -76,10 +77,21 @@ type AuthStore interface {
 
 	// RoleGrant grants a permission to a role
 	RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
+
+	// UsernameFromToken gets a username from the given Token
+	UsernameFromToken(token string) (string, bool)
+
+	// IsPutPermitted checks put permission of the user
+	IsPutPermitted(header *pb.RequestHeader, key string) bool
+
+	// IsRangePermitted checks range permission of the user
+	IsRangePermitted(header *pb.RequestHeader, key string) bool
 }
 
 type authStore struct {
-	be backend.Backend
+	be        backend.Backend
+	enabled   bool
+	enabledMu sync.RWMutex
 }
 
 func (as *authStore) AuthEnable() {
@@ -91,6 +103,10 @@ func (as *authStore) AuthEnable() {
 	tx.UnsafePut(authBucketName, enableFlagKey, value)
 	tx.Unlock()
 	b.ForceCommit()
+
+	as.enabledMu.Lock()
+	as.enabled = true
+	as.enabledMu.Unlock()
 
 	plog.Noticef("Authentication enabled")
 }
@@ -104,6 +120,10 @@ func (as *authStore) AuthDisable() {
 	tx.UnsafePut(authBucketName, enableFlagKey, value)
 	tx.Unlock()
 	b.ForceCommit()
+
+	as.enabledMu.Lock()
+	as.enabled = false
+	as.enabledMu.Unlock()
 
 	plog.Noticef("Authentication disabled")
 }
@@ -299,6 +319,13 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	return &pb.AuthRoleAddResponse{}, nil
 }
 
+func (as *authStore) UsernameFromToken(token string) (string, bool) {
+	simpleTokensMu.RLock()
+	defer simpleTokensMu.RUnlock()
+	t, ok := simpleTokens[token]
+	return t, ok
+}
+
 type permSlice []*authpb.Permission
 
 func (perms permSlice) Len() int {
@@ -359,6 +386,77 @@ func (as *authStore) RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantRes
 	plog.Noticef("role %s's permission of key %s is updated as %s", r.Name, r.Perm.Key, authpb.Permission_Type_name[int32(r.Perm.PermType)])
 
 	return &pb.AuthRoleGrantResponse{}, nil
+}
+
+func (as *authStore) isOpPermitted(userName string, key string, write bool, read bool) bool {
+	// TODO(mitake): this function would be costly so we need a caching mechanism
+	if !as.isAuthEnabled() {
+		return true
+	}
+
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(userName), nil, 0)
+	if len(vs) != 1 {
+		plog.Errorf("invalid user name %s for permission checking", userName)
+		return false
+	}
+
+	user := &authpb.User{}
+	err := user.Unmarshal(vs[0])
+	if err != nil {
+		plog.Errorf("failed to unmarshal user struct (name: %s): %s", userName, err)
+		return false
+	}
+
+	for _, roleName := range user.Roles {
+		_, vs := tx.UnsafeRange(authRolesBucketName, []byte(roleName), nil, 0)
+		if len(vs) != 1 {
+			plog.Errorf("invalid role name %s for permission checking", roleName)
+			return false
+		}
+
+		role := &authpb.Role{}
+		err := role.Unmarshal(vs[0])
+		if err != nil {
+			plog.Errorf("failed to unmarshal a role %s: %s", roleName, err)
+			return false
+		}
+
+		for _, perm := range role.KeyPermission {
+			if bytes.Equal(perm.Key, []byte(key)) {
+				if perm.PermType == authpb.READWRITE {
+					return true
+				}
+
+				if write && !read && perm.PermType == authpb.WRITE {
+					return true
+				}
+
+				if read && !write && perm.PermType == authpb.READ {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func (as *authStore) IsPutPermitted(header *pb.RequestHeader, key string) bool {
+	return as.isOpPermitted(header.Username, key, true, false)
+}
+
+func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key string) bool {
+	return as.isOpPermitted(header.Username, key, false, true)
+}
+
+func (as *authStore) isAuthEnabled() bool {
+	as.enabledMu.RLock()
+	defer as.enabledMu.RUnlock()
+	return as.enabled
 }
 
 func NewAuthStore(be backend.Backend) *authStore {

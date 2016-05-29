@@ -13,6 +13,7 @@
 	It has these top-level messages:
 		Request
 		Metadata
+		RequestHeader
 		InternalRaftRequest
 		EmptyResponse
 		ResponseHeader
