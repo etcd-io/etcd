@@ -28,6 +28,7 @@ import (
 const (
 	EventTypeDelete = mvccpb.DELETE
 	EventTypePut    = mvccpb.PUT
+	EventTypeExpire = mvccpb.EXPIRE
 )
 
 type Event mvccpb.Event
