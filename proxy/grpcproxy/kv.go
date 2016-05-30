@@ -17,22 +17,30 @@ package grpcproxy
 import (
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-
+	"github.com/coreos/etcd/proxy/grpcproxy/cache"
 	"golang.org/x/net/context"
 )
 
 type kvProxy struct {
-	c *clientv3.Client
+	c     *clientv3.Client
+	cache cache.Cache
 }
 
 func NewKvProxy(c *clientv3.Client) *kvProxy {
 	return &kvProxy{
-		c: c,
+		c:     c,
+		cache: cache.NewCache(cache.DefaultMaxEntries),
 	}
 }
 
 func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	if resp, exist, err := p.cache.Get(r); err != nil || (err == nil && exist) {
+		return resp, err
+	}
 	resp, err := p.c.Do(ctx, RangeRequestToOp(r))
+	if err != nil {
+		p.cache.Add(r, (*pb.RangeResponse)(resp.Get()))
+	}
 	return (*pb.RangeResponse)(resp.Get()), err
 }
 
