@@ -36,9 +36,8 @@ import (
 func TestPipelineSend(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
-	fs := &stats.FollowerStats{}
 	tp := &Transport{pipelineRt: tr}
-	p := newPipeline(tp, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), fs, &fakeRaft{}, nil)
+	p := startTestPipeline(tp, picker)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	testutil.WaitSchedule()
@@ -47,10 +46,8 @@ func TestPipelineSend(t *testing.T) {
 	if tr.Request() == nil {
 		t.Errorf("sender fails to post the data")
 	}
-	fs.Lock()
-	defer fs.Unlock()
-	if fs.Counts.Success != 1 {
-		t.Errorf("success = %d, want 1", fs.Counts.Success)
+	if p.followerStats.Counts.Success != 1 {
+		t.Errorf("success = %d, want 1", p.followerStats.Counts.Success)
 	}
 }
 
@@ -59,9 +56,8 @@ func TestPipelineSend(t *testing.T) {
 func TestPipelineKeepSendingWhenPostError(t *testing.T) {
 	tr := &respRoundTripper{rec: testutil.NewRecorderStream(), err: fmt.Errorf("roundtrip error")}
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
-	fs := &stats.FollowerStats{}
 	tp := &Transport{pipelineRt: tr}
-	p := newPipeline(tp, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), fs, &fakeRaft{}, nil)
+	p := startTestPipeline(tp, picker)
 	defer p.stop()
 
 	for i := 0; i < 50; i++ {
@@ -77,9 +73,9 @@ func TestPipelineKeepSendingWhenPostError(t *testing.T) {
 func TestPipelineExceedMaximumServing(t *testing.T) {
 	tr := newRoundTripperBlocker()
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
-	fs := &stats.FollowerStats{}
 	tp := &Transport{pipelineRt: tr}
-	p := newPipeline(tp, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), fs, &fakeRaft{}, nil)
+	p := startTestPipeline(tp, picker)
+	defer p.stop()
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
@@ -111,33 +107,29 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 	default:
 		t.Errorf("failed to send out message")
 	}
-	p.stop()
 }
 
 // TestPipelineSendFailed tests that when send func meets the post error,
 // it increases fail count in stats.
 func TestPipelineSendFailed(t *testing.T) {
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
-	fs := &stats.FollowerStats{}
 	tp := &Transport{pipelineRt: newRespRoundTripper(0, errors.New("blah"))}
-	p := newPipeline(tp, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), fs, &fakeRaft{}, nil)
+	p := startTestPipeline(tp, picker)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	testutil.WaitSchedule()
 	p.stop()
 
-	fs.Lock()
-	defer fs.Unlock()
-	if fs.Counts.Fail != 1 {
-		t.Errorf("fail = %d, want 1", fs.Counts.Fail)
+	if p.followerStats.Counts.Fail != 1 {
+		t.Errorf("fail = %d, want 1", p.followerStats.Counts.Fail)
 	}
 }
 
 func TestPipelinePost(t *testing.T) {
 	tr := &roundTripperRecorder{}
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
-	tp := &Transport{pipelineRt: tr}
-	p := newPipeline(tp, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), nil, &fakeRaft{}, nil)
+	tp := &Transport{ClusterID: types.ID(1), pipelineRt: tr}
+	p := startTestPipeline(tp, picker)
 	if err := p.post([]byte("some data")); err != nil {
 		t.Fatalf("unexpected post error: %v", err)
 	}
@@ -185,7 +177,7 @@ func TestPipelinePostBad(t *testing.T) {
 	for i, tt := range tests {
 		picker := mustNewURLPicker(t, []string{tt.u})
 		tp := &Transport{pipelineRt: newRespRoundTripper(tt.code, tt.err)}
-		p := newPipeline(tp, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), nil, &fakeRaft{}, make(chan error))
+		p := startTestPipeline(tp, picker)
 		err := p.post([]byte("some data"))
 		p.stop()
 
@@ -205,13 +197,12 @@ func TestPipelinePostErrorc(t *testing.T) {
 	}
 	for i, tt := range tests {
 		picker := mustNewURLPicker(t, []string{tt.u})
-		errorc := make(chan error, 1)
 		tp := &Transport{pipelineRt: newRespRoundTripper(tt.code, tt.err)}
-		p := newPipeline(tp, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), nil, &fakeRaft{}, errorc)
+		p := startTestPipeline(tp, picker)
 		p.post([]byte("some data"))
 		p.stop()
 		select {
-		case <-errorc:
+		case <-p.errorc:
 		default:
 			t.Fatalf("#%d: cannot receive from errorc", i)
 		}
@@ -221,7 +212,7 @@ func TestPipelinePostErrorc(t *testing.T) {
 func TestStopBlockedPipeline(t *testing.T) {
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	tp := &Transport{pipelineRt: newRoundTripperBlocker()}
-	p := newPipeline(tp, picker, types.ID(2), types.ID(1), types.ID(1), newPeerStatus(types.ID(1)), nil, &fakeRaft{}, nil)
+	p := startTestPipeline(tp, picker)
 	// send many messages that most of them will be blocked in buffer
 	for i := 0; i < connPerPipeline*10; i++ {
 		p.msgc <- raftpb.Message{}
@@ -307,3 +298,18 @@ type nopReadCloser struct{}
 
 func (n *nopReadCloser) Read(p []byte) (int, error) { return 0, io.EOF }
 func (n *nopReadCloser) Close() error               { return nil }
+
+func startTestPipeline(tr *Transport, picker *urlPicker) *pipeline {
+	p := &pipeline{
+		tr:     tr,
+		picker: picker,
+
+		to:            types.ID(1),
+		status:        newPeerStatus(types.ID(1)),
+		raft:          &fakeRaft{},
+		followerStats: &stats.FollowerStats{},
+		errorc:        make(chan error, 1),
+	}
+	p.start()
+	return p
+}

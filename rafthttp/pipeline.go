@@ -41,15 +41,15 @@ const (
 var errStopped = errors.New("stopped")
 
 type pipeline struct {
-	from, to types.ID
-	cid      types.ID
+	to types.ID
 
 	tr     *Transport
 	picker *urlPicker
 	status *peerStatus
-	fs     *stats.FollowerStats
-	r      Raft
+	raft   Raft
 	errorc chan error
+	// deprecate when we depercate v2 API
+	followerStats *stats.FollowerStats
 
 	msgc chan raftpb.Message
 	// wait for the handling routines
@@ -57,25 +57,13 @@ type pipeline struct {
 	stopc chan struct{}
 }
 
-func newPipeline(tr *Transport, picker *urlPicker, from, to, cid types.ID, status *peerStatus, fs *stats.FollowerStats, r Raft, errorc chan error) *pipeline {
-	p := &pipeline{
-		from:   from,
-		to:     to,
-		cid:    cid,
-		tr:     tr,
-		picker: picker,
-		status: status,
-		fs:     fs,
-		r:      r,
-		errorc: errorc,
-		stopc:  make(chan struct{}),
-		msgc:   make(chan raftpb.Message, pipelineBufSize),
-	}
+func (p *pipeline) start() {
+	p.stopc = make(chan struct{})
+	p.msgc = make(chan raftpb.Message, pipelineBufSize)
 	p.wg.Add(connPerPipeline)
 	for i := 0; i < connPerPipeline; i++ {
 		go p.handle()
 	}
-	return p
 }
 
 func (p *pipeline) stop() {
@@ -96,22 +84,22 @@ func (p *pipeline) handle() {
 			if err != nil {
 				p.status.deactivate(failureType{source: pipelineMsg, action: "write"}, err.Error())
 
-				if m.Type == raftpb.MsgApp && p.fs != nil {
-					p.fs.Fail()
+				if m.Type == raftpb.MsgApp && p.followerStats != nil {
+					p.followerStats.Fail()
 				}
-				p.r.ReportUnreachable(m.To)
+				p.raft.ReportUnreachable(m.To)
 				if isMsgSnap(m) {
-					p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
+					p.raft.ReportSnapshot(m.To, raft.SnapshotFailure)
 				}
 				continue
 			}
 
 			p.status.activate()
-			if m.Type == raftpb.MsgApp && p.fs != nil {
-				p.fs.Succ(end.Sub(start))
+			if m.Type == raftpb.MsgApp && p.followerStats != nil {
+				p.followerStats.Succ(end.Sub(start))
 			}
 			if isMsgSnap(m) {
-				p.r.ReportSnapshot(m.To, raft.SnapshotFinish)
+				p.raft.ReportSnapshot(m.To, raft.SnapshotFinish)
 			}
 			sentBytes.WithLabelValues(types.ID(m.To).String()).Add(float64(m.Size()))
 		case <-p.stopc:
@@ -124,7 +112,7 @@ func (p *pipeline) handle() {
 // error on any failure.
 func (p *pipeline) post(data []byte) (err error) {
 	u := p.picker.pick()
-	req := createPostRequest(u, RaftPrefix, bytes.NewBuffer(data), "application/protobuf", p.tr.URLs, p.from, p.cid)
+	req := createPostRequest(u, RaftPrefix, bytes.NewBuffer(data), "application/protobuf", p.tr.URLs, p.tr.ID, p.tr.ClusterID)
 
 	done := make(chan struct{}, 1)
 	cancel := httputil.RequestCanceler(p.tr.pipelineRt, req)
