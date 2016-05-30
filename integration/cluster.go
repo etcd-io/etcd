@@ -37,6 +37,7 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -82,6 +83,11 @@ type ClusterConfig struct {
 type cluster struct {
 	cfg     *ClusterConfig
 	Members []*member
+}
+
+func init() {
+	// manually enable v3 capability since we know the cluster members all support v3.
+	api.EnableCapability(api.V3rpcCapability)
 }
 
 func (c *cluster) fillClusterForMembers() error {
@@ -315,6 +321,7 @@ func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
 			if err == nil && isMembersEqual(ms, membs) {
 				break
 			}
+			fmt.Println(ms, membs)
 			time.Sleep(tickDuration)
 		}
 	}
@@ -759,6 +766,7 @@ func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 		clus.clients = append(clus.clients, client)
 	}
 	clus.Launch(t)
+
 	return clus
 }
 
