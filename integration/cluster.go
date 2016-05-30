@@ -321,6 +321,7 @@ func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
 			if err == nil && isMembersEqual(ms, membs) {
 				break
 			}
+			fmt.Println(ms, membs)
 			time.Sleep(tickDuration)
 		}
 	}
