@@ -73,6 +73,9 @@ type AuthStore interface {
 	// UserGrant grants a role to the user
 	UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error)
 
+	// UserGet gets the detailed information of a user
+	UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error)
+
 	// RoleAdd adds a new role
 	RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
 
@@ -292,6 +295,30 @@ func (as *authStore) UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantRes
 
 	plog.Noticef("granted role %s to user %s", r.Role, r.User)
 	return &pb.AuthUserGrantResponse{}, nil
+}
+
+func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrUserNotFound
+	}
+
+	user := &authpb.User{}
+	err := user.Unmarshal(vs[0])
+	if err != nil {
+		return nil, err
+	}
+
+	var resp pb.AuthUserGetResponse
+	for _, role := range user.Roles {
+		resp.Roles = append(resp.Roles, role)
+	}
+
+	return &resp, nil
 }
 
 func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
