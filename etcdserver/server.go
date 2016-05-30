@@ -277,7 +277,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 			return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
 		}
 		if !isCompatibleWithCluster(cl, cl.MemberByName(cfg.Name).ID, prt) {
-			return nil, fmt.Errorf("incomptible with current running cluster")
+			return nil, fmt.Errorf("incompatible with current running cluster")
 		}
 
 		remotes = existingCluster.Members()
