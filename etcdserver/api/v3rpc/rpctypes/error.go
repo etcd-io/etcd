@@ -71,6 +71,7 @@ var (
 		grpc.ErrorDesc(ErrGRPCRoleAlreadyExist): ErrGRPCRoleAlreadyExist,
 		grpc.ErrorDesc(ErrGRPCRoleNotFound):     ErrGRPCRoleNotFound,
 		grpc.ErrorDesc(ErrGRPCAuthFailed):       ErrGRPCAuthFailed,
+		grpc.ErrorDesc(ErrGRPCPermissionDenied): ErrGRPCPermissionDenied,
 
 		grpc.ErrorDesc(ErrGRPCNoLeader):   ErrGRPCNoLeader,
 		grpc.ErrorDesc(ErrGRPCNotCapable): ErrGRPCNotCapable,
@@ -99,6 +100,7 @@ var (
 	ErrRoleAlreadyExist = Error(ErrGRPCRoleAlreadyExist)
 	ErrRoleNotFound     = Error(ErrGRPCRoleNotFound)
 	ErrAuthFailed       = Error(ErrGRPCAuthFailed)
+	ErrPermissionDenied = Error(ErrGRPCPermissionDenied)
 
 	ErrNoLeader   = Error(ErrGRPCNoLeader)
 	ErrNotCapable = Error(ErrGRPCNotCapable)
