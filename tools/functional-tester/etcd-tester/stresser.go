@@ -60,10 +60,16 @@ type stresser struct {
 	conn   *grpc.ClientConn
 
 	success int
+	qps     int
 }
 
 func (s *stresser) Stress() error {
 	// TODO: add backoff option
+
+	// limiter := rate.NewLimiter(rate.Every(time.Second), s.qps)
+	// for limiter.Wait(context.TODO) == nil {
+	// }
+
 	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, s.Endpoint)
