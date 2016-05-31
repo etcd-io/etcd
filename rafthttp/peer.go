@@ -120,6 +120,17 @@ type peer struct {
 func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
 	status := newPeerStatus(to)
 	picker := newURLPicker(urls)
+	pipeline := &pipeline{
+		to:            to,
+		tr:            transport,
+		picker:        picker,
+		status:        status,
+		followerStats: fs,
+		raft:          r,
+		errorc:        errorc,
+	}
+	pipeline.start()
+
 	p := &peer{
 		id:             to,
 		r:              r,
@@ -127,7 +138,7 @@ func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r
 		picker:         picker,
 		msgAppV2Writer: startStreamWriter(to, status, fs, r),
 		writer:         startStreamWriter(to, status, fs, r),
-		pipeline:       newPipeline(transport, picker, local, to, cid, status, fs, r, errorc),
+		pipeline:       pipeline,
 		snapSender:     newSnapshotSender(transport, picker, local, to, cid, status, r, errorc),
 		sendc:          make(chan raftpb.Message),
 		recvc:          make(chan raftpb.Message, recvBufSize),

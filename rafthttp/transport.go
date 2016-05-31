@@ -225,7 +225,7 @@ func (t *Transport) AddRemote(id types.ID, us []string) {
 	if err != nil {
 		plog.Panicf("newURLs %+v should never fail: %+v", us, err)
 	}
-	t.remotes[id] = startRemote(t, urls, t.ID, id, t.ClusterID, t.Raft, t.ErrorC)
+	t.remotes[id] = startRemote(t, urls, id, t.Raft, t.ErrorC)
 }
 
 func (t *Transport) AddPeer(id types.ID, us []string) {
