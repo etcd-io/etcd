@@ -177,8 +177,26 @@ func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r
 		}
 	}()
 
-	p.msgAppV2Reader = startStreamReader(transport, picker, streamTypeMsgAppV2, local, to, cid, status, p.recvc, p.propc, errorc)
-	p.msgAppReader = startStreamReader(transport, picker, streamTypeMessage, local, to, cid, status, p.recvc, p.propc, errorc)
+	p.msgAppV2Reader = &streamReader{
+		typ:    streamTypeMsgAppV2,
+		tr:     transport,
+		picker: picker,
+		to:     to,
+		status: status,
+		recvc:  p.recvc,
+		propc:  p.propc,
+	}
+	p.msgAppReader = &streamReader{
+		typ:    streamTypeMessage,
+		tr:     transport,
+		picker: picker,
+		to:     to,
+		status: status,
+		recvc:  p.recvc,
+		propc:  p.propc,
+	}
+	p.msgAppV2Reader.start()
+	p.msgAppReader.start()
 
 	return p
 }
