@@ -17,6 +17,8 @@ package clientv3
 import (
 	"sync"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -81,10 +83,14 @@ func (r *remoteClient) tryUpdate() bool {
 func (r *remoteClient) acquire(ctx context.Context) error {
 	for {
 		r.client.mu.RLock()
+		closed := r.client.cancel == nil
 		c := r.client.conn
 		r.mu.Lock()
 		match := r.conn == c
 		r.mu.Unlock()
+		if closed {
+			return rpctypes.ErrConnClosed
+		}
 		if match {
 			return nil
 		}
