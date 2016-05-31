@@ -14,7 +14,7 @@ There are some notable differences between API v2 and API v3:
 
 - Flat key space: There are no directories in API v3, only keys. For example, "/a/b/c/" is a key. Range queries support getting all keys matching a given prefix.
 
-- Compacted responses: Operations like `Delete` no longer return previous values. To get the deleted value, a transaction can be used to atomically delete the key and get its value.
+- Compacted responses: Operations like `Delete` no longer return previous values. To get the deleted value, a transaction can be used to atomically get the key and then delete its value.
 
 - Leases: A replacement for v2 TTLs; the TTL is bound to a lease and keys attach to the lease. When the TTL expires, the lease is revoked and all attached keys are removed.
 
