@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -749,6 +750,8 @@ func (p SortableMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] 
 
 type ClusterV3 struct {
 	*cluster
+
+	mu      sync.Mutex
 	clients []*clientv3.Client
 }
 
@@ -756,7 +759,9 @@ type ClusterV3 struct {
 // for each cluster member.
 func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 	cfg.UseGRPC = true
-	clus := &ClusterV3{cluster: NewClusterByConfig(t, cfg)}
+	clus := &ClusterV3{
+		cluster: NewClusterByConfig(t, cfg),
+	}
 	for _, m := range clus.Members {
 		client, err := NewClientV3(m)
 		if err != nil {
@@ -769,12 +774,23 @@ func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 	return clus
 }
 
+func (c *ClusterV3) TakeClient(idx int) {
+	c.mu.Lock()
+	c.clients[idx] = nil
+	c.mu.Unlock()
+}
+
 func (c *ClusterV3) Terminate(t *testing.T) {
+	c.mu.Lock()
 	for _, client := range c.clients {
+		if client == nil {
+			continue
+		}
 		if err := client.Close(); err != nil {
 			t.Error(err)
 		}
 	}
+	c.mu.Unlock()
 	c.cluster.Terminate(t)
 }
 
