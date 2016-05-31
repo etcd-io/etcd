@@ -67,12 +67,26 @@ func isValidSeq(names []string) bool {
 	}
 	return true
 }
+func readWalNames(dirpath string) ([]string, error) {
+	names, err := fileutil.ReadDir(dirpath)
+	if err != nil {
+		return nil, err
+	}
+	wnames := checkWalNames(names)
+	if len(wnames) == 0 {
+		return nil, ErrFileNotFound
+	}
+	return wnames, nil
+}
 
 func checkWalNames(names []string) []string {
 	wnames := make([]string, 0)
 	for _, name := range names {
 		if _, _, err := parseWalName(name); err != nil {
-			plog.Warningf("ignored file %v in wal", name)
+			// don't complain about left over tmp files
+			if !strings.HasSuffix(name, ".tmp") {
+				plog.Warningf("ignored file %v in wal", name)
+			}
 			continue
 		}
 		wnames = append(wnames, name)

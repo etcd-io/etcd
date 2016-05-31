@@ -90,13 +90,9 @@ func Repair(dirpath string) bool {
 
 // openLast opens the last wal file for read and write.
 func openLast(dirpath string) (*fileutil.LockedFile, error) {
-	names, err := fileutil.ReadDir(dirpath)
+	names, err := readWalNames(dirpath)
 	if err != nil {
 		return nil, err
-	}
-	names = checkWalNames(names)
-	if len(names) == 0 {
-		return nil, ErrFileNotFound
 	}
 	last := path.Join(dirpath, names[len(names)-1])
 	return fileutil.LockFile(last, os.O_RDWR, 0600)
