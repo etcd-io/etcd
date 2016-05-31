@@ -42,6 +42,7 @@ var (
 	ErrRoleAlreadyExist = errors.New("auth: role already exists")
 	ErrRoleNotFound     = errors.New("auth: role not found")
 	ErrAuthFailed       = errors.New("auth: authentication failed, invalid user ID or password")
+	ErrPermissionDenied = errors.New("auth: permission denied")
 )
 
 type AuthStore interface {

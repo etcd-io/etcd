@@ -47,6 +47,8 @@ func togRPCError(err error) error {
 		return rpctypes.ErrGRPCRoleNotFound
 	case auth.ErrAuthFailed:
 		return rpctypes.ErrGRPCAuthFailed
+	case auth.ErrPermissionDenied:
+		return rpctypes.ErrGRPCPermissionDenied
 	default:
 		return grpc.Errorf(codes.Internal, err.Error())
 	}
