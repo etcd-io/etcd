@@ -104,6 +104,8 @@ var (
 
 	ErrNoLeader   = Error(ErrGRPCNoLeader)
 	ErrNotCapable = Error(ErrGRPCNotCapable)
+
+	ErrConnClosed = EtcdError{code: codes.Unavailable, desc: "clientv3: connection closed"}
 )
 
 // EtcdError defines gRPC server errors.
