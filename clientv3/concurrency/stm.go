@@ -56,6 +56,12 @@ func NewSTMSerializable(ctx context.Context, c *v3.Client, apply func(STM) error
 	return runSTM(s, apply)
 }
 
+// NewSTMReadCommitted initiates a new read committed transaction.
+func NewSTMReadCommitted(ctx context.Context, c *v3.Client, apply func(STM) error) (*v3.TxnResponse, error) {
+	s := &stmReadCommitted{stm{client: c, ctx: ctx, getOpts: []v3.OpOption{v3.WithSerializable()}}}
+	return runSTM(s, apply)
+}
+
 type stmResponse struct {
 	resp *v3.TxnResponse
 	err  error
@@ -232,6 +238,14 @@ func (s *stmSerializable) commit() *v3.TxnResponse {
 	s.prefetch = s.rset
 	s.getOpts = nil
 	return nil
+}
+
+type stmReadCommitted struct{ stm }
+
+// commit always goes through when read committed
+func (s *stmReadCommitted) commit() *v3.TxnResponse {
+	s.rset = nil
+	return s.stm.commit()
 }
 
 func isKeyCurrent(k string, r *v3.GetResponse) v3.Cmp {

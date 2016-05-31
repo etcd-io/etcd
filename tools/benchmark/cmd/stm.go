@@ -52,7 +52,7 @@ var (
 func init() {
 	RootCmd.AddCommand(stmCmd)
 
-	stmCmd.Flags().StringVar(&stmIsolation, "isolation", "r", "Repeatable Reads (r) or Serializable (s)")
+	stmCmd.Flags().StringVar(&stmIsolation, "isolation", "r", "Read Committed (c), Repeatable Reads (r), or Serializable (s)")
 	stmCmd.Flags().IntVar(&stmKeyCount, "keys", 1, "Total unique keys accessible by the benchmark")
 	stmCmd.Flags().IntVar(&stmTotal, "total", 10000, "Total number of completed STM transactions")
 	stmCmd.Flags().IntVar(&stmKeysPerTxn, "keys-per-txn", 1, "Number of keys to access per transaction")
@@ -78,6 +78,8 @@ func stmFunc(cmd *cobra.Command, args []string) {
 	}
 
 	switch stmIsolation {
+	case "c":
+		mkSTM = v3sync.NewSTMReadCommitted
 	case "r":
 		mkSTM = v3sync.NewSTMRepeatable
 	case "s":
