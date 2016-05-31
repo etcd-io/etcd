@@ -855,7 +855,7 @@ func TestHTTPClusterClientAutoSyncFail(t *testing.T) {
 	}
 
 	err = hc.AutoSync(context.Background(), time.Hour)
-	if err.Error() != ErrClusterUnavailable.Error() {
+	if !strings.HasPrefix(err.Error(), ErrClusterUnavailable.Error()) {
 		t.Fatalf("incorrect error value: want=%v got=%v", ErrClusterUnavailable, err)
 	}
 }
