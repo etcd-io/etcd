@@ -288,25 +288,19 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	cli := clus.Client(0)
 	kv := clientv3.NewKV(cli)
 
-	closed, donec := make(chan struct{}), make(chan struct{})
+	donec := make(chan struct{})
 	go func() {
-		select {
-		case <-time.After(3 * time.Second):
-			t.Fatal("cli.Close took too long")
-		case <-closed:
-		}
-
-		if _, err := kv.Get(context.TODO(), "foo"); err != rpctypes.ErrConnClosed {
+		defer close(donec)
+		_, err := kv.Get(context.TODO(), "foo")
+		if err != nil && err != rpctypes.ErrConnClosed {
 			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
 		}
-		close(donec)
 	}()
 
 	if err := cli.Close(); err != nil {
 		t.Fatal(err)
 	}
 	clus.TakeClient(0)
-	close(closed)
 
 	select {
 	case <-time.After(3 * time.Second):
