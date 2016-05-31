@@ -78,7 +78,7 @@ func stmFunc(cmd *cobra.Command, args []string) {
 	switch stmIsolation {
 	case "r":
 		mkSTM = v3sync.NewSTMRepeatable
-	case "l":
+	case "s":
 		mkSTM = v3sync.NewSTMSerializable
 	default:
 		fmt.Fprintln(os.Stderr, cmd.Usage())
@@ -141,8 +141,7 @@ func doSTM(ctx context.Context, client *v3.Client, requests <-chan stmApply) {
 
 	for applyf := range requests {
 		st := time.Now()
-		_, err := v3sync.NewSTMRepeatable(context.TODO(), client, applyf)
-
+		_, err := mkSTM(context.TODO(), client, applyf)
 		var errStr string
 		if err != nil {
 			errStr = err.Error()
