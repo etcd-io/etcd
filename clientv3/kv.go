@@ -189,6 +189,7 @@ func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 	return OpResponse{}, err
 }
 
+// getRemote must be followed by kv.rc.release() call.
 func (kv *kv) getRemote(ctx context.Context) (pb.KVClient, error) {
 	if err := kv.rc.acquire(ctx); err != nil {
 		return nil, err

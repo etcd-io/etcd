@@ -384,5 +384,5 @@ func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
 // progress can be made, even after reconnecting.
 func isHaltErr(ctx context.Context, err error) bool {
 	isRPCError := strings.HasPrefix(grpc.ErrorDesc(err), "etcdserver: ")
-	return isRPCError || ctx.Err() != nil
+	return isRPCError || ctx.Err() != nil || err == rpctypes.ErrConnClosed
 }
