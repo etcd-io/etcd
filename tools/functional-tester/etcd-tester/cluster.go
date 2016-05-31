@@ -40,9 +40,12 @@ type cluster struct {
 	stressKeySize        int
 	stressKeySuffixRange int
 
-	Size       int
-	Agents     []client.Agent
-	Stressers  []Stresser
+	Size   int
+	Agents []client.Agent
+
+	stresserQPS int
+	Stressers   []Stresser
+
 	Names      []string
 	GRPCURLs   []string
 	ClientURLs []string
@@ -53,13 +56,14 @@ type ClusterStatus struct {
 }
 
 // newCluster starts and returns a new cluster. The caller should call Terminate when finished, to shut it down.
-func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int, isV2Only bool) (*cluster, error) {
+func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange, qps int, isV2Only bool) (*cluster, error) {
 	c := &cluster{
 		v2Only:               isV2Only,
 		agentEndpoints:       agentEndpoints,
 		datadir:              datadir,
 		stressKeySize:        stressKeySize,
 		stressKeySuffixRange: stressKeySuffixRange,
+		stresserQPS:          qps,
 	}
 	if err := c.Bootstrap(); err != nil {
 		return nil, err
@@ -145,6 +149,7 @@ func (c *cluster) Bootstrap() error {
 				KeySize:        c.stressKeySize,
 				KeySuffixRange: c.stressKeySuffixRange,
 				N:              stressN,
+				qps:            c.stresserQPS,
 			}
 			go s.Stress()
 			stressers = append(stressers, s)
