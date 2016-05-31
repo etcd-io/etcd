@@ -23,6 +23,7 @@ Administrators who need to create reliable and scalable key-value stores for the
  - [Security][security]
  - Monitoring
  - [Maintenance][maintenance]
+ - [Understand failures][failures]
  - [Disaster recovery][recovery]
  - [Performance][performance]
 
@@ -46,6 +47,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 [conf]: op-guide/configuration.md
 [demo]: demo.md
 [download_build]: dl_build.md
+[failures]: op-guide/failures.md
 [glossary]: learning/glossary.md
 [interacting]: dev-guide/interacting_v3.md
 [local_cluster]: dev-guide/local_cluster.md
