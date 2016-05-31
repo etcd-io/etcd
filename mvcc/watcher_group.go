@@ -81,7 +81,7 @@ func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
 	wb := make(watcherBatch)
 	for _, ev := range evs {
 		for w := range wg.watcherSetByKey(string(ev.Kv.Key)) {
-			if ev.Kv.ModRevision >= w.cur {
+			if ev.Kv.ModRevision >= w.minRev {
 				// don't double notify
 				wb.add(w, ev)
 			}
@@ -233,20 +233,21 @@ func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watc
 func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 	minRev := int64(math.MaxInt64)
 	for w := range wg.watchers {
-		if w.cur > curRev {
+		if w.minRev > curRev {
 			panic("watcher current revision should not exceed current revision")
 		}
-		if w.cur < compactRev {
+		if w.minRev < compactRev {
 			select {
 			case w.ch <- WatchResponse{WatchID: w.id, CompactRevision: compactRev}:
+				w.compacted = true
 				wg.delete(w)
 			default:
 				// retry next time
 			}
 			continue
 		}
-		if minRev > w.cur {
-			minRev = w.cur
+		if minRev > w.minRev {
+			minRev = w.minRev
 		}
 	}
 	return minRev
