@@ -309,6 +309,33 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	}
 }
 
+func TestKVNewAfterClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		kv := clientv3.NewKV(cli)
+		if _, err := kv.Get(context.TODO(), "foo"); err != rpctypes.ErrConnClosed {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		}
+		close(donec)
+	}()
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("kv.Get took too long")
+	case <-donec:
+	}
+}
+
 func TestKVDeleteRange(t *testing.T) {
 	defer testutil.AfterTest(t)
 

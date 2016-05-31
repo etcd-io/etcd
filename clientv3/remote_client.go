@@ -90,7 +90,7 @@ func (r *remoteClient) acquire(ctx context.Context) error {
 		c := r.client.conn
 		match := r.conn == c
 		r.mu.Unlock()
-		if match {
+		if c != nil && match {
 			return nil
 		}
 		r.client.mu.RUnlock()
