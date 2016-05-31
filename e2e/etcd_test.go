@@ -137,8 +137,8 @@ type etcdProcessConfig struct {
 }
 
 type etcdProcessClusterConfig struct {
-	dataDirPathPrefix string
-	keepDataDir       bool
+	dataDirPath string
+	keepDataDir bool
 
 	clusterSize       int
 	basePort          int
@@ -226,10 +226,8 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 
 		purl := url.URL{Scheme: peerScheme, Host: fmt.Sprintf("localhost:%d", port+1)}
 		name := fmt.Sprintf("testname%d", i)
-		var dataDirPath string
-		if cfg.dataDirPathPrefix != "" {
-			dataDirPath = fmt.Sprintf("%s%d.etcd", cfg.dataDirPathPrefix, i)
-		} else {
+		dataDirPath := cfg.dataDirPath
+		if cfg.dataDirPath == "" {
 			var derr error
 			dataDirPath, derr = ioutil.TempDir("", name+".etcd")
 			if derr != nil {

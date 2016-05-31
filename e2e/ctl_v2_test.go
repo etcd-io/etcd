@@ -15,7 +15,7 @@
 package e2e
 
 import (
-	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -232,10 +232,12 @@ func TestCtlV2RoleList(t *testing.T) {
 func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issues/5360
 	defer testutil.AfterTest(t)
 
-	var (
-		backupDirPrefix = "testbackup"
-		backupDir       = fmt.Sprintf("%s0.etcd", backupDirPrefix)
-	)
+	backupDir, err := ioutil.TempDir("", "testbakcup0.etcd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(backupDir)
+
 	epc1 := setupEtcdctlTest(t, &configNoTLS, false)
 	if err := etcdctlSet(epc1, "foo1", "bar"); err != nil {
 		t.Fatal(err)
@@ -244,7 +246,6 @@ func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issue
 	if err := etcdctlBackup(epc1, epc1.procs[0].cfg.dataDirPath, backupDir); err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(backupDir)
 
 	if err := epc1.Close(); err != nil {
 		t.Fatalf("error closing etcd processes (%v)", err)
@@ -252,7 +253,7 @@ func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issue
 
 	// restart from the backup directory
 	cfg2 := configNoTLS
-	cfg2.dataDirPathPrefix = backupDirPrefix
+	cfg2.dataDirPath = backupDir
 	cfg2.keepDataDir = true
 	cfg2.forceNewCluster = true
 	epc2 := setupEtcdctlTest(t, &cfg2, false)
@@ -383,7 +384,7 @@ func etcdctlAuthEnable(clus *etcdProcessCluster) error {
 
 func etcdctlBackup(clus *etcdProcessCluster, dataDir, backupDir string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "backup", "--data-dir", dataDir, "--backup-dir", backupDir)
-	return spawnWithExpect(cmdArgs, "wal: ignored file")
+	return spawnWithExpects(cmdArgs)
 }
 
 func mustEtcdctl(t *testing.T) {
