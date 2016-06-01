@@ -423,12 +423,9 @@ func (r *raft) appendEntry(es ...pb.Entry) {
 
 // tickElection is run by followers and candidates after r.electionTimeout.
 func (r *raft) tickElection() {
-	if !r.promotable() {
-		r.electionElapsed = 0
-		return
-	}
 	r.electionElapsed++
-	if r.pastElectionTimeout() {
+
+	if r.promotable() && r.pastElectionTimeout() {
 		r.electionElapsed = 0
 		r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
 	}
@@ -565,15 +562,35 @@ func (r *raft) Step(m pb.Message) error {
 	case m.Term > r.Term:
 		lead := m.From
 		if m.Type == pb.MsgVote {
+			if r.checkQuorum && r.state != StateCandidate && r.electionElapsed < r.electionTimeout {
+				// If a server receives a RequestVote request within the minimum election timeout
+				// of hearing from a current leader, it does not update its term or grant its vote
+				r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] ignored vote from %x [logterm: %d, index: %d] at term %d: lease is not expired (remaining ticks: %d)",
+					r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term, r.electionTimeout-r.electionElapsed)
+				return nil
+			}
 			lead = None
 		}
 		r.logger.Infof("%x [term: %d] received a %s message with higher term from %x [term: %d]",
 			r.id, r.Term, m.Type, m.From, m.Term)
 		r.becomeFollower(m.Term, lead)
 	case m.Term < r.Term:
-		// ignore
-		r.logger.Infof("%x [term: %d] ignored a %s message with lower term from %x [term: %d]",
-			r.id, r.Term, m.Type, m.From, m.Term)
+		if r.checkQuorum && (m.Type == pb.MsgHeartbeat || m.Type == pb.MsgApp) {
+			// We have received messages from a leader at a lower term. It is possible that these messages were
+			// simply delayed in the network, but this could also mean that this node has advanced its term number
+			// during a network partition, and it is now unable to either win an election or to rejoin the majority
+			// on the old term. If checkQuorum is false, this will be handled by incrementing term numbers in response
+			// to MsgVote with a higher term, but if checkQuorum is true we may not advance the term on MsgVote and
+			// must generate other messages to advance the term. The net result of these two features is to minimize
+			// the disruption caused by nodes that have been removed from the cluster's configuration: a removed node
+			// will send MsgVotes which will be ignored, but it will not receive MsgApp or MsgHeartbeat, so it will not
+			// create disruptive term increases
+			r.send(pb.Message{To: m.From, Type: pb.MsgAppResp})
+		} else {
+			// ignore other cases
+			r.logger.Infof("%x [term: %d] ignored a %s message with lower term from %x [term: %d]",
+				r.id, r.Term, m.Type, m.From, m.Term)
+		}
 		return nil
 	}
 	r.step(r, m)
