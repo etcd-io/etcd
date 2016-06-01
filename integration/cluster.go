@@ -668,6 +668,9 @@ func (m *member) Close() {
 		hs.CloseClientConnections()
 		hs.Close()
 	}
+	for _, ln := range m.ClientListeners {
+		ln.Close()
+	}
 }
 
 // Stop stops the member, but the data dir of the member is preserved.
