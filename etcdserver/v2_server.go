@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"sync/atomic"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -48,6 +49,8 @@ func (a *v2apiStore) QGet(ctx context.Context, r *pb.Request) (Response, error) 
 	return a.processRaftRequest(ctx, r)
 }
 
+var pCounter int32 = 0
+
 func (a *v2apiStore) processRaftRequest(ctx context.Context, r *pb.Request) (Response, error) {
 	data, err := r.Marshal()
 	if err != nil {
@@ -60,8 +63,8 @@ func (a *v2apiStore) processRaftRequest(ctx context.Context, r *pb.Request) (Res
 	start := time.Now()
 	a.s.r.Propose(ctx, data)
 
-	proposePending.Inc()
-	defer proposePending.Dec()
+	atomic.AddInt32(&pCounter, 1)
+	defer atomic.AddInt32(&pCounter, -1)
 
 	select {
 	case x := <-ch:
@@ -71,7 +74,13 @@ func (a *v2apiStore) processRaftRequest(ctx context.Context, r *pb.Request) (Res
 	case <-ctx.Done():
 		proposeFailed.Inc()
 		a.s.w.Trigger(r.ID, nil) // GC wait
-		return Response{}, a.s.parseProposeCtxErr(ctx.Err(), start)
+
+		err := a.s.parseProposeCtxErr(ctx.Err(), start)
+		if err == ErrTimeout {
+			plog.Printf("[DEBUG] processRaftRequest ErrTimeout with pending proposal %d with %s (%+v)", atomic.LoadInt32(&pCounter), r.Method, r)
+		}
+		return Response{}, err
+
 	case <-a.s.done:
 	}
 	return Response{}, ErrStopped

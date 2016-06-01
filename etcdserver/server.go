@@ -874,7 +874,13 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) error 
 		return nil
 	case <-ctx.Done():
 		s.w.Trigger(cc.ID, nil) // GC wait
-		return s.parseProposeCtxErr(ctx.Err(), start)
+
+		err := s.parseProposeCtxErr(ctx.Err(), start)
+		if err == ErrTimeout {
+			plog.Printf("[DEBUG] configure ErrTimeout with pending proposal %d", atomic.LoadInt32(&pCounter))
+		}
+		return err
+
 	case <-s.done:
 		return ErrStopped
 	}
