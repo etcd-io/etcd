@@ -170,13 +170,17 @@ func (c *cluster) WaitHealth() error {
 	if c.v2Only {
 		healthFunc, urls = setHealthKeyV2, c.ClientURLs
 	}
-	for i := 0; i < 60; i++ {
+	for i := 0; i < 300; i++ {
 		err = healthFunc(urls)
 		if err == nil {
 			return nil
 		}
 		plog.Warningf("#%d setHealthKey error (%v)", i, err)
 		time.Sleep(time.Second)
+
+		if i > 50 {
+			plog.Printf("[DEBUG] setHealthKey taking too long...")
+		}
 	}
 	return err
 }
