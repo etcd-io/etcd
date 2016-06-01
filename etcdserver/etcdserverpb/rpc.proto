@@ -197,7 +197,7 @@ message RangeResponse {
   // kvs is the list of key-value pairs matched by the range request.
   repeated mvccpb.KeyValue kvs = 2;
   // more indicates if there are more keys to return in the requested range.
-  bool more = 3;
+  int64 more = 3;
 }
 
 message PutRequest {
