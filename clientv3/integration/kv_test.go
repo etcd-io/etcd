@@ -288,26 +288,47 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	cli := clus.Client(0)
 	kv := clientv3.NewKV(cli)
 
-	closed, donec := make(chan struct{}), make(chan struct{})
+	donec := make(chan struct{})
 	go func() {
-		select {
-		case <-time.After(3 * time.Second):
-			t.Fatal("cli.Close took too long")
-		case <-closed:
-		}
-
-		if _, err := kv.Get(context.TODO(), "foo"); err != rpctypes.ErrConnClosed {
+		defer close(donec)
+		_, err := kv.Get(context.TODO(), "foo")
+		if err != nil && err != rpctypes.ErrConnClosed {
 			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
 		}
-		close(donec)
 	}()
 
 	if err := cli.Close(); err != nil {
 		t.Fatal(err)
 	}
 	clus.TakeClient(0)
-	close(closed)
 
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("kv.Get took too long")
+	case <-donec:
+	}
+}
+
+func TestKVNewAfterClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		kv := clientv3.NewKV(cli)
+		if _, err := kv.Get(context.TODO(), "foo"); err != rpctypes.ErrConnClosed {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		}
+		close(donec)
+	}()
 	select {
 	case <-time.After(3 * time.Second):
 		t.Fatal("kv.Get took too long")

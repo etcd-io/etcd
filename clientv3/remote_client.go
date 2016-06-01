@@ -80,21 +80,23 @@ func (r *remoteClient) tryUpdate() bool {
 	return true
 }
 
+// acquire gets the client read lock on an established connection or
+// returns an error without holding the lock.
 func (r *remoteClient) acquire(ctx context.Context) error {
 	for {
+		r.mu.Lock()
 		r.client.mu.RLock()
 		closed := r.client.cancel == nil
 		c := r.client.conn
-		r.mu.Lock()
 		match := r.conn == c
 		r.mu.Unlock()
-		if closed {
-			return rpctypes.ErrConnClosed
-		}
-		if match {
+		if c != nil && match {
 			return nil
 		}
 		r.client.mu.RUnlock()
+		if closed {
+			return rpctypes.ErrConnClosed
+		}
 		if err := r.reconnectWait(ctx, nil); err != nil {
 			return err
 		}
