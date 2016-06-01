@@ -62,21 +62,27 @@ func TestTxnWriteFail(t *testing.T) {
 
 	clus.Members[0].Stop(t)
 	<-clus.Members[0].StopNotify()
+	fmt.Println("[DEBUG]", time.Now(), "kv.Txn stop done!")
 
 	donec := make(chan struct{})
 	go func() {
+		fmt.Println("[DEBUG]", time.Now(), "kv.Txn starting!")
 		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
 		if err == nil {
 			t.Fatalf("expected error, got response %v", resp)
 		}
+		fmt.Println("[DEBUG]", time.Now(), "kv.Txn error:", err)
 		donec <- struct{}{}
+		fmt.Println("[DEBUG]", time.Now(), "kv.Txn sent to donec")
 	}()
 
 	dialTimeout := 5 * time.Second
 	select {
 	case <-time.After(2*dialTimeout + time.Second):
+		fmt.Println("[DEBUG]", time.Now(), "timed out waiting for txn to fail")
 		t.Fatalf("timed out waiting for txn to fail")
 	case <-donec:
+		fmt.Println("[DEBUG]", time.Now(), "donec")
 		// don't restart cluster until txn errors out
 	}
 
