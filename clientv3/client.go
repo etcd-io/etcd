@@ -76,8 +76,8 @@ type Client struct {
 
 // New creates a new etcdv3 client from a given configuration.
 func New(cfg Config) (*Client, error) {
-	if cfg.RetryDialer == nil {
-		cfg.RetryDialer = dialEndpointList
+	if cfg.retryDialer == nil {
+		cfg.retryDialer = dialEndpointList
 	}
 	if len(cfg.Endpoints) == 0 {
 		return nil, ErrNoAvailableEndpoints
@@ -227,7 +227,7 @@ func WithRequireLeader(ctx context.Context) context.Context {
 
 func newClient(cfg *Config) (*Client, error) {
 	if cfg == nil {
-		cfg = &Config{RetryDialer: dialEndpointList}
+		cfg = &Config{retryDialer: dialEndpointList}
 	}
 	var creds *credentials.TransportAuthenticator
 	if cfg.TLS != nil {
@@ -237,7 +237,7 @@ func newClient(cfg *Config) (*Client, error) {
 
 	// use a temporary skeleton client to bootstrap first connection
 	ctx, cancel := context.WithCancel(context.TODO())
-	conn, err := cfg.RetryDialer(&Client{cfg: *cfg, creds: creds, ctx: ctx, Username: cfg.Username, Password: cfg.Password})
+	conn, err := cfg.retryDialer(&Client{cfg: *cfg, creds: creds, ctx: ctx, Username: cfg.Username, Password: cfg.Password})
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +301,7 @@ func (c *Client) retryConnection(err error) (newConn *grpc.ClientConn, dialErr e
 		return nil, c.ctx.Err()
 	}
 
-	c.conn, dialErr = c.cfg.RetryDialer(c)
+	c.conn, dialErr = c.cfg.retryDialer(c)
 	if dialErr != nil {
 		c.errors = append(c.errors, dialErr)
 	}
