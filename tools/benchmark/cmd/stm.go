@@ -45,17 +45,19 @@ var (
 	stmKeyCount     int
 	stmValSize      int
 	stmWritePercent int
+	stmMutex        bool
 	mkSTM           func(context.Context, *v3.Client, func(v3sync.STM) error) (*v3.TxnResponse, error)
 )
 
 func init() {
 	RootCmd.AddCommand(stmCmd)
 
-	stmCmd.Flags().StringVar(&stmIsolation, "isolation", "r", "Repeatable Reads (r) or Serializable (s)")
+	stmCmd.Flags().StringVar(&stmIsolation, "isolation", "r", "Read Committed (c), Repeatable Reads (r), or Serializable (s)")
 	stmCmd.Flags().IntVar(&stmKeyCount, "keys", 1, "Total unique keys accessible by the benchmark")
 	stmCmd.Flags().IntVar(&stmTotal, "total", 10000, "Total number of completed STM transactions")
 	stmCmd.Flags().IntVar(&stmKeysPerTxn, "keys-per-txn", 1, "Number of keys to access per transaction")
 	stmCmd.Flags().IntVar(&stmWritePercent, "txn-wr-percent", 50, "Percentage of keys to overwrite per transaction")
+	stmCmd.Flags().BoolVar(&stmMutex, "use-mutex", false, "Wrap STM transaction in a distributed mutex")
 	stmCmd.Flags().IntVar(&stmValSize, "val-size", 8, "Value size of each STM put request")
 }
 
@@ -76,9 +78,11 @@ func stmFunc(cmd *cobra.Command, args []string) {
 	}
 
 	switch stmIsolation {
+	case "c":
+		mkSTM = v3sync.NewSTMReadCommitted
 	case "r":
 		mkSTM = v3sync.NewSTMRepeatable
-	case "l":
+	case "s":
 		mkSTM = v3sync.NewSTMSerializable
 	default:
 		fmt.Fprintln(os.Stderr, cmd.Usage())
@@ -139,10 +143,20 @@ func stmFunc(cmd *cobra.Command, args []string) {
 func doSTM(ctx context.Context, client *v3.Client, requests <-chan stmApply) {
 	defer wg.Done()
 
+	var m *v3sync.Mutex
+	if stmMutex {
+		m = v3sync.NewMutex(client, "stmlock")
+	}
+
 	for applyf := range requests {
 		st := time.Now()
-		_, err := v3sync.NewSTMRepeatable(context.TODO(), client, applyf)
-
+		if m != nil {
+			m.Lock(context.TODO())
+		}
+		_, err := mkSTM(context.TODO(), client, applyf)
+		if m != nil {
+			m.Unlock(context.TODO())
+		}
 		var errStr string
 		if err != nil {
 			errStr = err.Error()
