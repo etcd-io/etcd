@@ -558,3 +558,61 @@ func TestWatchEventType(t *testing.T) {
 		}
 	}
 }
+
+func TestWatchErrConnClosed(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	wc := clientv3.NewWatcher(cli)
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		wc.Watch(context.TODO(), "foo")
+		if err := wc.Close(); err != nil && err != rpctypes.ErrConnClosed {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		}
+	}()
+
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+	clus.TakeClient(0)
+
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("wc.Watch took too long")
+	case <-donec:
+	}
+}
+
+func TestWatchAfterClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		wc := clientv3.NewWatcher(cli)
+		wc.Watch(context.TODO(), "foo")
+		if err := wc.Close(); err != nil && err != rpctypes.ErrConnClosed {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		}
+		close(donec)
+	}()
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("wc.Watch took too long")
+	case <-donec:
+	}
+}

@@ -500,20 +500,27 @@ func (w *watcher) resume() (ws pb.Watch_WatchClient, err error) {
 // openWatchClient retries opening a watchclient until retryConnection fails
 func (w *watcher) openWatchClient() (ws pb.Watch_WatchClient, err error) {
 	for {
+		if err = w.rc.acquire(w.ctx); err != nil {
+			return nil, err
+		}
+
 		select {
 		case <-w.stopc:
 			if err == nil {
 				err = context.Canceled
 			}
+			w.rc.release()
 			return nil, err
 		default:
 		}
 		if ws, err = w.remote.Watch(w.ctx); ws != nil && err == nil {
+			w.rc.release()
 			break
 		} else if isHaltErr(w.ctx, err) {
+			w.rc.release()
 			return nil, v3rpc.Error(err)
 		}
-		err = w.rc.reconnectWait(w.ctx, nil)
+		w.rc.release()
 	}
 	return ws, nil
 }
