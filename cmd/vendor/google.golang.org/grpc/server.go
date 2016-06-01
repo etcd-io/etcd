@@ -257,12 +257,14 @@ func (s *Server) useTransportAuthenticator(rawConn net.Conn) (net.Conn, credenti
 // Serve accepts incoming connections on the listener lis, creating a new
 // ServerTransport and service goroutine for each. The service goroutines
 // read gRPC requests and then call the registered handlers to reply to them.
-// Service returns when lis.Accept fails.
+// Service returns when lis.Accept fails. lis will be closed when
+// this method returns.
 func (s *Server) Serve(lis net.Listener) error {
 	s.mu.Lock()
 	s.printf("serving")
 	if s.lis == nil {
 		s.mu.Unlock()
+		lis.Close()
 		return ErrServerStopped
 	}
 	s.lis[lis] = true
