@@ -352,20 +352,30 @@ func TestIssue3699(t *testing.T) {
 func clusterMustProgress(t *testing.T, membs []*member) {
 	cc := mustNewHTTPClient(t, []string{membs[0].URL()}, nil)
 	kapi := client.NewKeysAPI(cc)
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	key := fmt.Sprintf("foo%d", rand.Int())
-	resp, err := kapi.Create(ctx, "/"+key, "bar")
-	if err != nil {
-		t.Fatalf("create on %s error: %v", membs[0].URL(), err)
+
+	lastTerm := membs[0].s.Term()
+	modIdx := uint64(0)
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		resp, err := kapi.Create(ctx, "/"+key, "bar")
+		cancel()
+		if err == nil {
+			modIdx = resp.Node.ModifiedIndex - 1
+			break
+		}
+		// retry if leader lost to new election
+		if ctx.Err() == nil || lastTerm == membs[0].s.Term() {
+			t.Fatalf("create on %s error: %v", membs[0].URL(), err)
+		}
 	}
-	cancel()
 
 	for i, m := range membs {
 		u := m.URL()
 		mcc := mustNewHTTPClient(t, []string{u}, nil)
 		mkapi := client.NewKeysAPI(mcc)
 		mctx, mcancel := context.WithTimeout(context.Background(), requestTimeout)
-		if _, err := mkapi.Watcher(key, &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(mctx); err != nil {
+		if _, err := mkapi.Watcher(key, &client.WatcherOptions{AfterIndex: modIdx}).Next(mctx); err != nil {
 			t.Fatalf("#%d: watch on %s error: %v", i, u, err)
 		}
 		mcancel()
