@@ -64,11 +64,13 @@ func (p *pipeline) start() {
 	for i := 0; i < connPerPipeline; i++ {
 		go p.handle()
 	}
+	plog.Infof("started HTTP pipelining with peer %s", p.to)
 }
 
 func (p *pipeline) stop() {
 	close(p.stopc)
 	p.wg.Wait()
+	plog.Infof("stopped HTTP pipelining with peer %s", p.to)
 }
 
 func (p *pipeline) handle() {
