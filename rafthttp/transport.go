@@ -231,6 +231,7 @@ func (t *Transport) AddRemote(id types.ID, us []string) {
 func (t *Transport) AddPeer(id types.ID, us []string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
 	if t.peers == nil {
 		panic("transport stopped")
 	}
@@ -244,6 +245,8 @@ func (t *Transport) AddPeer(id types.ID, us []string) {
 	fs := t.LeaderStats.Follower(id.String())
 	t.peers[id] = startPeer(t, urls, t.ID, id, t.ClusterID, t.Raft, fs, t.ErrorC)
 	addPeerToProber(t.prober, id.String(), us)
+
+	plog.Infof("added peer %s", id)
 }
 
 func (t *Transport) RemovePeer(id types.ID) {
@@ -270,6 +273,7 @@ func (t *Transport) removePeer(id types.ID) {
 	delete(t.peers, id)
 	delete(t.LeaderStats.Followers, id.String())
 	t.prober.Remove(id.String())
+	plog.Infof("removed peer %s", id)
 }
 
 func (t *Transport) UpdatePeer(id types.ID, us []string) {
@@ -287,6 +291,7 @@ func (t *Transport) UpdatePeer(id types.ID, us []string) {
 
 	t.prober.Remove(id.String())
 	addPeerToProber(t.prober, id.String(), us)
+	plog.Infof("updated peer %s", id)
 }
 
 func (t *Transport) ActiveSince(id types.ID) time.Time {

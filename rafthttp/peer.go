@@ -118,6 +118,9 @@ type peer struct {
 }
 
 func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
+	plog.Infof("starting peer %s...", to)
+	defer plog.Infof("started peer %s", to)
+
 	status := newPeerStatus(to)
 	picker := newURLPicker(urls)
 	pipeline := &pipeline{
@@ -270,6 +273,9 @@ func (p *peer) Resume() {
 }
 
 func (p *peer) stop() {
+	plog.Infof("stopping peer %s...", p.id)
+	defer plog.Infof("stopped peer %s", p.id)
+
 	close(p.stopc)
 	p.cancel()
 	p.msgAppV2Writer.stop()

@@ -290,6 +290,8 @@ func (c *RaftCluster) AddMember(m *Member) {
 	}
 
 	c.members[m.ID] = m
+
+	plog.Infof("added member %s %v to cluster %s", m.ID, m.PeerURLs, c.id)
 }
 
 // RemoveMember removes a member from the store.
@@ -306,6 +308,8 @@ func (c *RaftCluster) RemoveMember(id types.ID) {
 
 	delete(c.members, id)
 	c.removed[id] = true
+
+	plog.Infof("removed member %s from cluster %s", id, c.id)
 }
 
 func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
@@ -339,6 +343,8 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes)
 	if c.be != nil {
 		mustSaveMemberToBackend(c.be, c.members[id])
 	}
+
+	plog.Noticef("updated member %s %v in cluster %s", id, raftAttr.PeerURLs, c.id)
 }
 
 func (c *RaftCluster) Version() *semver.Version {
