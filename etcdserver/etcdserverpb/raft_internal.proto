@@ -33,17 +33,18 @@ message InternalRaftRequest {
   LeaseGrantRequest lease_grant = 8;
   LeaseRevokeRequest lease_revoke = 9;
 
-  AuthEnableRequest auth_enable = 10;
-  AuthDisableRequest auth_disable = 11;
-  AuthUserAddRequest auth_user_add = 12;
-  AuthUserDeleteRequest auth_user_delete = 13;
-  AuthUserChangePasswordRequest auth_user_change_password = 14;
-  AuthUserGrantRequest auth_user_grant = 15;
-  AuthRoleAddRequest auth_role_add = 16;
-  AuthRoleGrantRequest auth_role_grant = 17;
-  AuthenticateRequest authenticate = 18;
+  AlarmRequest alarm = 10;
 
-  AlarmRequest alarm = 19;
+  AuthEnableRequest auth_enable = 1000;
+  AuthDisableRequest auth_disable = 1011;
+  AuthUserAddRequest auth_user_add = 1012;
+  AuthUserDeleteRequest auth_user_delete = 1013;
+  AuthUserChangePasswordRequest auth_user_change_password = 1014;
+  AuthUserGrantRequest auth_user_grant = 1015;
+  AuthRoleAddRequest auth_role_add = 1016;
+  AuthRoleGrantRequest auth_role_grant = 1017;
+  AuthenticateRequest authenticate = 1018;
+  AuthUserGetRequest auth_user_get = 1019;
 }
 
 message EmptyResponse {

@@ -61,6 +61,7 @@ type applierV3 interface {
 	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
 	UserChangePassword(ua *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
 	UserGrant(ua *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error)
+	UserGet(ua *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error)
 	RoleAdd(ua *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
 	RoleGrant(ua *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
 }
@@ -110,6 +111,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.UserChangePassword(r.AuthUserChangePassword)
 	case r.AuthUserGrant != nil:
 		ar.resp, ar.err = s.applyV3.UserGrant(r.AuthUserGrant)
+	case r.AuthUserGet != nil:
+		ar.resp, ar.err = s.applyV3.UserGet(r.AuthUserGet)
 	case r.AuthRoleAdd != nil:
 		ar.resp, ar.err = s.applyV3.RoleAdd(r.AuthRoleAdd)
 	case r.AuthRoleGrant != nil:
@@ -530,6 +533,10 @@ func (a *applierV3backend) UserChangePassword(r *pb.AuthUserChangePasswordReques
 
 func (a *applierV3backend) UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error) {
 	return a.s.AuthStore().UserGrant(r)
+}
+
+func (a *applierV3backend) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
+	return a.s.AuthStore().UserGet(r)
 }
 
 func (a *applierV3backend) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {

@@ -572,6 +572,7 @@ message AuthUserAddRequest {
 }
 
 message AuthUserGetRequest {
+  string name = 1;
 }
 
 message AuthUserDeleteRequest {
@@ -637,6 +638,8 @@ message AuthUserAddResponse {
 
 message AuthUserGetResponse {
   ResponseHeader header = 1;
+
+  repeated string roles = 2;
 }
 
 message AuthUserDeleteResponse {
