@@ -46,16 +46,16 @@ type snapshotSender struct {
 	stopc chan struct{}
 }
 
-func newSnapshotSender(tr *Transport, picker *urlPicker, from, to, cid types.ID, status *peerStatus, r Raft, errorc chan error) *snapshotSender {
+func newSnapshotSender(tr *Transport, picker *urlPicker, to types.ID, status *peerStatus) *snapshotSender {
 	return &snapshotSender{
-		from:   from,
+		from:   tr.ID,
 		to:     to,
-		cid:    cid,
+		cid:    tr.ClusterID,
 		tr:     tr,
 		picker: picker,
 		status: status,
-		r:      r,
-		errorc: errorc,
+		r:      tr.Raft,
+		errorc: tr.ErrorC,
 		stopc:  make(chan struct{}),
 	}
 }

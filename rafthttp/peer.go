@@ -117,14 +117,16 @@ type peer struct {
 	stopc  chan struct{}
 }
 
-func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r Raft, fs *stats.FollowerStats, errorc chan error) *peer {
-	plog.Infof("starting peer %s...", to)
-	defer plog.Infof("started peer %s", to)
+func startPeer(transport *Transport, urls types.URLs, peerID types.ID, fs *stats.FollowerStats) *peer {
+	plog.Infof("starting peer %s...", peerID)
+	defer plog.Infof("started peer %s", peerID)
 
-	status := newPeerStatus(to)
+	status := newPeerStatus(peerID)
 	picker := newURLPicker(urls)
+	errorc := transport.ErrorC
+	r := transport.Raft
 	pipeline := &pipeline{
-		to:            to,
+		peerID:        peerID,
 		tr:            transport,
 		picker:        picker,
 		status:        status,
@@ -135,14 +137,14 @@ func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r
 	pipeline.start()
 
 	p := &peer{
-		id:             to,
+		id:             peerID,
 		r:              r,
 		status:         status,
 		picker:         picker,
-		msgAppV2Writer: startStreamWriter(to, status, fs, r),
-		writer:         startStreamWriter(to, status, fs, r),
+		msgAppV2Writer: startStreamWriter(peerID, status, fs, r),
+		writer:         startStreamWriter(peerID, status, fs, r),
 		pipeline:       pipeline,
-		snapSender:     newSnapshotSender(transport, picker, local, to, cid, status, r, errorc),
+		snapSender:     newSnapshotSender(transport, picker, peerID, status),
 		sendc:          make(chan raftpb.Message),
 		recvc:          make(chan raftpb.Message, recvBufSize),
 		propc:          make(chan raftpb.Message, maxPendingProposals),
@@ -181,19 +183,19 @@ func startPeer(transport *Transport, urls types.URLs, local, to, cid types.ID, r
 	}()
 
 	p.msgAppV2Reader = &streamReader{
+		peerID: peerID,
 		typ:    streamTypeMsgAppV2,
 		tr:     transport,
 		picker: picker,
-		to:     to,
 		status: status,
 		recvc:  p.recvc,
 		propc:  p.propc,
 	}
 	p.msgAppReader = &streamReader{
+		peerID: peerID,
 		typ:    streamTypeMessage,
 		tr:     transport,
 		picker: picker,
-		to:     to,
 		status: status,
 		recvc:  p.recvc,
 		propc:  p.propc,
