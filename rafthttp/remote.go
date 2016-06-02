@@ -25,7 +25,7 @@ type remote struct {
 	pipeline *pipeline
 }
 
-func startRemote(tr *Transport, urls types.URLs, to types.ID, r Raft, errorc chan error) *remote {
+func startRemote(tr *Transport, urls types.URLs, to types.ID) *remote {
 	picker := newURLPicker(urls)
 	status := newPeerStatus(to)
 	pipeline := &pipeline{
@@ -33,8 +33,8 @@ func startRemote(tr *Transport, urls types.URLs, to types.ID, r Raft, errorc cha
 		tr:     tr,
 		picker: picker,
 		status: status,
-		raft:   r,
-		errorc: errorc,
+		raft:   tr.Raft,
+		errorc: tr.ErrorC,
 	}
 	pipeline.start()
 
