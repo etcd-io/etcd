@@ -74,7 +74,7 @@ func TestTxnWriteFail(t *testing.T) {
 
 	dialTimeout := 5 * time.Second
 	select {
-	case <-time.After(2*dialTimeout + time.Second):
+	case <-time.After(dialTimeout + time.Second):
 		t.Fatalf("timed out waiting for txn to fail")
 	case <-donec:
 		// don't restart cluster until txn errors out

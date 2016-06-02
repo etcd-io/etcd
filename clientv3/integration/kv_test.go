@@ -131,6 +131,13 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 	if err != rpctypes.ErrNoLeader {
 		t.Fatal(err)
 	}
+
+	// clients may give timeout errors since the members are stopped; take
+	// the clients so that terminating the cluster won't complain
+	clus.Client(1).Close()
+	clus.Client(2).Close()
+	clus.TakeClient(1)
+	clus.TakeClient(2)
 }
 
 func TestKVRange(t *testing.T) {
@@ -633,13 +640,22 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
+	cli := clus.Client(0)
 	clus.Members[0].Stop(t)
 	// this Put fails and triggers an asynchronous connection retry
-	_, err := clus.Client(0).Put(context.TODO(), "abc", "123")
+	_, err := cli.Put(context.TODO(), "abc", "123")
 	if err == nil ||
 		(!strings.Contains(err.Error(), "connection is closing") &&
 			!strings.Contains(err.Error(), "transport is closing")) {
 		t.Fatal(err)
 	}
-	// cluster will terminate and close the client with the retry in-flight
+
+	// wait some so the client closes with the retry in-flight
+	time.Sleep(time.Second)
+
+	// get the timeout
+	clus.TakeClient(0)
+	if err := cli.Close(); err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Fatal(err)
+	}
 }

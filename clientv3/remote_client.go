@@ -88,9 +88,11 @@ func (r *remoteClient) acquire(ctx context.Context) error {
 		r.client.mu.RLock()
 		closed := r.client.cancel == nil
 		c := r.client.conn
+		lastConnErr := r.client.lastConnErr
 		match := r.conn == c
 		r.mu.Unlock()
-		if c != nil && match {
+		if lastConnErr == nil && match {
+			// new connection already
 			return nil
 		}
 		r.client.mu.RUnlock()
