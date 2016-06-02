@@ -233,7 +233,7 @@ func (a *applierV3backend) Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResp
 
 	if r.Limit > 0 && len(kvs) > int(r.Limit) {
 		kvs = kvs[:r.Limit]
-		resp.More = true
+		resp.More = 1
 	}
 
 	resp.Header.Revision = rev
