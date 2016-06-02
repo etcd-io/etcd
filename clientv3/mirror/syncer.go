@@ -91,7 +91,7 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 
 			respchan <- (clientv3.GetResponse)(*resp)
 
-			if resp.More == 0 {
+			if !resp.More {
 				return
 			}
 			// move to next key

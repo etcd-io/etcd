@@ -715,7 +715,7 @@ func TestV3RangeRequest(t *testing.T) {
 		reqs    []pb.RangeRequest
 
 		wresps [][]string
-		wmores []int64
+		wmores []bool
 	}{
 		// single key
 		{
@@ -731,7 +731,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"foo"},
 				{},
 			},
-			[]int64{0, 0},
+			[]bool{false, false},
 		},
 		// multi-key
 		{
@@ -759,7 +759,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{},
 				{"a", "b", "c", "d", "e"},
 			},
-			[]int64{0, 0, 0, 0, 0, 0},
+			[]bool{false, false, false, false, false, false},
 		},
 		// revision
 		{
@@ -777,7 +777,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"a"},
 				{"a", "b"},
 			},
-			[]int64{0, 0, 0, 0},
+			[]bool{false, false, false, false},
 		},
 		// limit
 		{
@@ -793,7 +793,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"bar"},
 				{"bar", "foo"},
 			},
-			[]int64{1, 0},
+			[]bool{true, false},
 		},
 		// sort
 		{
@@ -838,7 +838,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"c"},
 				{},
 			},
-			[]int64{1, 1, 1, 1, 0},
+			[]bool{true, true, true, true, false},
 		},
 	}
 

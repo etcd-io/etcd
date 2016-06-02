@@ -55,7 +55,7 @@ func (q *PriorityQueue) Dequeue() (string, error) {
 		return "", err
 	} else if kv != nil {
 		return string(kv.Value), nil
-	} else if resp.More > 0 {
+	} else if resp.More {
 		// missed some items, retry to read in more
 		return q.Dequeue()
 	}
