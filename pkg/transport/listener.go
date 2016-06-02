@@ -184,7 +184,7 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 
 	cfg := &tls.Config{
 		Certificates: []tls.Certificate{*tlsCert},
-		MinVersion:   tls.VersionTLS10,
+		MinVersion:   tls.VersionTLS12,
 	}
 	return cfg, nil
 }
