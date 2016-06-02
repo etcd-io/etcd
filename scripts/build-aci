@@ -33,7 +33,7 @@ TMPHOSTS="$(mktemp)"
 acbuildEnd() {
     rm "$TMPHOSTS"
     export EXIT=$?
-    acbuild --debug end && exit $EXIT 
+    acbuild --debug end && exit $EXIT
 }
 trap acbuildEnd EXIT
 
@@ -46,6 +46,7 @@ acbuild --debug set-name coreos.com/etcd
 acbuild --debug copy --to-dir $BINARYDIR/etcd $BINARYDIR/etcdctl /
 acbuild --debug copy README.md /README.md
 acbuild --debug copy etcdctl/README.md /README-etcdctl.md
+acbuild --debug copy etcdctl/READMEv2.md /READMEv2-etcdctl.md
 acbuild --debug copy --to-dir Documentation /
 
 acbuild --debug environment add ETCD_DATA_DIR /data-dir
