@@ -116,9 +116,9 @@ func TestStreamReaderDialRequest(t *testing.T) {
 	for i, tt := range []streamType{streamTypeMessage, streamTypeMsgAppV2} {
 		tr := &roundTripperRecorder{}
 		sr := &streamReader{
+			peerID: types.ID(2),
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1), ID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			to:     types.ID(2),
 		}
 		sr.dial(tt)
 
@@ -164,9 +164,9 @@ func TestStreamReaderDialResult(t *testing.T) {
 			err:    tt.err,
 		}
 		sr := &streamReader{
+			peerID: types.ID(2),
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			to:     types.ID(2),
 			errorc: make(chan error, 1),
 		}
 
@@ -190,9 +190,9 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 			header: http.Header{},
 		}
 		sr := &streamReader{
+			peerID: types.ID(2),
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			to:     types.ID(2),
 		}
 
 		_, err := sr.dial(typ)
@@ -251,11 +251,11 @@ func TestStream(t *testing.T) {
 		tr := &Transport{streamRt: &http.Transport{}, ClusterID: types.ID(1)}
 
 		sr := &streamReader{
+			peerID: types.ID(2),
 			typ:    tt.t,
 			tr:     tr,
 			picker: picker,
-			to:     types.ID(2),
-			status: newPeerStatus(types.ID(1)),
+			status: newPeerStatus(types.ID(2)),
 			recvc:  recvc,
 			propc:  propc,
 		}

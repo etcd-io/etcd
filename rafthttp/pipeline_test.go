@@ -301,10 +301,9 @@ func (n *nopReadCloser) Close() error               { return nil }
 
 func startTestPipeline(tr *Transport, picker *urlPicker) *pipeline {
 	p := &pipeline{
-		tr:     tr,
-		picker: picker,
-
-		to:            types.ID(1),
+		peerID:        types.ID(1),
+		tr:            tr,
+		picker:        picker,
 		status:        newPeerStatus(types.ID(1)),
 		raft:          &fakeRaft{},
 		followerStats: &stats.FollowerStats{},

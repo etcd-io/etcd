@@ -117,16 +117,16 @@ type peer struct {
 	stopc  chan struct{}
 }
 
-func startPeer(transport *Transport, urls types.URLs, id types.ID, fs *stats.FollowerStats) *peer {
-	plog.Infof("starting peer %s...", id)
-	defer plog.Infof("started peer %s", id)
+func startPeer(transport *Transport, urls types.URLs, peerID types.ID, fs *stats.FollowerStats) *peer {
+	plog.Infof("starting peer %s...", peerID)
+	defer plog.Infof("started peer %s", peerID)
 
-	status := newPeerStatus(id)
+	status := newPeerStatus(peerID)
 	picker := newURLPicker(urls)
 	errorc := transport.ErrorC
 	r := transport.Raft
 	pipeline := &pipeline{
-		to:            id,
+		peerID:        peerID,
 		tr:            transport,
 		picker:        picker,
 		status:        status,
@@ -137,14 +137,14 @@ func startPeer(transport *Transport, urls types.URLs, id types.ID, fs *stats.Fol
 	pipeline.start()
 
 	p := &peer{
-		id:             id,
+		id:             peerID,
 		r:              r,
 		status:         status,
 		picker:         picker,
-		msgAppV2Writer: startStreamWriter(id, status, fs, r),
-		writer:         startStreamWriter(id, status, fs, r),
+		msgAppV2Writer: startStreamWriter(peerID, status, fs, r),
+		writer:         startStreamWriter(peerID, status, fs, r),
 		pipeline:       pipeline,
-		snapSender:     newSnapshotSender(transport, picker, id, status),
+		snapSender:     newSnapshotSender(transport, picker, peerID, status),
 		sendc:          make(chan raftpb.Message),
 		recvc:          make(chan raftpb.Message, recvBufSize),
 		propc:          make(chan raftpb.Message, maxPendingProposals),
@@ -183,19 +183,19 @@ func startPeer(transport *Transport, urls types.URLs, id types.ID, fs *stats.Fol
 	}()
 
 	p.msgAppV2Reader = &streamReader{
+		peerID: peerID,
 		typ:    streamTypeMsgAppV2,
 		tr:     transport,
 		picker: picker,
-		to:     id,
 		status: status,
 		recvc:  p.recvc,
 		propc:  p.propc,
 	}
 	p.msgAppReader = &streamReader{
+		peerID: peerID,
 		typ:    streamTypeMessage,
 		tr:     transport,
 		picker: picker,
-		to:     id,
 		status: status,
 		recvc:  p.recvc,
 		propc:  p.propc,

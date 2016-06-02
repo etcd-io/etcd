@@ -41,7 +41,7 @@ const (
 var errStopped = errors.New("stopped")
 
 type pipeline struct {
-	to types.ID
+	peerID types.ID
 
 	tr     *Transport
 	picker *urlPicker
@@ -64,13 +64,13 @@ func (p *pipeline) start() {
 	for i := 0; i < connPerPipeline; i++ {
 		go p.handle()
 	}
-	plog.Infof("started HTTP pipelining with peer %s", p.to)
+	plog.Infof("started HTTP pipelining with peer %s", p.peerID)
 }
 
 func (p *pipeline) stop() {
 	close(p.stopc)
 	p.wg.Wait()
-	plog.Infof("stopped HTTP pipelining with peer %s", p.to)
+	plog.Infof("stopped HTTP pipelining with peer %s", p.peerID)
 }
 
 func (p *pipeline) handle() {
@@ -140,7 +140,7 @@ func (p *pipeline) post(data []byte) (err error) {
 	}
 	resp.Body.Close()
 
-	err = checkPostResponse(resp, b, req, p.to)
+	err = checkPostResponse(resp, b, req, p.peerID)
 	if err != nil {
 		p.picker.unreachable(u)
 		// errMemberRemoved is a critical error since a removed member should
