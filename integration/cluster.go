@@ -795,7 +795,15 @@ func (c *ClusterV3) Terminate(t *testing.T) {
 }
 
 func (c *ClusterV3) RandClient() *clientv3.Client {
-	return c.clients[rand.Intn(len(c.clients))]
+	for i := 0; i < 100; i++ {
+		cli := c.clients[rand.Intn(len(c.clients))]
+		if cli.ActiveConnection() == nil {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+		return cli
+	}
+	panic("failed to get a active client")
 }
 
 func (c *ClusterV3) Client(i int) *clientv3.Client {
