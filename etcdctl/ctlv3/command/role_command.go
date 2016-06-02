@@ -31,6 +31,7 @@ func NewRoleCommand() *cobra.Command {
 
 	ac.AddCommand(newRoleAddCommand())
 	ac.AddCommand(newRoleGrantCommand())
+	ac.AddCommand(newRoleGetCommand())
 
 	return ac
 }
@@ -48,6 +49,14 @@ func newRoleGrantCommand() *cobra.Command {
 		Use:   "grant <role name> <permission type> <key>",
 		Short: "grant a key to a role",
 		Run:   roleGrantCommandFunc,
+	}
+}
+
+func newRoleGetCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "get <role name>",
+		Short: "get detailed information of a role",
+		Run:   roleGetCommandFunc,
 	}
 }
 
@@ -82,4 +91,30 @@ func roleGrantCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Role %s updated\n", args[0])
+}
+
+// roleGetCommandFunc executes the "role get" command.
+func roleGetCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("role get command requires role name as its argument."))
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.RoleGet(context.TODO(), args[0])
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Printf("Role %s\n", args[0])
+	fmt.Println("KV Read:")
+	for _, perm := range resp.Perm {
+		if perm.PermType == clientv3.PermRead || perm.PermType == clientv3.PermReadWrite {
+			fmt.Printf("\t%s\n", string(perm.Key))
+		}
+	}
+	fmt.Println("KV Write:")
+	for _, perm := range resp.Perm {
+		if perm.PermType == clientv3.PermWrite || perm.PermType == clientv3.PermReadWrite {
+			fmt.Printf("\t%s\n", string(perm.Key))
+		}
+	}
 }

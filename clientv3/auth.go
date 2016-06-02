@@ -36,6 +36,7 @@ type (
 	AuthUserGetResponse            pb.AuthUserGetResponse
 	AuthRoleAddResponse            pb.AuthRoleAddResponse
 	AuthRoleGrantResponse          pb.AuthRoleGrantResponse
+	AuthRoleGetResponse            pb.AuthRoleGetResponse
 
 	PermissionType authpb.Permission_Type
 )
@@ -73,6 +74,9 @@ type Auth interface {
 
 	// RoleGrant grants a permission to a role.
 	RoleGrant(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantResponse, error)
+
+	// RoleGet gets a detailed information of a role.
+	RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error)
 }
 
 type auth struct {
@@ -138,6 +142,11 @@ func (auth *auth) RoleGrant(ctx context.Context, name string, key string, permTy
 	}
 	resp, err := auth.remote.RoleGrant(ctx, &pb.AuthRoleGrantRequest{Name: name, Perm: perm})
 	return (*AuthRoleGrantResponse)(resp), rpctypes.Error(err)
+}
+
+func (auth *auth) RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error) {
+	resp, err := auth.remote.RoleGet(ctx, &pb.AuthRoleGetRequest{Role: role})
+	return (*AuthRoleGetResponse)(resp), rpctypes.Error(err)
 }
 
 func StrToPermissionType(s string) (PermissionType, error) {

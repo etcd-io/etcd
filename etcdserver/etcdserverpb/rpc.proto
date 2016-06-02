@@ -603,6 +603,7 @@ message AuthRoleAddRequest {
 }
 
 message AuthRoleGetRequest {
+  string role = 1;
 }
 
 message AuthRoleDeleteRequest {
@@ -664,6 +665,8 @@ message AuthRoleAddResponse {
 
 message AuthRoleGetResponse {
   ResponseHeader header = 1;
+
+  repeated authpb.Permission perm = 2;
 }
 
 message AuthRoleDeleteResponse {
