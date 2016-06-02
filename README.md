@@ -63,7 +63,7 @@ ETCDCTL_API=3 etcdctl put mykey "this is awesome"
 ETCDCTL_API=3 etcdctl get mykey
 ```
 
-That's it-- etcd is running and serving keys.
+That's it! etcd is now running and serving client requests.
 
 ### etcd TCP ports
 
