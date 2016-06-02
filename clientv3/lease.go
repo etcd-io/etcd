@@ -119,6 +119,13 @@ func (l *lessor) Grant(ctx context.Context, ttl int64) (*LeaseGrantResponse, err
 	defer close(done)
 
 	for {
+		l.rc.client.mu.RLock()
+		closed := l.rc.client.cancel == nil
+		l.rc.client.mu.RUnlock()
+		if closed {
+			return nil, rpctypes.ErrConnClosed
+		}
+
 		r := &pb.LeaseGrantRequest{TTL: ttl}
 		resp, err := l.getRemote().LeaseGrant(cctx, r)
 		if err == nil {
@@ -183,9 +190,10 @@ func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAl
 	}
 	l.mu.Unlock()
 
-	go l.keepAliveCtxCloser(id, ctx, ka.donec)
+	errc := make(chan error)
+	go l.keepAliveCtxCloser(id, ctx, ka.donec, errc)
 
-	return ch, nil
+	return ch, <-errc
 }
 
 func (l *lessor) KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAliveResponse, error) {
@@ -218,7 +226,16 @@ func (l *lessor) Close() error {
 	return nil
 }
 
-func (l *lessor) keepAliveCtxCloser(id LeaseID, ctx context.Context, donec <-chan struct{}) {
+func (l *lessor) keepAliveCtxCloser(id LeaseID, ctx context.Context, donec <-chan struct{}, errc chan error) {
+	l.rc.client.mu.RLock()
+	closed := l.rc.client.cancel == nil
+	l.rc.client.mu.RUnlock()
+	if closed {
+		errc <- rpctypes.ErrConnClosed
+		return
+	}
+	close(errc)
+
 	select {
 	case <-donec:
 		return
@@ -394,8 +411,11 @@ func (l *lessor) getKeepAliveStream() pb.Lease_LeaseKeepAliveClient {
 
 func (l *lessor) switchRemoteAndStream(prevErr error) error {
 	for {
-		if prevErr != nil {
-			err := l.rc.reconnectWait(l.stopCtx, prevErr)
+		l.rc.client.mu.RLock()
+		closed := l.rc.client.cancel == nil
+		l.rc.client.mu.RUnlock()
+		if prevErr != nil || closed {
+			err := l.rc.acquire(l.stopCtx)
 			if err != nil {
 				return rpctypes.Error(err)
 			}
