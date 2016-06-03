@@ -32,6 +32,7 @@ func NewRoleCommand() *cobra.Command {
 	ac.AddCommand(newRoleAddCommand())
 	ac.AddCommand(newRoleGrantCommand())
 	ac.AddCommand(newRoleGetCommand())
+	ac.AddCommand(newRoleRevokePermissionCommand())
 
 	return ac
 }
@@ -57,6 +58,14 @@ func newRoleGetCommand() *cobra.Command {
 		Use:   "get <role name>",
 		Short: "get detailed information of a role",
 		Run:   roleGetCommandFunc,
+	}
+}
+
+func newRoleRevokePermissionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "revoke-permission <role name> <key>",
+		Short: "revoke a key from a role",
+		Run:   roleRevokePermissionCommandFunc,
 	}
 }
 
@@ -117,4 +126,18 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 			fmt.Printf("\t%s\n", string(perm.Key))
 		}
 	}
+}
+
+// roleRevokePermissionCommandFunc executes the "role revoke-permission" command.
+func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 2 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key as its argument."))
+	}
+
+	_, err := mustClientFromCmd(cmd).Auth.RoleRevoke(context.TODO(), args[0], args[1])
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Printf("Permission of key %s is revoked from role %s\n", args[1], args[0])
 }

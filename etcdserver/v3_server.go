@@ -68,6 +68,7 @@ type Authenticator interface {
 	RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
 	RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
 	RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error)
+	RoleRevoke(ctx context.Context, r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error)
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -367,6 +368,17 @@ func (s *EtcdServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb
 		return nil, result.err
 	}
 	return result.resp.(*pb.AuthRoleGetResponse), nil
+}
+
+func (s *EtcdServer) RoleRevoke(ctx context.Context, r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error) {
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthRoleRevoke: r})
+	if err != nil {
+		return nil, err
+	}
+	if result.err != nil {
+		return nil, result.err
+	}
+	return result.resp.(*pb.AuthRoleRevokeResponse), nil
 }
 
 func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {

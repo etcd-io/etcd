@@ -38,6 +38,7 @@ type (
 	AuthRoleAddResponse            pb.AuthRoleAddResponse
 	AuthRoleGrantResponse          pb.AuthRoleGrantResponse
 	AuthRoleGetResponse            pb.AuthRoleGetResponse
+	AuthRoleRevokeResponse         pb.AuthRoleRevokeResponse
 
 	PermissionType authpb.Permission_Type
 )
@@ -81,6 +82,9 @@ type Auth interface {
 
 	// RoleGet gets a detailed information of a role.
 	RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error)
+
+	// RoleRevoke revokes a key from a user.
+	RoleRevoke(ctx context.Context, role string, key string) (*AuthRoleRevokeResponse, error)
 }
 
 type auth struct {
@@ -156,6 +160,11 @@ func (auth *auth) RoleGrant(ctx context.Context, name string, key string, permTy
 func (auth *auth) RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error) {
 	resp, err := auth.remote.RoleGet(ctx, &pb.AuthRoleGetRequest{Role: role})
 	return (*AuthRoleGetResponse)(resp), rpctypes.Error(err)
+}
+
+func (auth *auth) RoleRevoke(ctx context.Context, role string, key string) (*AuthRoleRevokeResponse, error) {
+	resp, err := auth.remote.RoleRevoke(ctx, &pb.AuthRoleRevokeRequest{Role: role, Key: key})
+	return (*AuthRoleRevokeResponse)(resp), rpctypes.Error(err)
 }
 
 func StrToPermissionType(s string) (PermissionType, error) {

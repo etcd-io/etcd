@@ -74,8 +74,11 @@ func (as *AuthServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*p
 }
 
 func (as *AuthServer) RoleRevoke(ctx context.Context, r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error) {
-	plog.Info("not implemented yet")
-	return nil, nil
+	resp, err := as.authenticator.RoleRevoke(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
 }
 
 func (as *AuthServer) RoleGrant(ctx context.Context, r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error) {

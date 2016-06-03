@@ -619,6 +619,8 @@ message AuthRoleGrantRequest {
 }
 
 message AuthRoleRevokeRequest {
+  string role = 1;
+  string key = 2;
 }
 
 message AuthEnableResponse {

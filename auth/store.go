@@ -88,6 +88,9 @@ type AuthStore interface {
 	// RoleGet gets the detailed information of a role
 	RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error)
 
+	// RoleRevoke gets the detailed information of a role
+	RoleRevoke(r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error)
+
 	// UsernameFromToken gets a username from the given Token
 	UsernameFromToken(token string) (string, bool)
 
@@ -387,6 +390,42 @@ func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse,
 	}
 
 	return &resp, nil
+}
+
+func (as *authStore) RoleRevoke(r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrRoleNotFound
+	}
+
+	role := &authpb.Role{}
+	err := role.Unmarshal(vs[0])
+	if err != nil {
+		return nil, err
+	}
+
+	updatedRole := &authpb.Role{}
+	updatedRole.Name = role.Name
+
+	for _, perm := range role.KeyPermission {
+		if !bytes.Equal(perm.Key, []byte(r.Key)) {
+			updatedRole.KeyPermission = append(updatedRole.KeyPermission, perm)
+		}
+	}
+
+	marshaledRole, merr := updatedRole.Marshal()
+	if merr != nil {
+		return nil, merr
+	}
+
+	tx.UnsafePut(authRolesBucketName, updatedRole.Name, marshaledRole)
+
+	plog.Noticef("revoked key %s from role %s", r.Key, r.Role)
+	return &pb.AuthRoleRevokeResponse{}, nil
 }
 
 func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
