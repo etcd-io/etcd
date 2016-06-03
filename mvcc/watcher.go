@@ -117,13 +117,18 @@ func (ws *watchStream) Chan() <-chan WatchResponse {
 }
 
 func (ws *watchStream) Cancel(id WatchID) error {
+	ws.mu.Lock()
 	cancel, ok := ws.cancels[id]
+	ok = ok && !ws.closed
+	if ok {
+		delete(ws.cancels, id)
+		delete(ws.watchers, id)
+	}
+	ws.mu.Unlock()
 	if !ok {
 		return ErrWatcherNotExist
 	}
 	cancel()
-	delete(ws.cancels, id)
-	delete(ws.watchers, id)
 	return nil
 }
 
