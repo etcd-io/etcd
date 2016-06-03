@@ -51,13 +51,13 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 		if !ok {
 			panic("bad compare value")
 		}
-		cmp.TargetUnion = &pb.Compare_Value{Value: []byte(val)}
+		cmp.OneofTargetUnion = &pb.Compare_Value{Value: []byte(val)}
 	case pb.Compare_VERSION:
-		cmp.TargetUnion = &pb.Compare_Version{Version: mustInt64(v)}
+		cmp.OneofTargetUnion = &pb.Compare_Version{Version: mustInt64(v)}
 	case pb.Compare_CREATE:
-		cmp.TargetUnion = &pb.Compare_CreateRevision{CreateRevision: mustInt64(v)}
+		cmp.OneofTargetUnion = &pb.Compare_CreateRevision{CreateRevision: mustInt64(v)}
 	case pb.Compare_MOD:
-		cmp.TargetUnion = &pb.Compare_ModRevision{ModRevision: mustInt64(v)}
+		cmp.OneofTargetUnion = &pb.Compare_ModRevision{ModRevision: mustInt64(v)}
 	default:
 		panic("Unknown compare type")
 	}

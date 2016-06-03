@@ -127,7 +127,7 @@ func (s *simplePrinter) Txn(resp v3.TxnResponse) {
 
 	for _, r := range resp.Responses {
 		fmt.Println("")
-		switch v := r.Response.(type) {
+		switch v := r.OneofResponse.(type) {
 		case *pb.ResponseUnion_ResponseDeleteRange:
 			s.Del((v3.DeleteResponse)(*v.ResponseDeleteRange))
 		case *pb.ResponseUnion_ResponsePut:

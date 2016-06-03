@@ -61,13 +61,13 @@ func (op Op) toRequestUnion() *pb.RequestUnion {
 			r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
 			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
 		}
-		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestRange{RequestRange: r}}
+		return &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestRange{RequestRange: r}}
 	case tPut:
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
-		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: r}}
+		return &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestPut{RequestPut: r}}
 	case tDeleteRange:
 		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
-		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{RequestDeleteRange: r}}
+		return &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic("Unknown Op")
 	}

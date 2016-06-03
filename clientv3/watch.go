@@ -328,7 +328,7 @@ func (w *watcher) run() {
 						WatchId: pbresp.WatchId,
 					},
 				}
-				req := &pb.WatchRequest{RequestUnion: cr}
+				req := &pb.WatchRequest{OneofRequestUnion: cr}
 				wc.Send(req)
 			}
 		// watch client failed to recv; spawn another if possible
@@ -576,5 +576,5 @@ func (wr *watchRequest) toPB() *pb.WatchRequest {
 		ProgressNotify: wr.progressNotify,
 	}
 	cr := &pb.WatchRequest_CreateRequest{CreateRequest: req}
-	return &pb.WatchRequest{RequestUnion: cr}
+	return &pb.WatchRequest{OneofRequestUnion: cr}
 }
