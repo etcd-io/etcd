@@ -327,11 +327,13 @@ func (c *Client) connWait(ctx context.Context, err error) (*grpc.ClientConn, err
 	c.connStartRetry(err)
 	select {
 	case <-ctx.Done():
+		fmt.Println("[DEBUG]", time.Now(), "connWait ctx.Err()", ctx.Err())
 		return nil, ctx.Err()
 	case <-ch:
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	fmt.Println("[DEBUG]", time.Now(), "connWait c.lastConnErr", c.lastConnErr)
 	return c.conn, c.lastConnErr
 }
 

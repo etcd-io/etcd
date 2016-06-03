@@ -15,7 +15,9 @@
 package clientv3
 
 import (
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -149,9 +151,12 @@ func (txn *txn) Commit() (*TxnResponse, error) {
 			txn.kv.rc.reconnect(err)
 			return nil, rpctypes.Error(err)
 		}
+		fmt.Println("[DEBUG]", time.Now(), "reconnectWait started!")
 		if nerr := txn.kv.rc.reconnectWait(txn.ctx, err); nerr != nil {
+			fmt.Println("[DEBUG]", time.Now(), "reconnectWait error!", nerr)
 			return nil, nerr
 		}
+		fmt.Println("[DEBUG]", time.Now(), "reconnectWait continues!")
 	}
 }
 
