@@ -163,7 +163,9 @@ Empty field.
 
 ##### message `AuthRoleGetRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-Empty field.
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| role |  | string |
 
 
 
@@ -172,6 +174,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+| perm |  | (slice of) authpb.Permission |
 
 
 
@@ -258,7 +261,9 @@ Empty field.
 
 ##### message `AuthUserGetRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-Empty field.
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| name |  | string |
 
 
 
@@ -267,6 +272,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+| roles |  | (slice of) string |
 
 
 
@@ -345,7 +351,7 @@ CompactionRequest compacts the key-value store up to a given revision. All super
 | result | result is logical comparison operation for this comparison. | CompareResult |
 | target | target is the key-value field to inspect for the comparison. | CompareTarget |
 | key | key is the subject key for the comparison operation. | bytes |
-| target_union |  | oneof |
+| oneof_target_union |  | oneof |
 | version | version is the version of the given key | int64 |
 | create_revision | create_revision is the creation revision of the given key | int64 |
 | mod_revision | mod_revision is the last modified revision of the given key. | int64 |
@@ -576,7 +582,7 @@ Empty field.
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
-| request | request is a union of request types accepted by a transaction. | oneof |
+| oneof_request | request is a union of request types accepted by a transaction. | oneof |
 | request_range |  | RangeRequest |
 | request_put |  | PutRequest |
 | request_delete_range |  | DeleteRangeRequest |
@@ -598,7 +604,7 @@ Empty field.
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
-| response | response is a union of response types returned by a transaction. | oneof |
+| oneof_response | response is a union of response types returned by a transaction. | oneof |
 | response_range |  | RangeResponse |
 | response_put |  | PutResponse |
 | response_delete_range |  | DeleteRangeResponse |
@@ -685,7 +691,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
-| request_union | request_union is a request to either create a new watcher or cancel an existing watcher. | oneof |
+| oneof_request_union | request_union is a request to either create a new watcher or cancel an existing watcher. | oneof |
 | create_request |  | WatchCreateRequest |
 | cancel_request |  | WatchCancelRequest |
 
