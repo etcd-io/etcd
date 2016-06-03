@@ -461,9 +461,9 @@ When the `--proxy` flag is set, etcd runs in [proxy mode][proxy]. This proxy mod
 
 To setup an etcd cluster with proxies of v2 API, please read the the [clustering doc in etcd 2.3 release][clustering_etcd2].
 
-[conf-adv-client]: configuration.md#-advertise-client-urls
-[conf-listen-client]: configuration.md#-listen-client-urls
-[discovery-proto]: dev-internal/discovery_protocol.md
+[conf-adv-client]: configuration.md#--advertise-client-urls
+[conf-listen-client]: configuration.md#--listen-client-urls
+[discovery-proto]: ../dev-internal/discovery_protocol.md
 [rfc-srv]: http://www.ietf.org/rfc/rfc2052.txt
 [runtime-conf]: runtime-configuration.md
 [runtime-reconf-design]: runtime-reconf-design.md

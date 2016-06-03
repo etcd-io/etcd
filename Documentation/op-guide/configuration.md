@@ -8,8 +8,6 @@ The [official etcd ports][iana-ports] are 2379 for client requests and 2380 for 
 
 To start etcd automatically using custom settings at startup in Linux, using a [systemd][systemd-intro] unit is highly recommended.
 
-[systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
-
 ## Member Flags
 
 ### --name
@@ -39,7 +37,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + env variable: ETCD_HEARTBEAT_INTERVAL
 
 ### --election-timeout
-+ Time (in milliseconds) for an election to timeout. See [Documentation/tuning.md](tuning.md#time-parameters) for details.
++ Time (in milliseconds) for an election to timeout. See [Documentation/tuning.md][tuning] for details.
 + default: "1000"
 + env variable: ETCD_ELECTION_TIMEOUT
 
@@ -281,9 +279,7 @@ Follow the instructions when using these flags.
 [discovery]: clustering.md#discovery
 [iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
 [proxy]: ../v2/proxy.md
-[reconfig]: runtime-configuration.md
 [restore]: ../v2/admin_guide.md#restoring-a-backup
-[rfc-v3]: rfc/v3api.md
 [security]: security.md
 [systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
-[tuning]: tuning.md#time-parameters
+[tuning]: ../tuning.md#time-parameters
