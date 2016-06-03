@@ -292,6 +292,9 @@ func newClient(cfg *Config) (*Client, error) {
 func (c *Client) ActiveConnection() *grpc.ClientConn {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+	if c.conn == nil {
+		panic("trying to return nil active connection")
+	}
 	return c.conn
 }
 
