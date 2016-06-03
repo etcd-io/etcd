@@ -67,6 +67,7 @@ type applierV3 interface {
 	RoleGrant(ua *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
 	RoleGet(ua *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error)
 	RoleRevoke(ua *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error)
+	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 }
 
 type applierV3backend struct {
@@ -126,6 +127,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.RoleGet(r.AuthRoleGet)
 	case r.AuthRoleRevoke != nil:
 		ar.resp, ar.err = s.applyV3.RoleRevoke(r.AuthRoleRevoke)
+	case r.AuthRoleDelete != nil:
+		ar.resp, ar.err = s.applyV3.RoleDelete(r.AuthRoleDelete)
 	default:
 		panic("not implemented")
 	}
@@ -566,6 +569,10 @@ func (a *applierV3backend) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetRes
 
 func (a *applierV3backend) RoleRevoke(r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error) {
 	return a.s.AuthStore().RoleRevoke(r)
+}
+
+func (a *applierV3backend) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
+	return a.s.AuthStore().RoleDelete(r)
 }
 
 type quotaApplierV3 struct {

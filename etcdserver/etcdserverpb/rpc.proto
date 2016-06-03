@@ -609,6 +609,7 @@ message AuthRoleGetRequest {
 }
 
 message AuthRoleDeleteRequest {
+  string role = 1;
 }
 
 message AuthRoleGrantRequest {

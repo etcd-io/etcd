@@ -48,6 +48,7 @@ message InternalRaftRequest {
   AuthRoleGetRequest auth_role_get = 1020;
   AuthUserRevokeRequest auth_user_revoke = 1021;
   AuthRoleRevokeRequest auth_role_revoke = 1022;
+  AuthRoleDeleteRequest auth_role_delete = 1023;
 }
 
 message EmptyResponse {
