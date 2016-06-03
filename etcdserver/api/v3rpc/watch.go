@@ -149,7 +149,7 @@ func (sws *serverWatchStream) recvLoop() error {
 			return err
 		}
 
-		switch uv := req.RequestUnion.(type) {
+		switch uv := req.OneofRequestUnion.(type) {
 		case *pb.WatchRequest_CreateRequest:
 			if uv.CreateRequest == nil {
 				break

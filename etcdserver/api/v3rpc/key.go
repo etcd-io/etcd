@@ -177,7 +177,7 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 	// check put overlap
 	keys := make(map[string]struct{})
 	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestUnion_RequestPut)
+		tv, ok := requ.OneofRequest.(*pb.RequestUnion_RequestPut)
 		if !ok {
 			continue
 		}
@@ -205,7 +205,7 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 
 	// check put overlap with deletes
 	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestUnion_RequestDeleteRange)
+		tv, ok := requ.OneofRequest.(*pb.RequestUnion_RequestDeleteRange)
 		if !ok {
 			continue
 		}
@@ -232,7 +232,7 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 
 func checkRequestUnion(u *pb.RequestUnion) error {
 	// TODO: ensure only one of the field is set.
-	switch uv := u.Request.(type) {
+	switch uv := u.OneofRequest.(type) {
 	case *pb.RequestUnion_RequestRange:
 		if uv.RequestRange != nil {
 			return checkRangeRequest(uv.RequestRange)
