@@ -521,6 +521,9 @@ func (w *watcher) openWatchClient() (ws pb.Watch_WatchClient, err error) {
 			return nil, v3rpc.Error(err)
 		}
 		w.rc.release()
+		if nerr := w.rc.reconnectWait(w.ctx, err); nerr != nil {
+			return nil, v3rpc.Error(nerr)
+		}
 	}
 	return ws, nil
 }
