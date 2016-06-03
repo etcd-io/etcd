@@ -279,7 +279,7 @@ type streamReader struct {
 func (r *streamReader) start() {
 	r.stopc = make(chan struct{})
 	r.done = make(chan struct{})
-	if r.errorc != nil {
+	if r.errorc == nil {
 		r.errorc = r.tr.ErrorC
 	}
 
