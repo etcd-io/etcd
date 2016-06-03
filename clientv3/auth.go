@@ -34,6 +34,7 @@ type (
 	AuthUserChangePasswordResponse pb.AuthUserChangePasswordResponse
 	AuthUserGrantResponse          pb.AuthUserGrantResponse
 	AuthUserGetResponse            pb.AuthUserGetResponse
+	AuthUserRevokeResponse         pb.AuthUserRevokeResponse
 	AuthRoleAddResponse            pb.AuthRoleAddResponse
 	AuthRoleGrantResponse          pb.AuthRoleGrantResponse
 	AuthRoleGetResponse            pb.AuthRoleGetResponse
@@ -68,6 +69,9 @@ type Auth interface {
 
 	// UserGet gets a detailed information of a user.
 	UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error)
+
+	// UserRevoke revokes a role of a user.
+	UserRevoke(ctx context.Context, name string, role string) (*AuthUserRevokeResponse, error)
 
 	// RoleAdd adds a new role to an etcd cluster.
 	RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error)
@@ -128,6 +132,11 @@ func (auth *auth) UserGrant(ctx context.Context, user string, role string) (*Aut
 func (auth *auth) UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error) {
 	resp, err := auth.remote.UserGet(ctx, &pb.AuthUserGetRequest{Name: name})
 	return (*AuthUserGetResponse)(resp), rpctypes.Error(err)
+}
+
+func (auth *auth) UserRevoke(ctx context.Context, name string, role string) (*AuthUserRevokeResponse, error) {
+	resp, err := auth.remote.UserRevoke(ctx, &pb.AuthUserRevokeRequest{Name: name, Role: role})
+	return (*AuthUserRevokeResponse)(resp), rpctypes.Error(err)
 }
 
 func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error) {

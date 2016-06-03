@@ -76,6 +76,9 @@ type AuthStore interface {
 	// UserGet gets the detailed information of a user
 	UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error)
 
+	// UserRevoke revokes a role of a user
+	UserRevoke(r *pb.AuthUserRevokeRequest) (*pb.AuthUserRevokeResponse, error)
+
 	// RoleAdd adds a new role
 	RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
 
@@ -322,6 +325,44 @@ func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse,
 	}
 
 	return &resp, nil
+}
+
+func (as *authStore) UserRevoke(r *pb.AuthUserRevokeRequest) (*pb.AuthUserRevokeResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrUserNotFound
+	}
+
+	user := &authpb.User{}
+	err := user.Unmarshal(vs[0])
+	if err != nil {
+		return nil, err
+	}
+
+	updatedUser := &authpb.User{}
+	updatedUser.Name = user.Name
+	updatedUser.Password = user.Password
+
+	// TODO(mitake): return error if the target role doesn't exist in the granted roles of the user
+	for _, role := range user.Roles {
+		if strings.Compare(role, r.Role) != 0 {
+			updatedUser.Roles = append(updatedUser.Roles, role)
+		}
+	}
+
+	marshaledUser, merr := updatedUser.Marshal()
+	if merr != nil {
+		return nil, merr
+	}
+
+	tx.UnsafePut(authUsersBucketName, updatedUser.Name, marshaledUser)
+
+	plog.Noticef("revoked role %s from user %s", r.Role, r.Name)
+	return &pb.AuthUserRevokeResponse{}, nil
 }
 
 func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {

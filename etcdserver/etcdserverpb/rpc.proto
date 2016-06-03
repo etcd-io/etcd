@@ -595,6 +595,8 @@ message AuthUserGrantRequest {
 }
 
 message AuthUserRevokeRequest {
+  string name = 1;
+  string role = 2;
 }
 
 message AuthRoleAddRequest {
