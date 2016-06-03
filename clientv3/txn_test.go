@@ -20,7 +20,7 @@ import (
 )
 
 func TestTxnPanics(t *testing.T) {
-	kv := NewKV(&Client{})
+	kv := &kv{}
 
 	errc := make(chan string)
 	df := func() {
