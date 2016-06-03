@@ -45,6 +45,7 @@ message InternalRaftRequest {
   AuthRoleGrantRequest auth_role_grant = 1017;
   AuthenticateRequest authenticate = 1018;
   AuthUserGetRequest auth_user_get = 1019;
+  AuthRoleGetRequest auth_role_get = 1020;
 }
 
 message EmptyResponse {

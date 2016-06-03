@@ -82,6 +82,9 @@ type AuthStore interface {
 	// RoleGrant grants a permission to a role
 	RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
 
+	// RoleGet gets the detailed information of a role
+	RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error)
+
 	// UsernameFromToken gets a username from the given Token
 	UsernameFromToken(token string) (string, bool)
 
@@ -316,6 +319,30 @@ func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse,
 	var resp pb.AuthUserGetResponse
 	for _, role := range user.Roles {
 		resp.Roles = append(resp.Roles, role)
+	}
+
+	return &resp, nil
+}
+
+func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrRoleNotFound
+	}
+
+	role := &authpb.Role{}
+	err := role.Unmarshal(vs[0])
+	if err != nil {
+		return nil, err
+	}
+
+	var resp pb.AuthRoleGetResponse
+	for _, perm := range role.KeyPermission {
+		resp.Perm = append(resp.Perm, perm)
 	}
 
 	return &resp, nil
