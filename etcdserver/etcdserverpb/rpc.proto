@@ -231,7 +231,7 @@ message DeleteRangeResponse {
 
 message RequestUnion {
   // request is a union of request types accepted by a transaction.
-  oneof request {
+  oneof oneof_request {
     RangeRequest request_range = 1;
     PutRequest request_put = 2;
     DeleteRangeRequest request_delete_range = 3;
@@ -240,7 +240,7 @@ message RequestUnion {
 
 message ResponseUnion {
   // response is a union of response types returned by a transaction.
-  oneof response {
+  oneof oneof_response {
     RangeResponse response_range = 1;
     PutResponse response_put = 2;
     DeleteRangeResponse response_delete_range = 3;
@@ -265,7 +265,7 @@ message Compare {
   CompareTarget target = 2;
   // key is the subject key for the comparison operation.
   bytes key = 3;
-  oneof target_union {
+  oneof oneof_target_union {
     // version is the version of the given key
     int64 version = 4;
     // create_revision is the creation revision of the given key
@@ -355,7 +355,7 @@ message SnapshotResponse {
 
 message WatchRequest {
   // request_union is a request to either create a new watcher or cancel an existing watcher.
-  oneof request_union {
+  oneof oneof_request_union {
     WatchCreateRequest create_request = 1;
     WatchCancelRequest cancel_request = 2;
   }

@@ -158,7 +158,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 	addSuccessOps := func(txn *pb.TxnRequest) {
 		txn.Success = append(txn.Success,
 			&pb.RequestUnion{
-				Request: &pb.RequestUnion_RequestPut{
+				OneofRequest: &pb.RequestUnion_RequestPut{
 					RequestPut: &pb.PutRequest{
 						Key:   keyf(),
 						Value: []byte("bar"),
@@ -169,7 +169,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 	addFailureOps := func(txn *pb.TxnRequest) {
 		txn.Failure = append(txn.Failure,
 			&pb.RequestUnion{
-				Request: &pb.RequestUnion_RequestPut{
+				OneofRequest: &pb.RequestUnion_RequestPut{
 					RequestPut: &pb.PutRequest{
 						Key:   keyf(),
 						Value: []byte("bar"),
@@ -202,20 +202,20 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	putreq := &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("def")}}}
-	delKeyReq := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
+	putreq := &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("def")}}}
+	delKeyReq := &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestDeleteRange{
 		RequestDeleteRange: &pb.DeleteRangeRequest{
 			Key: []byte("abc"),
 		},
 	},
 	}
-	delInRangeReq := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
+	delInRangeReq := &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestDeleteRange{
 		RequestDeleteRange: &pb.DeleteRangeRequest{
 			Key: []byte("a"), RangeEnd: []byte("b"),
 		},
 	},
 	}
-	delOutOfRangeReq := &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{
+	delOutOfRangeReq := &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestDeleteRange{
 		RequestDeleteRange: &pb.DeleteRangeRequest{
 			Key: []byte("abb"), RangeEnd: []byte("abc"),
 		},
@@ -276,7 +276,7 @@ func TestV3TxnRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	txnget := &pb.RequestUnion{Request: &pb.RequestUnion_RequestRange{RequestRange: &pb.RangeRequest{Key: []byte("abc")}}}
+	txnget := &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestRange{RequestRange: &pb.RangeRequest{Key: []byte("abc")}}}
 	txn := &pb.TxnRequest{Success: []*pb.RequestUnion{txnget}}
 	tresp, err := kvc.Txn(context.TODO(), txn)
 	if err != nil {
@@ -288,7 +288,7 @@ func TestV3TxnRevision(t *testing.T) {
 		t.Fatalf("got rev %d, wanted rev %d", tresp.Header.Revision, presp.Header.Revision)
 	}
 
-	txnput := &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("123")}}}
+	txnput := &pb.RequestUnion{OneofRequest: &pb.RequestUnion_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("123")}}}
 	txn = &pb.TxnRequest{Success: []*pb.RequestUnion{txnput}}
 	tresp, err = kvc.Txn(context.TODO(), txn)
 	if err != nil {
@@ -321,7 +321,7 @@ func TestV3PutMissingLease(t *testing.T) {
 		func() {
 			txn := &pb.TxnRequest{}
 			txn.Success = append(txn.Success, &pb.RequestUnion{
-				Request: &pb.RequestUnion_RequestPut{
+				OneofRequest: &pb.RequestUnion_RequestPut{
 					RequestPut: preq}})
 			if tresp, err := kvc.Txn(context.TODO(), txn); err == nil {
 				t.Errorf("succeeded txn success. req: %v. resp: %v", txn, tresp)
@@ -331,7 +331,7 @@ func TestV3PutMissingLease(t *testing.T) {
 		func() {
 			txn := &pb.TxnRequest{}
 			txn.Failure = append(txn.Failure, &pb.RequestUnion{
-				Request: &pb.RequestUnion_RequestPut{
+				OneofRequest: &pb.RequestUnion_RequestPut{
 					RequestPut: preq}})
 			cmp := &pb.Compare{
 				Result: pb.Compare_GREATER,
@@ -348,10 +348,10 @@ func TestV3PutMissingLease(t *testing.T) {
 			txn := &pb.TxnRequest{}
 			rreq := &pb.RangeRequest{Key: []byte("bar")}
 			txn.Success = append(txn.Success, &pb.RequestUnion{
-				Request: &pb.RequestUnion_RequestRange{
+				OneofRequest: &pb.RequestUnion_RequestRange{
 					RequestRange: rreq}})
 			txn.Failure = append(txn.Failure, &pb.RequestUnion{
-				Request: &pb.RequestUnion_RequestPut{
+				OneofRequest: &pb.RequestUnion_RequestPut{
 					RequestPut: preq}})
 			if tresp, err := kvc.Txn(context.TODO(), txn); err != nil {
 				t.Errorf("failed good txn. req: %v. resp: %v", txn, tresp)
@@ -492,12 +492,12 @@ func TestV3TxnInvaildRange(t *testing.T) {
 	// future rev
 	txn := &pb.TxnRequest{}
 	txn.Success = append(txn.Success, &pb.RequestUnion{
-		Request: &pb.RequestUnion_RequestPut{
+		OneofRequest: &pb.RequestUnion_RequestPut{
 			RequestPut: preq}})
 
 	rreq := &pb.RangeRequest{Key: []byte("foo"), Revision: 100}
 	txn.Success = append(txn.Success, &pb.RequestUnion{
-		Request: &pb.RequestUnion_RequestRange{
+		OneofRequest: &pb.RequestUnion_RequestRange{
 			RequestRange: rreq}})
 
 	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrGRPCFutureRev {
@@ -505,7 +505,7 @@ func TestV3TxnInvaildRange(t *testing.T) {
 	}
 
 	// compacted rev
-	tv, _ := txn.Success[1].Request.(*pb.RequestUnion_RequestRange)
+	tv, _ := txn.Success[1].OneofRequest.(*pb.RequestUnion_RequestRange)
 	tv.RequestRange.Revision = 1
 	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrGRPCCompacted {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCCompacted)
@@ -585,7 +585,7 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 
 	// test big txn
 	puttxn := &pb.RequestUnion{
-		Request: &pb.RequestUnion_RequestPut{
+		OneofRequest: &pb.RequestUnion_RequestPut{
 			RequestPut: &pb.PutRequest{
 				Key:   key,
 				Value: bigbuf,
@@ -1054,7 +1054,7 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 		t.Fatalf("wAPI.Watch error: %v", err)
 	}
 	wreq := &pb.WatchRequest{
-		RequestUnion: &pb.WatchRequest_CreateRequest{
+		OneofRequestUnion: &pb.WatchRequest_CreateRequest{
 			CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo")},
 		},
 	}

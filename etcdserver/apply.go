@@ -333,23 +333,23 @@ func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
 	var result int
 	switch c.Target {
 	case pb.Compare_VALUE:
-		tv, _ := c.TargetUnion.(*pb.Compare_Value)
+		tv, _ := c.OneofTargetUnion.(*pb.Compare_Value)
 		if tv != nil {
 			result = bytes.Compare(ckv.Value, tv.Value)
 		}
 	case pb.Compare_CREATE:
-		tv, _ := c.TargetUnion.(*pb.Compare_CreateRevision)
+		tv, _ := c.OneofTargetUnion.(*pb.Compare_CreateRevision)
 		if tv != nil {
 			result = compareInt64(ckv.CreateRevision, tv.CreateRevision)
 		}
 
 	case pb.Compare_MOD:
-		tv, _ := c.TargetUnion.(*pb.Compare_ModRevision)
+		tv, _ := c.OneofTargetUnion.(*pb.Compare_ModRevision)
 		if tv != nil {
 			result = compareInt64(ckv.ModRevision, tv.ModRevision)
 		}
 	case pb.Compare_VERSION:
-		tv, _ := c.TargetUnion.(*pb.Compare_Version)
+		tv, _ := c.OneofTargetUnion.(*pb.Compare_Version)
 		if tv != nil {
 			result = compareInt64(ckv.Version, tv.Version)
 		}
@@ -373,14 +373,14 @@ func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
 }
 
 func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestUnion) *pb.ResponseUnion {
-	switch tv := union.Request.(type) {
+	switch tv := union.OneofRequest.(type) {
 	case *pb.RequestUnion_RequestRange:
 		if tv.RequestRange != nil {
 			resp, err := a.Range(txnID, tv.RequestRange)
 			if err != nil {
 				panic("unexpected error during txn")
 			}
-			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseRange{ResponseRange: resp}}
+			return &pb.ResponseUnion{OneofResponse: &pb.ResponseUnion_ResponseRange{ResponseRange: resp}}
 		}
 	case *pb.RequestUnion_RequestPut:
 		if tv.RequestPut != nil {
@@ -388,7 +388,7 @@ func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestUnion) *pb.R
 			if err != nil {
 				panic("unexpected error during txn")
 			}
-			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponsePut{ResponsePut: resp}}
+			return &pb.ResponseUnion{OneofResponse: &pb.ResponseUnion_ResponsePut{ResponsePut: resp}}
 		}
 	case *pb.RequestUnion_RequestDeleteRange:
 		if tv.RequestDeleteRange != nil {
@@ -396,7 +396,7 @@ func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestUnion) *pb.R
 			if err != nil {
 				panic("unexpected error during txn")
 			}
-			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseDeleteRange{ResponseDeleteRange: resp}}
+			return &pb.ResponseUnion{OneofResponse: &pb.ResponseUnion_ResponseDeleteRange{ResponseDeleteRange: resp}}
 		}
 	default:
 		// empty union
@@ -631,7 +631,7 @@ func (s *kvSortByValue) Less(i, j int) bool {
 
 func (a *applierV3backend) checkRequestLeases(reqs []*pb.RequestUnion) error {
 	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestUnion_RequestPut)
+		tv, ok := requ.OneofRequest.(*pb.RequestUnion_RequestPut)
 		if !ok {
 			continue
 		}
@@ -648,7 +648,7 @@ func (a *applierV3backend) checkRequestLeases(reqs []*pb.RequestUnion) error {
 
 func (a *applierV3backend) checkRequestRange(reqs []*pb.RequestUnion) error {
 	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestUnion_RequestRange)
+		tv, ok := requ.OneofRequest.(*pb.RequestUnion_RequestRange)
 		if !ok {
 			continue
 		}
