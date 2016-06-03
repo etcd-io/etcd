@@ -142,6 +142,58 @@ func TestNodePropose(t *testing.T) {
 	}
 }
 
+// TestNodeReadIndex ensures that node.ReadIndex sends the MsgReadIndex message to the underlying raft.
+// It also ensures that ReadState can be read out through ready chan.
+func TestNodeReadIndex(t *testing.T) {
+	msgs := []raftpb.Message{}
+	appendStep := func(r *raft, m raftpb.Message) {
+		msgs = append(msgs, m)
+	}
+	wreadIndex := uint64(1)
+	wrequestCtx := []byte("somedata")
+
+	n := newNode()
+	s := NewMemoryStorage()
+	r := newTestRaft(1, []uint64{1}, 10, 1, s)
+	r.readState.Index = wreadIndex
+	r.readState.RequestCtx = wrequestCtx
+	go n.run(r)
+	n.Campaign(context.TODO())
+	for {
+		rd := <-n.Ready()
+		if rd.Index != wreadIndex {
+			t.Errorf("ReadIndex = %d, want %d", rd.Index, wreadIndex)
+		}
+
+		if !reflect.DeepEqual(rd.RequestCtx, wrequestCtx) {
+			t.Errorf("RequestCtx = %v, want %v", rd.RequestCtx, wrequestCtx)
+		}
+
+		s.Append(rd.Entries)
+
+		if rd.SoftState.Lead == r.id {
+			n.Advance()
+			break
+		}
+		n.Advance()
+	}
+
+	r.step = appendStep
+	wrequestCtx = []byte("somedata2")
+	n.ReadIndex(context.TODO(), r.id, wrequestCtx)
+	n.Stop()
+
+	if len(msgs) != 1 {
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
+	}
+	if msgs[0].Type != raftpb.MsgReadIndex {
+		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgReadIndex)
+	}
+	if !reflect.DeepEqual(msgs[0].Entries[0].Data, wrequestCtx) {
+		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, wrequestCtx)
+	}
+}
+
 // TestNodeProposeConfig ensures that node.ProposeConfChange sends the given configuration proposal
 // to the underlying raft.
 func TestNodeProposeConfig(t *testing.T) {

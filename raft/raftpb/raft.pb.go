@@ -90,6 +90,8 @@ const (
 	MsgCheckQuorum    MessageType = 12
 	MsgTransferLeader MessageType = 13
 	MsgTimeoutNow     MessageType = 14
+	MsgReadIndex      MessageType = 15
+	MsgReadIndexResp  MessageType = 16
 )
 
 var MessageType_name = map[int32]string{
@@ -108,6 +110,8 @@ var MessageType_name = map[int32]string{
 	12: "MsgCheckQuorum",
 	13: "MsgTransferLeader",
 	14: "MsgTimeoutNow",
+	15: "MsgReadIndex",
+	16: "MsgReadIndexResp",
 }
 var MessageType_value = map[string]int32{
 	"MsgHup":            0,
@@ -125,6 +129,8 @@ var MessageType_value = map[string]int32{
 	"MsgCheckQuorum":    12,
 	"MsgTransferLeader": 13,
 	"MsgTimeoutNow":     14,
+	"MsgReadIndex":      15,
+	"MsgReadIndexResp":  16,
 }
 
 func (x MessageType) Enum() *MessageType {
