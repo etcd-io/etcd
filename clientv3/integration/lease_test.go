@@ -248,3 +248,93 @@ func TestLeaseKeepAliveNotFound(t *testing.T) {
 		}
 	}
 }
+
+func TestLeaseGrantErrConnClosed(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	le := clientv3.NewLease(cli)
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		_, err := le.Grant(context.TODO(), 5)
+		if err != nil && err != rpctypes.ErrConnClosed {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		}
+	}()
+
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+	clus.TakeClient(0)
+
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("le.Grant took too long")
+	case <-donec:
+	}
+}
+
+func TestLeaseGrantNewAfterClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		le := clientv3.NewLease(cli)
+		if _, err := le.Grant(context.TODO(), 5); err != rpctypes.ErrConnClosed {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		}
+		close(donec)
+	}()
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("le.Grant took too long")
+	case <-donec:
+	}
+}
+
+func TestLeaseRevokeNewAfterClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	le := clientv3.NewLease(cli)
+	resp, err := le.Grant(context.TODO(), 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	leaseID := resp.ID
+
+	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		if _, err := le.Revoke(context.TODO(), leaseID); err != rpctypes.ErrConnClosed {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		}
+		close(donec)
+	}()
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("le.Revoke took too long")
+	case <-donec:
+	}
+}
