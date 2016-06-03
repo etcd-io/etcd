@@ -86,5 +86,5 @@ hello
 To learn more about interacting with etcd, read [interacting with etcd section][interacting].
 
 [interacting]: ./interacting_v3.md
-[clustering]: ./clustering.md
+[clustering]: ../op-guide/clustering.md
 
