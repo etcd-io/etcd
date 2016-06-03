@@ -73,7 +73,7 @@ func (p *kvProxy) Close() error {
 }
 
 func requestUnionToOp(union *pb.RequestUnion) clientv3.Op {
-	switch tv := union.Request.(type) {
+	switch tv := union.OneofRequest.(type) {
 	case *pb.RequestUnion_RequestRange:
 		if tv.RequestRange != nil {
 			return RangeRequestToOp(tv.RequestRange)
