@@ -99,8 +99,8 @@ func TestNodeStepUnblock(t *testing.T) {
 				n.done = make(chan struct{})
 			default:
 			}
-		case <-time.After(time.Millisecond * 100):
-			t.Errorf("#%d: failed to unblock step", i)
+		case <-time.After(1 * time.Second):
+			t.Fatalf("#%d: failed to unblock step", i)
 		}
 	}
 }
