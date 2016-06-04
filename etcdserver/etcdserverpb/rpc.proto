@@ -595,6 +595,8 @@ message AuthUserGrantRequest {
 }
 
 message AuthUserRevokeRequest {
+  string name = 1;
+  string role = 2;
 }
 
 message AuthRoleAddRequest {
@@ -607,6 +609,7 @@ message AuthRoleGetRequest {
 }
 
 message AuthRoleDeleteRequest {
+  string role = 1;
 }
 
 message AuthRoleGrantRequest {
@@ -617,6 +620,8 @@ message AuthRoleGrantRequest {
 }
 
 message AuthRoleRevokeRequest {
+  string role = 1;
+  string key = 2;
 }
 
 message AuthEnableResponse {

@@ -35,6 +35,7 @@ func NewUserCommand() *cobra.Command {
 	ac.AddCommand(newUserChangePasswordCommand())
 	ac.AddCommand(newUserGrantCommand())
 	ac.AddCommand(newUserGetCommand())
+	ac.AddCommand(newUserRevokeRoleCommand())
 
 	return ac
 }
@@ -89,6 +90,14 @@ func newUserGetCommand() *cobra.Command {
 		Use:   "get <user name>",
 		Short: "get detailed information of a user",
 		Run:   userGetCommandFunc,
+	}
+}
+
+func newUserRevokeRoleCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "revoke-role <user name> <role name>",
+		Short: "revoke a role from from a user",
+		Run:   userRevokeRoleCommandFunc,
 	}
 }
 
@@ -181,6 +190,20 @@ func userGetCommandFunc(cmd *cobra.Command, args []string) {
 		fmt.Printf(" %s", role)
 	}
 	fmt.Printf("\n")
+}
+
+// userRevokeRoleCommandFunc executes the "user revoke-role" command.
+func userRevokeRoleCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 2 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user revoke-role requires user name and role name as its argument."))
+	}
+
+	_, err := mustClientFromCmd(cmd).Auth.UserRevoke(context.TODO(), args[0], args[1])
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Printf("Role %s is revoked from user %s\n", args[1], args[0])
 }
 
 func readPasswordInteractive(name string) string {

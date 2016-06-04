@@ -76,6 +76,9 @@ type AuthStore interface {
 	// UserGet gets the detailed information of a user
 	UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error)
 
+	// UserRevoke revokes a role of a user
+	UserRevoke(r *pb.AuthUserRevokeRequest) (*pb.AuthUserRevokeResponse, error)
+
 	// RoleAdd adds a new role
 	RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
 
@@ -84,6 +87,12 @@ type AuthStore interface {
 
 	// RoleGet gets the detailed information of a role
 	RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error)
+
+	// RoleRevoke gets the detailed information of a role
+	RoleRevoke(r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error)
+
+	// RoleDelete gets the detailed information of a role
+	RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 
 	// UsernameFromToken gets a username from the given Token
 	UsernameFromToken(token string) (string, bool)
@@ -324,6 +333,44 @@ func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse,
 	return &resp, nil
 }
 
+func (as *authStore) UserRevoke(r *pb.AuthUserRevokeRequest) (*pb.AuthUserRevokeResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrUserNotFound
+	}
+
+	user := &authpb.User{}
+	err := user.Unmarshal(vs[0])
+	if err != nil {
+		return nil, err
+	}
+
+	updatedUser := &authpb.User{}
+	updatedUser.Name = user.Name
+	updatedUser.Password = user.Password
+
+	// TODO(mitake): return error if the target role doesn't exist in the granted roles of the user
+	for _, role := range user.Roles {
+		if strings.Compare(role, r.Role) != 0 {
+			updatedUser.Roles = append(updatedUser.Roles, role)
+		}
+	}
+
+	marshaledUser, merr := updatedUser.Marshal()
+	if merr != nil {
+		return nil, merr
+	}
+
+	tx.UnsafePut(authUsersBucketName, updatedUser.Name, marshaledUser)
+
+	plog.Noticef("revoked role %s from user %s", r.Role, r.Name)
+	return &pb.AuthUserRevokeResponse{}, nil
+}
+
 func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
 	tx := as.be.BatchTx()
 	tx.Lock()
@@ -346,6 +393,70 @@ func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse,
 	}
 
 	return &resp, nil
+}
+
+func (as *authStore) RoleRevoke(r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrRoleNotFound
+	}
+
+	role := &authpb.Role{}
+	err := role.Unmarshal(vs[0])
+	if err != nil {
+		return nil, err
+	}
+
+	updatedRole := &authpb.Role{}
+	updatedRole.Name = role.Name
+
+	for _, perm := range role.KeyPermission {
+		if !bytes.Equal(perm.Key, []byte(r.Key)) {
+			updatedRole.KeyPermission = append(updatedRole.KeyPermission, perm)
+		}
+	}
+
+	marshaledRole, merr := updatedRole.Marshal()
+	if merr != nil {
+		return nil, merr
+	}
+
+	tx.UnsafePut(authRolesBucketName, updatedRole.Name, marshaledRole)
+
+	plog.Noticef("revoked key %s from role %s", r.Key, r.Role)
+	return &pb.AuthRoleRevokeResponse{}, nil
+}
+
+func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
+	// TODO(mitake): current scheme of role deletion allows existing users to have the deleted roles
+	//
+	// Assume a case like below:
+	// create a role r1
+	// create a user u1 and grant r1 to u1
+	// delete r1
+	//
+	// After this sequence, u1 is still granted the role r1. So if admin create a new role with the name r1,
+	// the new r1 is automatically granted u1.
+	// In some cases, it would be confusing. So we need to provide an option for deleting the grant relation
+	// from all users.
+
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
+	if len(vs) != 1 {
+		return nil, ErrRoleNotFound
+	}
+
+	tx.UnsafeDelete(authRolesBucketName, []byte(r.Role))
+
+	plog.Noticef("deleted role %s", r.Role)
+	return &pb.AuthRoleDeleteResponse{}, nil
 }
 
 func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
