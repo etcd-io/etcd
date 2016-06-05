@@ -62,11 +62,11 @@ type applierV3 interface {
 	UserChangePassword(ua *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
 	UserGrant(ua *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error)
 	UserGet(ua *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error)
-	UserRevoke(ua *pb.AuthUserRevokeRequest) (*pb.AuthUserRevokeResponse, error)
+	UserRevokeRole(ua *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error)
 	RoleAdd(ua *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
 	RoleGrant(ua *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
 	RoleGet(ua *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error)
-	RoleRevoke(ua *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error)
+	RoleRevokePermission(ua *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error)
 	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 }
 
@@ -117,16 +117,16 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.UserGrant(r.AuthUserGrant)
 	case r.AuthUserGet != nil:
 		ar.resp, ar.err = s.applyV3.UserGet(r.AuthUserGet)
-	case r.AuthUserRevoke != nil:
-		ar.resp, ar.err = s.applyV3.UserRevoke(r.AuthUserRevoke)
+	case r.AuthUserRevokeRole != nil:
+		ar.resp, ar.err = s.applyV3.UserRevokeRole(r.AuthUserRevokeRole)
 	case r.AuthRoleAdd != nil:
 		ar.resp, ar.err = s.applyV3.RoleAdd(r.AuthRoleAdd)
 	case r.AuthRoleGrant != nil:
 		ar.resp, ar.err = s.applyV3.RoleGrant(r.AuthRoleGrant)
 	case r.AuthRoleGet != nil:
 		ar.resp, ar.err = s.applyV3.RoleGet(r.AuthRoleGet)
-	case r.AuthRoleRevoke != nil:
-		ar.resp, ar.err = s.applyV3.RoleRevoke(r.AuthRoleRevoke)
+	case r.AuthRoleRevokePermission != nil:
+		ar.resp, ar.err = s.applyV3.RoleRevokePermission(r.AuthRoleRevokePermission)
 	case r.AuthRoleDelete != nil:
 		ar.resp, ar.err = s.applyV3.RoleDelete(r.AuthRoleDelete)
 	default:
@@ -551,8 +551,8 @@ func (a *applierV3backend) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetRes
 	return a.s.AuthStore().UserGet(r)
 }
 
-func (a *applierV3backend) UserRevoke(r *pb.AuthUserRevokeRequest) (*pb.AuthUserRevokeResponse, error) {
-	return a.s.AuthStore().UserRevoke(r)
+func (a *applierV3backend) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
+	return a.s.AuthStore().UserRevokeRole(r)
 }
 
 func (a *applierV3backend) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
@@ -567,8 +567,8 @@ func (a *applierV3backend) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetRes
 	return a.s.AuthStore().RoleGet(r)
 }
 
-func (a *applierV3backend) RoleRevoke(r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error) {
-	return a.s.AuthStore().RoleRevoke(r)
+func (a *applierV3backend) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
+	return a.s.AuthStore().RoleRevokePermission(r)
 }
 
 func (a *applierV3backend) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {

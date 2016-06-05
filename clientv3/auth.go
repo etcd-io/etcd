@@ -26,20 +26,20 @@ import (
 )
 
 type (
-	AuthEnableResponse             pb.AuthEnableResponse
-	AuthDisableResponse            pb.AuthDisableResponse
-	AuthenticateResponse           pb.AuthenticateResponse
-	AuthUserAddResponse            pb.AuthUserAddResponse
-	AuthUserDeleteResponse         pb.AuthUserDeleteResponse
-	AuthUserChangePasswordResponse pb.AuthUserChangePasswordResponse
-	AuthUserGrantResponse          pb.AuthUserGrantResponse
-	AuthUserGetResponse            pb.AuthUserGetResponse
-	AuthUserRevokeResponse         pb.AuthUserRevokeResponse
-	AuthRoleAddResponse            pb.AuthRoleAddResponse
-	AuthRoleGrantResponse          pb.AuthRoleGrantResponse
-	AuthRoleGetResponse            pb.AuthRoleGetResponse
-	AuthRoleRevokeResponse         pb.AuthRoleRevokeResponse
-	AuthRoleDeleteResponse         pb.AuthRoleDeleteResponse
+	AuthEnableResponse               pb.AuthEnableResponse
+	AuthDisableResponse              pb.AuthDisableResponse
+	AuthenticateResponse             pb.AuthenticateResponse
+	AuthUserAddResponse              pb.AuthUserAddResponse
+	AuthUserDeleteResponse           pb.AuthUserDeleteResponse
+	AuthUserChangePasswordResponse   pb.AuthUserChangePasswordResponse
+	AuthUserGrantResponse            pb.AuthUserGrantResponse
+	AuthUserGetResponse              pb.AuthUserGetResponse
+	AuthUserRevokeRoleResponse       pb.AuthUserRevokeRoleResponse
+	AuthRoleAddResponse              pb.AuthRoleAddResponse
+	AuthRoleGrantResponse            pb.AuthRoleGrantResponse
+	AuthRoleGetResponse              pb.AuthRoleGetResponse
+	AuthRoleRevokePermissionResponse pb.AuthRoleRevokePermissionResponse
+	AuthRoleDeleteResponse           pb.AuthRoleDeleteResponse
 
 	PermissionType authpb.Permission_Type
 )
@@ -72,8 +72,8 @@ type Auth interface {
 	// UserGet gets a detailed information of a user.
 	UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error)
 
-	// UserRevoke revokes a role of a user.
-	UserRevoke(ctx context.Context, name string, role string) (*AuthUserRevokeResponse, error)
+	// UserRevokeRole revokes a role of a user.
+	UserRevokeRole(ctx context.Context, name string, role string) (*AuthUserRevokeRoleResponse, error)
 
 	// RoleAdd adds a new role to an etcd cluster.
 	RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error)
@@ -84,8 +84,8 @@ type Auth interface {
 	// RoleGet gets a detailed information of a role.
 	RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error)
 
-	// RoleRevoke revokes a key from a user.
-	RoleRevoke(ctx context.Context, role string, key string) (*AuthRoleRevokeResponse, error)
+	// RoleRevokePermission revokes a key from a user.
+	RoleRevokePermission(ctx context.Context, role string, key string) (*AuthRoleRevokePermissionResponse, error)
 
 	// RoleDelete deletes a role.
 	RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error)
@@ -142,9 +142,9 @@ func (auth *auth) UserGet(ctx context.Context, name string) (*AuthUserGetRespons
 	return (*AuthUserGetResponse)(resp), rpctypes.Error(err)
 }
 
-func (auth *auth) UserRevoke(ctx context.Context, name string, role string) (*AuthUserRevokeResponse, error) {
-	resp, err := auth.remote.UserRevoke(ctx, &pb.AuthUserRevokeRequest{Name: name, Role: role})
-	return (*AuthUserRevokeResponse)(resp), rpctypes.Error(err)
+func (auth *auth) UserRevokeRole(ctx context.Context, name string, role string) (*AuthUserRevokeRoleResponse, error) {
+	resp, err := auth.remote.UserRevokeRole(ctx, &pb.AuthUserRevokeRoleRequest{Name: name, Role: role})
+	return (*AuthUserRevokeRoleResponse)(resp), rpctypes.Error(err)
 }
 
 func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error) {
@@ -166,9 +166,9 @@ func (auth *auth) RoleGet(ctx context.Context, role string) (*AuthRoleGetRespons
 	return (*AuthRoleGetResponse)(resp), rpctypes.Error(err)
 }
 
-func (auth *auth) RoleRevoke(ctx context.Context, role string, key string) (*AuthRoleRevokeResponse, error) {
-	resp, err := auth.remote.RoleRevoke(ctx, &pb.AuthRoleRevokeRequest{Role: role, Key: key})
-	return (*AuthRoleRevokeResponse)(resp), rpctypes.Error(err)
+func (auth *auth) RoleRevokePermission(ctx context.Context, role string, key string) (*AuthRoleRevokePermissionResponse, error) {
+	resp, err := auth.remote.RoleRevokePermission(ctx, &pb.AuthRoleRevokePermissionRequest{Role: role, Key: key})
+	return (*AuthRoleRevokePermissionResponse)(resp), rpctypes.Error(err)
 }
 
 func (auth *auth) RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error) {

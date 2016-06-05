@@ -143,7 +143,7 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key as its argument."))
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.RoleRevoke(context.TODO(), args[0], args[1])
+	_, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], args[1])
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

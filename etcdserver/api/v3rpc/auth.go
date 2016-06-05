@@ -76,8 +76,8 @@ func (as *AuthServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*p
 	return resp, nil
 }
 
-func (as *AuthServer) RoleRevoke(ctx context.Context, r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevokeResponse, error) {
-	resp, err := as.authenticator.RoleRevoke(ctx, r)
+func (as *AuthServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
+	resp, err := as.authenticator.RoleRevokePermission(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
@@ -124,8 +124,8 @@ func (as *AuthServer) UserGrant(ctx context.Context, r *pb.AuthUserGrantRequest)
 	return resp, nil
 }
 
-func (as *AuthServer) UserRevoke(ctx context.Context, r *pb.AuthUserRevokeRequest) (*pb.AuthUserRevokeResponse, error) {
-	resp, err := as.authenticator.UserRevoke(ctx, r)
+func (as *AuthServer) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
+	resp, err := as.authenticator.UserRevokeRole(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
