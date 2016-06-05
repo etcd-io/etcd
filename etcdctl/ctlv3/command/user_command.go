@@ -198,7 +198,7 @@ func userRevokeRoleCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("user revoke-role requires user name and role name as its argument."))
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.UserRevoke(context.TODO(), args[0], args[1])
+	_, err := mustClientFromCmd(cmd).Auth.UserRevokeRole(context.TODO(), args[0], args[1])
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

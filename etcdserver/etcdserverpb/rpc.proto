@@ -118,8 +118,8 @@ service Auth {
   // UserGrant grants a role to a specified user.
   rpc UserGrant(AuthUserGrantRequest) returns (AuthUserGrantResponse) {}
 
-  // UserRevoke revokes a role of specified user.
-  rpc UserRevoke(AuthUserRevokeRequest) returns (AuthUserRevokeResponse) {}
+  // UserRevokeRole revokes a role of specified user.
+  rpc UserRevokeRole(AuthUserRevokeRoleRequest) returns (AuthUserRevokeRoleResponse) {}
 
   // RoleAdd adds a new role.
   rpc RoleAdd(AuthRoleAddRequest) returns (AuthRoleAddResponse) {}
@@ -133,8 +133,8 @@ service Auth {
   // RoleGrant grants a permission of a specified key or range to a specified role.
   rpc RoleGrant(AuthRoleGrantRequest) returns (AuthRoleGrantResponse) {}
 
-  // RoleRevoke revokes a key or range permission of a specified role.
-  rpc RoleRevoke(AuthRoleRevokeRequest) returns (AuthRoleRevokeResponse) {}
+  // RoleRevokePermission revokes a key or range permission of a specified role.
+  rpc RoleRevokePermission(AuthRoleRevokePermissionRequest) returns (AuthRoleRevokePermissionResponse) {}
 }
 
 message ResponseHeader {
@@ -594,7 +594,7 @@ message AuthUserGrantRequest {
   string role = 2;
 }
 
-message AuthUserRevokeRequest {
+message AuthUserRevokeRoleRequest {
   string name = 1;
   string role = 2;
 }
@@ -619,7 +619,7 @@ message AuthRoleGrantRequest {
   authpb.Permission perm = 2;
 }
 
-message AuthRoleRevokeRequest {
+message AuthRoleRevokePermissionRequest {
   string role = 1;
   string key = 2;
 }
@@ -660,7 +660,7 @@ message AuthUserGrantResponse {
   ResponseHeader header = 1;
 }
 
-message AuthUserRevokeResponse {
+message AuthUserRevokeRoleResponse {
   ResponseHeader header = 1;
 }
 
@@ -682,6 +682,6 @@ message AuthRoleGrantResponse {
   ResponseHeader header = 1;
 }
 
-message AuthRoleRevokeResponse {
+message AuthRoleRevokePermissionResponse {
   ResponseHeader header = 1;
 }
