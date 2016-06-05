@@ -17,6 +17,7 @@ package snap
 import (
 	"io"
 
+	"github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -38,7 +39,7 @@ type Message struct {
 func NewMessage(rs raftpb.Message, rc io.ReadCloser, rcSize int64) *Message {
 	return &Message{
 		Message:    rs,
-		ReadCloser: rc,
+		ReadCloser: ioutil.NewExactReadCloser(rc, rcSize),
 		TotalSize:  int64(rs.Size()) + rcSize,
 		closeC:     make(chan bool, 1),
 	}
@@ -52,7 +53,9 @@ func (m Message) CloseNotify() <-chan bool {
 }
 
 func (m Message) CloseWithError(err error) {
-	m.ReadCloser.Close()
+	if cerr := m.ReadCloser.Close(); cerr != nil {
+		err = cerr
+	}
 	if err == nil {
 		m.closeC <- true
 	} else {
