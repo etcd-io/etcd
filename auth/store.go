@@ -37,12 +37,14 @@ var (
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "auth")
 
-	ErrUserAlreadyExist = errors.New("auth: user already exists")
-	ErrUserNotFound     = errors.New("auth: user not found")
-	ErrRoleAlreadyExist = errors.New("auth: role already exists")
-	ErrRoleNotFound     = errors.New("auth: role not found")
-	ErrAuthFailed       = errors.New("auth: authentication failed, invalid user ID or password")
-	ErrPermissionDenied = errors.New("auth: permission denied")
+	ErrUserAlreadyExist     = errors.New("auth: user already exists")
+	ErrUserNotFound         = errors.New("auth: user not found")
+	ErrRoleAlreadyExist     = errors.New("auth: role already exists")
+	ErrRoleNotFound         = errors.New("auth: role not found")
+	ErrAuthFailed           = errors.New("auth: authentication failed, invalid user ID or password")
+	ErrPermissionDenied     = errors.New("auth: permission denied")
+	ErrRoleNotGranted       = errors.New("auth: role is not granted to the user")
+	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
 )
 
 type AuthStore interface {
@@ -353,11 +355,17 @@ func (as *authStore) UserRevoke(r *pb.AuthUserRevokeRequest) (*pb.AuthUserRevoke
 	updatedUser.Name = user.Name
 	updatedUser.Password = user.Password
 
-	// TODO(mitake): return error if the target role doesn't exist in the granted roles of the user
+	revoked := false
 	for _, role := range user.Roles {
 		if strings.Compare(role, r.Role) != 0 {
 			updatedUser.Roles = append(updatedUser.Roles, role)
+		} else {
+			revoked = true
 		}
+	}
+
+	if !revoked {
+		return nil, ErrRoleNotGranted
 	}
 
 	marshaledUser, merr := updatedUser.Marshal()
@@ -414,10 +422,17 @@ func (as *authStore) RoleRevoke(r *pb.AuthRoleRevokeRequest) (*pb.AuthRoleRevoke
 	updatedRole := &authpb.Role{}
 	updatedRole.Name = role.Name
 
+	revoked := false
 	for _, perm := range role.KeyPermission {
 		if !bytes.Equal(perm.Key, []byte(r.Key)) {
 			updatedRole.KeyPermission = append(updatedRole.KeyPermission, perm)
+		} else {
+			revoked = true
 		}
+	}
+
+	if !revoked {
+		return nil, ErrPermissionNotGranted
 	}
 
 	marshaledRole, merr := updatedRole.Marshal()
