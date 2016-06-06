@@ -1,0 +1,16 @@
+kind: Service
+apiVersion: v1
+metadata: 
+  name: etcd-3
+spec:
+  selector:
+    app: etcd-3
+  ports:
+  - port: 2380
+    targetPort: 2380
+    protocol: TCP
+    name: peer
+  - port: 2379
+    targetPort: 2379
+    protocol: TCP
+    name: client
