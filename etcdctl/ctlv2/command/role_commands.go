@@ -154,11 +154,11 @@ func actionRoleRevoke(c *cli.Context) {
 func roleGrantRevoke(c *cli.Context, grant bool) {
 	path := c.String("path")
 	if path == "" {
-		fmt.Fprintln(os.Stderr, "No path specified; please use `-path`")
+		fmt.Fprintln(os.Stderr, "No path specified; please use `--path`")
 		os.Exit(1)
 	}
 	if pathutil.CanonicalURLPath(path) != path {
-		fmt.Fprintf(os.Stderr, "Not canonical path; please use `-path=%s`\n", pathutil.CanonicalURLPath(path))
+		fmt.Fprintf(os.Stderr, "Not canonical path; please use `--path=%s`\n", pathutil.CanonicalURLPath(path))
 		os.Exit(1)
 	}
 
@@ -172,7 +172,7 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 		}
 	}
 	if permcount != 1 {
-		fmt.Fprintln(os.Stderr, "Please specify exactly one of -read, -write or -readwrite")
+		fmt.Fprintln(os.Stderr, "Please specify exactly one of --read, --write or --readwrite")
 		os.Exit(1)
 	}
 	var permType client.PermissionType
