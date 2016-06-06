@@ -70,7 +70,7 @@ func (e *encoder) encode(rec *walpb.Record) error {
 	}
 
 	lenField, padBytes := encodeFrameSize(len(data))
-	if err = writeInt64(e.bw, int64(lenField), e.uint64buf); err != nil {
+	if err = writeUint64(e.bw, lenField, e.uint64buf); err != nil {
 		return err
 	}
 
@@ -84,10 +84,9 @@ func (e *encoder) encode(rec *walpb.Record) error {
 func encodeFrameSize(dataBytes int) (lenField uint64, padBytes int) {
 	lenField = uint64(dataBytes)
 	// force 8 byte alignment so length never gets a torn write
-	if padBytes = 8 - (dataBytes % 8); padBytes != 8 {
+	padBytes = (8 - (dataBytes % 8)) % 8
+	if padBytes != 0 {
 		lenField |= uint64(0x80|padBytes) << 56
-	} else {
-		padBytes = 0
 	}
 	return
 }
@@ -98,9 +97,9 @@ func (e *encoder) flush() error {
 	return e.bw.Flush()
 }
 
-func writeInt64(w io.Writer, n int64, buf []byte) error {
+func writeUint64(w io.Writer, n uint64, buf []byte) error {
 	// http://golang.org/src/encoding/binary/binary.go
-	binary.LittleEndian.PutUint64(buf, uint64(n))
+	binary.LittleEndian.PutUint64(buf, n)
 	_, err := w.Write(buf)
 	return err
 }
