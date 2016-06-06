@@ -207,15 +207,8 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) 
 		// write reuses the file descriptors from read; don't close so
 		// WAL can append without dropping the file lock
 		w.readClose = nil
-
 		if _, _, err := parseWalName(path.Base(w.tail().Name())); err != nil {
 			closer()
-			return nil, err
-		}
-		// don't resize file for preallocation in case tail is corrupted
-		if err := fileutil.Preallocate(w.tail().File, segmentSizeBytes, false); err != nil {
-			closer()
-			plog.Errorf("failed to allocate space when creating new wal file (%v)", err)
 			return nil, err
 		}
 		w.fp = newFilePipeline(w.dir, segmentSizeBytes)
