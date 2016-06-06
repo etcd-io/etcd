@@ -210,10 +210,10 @@ stale log entries:
 	passes 'MsgHup' to its Step method and becomes (or remains) a candidate to
 	start a new election.
 
-	'MsgBeat' is an internal type that signals leaders to send a heartbeat of
+	'MsgBeat' is an internal type that signals the leader to send a heartbeat of
 	the 'MsgHeartbeat' type. If a node is a leader, the 'tick' function in
-	the 'raft' struct is set as 'tickHeartbeat', and sends periodic heartbeat
-	messages of the 'MsgBeat' type to its followers.
+	the 'raft' struct is set as 'tickHeartbeat', and triggers the leader to
+	send periodic 'MsgHeartbeat' messages to its followers.
 
 	'MsgProp' proposes to append data to its log entries. This is a special
 	type to redirect proposals to leader. Therefore, send method overwrites
