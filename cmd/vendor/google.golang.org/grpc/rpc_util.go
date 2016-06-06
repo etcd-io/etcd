@@ -61,7 +61,7 @@ type Codec interface {
 	String() string
 }
 
-// protoCodec is a Codec implemetation with protobuf. It is the default codec for gRPC.
+// protoCodec is a Codec implementation with protobuf. It is the default codec for gRPC.
 type protoCodec struct{}
 
 func (protoCodec) Marshal(v interface{}) ([]byte, error) {
@@ -187,7 +187,7 @@ const (
 	compressionMade
 )
 
-// parser reads complelete gRPC messages from the underlying reader.
+// parser reads complete gRPC messages from the underlying reader.
 type parser struct {
 	// r is the underlying reader.
 	// See the comment on recvMsg for the permissible
