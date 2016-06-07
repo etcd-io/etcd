@@ -57,11 +57,11 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	}
 
 	for i := range r.Success {
-		thenops[i] = requestUnionToOp(r.Success[i])
+		thenops[i] = requestOpToOp(r.Success[i])
 	}
 
 	for i := range r.Failure {
-		elseops[i] = requestUnionToOp(r.Failure[i])
+		elseops[i] = requestOpToOp(r.Failure[i])
 	}
 
 	resp, err := txn.If(cmps...).Then(thenops...).Else(elseops...).Commit()
@@ -72,17 +72,17 @@ func (p *kvProxy) Close() error {
 	return p.c.Close()
 }
 
-func requestUnionToOp(union *pb.RequestUnion) clientv3.Op {
+func requestOpToOp(union *pb.RequestOp) clientv3.Op {
 	switch tv := union.Request.(type) {
-	case *pb.RequestUnion_RequestRange:
+	case *pb.RequestOp_RequestRange:
 		if tv.RequestRange != nil {
 			return RangeRequestToOp(tv.RequestRange)
 		}
-	case *pb.RequestUnion_RequestPut:
+	case *pb.RequestOp_RequestPut:
 		if tv.RequestPut != nil {
 			return PutRequestToOp(tv.RequestPut)
 		}
-	case *pb.RequestUnion_RequestDeleteRange:
+	case *pb.RequestOp_RequestDeleteRange:
 		if tv.RequestDeleteRange != nil {
 			return DelRequestToOp(tv.RequestDeleteRange)
 		}
