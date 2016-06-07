@@ -229,7 +229,7 @@ message DeleteRangeResponse {
   int64 deleted = 2;
 }
 
-message RequestUnion {
+message RequestOp {
   // request is a union of request types accepted by a transaction.
   oneof request {
     RangeRequest request_range = 1;
@@ -238,7 +238,7 @@ message RequestUnion {
   }
 }
 
-message ResponseUnion {
+message ResponseOp {
   // response is a union of response types returned by a transaction.
   oneof response {
     RangeResponse response_range = 1;
@@ -300,9 +300,9 @@ message TxnRequest {
   // and the response will contain their respective responses in order.
   repeated Compare compare = 1;
   // success is a list of requests which will be applied when compare evaluates to true.
-  repeated RequestUnion success = 2;
+  repeated RequestOp success = 2;
   // failure is a list of requests which will be applied when compare evaluates to false.
-  repeated RequestUnion failure = 3;
+  repeated RequestOp failure = 3;
 }
 
 message TxnResponse {
@@ -311,7 +311,7 @@ message TxnResponse {
   bool succeeded = 2;
   // responses is a list of responses corresponding to the results from applying
   // success if succeeded is true or failure if succeeded is false.
-  repeated ResponseUnion responses = 3;
+  repeated ResponseOp responses = 3;
 }
 
 // CompactionRequest compacts the key-value store up to a given revision. All superseded keys
