@@ -128,11 +128,11 @@ func (s *simplePrinter) Txn(resp v3.TxnResponse) {
 	for _, r := range resp.Responses {
 		fmt.Println("")
 		switch v := r.Response.(type) {
-		case *pb.ResponseUnion_ResponseDeleteRange:
+		case *pb.ResponseOp_ResponseDeleteRange:
 			s.Del((v3.DeleteResponse)(*v.ResponseDeleteRange))
-		case *pb.ResponseUnion_ResponsePut:
+		case *pb.ResponseOp_ResponsePut:
 			s.Put((v3.PutResponse)(*v.ResponsePut))
-		case *pb.ResponseUnion_ResponseRange:
+		case *pb.ResponseOp_ResponseRange:
 			s.Get(((v3.GetResponse)(*v.ResponseRange)))
 		default:
 			fmt.Printf("unexpected response %+v\n", r)

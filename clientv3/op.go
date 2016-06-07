@@ -53,7 +53,7 @@ type Op struct {
 	leaseID LeaseID
 }
 
-func (op Op) toRequestUnion() *pb.RequestUnion {
+func (op Op) toRequestOp() *pb.RequestOp {
 	switch op.t {
 	case tRange:
 		r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev, Serializable: op.serializable}
@@ -61,13 +61,13 @@ func (op Op) toRequestUnion() *pb.RequestUnion {
 			r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
 			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
 		}
-		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestRange{RequestRange: r}}
+		return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: r}}
 	case tPut:
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
-		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestPut{RequestPut: r}}
+		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: r}}
 	case tDeleteRange:
 		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
-		return &pb.RequestUnion{Request: &pb.RequestUnion_RequestDeleteRange{RequestDeleteRange: r}}
+		return &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic("Unknown Op")
 	}
