@@ -66,8 +66,8 @@ type txn struct {
 
 	cmps []*pb.Compare
 
-	sus []*pb.RequestUnion
-	fas []*pb.RequestUnion
+	sus []*pb.RequestOp
+	fas []*pb.RequestOp
 }
 
 func (txn *txn) If(cs ...Cmp) Txn {
@@ -110,7 +110,7 @@ func (txn *txn) Then(ops ...Op) Txn {
 
 	for _, op := range ops {
 		txn.isWrite = txn.isWrite || op.isWrite()
-		txn.sus = append(txn.sus, op.toRequestUnion())
+		txn.sus = append(txn.sus, op.toRequestOp())
 	}
 
 	return txn
@@ -128,7 +128,7 @@ func (txn *txn) Else(ops ...Op) Txn {
 
 	for _, op := range ops {
 		txn.isWrite = txn.isWrite || op.isWrite()
-		txn.fas = append(txn.fas, op.toRequestUnion())
+		txn.fas = append(txn.fas, op.toRequestOp())
 	}
 
 	return txn

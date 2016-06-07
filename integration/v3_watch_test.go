@@ -676,8 +676,8 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 	kvc := toGRPC(clus.RandClient()).KV
 	txn := pb.TxnRequest{}
 	for i := 0; i < 3; i++ {
-		ru := &pb.RequestUnion{}
-		ru.Request = &pb.RequestUnion_RequestPut{
+		ru := &pb.RequestOp{}
+		ru.Request = &pb.RequestOp_RequestPut{
 			RequestPut: &pb.PutRequest{
 				Key: []byte(fmt.Sprintf("foo%d", i)), Value: []byte("bar")}}
 		txn.Success = append(txn.Success, ru)

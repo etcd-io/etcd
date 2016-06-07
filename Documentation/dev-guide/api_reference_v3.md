@@ -12,13 +12,13 @@
 | UserGet | AuthUserGetRequest | AuthUserGetResponse | UserGet gets detailed user information or lists all users. |
 | UserDelete | AuthUserDeleteRequest | AuthUserDeleteResponse | UserDelete deletes a specified user. |
 | UserChangePassword | AuthUserChangePasswordRequest | AuthUserChangePasswordResponse | UserChangePassword changes the password of a specified user. |
-| UserGrant | AuthUserGrantRequest | AuthUserGrantResponse | UserGrant grants a role to a specified user. |
-| UserRevoke | AuthUserRevokeRequest | AuthUserRevokeResponse | UserRevoke revokes a role of specified user. |
+| UserGrantRole | AuthUserGrantRoleRequest | AuthUserGrantRoleResponse | UserGrant grants a role to a specified user. |
+| UserRevokeRole | AuthUserRevokeRoleRequest | AuthUserRevokeRoleResponse | UserRevokeRole revokes a role of specified user. |
 | RoleAdd | AuthRoleAddRequest | AuthRoleAddResponse | RoleAdd adds a new role. |
 | RoleGet | AuthRoleGetRequest | AuthRoleGetResponse | RoleGet gets detailed role information or lists all roles. |
 | RoleDelete | AuthRoleDeleteRequest | AuthRoleDeleteResponse | RoleDelete deletes a specified role. |
-| RoleGrant | AuthRoleGrantRequest | AuthRoleGrantResponse | RoleGrant grants a permission of a specified key or range to a specified role. |
-| RoleRevoke | AuthRoleRevokeRequest | AuthRoleRevokeResponse | RoleRevoke revokes a key or range permission of a specified role. |
+| RoleGrantPermission | AuthRoleGrantPermissionRequest | AuthRoleGrantPermissionResponse | RoleGrantPermission grants a permission of a specified key or range to a specified role. |
+| RoleRevokePermission | AuthRoleRevokePermissionRequest | AuthRoleRevokePermissionResponse | RoleRevokePermission revokes a key or range permission of a specified role. |
 
 
 
@@ -149,7 +149,9 @@ Empty field.
 
 ##### message `AuthRoleDeleteRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-Empty field.
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| role |  | string |
 
 
 
@@ -163,7 +165,9 @@ Empty field.
 
 ##### message `AuthRoleGetRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-Empty field.
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| role |  | string |
 
 
 
@@ -172,10 +176,11 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+| perm |  | (slice of) authpb.Permission |
 
 
 
-##### message `AuthRoleGrantRequest` (etcdserver/etcdserverpb/rpc.proto)
+##### message `AuthRoleGrantPermissionRequest` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -184,7 +189,7 @@ Empty field.
 
 
 
-##### message `AuthRoleGrantResponse` (etcdserver/etcdserverpb/rpc.proto)
+##### message `AuthRoleGrantPermissionResponse` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -192,13 +197,16 @@ Empty field.
 
 
 
-##### message `AuthRoleRevokeRequest` (etcdserver/etcdserverpb/rpc.proto)
+##### message `AuthRoleRevokePermissionRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-Empty field.
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| role |  | string |
+| key |  | string |
 
 
 
-##### message `AuthRoleRevokeResponse` (etcdserver/etcdserverpb/rpc.proto)
+##### message `AuthRoleRevokePermissionResponse` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -258,7 +266,9 @@ Empty field.
 
 ##### message `AuthUserGetRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-Empty field.
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| name |  | string |
 
 
 
@@ -267,10 +277,11 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+| roles |  | (slice of) string |
 
 
 
-##### message `AuthUserGrantRequest` (etcdserver/etcdserverpb/rpc.proto)
+##### message `AuthUserGrantRoleRequest` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -279,7 +290,7 @@ Empty field.
 
 
 
-##### message `AuthUserGrantResponse` (etcdserver/etcdserverpb/rpc.proto)
+##### message `AuthUserGrantRoleResponse` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -287,13 +298,16 @@ Empty field.
 
 
 
-##### message `AuthUserRevokeRequest` (etcdserver/etcdserverpb/rpc.proto)
+##### message `AuthUserRevokeRoleRequest` (etcdserver/etcdserverpb/rpc.proto)
 
-Empty field.
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| name |  | string |
+| role |  | string |
 
 
 
-##### message `AuthUserRevokeResponse` (etcdserver/etcdserverpb/rpc.proto)
+##### message `AuthUserRevokeRoleResponse` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -572,7 +586,7 @@ Empty field.
 
 
 
-##### message `RequestUnion` (etcdserver/etcdserverpb/rpc.proto)
+##### message `RequestOp` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -594,7 +608,7 @@ Empty field.
 
 
 
-##### message `ResponseUnion` (etcdserver/etcdserverpb/rpc.proto)
+##### message `ResponseOp` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
@@ -647,8 +661,8 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | compare | compare is a list of predicates representing a conjunction of terms. If the comparisons succeed, then the success requests will be processed in order, and the response will contain their respective responses in order. If the comparisons fail, then the failure requests will be processed in order, and the response will contain their respective responses in order. | (slice of) Compare |
-| success | success is a list of requests which will be applied when compare evaluates to true. | (slice of) RequestUnion |
-| failure | failure is a list of requests which will be applied when compare evaluates to false. | (slice of) RequestUnion |
+| success | success is a list of requests which will be applied when compare evaluates to true. | (slice of) RequestOp |
+| failure | failure is a list of requests which will be applied when compare evaluates to false. | (slice of) RequestOp |
 
 
 
@@ -658,7 +672,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | succeeded | succeeded is set to true if the compare evaluated to true or false otherwise. | bool |
-| responses | responses is a list of responses corresponding to the results from applying success if succeeded is true or failure if succeeded is false. | (slice of) ResponseUnion |
+| responses | responses is a list of responses corresponding to the results from applying success if succeeded is true or failure if succeeded is false. | (slice of) ResponseOp |
 
 
 

@@ -156,7 +156,7 @@ func checkTxnRequest(r *pb.TxnRequest) error {
 	}
 
 	for _, u := range r.Success {
-		if err := checkRequestUnion(u); err != nil {
+		if err := checkRequestOp(u); err != nil {
 			return err
 		}
 	}
@@ -165,7 +165,7 @@ func checkTxnRequest(r *pb.TxnRequest) error {
 	}
 
 	for _, u := range r.Failure {
-		if err := checkRequestUnion(u); err != nil {
+		if err := checkRequestOp(u); err != nil {
 			return err
 		}
 	}
@@ -173,11 +173,11 @@ func checkTxnRequest(r *pb.TxnRequest) error {
 }
 
 // checkRequestDupKeys gives rpctypes.ErrGRPCDuplicateKey if the same key is modified twice
-func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
+func checkRequestDupKeys(reqs []*pb.RequestOp) error {
 	// check put overlap
 	keys := make(map[string]struct{})
 	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestUnion_RequestPut)
+		tv, ok := requ.Request.(*pb.RequestOp_RequestPut)
 		if !ok {
 			continue
 		}
@@ -205,7 +205,7 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 
 	// check put overlap with deletes
 	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestUnion_RequestDeleteRange)
+		tv, ok := requ.Request.(*pb.RequestOp_RequestDeleteRange)
 		if !ok {
 			continue
 		}
@@ -230,23 +230,23 @@ func checkRequestDupKeys(reqs []*pb.RequestUnion) error {
 	return nil
 }
 
-func checkRequestUnion(u *pb.RequestUnion) error {
+func checkRequestOp(u *pb.RequestOp) error {
 	// TODO: ensure only one of the field is set.
 	switch uv := u.Request.(type) {
-	case *pb.RequestUnion_RequestRange:
+	case *pb.RequestOp_RequestRange:
 		if uv.RequestRange != nil {
 			return checkRangeRequest(uv.RequestRange)
 		}
-	case *pb.RequestUnion_RequestPut:
+	case *pb.RequestOp_RequestPut:
 		if uv.RequestPut != nil {
 			return checkPutRequest(uv.RequestPut)
 		}
-	case *pb.RequestUnion_RequestDeleteRange:
+	case *pb.RequestOp_RequestDeleteRange:
 		if uv.RequestDeleteRange != nil {
 			return checkDeleteRequest(uv.RequestDeleteRange)
 		}
 	default:
-		// empty union
+		// empty op
 		return nil
 	}
 	return nil

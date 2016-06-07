@@ -269,7 +269,7 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 		}
 	}
 
-	var reqs []*pb.RequestUnion
+	var reqs []*pb.RequestOp
 	if ok {
 		reqs = rt.Success
 	} else {
@@ -295,7 +295,7 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 		}
 	}()
 
-	resps := make([]*pb.ResponseUnion, len(reqs))
+	resps := make([]*pb.ResponseOp, len(reqs))
 	changedKV := false
 	for i := range reqs {
 		if reqs[i].GetRequestRange() == nil {
@@ -384,31 +384,31 @@ func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
 	return rev, true
 }
 
-func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestUnion) *pb.ResponseUnion {
+func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestOp) *pb.ResponseOp {
 	switch tv := union.Request.(type) {
-	case *pb.RequestUnion_RequestRange:
+	case *pb.RequestOp_RequestRange:
 		if tv.RequestRange != nil {
 			resp, err := a.Range(txnID, tv.RequestRange)
 			if err != nil {
 				panic("unexpected error during txn")
 			}
-			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseRange{ResponseRange: resp}}
+			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponseRange{ResponseRange: resp}}
 		}
-	case *pb.RequestUnion_RequestPut:
+	case *pb.RequestOp_RequestPut:
 		if tv.RequestPut != nil {
 			resp, err := a.Put(txnID, tv.RequestPut)
 			if err != nil {
 				panic("unexpected error during txn")
 			}
-			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponsePut{ResponsePut: resp}}
+			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponsePut{ResponsePut: resp}}
 		}
-	case *pb.RequestUnion_RequestDeleteRange:
+	case *pb.RequestOp_RequestDeleteRange:
 		if tv.RequestDeleteRange != nil {
 			resp, err := a.DeleteRange(txnID, tv.RequestDeleteRange)
 			if err != nil {
 				panic("unexpected error during txn")
 			}
-			return &pb.ResponseUnion{Response: &pb.ResponseUnion_ResponseDeleteRange{ResponseDeleteRange: resp}}
+			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponseDeleteRange{ResponseDeleteRange: resp}}
 		}
 	default:
 		// empty union
@@ -653,9 +653,9 @@ func (s *kvSortByValue) Less(i, j int) bool {
 	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
 }
 
-func (a *applierV3backend) checkRequestLeases(reqs []*pb.RequestUnion) error {
+func (a *applierV3backend) checkRequestLeases(reqs []*pb.RequestOp) error {
 	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestUnion_RequestPut)
+		tv, ok := requ.Request.(*pb.RequestOp_RequestPut)
 		if !ok {
 			continue
 		}
@@ -670,9 +670,9 @@ func (a *applierV3backend) checkRequestLeases(reqs []*pb.RequestUnion) error {
 	return nil
 }
 
-func (a *applierV3backend) checkRequestRange(reqs []*pb.RequestUnion) error {
+func (a *applierV3backend) checkRequestRange(reqs []*pb.RequestOp) error {
 	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestUnion_RequestRange)
+		tv, ok := requ.Request.(*pb.RequestOp_RequestRange)
 		if !ok {
 			continue
 		}
