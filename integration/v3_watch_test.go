@@ -983,7 +983,7 @@ func TestV3WatchClose(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	c := clus.RandClient()
+	c := clus.Client(0)
 	wapi := toGRPC(c).Watch
 
 	var wg sync.WaitGroup
@@ -1007,6 +1007,7 @@ func TestV3WatchClose(t *testing.T) {
 			ws.Recv()
 		}()
 	}
-	c.ActiveConnection().Close()
+
+	clus.Members[0].DropConnections()
 	wg.Wait()
 }
