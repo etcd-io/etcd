@@ -47,7 +47,7 @@ func TestUserError(t *testing.T) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrUserNotFound, err)
 	}
 
-	_, err = authapi.UserGrant(context.TODO(), "foo", "test-role-does-not-exist")
+	_, err = authapi.UserGrantRole(context.TODO(), "foo", "test-role-does-not-exist")
 	if err != rpctypes.ErrRoleNotFound {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleNotFound, err)
 	}

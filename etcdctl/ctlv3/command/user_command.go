@@ -32,9 +32,9 @@ func NewUserCommand() *cobra.Command {
 
 	ac.AddCommand(newUserAddCommand())
 	ac.AddCommand(newUserDeleteCommand())
-	ac.AddCommand(newUserChangePasswordCommand())
-	ac.AddCommand(newUserGrantCommand())
 	ac.AddCommand(newUserGetCommand())
+	ac.AddCommand(newUserChangePasswordCommand())
+	ac.AddCommand(newUserGrantRoleCommand())
 	ac.AddCommand(newUserRevokeRoleCommand())
 
 	return ac
@@ -64,6 +64,15 @@ func newUserDeleteCommand() *cobra.Command {
 	}
 }
 
+func newUserGetCommand() *cobra.Command {
+	// TODO(mitake): this command should also get detailed information of roles of the user
+	return &cobra.Command{
+		Use:   "get <user name>",
+		Short: "get detailed information of a user",
+		Run:   userGetCommandFunc,
+	}
+}
+
 func newUserChangePasswordCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "passwd <user name>",
@@ -76,20 +85,11 @@ func newUserChangePasswordCommand() *cobra.Command {
 	return &cmd
 }
 
-func newUserGrantCommand() *cobra.Command {
+func newUserGrantRoleCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "grant <user name> <role name>",
+		Use:   "grant-role <user name> <role name>",
 		Short: "grant a role to a user",
-		Run:   userGrantCommandFunc,
-	}
-}
-
-func newUserGetCommand() *cobra.Command {
-	// TODO(mitake): this command should also get detailed information of roles of the user
-	return &cobra.Command{
-		Use:   "get <user name>",
-		Short: "get detailed information of a user",
-		Run:   userGetCommandFunc,
+		Run:   userGrantRoleCommandFunc,
 	}
 }
 
@@ -137,6 +137,25 @@ func userDeleteCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Printf("User %s deleted\n", args[0])
 }
 
+// userGetCommandFunc executes the "user get" command.
+func userGetCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user get command requires user name as its argument."))
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.UserGet(context.TODO(), args[0])
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Printf("User: %s\n", args[0])
+	fmt.Printf("Roles:")
+	for _, role := range resp.Roles {
+		fmt.Printf(" %s", role)
+	}
+	fmt.Printf("\n")
+}
+
 // userChangePasswordCommandFunc executes the "user passwd" command.
 func userChangePasswordCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
@@ -159,37 +178,18 @@ func userChangePasswordCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Println("Password updated")
 }
 
-// userGrantCommandFunc executes the "user grant" command.
-func userGrantCommandFunc(cmd *cobra.Command, args []string) {
+// userGrantRoleCommandFunc executes the "user grant-role" command.
+func userGrantRoleCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("user grant command requires user name and role name as its argument."))
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.UserGrant(context.TODO(), args[0], args[1])
+	_, err := mustClientFromCmd(cmd).Auth.UserGrantRole(context.TODO(), args[0], args[1])
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
 	fmt.Printf("Role %s is granted to user %s\n", args[1], args[0])
-}
-
-// userGetCommandFunc executes the "user get" command.
-func userGetCommandFunc(cmd *cobra.Command, args []string) {
-	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("user get command requires user name as its argument."))
-	}
-
-	resp, err := mustClientFromCmd(cmd).Auth.UserGet(context.TODO(), args[0])
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-
-	fmt.Printf("User: %s\n", args[0])
-	fmt.Printf("Roles:")
-	for _, role := range resp.Roles {
-		fmt.Printf(" %s", role)
-	}
-	fmt.Printf("\n")
 }
 
 // userRevokeRoleCommandFunc executes the "user revoke-role" command.

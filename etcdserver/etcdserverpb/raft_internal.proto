@@ -37,18 +37,21 @@ message InternalRaftRequest {
 
   AuthEnableRequest auth_enable = 1000;
   AuthDisableRequest auth_disable = 1011;
-  AuthUserAddRequest auth_user_add = 1012;
-  AuthUserDeleteRequest auth_user_delete = 1013;
-  AuthUserChangePasswordRequest auth_user_change_password = 1014;
-  AuthUserGrantRequest auth_user_grant = 1015;
-  AuthRoleAddRequest auth_role_add = 1016;
-  AuthRoleGrantRequest auth_role_grant = 1017;
-  AuthenticateRequest authenticate = 1018;
-  AuthUserGetRequest auth_user_get = 1019;
-  AuthRoleGetRequest auth_role_get = 1020;
-  AuthUserRevokeRoleRequest auth_user_revoke_role = 1021;
-  AuthRoleRevokePermissionRequest auth_role_revoke_permission = 1022;
-  AuthRoleDeleteRequest auth_role_delete = 1023;
+
+  AuthenticateRequest authenticate = 1012;
+
+  AuthUserAddRequest auth_user_add = 1100;
+  AuthUserDeleteRequest auth_user_delete = 1101;
+  AuthUserGetRequest auth_user_get = 1102;
+  AuthUserChangePasswordRequest auth_user_change_password = 1103;
+  AuthUserGrantRoleRequest auth_user_grant_role = 1104;
+  AuthUserRevokeRoleRequest auth_user_revoke_role = 1105;
+
+  AuthRoleAddRequest auth_role_add = 1200;
+  AuthRoleDeleteRequest auth_role_delete = 1201;
+  AuthRoleGetRequest auth_role_get = 1202;
+  AuthRoleGrantPermissionRequest auth_role_grant_permission = 1203;
+  AuthRoleRevokePermissionRequest auth_role_revoke_permission = 1204;
 }
 
 message EmptyResponse {

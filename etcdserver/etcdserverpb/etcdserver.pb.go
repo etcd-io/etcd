@@ -67,12 +67,12 @@
 		AuthUserGetRequest
 		AuthUserDeleteRequest
 		AuthUserChangePasswordRequest
-		AuthUserGrantRequest
+		AuthUserGrantRoleRequest
 		AuthUserRevokeRoleRequest
 		AuthRoleAddRequest
 		AuthRoleGetRequest
 		AuthRoleDeleteRequest
-		AuthRoleGrantRequest
+		AuthRoleGrantPermissionRequest
 		AuthRoleRevokePermissionRequest
 		AuthEnableResponse
 		AuthDisableResponse
@@ -81,12 +81,12 @@
 		AuthUserGetResponse
 		AuthUserDeleteResponse
 		AuthUserChangePasswordResponse
-		AuthUserGrantResponse
+		AuthUserGrantRoleResponse
 		AuthUserRevokeRoleResponse
 		AuthRoleAddResponse
 		AuthRoleGetResponse
 		AuthRoleDeleteResponse
-		AuthRoleGrantResponse
+		AuthRoleGrantPermissionResponse
 		AuthRoleRevokePermissionResponse
 */
 package etcdserverpb
