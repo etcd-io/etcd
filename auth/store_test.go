@@ -190,13 +190,13 @@ func TestUserGrant(t *testing.T) {
 	}
 
 	// grants a role to the user
-	_, err = as.UserGrant(&pb.AuthUserGrantRequest{User: "foo", Role: "role-test"})
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// grants a role to a non-existing user
-	_, err = as.UserGrant(&pb.AuthUserGrantRequest{User: "foo-test", Role: "role-test"})
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo-test", Role: "role-test"})
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}

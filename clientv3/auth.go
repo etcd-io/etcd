@@ -32,11 +32,11 @@ type (
 	AuthUserAddResponse              pb.AuthUserAddResponse
 	AuthUserDeleteResponse           pb.AuthUserDeleteResponse
 	AuthUserChangePasswordResponse   pb.AuthUserChangePasswordResponse
-	AuthUserGrantResponse            pb.AuthUserGrantResponse
+	AuthUserGrantRoleResponse        pb.AuthUserGrantRoleResponse
 	AuthUserGetResponse              pb.AuthUserGetResponse
 	AuthUserRevokeRoleResponse       pb.AuthUserRevokeRoleResponse
 	AuthRoleAddResponse              pb.AuthRoleAddResponse
-	AuthRoleGrantResponse            pb.AuthRoleGrantResponse
+	AuthRoleGrantPermissionResponse  pb.AuthRoleGrantPermissionResponse
 	AuthRoleGetResponse              pb.AuthRoleGetResponse
 	AuthRoleRevokePermissionResponse pb.AuthRoleRevokePermissionResponse
 	AuthRoleDeleteResponse           pb.AuthRoleDeleteResponse
@@ -66,8 +66,8 @@ type Auth interface {
 	// UserChangePassword changes a password of a user.
 	UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error)
 
-	// UserGrant grants a role to a user.
-	UserGrant(ctx context.Context, user string, role string) (*AuthUserGrantResponse, error)
+	// UserGrantRole grants a role to a user.
+	UserGrantRole(ctx context.Context, user string, role string) (*AuthUserGrantRoleResponse, error)
 
 	// UserGet gets a detailed information of a user.
 	UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error)
@@ -78,8 +78,8 @@ type Auth interface {
 	// RoleAdd adds a new role to an etcd cluster.
 	RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error)
 
-	// RoleGrant grants a permission to a role.
-	RoleGrant(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantResponse, error)
+	// RoleGrantPermission grants a permission to a role.
+	RoleGrantPermission(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error)
 
 	// RoleGet gets a detailed information of a role.
 	RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error)
@@ -132,9 +132,9 @@ func (auth *auth) UserChangePassword(ctx context.Context, name string, password 
 	return (*AuthUserChangePasswordResponse)(resp), rpctypes.Error(err)
 }
 
-func (auth *auth) UserGrant(ctx context.Context, user string, role string) (*AuthUserGrantResponse, error) {
-	resp, err := auth.remote.UserGrant(ctx, &pb.AuthUserGrantRequest{User: user, Role: role})
-	return (*AuthUserGrantResponse)(resp), rpctypes.Error(err)
+func (auth *auth) UserGrantRole(ctx context.Context, user string, role string) (*AuthUserGrantRoleResponse, error) {
+	resp, err := auth.remote.UserGrantRole(ctx, &pb.AuthUserGrantRoleRequest{User: user, Role: role})
+	return (*AuthUserGrantRoleResponse)(resp), rpctypes.Error(err)
 }
 
 func (auth *auth) UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error) {
@@ -152,13 +152,13 @@ func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddRespons
 	return (*AuthRoleAddResponse)(resp), rpctypes.Error(err)
 }
 
-func (auth *auth) RoleGrant(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantResponse, error) {
+func (auth *auth) RoleGrantPermission(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error) {
 	perm := &authpb.Permission{
 		Key:      []byte(key),
 		PermType: authpb.Permission_Type(permType),
 	}
-	resp, err := auth.remote.RoleGrant(ctx, &pb.AuthRoleGrantRequest{Name: name, Perm: perm})
-	return (*AuthRoleGrantResponse)(resp), rpctypes.Error(err)
+	resp, err := auth.remote.RoleGrantPermission(ctx, &pb.AuthRoleGrantPermissionRequest{Name: name, Perm: perm})
+	return (*AuthRoleGrantPermissionResponse)(resp), rpctypes.Error(err)
 }
 
 func (auth *auth) RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error) {

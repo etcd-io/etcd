@@ -72,8 +72,8 @@ type AuthStore interface {
 	// UserChangePassword changes a password of a user
 	UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
 
-	// UserGrant grants a role to the user
-	UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error)
+	// UserGrantRole grants a role to the user
+	UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error)
 
 	// UserGet gets the detailed information of a user
 	UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error)
@@ -84,8 +84,8 @@ type AuthStore interface {
 	// RoleAdd adds a new role
 	RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
 
-	// RoleGrant grants a permission to a role
-	RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error)
+	// RoleGrantPermission grants a permission to a role
+	RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error)
 
 	// RoleGet gets the detailed information of a role
 	RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error)
@@ -270,7 +270,7 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	return &pb.AuthUserChangePasswordResponse{}, nil
 }
 
-func (as *authStore) UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantResponse, error) {
+func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error) {
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -294,7 +294,7 @@ func (as *authStore) UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantRes
 	idx := sort.SearchStrings(user.Roles, r.Role)
 	if idx < len(user.Roles) && strings.Compare(user.Roles[idx], r.Role) == 0 {
 		plog.Warningf("user %s is already granted role %s", r.User, r.Role)
-		return &pb.AuthUserGrantResponse{}, nil
+		return &pb.AuthUserGrantRoleResponse{}, nil
 	}
 
 	user.Roles = append(user.Roles, r.Role)
@@ -308,7 +308,7 @@ func (as *authStore) UserGrant(r *pb.AuthUserGrantRequest) (*pb.AuthUserGrantRes
 	tx.UnsafePut(authUsersBucketName, user.Name, marshaledUser)
 
 	plog.Noticef("granted role %s to user %s", r.Role, r.User)
-	return &pb.AuthUserGrantResponse{}, nil
+	return &pb.AuthUserGrantRoleResponse{}, nil
 }
 
 func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
@@ -521,7 +521,7 @@ func (perms permSlice) Swap(i, j int) {
 	perms[i], perms[j] = perms[j], perms[i]
 }
 
-func (as *authStore) RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantResponse, error) {
+func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error) {
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -566,7 +566,7 @@ func (as *authStore) RoleGrant(r *pb.AuthRoleGrantRequest) (*pb.AuthRoleGrantRes
 
 	plog.Noticef("role %s's permission of key %s is updated as %s", r.Name, r.Perm.Key, authpb.Permission_Type_name[int32(r.Perm.PermType)])
 
-	return &pb.AuthRoleGrantResponse{}, nil
+	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
 
 func (as *authStore) isOpPermitted(userName string, key string, write bool, read bool) bool {

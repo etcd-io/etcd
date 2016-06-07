@@ -30,10 +30,10 @@ func NewRoleCommand() *cobra.Command {
 	}
 
 	ac.AddCommand(newRoleAddCommand())
-	ac.AddCommand(newRoleGrantCommand())
+	ac.AddCommand(newRoleDeleteCommand())
 	ac.AddCommand(newRoleGetCommand())
 	ac.AddCommand(newRoleRevokePermissionCommand())
-	ac.AddCommand(newRoleDeleteCommand())
+	ac.AddCommand(newRoleGrantPermissionCommand())
 
 	return ac
 }
@@ -46,11 +46,11 @@ func newRoleAddCommand() *cobra.Command {
 	}
 }
 
-func newRoleGrantCommand() *cobra.Command {
+func newRoleDeleteCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "grant <role name> <permission type> <key>",
-		Short: "grant a key to a role",
-		Run:   roleGrantCommandFunc,
+		Use:   "delete <role name>",
+		Short: "delete a role",
+		Run:   roleDeleteCommandFunc,
 	}
 }
 
@@ -62,19 +62,19 @@ func newRoleGetCommand() *cobra.Command {
 	}
 }
 
+func newRoleGrantPermissionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "grant-permission <role name> <permission type> <key>",
+		Short: "grant a key to a role",
+		Run:   roleGrantPermissionCommandFunc,
+	}
+}
+
 func newRoleRevokePermissionCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "revoke-permission <role name> <key>",
 		Short: "revoke a key from a role",
 		Run:   roleRevokePermissionCommandFunc,
-	}
-}
-
-func newRoleDeleteCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "delete <role name>",
-		Short: "delete a role",
-		Run:   roleDeleteCommandFunc,
 	}
 }
 
@@ -92,23 +92,18 @@ func roleAddCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Printf("Role %s created\n", args[0])
 }
 
-// roleGrantCommandFunc executes the "role grant" command.
-func roleGrantCommandFunc(cmd *cobra.Command, args []string) {
-	if len(args) != 3 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role grant command requires role name, permission type, and key as its argument."))
+// roleDeleteCommandFunc executes the "role delete" command.
+func roleDeleteCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("role delete command requires role name as its argument."))
 	}
 
-	perm, err := clientv3.StrToPermissionType(args[1])
-	if err != nil {
-		ExitWithError(ExitBadArgs, err)
-	}
-
-	_, err = mustClientFromCmd(cmd).Auth.RoleGrant(context.TODO(), args[0], args[2], perm)
+	_, err := mustClientFromCmd(cmd).Auth.RoleDelete(context.TODO(), args[0])
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Role %s updated\n", args[0])
+	fmt.Printf("Role %s deleted\n", args[0])
 }
 
 // roleGetCommandFunc executes the "role get" command.
@@ -137,6 +132,25 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 	}
 }
 
+// roleGrantPermissionCommandFunc executes the "role grant-permission" command.
+func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 3 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("role grant command requires role name, permission type, and key as its argument."))
+	}
+
+	perm, err := clientv3.StrToPermissionType(args[1])
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
+	}
+
+	_, err = mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], args[2], perm)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Printf("Role %s updated\n", args[0])
+}
+
 // roleRevokePermissionCommandFunc executes the "role revoke-permission" command.
 func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
@@ -149,18 +163,4 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Printf("Permission of key %s is revoked from role %s\n", args[1], args[0])
-}
-
-// roleDeleteCommandFunc executes the "role delete" command.
-func roleDeleteCommandFunc(cmd *cobra.Command, args []string) {
-	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role delete command requires role name as its argument."))
-	}
-
-	_, err := mustClientFromCmd(cmd).Auth.RoleDelete(context.TODO(), args[0])
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-
-	fmt.Printf("Role %s deleted\n", args[0])
 }

@@ -116,7 +116,7 @@ service Auth {
   rpc UserChangePassword(AuthUserChangePasswordRequest) returns (AuthUserChangePasswordResponse) {}
 
   // UserGrant grants a role to a specified user.
-  rpc UserGrant(AuthUserGrantRequest) returns (AuthUserGrantResponse) {}
+  rpc UserGrantRole(AuthUserGrantRoleRequest) returns (AuthUserGrantRoleResponse) {}
 
   // UserRevokeRole revokes a role of specified user.
   rpc UserRevokeRole(AuthUserRevokeRoleRequest) returns (AuthUserRevokeRoleResponse) {}
@@ -130,8 +130,8 @@ service Auth {
   // RoleDelete deletes a specified role.
   rpc RoleDelete(AuthRoleDeleteRequest) returns (AuthRoleDeleteResponse) {}
 
-  // RoleGrant grants a permission of a specified key or range to a specified role.
-  rpc RoleGrant(AuthRoleGrantRequest) returns (AuthRoleGrantResponse) {}
+  // RoleGrantPermission grants a permission of a specified key or range to a specified role.
+  rpc RoleGrantPermission(AuthRoleGrantPermissionRequest) returns (AuthRoleGrantPermissionResponse) {}
 
   // RoleRevokePermission revokes a key or range permission of a specified role.
   rpc RoleRevokePermission(AuthRoleRevokePermissionRequest) returns (AuthRoleRevokePermissionResponse) {}
@@ -587,7 +587,7 @@ message AuthUserChangePasswordRequest {
   string password = 2;
 }
 
-message AuthUserGrantRequest {
+message AuthUserGrantRoleRequest {
   // user is the name of the user which should be granted a given role.
   string user = 1;
   // role is the name of the role to grant to the user.
@@ -612,7 +612,7 @@ message AuthRoleDeleteRequest {
   string role = 1;
 }
 
-message AuthRoleGrantRequest {
+message AuthRoleGrantPermissionRequest {
   // name is the name of the role which will be granted the permission.
   string name = 1;
   // perm is the permission to grant to the role.
@@ -656,7 +656,7 @@ message AuthUserChangePasswordResponse {
   ResponseHeader header = 1;
 }
 
-message AuthUserGrantResponse {
+message AuthUserGrantRoleResponse {
   ResponseHeader header = 1;
 }
 
@@ -678,7 +678,7 @@ message AuthRoleDeleteResponse {
   ResponseHeader header = 1;
 }
 
-message AuthRoleGrantResponse {
+message AuthRoleGrantPermissionResponse {
   ResponseHeader header = 1;
 }
 
