@@ -501,10 +501,24 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 }
 
 func (as *authStore) UsernameFromToken(token string) (string, bool) {
+	var (
+		u  string
+		ok bool
+	)
+
 	simpleTokensMu.RLock()
 	defer simpleTokensMu.RUnlock()
-	t, ok := simpleTokens[token]
-	return t, ok
+	t, err := tokenDecode(token)
+	if err != nil {
+		return "", false
+	}
+	switch t.typ {
+	case simpleTokenTyp:
+		u, ok = simpleTokens[token]
+	default:
+		panic("unsupport token type")
+	}
+	return u, ok
 }
 
 type permSlice []*authpb.Permission

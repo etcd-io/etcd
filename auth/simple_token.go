@@ -53,24 +53,31 @@ func genSimpleToken() (string, error) {
 }
 
 func genSimpleTokenForUser(username string) (string, error) {
-	var token string
-	var err error
+	var (
+		st  string
+		err error
+	)
 
 	for {
 		// generating random numbers in RSM would't a good idea
-		token, err = genSimpleToken()
+		st, err = genSimpleToken()
 		if err != nil {
 			return "", err
 		}
 
-		if _, ok := simpleTokens[token]; !ok {
+		if _, ok := simpleTokens[st]; !ok {
 			break
 		}
 	}
 
 	simpleTokensMu.Lock()
-	simpleTokens[token] = username
+	simpleTokens[st] = username
 	simpleTokensMu.Unlock()
 
-	return token, nil
+	token := &token{
+		typ:   simpleTokenTyp,
+		inner: st,
+	}
+
+	return tokenEncode(token), nil
 }
