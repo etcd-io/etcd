@@ -194,9 +194,9 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
-	if len(vs) != 0 {
-		return &pb.AuthUserAddResponse{}, ErrUserAlreadyExist
+	user := getUser(tx, r.Name)
+	if user != nil {
+		return nil, ErrUserAlreadyExist
 	}
 
 	newUser := authpb.User{
@@ -222,9 +222,9 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
-	if len(vs) != 1 {
-		return &pb.AuthUserDeleteResponse{}, ErrUserNotFound
+	user := getUser(tx, r.Name)
+	if user == nil {
+		return nil, ErrUserNotFound
 	}
 
 	tx.UnsafeDelete(authUsersBucketName, []byte(r.Name))
@@ -247,9 +247,9 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
-	if len(vs) != 1 {
-		return &pb.AuthUserChangePasswordResponse{}, ErrUserNotFound
+	user := getUser(tx, r.Name)
+	if user == nil {
+		return nil, ErrUserNotFound
 	}
 
 	updatedUser := authpb.User{
@@ -275,18 +275,12 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.User), nil, 0)
-	if len(vs) != 1 {
+	user := getUser(tx, r.User)
+	if user == nil {
 		return nil, ErrUserNotFound
 	}
 
-	user := &authpb.User{}
-	err := user.Unmarshal(vs[0])
-	if err != nil {
-		return nil, err
-	}
-
-	_, vs = tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
 	if len(vs) != 1 {
 		return nil, ErrRoleNotFound
 	}
@@ -316,15 +310,9 @@ func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse,
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
-	if len(vs) != 1 {
+	user := getUser(tx, r.Name)
+	if user == nil {
 		return nil, ErrUserNotFound
-	}
-
-	user := &authpb.User{}
-	err := user.Unmarshal(vs[0])
-	if err != nil {
-		return nil, err
 	}
 
 	var resp pb.AuthUserGetResponse
@@ -340,15 +328,9 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(r.Name), nil, 0)
-	if len(vs) != 1 {
+	user := getUser(tx, r.Name)
+	if user == nil {
 		return nil, ErrUserNotFound
-	}
-
-	user := &authpb.User{}
-	err := user.Unmarshal(vs[0])
-	if err != nil {
-		return nil, err
 	}
 
 	updatedUser := &authpb.User{}
@@ -579,16 +561,9 @@ func (as *authStore) isOpPermitted(userName string, key string, write bool, read
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(userName), nil, 0)
-	if len(vs) != 1 {
+	user := getUser(tx, userName)
+	if user == nil {
 		plog.Errorf("invalid user name %s for permission checking", userName)
-		return false
-	}
-
-	user := &authpb.User{}
-	err := user.Unmarshal(vs[0])
-	if err != nil {
-		plog.Errorf("failed to unmarshal user struct (name: %s): %s", userName, err)
 		return false
 	}
 
@@ -632,6 +607,20 @@ func (as *authStore) IsPutPermitted(header *pb.RequestHeader, key string) bool {
 
 func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key string) bool {
 	return as.isOpPermitted(header.Username, key, false, true)
+}
+
+func getUser(tx backend.BatchTx, username string) *authpb.User {
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(username), nil, 0)
+	if len(vs) == 0 {
+		return nil
+	}
+
+	user := &authpb.User{}
+	err := user.Unmarshal(vs[0])
+	if err != nil {
+		plog.Panicf("failed to unmarshal user struct (name: %s): %s", username, err)
+	}
+	return user
 }
 
 func (as *authStore) isAuthEnabled() bool {
