@@ -88,7 +88,7 @@
 		},
 		{
 			"ImportPath": "github.com/google/btree",
-			"Rev": "cc6329d4279e3f025a53a83c397d2339b5705c45"
+			"Rev": "7d79101e329e5a3adf994758c578dab82b90c017"
 		},
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
