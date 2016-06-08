@@ -219,9 +219,9 @@ OK
 OK
 ````
 
-### WATCH [options] [key or prefix]
+### WATCH [options] [key or prefix] [range_end]
 
-Watch watches events stream on keys or prefixes. The watch command runs until it encounters an error or is terminated by the user.
+Watch watches events stream on keys or prefixes, [key or prefix, range_end) if `range-end` is given. The watch command runs until it encounters an error or is terminated by the user.
 
 #### Options
 

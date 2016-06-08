@@ -34,7 +34,7 @@ var (
 // NewWatchCommand returns the cobra command for "watch".
 func NewWatchCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "watch [key or prefix]",
+		Use:   "watch [options] [key or prefix] [range_end]",
 		Short: "Watch watches events stream on keys or prefixes.",
 		Run:   watchCommandFunc,
 	}
@@ -52,17 +52,24 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 		watchInteractiveFunc(cmd, args)
 		return
 	}
-
-	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("watch in non-interactive mode requires an argument as key or prefix"))
+	if len(args) < 1 || len(args) > 2 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("watch in non-interactive mode requires one or two arguments as key or prefix, with range end"))
 	}
 
 	opts := []clientv3.OpOption{clientv3.WithRev(watchRev)}
+	key := args[0]
+	if len(args) == 2 {
+		if watchPrefix {
+			ExitWithError(ExitBadArgs, fmt.Errorf("`range_end` and `--prefix` cannot be set at the same time, choose one"))
+		}
+		opts = append(opts, clientv3.WithRange(args[1]))
+	}
+
 	if watchPrefix {
 		opts = append(opts, clientv3.WithPrefix())
 	}
 	c := mustClientFromCmd(cmd)
-	wc := c.Watch(context.TODO(), args[0], opts...)
+	wc := c.Watch(context.TODO(), key, opts...)
 	printWatchCh(wc)
 	err := c.Close()
 	if err == nil {
@@ -101,8 +108,8 @@ func watchInteractiveFunc(cmd *cobra.Command, args []string) {
 			continue
 		}
 		moreargs := flagset.Args()
-		if len(moreargs) != 1 {
-			fmt.Fprintf(os.Stderr, "Invalid command %s (Too many arguments)\n", l)
+		if len(moreargs) < 1 || len(moreargs) > 2 {
+			fmt.Fprintf(os.Stderr, "Invalid command %s (Too few or many arguments)\n", l)
 			continue
 		}
 		var key string
@@ -111,6 +118,13 @@ func watchInteractiveFunc(cmd *cobra.Command, args []string) {
 			key = moreargs[0]
 		}
 		opts := []clientv3.OpOption{clientv3.WithRev(watchRev)}
+		if len(moreargs) == 2 {
+			if watchPrefix {
+				fmt.Fprintf(os.Stderr, "`range_end` and `--prefix` cannot be set at the same time, choose one\n")
+				continue
+			}
+			opts = append(opts, clientv3.WithRange(moreargs[1]))
+		}
 		if watchPrefix {
 			opts = append(opts, clientv3.WithPrefix())
 		}

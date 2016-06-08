@@ -45,20 +45,25 @@ func watchTest(cx ctlCtx) {
 
 		wkv []kv
 	}{
-		{
+		{ // watch 1 key
 			[]kv{{"sample", "value"}},
 			[]string{"sample", "--rev", "1"},
 			[]kv{{"sample", "value"}},
 		},
-		{
+		{ // watch 3 keys by prefix
 			[]kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
 			[]string{"key", "--rev", "1", "--prefix"},
 			[]kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
 		},
-		{
+		{ // watch by revision
 			[]kv{{"etcd", "revision_1"}, {"etcd", "revision_2"}, {"etcd", "revision_3"}},
 			[]string{"etcd", "--rev", "2"},
 			[]kv{{"etcd", "revision_2"}, {"etcd", "revision_3"}},
+		},
+		{ // watch 3 keys by range
+			[]kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
+			[]string{"key", "key3", "--rev", "1"},
+			[]kv{{"key1", "val1"}, {"key2", "val2"}},
 		},
 	}
 
