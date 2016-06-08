@@ -394,20 +394,23 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 }
 
 func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {
-	md, mdexist := metadata.FromContext(ctx)
-	if mdexist {
-		token, texist := md["token"]
-		if texist {
-			username, uexist := s.AuthStore().UsernameFromToken(token[0])
-			if !uexist {
-				plog.Warningf("invalid auth token: %s", token[0])
-				return "", ErrInvalidAuthToken
-			}
-			return username, nil
-		}
+	md, ok := metadata.FromContext(ctx)
+	if !ok {
+		return "", nil
 	}
 
-	return "", nil
+	ts, tok := md["token"]
+	if !tok {
+		return "", nil
+	}
+
+	token := ts[0]
+	username, uok := s.AuthStore().UsernameFromToken(token)
+	if !uok {
+		plog.Warningf("invalid auth token: %s", token)
+		return "", ErrInvalidAuthToken
+	}
+	return username, nil
 }
 
 func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
