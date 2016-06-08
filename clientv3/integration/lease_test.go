@@ -339,3 +339,117 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 	case <-donec:
 	}
 }
+
+// TestLeaseKeepAliveCloseAfterDisconnectExpire ensures the keep alive channel is closed
+// following a disconnection, lease revoke, then reconnect.
+func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+
+	// setup lease and do a keepalive
+	resp, err := cli.Grant(context.Background(), 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
+	if kerr != nil {
+		t.Fatal(kerr)
+	}
+	if kresp := <-rc; kresp.ID != resp.ID {
+		t.Fatalf("ID = %x, want %x", kresp.ID, resp.ID)
+	}
+
+	// keep client disconnected
+	clus.Members[0].Stop(t)
+	time.Sleep(time.Second)
+	clus.WaitLeader(t)
+
+	if _, err := clus.Client(1).Revoke(context.TODO(), resp.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	clus.Members[0].Restart(t)
+
+	select {
+	case ka, ok := <-rc:
+		if ok {
+			t.Fatalf("unexpected keepalive %v", ka)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("keepalive channel did not close")
+	}
+}
+
+// TestLeaseKeepAliveInitTimeout ensures the keep alive channel closes if
+// the initial keep alive request never gets a response.
+func TestLeaseKeepAliveInitTimeout(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+
+	// setup lease and do a keepalive
+	resp, err := cli.Grant(context.Background(), 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
+	if kerr != nil {
+		t.Fatal(kerr)
+	}
+	// keep client disconnected
+	clus.Members[0].Stop(t)
+	select {
+	case ka, ok := <-rc:
+		if ok {
+			t.Fatalf("unexpected keepalive %v, expected closed channel", ka)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("keepalive channel did not close")
+	}
+
+	clus.Members[0].Restart(t)
+}
+
+// TestLeaseKeepAliveInitTimeout ensures the keep alive channel closes if
+// a keep alive request after the first never gets a response.
+func TestLeaseKeepAliveTTLTimeout(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+
+	// setup lease and do a keepalive
+	resp, err := cli.Grant(context.Background(), 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
+	if kerr != nil {
+		t.Fatal(kerr)
+	}
+	if kresp := <-rc; kresp.ID != resp.ID {
+		t.Fatalf("ID = %x, want %x", kresp.ID, resp.ID)
+	}
+
+	// keep client disconnected
+	clus.Members[0].Stop(t)
+	select {
+	case ka, ok := <-rc:
+		if ok {
+			t.Fatalf("unexpected keepalive %v, expected closed channel", ka)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("keepalive channel did not close")
+	}
+
+	clus.Members[0].Restart(t)
+}
