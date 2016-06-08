@@ -15,6 +15,7 @@
 package api
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -71,7 +72,9 @@ func runCapabilityLoop(s *etcdserver.EtcdServer) {
 				enableMapMu.Lock()
 				enabledMap = capabilityMaps[pv.String()]
 				enableMapMu.Unlock()
+				fmt.Printf("XXXXXXXXXXXXXXXXXXXXXXXXXX: ABOUT TO PRINT...\n")
 				plog.Infof("enabled capabilities for version %s", pv)
+				fmt.Printf("XXXXXXXXXXXXXXXXXXXXXXXXXX: DONE PRINTING...\n")
 			}
 		}
 
