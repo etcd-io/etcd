@@ -22,19 +22,11 @@ import (
 
 	"github.com/coreos/etcd/pkg/tlsutil"
 	"github.com/ghodss/yaml"
-	"google.golang.org/grpc"
 )
-
-// EndpointDialer is a policy for choosing which endpoint to dial next
-type EndpointDialer func(*Client) (*grpc.ClientConn, error)
 
 type Config struct {
 	// Endpoints is a list of URLs
 	Endpoints []string
-
-	// retryDialer chooses the next endpoint to use
-	// keep private until the grpc rebalancer is sorted out
-	retryDialer EndpointDialer
 
 	// DialTimeout is the timeout for failing to establish a connection.
 	DialTimeout time.Duration

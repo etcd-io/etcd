@@ -909,30 +909,15 @@ func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	}
 	defer client.Close()
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	conn := client.ActiveConnection()
-	st, err := conn.State()
-	if err != nil {
-		t.Fatal(err)
-	} else if st != grpc.Ready {
-		t.Fatalf("expected Ready, got %v", st)
-	}
-
-	// rpc will fail to handshake, triggering a connection state change
 	donec := make(chan error, 1)
 	go func() {
+		ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 		reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 		_, perr := toGRPC(client).KV.Put(ctx, reqput)
+		cancel()
 		donec <- perr
 	}()
 
-	st, err = conn.WaitForStateChange(ctx, st)
-	if err != nil {
-		t.Fatalf("unexpected error waiting for change (%v)", err)
-	} else if st == grpc.Ready {
-		t.Fatalf("expected failure state, got %v", st)
-	}
-	cancel()
 	if perr := <-donec; perr == nil {
 		t.Fatalf("expected client error on put")
 	}

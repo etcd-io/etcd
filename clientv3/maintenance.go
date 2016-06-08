@@ -17,10 +17,8 @@ package clientv3
 import (
 	"io"
 
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -54,17 +52,12 @@ type Maintenance interface {
 }
 
 type maintenance struct {
-	c *Client
-
-	rc     *remoteClient
+	c      *Client
 	remote pb.MaintenanceClient
 }
 
 func NewMaintenance(c *Client) Maintenance {
-	ret := &maintenance{c: c}
-	f := func(conn *grpc.ClientConn) { ret.remote = pb.NewMaintenanceClient(conn) }
-	ret.rc = newRemoteClient(c, f)
-	return ret
+	return &maintenance{c: c, remote: pb.NewMaintenanceClient(c.conn)}
 }
 
 func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
@@ -74,15 +67,12 @@ func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
 		Alarm:    pb.AlarmType_NONE, // all
 	}
 	for {
-		resp, err := m.getRemote().Alarm(ctx, req)
+		resp, err := m.remote.Alarm(ctx, req)
 		if err == nil {
 			return (*AlarmResponse)(resp), nil
 		}
 		if isHaltErr(ctx, err) {
-			return nil, rpctypes.Error(err)
-		}
-		if err = m.rc.reconnectWait(ctx, err); err != nil {
-			return nil, err
+			return nil, toErr(ctx, err)
 		}
 	}
 }
@@ -97,38 +87,36 @@ func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmR
 	if req.MemberID == 0 && req.Alarm == pb.AlarmType_NONE {
 		ar, err := m.AlarmList(ctx)
 		if err != nil {
-			return nil, rpctypes.Error(err)
+			return nil, toErr(ctx, err)
 		}
 		ret := AlarmResponse{}
 		for _, am := range ar.Alarms {
 			dresp, derr := m.AlarmDisarm(ctx, (*AlarmMember)(am))
 			if derr != nil {
-				return nil, rpctypes.Error(derr)
+				return nil, toErr(ctx, derr)
 			}
 			ret.Alarms = append(ret.Alarms, dresp.Alarms...)
 		}
 		return &ret, nil
 	}
 
-	resp, err := m.getRemote().Alarm(ctx, req)
+	resp, err := m.remote.Alarm(ctx, req)
 	if err == nil {
 		return (*AlarmResponse)(resp), nil
 	}
-	if !isHaltErr(ctx, err) {
-		m.rc.reconnect(err)
-	}
-	return nil, rpctypes.Error(err)
+	return nil, toErr(ctx, err)
 }
 
 func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*DefragmentResponse, error) {
 	conn, err := m.c.Dial(endpoint)
 	if err != nil {
-		return nil, rpctypes.Error(err)
+		return nil, toErr(ctx, err)
 	}
+	defer conn.Close()
 	remote := pb.NewMaintenanceClient(conn)
 	resp, err := remote.Defragment(ctx, &pb.DefragmentRequest{})
 	if err != nil {
-		return nil, rpctypes.Error(err)
+		return nil, toErr(ctx, err)
 	}
 	return (*DefragmentResponse)(resp), nil
 }
@@ -136,20 +124,21 @@ func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*Defragm
 func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusResponse, error) {
 	conn, err := m.c.Dial(endpoint)
 	if err != nil {
-		return nil, rpctypes.Error(err)
+		return nil, toErr(ctx, err)
 	}
+	defer conn.Close()
 	remote := pb.NewMaintenanceClient(conn)
 	resp, err := remote.Status(ctx, &pb.StatusRequest{})
 	if err != nil {
-		return nil, rpctypes.Error(err)
+		return nil, toErr(ctx, err)
 	}
 	return (*StatusResponse)(resp), nil
 }
 
 func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
-	ss, err := m.getRemote().Snapshot(ctx, &pb.SnapshotRequest{})
+	ss, err := m.remote.Snapshot(ctx, &pb.SnapshotRequest{})
 	if err != nil {
-		return nil, rpctypes.Error(err)
+		return nil, toErr(ctx, err)
 	}
 
 	pr, pw := io.Pipe()
@@ -171,10 +160,4 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 		pw.Close()
 	}()
 	return pr, nil
-}
-
-func (m *maintenance) getRemote() pb.MaintenanceClient {
-	m.rc.mu.Lock()
-	defer m.rc.mu.Unlock()
-	return m.remote
 }

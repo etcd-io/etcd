@@ -23,13 +23,11 @@ import (
 	"net"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 
 	"golang.org/x/net/context"
-	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -37,9 +35,6 @@ import (
 
 var (
 	ErrNoAvailableEndpoints = errors.New("etcdclient: no available endpoints")
-
-	// minConnRetryWait is the minimum time between reconnects to avoid flooding
-	minConnRetryWait = time.Second
 )
 
 // Client provides and manages an etcd v3 client session.
@@ -51,22 +46,12 @@ type Client struct {
 	Auth
 	Maintenance
 
-	conn   *grpc.ClientConn
-	cfg    Config
-	creds  *credentials.TransportAuthenticator
-	mu     sync.RWMutex // protects connection selection and error list
-	errors []error      // errors passed to retryConnection
+	conn  *grpc.ClientConn
+	cfg   Config
+	creds *credentials.TransportAuthenticator
 
 	ctx    context.Context
 	cancel context.CancelFunc
-
-	// fields below are managed by connMonitor
-
-	// reconnc accepts writes which signal the client should reconnect
-	reconnc chan error
-	// newconnc is closed on successful connect and set to a fresh channel
-	newconnc    chan struct{}
-	lastConnErr error
 
 	// Username is a username for authentication
 	Username string
@@ -76,9 +61,6 @@ type Client struct {
 
 // New creates a new etcdv3 client from a given configuration.
 func New(cfg Config) (*Client, error) {
-	if cfg.retryDialer == nil {
-		cfg.retryDialer = dialEndpointList
-	}
 	if len(cfg.Endpoints) == 0 {
 		return nil, ErrNoAvailableEndpoints
 	}
@@ -101,39 +83,9 @@ func NewFromConfigFile(path string) (*Client, error) {
 }
 
 // Close shuts down the client's etcd connections.
-func (c *Client) Close() (err error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// acquire the cancel
-	if c.cancel == nil {
-		// already canceled
-		if c.lastConnErr != c.ctx.Err() {
-			err = c.lastConnErr
-		}
-		return
-	}
-	cancel := c.cancel
-	c.cancel = nil
-	c.mu.Unlock()
-
-	// close watcher and lease before terminating connection
-	// so they don't retry on a closed client
-	c.Watcher.Close()
-	c.Lease.Close()
-
-	// cancel reconnection loop
-	cancel()
-	c.mu.Lock()
-	connc := c.newconnc
-	c.mu.Unlock()
-	// connc on cancel() is left closed
-	<-connc
-	c.mu.Lock()
-	if c.lastConnErr != c.ctx.Err() {
-		err = c.lastConnErr
-	}
-	return
+func (c *Client) Close() error {
+	c.cancel()
+	return toErr(c.ctx, c.conn.Close())
 }
 
 // Ctx is a context for "out of band" messages (e.g., for sending
@@ -143,15 +95,6 @@ func (c *Client) Ctx() context.Context { return c.ctx }
 
 // Endpoints lists the registered endpoints for the client.
 func (c *Client) Endpoints() []string { return c.cfg.Endpoints }
-
-// Errors returns all errors that have been observed since called last.
-func (c *Client) Errors() (errs []error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	errs = c.errors
-	c.errors = nil
-	return errs
-}
 
 type authTokenCredential struct {
 	token string
@@ -167,43 +110,70 @@ func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...str
 	}, nil
 }
 
-// Dial establishes a connection for a given endpoint using the client's config
+func (c *Client) dialTarget(endpoint string) (proto string, host string, creds *credentials.TransportAuthenticator) {
+	proto = "tcp"
+	host = endpoint
+	creds = c.creds
+	url, uerr := url.Parse(endpoint)
+	if uerr != nil || !strings.Contains(endpoint, "://") {
+		return
+	}
+	// strip scheme:// prefix since grpc dials by host
+	host = url.Host
+	switch url.Scheme {
+	case "unix":
+		proto = "unix"
+	case "http":
+		creds = nil
+	case "https":
+		if creds != nil {
+			break
+		}
+		tlsconfig := &tls.Config{}
+		emptyCreds := credentials.NewTLS(tlsconfig)
+		creds = &emptyCreds
+	default:
+		return "", "", nil
+	}
+	return
+}
+
+// Dial connects to a single endpoint using the client's config.
 func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
+	return c.dial(endpoint)
+}
+
+func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	opts := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithTimeout(c.cfg.DialTimeout),
 	}
+	opts = append(opts, dopts...)
 
-	proto := "tcp"
-	creds := c.creds
-	if url, uerr := url.Parse(endpoint); uerr == nil && strings.Contains(endpoint, "://") {
-		switch url.Scheme {
-		case "unix":
-			proto = "unix"
-		case "http":
-			creds = nil
-		case "https":
-			if creds == nil {
-				tlsconfig := &tls.Config{InsecureSkipVerify: true}
-				emptyCreds := credentials.NewTLS(tlsconfig)
-				creds = &emptyCreds
-			}
-		default:
-			return nil, fmt.Errorf("unknown scheme %q for %q", url.Scheme, endpoint)
-		}
-		// strip scheme:// prefix since grpc dials by host
-		endpoint = url.Host
+	// grpc issues TLS cert checks using the string passed into dial so
+	// that string must be the host. To recover the full scheme://host URL,
+	// have a map from hosts to the original endpoint.
+	host2ep := make(map[string]string)
+	for i := range c.cfg.Endpoints {
+		_, host, _ := c.dialTarget(c.cfg.Endpoints[i])
+		host2ep[host] = c.cfg.Endpoints[i]
 	}
-	f := func(a string, t time.Duration) (net.Conn, error) {
+
+	f := func(host string, t time.Duration) (net.Conn, error) {
+		proto, host, _ := c.dialTarget(host2ep[host])
+		if proto == "" {
+			return nil, fmt.Errorf("unknown scheme for %q", endpoint)
+		}
 		select {
 		case <-c.ctx.Done():
 			return nil, c.ctx.Err()
 		default:
 		}
-		return net.DialTimeout(proto, a, t)
+		return net.DialTimeout(proto, host, t)
 	}
 	opts = append(opts, grpc.WithDialer(f))
 
+	_, host, creds := c.dialTarget(endpoint)
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(*creds))
 	} else {
@@ -211,7 +181,7 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 	}
 
 	if c.Username != "" && c.Password != "" {
-		auth, err := newAuthenticator(endpoint, opts)
+		auth, err := newAuthenticator(host, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -225,7 +195,7 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 		opts = append(opts, grpc.WithPerRPCCredentials(authTokenCredential{token: resp.Token}))
 	}
 
-	conn, err := grpc.Dial(endpoint, opts...)
+	conn, err := grpc.Dial(host, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +211,7 @@ func WithRequireLeader(ctx context.Context) context.Context {
 
 func newClient(cfg *Config) (*Client, error) {
 	if cfg == nil {
-		cfg = &Config{retryDialer: dialEndpointList}
+		cfg = &Config{}
 	}
 	var creds *credentials.TransportAuthenticator
 	if cfg.TLS != nil {
@@ -251,26 +221,24 @@ func newClient(cfg *Config) (*Client, error) {
 
 	// use a temporary skeleton client to bootstrap first connection
 	ctx, cancel := context.WithCancel(context.TODO())
-	conn, err := cfg.retryDialer(&Client{cfg: *cfg, creds: creds, ctx: ctx, Username: cfg.Username, Password: cfg.Password})
-	if err != nil {
-		return nil, err
-	}
 	client := &Client{
-		conn:     conn,
-		cfg:      *cfg,
-		creds:    creds,
-		ctx:      ctx,
-		cancel:   cancel,
-		reconnc:  make(chan error, 1),
-		newconnc: make(chan struct{}),
+		conn:   nil,
+		cfg:    *cfg,
+		creds:  creds,
+		ctx:    ctx,
+		cancel: cancel,
 	}
-
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
 		client.Password = cfg.Password
 	}
 
-	go client.connMonitor()
+	b := newSimpleBalancer(cfg.Endpoints)
+	conn, err := client.dial(cfg.Endpoints[0], grpc.WithBalancer(b))
+	if err != nil {
+		return nil, err
+	}
+	client.conn = conn
 
 	client.Cluster = NewCluster(client)
 	client.KV = NewKV(client)
@@ -289,126 +257,30 @@ func newClient(cfg *Config) (*Client, error) {
 }
 
 // ActiveConnection returns the current in-use connection
-func (c *Client) ActiveConnection() *grpc.ClientConn {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.conn == nil {
-		panic("trying to return nil active connection")
-	}
-	return c.conn
-}
-
-// retryConnection establishes a new connection
-func (c *Client) retryConnection(err error) {
-	oldconn := c.conn
-
-	// return holding lock so old connection can be cleaned up in this defer
-	defer func() {
-		if oldconn != nil {
-			oldconn.Close()
-			if st, _ := oldconn.State(); st != grpc.Shutdown {
-				// wait so grpc doesn't leak sleeping goroutines
-				oldconn.WaitForStateChange(context.Background(), st)
-			}
-		}
-		c.mu.Unlock()
-	}()
-
-	c.mu.Lock()
-	if err != nil {
-		c.errors = append(c.errors, err)
-	}
-	if c.cancel == nil {
-		// client has called Close() so don't try to dial out
-		return
-	}
-	c.mu.Unlock()
-
-	nc, dialErr := c.cfg.retryDialer(c)
-
-	c.mu.Lock()
-	if nc != nil {
-		c.conn = nc
-	}
-	if dialErr != nil {
-		c.errors = append(c.errors, dialErr)
-	}
-	c.lastConnErr = dialErr
-}
-
-// connStartRetry schedules a reconnect if one is not already running
-func (c *Client) connStartRetry(err error) {
-	c.mu.Lock()
-	ch := c.reconnc
-	defer c.mu.Unlock()
-	select {
-	case ch <- err:
-	default:
-	}
-}
-
-// connWait waits for a reconnect to be processed
-func (c *Client) connWait(ctx context.Context, err error) (*grpc.ClientConn, error) {
-	c.mu.RLock()
-	ch := c.newconnc
-	c.mu.RUnlock()
-	c.connStartRetry(err)
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-ch:
-	}
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	if c.cancel == nil {
-		return c.conn, rpctypes.ErrConnClosed
-	}
-	return c.conn, c.lastConnErr
-}
-
-// connMonitor monitors the connection and handles retries
-func (c *Client) connMonitor() {
-	var err error
-
-	defer func() {
-		c.retryConnection(c.ctx.Err())
-		close(c.newconnc)
-	}()
-
-	limiter := rate.NewLimiter(rate.Every(minConnRetryWait), 1)
-	for limiter.Wait(c.ctx) == nil {
-		select {
-		case err = <-c.reconnc:
-		case <-c.ctx.Done():
-			return
-		}
-		c.retryConnection(err)
-		c.mu.Lock()
-		close(c.newconnc)
-		c.newconnc = make(chan struct{})
-		c.reconnc = make(chan error, 1)
-		c.mu.Unlock()
-	}
-}
-
-// dialEndpointList attempts to connect to each endpoint in order until a
-// connection is established.
-func dialEndpointList(c *Client) (*grpc.ClientConn, error) {
-	var err error
-	for _, ep := range c.Endpoints() {
-		conn, curErr := c.Dial(ep)
-		if curErr != nil {
-			err = curErr
-		} else {
-			return conn, nil
-		}
-	}
-	return nil, err
-}
+func (c *Client) ActiveConnection() *grpc.ClientConn { return c.conn }
 
 // isHaltErr returns true if the given error and context indicate no forward
 // progress can be made, even after reconnecting.
 func isHaltErr(ctx context.Context, err error) bool {
-	isRPCError := strings.HasPrefix(grpc.ErrorDesc(err), "etcdserver: ")
-	return isRPCError || ctx.Err() != nil || err == rpctypes.ErrConnClosed
+	if ctx != nil && ctx.Err() != nil {
+		return true
+	}
+	if err == nil {
+		return false
+	}
+	return strings.HasPrefix(grpc.ErrorDesc(err), "etcdserver: ") ||
+		strings.Contains(err.Error(), grpc.ErrClientConnClosing.Error())
+}
+
+func toErr(ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	err = rpctypes.Error(err)
+	if ctx.Err() != nil && strings.Contains(err.Error(), "context") {
+		err = ctx.Err()
+	} else if strings.Contains(err.Error(), grpc.ErrClientConnClosing.Error()) {
+		err = grpc.ErrClientConnClosing
+	}
+	return err
 }

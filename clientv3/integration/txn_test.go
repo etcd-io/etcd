@@ -58,57 +58,45 @@ func TestTxnWriteFail(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.Client(0))
-	ctx := context.TODO()
 
 	clus.Members[0].Stop(t)
-	<-clus.Members[0].StopNotify()
 
-	donec := make(chan struct{})
+	txnc, getc := make(chan struct{}), make(chan struct{})
 	go func() {
+		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+		defer cancel()
 		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
 		if err == nil {
 			t.Fatalf("expected error, got response %v", resp)
 		}
-		donec <- struct{}{}
+		close(txnc)
 	}()
 
-	dialTimeout := 5 * time.Second
-	select {
-	case <-time.After(dialTimeout + time.Second):
-		t.Fatalf("timed out waiting for txn to fail")
-	case <-donec:
-		// don't restart cluster until txn errors out
-	}
-
 	go func() {
-		// reconnect so terminate doesn't complain about double-close
-		clus.Members[0].Restart(t)
-		// wait for etcdserver to get established (CI races and get req times out)
-		time.Sleep(2 * time.Second)
-		donec <- struct{}{}
-
+		select {
+		case <-time.After(5 * time.Second):
+			t.Fatalf("timed out waiting for txn fail")
+		case <-txnc:
+		}
 		// and ensure the put didn't take
-		gresp, gerr := kv.Get(ctx, "foo")
+		gresp, gerr := clus.Client(1).Get(context.TODO(), "foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
 		if len(gresp.Kvs) != 0 {
 			t.Fatalf("expected no keys, got %v", gresp.Kvs)
 		}
-		donec <- struct{}{}
+		close(getc)
 	}()
 
 	select {
 	case <-time.After(5 * time.Second):
-		t.Fatalf("timed out waiting for restart")
-	case <-donec:
+		t.Fatalf("timed out waiting for get")
+	case <-getc:
 	}
 
-	select {
-	case <-time.After(5 * time.Second):
-		t.Fatalf("timed out waiting for get")
-	case <-donec:
-	}
+	// reconnect so terminate doesn't complain about double-close
+	clus.Members[0].Restart(t)
 }
 
 func TestTxnReadRetry(t *testing.T) {

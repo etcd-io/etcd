@@ -15,10 +15,8 @@
 package clientv3
 
 import (
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -78,47 +76,33 @@ func (op OpResponse) Get() *GetResponse    { return op.get }
 func (op OpResponse) Del() *DeleteResponse { return op.del }
 
 type kv struct {
-	rc     *remoteClient
 	remote pb.KVClient
 }
 
 func NewKV(c *Client) KV {
-	ret := &kv{}
-	f := func(conn *grpc.ClientConn) { ret.remote = pb.NewKVClient(conn) }
-	ret.rc = newRemoteClient(c, f)
-	return ret
+	return &kv{remote: pb.NewKVClient(c.conn)}
 }
 
 func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
 	r, err := kv.Do(ctx, OpPut(key, val, opts...))
-	return r.put, rpctypes.Error(err)
+	return r.put, toErr(ctx, err)
 }
 
 func (kv *kv) Get(ctx context.Context, key string, opts ...OpOption) (*GetResponse, error) {
 	r, err := kv.Do(ctx, OpGet(key, opts...))
-	return r.get, rpctypes.Error(err)
+	return r.get, toErr(ctx, err)
 }
 
 func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error) {
 	r, err := kv.Do(ctx, OpDelete(key, opts...))
-	return r.del, rpctypes.Error(err)
+	return r.del, toErr(ctx, err)
 }
 
 func (kv *kv) Compact(ctx context.Context, rev int64) error {
-	remote, err := kv.getRemote(ctx)
-	if err != nil {
-		return rpctypes.Error(err)
+	if _, err := kv.remote.Compact(ctx, &pb.CompactionRequest{Revision: rev}); err != nil {
+		return toErr(ctx, err)
 	}
-	defer kv.rc.release()
-	_, err = remote.Compact(ctx, &pb.CompactionRequest{Revision: rev})
-	if err == nil {
-		return nil
-	}
-	if isHaltErr(ctx, err) {
-		return rpctypes.Error(err)
-	}
-	kv.rc.reconnect(err)
-	return rpctypes.Error(err)
+	return nil
 }
 
 func (kv *kv) Txn(ctx context.Context) Txn {
@@ -135,26 +119,17 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 			return resp, nil
 		}
 		if isHaltErr(ctx, err) {
-			return resp, rpctypes.Error(err)
+			return resp, toErr(ctx, err)
 		}
 		// do not retry on modifications
 		if op.isWrite() {
-			kv.rc.reconnect(err)
-			return resp, rpctypes.Error(err)
-		}
-		if nerr := kv.rc.reconnectWait(ctx, err); nerr != nil {
-			return resp, rpctypes.Error(nerr)
+			return resp, toErr(ctx, err)
 		}
 	}
 }
 
 func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
-	remote, err := kv.getRemote(ctx)
-	if err != nil {
-		return OpResponse{}, err
-	}
-	defer kv.rc.release()
-
+	var err error
 	switch op.t {
 	// TODO: handle other ops
 	case tRange:
@@ -165,21 +140,21 @@ func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
 		}
 
-		resp, err = remote.Range(ctx, r)
+		resp, err = kv.remote.Range(ctx, r)
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
 	case tPut:
 		var resp *pb.PutResponse
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
-		resp, err = remote.Put(ctx, r)
+		resp, err = kv.remote.Put(ctx, r)
 		if err == nil {
 			return OpResponse{put: (*PutResponse)(resp)}, nil
 		}
 	case tDeleteRange:
 		var resp *pb.DeleteRangeResponse
 		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
-		resp, err = remote.DeleteRange(ctx, r)
+		resp, err = kv.remote.DeleteRange(ctx, r)
 		if err == nil {
 			return OpResponse{del: (*DeleteResponse)(resp)}, nil
 		}
@@ -187,12 +162,4 @@ func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 		panic("Unknown op")
 	}
 	return OpResponse{}, err
-}
-
-// getRemote must be followed by kv.rc.release() call.
-func (kv *kv) getRemote(ctx context.Context) (pb.KVClient, error) {
-	if err := kv.rc.acquire(ctx); err != nil {
-		return nil, err
-	}
-	return kv.remote, nil
 }

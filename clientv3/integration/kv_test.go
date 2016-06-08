@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 func TestKVPutError(t *testing.T) {
@@ -299,8 +300,8 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		_, err := kv.Get(context.TODO(), "foo")
-		if err != nil && err != rpctypes.ErrConnClosed {
-			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		if err != nil && err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 	}()
 
@@ -331,8 +332,8 @@ func TestKVNewAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		kv := clientv3.NewKV(cli)
-		if _, err := kv.Get(context.TODO(), "foo"); err != rpctypes.ErrConnClosed {
-			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		if _, err := kv.Get(context.TODO(), "foo"); err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
@@ -579,11 +580,10 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.Client(0))
-	ctx := context.TODO()
-
 	clus.Members[0].Stop(t)
-	<-clus.Members[0].StopNotify()
 
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
 	_, err := kv.Put(ctx, "foo", "bar")
 	if err == nil {
 		t.Fatalf("got success on disconnected put, wanted error")
@@ -592,7 +592,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get(ctx, "foo")
+		gresp, gerr := kv.Get(context.TODO(), "foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
@@ -642,20 +642,11 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
 	clus.Members[0].Stop(t)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	// this Put fails and triggers an asynchronous connection retry
-	_, err := cli.Put(context.TODO(), "abc", "123")
-	if err == nil ||
-		(!strings.Contains(err.Error(), "connection is closing") &&
-			!strings.Contains(err.Error(), "transport is closing")) {
-		t.Fatal(err)
-	}
-
-	// wait some so the client closes with the retry in-flight
-	time.Sleep(time.Second)
-
-	// get the timeout
-	clus.TakeClient(0)
-	if err := cli.Close(); err == nil || !strings.Contains(err.Error(), "timed out") {
+	_, err := cli.Put(ctx, "abc", "123")
+	cancel()
+	if !strings.Contains(err.Error(), "context deadline") {
 		t.Fatal(err)
 	}
 }

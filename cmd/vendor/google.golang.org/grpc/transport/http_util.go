@@ -127,6 +127,17 @@ func isReservedHeader(hdr string) bool {
 	}
 }
 
+// isWhitelistedPseudoHeader checks whether hdr belongs to HTTP2 pseudoheaders
+// that should be propagated into metadata visible to users.
+func isWhitelistedPseudoHeader(hdr string) bool {
+	switch hdr {
+	case ":authority":
+		return true
+	default:
+		return false
+	}
+}
+
 func (d *decodeState) setErr(err error) {
 	if d.err == nil {
 		d.err = err
@@ -162,7 +173,7 @@ func (d *decodeState) processHeaderField(f hpack.HeaderField) {
 	case ":path":
 		d.method = f.Value
 	default:
-		if !isReservedHeader(f.Name) {
+		if !isReservedHeader(f.Name) || isWhitelistedPseudoHeader(f.Name) {
 			if f.Name == "user-agent" {
 				i := strings.LastIndex(f.Value, " ")
 				if i == -1 {

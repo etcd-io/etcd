@@ -23,6 +23,7 @@ import (
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 func TestLeaseNotFoundError(t *testing.T) {
@@ -262,8 +263,8 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		_, err := le.Grant(context.TODO(), 5)
-		if err != nil && err != rpctypes.ErrConnClosed {
-			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		if err != nil && err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 	}()
 
@@ -294,8 +295,8 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		le := clientv3.NewLease(cli)
-		if _, err := le.Grant(context.TODO(), 5); err != rpctypes.ErrConnClosed {
-			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		if _, err := le.Grant(context.TODO(), 5); err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
@@ -327,8 +328,8 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		if _, err := le.Revoke(context.TODO(), leaseID); err != rpctypes.ErrConnClosed {
-			t.Fatalf("expected %v, got %v", rpctypes.ErrConnClosed, err)
+		if _, err := le.Revoke(context.TODO(), leaseID); err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
 	}()
