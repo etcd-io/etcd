@@ -68,13 +68,13 @@ func watchTest(cx ctlCtx) {
 	}
 
 	for i, tt := range tests {
-		go func() {
-			for j := range tt.puts {
-				if err := ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val, ""); err != nil {
+		go func(i int, puts []kv) {
+			for j := range puts {
+				if err := ctlV3Put(cx, puts[j].key, puts[j].val, ""); err != nil {
 					cx.t.Fatalf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
 				}
 			}
-		}()
+		}(i, tt.puts)
 		if err := ctlV3Watch(cx, tt.args, tt.wkv...); err != nil {
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
