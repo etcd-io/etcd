@@ -232,7 +232,7 @@ func TestCtlV2RoleList(t *testing.T) {
 func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issues/5360
 	defer testutil.AfterTest(t)
 
-	backupDir, err := ioutil.TempDir("", "testbakcup0.etcd")
+	backupDir, err := ioutil.TempDir("", "testbackup0.etcd")
 	if err != nil {
 		t.Fatal(err)
 	}
