@@ -521,7 +521,10 @@ func (a *applierV3Capped) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRe
 }
 
 func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
-	a.s.AuthStore().AuthEnable()
+	err := a.s.AuthStore().AuthEnable()
+	if err != nil {
+		return nil, err
+	}
 	return &pb.AuthEnableResponse{}, nil
 }
 

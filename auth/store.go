@@ -37,6 +37,8 @@ var (
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "auth")
 
+	ErrRootUserNotExist     = errors.New("auth: root user does not exist")
+	ErrRootRoleNotExist     = errors.New("auth: root user does not have root role")
 	ErrUserAlreadyExist     = errors.New("auth: user already exists")
 	ErrUserNotFound         = errors.New("auth: user not found")
 	ErrRoleAlreadyExist     = errors.New("auth: role already exists")
@@ -47,9 +49,14 @@ var (
 	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
 )
 
+const (
+	rootUser = "root"
+	rootRole = "root"
+)
+
 type AuthStore interface {
 	// AuthEnable turns on the authentication feature
-	AuthEnable()
+	AuthEnable() error
 
 	// AuthDisable turns off the authentication feature
 	AuthDisable()
@@ -112,21 +119,42 @@ type authStore struct {
 	enabledMu sync.RWMutex
 }
 
-func (as *authStore) AuthEnable() {
+func (as *authStore) AuthEnable() error {
 	value := []byte{1}
 
 	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
+	defer func() {
+		tx.Unlock()
+		b.ForceCommit()
+	}()
+
+	u := getUser(tx, rootUser)
+	if u == nil {
+		return ErrRootUserNotExist
+	}
+
+	rootRoleExist := false
+	for _, r := range u.Roles {
+		if r == rootRole {
+			rootRoleExist = true
+			break
+		}
+	}
+	if !rootRoleExist {
+		return ErrRootRoleNotExist
+	}
+
 	tx.UnsafePut(authBucketName, enableFlagKey, value)
-	tx.Unlock()
-	b.ForceCommit()
 
 	as.enabledMu.Lock()
 	as.enabled = true
 	as.enabledMu.Unlock()
 
 	plog.Noticef("Authentication enabled")
+
+	return nil
 }
 
 func (as *authStore) AuthDisable() {
@@ -280,9 +308,11 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 		return nil, ErrUserNotFound
 	}
 
-	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
-	if len(vs) != 1 {
-		return nil, ErrRoleNotFound
+	if r.Role != rootRole {
+		_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
+		if len(vs) != 1 {
+			return nil, ErrRoleNotFound
+		}
 	}
 
 	idx := sort.SearchStrings(user.Roles, r.Role)
