@@ -414,7 +414,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 
 	revoked := false
 	for _, perm := range role.KeyPermission {
-		if !bytes.Equal(perm.Key, []byte(r.Key)) {
+		if !bytes.Equal(perm.Key, []byte(r.Key)) || !bytes.Equal(perm.RangeEnd, []byte(r.RangeEnd)) {
 			updatedRole.KeyPermission = append(updatedRole.KeyPermission, perm)
 		} else {
 			revoked = true
@@ -536,13 +536,14 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 		return bytes.Compare(role.KeyPermission[i].Key, []byte(r.Perm.Key)) >= 0
 	})
 
-	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) {
+	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) && bytes.Equal(role.KeyPermission[idx].RangeEnd, r.Perm.RangeEnd) {
 		// update existing permission
 		role.KeyPermission[idx].PermType = r.Perm.PermType
 	} else {
 		// append new permission to the role
 		newPerm := &authpb.Permission{
 			Key:      []byte(r.Perm.Key),
+			RangeEnd: []byte(r.Perm.RangeEnd),
 			PermType: r.Perm.PermType,
 		}
 

@@ -622,6 +622,7 @@ message AuthRoleGrantPermissionRequest {
 message AuthRoleRevokePermissionRequest {
   string role = 1;
   string key = 2;
+  string range_end = 3;
 }
 
 message AuthEnableResponse {
