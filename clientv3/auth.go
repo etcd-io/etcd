@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/auth/authpb"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -109,47 +108,47 @@ func NewAuth(c *Client) Auth {
 
 func (auth *auth) AuthEnable(ctx context.Context) (*AuthEnableResponse, error) {
 	resp, err := auth.remote.AuthEnable(ctx, &pb.AuthEnableRequest{})
-	return (*AuthEnableResponse)(resp), rpctypes.Error(err)
+	return (*AuthEnableResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) AuthDisable(ctx context.Context) (*AuthDisableResponse, error) {
 	resp, err := auth.remote.AuthDisable(ctx, &pb.AuthDisableRequest{})
-	return (*AuthDisableResponse)(resp), rpctypes.Error(err)
+	return (*AuthDisableResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) UserAdd(ctx context.Context, name string, password string) (*AuthUserAddResponse, error) {
 	resp, err := auth.remote.UserAdd(ctx, &pb.AuthUserAddRequest{Name: name, Password: password})
-	return (*AuthUserAddResponse)(resp), rpctypes.Error(err)
+	return (*AuthUserAddResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) UserDelete(ctx context.Context, name string) (*AuthUserDeleteResponse, error) {
 	resp, err := auth.remote.UserDelete(ctx, &pb.AuthUserDeleteRequest{Name: name})
-	return (*AuthUserDeleteResponse)(resp), rpctypes.Error(err)
+	return (*AuthUserDeleteResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) UserChangePassword(ctx context.Context, name string, password string) (*AuthUserChangePasswordResponse, error) {
 	resp, err := auth.remote.UserChangePassword(ctx, &pb.AuthUserChangePasswordRequest{Name: name, Password: password})
-	return (*AuthUserChangePasswordResponse)(resp), rpctypes.Error(err)
+	return (*AuthUserChangePasswordResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) UserGrantRole(ctx context.Context, user string, role string) (*AuthUserGrantRoleResponse, error) {
 	resp, err := auth.remote.UserGrantRole(ctx, &pb.AuthUserGrantRoleRequest{User: user, Role: role})
-	return (*AuthUserGrantRoleResponse)(resp), rpctypes.Error(err)
+	return (*AuthUserGrantRoleResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error) {
 	resp, err := auth.remote.UserGet(ctx, &pb.AuthUserGetRequest{Name: name})
-	return (*AuthUserGetResponse)(resp), rpctypes.Error(err)
+	return (*AuthUserGetResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) UserRevokeRole(ctx context.Context, name string, role string) (*AuthUserRevokeRoleResponse, error) {
 	resp, err := auth.remote.UserRevokeRole(ctx, &pb.AuthUserRevokeRoleRequest{Name: name, Role: role})
-	return (*AuthUserRevokeRoleResponse)(resp), rpctypes.Error(err)
+	return (*AuthUserRevokeRoleResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error) {
 	resp, err := auth.remote.RoleAdd(ctx, &pb.AuthRoleAddRequest{Name: name})
-	return (*AuthRoleAddResponse)(resp), rpctypes.Error(err)
+	return (*AuthRoleAddResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) RoleGrantPermission(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error) {
@@ -158,22 +157,22 @@ func (auth *auth) RoleGrantPermission(ctx context.Context, name string, key stri
 		PermType: authpb.Permission_Type(permType),
 	}
 	resp, err := auth.remote.RoleGrantPermission(ctx, &pb.AuthRoleGrantPermissionRequest{Name: name, Perm: perm})
-	return (*AuthRoleGrantPermissionResponse)(resp), rpctypes.Error(err)
+	return (*AuthRoleGrantPermissionResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error) {
 	resp, err := auth.remote.RoleGet(ctx, &pb.AuthRoleGetRequest{Role: role})
-	return (*AuthRoleGetResponse)(resp), rpctypes.Error(err)
+	return (*AuthRoleGetResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) RoleRevokePermission(ctx context.Context, role string, key string) (*AuthRoleRevokePermissionResponse, error) {
 	resp, err := auth.remote.RoleRevokePermission(ctx, &pb.AuthRoleRevokePermissionRequest{Role: role, Key: key})
-	return (*AuthRoleRevokePermissionResponse)(resp), rpctypes.Error(err)
+	return (*AuthRoleRevokePermissionResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error) {
 	resp, err := auth.remote.RoleDelete(ctx, &pb.AuthRoleDeleteRequest{Role: role})
-	return (*AuthRoleDeleteResponse)(resp), rpctypes.Error(err)
+	return (*AuthRoleDeleteResponse)(resp), toErr(ctx, err)
 }
 
 func StrToPermissionType(s string) (PermissionType, error) {
@@ -191,7 +190,7 @@ type authenticator struct {
 
 func (auth *authenticator) authenticate(ctx context.Context, name string, password string) (*AuthenticateResponse, error) {
 	resp, err := auth.remote.Authenticate(ctx, &pb.AuthenticateRequest{Name: name, Password: password})
-	return (*AuthenticateResponse)(resp), rpctypes.Error(err)
+	return (*AuthenticateResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *authenticator) close() {

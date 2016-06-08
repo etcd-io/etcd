@@ -15,10 +15,8 @@
 package clientv3
 
 import (
-	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -44,62 +42,47 @@ type Cluster interface {
 }
 
 type cluster struct {
-	rc     *remoteClient
 	remote pb.ClusterClient
 }
 
 func NewCluster(c *Client) Cluster {
-	ret := &cluster{}
-	f := func(conn *grpc.ClientConn) { ret.remote = pb.NewClusterClient(conn) }
-	ret.rc = newRemoteClient(c, f)
-	return ret
+	return &cluster{remote: pb.NewClusterClient(c.conn)}
 }
 
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
 	r := &pb.MemberAddRequest{PeerURLs: peerAddrs}
-	resp, err := c.getRemote().MemberAdd(ctx, r)
+	resp, err := c.remote.MemberAdd(ctx, r)
 	if err == nil {
 		return (*MemberAddResponse)(resp), nil
 	}
-
 	if isHaltErr(ctx, err) {
-		return nil, rpctypes.Error(err)
+		return nil, toErr(ctx, err)
 	}
-
-	c.rc.reconnect(err)
-	return nil, rpctypes.Error(err)
+	return nil, toErr(ctx, err)
 }
 
 func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error) {
 	r := &pb.MemberRemoveRequest{ID: id}
-	resp, err := c.getRemote().MemberRemove(ctx, r)
+	resp, err := c.remote.MemberRemove(ctx, r)
 	if err == nil {
 		return (*MemberRemoveResponse)(resp), nil
 	}
-
 	if isHaltErr(ctx, err) {
-		return nil, rpctypes.Error(err)
+		return nil, toErr(ctx, err)
 	}
-
-	c.rc.reconnect(err)
-	return nil, rpctypes.Error(err)
+	return nil, toErr(ctx, err)
 }
 
 func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error) {
 	// it is safe to retry on update.
 	for {
 		r := &pb.MemberUpdateRequest{ID: id, PeerURLs: peerAddrs}
-		resp, err := c.getRemote().MemberUpdate(ctx, r)
+		resp, err := c.remote.MemberUpdate(ctx, r)
 		if err == nil {
 			return (*MemberUpdateResponse)(resp), nil
 		}
-
 		if isHaltErr(ctx, err) {
-			return nil, rpctypes.Error(err)
-		}
-
-		if err = c.rc.reconnectWait(ctx, err); err != nil {
-			return nil, rpctypes.Error(err)
+			return nil, toErr(ctx, err)
 		}
 	}
 }
@@ -107,23 +90,12 @@ func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []strin
 func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
 	// it is safe to retry on list.
 	for {
-		resp, err := c.getRemote().MemberList(ctx, &pb.MemberListRequest{})
+		resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{})
 		if err == nil {
 			return (*MemberListResponse)(resp), nil
 		}
-
 		if isHaltErr(ctx, err) {
-			return nil, rpctypes.Error(err)
-		}
-
-		if err = c.rc.reconnectWait(ctx, err); err != nil {
-			return nil, rpctypes.Error(err)
+			return nil, toErr(ctx, err)
 		}
 	}
-}
-
-func (c *cluster) getRemote() pb.ClusterClient {
-	c.rc.mu.Lock()
-	defer c.rc.mu.Unlock()
-	return c.remote
 }

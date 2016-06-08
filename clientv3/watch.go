@@ -22,7 +22,6 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -87,7 +86,6 @@ func (wr *WatchResponse) IsProgressNotify() bool {
 
 // watcher implements the Watcher interface
 type watcher struct {
-	rc     *remoteClient
 	remote pb.WatchClient
 
 	// ctx controls internal remote.Watch requests
@@ -142,6 +140,7 @@ type watcherStream struct {
 func NewWatcher(c *Client) Watcher {
 	ctx, cancel := context.WithCancel(context.Background())
 	w := &watcher{
+		remote:  pb.NewWatchClient(c.conn),
 		ctx:     ctx,
 		cancel:  cancel,
 		streams: make(map[int64]*watcherStream),
@@ -152,10 +151,6 @@ func NewWatcher(c *Client) Watcher {
 		donec: make(chan struct{}),
 		errc:  make(chan error, 1),
 	}
-
-	f := func(conn *grpc.ClientConn) { w.remote = pb.NewWatchClient(conn) }
-	w.rc = newRemoteClient(c, f)
-
 	go w.run()
 	return w
 }
@@ -203,7 +198,7 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 func (w *watcher) Close() error {
 	close(w.stopc)
 	<-w.donec
-	return v3rpc.Error(<-w.errc)
+	return toErr(w.ctx, <-w.errc)
 }
 
 func (w *watcher) addStream(resp *pb.WatchResponse, pendingReq *watchRequest) {
@@ -500,29 +495,19 @@ func (w *watcher) resume() (ws pb.Watch_WatchClient, err error) {
 // openWatchClient retries opening a watchclient until retryConnection fails
 func (w *watcher) openWatchClient() (ws pb.Watch_WatchClient, err error) {
 	for {
-		if err = w.rc.acquire(w.ctx); err != nil {
-			return nil, err
-		}
-
 		select {
 		case <-w.stopc:
 			if err == nil {
 				err = context.Canceled
 			}
-			w.rc.release()
 			return nil, err
 		default:
 		}
 		if ws, err = w.remote.Watch(w.ctx); ws != nil && err == nil {
-			w.rc.release()
 			break
-		} else if isHaltErr(w.ctx, err) {
-			w.rc.release()
-			return nil, v3rpc.Error(err)
 		}
-		w.rc.release()
-		if nerr := w.rc.reconnectWait(w.ctx, err); nerr != nil {
-			return nil, v3rpc.Error(nerr)
+		if isHaltErr(w.ctx, err) {
+			return nil, v3rpc.Error(err)
 		}
 	}
 	return ws, nil
