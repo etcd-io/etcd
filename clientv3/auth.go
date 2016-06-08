@@ -78,13 +78,13 @@ type Auth interface {
 	RoleAdd(ctx context.Context, name string) (*AuthRoleAddResponse, error)
 
 	// RoleGrantPermission grants a permission to a role.
-	RoleGrantPermission(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error)
+	RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error)
 
 	// RoleGet gets a detailed information of a role.
 	RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error)
 
-	// RoleRevokePermission revokes a key from a user.
-	RoleRevokePermission(ctx context.Context, role string, key string) (*AuthRoleRevokePermissionResponse, error)
+	// RoleRevokePermission revokes a permission from a role.
+	RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*AuthRoleRevokePermissionResponse, error)
 
 	// RoleDelete deletes a role.
 	RoleDelete(ctx context.Context, role string) (*AuthRoleDeleteResponse, error)
@@ -151,9 +151,10 @@ func (auth *auth) RoleAdd(ctx context.Context, name string) (*AuthRoleAddRespons
 	return (*AuthRoleAddResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) RoleGrantPermission(ctx context.Context, name string, key string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error) {
+func (auth *auth) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType PermissionType) (*AuthRoleGrantPermissionResponse, error) {
 	perm := &authpb.Permission{
 		Key:      []byte(key),
+		RangeEnd: []byte(rangeEnd),
 		PermType: authpb.Permission_Type(permType),
 	}
 	resp, err := auth.remote.RoleGrantPermission(ctx, &pb.AuthRoleGrantPermissionRequest{Name: name, Perm: perm})
@@ -165,8 +166,8 @@ func (auth *auth) RoleGet(ctx context.Context, role string) (*AuthRoleGetRespons
 	return (*AuthRoleGetResponse)(resp), toErr(ctx, err)
 }
 
-func (auth *auth) RoleRevokePermission(ctx context.Context, role string, key string) (*AuthRoleRevokePermissionResponse, error) {
-	resp, err := auth.remote.RoleRevokePermission(ctx, &pb.AuthRoleRevokePermissionRequest{Role: role, Key: key})
+func (auth *auth) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*AuthRoleRevokePermissionResponse, error) {
+	resp, err := auth.remote.RoleRevokePermission(ctx, &pb.AuthRoleRevokePermissionRequest{Role: role, Key: key, RangeEnd: rangeEnd})
 	return (*AuthRoleRevokePermissionResponse)(resp), toErr(ctx, err)
 }
 

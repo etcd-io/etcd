@@ -103,13 +103,15 @@ type AuthStore interface {
 	IsPutPermitted(header *pb.RequestHeader, key string) bool
 
 	// IsRangePermitted checks range permission of the user
-	IsRangePermitted(header *pb.RequestHeader, key string) bool
+	IsRangePermitted(header *pb.RequestHeader, key, rangeEnd string) bool
 }
 
 type authStore struct {
 	be        backend.Backend
 	enabled   bool
 	enabledMu sync.RWMutex
+
+	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 }
 
 func (as *authStore) AuthEnable() {
@@ -125,6 +127,8 @@ func (as *authStore) AuthEnable() {
 	as.enabledMu.Lock()
 	as.enabled = true
 	as.enabledMu.Unlock()
+
+	as.rangePermCache = make(map[string]*unifiedRangePermissions)
 
 	plog.Noticef("Authentication enabled")
 }
@@ -301,6 +305,8 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 
 	tx.UnsafePut(authUsersBucketName, user.Name, marshaledUser)
 
+	as.invalidateCachedPerm(r.User)
+
 	plog.Noticef("granted role %s to user %s", r.Role, r.User)
 	return &pb.AuthUserGrantRoleResponse{}, nil
 }
@@ -357,6 +363,8 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 
 	tx.UnsafePut(authUsersBucketName, updatedUser.Name, marshaledUser)
 
+	as.invalidateCachedPerm(r.Name)
+
 	plog.Noticef("revoked role %s from user %s", r.Role, r.Name)
 	return &pb.AuthUserRevokeRoleResponse{}, nil
 }
@@ -406,7 +414,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 
 	revoked := false
 	for _, perm := range role.KeyPermission {
-		if !bytes.Equal(perm.Key, []byte(r.Key)) {
+		if !bytes.Equal(perm.Key, []byte(r.Key)) || !bytes.Equal(perm.RangeEnd, []byte(r.RangeEnd)) {
 			updatedRole.KeyPermission = append(updatedRole.KeyPermission, perm)
 		} else {
 			revoked = true
@@ -423,6 +431,10 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	}
 
 	tx.UnsafePut(authRolesBucketName, updatedRole.Name, marshaledRole)
+
+	// TODO(mitake): currently single role update invalidates every cache
+	// It should be optimized.
+	as.clearCachedPerm()
 
 	plog.Noticef("revoked key %s from role %s", r.Key, r.Role)
 	return &pb.AuthRoleRevokePermissionResponse{}, nil
@@ -524,13 +536,14 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 		return bytes.Compare(role.KeyPermission[i].Key, []byte(r.Perm.Key)) >= 0
 	})
 
-	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) {
+	if idx < len(role.KeyPermission) && bytes.Equal(role.KeyPermission[idx].Key, r.Perm.Key) && bytes.Equal(role.KeyPermission[idx].RangeEnd, r.Perm.RangeEnd) {
 		// update existing permission
 		role.KeyPermission[idx].PermType = r.Perm.PermType
 	} else {
 		// append new permission to the role
 		newPerm := &authpb.Permission{
 			Key:      []byte(r.Perm.Key),
+			RangeEnd: []byte(r.Perm.RangeEnd),
 			PermType: r.Perm.PermType,
 		}
 
@@ -546,12 +559,16 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 
 	tx.UnsafePut(authRolesBucketName, []byte(r.Name), marshaledRole)
 
+	// TODO(mitake): currently single role update invalidates every cache
+	// It should be optimized.
+	as.clearCachedPerm()
+
 	plog.Noticef("role %s's permission of key %s is updated as %s", r.Name, r.Perm.Key, authpb.Permission_Type_name[int32(r.Perm.PermType)])
 
 	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
 
-func (as *authStore) isOpPermitted(userName string, key string, write bool, read bool) bool {
+func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, write bool, read bool) bool {
 	// TODO(mitake): this function would be costly so we need a caching mechanism
 	if !as.isAuthEnabled() {
 		return true
@@ -567,22 +584,26 @@ func (as *authStore) isOpPermitted(userName string, key string, write bool, read
 		return false
 	}
 
-	for _, roleName := range user.Roles {
-		_, vs := tx.UnsafeRange(authRolesBucketName, []byte(roleName), nil, 0)
-		if len(vs) != 1 {
-			plog.Errorf("invalid role name %s for permission checking", roleName)
-			return false
-		}
+	if strings.Compare(rangeEnd, "") == 0 {
+		for _, roleName := range user.Roles {
+			_, vs := tx.UnsafeRange(authRolesBucketName, []byte(roleName), nil, 0)
+			if len(vs) != 1 {
+				plog.Errorf("invalid role name %s for permission checking", roleName)
+				return false
+			}
 
-		role := &authpb.Role{}
-		err := role.Unmarshal(vs[0])
-		if err != nil {
-			plog.Errorf("failed to unmarshal a role %s: %s", roleName, err)
-			return false
-		}
+			role := &authpb.Role{}
+			err := role.Unmarshal(vs[0])
+			if err != nil {
+				plog.Errorf("failed to unmarshal a role %s: %s", roleName, err)
+				return false
+			}
 
-		for _, perm := range role.KeyPermission {
-			if bytes.Equal(perm.Key, []byte(key)) {
+			for _, perm := range role.KeyPermission {
+				if !bytes.Equal(perm.Key, []byte(key)) {
+					continue
+				}
+
 				if perm.PermType == authpb.READWRITE {
 					return true
 				}
@@ -598,15 +619,19 @@ func (as *authStore) isOpPermitted(userName string, key string, write bool, read
 		}
 	}
 
+	if as.isRangeOpPermitted(tx, userName, key, rangeEnd, write, read) {
+		return true
+	}
+
 	return false
 }
 
 func (as *authStore) IsPutPermitted(header *pb.RequestHeader, key string) bool {
-	return as.isOpPermitted(header.Username, key, true, false)
+	return as.isOpPermitted(header.Username, key, "", true, false)
 }
 
-func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key string) bool {
-	return as.isOpPermitted(header.Username, key, false, true)
+func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key, rangeEnd string) bool {
+	return as.isOpPermitted(header.Username, key, rangeEnd, false, true)
 }
 
 func getUser(tx backend.BatchTx, username string) *authpb.User {

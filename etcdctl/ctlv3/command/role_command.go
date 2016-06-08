@@ -64,7 +64,7 @@ func newRoleGetCommand() *cobra.Command {
 
 func newRoleGrantPermissionCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "grant-permission <role name> <permission type> <key>",
+		Use:   "grant-permission <role name> <permission type> <key> [endkey]",
 		Short: "grant a key to a role",
 		Run:   roleGrantPermissionCommandFunc,
 	}
@@ -72,7 +72,7 @@ func newRoleGrantPermissionCommand() *cobra.Command {
 
 func newRoleRevokePermissionCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "revoke-permission <role name> <key>",
+		Use:   "revoke-permission <role name> <key> [endkey]",
 		Short: "revoke a key from a role",
 		Run:   roleRevokePermissionCommandFunc,
 	}
@@ -121,21 +121,29 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Println("KV Read:")
 	for _, perm := range resp.Perm {
 		if perm.PermType == clientv3.PermRead || perm.PermType == clientv3.PermReadWrite {
-			fmt.Printf("\t%s\n", string(perm.Key))
+			if len(perm.RangeEnd) == 0 {
+				fmt.Printf("\t%s\n", string(perm.Key))
+			} else {
+				fmt.Printf("\t[%s, %s)\n", string(perm.Key), string(perm.RangeEnd))
+			}
 		}
 	}
 	fmt.Println("KV Write:")
 	for _, perm := range resp.Perm {
 		if perm.PermType == clientv3.PermWrite || perm.PermType == clientv3.PermReadWrite {
-			fmt.Printf("\t%s\n", string(perm.Key))
+			if len(perm.RangeEnd) == 0 {
+				fmt.Printf("\t%s\n", string(perm.Key))
+			} else {
+				fmt.Printf("\t[%s, %s)\n", string(perm.Key), string(perm.RangeEnd))
+			}
 		}
 	}
 }
 
 // roleGrantPermissionCommandFunc executes the "role grant-permission" command.
 func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
-	if len(args) != 3 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role grant command requires role name, permission type, and key as its argument."))
+	if len(args) < 3 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("role grant command requires role name, permission type, and key [endkey] as its argument."))
 	}
 
 	perm, err := clientv3.StrToPermissionType(args[1])
@@ -143,7 +151,12 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, err)
 	}
 
-	_, err = mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], args[2], perm)
+	rangeEnd := ""
+	if 4 <= len(args) {
+		rangeEnd = args[3]
+	}
+
+	_, err = mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], args[2], rangeEnd, perm)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -153,11 +166,16 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 
 // roleRevokePermissionCommandFunc executes the "role revoke-permission" command.
 func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
-	if len(args) != 2 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key as its argument."))
+	if len(args) < 2 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key [endkey] as its argument."))
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], args[1])
+	rangeEnd := ""
+	if 3 <= len(args) {
+		rangeEnd = args[2]
+	}
+
+	_, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], args[1], rangeEnd)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}

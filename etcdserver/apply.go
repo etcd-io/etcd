@@ -81,7 +81,7 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 	ar := &applyResult{}
 	switch {
 	case r.Range != nil:
-		if s.AuthStore().IsRangePermitted(r.Header, string(r.Range.Key)) {
+		if s.AuthStore().IsRangePermitted(r.Header, string(r.Range.Key), string(r.Range.RangeEnd)) {
 			ar.resp, ar.err = s.applyV3.Range(noTxn, r.Range)
 		} else {
 			ar.err = auth.ErrPermissionDenied
