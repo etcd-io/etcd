@@ -26,6 +26,7 @@ import (
 
 	clientV2 "github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -111,6 +112,9 @@ func (s *stresser) Stress() error {
 						shouldContinue = true
 					case transport.ErrConnClosing.Desc:
 						// server closed the transport (failure injected node)
+						shouldContinue = true
+					case rpctypes.ErrNotCapable.Error():
+						// capability check has not been done (in the beginning)
 						shouldContinue = true
 
 						// default:
