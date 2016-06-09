@@ -9,11 +9,12 @@ A simple example application, _raftexample_, is also available to help illustrat
 how to use this package in practice:
 https://github.com/coreos/etcd/tree/master/contrib/raftexample
 
-## Users
+## Notable Users
 
 - [cockroachdb](https://github.com/cockroachdb/cockroach) A Scalable, Survivable, Strongly-Consistent SQL Database
 - [etcd](https://github.com/coreos/etcd) A distributed reliable key-value store
 - [tikv](https://github.com/pingcap/tikv) Distributed transactional key value database powered by Rust and Raft
+- [swarmkit](https://github.com/docker/swarmkit) A toolkit for orchestrating distributed systems at any scale.
 
 ## Usage
 
