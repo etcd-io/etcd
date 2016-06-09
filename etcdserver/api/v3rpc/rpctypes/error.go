@@ -38,6 +38,8 @@ var (
 
 	ErrGRPCRequestTooLarge = grpc.Errorf(codes.InvalidArgument, "etcdserver: request is too large")
 
+	ErrGRPCRootUserNotExist     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: root user does not exist")
+	ErrGRPCRootRoleNotExist     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: root user does not have root role")
 	ErrGRPCUserAlreadyExist     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: user name already exists")
 	ErrGRPCUserNotFound         = grpc.Errorf(codes.FailedPrecondition, "etcdserver: user name not found")
 	ErrGRPCRoleAlreadyExist     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: role name already exists")
@@ -68,6 +70,8 @@ var (
 
 		grpc.ErrorDesc(ErrGRPCRequestTooLarge): ErrGRPCRequestTooLarge,
 
+		grpc.ErrorDesc(ErrGRPCRootUserNotExist):     ErrGRPCRootUserNotExist,
+		grpc.ErrorDesc(ErrGRPCRootRoleNotExist):     ErrGRPCRootRoleNotExist,
 		grpc.ErrorDesc(ErrGRPCUserAlreadyExist):     ErrGRPCUserAlreadyExist,
 		grpc.ErrorDesc(ErrGRPCUserNotFound):         ErrGRPCUserNotFound,
 		grpc.ErrorDesc(ErrGRPCRoleAlreadyExist):     ErrGRPCRoleAlreadyExist,
@@ -99,6 +103,8 @@ var (
 
 	ErrRequestTooLarge = Error(ErrGRPCRequestTooLarge)
 
+	ErrRootUserNotExist     = Error(ErrGRPCRootUserNotExist)
+	ErrRootRoleNotExist     = Error(ErrGRPCRootRoleNotExist)
 	ErrUserAlreadyExist     = Error(ErrGRPCUserAlreadyExist)
 	ErrUserNotFound         = Error(ErrGRPCUserNotFound)
 	ErrRoleAlreadyExist     = Error(ErrGRPCRoleAlreadyExist)

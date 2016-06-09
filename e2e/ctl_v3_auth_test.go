@@ -20,6 +20,15 @@ func TestCtlV3AuthEnable(t *testing.T)  { testCtl(t, authEnableTest) }
 func TestCtlV3AuthDisable(t *testing.T) { testCtl(t, authDisableTest) }
 
 func authEnableTest(cx ctlCtx) {
+	// create root user with root role
+	if err := ctlV3User(cx, []string{"add", "root", "--interactive=false"}, "User root created", []string{"root"}); err != nil {
+		cx.t.Fatalf("failed to create root user %v", err)
+	}
+
+	if err := ctlV3User(cx, []string{"grant-role", "root", "root"}, "Role root is granted to user root", nil); err != nil {
+		cx.t.Fatalf("failed to grant root user root role %v", err)
+	}
+
 	if err := ctlV3AuthEnable(cx); err != nil {
 		cx.t.Fatalf("authEnableTest ctlV3AuthEnable error (%v)", err)
 	}
