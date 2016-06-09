@@ -79,6 +79,13 @@ type applierV3backend struct {
 
 func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 	ar := &applyResult{}
+	username := r.Header.Username
+
+	if needAdminPermission(r) && !s.AuthStore().IsAdminPermitted(username) {
+		ar.err = auth.ErrPermissionDenied
+		return ar
+	}
+
 	switch {
 	case r.Range != nil:
 		if s.AuthStore().IsRangePermitted(r.Header, string(r.Range.Key), string(r.Range.RangeEnd)) {
@@ -104,6 +111,7 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 		ar.resp, ar.err = s.applyV3.LeaseRevoke(r.LeaseRevoke)
 	case r.Alarm != nil:
 		ar.resp, ar.err = s.applyV3.Alarm(r.Alarm)
+
 	case r.AuthEnable != nil:
 		ar.resp, ar.err = s.applyV3.AuthEnable()
 	case r.AuthDisable != nil:
@@ -709,4 +717,37 @@ func compareInt64(a, b int64) int {
 // sending empty byte strings as nil; >= is encoded in the range end as '\0'.
 func isGteRange(rangeEnd []byte) bool {
 	return len(rangeEnd) == 1 && rangeEnd[0] == 0
+}
+
+func needAdminPermission(r *pb.InternalRaftRequest) bool {
+	switch {
+	case r.AuthEnable != nil:
+		return true
+	case r.AuthDisable != nil:
+		return true
+	case r.AuthUserAdd != nil:
+		return true
+	case r.AuthUserDelete != nil:
+		return true
+	case r.AuthUserChangePassword != nil:
+		return true
+	case r.AuthUserGrantRole != nil:
+		return true
+	case r.AuthUserGet != nil:
+		return true
+	case r.AuthUserRevokeRole != nil:
+		return true
+	case r.AuthRoleAdd != nil:
+		return true
+	case r.AuthRoleGrantPermission != nil:
+		return true
+	case r.AuthRoleGet != nil:
+		return true
+	case r.AuthRoleRevokePermission != nil:
+		return true
+	case r.AuthRoleDelete != nil:
+		return true
+	default:
+		return false
+	}
 }
