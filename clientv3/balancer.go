@@ -30,6 +30,7 @@ type simpleBalancer struct {
 	eps     []string
 	ch      chan []grpc.Address
 	numGets uint32
+	donec   chan struct{}
 }
 
 func newSimpleBalancer(eps []string) grpc.Balancer {
@@ -38,8 +39,20 @@ func newSimpleBalancer(eps []string) grpc.Balancer {
 	for i := range eps {
 		addrs[i].Addr = getHost(eps[i])
 	}
-	ch <- addrs
-	return &simpleBalancer{eps: eps, ch: ch}
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(ch)
+		for {
+			select {
+			case <-donec:
+				return
+			default:
+				ch <- addrs
+			}
+		}
+	}()
+	return &simpleBalancer{eps: eps, ch: ch, donec: donec}
 }
 
 func (b *simpleBalancer) Start(target string) error        { return nil }
@@ -51,7 +64,7 @@ func (b *simpleBalancer) Get(ctx context.Context, opts grpc.BalancerGetOptions) 
 }
 func (b *simpleBalancer) Notify() <-chan []grpc.Address { return b.ch }
 func (b *simpleBalancer) Close() error {
-	close(b.ch)
+	close(b.donec)
 	return nil
 }
 
