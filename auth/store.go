@@ -17,6 +17,7 @@ package auth
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -26,6 +27,7 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -63,11 +65,8 @@ type AuthStore interface {
 	// AuthDisable turns off the authentication feature
 	AuthDisable()
 
-	// Authenticate does authentication based on given user name and password,
-	// and returns a token for successful case.
-	// Note that the generated token is valid only for the member the client
-	// connected to within fixed time duration. Reauth is required after the duration.
-	Authenticate(name string, password string) (*pb.AuthenticateResponse, error)
+	// Authenticate does authentication based on given user name and password
+	Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error)
 
 	// Recover recovers the state of auth store from the given backend
 	Recover(b backend.Backend)
@@ -116,6 +115,9 @@ type AuthStore interface {
 
 	// IsAdminPermitted checks admin permission of the user
 	IsAdminPermitted(username string) bool
+
+	// GenSimpleToken produces a simple random string
+	GenSimpleToken() (string, error)
 }
 
 type authStore struct {
@@ -124,6 +126,9 @@ type authStore struct {
 	enabledMu sync.RWMutex
 
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
+
+	simpleTokensMu sync.RWMutex
+	simpleTokens   map[string]string // token -> username
 }
 
 func (as *authStore) AuthEnable() error {
@@ -172,28 +177,29 @@ func (as *authStore) AuthDisable() {
 	plog.Noticef("Authentication disabled")
 }
 
-func (as *authStore) Authenticate(name string, password string) (*pb.AuthenticateResponse, error) {
+func (as *authStore) Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error) {
+	// TODO(mitake): after adding jwt support, branching based on values of ctx is required
+	index := ctx.Value("index").(uint64)
+	simpleToken := ctx.Value("simpleToken").(string)
+
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
 
-	user := getUser(tx, name)
+	user := getUser(tx, username)
 	if user == nil {
 		return nil, ErrAuthFailed
 	}
 
 	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
-		plog.Noticef("authentication failed, invalid password for user %s", name)
+		plog.Noticef("authentication failed, invalid password for user %s", username)
 		return &pb.AuthenticateResponse{}, ErrAuthFailed
 	}
 
-	token, err := genSimpleTokenForUser(name)
-	if err != nil {
-		plog.Errorf("failed to generate simple token: %s", err)
-		return nil, err
-	}
+	token := fmt.Sprintf("%s.%d", simpleToken, index)
+	as.assignSimpleTokenToUser(username, token)
 
-	plog.Infof("authorized %s, token is %s", name, token)
+	plog.Infof("authorized %s, token is %s", username, token)
 	return &pb.AuthenticateResponse{Token: token}, nil
 }
 
@@ -482,9 +488,9 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 }
 
 func (as *authStore) UsernameFromToken(token string) (string, bool) {
-	simpleTokensMu.RLock()
-	defer simpleTokensMu.RUnlock()
-	t, ok := simpleTokens[token]
+	as.simpleTokensMu.RLock()
+	defer as.simpleTokensMu.RUnlock()
+	t, ok := as.simpleTokens[token]
 	return t, ok
 }
 
@@ -680,7 +686,8 @@ func NewAuthStore(be backend.Backend) *authStore {
 	be.ForceCommit()
 
 	return &authStore{
-		be: be,
+		be:           be,
+		simpleTokens: make(map[string]string),
 	}
 }
 

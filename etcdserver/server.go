@@ -214,6 +214,8 @@ type EtcdServer struct {
 	// wg is used to wait for the go routines that depends on the server state
 	// to exit when stopping the server.
 	wg sync.WaitGroup
+
+	appliedIndex uint64
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -1064,6 +1066,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	// set the consistent index of current executing entry
 	s.consistIndex.setConsistentIndex(e.Index)
 	ar := s.applyV3Request(&raftReq)
+	s.setAppliedIndex(e.Index)
 	if ar.err != ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.w.Trigger(id, ar)
 		return
@@ -1312,4 +1315,12 @@ func (s *EtcdServer) restoreAlarms() error {
 		s.applyV3 = newApplierV3Capped(s.applyV3)
 	}
 	return nil
+}
+
+func (s *EtcdServer) getAppliedIndex() uint64 {
+	return atomic.LoadUint64(&s.appliedIndex)
+}
+
+func (s *EtcdServer) setAppliedIndex(v uint64) {
+	atomic.StoreUint64(&s.appliedIndex, v)
 }

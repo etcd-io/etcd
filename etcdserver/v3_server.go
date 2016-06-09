@@ -15,6 +15,8 @@
 package etcdserver
 
 import (
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/auth"
@@ -271,7 +273,18 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Authenticate: r})
+	st, err := s.AuthStore().GenSimpleToken()
+	if err != nil {
+		return nil, err
+	}
+
+	internalReq := &pb.InternalAuthenticateRequest{
+		Name:        r.Name,
+		Password:    r.Password,
+		SimpleToken: st,
+	}
+
+	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
 	if err != nil {
 		return nil, err
 	}
@@ -402,6 +415,36 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 	return result.resp.(*pb.AuthRoleDeleteResponse), nil
 }
 
+func (s *EtcdServer) isValidSimpleToken(token string) bool {
+	splitted := strings.Split(token, ".")
+	if len(splitted) != 2 {
+		return false
+	}
+	index, err := strconv.Atoi(splitted[1])
+	if err != nil {
+		return false
+	}
+
+	// CAUTION: below index synchronization is required because this node
+	// might not receive and apply the log entry of Authenticate() RPC.
+	authApplied := false
+	for i := 0; i < 10; i++ {
+		if uint64(index) <= s.getAppliedIndex() {
+			authApplied = true
+			break
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if !authApplied {
+		plog.Errorf("timeout of waiting Authenticate() RPC")
+		return false
+	}
+
+	return true
+}
+
 func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {
 	md, ok := metadata.FromContext(ctx)
 	if !ok {
@@ -414,6 +457,10 @@ func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {
 	}
 
 	token := ts[0]
+	if !s.isValidSimpleToken(token) {
+		return "", ErrInvalidAuthToken
+	}
+
 	username, uok := s.AuthStore().UsernameFromToken(token)
 	if !uok {
 		plog.Warningf("invalid auth token: %s", token)

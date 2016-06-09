@@ -203,6 +203,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | role |  | string |
 | key |  | string |
+| range_end |  | string |
 
 
 
@@ -755,8 +756,9 @@ Permission is a single entity
 
 | Field | Description | Type |
 | ----- | ----------- | ---- |
-| key |  | bytes |
 | permType |  | Type |
+| key |  | bytes |
+| range_end |  | bytes |
 
 
 
