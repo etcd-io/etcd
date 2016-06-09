@@ -527,18 +527,22 @@ func TestKVCompact(t *testing.T) {
 func TestKVGetRetry(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clusterSize := 3
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	defer clus.Terminate(t)
 
-	kv := clientv3.NewKV(clus.Client(0))
+	// because killing leader and following election
+	// could give no other endpoints for client reconnection
+	fIdx := (clus.WaitLeader(t) + 1) % clusterSize
+
+	kv := clientv3.NewKV(clus.Client(fIdx))
 	ctx := context.TODO()
 
 	if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
 		t.Fatal(err)
 	}
 
-	clus.Members[0].Stop(t)
-	<-clus.Members[0].StopNotify()
+	clus.Members[fIdx].Stop(t)
 
 	donec := make(chan struct{})
 	go func() {
@@ -563,7 +567,7 @@ func TestKVGetRetry(t *testing.T) {
 	}()
 
 	time.Sleep(100 * time.Millisecond)
-	clus.Members[0].Restart(t)
+	clus.Members[fIdx].Restart(t)
 
 	select {
 	case <-time.After(5 * time.Second):
