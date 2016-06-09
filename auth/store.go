@@ -111,6 +111,9 @@ type AuthStore interface {
 
 	// IsRangePermitted checks range permission of the user
 	IsRangePermitted(header *pb.RequestHeader, key, rangeEnd string) bool
+
+	// IsAdminPermitted checks admin permission of the user
+	IsAdminPermitted(username string) bool
 }
 
 type authStore struct {
@@ -137,14 +140,7 @@ func (as *authStore) AuthEnable() error {
 		return ErrRootUserNotExist
 	}
 
-	rootRoleExist := false
-	for _, r := range u.Roles {
-		if r == rootRole {
-			rootRoleExist = true
-			break
-		}
-	}
-	if !rootRoleExist {
+	if !hasRootRole(u) {
 		return ErrRootRoleNotExist
 	}
 
@@ -664,6 +660,23 @@ func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key, rangeEnd st
 	return as.isOpPermitted(header.Username, key, rangeEnd, false, true)
 }
 
+func (as *authStore) IsAdminPermitted(username string) bool {
+	if !as.isAuthEnabled() {
+		return true
+	}
+
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	u := getUser(tx, username)
+	if u == nil {
+		return false
+	}
+
+	return hasRootRole(u)
+}
+
 func getUser(tx backend.BatchTx, username string) *authpb.User {
 	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(username), nil, 0)
 	if len(vs) == 0 {
@@ -698,4 +711,13 @@ func NewAuthStore(be backend.Backend) *authStore {
 	return &authStore{
 		be: be,
 	}
+}
+
+func hasRootRole(u *authpb.User) bool {
+	for _, r := range u.Roles {
+		if r == rootRole {
+			return true
+		}
+	}
+	return false
 }
