@@ -138,12 +138,8 @@ func (c *Client) dialTarget(endpoint string) (proto string, host string, creds *
 	return
 }
 
-// Dial connects to a single endpoint using the client's config.
-func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
-	return c.dial(endpoint)
-}
-
-func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+// dialSetupOpts gives the dial opts prioer to any authentication
+func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) []grpc.DialOption {
 	opts := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithTimeout(c.cfg.DialTimeout),
@@ -162,7 +158,7 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 	f := func(host string, t time.Duration) (net.Conn, error) {
 		proto, host, _ := c.dialTarget(host2ep[host])
 		if proto == "" {
-			return nil, fmt.Errorf("unknown scheme for %q", endpoint)
+			return nil, fmt.Errorf("unknown scheme for %q", host)
 		}
 		select {
 		case <-c.ctx.Done():
@@ -173,15 +169,27 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 	}
 	opts = append(opts, grpc.WithDialer(f))
 
-	_, host, creds := c.dialTarget(endpoint)
+	_, _, creds := c.dialTarget(endpoint)
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(*creds))
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
 
+	return opts
+}
+
+// Dial connects to a single endpoint using the client's config.
+func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
+	return c.dial(endpoint)
+}
+
+func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	opts := c.dialSetupOpts(endpoint, dopts...)
+	host := getHost(endpoint)
 	if c.Username != "" && c.Password != "" {
-		auth, err := newAuthenticator(host, opts)
+		// use dial options without dopts to avoid reusing the client balancer
+		auth, err := newAuthenticator(host, c.dialSetupOpts(endpoint))
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +199,6 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 		if err != nil {
 			return nil, err
 		}
-
 		opts = append(opts, grpc.WithPerRPCCredentials(authTokenCredential{token: resp.Token}))
 	}
 
