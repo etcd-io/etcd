@@ -48,6 +48,9 @@ type ctlCtx struct {
 
 	quorum      bool // if true, set up 3-node cluster and linearizable read
 	interactive bool
+
+	user string
+	pass string
 }
 
 type ctlOption func(*ctlCtx)
@@ -145,6 +148,10 @@ func (cx *ctlCtx) PrefixArgs() []string {
 		} else {
 			cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 		}
+	}
+
+	if cx.user != "" {
+		cmdArgs = append(cmdArgs, "--user="+cx.user+":"+cx.pass)
 	}
 
 	return cmdArgs
