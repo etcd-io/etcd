@@ -253,7 +253,7 @@ func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDelete
 		return nil, ErrUserNotFound
 	}
 
-	tx.UnsafeDelete(authUsersBucketName, []byte(r.Name))
+	delUser(tx, r.Name)
 
 	plog.Noticef("deleted a user: %s", r.Name)
 
@@ -454,7 +454,7 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 		return nil, ErrRoleNotFound
 	}
 
-	tx.UnsafeDelete(authRolesBucketName, []byte(r.Role))
+	delRole(tx, r.Role)
 
 	plog.Noticef("deleted role %s", r.Role)
 	return &pb.AuthRoleDeleteResponse{}, nil
@@ -639,6 +639,10 @@ func putUser(tx backend.BatchTx, user *authpb.User) {
 	tx.UnsafePut(authUsersBucketName, user.Name, b)
 }
 
+func delUser(tx backend.BatchTx, username string) {
+	tx.UnsafeDelete(authUsersBucketName, []byte(username))
+}
+
 func getRole(tx backend.BatchTx, rolename string) *authpb.Role {
 	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(rolename), nil, 0)
 	if len(vs) == 0 {
@@ -660,6 +664,10 @@ func putRole(tx backend.BatchTx, role *authpb.Role) {
 	}
 
 	tx.UnsafePut(authRolesBucketName, []byte(role.Name), b)
+}
+
+func delRole(tx backend.BatchTx, rolename string) {
+	tx.UnsafeDelete(authRolesBucketName, []byte(rolename))
 }
 
 func (as *authStore) isAuthEnabled() bool {
