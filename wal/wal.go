@@ -41,9 +41,6 @@ const (
 	crcType
 	snapshotType
 
-	// the owner can make/remove files inside the directory
-	privateDirMode = 0700
-
 	// the expected size of each wal segment file.
 	// the actual size might be bigger than it.
 	segmentSizeBytes = 64 * 1000 * 1000 // 64MB
@@ -100,12 +97,12 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 			return nil, err
 		}
 	}
-	if err := os.MkdirAll(tmpdirpath, privateDirMode); err != nil {
+	if err := os.MkdirAll(tmpdirpath, fileutil.PrivateDirMode); err != nil {
 		return nil, err
 	}
 
 	p := path.Join(tmpdirpath, walName(0, 0))
-	f, err := fileutil.LockFile(p, os.O_WRONLY|os.O_CREATE, 0600)
+	f, err := fileutil.LockFile(p, os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +174,7 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) 
 	for _, name := range names[nameIndex:] {
 		p := path.Join(dirpath, name)
 		if write {
-			l, err := fileutil.TryLockFile(p, os.O_RDWR, 0600)
+			l, err := fileutil.TryLockFile(p, os.O_RDWR, fileutil.PrivateFileMode)
 			if err != nil {
 				closeAll(rcs...)
 				return nil, err
@@ -185,7 +182,7 @@ func openAtIndex(dirpath string, snap walpb.Snapshot, write bool) (*WAL, error) 
 			ls = append(ls, l)
 			rcs = append(rcs, l)
 		} else {
-			rf, err := os.OpenFile(p, os.O_RDONLY, 0600)
+			rf, err := os.OpenFile(p, os.O_RDONLY, fileutil.PrivateFileMode)
 			if err != nil {
 				closeAll(rcs...)
 				return nil, err
@@ -373,7 +370,7 @@ func (w *WAL) cut() error {
 	}
 	newTail.Close()
 
-	if newTail, err = fileutil.LockFile(fpath, os.O_WRONLY, 0600); err != nil {
+	if newTail, err = fileutil.LockFile(fpath, os.O_WRONLY, fileutil.PrivateFileMode); err != nil {
 		return err
 	}
 	if _, err = newTail.Seek(off, os.SEEK_SET); err != nil {

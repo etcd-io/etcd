@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/wal/walpb"
@@ -614,7 +615,7 @@ func TestRestartCreateWal(t *testing.T) {
 	if err = os.Mkdir(p+".tmp", 0755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = os.OpenFile(path.Join(tmpdir, "test"), os.O_WRONLY|os.O_CREATE, 0600); err != nil {
+	if _, err = os.OpenFile(path.Join(tmpdir, "test"), os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode); err != nil {
 		t.Fatal(err)
 	}
 
