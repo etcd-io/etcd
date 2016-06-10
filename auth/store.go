@@ -177,16 +177,9 @@ func (as *authStore) Authenticate(name string, password string) (*pb.Authenticat
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(name), nil, 0)
-	if len(vs) != 1 {
-		plog.Noticef("authentication failed, user %s doesn't exist", name)
-		return &pb.AuthenticateResponse{}, ErrAuthFailed
-	}
-
-	user := &authpb.User{}
-	err := user.Unmarshal(vs[0])
-	if err != nil {
-		return nil, err
+	user := getUser(tx, name)
+	if user == nil {
+		return nil, ErrAuthFailed
 	}
 
 	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
@@ -309,8 +302,8 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	}
 
 	if r.Role != rootRole {
-		_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
-		if len(vs) != 1 {
+		role := getRole(tx, r.Role)
+		if role == nil {
 			return nil, ErrRoleNotFound
 		}
 	}
@@ -429,12 +422,7 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 		return nil, ErrPermissionNotGranted
 	}
 
-	marshaledRole, merr := updatedRole.Marshal()
-	if merr != nil {
-		return nil, merr
-	}
-
-	tx.UnsafePut(authRolesBucketName, updatedRole.Name, marshaledRole)
+	putRole(tx, updatedRole)
 
 	// TODO(mitake): currently single role update invalidates every cache
 	// It should be optimized.
@@ -486,12 +474,7 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 		Name: []byte(r.Name),
 	}
 
-	marshaledRole, err := newRole.Marshal()
-	if err != nil {
-		return nil, err
-	}
-
-	tx.UnsafePut(authRolesBucketName, []byte(r.Name), marshaledRole)
+	putRole(tx, newRole)
 
 	plog.Noticef("Role %s is created", r.Name)
 
@@ -548,13 +531,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 		sort.Sort(permSlice(role.KeyPermission))
 	}
 
-	marshaledRole, merr := role.Marshal()
-	if merr != nil {
-		plog.Errorf("failed to marshal updated role %s: %s", r.Name, merr)
-		return nil, merr
-	}
-
-	tx.UnsafePut(authRolesBucketName, []byte(r.Name), marshaledRole)
+	putRole(tx, role)
 
 	// TODO(mitake): currently single role update invalidates every cache
 	// It should be optimized.
@@ -674,6 +651,15 @@ func getRole(tx backend.BatchTx, rolename string) *authpb.Role {
 		plog.Panicf("failed to unmarshal role struct (name: %s): %s", rolename, err)
 	}
 	return role
+}
+
+func putRole(tx backend.BatchTx, role *authpb.Role) {
+	b, err := role.Marshal()
+	if err != nil {
+		plog.Panicf("failed to marshal role struct (name: %s): %s", role.Name, err)
+	}
+
+	tx.UnsafePut(authRolesBucketName, []byte(role.Name), b)
 }
 
 func (as *authStore) isAuthEnabled() bool {
