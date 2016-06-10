@@ -95,5 +95,5 @@ func openLast(dirpath string) (*fileutil.LockedFile, error) {
 		return nil, err
 	}
 	last := path.Join(dirpath, names[len(names)-1])
-	return fileutil.LockFile(last, os.O_RDWR, 0600)
+	return fileutil.LockFile(last, os.O_RDWR, fileutil.PrivateFileMode)
 }
