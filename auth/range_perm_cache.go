@@ -85,17 +85,9 @@ func (as *authStore) makeUnifiedPerms(tx backend.BatchTx, userName string) *unif
 	var readPerms, writePerms []*rangePerm
 
 	for _, roleName := range user.Roles {
-		_, vs := tx.UnsafeRange(authRolesBucketName, []byte(roleName), nil, 0)
-		if len(vs) != 1 {
-			plog.Errorf("invalid role name %s", roleName)
-			return nil
-		}
-
-		role := &authpb.Role{}
-		err := role.Unmarshal(vs[0])
-		if err != nil {
-			plog.Errorf("failed to unmarshal a role %s: %s", roleName, err)
-			return nil
+		role := getRole(tx, roleName)
+		if role == nil {
+			continue
 		}
 
 		for _, perm := range role.KeyPermission {
