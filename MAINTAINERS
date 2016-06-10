@@ -4,3 +4,4 @@ Gyu-Ho Lee <gyu_ho.lee@coreos.com> (@gyuho) pkg:*
 Xiang Li <xiang.li@coreos.com> (@xiang90) pkg:*
 
 Ben Darnell <ben@cockroachlabs.com> (@bdarnell) pkg:github.com/coreos/etcd/raft
+Hitoshi Mitake <h.mitake@gmail.com> (@mitake) pkg:github.com/coreos/etcd/auth
