@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/gogo/protobuf/proto"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -59,7 +60,7 @@ type applierV3 interface {
 
 	AuthEnable() (*pb.AuthEnableResponse, error)
 	AuthDisable() (*pb.AuthDisableResponse, error)
-	Authenticate(r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error)
+	Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error)
 	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
 	UserChangePassword(ua *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
@@ -117,7 +118,8 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 	case r.AuthDisable != nil:
 		ar.resp, ar.err = s.applyV3.AuthDisable()
 	case r.Authenticate != nil:
-		ar.resp, ar.err = s.applyV3.Authenticate(r.Authenticate)
+		ctx := context.WithValue(context.WithValue(context.TODO(), "index", s.consistIndex.ConsistentIndex()), "simpleToken", r.Authenticate.SimpleToken)
+		ar.resp, ar.err = s.applyV3.Authenticate(ctx, r.Authenticate.Name, r.Authenticate.Password)
 	case r.AuthUserAdd != nil:
 		ar.resp, ar.err = s.applyV3.UserAdd(r.AuthUserAdd)
 	case r.AuthUserDelete != nil:
@@ -541,8 +543,8 @@ func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
 	return &pb.AuthDisableResponse{}, nil
 }
 
-func (a *applierV3backend) Authenticate(r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	return a.s.AuthStore().Authenticate(r.Name, r.Password)
+func (a *applierV3backend) Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error) {
+	return a.s.AuthStore().Authenticate(ctx, username, password)
 }
 
 func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {

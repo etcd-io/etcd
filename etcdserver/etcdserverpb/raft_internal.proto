@@ -38,7 +38,7 @@ message InternalRaftRequest {
   AuthEnableRequest auth_enable = 1000;
   AuthDisableRequest auth_disable = 1011;
 
-  AuthenticateRequest authenticate = 1012;
+  InternalAuthenticateRequest authenticate = 1012;
 
   AuthUserAddRequest auth_user_add = 1100;
   AuthUserDeleteRequest auth_user_delete = 1101;
@@ -56,3 +56,15 @@ message InternalRaftRequest {
 
 message EmptyResponse {
 }
+
+// What is the difference between AuthenticateRequest (defined in rpc.proto) and InternalAuthenticateRequest?
+// InternalAuthenticateRequest has a member that is filled by etcdserver and shouldn't be user-facing.
+// For avoiding misusage the field, we have an internal version of AuthenticateRequest.
+message InternalAuthenticateRequest {
+  string name = 1;
+  string password = 2;
+
+  // simple_token is generated in API layer (etcdserver/v3_server.go)
+  string simple_token = 3;
+}
+
