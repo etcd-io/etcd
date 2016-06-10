@@ -119,11 +119,11 @@ func checkCachedPerm(cachedPerms *unifiedRangePermissions, userName string, key,
 
 	for _, perm := range perms {
 		if strings.Compare(rangeEnd, "") != 0 {
-			if strings.Compare(perm.begin, key) <= 0 && strings.Compare(rangeEnd, perm.end) <= 0 {
+			if strings.Compare(perm.begin, key) <= 0 && strings.Compare(rangeEnd, perm.end) < 0 {
 				return true
 			}
 		} else {
-			if strings.Compare(perm.begin, key) <= 0 && strings.Compare(key, perm.end) <= 0 {
+			if strings.Compare(perm.begin, key) <= 0 && strings.Compare(key, perm.end) < 0 {
 				return true
 			}
 		}
