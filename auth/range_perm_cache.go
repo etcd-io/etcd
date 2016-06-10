@@ -27,9 +27,10 @@ func isSubset(a, b *rangePerm) bool {
 	return 0 <= strings.Compare(a.begin, b.begin) && strings.Compare(a.end, b.end) <= 0
 }
 
-func reduceSubsets(perms []*rangePerm) []*rangePerm {
+// removeSubsetRangePerms removes any rangePerms that are subsets of other rangePerms.
+func removeSubsetRangePerms(perms []*rangePerm) []*rangePerm {
 	// TODO(mitake): currently it is O(n^2), we need a better algorithm
-	ret := make([]*rangePerm, 0)
+	newp := make([]*rangePerm, 0)
 
 	for i := range perms {
 		subset := false
@@ -45,34 +46,31 @@ func reduceSubsets(perms []*rangePerm) []*rangePerm {
 			continue
 		}
 
-		ret = append(ret, perms[i])
+		newp = append(newp, perms[i])
 	}
 
-	return ret
+	return newp
 }
 
-func unifyPerms(perms []*rangePerm) []*rangePerm {
-	ret := make([]*rangePerm, 0)
-	perms = reduceSubsets(perms)
+// mergeRangePerms merges adjacent rangePerms.
+func mergeRangePerms(perms []*rangePerm) []*rangePerm {
+	merged := make([]*rangePerm, 0)
+	perms = removeSubsetRangePerms(perms)
 	sort.Sort(RangePermSliceByBegin(perms))
 
 	i := 0
 	for i < len(perms) {
-		begin := i
-		for i+1 < len(perms) && perms[i].end >= perms[i+1].begin {
-			i++
+		begin, next := i, i
+		for next+1 < len(perms) && perms[next].end >= perms[next+1].begin {
+			next++
 		}
 
-		if i == begin {
-			ret = append(ret, &rangePerm{begin: perms[i].begin, end: perms[i].end})
-		} else {
-			ret = append(ret, &rangePerm{begin: perms[begin].begin, end: perms[i].end})
-		}
+		merged = append(merged, &rangePerm{begin: perms[begin].begin, end: perms[next].end})
 
-		i++
+		i = next + 1
 	}
 
-	return ret
+	return merged
 }
 
 func (as *authStore) makeUnifiedPerms(tx backend.BatchTx, userName string) *unifiedRangePermissions {
@@ -105,7 +103,7 @@ func (as *authStore) makeUnifiedPerms(tx backend.BatchTx, userName string) *unif
 		}
 	}
 
-	return &unifiedRangePermissions{readPerms: unifyPerms(readPerms), writePerms: unifyPerms(writePerms)}
+	return &unifiedRangePermissions{readPerms: mergeRangePerms(readPerms), writePerms: mergeRangePerms(writePerms)}
 }
 
 func checkCachedPerm(cachedPerms *unifiedRangePermissions, userName string, key, rangeEnd string, write, read bool) bool {

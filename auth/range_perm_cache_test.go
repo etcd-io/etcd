@@ -88,7 +88,7 @@ func TestUnifyParams(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		result := unifyPerms(tt.params)
+		result := mergeRangePerms(tt.params)
 		if !isPermsEqual(result, tt.want) {
 			t.Errorf("#%d: result=%q, want=%q", i, result, tt.want)
 		}
