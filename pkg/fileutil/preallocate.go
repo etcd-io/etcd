@@ -23,7 +23,7 @@ import "os"
 // Otherwise, the error encountered will be returned.
 func Preallocate(f *os.File, sizeInBytes int64, extendFile bool) error {
 	if extendFile {
-		preallocExtend(f, sizeInBytes)
+		return preallocExtend(f, sizeInBytes)
 	}
 	return preallocFixed(f, sizeInBytes)
 }
