@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -33,6 +34,8 @@ const (
 	// To apply with independent Range, Put, Delete, you can pass noTxn
 	// to apply functions instead of a valid txn ID.
 	noTxn = -1
+
+	warnApplyDuration = 10 * time.Millisecond
 )
 
 type applyResult struct {
