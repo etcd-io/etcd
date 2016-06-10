@@ -411,15 +411,9 @@ func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse,
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
-	if len(vs) != 1 {
+	role := getRole(tx, r.Role)
+	if role == nil {
 		return nil, ErrRoleNotFound
-	}
-
-	role := &authpb.Role{}
-	err := role.Unmarshal(vs[0])
-	if err != nil {
-		return nil, err
 	}
 
 	var resp pb.AuthRoleGetResponse
@@ -435,15 +429,9 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
-	if len(vs) != 1 {
+	role := getRole(tx, r.Role)
+	if role == nil {
 		return nil, ErrRoleNotFound
-	}
-
-	role := &authpb.Role{}
-	err := role.Unmarshal(vs[0])
-	if err != nil {
-		return nil, err
 	}
 
 	updatedRole := &authpb.Role{}
@@ -494,8 +482,8 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
-	if len(vs) != 1 {
+	role := getRole(tx, r.Role)
+	if role == nil {
 		return nil, ErrRoleNotFound
 	}
 
@@ -510,8 +498,8 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Name), nil, 0)
-	if len(vs) != 0 {
+	role := getRole(tx, r.Name)
+	if role != nil {
 		return nil, ErrRoleAlreadyExist
 	}
 
@@ -557,16 +545,9 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Name), nil, 0)
-	if len(vs) != 1 {
+	role := getRole(tx, r.Name)
+	if role == nil {
 		return nil, ErrRoleNotFound
-	}
-
-	role := &authpb.Role{}
-	err := role.Unmarshal(vs[0])
-	if err != nil {
-		plog.Errorf("failed to unmarshal a role %s: %s", r.Name, err)
-		return nil, err
 	}
 
 	idx := sort.Search(len(role.KeyPermission), func(i int) bool {
@@ -623,17 +604,9 @@ func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, write 
 
 	if strings.Compare(rangeEnd, "") == 0 {
 		for _, roleName := range user.Roles {
-			_, vs := tx.UnsafeRange(authRolesBucketName, []byte(roleName), nil, 0)
-			if len(vs) != 1 {
-				plog.Errorf("invalid role name %s for permission checking", roleName)
-				return false
-			}
-
-			role := &authpb.Role{}
-			err := role.Unmarshal(vs[0])
-			if err != nil {
-				plog.Errorf("failed to unmarshal a role %s: %s", roleName, err)
-				return false
+			role := getRole(tx, roleName)
+			if role == nil {
+				continue
 			}
 
 			for _, perm := range role.KeyPermission {
@@ -700,6 +673,20 @@ func getUser(tx backend.BatchTx, username string) *authpb.User {
 		plog.Panicf("failed to unmarshal user struct (name: %s): %s", username, err)
 	}
 	return user
+}
+
+func getRole(tx backend.BatchTx, rolename string) *authpb.Role {
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte(rolename), nil, 0)
+	if len(vs) == 0 {
+		return nil
+	}
+
+	role := &authpb.Role{}
+	err := role.Unmarshal(vs[0])
+	if err != nil {
+		plog.Panicf("failed to unmarshal role struct (name: %s): %s", rolename, err)
+	}
+	return role
 }
 
 func (as *authStore) isAuthEnabled() bool {
