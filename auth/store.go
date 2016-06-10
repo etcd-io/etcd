@@ -359,20 +359,18 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 		return nil, ErrUserNotFound
 	}
 
-	updatedUser := &authpb.User{}
-	updatedUser.Name = user.Name
-	updatedUser.Password = user.Password
+	updatedUser := &authpb.User{
+		Name:     user.Name,
+		Password: user.Password,
+	}
 
-	revoked := false
 	for _, role := range user.Roles {
 		if strings.Compare(role, r.Role) != 0 {
 			updatedUser.Roles = append(updatedUser.Roles, role)
-		} else {
-			revoked = true
 		}
 	}
 
-	if !revoked {
+	if len(updatedUser.Roles) == len(user.Roles) {
 		return nil, ErrRoleNotGranted
 	}
 
@@ -412,19 +410,17 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 		return nil, ErrRoleNotFound
 	}
 
-	updatedRole := &authpb.Role{}
-	updatedRole.Name = role.Name
+	updatedRole := &authpb.Role{
+		Name: role.Name,
+	}
 
-	revoked := false
 	for _, perm := range role.KeyPermission {
 		if !bytes.Equal(perm.Key, []byte(r.Key)) || !bytes.Equal(perm.RangeEnd, []byte(r.RangeEnd)) {
 			updatedRole.KeyPermission = append(updatedRole.KeyPermission, perm)
-		} else {
-			revoked = true
 		}
 	}
 
-	if !revoked {
+	if len(role.KeyPermission) == len(updatedRole.KeyPermission) {
 		return nil, ErrPermissionNotGranted
 	}
 
