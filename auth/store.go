@@ -177,16 +177,9 @@ func (as *authStore) Authenticate(name string, password string) (*pb.Authenticat
 	tx.Lock()
 	defer tx.Unlock()
 
-	_, vs := tx.UnsafeRange(authUsersBucketName, []byte(name), nil, 0)
-	if len(vs) != 1 {
-		plog.Noticef("authentication failed, user %s doesn't exist", name)
-		return &pb.AuthenticateResponse{}, ErrAuthFailed
-	}
-
-	user := &authpb.User{}
-	err := user.Unmarshal(vs[0])
-	if err != nil {
-		return nil, err
+	user := getUser(tx, name)
+	if user == nil {
+		return nil, ErrAuthFailed
 	}
 
 	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
@@ -309,8 +302,8 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	}
 
 	if r.Role != rootRole {
-		_, vs := tx.UnsafeRange(authRolesBucketName, []byte(r.Role), nil, 0)
-		if len(vs) != 1 {
+		role := getRole(tx, r.Role)
+		if role == nil {
 			return nil, ErrRoleNotFound
 		}
 	}
