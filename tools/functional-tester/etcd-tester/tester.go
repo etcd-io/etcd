@@ -128,8 +128,10 @@ func (tt *tester) runLoop() {
 
 		plog.Printf("%s compacting %d entries (timeout %v)", tt.logPrefix(), compactN, timeout)
 		if err := tt.compact(revToCompact, timeout); err != nil {
-			plog.Warningf("%s functional-tester returning with error (%v)", tt.logPrefix(), err)
-			return
+			plog.Warningf("%s functional-tester compact got error (%v)", tt.logPrefix(), err)
+			if err := tt.cleanup(); err != nil {
+				return
+			}
 		}
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			if err := tt.defrag(); err != nil {
@@ -263,7 +265,13 @@ func (tt *tester) cleanup() error {
 		plog.Printf("%s cleanup error: %v", tt.logPrefix(), err)
 		return err
 	}
-	return tt.cluster.Bootstrap()
+
+	if err := tt.cluster.Bootstrap(); err != nil {
+		plog.Printf("%s cleanup Bootstrap error: %v", tt.logPrefix(), err)
+		return err
+	}
+
+	return nil
 }
 
 func (tt *tester) cancelStressers() {
