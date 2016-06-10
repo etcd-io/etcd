@@ -35,13 +35,13 @@ func TestLockAndUnlock(t *testing.T) {
 	}()
 
 	// lock the file
-	l, err := LockFile(f.Name(), os.O_WRONLY, 0600)
+	l, err := LockFile(f.Name(), os.O_WRONLY, PrivateFileMode)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// try lock a locked file
-	if _, err = TryLockFile(f.Name(), os.O_WRONLY, 0600); err != ErrLocked {
+	if _, err = TryLockFile(f.Name(), os.O_WRONLY, PrivateFileMode); err != ErrLocked {
 		t.Fatal(err)
 	}
 
@@ -51,7 +51,7 @@ func TestLockAndUnlock(t *testing.T) {
 	}
 
 	// try lock the unlocked file
-	dupl, err := TryLockFile(f.Name(), os.O_WRONLY, 0600)
+	dupl, err := TryLockFile(f.Name(), os.O_WRONLY, PrivateFileMode)
 	if err != nil {
 		t.Errorf("err = %v, want %v", err, nil)
 	}
@@ -59,7 +59,7 @@ func TestLockAndUnlock(t *testing.T) {
 	// blocking on locked file
 	locked := make(chan struct{}, 1)
 	go func() {
-		bl, blerr := LockFile(f.Name(), os.O_WRONLY, 0600)
+		bl, blerr := LockFile(f.Name(), os.O_WRONLY, PrivateFileMode)
 		if blerr != nil {
 			t.Fatal(blerr)
 		}

@@ -102,7 +102,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 
 	// create a purge barrier at 5
 	p := path.Join(dir, fmt.Sprintf("%d.test", 5))
-	l, err := LockFile(p, os.O_WRONLY, 0600)
+	l, err := LockFile(p, os.O_WRONLY, PrivateFileMode)
 	if err != nil {
 		t.Fatal(err)
 	}

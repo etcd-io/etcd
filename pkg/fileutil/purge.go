@@ -40,7 +40,7 @@ func PurgeFile(dirname string, suffix string, max uint, interval time.Duration, 
 			sort.Strings(newfnames)
 			for len(newfnames) > int(max) {
 				f := path.Join(dirname, newfnames[0])
-				l, err := TryLockFile(f, os.O_WRONLY, 0600)
+				l, err := TryLockFile(f, os.O_WRONLY, PrivateFileMode)
 				if err != nil {
 					break
 				}
