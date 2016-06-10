@@ -238,18 +238,12 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 		return nil, ErrUserAlreadyExist
 	}
 
-	newUser := authpb.User{
+	newUser := &authpb.User{
 		Name:     []byte(r.Name),
 		Password: hashed,
 	}
 
-	marshaledUser, merr := newUser.Marshal()
-	if merr != nil {
-		plog.Errorf("failed to marshal a new user data: %s", merr)
-		return nil, merr
-	}
-
-	tx.UnsafePut(authUsersBucketName, []byte(r.Name), marshaledUser)
+	putUser(tx, newUser)
 
 	plog.Noticef("added a new user: %s", r.Name)
 
@@ -291,18 +285,13 @@ func (as *authStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*p
 		return nil, ErrUserNotFound
 	}
 
-	updatedUser := authpb.User{
+	updatedUser := &authpb.User{
 		Name:     []byte(r.Name),
+		Roles:    user.Roles,
 		Password: hashed,
 	}
 
-	marshaledUser, merr := updatedUser.Marshal()
-	if merr != nil {
-		plog.Errorf("failed to marshal a new user data: %s", merr)
-		return nil, merr
-	}
-
-	tx.UnsafePut(authUsersBucketName, []byte(r.Name), marshaledUser)
+	putUser(tx, updatedUser)
 
 	plog.Noticef("changed a password of a user: %s", r.Name)
 
@@ -335,12 +324,7 @@ func (as *authStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUser
 	user.Roles = append(user.Roles, r.Role)
 	sort.Sort(sort.StringSlice(user.Roles))
 
-	marshaledUser, merr := user.Marshal()
-	if merr != nil {
-		return nil, merr
-	}
-
-	tx.UnsafePut(authUsersBucketName, user.Name, marshaledUser)
+	putUser(tx, user)
 
 	as.invalidateCachedPerm(r.User)
 
@@ -393,12 +377,7 @@ func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUs
 		return nil, ErrRoleNotGranted
 	}
 
-	marshaledUser, merr := updatedUser.Marshal()
-	if merr != nil {
-		return nil, merr
-	}
-
-	tx.UnsafePut(authUsersBucketName, updatedUser.Name, marshaledUser)
+	putUser(tx, updatedUser)
 
 	as.invalidateCachedPerm(r.Name)
 
@@ -673,6 +652,14 @@ func getUser(tx backend.BatchTx, username string) *authpb.User {
 		plog.Panicf("failed to unmarshal user struct (name: %s): %s", username, err)
 	}
 	return user
+}
+
+func putUser(tx backend.BatchTx, user *authpb.User) {
+	b, err := user.Marshal()
+	if err != nil {
+		plog.Panicf("failed to marshal user struct (name: %s): %s", user.Name, err)
+	}
+	tx.UnsafePut(authUsersBucketName, user.Name, b)
 }
 
 func getRole(tx backend.BatchTx, rolename string) *authpb.Role {
