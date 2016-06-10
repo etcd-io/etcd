@@ -30,6 +30,8 @@ import (
 
 var (
 	enableFlagKey = []byte("authEnabled")
+	authEnabled   = []byte{1}
+	authDisabled  = []byte{0}
 
 	authBucketName      = []byte("auth")
 	authUsersBucketName = []byte("authUsers")
@@ -125,8 +127,6 @@ type authStore struct {
 }
 
 func (as *authStore) AuthEnable() error {
-	value := []byte{1}
-
 	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
@@ -144,7 +144,7 @@ func (as *authStore) AuthEnable() error {
 		return ErrRootRoleNotExist
 	}
 
-	tx.UnsafePut(authBucketName, enableFlagKey, value)
+	tx.UnsafePut(authBucketName, enableFlagKey, authEnabled)
 
 	as.enabledMu.Lock()
 	as.enabled = true
@@ -158,12 +158,10 @@ func (as *authStore) AuthEnable() error {
 }
 
 func (as *authStore) AuthDisable() {
-	value := []byte{0}
-
 	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
-	tx.UnsafePut(authBucketName, enableFlagKey, value)
+	tx.UnsafePut(authBucketName, enableFlagKey, authDisabled)
 	tx.Unlock()
 	b.ForceCommit()
 
@@ -207,8 +205,21 @@ func (as *authStore) Authenticate(name string, password string) (*pb.Authenticat
 }
 
 func (as *authStore) Recover(be backend.Backend) {
+	enabled := false
 	as.be = be
-	// TODO(mitake): recovery process
+	tx := be.BatchTx()
+	tx.Lock()
+	_, vs := tx.UnsafeRange(authBucketName, enableFlagKey, nil, 0)
+	if len(vs) == 1 {
+		if bytes.Equal(vs[0], authEnabled) {
+			enabled = true
+		}
+	}
+	tx.Unlock()
+
+	as.enabledMu.Lock()
+	as.enabled = enabled
+	as.enabledMu.Unlock()
 }
 
 func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
