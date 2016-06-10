@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"time"
 
+	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
@@ -74,6 +75,14 @@ type Authenticator interface {
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if r.Serializable {
+		user, err := s.usernameFromCtx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		hdr := &pb.RequestHeader{Username: user}
+		if !s.AuthStore().IsRangePermitted(hdr, string(r.Key), string(r.RangeEnd)) {
+			return nil, auth.ErrPermissionDenied
+		}
 		return s.applyV3.Range(noTxn, r)
 	}
 
