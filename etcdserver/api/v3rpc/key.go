@@ -28,9 +28,9 @@ import (
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver/api", "v3rpc")
 
-	// Max operations per txn list. For example, Txn.Success can have at most 128 operations,
-	// and Txn.Failure can have at most 128 operations.
-	MaxOpsPerTxn = 128
+	// Max operations per txn list. For example, Txn.Success can have at most 512 operations,
+	// and Txn.Failure can have at most 512 operations.
+	MaxOpsPerTxn = 512
 )
 
 type kvServer struct {
