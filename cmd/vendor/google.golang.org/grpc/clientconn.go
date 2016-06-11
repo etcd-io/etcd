@@ -61,10 +61,13 @@ var (
 	// being set for ClientConn. Users should either set one or explicitly
 	// call WithInsecure DialOption to disable security.
 	errNoTransportSecurity = errors.New("grpc: no transport security set (use grpc.WithInsecure() explicitly or set credentials)")
-	// errCredentialsMisuse indicates that users want to transmit security information
-	// (e.g., oauth2 token) which requires secure connection on an insecure
+	// errTransportCredentialsMissing indicates that users want to transmit security
+	// information (e.g., oauth2 token) which requires secure connection on an insecure
 	// connection.
-	errCredentialsMisuse = errors.New("grpc: the credentials require transport level security (use grpc.WithTransportAuthenticator() to set)")
+	errTransportCredentialsMissing = errors.New("grpc: the credentials require transport level security (use grpc.WithTransportCredentials() to set)")
+	// errCredentialsConflict indicates that grpc.WithTransportCredentials()
+	// and grpc.WithInsecure() are both called for a connection.
+	errCredentialsConflict = errors.New("grpc: transport credentials are set for an insecure connection (grpc.WithTransportCredentials() and grpc.WithInsecure() are both called)")
 	// errNetworkIP indicates that the connection is down due to some network I/O error.
 	errNetworkIO = errors.New("grpc: failed with network I/O error")
 	// errConnDrain indicates that the connection starts to be drained and does not accept any new RPCs.
@@ -170,17 +173,17 @@ func WithInsecure() DialOption {
 
 // WithTransportCredentials returns a DialOption which configures a
 // connection level security credentials (e.g., TLS/SSL).
-func WithTransportCredentials(creds credentials.TransportAuthenticator) DialOption {
+func WithTransportCredentials(creds credentials.TransportCredentials) DialOption {
 	return func(o *dialOptions) {
-		o.copts.AuthOptions = append(o.copts.AuthOptions, creds)
+		o.copts.TransportCredentials = creds
 	}
 }
 
 // WithPerRPCCredentials returns a DialOption which sets
 // credentials which will place auth state on each outbound RPC.
-func WithPerRPCCredentials(creds credentials.Credentials) DialOption {
+func WithPerRPCCredentials(creds credentials.PerRPCCredentials) DialOption {
 	return func(o *dialOptions) {
-		o.copts.AuthOptions = append(o.copts.AuthOptions, creds)
+		o.copts.PerRPCCredentials = append(o.copts.PerRPCCredentials, creds)
 	}
 }
 
@@ -369,19 +372,16 @@ func (cc *ClientConn) newAddrConn(addr Address, skipWait bool) error {
 		ac.events = trace.NewEventLog("grpc.ClientConn", ac.addr.Addr)
 	}
 	if !ac.dopts.insecure {
-		var ok bool
-		for _, cd := range ac.dopts.copts.AuthOptions {
-			if _, ok = cd.(credentials.TransportAuthenticator); ok {
-				break
-			}
-		}
-		if !ok {
+		if ac.dopts.copts.TransportCredentials == nil {
 			return errNoTransportSecurity
 		}
 	} else {
-		for _, cd := range ac.dopts.copts.AuthOptions {
+		if ac.dopts.copts.TransportCredentials != nil {
+			return errCredentialsConflict
+		}
+		for _, cd := range ac.dopts.copts.PerRPCCredentials {
 			if cd.RequireTransportSecurity() {
-				return errCredentialsMisuse
+				return errTransportCredentialsMissing
 			}
 		}
 	}

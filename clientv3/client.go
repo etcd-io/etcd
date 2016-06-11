@@ -48,7 +48,7 @@ type Client struct {
 
 	conn  *grpc.ClientConn
 	cfg   Config
-	creds *credentials.TransportAuthenticator
+	creds *credentials.TransportCredentials
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -110,7 +110,7 @@ func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...str
 	}, nil
 }
 
-func (c *Client) dialTarget(endpoint string) (proto string, host string, creds *credentials.TransportAuthenticator) {
+func (c *Client) dialTarget(endpoint string) (proto string, host string, creds *credentials.TransportCredentials) {
 	proto = "tcp"
 	host = endpoint
 	creds = c.creds
@@ -220,7 +220,7 @@ func newClient(cfg *Config) (*Client, error) {
 	if cfg == nil {
 		cfg = &Config{}
 	}
-	var creds *credentials.TransportAuthenticator
+	var creds *credentials.TransportCredentials
 	if cfg.TLS != nil {
 		c := credentials.NewTLS(cfg.TLS)
 		creds = &c

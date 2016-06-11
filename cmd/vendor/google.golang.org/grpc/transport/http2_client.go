@@ -88,7 +88,7 @@ type http2Client struct {
 	// The scheme used: https if TLS is on, http otherwise.
 	scheme string
 
-	authCreds []credentials.Credentials
+	creds []credentials.PerRPCCredentials
 
 	mu            sync.Mutex     // guard the following variables
 	state         transportState // the state of underlying connection
@@ -117,19 +117,12 @@ func newHTTP2Client(addr string, opts *ConnectOptions) (_ ClientTransport, err e
 		return nil, ConnectionErrorf("transport: %v", connErr)
 	}
 	var authInfo credentials.AuthInfo
-	for _, c := range opts.AuthOptions {
-		if ccreds, ok := c.(credentials.TransportAuthenticator); ok {
-			scheme = "https"
-			// TODO(zhaoq): Now the first TransportAuthenticator is used if there are
-			// multiple ones provided. Revisit this if it is not appropriate. Probably
-			// place the ClientTransport construction into a separate function to make
-			// things clear.
-			if timeout > 0 {
-				timeout -= time.Since(startT)
-			}
-			conn, authInfo, connErr = ccreds.ClientHandshake(addr, conn, timeout)
-			break
+	if opts.TransportCredentials != nil {
+		scheme = "https"
+		if timeout > 0 {
+			timeout -= time.Since(startT)
 		}
+		conn, authInfo, connErr = opts.TransportCredentials.ClientHandshake(addr, conn, timeout)
 	}
 	if connErr != nil {
 		return nil, ConnectionErrorf("transport: %v", connErr)
@@ -163,7 +156,7 @@ func newHTTP2Client(addr string, opts *ConnectOptions) (_ ClientTransport, err e
 		scheme:          scheme,
 		state:           reachable,
 		activeStreams:   make(map[uint32]*Stream),
-		authCreds:       opts.AuthOptions,
+		creds:           opts.PerRPCCredentials,
 		maxStreams:      math.MaxInt32,
 		streamSendQuota: defaultWindowSize,
 	}
@@ -248,7 +241,7 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 	}
 	ctx = peer.NewContext(ctx, pr)
 	authData := make(map[string]string)
-	for _, c := range t.authCreds {
+	for _, c := range t.creds {
 		// Construct URI required to get auth request metadata.
 		var port string
 		if pos := strings.LastIndex(t.target, ":"); pos != -1 {
