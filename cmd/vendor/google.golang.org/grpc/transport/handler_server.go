@@ -65,7 +65,7 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTr
 	if r.Method != "POST" {
 		return nil, errors.New("invalid gRPC request method")
 	}
-	if !strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+	if !validContentType(r.Header.Get("Content-Type")) {
 		return nil, errors.New("invalid gRPC request content-type")
 	}
 	if _, ok := w.(http.Flusher); !ok {
@@ -97,7 +97,7 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTr
 	}
 	for k, vv := range r.Header {
 		k = strings.ToLower(k)
-		if isReservedHeader(k) && !isWhitelistedPseudoHeader(k){
+		if isReservedHeader(k) && !isWhitelistedPseudoHeader(k) {
 			continue
 		}
 		for _, v := range vv {

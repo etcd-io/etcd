@@ -144,10 +144,23 @@ func (d *decodeState) setErr(err error) {
 	}
 }
 
+func validContentType(t string) bool {
+	e := "application/grpc"
+	if !strings.HasPrefix(t, e) {
+		return false
+	}
+	// Support variations on the content-type
+	// (e.g. "application/grpc+blah", "application/grpc;blah").
+	if len(t) > len(e) && t[len(e)] != '+' && t[len(e)] != ';' {
+		return false
+	}
+	return true
+}
+
 func (d *decodeState) processHeaderField(f hpack.HeaderField) {
 	switch f.Name {
 	case "content-type":
-		if !strings.Contains(f.Value, "application/grpc") {
+		if !validContentType(f.Value) {
 			d.setErr(StreamErrorf(codes.FailedPrecondition, "transport: received the unexpected content-type %q", f.Value))
 			return
 		}

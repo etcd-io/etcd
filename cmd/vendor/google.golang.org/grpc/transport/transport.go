@@ -336,8 +336,10 @@ type ConnectOptions struct {
 	UserAgent string
 	// Dialer specifies how to dial a network address.
 	Dialer func(string, time.Duration) (net.Conn, error)
-	// AuthOptions stores the credentials required to setup a client connection and/or issue RPCs.
-	AuthOptions []credentials.Credentials
+	// PerRPCCredentials stores the PerRPCCredentials required to issue RPCs.
+	PerRPCCredentials []credentials.PerRPCCredentials
+	// TransportCredentials stores the Authenticator required to setup a client connection.
+	TransportCredentials credentials.TransportCredentials
 	// Timeout specifies the timeout for dialing a ClientTransport.
 	Timeout time.Duration
 }
@@ -473,7 +475,7 @@ func (e ConnectionError) Error() string {
 	return fmt.Sprintf("connection error: desc = %q", e.Desc)
 }
 
-// Define some common ConnectionErrors.
+// ErrConnClosing indicates that the transport is closing.
 var ErrConnClosing = ConnectionError{Desc: "transport is closing"}
 
 // StreamError is an error that only affects one stream within a connection.
