@@ -73,7 +73,7 @@ func mergeRangePerms(perms []*rangePerm) []*rangePerm {
 	return merged
 }
 
-func (as *authStore) makeUnifiedPerms(tx backend.BatchTx, userName string) *unifiedRangePermissions {
+func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermissions {
 	user := getUser(tx, userName)
 	if user == nil {
 		plog.Errorf("invalid user name %s", userName)
@@ -92,18 +92,26 @@ func (as *authStore) makeUnifiedPerms(tx backend.BatchTx, userName string) *unif
 			if len(perm.RangeEnd) == 0 {
 				continue
 			}
+			rp := &rangePerm{begin: string(perm.Key), end: string(perm.RangeEnd)}
 
-			if perm.PermType == authpb.READWRITE || perm.PermType == authpb.READ {
-				readPerms = append(readPerms, &rangePerm{begin: string(perm.Key), end: string(perm.RangeEnd)})
-			}
+			switch perm.PermType {
+			case authpb.READWRITE:
+				readPerms = append(readPerms, rp)
+				writePerms = append(writePerms, rp)
 
-			if perm.PermType == authpb.READWRITE || perm.PermType == authpb.WRITE {
-				writePerms = append(writePerms, &rangePerm{begin: string(perm.Key), end: string(perm.RangeEnd)})
+			case authpb.READ:
+				readPerms = append(readPerms, rp)
+
+			case authpb.WRITE:
+				writePerms = append(writePerms, rp)
 			}
 		}
 	}
 
-	return &unifiedRangePermissions{readPerms: mergeRangePerms(readPerms), writePerms: mergeRangePerms(writePerms)}
+	return &unifiedRangePermissions{
+		readPerms:  mergeRangePerms(readPerms),
+		writePerms: mergeRangePerms(writePerms),
+	}
 }
 
 func checkCachedPerm(cachedPerms *unifiedRangePermissions, userName string, key, rangeEnd string, write, read bool) bool {
@@ -137,7 +145,7 @@ func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key
 		return checkCachedPerm(as.rangePermCache[userName], userName, key, rangeEnd, write, read)
 	}
 
-	perms := as.makeUnifiedPerms(tx, userName)
+	perms := getMergedPerms(tx, userName)
 	if perms == nil {
 		plog.Errorf("failed to create a unified permission of user %s", userName)
 		return false
