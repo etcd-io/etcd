@@ -157,11 +157,11 @@
 		},
 		{
 			"ImportPath": "github.com/spf13/cobra",
-			"Rev": "1c44ec8d3f1552cac48999f9306da23c4d8a288b"
+			"Rev": "1238ba19d24b0b9ceee2094e1cb31947d45c3e86"
 		},
 		{
 			"ImportPath": "github.com/spf13/pflag",
-			"Rev": "08b1a584251b5b62f458943640fc8ebd4d50aaa5"
+			"Rev": "367864438f1b1a3c7db4da06a2f55b144e6784e0"
 		},
 		{
 			"ImportPath": "github.com/stretchr/testify/assert",
