@@ -575,10 +575,7 @@ func mustSync(st, prevst raftpb.HardState, entsnum int) bool {
 	// currentTerm
 	// votedFor
 	// log entries[]
-	if entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term {
-		return true
-	}
-	return false
+	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term
 }
 
 func closeAll(rcs ...io.ReadCloser) error {
