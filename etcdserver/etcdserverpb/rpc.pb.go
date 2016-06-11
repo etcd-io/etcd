@@ -209,7 +209,7 @@ type RangeRequest struct {
 	Limit int64 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// revision is the point-in-time of the key-value store to use for the range.
 	// If revision is less or equal to zero, the range is over the newest key-value store.
-	// If the revision has been compacted, ErrCompaction is returned as a response.
+	// If the revision has been compacted, ErrCompacted is returned as a response.
 	Revision int64 `protobuf:"varint,4,opt,name=revision,proto3" json:"revision,omitempty"`
 	// sort_order is the order for returned sorted results.
 	SortOrder RangeRequest_SortOrder `protobuf:"varint,5,opt,name=sort_order,json=sortOrder,proto3,enum=etcdserverpb.RangeRequest_SortOrder" json:"sort_order,omitempty"`
