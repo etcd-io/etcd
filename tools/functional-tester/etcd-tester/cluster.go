@@ -344,7 +344,7 @@ func (c *cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 			if strings.Contains(cerr.Error(), "required revision has been compacted") && i > 0 {
 				plog.Printf("[compact kv #%d] already compacted (endpoint %s)", i, u)
 			} else {
-				plog.Printf("[compact kv #%d] error %v (endpoint %s)", i, cerr, u)
+				plog.Warningf("[compact kv #%d] error %v (endpoint %s)", i, cerr, u)
 				err = cerr
 				succeed = false
 			}
