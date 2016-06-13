@@ -15,8 +15,8 @@
 package auth
 
 import (
+	"bytes"
 	"sort"
-	"strings"
 
 	"github.com/coreos/etcd/auth/authpb"
 	"github.com/coreos/etcd/mvcc/backend"
@@ -24,7 +24,7 @@ import (
 
 func isSubset(a, b *rangePerm) bool {
 	// return true if a is a subset of b
-	return 0 <= strings.Compare(a.begin, b.begin) && strings.Compare(a.end, b.end) <= 0
+	return 0 <= bytes.Compare(a.begin, b.begin) && bytes.Compare(a.end, b.end) <= 0
 }
 
 // removeSubsetRangePerms removes any rangePerms that are subsets of other rangePerms.
@@ -61,7 +61,7 @@ func mergeRangePerms(perms []*rangePerm) []*rangePerm {
 	i := 0
 	for i < len(perms) {
 		begin, next := i, i
-		for next+1 < len(perms) && perms[next].end >= perms[next+1].begin {
+		for next+1 < len(perms) && bytes.Compare(perms[next].end, perms[next+1].begin) != -1 {
 			next++
 		}
 
@@ -92,7 +92,7 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 			if len(perm.RangeEnd) == 0 {
 				continue
 			}
-			rp := &rangePerm{begin: string(perm.Key), end: string(perm.RangeEnd)}
+			rp := &rangePerm{begin: perm.Key, end: perm.RangeEnd}
 
 			switch perm.PermType {
 			case authpb.READWRITE:
@@ -114,7 +114,7 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 	}
 }
 
-func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
+func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
 	var tocheck []*rangePerm
 
 	switch permtyp {
@@ -129,12 +129,12 @@ func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd string, pe
 	for _, perm := range tocheck {
 		// check permission of a single key
 		if len(rangeEnd) == 0 {
-			if strings.Compare(perm.begin, key) <= 0 && strings.Compare(rangeEnd, perm.end) <= 0 {
+			if bytes.Compare(perm.begin, key) <= 0 && bytes.Compare(rangeEnd, perm.end) <= 0 {
 				return true
 			}
 		}
 
-		if strings.Compare(perm.begin, key) <= 0 && strings.Compare(perm.end, key) >= 0 {
+		if bytes.Compare(perm.begin, key) <= 0 && bytes.Compare(perm.end, key) >= 0 {
 			return true
 		}
 	}
@@ -142,7 +142,7 @@ func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd string, pe
 	return false
 }
 
-func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
+func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
 	// assumption: tx is Lock()ed
 	_, ok := as.rangePermCache[userName]
 	if !ok {
@@ -173,7 +173,7 @@ type unifiedRangePermissions struct {
 }
 
 type rangePerm struct {
-	begin, end string
+	begin, end []byte
 }
 
 type RangePermSliceByBegin []*rangePerm
@@ -183,10 +183,16 @@ func (slice RangePermSliceByBegin) Len() int {
 }
 
 func (slice RangePermSliceByBegin) Less(i, j int) bool {
-	if slice[i].begin == slice[j].begin {
-		return slice[i].end < slice[j].end
+	switch bytes.Compare(slice[i].begin, slice[j].begin) {
+	case 0: // begin(i) == begin(j)
+		return bytes.Compare(slice[i].end, slice[j].end) == -1
+
+	case -1: // begin(i) < begin(j)
+		return true
+
+	default:
+		return false
 	}
-	return slice[i].begin < slice[j].begin
 }
 
 func (slice RangePermSliceByBegin) Swap(i, j int) {
