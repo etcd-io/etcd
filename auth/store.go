@@ -108,10 +108,10 @@ type AuthStore interface {
 	UsernameFromToken(token string) (string, bool)
 
 	// IsPutPermitted checks put permission of the user
-	IsPutPermitted(header *pb.RequestHeader, key string) bool
+	IsPutPermitted(header *pb.RequestHeader, key []byte) bool
 
 	// IsRangePermitted checks range permission of the user
-	IsRangePermitted(header *pb.RequestHeader, key, rangeEnd string) bool
+	IsRangePermitted(header *pb.RequestHeader, key, rangeEnd []byte) bool
 
 	// IsAdminPermitted checks admin permission of the user
 	IsAdminPermitted(username string) bool
@@ -544,7 +544,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
 
-func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, permTyp authpb.Permission_Type) bool {
+func (as *authStore) isOpPermitted(userName string, key, rangeEnd []byte, permTyp authpb.Permission_Type) bool {
 	// TODO(mitake): this function would be costly so we need a caching mechanism
 	if !as.isAuthEnabled() {
 		return true
@@ -560,7 +560,7 @@ func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, permTy
 		return false
 	}
 
-	if strings.Compare(rangeEnd, "") == 0 {
+	if len(rangeEnd) == 0 {
 		for _, roleName := range user.Roles {
 			role := getRole(tx, roleName)
 			if role == nil {
@@ -568,7 +568,7 @@ func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, permTy
 			}
 
 			for _, perm := range role.KeyPermission {
-				if !bytes.Equal(perm.Key, []byte(key)) {
+				if !bytes.Equal(perm.Key, key) {
 					continue
 				}
 
@@ -590,11 +590,11 @@ func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, permTy
 	return false
 }
 
-func (as *authStore) IsPutPermitted(header *pb.RequestHeader, key string) bool {
-	return as.isOpPermitted(header.Username, key, "", authpb.WRITE)
+func (as *authStore) IsPutPermitted(header *pb.RequestHeader, key []byte) bool {
+	return as.isOpPermitted(header.Username, key, nil, authpb.WRITE)
 }
 
-func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key, rangeEnd string) bool {
+func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key, rangeEnd []byte) bool {
 	return as.isOpPermitted(header.Username, key, rangeEnd, authpb.READ)
 }
 

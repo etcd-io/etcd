@@ -82,7 +82,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 			return nil, err
 		}
 		hdr := &pb.RequestHeader{Username: user}
-		if !s.AuthStore().IsRangePermitted(hdr, string(r.Key), string(r.RangeEnd)) {
+		if !s.AuthStore().IsRangePermitted(hdr, r.Key, r.RangeEnd) {
 			return nil, auth.ErrPermissionDenied
 		}
 		return s.applyV3.Range(noTxn, r)
