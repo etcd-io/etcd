@@ -560,29 +560,6 @@ func (as *authStore) isOpPermitted(userName string, key, rangeEnd []byte, permTy
 		return false
 	}
 
-	if len(rangeEnd) == 0 {
-		for _, roleName := range user.Roles {
-			role := getRole(tx, roleName)
-			if role == nil {
-				continue
-			}
-
-			for _, perm := range role.KeyPermission {
-				if !bytes.Equal(perm.Key, key) {
-					continue
-				}
-
-				if perm.PermType == authpb.READWRITE {
-					return true
-				}
-
-				if permTyp == perm.PermType {
-					return true
-				}
-			}
-		}
-	}
-
 	if as.isRangeOpPermitted(tx, userName, key, rangeEnd, permTyp) {
 		return true
 	}
