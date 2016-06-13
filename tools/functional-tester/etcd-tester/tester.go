@@ -206,19 +206,13 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 func (tt *tester) compact(rev int64, timeout time.Duration) error {
 	plog.Printf("%s compacting storage (current revision %d, compact revision %d)", tt.logPrefix(), tt.currentRevision, rev)
 	if err := tt.cluster.compactKV(rev, timeout); err != nil {
-		if cerr := tt.cleanup(); cerr != nil {
-			return fmt.Errorf("%s, %s", err, cerr)
-		}
 		return err
 	}
 	plog.Printf("%s compacted storage (compact revision %d)", tt.logPrefix(), rev)
 
 	plog.Printf("%s checking compaction (compact revision %d)", tt.logPrefix(), rev)
 	if err := tt.cluster.checkCompact(rev); err != nil {
-		plog.Printf("%s checkCompact error (%v)", tt.logPrefix(), err)
-		if cerr := tt.cleanup(); cerr != nil {
-			return fmt.Errorf("%s, %s", err, cerr)
-		}
+		plog.Warningf("%s checkCompact error (%v)", tt.logPrefix(), err)
 		return err
 	}
 
@@ -229,7 +223,7 @@ func (tt *tester) compact(rev int64, timeout time.Duration) error {
 func (tt *tester) defrag() error {
 	plog.Printf("%s defragmenting...", tt.logPrefix())
 	if err := tt.cluster.defrag(); err != nil {
-		plog.Printf("%s defrag error (%v)", tt.logPrefix(), err)
+		plog.Warningf("%s defrag error (%v)", tt.logPrefix(), err)
 		if cerr := tt.cleanup(); cerr != nil {
 			return fmt.Errorf("%s, %s", err, cerr)
 		}
@@ -262,12 +256,12 @@ func (tt *tester) cleanup() error {
 
 	plog.Printf("%s cleaning up...", tt.logPrefix())
 	if err := tt.cluster.Cleanup(); err != nil {
-		plog.Printf("%s cleanup error: %v", tt.logPrefix(), err)
+		plog.Warningf("%s cleanup error: %v", tt.logPrefix(), err)
 		return err
 	}
 
 	if err := tt.cluster.Bootstrap(); err != nil {
-		plog.Printf("%s cleanup Bootstrap error: %v", tt.logPrefix(), err)
+		plog.Warningf("%s cleanup Bootstrap error: %v", tt.logPrefix(), err)
 		return err
 	}
 
