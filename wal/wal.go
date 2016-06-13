@@ -15,13 +15,13 @@
 package wal
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"os"
 	"path"
-	"reflect"
 	"sync"
 	"time"
 
@@ -247,7 +247,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		case stateType:
 			state = mustUnmarshalState(rec.Data)
 		case metadataType:
-			if metadata != nil && !reflect.DeepEqual(metadata, rec.Data) {
+			if metadata != nil && !bytes.Equal(metadata, rec.Data) {
 				state.Reset()
 				return nil, state, nil, ErrMetadataConflict
 			}

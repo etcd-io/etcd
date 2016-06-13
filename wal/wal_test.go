@@ -78,7 +78,7 @@ func TestNew(t *testing.T) {
 		t.Fatalf("err = %v, want nil", err)
 	}
 	e.flush()
-	if !reflect.DeepEqual(gd, wb.Bytes()) {
+	if !bytes.Equal(gd, wb.Bytes()) {
 		t.Errorf("data = %v, want %v", gd, wb.Bytes())
 	}
 }
@@ -165,8 +165,7 @@ func TestCut(t *testing.T) {
 	defer w.Close()
 
 	state := raftpb.HardState{Term: 1}
-	// TODO(unihorn): remove this when cut can operate on an empty file
-	if err = w.Save(state, []raftpb.Entry{{}}); err != nil {
+	if err = w.Save(state, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err = w.cut(); err != nil {
@@ -248,7 +247,7 @@ func TestRecover(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(metadata, []byte("metadata")) {
+	if !bytes.Equal(metadata, []byte("metadata")) {
 		t.Errorf("metadata = %s, want %s", metadata, "metadata")
 	}
 	if !reflect.DeepEqual(entries, ents) {
@@ -375,7 +374,7 @@ func TestRecoverAfterCut(t *testing.T) {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(metadata, []byte("metadata")) {
+		if !bytes.Equal(metadata, []byte("metadata")) {
 			t.Errorf("#%d: metadata = %s, want %s", i, metadata, "metadata")
 		}
 		for j, e := range entries {
@@ -612,7 +611,7 @@ func TestRestartCreateWal(t *testing.T) {
 
 	// make temporary directory so it looks like initialization is interrupted
 	tmpdir := path.Clean(p) + ".tmp"
-	if err = os.Mkdir(p+".tmp", 0755); err != nil {
+	if err = os.Mkdir(tmpdir, fileutil.PrivateDirMode); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = os.OpenFile(path.Join(tmpdir, "test"), os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode); err != nil {

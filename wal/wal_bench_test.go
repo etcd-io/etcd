@@ -46,7 +46,7 @@ func benchmarkWriteEntry(b *testing.B, size int, batch int) {
 		b.Fatalf("err = %v, want nil", err)
 	}
 	data := make([]byte, size)
-	for i := 0; i < len(data); i++ {
+	for i := 0; i < size; i++ {
 		data[i] = byte(i)
 	}
 	e := &raftpb.Entry{Data: data}
