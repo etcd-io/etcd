@@ -100,9 +100,6 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 		}
 
 		for _, perm := range role.KeyPermission {
-			if len(perm.RangeEnd) == 0 {
-				continue
-			}
 			rp := &rangePerm{begin: perm.Key, end: perm.RangeEnd}
 
 			switch perm.PermType {
