@@ -114,46 +114,47 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 	}
 }
 
-func checkCachedPerm(cachedPerms *unifiedRangePermissions, userName string, key, rangeEnd string, write, read bool) bool {
-	var perms []*rangePerm
+func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
+	var tocheck []*rangePerm
 
-	if write {
-		perms = cachedPerms.writePerms
-	} else {
-		perms = cachedPerms.readPerms
+	switch permtyp {
+	case authpb.READ:
+		tocheck = cachedPerms.readPerms
+	case authpb.WRITE:
+		tocheck = cachedPerms.writePerms
+	default:
+		plog.Panicf("unknown auth type: %v", permtyp)
 	}
 
-	for _, perm := range perms {
-		if strings.Compare(rangeEnd, "") != 0 {
+	for _, perm := range tocheck {
+		// check permission of a single key
+		if len(rangeEnd) == 0 {
 			if strings.Compare(perm.begin, key) <= 0 && strings.Compare(rangeEnd, perm.end) <= 0 {
 				return true
 			}
-		} else {
-			if strings.Compare(perm.begin, key) <= 0 && strings.Compare(key, perm.end) <= 0 {
-				return true
-			}
+		}
+
+		if strings.Compare(perm.begin, key) <= 0 && strings.Compare(perm.end, key) >= 0 {
+			return true
 		}
 	}
 
 	return false
 }
 
-func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd string, write, read bool) bool {
+func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
 	// assumption: tx is Lock()ed
 	_, ok := as.rangePermCache[userName]
-	if ok {
-		return checkCachedPerm(as.rangePermCache[userName], userName, key, rangeEnd, write, read)
+	if !ok {
+		perms := getMergedPerms(tx, userName)
+		if perms == nil {
+			plog.Errorf("failed to create a unified permission of user %s", userName)
+			return false
+		}
+		as.rangePermCache[userName] = perms
 	}
 
-	perms := getMergedPerms(tx, userName)
-	if perms == nil {
-		plog.Errorf("failed to create a unified permission of user %s", userName)
-		return false
-	}
-	as.rangePermCache[userName] = perms
-
-	return checkCachedPerm(as.rangePermCache[userName], userName, key, rangeEnd, write, read)
-
+	return checkKeyPerm(as.rangePermCache[userName], key, rangeEnd, permtyp)
 }
 
 func (as *authStore) clearCachedPerm() {

@@ -544,7 +544,7 @@ func (as *authStore) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (
 	return &pb.AuthRoleGrantPermissionResponse{}, nil
 }
 
-func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, write bool, read bool) bool {
+func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, permTyp authpb.Permission_Type) bool {
 	// TODO(mitake): this function would be costly so we need a caching mechanism
 	if !as.isAuthEnabled() {
 		return true
@@ -576,18 +576,14 @@ func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, write 
 					return true
 				}
 
-				if write && !read && perm.PermType == authpb.WRITE {
-					return true
-				}
-
-				if read && !write && perm.PermType == authpb.READ {
+				if permTyp == perm.PermType {
 					return true
 				}
 			}
 		}
 	}
 
-	if as.isRangeOpPermitted(tx, userName, key, rangeEnd, write, read) {
+	if as.isRangeOpPermitted(tx, userName, key, rangeEnd, permTyp) {
 		return true
 	}
 
@@ -595,11 +591,11 @@ func (as *authStore) isOpPermitted(userName string, key, rangeEnd string, write 
 }
 
 func (as *authStore) IsPutPermitted(header *pb.RequestHeader, key string) bool {
-	return as.isOpPermitted(header.Username, key, "", true, false)
+	return as.isOpPermitted(header.Username, key, "", authpb.WRITE)
 }
 
 func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key, rangeEnd string) bool {
-	return as.isOpPermitted(header.Username, key, rangeEnd, false, true)
+	return as.isOpPermitted(header.Username, key, rangeEnd, authpb.READ)
 }
 
 func (as *authStore) IsAdminPermitted(username string) bool {
