@@ -92,13 +92,13 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 
 	switch {
 	case r.Range != nil:
-		if s.AuthStore().IsRangePermitted(r.Header, string(r.Range.Key), string(r.Range.RangeEnd)) {
+		if s.AuthStore().IsRangePermitted(r.Header, r.Range.Key, r.Range.RangeEnd) {
 			ar.resp, ar.err = s.applyV3.Range(noTxn, r.Range)
 		} else {
 			ar.err = auth.ErrPermissionDenied
 		}
 	case r.Put != nil:
-		if s.AuthStore().IsPutPermitted(r.Header, string(r.Put.Key)) {
+		if s.AuthStore().IsPutPermitted(r.Header, r.Put.Key) {
 			ar.resp, ar.err = s.applyV3.Put(noTxn, r.Put)
 		} else {
 			ar.err = auth.ErrPermissionDenied
