@@ -37,7 +37,7 @@ func isPermsEqual(a, b []*rangePerm) bool {
 	return true
 }
 
-func TestUnifyParams(t *testing.T) {
+func TestGetMergedPerms(t *testing.T) {
 	tests := []struct {
 		params []*rangePerm
 		want   []*rangePerm
@@ -85,6 +85,28 @@ func TestUnifyParams(t *testing.T) {
 		{
 			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("c")}, {[]byte("c"), []byte("d")}, {[]byte("d"), []byte("f")}, {[]byte("1"), []byte("9")}},
 			[]*rangePerm{{[]byte("1"), []byte("9")}, {[]byte("a"), []byte("f")}},
+		},
+		// overlapping
+		{
+			[]*rangePerm{{[]byte("a"), []byte("f")}, {[]byte("b"), []byte("g")}},
+			[]*rangePerm{{[]byte("a"), []byte("g")}},
+		},
+		// keys
+		{
+			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("")}},
+			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("")}},
+		},
+		{
+			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("a"), []byte("c")}},
+			[]*rangePerm{{[]byte("a"), []byte("c")}},
+		},
+		{
+			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("a"), []byte("c")}, {[]byte("b"), []byte("")}},
+			[]*rangePerm{{[]byte("a"), []byte("c")}},
+		},
+		{
+			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("b"), []byte("")}, {[]byte("c"), []byte("")}, {[]byte("d"), []byte("")}},
+			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("d"), []byte("")}},
 		},
 	}
 

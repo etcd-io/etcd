@@ -22,9 +22,20 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 )
 
+// isSubset returns true if a is a subset of b
 func isSubset(a, b *rangePerm) bool {
-	// return true if a is a subset of b
-	return 0 <= bytes.Compare(a.begin, b.begin) && bytes.Compare(a.end, b.end) <= 0
+	switch {
+	case len(a.end) == 0 && len(b.end) == 0:
+		// a, b are both keys
+		return bytes.Compare(a.begin, b.begin) == 0
+	case len(b.end) == 0:
+		// b is a key, a is a range
+		return false
+	case len(a.end) == 0:
+		return 0 <= bytes.Compare(a.begin, b.begin) && bytes.Compare(a.begin, b.end) <= 0
+	default:
+		return 0 <= bytes.Compare(a.begin, b.begin) && bytes.Compare(a.end, b.end) <= 0
+	}
 }
 
 // removeSubsetRangePerms removes any rangePerms that are subsets of other rangePerms.
@@ -126,15 +137,10 @@ func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, pe
 		plog.Panicf("unknown auth type: %v", permtyp)
 	}
 
-	for _, perm := range tocheck {
-		// check permission of a single key
-		if len(rangeEnd) == 0 {
-			if bytes.Compare(perm.begin, key) <= 0 && bytes.Compare(rangeEnd, perm.end) <= 0 {
-				return true
-			}
-		}
+	requiredPerm := &rangePerm{begin: key, end: rangeEnd}
 
-		if bytes.Compare(perm.begin, key) <= 0 && bytes.Compare(perm.end, key) >= 0 {
+	for _, perm := range tocheck {
+		if isSubset(requiredPerm, perm) {
 			return true
 		}
 	}
