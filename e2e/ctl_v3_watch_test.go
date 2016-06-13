@@ -61,25 +61,28 @@ func watchTest(cx ctlCtx) {
 			[]kv{{"etcd", "revision_2"}, {"etcd", "revision_3"}},
 		},
 		{ // watch 3 keys by range
-			[]kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}},
+			[]kv{{"key1", "val1"}, {"key3", "val3"}, {"key2", "val2"}},
 			[]string{"key", "key3", "--rev", "1"},
 			[]kv{{"key1", "val1"}, {"key2", "val2"}},
 		},
 	}
 
 	for i, tt := range tests {
+		donec := make(chan struct{})
 		go func(i int, puts []kv) {
 			for j := range puts {
 				if err := ctlV3Put(cx, puts[j].key, puts[j].val, ""); err != nil {
 					cx.t.Fatalf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
 				}
 			}
+			close(donec)
 		}(i, tt.puts)
 		if err := ctlV3Watch(cx, tt.args, tt.wkv...); err != nil {
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
 				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
 			}
 		}
+		<-donec
 	}
 }
 
