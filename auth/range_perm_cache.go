@@ -27,7 +27,7 @@ func isSubset(a, b *rangePerm) bool {
 	switch {
 	case len(a.end) == 0 && len(b.end) == 0:
 		// a, b are both keys
-		return bytes.Compare(a.begin, b.begin) == 0
+		return bytes.Equal(a.begin, b.begin)
 	case len(b.end) == 0:
 		// b is a key, a is a range
 		return false
