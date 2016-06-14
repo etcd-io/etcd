@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v74",
+	"GodepVersion": "v60",
 	"Packages": [
 		"./..."
 	],
@@ -70,12 +70,24 @@
 			"Rev": "8929fe90cee4b2cb9deb468b51fb34eba64d1bf0"
 		},
 		{
+			"ImportPath": "github.com/gengo/grpc-gateway/runtime",
+			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
+		},
+		{
+			"ImportPath": "github.com/gengo/grpc-gateway/runtime/internal",
+			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
+		},
+		{
+			"ImportPath": "github.com/gengo/grpc-gateway/utilities",
+			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
+		},
+		{
 			"ImportPath": "github.com/ghodss/yaml",
 			"Rev": "73d445a93680fa1a78ae23a5839bad48f32ba1ee"
 		},
 		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
-			"Comment": "v0.2-13-gc3995ae",
+			"Comment": "v0.1-163-gc3995ae",
 			"Rev": "c3995ae437bb78d1189f4f147dfe5f87ad3596e4"
 		},
 		{
@@ -83,8 +95,12 @@
 			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
 		},
 		{
+			"ImportPath": "github.com/golang/protobuf/jsonpb",
+			"Rev": "8616e8ee5e20a1704615e6c8d7afcdac06087a67"
+		},
+		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "6aaa8d47701fa6cf07e914ec01fde3d4a1fe79c3"
+			"Rev": "8616e8ee5e20a1704615e6c8d7afcdac06087a67"
 		},
 		{
 			"ImportPath": "github.com/google/btree",
@@ -109,7 +125,7 @@
 		},
 		{
 			"ImportPath": "github.com/mattn/go-runewidth",
-			"Comment": "v0.0.1",
+			"Comment": "travisish-46-gd6bea18",
 			"Rev": "d6bea18f789704b5f83375793155289da36a3c7f"
 		},
 		{
