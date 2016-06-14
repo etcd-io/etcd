@@ -104,7 +104,11 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 			ar.err = auth.ErrPermissionDenied
 		}
 	case r.DeleteRange != nil:
-		ar.resp, ar.err = s.applyV3.DeleteRange(noTxn, r.DeleteRange)
+		if s.AuthStore().IsDeleteRangePermitted(r.Header.Username, r.DeleteRange.Key, r.DeleteRange.RangeEnd) {
+			ar.resp, ar.err = s.applyV3.DeleteRange(noTxn, r.DeleteRange)
+		} else {
+			ar.err = auth.ErrPermissionDenied
+		}
 	case r.Txn != nil:
 		ar.resp, ar.err = s.applyV3.Txn(r.Txn)
 	case r.Compaction != nil:
