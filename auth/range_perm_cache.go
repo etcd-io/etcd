@@ -38,22 +38,38 @@ func isSubset(a, b *rangePerm) bool {
 	}
 }
 
+func isRangeEqual(a, b *rangePerm) bool {
+	return bytes.Equal(a.begin, b.begin) && bytes.Equal(a.end, b.end)
+}
+
 // removeSubsetRangePerms removes any rangePerms that are subsets of other rangePerms.
+// If there are equal ranges, removeSubsetRangePerms only keeps one of them.
 func removeSubsetRangePerms(perms []*rangePerm) []*rangePerm {
 	// TODO(mitake): currently it is O(n^2), we need a better algorithm
 	newp := make([]*rangePerm, 0)
 
 	for i := range perms {
-		subset := false
+		skip := false
 
 		for j := range perms {
-			if i != j && isSubset(perms[i], perms[j]) {
-				subset = true
+			if i == j {
+				continue
+			}
+
+			if isRangeEqual(perms[i], perms[j]) {
+				// if ranges are equal, we only keep the first range.
+				if i > j {
+					skip = true
+					break
+				}
+			} else if isSubset(perms[i], perms[j]) {
+				// if a range is a strict subset of the other one, we skip the subset.
+				skip = true
 				break
 			}
 		}
 
-		if subset {
+		if skip {
 			continue
 		}
 
