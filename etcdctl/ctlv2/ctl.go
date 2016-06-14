@@ -16,6 +16,7 @@
 package ctlv2
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -28,6 +29,10 @@ func Start() {
 	app := cli.NewApp()
 	app.Name = "etcdctl"
 	app.Version = version.Version
+	cli.VersionPrinter = func(c *cli.Context) {
+		fmt.Fprintf(c.App.Writer, "etcdctl version: %v\n", c.App.Version)
+		fmt.Fprintln(c.App.Writer, "API version: 2")
+	}
 	app.Usage = "A simple command line client for etcd."
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{Name: "debug", Usage: "output cURL commands which can be used to reproduce the request"},
