@@ -1072,7 +1072,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 
 	// set the consistent index of current executing entry
 	s.consistIndex.setConsistentIndex(e.Index)
-	ar := s.applyV3Request(&raftReq)
+	ar := s.applyV3.Apply(&raftReq)
 	s.setAppliedIndex(e.Index)
 	if ar.err != ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.w.Trigger(id, ar)
@@ -1311,8 +1311,7 @@ func (s *EtcdServer) Backend() backend.Backend {
 func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
 
 func (s *EtcdServer) restoreAlarms() error {
-	s.applyV3 = newQuotaApplierV3(s, &applierV3backend{s})
-
+	s.applyV3 = s.newApplierV3()
 	as, err := alarm.NewAlarmStore(s)
 	if err != nil {
 		return err
