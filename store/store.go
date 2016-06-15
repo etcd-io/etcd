@@ -298,6 +298,10 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 		return nil, err
 	}
 
+	if expireOpts.Refresh {
+		value = n.Value
+	}
+
 	// update etcd index
 	s.CurrentIndex++
 
