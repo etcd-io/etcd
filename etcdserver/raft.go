@@ -446,7 +446,7 @@ func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 			plog.Panicf("ConfChange Type should be either ConfChangeAddNode or ConfChangeRemoveNode!")
 		}
 	}
-	sids := make(types.Uint64Slice, 0)
+	sids := make(types.Uint64Slice, 0, len(ids))
 	for id := range ids {
 		sids = append(sids, id)
 	}
