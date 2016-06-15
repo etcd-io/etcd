@@ -73,12 +73,12 @@ func (a *Agent) start(args ...string) error {
 }
 
 // stop stops the existing etcd process the agent started.
-func (a *Agent) stop() error {
+func (a *Agent) stopWithSig(sig os.Signal) error {
 	if a.state != stateStarted {
 		return nil
 	}
 
-	err := sigtermAndWait(a.cmd)
+	err := stopWithSig(a.cmd, sig)
 	if err != nil {
 		return err
 	}
@@ -87,8 +87,8 @@ func (a *Agent) stop() error {
 	return nil
 }
 
-func sigtermAndWait(cmd *exec.Cmd) error {
-	err := cmd.Process.Signal(syscall.SIGTERM)
+func stopWithSig(cmd *exec.Cmd, sig os.Signal) error {
+	err := cmd.Process.Signal(sig)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,8 @@ func (a *Agent) restart() error {
 }
 
 func (a *Agent) cleanup() error {
-	if err := a.stop(); err != nil {
+	// exit with stackstrace
+	if err := a.stopWithSig(syscall.SIGQUIT); err != nil {
 		return err
 	}
 	a.state = stateUninitialized
@@ -152,7 +153,7 @@ func (a *Agent) cleanup() error {
 // terminate stops the exiting etcd process the agent started
 // and removes the data dir.
 func (a *Agent) terminate() error {
-	err := a.stop()
+	err := a.stopWithSig(syscall.SIGTERM)
 	if err != nil {
 		return err
 	}
