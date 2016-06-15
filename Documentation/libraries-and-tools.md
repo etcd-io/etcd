@@ -93,6 +93,10 @@
 
 - [efrecon/etcd-tcl](https://github.com/efrecon/etcd-tcl) - Supports v2, except wait.
 
+**Gradle Plugins**
+
+- [gradle-etcd-rest-plugin](https://github.com/cdancy/gradle-etcd-rest-plugin) - Supports v2
+
 **Chef Integration**
 
 - [coderanger/etcd-chef](https://github.com/coderanger/etcd-chef)
