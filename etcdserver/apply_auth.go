@@ -146,6 +146,10 @@ func needAdminPermission(r *pb.InternalRaftRequest) bool {
 		return true
 	case r.AuthRoleDelete != nil:
 		return true
+	case r.AuthUserList != nil:
+		return true
+	case r.AuthRoleList != nil:
+		return true
 	default:
 		return false
 	}

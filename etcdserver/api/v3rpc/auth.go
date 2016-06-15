@@ -76,6 +76,14 @@ func (as *AuthServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*p
 	return resp, nil
 }
 
+func (as *AuthServer) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
+	resp, err := as.authenticator.RoleList(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
 func (as *AuthServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
 	resp, err := as.authenticator.RoleRevokePermission(ctx, r)
 	if err != nil {
@@ -110,6 +118,14 @@ func (as *AuthServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteReques
 
 func (as *AuthServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
 	resp, err := as.authenticator.UserGet(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	return resp, nil
+}
+
+func (as *AuthServer) UserList(ctx context.Context, r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
+	resp, err := as.authenticator.UserList(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}

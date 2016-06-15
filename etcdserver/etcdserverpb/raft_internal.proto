@@ -46,6 +46,8 @@ message InternalRaftRequest {
   AuthUserChangePasswordRequest auth_user_change_password = 1103;
   AuthUserGrantRoleRequest auth_user_grant_role = 1104;
   AuthUserRevokeRoleRequest auth_user_revoke_role = 1105;
+  AuthUserListRequest auth_user_list = 1106;
+  AuthRoleListRequest auth_role_list = 1107;
 
   AuthRoleAddRequest auth_role_add = 1200;
   AuthRoleDeleteRequest auth_role_delete = 1201;

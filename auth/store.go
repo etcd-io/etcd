@@ -83,7 +83,7 @@ type AuthStore interface {
 	// UserGrantRole grants a role to the user
 	UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error)
 
-	// UserGet gets the detailed information of a user
+	// UserGet gets the detailed information of a users
 	UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error)
 
 	// UserRevokeRole revokes a role of a user
@@ -103,6 +103,12 @@ type AuthStore interface {
 
 	// RoleDelete gets the detailed information of a role
 	RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
+
+	// UserList gets a list of all users
+	UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
+
+	// RoleList gets a list of all roles
+	RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
 
 	// UsernameFromToken gets a username from the given Token
 	UsernameFromToken(token string) (string, bool)
@@ -339,14 +345,31 @@ func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse,
 	tx.Lock()
 	defer tx.Unlock()
 
+	var resp pb.AuthUserGetResponse
+
 	user := getUser(tx, r.Name)
 	if user == nil {
 		return nil, ErrUserNotFound
 	}
 
-	var resp pb.AuthUserGetResponse
 	for _, role := range user.Roles {
 		resp.Roles = append(resp.Roles, role)
+	}
+
+	return &resp, nil
+}
+
+func (as *authStore) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	var resp pb.AuthUserListResponse
+
+	users := getAllUsers(tx)
+
+	for _, u := range users {
+		resp.Users = append(resp.Users, string(u.Name))
 	}
 
 	return &resp, nil
@@ -390,14 +413,31 @@ func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse,
 	tx.Lock()
 	defer tx.Unlock()
 
+	var resp pb.AuthRoleGetResponse
+
 	role := getRole(tx, r.Role)
 	if role == nil {
 		return nil, ErrRoleNotFound
 	}
 
-	var resp pb.AuthRoleGetResponse
 	for _, perm := range role.KeyPermission {
 		resp.Perm = append(resp.Perm, perm)
+	}
+
+	return &resp, nil
+}
+
+func (as *authStore) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
+	tx := as.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	var resp pb.AuthRoleListResponse
+
+	roles := getAllRoles(tx)
+
+	for _, r := range roles {
+		resp.Roles = append(resp.Roles, string(r.Name))
 	}
 
 	return &resp, nil
@@ -613,6 +653,27 @@ func getUser(tx backend.BatchTx, username string) *authpb.User {
 	return user
 }
 
+func getAllUsers(tx backend.BatchTx) []*authpb.User {
+	_, vs := tx.UnsafeRange(authUsersBucketName, []byte{0}, []byte{0xff}, -1)
+	if len(vs) == 0 {
+		return nil
+	}
+
+	var users []*authpb.User
+
+	for _, v := range vs {
+		user := &authpb.User{}
+		err := user.Unmarshal(v)
+		if err != nil {
+			plog.Panicf("failed to unmarshal user struct: %s", err)
+		}
+
+		users = append(users, user)
+	}
+
+	return users
+}
+
 func putUser(tx backend.BatchTx, user *authpb.User) {
 	b, err := user.Marshal()
 	if err != nil {
@@ -637,6 +698,27 @@ func getRole(tx backend.BatchTx, rolename string) *authpb.Role {
 		plog.Panicf("failed to unmarshal role struct (name: %s): %s", rolename, err)
 	}
 	return role
+}
+
+func getAllRoles(tx backend.BatchTx) []*authpb.Role {
+	_, vs := tx.UnsafeRange(authRolesBucketName, []byte{0}, []byte{0xff}, -1)
+	if len(vs) == 0 {
+		return nil
+	}
+
+	var roles []*authpb.Role
+
+	for _, v := range vs {
+		role := &authpb.Role{}
+		err := role.Unmarshal(v)
+		if err != nil {
+			plog.Panicf("failed to unmarshal role struct: %s", err)
+		}
+
+		roles = append(roles, role)
+	}
+
+	return roles
 }
 
 func putRole(tx backend.BatchTx, role *authpb.Role) {

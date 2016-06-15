@@ -214,10 +214,18 @@ service Auth {
     };
   }
 
-  // UserGet gets detailed user information or lists all users.
+  // UserGet gets detailed user information.
   rpc UserGet(AuthUserGetRequest) returns (AuthUserGetResponse) {
       option (google.api.http) = {
         post: "/v3alpha/auth/user/get"
+        body: "*"
+    };
+  }
+
+  // UserList gets a list of all users.
+  rpc UserList(AuthUserListRequest) returns (AuthUserListResponse) {
+      option (google.api.http) = {
+        post: "/v3alpha/auth/user/list"
         body: "*"
     };
   }
@@ -262,10 +270,18 @@ service Auth {
     };
   }
 
-  // RoleGet gets detailed role information or lists all roles.
+  // RoleGet gets detailed role information.
   rpc RoleGet(AuthRoleGetRequest) returns (AuthRoleGetResponse) {
       option (google.api.http) = {
         post: "/v3alpha/auth/role/get"
+        body: "*"
+    };
+  }
+
+  // RoleList gets lists of all roles.
+  rpc RoleList(AuthRoleListRequest) returns (AuthRoleListResponse) {
+      option (google.api.http) = {
+        post: "/v3alpha/auth/role/list"
         body: "*"
     };
   }
@@ -766,6 +782,12 @@ message AuthRoleGetRequest {
   string role = 1;
 }
 
+message AuthUserListRequest {
+}
+
+message AuthRoleListRequest {
+}
+
 message AuthRoleDeleteRequest {
   string role = 1;
 }
@@ -831,6 +853,18 @@ message AuthRoleGetResponse {
   ResponseHeader header = 1;
 
   repeated authpb.Permission perm = 2;
+}
+
+message AuthRoleListResponse {
+  ResponseHeader header = 1;
+
+  repeated string roles = 2;
+}
+
+message AuthUserListResponse {
+  ResponseHeader header = 1;
+
+  repeated string users = 2;
 }
 
 message AuthRoleDeleteResponse {

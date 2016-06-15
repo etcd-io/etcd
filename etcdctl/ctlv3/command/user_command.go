@@ -33,6 +33,7 @@ func NewUserCommand() *cobra.Command {
 	ac.AddCommand(newUserAddCommand())
 	ac.AddCommand(newUserDeleteCommand())
 	ac.AddCommand(newUserGetCommand())
+	ac.AddCommand(newUserListCommand())
 	ac.AddCommand(newUserChangePasswordCommand())
 	ac.AddCommand(newUserGrantRoleCommand())
 	ac.AddCommand(newUserRevokeRoleCommand())
@@ -70,6 +71,14 @@ func newUserGetCommand() *cobra.Command {
 		Use:   "get <user name>",
 		Short: "get detailed information of a user",
 		Run:   userGetCommandFunc,
+	}
+}
+
+func newUserListCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "list up all users",
+		Run:   userListCommandFunc,
 	}
 }
 
@@ -143,17 +152,34 @@ func userGetCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("user get command requires user name as its argument."))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.UserGet(context.TODO(), args[0])
+	name := args[0]
+	resp, err := mustClientFromCmd(cmd).Auth.UserGet(context.TODO(), name)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("User: %s\n", args[0])
+	fmt.Printf("User: %s\n", name)
 	fmt.Printf("Roles:")
 	for _, role := range resp.Roles {
 		fmt.Printf(" %s", role)
 	}
 	fmt.Printf("\n")
+}
+
+// userListCommandFunc executes the "user list" command.
+func userListCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user list command requires no arguments."))
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.UserList(context.TODO())
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	for _, user := range resp.Users {
+		fmt.Printf("%s\n", user)
+	}
 }
 
 // userChangePasswordCommandFunc executes the "user passwd" command.
