@@ -53,7 +53,7 @@ type applierV3 interface {
 	Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, error)
 	Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResponse, error)
 	DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
-	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error)
+	Txn(header *pb.RequestHeader, rt *pb.TxnRequest) (*pb.TxnResponse, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error)
 
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
@@ -110,7 +110,7 @@ func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
 			ar.err = auth.ErrPermissionDenied
 		}
 	case r.Txn != nil:
-		ar.resp, ar.err = s.applyV3.Txn(r.Txn)
+		ar.resp, ar.err = s.applyV3.Txn(r.Header, r.Txn)
 	case r.Compaction != nil:
 		ar.resp, ar.physc, ar.err = s.applyV3.Compaction(r.Compaction)
 	case r.LeaseGrant != nil:
@@ -278,10 +278,21 @@ func (a *applierV3backend) Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResp
 	return resp, nil
 }
 
-func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
+func (a *applierV3backend) Txn(header *pb.RequestHeader, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	ok := true
 	for _, c := range rt.Compare {
-		if _, ok = a.applyCompare(c); !ok {
+		var err error
+		_, ok, err = a.applyCompare(header, c)
+
+		if err != nil {
+			if err != auth.ErrPermissionDenied {
+				plog.Panicf("unexpected error in compare phase of transaction: %s", err)
+			}
+
+			return nil, err
+		}
+
+		if !ok {
 			break
 		}
 	}
@@ -297,6 +308,9 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 		return nil, err
 	}
 	if err := a.checkRequestRange(reqs); err != nil {
+		return nil, err
+	}
+	if err := a.checkRequestPermission(header, reqs); err != nil {
 		return nil, err
 	}
 
@@ -336,13 +350,17 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 // applyCompare applies the compare request.
 // It returns the revision at which the comparison happens. If the comparison
 // succeeds, the it returns true. Otherwise it returns false.
-func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
+func (a *applierV3backend) applyCompare(header *pb.RequestHeader, c *pb.Compare) (int64, bool, error) {
+	if !a.s.AuthStore().IsRangePermitted(header, c.Key, nil) {
+		return 0, false, auth.ErrPermissionDenied
+	}
+
 	ckvs, rev, err := a.s.KV().Range(c.Key, nil, 1, 0)
 	if err != nil {
 		if err == mvcc.ErrTxnIDMismatch {
 			panic("unexpected txn ID mismatch error")
 		}
-		return rev, false
+		return rev, false, nil
 	}
 	var ckv mvccpb.KeyValue
 	if len(ckvs) != 0 {
@@ -354,7 +372,7 @@ func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
 			// We can treat non-existence as the empty set explicitly, such that
 			// even a key with a value of length 0 bytes is still a real key
 			// that was written that way
-			return rev, false
+			return rev, false, nil
 		}
 	}
 
@@ -387,18 +405,18 @@ func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
 	switch c.Result {
 	case pb.Compare_EQUAL:
 		if result != 0 {
-			return rev, false
+			return rev, false, nil
 		}
 	case pb.Compare_GREATER:
 		if result != 1 {
-			return rev, false
+			return rev, false, nil
 		}
 	case pb.Compare_LESS:
 		if result != -1 {
-			return rev, false
+			return rev, false, nil
 		}
 	}
-	return rev, true
+	return rev, true, nil
 }
 
 func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestOp) *pb.ResponseOp {
@@ -526,11 +544,11 @@ func (a *applierV3Capped) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, e
 	return nil, ErrNoSpace
 }
 
-func (a *applierV3Capped) Txn(r *pb.TxnRequest) (*pb.TxnResponse, error) {
+func (a *applierV3Capped) Txn(header *pb.RequestHeader, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	if a.q.Cost(r) > 0 {
 		return nil, ErrNoSpace
 	}
-	return a.applierV3.Txn(r)
+	return a.applierV3.Txn(header, r)
 }
 
 func (a *applierV3Capped) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
@@ -616,9 +634,9 @@ func (a *quotaApplierV3) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, er
 	return resp, err
 }
 
-func (a *quotaApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
+func (a *quotaApplierV3) Txn(header *pb.RequestHeader, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	ok := a.q.Available(rt)
-	resp, err := a.applierV3.Txn(rt)
+	resp, err := a.applierV3.Txn(header, rt)
 	if err == nil && !ok {
 		err = ErrNoSpace
 	}
@@ -708,6 +726,41 @@ func (a *applierV3backend) checkRequestRange(reqs []*pb.RequestOp) error {
 			return mvcc.ErrCompacted
 		}
 	}
+	return nil
+}
+
+func (a *applierV3backend) checkRequestPermission(header *pb.RequestHeader, reqs []*pb.RequestOp) error {
+	for _, requ := range reqs {
+		switch tv := requ.Request.(type) {
+		case *pb.RequestOp_RequestRange:
+			if tv.RequestRange == nil {
+				continue
+			}
+
+			if !a.s.AuthStore().IsRangePermitted(header, tv.RequestRange.Key, tv.RequestRange.RangeEnd) {
+				return auth.ErrPermissionDenied
+			}
+
+		case *pb.RequestOp_RequestPut:
+			if tv.RequestPut == nil {
+				continue
+			}
+
+			if !a.s.AuthStore().IsPutPermitted(header, tv.RequestPut.Key) {
+				return auth.ErrPermissionDenied
+			}
+
+		case *pb.RequestOp_RequestDeleteRange:
+			if tv.RequestDeleteRange == nil {
+				continue
+			}
+
+			if !a.s.AuthStore().IsDeleteRangePermitted(header.Username, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd) {
+				return auth.ErrPermissionDenied
+			}
+		}
+	}
+
 	return nil
 }
 
