@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
@@ -76,19 +75,21 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	var result *applyResult
+	var err error
+
 	if r.Serializable {
 		user, err := s.usernameFromCtx(ctx)
 		if err != nil {
 			return nil, err
 		}
-		hdr := &pb.RequestHeader{Username: user}
-		if !s.AuthStore().IsRangePermitted(hdr, r.Key, r.RangeEnd) {
-			return nil, auth.ErrPermissionDenied
-		}
-		return s.applyV3.Range(noTxn, r)
+		result = s.applyV3.Apply(
+			&pb.InternalRaftRequest{
+				Header: &pb.RequestHeader{Username: user},
+				Range:  r})
+	} else {
+		result, err = s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Range: r})
 	}
-
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Range: r})
 	if err != nil {
 		return nil, err
 	}

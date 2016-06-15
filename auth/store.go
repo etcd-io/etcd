@@ -108,10 +108,10 @@ type AuthStore interface {
 	UsernameFromToken(token string) (string, bool)
 
 	// IsPutPermitted checks put permission of the user
-	IsPutPermitted(header *pb.RequestHeader, key []byte) bool
+	IsPutPermitted(username string, key []byte) bool
 
 	// IsRangePermitted checks range permission of the user
-	IsRangePermitted(header *pb.RequestHeader, key, rangeEnd []byte) bool
+	IsRangePermitted(username string, key, rangeEnd []byte) bool
 
 	// IsDeleteRangePermitted checks delete-range permission of the user
 	IsDeleteRangePermitted(username string, key, rangeEnd []byte) bool
@@ -570,12 +570,12 @@ func (as *authStore) isOpPermitted(userName string, key, rangeEnd []byte, permTy
 	return false
 }
 
-func (as *authStore) IsPutPermitted(header *pb.RequestHeader, key []byte) bool {
-	return as.isOpPermitted(header.Username, key, nil, authpb.WRITE)
+func (as *authStore) IsPutPermitted(username string, key []byte) bool {
+	return as.isOpPermitted(username, key, nil, authpb.WRITE)
 }
 
-func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key, rangeEnd []byte) bool {
-	return as.isOpPermitted(header.Username, key, rangeEnd, authpb.READ)
+func (as *authStore) IsRangePermitted(username string, key, rangeEnd []byte) bool {
+	return as.isOpPermitted(username, key, rangeEnd, authpb.READ)
 }
 
 func (as *authStore) IsDeleteRangePermitted(username string, key, rangeEnd []byte) bool {

@@ -20,7 +20,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
@@ -50,6 +49,8 @@ type applyResult struct {
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
+	Apply(r *pb.InternalRaftRequest) *applyResult
+
 	Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, error)
 	Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResponse, error)
 	DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
@@ -61,9 +62,11 @@ type applierV3 interface {
 
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
 
+	Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error)
+
 	AuthEnable() (*pb.AuthEnableResponse, error)
 	AuthDisable() (*pb.AuthDisableResponse, error)
-	Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error)
+
 	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
 	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
 	UserChangePassword(ua *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
@@ -81,74 +84,62 @@ type applierV3backend struct {
 	s *EtcdServer
 }
 
-func (s *EtcdServer) applyV3Request(r *pb.InternalRaftRequest) *applyResult {
+func (s *EtcdServer) newApplierV3() applierV3 {
+	return newAuthApplierV3(
+		s.AuthStore(),
+		newQuotaApplierV3(s, &applierV3backend{s}),
+	)
+}
+
+func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	ar := &applyResult{}
-	username := r.Header.Username
 
-	if needAdminPermission(r) && !s.AuthStore().IsAdminPermitted(username) {
-		ar.err = auth.ErrPermissionDenied
-		return ar
-	}
-
+	// call into a.s.applyV3.F instead of a.F so upper appliers can check individual calls
 	switch {
 	case r.Range != nil:
-		if s.AuthStore().IsRangePermitted(r.Header, r.Range.Key, r.Range.RangeEnd) {
-			ar.resp, ar.err = s.applyV3.Range(noTxn, r.Range)
-		} else {
-			ar.err = auth.ErrPermissionDenied
-		}
+		ar.resp, ar.err = a.s.applyV3.Range(noTxn, r.Range)
 	case r.Put != nil:
-		if s.AuthStore().IsPutPermitted(r.Header, r.Put.Key) {
-			ar.resp, ar.err = s.applyV3.Put(noTxn, r.Put)
-		} else {
-			ar.err = auth.ErrPermissionDenied
-		}
+		ar.resp, ar.err = a.s.applyV3.Put(noTxn, r.Put)
 	case r.DeleteRange != nil:
-		if s.AuthStore().IsDeleteRangePermitted(r.Header.Username, r.DeleteRange.Key, r.DeleteRange.RangeEnd) {
-			ar.resp, ar.err = s.applyV3.DeleteRange(noTxn, r.DeleteRange)
-		} else {
-			ar.err = auth.ErrPermissionDenied
-		}
+		ar.resp, ar.err = a.s.applyV3.DeleteRange(noTxn, r.DeleteRange)
 	case r.Txn != nil:
-		ar.resp, ar.err = s.applyV3.Txn(r.Txn)
+		ar.resp, ar.err = a.s.applyV3.Txn(r.Txn)
 	case r.Compaction != nil:
-		ar.resp, ar.physc, ar.err = s.applyV3.Compaction(r.Compaction)
+		ar.resp, ar.physc, ar.err = a.s.applyV3.Compaction(r.Compaction)
 	case r.LeaseGrant != nil:
-		ar.resp, ar.err = s.applyV3.LeaseGrant(r.LeaseGrant)
+		ar.resp, ar.err = a.s.applyV3.LeaseGrant(r.LeaseGrant)
 	case r.LeaseRevoke != nil:
-		ar.resp, ar.err = s.applyV3.LeaseRevoke(r.LeaseRevoke)
+		ar.resp, ar.err = a.s.applyV3.LeaseRevoke(r.LeaseRevoke)
 	case r.Alarm != nil:
-		ar.resp, ar.err = s.applyV3.Alarm(r.Alarm)
-
-	case r.AuthEnable != nil:
-		ar.resp, ar.err = s.applyV3.AuthEnable()
-	case r.AuthDisable != nil:
-		ar.resp, ar.err = s.applyV3.AuthDisable()
+		ar.resp, ar.err = a.s.applyV3.Alarm(r.Alarm)
 	case r.Authenticate != nil:
-		ctx := context.WithValue(context.WithValue(context.TODO(), "index", s.consistIndex.ConsistentIndex()), "simpleToken", r.Authenticate.SimpleToken)
-		ar.resp, ar.err = s.applyV3.Authenticate(ctx, r.Authenticate.Name, r.Authenticate.Password)
+		ar.resp, ar.err = a.s.applyV3.Authenticate(r.Authenticate)
+	case r.AuthEnable != nil:
+		ar.resp, ar.err = a.s.applyV3.AuthEnable()
+	case r.AuthDisable != nil:
+		ar.resp, ar.err = a.s.applyV3.AuthDisable()
 	case r.AuthUserAdd != nil:
-		ar.resp, ar.err = s.applyV3.UserAdd(r.AuthUserAdd)
+		ar.resp, ar.err = a.s.applyV3.UserAdd(r.AuthUserAdd)
 	case r.AuthUserDelete != nil:
-		ar.resp, ar.err = s.applyV3.UserDelete(r.AuthUserDelete)
+		ar.resp, ar.err = a.s.applyV3.UserDelete(r.AuthUserDelete)
 	case r.AuthUserChangePassword != nil:
-		ar.resp, ar.err = s.applyV3.UserChangePassword(r.AuthUserChangePassword)
+		ar.resp, ar.err = a.s.applyV3.UserChangePassword(r.AuthUserChangePassword)
 	case r.AuthUserGrantRole != nil:
-		ar.resp, ar.err = s.applyV3.UserGrantRole(r.AuthUserGrantRole)
+		ar.resp, ar.err = a.s.applyV3.UserGrantRole(r.AuthUserGrantRole)
 	case r.AuthUserGet != nil:
-		ar.resp, ar.err = s.applyV3.UserGet(r.AuthUserGet)
+		ar.resp, ar.err = a.s.applyV3.UserGet(r.AuthUserGet)
 	case r.AuthUserRevokeRole != nil:
-		ar.resp, ar.err = s.applyV3.UserRevokeRole(r.AuthUserRevokeRole)
+		ar.resp, ar.err = a.s.applyV3.UserRevokeRole(r.AuthUserRevokeRole)
 	case r.AuthRoleAdd != nil:
-		ar.resp, ar.err = s.applyV3.RoleAdd(r.AuthRoleAdd)
+		ar.resp, ar.err = a.s.applyV3.RoleAdd(r.AuthRoleAdd)
 	case r.AuthRoleGrantPermission != nil:
-		ar.resp, ar.err = s.applyV3.RoleGrantPermission(r.AuthRoleGrantPermission)
+		ar.resp, ar.err = a.s.applyV3.RoleGrantPermission(r.AuthRoleGrantPermission)
 	case r.AuthRoleGet != nil:
-		ar.resp, ar.err = s.applyV3.RoleGet(r.AuthRoleGet)
+		ar.resp, ar.err = a.s.applyV3.RoleGet(r.AuthRoleGet)
 	case r.AuthRoleRevokePermission != nil:
-		ar.resp, ar.err = s.applyV3.RoleRevokePermission(r.AuthRoleRevokePermission)
+		ar.resp, ar.err = a.s.applyV3.RoleRevokePermission(r.AuthRoleRevokePermission)
 	case r.AuthRoleDelete != nil:
-		ar.resp, ar.err = s.applyV3.RoleDelete(r.AuthRoleDelete)
+		ar.resp, ar.err = a.s.applyV3.RoleDelete(r.AuthRoleDelete)
 	default:
 		panic("not implemented")
 	}
@@ -503,7 +494,7 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 		switch m.Alarm {
 		case pb.AlarmType_NOSPACE:
 			plog.Infof("alarm disarmed %+v", ar)
-			a.s.applyV3 = newQuotaApplierV3(a.s, &applierV3backend{a.s})
+			a.s.applyV3 = a.s.newApplierV3()
 		default:
 			plog.Errorf("unimplemented alarm deactivation (%+v)", m)
 		}
@@ -550,8 +541,9 @@ func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
 	return &pb.AuthDisableResponse{}, nil
 }
 
-func (a *applierV3backend) Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error) {
-	return a.s.AuthStore().Authenticate(ctx, username, password)
+func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {
+	ctx := context.WithValue(context.WithValue(context.TODO(), "index", a.s.consistIndex.ConsistentIndex()), "simpleToken", r.SimpleToken)
+	return a.s.AuthStore().Authenticate(ctx, r.Name, r.Password)
 }
 
 func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
@@ -726,37 +718,4 @@ func compareInt64(a, b int64) int {
 // sending empty byte strings as nil; >= is encoded in the range end as '\0'.
 func isGteRange(rangeEnd []byte) bool {
 	return len(rangeEnd) == 1 && rangeEnd[0] == 0
-}
-
-func needAdminPermission(r *pb.InternalRaftRequest) bool {
-	switch {
-	case r.AuthEnable != nil:
-		return true
-	case r.AuthDisable != nil:
-		return true
-	case r.AuthUserAdd != nil:
-		return true
-	case r.AuthUserDelete != nil:
-		return true
-	case r.AuthUserChangePassword != nil:
-		return true
-	case r.AuthUserGrantRole != nil:
-		return true
-	case r.AuthUserGet != nil:
-		return true
-	case r.AuthUserRevokeRole != nil:
-		return true
-	case r.AuthRoleAdd != nil:
-		return true
-	case r.AuthRoleGrantPermission != nil:
-		return true
-	case r.AuthRoleGet != nil:
-		return true
-	case r.AuthRoleRevokePermission != nil:
-		return true
-	case r.AuthRoleDelete != nil:
-		return true
-	default:
-		return false
-	}
 }
