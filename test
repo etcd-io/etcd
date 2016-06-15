@@ -91,6 +91,9 @@ function fmt_tests {
 
 	echo "Checking 'go tool vet -shadow'..."
 	for path in $FMT; do
+		if [ "${path##*.}" != "go" ]; then
+			path="${path}/*.go"
+		fi
 		vetRes=$(go tool vet -shadow ${path})
 		if [ -n "${vetRes}" ]; then
 			echo -e "govet -shadow checking ${path} failed:\n${vetRes}"

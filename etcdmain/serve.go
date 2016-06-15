@@ -23,10 +23,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cockroachdb/cmux"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
+	"github.com/cockroachdb/cmux"
+	gw "github.com/gengo/grpc-gateway/runtime"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type serveCtx struct {
@@ -52,8 +57,19 @@ func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler
 		grpcl := m.Match(cmux.HTTP2())
 		go func() { plog.Fatal(gs.Serve(grpcl)) }()
 
+		opts := []grpc.DialOption{
+			grpc.WithInsecure(),
+		}
+		gwmux, err := registerGateway(sctx.l.Addr().String(), opts)
+		if err != nil {
+			return err
+		}
+
+		httpmux := http.NewServeMux()
+		httpmux.Handle("/v3alpha/", gwmux)
+		httpmux.Handle("/", handler)
 		srvhttp := &http.Server{
-			Handler:  handler,
+			Handler:  httpmux,
 			ErrorLog: logger, // do not log user error
 		}
 		httpl := m.Match(cmux.HTTP1())
@@ -65,10 +81,23 @@ func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler
 		gs := v3rpc.Server(s, tlscfg)
 		handler = grpcHandlerFunc(gs, handler)
 
+		dtls := *tlscfg
+		// trust local server
+		dtls.InsecureSkipVerify = true
+		creds := credentials.NewTLS(&dtls)
+		opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
+		gwmux, err := registerGateway(sctx.l.Addr().String(), opts)
+		if err != nil {
+			return err
+		}
+
 		tlsl := tls.NewListener(m.Match(cmux.Any()), tlscfg)
 		// TODO: add debug flag; enable logging when debug flag is set
+		httpmux := http.NewServeMux()
+		httpmux.Handle("/v3alpha/", gwmux)
+		httpmux.Handle("/", handler)
 		srv := &http.Server{
-			Handler:   handler,
+			Handler:   httpmux,
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
@@ -101,4 +130,34 @@ func servePeerHTTP(l net.Listener, handler http.Handler) error {
 		ErrorLog:    logger, // do not log user error
 	}
 	return srv.Serve(l)
+}
+
+func registerGateway(addr string, opts []grpc.DialOption) (*gw.ServeMux, error) {
+	gwmux := gw.NewServeMux()
+
+	err := pb.RegisterKVHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	if err != nil {
+		return nil, err
+	}
+	err = pb.RegisterWatchHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	if err != nil {
+		return nil, err
+	}
+	err = pb.RegisterLeaseHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	if err != nil {
+		return nil, err
+	}
+	err = pb.RegisterClusterHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	if err != nil {
+		return nil, err
+	}
+	err = pb.RegisterMaintenanceHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	if err != nil {
+		return nil, err
+	}
+	err = pb.RegisterAuthHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	if err != nil {
+		return nil, err
+	}
+	return gwmux, nil
 }
