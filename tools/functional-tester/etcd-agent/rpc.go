@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"syscall"
 
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
@@ -47,7 +48,7 @@ func (a *Agent) RPCStart(args []string, pid *int) error {
 
 func (a *Agent) RPCStop(args struct{}, reply *struct{}) error {
 	plog.Printf("stop etcd")
-	err := a.stop()
+	err := a.stopWithSig(syscall.SIGTERM)
 	if err != nil {
 		plog.Println("error stopping etcd", err)
 		return err
