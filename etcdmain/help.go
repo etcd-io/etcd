@@ -131,6 +131,8 @@ logging flags
 		enable debug-level logging for etcd.
 	--log-package-levels ''
 		specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
+	--log-output 'stderr'
+		specify log output path (stderr,stdout,journald,YOUR_NAME.log).
 
 unsafe flags:
 

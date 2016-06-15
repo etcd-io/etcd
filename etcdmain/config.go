@@ -135,6 +135,7 @@ type config struct {
 	// Debug logging
 	Debug        bool   `json:"debug"`
 	LogPkgLevels string `json:"log-package-levels"`
+	LogOutput    string `json:"log-output"`
 
 	// ForceNewCluster is unsafe
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -249,6 +250,7 @@ func NewConfig() *config {
 	// logging
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug-level logging for etcd.")
 	fs.StringVar(&cfg.LogPkgLevels, "log-package-levels", "", "Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
+	fs.StringVar(&cfg.LogOutput, "log-output", "stderr", "Specify log output path (stderr,stdout,journald,YOUR_NAME.log).")
 
 	// unsafe
 	fs.BoolVar(&cfg.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")

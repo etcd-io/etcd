@@ -616,6 +616,37 @@ func setupLogging(cfg *config) {
 		}
 		repoLog.SetLogLevel(settings)
 	}
+	switch cfg.LogOutput {
+	case "", "stderr":
+		break
+
+	case "stdout":
+		capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stdout, cfg.Debug))
+
+	case "journald":
+		f, err := capnslog.NewJournaldFormatter()
+		if err != nil {
+			plog.Warningf("couldn't log to journald (%v)", err)
+			return
+		}
+		capnslog.SetFormatter(f)
+
+	default:
+		f, err := openToAppend(cfg.LogOutput)
+		if err != nil {
+			plog.Warningf("couldn't log to file %q (%v)", cfg.LogOutput, err)
+			return
+		}
+		capnslog.SetFormatter(capnslog.NewPrettyFormatter(f, cfg.Debug))
+	}
+}
+
+func openToAppend(fpath string) (*os.File, error) {
+	f, err := os.OpenFile(fpath, os.O_RDWR|os.O_APPEND|os.O_CREATE, fileutil.PrivateFileMode)
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 func checkSupportArch() {
