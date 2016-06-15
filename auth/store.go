@@ -114,7 +114,7 @@ type AuthStore interface {
 	IsRangePermitted(header *pb.RequestHeader, key, rangeEnd []byte) bool
 
 	// IsDeleteRangePermitted checks delete-range permission of the user
-	IsDeleteRangePermitted(username string, key, rangeEnd []byte) bool
+	IsDeleteRangePermitted(header *pb.RequestHeader, key, rangeEnd []byte) bool
 
 	// IsAdminPermitted checks admin permission of the user
 	IsAdminPermitted(username string) bool
@@ -578,8 +578,8 @@ func (as *authStore) IsRangePermitted(header *pb.RequestHeader, key, rangeEnd []
 	return as.isOpPermitted(header.Username, key, rangeEnd, authpb.READ)
 }
 
-func (as *authStore) IsDeleteRangePermitted(username string, key, rangeEnd []byte) bool {
-	return as.isOpPermitted(username, key, rangeEnd, authpb.WRITE)
+func (as *authStore) IsDeleteRangePermitted(header *pb.RequestHeader, key, rangeEnd []byte) bool {
+	return as.isOpPermitted(header.Username, key, rangeEnd, authpb.WRITE)
 }
 
 func (as *authStore) IsAdminPermitted(username string) bool {
