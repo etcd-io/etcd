@@ -41,7 +41,8 @@ func preallocFixed(f *os.File, sizeInBytes int64) error {
 	if err != nil {
 		errno, ok := err.(syscall.Errno)
 		// treat not supported as nil error
-		if ok && errno == syscall.ENOTSUP {
+		// fallocate EINTRs frequently in some enviroments; fallback
+		if ok && (errno == syscall.ENOTSUP || errno == syscall.EINTR) {
 			return nil
 		}
 	}
