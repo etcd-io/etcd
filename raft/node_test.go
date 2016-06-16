@@ -226,6 +226,7 @@ func TestNodeTick(t *testing.T) {
 	go n.run(r)
 	elapsed := r.electionElapsed
 	n.Tick()
+	testutil.WaitSchedule()
 	n.Stop()
 	if r.electionElapsed != elapsed+1 {
 		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
@@ -247,6 +248,7 @@ func TestNodeStop(t *testing.T) {
 
 	elapsed := r.electionElapsed
 	n.Tick()
+	testutil.WaitSchedule()
 	n.Stop()
 
 	select {
