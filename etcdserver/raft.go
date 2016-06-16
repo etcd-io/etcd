@@ -216,18 +216,19 @@ func (r *raftNode) start(s *EtcdServer) {
 					r.s.send(rd.Messages)
 				}
 
+				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+					plog.Fatalf("raft save state and entries error: %v", err)
+				}
+				if !raft.IsEmptyHardState(rd.HardState) {
+					proposalsCommitted.Set(float64(rd.HardState.Commit))
+				}
+
 				if !raft.IsEmptySnap(rd.Snapshot) {
 					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
 						plog.Fatalf("raft save snapshot error: %v", err)
 					}
 					r.raftStorage.ApplySnapshot(rd.Snapshot)
 					plog.Infof("raft applied incoming snapshot at index %d", rd.Snapshot.Metadata.Index)
-				}
-				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
-					plog.Fatalf("raft save state and entries error: %v", err)
-				}
-				if !raft.IsEmptyHardState(rd.HardState) {
-					proposalsCommitted.Set(float64(rd.HardState.Commit))
 				}
 
 				r.raftStorage.Append(rd.Entries)
