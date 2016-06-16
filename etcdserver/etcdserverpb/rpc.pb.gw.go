@@ -1210,15 +1210,15 @@ func RegisterMaintenanceHandler(ctx context.Context, mux *runtime.ServeMux, conn
 }
 
 var (
-	pattern_Maintenance_Alarm_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintance", "alarm"}, ""))
+	pattern_Maintenance_Alarm_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintenance", "alarm"}, ""))
 
-	pattern_Maintenance_Status_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintance", "status"}, ""))
+	pattern_Maintenance_Status_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintenance", "status"}, ""))
 
-	pattern_Maintenance_Defragment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintance", "defragment"}, ""))
+	pattern_Maintenance_Defragment_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintenance", "defragment"}, ""))
 
-	pattern_Maintenance_Hash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintance", "hash"}, ""))
+	pattern_Maintenance_Hash_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintenance", "hash"}, ""))
 
-	pattern_Maintenance_Snapshot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintance", "snapshot"}, ""))
+	pattern_Maintenance_Snapshot_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "maintenance", "snapshot"}, ""))
 )
 
 var (
@@ -1663,7 +1663,7 @@ var (
 
 	pattern_Auth_AuthDisable_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "auth", "disable"}, ""))
 
-	pattern_Auth_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "auth", "enable"}, ""))
+	pattern_Auth_Authenticate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v3alpha", "auth", "authenticate"}, ""))
 
 	pattern_Auth_UserAdd_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3alpha", "auth", "user", "add"}, ""))
 
