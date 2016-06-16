@@ -743,15 +743,6 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 		return
 	}
 
-	// When sending a snapshot, etcd will pause compaction.
-	// After receives a snapshot, the slow follower needs to get all the entries right after
-	// the snapshot sent to catch up. If we do not pause compaction, the log entries right after
-	// the snapshot sent might already be compacted. It happens when the snapshot takes long time
-	// to send and save. Pausing compaction avoids triggering a snapshot sending cycle.
-	if atomic.LoadInt64(&s.inflightSnapshots) != 0 {
-		return
-	}
-
 	plog.Infof("start to snapshot (applied: %d, lastsnap: %d)", ep.appliedi, ep.snapi)
 	s.snapshot(ep.appliedi, ep.confState)
 	ep.snapi = ep.appliedi
@@ -1169,6 +1160,16 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			plog.Fatalf("save snapshot error: %v", err)
 		}
 		plog.Infof("saved snapshot at index %d", snap.Metadata.Index)
+
+		// When sending a snapshot, etcd will pause compaction.
+		// After receives a snapshot, the slow follower needs to get all the entries right after
+		// the snapshot sent to catch up. If we do not pause compaction, the log entries right after
+		// the snapshot sent might already be compacted. It happens when the snapshot takes long time
+		// to send and save. Pausing compaction avoids triggering a snapshot sending cycle.
+		if atomic.LoadInt64(&s.inflightSnapshots) != 0 {
+			plog.Infof("skip compaction since there is an inflight snapshot")
+			return
+		}
 
 		// keep some in memory log entries for slow followers.
 		compacti := uint64(1)
