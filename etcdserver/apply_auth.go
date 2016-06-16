@@ -61,6 +61,58 @@ func (aa *authApplierV3) DeleteRange(txnID int64, r *pb.DeleteRangeRequest) (*pb
 	return aa.applierV3.DeleteRange(txnID, r)
 }
 
+func (aa *authApplierV3) checkTxnReqsPermission(reqs []*pb.RequestOp) bool {
+	for _, requ := range reqs {
+		switch tv := requ.Request.(type) {
+		case *pb.RequestOp_RequestRange:
+			if tv.RequestRange == nil {
+				continue
+			}
+
+			if !aa.as.IsRangePermitted(aa.user, tv.RequestRange.Key, tv.RequestRange.RangeEnd) {
+				return false
+			}
+
+		case *pb.RequestOp_RequestPut:
+			if tv.RequestPut == nil {
+				continue
+			}
+
+			if !aa.as.IsPutPermitted(aa.user, tv.RequestPut.Key) {
+				return false
+			}
+
+		case *pb.RequestOp_RequestDeleteRange:
+			if tv.RequestDeleteRange == nil {
+				continue
+			}
+
+			if !aa.as.IsDeleteRangePermitted(aa.user, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
+	for _, c := range rt.Compare {
+		if !aa.as.IsRangePermitted(aa.user, c.Key, nil) {
+			return nil, auth.ErrPermissionDenied
+		}
+	}
+
+	if !aa.checkTxnReqsPermission(rt.Success) {
+		return nil, auth.ErrPermissionDenied
+	}
+	if !aa.checkTxnReqsPermission(rt.Failure) {
+		return nil, auth.ErrPermissionDenied
+	}
+
+	return aa.applierV3.Txn(rt)
+}
+
 func needAdminPermission(r *pb.InternalRaftRequest) bool {
 	switch {
 	case r.AuthEnable != nil:
