@@ -49,7 +49,7 @@ To start a proxy that will connect to a statically defined etcd cluster, specify
 
 ```
 etcd --proxy on \
---listen-client-urls http://127.0.0.1:8080 \
+--listen-client-urls http://127.0.0.1:2379 \
 --initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380
 ```
 
@@ -60,7 +60,7 @@ To start a proxy using the discovery service, specify the `discovery` flag. The 
 
 ```
 etcd --proxy on \
---listen-client-urls http://127.0.0.1:8080 \
+--listen-client-urls http://127.0.0.1:2379 \
 --discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de \
 ```
 
