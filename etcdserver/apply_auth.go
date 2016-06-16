@@ -30,7 +30,12 @@ func newAuthApplierV3(as auth.AuthStore, base applierV3) *authApplierV3 {
 }
 
 func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
-	user := r.Header.Username
+	var user string
+	if r.Header != nil {
+		// backward-compatible with pre-3.0 releases when internalRaftRequest
+		// does not have header field
+		user = r.Header.Username
+	}
 	if needAdminPermission(r) && !aa.as.IsAdminPermitted(user) {
 		return &applyResult{err: auth.ErrPermissionDenied}
 	}
