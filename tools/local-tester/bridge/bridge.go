@@ -17,6 +17,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -26,78 +27,129 @@ import (
 	"time"
 )
 
-func bridge(conn net.Conn, remoteAddr string) {
-	outconn, err := net.Dial("tcp", flag.Args()[1])
+type bridgeConn struct {
+	in  net.Conn
+	out net.Conn
+	d   dispatcher
+}
+
+func newBridgeConn(in net.Conn, d dispatcher) (*bridgeConn, error) {
+	out, err := net.Dial("tcp", flag.Args()[1])
 	if err != nil {
-		log.Println("oops:", err)
-		return
+		in.Close()
+		return nil, err
 	}
-	log.Printf("bridging %v <-> %v\n", outconn.LocalAddr(), outconn.RemoteAddr())
-	go io.Copy(conn, outconn)
-	io.Copy(outconn, conn)
+	return &bridgeConn{in, out, d}, nil
 }
 
-func blackhole(conn net.Conn) {
-	log.Printf("blackholing connection %v <-> %v\n", conn.LocalAddr(), conn.RemoteAddr())
-	io.Copy(ioutil.Discard, conn)
-	conn.Close()
+func (b *bridgeConn) String() string {
+	return fmt.Sprintf("%v <-> %v", b.in.RemoteAddr(), b.out.RemoteAddr())
 }
 
-func readRemoteOnly(conn net.Conn, remoteAddr string) {
-	outconn, err := net.Dial("tcp", flag.Args()[1])
-	if err != nil {
-		log.Println("oops:", err)
-		return
-	}
-	log.Printf("one way %v <- %v\n", outconn.LocalAddr(), outconn.RemoteAddr())
-	io.Copy(conn, outconn)
+func (b *bridgeConn) Close() {
+	b.in.Close()
+	b.out.Close()
 }
 
-func writeRemoteOnly(conn net.Conn, remoteAddr string) {
-	outconn, err := net.Dial("tcp", flag.Args()[1])
-	if err != nil {
-		log.Println("oops:", err)
-		return
-	}
-	log.Printf("one way %v -> %v\n", outconn.LocalAddr(), outconn.RemoteAddr())
-	io.Copy(outconn, conn)
+func bridge(b *bridgeConn) {
+	log.Println("bridging", b.String())
+	go b.d.Copy(b.out, makeFetch(b.in))
+	b.d.Copy(b.in, makeFetch(b.out))
 }
 
-func randCopy(conn net.Conn, outconn net.Conn) {
-	for rand.Intn(10) > 0 {
+func timeBridge(b *bridgeConn) {
+	go func() {
+		t := time.Duration(rand.Intn(5)+1) * time.Second
+		time.Sleep(t)
+		log.Printf("killing connection %s after %v\n", b.String(), t)
+		b.Close()
+	}()
+	bridge(b)
+}
+
+func blackhole(b *bridgeConn) {
+	log.Println("blackholing connection", b.String())
+	io.Copy(ioutil.Discard, b.in)
+	b.Close()
+}
+
+func readRemoteOnly(b *bridgeConn) {
+	log.Println("one way (<-)", b.String())
+	b.d.Copy(b.in, makeFetch(b.out))
+}
+
+func writeRemoteOnly(b *bridgeConn) {
+	log.Println("one way (->)", b.String())
+	b.d.Copy(b.out, makeFetch(b.in))
+}
+
+func corruptReceive(b *bridgeConn) {
+	log.Println("corruptReceive", b.String())
+	go b.d.Copy(b.in, makeFetchCorrupt(makeFetch(b.out)))
+	b.d.Copy(b.out, makeFetch(b.in))
+}
+
+func corruptSend(b *bridgeConn) {
+	log.Println("corruptSend", b.String())
+	go b.d.Copy(b.out, makeFetchCorrupt(makeFetch(b.in)))
+	b.d.Copy(b.in, makeFetch(b.out))
+}
+
+func makeFetch(c io.Reader) fetchFunc {
+	return func() ([]byte, error) {
 		b := make([]byte, 4096)
-		n, err := outconn.Read(b)
+		n, err := c.Read(b)
 		if err != nil {
-			return
+			return nil, err
 		}
-		_, err = conn.Write(b[:n])
-		if err != nil {
-			return
-		}
+		return b[:n], nil
 	}
 }
 
-func randomBlackhole(conn net.Conn, remoteAddr string) {
-	outconn, err := net.Dial("tcp", flag.Args()[1])
-	if err != nil {
-		log.Println("oops:", err)
-		return
+func makeFetchCorrupt(f func() ([]byte, error)) fetchFunc {
+	return func() ([]byte, error) {
+		b, err := f()
+		if err != nil {
+			return nil, err
+		}
+		// corrupt one byte approximately every 16K
+		for i := 0; i < len(b); i++ {
+			if rand.Intn(16*1024) == 0 {
+				b[i] = b[i] + 1
+			}
+		}
+		return b, nil
 	}
-	log.Printf("random blackhole: connection %v <-/-> %v\n", outconn.LocalAddr(), outconn.RemoteAddr())
+}
+
+func makeFetchRand(f func() ([]byte, error)) fetchFunc {
+	return func() ([]byte, error) {
+		if rand.Intn(10) == 0 {
+			return nil, fmt.Errorf("fetchRand: done")
+		}
+		b, err := f()
+		if err != nil {
+			return nil, err
+		}
+		return b, nil
+	}
+}
+
+func randomBlackhole(b *bridgeConn) {
+	log.Println("random blackhole: connection", b.String())
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		randCopy(conn, outconn)
+		b.d.Copy(b.in, makeFetchRand(makeFetch(b.out)))
 		wg.Done()
 	}()
 	go func() {
-		randCopy(outconn, conn)
+		b.d.Copy(b.out, makeFetchRand(makeFetch(b.in)))
 		wg.Done()
 	}()
 	wg.Wait()
-	conn.Close()
-	outconn.Close()
+	b.Close()
 }
 
 type config struct {
@@ -111,10 +163,13 @@ type config struct {
 	writeRemoteOnly bool
 	readRemoteOnly  bool
 	randomBlackhole bool
+	corruptSend     bool
+	corruptReceive  bool
+	reorder         bool
 }
 
 type acceptFaultFunc func()
-type connFaultFunc func(net.Conn)
+type connFaultFunc func(*bridgeConn)
 
 func main() {
 	var cfg config
@@ -128,7 +183,10 @@ func main() {
 	flag.BoolVar(&cfg.timeClose, "time-close", true, "close after random time")
 	flag.BoolVar(&cfg.writeRemoteOnly, "write-remote-only", true, "only write, no read")
 	flag.BoolVar(&cfg.readRemoteOnly, "read-remote-only", true, "only read, no write")
-	flag.BoolVar(&cfg.randomBlackhole, "random-blockhole", true, "blackhole after data xfer")
+	flag.BoolVar(&cfg.randomBlackhole, "random-blackhole", true, "blackhole after data xfer")
+	flag.BoolVar(&cfg.corruptReceive, "corrupt-receive", true, "corrupt packets received from destination")
+	flag.BoolVar(&cfg.corruptSend, "corrupt-send", true, "corrupt packets sent to destination")
+	flag.BoolVar(&cfg.reorder, "reorder", true, "reorder packet delivery")
 	flag.Parse()
 
 	lAddr := flag.Args()[0]
@@ -163,11 +221,11 @@ func main() {
 		acceptFaults = append(acceptFaults, f)
 	}
 
-	connFaults := []connFaultFunc{func(c net.Conn) { bridge(c, fwdAddr) }}
+	connFaults := []connFaultFunc{func(b *bridgeConn) { bridge(b) }}
 	if cfg.immediateClose {
-		f := func(c net.Conn) {
-			log.Println("terminating connection immediately")
-			c.Close()
+		f := func(b *bridgeConn) {
+			log.Printf("terminating connection %s immediately", b.String())
+			b.Close()
 		}
 		connFaults = append(connFaults, f)
 	}
@@ -175,31 +233,29 @@ func main() {
 		connFaults = append(connFaults, blackhole)
 	}
 	if cfg.timeClose {
-		f := func(c net.Conn) {
-			go func() {
-				t := time.Duration(rand.Intn(5)+1) * time.Second
-				time.Sleep(t)
-				log.Printf("killing connection %v <-> %v after %v\n",
-					c.LocalAddr(),
-					c.RemoteAddr(),
-					t)
-				c.Close()
-			}()
-			bridge(c, fwdAddr)
-		}
-		connFaults = append(connFaults, f)
+		connFaults = append(connFaults, timeBridge)
 	}
 	if cfg.writeRemoteOnly {
-		f := func(c net.Conn) { writeRemoteOnly(c, fwdAddr) }
-		connFaults = append(connFaults, f)
+		connFaults = append(connFaults, writeRemoteOnly)
 	}
 	if cfg.readRemoteOnly {
-		f := func(c net.Conn) { readRemoteOnly(c, fwdAddr) }
-		connFaults = append(connFaults, f)
+		connFaults = append(connFaults, readRemoteOnly)
 	}
 	if cfg.randomBlackhole {
-		f := func(c net.Conn) { randomBlackhole(c, fwdAddr) }
-		connFaults = append(connFaults, f)
+		connFaults = append(connFaults, randomBlackhole)
+	}
+	if cfg.corruptSend {
+		connFaults = append(connFaults, corruptSend)
+	}
+	if cfg.corruptReceive {
+		connFaults = append(connFaults, corruptReceive)
+	}
+
+	var disp dispatcher
+	if cfg.reorder {
+		disp = newDispatcherPool()
+	} else {
+		disp = newDispatcherImmediate()
 	}
 
 	for {
@@ -213,7 +269,12 @@ func main() {
 		if rand.Intn(100) > int(100.0*cfg.connFaultRate) {
 			r = 0
 		}
-		go connFaults[r](conn)
-	}
 
+		bc, err := newBridgeConn(conn, disp)
+		if err != nil {
+			log.Printf("oops %v", err)
+			continue
+		}
+		go connFaults[r](bc)
+	}
 }
