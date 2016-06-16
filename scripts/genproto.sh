@@ -81,7 +81,7 @@ protoc -I. \
 if [ "$1" = "-g" ]; then
 	echo "protodoc is auto-generating grpc API reference documentation..."
 	go get -v -u github.com/coreos/protodoc
-	SHA_PROTODOC="150f6f93d89aedb208f443d38f50bb03abbc9290"
+	SHA_PROTODOC="f4164b1cce80b5eba4c835d08483f552dc568b7c"
 	PROTODOC_PATH="${GOPATH}/src/github.com/coreos/protodoc"
 	pushd "${PROTODOC_PATH}"
 		git reset --hard "${SHA_PROTODOC}"
@@ -92,7 +92,8 @@ if [ "$1" = "-g" ]; then
 	protodoc --directories="etcdserver/etcdserverpb=service_message,mvcc/mvccpb=service_message,lease/leasepb=service_message,auth/authpb=service_message" \
 		--title="etcd API Reference" \
 		--output="Documentation/dev-guide/api_reference_v3.md" \
-		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto"
+		--message-only-from-this-file="etcdserver/etcdserverpb/rpc.proto" \
+		--disclaimer="This is a generated documentation. Please read the proto files for more."
 
 	echo "protodoc is finished..."
 else
