@@ -49,6 +49,7 @@ popd
 
 # generate gateway code
 go get -u github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway
+go get -u github.com/gengo/grpc-gateway/protoc-gen-swagger
 pushd "${GRPC_GATEWAY_ROOT}"
 	git reset --hard "${GRPC_GATEWAY_SHA}"
 	go install ./protoc-gen-grpc-gateway
@@ -70,7 +71,17 @@ done
 protoc -I. \
     -I${GRPC_GATEWAY_ROOT}/third_party/googleapis \
     -I${GOGOPROTO_PATH} \
-    -I${COREOS_ROOT} --grpc-gateway_out=logtostderr=true:. ./etcdserver/etcdserverpb/rpc.proto
+    -I${COREOS_ROOT} \
+    --grpc-gateway_out=logtostderr=true:. \
+    --swagger_out=logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
+    ./etcdserver/etcdserverpb/rpc.proto
+
+# TODO: change this whenever we add more swagger API
+mv \
+	Documentation/dev-guide/apispec/swagger/etcdserver/etcdserverpb/rpc.swagger.json \
+	Documentation/dev-guide/apispec/swagger/rpc.swagger.json
+rm -rf Documentation/dev-guide/apispec/swagger/etcdserver/etcdserverpb
+
 
 # install protodoc
 # go get -v -u github.com/coreos/protodoc
