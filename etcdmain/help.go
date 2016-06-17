@@ -81,6 +81,8 @@ clustering flags:
 		dns srv domain used to bootstrap the cluster.
 	--strict-reconfig-check
 		reject reconfiguration requests that would cause quorum loss.
+	--auto-compaction-retention '0'
+		auto compaction retention in hour. 0 means disable auto compaction.
 
 proxy flags:
 
@@ -139,13 +141,7 @@ given by the consensus protocol.
 
 	--force-new-cluster 'false'
 		force to create a new one-member cluster.
-
-
-experimental flags:
-
-	--experimental-auto-compaction-retention '0'
-		auto compaction retention in hour. 0 means disable auto compaction.
-
+	
 profiling flags:
 	--enable-pprof 'false'
 		Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof"
