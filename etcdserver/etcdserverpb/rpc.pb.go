@@ -2046,7 +2046,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion2
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for KV service
 
@@ -2268,7 +2268,8 @@ var _KV_serviceDesc = grpc.ServiceDesc{
 			Handler:    _KV_Compact_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorRpc,
 }
 
 // Client API for Watch service
@@ -2374,6 +2375,7 @@ var _Watch_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
+	Metadata: fileDescriptorRpc,
 }
 
 // Client API for Lease service
@@ -2548,6 +2550,7 @@ var _Lease_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
+	Metadata: fileDescriptorRpc,
 }
 
 // Client API for Cluster service
@@ -2717,7 +2720,8 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Cluster_MemberList_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorRpc,
 }
 
 // Client API for Maintenance service
@@ -2955,6 +2959,7 @@ var _Maintenance_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
+	Metadata: fileDescriptorRpc,
 }
 
 // Client API for Auth service
@@ -3544,7 +3549,8 @@ var _Auth_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Auth_RoleRevokePermission_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorRpc,
 }
 
 func (m *ResponseHeader) Marshal() (data []byte, err error) {
