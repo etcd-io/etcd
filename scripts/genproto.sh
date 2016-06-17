@@ -20,7 +20,7 @@ fi
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb"
 
 # exact version of protoc-gen-gogo to build
-SHA="c3995ae437bb78d1189f4f147dfe5f87ad3596e4"
+GOGO_PROTO_SHA="2752d97bbd91927dd1c43296dbf8700e50e2708c"
 GRPC_GATEWAY_SHA="dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
 
 # set up self-contained GOPATH for building
@@ -43,7 +43,7 @@ ln -s "${PWD}" "${ETCD_ROOT}"
 go get -u github.com/gogo/protobuf/{proto,protoc-gen-gogo,gogoproto}
 go get -u golang.org/x/tools/cmd/goimports
 pushd "${GOGOPROTO_ROOT}"
-	git reset --hard "${SHA}"
+	git reset --hard "${GOGO_PROTO_SHA}"
 	make install
 popd
 
