@@ -17,9 +17,11 @@ package client
 import "net/rpc"
 
 type Status struct {
+	// State gives the human-readable status of an agent (e.g., "started" or "terminated")
+	State string
+
 	// TODO: gather more informations
 	// TODO: memory usage, raft information, etc..
-	State string
 }
 
 type Agent interface {

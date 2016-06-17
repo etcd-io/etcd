@@ -24,7 +24,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Key is a key/revision pair created by the client and stored on etcd
+// RemoteKV is a key/revision pair created by the client and stored on etcd
 type RemoteKV struct {
 	kv  v3.KV
 	key string

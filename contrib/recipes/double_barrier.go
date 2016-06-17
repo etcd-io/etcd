@@ -117,7 +117,7 @@ func (b *DoubleBarrier) Leave() error {
 	}
 
 	// delete self and wait on lowest process
-	if err := b.myKey.Delete(); err != nil {
+	if err = b.myKey.Delete(); err != nil {
 		return err
 	}
 

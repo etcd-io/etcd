@@ -39,7 +39,7 @@ type failure interface {
 	// Recover recovers the injected failure caused by the injection of the
 	// given round and wait for the recovery of the testing cluster.
 	Recover(c *cluster, round int) error
-	// return a description of the failure
+	// Desc returns a description of the failure
 	Desc() string
 }
 
