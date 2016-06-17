@@ -13,6 +13,7 @@ The easiest way to get started using etcd as a distributed key-value store for y
  - [Setting up local clusters][local_cluster]
  - [Interacting with etcd][interacting]
  - [API references][api_ref]
+ - [gRPC gateway][api_grpc_gateway]
 
 ## Operating etcd clusters
 
@@ -44,6 +45,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 ## Troubleshooting
 
 [api_ref]: dev-guide/api_reference_v3.md
+[api_grpc_gateway]: dev-guide/api_grpc_gateway.md
 [clustering]: op-guide/clustering.md
 [conf]: op-guide/configuration.md
 [demo]: demo.md
