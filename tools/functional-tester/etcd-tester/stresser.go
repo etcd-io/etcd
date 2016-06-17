@@ -161,8 +161,6 @@ type stresserV2 struct {
 	KeySuffixRange int
 
 	N int
-	// TODO: not implemented
-	Interval time.Duration
 
 	mu      sync.Mutex
 	failure int
