@@ -63,13 +63,13 @@ All these metrics are prefixed with `etcd_network_`
 
 | Name                      | Description                                                        | Type          |
 |---------------------------|--------------------------------------------------------------------|---------------|
-| sent_bytes_total          | The total number of bytes sent to the member with ID `TO`.         | Counter(To)   |
-| received_bytes_total      | The total number of bytes received from the member with ID `From`. | Counter(From) |
-| round_trip_time_seconds   | Round-Trip-Time histogram between members.                         | Histogram(To) |
+| peer_sent_bytes_total          | The total number of bytes sent to the peer with ID `To`.         | Counter(To)   |
+| peer_received_bytes_total      | The total number of bytes received from the peer with ID `From`. | Counter(From) |
+| peer_round_trip_time_seconds   | Round-Trip-Time histogram between peers.                         | Histogram(To) |
 
-`sent_bytes_total` counts the total number of bytes sent to a specific member. Usually the leader member sends more data than other members since it is responsible for transmitting replicated data.
+`peer_sent_bytes_total` counts the total number of bytes sent to a specific peer. Usually the leader member sends more data than other members since it is responsible for transmitting replicated data.
 
-`received_bytes_total` counts the total number of bytes received from a specific member. Usually follower members receive data only from the leader member.
+`peer_received_bytes_total` counts the total number of bytes received from a specific peer. Usually follower members receive data only from the leader member.
 
 ### gRPC requests
 
