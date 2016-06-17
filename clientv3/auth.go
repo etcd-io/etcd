@@ -39,6 +39,8 @@ type (
 	AuthRoleGetResponse              pb.AuthRoleGetResponse
 	AuthRoleRevokePermissionResponse pb.AuthRoleRevokePermissionResponse
 	AuthRoleDeleteResponse           pb.AuthRoleDeleteResponse
+	AuthUserListResponse             pb.AuthUserListResponse
+	AuthRoleListResponse             pb.AuthRoleListResponse
 
 	PermissionType authpb.Permission_Type
 )
@@ -71,6 +73,9 @@ type Auth interface {
 	// UserGet gets a detailed information of a user.
 	UserGet(ctx context.Context, name string) (*AuthUserGetResponse, error)
 
+	// UserList gets a list of all users.
+	UserList(ctx context.Context) (*AuthUserListResponse, error)
+
 	// UserRevokeRole revokes a role of a user.
 	UserRevokeRole(ctx context.Context, name string, role string) (*AuthUserRevokeRoleResponse, error)
 
@@ -82,6 +87,9 @@ type Auth interface {
 
 	// RoleGet gets a detailed information of a role.
 	RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error)
+
+	// RoleList gets a list of all roles.
+	RoleList(ctx context.Context) (*AuthRoleListResponse, error)
 
 	// RoleRevokePermission revokes a permission from a role.
 	RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*AuthRoleRevokePermissionResponse, error)
@@ -141,6 +149,11 @@ func (auth *auth) UserGet(ctx context.Context, name string) (*AuthUserGetRespons
 	return (*AuthUserGetResponse)(resp), toErr(ctx, err)
 }
 
+func (auth *auth) UserList(ctx context.Context) (*AuthUserListResponse, error) {
+	resp, err := auth.remote.UserList(ctx, &pb.AuthUserListRequest{})
+	return (*AuthUserListResponse)(resp), toErr(ctx, err)
+}
+
 func (auth *auth) UserRevokeRole(ctx context.Context, name string, role string) (*AuthUserRevokeRoleResponse, error) {
 	resp, err := auth.remote.UserRevokeRole(ctx, &pb.AuthUserRevokeRoleRequest{Name: name, Role: role})
 	return (*AuthUserRevokeRoleResponse)(resp), toErr(ctx, err)
@@ -164,6 +177,11 @@ func (auth *auth) RoleGrantPermission(ctx context.Context, name string, key, ran
 func (auth *auth) RoleGet(ctx context.Context, role string) (*AuthRoleGetResponse, error) {
 	resp, err := auth.remote.RoleGet(ctx, &pb.AuthRoleGetRequest{Role: role})
 	return (*AuthRoleGetResponse)(resp), toErr(ctx, err)
+}
+
+func (auth *auth) RoleList(ctx context.Context) (*AuthRoleListResponse, error) {
+	resp, err := auth.remote.RoleList(ctx, &pb.AuthRoleListRequest{})
+	return (*AuthRoleListResponse)(resp), toErr(ctx, err)
 }
 
 func (auth *auth) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*AuthRoleRevokePermissionResponse, error) {

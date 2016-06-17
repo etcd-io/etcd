@@ -72,6 +72,8 @@
 		AuthUserRevokeRoleRequest
 		AuthRoleAddRequest
 		AuthRoleGetRequest
+		AuthUserListRequest
+		AuthRoleListRequest
 		AuthRoleDeleteRequest
 		AuthRoleGrantPermissionRequest
 		AuthRoleRevokePermissionRequest
@@ -86,6 +88,8 @@
 		AuthUserRevokeRoleResponse
 		AuthRoleAddResponse
 		AuthRoleGetResponse
+		AuthRoleListResponse
+		AuthUserListResponse
 		AuthRoleDeleteResponse
 		AuthRoleGrantPermissionResponse
 		AuthRoleRevokePermissionResponse

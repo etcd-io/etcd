@@ -32,6 +32,7 @@ func NewRoleCommand() *cobra.Command {
 	ac.AddCommand(newRoleAddCommand())
 	ac.AddCommand(newRoleDeleteCommand())
 	ac.AddCommand(newRoleGetCommand())
+	ac.AddCommand(newRoleListCommand())
 	ac.AddCommand(newRoleRevokePermissionCommand())
 	ac.AddCommand(newRoleGrantPermissionCommand())
 
@@ -59,6 +60,14 @@ func newRoleGetCommand() *cobra.Command {
 		Use:   "get <role name>",
 		Short: "get detailed information of a role",
 		Run:   roleGetCommandFunc,
+	}
+}
+
+func newRoleListCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "list up all roles",
+		Run:   roleListCommandFunc,
 	}
 }
 
@@ -112,12 +121,13 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("role get command requires role name as its argument."))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.RoleGet(context.TODO(), args[0])
+	name := args[0]
+	resp, err := mustClientFromCmd(cmd).Auth.RoleGet(context.TODO(), name)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Role %s\n", args[0])
+	fmt.Printf("Role %s\n", name)
 	fmt.Println("KV Read:")
 	for _, perm := range resp.Perm {
 		if perm.PermType == clientv3.PermRead || perm.PermType == clientv3.PermReadWrite {
@@ -137,6 +147,22 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 				fmt.Printf("\t[%s, %s)\n", string(perm.Key), string(perm.RangeEnd))
 			}
 		}
+	}
+}
+
+// roleListCommandFunc executes the "role list" command.
+func roleListCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("role list command requires no arguments."))
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.RoleList(context.TODO())
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	for _, role := range resp.Roles {
+		fmt.Printf("%s\n", role)
 	}
 }
 
