@@ -522,14 +522,18 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 	cctx, cancel := context.WithTimeout(ctx, maxV3RequestTimeout)
 	defer cancel()
 
+	start := time.Now()
 	s.r.Propose(cctx, data)
+	proposalsPending.Inc()
+	defer proposalsPending.Dec()
 
 	select {
 	case x := <-ch:
 		return x.(*applyResult), nil
 	case <-cctx.Done():
+		proposalsFailed.Inc()
 		s.w.Trigger(id, nil) // GC wait
-		return nil, cctx.Err()
+		return nil, s.parseProposeCtxErr(cctx.Err(), start)
 	case <-s.done:
 		return nil, ErrStopped
 	}

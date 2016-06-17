@@ -22,30 +22,6 @@ import (
 )
 
 var (
-	// TODO: with label in v3?
-	proposeDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: "etcd_debugging",
-		Subsystem: "server",
-		Name:      "proposal_duration_seconds",
-		Help:      "The latency distributions of committing proposal.",
-		Buckets:   prometheus.ExponentialBuckets(0.001, 2, 14),
-	})
-	proposePending = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd_debugging",
-		Subsystem: "server",
-		Name:      "proposals_pending",
-		Help:      "The current number of pending proposals.",
-	})
-	// This is number of proposal failed in client's view.
-	// The proposal might be later got committed in raft.
-	proposeFailed = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd_debugging",
-		Subsystem: "server",
-		Name:      "proposals_failed_total",
-		Help:      "The total number of failed proposals.",
-	})
-
-	// stable metrics for monitoring
 	hasLeader = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
@@ -70,16 +46,27 @@ var (
 		Name:      "proposals_applied_total",
 		Help:      "The total number of consensus proposals applied.",
 	})
+	proposalsPending = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "proposals_pending",
+		Help:      "The current number of pending proposals to commit.",
+	})
+	proposalsFailed = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "proposals_failed_total",
+		Help:      "The total number of failed proposals seen.",
+	})
 )
 
 func init() {
-	prometheus.MustRegister(proposeDurations)
-	prometheus.MustRegister(proposePending)
-	prometheus.MustRegister(proposeFailed)
 	prometheus.MustRegister(hasLeader)
 	prometheus.MustRegister(leaderChanges)
 	prometheus.MustRegister(proposalsCommitted)
 	prometheus.MustRegister(proposalsApplied)
+	prometheus.MustRegister(proposalsPending)
+	prometheus.MustRegister(proposalsFailed)
 }
 
 func monitorFileDescriptor(done <-chan struct{}) {

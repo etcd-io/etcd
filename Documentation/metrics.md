@@ -26,7 +26,8 @@ All these metrics are prefixed with `etcd_server_`
 | leader_changes_seen_total | The number of leader changes seen.                       | Counter |
 | proposals_committed_total | The total number of consensus proposals committed.       | Gauge   |
 | proposals_applied_total   | The total number of consensus proposals applied.         | Gauge   |
-
+| proposals_pending         | The current number of pending proposals.                 | Gauge   |
+| proposals_failed_total    | The total number of failed proposals seen.               | Counter |
 
 `has_leader` indicates whether the member has a leader. If a member does not have a leader, it is
 totally unavailable. If all the members in the cluster do not have any leader, the entire cluster
@@ -37,6 +38,10 @@ is totally unavailable.
 `proposals_committed_total` records the total number of consensus proposals committed. This gauge should increase over time if the cluster is healthy. Several healthy members of an etcd cluster may have different total committed proposals at once. This discrepancy may be due to recovering from peers after starting, lagging behind the leader, or being the leader and therefore having the most commits. It is important to monitor this metric across all the members in the cluster; a consistently large lag between a single member and its leader indicates that member is slow or unhealthy.
 
 `proposals_applied_total` records the total number of consensus proposals applied. The etcd server applies every committed proposal asynchronously. The difference between `proposals_committed_total` and `proposals_applied_total` should usually be small (within a few thousands even under high load). If the difference between them continues to rise, it indicates that the etcd server is overloaded. This might happen when applying expensive queries like heavy range queries or large txn operations.
+
+`proposals_pending` indicates how many proposals are queued to commit. Rising pending proposals suggests there is a high client load or the member cannot commit proposals.
+
+`proposals_failed_total` are normally related to two issues: temporary failures related to a leader election or longer downtime caused by a loss of quorum in the cluster.
 
 ### disk
 
@@ -102,19 +107,6 @@ Example Prometheus queries that may be useful from these metrics (across all etc
 
 The metrics under the `etcd_debugging` prefix are for debugging. They are very implementation dependent and volatile. They might be changed or removed without any warning in new etcd releases. Some of the metrics might be moved to the `etcd` prefix when they become more stable.
 
-### etcdserver
-
-| Name                                    | Description                                      | Type      |
-|-----------------------------------------|--------------------------------------------------|-----------|
-| proposal_duration_seconds              | The latency distributions of committing proposal | Histogram |
-| proposals_pending                       | The current number of pending proposals          | Gauge     |
-| proposals_failed_total                   | The total number of failed proposals             | Counter   |
-
-[Proposal][glossary-proposal] duration (`proposal_duration_seconds`) provides a proposal commit latency histogram. The reported latency reflects network and disk IO delays in etcd.
-
-Proposals pending (`proposals_pending`) indicates how many proposals are queued for commit. Rising pending proposals suggests there is a high client load or the cluster is unstable.
-
-Failed proposals (`proposals_failed_total`) are normally related to two issues: temporary failures related to a leader election or longer duration downtime caused by a loss of quorum in the cluster.
 
 ### snapshot
 
