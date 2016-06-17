@@ -135,6 +135,11 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: false
 + env variable: ETCD_STRICT_RECONFIG_CHECK
 
+### --auto-compaction-retention
++ Auto compaction retention for mvcc key value store in hour. 0 means disable auto compaction.
++ default: 0
++ env variable: ETCD_AUTO_COMPACTION_RETENTION
+
 ## Proxy Flags
 
 `--proxy` prefix flags configures etcd to run in [proxy mode][proxy].

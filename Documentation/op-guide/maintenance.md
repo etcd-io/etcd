@@ -12,11 +12,11 @@ Since etcd keeps an exact history of its keyspace, this history should be period
 
 The keyspace can be compacted automatically with `etcd`'s time windowed history retention policy, or manually with `etcdctl`. The `etcdctl` method provides fine-grained control over the compacting process whereas automatic compacting fits applications that only need key history for some length of time.
 
-`etcd` can be set to automatically compact the keyspace with the `--experimental-auto-compaction` option with a period of hours:
+`etcd` can be set to automatically compact the keyspace with the `--auto-compaction` option with a period of hours:
 
 ```sh
 # keep one hour of history
-$ etcd --experimental-auto-compaction-retention=1
+$ etcd --auto-compaction-retention=1
 ```
 
 An `etcdctl` initiated compaction works as follows:
