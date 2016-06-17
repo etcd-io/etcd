@@ -21,8 +21,8 @@ var (
 	sentBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
-		Name:      "sent_bytes_total",
-		Help:      "The total number of bytes sent.",
+		Name:      "peer_sent_bytes_total",
+		Help:      "The total number of bytes sent to peers.",
 	},
 		[]string{"To"},
 	)
@@ -30,8 +30,8 @@ var (
 	receivedBytes = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
-		Name:      "received_bytes_total",
-		Help:      "The total number of bytes received.",
+		Name:      "peer_received_bytes_total",
+		Help:      "The total number of bytes received from peers.",
 	},
 		[]string{"From"},
 	)
@@ -39,8 +39,8 @@ var (
 	rtts = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
-		Name:      "round_trip_time_seconds",
-		Help:      "Round-Trip-Time histogram between members.",
+		Name:      "peer_round_trip_time_seconds",
+		Help:      "Round-Trip-Time histogram between peers.",
 		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 14),
 	},
 		[]string{"To"},
