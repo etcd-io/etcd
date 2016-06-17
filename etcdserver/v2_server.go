@@ -55,21 +55,17 @@ func (a *v2apiStore) processRaftRequest(ctx context.Context, r *pb.Request) (Res
 	}
 	ch := a.s.w.Register(r.ID)
 
-	// TODO: benchmark the cost of time.Now()
-	// might be sampling?
 	start := time.Now()
 	a.s.r.Propose(ctx, data)
-
-	proposePending.Inc()
-	defer proposePending.Dec()
+	proposalsPending.Inc()
+	defer proposalsPending.Dec()
 
 	select {
 	case x := <-ch:
-		proposeDurations.Observe(float64(time.Since(start)) / float64(time.Second))
 		resp := x.(Response)
 		return resp, resp.err
 	case <-ctx.Done():
-		proposeFailed.Inc()
+		proposalsFailed.Inc()
 		a.s.w.Trigger(r.ID, nil) // GC wait
 		return Response{}, a.s.parseProposeCtxErr(ctx.Err(), start)
 	case <-a.s.done:
