@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 )
 
@@ -46,7 +47,7 @@ func TestAgentRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = a.stop()
+	err = a.stopWithSig(syscall.SIGTERM)
 	if err != nil {
 		t.Fatal(err)
 	}
