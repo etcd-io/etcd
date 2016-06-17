@@ -20,7 +20,7 @@ etcd is a distributed, consistent key-value store for shared configuration and s
 
 etcd is written in Go and uses the [Raft][raft] consensus algorithm to manage a highly-available replicated log.
 
-etcd is used [in production by many companies](./Documentation/production-users.md), and the development team stands behind it in critical deployment scenarios, where etcd is frequently teamed with applications such as [Kubernetes][k8s], [fleet][fleet], [locksmith][locksmith], [vulcand][vulcand], [Doorman][doorman], and many others.
+etcd is used [in production by many companies](./Documentation/production-users.md), and the development team stands behind it in critical deployment scenarios, where etcd is frequently teamed with applications such as [Kubernetes][k8s], [fleet][fleet], [locksmith][locksmith], [vulcand][vulcand], [Doorman][doorman], and many others. Reliability is further ensured by rigorous [testing][etcd-tests].
 
 See [etcdctl][etcdctl] for a simple command line client.
 
@@ -31,6 +31,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 [locksmith]: https://github.com/coreos/locksmith
 [vulcand]: https://github.com/vulcand/vulcand
 [etcdctl]: https://github.com/coreos/etcd/tree/master/etcdctl
+[etcd-tests]: http://dash.etcd.io
 
 ## Getting started
 
@@ -63,7 +64,13 @@ ETCDCTL_API=3 etcdctl put mykey "this is awesome"
 ETCDCTL_API=3 etcdctl get mykey
 ```
 
-That's it! etcd is now running and serving client requests.
+That's it! etcd is now running and serving client requests. For more
+
+- [Animated quick demo][demo-gif]
+- [Interactive etcd playground][etcd-play]
+
+[demo-gif]: ./Documentation/demo.md
+[etcd-play]: http://play.etcd.io/
 
 ### etcd TCP ports
 
