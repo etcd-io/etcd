@@ -44,11 +44,11 @@ func TestKVProxyRange(t *testing.T) {
 	}
 	client, err := clientv3.New(cfg)
 	if err != nil {
-		t.Fatalf("err = %v, want nil")
+		t.Fatalf("err = %v, want nil", err)
 	}
 	_, err = client.Get(context.Background(), "foo")
 	if err != nil {
-		t.Fatalf("err = %v, want nil")
+		t.Fatalf("err = %v, want nil", err)
 	}
 }
 
