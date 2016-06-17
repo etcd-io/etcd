@@ -54,7 +54,7 @@ type RangeDeleter interface {
 	DeleteRange(key, end []byte) (int64, int64)
 }
 
-// A Lessor is the owner of leases. It can grant, revoke, renew and modify leases for lessee.
+// Lessor owns leases. It can grant, revoke, renew and modify leases for lessee.
 type Lessor interface {
 	// SetRangeDeleter sets the RangeDeleter to the Lessor.
 	// Lessor deletes the items in the revoked or expired lease from the
@@ -172,13 +172,13 @@ func (le *lessor) SetRangeDeleter(rd RangeDeleter) {
 	le.rd = rd
 }
 
-// TODO: when lessor is under high load, it should give out lease
-// with longer TTL to reduce renew load.
 func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	if id == NoLease {
 		return nil, ErrLeaseNotFound
 	}
 
+	// TODO: when lessor is under high load, it should give out lease
+	// with longer TTL to reduce renew load.
 	l := &Lease{ID: id, TTL: ttl, itemSet: make(map[LeaseItem]struct{})}
 
 	le.mu.Lock()

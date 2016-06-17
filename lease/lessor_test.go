@@ -19,6 +19,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -96,7 +97,7 @@ func TestLessorRevoke(t *testing.T) {
 		{"bar"},
 	}
 
-	if err := le.Attach(l.ID, items); err != nil {
+	if err = le.Attach(l.ID, items); err != nil {
 		t.Fatalf("failed to attach items to the lease: %v", err)
 	}
 
@@ -108,7 +109,8 @@ func TestLessorRevoke(t *testing.T) {
 		t.Errorf("got revoked lease %x", l.ID)
 	}
 
-	wdeleted := []string{"foo_", "bar_"}
+	wdeleted := []string{"bar_", "foo_"}
+	sort.Sort(sort.StringSlice(fd.deleted))
 	if !reflect.DeepEqual(fd.deleted, wdeleted) {
 		t.Errorf("deleted= %v, want %v", fd.deleted, wdeleted)
 	}
