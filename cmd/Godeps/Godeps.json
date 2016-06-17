@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v60",
+	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
 	],
@@ -87,7 +87,7 @@
 		},
 		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
-			"Comment": "v0.1-163-gc3995ae",
+			"Comment": "v0.2-13-gc3995ae",
 			"Rev": "c3995ae437bb78d1189f4f147dfe5f87ad3596e4"
 		},
 		{
@@ -129,7 +129,7 @@
 		},
 		{
 			"ImportPath": "github.com/mattn/go-runewidth",
-			"Comment": "travisish-46-gd6bea18",
+			"Comment": "v0.0.1",
 			"Rev": "d6bea18f789704b5f83375793155289da36a3c7f"
 		},
 		{
@@ -233,39 +233,39 @@
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/codes",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/credentials",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/grpclog",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/internal",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/metadata",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/naming",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/peer",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/transport",
-			"Rev": "88aeffff979aa77aa502cb011423d0a08fa12c5a"
+			"Rev": "e78224b060cf3215247b7be455f80ea22e469b66"
 		},
 		{
 			"ImportPath": "gopkg.in/cheggaaa/pb.v1",
