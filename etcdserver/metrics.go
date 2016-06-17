@@ -64,6 +64,12 @@ var (
 		Name:      "proposals_committed_total",
 		Help:      "The total number of consensus proposals committed.",
 	})
+	proposalsApplied = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "proposals_applied_total",
+		Help:      "The total number of consensus proposals applied.",
+	})
 )
 
 func init() {
@@ -73,6 +79,7 @@ func init() {
 	prometheus.MustRegister(hasLeader)
 	prometheus.MustRegister(leaderChanges)
 	prometheus.MustRegister(proposalsCommitted)
+	prometheus.MustRegister(proposalsApplied)
 }
 
 func monitorFileDescriptor(done <-chan struct{}) {

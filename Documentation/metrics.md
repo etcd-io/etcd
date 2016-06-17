@@ -25,6 +25,7 @@ All these metrics are prefixed with `etcd_server_`
 | has_leader                | Whether or not a leader exists. 1 is existence, 0 is not.| Gauge   |
 | leader_changes_seen_total | The number of leader changes seen.                       | Counter |
 | proposals_committed_total | The total number of consensus proposals committed.       | Gauge   |
+| proposals_applied_total   | The total number of consensus proposals applied.         | Gauge   |
 
 
 `has_leader` indicates whether the member has a leader. If a member does not have a leader, it is
@@ -34,6 +35,8 @@ is totally unavailable.
 `leader_changes_seen_total` counts the number of leader changes the member has seen since its start. Rapid leadership changes impact the performance of etcd significantly. It also signals that the leader is unstable, perhaps due to network connectivity issues or excessive load hitting the etcd cluster.
 
 `proposals_committed_total` records the total number of consensus proposals committed. This gauge should increase over time if the cluster is healthy. Several healthy members of an etcd cluster may have different total committed proposals at once. This discrepancy may be due to recovering from peers after starting, lagging behind the leader, or being the leader and therefore having the most commits. It is important to monitor this metric across all the members in the cluster; a consistently large lag between a single member and its leader indicates that member is slow or unhealthy.
+
+`proposals_applied_total` records the total number of consensus proposals applied. The etcd server applies every committed proposal asynchronously. The difference between `proposals_committed_total` and `proposals_applied_total` should usually be small (within a few thousands even under high load). If the difference between them continues to rise, it indicates that the etcd server is overloaded. This might happen when applying expensive queries like heavy range queries or large txn operations.
 
 ### disk
 

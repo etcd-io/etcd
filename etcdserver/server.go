@@ -604,6 +604,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
 		plog.Warningf("apply entries took too long [%v for %d entries]", d, len(apply.entries))
 		plog.Warningf("avoid queries with large range/delete range!")
 	}
+	proposalsApplied.Set(float64(ep.appliedi))
 	// wait for the raft routine to finish the disk writes before triggering a
 	// snapshot. or applied index might be greater than the last index in raft
 	// storage, since the raft routine might be slower than apply routine.
