@@ -209,35 +209,6 @@ func TestConfigFileOtherFields(t *testing.T) {
 	validateOtherFlags(t, cfg)
 }
 
-func TestConfigParsingV1Flags(t *testing.T) {
-	args := []string{
-		"-peer-addr=127.0.0.1:2380",
-		"-addr=127.0.0.1:2379",
-	}
-	wcfg := NewConfig()
-	wcfg.lpurls = []url.URL{{Scheme: "http", Host: "[::]:2380"}}
-	wcfg.apurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:2380"}}
-	wcfg.lcurls = []url.URL{{Scheme: "http", Host: "[::]:2379"}}
-	wcfg.acurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}}
-
-	cfg := NewConfig()
-	if err := cfg.Parse(args); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(cfg.lpurls, wcfg.lpurls) {
-		t.Errorf("listen peer urls = %+v, want %+v", cfg.lpurls, wcfg.lpurls)
-	}
-	if !reflect.DeepEqual(cfg.apurls, wcfg.apurls) {
-		t.Errorf("advertise peer urls = %+v, want %+v", cfg.apurls, wcfg.apurls)
-	}
-	if !reflect.DeepEqual(cfg.lcurls, wcfg.lcurls) {
-		t.Errorf("listen client urls = %+v, want %+v", cfg.lcurls, wcfg.lcurls)
-	}
-	if !reflect.DeepEqual(cfg.acurls, wcfg.acurls) {
-		t.Errorf("advertise client urls = %+v, want %+v", cfg.acurls, wcfg.acurls)
-	}
-}
-
 func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 	conflictArgs := [][]string{
 		{

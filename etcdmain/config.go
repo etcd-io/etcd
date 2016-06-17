@@ -258,14 +258,6 @@ func NewConfig() *config {
 
 	fs.IntVar(&cfg.autoCompactionRetention, "auto-compaction-retention", 0, "Auto compaction retention for mvcc key value store in hour. 0 means disable auto compaction.")
 
-	// backwards-compatibility with v0.4.6
-	fs.Var(&flags.IPAddressPort{}, "addr", "DEPRECATED: Use --advertise-client-urls instead.")
-	fs.Var(&flags.IPAddressPort{}, "bind-addr", "DEPRECATED: Use --listen-client-urls instead.")
-	fs.Var(&flags.IPAddressPort{}, "peer-addr", "DEPRECATED: Use --initial-advertise-peer-urls instead.")
-	fs.Var(&flags.IPAddressPort{}, "peer-bind-addr", "DEPRECATED: Use --listen-peer-urls instead.")
-	fs.Var(&flags.DeprecatedFlag{Name: "peers"}, "peers", "DEPRECATED: Use --initial-cluster instead.")
-	fs.Var(&flags.DeprecatedFlag{Name: "peers-file"}, "peers-file", "DEPRECATED: Use --initial-cluster instead.")
-
 	// pprof profiler via HTTP
 	fs.BoolVar(&cfg.enablePprof, "enable-pprof", false, "Enable runtime profiling data via HTTP server. Address is at client URL + \"/debug/pprof\"")
 
@@ -315,25 +307,10 @@ func (cfg *config) configFromCmdLine() error {
 		plog.Fatalf("%v", err)
 	}
 
-	flags.SetBindAddrFromAddr(cfg.FlagSet, "peer-bind-addr", "peer-addr")
-	flags.SetBindAddrFromAddr(cfg.FlagSet, "bind-addr", "addr")
-
-	cfg.lpurls, err = flags.URLsFromFlags(cfg.FlagSet, "listen-peer-urls", "peer-bind-addr", cfg.peerTLSInfo)
-	if err != nil {
-		return err
-	}
-	cfg.apurls, err = flags.URLsFromFlags(cfg.FlagSet, "initial-advertise-peer-urls", "peer-addr", cfg.peerTLSInfo)
-	if err != nil {
-		return err
-	}
-	cfg.lcurls, err = flags.URLsFromFlags(cfg.FlagSet, "listen-client-urls", "bind-addr", cfg.clientTLSInfo)
-	if err != nil {
-		return err
-	}
-	cfg.acurls, err = flags.URLsFromFlags(cfg.FlagSet, "advertise-client-urls", "addr", cfg.clientTLSInfo)
-	if err != nil {
-		return err
-	}
+	cfg.lpurls = flags.URLsFromFlag(cfg.FlagSet, "listen-peer-urls")
+	cfg.apurls = flags.URLsFromFlag(cfg.FlagSet, "initial-advertise-peer-urls")
+	cfg.lcurls = flags.URLsFromFlag(cfg.FlagSet, "listen-client-urls")
+	cfg.acurls = flags.URLsFromFlag(cfg.FlagSet, "advertise-client-urls")
 
 	return cfg.validateConfig(func(field string) bool {
 		return flags.IsSet(cfg.FlagSet, field)
