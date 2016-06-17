@@ -284,3 +284,31 @@ etcdctl --write-out=table --endpoints=$ENDPOINTS snapshot status my.db
 | c55e8b8 |        9 |         13 | 25 kB      |
 +---------+----------+------------+------------+
 ```
+
+
+## Migrate
+
+`migrate` to transform etcd v2 to v3 data:
+
+<img src="https://storage.googleapis.com/etcd/demo/12_etcdctl_migrate_2016061602.gif" alt="12_etcdctl_migrate_2016061602"/>
+
+```
+# write key in etcd version 2 store
+export ETCDCTL_API=2
+etcdctl --endpoints=http://$ENDPOINT set foo bar
+
+# read key in etcd v2
+etcdctl --endpoints=$ENDPOINTS --output="json" get foo
+
+# stop etcd node to migrate, one by one
+
+# migrate v2 data
+export ETCDCTL_API=3
+etcdctl --endpoints=$ENDPOINT migrate --data-dir="default.etcd" --wal-dir="default.etcd/member/wal"
+
+# restart etcd node after migrate, one by one
+
+# confirm that the key got migrated
+etcdctl --endpoints=$ENDPOINTS get /foo
+```
+
