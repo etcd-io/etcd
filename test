@@ -85,7 +85,7 @@ function fmt_tests {
 	fi
 
 	echo "Checking govet..."
-	vetRes=$(go vet $TEST)
+	vetRes=$(go vet $TEST 2>&1 >/dev/null)
 	if [ -n "${vetRes}" ]; then
 		echo -e "govet checking failed:\n${vetRes}"
 		exit 255
@@ -96,7 +96,7 @@ function fmt_tests {
 		if [ "${path##*.}" != "go" ]; then
 			path="${path}/*.go"
 		fi
-		vetRes=$(go tool vet -shadow ${path})
+		vetRes=$(go tool vet -shadow ${path} 2>&1 >/dev/null)
 		if [ -n "${vetRes}" ]; then
 			echo -e "govet -shadow checking ${path} failed:\n${vetRes}"
 			exit 255
