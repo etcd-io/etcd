@@ -41,10 +41,27 @@ var (
 			Help:      "Bucketed histogram of processing time (s) of handled unary (non-stream) requests.",
 			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 13),
 		}, []string{"grpc_service", "grpc_method"})
+
+	sentBytes = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "client_grpc_sent_bytes_total",
+		Help:      "The total number of bytes sent to grpc clients.",
+	})
+
+	receivedBytes = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "client_grpc_received_bytes_total",
+		Help:      "The total number of bytes received from grpc clients.",
+	})
 )
 
 func init() {
 	prometheus.MustRegister(receivedCounter)
 	prometheus.MustRegister(failedCounter)
 	prometheus.MustRegister(handlingDuration)
+
+	prometheus.MustRegister(sentBytes)
+	prometheus.MustRegister(receivedBytes)
 }

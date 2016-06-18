@@ -26,6 +26,7 @@ import (
 
 func Server(s *etcdserver.EtcdServer, tls *tls.Config) *grpc.Server {
 	var opts []grpc.ServerOption
+	opts = append(opts, grpc.CustomCodec(&codec{}))
 	if tls != nil {
 		opts = append(opts, grpc.Creds(credentials.NewTLS(tls)))
 	}
