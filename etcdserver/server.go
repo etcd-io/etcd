@@ -58,9 +58,6 @@ import (
 )
 
 const (
-	// owner can make/remove files inside the directory
-	privateDirMode = 0700
-
 	DefaultSnapCount = 10000
 
 	StoreClusterPrefix = "/0"
@@ -246,7 +243,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 
 	haveWAL := wal.Exist(cfg.WALDir())
 
-	if err = os.MkdirAll(cfg.SnapDir(), privateDirMode); err != nil && !os.IsExist(err) {
+	if err = fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
 		plog.Fatalf("create snapshot directory error: %v", err)
 	}
 	ss := snap.New(cfg.SnapDir())
