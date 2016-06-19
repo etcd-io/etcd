@@ -22,7 +22,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/pflag"
 )
@@ -148,54 +147,9 @@ func setFlagFromEnv(fs flagSetter, prefix, fname string, usedEnvKey, alreadySet 
 	return nil
 }
 
-// SetBindAddrFromAddr sets the value of bindAddr flag from the value
-// of addr flag. Both flags' Value must be of type IPAddressPort. If the
-// bindAddr flag is set and the addr flag is unset, it will set bindAddr to
-// [::]:port of addr. Otherwise, it keeps the original values.
-func SetBindAddrFromAddr(fs *flag.FlagSet, bindAddrFlagName, addrFlagName string) {
-	if IsSet(fs, bindAddrFlagName) || !IsSet(fs, addrFlagName) {
-		return
-	}
-	addr := *fs.Lookup(addrFlagName).Value.(*IPAddressPort)
-	addr.IP = "::"
-	if err := fs.Set(bindAddrFlagName, addr.String()); err != nil {
-		plog.Panicf("unexpected flags set error: %v", err)
-	}
-}
-
-// URLsFromFlags decides what URLs should be using two different flags
-// as datasources. The first flag's Value must be of type URLs, while
-// the second must be of type IPAddressPort. If both of these flags
-// are set, an error will be returned. If only the first flag is set,
-// the underlying url.URL objects will be returned unmodified. If the
-// second flag happens to be set, the underlying IPAddressPort will be
-// converted to a url.URL and returned. The Scheme of the returned
-// url.URL will be http unless the provided TLSInfo object is non-empty.
-// If neither of the flags have been explicitly set, the default value
-// of the first flag will be returned unmodified.
-func URLsFromFlags(fs *flag.FlagSet, urlsFlagName string, addrFlagName string, tlsInfo transport.TLSInfo) ([]url.URL, error) {
-	visited := make(map[string]struct{})
-	fs.Visit(func(f *flag.Flag) {
-		visited[f.Name] = struct{}{}
-	})
-
-	_, urlsFlagIsSet := visited[urlsFlagName]
-	_, addrFlagIsSet := visited[addrFlagName]
-
-	if addrFlagIsSet {
-		if urlsFlagIsSet {
-			return nil, fmt.Errorf("Set only one of flags -%s and -%s", urlsFlagName, addrFlagName)
-		}
-
-		addr := *fs.Lookup(addrFlagName).Value.(*IPAddressPort)
-		addrURL := url.URL{Scheme: "http", Host: addr.String()}
-		if !tlsInfo.Empty() {
-			addrURL.Scheme = "https"
-		}
-		return []url.URL{addrURL}, nil
-	}
-
-	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue)), nil
+// URLsFromFlag returns a slices from url got from the flag.
+func URLsFromFlag(fs *flag.FlagSet, urlsFlagName string) []url.URL {
+	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue))
 }
 
 func IsSet(fs *flag.FlagSet, name string) bool {
