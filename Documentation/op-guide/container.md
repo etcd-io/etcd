@@ -23,6 +23,7 @@ CLUSTER=${NAME_1}=http://${HOST_1}:2380,${NAME_2}=http://${HOST_2}:2380,${NAME_3
 THIS_NAME=${NAME_1}
 THIS_IP=${HOST_1}
 sudo docker run --net=host --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
+	/usr/local/bin/etcd \
     --data-dir=data.etcd --name ${THIS_NAME} \
 	--initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://${THIS_IP}:2380 \
 	--advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://${THIS_IP}:2379 \
@@ -33,6 +34,7 @@ sudo docker run --net=host --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
 THIS_NAME=${NAME_2}
 THIS_IP=${HOST_2}
 sudo docker run --net=host --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
+	/usr/local/bin/etcd \
     --data-dir=data.etcd --name ${THIS_NAME} \
 	--initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://${THIS_IP}:2380 \
 	--advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://${THIS_IP}:2379 \
@@ -43,6 +45,7 @@ sudo docker run --net=host --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
 THIS_NAME=${NAME_3}
 THIS_IP=${HOST_3}
 sudo docker run --net=host --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
+	/usr/local/bin/etcd \
     --data-dir=data.etcd --name ${THIS_NAME} \
 	--initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://${THIS_IP}:2380 \
 	--advertise-client-urls http://${THIS_IP}:2379 --listen-client-urls http://${THIS_IP}:2379 \
@@ -50,5 +53,9 @@ sudo docker run --net=host --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
 	--initial-cluster-state ${CLUSTER_STATE} --initial-cluster-token ${TOKEN}
 ```
 
-TODO: current etcd docker container is shipped with etcdctl, but the `ETCDCTL_API` environment value is not set inside the container. So currently there's no way to use etcdctl for v3 directly from the container (e.g. `docker exec etcd /etcdctl put foo bar` won't work).
+To run `etcdctl` using API version 3:
+
+```
+docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl put foo bar"
+```
 
