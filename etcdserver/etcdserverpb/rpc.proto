@@ -364,6 +364,9 @@ message RangeRequest {
   // a serializable range request is served locally without needing to reach consensus
   // with other nodes in the cluster.
   bool serializable = 7;
+
+  // keys_only when set returns only the keys and not the values.
+  bool keys_only = 8;
 }
 
 message RangeResponse {

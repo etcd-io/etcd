@@ -34,8 +34,9 @@ func TestCtlV3GetPeerTLS(t *testing.T)       { testCtl(t, getTest, withCfg(confi
 func TestCtlV3GetTimeout(t *testing.T)       { testCtl(t, getTest, withDialTimeout(0)) }
 func TestCtlV3GetQuorum(t *testing.T)        { testCtl(t, getTest, withQuorum()) }
 
-func TestCtlV3GetFormat(t *testing.T) { testCtl(t, getFormatTest) }
-func TestCtlV3GetRev(t *testing.T)    { testCtl(t, getRevTest) }
+func TestCtlV3GetFormat(t *testing.T)   { testCtl(t, getFormatTest) }
+func TestCtlV3GetRev(t *testing.T)      { testCtl(t, getRevTest) }
+func TestCtlV3GetKeysOnly(t *testing.T) { testCtl(t, getKeysOnlyTest) }
 
 func TestCtlV3Del(t *testing.T)          { testCtl(t, delTest) }
 func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoTLS)) }
@@ -142,6 +143,25 @@ func getRevTest(cx ctlCtx) {
 		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
 			cx.t.Errorf("getTest #%d: ctlV3Get error (%v)", i, err)
 		}
+	}
+}
+
+func getKeysOnlyTest(cx ctlCtx) {
+	var (
+		kvs = []kv{{"key1", "val1"}}
+	)
+	for i := range kvs {
+		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
+			cx.t.Fatalf("getKeysOnlyTest #%d: ctlV3Put error (%v)", i, err)
+		}
+	}
+
+	cmdArgs := append(cx.PrefixArgs(), "get")
+	cmdArgs = append(cmdArgs, []string{"--prefix", "--keys-only", "key"}...)
+
+	err := spawnWithExpects(cmdArgs, []string{"key1", ""}...)
+	if err != nil {
+		cx.t.Fatalf("getKeysOnlyTest : error (%v)", err)
 	}
 }
 

@@ -30,6 +30,7 @@ var (
 	getPrefix      bool
 	getFromKey     bool
 	getRev         int64
+	getKeysOnly    bool
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -47,6 +48,7 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "get keys with matching prefix")
 	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "get keys that are greater than or equal to the given key")
 	cmd.Flags().Int64Var(&getRev, "rev", 0, "specify the kv revision")
+	cmd.Flags().BoolVar(&getKeysOnly, "keys-only", false, "get only the keys")
 	return cmd
 }
 
@@ -142,6 +144,10 @@ func getGetOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 			key = "\x00"
 		}
 		opts = append(opts, clientv3.WithFromKey())
+	}
+
+	if getKeysOnly {
+		opts = append(opts, clientv3.WithKeysOnly())
 	}
 
 	return key, opts

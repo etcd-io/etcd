@@ -935,6 +935,11 @@
           "format": "byte",
           "description": "key is the first key for the range. If range_end is not given, the request only looks up key."
         },
+        "keys_only": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "keys_only when set returns only the keys and not the values."
+        },
         "limit": {
           "type": "string",
           "format": "int64",
