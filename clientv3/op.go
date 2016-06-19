@@ -41,6 +41,7 @@ type Op struct {
 	limit        int64
 	sort         *SortOption
 	serializable bool
+	keysOnly     bool
 
 	// for range, watch
 	rev int64
@@ -206,6 +207,12 @@ func WithFromKey() OpOption { return WithRange("\x00") }
 // requirement.
 func WithSerializable() OpOption {
 	return func(op *Op) { op.serializable = true }
+}
+
+// WithKeysOnly makes the 'Get' request return only the keys and the corresponding
+// values will be omitted.
+func WithKeysOnly() OpOption {
+	return func(op *Op) { op.keysOnly = true }
 }
 
 // WithFirstCreate gets the key with the oldest creation revision in the request range.

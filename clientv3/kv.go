@@ -134,7 +134,14 @@ func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 	// TODO: handle other ops
 	case tRange:
 		var resp *pb.RangeResponse
-		r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev, Serializable: op.serializable}
+		r := &pb.RangeRequest{
+			Key:          op.key,
+			RangeEnd:     op.end,
+			Limit:        op.limit,
+			Revision:     op.rev,
+			Serializable: op.serializable,
+			KeysOnly:     op.keysOnly,
+		}
 		if op.sort != nil {
 			r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
 			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)

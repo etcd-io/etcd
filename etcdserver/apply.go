@@ -270,6 +270,9 @@ func (a *applierV3backend) Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResp
 
 	resp.Header.Revision = rev
 	for i := range kvs {
+		if r.KeysOnly {
+			kvs[i].Value = nil
+		}
 		resp.Kvs = append(resp.Kvs, &kvs[i])
 	}
 	return resp, nil
