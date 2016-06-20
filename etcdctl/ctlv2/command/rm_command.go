@@ -33,8 +33,9 @@ func NewRemoveCommand() cli.Command {
 			cli.StringFlag{Name: "with-value", Value: "", Usage: "previous value"},
 			cli.IntFlag{Name: "with-index", Value: 0, Usage: "previous index"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			rmCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }

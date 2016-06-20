@@ -46,7 +46,7 @@ func NewBackupCommand() cli.Command {
 }
 
 // handleBackup handles a request that intends to do a backup.
-func handleBackup(c *cli.Context) {
+func handleBackup(c *cli.Context) error {
 	var srcWAL string
 	var destWAL string
 
@@ -113,4 +113,6 @@ func handleBackup(c *cli.Context) {
 	if err := neww.SaveSnapshot(walsnap); err != nil {
 		log.Fatal(err)
 	}
+
+	return nil
 }

@@ -40,7 +40,7 @@ func NewClusterHealthCommand() cli.Command {
 	}
 }
 
-func handleClusterHealth(c *cli.Context) {
+func handleClusterHealth(c *cli.Context) error {
 	forever := c.Bool("forever")
 	if forever {
 		sigch := make(chan os.Signal, 1)
@@ -125,9 +125,10 @@ func handleClusterHealth(c *cli.Context) {
 		if !forever {
 			if health {
 				os.Exit(ExitSuccess)
-			} else {
-				os.Exit(ExitClusterNotHealthy)
+				return nil
 			}
+			os.Exit(ExitClusterNotHealthy)
+			return nil
 		}
 
 		fmt.Printf("\nnext check after 10 second...\n\n")

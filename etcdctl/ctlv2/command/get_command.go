@@ -33,8 +33,9 @@ func NewGetCommand() cli.Command {
 			cli.BoolFlag{Name: "sort", Usage: "returns result in sorted order"},
 			cli.BoolFlag{Name: "quorum, q", Usage: "require quorum for get request"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			getCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }

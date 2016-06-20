@@ -55,7 +55,7 @@ func NewMemberCommand() cli.Command {
 	}
 }
 
-func actionMemberList(c *cli.Context) {
+func actionMemberList(c *cli.Context) error {
 	if len(c.Args()) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
@@ -86,9 +86,11 @@ func actionMemberList(c *cli.Context) {
 			fmt.Printf("%s: name=%s peerURLs=%s clientURLs=%s isLeader=%v\n", m.ID, m.Name, strings.Join(m.PeerURLs, ","), strings.Join(m.ClientURLs, ","), isLeader)
 		}
 	}
+
+	return nil
 }
 
-func actionMemberAdd(c *cli.Context) {
+func actionMemberAdd(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 2 {
 		fmt.Fprintln(os.Stderr, "Provide a name and a single member peerURL")
@@ -132,9 +134,10 @@ func actionMemberAdd(c *cli.Context) {
 	fmt.Printf("ETCD_NAME=%q\n", newName)
 	fmt.Printf("ETCD_INITIAL_CLUSTER=%q\n", strings.Join(conf, ","))
 	fmt.Printf("ETCD_INITIAL_CLUSTER_STATE=\"existing\"\n")
+	return nil
 }
 
-func actionMemberRemove(c *cli.Context) {
+func actionMemberRemove(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 1 {
 		fmt.Fprintln(os.Stderr, "Provide a single member ID")
@@ -177,9 +180,10 @@ func actionMemberRemove(c *cli.Context) {
 	}
 
 	fmt.Printf("Removed member %s from cluster\n", removalID)
+	return nil
 }
 
-func actionMemberUpdate(c *cli.Context) {
+func actionMemberUpdate(c *cli.Context) error {
 	args := c.Args()
 	if len(args) != 2 {
 		fmt.Fprintln(os.Stderr, "Provide an ID and a list of comma separated peerURL (0xabcd http://example.com,http://example1.com)")
@@ -199,4 +203,5 @@ func actionMemberUpdate(c *cli.Context) {
 	}
 
 	fmt.Printf("Updated member with ID %s in cluster\n", mid)
+	return nil
 }

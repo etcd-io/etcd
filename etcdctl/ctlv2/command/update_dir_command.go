@@ -31,8 +31,9 @@ func NewUpdateDirCommand() cli.Command {
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			updatedirCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }

@@ -32,8 +32,9 @@ func NewLsCommand() cli.Command {
 			cli.BoolFlag{Name: "p", Usage: "append slash (/) to directories"},
 			cli.BoolFlag{Name: "quorum, q", Usage: "require quorum for get request"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			lsCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }
