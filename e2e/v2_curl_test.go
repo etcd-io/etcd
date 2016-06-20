@@ -153,14 +153,18 @@ func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []stri
 	}
 
 	switch method {
-	case "PUT":
+	case "POST", "PUT":
 		dt := req.value
 		if !strings.HasPrefix(dt, "{") { // for non-JSON value
 			dt = "value=" + dt
 		}
-		cmdArgs = append(cmdArgs, "-XPUT", "-d", dt)
+		cmdArgs = append(cmdArgs, "-X", method, "-d", dt)
 	}
 	return cmdArgs
+}
+
+func cURLPost(clus *etcdProcessCluster, req cURLReq) error {
+	return spawnWithExpect(cURLPrefixArgs(clus, "POST", req), req.expected)
 }
 
 func cURLPut(clus *etcdProcessCluster, req cURLReq) error {
