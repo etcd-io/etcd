@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/pathutil"
+	"github.com/urfave/cli"
 )
 
 func NewRoleCommands() cli.Command {

@@ -21,8 +21,8 @@ import (
 	"os/exec"
 	"os/signal"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
 

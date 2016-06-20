@@ -17,8 +17,8 @@ package command
 import (
 	"errors"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 // NewRemoveCommand returns the CLI command for "rm".

@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 )
 
 func NewMemberCommand() cli.Command {

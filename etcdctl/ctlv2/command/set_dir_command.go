@@ -15,8 +15,8 @@
 package command
 
 import (
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 // NewSetDirCommand returns the CLI command for "setDir".

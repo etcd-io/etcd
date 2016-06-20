@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/store"
+	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
 

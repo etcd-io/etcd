@@ -21,13 +21,13 @@ import (
 	"path"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+	"github.com/urfave/cli"
 )
 
 func NewBackupCommand() cli.Command {

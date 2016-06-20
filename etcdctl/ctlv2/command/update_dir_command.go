@@ -18,8 +18,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 // NewUpdateDirCommand returns the CLI command for "updatedir".
