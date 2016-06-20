@@ -206,5 +206,9 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Permission of key %s is revoked from role %s\n", args[1], args[0])
+	if len(rangeEnd) == 0 {
+		fmt.Printf("Permission of key %s is revoked from role %s\n", args[1], args[0])
+	} else {
+		fmt.Printf("Permission of range [%s, %s) is revoked from role %s\n", args[1], rangeEnd, args[0])
+	}
 }
