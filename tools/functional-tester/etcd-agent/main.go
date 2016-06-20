@@ -26,11 +26,11 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-agent")
 
 func main() {
 	etcdPath := flag.String("etcd-path", filepath.Join(os.Getenv("GOPATH"), "bin/etcd"), "the path to etcd binary")
-	etcdLogPath := flag.String("etcd-log-path", "etcd.log", "the path to etcd log")
+	etcdLogDir := flag.String("etcd-log-dir", "etcd-log", "directory to store etcd logs")
 	port := flag.String("port", ":9027", "port to serve agent server")
 	flag.Parse()
 
-	a, err := newAgent(*etcdPath, *etcdLogPath)
+	a, err := newAgent(*etcdPath, *etcdLogDir)
 	if err != nil {
 		plog.Fatal(err)
 	}
