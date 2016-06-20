@@ -21,13 +21,13 @@ import (
 	"path"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+	"github.com/urfave/cli"
 )
 
 func NewBackupCommand() cli.Command {
@@ -46,7 +46,7 @@ func NewBackupCommand() cli.Command {
 }
 
 // handleBackup handles a request that intends to do a backup.
-func handleBackup(c *cli.Context) {
+func handleBackup(c *cli.Context) error {
 	var srcWAL string
 	var destWAL string
 
@@ -113,4 +113,6 @@ func handleBackup(c *cli.Context) {
 	if err := neww.SaveSnapshot(walsnap); err != nil {
 		log.Fatal(err)
 	}
+
+	return nil
 }

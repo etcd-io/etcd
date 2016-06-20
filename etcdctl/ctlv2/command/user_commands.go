@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	"github.com/bgentry/speakeasy"
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 func NewUserCommands() cli.Command {
@@ -87,7 +87,7 @@ func mustNewAuthUserAPI(c *cli.Context) client.AuthUserAPI {
 	return client.NewAuthUserAPI(hc)
 }
 
-func actionUserList(c *cli.Context) {
+func actionUserList(c *cli.Context) error {
 	if len(c.Args()) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
@@ -104,9 +104,10 @@ func actionUserList(c *cli.Context) {
 	for _, user := range users {
 		fmt.Printf("%s\n", user)
 	}
+	return nil
 }
 
-func actionUserAdd(c *cli.Context) {
+func actionUserAdd(c *cli.Context) error {
 	api, userarg := mustUserAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	defer cancel()
@@ -129,9 +130,10 @@ func actionUserAdd(c *cli.Context) {
 	}
 
 	fmt.Printf("User %s created\n", user)
+	return nil
 }
 
-func actionUserRemove(c *cli.Context) {
+func actionUserRemove(c *cli.Context) error {
 	api, user := mustUserAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	err := api.RemoveUser(ctx, user)
@@ -142,9 +144,10 @@ func actionUserRemove(c *cli.Context) {
 	}
 
 	fmt.Printf("User %s removed\n", user)
+	return nil
 }
 
-func actionUserPasswd(c *cli.Context) {
+func actionUserPasswd(c *cli.Context) error {
 	api, user := mustUserAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	defer cancel()
@@ -166,14 +169,17 @@ func actionUserPasswd(c *cli.Context) {
 	}
 
 	fmt.Printf("Password updated\n")
+	return nil
 }
 
-func actionUserGrant(c *cli.Context) {
+func actionUserGrant(c *cli.Context) error {
 	userGrantRevoke(c, true)
+	return nil
 }
 
-func actionUserRevoke(c *cli.Context) {
+func actionUserRevoke(c *cli.Context) error {
 	userGrantRevoke(c, false)
+	return nil
 }
 
 func userGrantRevoke(c *cli.Context, grant bool) {
@@ -207,7 +213,7 @@ func userGrantRevoke(c *cli.Context, grant bool) {
 	fmt.Printf("User %s updated\n", user)
 }
 
-func actionUserGet(c *cli.Context) {
+func actionUserGet(c *cli.Context) error {
 	api, username := mustUserAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	user, err := api.GetUser(ctx, username)
@@ -218,7 +224,7 @@ func actionUserGet(c *cli.Context) {
 	}
 	fmt.Printf("User: %s\n", user.User)
 	fmt.Printf("Roles: %s\n", strings.Join(user.Roles, " "))
-
+	return nil
 }
 
 func mustUserAPIAndName(c *cli.Context) (client.AuthUserAPI, string) {

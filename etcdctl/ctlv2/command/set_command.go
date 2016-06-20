@@ -19,8 +19,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 // NewSetCommand returns the CLI command for "set".
@@ -40,8 +40,9 @@ func NewSetCommand() cli.Command {
 			cli.StringFlag{Name: "swap-with-value", Value: "", Usage: "previous value"},
 			cli.IntFlag{Name: "swap-with-index", Value: 0, Usage: "previous index"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			setCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }

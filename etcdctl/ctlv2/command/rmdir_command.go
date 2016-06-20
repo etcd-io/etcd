@@ -17,8 +17,8 @@ package command
 import (
 	"errors"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 // NewRemoveDirCommand returns the CLI command for "rmdir".
@@ -27,8 +27,9 @@ func NewRemoveDirCommand() cli.Command {
 		Name:      "rmdir",
 		Usage:     "removes the key if it is an empty directory or a key-value pair",
 		ArgsUsage: "<key>",
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			rmdirCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }

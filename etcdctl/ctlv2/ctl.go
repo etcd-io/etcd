@@ -20,9 +20,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/etcdctl/ctlv2/command"
 	"github.com/coreos/etcd/version"
+	"github.com/urfave/cli"
 )
 
 func Start() {
@@ -71,5 +71,9 @@ func Start() {
 		command.NewAuthCommands(),
 	}
 
-	app.Run(os.Args)
+	err := app.Run(os.Args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

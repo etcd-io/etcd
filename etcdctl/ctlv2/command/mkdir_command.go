@@ -18,8 +18,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 // NewMakeDirCommand returns the CLI command for "mkdir".
@@ -31,8 +31,9 @@ func NewMakeDirCommand() cli.Command {
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			mkdirCommandFunc(c, mustNewKeyAPI(c), client.PrevNoExist)
+			return nil
 		},
 	}
 }

@@ -20,8 +20,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
 
@@ -36,8 +36,9 @@ func NewWatchCommand() cli.Command {
 			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
 			cli.BoolFlag{Name: "recursive, r", Usage: "returns all values for key and child keys"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			watchCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }

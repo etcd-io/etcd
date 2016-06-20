@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/store"
+	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
 
@@ -48,7 +48,7 @@ func NewImportSnapCommand() cli.Command {
 	}
 }
 
-func handleImportSnap(c *cli.Context) {
+func handleImportSnap(c *cli.Context) error {
 	d, err := ioutil.ReadFile(c.String("snap"))
 	if err != nil {
 		if c.String("snap") == "" {
@@ -87,6 +87,7 @@ func handleImportSnap(c *cli.Context) {
 	close(setc)
 	wg.Wait()
 	fmt.Printf("finished importing %d keys\n", n)
+	return nil
 }
 
 func copyKeys(n *store.NodeExtern, setc chan set) int {

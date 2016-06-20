@@ -19,8 +19,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 func NewAuthCommands() cli.Command {
@@ -44,12 +44,14 @@ func NewAuthCommands() cli.Command {
 	}
 }
 
-func actionAuthEnable(c *cli.Context) {
+func actionAuthEnable(c *cli.Context) error {
 	authEnableDisable(c, true)
+	return nil
 }
 
-func actionAuthDisable(c *cli.Context) {
+func actionAuthDisable(c *cli.Context) error {
 	authEnableDisable(c, false)
+	return nil
 }
 
 func mustNewAuthAPI(c *cli.Context) client.AuthAPI {

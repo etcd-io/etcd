@@ -15,8 +15,8 @@
 package command
 
 import (
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 // NewSetDirCommand returns the CLI command for "setDir".
@@ -28,8 +28,9 @@ func NewSetDirCommand() cli.Command {
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			mkdirCommandFunc(c, mustNewKeyAPI(c), client.PrevIgnore)
+			return nil
 		},
 	}
 }
