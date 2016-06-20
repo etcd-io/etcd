@@ -18,10 +18,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
@@ -36,12 +37,12 @@ const (
 type Agent struct {
 	state string // the state of etcd process
 
-	cmd         *exec.Cmd
-	logfile     *os.File
-	etcdLogPath string
+	cmd     *exec.Cmd
+	logfile *os.File
+	logDir  string
 }
 
-func newAgent(etcd, etcdLogPath string) (*Agent, error) {
+func newAgent(etcd, logDir string) (*Agent, error) {
 	// check if the file exists
 	_, err := os.Stat(etcd)
 	if err != nil {
@@ -50,12 +51,18 @@ func newAgent(etcd, etcdLogPath string) (*Agent, error) {
 
 	c := exec.Command(etcd)
 
-	f, err := os.Create(etcdLogPath)
+	err = fileutil.TouchDirAll(logDir)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Agent{state: stateUninitialized, cmd: c, logfile: f, etcdLogPath: etcdLogPath}, nil
+	var f *os.File
+	f, err = os.Create(filepath.Join(logDir, "etcd.log"))
+	if err != nil {
+		return nil, err
+	}
+
+	return &Agent{state: stateUninitialized, cmd: c, logfile: f, logDir: logDir}, nil
 }
 
 // start starts a new etcd process with the given args.
@@ -132,14 +139,19 @@ func (a *Agent) cleanup() error {
 	a.state = stateUninitialized
 
 	a.logfile.Close()
-	if err := archiveLogAndDataDir(a.etcdLogPath, a.dataDir()); err != nil {
+	if err := archiveLogAndDataDir(a.logDir, a.dataDir()); err != nil {
 		return err
 	}
-	f, err := os.Create(a.etcdLogPath)
-	a.logfile = f
+
+	if err := fileutil.TouchDirAll(a.logDir); err != nil {
+		return err
+	}
+
+	f, err := os.Create(filepath.Join(a.logDir, "etcd.log"))
 	if err != nil {
 		return err
 	}
+	a.logfile = f
 
 	// https://www.kernel.org/doc/Documentation/sysctl/vm.txt
 	// https://github.com/torvalds/linux/blob/master/fs/drop_caches.c
@@ -185,7 +197,7 @@ func (a *Agent) status() client.Status {
 }
 
 func (a *Agent) dataDir() string {
-	datadir := path.Join(a.cmd.Path, "*.etcd")
+	datadir := filepath.Join(a.cmd.Path, "*.etcd")
 	args := a.cmd.Args
 	// only parse the simple case like "--data-dir /var/lib/etcd"
 	for i, arg := range args {
@@ -209,20 +221,20 @@ func existDir(fpath string) bool {
 	return false
 }
 
-func archiveLogAndDataDir(log string, datadir string) error {
-	dir := path.Join("failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
+func archiveLogAndDataDir(logDir string, datadir string) error {
+	dir := filepath.Join("failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
 	if existDir(dir) {
-		dir = path.Join("failure_archive", fmt.Sprint(time.Now().Add(time.Second).Format(time.RFC3339)))
+		dir = filepath.Join("failure_archive", fmt.Sprint(time.Now().Add(time.Second).Format(time.RFC3339)))
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := fileutil.TouchDirAll(dir); err != nil {
 		return err
 	}
-	if err := os.Rename(log, path.Join(dir, path.Base(log))); err != nil {
+	if err := os.Rename(logDir, filepath.Join(dir, filepath.Base(logDir))); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
 	}
-	if err := os.Rename(datadir, path.Join(dir, path.Base(datadir))); err != nil {
+	if err := os.Rename(datadir, filepath.Join(dir, filepath.Base(datadir))); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
