@@ -157,7 +157,7 @@ func init() {
 // ReportEventReceived reports that an event is received.
 // This function should be called when the external systems received an
 // event from mvcc.Watcher.
-func ReportEventReceived() {
-	pendingEventsGauge.Dec()
-	totalEventsCounter.Inc()
+func ReportEventReceived(n int) {
+	pendingEventsGauge.Sub(float64(n))
+	totalEventsCounter.Add(float64(n))
 }
