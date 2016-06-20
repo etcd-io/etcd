@@ -197,12 +197,14 @@ func doWatch(stream v3.Watcher, requests <-chan string) {
 }
 
 func recvWatchChan(wch v3.WatchChan) {
-	for range wch {
+	for r := range wch {
 		st := time.Now()
-		results <- result{duration: time.Since(st), happened: time.Now()}
-		bar.Increment()
+		for range r.Events {
+			results <- result{duration: time.Since(st), happened: time.Now()}
+			bar.Increment()
+			atomic.AddInt32(&nrRecvCompleted, 1)
+		}
 
-		atomic.AddInt32(&nrRecvCompleted, 1)
 		if atomic.LoadInt32(&nrRecvCompleted) == int32(eventsTotal) {
 			recvCompletedNotifier <- struct{}{}
 			break
