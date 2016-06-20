@@ -48,6 +48,7 @@ var (
 	ErrGRPCPermissionDenied     = grpc.Errorf(codes.FailedPrecondition, "etcdserver: permission denied")
 	ErrGRPCRoleNotGranted       = grpc.Errorf(codes.FailedPrecondition, "etcdserver: role is not granted to the user")
 	ErrGRPCPermissionNotGranted = grpc.Errorf(codes.FailedPrecondition, "etcdserver: permission is not granted to the role")
+	ErrGRPCAuthNotEnabled       = grpc.Errorf(codes.FailedPrecondition, "etcdserver: authentication is not enabled")
 
 	ErrGRPCNoLeader   = grpc.Errorf(codes.Unavailable, "etcdserver: no leader")
 	ErrGRPCNotCapable = grpc.Errorf(codes.Unavailable, "etcdserver: not capable")
@@ -80,6 +81,7 @@ var (
 		grpc.ErrorDesc(ErrGRPCPermissionDenied):     ErrGRPCPermissionDenied,
 		grpc.ErrorDesc(ErrGRPCRoleNotGranted):       ErrGRPCRoleNotGranted,
 		grpc.ErrorDesc(ErrGRPCPermissionNotGranted): ErrGRPCPermissionNotGranted,
+		grpc.ErrorDesc(ErrGRPCAuthNotEnabled):       ErrGRPCAuthNotEnabled,
 
 		grpc.ErrorDesc(ErrGRPCNoLeader):   ErrGRPCNoLeader,
 		grpc.ErrorDesc(ErrGRPCNotCapable): ErrGRPCNotCapable,
@@ -113,6 +115,7 @@ var (
 	ErrPermissionDenied     = Error(ErrGRPCPermissionDenied)
 	ErrRoleNotGranted       = Error(ErrGRPCRoleNotGranted)
 	ErrPermissionNotGranted = Error(ErrGRPCPermissionNotGranted)
+	ErrAuthNotEnabled       = Error(ErrGRPCAuthNotEnabled)
 
 	ErrNoLeader   = Error(ErrGRPCNoLeader)
 	ErrNotCapable = Error(ErrGRPCNotCapable)
