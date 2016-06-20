@@ -39,6 +39,7 @@ changing the value of the watched keys with concurrent put
 requests.
 
 During the test, each watcher watches (--total/--watchers) keys 
+
 (a watcher might watch on the same key multiple times if 
 --watched-key-total is small).
 
@@ -97,7 +98,6 @@ func watchFunc(cmd *cobra.Command, args []string) {
 			binary.PutVarint(k, int64(rand.Intn(watchKeySpaceSize)))
 		}
 		watched[i] = string(k)
-		numWatchers[watched[i]] = numWatchers[watched[i]] + 1
 	}
 
 	requests := make(chan string, totalClients)
@@ -126,7 +126,9 @@ func watchFunc(cmd *cobra.Command, args []string) {
 
 	go func() {
 		for i := 0; i < watchTotal; i++ {
-			requests <- watched[i%len(watched)]
+			key := watched[i%len(watched)]
+			requests <- key
+			numWatchers[key]++
 		}
 		close(requests)
 	}()
