@@ -801,6 +801,252 @@ The provided transformer should read until EOF and flush the stdout before exiti
 finished transforming keys
 ```
 
+### AUTH \<enable or disable\>
+
+`auth enable` activates authentication on an etcd cluster and `auth disable` deactivates. When authentication is enabled, etcd checks all requests for appropriate authorization.
+
+#### Return value
+
+##### Simple reply
+
+- `Authentication Enabled`. Exit code is zero.
+
+- Error string if AUTH failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl user add root
+etcdctl user grant-role root root
+etcdctl user get root
+etcdctl role add root
+etcdctl role get root
+
+etcdctl auth enable
+# Authentication Enabled
+```
+
+### ROLE ADD \<role name\>
+
+`role add` creates a role.
+
+#### Return value
+
+##### Simple reply
+
+- `Role <role name> created`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 role add myrole
+```
+
+### ROLE DELETE \<role name\>
+
+`role delete` deletes a role.
+
+#### Return value
+
+##### Simple reply
+
+- `Role <role name> deleted`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 role delete myrole
+# Role myrole deleted
+```
+
+### ROLE GET \<role name\>
+
+`role get` lists detailed role information.
+
+#### Return value
+
+##### Simple reply
+
+- Detailed role information. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 role get myrole
+# Role myrole
+# KV Read:
+# 	foo
+# KV Write:
+# 	foo
+```
+
+### ROLE GRANT-PERMISSION \<role name\> \<permission type\> \<key\> [endkey]
+
+`role grant-permission` grants a key to a role.
+
+#### Return value
+
+##### Simple reply
+
+- `Role <role name> updated`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 role grant-permission myrole readwrite foo
+# Role myrole updated
+```
+
+### ROLE REVOKE-PERMISSION \<role name\> \<permission type\> \<key\> [endkey]
+
+`role revoke-permission` revokes a key from a role.
+
+#### Return value
+
+##### Simple reply
+
+- `Permission of key <key> is revoked from role <role name>`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 role revoke-permission myrole foo
+# Permission of key foo is revoked from role myrole
+```
+
+### USER ADD \<user name\>
+
+`user add` creates a user.
+
+#### Return value
+
+##### Simple reply
+
+- `User <user name> created`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 user add myuser
+# Password of myuser: 
+# Type password of myuser again for confirmation: 
+# User myuser created
+```
+
+### USER DELETE \<user name\>
+
+`user delete` deletes a user.
+
+#### Return value
+
+##### Simple reply
+
+- `User <user name> deleted`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 user delete myuser
+# User myuser deleted
+```
+
+### USER GET \<user name\>
+
+`user get` lists detailed user information.
+
+#### Return value
+
+##### Simple reply
+
+- Detailed user information. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 user get myuser
+# User: myuser
+# Roles:
+```
+
+### USER PASSWD \<user name\>
+
+`user passwd` changes a user's password.
+
+#### Options
+
+- interactive -- if true, read password in interactive terminal
+
+#### Return value
+
+##### Simple reply
+
+- `Password updated`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 user passwd myuser
+# Password of myuser: 
+# Type password of myuser again for confirmation: 
+# Password updated
+```
+
+### USER GRANT-ROLE \<user name\> \<role name\>
+
+`user grant-role` grants a role to a user
+
+#### Return value
+
+##### Simple reply
+
+- `Role <role name> is granted to user <user name>`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 user grant-role userA roleA
+# Role roleA is granted to user userA
+```
+
+### USER REVOKE-ROLE \<user name\> \<role name\>
+
+`user revoke-role` revokes a role from a user
+
+#### Return value
+
+##### Simple reply
+
+- `Role <role name> is revoked from user <user name>`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+``` bash
+etcdctl --user=root:123 user revoke-role userA roleA
+# Role roleA is revoked from user userA
+```
+
 ## Notes
 
 - JSON encoding for keys and values uses base64 since they are byte strings.
