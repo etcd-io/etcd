@@ -149,14 +149,20 @@ func (s *store) Put(key, value []byte, lease lease.LeaseID) int64 {
 	return int64(s.currentRev.main)
 }
 
-func (s *store) Range(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, rev int64, err error) {
+func (s *store) Range(key, end []byte, ro RangeOptions) (r *RangeResult, err error) {
 	id := s.TxnBegin()
-	kvs, rev, err = s.rangeKeys(key, end, limit, rangeRev)
+	kvs, count, rev, err := s.rangeKeys(key, end, ro.Limit, ro.Rev, ro.Count)
 	s.txnEnd(id)
 
 	rangeCounter.Inc()
 
-	return kvs, rev, err
+	r = &RangeResult{
+		KVs:   kvs,
+		Count: count,
+		Rev:   rev,
+	}
+
+	return r, err
 }
 
 func (s *store) DeleteRange(key, end []byte) (n, rev int64) {
@@ -208,11 +214,19 @@ func (s *store) txnEnd(txnID int64) error {
 	return nil
 }
 
-func (s *store) TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, rev int64, err error) {
+func (s *store) TxnRange(txnID int64, key, end []byte, ro RangeOptions) (r *RangeResult, err error) {
 	if txnID != s.txnID {
-		return nil, 0, ErrTxnIDMismatch
+		return nil, ErrTxnIDMismatch
 	}
-	return s.rangeKeys(key, end, limit, rangeRev)
+
+	kvs, count, rev, err := s.rangeKeys(key, end, ro.Limit, ro.Rev, ro.Count)
+
+	r = &RangeResult{
+		KVs:   kvs,
+		Count: count,
+		Rev:   rev,
+	}
+	return r, err
 }
 
 func (s *store) TxnPut(txnID int64, key, value []byte, lease lease.LeaseID) (rev int64, err error) {
@@ -423,14 +437,14 @@ func (a *store) Equal(b *store) bool {
 }
 
 // range is a keyword in Go, add Keys suffix.
-func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, curRev int64, err error) {
+func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64, countOnly bool) (kvs []mvccpb.KeyValue, count int, curRev int64, err error) {
 	curRev = int64(s.currentRev.main)
 	if s.currentRev.sub > 0 {
 		curRev += 1
 	}
 
 	if rangeRev > curRev {
-		return nil, s.currentRev.main, ErrFutureRev
+		return nil, -1, s.currentRev.main, ErrFutureRev
 	}
 	var rev int64
 	if rangeRev <= 0 {
@@ -439,12 +453,15 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.
 		rev = rangeRev
 	}
 	if rev < s.compactMainRev {
-		return nil, 0, ErrCompacted
+		return nil, -1, 0, ErrCompacted
 	}
 
 	_, revpairs := s.kvindex.Range(key, end, int64(rev))
 	if len(revpairs) == 0 {
-		return nil, curRev, nil
+		return nil, 0, curRev, nil
+	}
+	if countOnly {
+		return nil, len(revpairs), curRev, nil
 	}
 
 	for _, revpair := range revpairs {
@@ -464,7 +481,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.
 			break
 		}
 	}
-	return kvs, curRev, nil
+	return kvs, len(kvs), curRev, nil
 }
 
 func (s *store) put(key, value []byte, leaseID lease.LeaseID) {

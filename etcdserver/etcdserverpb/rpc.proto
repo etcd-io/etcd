@@ -367,14 +367,20 @@ message RangeRequest {
 
   // keys_only when set returns only the keys and not the values.
   bool keys_only = 8;
+ 
+  // count_only when set returns only the count of the keys in the range.
+  bool count_only = 9;
 }
 
 message RangeResponse {
   ResponseHeader header = 1;
   // kvs is the list of key-value pairs matched by the range request.
+  // kvs is empty when count is requested.
   repeated mvccpb.KeyValue kvs = 2;
   // more indicates if there are more keys to return in the requested range.
   bool more = 3;
+  // count is set to the number of keys within the range when requested.
+  int64 count = 4;
 }
 
 message PutRequest {

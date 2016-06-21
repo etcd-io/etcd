@@ -206,7 +206,7 @@ func TestStoreRange(t *testing.T) {
 		b.tx.rangeRespc <- tt.r
 		fi.indexRangeRespc <- tt.idxr
 
-		kvs, rev, err := s.rangeKeys([]byte("foo"), []byte("goo"), 1, 0)
+		kvs, _, rev, err := s.rangeKeys([]byte("foo"), []byte("goo"), 1, 0, false)
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
@@ -440,7 +440,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 	// wait for scheduled compaction to be finished
 	time.Sleep(100 * time.Millisecond)
 
-	if _, _, err := s1.Range([]byte("foo"), nil, 0, 1); err != ErrCompacted {
+	if _, err := s1.Range([]byte("foo"), nil, RangeOptions{Rev: 1}); err != ErrCompacted {
 		t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
 	}
 	// check the key in backend is deleted

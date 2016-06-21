@@ -20,6 +20,18 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
+type RangeOptions struct {
+	Limit int64
+	Rev   int64
+	Count bool
+}
+
+type RangeResult struct {
+	KVs   []mvccpb.KeyValue
+	Rev   int64
+	Count int
+}
+
 type KV interface {
 	// Rev returns the current revision of the KV.
 	Rev() int64
@@ -37,7 +49,7 @@ type KV interface {
 	// If `end` is not nil and empty, it gets the keys greater than or equal to key.
 	// Limit limits the number of keys returned.
 	// If the required rev is compacted, ErrCompacted will be returned.
-	Range(key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, rev int64, err error)
+	Range(key, end []byte, ro RangeOptions) (r *RangeResult, err error)
 
 	// Put puts the given key, value into the store. Put also takes additional argument lease to
 	// attach a lease to a key-value pair as meta-data. KV implementation does not validate the lease
@@ -63,7 +75,7 @@ type KV interface {
 	// TxnEnd ends the on-going txn with txn ID. If the on-going txn ID is not matched, error is returned.
 	TxnEnd(txnID int64) error
 	// TxnRange returns the current revision of the KV when the operation is executed.
-	TxnRange(txnID int64, key, end []byte, limit, rangeRev int64) (kvs []mvccpb.KeyValue, rev int64, err error)
+	TxnRange(txnID int64, key, end []byte, ro RangeOptions) (r *RangeResult, err error)
 	TxnPut(txnID int64, key, value []byte, lease lease.LeaseID) (rev int64, err error)
 	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
 
