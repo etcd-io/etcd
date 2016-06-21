@@ -10,21 +10,14 @@
 # PKG=snap ./test
 set -e
 
+source ./build
+
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
 GOSIMPLE_UNUSED_PATHS=$(go list ./... | sed -e 's/github.com\/coreos\/etcd\///g' | grep -vE 'cmd|vendor|rafttest|github.com/coreos/etcd$|client$')
 
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
-
-GO_BUILD_FLAGS="-a -v"
-source ./build
-
-# Set up gopath so tests use vendored dependencies
-export GOPATH=${PWD}/gopath
-rm -rf $GOPATH/src
-mkdir -p $GOPATH
-ln -s ${PWD}/cmd/vendor $GOPATH/src
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
 IGNORE_PKGS="(cmd|vendor|etcdserverpb|rafttest)"
@@ -168,9 +161,19 @@ function dep_tests {
 	fi
 }
 
+# Set up gopath so tests use vendored dependencies
+export GOPATH=${PWD}/gopath
+rm -rf $GOPATH/src
+mkdir -p $GOPATH
+ln -s ${PWD}/cmd/vendor $GOPATH/src
+
 # fail fast on static tests
+toggle_failpoints disable
 fmt_tests
 dep_tests
+
+# fail fast on static tests
+GO_BUILD_FLAGS="-a -v" etcd_build
 
 unit_tests
 if [ -n "$INTEGRATION" ]; then
