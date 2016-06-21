@@ -1,22 +1,22 @@
 #!/bin/sh -e
 
+# set some environment variables
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/etcd"
-
 export GO15VENDOREXPERIMENT="1"
-
 eval $(go env)
-
 GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
 
-LINK_OPERATOR="="
+etcd_build() {
+	if [ -z "${GOARCH}" ] || [ "${GOARCH}" = "$(go env GOHOSTARCH)" ]; then
+		out="bin"
+	else
+		out="bin/${GOARCH}"
+	fi
+	# Static compilation is useful when etcd is run in a container
+	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "-s -X ${REPO_PATH}/cmd/vendor/${REPO_PATH}/version.GitSHA=${GIT_SHA}" -o ${out}/etcd ${REPO_PATH}/cmd
+	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "-s" -o ${out}/etcdctl ${REPO_PATH}/cmd/etcdctl
+}
 
-if [ -z "${GOARCH}" ] || [ "${GOARCH}" = "$(go env GOHOSTARCH)" ]; then
-	out="bin"
-else
-	out="bin/${GOARCH}"
-fi
-
-# Static compilation is useful when etcd is run in a container
-CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "-s -X ${REPO_PATH}/cmd/vendor/${REPO_PATH}/version.GitSHA${LINK_OPERATOR}${GIT_SHA}" -o ${out}/etcd ${REPO_PATH}/cmd
-CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "-s" -o ${out}/etcdctl ${REPO_PATH}/cmd/etcdctl
+# don't build when sourced
+(echo "$0" | grep "/build$") && etcd_build || true
