@@ -213,27 +213,34 @@ func (r *raftNode) start(s *EtcdServer) {
 				// writing to their disks.
 				// For more details, check raft thesis 10.2.1
 				if islead {
+					// gofail: var raftBeforeLeaderSend struct{}
 					r.s.send(rd.Messages)
 				}
 
+				// gofail: var raftBeforeSave struct{}
 				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
 					plog.Fatalf("raft save state and entries error: %v", err)
 				}
 				if !raft.IsEmptyHardState(rd.HardState) {
 					proposalsCommitted.Set(float64(rd.HardState.Commit))
 				}
+				// gofail: var raftAfterSave struct{}
 
 				if !raft.IsEmptySnap(rd.Snapshot) {
+					// gofail: var raftBeforeSaveSnap struct{}
 					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
 						plog.Fatalf("raft save snapshot error: %v", err)
 					}
+					// gofail: var raftAfterSaveSnap struct{}
 					r.raftStorage.ApplySnapshot(rd.Snapshot)
 					plog.Infof("raft applied incoming snapshot at index %d", rd.Snapshot.Metadata.Index)
+					// gofail: var raftAfterApplySnap struct{}
 				}
 
 				r.raftStorage.Append(rd.Entries)
 
 				if !islead {
+					// gofail: var raftBeforeFollowerSend struct{}
 					r.s.send(rd.Messages)
 				}
 				raftDone <- struct{}{}
