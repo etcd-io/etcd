@@ -520,7 +520,7 @@ func (m *member) listenGRPC() error {
 func (m *member) DropConnections() { m.grpcBridge.Reset() }
 
 // NewClientV3 creates a new grpc client connection to the member
-func NewClientV3(m *member) (*clientv3.Client, error) {
+func NewClientV3(m *member, user, pass string) (*clientv3.Client, error) {
 	if m.grpcAddr == "" {
 		return nil, fmt.Errorf("member not configured for grpc")
 	}
@@ -528,6 +528,8 @@ func NewClientV3(m *member) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:   []string{m.grpcAddr},
 		DialTimeout: 5 * time.Second,
+		Username:    user,
+		Password:    pass,
 	}
 
 	if m.ClientTLSInfo != nil {
@@ -775,7 +777,7 @@ func NewClusterV3(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 		cluster: NewClusterByConfig(t, cfg),
 	}
 	for _, m := range clus.Members {
-		client, err := NewClientV3(m)
+		client, err := NewClientV3(m, "", "")
 		if err != nil {
 			t.Fatalf("cannot create client: %v", err)
 		}
@@ -812,6 +814,10 @@ func (c *ClusterV3) RandClient() *clientv3.Client {
 
 func (c *ClusterV3) Client(i int) *clientv3.Client {
 	return c.clients[i]
+}
+
+func (c *ClusterV3) NewClientWithAuth(i int, user, pass string) (*clientv3.Client, error) {
+	return NewClientV3(c.Members[i], user, pass)
 }
 
 type grpcAPI struct {
