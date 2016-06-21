@@ -33,10 +33,11 @@ Administrators who need to create reliable and scalable key-value stores for the
 
 To learn more about the concepts and internals behind etcd, read the following pages:
 
- - Why etcd
- - Concepts
- - Internals
+ - Why etcd (TODO)
+ - [Understand data model][data_model]
+ - [Understand APIs][understand_apis]
  - [Glossary][glossary]
+ - Internals (TODO)
 
 ## Upgrading and compatibility
 
@@ -48,6 +49,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 [api_grpc_gateway]: dev-guide/api_grpc_gateway.md
 [clustering]: op-guide/clustering.md
 [conf]: op-guide/configuration.md
+[data_model]: learning/data_model.md
 [demo]: demo.md
 [download_build]: dl_build.md
 [failures]: op-guide/failures.md
@@ -60,3 +62,4 @@ To learn more about the concepts and internals behind etcd, read the following p
 [security]: op-guide/security.md
 [v2_migration]: op-guide/v2-migration.md
 [container]: op-guide/container.md
+[understand_apis]: learning/api.md
