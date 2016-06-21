@@ -19,9 +19,10 @@ import (
 	"testing"
 )
 
-func TestCtlV3AuthEnable(t *testing.T)   { testCtl(t, authEnableTest) }
-func TestCtlV3AuthDisable(t *testing.T)  { testCtl(t, authDisableTest) }
-func TestCtlV3AuthWriteKey(t *testing.T) { testCtl(t, authCredWriteKeyTest) }
+func TestCtlV3AuthEnable(t *testing.T)     { testCtl(t, authEnableTest) }
+func TestCtlV3AuthDisable(t *testing.T)    { testCtl(t, authDisableTest) }
+func TestCtlV3AuthWriteKey(t *testing.T)   { testCtl(t, authCredWriteKeyTest) }
+func TestCtlV3AuthRoleUpdate(t *testing.T) { testCtl(t, authRoleUpdateTest) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -108,6 +109,58 @@ func authCredWriteKeyTest(cx ctlCtx) {
 	}
 	// confirm put failed
 	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authRoleUpdateTest(cx ctlCtx) {
+	if err := ctlV3Put(cx, "foo", "bar", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// try put to not granted key
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3PutFailPerm(cx, "hoo", "bar"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// grant a new key
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "hoo", ""}); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// try a newly granted key
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+	// confirm put succeeded
+	if err := ctlV3Get(cx, []string{"hoo"}, []kv{{"hoo", "bar"}}...); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// revoke the newly granted key
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleRevokePermission(cx, "test-role", "hoo", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// try put to the revoked key
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3PutFailPerm(cx, "hoo", "bar"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// confirm a key still granted can be accessed
 	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
 		cx.t.Fatal(err)
 	}
