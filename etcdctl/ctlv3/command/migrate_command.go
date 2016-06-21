@@ -51,7 +51,7 @@ var (
 func NewMigrateCommand() *cobra.Command {
 	mc := &cobra.Command{
 		Use:   "migrate",
-		Short: "migrate",
+		Short: "migrates keys in a v2 store to a mvcc store",
 		Run:   migrateCommandFunc,
 	}
 

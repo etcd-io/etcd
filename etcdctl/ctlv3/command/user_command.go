@@ -89,7 +89,7 @@ func newUserChangePasswordCommand() *cobra.Command {
 		Run:   userChangePasswordCommandFunc,
 	}
 
-	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "read password from stdin instead of interactive terminal")
+	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "if true, read password from stdin instead of interactive terminal")
 
 	return &cmd
 }
@@ -105,7 +105,7 @@ func newUserGrantRoleCommand() *cobra.Command {
 func newUserRevokeRoleCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "revoke-role <user name> <role name>",
-		Short: "revoke a role from from a user",
+		Short: "revoke a role from a user",
 		Run:   userRevokeRoleCommandFunc,
 	}
 }
