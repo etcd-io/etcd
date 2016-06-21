@@ -53,7 +53,8 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/pkg/capnslog",
-			"Rev": "2c77715c4df99b5420ffcae14ead08f52104065d"
+			"Comment": "v2-8-gfa29b1d",
+			"Rev": "fa29b1d70f0beaddd4c7021607cc3c3be8ce94b8"
 		},
 		{
 			"ImportPath": "github.com/cpuguy83/go-md2man/md2man",
