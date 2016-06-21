@@ -19,10 +19,11 @@ import (
 	"testing"
 )
 
-func TestCtlV3AuthEnable(t *testing.T)     { testCtl(t, authEnableTest) }
-func TestCtlV3AuthDisable(t *testing.T)    { testCtl(t, authDisableTest) }
-func TestCtlV3AuthWriteKey(t *testing.T)   { testCtl(t, authCredWriteKeyTest) }
-func TestCtlV3AuthRoleUpdate(t *testing.T) { testCtl(t, authRoleUpdateTest) }
+func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }
+func TestCtlV3AuthDisable(t *testing.T)             { testCtl(t, authDisableTest) }
+func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKeyTest) }
+func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateTest) }
+func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -162,6 +163,42 @@ func authRoleUpdateTest(cx ctlCtx) {
 
 	// confirm a key still granted can be accessed
 	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authUserDeleteDuringOpsTest(cx ctlCtx) {
+	if err := ctlV3Put(cx, "foo", "bar", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// create a key
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3Put(cx, "foo", "bar", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+	// confirm put succeeded
+	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// delete the user
+	cx.user, cx.pass = "root", "root"
+	err := ctlV3User(cx, []string{"delete", "test-user"}, "User test-user deleted", []string{})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// check the user is deleted
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3PutFailAuth(cx, "foo", "baz"); err != nil {
 		cx.t.Fatal(err)
 	}
 }
