@@ -16,8 +16,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -35,7 +33,7 @@ import (
 )
 
 func init() {
-	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
+	grpclog.SetLogger(plog)
 }
 
 type Stresser interface {
