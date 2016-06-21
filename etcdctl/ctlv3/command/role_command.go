@@ -33,8 +33,8 @@ func NewRoleCommand() *cobra.Command {
 	ac.AddCommand(newRoleDeleteCommand())
 	ac.AddCommand(newRoleGetCommand())
 	ac.AddCommand(newRoleListCommand())
-	ac.AddCommand(newRoleRevokePermissionCommand())
 	ac.AddCommand(newRoleGrantPermissionCommand())
+	ac.AddCommand(newRoleRevokePermissionCommand())
 
 	return ac
 }
