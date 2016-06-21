@@ -168,9 +168,12 @@ mkdir -p $GOPATH
 ln -s ${PWD}/cmd/vendor $GOPATH/src
 
 # fail fast on static tests
-GO_BUILD_FLAGS="-a -v" etcd_build
+toggle_failpoints disable
 fmt_tests
 dep_tests
+
+# fail fast on static tests
+GO_BUILD_FLAGS="-a -v" etcd_build
 
 unit_tests
 if [ -n "$INTEGRATION" ]; then
