@@ -201,6 +201,14 @@ func TestKVRange(t *testing.T) {
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
 			},
 		},
+		// range all with countOnly
+		{
+			"a", "x",
+			2,
+			[]clientv3.OpOption{clientv3.WithCountOnly()},
+
+			nil,
+		},
 		// range all with SortByKey, SortAscend
 		{
 			"a", "x",

@@ -141,6 +141,7 @@ func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 			Revision:     op.rev,
 			Serializable: op.serializable,
 			KeysOnly:     op.keysOnly,
+			CountOnly:    op.countOnly,
 		}
 		if op.sort != nil {
 			r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)

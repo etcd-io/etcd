@@ -42,6 +42,7 @@ type Op struct {
 	sort         *SortOption
 	serializable bool
 	keysOnly     bool
+	countOnly    bool
 
 	// for range, watch
 	rev int64
@@ -57,7 +58,15 @@ type Op struct {
 func (op Op) toRequestOp() *pb.RequestOp {
 	switch op.t {
 	case tRange:
-		r := &pb.RangeRequest{Key: op.key, RangeEnd: op.end, Limit: op.limit, Revision: op.rev, Serializable: op.serializable}
+		r := &pb.RangeRequest{
+			Key:          op.key,
+			RangeEnd:     op.end,
+			Limit:        op.limit,
+			Revision:     op.rev,
+			Serializable: op.serializable,
+			KeysOnly:     op.keysOnly,
+			CountOnly:    op.countOnly,
+		}
 		if op.sort != nil {
 			r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
 			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
@@ -98,6 +107,8 @@ func OpDelete(key string, opts ...OpOption) Op {
 		panic("unexpected sort in delete")
 	case ret.serializable:
 		panic("unexpected serializable in delete")
+	case ret.countOnly:
+		panic("unexpected countOnly in delete")
 	}
 	return ret
 }
@@ -116,6 +127,8 @@ func OpPut(key, val string, opts ...OpOption) Op {
 		panic("unexpected sort in put")
 	case ret.serializable:
 		panic("unexpected serializable in put")
+	case ret.countOnly:
+		panic("unexpected countOnly in delete")
 	}
 	return ret
 }
@@ -132,6 +145,8 @@ func opWatch(key string, opts ...OpOption) Op {
 		panic("unexpected sort in watch")
 	case ret.serializable:
 		panic("unexpected serializable in watch")
+	case ret.countOnly:
+		panic("unexpected countOnly in delete")
 	}
 	return ret
 }
@@ -213,6 +228,11 @@ func WithSerializable() OpOption {
 // values will be omitted.
 func WithKeysOnly() OpOption {
 	return func(op *Op) { op.keysOnly = true }
+}
+
+// WithCountOnly makes the 'Get' request return only the count of keys.
+func WithCountOnly() OpOption {
+	return func(op *Op) { op.countOnly = true }
 }
 
 // WithFirstCreate gets the key with the oldest creation revision in the request range.
