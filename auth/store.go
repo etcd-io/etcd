@@ -184,6 +184,10 @@ func (as *authStore) AuthDisable() {
 	as.enabled = false
 	as.enabledMu.Unlock()
 
+	as.simpleTokensMu.Lock()
+	as.simpleTokens = make(map[string]string) // invalidate all tokens
+	as.simpleTokensMu.Unlock()
+
 	plog.Noticef("Authentication disabled")
 }
 
