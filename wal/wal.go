@@ -97,7 +97,7 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 			return nil, err
 		}
 	}
-	if err := os.MkdirAll(tmpdirpath, fileutil.PrivateDirMode); err != nil {
+	if err := fileutil.CreateDirAll(tmpdirpath); err != nil {
 		return nil, err
 	}
 
