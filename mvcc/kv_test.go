@@ -33,19 +33,19 @@ import (
 // TODO: add similar tests on operations in one txn/rev
 
 type (
-	rangeFunc       func(kv KV, key, end []byte, limit, rangeRev int64) ([]mvccpb.KeyValue, int64, error)
+	rangeFunc       func(kv KV, key, end []byte, ro RangeOptions) (*RangeResult, error)
 	putFunc         func(kv KV, key, value []byte, lease lease.LeaseID) int64
 	deleteRangeFunc func(kv KV, key, end []byte) (n, rev int64)
 )
 
 var (
-	normalRangeFunc = func(kv KV, key, end []byte, limit, rangeRev int64) ([]mvccpb.KeyValue, int64, error) {
-		return kv.Range(key, end, limit, rangeRev)
+	normalRangeFunc = func(kv KV, key, end []byte, ro RangeOptions) (*RangeResult, error) {
+		return kv.Range(key, end, ro)
 	}
-	txnRangeFunc = func(kv KV, key, end []byte, limit, rangeRev int64) ([]mvccpb.KeyValue, int64, error) {
+	txnRangeFunc = func(kv KV, key, end []byte, ro RangeOptions) (*RangeResult, error) {
 		id := kv.TxnBegin()
 		defer kv.TxnEnd(id)
-		return kv.TxnRange(id, key, end, limit, rangeRev)
+		return kv.TxnRange(id, key, end, ro)
 	}
 
 	normalPutFunc = func(kv KV, key, value []byte, lease lease.LeaseID) int64 {
@@ -128,15 +128,15 @@ func testKVRange(t *testing.T, f rangeFunc) {
 	}
 
 	for i, tt := range tests {
-		kvs, rev, err := f(s, tt.key, tt.end, 0, 0)
+		r, err := f(s, tt.key, tt.end, RangeOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if rev != wrev {
-			t.Errorf("#%d: rev = %d, want %d", i, rev, wrev)
+		if r.Rev != wrev {
+			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, wrev)
 		}
-		if !reflect.DeepEqual(kvs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
+		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 		}
 	}
 }
@@ -164,15 +164,15 @@ func testKVRangeRev(t *testing.T, f rangeFunc) {
 	}
 
 	for i, tt := range tests {
-		kvs, rev, err := f(s, []byte("foo"), []byte("foo3"), 0, tt.rev)
+		r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Rev: tt.rev})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if rev != tt.wrev {
-			t.Errorf("#%d: rev = %d, want %d", i, rev, tt.wrev)
+		if r.Rev != tt.wrev {
+			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, tt.wrev)
 		}
-		if !reflect.DeepEqual(kvs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
+		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 		}
 	}
 }
@@ -203,7 +203,7 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 		{100, ErrFutureRev},
 	}
 	for i, tt := range tests {
-		_, _, err := f(s, []byte("foo"), []byte("foo3"), 0, tt.rev)
+		_, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Rev: tt.rev})
 		if err != tt.werr {
 			t.Errorf("#%d: error = %v, want %v", i, err, tt.werr)
 		}
@@ -235,15 +235,15 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 		{100, kvs},
 	}
 	for i, tt := range tests {
-		kvs, rev, err := f(s, []byte("foo"), []byte("foo3"), tt.limit, 0)
+		r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Limit: tt.limit})
 		if err != nil {
 			t.Fatalf("#%d: range error (%v)", i, err)
 		}
-		if !reflect.DeepEqual(kvs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
+		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 		}
-		if rev != wrev {
-			t.Errorf("#%d: rev = %d, want %d", i, rev, wrev)
+		if r.Rev != wrev {
+			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, wrev)
 		}
 	}
 }
@@ -264,15 +264,15 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 			t.Errorf("#%d: rev = %d, want %d", i, rev, base+1)
 		}
 
-		kvs, _, err := s.Range([]byte("foo"), nil, 0, 0)
+		r, err := s.Range([]byte("foo"), nil, RangeOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: base + 1, Version: base, Lease: base},
 		}
-		if !reflect.DeepEqual(kvs, wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
+		if !reflect.DeepEqual(r.KVs, wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
 		}
 	}
 }
@@ -368,17 +368,17 @@ func TestKVOperationInSequence(t *testing.T) {
 			t.Errorf("#%d: put rev = %d, want %d", i, rev, base+1)
 		}
 
-		kvs, rev, err := s.Range([]byte("foo"), nil, 0, base+1)
+		r, err := s.Range([]byte("foo"), nil, RangeOptions{Rev: base + 1})
 		if err != nil {
 			t.Fatal(err)
 		}
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1, Lease: int64(lease.NoLease)},
 		}
-		if !reflect.DeepEqual(kvs, wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
+		if !reflect.DeepEqual(r.KVs, wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
 		}
-		if rev != base+1 {
+		if r.Rev != base+1 {
 			t.Errorf("#%d: range rev = %d, want %d", i, rev, base+1)
 		}
 
@@ -388,15 +388,15 @@ func TestKVOperationInSequence(t *testing.T) {
 			t.Errorf("#%d: n = %d, rev = %d, want (%d, %d)", i, n, rev, 1, base+2)
 		}
 
-		kvs, rev, err = s.Range([]byte("foo"), nil, 0, base+2)
+		r, err = s.Range([]byte("foo"), nil, RangeOptions{Rev: base + 2})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if kvs != nil {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, nil)
+		if r.KVs != nil {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, nil)
 		}
-		if rev != base+2 {
-			t.Errorf("#%d: range rev = %d, want %d", i, rev, base+2)
+		if r.Rev != base+2 {
+			t.Errorf("#%d: range rev = %d, want %d", i, r.Rev, base+2)
 		}
 	}
 }
@@ -406,7 +406,7 @@ func TestKVTxnBlockNonTxnOperations(t *testing.T) {
 	s := NewStore(b, &lease.FakeLessor{}, nil)
 
 	tests := []func(){
-		func() { s.Range([]byte("foo"), nil, 0, 0) },
+		func() { s.Range([]byte("foo"), nil, RangeOptions{}) },
 		func() { s.Put([]byte("foo"), nil, lease.NoLease) },
 		func() { s.DeleteRange([]byte("foo"), nil) },
 	}
@@ -445,7 +445,7 @@ func TestKVTxnWrongID(t *testing.T) {
 
 	tests := []func() error{
 		func() error {
-			_, _, err := s.TxnRange(wrongid, []byte("foo"), nil, 0, 0)
+			_, err := s.TxnRange(wrongid, []byte("foo"), nil, RangeOptions{})
 			return err
 		},
 		func() error {
@@ -490,18 +490,18 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 			t.Errorf("#%d: put rev = %d, want %d", i, rev, base+1)
 		}
 
-		kvs, rev, err := s.TxnRange(id, []byte("foo"), nil, 0, base+1)
+		r, err := s.TxnRange(id, []byte("foo"), nil, RangeOptions{Rev: base + 1})
 		if err != nil {
 			t.Fatal(err)
 		}
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1, Lease: int64(lease.NoLease)},
 		}
-		if !reflect.DeepEqual(kvs, wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, wkvs)
+		if !reflect.DeepEqual(r.KVs, wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
 		}
-		if rev != base+1 {
-			t.Errorf("#%d: range rev = %d, want %d", i, rev, base+1)
+		if r.Rev != base+1 {
+			t.Errorf("#%d: range rev = %d, want %d", i, r.Rev, base+1)
 		}
 
 		// delete foo
@@ -513,15 +513,15 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 			t.Errorf("#%d: n = %d, rev = %d, want (%d, %d)", i, n, rev, 1, base+1)
 		}
 
-		kvs, rev, err = s.TxnRange(id, []byte("foo"), nil, 0, base+1)
+		r, err = s.TxnRange(id, []byte("foo"), nil, RangeOptions{Rev: base + 1})
 		if err != nil {
 			t.Errorf("#%d: range error (%v)", i, err)
 		}
-		if kvs != nil {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, nil)
+		if r.KVs != nil {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, nil)
 		}
-		if rev != base+1 {
-			t.Errorf("#%d: range rev = %d, want %d", i, rev, base+1)
+		if r.Rev != base+1 {
+			t.Errorf("#%d: range rev = %d, want %d", i, r.Rev, base+1)
 		}
 
 		s.TxnEnd(id)
@@ -572,12 +572,12 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 		if err != nil {
 			t.Errorf("#%d: unexpect compact error %v", i, err)
 		}
-		kvs, _, err := s.Range([]byte("foo"), nil, 0, tt.rev+1)
+		r, err := s.Range([]byte("foo"), nil, RangeOptions{Rev: tt.rev + 1})
 		if err != nil {
 			t.Errorf("#%d: unexpect range error %v", i, err)
 		}
-		if !reflect.DeepEqual(kvs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, kvs, tt.wkvs)
+		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
+			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 		}
 	}
 }
@@ -658,8 +658,8 @@ func TestKVRestore(t *testing.T) {
 		tt(s)
 		var kvss [][]mvccpb.KeyValue
 		for k := int64(0); k < 10; k++ {
-			kvs, _, _ := s.Range([]byte("a"), []byte("z"), 0, k)
-			kvss = append(kvss, kvs)
+			r, _ := s.Range([]byte("a"), []byte("z"), RangeOptions{Rev: k})
+			kvss = append(kvss, r.KVs)
 		}
 		s.Close()
 
@@ -669,8 +669,8 @@ func TestKVRestore(t *testing.T) {
 		testutil.WaitSchedule()
 		var nkvss [][]mvccpb.KeyValue
 		for k := int64(0); k < 10; k++ {
-			nkvs, _, _ := ns.Range([]byte("a"), []byte("z"), 0, k)
-			nkvss = append(nkvss, nkvs)
+			r, _ := ns.Range([]byte("a"), []byte("z"), RangeOptions{Rev: k})
+			nkvss = append(nkvss, r.KVs)
 		}
 		cleanup(ns, b, tmpPath)
 
@@ -704,15 +704,15 @@ func TestKVSnapshot(t *testing.T) {
 
 	ns := NewStore(b, &lease.FakeLessor{}, nil)
 	defer ns.Close()
-	kvs, rev, err := ns.Range([]byte("a"), []byte("z"), 0, 0)
+	r, err := ns.Range([]byte("a"), []byte("z"), RangeOptions{})
 	if err != nil {
 		t.Errorf("unexpect range error (%v)", err)
 	}
-	if !reflect.DeepEqual(kvs, wkvs) {
-		t.Errorf("kvs = %+v, want %+v", kvs, wkvs)
+	if !reflect.DeepEqual(r.KVs, wkvs) {
+		t.Errorf("kvs = %+v, want %+v", r.KVs, wkvs)
 	}
-	if rev != 4 {
-		t.Errorf("rev = %d, want %d", rev, 4)
+	if r.Rev != 4 {
+		t.Errorf("rev = %d, want %d", r.Rev, 4)
 	}
 }
 

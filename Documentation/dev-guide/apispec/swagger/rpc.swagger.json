@@ -930,6 +930,11 @@
     "etcdserverpbRangeRequest": {
       "type": "object",
       "properties": {
+        "count_only": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "count_only when set returns only the count of the keys in the range."
+        },
         "key": {
           "type": "string",
           "format": "byte",
@@ -973,6 +978,11 @@
     "etcdserverpbRangeResponse": {
       "type": "object",
       "properties": {
+        "count": {
+          "type": "string",
+          "format": "int64",
+          "description": "count is set to the number of keys within the range when requested."
+        },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
@@ -981,7 +991,7 @@
           "items": {
             "$ref": "#/definitions/mvccpbKeyValue"
           },
-          "description": "kvs is the list of key-value pairs matched by the range request."
+          "description": "kvs is the list of key-value pairs matched by the range request.\nkvs is empty when count is requested."
         },
         "more": {
           "type": "boolean",
