@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/transport"
 
 	"github.com/cockroachdb/cmux"
 	gw "github.com/gengo/grpc-gateway/runtime"
@@ -81,10 +82,10 @@ func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler
 		gs := v3rpc.Server(s, tlscfg)
 		handler = grpcHandlerFunc(gs, handler)
 
-		dtls := *tlscfg
+		dtls := transport.ShallowCopyTLSConfig(tlscfg)
 		// trust local server
 		dtls.InsecureSkipVerify = true
-		creds := credentials.NewTLS(&dtls)
+		creds := credentials.NewTLS(dtls)
 		opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
 		gwmux, err := registerGateway(sctx.l.Addr().String(), opts)
 		if err != nil {
