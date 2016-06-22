@@ -196,15 +196,15 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	plog.Infof("receiving database snapshot [index:%d, from %s] ...", m.Snapshot.Metadata.Index, types.ID(m.From))
 	// save incoming database snapshot.
-	if n, err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.Index); err != nil {
+	n, err := h.snapshotter.SaveDBFrom(r.Body, m.Snapshot.Metadata.Index)
+	if err != nil {
 		msg := fmt.Sprintf("failed to save KV snapshot (%v)", err)
 		plog.Error(msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
-	} else {
-		receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(n))
-		plog.Infof("received and saved database snapshot [index: %d, from: %s] successfully", m.Snapshot.Metadata.Index, types.ID(m.From))
 	}
+	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(n))
+	plog.Infof("received and saved database snapshot [index: %d, from: %s] successfully", m.Snapshot.Metadata.Index, types.ID(m.From))
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
 		switch v := err.(type) {
