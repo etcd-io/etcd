@@ -645,15 +645,14 @@ func assertRequest(got http.Request, wantMethod string, wantURL *url.URL, wantHe
 	} else {
 		if wantBody == nil {
 			return fmt.Errorf("want.Body=%v got.Body=%s", wantBody, got.Body)
-		} else {
-			gotBytes, err := ioutil.ReadAll(got.Body)
-			if err != nil {
-				return err
-			}
+		}
+		gotBytes, err := ioutil.ReadAll(got.Body)
+		if err != nil {
+			return err
+		}
 
-			if !reflect.DeepEqual(wantBody, gotBytes) {
-				return fmt.Errorf("want.Body=%s got.Body=%s", wantBody, gotBytes)
-			}
+		if !reflect.DeepEqual(wantBody, gotBytes) {
+			return fmt.Errorf("want.Body=%s got.Body=%s", wantBody, gotBytes)
 		}
 	}
 
