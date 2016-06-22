@@ -15,31 +15,38 @@
 package etcdserver
 
 import (
+	"sync"
+
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 type authApplierV3 struct {
 	applierV3
-	as   auth.AuthStore
+	as auth.AuthStore
+
+	// mu serializes Apply so that user isn't corrupted and so that
+	// serialized requests don't leak data from TOCTOU errors
+	mu   sync.Mutex
 	user string
 }
 
 func newAuthApplierV3(as auth.AuthStore, base applierV3) *authApplierV3 {
-	return &authApplierV3{base, as, ""}
+	return &authApplierV3{applierV3: base, as: as}
 }
 
 func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
-	var user string
+	aa.mu.Lock()
+	defer aa.mu.Unlock()
 	if r.Header != nil {
 		// backward-compatible with pre-3.0 releases when internalRaftRequest
 		// does not have header field
-		user = r.Header.Username
+		aa.user = r.Header.Username
 	}
-	if needAdminPermission(r) && !aa.as.IsAdminPermitted(user) {
+	if needAdminPermission(r) && !aa.as.IsAdminPermitted(aa.user) {
+		aa.user = ""
 		return &applyResult{err: auth.ErrPermissionDenied}
 	}
-	aa.user = user
 	ret := aa.applierV3.Apply(r)
 	aa.user = ""
 	return ret
