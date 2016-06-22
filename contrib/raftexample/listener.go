@@ -42,9 +42,9 @@ func (ln stoppableListener) Accept() (c net.Conn, err error) {
 		tc, err := ln.AcceptTCP()
 		if err != nil {
 			errc <- err
-		} else {
-			connc <- tc
+			return
 		}
+		connc <- tc
 	}()
 	select {
 	case <-ln.stopc:

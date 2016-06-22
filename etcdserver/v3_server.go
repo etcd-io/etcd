@@ -81,7 +81,8 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	var err error
 
 	if r.Serializable {
-		user, err := s.usernameFromCtx(ctx)
+		var user string
+		user, err = s.usernameFromCtx(ctx)
 		if err != nil {
 			return nil, err
 		}
