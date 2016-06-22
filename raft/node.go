@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ package raft
 import (
 	"errors"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
+	"golang.org/x/net/context"
 )
 
 type SnapshotStatus int
@@ -114,11 +114,37 @@ type Node interface {
 	ProposeConfChange(ctx context.Context, cc pb.ConfChange) error
 	// Step advances the state machine using the given message. ctx.Err() will be returned, if any.
 	Step(ctx context.Context, msg pb.Message) error
+
 	// Ready returns a channel that returns the current point-in-time state.
-	// Users of the Node must call Advance after applying the state returned by Ready.
+	// Users of the Node must call Advance after retrieving the state returned by Ready.
+	//
+	// NOTE: No committed entries from the next Ready may be applied until all committed entries
+	// and snapshots from the previous one have finished.
 	Ready() <-chan Ready
-	// Advance notifies the Node that the application has applied and saved progress up to the last Ready.
+
+	// Advance notifies the Node that the application has saved progress up to the last Ready.
 	// It prepares the node to return the next available Ready.
+	//
+	// The application should generally call Advance after it applies the entries in last Ready.
+	//
+	// However, as an optimization, the application may call Advance while it is applying the
+	// commands. For example. when the last Ready contains a snapshot, the application might take
+	// a long time to apply the snapshot data. To continue receiving Ready without blocking raft
+	// progress, it can call Advance before finish applying the last ready. To make this optimization
+	// work safely, when the application receives a Ready with softState.RaftState equal to Candidate
+	// it MUST apply all pending configuration changes if there is any.
+	//
+	// Here is a simple solution that waiting for ALL pending entries to get applied.
+	// ```
+	// ...
+	// rd := <-n.Ready()
+	// go apply(rd.CommittedEntries) // optimization to apply asynchronously in FIFO order.
+	// if rd.SoftState.RaftState == StateCandidate {
+	//     waitAllApplied()
+	// }
+	// n.Advance()
+	// ...
+	//```
 	Advance()
 	// ApplyConfChange applies config change to the local node.
 	// Returns an opaque ConfState protobuf which must be recorded
@@ -127,7 +153,7 @@ type Node interface {
 	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
 	// Status returns the current status of the raft state machine.
 	Status() Status
-	// Report reports the given node is not reachable for the last send.
+	// ReportUnreachable reports the given node is not reachable for the last send.
 	ReportUnreachable(id uint64)
 	// ReportSnapshot reports the status of the sent snapshot.
 	ReportSnapshot(id uint64, status SnapshotStatus)
@@ -145,7 +171,7 @@ type Peer struct {
 func StartNode(c *Config, peers []Peer) Node {
 	r := newRaft(c)
 	// become the follower at term 1 and apply initial configuration
-	// entires of term 1
+	// entries of term 1
 	r.becomeFollower(1, None)
 	for _, peer := range peers {
 		cc := pb.ConfChange{Type: pb.ConfChangeAddNode, NodeID: peer.ID, Context: peer.Context}
@@ -160,7 +186,6 @@ func StartNode(c *Config, peers []Peer) Node {
 	// TODO(bdarnell): These entries are still unstable; do we need to preserve
 	// the invariant that committed < unstable?
 	r.raftLog.committed = r.raftLog.lastIndex()
-	r.Commit = r.raftLog.committed
 	// Now apply them, mainly so that the application can call Campaign
 	// immediately after StartNode in tests. Note that these nodes will
 	// be added to raft twice: here and when the application's Ready
@@ -175,6 +200,7 @@ func StartNode(c *Config, peers []Peer) Node {
 	}
 
 	n := newNode()
+	n.logger = c.Logger
 	go n.run(r)
 	return &n
 }
@@ -187,6 +213,7 @@ func RestartNode(c *Config) Node {
 	r := newRaft(c)
 
 	n := newNode()
+	n.logger = c.Logger
 	go n.run(r)
 	return &n
 }
@@ -203,6 +230,8 @@ type node struct {
 	done       chan struct{}
 	stop       chan struct{}
 	status     chan chan Status
+
+	logger Logger
 }
 
 func newNode() node {
@@ -213,10 +242,13 @@ func newNode() node {
 		confstatec: make(chan pb.ConfState),
 		readyc:     make(chan Ready),
 		advancec:   make(chan struct{}),
-		tickc:      make(chan struct{}),
-		done:       make(chan struct{}),
-		stop:       make(chan struct{}),
-		status:     make(chan chan Status),
+		// make tickc a buffered chan, so raft node can buffer some ticks when the node
+		// is busy processing raft messages. Raft node will resume process buffered
+		// ticks when it becomes idle.
+		tickc:  make(chan struct{}, 128),
+		done:   make(chan struct{}),
+		stop:   make(chan struct{}),
+		status: make(chan chan Status),
 	}
 }
 
@@ -260,13 +292,13 @@ func (n *node) run(r *raft) {
 		if lead != r.lead {
 			if r.hasLeader() {
 				if lead == None {
-					raftLogger.Infof("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
+					r.logger.Infof("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
 				} else {
-					raftLogger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
+					r.logger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
 				}
 				propc = n.propc
 			} else {
-				raftLogger.Infof("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
+				r.logger.Infof("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
 				propc = nil
 			}
 			lead = r.lead
@@ -281,7 +313,7 @@ func (n *node) run(r *raft) {
 			r.Step(m)
 		case m := <-n.recvc:
 			// filter out response message from unknown From.
-			if _, ok := r.prs[m.From]; ok || !IsResponseMsg(m) {
+			if _, ok := r.prs[m.From]; ok || !IsResponseMsg(m.Type) {
 				r.Step(m) // raft never returns an error
 			}
 		case cc := <-n.confc:
@@ -300,7 +332,7 @@ func (n *node) run(r *raft) {
 				// block incoming proposal when local node is
 				// removed
 				if cc.NodeID == r.id {
-					n.propc = nil
+					propc = nil
 				}
 				r.removeNode(cc.NodeID)
 			case pb.ConfChangeUpdateNode:
@@ -356,6 +388,8 @@ func (n *node) Tick() {
 	select {
 	case n.tickc <- struct{}{}:
 	case <-n.done:
+	default:
+		n.logger.Warningf("A tick missed to fire. Node blocks too long!")
 	}
 }
 
@@ -367,7 +401,7 @@ func (n *node) Propose(ctx context.Context, data []byte) error {
 
 func (n *node) Step(ctx context.Context, m pb.Message) error {
 	// ignore unexpected local messages receiving over network
-	if IsLocalMsg(m) {
+	if IsLocalMsg(m.Type) {
 		// TODO: return an error?
 		return nil
 	}
@@ -453,8 +487,8 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	if softSt := r.softState(); !softSt.equal(prevSoftSt) {
 		rd.SoftState = softSt
 	}
-	if !isHardStateEqual(r.HardState, prevHardSt) {
-		rd.HardState = r.HardState
+	if hardSt := r.hardState(); !isHardStateEqual(hardSt, prevHardSt) {
+		rd.HardState = hardSt
 	}
 	if r.raftLog.unstable.snapshot != nil {
 		rd.Snapshot = *r.raftLog.unstable.snapshot

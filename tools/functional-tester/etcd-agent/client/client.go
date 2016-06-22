@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@ package client
 import "net/rpc"
 
 type Status struct {
+	// State gives the human-readable status of an agent (e.g., "started" or "terminated")
+	State string
+
 	// TODO: gather more informations
 	// TODO: memory usage, raft information, etc..
-	State string
 }
 
 type Agent interface {
@@ -38,6 +40,10 @@ type Agent interface {
 	DropPort(port int) error
 	// RecoverPort stops dropping all network packets at the given port.
 	RecoverPort(port int) error
+	// SetLatency slows down network by introducing latency.
+	SetLatency(ms, rv int) error
+	// RemoveLatency removes latency introduced by SetLatency.
+	RemoveLatency() error
 	// Status returns the status of etcd on the agent
 	Status() (Status, error)
 }
@@ -93,13 +99,18 @@ func (a *agent) RecoverPort(port int) error {
 	return a.rpcClient.Call("Agent.RPCRecoverPort", port, nil)
 }
 
+func (a *agent) SetLatency(ms, rv int) error {
+	return a.rpcClient.Call("Agent.RPCSetLatency", []int{ms, rv}, nil)
+}
+
+func (a *agent) RemoveLatency() error {
+	return a.rpcClient.Call("Agent.RPCRemoveLatency", struct{}{}, nil)
+}
+
 func (a *agent) Status() (Status, error) {
 	var s Status
 	err := a.rpcClient.Call("Agent.RPCStatus", struct{}{}, &s)
-	if err != nil {
-		return s, err
-	}
-	return s, nil
+	return s, err
 }
 
 func (a *agent) ID() uint64 {

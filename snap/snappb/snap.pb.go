@@ -13,17 +13,24 @@
 */
 package snappb
 
-import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
-import math "math"
+import (
+	"fmt"
 
-// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto"
+	proto "github.com/gogo/protobuf/proto"
+
+	math "math"
+)
 
 import io "io"
-import fmt "fmt"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.GoGoProtoPackageIsVersion1
 
 type Snapshot struct {
 	Crc              uint32 `protobuf:"varint,1,opt,name=crc" json:"crc"`
@@ -31,10 +38,14 @@ type Snapshot struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *Snapshot) Reset()         { *m = Snapshot{} }
-func (m *Snapshot) String() string { return proto.CompactTextString(m) }
-func (*Snapshot) ProtoMessage()    {}
+func (m *Snapshot) Reset()                    { *m = Snapshot{} }
+func (m *Snapshot) String() string            { return proto.CompactTextString(m) }
+func (*Snapshot) ProtoMessage()               {}
+func (*Snapshot) Descriptor() ([]byte, []int) { return fileDescriptorSnap, []int{0} }
 
+func init() {
+	proto.RegisterType((*Snapshot)(nil), "snappb.snapshot")
+}
 func (m *Snapshot) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -123,8 +134,12 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowSnap
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -137,6 +152,12 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: snapshot: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: snapshot: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -144,6 +165,9 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			}
 			m.Crc = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSnap
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -160,6 +184,9 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowSnap
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -177,18 +204,13 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Data = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Data = append(m.Data[:0], data[iNdEx:postIndex]...)
+			if m.Data == nil {
+				m.Data = []byte{}
+			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipSnap(data[iNdEx:])
 			if err != nil {
 				return err
@@ -204,6 +226,9 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func skipSnap(data []byte) (n int, err error) {
@@ -212,6 +237,9 @@ func skipSnap(data []byte) (n int, err error) {
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowSnap
+			}
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
@@ -225,7 +253,10 @@ func skipSnap(data []byte) (n int, err error) {
 		wireType := int(wire & 0x7)
 		switch wireType {
 		case 0:
-			for {
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowSnap
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -241,6 +272,9 @@ func skipSnap(data []byte) (n int, err error) {
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowSnap
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -261,6 +295,9 @@ func skipSnap(data []byte) (n int, err error) {
 				var innerWire uint64
 				var start int = iNdEx
 				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowSnap
+					}
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
@@ -296,4 +333,17 @@ func skipSnap(data []byte) (n int, err error) {
 
 var (
 	ErrInvalidLengthSnap = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowSnap   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorSnap = []byte{
+	// 118 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2a, 0xce, 0x4b, 0x2c,
+	0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x03, 0xb1, 0x0b, 0x92, 0xa4, 0x44, 0xd2, 0xf3,
+	0xd3, 0xf3, 0xc1, 0x42, 0xfa, 0x20, 0x16, 0x44, 0x56, 0xc9, 0x8c, 0x8b, 0x03, 0x24, 0x5f, 0x9c,
+	0x91, 0x5f, 0x22, 0x24, 0xc6, 0xc5, 0x9c, 0x5c, 0x94, 0x2c, 0xc1, 0xa8, 0xc0, 0xa8, 0xc1, 0xeb,
+	0xc4, 0x72, 0xe2, 0x9e, 0x3c, 0x43, 0x10, 0x48, 0x40, 0x48, 0x88, 0x8b, 0x25, 0x25, 0xb1, 0x24,
+	0x51, 0x82, 0x09, 0x28, 0xc1, 0x13, 0x04, 0x66, 0x3b, 0x09, 0x9c, 0x78, 0x28, 0xc7, 0x70, 0xe2,
+	0x91, 0x1c, 0xe3, 0x05, 0x20, 0x7e, 0x00, 0xc4, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x0d, 0x03,
+	0x97, 0xa7, 0x74, 0x00, 0x00, 0x00,
+}

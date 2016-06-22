@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,9 @@ type Storage interface {
 	Save(st raftpb.HardState, ents []raftpb.Entry) error
 	// SaveSnap function saves snapshot to the underlying stable storage.
 	SaveSnap(snap raftpb.Snapshot) error
+	// DBFilePath returns the file path of database snapshot saved with given
+	// id.
+	DBFilePath(id uint64) (string, error)
 	// Close closes the Storage and performs finalization.
 	Close() error
 }
@@ -63,11 +66,7 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 	if err != nil {
 		return err
 	}
-	err = st.WAL.ReleaseLockTo(snap.Metadata.Index)
-	if err != nil {
-		return err
-	}
-	return nil
+	return st.WAL.ReleaseLockTo(snap.Metadata.Index)
 }
 
 func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
@@ -104,7 +103,7 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 	return
 }
 
-// upgradeWAL converts an older version of the etcdServer data to the newest version.
+// upgradeDataDir converts an older version of the etcdServer data to the newest version.
 // It must ensure that, after upgrading, the most recent version is present.
 func upgradeDataDir(baseDataDir string, name string, ver version.DataDirVersion) error {
 	switch ver {

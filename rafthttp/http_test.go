@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/version"
 )
 
@@ -149,7 +151,7 @@ func TestServeRaftPrefix(t *testing.T) {
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		req.Header.Set("X-Server-Version", version.Version)
 		rw := httptest.NewRecorder()
-		h := newPipelineHandler(tt.p, types.ID(0))
+		h := newPipelineHandler(NewNopTransporter(), tt.p, types.ID(0))
 		h.ServeHTTP(rw, req)
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
@@ -182,7 +184,8 @@ func TestServeRaftStreamPrefix(t *testing.T) {
 
 		peer := newFakePeer()
 		peerGetter := &fakePeerGetter{peers: map[types.ID]Peer{types.ID(1): peer}}
-		h := newStreamHandler(peerGetter, &fakeRaft{}, types.ID(2), types.ID(1))
+		tr := &Transport{}
+		h := newStreamHandler(tr, peerGetter, &fakeRaft{}, types.ID(2), types.ID(1))
 
 		rw := httptest.NewRecorder()
 		go h.ServeHTTP(rw, req)
@@ -253,7 +256,7 @@ func TestServeRaftStreamPrefixBad(t *testing.T) {
 			"1",
 			http.StatusNotFound,
 		},
-		// non-existant peer
+		// non-existent peer
 		{
 			"GET",
 			RaftStreamPrefix + "/message/2",
@@ -295,9 +298,10 @@ func TestServeRaftStreamPrefixBad(t *testing.T) {
 		req.Header.Set("X-Server-Version", version.Version)
 		req.Header.Set("X-Raft-To", tt.remote)
 		rw := httptest.NewRecorder()
+		tr := &Transport{}
 		peerGetter := &fakePeerGetter{peers: map[types.ID]Peer{types.ID(1): newFakePeer()}}
 		r := &fakeRaft{removedID: removedID}
-		h := newStreamHandler(peerGetter, r, types.ID(1), types.ID(1))
+		h := newStreamHandler(tr, peerGetter, r, types.ID(1), types.ID(1))
 		h.ServeHTTP(rw, req)
 
 		if rw.Code != tt.wcode {
@@ -340,19 +344,23 @@ type fakePeerGetter struct {
 func (pg *fakePeerGetter) Get(id types.ID) Peer { return pg.peers[id] }
 
 type fakePeer struct {
-	msgs  []raftpb.Message
-	urls  types.URLs
-	connc chan *outgoingConn
+	msgs     []raftpb.Message
+	snapMsgs []snap.Message
+	peerURLs types.URLs
+	connc    chan *outgoingConn
 }
 
 func newFakePeer() *fakePeer {
+	fakeURL, _ := url.Parse("http://localhost")
 	return &fakePeer{
-		connc: make(chan *outgoingConn, 1),
+		connc:    make(chan *outgoingConn, 1),
+		peerURLs: types.URLs{*fakeURL},
 	}
 }
 
 func (pr *fakePeer) send(m raftpb.Message)                 { pr.msgs = append(pr.msgs, m) }
-func (pr *fakePeer) update(urls types.URLs)                { pr.urls = urls }
+func (pr *fakePeer) sendSnap(m snap.Message)               { pr.snapMsgs = append(pr.snapMsgs, m) }
+func (pr *fakePeer) update(urls types.URLs)                { pr.peerURLs = urls }
 func (pr *fakePeer) attachOutgoingConn(conn *outgoingConn) { pr.connc <- conn }
 func (pr *fakePeer) activeSince() time.Time                { return time.Time{} }
 func (pr *fakePeer) stop()                                 {}

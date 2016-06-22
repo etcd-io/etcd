@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,30 +40,37 @@ const (
 type Stats struct {
 
 	// Number of get requests
+
 	GetSuccess uint64 `json:"getsSuccess"`
 	GetFail    uint64 `json:"getsFail"`
 
 	// Number of sets requests
+
 	SetSuccess uint64 `json:"setsSuccess"`
 	SetFail    uint64 `json:"setsFail"`
 
 	// Number of delete requests
+
 	DeleteSuccess uint64 `json:"deleteSuccess"`
 	DeleteFail    uint64 `json:"deleteFail"`
 
 	// Number of update requests
+
 	UpdateSuccess uint64 `json:"updateSuccess"`
 	UpdateFail    uint64 `json:"updateFail"`
 
 	// Number of create requests
+
 	CreateSuccess uint64 `json:"createSuccess"`
 	CreateFail    uint64 `json:"createFail"`
 
 	// Number of testAndSet requests
+
 	CompareAndSwapSuccess uint64 `json:"compareAndSwapSuccess"`
 	CompareAndSwapFail    uint64 `json:"compareAndSwapFail"`
 
 	// Number of compareAndDelete requests
+
 	CompareAndDeleteSuccess uint64 `json:"compareAndDeleteSuccess"`
 	CompareAndDeleteFail    uint64 `json:"compareAndDeleteFail"`
 

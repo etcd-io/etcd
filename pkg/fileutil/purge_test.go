@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,29 +32,50 @@ func TestPurgeFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i := 0; i < 5; i++ {
-		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		var f *os.File
+		f, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
+		f.Close()
 	}
 
 	stop := make(chan struct{})
+
+	// keep at most 3 most recent files
 	errch := PurgeFile(dir, "test", 3, time.Millisecond, stop)
+
+	// create 5 more files
 	for i := 5; i < 10; i++ {
-		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		var f *os.File
+		f, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
+		f.Close()
 		time.Sleep(10 * time.Millisecond)
 	}
-	fnames, err := ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
+
+	// purge routine should purge 7 out of 10 files and only keep the
+	// 3 most recent ones.
+	// Wait for purging for at most 300ms.
+	var fnames []string
+	for i := 0; i < 30; i++ {
+		fnames, err = ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(fnames) <= 3 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	wnames := []string{"7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
 	}
+
+	// no error should be reported from purge routine
 	select {
 	case err := <-errch:
 		t.Errorf("unexpected purge error %v", err)
@@ -63,7 +84,7 @@ func TestPurgeFile(t *testing.T) {
 	close(stop)
 }
 
-func TestPurgeFileHoldingLock(t *testing.T) {
+func TestPurgeFileHoldingLockFile(t *testing.T) {
 	dir, err := ioutil.TempDir("", "purgefile")
 	if err != nil {
 		t.Fatal(err)
@@ -71,57 +92,66 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i := 0; i < 10; i++ {
-		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		var f *os.File
+		f, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
+		f.Close()
 	}
 
 	// create a purge barrier at 5
-	l, err := NewLock(path.Join(dir, fmt.Sprintf("%d.test", 5)))
-	err = l.Lock()
+	p := path.Join(dir, fmt.Sprintf("%d.test", 5))
+	l, err := LockFile(p, os.O_WRONLY, PrivateFileMode)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	stop := make(chan struct{})
 	errch := PurgeFile(dir, "test", 3, time.Millisecond, stop)
-	time.Sleep(20 * time.Millisecond)
 
-	fnames, err := ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
+	var fnames []string
+	for i := 0; i < 10; i++ {
+		fnames, err = ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(fnames) <= 5 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	wnames := []string{"5.test", "6.test", "7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
 	}
+
 	select {
-	case err := <-errch:
+	case err = <-errch:
 		t.Errorf("unexpected purge error %v", err)
 	case <-time.After(time.Millisecond):
 	}
 
 	// remove the purge barrier
-	err = l.Unlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = l.Destroy()
-	if err != nil {
+	if err = l.Close(); err != nil {
 		t.Fatal(err)
 	}
 
-	time.Sleep(20 * time.Millisecond)
-
-	fnames, err = ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
+	for i := 0; i < 10; i++ {
+		fnames, err = ReadDir(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(fnames) <= 3 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	wnames = []string{"7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
 	}
+
 	select {
 	case err := <-errch:
 		t.Errorf("unexpected purge error %v", err)

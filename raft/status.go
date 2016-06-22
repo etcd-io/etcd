@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ type Status struct {
 // getStatus gets a copy of the current raft status.
 func getStatus(r *raft) Status {
 	s := Status{ID: r.id}
-	s.HardState = r.HardState
+	s.HardState = r.hardState()
 	s.SoftState = *r.softState()
 
 	s.Applied = r.raftLog.applied
@@ -48,6 +48,7 @@ func getStatus(r *raft) Status {
 	return s
 }
 
+// MarshalJSON translates the raft status into JSON.
 // TODO: try to simplify this by introducing ID type into raft
 func (s Status) MarshalJSON() ([]byte, error) {
 	j := fmt.Sprintf(`{"id":"%x","term":%d,"vote":"%x","commit":%d,"lead":"%x","raftState":%q,"progress":{`,

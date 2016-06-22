@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package etcdmain
 
 import (
 	// import procfs FIX godeps.
-	_ "github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/procfs"
+	_ "github.com/prometheus/procfs"
 )
 
 const (
