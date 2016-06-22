@@ -20,6 +20,7 @@ import (
 	"path"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
@@ -129,7 +130,7 @@ func makeMemberDir(dir string) error {
 	case !os.IsNotExist(err):
 		return err
 	}
-	if err := os.MkdirAll(membdir, 0700); err != nil {
+	if err := fileutil.CreateDirAll(membdir); err != nil {
 		return err
 	}
 	names := []string{"snap", "wal"}
