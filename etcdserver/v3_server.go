@@ -124,11 +124,21 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	if isTxnSerializable(r) {
-		return s.applyV3.Txn(r)
-	}
+	var result *applyResult
+	var err error
 
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Txn: r})
+	if isTxnSerializable(r) {
+		user, err := s.usernameFromCtx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		result = s.applyV3.Apply(
+			&pb.InternalRaftRequest{
+				Header: &pb.RequestHeader{Username: user},
+				Txn:    r})
+	} else {
+		result, err = s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Txn: r})
+	}
 	if err != nil {
 		return nil, err
 	}
