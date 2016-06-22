@@ -163,24 +163,35 @@ func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, pe
 
 func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
 	// assumption: tx is Lock()ed
-	_, ok := as.rangePermCache[userName]
+	as.rangePermCacheMu.RLock()
+	cached, ok := as.rangePermCache[userName]
+	as.rangePermCacheMu.RUnlock()
 	if !ok {
 		perms := getMergedPerms(tx, userName)
 		if perms == nil {
 			plog.Errorf("failed to create a unified permission of user %s", userName)
 			return false
 		}
+
+		as.rangePermCacheMu.Lock()
 		as.rangePermCache[userName] = perms
+		as.rangePermCacheMu.Unlock()
+
+		cached = perms
 	}
 
-	return checkKeyPerm(as.rangePermCache[userName], key, rangeEnd, permtyp)
+	return checkKeyPerm(cached, key, rangeEnd, permtyp)
 }
 
 func (as *authStore) clearCachedPerm() {
+	as.rangePermCacheMu.Lock()
+	defer as.rangePermCacheMu.Unlock()
 	as.rangePermCache = make(map[string]*unifiedRangePermissions)
 }
 
 func (as *authStore) invalidateCachedPerm(userName string) {
+	as.rangePermCacheMu.Lock()
+	defer as.rangePermCacheMu.Unlock()
 	delete(as.rangePermCache, userName)
 }
 
