@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -77,6 +78,27 @@ func TestReadDir(t *testing.T) {
 	wfs := []string{"abc", "def", "ghi", "xyz"}
 	if !reflect.DeepEqual(fs, wfs) {
 		t.Fatalf("ReadDir: got %v, want %v", fs, wfs)
+	}
+}
+
+func TestCreateDirAll(t *testing.T) {
+	tmpdir, err := ioutil.TempDir(os.TempDir(), "foo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpdir)
+
+	tmpdir2 := filepath.Join(tmpdir, "testdir")
+	if err = CreateDirAll(tmpdir2); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = ioutil.WriteFile(filepath.Join(tmpdir2, "text.txt"), []byte("test text"), PrivateFileMode); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = CreateDirAll(tmpdir2); err == nil || !strings.Contains(err.Error(), "to be empty, got") {
+		t.Fatalf("unexpected error %v", err)
 	}
 }
 

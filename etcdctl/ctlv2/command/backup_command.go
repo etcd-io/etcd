@@ -17,11 +17,11 @@ package command
 import (
 	"fmt"
 	"log"
-	"os"
 	"path"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/snap"
@@ -65,7 +65,7 @@ func handleBackup(c *cli.Context) error {
 		destWAL = path.Join(c.String("backup-dir"), "member", "wal")
 	}
 
-	if err := os.MkdirAll(destSnap, 0700); err != nil {
+	if err := fileutil.CreateDirAll(destSnap); err != nil {
 		log.Fatalf("failed creating backup snapshot dir %v: %v", destSnap, err)
 	}
 	ss := snap.New(srcSnap)
