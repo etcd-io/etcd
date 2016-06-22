@@ -200,7 +200,7 @@ func initialClusterFromName(name string) string {
 
 // makeWAL creates a WAL for the initial cluster
 func makeWAL(waldir string, cl *membership.RaftCluster) {
-	if err := os.MkdirAll(waldir, 0755); err != nil {
+	if err := fileutil.CreateDirAll(waldir); err != nil {
 		ExitWithError(ExitIO, err)
 	}
 
@@ -277,7 +277,7 @@ func makeDB(snapdir, dbfile string) {
 		ExitWithError(ExitIO, err)
 	}
 
-	if err := os.MkdirAll(snapdir, 0755); err != nil {
+	if err := fileutil.CreateDirAll(snapdir); err != nil {
 		ExitWithError(ExitIO, err)
 	}
 
