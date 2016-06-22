@@ -16,6 +16,7 @@
 package fileutil
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -63,11 +64,32 @@ func ReadDir(dirpath string) ([]string, error) {
 // TouchDirAll is similar to os.MkdirAll. It creates directories with 0700 permission if any directory
 // does not exists. TouchDirAll also ensures the given directory is writable.
 func TouchDirAll(dir string) error {
+	// If path is already a directory, MkdirAll does nothing
+	// and returns nil.
 	err := os.MkdirAll(dir, PrivateDirMode)
-	if err != nil && err != os.ErrExist {
+	if err != nil {
+		// if mkdirAll("a/text") and "text" is not
+		// a directory, this will return syscall.ENOTDIR
 		return err
 	}
 	return IsDirWriteable(dir)
+}
+
+// CreateDirAll is similar to TouchDirAll but returns error
+// if the deepest directory was not empty.
+func CreateDirAll(dir string) error {
+	err := TouchDirAll(dir)
+	if err == nil {
+		var ns []string
+		ns, err = ReadDir(dir)
+		if err != nil {
+			return err
+		}
+		if len(ns) != 0 {
+			err = fmt.Errorf("expected %q to be empty, got %q", dir, ns)
+		}
+	}
+	return err
 }
 
 func Exist(name string) bool {
