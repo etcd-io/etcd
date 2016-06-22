@@ -146,6 +146,25 @@ function fmt_tests {
 		echo -e "license header checking failed:\n${licRes}"
 		exit 255
 	fi
+
+	echo "Checking commit titles..."
+	git log master..HEAD --oneline | while read l; do
+		pfx=`echo "$l" | cut -f2 -d' '`
+		if [ "$pfx" == "Merge" ]; then
+			# ignore "Merge pull" commits
+			continue
+		fi
+		if [ "$pfx" == "Revert" ]; then
+			# ignore revert commits
+			continue
+		fi
+		if ! [[ "$pfx" =~ :$ ]]; then
+			echo "$pfx"...
+			echo "Expected commit title format '<package>: <description>'"
+			echo "Got: $l"
+			exit 255
+		fi
+	done
 }
 
 function dep_tests {
