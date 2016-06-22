@@ -52,8 +52,43 @@ func ctlV3AuthEnable(cx ctlCtx) error {
 }
 
 func authDisableTest(cx ctlCtx) {
+	// a key that isn't granted to test-user
+	if err := ctlV3Put(cx, "hoo", "a", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// test-user doesn't have the permission, it must fail
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3PutFailPerm(cx, "hoo", "bar"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
 	if err := ctlV3AuthDisable(cx); err != nil {
 		cx.t.Fatalf("authDisableTest ctlV3AuthDisable error (%v)", err)
+	}
+
+	// now auth fails unconditionally, note that failed RPC is Authenticate(), not Put()
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3PutFailAuthDisabled(cx, "hoo", "bar"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// now the key can be accessed
+	cx.user, cx.pass = "", ""
+	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+	// confirm put succeeded
+	if err := ctlV3Get(cx, []string{"hoo"}, []kv{{"hoo", "bar"}}...); err != nil {
+		cx.t.Fatal(err)
 	}
 }
 
@@ -280,6 +315,10 @@ func ctlV3PutFailAuth(cx ctlCtx, key, val string) error {
 
 func ctlV3PutFailPerm(cx ctlCtx, key, val string) error {
 	return spawnWithExpect(append(cx.PrefixArgs(), "put", key, val), "permission denied")
+}
+
+func ctlV3PutFailAuthDisabled(cx ctlCtx, key, val string) error {
+	return spawnWithExpect(append(cx.PrefixArgs(), "put", key, val), "authentication is not enabled")
 }
 
 func ctlV3GetFailPerm(cx ctlCtx, key string) error {
