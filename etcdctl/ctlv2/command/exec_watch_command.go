@@ -77,7 +77,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 
 	index := 0
 	if c.Int("after-index") != 0 {
-		index = c.Int("after-index") + 1
+		index = c.Int("after-index")
 	}
 
 	recursive := c.Bool("recursive")
