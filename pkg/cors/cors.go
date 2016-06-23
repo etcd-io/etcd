@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package cors handles cross-origin HTTP requests (CORS).
 package cors
 
 import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 )
 
 type CORSInfo map[string]bool
 
-// CORSInfo implements the flag.Value interface to allow users to define a list of CORS origins
+// Set implements the flag.Value interface to allow users to define a list of CORS origins
 func (ci *CORSInfo) Set(s string) error {
 	m := make(map[string]bool)
 	for _, v := range strings.Split(s, ",") {
@@ -48,6 +50,7 @@ func (ci *CORSInfo) String() string {
 	for k := range *ci {
 		o = append(o, k)
 	}
+	sort.StringSlice(o).Sort()
 	return strings.Join(o, ",")
 }
 

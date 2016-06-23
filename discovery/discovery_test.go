@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/jonboulle/clockwork"
+	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/client"
 )
@@ -329,9 +329,9 @@ func TestCreateSelf(t *testing.T) {
 		{c, nil},
 		// client.create returns an error
 		{errc, errc.err},
-		// watcher.next retuens an error
+		// watcher.next returns an error
 		{errwc, errw.err},
-		// parse key exist error to duplciate ID error
+		// parse key exist error to duplicate ID error
 		{errdupc, ErrDuplicateID},
 	}
 
@@ -410,14 +410,14 @@ func TestSortableNodes(t *testing.T) {
 	for _, n := range sns.Nodes {
 		cis = append(cis, int(n.CreatedIndex))
 	}
-	if sort.IntsAreSorted(cis) != true {
+	if !sort.IntsAreSorted(cis) {
 		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
 	}
 	cis = make([]int, 0)
 	for _, n := range ns {
 		cis = append(cis, int(n.CreatedIndex))
 	}
-	if sort.IntsAreSorted(cis) != true {
+	if !sort.IntsAreSorted(cis) {
 		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
 	}
 }

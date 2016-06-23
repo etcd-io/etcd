@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,7 +65,7 @@ func TestNetworkDelay(t *testing.T) {
 	}
 
 	w := time.Duration(float64(sent)*delayrate/2) * delay
-	// there are pretty overhead in the send call, since it genarete random numbers.
+	// there is some overhead in the send call since it generates random numbers.
 	if total < w {
 		t.Errorf("total = %v, want > %v", total, w)
 	}

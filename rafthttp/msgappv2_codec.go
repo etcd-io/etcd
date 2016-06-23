@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ const (
 
 // msgappv2 stream sends three types of message: linkHeartbeatMessage,
 // AppEntries and MsgApp. AppEntries is the MsgApp that is sent in
-// replicate state in raft, whose index and term are fully predicatable.
+// replicate state in raft, whose index and term are fully predictable.
 //
 // Data format of linkHeartbeatMessage:
 // | offset | bytes | description |
@@ -58,7 +58,7 @@ const (
 // Data format of MsgApp:
 // | offset | bytes | description |
 // +--------+-------+-------------+
-// | 0      | 1     | \x01        |
+// | 0      | 1     | \x02        |
 // | 1      | 8     | length of encoded message |
 // | 9      | n     | encoded message |
 type msgAppV2Encoder struct {

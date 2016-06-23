@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 // LeaderStats is used by the leader in an etcd cluster, and encapsulates
 // statistics about communication with its followers
 type LeaderStats struct {
+	// Leader is the ID of the leader in the etcd cluster.
 	// TODO(jonboulle): clarify that these are IDs, not names
 	Leader    string                    `json:"leader"`
 	Followers map[string]*FollowerStats `json:"followers"`

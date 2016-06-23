@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ type Event struct {
 	Node      *NodeExtern `json:"node,omitempty"`
 	PrevNode  *NodeExtern `json:"prevNode,omitempty"`
 	EtcdIndex uint64      `json:"-"`
+	Refresh   bool        `json:"refresh,omitempty"`
 }
 
 func newEvent(action string, key string, modifiedIndex, createdIndex uint64) *Event {
@@ -49,12 +50,7 @@ func (e *Event) IsCreated() bool {
 	if e.Action == Create {
 		return true
 	}
-
-	if e.Action == Set && e.PrevNode == nil {
-		return true
-	}
-
-	return false
+	return e.Action == Set && e.PrevNode == nil
 }
 
 func (e *Event) Index() uint64 {
@@ -68,4 +64,8 @@ func (e *Event) Clone() *Event {
 		Node:      e.Node.Clone(),
 		PrevNode:  e.PrevNode.Clone(),
 	}
+}
+
+func (e *Event) SetRefresh() {
+	e.Refresh = true
 }

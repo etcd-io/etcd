@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,20 +16,25 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	etcdclient "github.com/coreos/etcd/client"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+
+	clientv2 "github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/clientv3"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
 const peerURLPort = 2380
 
 type cluster struct {
+	v2Only bool // to be deprecated
+
 	agentEndpoints       []string
 	datadir              string
 	stressKeySize        int
@@ -39,6 +44,7 @@ type cluster struct {
 	Agents     []client.Agent
 	Stressers  []Stresser
 	Names      []string
+	GRPCURLs   []string
 	ClientURLs []string
 }
 
@@ -47,8 +53,9 @@ type ClusterStatus struct {
 }
 
 // newCluster starts and returns a new cluster. The caller should call Terminate when finished, to shut it down.
-func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int) (*cluster, error) {
+func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int, isV2Only bool) (*cluster, error) {
 	c := &cluster{
+		v2Only:               isV2Only,
 		agentEndpoints:       agentEndpoints,
 		datadir:              datadir,
 		stressKeySize:        stressKeySize,
@@ -65,6 +72,7 @@ func (c *cluster) Bootstrap() error {
 
 	agents := make([]client.Agent, size)
 	names := make([]string, size)
+	grpcURLs := make([]string, size)
 	clientURLs := make([]string, size)
 	peerURLs := make([]string, size)
 	members := make([]string, size)
@@ -81,6 +89,7 @@ func (c *cluster) Bootstrap() error {
 		if err != nil {
 			return err
 		}
+		grpcURLs[i] = fmt.Sprintf("%s:2379", host)
 		clientURLs[i] = fmt.Sprintf("http://%s:2379", host)
 		peerURLs[i] = fmt.Sprintf("http://%s:%d", host, peerURLPort)
 
@@ -90,18 +99,22 @@ func (c *cluster) Bootstrap() error {
 	token := fmt.Sprint(rand.Int())
 
 	for i, a := range agents {
-		_, err := a.Start(
-			"-name", names[i],
-			"-data-dir", c.datadir,
-			"-advertise-client-urls", clientURLs[i],
-			"-listen-client-urls", clientURLs[i],
-			"-initial-advertise-peer-urls", peerURLs[i],
-			"-listen-peer-urls", peerURLs[i],
-			"-initial-cluster-token", token,
-			"-initial-cluster", clusterStr,
-			"-initial-cluster-state", "new",
-		)
-		if err != nil {
+		flags := []string{
+			"--name", names[i],
+			"--data-dir", c.datadir,
+
+			"--listen-client-urls", clientURLs[i],
+			"--advertise-client-urls", clientURLs[i],
+
+			"--listen-peer-urls", peerURLs[i],
+			"--initial-advertise-peer-urls", peerURLs[i],
+
+			"--initial-cluster-token", token,
+			"--initial-cluster", clusterStr,
+			"--initial-cluster-state", "new",
+		}
+
+		if _, err := a.Start(flags...); err != nil {
 			// cleanup
 			for j := 0; j < i; j++ {
 				agents[j].Terminate()
@@ -110,22 +123,39 @@ func (c *cluster) Bootstrap() error {
 		}
 	}
 
-	stressers := make([]Stresser, len(clientURLs))
-	for i, u := range clientURLs {
-		s := &stresser{
-			Endpoint:       u,
-			KeySize:        c.stressKeySize,
-			KeySuffixRange: c.stressKeySuffixRange,
-			N:              200,
+	// TODO: Too intensive stressers can panic etcd member with
+	// 'out of memory' error. Put rate limits in server side.
+	stressN := 100
+	var stressers []Stresser
+	if c.v2Only {
+		for _, u := range clientURLs {
+			s := &stresserV2{
+				Endpoint:       u,
+				KeySize:        c.stressKeySize,
+				KeySuffixRange: c.stressKeySuffixRange,
+				N:              stressN,
+			}
+			go s.Stress()
+			stressers = append(stressers, s)
 		}
-		go s.Stress()
-		stressers[i] = s
+	} else {
+		for _, u := range grpcURLs {
+			s := &stresser{
+				Endpoint:       u,
+				KeySize:        c.stressKeySize,
+				KeySuffixRange: c.stressKeySuffixRange,
+				N:              stressN,
+			}
+			go s.Stress()
+			stressers = append(stressers, s)
+		}
 	}
 
 	c.Size = size
 	c.Agents = agents
 	c.Stressers = stressers
 	c.Names = names
+	c.GRPCURLs = grpcURLs
 	c.ClientURLs = clientURLs
 	return nil
 }
@@ -136,14 +166,48 @@ func (c *cluster) WaitHealth() error {
 	// TODO: set it to a reasonable value. It is set that high because
 	// follower may use long time to catch up the leader when reboot under
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
+	healthFunc, urls := setHealthKey, c.GRPCURLs
+	if c.v2Only {
+		healthFunc, urls = setHealthKeyV2, c.ClientURLs
+	}
 	for i := 0; i < 60; i++ {
-		err = setHealthKey(c.ClientURLs)
+		err = healthFunc(urls)
 		if err == nil {
 			return nil
 		}
+		plog.Warningf("#%d setHealthKey error (%v)", i, err)
 		time.Sleep(time.Second)
 	}
 	return err
+}
+
+// GetLeader returns the index of leader and error if any.
+func (c *cluster) GetLeader() (int, error) {
+	if c.v2Only {
+		return 0, nil
+	}
+
+	for i, ep := range c.GRPCURLs {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   []string{ep},
+			DialTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			return 0, err
+		}
+		defer cli.Close()
+
+		mapi := clientv3.NewMaintenance(cli)
+		resp, err := mapi.Status(context.Background(), ep)
+		if err != nil {
+			return 0, err
+		}
+		if resp.Header.MemberId == resp.Leader {
+			return i, nil
+		}
+	}
+
+	return 0, fmt.Errorf("no leader found")
 }
 
 func (c *cluster) Report() (success, failure int) {
@@ -188,7 +252,7 @@ func (c *cluster) Status() ClusterStatus {
 		desc := c.agentEndpoints[i]
 		if err != nil {
 			cs.AgentStatuses[desc] = client.Status{State: "unknown"}
-			log.Printf("etcd-tester: failed to get the status of agent [%s]", desc)
+			plog.Printf("failed to get the status of agent [%s]", desc)
 		}
 		cs.AgentStatuses[desc] = s
 	}
@@ -198,20 +262,143 @@ func (c *cluster) Status() ClusterStatus {
 // setHealthKey sets health key on all given urls.
 func setHealthKey(us []string) error {
 	for _, u := range us {
-		cfg := etcdclient.Config{
+		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if err != nil {
+			return fmt.Errorf("%v (%s)", err, u)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		kvc := pb.NewKVClient(conn)
+		_, err = kvc.Put(ctx, &pb.PutRequest{Key: []byte("health"), Value: []byte("good")})
+		cancel()
+		conn.Close()
+		if err != nil {
+			return fmt.Errorf("%v (%s)", err, u)
+		}
+	}
+	return nil
+}
+
+// setHealthKeyV2 sets health key on all given urls.
+func setHealthKeyV2(us []string) error {
+	for _, u := range us {
+		cfg := clientv2.Config{
 			Endpoints: []string{u},
 		}
-		c, err := etcdclient.New(cfg)
+		c, err := clientv2.New(cfg)
 		if err != nil {
 			return err
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		kapi := etcdclient.NewKeysAPI(c)
+		kapi := clientv2.NewKeysAPI(c)
 		_, err = kapi.Set(ctx, "health", "good", nil)
 		cancel()
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) {
+	revs := make(map[string]int64)
+	hashes := make(map[string]int64)
+	for _, u := range c.GRPCURLs {
+		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if err != nil {
+			return nil, nil, err
+		}
+		m := pb.NewMaintenanceClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		resp, err := m.Hash(ctx, &pb.HashRequest{})
+		cancel()
+		conn.Close()
+		if err != nil {
+			return nil, nil, err
+		}
+		revs[u] = resp.Header.Revision
+		hashes[u] = int64(resp.Hash)
+	}
+	return revs, hashes, nil
+}
+
+func (c *cluster) compactKV(rev int64, timeout time.Duration) (err error) {
+	if rev <= 0 {
+		return nil
+	}
+
+	for i, u := range c.GRPCURLs {
+		conn, derr := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if derr != nil {
+			plog.Printf("[compact kv #%d] dial error %v (endpoint %s)", i, derr, u)
+			err = derr
+			continue
+		}
+		kvc := pb.NewKVClient(conn)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		plog.Printf("[compact kv #%d] starting (endpoint %s)", i, u)
+		_, cerr := kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev, Physical: true})
+		cancel()
+		conn.Close()
+		succeed := true
+		if cerr != nil {
+			if strings.Contains(cerr.Error(), "required revision has been compacted") && i > 0 {
+				plog.Printf("[compact kv #%d] already compacted (endpoint %s)", i, u)
+			} else {
+				plog.Warningf("[compact kv #%d] error %v (endpoint %s)", i, cerr, u)
+				err = cerr
+				succeed = false
+			}
+		}
+		if succeed {
+			plog.Printf("[compact kv #%d] done (endpoint %s)", i, u)
+		}
+	}
+	return err
+}
+
+func (c *cluster) checkCompact(rev int64) error {
+	if rev == 0 {
+		return nil
+	}
+	for _, u := range c.GRPCURLs {
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   []string{u},
+			DialTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			return fmt.Errorf("%v (endpoint %s)", err, u)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		wch := cli.Watch(ctx, "\x00", clientv3.WithFromKey(), clientv3.WithRev(rev-1))
+		wr, ok := <-wch
+		cancel()
+
+		cli.Close()
+
+		if !ok {
+			return fmt.Errorf("watch channel terminated (endpoint %s)", u)
+		}
+		if wr.CompactRevision != rev {
+			return fmt.Errorf("got compact revision %v, wanted %v (endpoint %s)", wr.CompactRevision, rev, u)
+		}
+	}
+	return nil
+}
+
+func (c *cluster) defrag() error {
+	for _, u := range c.GRPCURLs {
+		plog.Printf("defragmenting %s\n", u)
+		conn, err := grpc.Dial(u, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+		if err != nil {
+			return err
+		}
+		mt := pb.NewMaintenanceClient(conn)
+		if _, err = mt.Defragment(context.Background(), &pb.DefragmentRequest{}); err != nil {
+			return err
+		}
+		conn.Close()
+		plog.Printf("defragmented %s\n", u)
 	}
 	return nil
 }

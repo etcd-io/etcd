@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,10 +29,6 @@ import (
 const None uint64 = 0
 const noLimit = math.MaxUint64
 
-var errNoLeader = errors.New("no leader")
-
-var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unavailable")
-
 // Possible values for StateType.
 const (
 	StateFollower StateType = iota
@@ -58,50 +54,54 @@ type Config struct {
 	// ID is the identity of the local raft. ID cannot be 0.
 	ID uint64
 
-	// peers contains the IDs of all nodes (including self) in
-	// the raft cluster. It should only be set when starting a new
-	// raft cluster.
-	// Restarting raft from previous configuration will panic if
-	// peers is set.
-	// peer is private and only used for testing right now.
+	// peers contains the IDs of all nodes (including self) in the raft cluster. It
+	// should only be set when starting a new raft cluster. Restarting raft from
+	// previous configuration will panic if peers is set. peer is private and only
+	// used for testing right now.
 	peers []uint64
 
-	// ElectionTick is the election timeout. If a follower does not
-	// receive any message from the leader of current term during
-	// ElectionTick, it will become candidate and start an election.
-	// ElectionTick must be greater than HeartbeatTick. We suggest
-	// to use ElectionTick = 10 * HeartbeatTick to avoid unnecessary
-	// leader switching.
+	// ElectionTick is the number of Node.Tick invocations that must pass between
+	// elections. That is, if a follower does not receive any message from the
+	// leader of current term before ElectionTick has elapsed, it will become
+	// candidate and start an election. ElectionTick must be greater than
+	// HeartbeatTick. We suggest ElectionTick = 10 * HeartbeatTick to avoid
+	// unnecessary leader switching.
 	ElectionTick int
-	// HeartbeatTick is the heartbeat interval. A leader sends heartbeat
-	// message to maintain the leadership every heartbeat interval.
+	// HeartbeatTick is the number of Node.Tick invocations that must pass between
+	// heartbeats. That is, a leader sends heartbeat messages to maintain its
+	// leadership every HeartbeatTick ticks.
 	HeartbeatTick int
 
-	// Storage is the storage for raft. raft generates entires and
-	// states to be stored in storage. raft reads the persisted entires
-	// and states out of Storage when it needs. raft reads out the previous
-	// state and configuration out of storage when restarting.
+	// Storage is the storage for raft. raft generates entries and states to be
+	// stored in storage. raft reads the persisted entries and states out of
+	// Storage when it needs. raft reads out the previous state and configuration
+	// out of storage when restarting.
 	Storage Storage
 	// Applied is the last applied index. It should only be set when restarting
-	// raft. raft will not return entries to the application smaller or equal to Applied.
-	// If Applied is unset when restarting, raft might return previous applied entries.
-	// This is a very application dependent configuration.
+	// raft. raft will not return entries to the application smaller or equal to
+	// Applied. If Applied is unset when restarting, raft might return previous
+	// applied entries. This is a very application dependent configuration.
 	Applied uint64
 
-	// MaxSizePerMsg limits the max size of each append message. Smaller value lowers
-	// the raft recovery cost(initial probing and message lost during normal operation).
-	// On the other side, it might affect the throughput during normal replication.
-	// Note: math.MaxUint64 for unlimited, 0 for at most one entry per message.
+	// MaxSizePerMsg limits the max size of each append message. Smaller value
+	// lowers the raft recovery cost(initial probing and message lost during normal
+	// operation). On the other side, it might affect the throughput during normal
+	// replication. Note: math.MaxUint64 for unlimited, 0 for at most one entry per
+	// message.
 	MaxSizePerMsg uint64
-	// MaxInflightMsgs limits the max number of in-flight append messages during optimistic
-	// replication phase. The application transportation layer usually has its own sending
-	// buffer over TCP/UDP. Setting MaxInflightMsgs to avoid overflowing that sending buffer.
-	// TODO (xiangli): feedback to application to limit the proposal rate?
+	// MaxInflightMsgs limits the max number of in-flight append messages during
+	// optimistic replication phase. The application transportation layer usually
+	// has its own sending buffer over TCP/UDP. Setting MaxInflightMsgs to avoid
+	// overflowing that sending buffer. TODO (xiangli): feedback to application to
+	// limit the proposal rate?
 	MaxInflightMsgs int
 
-	// logger is the logger used for raft log. For multinode which
-	// can host multiple raft group, each raft group can have its
-	// own logger
+	// CheckQuorum specifies if the leader should check quorum activity. Leader
+	// steps down when quorum is not active for an electionTimeout.
+	CheckQuorum bool
+
+	// Logger is the logger used for raft log. For multinode which can host
+	// multiple raft group, each raft group can have its own logger
 	Logger Logger
 }
 
@@ -134,9 +134,10 @@ func (c *Config) validate() error {
 }
 
 type raft struct {
-	pb.HardState
-
 	id uint64
+
+	Term uint64
+	Vote uint64
 
 	// the log
 	raftLog *raftLog
@@ -153,16 +154,34 @@ type raft struct {
 
 	// the leader id
 	lead uint64
-
+	// leadTransferee is id of the leader transfer target when its value is not zero.
+	// Follow the procedure defined in raft thesis 3.10.
+	leadTransferee uint64
 	// New configuration is ignored if there exists unapplied configuration.
 	pendingConf bool
 
-	elapsed          int // number of ticks since the last msg
+	// number of ticks since it reached last electionTimeout when it is leader
+	// or candidate.
+	// number of ticks since it reached last electionTimeout or received a
+	// valid message from current leader when it is a follower.
+	electionElapsed int
+
+	// number of ticks since it reached last heartbeatTimeout.
+	// only leader keeps heartbeatElapsed.
+	heartbeatElapsed int
+
+	checkQuorum bool
+
 	heartbeatTimeout int
 	electionTimeout  int
-	rand             *rand.Rand
-	tick             func()
-	step             stepFunc
+	// randomizedElectionTimeout is a random number between
+	// [electiontimeout, 2 * electiontimeout - 1]. It gets reset
+	// when raft changes its state to follower or candidate.
+	randomizedElectionTimeout int
+
+	rand *rand.Rand
+	tick func()
+	step stepFunc
 
 	logger Logger
 }
@@ -196,6 +215,7 @@ func newRaft(c *Config) *raft {
 		electionTimeout:  c.ElectionTick,
 		heartbeatTimeout: c.HeartbeatTick,
 		logger:           c.Logger,
+		checkQuorum:      c.CheckQuorum,
 	}
 	r.rand = rand.New(rand.NewSource(int64(c.ID)))
 	for _, p := range peers {
@@ -209,7 +229,7 @@ func newRaft(c *Config) *raft {
 	}
 	r.becomeFollower(r.Term, None)
 
-	nodesStrs := make([]string, 0)
+	var nodesStrs []string
 	for _, n := range r.nodes() {
 		nodesStrs = append(nodesStrs, fmt.Sprintf("%x", n))
 	}
@@ -223,12 +243,20 @@ func (r *raft) hasLeader() bool { return r.lead != None }
 
 func (r *raft) softState() *SoftState { return &SoftState{Lead: r.lead, RaftState: r.state} }
 
-func (r *raft) q() int { return len(r.prs)/2 + 1 }
+func (r *raft) hardState() pb.HardState {
+	return pb.HardState{
+		Term:   r.Term,
+		Vote:   r.Vote,
+		Commit: r.raftLog.committed,
+	}
+}
+
+func (r *raft) quorum() int { return len(r.prs)/2 + 1 }
 
 func (r *raft) nodes() []uint64 {
 	nodes := make([]uint64, 0, len(r.prs))
-	for k := range r.prs {
-		nodes = append(nodes, k)
+	for id := range r.prs {
+		nodes = append(nodes, id)
 	}
 	sort.Sort(uint64Slice(nodes))
 	return nodes
@@ -246,7 +274,7 @@ func (r *raft) send(m pb.Message) {
 	r.msgs = append(r.msgs, m)
 }
 
-// sendAppend sends RRPC, with entries to the given peer.
+// sendAppend sends RPC, with entries to the given peer.
 func (r *raft) sendAppend(to uint64) {
 	pr := r.prs[to]
 	if pr.isPaused() {
@@ -259,6 +287,11 @@ func (r *raft) sendAppend(to uint64) {
 	ents, erre := r.raftLog.entries(pr.Next, r.maxMsgSize)
 
 	if errt != nil || erre != nil { // send snapshot if we failed to get term or entries
+		if !pr.RecentActive {
+			r.logger.Debugf("ignore sending snapshot to %x since it is not recently active", to)
+			return
+		}
+
 		m.Type = pb.MsgSnap
 		snapshot, err := r.raftLog.snapshot()
 		if err != nil {
@@ -274,7 +307,7 @@ func (r *raft) sendAppend(to uint64) {
 		m.Snapshot = snapshot
 		sindex, sterm := snapshot.Metadata.Index, snapshot.Metadata.Term
 		r.logger.Debugf("%x [firstindex: %d, commit: %d] sent snapshot[index: %d, term: %d] to %x [%s]",
-			r.id, r.raftLog.firstIndex(), r.Commit, sindex, sterm, to, pr)
+			r.id, r.raftLog.firstIndex(), r.raftLog.committed, sindex, sterm, to, pr)
 		pr.becomeSnapshot(sindex)
 		r.logger.Debugf("%x paused sending replication messages to %x [%s]", r.id, to, pr)
 	} else {
@@ -317,36 +350,39 @@ func (r *raft) sendHeartbeat(to uint64) {
 	r.send(m)
 }
 
-// bcastAppend sends RRPC, with entries to all peers that are not up-to-date
+// bcastAppend sends RPC, with entries to all peers that are not up-to-date
 // according to the progress recorded in r.prs.
 func (r *raft) bcastAppend() {
-	for i := range r.prs {
-		if i == r.id {
+	for id := range r.prs {
+		if id == r.id {
 			continue
 		}
-		r.sendAppend(i)
+		r.sendAppend(id)
 	}
 }
 
-// bcastHeartbeat sends RRPC, without entries to all the peers.
+// bcastHeartbeat sends RPC, without entries to all the peers.
 func (r *raft) bcastHeartbeat() {
-	for i := range r.prs {
-		if i == r.id {
+	for id := range r.prs {
+		if id == r.id {
 			continue
 		}
-		r.sendHeartbeat(i)
-		r.prs[i].resume()
+		r.sendHeartbeat(id)
+		r.prs[id].resume()
 	}
 }
 
+// maybeCommit attempts to advance the commit index. Returns true if
+// the commit index changed (in which case the caller should call
+// r.bcastAppend).
 func (r *raft) maybeCommit() bool {
 	// TODO(bmizerany): optimize.. Currently naive
 	mis := make(uint64Slice, 0, len(r.prs))
-	for i := range r.prs {
-		mis = append(mis, r.prs[i].Match)
+	for id := range r.prs {
+		mis = append(mis, r.prs[id].Match)
 	}
 	sort.Sort(sort.Reverse(mis))
-	mci := mis[r.q()-1]
+	mci := mis[r.quorum()-1]
 	return r.raftLog.maybeCommit(mci, r.Term)
 }
 
@@ -356,12 +392,18 @@ func (r *raft) reset(term uint64) {
 		r.Vote = None
 	}
 	r.lead = None
-	r.elapsed = 0
+
+	r.electionElapsed = 0
+	r.heartbeatElapsed = 0
+	r.resetRandomizedElectionTimeout()
+
+	r.abortLeaderTransfer()
+
 	r.votes = make(map[uint64]bool)
-	for i := range r.prs {
-		r.prs[i] = &Progress{Next: r.raftLog.lastIndex() + 1, ins: newInflights(r.maxInflight)}
-		if i == r.id {
-			r.prs[i].Match = r.raftLog.lastIndex()
+	for id := range r.prs {
+		r.prs[id] = &Progress{Next: r.raftLog.lastIndex() + 1, ins: newInflights(r.maxInflight)}
+		if id == r.id {
+			r.prs[id].Match = r.raftLog.lastIndex()
 		}
 	}
 	r.pendingConf = false
@@ -375,27 +417,42 @@ func (r *raft) appendEntry(es ...pb.Entry) {
 	}
 	r.raftLog.append(es...)
 	r.prs[r.id].maybeUpdate(r.raftLog.lastIndex())
+	// Regardless of maybeCommit's return, our caller will call bcastAppend.
 	r.maybeCommit()
 }
 
 // tickElection is run by followers and candidates after r.electionTimeout.
 func (r *raft) tickElection() {
-	if !r.promotable() {
-		r.elapsed = 0
-		return
-	}
-	r.elapsed++
-	if r.isElectionTimeout() {
-		r.elapsed = 0
+	r.electionElapsed++
+
+	if r.promotable() && r.pastElectionTimeout() {
+		r.electionElapsed = 0
 		r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
 	}
 }
 
 // tickHeartbeat is run by leaders to send a MsgBeat after r.heartbeatTimeout.
 func (r *raft) tickHeartbeat() {
-	r.elapsed++
-	if r.elapsed >= r.heartbeatTimeout {
-		r.elapsed = 0
+	r.heartbeatElapsed++
+	r.electionElapsed++
+
+	if r.electionElapsed >= r.electionTimeout {
+		r.electionElapsed = 0
+		if r.checkQuorum {
+			r.Step(pb.Message{From: r.id, Type: pb.MsgCheckQuorum})
+		}
+		// If current leader cannot transfer leadership in electionTimeout, it becomes leader again.
+		if r.state == StateLeader && r.leadTransferee != None {
+			r.abortLeaderTransfer()
+		}
+	}
+
+	if r.state != StateLeader {
+		return
+	}
+
+	if r.heartbeatElapsed >= r.heartbeatTimeout {
+		r.heartbeatElapsed = 0
 		r.Step(pb.Message{From: r.id, Type: pb.MsgBeat})
 	}
 }
@@ -452,17 +509,17 @@ func (r *raft) becomeLeader() {
 
 func (r *raft) campaign() {
 	r.becomeCandidate()
-	if r.q() == r.poll(r.id, true) {
+	if r.quorum() == r.poll(r.id, true) {
 		r.becomeLeader()
 		return
 	}
-	for i := range r.prs {
-		if i == r.id {
+	for id := range r.prs {
+		if id == r.id {
 			continue
 		}
 		r.logger.Infof("%x [logterm: %d, index: %d] sent vote request to %x at term %d",
-			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), i, r.Term)
-		r.send(pb.Message{To: i, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
+			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), id, r.Term)
+		r.send(pb.Message{To: id, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm()})
 	}
 }
 
@@ -488,11 +545,15 @@ func (r *raft) Step(m pb.Message) error {
 		if r.state != StateLeader {
 			r.logger.Infof("%x is starting a new election at term %d", r.id, r.Term)
 			r.campaign()
-			r.Commit = r.raftLog.committed
 		} else {
 			r.logger.Debugf("%x ignoring MsgHup because already leader", r.id)
 		}
 		return nil
+	}
+	if m.Type == pb.MsgTransferLeader {
+		if r.state != StateLeader {
+			r.logger.Debugf("%x [term %d state %v] ignoring MsgTransferLeader to %x", r.id, r.Term, r.state, m.From)
+		}
 	}
 
 	switch {
@@ -501,30 +562,55 @@ func (r *raft) Step(m pb.Message) error {
 	case m.Term > r.Term:
 		lead := m.From
 		if m.Type == pb.MsgVote {
+			if r.checkQuorum && r.state != StateCandidate && r.electionElapsed < r.electionTimeout {
+				// If a server receives a RequestVote request within the minimum election timeout
+				// of hearing from a current leader, it does not update its term or grant its vote
+				r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] ignored vote from %x [logterm: %d, index: %d] at term %d: lease is not expired (remaining ticks: %d)",
+					r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term, r.electionTimeout-r.electionElapsed)
+				return nil
+			}
 			lead = None
 		}
 		r.logger.Infof("%x [term: %d] received a %s message with higher term from %x [term: %d]",
 			r.id, r.Term, m.Type, m.From, m.Term)
 		r.becomeFollower(m.Term, lead)
 	case m.Term < r.Term:
-		// ignore
-		r.logger.Infof("%x [term: %d] ignored a %s message with lower term from %x [term: %d]",
-			r.id, r.Term, m.Type, m.From, m.Term)
+		if r.checkQuorum && (m.Type == pb.MsgHeartbeat || m.Type == pb.MsgApp) {
+			// We have received messages from a leader at a lower term. It is possible that these messages were
+			// simply delayed in the network, but this could also mean that this node has advanced its term number
+			// during a network partition, and it is now unable to either win an election or to rejoin the majority
+			// on the old term. If checkQuorum is false, this will be handled by incrementing term numbers in response
+			// to MsgVote with a higher term, but if checkQuorum is true we may not advance the term on MsgVote and
+			// must generate other messages to advance the term. The net result of these two features is to minimize
+			// the disruption caused by nodes that have been removed from the cluster's configuration: a removed node
+			// will send MsgVotes which will be ignored, but it will not receive MsgApp or MsgHeartbeat, so it will not
+			// create disruptive term increases
+			r.send(pb.Message{To: m.From, Type: pb.MsgAppResp})
+		} else {
+			// ignore other cases
+			r.logger.Infof("%x [term: %d] ignored a %s message with lower term from %x [term: %d]",
+				r.id, r.Term, m.Type, m.From, m.Term)
+		}
 		return nil
 	}
 	r.step(r, m)
-	r.Commit = r.raftLog.committed
 	return nil
 }
 
 type stepFunc func(r *raft, m pb.Message)
 
 func stepLeader(r *raft, m pb.Message) {
-	pr := r.prs[m.From]
-
+	// These message types do not require any progress for m.From.
 	switch m.Type {
 	case pb.MsgBeat:
 		r.bcastHeartbeat()
+		return
+	case pb.MsgCheckQuorum:
+		if !r.checkQuorumActive() {
+			r.logger.Warningf("%x stepped down to follower since quorum is not active", r.id)
+			r.becomeFollower(r.Term, None)
+		}
+		return
 	case pb.MsgProp:
 		if len(m.Entries) == 0 {
 			r.logger.Panicf("%x stepped empty MsgProp", r.id)
@@ -535,6 +621,11 @@ func stepLeader(r *raft, m pb.Message) {
 			// drop any new proposals.
 			return
 		}
+		if r.leadTransferee != None {
+			r.logger.Debugf("%x [term %d] transfer leadership to %x is in progress; dropping proposal", r.id, r.Term, r.leadTransferee)
+			return
+		}
+
 		for i, e := range m.Entries {
 			if e.Type == pb.EntryConfChange {
 				if r.pendingConf {
@@ -545,7 +636,24 @@ func stepLeader(r *raft, m pb.Message) {
 		}
 		r.appendEntry(m.Entries...)
 		r.bcastAppend()
+		return
+	case pb.MsgVote:
+		r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
+			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
+		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
+		return
+	}
+
+	// All other message types require a progress for m.From (pr).
+	pr, prOk := r.prs[m.From]
+	if !prOk {
+		r.logger.Debugf("%x no progress available for %x", r.id, m.From)
+		return
+	}
+	switch m.Type {
 	case pb.MsgAppResp:
+		pr.RecentActive = true
+
 		if m.Reject {
 			r.logger.Debugf("%x received msgApp rejection(lastindex: %d) from %x for index %d",
 				r.id, m.RejectHint, m.From, m.Index)
@@ -576,9 +684,16 @@ func stepLeader(r *raft, m pb.Message) {
 					// an update before, send it now.
 					r.sendAppend(m.From)
 				}
+				// Transfer leadership is in progress.
+				if m.From == r.leadTransferee && pr.Match == r.raftLog.lastIndex() {
+					r.logger.Infof("%x sent MsgTimeoutNow to %x after received MsgAppResp", r.id, m.From)
+					r.sendTimeoutNow(m.From)
+				}
 			}
 		}
 	case pb.MsgHeartbeatResp:
+		pr.RecentActive = true
+
 		// free one slot for the full inflights window to allow progress.
 		if pr.State == ProgressStateReplicate && pr.ins.full() {
 			pr.ins.freeFirstOne()
@@ -586,10 +701,6 @@ func stepLeader(r *raft, m pb.Message) {
 		if pr.Match < r.raftLog.lastIndex() {
 			r.sendAppend(m.From)
 		}
-	case pb.MsgVote:
-		r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
-			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 	case pb.MsgSnapStatus:
 		if pr.State != ProgressStateSnapshot {
 			return
@@ -613,6 +724,33 @@ func stepLeader(r *raft, m pb.Message) {
 			pr.becomeProbe()
 		}
 		r.logger.Debugf("%x failed to send message to %x because it is unreachable [%s]", r.id, m.From, pr)
+	case pb.MsgTransferLeader:
+		leadTransferee := m.From
+		lastLeadTransferee := r.leadTransferee
+		if lastLeadTransferee != None {
+			if lastLeadTransferee == leadTransferee {
+				r.logger.Infof("%x [term %d] transfer leadership to %x is in progress, ignores request to same node %x",
+					r.id, r.Term, leadTransferee, leadTransferee)
+				return
+			}
+			r.abortLeaderTransfer()
+			r.logger.Infof("%x [term %d] abort previous transferring leadership to %x", r.id, r.Term, lastLeadTransferee)
+		}
+		if leadTransferee == r.id {
+			r.logger.Debugf("%x is already leader. Ignored transferring leadership to self", r.id)
+			return
+		}
+		// Transfer leadership to third party.
+		r.logger.Infof("%x [term %d] starts to transfer leadership to %x", r.id, r.Term, leadTransferee)
+		// Transfer leadership should be finished in one electionTimeout, so reset r.electionElapsed.
+		r.electionElapsed = 0
+		r.leadTransferee = leadTransferee
+		if pr.Match == r.raftLog.lastIndex() {
+			r.sendTimeoutNow(leadTransferee)
+			r.logger.Infof("%x sends MsgTimeoutNow to %x immediately as %x already has up-to-date log", r.id, leadTransferee, leadTransferee)
+		} else {
+			r.sendAppend(leadTransferee)
+		}
 	}
 }
 
@@ -636,14 +774,16 @@ func stepCandidate(r *raft, m pb.Message) {
 		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 	case pb.MsgVoteResp:
 		gr := r.poll(m.From, !m.Reject)
-		r.logger.Infof("%x [q:%d] has received %d votes and %d vote rejections", r.id, r.q(), gr, len(r.votes)-gr)
-		switch r.q() {
+		r.logger.Infof("%x [quorum:%d] has received %d votes and %d vote rejections", r.id, r.quorum(), gr, len(r.votes)-gr)
+		switch r.quorum() {
 		case gr:
 			r.becomeLeader()
 			r.bcastAppend()
 		case len(r.votes) - gr:
 			r.becomeFollower(r.Term, None)
 		}
+	case pb.MsgTimeoutNow:
+		r.logger.Debugf("%x [term %d state %v] ignored MsgTimeoutNow from %x", r.id, r.Term, r.state, m.From)
 	}
 }
 
@@ -657,19 +797,19 @@ func stepFollower(r *raft, m pb.Message) {
 		m.To = r.lead
 		r.send(m)
 	case pb.MsgApp:
-		r.elapsed = 0
+		r.electionElapsed = 0
 		r.lead = m.From
 		r.handleAppendEntries(m)
 	case pb.MsgHeartbeat:
-		r.elapsed = 0
+		r.electionElapsed = 0
 		r.lead = m.From
 		r.handleHeartbeat(m)
 	case pb.MsgSnap:
-		r.elapsed = 0
+		r.electionElapsed = 0
 		r.handleSnapshot(m)
 	case pb.MsgVote:
 		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
-			r.elapsed = 0
+			r.electionElapsed = 0
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] voted for %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 			r.Vote = m.From
@@ -679,12 +819,15 @@ func stepFollower(r *raft, m pb.Message) {
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 		}
+	case pb.MsgTimeoutNow:
+		r.logger.Infof("%x [term %d] received MsgTimeoutNow from %x and starts an election to get leadership.", r.id, r.Term, m.From)
+		r.campaign()
 	}
 }
 
 func (r *raft) handleAppendEntries(m pb.Message) {
-	if m.Index < r.Commit {
-		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.Commit})
+	if m.Index < r.raftLog.committed {
+		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
 		return
 	}
 
@@ -706,11 +849,11 @@ func (r *raft) handleSnapshot(m pb.Message) {
 	sindex, sterm := m.Snapshot.Metadata.Index, m.Snapshot.Metadata.Term
 	if r.restore(m.Snapshot) {
 		r.logger.Infof("%x [commit: %d] restored snapshot [index: %d, term: %d]",
-			r.id, r.Commit, sindex, sterm)
+			r.id, r.raftLog.committed, sindex, sterm)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.lastIndex()})
 	} else {
 		r.logger.Infof("%x [commit: %d] ignored snapshot [index: %d, term: %d]",
-			r.id, r.Commit, sindex, sterm)
+			r.id, r.raftLog.committed, sindex, sterm)
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: r.raftLog.committed})
 	}
 }
@@ -723,13 +866,13 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	}
 	if r.raftLog.matchTerm(s.Metadata.Index, s.Metadata.Term) {
 		r.logger.Infof("%x [commit: %d, lastindex: %d, lastterm: %d] fast-forwarded commit to snapshot [index: %d, term: %d]",
-			r.id, r.Commit, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
+			r.id, r.raftLog.committed, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
 		r.raftLog.commitTo(s.Metadata.Index)
 		return false
 	}
 
 	r.logger.Infof("%x [commit: %d, lastindex: %d, lastterm: %d] starts to restore snapshot [index: %d, term: %d]",
-		r.id, r.Commit, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
+		r.id, r.raftLog.committed, r.raftLog.lastIndex(), r.raftLog.lastTerm(), s.Metadata.Index, s.Metadata.Term)
 
 	r.raftLog.restore(s)
 	r.prs = make(map[uint64]*Progress)
@@ -767,6 +910,21 @@ func (r *raft) addNode(id uint64) {
 func (r *raft) removeNode(id uint64) {
 	r.delProgress(id)
 	r.pendingConf = false
+
+	// do not try to commit or abort transferring if there is no nodes in the cluster.
+	if len(r.prs) == 0 {
+		return
+	}
+
+	// The quorum size is now smaller, so see if any pending entries can
+	// be committed.
+	if r.maybeCommit() {
+		r.bcastAppend()
+	}
+	// If the removed node is the leadTransferee, then abort the leadership transferring.
+	if r.state == StateLeader && r.leadTransferee == id {
+		r.abortLeaderTransfer()
+	}
 }
 
 func (r *raft) resetPendingConf() { r.pendingConf = false }
@@ -786,16 +944,46 @@ func (r *raft) loadState(state pb.HardState) {
 	r.raftLog.committed = state.Commit
 	r.Term = state.Term
 	r.Vote = state.Vote
-	r.Commit = state.Commit
 }
 
-// isElectionTimeout returns true if r.elapsed is greater than the
-// randomized election timeout in (electiontimeout, 2 * electiontimeout - 1).
-// Otherwise, it returns false.
-func (r *raft) isElectionTimeout() bool {
-	d := r.elapsed - r.electionTimeout
-	if d < 0 {
-		return false
+// pastElectionTimeout returns true iff r.electionElapsed is greater
+// than or equal to the randomized election timeout in
+// [electiontimeout, 2 * electiontimeout - 1].
+func (r *raft) pastElectionTimeout() bool {
+	return r.electionElapsed >= r.randomizedElectionTimeout
+}
+
+func (r *raft) resetRandomizedElectionTimeout() {
+	r.randomizedElectionTimeout = r.electionTimeout + r.rand.Intn(r.electionTimeout)
+}
+
+// checkQuorumActive returns true if the quorum is active from
+// the view of the local raft state machine. Otherwise, it returns
+// false.
+// checkQuorumActive also resets all RecentActive to false.
+func (r *raft) checkQuorumActive() bool {
+	var act int
+
+	for id := range r.prs {
+		if id == r.id { // self is always active
+			act++
+			continue
+		}
+
+		if r.prs[id].RecentActive {
+			act++
+		}
+
+		r.prs[id].RecentActive = false
 	}
-	return d > r.rand.Int()%r.electionTimeout
+
+	return act >= r.quorum()
+}
+
+func (r *raft) sendTimeoutNow(to uint64) {
+	r.send(pb.Message{To: to, Type: pb.MsgTimeoutNow})
+}
+
+func (r *raft) abortLeaderTransfer() {
+	r.leadTransferee = None
 }

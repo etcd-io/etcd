@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -78,10 +78,10 @@ func TestSRVDiscover(t *testing.T) {
 
 	for i, tt := range tests {
 		lookupSRV = func(service string, proto string, domain string) (string, []*net.SRV, error) {
-			if service == "etcd-server-ssl" {
+			if service == "etcd-client-ssl" {
 				return "", tt.withSSL, nil
 			}
-			if service == "etcd-server" {
+			if service == "etcd-client" {
 				return "", tt.withoutSSL, nil
 			}
 			return "", nil, errors.New("Unknown service in mock")

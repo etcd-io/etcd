@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,12 +46,13 @@ func max(a, b uint64) uint64 {
 	return b
 }
 
-func IsLocalMsg(m pb.Message) bool {
-	return m.Type == pb.MsgHup || m.Type == pb.MsgBeat || m.Type == pb.MsgUnreachable || m.Type == pb.MsgSnapStatus
+func IsLocalMsg(msgt pb.MessageType) bool {
+	return msgt == pb.MsgHup || msgt == pb.MsgBeat || msgt == pb.MsgUnreachable ||
+		msgt == pb.MsgSnapStatus || msgt == pb.MsgCheckQuorum || msgt == pb.MsgTransferLeader
 }
 
-func IsResponseMsg(m pb.Message) bool {
-	return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp || m.Type == pb.MsgHeartbeatResp || m.Type == pb.MsgUnreachable
+func IsResponseMsg(msgt pb.MessageType) bool {
+	return msgt == pb.MsgAppResp || msgt == pb.MsgVoteResp || msgt == pb.MsgHeartbeatResp || msgt == pb.MsgUnreachable
 }
 
 // EntryFormatter can be implemented by the application to provide human-readable formatting
@@ -62,16 +63,22 @@ type EntryFormatter func([]byte) string
 // Message for debugging.
 func DescribeMessage(m pb.Message, f EntryFormatter) string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%x->%x %s Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
+	fmt.Fprintf(&buf, "%x->%x %v Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
 	if m.Reject {
 		fmt.Fprintf(&buf, " Rejected")
+		if m.RejectHint != 0 {
+			fmt.Fprintf(&buf, "(Hint:%d)", m.RejectHint)
+		}
 	}
 	if m.Commit != 0 {
 		fmt.Fprintf(&buf, " Commit:%d", m.Commit)
 	}
 	if len(m.Entries) > 0 {
 		fmt.Fprintf(&buf, " Entries:[")
-		for _, e := range m.Entries {
+		for i, e := range m.Entries {
+			if i != 0 {
+				buf.WriteString(", ")
+			}
 			buf.WriteString(DescribeEntry(e, f))
 		}
 		fmt.Fprintf(&buf, "]")

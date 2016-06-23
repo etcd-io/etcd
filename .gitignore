@@ -9,3 +9,4 @@
 *.swp
 /hack/insta-discovery/.env
 *.test
+tools/functional-tester/docker/bin

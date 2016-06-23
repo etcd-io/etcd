@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package discovery provides an implementation of the cluster discovery that
+// is used by etcd.
 package discovery
 
 import (
@@ -27,11 +29,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/jonboulle/clockwork"
+	"golang.org/x/net/context"
 )
 
 var (

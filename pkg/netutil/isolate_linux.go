@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,5 +38,29 @@ func RecoverPort(port int) error {
 	}
 	cmdStr = fmt.Sprintf("sudo iptables -D INPUT -p tcp --destination-port %d -j DROP", port)
 	_, err := exec.Command("/bin/sh", "-c", cmdStr).Output()
+	return err
+}
+
+// SetLatency adds latency in millisecond scale with random variations.
+func SetLatency(ms, rv int) error {
+	if rv > ms {
+		rv = 1
+	}
+	cmdStr := fmt.Sprintf("sudo tc qdisc add dev eth0 root netem delay %dms %dms distribution normal", ms, rv)
+	_, err := exec.Command("/bin/sh", "-c", cmdStr).Output()
+	if err != nil {
+		// the rule has already been added. Overwrite it.
+		cmdStr = fmt.Sprintf("sudo tc qdisc change dev eth0 root netem delay %dms %dms distribution normal", ms, rv)
+		_, err = exec.Command("/bin/sh", "-c", cmdStr).Output()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RemoveLatency resets latency configurations.
+func RemoveLatency() error {
+	_, err := exec.Command("/bin/sh", "-c", "sudo tc qdisc del dev eth0 root netem").Output()
 	return err
 }

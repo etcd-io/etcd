@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/pkg/testutil"
+	"golang.org/x/net/context"
 )
 
 type actionAssertingHTTPClient struct {
@@ -295,7 +295,7 @@ func TestSimpleHTTPClientDoHeaderTimeout(t *testing.T) {
 			t.Fatalf("expected non-nil error, got nil")
 		}
 	case <-time.After(time.Second):
-		t.Fatalf("unexpected timeout when waitting for the test to finish")
+		t.Fatalf("unexpected timeout when waiting for the test to finish")
 	}
 }
 
@@ -444,7 +444,51 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 			t.Errorf("err = %+v, want %+v", err, context.DeadlineExceeded)
 		}
 	case <-time.After(time.Second):
-		t.Fatalf("unexpected timeout when waitting for request to deadline exceed")
+		t.Fatalf("unexpected timeout when waiting for request to deadline exceed")
+	}
+}
+
+type fakeCancelContext struct{}
+
+var fakeCancelContextError = errors.New("fake context canceled")
+
+func (f fakeCancelContext) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (f fakeCancelContext) Done() <-chan struct{} {
+	d := make(chan struct{}, 1)
+	d <- struct{}{}
+	return d
+}
+func (f fakeCancelContext) Err() error                        { return fakeCancelContextError }
+func (f fakeCancelContext) Value(key interface{}) interface{} { return 1 }
+
+func withTimeout(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	return parent, func() { parent = nil }
+}
+
+func TestHTTPClusterClientDoCanceledContext(t *testing.T) {
+	fakeURL := url.URL{}
+	tr := newFakeTransport()
+	tr.finishCancel <- struct{}{}
+	c := &httpClusterClient{
+		clientFactory: newHTTPClientFactory(tr, DefaultCheckRedirect, 0),
+		endpoints:     []url.URL{fakeURL},
+	}
+
+	errc := make(chan error)
+	go func() {
+		ctx, cancel := withTimeout(fakeCancelContext{}, time.Millisecond)
+		cancel()
+		_, _, err := c.Do(ctx, &fakeAction{})
+		errc <- err
+	}()
+
+	select {
+	case err := <-errc:
+		if err != fakeCancelContextError {
+			t.Errorf("err = %+v, want %+v", err, fakeCancelContextError)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected timeout when waiting for request to fake context canceled")
 	}
 }
 
@@ -705,7 +749,7 @@ func TestHTTPClusterClientSync(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -728,7 +772,7 @@ func TestHTTPClusterClientSync(t *testing.T) {
 		t.Fatalf("incorrect endpoints post-Sync: want=%#v got=%#v", want, got)
 	}
 
-	err = hc.reset([]string{"http://127.0.0.1:4009"})
+	err = hc.SetEndpoints([]string{"http://127.0.0.1:4009"})
 	if err != nil {
 		t.Fatalf("unexpected error during reset: %#v", err)
 	}
@@ -749,7 +793,7 @@ func TestHTTPClusterClientSyncFail(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -783,7 +827,7 @@ func TestHTTPClusterClientAutoSyncCancelContext(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -805,7 +849,7 @@ func TestHTTPClusterClientAutoSyncFail(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:2379"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -838,7 +882,7 @@ func TestHTTPClusterClientSyncPinEndpoint(t *testing.T) {
 		clientFactory: cf,
 		rand:          rand.New(rand.NewSource(0)),
 	}
-	err := hc.reset([]string{"http://127.0.0.1:4003", "http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"})
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:4003", "http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"})
 	if err != nil {
 		t.Fatalf("unexpected error during setup: %#v", err)
 	}
@@ -851,7 +895,7 @@ func TestHTTPClusterClientSyncPinEndpoint(t *testing.T) {
 		}
 
 		if g := hc.endpoints[hc.pinned]; g != pinnedEndpoint {
-			t.Errorf("#%d: pinned endpoint = %s, want %s", i, g, pinnedEndpoint)
+			t.Errorf("#%d: pinned endpoint = %v, want %v", i, g, pinnedEndpoint)
 		}
 	}
 }
@@ -867,7 +911,7 @@ func TestHTTPClusterClientResetFail(t *testing.T) {
 
 	for i, tt := range tests {
 		hc := &httpClusterClient{rand: rand.New(rand.NewSource(0))}
-		err := hc.reset(tt)
+		err := hc.SetEndpoints(tt)
 		if err == nil {
 			t.Errorf("#%d: expected non-nil error", i)
 		}
@@ -879,7 +923,7 @@ func TestHTTPClusterClientResetPinRandom(t *testing.T) {
 	pinNum := 0
 	for i := 0; i < round; i++ {
 		hc := &httpClusterClient{rand: rand.New(rand.NewSource(int64(i)))}
-		err := hc.reset([]string{"http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"})
+		err := hc.SetEndpoints([]string{"http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"})
 		if err != nil {
 			t.Fatalf("#%d: reset error (%v)", i, err)
 		}

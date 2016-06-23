@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
+	"golang.org/x/net/context"
 )
 
 func TestSendMessage(t *testing.T) {
@@ -131,8 +131,8 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 			n++
 			tr.Send([]raftpb.Message{{Type: raftpb.MsgHeartbeat, From: 1, To: 2, Term: 1, Commit: 3}})
 		case <-recvc:
-			if n > 10 {
-				t.Errorf("disconnection time = %dms, want < 10ms", n)
+			if n > 50 {
+				t.Errorf("disconnection time = %dms, want < 50ms", n)
 			}
 			return
 		}

@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,83 +22,88 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/httputil"
+	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
-	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/coreos/etcd/snap"
+)
+
+var (
+	// timeout for reading snapshot response body
+	snapResponseReadTimeout = 5 * time.Second
 )
 
 type snapshotSender struct {
 	from, to types.ID
 	cid      types.ID
 
-	tr     http.RoundTripper
+	tr     *Transport
 	picker *urlPicker
 	status *peerStatus
-	snapst *snapshotStore
 	r      Raft
 	errorc chan error
 
 	stopc chan struct{}
 }
 
-func newSnapshotSender(tr http.RoundTripper, picker *urlPicker, from, to, cid types.ID, status *peerStatus, snapst *snapshotStore, r Raft, errorc chan error) *snapshotSender {
+func newSnapshotSender(tr *Transport, picker *urlPicker, to types.ID, status *peerStatus) *snapshotSender {
 	return &snapshotSender{
-		from:   from,
+		from:   tr.ID,
 		to:     to,
-		cid:    cid,
+		cid:    tr.ClusterID,
 		tr:     tr,
 		picker: picker,
 		status: status,
-		snapst: snapst,
-		r:      r,
-		errorc: errorc,
+		r:      tr.Raft,
+		errorc: tr.ErrorC,
 		stopc:  make(chan struct{}),
 	}
 }
 
 func (s *snapshotSender) stop() { close(s.stopc) }
 
-func (s *snapshotSender) send(m raftpb.Message) {
-	start := time.Now()
+func (s *snapshotSender) send(merged snap.Message) {
+	m := merged.Message
 
-	body := createSnapBody(m, s.snapst)
+	body := createSnapBody(merged)
 	defer body.Close()
 
 	u := s.picker.pick()
-	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.from, s.cid)
+	req := createPostRequest(u, RaftSnapshotPrefix, body, "application/octet-stream", s.tr.URLs, s.from, s.cid)
+
+	plog.Infof("start to send database snapshot [index: %d, to %s]...", m.Snapshot.Metadata.Index, types.ID(m.To))
 
 	err := s.post(req)
+	defer merged.CloseWithError(err)
 	if err != nil {
+		plog.Warningf("database snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
+
 		// errMemberRemoved is a critical error since a removed member should
 		// always be stopped. So we use reportCriticalError to report it to errorc.
 		if err == errMemberRemoved {
 			reportCriticalError(err, s.errorc)
 		}
+
 		s.picker.unreachable(u)
-		reportSentFailure(sendSnap, m)
 		s.status.deactivate(failureType{source: sendSnap, action: "post"}, err.Error())
 		s.r.ReportUnreachable(m.To)
 		// report SnapshotFailure to raft state machine. After raft state
 		// machine knows about it, it would pause a while and retry sending
 		// new snapshot message.
 		s.r.ReportSnapshot(m.To, raft.SnapshotFailure)
-		if s.status.isActive() {
-			plog.Warningf("snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
-		} else {
-			plog.Debugf("snapshot [index: %d, to: %s] failed to be sent out (%v)", m.Snapshot.Metadata.Index, types.ID(m.To), err)
-		}
 		return
 	}
-	reportSentDuration(sendSnap, m, time.Since(start))
 	s.status.activate()
 	s.r.ReportSnapshot(m.To, raft.SnapshotFinish)
-	plog.Infof("snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
+	plog.Infof("database snapshot [index: %d, to: %s] sent out successfully", m.Snapshot.Metadata.Index, types.ID(m.To))
+
+	sentBytes.WithLabelValues(types.ID(m.To).String()).Add(float64(merged.TotalSize))
 }
 
 // post posts the given request.
 // It returns nil when request is sent out and processed successfully.
 func (s *snapshotSender) post(req *http.Request) (err error) {
-	cancel := httputil.RequestCanceler(s.tr, req)
+	cancel := httputil.RequestCanceler(s.tr.pipelineRt, req)
 
 	type responseAndError struct {
 		resp *http.Response
@@ -108,19 +113,17 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	result := make(chan responseAndError, 1)
 
 	go func() {
-		// TODO: cancel the request if it has waited for a long time(~5s) after
-		// it has write out the full request body, which helps to avoid receiver
-		// dies when sender is waiting for response
-		// TODO: the snapshot could be large and eat up all resources when writing
-		// it out. Send it block by block and rest some time between to give the
-		// time for main loop to run.
-		resp, err := s.tr.RoundTrip(req)
+		resp, err := s.tr.pipelineRt.RoundTrip(req)
 		if err != nil {
 			result <- responseAndError{resp, nil, err}
 			return
 		}
+
+		// close the response body when timeouts.
+		// prevents from reading the body forever when the other side dies right after
+		// successfully receives the request body.
+		time.AfterFunc(snapResponseReadTimeout, func() { httputil.GracefulClose(resp) })
 		body, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
 		result <- responseAndError{resp, body, err}
 	}()
 
@@ -136,26 +139,16 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 	}
 }
 
-// readCloser implements io.ReadCloser interface.
-type readCloser struct {
-	io.Reader
-	io.Closer
-}
-
-// createSnapBody creates the request body for the given raft snapshot message.
-// Callers should close body when done reading from it.
-func createSnapBody(m raftpb.Message, snapst *snapshotStore) io.ReadCloser {
+func createSnapBody(merged snap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
 	// encode raft message
-	if err := enc.encode(m); err != nil {
+	if err := enc.encode(merged.Message); err != nil {
 		plog.Panicf("encode message error (%v)", err)
 	}
-	// get snapshot
-	rc := snapst.get(m.Snapshot.Metadata.Index)
 
-	return &readCloser{
-		Reader: io.MultiReader(buf, rc),
-		Closer: rc,
+	return &pioutil.ReaderAndCloser{
+		Reader: io.MultiReader(buf, merged.ReadCloser),
+		Closer: merged.ReadCloser,
 	}
 }
