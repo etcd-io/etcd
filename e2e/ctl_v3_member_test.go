@@ -106,7 +106,7 @@ func ctlV3MemberRemove(cx ctlCtx, memberID, clusterID string) error {
 
 func memberAddTest(cx ctlCtx) {
 	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
-	cmdArgs := append(cx.PrefixArgs(), "member", "add", "newmember", fmt.Sprintf("--peerURLs=%s", peerURL))
+	cmdArgs := append(cx.PrefixArgs(), "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL))
 	if err := spawnWithExpect(cmdArgs, " added to cluster "); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func memberUpdateTest(cx ctlCtx) {
 	}
 
 	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
-	cmdArgs := append(cx.PrefixArgs(), "member", "update", fmt.Sprintf("%x", mr.Members[0].ID), fmt.Sprintf("--peerURLs=%s", peerURL))
+	cmdArgs := append(cx.PrefixArgs(), "member", "update", fmt.Sprintf("%x", mr.Members[0].ID), fmt.Sprintf("--peer-urls=%s", peerURL))
 	if err = spawnWithExpect(cmdArgs, " updated in cluster "); err != nil {
 		cx.t.Fatal(err)
 	}
