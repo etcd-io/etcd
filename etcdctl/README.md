@@ -351,7 +351,7 @@ MEMBER ADD introduces a new member into the etcd cluster as a new peer.
 
 #### Options
 
-- peerURLs -- comma separated list of URLs to associate with the new member.
+- peer-urls -- comma separated list of URLs to associate with the new member.
 
 #### Return value
 
@@ -362,7 +362,7 @@ MEMBER ADD introduces a new member into the etcd cluster as a new peer.
 #### Example
 
 ```bash
-./etcdctl member add newMember --peerURLs=https://127.0.0.1:12345
+./etcdctl member add newMember --peer-urls=https://127.0.0.1:12345
 Member 2be1eb8f84b7f63e added to cluster ef37ad9dc622a7c4
 ```
 
@@ -373,7 +373,7 @@ MEMBER UPDATE sets the peer URLs for an existing member in the etcd cluster.
 
 #### Options
 
-- peerURLs -- comma separated list of URLs to associate with the updated member.
+- peer-urls -- comma separated list of URLs to associate with the updated member.
 
 #### Return value
 
@@ -384,7 +384,7 @@ MEMBER UPDATE sets the peer URLs for an existing member in the etcd cluster.
 #### Example
 
 ```bash
-./etcdctl member update 2be1eb8f84b7f63e --peerURLs=https://127.0.0.1:11112
+./etcdctl member update 2be1eb8f84b7f63e --peer-urls=https://127.0.0.1:11112
 Member 2be1eb8f84b7f63e updated in cluster ef37ad9dc622a7c4
 ```
 
