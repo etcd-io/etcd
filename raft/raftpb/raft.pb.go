@@ -19,17 +19,24 @@
 */
 package raftpb
 
-import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
-import math "math"
+import (
+	"fmt"
 
-// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto"
+	proto "github.com/gogo/protobuf/proto"
+
+	math "math"
+)
 
 import io "io"
-import fmt "fmt"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.GoGoProtoPackageIsVersion1
 
 type EntryType int32
 
@@ -63,22 +70,26 @@ func (x *EntryType) UnmarshalJSON(data []byte) error {
 	*x = EntryType(value)
 	return nil
 }
+func (EntryType) EnumDescriptor() ([]byte, []int) { return fileDescriptorRaft, []int{0} }
 
 type MessageType int32
 
 const (
-	MsgHup           MessageType = 0
-	MsgBeat          MessageType = 1
-	MsgProp          MessageType = 2
-	MsgApp           MessageType = 3
-	MsgAppResp       MessageType = 4
-	MsgVote          MessageType = 5
-	MsgVoteResp      MessageType = 6
-	MsgSnap          MessageType = 7
-	MsgHeartbeat     MessageType = 8
-	MsgHeartbeatResp MessageType = 9
-	MsgUnreachable   MessageType = 10
-	MsgSnapStatus    MessageType = 11
+	MsgHup            MessageType = 0
+	MsgBeat           MessageType = 1
+	MsgProp           MessageType = 2
+	MsgApp            MessageType = 3
+	MsgAppResp        MessageType = 4
+	MsgVote           MessageType = 5
+	MsgVoteResp       MessageType = 6
+	MsgSnap           MessageType = 7
+	MsgHeartbeat      MessageType = 8
+	MsgHeartbeatResp  MessageType = 9
+	MsgUnreachable    MessageType = 10
+	MsgSnapStatus     MessageType = 11
+	MsgCheckQuorum    MessageType = 12
+	MsgTransferLeader MessageType = 13
+	MsgTimeoutNow     MessageType = 14
 )
 
 var MessageType_name = map[int32]string{
@@ -94,20 +105,26 @@ var MessageType_name = map[int32]string{
 	9:  "MsgHeartbeatResp",
 	10: "MsgUnreachable",
 	11: "MsgSnapStatus",
+	12: "MsgCheckQuorum",
+	13: "MsgTransferLeader",
+	14: "MsgTimeoutNow",
 }
 var MessageType_value = map[string]int32{
-	"MsgHup":           0,
-	"MsgBeat":          1,
-	"MsgProp":          2,
-	"MsgApp":           3,
-	"MsgAppResp":       4,
-	"MsgVote":          5,
-	"MsgVoteResp":      6,
-	"MsgSnap":          7,
-	"MsgHeartbeat":     8,
-	"MsgHeartbeatResp": 9,
-	"MsgUnreachable":   10,
-	"MsgSnapStatus":    11,
+	"MsgHup":            0,
+	"MsgBeat":           1,
+	"MsgProp":           2,
+	"MsgApp":            3,
+	"MsgAppResp":        4,
+	"MsgVote":           5,
+	"MsgVoteResp":       6,
+	"MsgSnap":           7,
+	"MsgHeartbeat":      8,
+	"MsgHeartbeatResp":  9,
+	"MsgUnreachable":    10,
+	"MsgSnapStatus":     11,
+	"MsgCheckQuorum":    12,
+	"MsgTransferLeader": 13,
+	"MsgTimeoutNow":     14,
 }
 
 func (x MessageType) Enum() *MessageType {
@@ -126,6 +143,7 @@ func (x *MessageType) UnmarshalJSON(data []byte) error {
 	*x = MessageType(value)
 	return nil
 }
+func (MessageType) EnumDescriptor() ([]byte, []int) { return fileDescriptorRaft, []int{1} }
 
 type ConfChangeType int32
 
@@ -162,29 +180,32 @@ func (x *ConfChangeType) UnmarshalJSON(data []byte) error {
 	*x = ConfChangeType(value)
 	return nil
 }
+func (ConfChangeType) EnumDescriptor() ([]byte, []int) { return fileDescriptorRaft, []int{2} }
 
 type Entry struct {
-	Type             EntryType `protobuf:"varint,1,opt,enum=raftpb.EntryType" json:"Type"`
-	Term             uint64    `protobuf:"varint,2,opt" json:"Term"`
-	Index            uint64    `protobuf:"varint,3,opt" json:"Index"`
-	Data             []byte    `protobuf:"bytes,4,opt" json:"Data,omitempty"`
+	Type             EntryType `protobuf:"varint,1,opt,name=Type,json=type,enum=raftpb.EntryType" json:"Type"`
+	Term             uint64    `protobuf:"varint,2,opt,name=Term,json=term" json:"Term"`
+	Index            uint64    `protobuf:"varint,3,opt,name=Index,json=index" json:"Index"`
+	Data             []byte    `protobuf:"bytes,4,opt,name=Data,json=data" json:"Data,omitempty"`
 	XXX_unrecognized []byte    `json:"-"`
 }
 
-func (m *Entry) Reset()         { *m = Entry{} }
-func (m *Entry) String() string { return proto.CompactTextString(m) }
-func (*Entry) ProtoMessage()    {}
+func (m *Entry) Reset()                    { *m = Entry{} }
+func (m *Entry) String() string            { return proto.CompactTextString(m) }
+func (*Entry) ProtoMessage()               {}
+func (*Entry) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{0} }
 
 type SnapshotMetadata struct {
-	ConfState        ConfState `protobuf:"bytes,1,opt,name=conf_state" json:"conf_state"`
+	ConfState        ConfState `protobuf:"bytes,1,opt,name=conf_state,json=confState" json:"conf_state"`
 	Index            uint64    `protobuf:"varint,2,opt,name=index" json:"index"`
 	Term             uint64    `protobuf:"varint,3,opt,name=term" json:"term"`
 	XXX_unrecognized []byte    `json:"-"`
 }
 
-func (m *SnapshotMetadata) Reset()         { *m = SnapshotMetadata{} }
-func (m *SnapshotMetadata) String() string { return proto.CompactTextString(m) }
-func (*SnapshotMetadata) ProtoMessage()    {}
+func (m *SnapshotMetadata) Reset()                    { *m = SnapshotMetadata{} }
+func (m *SnapshotMetadata) String() string            { return proto.CompactTextString(m) }
+func (*SnapshotMetadata) ProtoMessage()               {}
+func (*SnapshotMetadata) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{1} }
 
 type Snapshot struct {
 	Data             []byte           `protobuf:"bytes,1,opt,name=data" json:"data,omitempty"`
@@ -192,9 +213,10 @@ type Snapshot struct {
 	XXX_unrecognized []byte           `json:"-"`
 }
 
-func (m *Snapshot) Reset()         { *m = Snapshot{} }
-func (m *Snapshot) String() string { return proto.CompactTextString(m) }
-func (*Snapshot) ProtoMessage()    {}
+func (m *Snapshot) Reset()                    { *m = Snapshot{} }
+func (m *Snapshot) String() string            { return proto.CompactTextString(m) }
+func (*Snapshot) ProtoMessage()               {}
+func (*Snapshot) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{2} }
 
 type Message struct {
 	Type             MessageType `protobuf:"varint,1,opt,name=type,enum=raftpb.MessageType" json:"type"`
@@ -211,9 +233,10 @@ type Message struct {
 	XXX_unrecognized []byte      `json:"-"`
 }
 
-func (m *Message) Reset()         { *m = Message{} }
-func (m *Message) String() string { return proto.CompactTextString(m) }
-func (*Message) ProtoMessage()    {}
+func (m *Message) Reset()                    { *m = Message{} }
+func (m *Message) String() string            { return proto.CompactTextString(m) }
+func (*Message) ProtoMessage()               {}
+func (*Message) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{3} }
 
 type HardState struct {
 	Term             uint64 `protobuf:"varint,1,opt,name=term" json:"term"`
@@ -222,32 +245,42 @@ type HardState struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *HardState) Reset()         { *m = HardState{} }
-func (m *HardState) String() string { return proto.CompactTextString(m) }
-func (*HardState) ProtoMessage()    {}
+func (m *HardState) Reset()                    { *m = HardState{} }
+func (m *HardState) String() string            { return proto.CompactTextString(m) }
+func (*HardState) ProtoMessage()               {}
+func (*HardState) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{4} }
 
 type ConfState struct {
 	Nodes            []uint64 `protobuf:"varint,1,rep,name=nodes" json:"nodes,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
-func (m *ConfState) Reset()         { *m = ConfState{} }
-func (m *ConfState) String() string { return proto.CompactTextString(m) }
-func (*ConfState) ProtoMessage()    {}
+func (m *ConfState) Reset()                    { *m = ConfState{} }
+func (m *ConfState) String() string            { return proto.CompactTextString(m) }
+func (*ConfState) ProtoMessage()               {}
+func (*ConfState) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{5} }
 
 type ConfChange struct {
-	ID               uint64         `protobuf:"varint,1,opt" json:"ID"`
-	Type             ConfChangeType `protobuf:"varint,2,opt,enum=raftpb.ConfChangeType" json:"Type"`
-	NodeID           uint64         `protobuf:"varint,3,opt" json:"NodeID"`
-	Context          []byte         `protobuf:"bytes,4,opt" json:"Context,omitempty"`
+	ID               uint64         `protobuf:"varint,1,opt,name=ID,json=iD" json:"ID"`
+	Type             ConfChangeType `protobuf:"varint,2,opt,name=Type,json=type,enum=raftpb.ConfChangeType" json:"Type"`
+	NodeID           uint64         `protobuf:"varint,3,opt,name=NodeID,json=nodeID" json:"NodeID"`
+	Context          []byte         `protobuf:"bytes,4,opt,name=Context,json=context" json:"Context,omitempty"`
 	XXX_unrecognized []byte         `json:"-"`
 }
 
-func (m *ConfChange) Reset()         { *m = ConfChange{} }
-func (m *ConfChange) String() string { return proto.CompactTextString(m) }
-func (*ConfChange) ProtoMessage()    {}
+func (m *ConfChange) Reset()                    { *m = ConfChange{} }
+func (m *ConfChange) String() string            { return proto.CompactTextString(m) }
+func (*ConfChange) ProtoMessage()               {}
+func (*ConfChange) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{6} }
 
 func init() {
+	proto.RegisterType((*Entry)(nil), "raftpb.Entry")
+	proto.RegisterType((*SnapshotMetadata)(nil), "raftpb.SnapshotMetadata")
+	proto.RegisterType((*Snapshot)(nil), "raftpb.Snapshot")
+	proto.RegisterType((*Message)(nil), "raftpb.Message")
+	proto.RegisterType((*HardState)(nil), "raftpb.HardState")
+	proto.RegisterType((*ConfState)(nil), "raftpb.ConfState")
+	proto.RegisterType((*ConfChange)(nil), "raftpb.ConfChange")
 	proto.RegisterEnum("raftpb.EntryType", EntryType_name, EntryType_value)
 	proto.RegisterEnum("raftpb.MessageType", MessageType_name, MessageType_value)
 	proto.RegisterEnum("raftpb.ConfChangeType", ConfChangeType_name, ConfChangeType_value)
@@ -681,8 +714,12 @@ func (m *Entry) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaft
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -695,6 +732,12 @@ func (m *Entry) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Entry: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Entry: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -702,6 +745,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 			}
 			m.Type = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -718,6 +764,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 			}
 			m.Term = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -734,6 +783,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 			}
 			m.Index = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -750,6 +802,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -767,18 +822,13 @@ func (m *Entry) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Data = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Data = append(m.Data[:0], data[iNdEx:postIndex]...)
+			if m.Data == nil {
+				m.Data = []byte{}
+			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRaft(data[iNdEx:])
 			if err != nil {
 				return err
@@ -794,14 +844,21 @@ func (m *Entry) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *SnapshotMetadata) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaft
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -814,6 +871,12 @@ func (m *SnapshotMetadata) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SnapshotMetadata: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SnapshotMetadata: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -821,6 +884,9 @@ func (m *SnapshotMetadata) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -848,6 +914,9 @@ func (m *SnapshotMetadata) Unmarshal(data []byte) error {
 			}
 			m.Index = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -864,6 +933,9 @@ func (m *SnapshotMetadata) Unmarshal(data []byte) error {
 			}
 			m.Term = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -875,15 +947,7 @@ func (m *SnapshotMetadata) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRaft(data[iNdEx:])
 			if err != nil {
 				return err
@@ -899,14 +963,21 @@ func (m *SnapshotMetadata) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *Snapshot) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaft
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -919,6 +990,12 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Snapshot: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Snapshot: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
@@ -926,6 +1003,9 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -943,7 +1023,10 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Data = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Data = append(m.Data[:0], data[iNdEx:postIndex]...)
+			if m.Data == nil {
+				m.Data = []byte{}
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -951,6 +1034,9 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -973,15 +1059,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRaft(data[iNdEx:])
 			if err != nil {
 				return err
@@ -997,14 +1075,21 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *Message) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaft
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -1017,6 +1102,12 @@ func (m *Message) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Message: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Message: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -1024,6 +1115,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			m.Type = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1040,6 +1134,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			m.To = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1056,6 +1153,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			m.From = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1072,6 +1172,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			m.Term = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1088,6 +1191,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			m.LogTerm = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1104,6 +1210,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			m.Index = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1120,6 +1229,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1148,6 +1260,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			m.Commit = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1164,6 +1279,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1191,6 +1309,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1208,6 +1329,9 @@ func (m *Message) Unmarshal(data []byte) error {
 			}
 			m.RejectHint = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1219,15 +1343,7 @@ func (m *Message) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRaft(data[iNdEx:])
 			if err != nil {
 				return err
@@ -1243,14 +1359,21 @@ func (m *Message) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *HardState) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaft
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -1263,6 +1386,12 @@ func (m *HardState) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: HardState: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: HardState: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -1270,6 +1399,9 @@ func (m *HardState) Unmarshal(data []byte) error {
 			}
 			m.Term = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1286,6 +1418,9 @@ func (m *HardState) Unmarshal(data []byte) error {
 			}
 			m.Vote = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1302,6 +1437,9 @@ func (m *HardState) Unmarshal(data []byte) error {
 			}
 			m.Commit = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1313,15 +1451,7 @@ func (m *HardState) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRaft(data[iNdEx:])
 			if err != nil {
 				return err
@@ -1337,14 +1467,21 @@ func (m *HardState) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *ConfState) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaft
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -1357,6 +1494,12 @@ func (m *ConfState) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ConfState: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ConfState: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -1364,6 +1507,9 @@ func (m *ConfState) Unmarshal(data []byte) error {
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1376,15 +1522,7 @@ func (m *ConfState) Unmarshal(data []byte) error {
 			}
 			m.Nodes = append(m.Nodes, v)
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRaft(data[iNdEx:])
 			if err != nil {
 				return err
@@ -1400,14 +1538,21 @@ func (m *ConfState) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *ConfChange) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaft
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -1420,6 +1565,12 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ConfChange: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ConfChange: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -1427,6 +1578,9 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 			}
 			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1443,6 +1597,9 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 			}
 			m.Type = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1459,6 +1616,9 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 			}
 			m.NodeID = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1475,6 +1635,9 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -1492,18 +1655,13 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Context = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Context = append(m.Context[:0], data[iNdEx:postIndex]...)
+			if m.Context == nil {
+				m.Context = []byte{}
+			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRaft(data[iNdEx:])
 			if err != nil {
 				return err
@@ -1519,6 +1677,9 @@ func (m *ConfChange) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func skipRaft(data []byte) (n int, err error) {
@@ -1527,6 +1688,9 @@ func skipRaft(data []byte) (n int, err error) {
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowRaft
+			}
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
@@ -1540,7 +1704,10 @@ func skipRaft(data []byte) (n int, err error) {
 		wireType := int(wire & 0x7)
 		switch wireType {
 		case 0:
-			for {
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -1556,6 +1723,9 @@ func skipRaft(data []byte) (n int, err error) {
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowRaft
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -1576,6 +1746,9 @@ func skipRaft(data []byte) (n int, err error) {
 				var innerWire uint64
 				var start int = iNdEx
 				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowRaft
+					}
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
@@ -1611,4 +1784,55 @@ func skipRaft(data []byte) (n int, err error) {
 
 var (
 	ErrInvalidLengthRaft = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowRaft   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorRaft = []byte{
+	// 735 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x64, 0x54, 0x4d, 0x6f, 0xd3, 0x4a,
+	0x14, 0xad, 0x13, 0xe7, 0xeb, 0xa6, 0x4d, 0xa7, 0xd3, 0xbc, 0x27, 0xab, 0x7a, 0xea, 0xeb, 0xb3,
+	0xde, 0x02, 0x15, 0xb5, 0x40, 0x17, 0x2c, 0xd8, 0xf5, 0x03, 0xa9, 0x95, 0x68, 0x05, 0x69, 0xcb,
+	0x02, 0x84, 0xd0, 0xd4, 0x9e, 0x38, 0x81, 0xda, 0x63, 0x8d, 0x27, 0xa5, 0xdd, 0x20, 0x24, 0x16,
+	0x6c, 0xf8, 0x61, 0x5d, 0xf6, 0x17, 0x20, 0xe0, 0x97, 0x70, 0x67, 0x3c, 0x4e, 0xec, 0x66, 0x11,
+	0x69, 0xe6, 0x9c, 0xfb, 0x71, 0xee, 0x99, 0xeb, 0x00, 0x48, 0x36, 0x54, 0xdb, 0xa9, 0x14, 0x4a,
+	0xd0, 0xa6, 0x3e, 0xa7, 0x17, 0x6b, 0xfd, 0x48, 0x44, 0xc2, 0x40, 0x8f, 0xf4, 0x29, 0x67, 0xfd,
+	0xcf, 0xd0, 0x78, 0x9e, 0x28, 0x79, 0x43, 0x1f, 0x82, 0x7b, 0x76, 0x93, 0x72, 0xcf, 0xd9, 0x70,
+	0x1e, 0xf4, 0x76, 0x56, 0xb6, 0xf3, 0xac, 0x6d, 0x43, 0x6a, 0x62, 0xcf, 0xbd, 0xfd, 0xf1, 0xef,
+	0xc2, 0xc0, 0x55, 0x78, 0xa6, 0x1e, 0x06, 0x73, 0x19, 0x7b, 0x35, 0x0c, 0x76, 0xa7, 0x0c, 0x22,
+	0x74, 0x0d, 0x1a, 0x47, 0x49, 0xc8, 0xaf, 0xbd, 0x7a, 0x89, 0x6a, 0x8c, 0x35, 0x44, 0x29, 0xb8,
+	0x07, 0x4c, 0x31, 0xcf, 0x45, 0x6a, 0x71, 0xe0, 0x86, 0x78, 0xf6, 0xbf, 0x38, 0x40, 0x4e, 0x13,
+	0x96, 0x66, 0x23, 0xa1, 0x8e, 0xb9, 0x62, 0x1a, 0xa4, 0x4f, 0x01, 0x02, 0x91, 0x0c, 0xdf, 0x67,
+	0x8a, 0xa9, 0x5c, 0x51, 0x77, 0xa6, 0x68, 0x1f, 0x99, 0x53, 0x4d, 0xd8, 0xe2, 0x9d, 0xa0, 0x00,
+	0x74, 0x73, 0xd3, 0xa9, 0xa2, 0xcb, 0x36, 0x47, 0xc9, 0x5a, 0x60, 0x45, 0x97, 0x41, 0xfc, 0x37,
+	0xd0, 0x2e, 0x14, 0x68, 0x89, 0x5a, 0x81, 0xe9, 0x69, 0x25, 0xd2, 0x67, 0xd0, 0x8e, 0xad, 0x32,
+	0x53, 0xb8, 0xbb, 0xe3, 0x15, 0x5a, 0xee, 0x2b, 0xb7, 0x75, 0xa7, 0xf1, 0xfe, 0xd7, 0x3a, 0xb4,
+	0x8e, 0x79, 0x96, 0xb1, 0x88, 0xd3, 0x2d, 0x30, 0xe6, 0x59, 0x87, 0x57, 0x8b, 0x1a, 0x96, 0x9e,
+	0xf3, 0xb8, 0x0f, 0x35, 0x25, 0x2a, 0x93, 0xe0, 0x5d, 0x8f, 0x31, 0x94, 0xe2, 0xde, 0x18, 0x1a,
+	0x99, 0x0e, 0xe8, 0xce, 0xbd, 0xc9, 0x3a, 0xb4, 0x2e, 0x45, 0x64, 0x1e, 0xac, 0x51, 0x22, 0x0b,
+	0x70, 0x66, 0x5b, 0x73, 0xde, 0xb6, 0x2d, 0x68, 0x71, 0x5c, 0x81, 0x31, 0xcf, 0xbc, 0xd6, 0x46,
+	0x1d, 0x67, 0x5f, 0xaa, 0x6c, 0x46, 0x51, 0xca, 0xc6, 0xd0, 0x7f, 0xa0, 0x19, 0x88, 0x38, 0x1e,
+	0x2b, 0xaf, 0x5d, 0xaa, 0x65, 0x31, 0xba, 0x03, 0xed, 0xcc, 0x3a, 0xe6, 0x75, 0x8c, 0x93, 0xe4,
+	0xbe, 0x93, 0x85, 0x83, 0x45, 0x9c, 0xae, 0x28, 0xf9, 0x07, 0x1e, 0x28, 0x0f, 0x30, 0xa3, 0x5d,
+	0x54, 0xcc, 0x31, 0xfa, 0x3f, 0xae, 0xba, 0x39, 0x1d, 0x8e, 0x13, 0xe5, 0x75, 0x4b, 0x3d, 0x4b,
+	0xb8, 0xff, 0x0e, 0x3a, 0x87, 0x4c, 0x86, 0xf9, 0x92, 0x14, 0x3e, 0x39, 0x73, 0x3e, 0x21, 0x73,
+	0x25, 0x70, 0xe1, 0x2a, 0x5b, 0xad, 0x91, 0xd2, 0x58, 0xf5, 0xf9, 0xb1, 0xfc, 0xff, 0xa0, 0x33,
+	0x5d, 0x4a, 0x7c, 0xb6, 0x46, 0x22, 0x42, 0xb4, 0xcb, 0x41, 0xbb, 0xdc, 0x41, 0x7e, 0xf1, 0xbf,
+	0x3b, 0x00, 0x3a, 0x66, 0x7f, 0xc4, 0x92, 0xc8, 0xbc, 0xed, 0xd1, 0x41, 0x45, 0x41, 0x6d, 0x7c,
+	0x40, 0x1f, 0xdb, 0x4f, 0xb0, 0x66, 0x16, 0xe4, 0xef, 0xf2, 0xc2, 0xe7, 0x79, 0x73, 0x3b, 0x82,
+	0xba, 0x4e, 0xb0, 0x3e, 0xd6, 0xaa, 0xe8, 0x4a, 0x0c, 0x86, 0xf3, 0xb4, 0x30, 0x57, 0xf1, 0x6b,
+	0x65, 0x3f, 0xb9, 0x56, 0x90, 0x5f, 0x37, 0x9f, 0x40, 0x67, 0xfa, 0x61, 0xd3, 0x65, 0xe8, 0x9a,
+	0xcb, 0x89, 0x90, 0x31, 0xbb, 0x24, 0x0b, 0x74, 0x15, 0x96, 0x0d, 0x30, 0x6b, 0x4c, 0x9c, 0xcd,
+	0x6f, 0x35, 0xe8, 0x96, 0x56, 0x95, 0x02, 0x34, 0x8f, 0xb3, 0xe8, 0x70, 0x92, 0x62, 0x42, 0x17,
+	0x97, 0x3c, 0x8b, 0xf6, 0x38, 0x53, 0xc4, 0xb1, 0x97, 0x97, 0x52, 0xa4, 0xa4, 0x66, 0xa3, 0x76,
+	0xd3, 0x94, 0xd4, 0x69, 0x0f, 0x20, 0x3f, 0x0f, 0x78, 0x96, 0x12, 0xd7, 0x06, 0xbe, 0x46, 0x7f,
+	0x49, 0x43, 0x8b, 0xb0, 0x17, 0xc3, 0x36, 0x2d, 0xab, 0xd7, 0x82, 0xb4, 0x28, 0x81, 0x45, 0xdd,
+	0x8c, 0x33, 0xa9, 0x2e, 0x74, 0x97, 0x36, 0x3a, 0x48, 0xca, 0x88, 0x49, 0xea, 0xe0, 0xe7, 0xdb,
+	0x43, 0xf4, 0x3c, 0x91, 0x9c, 0x05, 0x23, 0x76, 0x71, 0xc9, 0x09, 0xd0, 0x15, 0x58, 0xb2, 0x85,
+	0xf4, 0x03, 0x4d, 0x32, 0xd2, 0xb5, 0x61, 0xfb, 0x23, 0x1e, 0x7c, 0x7c, 0x35, 0x11, 0x72, 0x12,
+	0x93, 0x45, 0xfa, 0x17, 0xac, 0x20, 0x76, 0x26, 0x59, 0x92, 0x0d, 0xb9, 0x7c, 0xc1, 0x59, 0xc8,
+	0x25, 0x59, 0xb2, 0xd9, 0x67, 0xe3, 0x98, 0x8b, 0x89, 0x3a, 0x11, 0x9f, 0x48, 0x6f, 0xf3, 0x2d,
+	0xf4, 0xaa, 0x4f, 0xa2, 0x73, 0x67, 0xc8, 0x6e, 0x18, 0xea, 0x37, 0x41, 0x5b, 0x3c, 0xe8, 0xcf,
+	0xe0, 0x01, 0x8f, 0xc5, 0x15, 0x37, 0x8c, 0x53, 0x65, 0xce, 0x53, 0xfc, 0xab, 0xc8, 0x99, 0xda,
+	0x5e, 0xff, 0xf6, 0xd7, 0xfa, 0xc2, 0x1d, 0xfe, 0x6e, 0x7f, 0xaf, 0x3b, 0x77, 0xf8, 0xfb, 0x89,
+	0xbf, 0x3f, 0x01, 0x00, 0x00, 0xff, 0xff, 0xc8, 0x26, 0x45, 0x2d, 0xd0, 0x05, 0x00, 0x00,
+}

@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// error package describes errors in etcd project.
-// When any change happens, Documentation/errorcode.md needs to be updated
-// correspondingly.
+// Package error describes errors in etcd project. When any change happens,
+// Documentation/v2/errorcode.md needs to be updated correspondingly.
 package error
 
 import (
@@ -49,6 +48,8 @@ var errors = map[int]string{
 	ecodeIndexValueMutex:      "Index and value cannot both be specified",
 	EcodeInvalidField:         "Invalid field",
 	EcodeInvalidForm:          "Invalid POST form",
+	EcodeRefreshValue:         "Value provided on refresh",
+	EcodeRefreshTTLRequired:   "A TTL must be provided on refresh",
 
 	// raft related errors
 	EcodeRaftInternal: "Raft Internal Error",
@@ -100,6 +101,8 @@ const (
 	ecodeIndexValueMutex      = 208
 	EcodeInvalidField         = 209
 	EcodeInvalidForm          = 210
+	EcodeRefreshValue         = 211
+	EcodeRefreshTTLRequired   = 212
 
 	EcodeRaftInternal = 300
 	EcodeLeaderElect  = 301
@@ -133,7 +136,7 @@ func NewError(errorCode int, cause string, index uint64) *Error {
 	}
 }
 
-// Only for error interface
+// Error is for the error interface
 func (e Error) Error() string {
 	return e.Message + " (" + e.Cause + ")"
 }

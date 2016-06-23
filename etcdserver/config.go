@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,15 +46,19 @@ type ServerConfig struct {
 	ForceNewCluster     bool
 	PeerTLSInfo         transport.TLSInfo
 
-	TickMs        uint
-	ElectionTicks int
+	TickMs           uint
+	ElectionTicks    int
+	BootstrapTimeout time.Duration
 
-	V3demo bool
+	AutoCompactionRetention int
+	QuotaBackendBytes       int64
 
 	StrictReconfigCheck bool
+
+	EnablePprof bool
 }
 
-// VerifyBootstrapConfig sanity-checks the initial config for bootstrap case
+// VerifyBootstrap sanity-checks the initial config for bootstrap case
 // and returns an error for things that should never happen.
 func (c *ServerConfig) VerifyBootstrap() error {
 	if err := c.verifyLocalMember(true); err != nil {
@@ -121,8 +125,6 @@ func (c *ServerConfig) WALDir() string {
 
 func (c *ServerConfig) SnapDir() string { return path.Join(c.MemberDir(), "snap") }
 
-func (c *ServerConfig) StorageDir() string { return path.Join(c.MemberDir(), "storage") }
-
 func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 
 // ReqTimeout returns timeout for request to finish.
@@ -130,6 +132,10 @@ func (c *ServerConfig) ReqTimeout() time.Duration {
 	// 5s for queue waiting, computation and disk IO delay
 	// + 2 * election timeout for possible leader election
 	return 5*time.Second + 2*time.Duration(c.ElectionTicks)*time.Duration(c.TickMs)*time.Millisecond
+}
+
+func (c *ServerConfig) electionTimeout() time.Duration {
+	return time.Duration(c.ElectionTicks) * time.Duration(c.TickMs) * time.Millisecond
 }
 
 func (c *ServerConfig) peerDialTimeout() time.Duration {
@@ -180,4 +186,11 @@ func checkDuplicateURL(urlsmap types.URLsMap) bool {
 		}
 	}
 	return false
+}
+
+func (c *ServerConfig) bootstrapTimeout() time.Duration {
+	if c.BootstrapTimeout != 0 {
+		return c.BootstrapTimeout
+	}
+	return time.Second
 }

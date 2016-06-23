@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/raft/raftpb"
+	"golang.org/x/net/context"
 )
 
 // TestNodeStep ensures that node.Step sends msgProp to propc chan
@@ -42,7 +42,7 @@ func TestNodeStep(t *testing.T) {
 				t.Errorf("%d: cannot receive %s on propc chan", msgt, msgn)
 			}
 		} else {
-			if msgt == raftpb.MsgBeat || msgt == raftpb.MsgHup || msgt == raftpb.MsgUnreachable || msgt == raftpb.MsgSnapStatus {
+			if IsLocalMsg(msgt) {
 				select {
 				case <-n.recvc:
 					t.Errorf("%d: step should ignore %s", msgt, msgn)
@@ -99,8 +99,8 @@ func TestNodeStepUnblock(t *testing.T) {
 				n.done = make(chan struct{})
 			default:
 			}
-		case <-time.After(time.Millisecond * 100):
-			t.Errorf("#%d: failed to unblock step", i)
+		case <-time.After(1 * time.Second):
+			t.Fatalf("#%d: failed to unblock step", i)
 		}
 	}
 }
@@ -207,13 +207,12 @@ func TestBlockProposal(t *testing.T) {
 	}
 
 	n.Campaign(context.TODO())
-	testutil.WaitSchedule()
 	select {
 	case err := <-errc:
 		if err != nil {
 			t.Errorf("err = %v, want %v", err, nil)
 		}
-	default:
+	case <-time.After(10 * time.Second):
 		t.Errorf("blocking proposal, want unblocking")
 	}
 }
@@ -225,11 +224,12 @@ func TestNodeTick(t *testing.T) {
 	s := NewMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
 	go n.run(r)
-	elapsed := r.elapsed
+	elapsed := r.electionElapsed
 	n.Tick()
+	testutil.WaitSchedule()
 	n.Stop()
-	if r.elapsed != elapsed+1 {
-		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	if r.electionElapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
 	}
 }
 
@@ -246,8 +246,9 @@ func TestNodeStop(t *testing.T) {
 		close(donec)
 	}()
 
-	elapsed := r.elapsed
+	elapsed := r.electionElapsed
 	n.Tick()
+	testutil.WaitSchedule()
 	n.Stop()
 
 	select {
@@ -256,13 +257,13 @@ func TestNodeStop(t *testing.T) {
 		t.Fatalf("timed out waiting for node to stop!")
 	}
 
-	if r.elapsed != elapsed+1 {
-		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	if r.electionElapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
 	}
 	// Further ticks should have no effect, the node is stopped.
 	n.Tick()
-	if r.elapsed != elapsed+1 {
-		t.Errorf("elapsed = %d, want %d", r.elapsed, elapsed+1)
+	if r.electionElapsed != elapsed+1 {
+		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
 	}
 	// Subsequent Stops should have no effect.
 	n.Stop()
@@ -330,6 +331,7 @@ func TestNodeStart(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := StartNode(c, []Peer{{ID: 1}})
+	defer n.Stop()
 	n.Campaign(ctx)
 	g := <-n.Ready()
 	if !reflect.DeepEqual(g, wants[0]) {
@@ -379,6 +381,7 @@ func TestNodeRestart(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := RestartNode(c)
+	defer n.Stop()
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	}
@@ -423,6 +426,7 @@ func TestNodeRestartFromSnapshot(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := RestartNode(c)
+	defer n.Stop()
 	if g := <-n.Ready(); !reflect.DeepEqual(g, want) {
 		t.Errorf("g = %+v,\n             w   %+v", g, want)
 	} else {
@@ -450,6 +454,7 @@ func TestNodeAdvance(t *testing.T) {
 		MaxInflightMsgs: 256,
 	}
 	n := StartNode(c, []Peer{{ID: 1}})
+	defer n.Stop()
 	n.Campaign(ctx)
 	<-n.Ready()
 	n.Propose(ctx, []byte("foo"))

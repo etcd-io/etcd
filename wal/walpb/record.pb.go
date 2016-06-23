@@ -14,17 +14,24 @@
 */
 package walpb
 
-import proto "github.com/coreos/etcd/Godeps/_workspace/src/github.com/gogo/protobuf/proto"
-import math "math"
+import (
+	"fmt"
 
-// discarding unused import gogoproto "github.com/coreos/etcd/Godeps/_workspace/src/gogoproto"
+	proto "github.com/gogo/protobuf/proto"
+
+	math "math"
+)
 
 import io "io"
-import fmt "fmt"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto.GoGoProtoPackageIsVersion1
 
 type Record struct {
 	Type             int64  `protobuf:"varint,1,opt,name=type" json:"type"`
@@ -33,9 +40,10 @@ type Record struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *Record) Reset()         { *m = Record{} }
-func (m *Record) String() string { return proto.CompactTextString(m) }
-func (*Record) ProtoMessage()    {}
+func (m *Record) Reset()                    { *m = Record{} }
+func (m *Record) String() string            { return proto.CompactTextString(m) }
+func (*Record) ProtoMessage()               {}
+func (*Record) Descriptor() ([]byte, []int) { return fileDescriptorRecord, []int{0} }
 
 type Snapshot struct {
 	Index            uint64 `protobuf:"varint,1,opt,name=index" json:"index"`
@@ -43,10 +51,15 @@ type Snapshot struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *Snapshot) Reset()         { *m = Snapshot{} }
-func (m *Snapshot) String() string { return proto.CompactTextString(m) }
-func (*Snapshot) ProtoMessage()    {}
+func (m *Snapshot) Reset()                    { *m = Snapshot{} }
+func (m *Snapshot) String() string            { return proto.CompactTextString(m) }
+func (*Snapshot) ProtoMessage()               {}
+func (*Snapshot) Descriptor() ([]byte, []int) { return fileDescriptorRecord, []int{1} }
 
+func init() {
+	proto.RegisterType((*Record)(nil), "walpb.Record")
+	proto.RegisterType((*Snapshot)(nil), "walpb.Snapshot")
+}
 func (m *Record) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -177,8 +190,12 @@ func (m *Record) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRecord
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -191,6 +208,12 @@ func (m *Record) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Record: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Record: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -198,6 +221,9 @@ func (m *Record) Unmarshal(data []byte) error {
 			}
 			m.Type = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRecord
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -214,6 +240,9 @@ func (m *Record) Unmarshal(data []byte) error {
 			}
 			m.Crc = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRecord
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -230,6 +259,9 @@ func (m *Record) Unmarshal(data []byte) error {
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRecord
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -247,18 +279,13 @@ func (m *Record) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Data = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Data = append(m.Data[:0], data[iNdEx:postIndex]...)
+			if m.Data == nil {
+				m.Data = []byte{}
+			}
 			iNdEx = postIndex
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRecord(data[iNdEx:])
 			if err != nil {
 				return err
@@ -274,14 +301,21 @@ func (m *Record) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func (m *Snapshot) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
+		preIndex := iNdEx
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRecord
+			}
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
@@ -294,6 +328,12 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 		}
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Snapshot: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Snapshot: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
@@ -301,6 +341,9 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			}
 			m.Index = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRecord
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -317,6 +360,9 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 			}
 			m.Term = 0
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRecord
+				}
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
@@ -328,15 +374,7 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 				}
 			}
 		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
+			iNdEx = preIndex
 			skippy, err := skipRecord(data[iNdEx:])
 			if err != nil {
 				return err
@@ -352,6 +390,9 @@ func (m *Snapshot) Unmarshal(data []byte) error {
 		}
 	}
 
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
 	return nil
 }
 func skipRecord(data []byte) (n int, err error) {
@@ -360,6 +401,9 @@ func skipRecord(data []byte) (n int, err error) {
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowRecord
+			}
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
@@ -373,7 +417,10 @@ func skipRecord(data []byte) (n int, err error) {
 		wireType := int(wire & 0x7)
 		switch wireType {
 		case 0:
-			for {
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowRecord
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -389,6 +436,9 @@ func skipRecord(data []byte) (n int, err error) {
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowRecord
+				}
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
@@ -409,6 +459,9 @@ func skipRecord(data []byte) (n int, err error) {
 				var innerWire uint64
 				var start int = iNdEx
 				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowRecord
+					}
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
@@ -444,4 +497,20 @@ func skipRecord(data []byte) (n int, err error) {
 
 var (
 	ErrInvalidLengthRecord = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowRecord   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorRecord = []byte{
+	// 175 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x29, 0x4a, 0x4d, 0xce,
+	0x2f, 0x4a, 0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x2d, 0x4f, 0xcc, 0x29, 0x48, 0x92,
+	0x12, 0x49, 0xcf, 0x4f, 0xcf, 0x07, 0x8b, 0xe8, 0x83, 0x58, 0x10, 0x49, 0x25, 0x3f, 0x2e, 0xb6,
+	0x20, 0xb0, 0x62, 0x21, 0x09, 0x2e, 0x96, 0x92, 0xca, 0x82, 0x54, 0x09, 0x46, 0x05, 0x46, 0x0d,
+	0x66, 0x27, 0x96, 0x13, 0xf7, 0xe4, 0x19, 0x82, 0xc0, 0x22, 0x42, 0x62, 0x5c, 0xcc, 0xc9, 0x45,
+	0xc9, 0x12, 0x4c, 0x40, 0x09, 0x5e, 0xa8, 0x04, 0x48, 0x40, 0x48, 0x88, 0x8b, 0x25, 0x25, 0xb1,
+	0x24, 0x51, 0x82, 0x19, 0x28, 0xc1, 0x13, 0x04, 0x66, 0x2b, 0x39, 0x70, 0x71, 0x04, 0xe7, 0x25,
+	0x16, 0x14, 0x67, 0xe4, 0x97, 0x08, 0x49, 0x71, 0xb1, 0x66, 0xe6, 0xa5, 0xa4, 0x56, 0x80, 0x8d,
+	0x64, 0x81, 0xea, 0x84, 0x08, 0x81, 0x6d, 0x4b, 0x2d, 0xca, 0x05, 0x1b, 0xca, 0x02, 0xb7, 0x0d,
+	0x28, 0xe2, 0x24, 0x70, 0xe2, 0xa1, 0x1c, 0xc3, 0x89, 0x47, 0x72, 0x8c, 0x17, 0x80, 0xf8, 0x01,
+	0x10, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0xe5, 0x20, 0xf5, 0xbc, 0xcf, 0x00, 0x00, 0x00,
+}

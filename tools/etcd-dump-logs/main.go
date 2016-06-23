@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,7 +75,7 @@ func main() {
 		fmt.Println("Start dupmping log entries from snapshot.")
 	}
 
-	w, err := wal.Open(walDir(*from), walsnap)
+	w, err := wal.OpenForRead(walDir(*from), walsnap)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}
@@ -97,21 +97,28 @@ func main() {
 		switch e.Type {
 		case raftpb.EntryNormal:
 			msg = fmt.Sprintf("%s\tnorm", msg)
-			var r etcdserverpb.Request
-			if err := r.Unmarshal(e.Data); err != nil {
-				msg = fmt.Sprintf("%s\t???", msg)
+
+			var rr etcdserverpb.InternalRaftRequest
+			if err := rr.Unmarshal(e.Data); err == nil {
+				msg = fmt.Sprintf("%s\t%s", msg, rr.String())
 				break
 			}
-			switch r.Method {
-			case "":
-				msg = fmt.Sprintf("%s\tnoop", msg)
-			case "SYNC":
-				msg = fmt.Sprintf("%s\tmethod=SYNC time=%q", msg, time.Unix(0, r.Time))
-			case "QGET", "DELETE":
-				msg = fmt.Sprintf("%s\tmethod=%s path=%s", msg, r.Method, excerpt(r.Path, 64, 64))
-			default:
-				msg = fmt.Sprintf("%s\tmethod=%s path=%s val=%s", msg, r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
+
+			var r etcdserverpb.Request
+			if err := r.Unmarshal(e.Data); err == nil {
+				switch r.Method {
+				case "":
+					msg = fmt.Sprintf("%s\tnoop", msg)
+				case "SYNC":
+					msg = fmt.Sprintf("%s\tmethod=SYNC time=%q", msg, time.Unix(0, r.Time))
+				case "QGET", "DELETE":
+					msg = fmt.Sprintf("%s\tmethod=%s path=%s", msg, r.Method, excerpt(r.Path, 64, 64))
+				default:
+					msg = fmt.Sprintf("%s\tmethod=%s path=%s val=%s", msg, r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))
+				}
+				break
 			}
+			msg = fmt.Sprintf("%s\t???", msg)
 		case raftpb.EntryConfChange:
 			msg = fmt.Sprintf("%s\tconf", msg)
 			var r raftpb.ConfChange

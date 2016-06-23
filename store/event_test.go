@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,7 @@
 
 package store
 
-import (
-	"testing"
-)
+import "testing"
 
 // TestEventQueue tests a queue with capacity = 100
 // Add 200 events into that queue, and test if the
@@ -55,25 +53,34 @@ func TestScanHistory(t *testing.T) {
 	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4, 4))
 	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5, 5))
 
+	// Delete a dir
+	de := newEvent(Delete, "/foo", 6, 6)
+	de.PrevNode = newDir(nil, "/foo", 1, nil, Permanent).Repr(false, false, nil)
+	eh.addEvent(de)
+
 	e, err := eh.scan("/foo", false, 1)
 	if err != nil || e.Index() != 1 {
-		t.Fatalf("scan error [/foo] [1] %v", e.Index)
+		t.Fatalf("scan error [/foo] [1] %d (%v)", e.Index(), err)
 	}
 
 	e, err = eh.scan("/foo/bar", false, 1)
 
 	if err != nil || e.Index() != 2 {
-		t.Fatalf("scan error [/foo/bar] [2] %v", e.Index)
+		t.Fatalf("scan error [/foo/bar] [2] %d (%v)", e.Index(), err)
 	}
 
 	e, err = eh.scan("/foo/bar", true, 3)
 
 	if err != nil || e.Index() != 4 {
-		t.Fatalf("scan error [/foo/bar/bar] [4] %v", e.Index)
+		t.Fatalf("scan error [/foo/bar/bar] [4] %d (%v)", e.Index(), err)
 	}
 
-	e, err = eh.scan("/foo/bar", true, 6)
+	e, err = eh.scan("/foo/foo/foo", false, 6)
+	if err != nil || e.Index() != 6 {
+		t.Fatalf("scan error [/foo/foo/foo] [6] %d (%v)", e.Index(), err)
+	}
 
+	e, _ = eh.scan("/foo/bar", true, 7)
 	if e != nil {
 		t.Fatalf("bad index shoud reuturn nil")
 	}

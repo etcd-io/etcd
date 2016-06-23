@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ func TestSnapshotFailure(t *testing.T) {
 	if sm.prs[2].Next != 1 {
 		t.Fatalf("Next = %d, want 1", sm.prs[2].Next)
 	}
-	if sm.prs[2].Paused != true {
+	if !sm.prs[2].Paused {
 		t.Errorf("Paused = %v, want true", sm.prs[2].Paused)
 	}
 }
@@ -106,7 +106,7 @@ func TestSnapshotSucceed(t *testing.T) {
 	if sm.prs[2].Next != 12 {
 		t.Fatalf("Next = %d, want 12", sm.prs[2].Next)
 	}
-	if sm.prs[2].Paused != true {
+	if !sm.prs[2].Paused {
 		t.Errorf("Paused = %v, want true", sm.prs[2].Paused)
 	}
 }

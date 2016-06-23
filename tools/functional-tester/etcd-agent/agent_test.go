@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,31 +17,37 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"syscall"
 	"testing"
 )
 
-const etcdPath = "./etcd"
+var etcdPath = filepath.Join(os.Getenv("GOPATH"), "bin/etcd")
 
 func TestAgentStart(t *testing.T) {
+	defer os.Remove("etcd.log")
+
 	a, dir := newTestAgent(t)
 	defer a.terminate()
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestAgentRestart(t *testing.T) {
+	defer os.Remove("etcd.log")
+
 	a, dir := newTestAgent(t)
 	defer a.terminate()
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = a.stop()
+	err = a.stopWithSig(syscall.SIGTERM)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,9 +58,11 @@ func TestAgentRestart(t *testing.T) {
 }
 
 func TestAgentTerminate(t *testing.T) {
+	defer os.Remove("etcd.log")
+
 	a, dir := newTestAgent(t)
 
-	err := a.start("-data-dir", dir)
+	err := a.start("--data-dir", dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +79,7 @@ func TestAgentTerminate(t *testing.T) {
 
 // newTestAgent creates a test agent and with a temp data directory.
 func newTestAgent(t *testing.T) (*Agent, string) {
-	a, err := newAgent(etcdPath)
+	a, err := newAgent(etcdPath, "etcd.log")
 	if err != nil {
 		t.Fatal(err)
 	}

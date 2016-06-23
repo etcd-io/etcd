@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ func TestMsgAppFlowControlFull(t *testing.T) {
 // TestMsgAppFlowControlMoveForward ensures msgAppResp can move
 // forward the sending window correctly:
 // 1. valid msgAppResp.index moves the windows to pass all smaller or equal index.
-// 2. out-of-dated msgAppResp has no effect on the silding window.
+// 2. out-of-dated msgAppResp has no effect on the sliding window.
 func TestMsgAppFlowControlMoveForward(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
 	r.becomeCandidate()

@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ const (
 	calldepth = 2
 )
 
-// DefaultLogger is a defualt implementation of the Logger interface.
+// DefaultLogger is a default implementation of the Logger interface.
 type DefaultLogger struct {
 	*log.Logger
 	debug bool

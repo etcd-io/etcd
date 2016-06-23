@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package logutil includes utilities to faciliate logging.
+// Package logutil includes utilities to facilitate logging.
 package logutil
 
 import (
@@ -20,11 +20,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
+	"github.com/coreos/pkg/capnslog"
 )
 
 var (
-	defaultMergePeriod = time.Second
+	defaultMergePeriod     = time.Second
+	defaultTimeOutputScale = 10 * time.Millisecond
 
 	outputInterval = time.Second
 )
@@ -58,7 +59,9 @@ func (s *status) isInMergePeriod(now time.Time) bool {
 func (s *status) isEmpty() bool { return s.count == 0 }
 
 func (s *status) summary(now time.Time) string {
-	return fmt.Sprintf("[merged %d repeated lines in %s]", s.count, now.Sub(s.start))
+	ts := s.start.Round(defaultTimeOutputScale)
+	took := now.Round(defaultTimeOutputScale).Sub(ts)
+	return fmt.Sprintf("[merged %d repeated lines in %s]", s.count, took)
 }
 
 func (s *status) reset(now time.Time) {

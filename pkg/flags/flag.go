@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package flags implements command-line flag parsing.
 package flags
 
 import (
@@ -21,8 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
-	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -67,29 +68,46 @@ func (f *IgnoredFlag) String() string {
 // SetFlagsFromEnv parses all registered flags in the given flagset,
 // and if they are not already set it attempts to set their values from
 // environment variables. Environment variables take the name of the flag but
-// are UPPERCASE, have the prefix "ETCD_", and any dashes are replaced by
+// are UPPERCASE, have the given prefix  and any dashes are replaced by
 // underscores - for example: some-flag => ETCD_SOME_FLAG
-func SetFlagsFromEnv(fs *flag.FlagSet) error {
+func SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error {
 	var err error
 	alreadySet := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
-		alreadySet[flagToEnv(f.Name)] = true
+		alreadySet[flagToEnv(prefix, f.Name)] = true
 	})
 	usedEnvKey := make(map[string]bool)
 	fs.VisitAll(func(f *flag.Flag) {
-		key := flagToEnv(f.Name)
-		if !alreadySet[key] {
-			val := os.Getenv(key)
-			if val != "" {
-				usedEnvKey[key] = true
-				if serr := fs.Set(f.Name, val); serr != nil {
-					err = fmt.Errorf("invalid value %q for %s: %v", val, key, serr)
-				}
-				plog.Infof("recognized and used environment variable %s=%s", key, val)
-			}
-		}
+		err = setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, true)
 	})
 
+	verifyEnv(prefix, usedEnvKey, alreadySet)
+
+	return err
+}
+
+// SetPflagsFromEnv is similar to SetFlagsFromEnv. However, the accepted flagset type is pflag.FlagSet
+// and it does not do any logging.
+func SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error {
+	var err error
+	alreadySet := make(map[string]bool)
+	usedEnvKey := make(map[string]bool)
+	fs.VisitAll(func(f *pflag.Flag) {
+		if f.Changed {
+			alreadySet[flagToEnv(prefix, f.Name)] = true
+		}
+		if serr := setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, false); serr != nil {
+			err = serr
+		}
+	})
+	return err
+}
+
+func flagToEnv(prefix, name string) string {
+	return prefix + "_" + strings.ToUpper(strings.Replace(name, "-", "_", -1))
+}
+
+func verifyEnv(prefix string, usedEnvKey, alreadySet map[string]bool) {
 	for _, env := range os.Environ() {
 		kv := strings.SplitN(env, "=", 2)
 		if len(kv) != 2 {
@@ -102,66 +120,36 @@ func SetFlagsFromEnv(fs *flag.FlagSet) error {
 			plog.Infof("recognized environment variable %s, but unused: shadowed by corresponding flag ", kv[0])
 			continue
 		}
-		if strings.HasPrefix(env, "ETCD_") {
+		if strings.HasPrefix(env, prefix) {
 			plog.Warningf("unrecognized environment variable %s", env)
 		}
 	}
-
-	return err
 }
 
-func flagToEnv(name string) string {
-	return "ETCD_" + strings.ToUpper(strings.Replace(name, "-", "_", -1))
+type flagSetter interface {
+	Set(fk string, fv string) error
 }
 
-// SetBindAddrFromAddr sets the value of bindAddr flag from the value
-// of addr flag. Both flags' Value must be of type IPAddressPort. If the
-// bindAddr flag is set and the addr flag is unset, it will set bindAddr to
-// [::]:port of addr. Otherwise, it keeps the original values.
-func SetBindAddrFromAddr(fs *flag.FlagSet, bindAddrFlagName, addrFlagName string) {
-	if IsSet(fs, bindAddrFlagName) || !IsSet(fs, addrFlagName) {
-		return
-	}
-	addr := *fs.Lookup(addrFlagName).Value.(*IPAddressPort)
-	addr.IP = "::"
-	if err := fs.Set(bindAddrFlagName, addr.String()); err != nil {
-		plog.Panicf("unexpected flags set error: %v", err)
-	}
-}
-
-// URLsFromFlags decides what URLs should be using two different flags
-// as datasources. The first flag's Value must be of type URLs, while
-// the second must be of type IPAddressPort. If both of these flags
-// are set, an error will be returned. If only the first flag is set,
-// the underlying url.URL objects will be returned unmodified. If the
-// second flag happens to be set, the underlying IPAddressPort will be
-// converted to a url.URL and returned. The Scheme of the returned
-// url.URL will be http unless the provided TLSInfo object is non-empty.
-// If neither of the flags have been explicitly set, the default value
-// of the first flag will be returned unmodified.
-func URLsFromFlags(fs *flag.FlagSet, urlsFlagName string, addrFlagName string, tlsInfo transport.TLSInfo) ([]url.URL, error) {
-	visited := make(map[string]struct{})
-	fs.Visit(func(f *flag.Flag) {
-		visited[f.Name] = struct{}{}
-	})
-
-	_, urlsFlagIsSet := visited[urlsFlagName]
-	_, addrFlagIsSet := visited[addrFlagName]
-
-	if addrFlagIsSet {
-		if urlsFlagIsSet {
-			return nil, fmt.Errorf("Set only one of flags -%s and -%s", urlsFlagName, addrFlagName)
+func setFlagFromEnv(fs flagSetter, prefix, fname string, usedEnvKey, alreadySet map[string]bool, log bool) error {
+	key := flagToEnv(prefix, fname)
+	if !alreadySet[key] {
+		val := os.Getenv(key)
+		if val != "" {
+			usedEnvKey[key] = true
+			if serr := fs.Set(fname, val); serr != nil {
+				return fmt.Errorf("invalid value %q for %s: %v", val, key, serr)
+			}
+			if log {
+				plog.Infof("recognized and used environment variable %s=%s", key, val)
+			}
 		}
-
-		addr := *fs.Lookup(addrFlagName).Value.(*IPAddressPort)
-		addrURL := url.URL{Scheme: "http", Host: addr.String()}
-		if !tlsInfo.Empty() {
-			addrURL.Scheme = "https"
-		}
-		return []url.URL{addrURL}, nil
 	}
+	return nil
+}
 
-	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue)), nil
+// URLsFromFlag returns a slices from url got from the flag.
+func URLsFromFlag(fs *flag.FlagSet, urlsFlagName string) []url.URL {
+	return []url.URL(*fs.Lookup(urlsFlagName).Value.(*URLsValue))
 }
 
 func IsSet(fs *flag.FlagSet, name string) bool {

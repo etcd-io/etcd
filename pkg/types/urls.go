@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,6 +51,14 @@ func NewURLs(strs []string) (URLs, error) {
 	us.Sort()
 
 	return us, nil
+}
+
+func MustNewURLs(strs []string) URLs {
+	urls, err := NewURLs(strs)
+	if err != nil {
+		panic(err)
+	}
+	return urls
 }
 
 func (us URLs) String() string {

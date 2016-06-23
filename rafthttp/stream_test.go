@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,12 +24,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/version"
+	"github.com/coreos/go-semver/semver"
 )
 
 // TestStreamWriterAttachOutgoingConn tests that outgoingConn can be attached
@@ -37,31 +37,45 @@ import (
 // continuously, and closes it when stopped.
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 	sw := startStreamWriter(types.ID(1), newPeerStatus(types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
-	// the expected initial state of streamWrite is not working
-	if _, ok := sw.writec(); ok != false {
+	// the expected initial state of streamWriter is not working
+	if _, ok := sw.writec(); ok {
 		t.Errorf("initial working status = %v, want false", ok)
 	}
 
-	// repeatitive tests to ensure it can use latest connection
+	// repeat tests to ensure streamWriter can use last attached connection
 	var wfc *fakeWriteFlushCloser
 	for i := 0; i < 3; i++ {
 		prevwfc := wfc
 		wfc = &fakeWriteFlushCloser{}
 		sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
-		testutil.WaitSchedule()
+
+		// sw.attach happens asynchronously. Waits for its result in a for loop to make the
+		// test more robust on slow CI.
+		for j := 0; j < 3; j++ {
+			testutil.WaitSchedule()
+			// previous attached connection should be closed
+			if prevwfc != nil && !prevwfc.Closed() {
+				continue
+			}
+			// write chan is available
+			if _, ok := sw.writec(); !ok {
+				continue
+			}
+		}
+
 		// previous attached connection should be closed
-		if prevwfc != nil && prevwfc.Closed() != true {
+		if prevwfc != nil && !prevwfc.Closed() {
 			t.Errorf("#%d: close of previous connection = %v, want true", i, prevwfc.Closed())
 		}
-		// starts working
-		if _, ok := sw.writec(); ok != true {
+		// write chan is available
+		if _, ok := sw.writec(); !ok {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
 
 		sw.msgc <- raftpb.Message{}
 		testutil.WaitSchedule()
-		// still working
-		if _, ok := sw.writec(); ok != true {
+		// write chan is available
+		if _, ok := sw.writec(); !ok {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
 		if wfc.Written() == 0 {
@@ -70,11 +84,11 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 	}
 
 	sw.stop()
-	// no longer in working status now
-	if _, ok := sw.writec(); ok != false {
+	// write chan is unavailable since the writer is stopped.
+	if _, ok := sw.writec(); ok {
 		t.Errorf("working status after stop = %v, want false", ok)
 	}
-	if wfc.Closed() != true {
+	if !wfc.Closed() {
 		t.Errorf("failed to close the underlying connection")
 	}
 }
@@ -90,10 +104,10 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 	sw.msgc <- raftpb.Message{}
 	testutil.WaitSchedule()
 	// no longer working
-	if _, ok := sw.writec(); ok != false {
+	if _, ok := sw.writec(); ok {
 		t.Errorf("working = %v, want false", ok)
 	}
-	if wfc.Closed() != true {
+	if !wfc.Closed() {
 		t.Errorf("failed to close the underlying connection")
 	}
 }
@@ -102,11 +116,9 @@ func TestStreamReaderDialRequest(t *testing.T) {
 	for i, tt := range []streamType{streamTypeMessage, streamTypeMsgAppV2} {
 		tr := &roundTripperRecorder{}
 		sr := &streamReader{
-			tr:     tr,
+			peerID: types.ID(2),
+			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1), ID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:  types.ID(1),
-			remote: types.ID(2),
-			cid:    types.ID(1),
 		}
 		sr.dial(tt)
 
@@ -152,11 +164,9 @@ func TestStreamReaderDialResult(t *testing.T) {
 			err:    tt.err,
 		}
 		sr := &streamReader{
-			tr:     tr,
+			peerID: types.ID(2),
+			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:  types.ID(1),
-			remote: types.ID(2),
-			cid:    types.ID(1),
 			errorc: make(chan error, 1),
 		}
 
@@ -180,11 +190,9 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 			header: http.Header{},
 		}
 		sr := &streamReader{
-			tr:     tr,
+			peerID: types.ID(2),
+			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:  types.ID(1),
-			remote: types.ID(2),
-			cid:    types.ID(1),
 		}
 
 		_, err := sr.dial(typ)
@@ -240,8 +248,19 @@ func TestStream(t *testing.T) {
 		h.sw = sw
 
 		picker := mustNewURLPicker(t, []string{srv.URL})
-		sr := startStreamReader(&http.Transport{}, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), newPeerStatus(types.ID(1)), recvc, propc, nil)
-		defer sr.stop()
+		tr := &Transport{streamRt: &http.Transport{}, ClusterID: types.ID(1)}
+
+		sr := &streamReader{
+			peerID: types.ID(2),
+			typ:    tt.t,
+			tr:     tr,
+			picker: picker,
+			status: newPeerStatus(types.ID(2)),
+			recvc:  recvc,
+			propc:  propc,
+		}
+		sr.start()
+
 		// wait for stream to work
 		var writec chan<- raftpb.Message
 		for {
@@ -262,6 +281,8 @@ func TestStream(t *testing.T) {
 		if !reflect.DeepEqual(m, tt.m) {
 			t.Fatalf("#%d: message = %+v, want %+v", i, m, tt.m)
 		}
+
+		sr.stop()
 	}
 }
 
