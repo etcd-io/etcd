@@ -1,0 +1,56 @@
+# Download and Build
+
+## System Requirements
+
+TODO
+
+## Download the Pre-built Binary
+
+The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, appc, and Docker. Instructions for using these binaries are on the [GitHub releases page][github-release].
+
+## Build the Latest Version
+
+For those wanting to try the very latest version, you can build the latest version of etcd from the `master` branch.
+[Go](https://golang.org/) version 1.5+ is required to build the latest version of etcd.
+
+Here are the commands to build an etcd binary from the `master` branch:
+
+```
+# go is required
+$ go version
+go version go1.6 darwin/amd64
+
+# GOPATH should be set correctly
+$ echo $GOPATH
+/Users/example/go
+
+$ mkdir -p $GOPATH/src/github.com/coreos
+$ cd $GOPATH/src/github.com/coreos
+$ git clone github.com:coreos/etcd.git
+$ cd etcd
+$ ./build
+$ ./bin/etcd
+...
+```
+
+## Test your Installation
+
+Check the etcd binary is built correctly by starting etcd and setting a key.
+
+Start etcd:
+
+```
+$ ./bin/etcd
+```
+
+Set a key:
+
+```
+$ ETCDCTL_API=3 ./bin/etcdctl put foo bar
+OK
+```
+
+If OK is printed, then etcd is working!
+
+[github-release]: https://github.com/coreos/etcd/releases/
+[go]: https://golang.org/doc/install

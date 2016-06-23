@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ type WaitTime interface {
 	// The chan will be triggered when Trigger is called with a
 	// deadline that is later than the one it is waiting for.
 	// The given deadline MUST be unique. The deadline should be
-	// retrived by calling time.Now() in most cases.
+	// retrieved by calling time.Now() in most cases.
 	Wait(deadline time.Time) <-chan struct{}
 	// Trigger triggers all the waiting chans with an earlier deadline.
 	Trigger(deadline time.Time)

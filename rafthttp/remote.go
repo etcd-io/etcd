@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
 package rafthttp
 
 import (
-	"net/http"
-
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 )
@@ -27,13 +25,23 @@ type remote struct {
 	pipeline *pipeline
 }
 
-func startRemote(tr http.RoundTripper, urls types.URLs, local, to, cid types.ID, r Raft, errorc chan error) *remote {
+func startRemote(tr *Transport, urls types.URLs, id types.ID) *remote {
 	picker := newURLPicker(urls)
-	status := newPeerStatus(to)
+	status := newPeerStatus(id)
+	pipeline := &pipeline{
+		peerID: id,
+		tr:     tr,
+		picker: picker,
+		status: status,
+		raft:   tr.Raft,
+		errorc: tr.ErrorC,
+	}
+	pipeline.start()
+
 	return &remote{
-		id:       to,
+		id:       id,
 		status:   status,
-		pipeline: newPipeline(tr, picker, local, to, cid, status, nil, r, errorc),
+		pipeline: pipeline,
 	}
 }
 
@@ -42,10 +50,9 @@ func (g *remote) send(m raftpb.Message) {
 	case g.pipeline.msgc <- m:
 	default:
 		if g.status.isActive() {
-			plog.MergeWarningf("dropped %s to %s since sending buffer is full", m.Type, g.id)
-		} else {
-			plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
+			plog.MergeWarningf("dropped internal raft message to %s since sending buffer is full (bad/overloaded network)", g.id)
 		}
+		plog.Debugf("dropped %s to %s since sending buffer is full", m.Type, g.id)
 	}
 }
 

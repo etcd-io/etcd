@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/akrennmair/gopcap"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/spacejam/loghisto"
+	"github.com/akrennmair/gopcap"
+	"github.com/spacejam/loghisto"
 )
 
 type nameSum struct {
@@ -146,7 +146,7 @@ func streamRouter(ports []uint16, parsedPackets chan *pcap.Packet, processors []
 // 4. open the pcap handler
 // 5. hand off packets from the handler to the decoder
 func main() {
-	portsArg := flag.String("ports", "2379,4001", "etcd listening ports")
+	portsArg := flag.String("ports", "2379", "etcd listening ports")
 	iface := flag.String("iface", "eth0", "interface for sniffing traffic on")
 	promisc := flag.Bool("promiscuous", true, "promiscuous mode")
 	period := flag.Uint("period", 1, "seconds between submissions")
@@ -166,9 +166,9 @@ func main() {
 
 	ports := []uint16{}
 	for _, p := range strings.Split(*portsArg, ",") {
-		p, err := strconv.Atoi(p)
+		port, err := strconv.Atoi(p)
 		if err == nil {
-			ports = append(ports, uint16(p))
+			ports = append(ports, uint16(port))
 		} else {
 			fmt.Fprintf(os.Stderr, "Failed to parse port \"%s\": %v\n", p, err)
 			os.Exit(1)

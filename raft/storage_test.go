@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -220,7 +220,7 @@ func TestStorageAppend(t *testing.T) {
 			nil,
 			[]pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 5}},
 		},
-		// tunncate the existing entries and append
+		// truncate the existing entries and append
 		{
 			[]pb.Entry{{Index: 4, Term: 5}},
 			nil,

@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/xiang90/probing"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+	"github.com/xiang90/probing"
 )
 
 // TestTransportSend tests that transport can send messages using correct
@@ -120,8 +120,8 @@ func TestTransportUpdate(t *testing.T) {
 	u := "http://localhost:2380"
 	tr.UpdatePeer(types.ID(1), []string{u})
 	wurls := types.URLs(testutil.MustNewURLs(t, []string{"http://localhost:2380"}))
-	if !reflect.DeepEqual(peer.urls, wurls) {
-		t.Errorf("urls = %+v, want %+v", peer.urls, wurls)
+	if !reflect.DeepEqual(peer.peerURLs, wurls) {
+		t.Errorf("urls = %+v, want %+v", peer.peerURLs, wurls)
 	}
 }
 
@@ -146,10 +146,9 @@ func TestTransportErrorc(t *testing.T) {
 	}
 	tr.peers[1].send(raftpb.Message{})
 
-	testutil.WaitSchedule()
 	select {
 	case <-errorc:
-	default:
+	case <-time.After(1 * time.Second):
 		t.Fatalf("cannot receive error from errorc")
 	}
 }

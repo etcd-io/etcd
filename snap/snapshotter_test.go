@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -207,7 +207,7 @@ func TestEmptySnapshot(t *testing.T) {
 	}
 }
 
-// TestAllSnapshotBroken ensures snapshotter returens
+// TestAllSnapshotBroken ensures snapshotter returns
 // ErrNoSnapshot if all the snapshots are broken.
 func TestAllSnapshotBroken(t *testing.T) {
 	dir := path.Join(os.TempDir(), "snapshot")

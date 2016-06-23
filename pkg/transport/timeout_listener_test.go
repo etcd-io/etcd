@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 // TestNewTimeoutListener tests that NewTimeoutListener returns a
 // rwTimeoutListener struct with timeouts set.
 func TestNewTimeoutListener(t *testing.T) {
-	l, err := NewTimeoutListener("127.0.0.1:0", "http", TLSInfo{}, time.Hour, time.Hour)
+	l, err := NewTimeoutListener("127.0.0.1:0", "http", nil, time.Hour, time.Hour)
 	if err != nil {
 		t.Fatalf("unexpected NewTimeoutListener error: %v", err)
 	}

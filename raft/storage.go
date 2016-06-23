@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,11 +25,17 @@ import (
 // index is unavailable because it predates the last snapshot.
 var ErrCompacted = errors.New("requested index is unavailable due to compaction")
 
-// ErrOutOfDataSnap is returned by Storage.CreateSnapshot when a requested
+// ErrSnapOutOfDate is returned by Storage.CreateSnapshot when a requested
 // index is older than the existing snapshot.
 var ErrSnapOutOfDate = errors.New("requested index is older than the existing snapshot")
 
+// ErrUnavailable is returned by Storage interface when the requested log entries
+// are unavailable.
 var ErrUnavailable = errors.New("requested entry at index is unavailable")
+
+// ErrSnapshotTemporarilyUnavailable is returned by the Storage interface when the required
+// snapshot is temporarily unavailable.
+var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unavailable")
 
 // Storage is an interface that may be implemented by the application
 // to retrieve log entries from storage.
@@ -57,7 +63,7 @@ type Storage interface {
 	// first log entry is not available).
 	FirstIndex() (uint64, error)
 	// Snapshot returns the most recent snapshot.
-	// If snapshot is temporarily unavailable, it should return ErrTemporarilyUnavailable,
+	// If snapshot is temporarily unavailable, it should return ErrSnapshotTemporarilyUnavailable,
 	// so raft state machine could know that Storage needs some time to prepare
 	// snapshot and call Snapshot later.
 	Snapshot() (pb.Snapshot, error)
@@ -105,7 +111,7 @@ func (ms *MemoryStorage) Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 		return nil, ErrCompacted
 	}
 	if hi > ms.lastIndex()+1 {
-		raftLogger.Panicf("entries's hi(%d) is out of bound lastindex(%d)", hi, ms.lastIndex())
+		raftLogger.Panicf("entries' hi(%d) is out of bound lastindex(%d)", hi, ms.lastIndex())
 	}
 	// only contains dummy entries.
 	if len(ms.ents) == 1 {
@@ -162,13 +168,13 @@ func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
 	ms.Lock()
 	defer ms.Unlock()
 
-	// TODO: return snapOutOfDate?
+	// TODO: return ErrSnapOutOfDate?
 	ms.snapshot = snap
 	ms.ents = []pb.Entry{{Term: snap.Metadata.Term, Index: snap.Metadata.Index}}
 	return nil
 }
 
-// Creates a snapshot which can be retrieved with the Snapshot() method and
+// CreateSnapshot makes a snapshot which can be retrieved with Snapshot() and
 // can be used to reconstruct the state at that point.
 // If any configuration changes have been made since the last compaction,
 // the result of the last ApplyConfChange must be passed in.

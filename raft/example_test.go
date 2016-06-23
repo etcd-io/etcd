@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,13 +26,14 @@ func saveToDisk(ents []pb.Entry)      {}
 func ExampleNode() {
 	c := &Config{}
 	n := StartNode(c, nil)
+	defer n.Stop()
 
 	// stuff to n happens in other goroutines
 
 	// the last known state
 	var prev pb.HardState
 	for {
-		// ReadState blocks until there is new state ready.
+		// Ready blocks until there is new state ready.
 		rd := <-n.Ready()
 		if !isHardStateEqual(prev, rd.HardState) {
 			saveStateToDisk(rd.HardState)
