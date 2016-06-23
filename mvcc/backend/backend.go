@@ -179,15 +179,17 @@ func (b *backend) Size() int64 {
 
 func (b *backend) run() {
 	defer close(b.donec)
-
+	t := time.NewTimer(b.batchInterval)
+	defer t.Stop()
 	for {
 		select {
-		case <-time.After(b.batchInterval):
+		case <-t.C:
 		case <-b.stopc:
 			b.batchTx.CommitAndStop()
 			return
 		}
 		b.batchTx.Commit()
+		t.Reset(b.batchInterval)
 	}
 }
 
