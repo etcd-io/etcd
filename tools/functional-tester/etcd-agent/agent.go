@@ -37,9 +37,8 @@ const (
 type Agent struct {
 	state string // the state of etcd process
 
-	cmd     *exec.Cmd
-	logfile *os.File
-	logDir  string
+	cmd    *exec.Cmd
+	logDir string
 }
 
 func newAgent(etcd, logDir string) (*Agent, error) {
@@ -50,26 +49,13 @@ func newAgent(etcd, logDir string) (*Agent, error) {
 	}
 
 	c := exec.Command(etcd)
-
-	err = fileutil.TouchDirAll(logDir)
-	if err != nil {
-		return nil, err
-	}
-
-	var f *os.File
-	f, err = os.Create(filepath.Join(logDir, "etcd.log"))
-	if err != nil {
-		return nil, err
-	}
-
-	return &Agent{state: stateUninitialized, cmd: c, logfile: f, logDir: logDir}, nil
+	return &Agent{state: stateUninitialized, cmd: c, logDir: logDir}, nil
 }
 
 // start starts a new etcd process with the given args.
 func (a *Agent) start(args ...string) error {
+	args = append(args, "--rotate-log-dir", a.logDir)
 	a.cmd = exec.Command(a.cmd.Path, args...)
-	a.cmd.Stdout = a.logfile
-	a.cmd.Stderr = a.logfile
 	err := a.cmd.Start()
 	if err != nil {
 		return err
@@ -120,8 +106,6 @@ func stopWithSig(cmd *exec.Cmd, sig os.Signal) error {
 // restart restarts the stopped etcd process.
 func (a *Agent) restart() error {
 	a.cmd = exec.Command(a.cmd.Path, a.cmd.Args[1:]...)
-	a.cmd.Stdout = a.logfile
-	a.cmd.Stderr = a.logfile
 	err := a.cmd.Start()
 	if err != nil {
 		return err
@@ -138,20 +122,9 @@ func (a *Agent) cleanup() error {
 	}
 	a.state = stateUninitialized
 
-	a.logfile.Close()
 	if err := archiveLogAndDataDir(a.logDir, a.dataDir()); err != nil {
 		return err
 	}
-
-	if err := fileutil.TouchDirAll(a.logDir); err != nil {
-		return err
-	}
-
-	f, err := os.Create(filepath.Join(a.logDir, "etcd.log"))
-	if err != nil {
-		return err
-	}
-	a.logfile = f
 
 	// https://www.kernel.org/doc/Documentation/sysctl/vm.txt
 	// https://github.com/torvalds/linux/blob/master/fs/drop_caches.c
