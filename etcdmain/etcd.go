@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
 	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
+	"github.com/coreos/etcd/pkg/logutil"
 	"github.com/coreos/etcd/pkg/osutil"
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
@@ -617,6 +618,20 @@ func setupLogging(cfg *config) {
 			return
 		}
 		repoLog.SetLogLevel(settings)
+	}
+	if cfg.RotateLogDir != "" {
+		rc := logutil.RotateConfig{
+			Dir:            cfg.RotateLogDir,
+			Debug:          cfg.Debug,
+			RotateFileSize: cfg.RotateLogSize,
+			RotateDuration: cfg.RotateLogDuration,
+		}
+		ft, err := logutil.NewRotateFormatter(rc)
+		if err != nil {
+			plog.Warningf("failed to start log rotation %+v (%v)", rc, err)
+			return
+		}
+		capnslog.SetFormatter(ft)
 	}
 }
 

@@ -135,6 +135,12 @@ logging flags
 		enable debug-level logging for etcd.
 	--log-package-levels ''
 		specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
+	--rotate-log-dir ''
+		specify a directory to store segmented etcd logging files. If empty, logging to stderr by default.
+	--rotate-log-size 1048576
+		specify a log file size to rotate in bytes. This is ignored if 'rotate-log-dir' is empty.
+	--rotate-log-duration 0
+		specify an interval to rotate logs. This is ignored if 'rotate-log-dir' is empty.
 
 unsafe flags:
 
