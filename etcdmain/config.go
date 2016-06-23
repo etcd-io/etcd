@@ -24,6 +24,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/cors"
@@ -135,6 +136,11 @@ type config struct {
 	// Debug logging
 	Debug        bool   `json:"debug"`
 	LogPkgLevels string `json:"log-package-levels"`
+
+	// RotateLogDir is directory to store segmented log files.
+	RotateLogDir      string        `json:"rotate-log-dir"`
+	RotateLogSize     int64         `json:"rotate-log-size"`
+	RotateLogDuration time.Duration `json:"rotate-log-duration"`
 
 	// ForceNewCluster is unsafe
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -249,6 +255,9 @@ func NewConfig() *config {
 	// logging
 	fs.BoolVar(&cfg.Debug, "debug", false, "Enable debug-level logging for etcd.")
 	fs.StringVar(&cfg.LogPkgLevels, "log-package-levels", "", "Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').")
+	fs.StringVar(&cfg.RotateLogDir, "rotate-log-dir", "", "Specify a directory to store segmented etcd logging files. If empty, logging to stderr by default.")
+	fs.Int64Var(&cfg.RotateLogSize, "rotate-log-size", 1024*1024, "Specify a log file size to rotate in bytes. This is ignored if 'rotate-log-dir' is empty.")
+	fs.DurationVar(&cfg.RotateLogDuration, "rotate-log-duration", time.Duration(0), "Specify an interval to rotate logs. This is ignored if 'rotate-log-dir' is empty.")
 
 	// unsafe
 	fs.BoolVar(&cfg.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
