@@ -121,7 +121,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + env variable: ETCD_DISCOVERY_SRV
 
 ### --discovery-fallback
-+ Expected behavior ("exit" or "proxy") when discovery services fails.
++ Expected behavior ("exit" or "proxy") when discovery services fails. "proxy" supports v2 API only.
 + default: "proxy"
 + env variable: ETCD_DISCOVERY_FALLBACK
 
@@ -142,7 +142,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ## Proxy Flags
 
-`--proxy` prefix flags configures etcd to run in [proxy mode][proxy].
+`--proxy` prefix flags configures etcd to run in [proxy mode][proxy]. "proxy" supports v2 API only.
 
 ### --proxy
 + Proxy mode setting ("off", "readonly" or "on").

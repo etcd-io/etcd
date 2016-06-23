@@ -400,6 +400,8 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 
 // startProxy launches an HTTP proxy for client communication which proxies to other etcd nodes.
 func startProxy(cfg *config) error {
+	plog.Notice("proxy: this proxy supports v2 API only!")
+
 	pt, err := transport.NewTimeoutTransport(cfg.peerTLSInfo, time.Duration(cfg.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
 		return err
