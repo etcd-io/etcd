@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PROCFILE="tools/local-tester/Procfile"
+HTTPFAIL=(127.0.0.1:11180 127.0.0.1:22280 127.0.0.1:33380)
 
 function wait_time {
 	expr $RANDOM % 10 + 1
@@ -52,14 +53,56 @@ function kill_all {
 	done
 }
 
+function rand_fp {
+	echo "$FAILPOINTS" | sed `expr $RANDOM % $NUMFPS + 1`"q;d"
+}
+
+# fp_activate <http> <fppath> <value>
+function fp_activate {
+	curl "$1"/"$2" -XPUT -d "$3" >/dev/null 2>&1
+}
+
+function fp_rand_single {
+	fp=`rand_fp`
+	fp_activate ${HTTPFAIL[`expr $RANDOM % ${#HTTPFAIL[@]}`]} $fp 'panic("'$fp'")'
+	sleep `wait_time`s
+}
+
+function fp_rand_all {
+	fp=`rand_fp`
+	for a in `seq ${#HTTPFAIL[@]}`; do fp_activate ${HTTPFAIL[$a]} "$fp" 'panic("'$fp'")'; done
+	sleep `wait_time`s
+}
+
+function fp_all_rand_fire {
+	for fp in $FAILPOINTS; do
+		for url in "${HTTPFAIL[@]}"; do
+			fp_activate "$url" "$fp" '0.5%panic("0.5%'$fp'")'
+		done
+	done
+}
+
 function choose {
-	faults=(cycle_members kill_maj kill_all cycle_pbridge cycle_cbridge cycle_stresser)
-	fault=${faults[`expr $RANDOM % ${#faults[@]}`]}
+	fault=${FAULTS[`expr $RANDOM % ${#FAULTS[@]}`]}
 	echo $fault
 	$fault || echo "failed: $fault"
 }
 
 sleep 2s
+
+FAULTS=(cycle_members kill_maj kill_all cycle_pbridge cycle_cbridge cycle_stresser)
+
+# add failpoint faults if available
+FAILPOINTS=`curl http://"${HTTPFAIL[0]}" 2>/dev/null | cut -f1 -d'=' | grep -v "^$"`
+NUMFPS=`echo $(echo "$FAILPOINTS" | wc -l)`
+if [ "$NUMFPS" != "0" ]; then
+	FAULTS+=(fp_rand_single)
+	FAULTS+=(fp_rand_all)
+fi
+
 while [ 1 ]; do
 	choose
+	# start any nodes that have been killed by failpoints
+	for a in etcd1 etcd2 etcd3; do goreman -f $PROCFILE run start $a; done
+	fp_all_rand_fire
 done
