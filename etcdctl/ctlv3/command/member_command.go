@@ -48,7 +48,7 @@ func NewMemberAddCommand() *cobra.Command {
 		Run: memberAddCommandFunc,
 	}
 
-	cc.Flags().StringVar(&memberPeerURLs, "peerURLs", "", "comma separated peer URLs for the new member.")
+	cc.Flags().StringVar(&memberPeerURLs, "peer-urls", "", "comma separated peer URLs for the new member.")
 
 	return cc
 }
@@ -74,7 +74,7 @@ func NewMemberUpdateCommand() *cobra.Command {
 		Run: memberUpdateCommandFunc,
 	}
 
-	cc.Flags().StringVar(&memberPeerURLs, "peerURLs", "", "comma separated peer URLs for the updated member.")
+	cc.Flags().StringVar(&memberPeerURLs, "peer-urls", "", "comma separated peer URLs for the updated member.")
 
 	return cc
 }
