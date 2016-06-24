@@ -670,7 +670,7 @@ func stepLeader(r *raft, m pb.Message) {
 				switch {
 				case pr.State == ProgressStateProbe:
 					pr.becomeReplicate()
-				case pr.State == ProgressStateSnapshot && pr.maybeSnapshotAbort():
+				case pr.State == ProgressStateSnapshot && pr.needSnapshotAbort():
 					r.logger.Debugf("%x snapshot aborted, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 					pr.becomeProbe()
 				case pr.State == ProgressStateReplicate:
