@@ -1,10 +1,6 @@
-FROM alpine:latest
-
-ADD bin/etcd /usr/local/bin/
-ADD bin/etcdctl /usr/local/bin/
-RUN mkdir -p /var/etcd/
-
+FROM golang
+ADD . /go/src/github.com/coreos/etcd
+ADD cmd/vendor /go/src/github.com/coreos/etcd/vendor
+RUN go install github.com/coreos/etcd
 EXPOSE 2379 2380
-
-# Define default command.
-CMD ["/usr/local/bin/etcd"]
+ENTRYPOINT ["etcd"]
