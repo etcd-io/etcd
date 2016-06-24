@@ -8,6 +8,6 @@ IMAGEDIR=${BUILDDIR}/image-docker
 mkdir -p ${IMAGEDIR}
 cp ${BINARYDIR}/etcd ${BINARYDIR}/etcdctl ${IMAGEDIR}
 
-cat ./Dockerfile > ${IMAGEDIR}/Dockerfile
+cat ./Dockerfile-release > ${IMAGEDIR}/Dockerfile
 
 docker build -t quay.io/coreos/etcd:${1} ${IMAGEDIR}
