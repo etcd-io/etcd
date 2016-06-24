@@ -41,4 +41,4 @@ etcd_build() {
 toggle_failpoints
 
 # don't build when sourced
-(echo "$0" | grep "/build$") && etcd_build || true
+(echo "$0" | grep "/build$" > /dev/null) && etcd_build || true
