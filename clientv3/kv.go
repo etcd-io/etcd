@@ -85,6 +85,10 @@ func NewKV(c *Client) KV {
 	return &kv{remote: pb.NewKVClient(c.conn)}
 }
 
+func NewKVFromKVClient(remote pb.KVClient) KV {
+	return &kv{remote: remote}
+}
+
 func (kv *kv) Put(ctx context.Context, key, val string, opts ...OpOption) (*PutResponse, error) {
 	r, err := kv.Do(ctx, OpPut(key, val, opts...))
 	return r.put, toErr(ctx, err)
