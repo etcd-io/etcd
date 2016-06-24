@@ -167,9 +167,9 @@ func (pr *Progress) isPaused() bool {
 
 func (pr *Progress) snapshotFailure() { pr.PendingSnapshot = 0 }
 
-// maybeSnapshotAbort unsets pendingSnapshot if Match is equal or higher than
-// the pendingSnapshot
-func (pr *Progress) maybeSnapshotAbort() bool {
+// needSnapshotAbort returns true if snapshot progress's Match
+// is equal or higher than the pendingSnapshot.
+func (pr *Progress) needSnapshotAbort() bool {
 	return pr.State == ProgressStateSnapshot && pr.Match >= pr.PendingSnapshot
 }
 
