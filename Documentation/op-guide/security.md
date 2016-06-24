@@ -20,6 +20,8 @@ etcd takes several certificate related configuration options, either through com
 
 `--trusted-ca-file=<path>`: Trusted certificate authority.
 
+`--auto-tls`: Use automatically generated self-signed certificates for TLS connections with clients.
+
 **Peer (server-to-server / cluster) communication:**
 
 The peer options work the same way as the client-to-server options:
@@ -31,6 +33,8 @@ The peer options work the same way as the client-to-server options:
 `--peer-client-cert-auth`: When set, etcd will check all incoming peer requests from the cluster for valid client certificates signed by the supplied CA.
 
 `--peer-trusted-ca-file=<path>`: Trusted certificate authority.
+
+`--peer-auto-tls`: Use automatically generated self-signed certificates for TLS connections between peers.
 
 If either a client-to-server or peer certificate is supplied the key must also be set. All of these configuration options are also available through the environment variables, `ETCD_CA_FILE`, `ETCD_PEER_CA_FILE` and so on.
 
@@ -142,6 +146,40 @@ $ etcd --name infra2 --data-dir infra2 \
 ```
 
 The etcd members will form a cluster and all communication between members in the cluster will be encrypted and authenticated using the client certificates. You will see in the output of etcd that the addresses it connects to use HTTPS.
+
+## Example 4: Automatic self-signed transport security
+
+For cases where communication encryption, but not authentication, is needed, etcd supports encrypting its messages with automatically generated self-signed certificates. This simplifies deployment because there is no need for managing certificates and keys outside of etcd.
+
+Configure etcd to use self-signed certificates for client and peer connections with the flags `--auto-tls` and `--peer-auto-tls`:
+
+```sh
+DISCOVERY_URL=... # from https://discovery.etcd.io/new
+
+# member1
+$ etcd --name infra1 --data-dir infra1 \
+  --auto-tls --peer-auto-tls \
+  --initial-advertise-peer-urls=https://10.0.1.10:2380 --listen-peer-urls=https://10.0.1.10:2380 \
+  --discovery ${DISCOVERY_URL}
+
+# member2
+$ etcd --name infra2 --data-dir infra2 \
+  --auto-tls --peer-auto-tls \
+  --initial-advertise-peer-urls=https://10.0.1.11:2380 --listen-peer-urls=https://10.0.1.11:2380 \
+  --discovery ${DISCOVERY_URL}
+```
+
+Self-signed certificates do not authenticate identity so curl will return an error:
+
+```sh
+curl: (60) SSL certificate problem: Invalid certificate chain
+```
+
+To disable certificate chain checking, invoke curl with the `-k` flag:
+
+```sh
+$ curl -k https://127.0.0.1:2379/v2/keys/foo -Xput -d value=bar -v
+```
 
 ## Notes For etcd Proxy
 
