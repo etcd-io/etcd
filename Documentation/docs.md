@@ -28,6 +28,8 @@ Administrators who need to create reliable and scalable key-value stores for the
  - [Understand failures][failures]
  - [Disaster recovery][recovery]
  - [Performance][performance]
+ - [Versioning][versioning]
+ - [Supported platform][supported_platform]
 
 ## Learning
 
@@ -63,3 +65,6 @@ To learn more about the concepts and internals behind etcd, read the following p
 [v2_migration]: op-guide/v2-migration.md
 [container]: op-guide/container.md
 [understand_apis]: learning/api.md
+[versioning]: op-guide/versioning.md
+[supported_platform]: op-guide/supported-platform.md
+
