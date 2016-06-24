@@ -127,37 +127,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issue you may encounter.
 
-## Project details
-
-### Versioning
-
-#### Service versioning
-
-etcd uses [semantic versioning](http://semver.org)
-New minor versions may add additional features to the API.
-
-Get the running etcd cluster version with `etcdctl`:
-
-```sh
-ETCDCTL_API=3 etcdctl --endpoints=127.0.0.1:2379 endpoint status
-```
-
-#### API versioning
-
-The `v3` API responses should not change after the 3.0.0 release but new features will be added over time.
-
-#### 32-bit and other unsupported systems
-
-etcd has known issues on 32-bit systems due to a bug in the Go runtime. See #[358][358] for more information.
-
-To avoid inadvertently running a possibly unstable etcd server, `etcd` on unsupported architectures will print
-a warning message and immediately exit if the environment variable `ETCD_UNSUPPORTED_ARCH` is not set to
-the target architecture.
-
-Currently only the amd64 architecture is officially supported by `etcd`.
-
-[358]: https://github.com/coreos/etcd/issues/358
-
 ### License
 
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+
