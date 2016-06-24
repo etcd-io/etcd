@@ -14,6 +14,7 @@ The easiest way to get started using etcd as a distributed key-value store is to
  - [Interacting with etcd][interacting]
  - [API references][api_ref]
  - [gRPC gateway][api_grpc_gateway]
+ - [Experimental features and APIs][experimental]
 
 ## Operating etcd clusters
 
@@ -67,4 +68,4 @@ To learn more about the concepts and internals behind etcd, read the following p
 [understand_apis]: learning/api.md
 [versioning]: op-guide/versioning.md
 [supported_platform]: op-guide/supported-platform.md
-
+[experimental]: dev-guide/experimental_apis.md
