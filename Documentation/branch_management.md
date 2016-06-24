@@ -13,7 +13,7 @@ The etcd team has adopted a *rolling release model* and supports one stable vers
 
 The `master` branch is our development branch. All new features land here first.
 
-If you want to try new features, pull `master` and play with it. Note that `master` may not be stable because new features may introduce bugs.
+To try new and experimental features, pull `master` and play with it. Note that `master` may not be stable because new features may introduce bugs.
 
 Before the release of the next stable version, feature PRs will be frozen. We will focus on the testing, bug-fix and documentation for one to two weeks.
 
