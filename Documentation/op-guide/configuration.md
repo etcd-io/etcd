@@ -14,7 +14,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + Human-readable name for this member.
 + default: "default"
 + env variable: ETCD_NAME
-+ This value is referenced as this node's own entries listed in the `--initial-cluster` flag (e.g., `default=http://localhost:2380`). This needs to match the key used in the flag if you're using [static bootstrapping][build-cluster]. When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
++ This value is referenced as this node's own entries listed in the `--initial-cluster` flag (e.g., `default=http://localhost:2380`). This needs to match the key used in the flag if using [static bootstrapping][build-cluster]. When using discovery, each member must have a unique name. `Hostname` or `machine-id` can be a good choice.
 
 ### --data-dir
 + Path to the data directory.
@@ -59,13 +59,13 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + Maximum number of snapshot files to retain (0 is unlimited)
 + default: 5
 + env variable: ETCD_MAX_SNAPSHOTS
-+ The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
++ The default for users on Windows is unlimited, and manual purging down to 5 (or some preference for safety) is recommended.
 
 ### --max-wals
 + Maximum number of wal files to retain (0 is unlimited)
 + default: 5
 + env variable: ETCD_MAX_WALS
-+ The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
++ The default for users on Windows is unlimited, and manual purging down to 5 (or some preference for safety) is recommended.
 
 ### --cors
 + Comma-separated white list of origins for CORS (cross-origin resource sharing).
@@ -108,7 +108,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: "http://localhost:2379"
 + env variable: ETCD_ADVERTISE_CLIENT_URLS
 + example: "http://example.com:2379, http://10.0.0.1:2379"
-+ Be careful if you are advertising URLs such as http://localhost:2379 from a cluster member and are using the proxy feature of etcd. This will cause loops, because the proxy will be forwarding requests to itself until its resources (memory, file descriptors) are eventually depleted.
++ Be careful if advertising URLs such as http://localhost:2379 from a cluster member and are using the proxy feature of etcd. This will cause loops, because the proxy will be forwarding requests to itself until its resources (memory, file descriptors) are eventually depleted.
 
 ### --discovery
 + Discovery URL used to bootstrap the cluster.
@@ -171,7 +171,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --proxy-read-timeout
 + Time (in milliseconds) for a read to timeout or 0 to disable the timeout.
-+ Don't change this value if you use watches because they are using long polling requests.
++ Don't change this value if using watches because use long polling requests.
 + default: 0
 + env variable: ETCD_PROXY_READ_TIMEOUT
 

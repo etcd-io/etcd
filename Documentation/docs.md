@@ -4,11 +4,11 @@ etcd is a distributed key-value store designed to reliably and quickly preserve 
 
 ## Getting started
 
-New etcd users and developers should get started by [downloading and building][download_build] etcd. Once you have etcd, follow this [quick demo][demo] to see the basics of creating and working with an etcd cluster.
+New etcd users and developers should get started by [downloading and building][download_build] etcd. After getting etcd, follow this [quick demo][demo] to see the basics of creating and working with an etcd cluster.
 
 ## Developing with etcd
 
-The easiest way to get started using etcd as a distributed key-value store for your applications is to [set up a local cluster][local_cluster].
+The easiest way to get started using etcd as a distributed key-value store is to [set up a local cluster][local_cluster].
 
  - [Setting up local clusters][local_cluster]
  - [Interacting with etcd][interacting]

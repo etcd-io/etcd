@@ -26,7 +26,7 @@ UUID=$(uuidgen)
 
 ### Specifying the Expected Cluster Size
 
-You need to specify the expected cluster size for this discovery token. The size is used by the discovery service to know when it has found all members that will initially form the cluster.
+The discovery token expects a cluster size that must be specified. The size is used by the discovery service to know when it has found all members that will initially form the cluster.
 
 ```
 curl -X PUT http://example.com/v2/keys/_etcd/registry/${UUID}/_config/size -d value=${cluster_size}
@@ -36,7 +36,7 @@ Usually the cluster size is 3, 5 or 7. Check [optimal cluster size][cluster-size
 
 ### Bringing up etcd Processes
 
-Now that you have your discovery URL, you can use it as `-discovery` flag and bring up etcd processes. Every etcd process will follow this next few steps internally if given a `-discovery` flag.
+Given the discovery URL, use it as `-discovery` flag and bring up etcd processes. Every etcd process will follow this next few steps internally if given a `-discovery` flag.
 
 ### Registering itself
 
@@ -102,11 +102,11 @@ The generation process in the service follows the steps from [Creating a New Dis
 GET /${UUID}
 ```
 
-You can check the status for this discovery token, including the machines that have been registered, by requesting the value of the UUID.
+The status for this discovery token, including the machines that have been registered, can be checked by requesting the value of the UUID.
 
 ### Open-source repository
 
-The repository is located at https://github.com/coreos/discovery.etcd.io. You could use it to build your own public discovery service.
+The repository is located at https://github.com/coreos/discovery.etcd.io. It could be used to build a custom discovery service.
 
 [api]: ../v2/api.md#waiting-for-a-change
 [cluster-size]: ../v2/admin_guide.md#optimal-cluster-size
