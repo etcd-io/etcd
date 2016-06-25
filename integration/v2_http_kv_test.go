@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -28,6 +27,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/pkg/capnslog"
 )
 
@@ -1038,10 +1038,8 @@ type testHttpClient struct {
 
 // Creates a new HTTP client with KeepAlive disabled.
 func NewTestClient() *testHttpClient {
-	tr := &http.Transport{
-		Dial:              (&net.Dialer{Timeout: time.Second}).Dial,
-		DisableKeepAlives: true,
-	}
+	tr, _ := transport.NewTransport(transport.TLSInfo{}, time.Second)
+	tr.DisableKeepAlives = true
 	return &testHttpClient{&http.Client{Transport: tr}}
 }
 

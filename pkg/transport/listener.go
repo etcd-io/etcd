@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"math/big"
 	"net"
-	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -35,19 +34,19 @@ import (
 	"github.com/coreos/etcd/pkg/tlsutil"
 )
 
-func NewListener(addr string, scheme string, tlscfg *tls.Config) (net.Listener, error) {
-	nettype := "tcp"
-	if scheme == "unix" {
+func NewListener(addr string, scheme string, tlscfg *tls.Config) (l net.Listener, err error) {
+	if scheme == "unix" || scheme == "unixs" {
 		// unix sockets via unix://laddr
-		nettype = scheme
+		l, err = NewUnixListener(addr)
+	} else {
+		l, err = net.Listen("tcp", addr)
 	}
 
-	l, err := net.Listen(nettype, addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if scheme == "https" {
+	if scheme == "https" || scheme == "unixs" {
 		if tlscfg == nil {
 			return nil, fmt.Errorf("cannot listen on TLS for %s: KeyFile and CertFile are not presented", scheme+"://"+addr)
 		}
@@ -56,27 +55,6 @@ func NewListener(addr string, scheme string, tlscfg *tls.Config) (net.Listener, 
 	}
 
 	return l, nil
-}
-
-func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, error) {
-	cfg, err := info.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	t := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
-			Timeout: dialtimeoutd,
-			// value taken from http.DefaultTransport
-			KeepAlive: 30 * time.Second,
-		}).Dial,
-		// value taken from http.DefaultTransport
-		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig:     cfg,
-	}
-
-	return t, nil
 }
 
 type TLSInfo struct {

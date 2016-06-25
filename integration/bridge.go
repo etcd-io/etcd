@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"sync"
+
+	"github.com/coreos/etcd/pkg/transport"
 )
 
 // bridge creates a unix socket bridge to another unix socket, making it possible
@@ -43,10 +44,7 @@ func newBridge(addr string) (*bridge, error) {
 		conns:   make(map[*bridgeConn]struct{}),
 		stopc:   make(chan struct{}, 1),
 	}
-	if err := os.RemoveAll(b.inaddr); err != nil {
-		return nil, err
-	}
-	l, err := net.Listen("unix", b.inaddr)
+	l, err := transport.NewUnixListener(b.inaddr)
 	if err != nil {
 		return nil, fmt.Errorf("listen failed on socket %s (%v)", addr, err)
 	}
@@ -79,7 +77,6 @@ func (b *bridge) Reset() {
 func (b *bridge) serveListen() {
 	defer func() {
 		b.l.Close()
-		os.RemoveAll(b.inaddr)
 		b.mu.Lock()
 		for bc := range b.conns {
 			bc.Close()
