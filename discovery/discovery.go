@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net"
 	"net/http"
 	"net/url"
 	"path"
@@ -30,6 +29,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/jonboulle/clockwork"
@@ -124,16 +124,15 @@ func newDiscovery(durl, dproxyurl string, id types.ID) (*discovery, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: add ResponseHeaderTimeout back when watch on discovery service writes header early
+	tr, err := transport.NewTransport(transport.TLSInfo{}, 30*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	tr.Proxy = pf
 	cfg := client.Config{
-		Transport: &http.Transport{
-			Proxy: pf,
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			TLSHandshakeTimeout: 10 * time.Second,
-			// TODO: add ResponseHeaderTimeout back when watch on discovery service writes header early
-		},
+		Transport: tr,
 		Endpoints: []string{u.String()},
 	}
 	c, err := client.New(cfg)
