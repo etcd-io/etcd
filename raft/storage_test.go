@@ -192,7 +192,6 @@ func TestStorageCreateSnapshot(t *testing.T) {
 }
 
 func TestStorageAppend(t *testing.T) {
-	ents := []pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}}
 	tests := []struct {
 		entries []pb.Entry
 
@@ -235,6 +234,7 @@ func TestStorageAppend(t *testing.T) {
 	}
 
 	for i, tt := range tests {
+		ents := []pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}}
 		s := &MemoryStorage{ents: ents}
 		err := s.Append(tt.entries)
 		if err != tt.werr {
