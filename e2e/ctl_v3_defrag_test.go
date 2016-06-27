@@ -26,7 +26,7 @@ func defragTest(cx ctlCtx) {
 		}
 	}
 
-	if err := ctlV3Compact(cx, 4); err != nil {
+	if err := ctlV3Compact(cx, 4, cx.compactPhysical); err != nil {
 		cx.t.Fatal(err)
 	}
 

@@ -20,10 +20,12 @@ import (
 	"testing"
 )
 
-func TestCtlV3Compact(t *testing.T) { testCtl(t, compactTest) }
+func TestCtlV3Compact(t *testing.T)         { testCtl(t, compactTest) }
+func TestCtlV3CompactPhysical(t *testing.T) { testCtl(t, compactTest, withCompactPhysical()) }
 
 func compactTest(cx ctlCtx) {
-	if err := ctlV3Compact(cx, 2); err != nil {
+	compactPhysical := cx.compactPhysical
+	if err := ctlV3Compact(cx, 2, compactPhysical); err != nil {
 		if !strings.Contains(err.Error(), "required revision is a future revision") {
 			cx.t.Fatal(err)
 		}
@@ -42,7 +44,7 @@ func compactTest(cx ctlCtx) {
 		cx.t.Errorf("compactTest: ctlV3Get error (%v)", err)
 	}
 
-	if err := ctlV3Compact(cx, 4); err != nil {
+	if err := ctlV3Compact(cx, 4, compactPhysical); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -54,7 +56,7 @@ func compactTest(cx ctlCtx) {
 		cx.t.Fatalf("expected '...has been compacted' error, got <nil>")
 	}
 
-	if err := ctlV3Compact(cx, 2); err != nil {
+	if err := ctlV3Compact(cx, 2, compactPhysical); err != nil {
 		if !strings.Contains(err.Error(), "required revision has been compacted") {
 			cx.t.Fatal(err)
 		}
@@ -63,8 +65,11 @@ func compactTest(cx ctlCtx) {
 	}
 }
 
-func ctlV3Compact(cx ctlCtx, rev int64) error {
+func ctlV3Compact(cx ctlCtx, rev int64, physical bool) error {
 	rs := strconv.FormatInt(rev, 10)
 	cmdArgs := append(cx.PrefixArgs(), "compact", rs)
+	if physical {
+		cmdArgs = append(cmdArgs, "--physical")
+	}
 	return spawnWithExpect(cmdArgs, "compacted revision "+rs)
 }

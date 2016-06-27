@@ -51,6 +51,9 @@ type ctlCtx struct {
 
 	user string
 	pass string
+
+	// for compaction
+	compactPhysical bool
 }
 
 type ctlOption func(*ctlCtx)
@@ -79,6 +82,10 @@ func withInteractive() ctlOption {
 
 func withQuota(b int64) ctlOption {
 	return func(cx *ctlCtx) { cx.quotaBackendBytes = b }
+}
+
+func withCompactPhysical() ctlOption {
+	return func(cx *ctlCtx) { cx.compactPhysical = true }
 }
 
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
