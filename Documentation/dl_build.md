@@ -1,14 +1,14 @@
-# Download and Build
+# Download and build
 
-## System Requirements
+## System requirements
 
 TODO
 
-## Download the Pre-built Binary
+## Download the pre-built binary
 
 The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, appc, and Docker. Instructions for using these binaries are on the [GitHub releases page][github-release].
 
-## Build the Latest Version
+## Build the latest version
 
 For those wanting to try the very latest version, build etcd from the `master` branch.
 [Go](https://golang.org/) version 1.5+ is required to build the latest version of etcd.

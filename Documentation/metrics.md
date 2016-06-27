@@ -14,7 +14,7 @@ The metrics under the `etcd` prefix are for monitoring and alerting. They are st
 
 Metrics that are etcd2 related are documented [v2 metrics guide][v2-http-metrics].
 
-### server
+### Server
 
 These metrics describe the status of the etcd server. In order to detect outages or problems for troubleshooting, the server metrics of every production etcd cluster should be closely monitored.
 
@@ -43,7 +43,7 @@ is totally unavailable.
 
 `proposals_failed_total` are normally related to two issues: temporary failures related to a leader election or longer downtime caused by a loss of quorum in the cluster.
 
-### disk
+### Disk
 
 These metrics describe the status of the disk operations.
 
@@ -60,7 +60,7 @@ A `backend_commit` is called when etcd commits an incremental snapshot of its mo
 
 High disk operation latencies (`wal_fsync_duration_seconds` or `backend_commit_duration_seconds`) often indicate disk issues. It may cause high request latency or make the cluster unstable.
 
-### network
+### Network
 
 These metrics describe the status of the network.
 
@@ -110,7 +110,7 @@ Example Prometheus queries that may be useful from these metrics (across all etc
 The metrics under the `etcd_debugging` prefix are for debugging. They are very implementation dependent and volatile. They might be changed or removed without any warning in new etcd releases. Some of the metrics might be moved to the `etcd` prefix when they become more stable.
 
 
-### snapshot
+### Snapshot
 
 | Name                                       | Description                                                | Type      |
 |--------------------------------------------|------------------------------------------------------------|-----------|

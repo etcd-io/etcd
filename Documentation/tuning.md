@@ -4,7 +4,7 @@ The default settings in etcd should work well for installations on a local netwo
 
 The network isn't the only source of latency. Each request and response may be impacted by slow disks on both the leader and follower. Each of these timeouts represents the total time from request to successful response from the other machine.
 
-## Time Parameters
+## Time parameters
 
 The underlying distributed consensus protocol relies on two separate time parameters to ensure that nodes can handoff leadership if one stalls or goes offline.
 The first parameter is called the *Heartbeat Interval*.
@@ -57,7 +57,7 @@ A complete history works well for lightly used clusters but clusters that are he
 To avoid having a huge log etcd makes periodic snapshots.
 These snapshots provide a way for etcd to compact the log by saving the current state of the system and removing old logs.
 
-### Snapshot Tuning
+### Snapshot tuning
 
 Creating snapshots can be expensive so they're only created after a given number of changes to etcd.
 By default, snapshots will be made after every 10,000 changes.

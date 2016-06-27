@@ -1,4 +1,4 @@
-# Runtime Reconfiguration
+# Runtime reconfiguration
 
 etcd comes with support for incremental runtime reconfiguration, which allows users to update the membership of the cluster at run time.
 
@@ -6,34 +6,34 @@ Reconfiguration requests can only be processed when the majority of the cluster 
 
 To better understand the design behind runtime reconfiguration, we suggest reading [the runtime reconfiguration document][runtime-reconf].
 
-## Reconfiguration Use Cases
+## Reconfiguration use cases
 
 Let's walk through some common reasons for reconfiguring a cluster. Most of these just involve combinations of adding or removing a member, which are explained below under [Cluster Reconfiguration Operations][cluster-reconf].
 
-### Cycle or Upgrade Multiple Machines
+### Cycle or upgrade multiple machines
 
 If multiple cluster members need to move due to planned maintenance (hardware upgrades, network downtime, etc.), it is recommended to modify members one at a time.
 
 It is safe to remove the leader, however there is a brief period of downtime while the election process takes place. If the cluster holds more than 50MB, it is recommended to [migrate the member's data directory][member migration].
 
-### Change the Cluster Size
+### Change the cluster size
 
 Increasing the cluster size can enhance [failure tolerance][fault tolerance table] and provide better read performance. Since clients can read from any member, increasing the number of members increases the overall read throughput.
 
 Decreasing the cluster size can improve the write performance of a cluster, with a trade-off of decreased resilience. Writes into the cluster are replicated to a majority of members of the cluster before considered committed. Decreasing the cluster size lowers the majority, and each write is committed more quickly.
 
-### Replace A Failed Machine
+### Replace a failed machine
 
 If a machine fails due to hardware failure, data directory corruption, or some other fatal situation, it should be replaced as soon as possible. Machines that have failed but haven't been removed adversely affect the quorum and reduce the tolerance for an additional failure.
 
 To replace the machine, follow the instructions for [removing the member][remove member] from the cluster, and then [add a new member][add member] in its place. If the cluster holds more than 50MB, it is recommended to [migrate the failed member's data directory][member migration] if it is still accessible.
 
-### Restart Cluster from Majority Failure
+### Restart cluster from majority failure
 
 If the majority of the cluster is lost or all of the nodes have changed IP addresses, then manual action is necessary to recover safely.
 The basic steps in the recovery process include [creating a new cluster using the old data][disaster recovery], forcing a single member to act as the leader, and finally using runtime configuration to [add new members][add member] to this new cluster one at a time.
 
-## Cluster Reconfiguration Operations
+## Cluster reconfiguration operations
 
 Now that we have the use cases in mind, let us lay out the operations involved in each.
 
@@ -52,7 +52,7 @@ To change membership without `etcdctl`, use the [members API][member-api].
 
 TODO: v3 member API documentation
 
-### Update a Member
+### Update a member
 
 #### Update advertise client URLs
 
@@ -83,7 +83,7 @@ $ etcdctl member update a8266ecf031671f3 http://10.0.1.10:2380
 Updated member with ID a8266ecf031671f3 in cluster
 ```
 
-### Remove a Member
+### Remove a member
 
 Let us say the member ID we want to remove is a8266ecf031671f3.
 We then use the `remove` command to perform the removal:
@@ -101,7 +101,7 @@ etcd: this member has been permanently removed from the cluster. Exiting.
 
 It is safe to remove the leader, however the cluster will be inactive while a new leader is elected. This duration is normally the period of election timeout plus the voting process.
 
-### Add a New Member
+### Add a new member
 
 Adding a member is a two step process:
 
@@ -134,7 +134,7 @@ The new member will run as a part of the cluster and immediately begin catching 
 If adding multiple members the best practice is to configure a single member at a time and verify it starts correctly before adding more new members.
 If adding a new member to a 1-node cluster, the cluster cannot make progress before the new member starts because it needs two members as majority to agree on the consensus. This behavior only happens between the time `etcdctl member add` informs the cluster about the new member and the new member successfully establishing a connection to the existing one.
 
-#### Error Cases When Adding Members
+#### Error cases when adding members
 
 In the following case we have not included our new host in the list of enumerated nodes.
 If this is a new cluster, the node must be added to the list of initial cluster members.
@@ -165,7 +165,7 @@ etcd: this member has been permanently removed from the cluster. Exiting.
 exit 1
 ```
 
-### Strict Reconfiguration Check Mode (`-strict-reconfig-check`)
+### Strict reconfiguration check mode (`-strict-reconfig-check`)
 
 As described in the above, the best practice of adding new members is to configure a single member at a time and verify it starts correctly before adding more new members. This step by step approach is very important because if newly added members is not configured correctly (for example the peer URLs are incorrect), the cluster can lose quorum. The quorum loss happens since the newly added member are counted in the quorum even if that member is not reachable from other existing members. Also quorum loss might happen if there is a connectivity issue or there are operational issues.
 
