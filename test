@@ -149,18 +149,22 @@ function fmt_tests {
 
 	echo "Checking commit titles..."
 	git log master..HEAD --oneline | while read l; do
-		pfx=`echo "$l" | cut -f2 -d' '`
-		if [ "$pfx" == "Merge" ]; then
+		commitMsg=`echo "$l" | cut -f2- -d' '`
+		if [[ "$commitMsg" == Merge* ]]; then
 			# ignore "Merge pull" commits
 			continue
 		fi
-		if [ "$pfx" == "Revert" ]; then
+		if [[ "$commitMsg" == Revert* ]]; then
 			# ignore revert commits
 			continue
 		fi
-		if ! [[ "$pfx" =~ :$ ]]; then
-			echo "$pfx"...
-			echo "Expected commit title format '<package>: <description>'"
+
+		pkgPrefix=`echo "$commitMsg" | cut -f1 -d':'`
+		spaceCommas=`echo "$commitMsg" | sed 's/ /\n/g' | grep -c ',$' || echo 0`
+		commaSpaces=`echo "$commitMsg" | sed 's/,/\n/g' | grep -c '^ ' || echo 0`
+		if [[ `echo $commitMsg | grep -c ":..*"` == 0 || "$commitMsg" == "$pkgPrefix" || "$spaceCommas" != "$commaSpaces" ]]; then
+    			echo "$l"...
+			echo "Expected commit title format '<package>{\", \"<package>}: <description>'"
 			echo "Got: $l"
 			exit 255
 		fi
