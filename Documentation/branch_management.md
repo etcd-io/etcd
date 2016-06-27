@@ -1,4 +1,4 @@
-# Branch Management
+# Branch management
 
 ## Guide
 

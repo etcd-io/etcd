@@ -1,4 +1,4 @@
-# Configuration Flags
+# Configuration flags
 
 etcd is configurable through command-line flags and environment variables. Options set on the command line take precedence over those from the environment.
 
@@ -8,7 +8,7 @@ The [official etcd ports][iana-ports] are 2379 for client requests and 2380 for 
 
 To start etcd automatically using custom settings at startup in Linux, using a [systemd][systemd-intro] unit is highly recommended.
 
-## Member Flags
+## Member flags
 
 ### --name
 + Human-readable name for this member.
@@ -72,7 +72,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: none
 + env variable: ETCD_CORS
 
-## Clustering Flags
+## Clustering flags
 
 `--initial` prefix flags are used in bootstrapping ([static bootstrap][build-cluster], [discovery-service bootstrap][discovery] or [runtime reconfiguration][reconfig]) a new member, and ignored when restarting an existing member.
 
@@ -140,7 +140,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 0
 + env variable: ETCD_AUTO_COMPACTION_RETENTION
 
-## Proxy Flags
+## Proxy flags
 
 `--proxy` prefix flags configures etcd to run in [proxy mode][proxy]. "proxy" supports v2 API only.
 
@@ -175,7 +175,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 0
 + env variable: ETCD_PROXY_READ_TIMEOUT
 
-## Security Flags
+## Security flags
 
 The security flags help to [build a secure etcd cluster][security].
 
@@ -239,7 +239,7 @@ The security flags help to [build a secure etcd cluster][security].
 + default: false
 + env variable: ETCD_PEER_AUTO_TLS
 
-## Logging Flags
+## Logging flags
 
 ### --debug
 + Drop the default log level to DEBUG for all subpackages.
@@ -252,7 +252,7 @@ The security flags help to [build a secure etcd cluster][security].
 + env variable: ETCD_LOG_PACKAGE_LEVELS
 
 
-## Unsafe Flags
+## Unsafe flags
 
 Please be CAUTIOUS when using unsafe flags because it will break the guarantees given by the consensus protocol.
 For example, it may panic if other members in the cluster are still alive.
@@ -263,7 +263,7 @@ Follow the instructions when using these flags.
 + default: false
 + env variable: ETCD_FORCE_NEW_CLUSTER
 
-## Miscellaneous Flags
+## Miscellaneous flags
 
 ### --version
 + Print the version and exit.

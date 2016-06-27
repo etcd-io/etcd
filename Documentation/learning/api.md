@@ -2,7 +2,7 @@
 
 NOTE: this doc is not finished!
 
-## Response Header
+## Response header
 
 All Responses from etcd API have a [response header][response_header] attached. The response header includes the metadata of the response.
 
@@ -30,7 +30,7 @@ Applications can use `Raft_Term` to detect when the cluster completes a new lead
 
 Key-Value API is used to manipulate key-value pairs stored inside etcd. The key-value API is defined as a [gRPC service][kv-service]. The Key-Value pair is defined as structured data in [protobuf format][kv-proto].
 
-### Key-Value Pair
+### Key-Value pair
 
 A key-value pair is the smallest unit that the key-value API can manipulate. Each key-value pair has a number of fields:
 

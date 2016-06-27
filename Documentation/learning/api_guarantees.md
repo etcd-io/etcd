@@ -1,4 +1,4 @@
-# KV API Guarantees
+# KV API guarantees
 
 etcd is a consistent and durable key value store with mini-transaction(TODO: link to txn doc when we have it) support. The key value store is exposed through the KV APIs. etcd tries to ensure the strongest consistency and durability guarantees for a distributed system. This specification enumerates the KV API guarantees made by etcd.
 
@@ -13,17 +13,17 @@ etcd is a consistent and durable key value store with mini-transaction(TODO: lin
 * Combination (read-modify-write) APIs
     * txn
 
-### etcd Specific Definitions
+### etcd specific definitions
 
-#### operation completed
+#### Operation completed
 
 An etcd operation is considered complete when it is committed through consensus, and therefore “executed” -- permanently stored -- by the etcd storage engine. The client knows an operation is completed when it receives a response from the etcd server. Note that the client may be uncertain about the status of an operation if it times out, or there is a network disruption between the client and the etcd member. etcd may also abort operations when there is a leader election. etcd does not send `abort` responses to  clients’ outstanding requests in this event.
 
-#### revision
+#### Revision
 
 An etcd operation that modifies the key value store is assigned with a single increasing revision. A transaction operation might modifies the key value store multiple times, but only one revision is assigned. The revision attribute of a key value pair that modified by the operation has the same value as the revision of the operation. The revision can be used as a logical clock for key value store. A key value pair that has a larger revision is modified after a key value pair with a smaller revision. Two key value pairs that have the same revision are modified by an operation "concurrently".
 
-### Guarantees Provided
+### Guarantees provided
 
 #### Atomicity
 

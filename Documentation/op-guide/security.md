@@ -1,4 +1,4 @@
-# Security Model
+# Security model
 
 etcd supports automatic TLS as well as authentication through client certificates for both clients to server as well as peer (server to server / cluster) communication.
 
@@ -181,7 +181,7 @@ To disable certificate chain checking, invoke curl with the `-k` flag:
 $ curl -k https://127.0.0.1:2379/v2/keys/foo -Xput -d value=bar -v
 ```
 
-## Notes For etcd Proxy
+## Notes for etcd proxy
 
 etcd proxy terminates the TLS from its client if the connection is secure, and uses proxy's own key/cert specified in `--peer-key-file` and `--peer-cert-file` to communicate with etcd members.
 
@@ -189,7 +189,7 @@ The proxy communicates with etcd members through both the `--advertise-client-ur
 
 When client authentication is enabled for an etcd member, the administrator must ensure that the peer certificate specified in the proxy's `--peer-cert-file` option is valid for that authentication. The proxy's peer certificate must also be valid for peer authentication if peer authentication is enabled.
 
-## Frequently Asked Questions
+## Frequently asked questions
 
 ### I'm seeing a SSLv3 alert handshake failure when using TLS client authentication?
 
