@@ -247,7 +247,10 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		plog.Fatalf("create snapshot directory error: %v", err)
 	}
 	ss := snap.New(cfg.SnapDir())
-	be := backend.NewDefaultBackend(path.Join(cfg.SnapDir(), databaseFilename))
+
+	bepath := path.Join(cfg.SnapDir(), databaseFilename)
+	beExist := fileutil.Exist(bepath)
+	be := backend.NewDefaultBackend(bepath)
 	defer func() {
 		if err != nil {
 			be.Close()
@@ -351,6 +354,10 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		cl.SetStore(st)
 		cl.SetBackend(be)
 		cl.Recover()
+		if cl.Version() != nil && cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
+			os.RemoveAll(bepath)
+			return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported bootstrap config")
 	}
