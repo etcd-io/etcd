@@ -18,7 +18,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
-// CompactOp represents a compact Operation.
+// CompactOp represents a compact operation.
 type CompactOp struct {
 	revision int64
 	physical bool
