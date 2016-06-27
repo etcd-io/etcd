@@ -48,9 +48,7 @@ All changes to the cluster are done one at a time:
 * To decrease from 5 to 3, make two remove operations
 
 All of these examples will use the `etcdctl` command line tool that ships with etcd.
-To change membership without `etcdctl`, use the [members API][member-api].
-
-TODO: v3 member API documentation
+To change membership without `etcdctl`, use the [v2 HTTP members API][member-api] or the [v3 gRPC members API][member-api-grpc].
 
 ### Update a member
 
@@ -105,7 +103,7 @@ It is safe to remove the leader, however the cluster will be inactive while a ne
 
 Adding a member is a two step process:
 
- * Add the new member to the cluster via the [members API][member-api] or the `etcdctl member add` command.
+ * Add the new member to the cluster via the [HTTP members API][member-api], the [gRPC members API][member-api-grpc], or the `etcdctl member add` command.
  * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
 
 Using `etcdctl` let's add the new member to the cluster by specifying its [name][conf-name] and [advertised peer URLs][conf-adv-peer]:
@@ -181,6 +179,7 @@ It is recommended to enable this option. However, it is disabled by default beca
 [fault tolerance table]: ../v2/admin_guide.md#fault-tolerance-table
 [majority failure]: #restart-cluster-from-majority-failure
 [member-api]: ../v2/members_api.md
+[member-api-grpc]: ../dev-guide/api_reference_v3.md#service-cluster-etcdserveretcdserverpbrpcproto
 [member migration]: ../v2/admin_guide.md#member-migration
 [remove member]: #remove-a-member
 [runtime-reconf]: runtime-reconf-design.md
