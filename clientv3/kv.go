@@ -47,7 +47,7 @@ type KV interface {
 	Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error)
 
 	// Compact compacts etcd KV history before the given rev.
-	Compact(ctx context.Context, rev int64) error
+	Compact(ctx context.Context, rev int64, opts ...CompactOption) error
 
 	// Do applies a single Op on KV without a transaction.
 	// Do is useful when declaring operations to be issued at a later time
@@ -98,8 +98,8 @@ func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*Delete
 	return r.del, toErr(ctx, err)
 }
 
-func (kv *kv) Compact(ctx context.Context, rev int64) error {
-	if _, err := kv.remote.Compact(ctx, &pb.CompactionRequest{Revision: rev}); err != nil {
+func (kv *kv) Compact(ctx context.Context, rev int64, opts ...CompactOption) error {
+	if _, err := kv.remote.Compact(ctx, OpCompact(rev, opts...).toRequest()); err != nil {
 		return toErr(ctx, err)
 	}
 	return nil
