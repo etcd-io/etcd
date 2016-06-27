@@ -164,12 +164,23 @@ func (sws *serverWatchStream) recvLoop() error {
 				// support  >= key queries
 				creq.RangeEnd = []byte{}
 			}
+			filters := make([]mvcc.FilterFunc, 0, len(creq.Filters))
+			for _, ft := range creq.Filters {
+				switch ft {
+				case pb.WatchCreateRequest_NOPUT:
+					filters = append(filters, filterNoPut)
+				case pb.WatchCreateRequest_NODELETE:
+					filters = append(filters, filterNoDelete)
+				default:
+				}
+			}
+
 			wsrev := sws.watchStream.Rev()
 			rev := creq.StartRevision
 			if rev == 0 {
 				rev = wsrev + 1
 			}
-			id := sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev)
+			id := sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev, filters...)
 			if id != -1 && creq.ProgressNotify {
 				sws.progress[id] = true
 			}
@@ -321,4 +332,12 @@ func (sws *serverWatchStream) newResponseHeader(rev int64) *pb.ResponseHeader {
 		Revision:  rev,
 		RaftTerm:  sws.raftTimer.Term(),
 	}
+}
+
+func filterNoDelete(e mvccpb.Event) bool {
+	return e.Type == mvccpb.DELETE
+}
+
+func filterNoPut(e mvccpb.Event) bool {
+	return e.Type == mvccpb.PUT
 }

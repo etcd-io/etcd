@@ -1011,3 +1011,71 @@ func TestV3WatchClose(t *testing.T) {
 	clus.Members[0].DropConnections()
 	wg.Wait()
 }
+
+// TestV3WatchWithFilter ensures watcher filters out the events correctly.
+func TestV3WatchWithFilter(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ws, werr := toGRPC(clus.RandClient()).Watch.Watch(ctx)
+	if werr != nil {
+		t.Fatal(werr)
+	}
+	req := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
+		CreateRequest: &pb.WatchCreateRequest{
+			Key:     []byte("foo"),
+			Filters: []pb.WatchCreateRequest_FilterType{pb.WatchCreateRequest_NOPUT},
+		}}}
+	if err := ws.Send(req); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ws.Recv(); err != nil {
+		t.Fatal(err)
+	}
+
+	recv := make(chan *pb.WatchResponse)
+	go func() {
+		// check received PUT
+		resp, rerr := ws.Recv()
+		if rerr != nil {
+			t.Fatal(rerr)
+		}
+		recv <- resp
+	}()
+
+	// put a key with empty value
+	kvc := toGRPC(clus.RandClient()).KV
+	preq := &pb.PutRequest{Key: []byte("foo")}
+	if _, err := kvc.Put(context.TODO(), preq); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-recv:
+		t.Fatal("failed to filter out put event")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	dreq := &pb.DeleteRangeRequest{Key: []byte("foo")}
+	if _, err := kvc.DeleteRange(context.TODO(), dreq); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case resp := <-recv:
+		wevs := []*mvccpb.Event{
+			{
+				Type: mvccpb.DELETE,
+				Kv:   &mvccpb.KeyValue{Key: []byte("foo"), ModRevision: 3},
+			},
+		}
+		if !reflect.DeepEqual(resp.Events, wevs) {
+			t.Fatalf("got %v, expected %v", resp.Events, wevs)
+		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("failed to receive delete event")
+	}
+}

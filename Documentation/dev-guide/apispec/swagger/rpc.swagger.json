@@ -181,6 +181,15 @@
       ],
       "default": "KEY"
     },
+    "WatchCreateRequestFilterType": {
+      "type": "string",
+      "enum": [
+        "NOPUT",
+        "NODELETE"
+      ],
+      "default": "NOPUT",
+      "description": "- NOPUT: filter out put event.\n - NODELETE: filter out delete event."
+    },
     "authpbPermission": {
       "type": "object",
       "properties": {
@@ -1171,6 +1180,13 @@
     "etcdserverpbWatchCreateRequest": {
       "type": "object",
       "properties": {
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WatchCreateRequestFilterType"
+          },
+          "description": "filters filter the events at server side before it sends back to the watcher."
+        },
         "key": {
           "type": "string",
           "format": "byte",

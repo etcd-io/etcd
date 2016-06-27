@@ -558,6 +558,15 @@ message WatchCreateRequest {
   // wish to recover a disconnected watcher starting from a recent known revision.
   // The etcd server may decide how often it will send notifications based on current load.
   bool progress_notify = 4;
+
+  enum FilterType {
+  // filter out put event.
+  NOPUT = 0;
+  // filter out delete event.
+  NODELETE = 1;
+  }
+  // filters filter the events at server side before it sends back to the watcher.
+  repeated FilterType filters = 5;
 }
 
 message WatchCancelRequest {
