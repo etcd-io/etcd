@@ -325,7 +325,16 @@ func (s *store) Hash() (uint32, int64, error) {
 	return h, rev, err
 }
 
-func (s *store) Commit() { s.b.ForceCommit() }
+func (s *store) Commit() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.tx = s.b.BatchTx()
+	s.tx.Lock()
+	s.saveIndex()
+	s.tx.Unlock()
+	s.b.ForceCommit()
+}
 
 func (s *store) Restore(b backend.Backend) error {
 	s.mu.Lock()
