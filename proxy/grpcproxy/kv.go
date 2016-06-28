@@ -81,6 +81,20 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	return (*pb.TxnResponse)(resp), err
 }
 
+func (p *kvProxy) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
+	var opts []clientv3.CompactOption
+	if r.Physical {
+		opts = append(opts, clientv3.WithCompactPhysical())
+	}
+
+	resp, err := p.c.KV.Compact(ctx, r.Revision, opts...)
+	if err == nil {
+		p.cache.Compact(r.Revision)
+	}
+
+	return (*pb.CompactionResponse)(resp), err
+}
+
 func (p *kvProxy) Close() error {
 	return p.c.Close()
 }
@@ -136,8 +150,4 @@ func DelRequestToOp(r *pb.DeleteRangeRequest) clientv3.Op {
 	}
 
 	return clientv3.OpDelete(string(r.Key), opts...)
-}
-
-func (p *kvProxy) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	panic("unimplemented")
 }
