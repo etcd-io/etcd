@@ -505,6 +505,7 @@ func (w *watchGrpcStream) serveWatchClient(wc pb.Watch_WatchClient) {
 
 // serveStream forwards watch responses from run() to the subscriber
 func (w *watchGrpcStream) serveStream(ws *watcherStream) {
+	var closeErr error
 	emptyWr := &WatchResponse{}
 	wrs := []*WatchResponse{}
 	resuming := false
@@ -569,13 +570,14 @@ func (w *watchGrpcStream) serveStream(ws *watcherStream) {
 			}
 		case <-w.donec:
 			closing = true
+			closeErr = w.closeErr
 		case <-ws.initReq.ctx.Done():
 			closing = true
 		}
 	}
 
 	// try to send off close error
-	if w.closeErr != nil {
+	if closeErr != nil {
 		select {
 		case ws.outc <- WatchResponse{closeErr: w.closeErr}:
 		case <-w.donec:
