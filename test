@@ -184,6 +184,11 @@ function dep_tests {
 	fi
 }
 
+function compile_tests {
+	echo "Checking build..."
+	go build -v ./tools/...
+}
+
 # Set up gopath so tests use vendored dependencies
 export GOPATH=${PWD}/gopath
 rm -rf $GOPATH/src
@@ -194,6 +199,7 @@ ln -s ${PWD}/cmd/vendor $GOPATH/src
 toggle_failpoints disable
 fmt_tests
 dep_tests
+compile_tests
 
 # fail fast on static tests
 GO_BUILD_FLAGS="-a -v" etcd_build
@@ -203,3 +209,4 @@ if [ -n "$INTEGRATION" ]; then
 	integration_tests
 fi
 echo "Success"
+
