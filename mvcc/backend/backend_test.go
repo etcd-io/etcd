@@ -141,7 +141,7 @@ func TestBackendDefrag(t *testing.T) {
 	size := b.Size()
 
 	// shrink and check hash
-	oh, err := b.Hash()
+	oh, err := b.Hash(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestBackendDefrag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nh, err := b.Hash()
+	nh, err := b.Hash(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

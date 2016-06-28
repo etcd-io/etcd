@@ -320,7 +320,14 @@ func (s *store) Hash() (uint32, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	h, err := s.b.Hash()
+	// ignore hash consistent index field for now.
+	// consistent index might be changed due to v2 internal sync, which
+	// is not controllable by the user.
+	ignores := make(map[backend.IgnoreKey]struct{})
+	bk := backend.IgnoreKey{Bucket: string(metaBucketName), Key: string(consistentIndexKeyName)}
+	ignores[bk] = struct{}{}
+
+	h, err := s.b.Hash(ignores)
 	rev := s.currentRev.main
 	return h, rev, err
 }
