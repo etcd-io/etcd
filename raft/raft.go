@@ -133,11 +133,23 @@ func (c *Config) validate() error {
 	return nil
 }
 
+// ReadState provides state for read only query.
+// It's caller's responsibility to send MsgReadIndex first before getting
+// this state from ready, It's also caller's duty to differentiate if this
+// state is what it requests through RequestCtx, eg. given a unique id as
+// RequestCtx
+type ReadState struct {
+	Index      uint64
+	RequestCtx []byte
+}
+
 type raft struct {
 	id uint64
 
 	Term uint64
 	Vote uint64
+
+	readState ReadState
 
 	// the log
 	raftLog *raftLog
@@ -208,6 +220,7 @@ func newRaft(c *Config) *raft {
 	r := &raft{
 		id:               c.ID,
 		lead:             None,
+		readState:        ReadState{Index: None, RequestCtx: nil},
 		raftLog:          raftlog,
 		maxMsgSize:       c.MaxSizePerMsg,
 		maxInflight:      c.MaxInflightMsgs,
@@ -642,6 +655,14 @@ func stepLeader(r *raft, m pb.Message) {
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
 		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 		return
+	case pb.MsgReadIndex:
+		ri := None
+		if r.checkQuorum {
+			ri = r.raftLog.committed
+		}
+
+		r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: ri, Entries: m.Entries})
+		return
 	}
 
 	// All other message types require a progress for m.From (pr).
@@ -822,6 +843,21 @@ func stepFollower(r *raft, m pb.Message) {
 	case pb.MsgTimeoutNow:
 		r.logger.Infof("%x [term %d] received MsgTimeoutNow from %x and starts an election to get leadership.", r.id, r.Term, m.From)
 		r.campaign()
+	case pb.MsgReadIndex:
+		if r.lead == None {
+			r.logger.Infof("%x no leader at term %d; dropping index reading msg", r.id, r.Term)
+			return
+		}
+		m.To = r.lead
+		r.send(m)
+	case pb.MsgReadIndexResp:
+		if len(m.Entries) != 1 {
+			r.logger.Errorf("%x invalid format of MsgReadIndexResp from %x, entries count: %d", r.id, m.From, len(m.Entries))
+			return
+		}
+
+		r.readState.Index = m.Index
+		r.readState.RequestCtx = m.Entries[0].Data
 	}
 }
 

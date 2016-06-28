@@ -60,6 +60,12 @@ type Ready struct {
 	// HardState will be equal to empty state if there is no update.
 	pb.HardState
 
+	// ReadState can be used for node to serve linearizable read requests locally
+	// when its applied index is greater than the index in ReadState.
+	// Note that the readState will be returned when raft receives msgReadIndex.
+	// The returned is only valid for the request that requested to read.
+	ReadState
+
 	// Entries specifies entries to be saved to stable storage BEFORE
 	// Messages are sent.
 	Entries []pb.Entry
@@ -96,7 +102,7 @@ func IsEmptySnap(sp pb.Snapshot) bool {
 func (rd Ready) containsUpdates() bool {
 	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) ||
 		!IsEmptySnap(rd.Snapshot) || len(rd.Entries) > 0 ||
-		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0 || rd.Index != None
 }
 
 // Node represents a node in a raft cluster.
@@ -361,7 +367,10 @@ func (n *node) run(r *raft) {
 			if !IsEmptySnap(rd.Snapshot) {
 				prevSnapi = rd.Snapshot.Metadata.Index
 			}
+
 			r.msgs = nil
+			r.readState.Index = None
+			r.readState.RequestCtx = nil
 			advancec = n.advancec
 		case <-advancec:
 			if prevHardSt.Commit != 0 {
@@ -478,6 +487,10 @@ func (n *node) ReportSnapshot(id uint64, status SnapshotStatus) {
 	}
 }
 
+func (n *node) ReadIndex(ctx context.Context, id uint64, rctx []byte) error {
+	return n.step(ctx, pb.Message{Type: pb.MsgReadIndex, From: id, Entries: []pb.Entry{{Data: rctx}}})
+}
+
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEntries(),
@@ -492,6 +505,13 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	}
 	if r.raftLog.unstable.snapshot != nil {
 		rd.Snapshot = *r.raftLog.unstable.snapshot
+	}
+	if r.readState.Index != None {
+		c := make([]byte, len(r.readState.RequestCtx))
+		copy(c, r.readState.RequestCtx)
+
+		rd.Index = r.readState.Index
+		rd.RequestCtx = c
 	}
 	return rd
 }
