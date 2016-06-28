@@ -244,7 +244,7 @@ func (tt *tester) cleanup() error {
 		return err
 	}
 
-	if err := tt.cluster.Bootstrap(); err != nil {
+	if err := tt.cluster.Reset(); err != nil {
 		plog.Warningf("%s cleanup Bootstrap error: %v", tt.logPrefix(), err)
 		return err
 	}
