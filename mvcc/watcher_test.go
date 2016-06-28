@@ -283,3 +283,40 @@ func TestWatcherRequestProgress(t *testing.T) {
 		t.Fatal("failed to receive progress")
 	}
 }
+
+func TestWatcherWatchWithFilter(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	defer cleanup(s, b, tmpPath)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	filterPut := func(e mvccpb.Event) bool {
+		return e.Type == mvccpb.PUT
+	}
+
+	w.Watch([]byte("foo"), nil, 0, filterPut)
+	done := make(chan struct{})
+
+	go func() {
+		<-w.Chan()
+		done <- struct{}{}
+	}()
+
+	s.Put([]byte("foo"), []byte("bar"), 0)
+
+	select {
+	case <-done:
+		t.Fatal("failed to filter put request")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	s.DeleteRange([]byte("foo"), nil)
+
+	select {
+	case <-done:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("failed to receive delete request")
+	}
+}
