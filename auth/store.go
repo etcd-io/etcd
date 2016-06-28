@@ -51,6 +51,7 @@ var (
 	ErrPermissionDenied     = errors.New("auth: permission denied")
 	ErrRoleNotGranted       = errors.New("auth: role is not granted to the user")
 	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
+	ErrAuthNotEnabled       = errors.New("auth: authentication is not enabled")
 )
 
 const (
@@ -187,6 +188,10 @@ func (as *authStore) AuthDisable() {
 }
 
 func (as *authStore) Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error) {
+	if !as.isAuthEnabled() {
+		return nil, ErrAuthNotEnabled
+	}
+
 	// TODO(mitake): after adding jwt support, branching based on values of ctx is required
 	index := ctx.Value("index").(uint64)
 	simpleToken := ctx.Value("simpleToken").(string)

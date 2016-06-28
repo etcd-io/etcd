@@ -45,6 +45,25 @@ func TestUserAdd(t *testing.T) {
 	}
 }
 
+func enableAuthAndCreateRoot(as *authStore) error {
+	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "root"})
+	if err != nil {
+		return err
+	}
+
+	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"})
+	if err != nil {
+		return err
+	}
+
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"})
+	if err != nil {
+		return err
+	}
+
+	return as.AuthEnable()
+}
+
 func TestAuthenticate(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer func() {
@@ -53,9 +72,13 @@ func TestAuthenticate(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	err := enableAuthAndCreateRoot(as)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ua := &pb.AuthUserAddRequest{Name: "foo", Password: "bar"}
-	_, err := as.UserAdd(ua)
+	_, err = as.UserAdd(ua)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,9 +119,13 @@ func TestUserDelete(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	err := enableAuthAndCreateRoot(as)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ua := &pb.AuthUserAddRequest{Name: "foo"}
-	_, err := as.UserAdd(ua)
+	_, err = as.UserAdd(ua)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,8 +155,12 @@ func TestUserChangePassword(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	err := enableAuthAndCreateRoot(as)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo"})
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "foo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,9 +200,13 @@ func TestRoleAdd(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	err := enableAuthAndCreateRoot(as)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// adds a new role
-	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test"})
+	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,8 +220,12 @@ func TestUserGrant(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	err := enableAuthAndCreateRoot(as)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo"})
+	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "foo"})
 	if err != nil {
 		t.Fatal(err)
 	}
