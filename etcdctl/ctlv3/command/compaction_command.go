@@ -53,7 +53,7 @@ func compactionCommandFunc(cmd *cobra.Command, args []string) {
 
 	c := mustClientFromCmd(cmd)
 	ctx, cancel := commandCtx(cmd)
-	cerr := c.Compact(ctx, rev, opts...)
+	_, cerr := c.Compact(ctx, rev, opts...)
 	cancel()
 	if cerr != nil {
 		ExitWithError(ExitError, cerr)
