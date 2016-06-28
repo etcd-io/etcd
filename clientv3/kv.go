@@ -20,10 +20,11 @@ import (
 )
 
 type (
-	PutResponse    pb.PutResponse
-	GetResponse    pb.RangeResponse
-	DeleteResponse pb.DeleteRangeResponse
-	TxnResponse    pb.TxnResponse
+	CompactResponse pb.CompactionResponse
+	PutResponse     pb.PutResponse
+	GetResponse     pb.RangeResponse
+	DeleteResponse  pb.DeleteRangeResponse
+	TxnResponse     pb.TxnResponse
 )
 
 type KV interface {
@@ -47,7 +48,7 @@ type KV interface {
 	Delete(ctx context.Context, key string, opts ...OpOption) (*DeleteResponse, error)
 
 	// Compact compacts etcd KV history before the given rev.
-	Compact(ctx context.Context, rev int64, opts ...CompactOption) error
+	Compact(ctx context.Context, rev int64, opts ...CompactOption) (*CompactResponse, error)
 
 	// Do applies a single Op on KV without a transaction.
 	// Do is useful when declaring operations to be issued at a later time
@@ -98,11 +99,12 @@ func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*Delete
 	return r.del, toErr(ctx, err)
 }
 
-func (kv *kv) Compact(ctx context.Context, rev int64, opts ...CompactOption) error {
-	if _, err := kv.remote.Compact(ctx, OpCompact(rev, opts...).toRequest()); err != nil {
-		return toErr(ctx, err)
+func (kv *kv) Compact(ctx context.Context, rev int64, opts ...CompactOption) (*CompactResponse, error) {
+	resp, err := kv.remote.Compact(ctx, OpCompact(rev, opts...).toRequest())
+	if err != nil {
+		return nil, toErr(ctx, err)
 	}
-	return nil
+	return (*CompactResponse)(resp), err
 }
 
 func (kv *kv) Txn(ctx context.Context) Txn {

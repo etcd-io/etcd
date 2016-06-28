@@ -375,7 +375,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := kv.Compact(context.TODO(), 3); err != nil {
+	if _, err := kv.Compact(context.TODO(), 3); err != nil {
 		t.Fatal(err)
 	}
 
@@ -414,7 +414,7 @@ func TestWatchCompactRevision(t *testing.T) {
 	w := clientv3.NewWatcher(clus.RandClient())
 	defer w.Close()
 
-	if err := kv.Compact(context.TODO(), 4); err != nil {
+	if _, err := kv.Compact(context.TODO(), 4); err != nil {
 		t.Fatal(err)
 	}
 	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(2))

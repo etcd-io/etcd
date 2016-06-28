@@ -470,17 +470,17 @@ func TestKVCompactError(t *testing.T) {
 			t.Fatalf("couldn't put 'foo' (%v)", err)
 		}
 	}
-	err := kv.Compact(ctx, 6)
+	_, err := kv.Compact(ctx, 6)
 	if err != nil {
 		t.Fatalf("couldn't compact 6 (%v)", err)
 	}
 
-	err = kv.Compact(ctx, 6)
+	_, err = kv.Compact(ctx, 6)
 	if err != rpctypes.ErrCompacted {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrCompacted, err)
 	}
 
-	err = kv.Compact(ctx, 100)
+	_, err = kv.Compact(ctx, 100)
 	if err != rpctypes.ErrFutureRev {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrFutureRev, err)
 	}
@@ -501,11 +501,11 @@ func TestKVCompact(t *testing.T) {
 		}
 	}
 
-	err := kv.Compact(ctx, 7)
+	_, err := kv.Compact(ctx, 7)
 	if err != nil {
 		t.Fatalf("couldn't compact kv space (%v)", err)
 	}
-	err = kv.Compact(ctx, 7)
+	_, err = kv.Compact(ctx, 7)
 	if err == nil || err != rpctypes.ErrCompacted {
 		t.Fatalf("error got %v, want %v", err, rpctypes.ErrCompacted)
 	}
@@ -525,7 +525,7 @@ func TestKVCompact(t *testing.T) {
 		t.Fatalf("wchan got %v, expected closed", wr)
 	}
 
-	err = kv.Compact(ctx, 1000)
+	_, err = kv.Compact(ctx, 1000)
 	if err == nil || err != rpctypes.ErrFutureRev {
 		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
 	}

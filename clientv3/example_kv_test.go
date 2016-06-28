@@ -210,7 +210,7 @@ func ExampleKV_compact() {
 	compRev := resp.Header.Revision // specify compact revision of your choice
 
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	err = cli.Compact(ctx, compRev)
+	_, err = cli.Compact(ctx, compRev)
 	cancel()
 	if err != nil {
 		log.Fatal(err)
