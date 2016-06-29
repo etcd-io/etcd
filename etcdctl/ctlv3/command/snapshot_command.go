@@ -58,8 +58,8 @@ var (
 // NewSnapshotCommand returns the cobra command for "snapshot".
 func NewSnapshotCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "snapshot",
-		Short: "snapshot manages etcd node snapshots.",
+		Use:   "snapshot <subcommand>",
+		Short: "Manages etcd node snapshots",
 	}
 	cmd.AddCommand(NewSnapshotSaveCommand())
 	cmd.AddCommand(NewSnapshotRestoreCommand())
@@ -70,7 +70,7 @@ func NewSnapshotCommand() *cobra.Command {
 func NewSnapshotSaveCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "save <filename>",
-		Short: "save stores an etcd node backend snapshot to a given file.",
+		Short: "Stores an etcd node backend snapshot to a given file",
 		Run:   snapshotSaveCommandFunc,
 	}
 }
@@ -78,7 +78,7 @@ func NewSnapshotSaveCommand() *cobra.Command {
 func newSnapshotStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status <filename>",
-		Short: "status gets backend snapshot status of a given file.",
+		Short: "Gets backend snapshot status of a given file",
 		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
 The items in the lists are hash, revision, total keys, total size.
 `,
@@ -89,15 +89,15 @@ The items in the lists are hash, revision, total keys, total size.
 func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restore <filename>",
-		Short: "restore an etcd member snapshot to an etcd directory",
+		Short: "Restores an etcd member snapshot to an etcd directory",
 		Run:   snapshotRestoreCommandFunc,
 	}
-	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the data directory.")
-	cmd.Flags().StringVar(&restoreCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for restore bootstrap.")
-	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap.")
-	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster.")
-	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member.")
-	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory).")
+	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the data directory")
+	cmd.Flags().StringVar(&restoreCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for restore bootstrap")
+	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap")
+	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
+	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
+	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
 
 	return cmd
 }

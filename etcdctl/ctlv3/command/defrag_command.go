@@ -25,7 +25,7 @@ import (
 func NewDefragCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "defrag",
-		Short: "defrag defragments the storage of the etcd members with given endpoints.",
+		Short: "Defragments the storage of the etcd members with given endpoints",
 		Run:   defragCommandFunc,
 	}
 }
