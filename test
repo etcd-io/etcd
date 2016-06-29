@@ -148,7 +148,7 @@ function fmt_tests {
 	fi
 
 	echo "Checking commit titles..."
-	git log master..HEAD --oneline | while read l; do
+	git log --oneline `git merge-base HEAD master`...HEAD | while read l; do
 		commitMsg=`echo "$l" | cut -f2- -d' '`
 		if [[ "$commitMsg" == Merge* ]]; then
 			# ignore "Merge pull" commits
