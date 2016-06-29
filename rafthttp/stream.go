@@ -84,7 +84,7 @@ var (
 	linkHeartbeatMessage = raftpb.Message{Type: raftpb.MsgHeartbeat}
 )
 
-func isLinkHeartbeatMessage(m raftpb.Message) bool {
+func isLinkHeartbeatMessage(m *raftpb.Message) bool {
 	return m.Type == raftpb.MsgHeartbeat && m.From == 0 && m.To == 0
 }
 
@@ -146,7 +146,7 @@ func (cw *streamWriter) run() {
 	for {
 		select {
 		case <-heartbeatc:
-			err := enc.encode(linkHeartbeatMessage)
+			err := enc.encode(&linkHeartbeatMessage)
 			unflushed += linkHeartbeatMessage.Size()
 			if err == nil {
 				flusher.Flush()
@@ -163,7 +163,7 @@ func (cw *streamWriter) run() {
 			heartbeatc, msgc = nil, nil
 
 		case m := <-msgc:
-			err := enc.encode(m)
+			err := enc.encode(&m)
 			if err == nil {
 				unflushed += m.Size()
 
@@ -354,7 +354,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			continue
 		}
 
-		if isLinkHeartbeatMessage(m) {
+		if isLinkHeartbeatMessage(&m) {
 			// raft is not interested in link layer
 			// heartbeat message, so we should ignore
 			// it.
