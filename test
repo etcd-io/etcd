@@ -50,143 +50,12 @@ if [ $MACHINE_TYPE != "armv7l" ]; then
 	RACE="--race"
 fi
 
-function unit_tests {
-	echo "Running tests..."
-	# only -run=Test so examples can run in integration tests
-	go test -timeout 3m ${COVER} ${RACE} -cpu 1,2,4 -run=Test $@ ${TEST}
-}
-
 function integration_tests {
 	echo "Running integration tests..."
-	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e &
-	e2epid="$!"
 	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration &
 	intpid="$!"
-	wait $e2epid
 	wait $intpid
-	go test -timeout 10m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
-	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
-}
-
-function fmt_tests {
-	echo "Checking gofmt..."
-	fmtRes=$(gofmt -l -s -d $FMT)
-	if [ -n "${fmtRes}" ]; then
-		echo -e "gofmt checking failed:\n${fmtRes}"
-		exit 255
-	fi
-
-	echo "Checking govet..."
-	vetRes=$(go vet $TEST)
-	if [ -n "${vetRes}" ]; then
-		echo -e "govet checking failed:\n${vetRes}"
-		exit 255
-	fi
-
-	echo "Checking 'go tool vet -shadow'..."
-	for path in $FMT; do
-		if [ "${path##*.}" != "go" ]; then
-			path="${path}/*.go"
-		fi
-		vetRes=$(go tool vet -shadow ${path})
-		if [ -n "${vetRes}" ]; then
-			echo -e "govet -shadow checking ${path} failed:\n${vetRes}"
-			exit 255
-		fi
-	done
-
-	if which goword >/dev/null; then
-		echo "Checking goword..."
-		# get all go files to process
-		gofiles=`find $FMT -iname '*.go' 2>/dev/null`
-		# ignore tests and protobuf files
-		gofiles=`echo ${gofiles} | sort | uniq | sed "s/ /\n/g" | egrep -v "(\\_test.go|\\.pb\\.go)"`
-		# only check for broken exported godocs
-		gowordRes=`goword -use-spell=false ${gofiles} | grep godoc-export | sort`
-		if [ ! -z "$gowordRes" ]; then
-			echo -e "goword checking failed:\n${gowordRes}"
-			exit 255
-		fi
-	else
-		echo "Skipping goword..."
-	fi
-
-	if which gosimple >/dev/null; then
-		echo "Checking gosimple..."
-		for path in $GOSIMPLE_UNUSED_PATHS; do
-			simplResult=`gosimple $REPO_PATH/${path} || true`
-			if [ -n "${simplResult}" ]; then
-				echo -e "gosimple checking ${path} failed:\n${simplResult}"
-				exit 255
-			fi
-		done
-	else
-		echo "Skipping gosimple..."
-	fi
-	
-	if which unused >/dev/null; then
-		echo "Checking unused..."
-		for path in $GOSIMPLE_UNUSED_PATHS; do
-			unusedResult=`unused $REPO_PATH/${path} || true`
-			if [ -n "${unusedResult}" ]; then
-				echo -e "unused checking ${path} failed:\n${unusedResult}"
-				exit 255
-			fi
-		done
-	else
-		echo "Skipping unused..."
-	fi
-
-	echo "Checking for license header..."
-	licRes=$(for file in $(find . -type f -iname '*.go' ! -path './cmd/*'); do
-			head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" || echo -e "  ${file}"
-		done;)
-	if [ -n "${licRes}" ]; then
-		echo -e "license header checking failed:\n${licRes}"
-		exit 255
-	fi
-
-	echo "Checking commit titles..."
-	git log master..HEAD --oneline | while read l; do
-		commitMsg=`echo "$l" | cut -f2- -d' '`
-		if [[ "$commitMsg" == Merge* ]]; then
-			# ignore "Merge pull" commits
-			continue
-		fi
-		if [[ "$commitMsg" == Revert* ]]; then
-			# ignore revert commits
-			continue
-		fi
-
-		pkgPrefix=`echo "$commitMsg" | cut -f1 -d':'`
-		spaceCommas=`echo "$commitMsg" | sed 's/ /\n/g' | grep -c ',$' || echo 0`
-		commaSpaces=`echo "$commitMsg" | sed 's/,/\n/g' | grep -c '^ ' || echo 0`
-		if [[ `echo $commitMsg | grep -c ":..*"` == 0 || "$commitMsg" == "$pkgPrefix" || "$spaceCommas" != "$commaSpaces" ]]; then
-    			echo "$l"...
-			echo "Expected commit title format '<package>{\", \"<package>}: <description>'"
-			echo "Got: $l"
-			exit 255
-		fi
-	done
-}
-
-function dep_tests {
-	echo "Checking package dependencies..."
-	# don't pull in etcdserver package
-	pushd clientv3 >/dev/null
-	badpkg="(etcdserver|mvcc)"
-	deps=`go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | egrep "${badpkg}" | egrep -v "${badpkg}/" || echo ""`
-	popd >/dev/null
-	if [ ! -z "$deps" ]; then
-		echo -e "clientv3 has masked dependencies:\n${deps}"
-		exit 255
-	fi
-}
-
-function compile_tests {
-	echo "Checking build..."
-	go build -v ./tools/...
 }
 
 # Set up gopath so tests use vendored dependencies
@@ -197,16 +66,11 @@ ln -s ${PWD}/cmd/vendor $GOPATH/src
 
 # fail fast on static tests
 toggle_failpoints disable
-fmt_tests
-dep_tests
-compile_tests
 
 # fail fast on static tests
 GO_BUILD_FLAGS="-a -v" etcd_build
 
-unit_tests
-if [ -n "$INTEGRATION" ]; then
-	integration_tests
-fi
+integration_tests
+
 echo "Success"
 
