@@ -106,7 +106,7 @@ func (s *stresser) Stress() error {
 						// new leader and start processing requests again.
 						shouldContinue = true
 
-					case etcdserver.ErrTimeoutDueToLeaderFail.Error():
+					case etcdserver.ErrTimeoutDueToLeaderFail.Error(), etcdserver.ErrTimeout.Error():
 						// This retries when request is triggered at the same time as
 						// leader failure and follower nodes receive time out errors
 						// from losing their leader. Followers should retry to connect
