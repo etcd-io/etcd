@@ -22,14 +22,14 @@ import (
 )
 
 type kvProxy struct {
-	c     *clientv3.Client
-	cache cache.Cache
+	client *clientv3.Client
+	cache  cache.Cache
 }
 
 func NewKvProxy(c *clientv3.Client) *kvProxy {
 	return &kvProxy{
-		c:     c,
-		cache: cache.NewCache(cache.DefaultMaxEntries),
+		client: c,
+		cache:  cache.NewCache(cache.DefaultMaxEntries),
 	}
 }
 
@@ -41,7 +41,7 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 		}
 	}
 
-	resp, err := p.c.Do(ctx, RangeRequestToOp(r))
+	resp, err := p.client.Do(ctx, RangeRequestToOp(r))
 	if err != nil {
 		p.cache.Add(r, (*pb.RangeResponse)(resp.Get()))
 	}
@@ -50,17 +50,17 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 }
 
 func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	resp, err := p.c.Do(ctx, PutRequestToOp(r))
+	resp, err := p.client.Do(ctx, PutRequestToOp(r))
 	return (*pb.PutResponse)(resp.Put()), err
 }
 
 func (p *kvProxy) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	resp, err := p.c.Do(ctx, DelRequestToOp(r))
+	resp, err := p.client.Do(ctx, DelRequestToOp(r))
 	return (*pb.DeleteRangeResponse)(resp.Del()), err
 }
 
 func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	txn := p.c.Txn(ctx)
+	txn := p.client.Txn(ctx)
 	cmps := make([]clientv3.Cmp, len(r.Compare))
 	thenops := make([]clientv3.Op, len(r.Success))
 	elseops := make([]clientv3.Op, len(r.Failure))
@@ -81,8 +81,22 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	return (*pb.TxnResponse)(resp), err
 }
 
+func (p *kvProxy) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
+	var opts []clientv3.CompactOption
+	if r.Physical {
+		opts = append(opts, clientv3.WithCompactPhysical())
+	}
+
+	resp, err := p.client.KV.Compact(ctx, r.Revision, opts...)
+	if err == nil {
+		p.cache.Compact(r.Revision)
+	}
+
+	return (*pb.CompactionResponse)(resp), err
+}
+
 func (p *kvProxy) Close() error {
-	return p.c.Close()
+	return p.client.Close()
 }
 
 func requestOpToOp(union *pb.RequestOp) clientv3.Op {
@@ -136,8 +150,4 @@ func DelRequestToOp(r *pb.DeleteRangeRequest) clientv3.Op {
 	}
 
 	return clientv3.OpDelete(string(r.Key), opts...)
-}
-
-func (p *kvProxy) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	panic("unimplemented")
 }
