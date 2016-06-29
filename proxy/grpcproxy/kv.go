@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/proxy/grpcproxy/cache"
+
 	"golang.org/x/net/context"
 )
 
@@ -36,17 +37,23 @@ func NewKvProxy(c *clientv3.Client) *kvProxy {
 func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	// if request set Serializable, serve it from local cache first
 	if r.Serializable {
-		if resp, err := p.cache.Get(r); err == nil || err == cache.ErrCompacted {
-			return resp, err
+		resp, err := p.cache.Get(r)
+		switch err {
+		case nil:
+			return resp, nil
+		case cache.ErrCompacted:
+			return nil, err
 		}
 	}
 
 	resp, err := p.client.Do(ctx, RangeRequestToOp(r))
 	if err != nil {
-		p.cache.Add(r, (*pb.RangeResponse)(resp.Get()))
+		return nil, err
 	}
 
-	return (*pb.RangeResponse)(resp.Get()), err
+	p.cache.Add(r, (*pb.RangeResponse)(resp.Get()))
+
+	return (*pb.RangeResponse)(resp.Get()), nil
 }
 
 func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
