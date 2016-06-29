@@ -175,8 +175,8 @@ func testNonleaderStartElection(t *testing.T, state StateType) {
 	msgs := r.readMessages()
 	sort.Sort(messageSlice(msgs))
 	wmsgs := []pb.Message{
-		{From: 1, To: 2, Term: 2, Type: pb.MsgVote},
-		{From: 1, To: 3, Term: 2, Type: pb.MsgVote},
+		{From: 1, To: 2, Term: 2, Type: pb.MsgVote, Entries: []pb.Entry{{Data: []byte(LeaderElection)}}},
+		{From: 1, To: 3, Term: 2, Type: pb.MsgVote, Entries: []pb.Entry{{Data: []byte(LeaderElection)}}},
 	}
 	if !reflect.DeepEqual(msgs, wmsgs) {
 		t.Errorf("msgs = %v, want %v", msgs, wmsgs)
