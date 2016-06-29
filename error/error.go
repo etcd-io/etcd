@@ -160,3 +160,10 @@ func (e Error) WriteTo(w http.ResponseWriter) {
 	w.WriteHeader(e.StatusCode())
 	fmt.Fprintln(w, e.toJsonString())
 }
+
+func (e Error) WriteToHeader(w http.ResponseWriter) {
+	w.Header().Add("X-Etcd-Index", fmt.Sprint(e.Index))
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", "0")
+	w.WriteHeader(e.StatusCode())
+}

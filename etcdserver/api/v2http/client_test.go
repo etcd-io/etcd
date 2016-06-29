@@ -1112,7 +1112,7 @@ func TestServeMembersFail(t *testing.T) {
 func TestWriteEvent(t *testing.T) {
 	// nil event should not panic
 	rec := httptest.NewRecorder()
-	writeKeyEvent(rec, nil, dummyRaftTimer{})
+	writeKeyEvent(rec, nil, dummyRaftTimer{}, true)
 	h := rec.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
@@ -1155,7 +1155,7 @@ func TestWriteEvent(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		writeKeyEvent(rw, tt.ev, dummyRaftTimer{})
+		writeKeyEvent(rw, tt.ev, dummyRaftTimer{}, true)
 		if gct := rw.Header().Get("Content-Type"); gct != "application/json" {
 			t.Errorf("case %d: bad Content-Type: got %q, want application/json", i, gct)
 		}

@@ -146,13 +146,15 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
+	withBody := (r.Method != "HEAD")
+
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 	clock := clockwork.NewRealClock()
 	startTime := clock.Now()
 	rr, err := parseKeyRequest(r, clock)
 	if err != nil {
-		writeKeyError(w, err)
+		writeKeyError(w, err, withBody)
 		return
 	}
 	// The path must be valid at this point (we've parsed the request successfully).
@@ -166,13 +168,13 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
 		err = trimErrorPrefix(err, etcdserver.StoreKeysPrefix)
-		writeKeyError(w, err)
+		writeKeyError(w, err, withBody)
 		reportRequestFailed(rr, err)
 		return
 	}
 	switch {
 	case resp.Event != nil:
-		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
+		if err := writeKeyEvent(w, resp.Event, h.timer, withBody); err != nil {
 			// Should never be reached
 			plog.Errorf("error writing event (%v)", err)
 		}
@@ -182,7 +184,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		defer cancel()
 		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
 	default:
-		writeKeyError(w, errors.New("received response with no Event/Watcher!"))
+		writeKeyError(w, errors.New("received response with no Event/Watcher!"), withBody)
 	}
 }
 
@@ -620,10 +622,10 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	return rr, nil
 }
 
-// writeKeyEvent trims the prefix of key path in a single Event under
-// StoreKeysPrefix, serializes it and writes the resulting JSON to the given
-// ResponseWriter, along with the appropriate headers.
-func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer) error {
+// writeKeyEvent writes the appropriate headers to the given ResponseWriter.
+// If withBody is true, writeKeyEvent will also trim the prefix of key path
+// in a single Event under StoreKeysPrefix and serialize it and write the resulting JSON.
+func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer, withBody bool) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
@@ -634,6 +636,11 @@ func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTim
 
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
+	}
+
+	if !withBody {
+		w.Header().Set("Content-Length", "0")
+		return nil
 	}
 
 	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
@@ -647,13 +654,17 @@ func writeKeyNoAuth(w http.ResponseWriter) {
 
 // writeKeyError logs and writes the given Error to the ResponseWriter.
 // If Error is not an etcdErr, the error will be converted to an etcd error.
-func writeKeyError(w http.ResponseWriter, err error) {
+func writeKeyError(w http.ResponseWriter, err error, withBody bool) {
 	if err == nil {
 		return
 	}
 	switch e := err.(type) {
 	case *etcdErr.Error:
-		e.WriteTo(w)
+		if withBody {
+			e.WriteTo(w)
+		} else {
+			e.WriteToHeader(w)
+		}
 	default:
 		switch err {
 		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost:
@@ -662,7 +673,11 @@ func writeKeyError(w http.ResponseWriter, err error) {
 			mlog.MergeErrorf("got unexpected response error (%v)", err)
 		}
 		ee := etcdErr.NewError(etcdErr.EcodeRaftInternal, err.Error(), 0)
-		ee.WriteTo(w)
+		if withBody {
+			ee.WriteTo(w)
+		} else {
+			ee.WriteToHeader(w)
+		}
 	}
 }
 
