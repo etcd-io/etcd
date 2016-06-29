@@ -25,7 +25,7 @@ import (
 func NewAlarmCommand() *cobra.Command {
 	ac := &cobra.Command{
 		Use:   "alarm <subcommand>",
-		Short: "alarm related command",
+		Short: "Alarm related commands",
 	}
 
 	ac.AddCommand(NewAlarmDisarmCommand())
@@ -37,7 +37,7 @@ func NewAlarmCommand() *cobra.Command {
 func NewAlarmDisarmCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "disarm",
-		Short: "disarm all alarms",
+		Short: "Disarms all alarms",
 		Run:   alarmDisarmCommandFunc,
 	}
 	return &cmd
@@ -60,7 +60,7 @@ func alarmDisarmCommandFunc(cmd *cobra.Command, args []string) {
 func NewAlarmListCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "list",
-		Short: "list all alarms",
+		Short: "Lists all alarms",
 		Run:   alarmListCommandFunc,
 	}
 	return &cmd

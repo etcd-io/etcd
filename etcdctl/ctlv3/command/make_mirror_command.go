@@ -40,17 +40,17 @@ var (
 func NewMakeMirrorCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "make-mirror [options] <destination>",
-		Short: "make-mirror makes a mirror at the destination etcd cluster",
+		Short: "Makes a mirror at the destination etcd cluster",
 		Run:   makeMirrorCommandFunc,
 	}
 
-	c.Flags().StringVar(&mmprefix, "prefix", "", "the key-value prefix to mirror")
+	c.Flags().StringVar(&mmprefix, "prefix", "", "Key-value prefix to mirror")
 	// TODO: add dest-prefix to mirror a prefix to a different prefix in the destination cluster?
-	c.Flags().StringVar(&mmcert, "dest-cert", "", "identify secure client using this TLS certificate file for the destination cluster")
-	c.Flags().StringVar(&mmkey, "dest-key", "", "identify secure client using this TLS key file")
-	c.Flags().StringVar(&mmcacert, "dest-cacert", "", "verify certificates of TLS enabled secure servers using this CA bundle")
+	c.Flags().StringVar(&mmcert, "dest-cert", "", "Identify secure client using this TLS certificate file for the destination cluster")
+	c.Flags().StringVar(&mmkey, "dest-key", "", "Identify secure client using this TLS key file")
+	c.Flags().StringVar(&mmcacert, "dest-cacert", "", "Verify certificates of TLS enabled secure servers using this CA bundle")
 	// TODO: secure by default when etcd enables secure gRPC by default.
-	c.Flags().BoolVar(&mminsecureTr, "dest-insecure-transport", true, "disable transport security for client connections")
+	c.Flags().BoolVar(&mminsecureTr, "dest-insecure-transport", true, "Disable transport security for client connections")
 
 	return c
 }

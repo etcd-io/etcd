@@ -31,7 +31,7 @@ var (
 func NewUserCommand() *cobra.Command {
 	ac := &cobra.Command{
 		Use:   "user <subcommand>",
-		Short: "user related command",
+		Short: "User related commands",
 	}
 
 	ac.AddCommand(newUserAddCommand())
@@ -52,11 +52,11 @@ var (
 func newUserAddCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "add <user name>",
-		Short: "add a new user",
+		Short: "Adds a new user",
 		Run:   userAddCommandFunc,
 	}
 
-	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "read password from stdin instead of interactive terminal")
+	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "Read password from stdin instead of interactive terminal")
 
 	return &cmd
 }
@@ -64,7 +64,7 @@ func newUserAddCommand() *cobra.Command {
 func newUserDeleteCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <user name>",
-		Short: "delete a user",
+		Short: "Deletes a user",
 		Run:   userDeleteCommandFunc,
 	}
 }
@@ -72,11 +72,11 @@ func newUserDeleteCommand() *cobra.Command {
 func newUserGetCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "get <user name>",
-		Short: "get detailed information of a user",
+		Short: "Gets detailed information of a user",
 		Run:   userGetCommandFunc,
 	}
 
-	cmd.Flags().BoolVar(&userShowDetail, "detail", false, "show permissions of roles granted to the user")
+	cmd.Flags().BoolVar(&userShowDetail, "detail", false, "Show permissions of roles granted to the user")
 
 	return &cmd
 }
@@ -84,7 +84,7 @@ func newUserGetCommand() *cobra.Command {
 func newUserListCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "list up all users",
+		Short: "Lists all users",
 		Run:   userListCommandFunc,
 	}
 }
@@ -92,11 +92,11 @@ func newUserListCommand() *cobra.Command {
 func newUserChangePasswordCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "passwd <user name>",
-		Short: "change password of user",
+		Short: "Changes password of user",
 		Run:   userChangePasswordCommandFunc,
 	}
 
-	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "if true, read password from stdin instead of interactive terminal")
+	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "If true, read password from stdin instead of interactive terminal")
 
 	return &cmd
 }
@@ -104,7 +104,7 @@ func newUserChangePasswordCommand() *cobra.Command {
 func newUserGrantRoleCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "grant-role <user name> <role name>",
-		Short: "grant a role to a user",
+		Short: "Grants a role to a user",
 		Run:   userGrantRoleCommandFunc,
 	}
 }
@@ -112,7 +112,7 @@ func newUserGrantRoleCommand() *cobra.Command {
 func newUserRevokeRoleCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "revoke-role <user name> <role name>",
-		Short: "revoke a role from a user",
+		Short: "Revokes a role from a user",
 		Run:   userRevokeRoleCommandFunc,
 	}
 }

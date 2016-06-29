@@ -51,13 +51,13 @@ var (
 func NewMigrateCommand() *cobra.Command {
 	mc := &cobra.Command{
 		Use:   "migrate",
-		Short: "migrates keys in a v2 store to a mvcc store",
+		Short: "Migrates keys in a v2 store to a mvcc store",
 		Run:   migrateCommandFunc,
 	}
 
-	mc.Flags().StringVar(&migrateDatadir, "data-dir", "", "Path to the data directory.")
-	mc.Flags().StringVar(&migrateWALdir, "wal-dir", "", "Path to the WAL directory.")
-	mc.Flags().StringVar(&migrateTransformer, "transformer", "", "Path to the user-provided transformer program.")
+	mc.Flags().StringVar(&migrateDatadir, "data-dir", "", "Path to the data directory")
+	mc.Flags().StringVar(&migrateWALdir, "wal-dir", "", "Path to the WAL directory")
+	mc.Flags().StringVar(&migrateTransformer, "transformer", "", "Path to the user-provided transformer program")
 	return mc
 }
 

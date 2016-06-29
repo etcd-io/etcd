@@ -26,8 +26,8 @@ import (
 // NewLeaseCommand returns the cobra command for "lease".
 func NewLeaseCommand() *cobra.Command {
 	lc := &cobra.Command{
-		Use:   "lease",
-		Short: "lease is used to manage leases.",
+		Use:   "lease <subcommand>",
+		Short: "Lease related commands",
 	}
 
 	lc.AddCommand(NewLeaseGrantCommand())
@@ -41,7 +41,7 @@ func NewLeaseCommand() *cobra.Command {
 func NewLeaseGrantCommand() *cobra.Command {
 	lc := &cobra.Command{
 		Use:   "grant <ttl>",
-		Short: "grant is used to create leases.",
+		Short: "Creates leases",
 
 		Run: leaseGrantCommandFunc,
 	}
@@ -73,7 +73,7 @@ func leaseGrantCommandFunc(cmd *cobra.Command, args []string) {
 func NewLeaseRevokeCommand() *cobra.Command {
 	lc := &cobra.Command{
 		Use:   "revoke <leaseID>",
-		Short: "revoke is used to revoke leases.",
+		Short: "Revokes leases",
 
 		Run: leaseRevokeCommandFunc,
 	}
@@ -105,7 +105,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 func NewLeaseKeepAliveCommand() *cobra.Command {
 	lc := &cobra.Command{
 		Use:   "keep-alive <leaseID>",
-		Short: "keep-alive is used to keep leases alive.",
+		Short: "Keeps leases alive (renew)",
 
 		Run: leaseKeepAliveCommandFunc,
 	}

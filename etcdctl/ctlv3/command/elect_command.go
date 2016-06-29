@@ -33,7 +33,7 @@ var (
 func NewElectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elect <election-name> [proposal]",
-		Short: "elect observes and participates in leader election",
+		Short: "Observes and participates in leader election",
 		Run:   electCommandFunc,
 	}
 	cmd.Flags().BoolVarP(&electListen, "listen", "l", false, "observation mode")

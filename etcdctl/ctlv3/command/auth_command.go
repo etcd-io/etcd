@@ -24,7 +24,7 @@ import (
 func NewAuthCommand() *cobra.Command {
 	ac := &cobra.Command{
 		Use:   "auth <enable or disable>",
-		Short: "Enable or disable authentication.",
+		Short: "Enable or disable authentication",
 	}
 
 	ac.AddCommand(newAuthEnableCommand())
@@ -36,7 +36,7 @@ func NewAuthCommand() *cobra.Command {
 func newAuthEnableCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "enable",
-		Short: "enable authentication",
+		Short: "Enables authentication",
 		Run:   authEnableCommandFunc,
 	}
 }
@@ -60,7 +60,7 @@ func authEnableCommandFunc(cmd *cobra.Command, args []string) {
 func newAuthDisableCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "disable",
-		Short: "disable authentication",
+		Short: "Disables authentication",
 		Run:   authDisableCommandFunc,
 	}
 }
