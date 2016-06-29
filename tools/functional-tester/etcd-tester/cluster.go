@@ -27,7 +27,10 @@ import (
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
 )
 
-const peerURLPort = 2380
+const (
+	peerURLPort   = 2380
+	failpointPort = 2381
+)
 
 type cluster struct {
 	v2Only bool // to be deprecated
@@ -75,11 +78,12 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 			return err
 		}
 		members[i] = &member{
-			Agent:     agent,
-			Endpoint:  u,
-			Name:      fmt.Sprintf("etcd-%d", i),
-			ClientURL: fmt.Sprintf("http://%s:2379", host),
-			PeerURL:   fmt.Sprintf("http://%s:%d", host, peerURLPort),
+			Agent:        agent,
+			Endpoint:     u,
+			Name:         fmt.Sprintf("etcd-%d", i),
+			ClientURL:    fmt.Sprintf("http://%s:2379", host),
+			PeerURL:      fmt.Sprintf("http://%s:%d", host, peerURLPort),
+			FailpointURL: fmt.Sprintf("http://%s:%d", host, failpointPort),
 		}
 		memberNameURLs[i] = members[i].ClusterEntry()
 	}
