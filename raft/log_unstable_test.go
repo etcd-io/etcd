@@ -237,9 +237,9 @@ func TestUnstableStableTo(t *testing.T) {
 			6, 1,
 		},
 		{
-			[]pb.Entry{{Index: 6, Term: 2}}, 5, nil,
+			[]pb.Entry{{Index: 6, Term: 2}}, 6, nil,
 			6, 1, // stable to the first entry and term mismatch
-			5, 1,
+			6, 1,
 		},
 		{
 			[]pb.Entry{{Index: 5, Term: 1}}, 5, nil,
@@ -263,9 +263,9 @@ func TestUnstableStableTo(t *testing.T) {
 			6, 1,
 		},
 		{
-			[]pb.Entry{{Index: 6, Term: 2}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 5, Term: 1}},
+			[]pb.Entry{{Index: 6, Term: 2}}, 6, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 5, Term: 1}},
 			6, 1, // stable to the first entry and term mismatch
-			5, 1,
+			6, 1,
 		},
 		{
 			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
