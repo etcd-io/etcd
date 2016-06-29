@@ -31,9 +31,9 @@ var (
 func NewPutCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "put [options] <key> <value> (<value> can also be given from stdin)",
-		Short: "Put puts the given key into the store.",
+		Short: "Puts the given key into the store",
 		Long: `
-Put puts the given key into the store.
+Puts the given key into the store.
 
 When <value> begins with '-', <value> is interpreted as a flag.
 Insert '--' for workaround:

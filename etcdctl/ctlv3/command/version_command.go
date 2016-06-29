@@ -26,7 +26,7 @@ import (
 func NewVersionCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Print the version of etcdctl.",
+		Short: "Prints the version of etcdctl",
 		Run:   versionCommandFunc,
 	}
 }

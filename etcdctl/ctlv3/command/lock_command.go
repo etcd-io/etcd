@@ -29,7 +29,7 @@ import (
 func NewLockCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "lock <lockname>",
-		Short: "lock acquires a named lock",
+		Short: "Acquires a named lock",
 		Run:   lockCommandFunc,
 	}
 	return c
