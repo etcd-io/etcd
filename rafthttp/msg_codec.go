@@ -28,11 +28,11 @@ type messageEncoder struct {
 	w io.Writer
 }
 
-func (enc *messageEncoder) encode(m raftpb.Message) error {
+func (enc *messageEncoder) encode(m *raftpb.Message) error {
 	if err := binary.Write(enc.w, binary.BigEndian, uint64(m.Size())); err != nil {
 		return err
 	}
-	_, err := enc.w.Write(pbutil.MustMarshal(&m))
+	_, err := enc.w.Write(pbutil.MustMarshal(m))
 	return err
 }
 

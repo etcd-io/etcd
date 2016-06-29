@@ -107,7 +107,7 @@ func TestMsgAppV2(t *testing.T) {
 	dec := newMsgAppV2Decoder(b, types.ID(2), types.ID(1))
 
 	for i, tt := range tests {
-		if err := enc.encode(tt); err != nil {
+		if err := enc.encode(&tt); err != nil {
 			t.Errorf("#%d: unexpected encode message error: %v", i, err)
 			continue
 		}

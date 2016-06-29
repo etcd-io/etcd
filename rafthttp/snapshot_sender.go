@@ -143,7 +143,7 @@ func createSnapBody(merged snap.Message) io.ReadCloser {
 	buf := new(bytes.Buffer)
 	enc := &messageEncoder{w: buf}
 	// encode raft message
-	if err := enc.encode(merged.Message); err != nil {
+	if err := enc.encode(&merged.Message); err != nil {
 		plog.Panicf("encode message error (%v)", err)
 	}
 

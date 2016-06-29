@@ -48,7 +48,7 @@ func TestMessage(t *testing.T) {
 	for i, tt := range tests {
 		b := &bytes.Buffer{}
 		enc := &messageEncoder{w: b}
-		if err := enc.encode(tt); err != nil {
+		if err := enc.encode(&tt); err != nil {
 			t.Errorf("#%d: unexpected encode message error: %v", i, err)
 			continue
 		}
