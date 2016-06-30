@@ -1,7 +1,7 @@
 FROM alpine:latest
 
-ADD bin/etcd /usr/local/bin/
-ADD bin/etcdctl /usr/local/bin/
+ADD etcd /usr/local/bin/
+ADD etcdctl /usr/local/bin/
 RUN mkdir -p /var/etcd/
 
 EXPOSE 2379 2380
