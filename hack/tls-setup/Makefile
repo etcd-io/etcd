@@ -8,6 +8,7 @@ all: cfssl ca req
 cfssl:
 	go get -u -tags nopkcs11 github.com/cloudflare/cfssl/cmd/cfssl
 	go get -u github.com/cloudflare/cfssl/cmd/cfssljson
+	go get -u github.com/mattn/goreman
 
 ca:
 	mkdir -p certs
