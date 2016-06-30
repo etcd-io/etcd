@@ -95,6 +95,11 @@ func (m *member) RevHash() (int64, int64, error) {
 	resp, err := mt.Hash(ctx, &pb.HashRequest{})
 	cancel()
 	conn.Close()
+
+	if err != nil {
+		return 0, 0, err
+	}
+
 	return resp.Header.Revision, int64(resp.Hash), nil
 }
 
