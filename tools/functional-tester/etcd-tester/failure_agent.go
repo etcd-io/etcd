@@ -126,8 +126,8 @@ func newFailureSlowNetworkLeader() failure {
 	desc := fmt.Sprintf("slow down leader's network by adding %d ms latency", slowNetworkLatency)
 	ff := failureByFunc{
 		description:   description(desc),
-		injectMember:  injectStop,
-		recoverMember: recoverStop,
+		injectMember:  injectLatency,
+		recoverMember: recoverLatency,
 	}
 	return &failureLeader{ff, 0}
 }
