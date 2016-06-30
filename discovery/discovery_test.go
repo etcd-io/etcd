@@ -182,7 +182,7 @@ func TestCheckCluster(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		rs := make([]*client.Response, 0)
+		var rs []*client.Response
 		if len(tt.nodes) > 0 {
 			rs = append(rs, &client.Response{Node: tt.nodes[0], Index: tt.index})
 			rs = append(rs, &client.Response{
@@ -267,7 +267,7 @@ func TestWaitNodes(t *testing.T) {
 		dBase := &discovery{cluster: "1000", c: c}
 
 		// Retry case
-		retryScanResp := make([]*client.Response, 0)
+		var retryScanResp []*client.Response
 		if len(tt.nodes) > 0 {
 			retryScanResp = append(retryScanResp, &client.Response{
 				Node: &client.Node{
@@ -406,7 +406,7 @@ func TestSortableNodes(t *testing.T) {
 	}
 	sns := sortableNodes{ns}
 	sort.Sort(sns)
-	cis := make([]int, 0)
+	var cis []int
 	for _, n := range sns.Nodes {
 		cis = append(cis, int(n.CreatedIndex))
 	}
