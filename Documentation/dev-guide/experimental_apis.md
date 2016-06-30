@@ -4,5 +4,5 @@ For the most part, the etcd project is stable, but we are still moving fast! We 
 
 ## The current experimental API/features are:
 
-- v3 auth API: expect to be stale in 3.1 release
+- v3 auth API: expect to be stable in 3.1 release
 - etcd gateway: expect to be stable in 3.1 release
