@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import (
 	"errors"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	spb "github.com/coreos/etcd/storage/storagepb"
+	spb "github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
 

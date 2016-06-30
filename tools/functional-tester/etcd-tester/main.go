@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,9 +31,9 @@ func main() {
 	datadir := flag.String("data-dir", "agent.etcd", "etcd data directory location on agent machine.")
 	stressKeySize := flag.Int("stress-key-size", 100, "the size of each key written into etcd.")
 	stressKeySuffixRange := flag.Int("stress-key-count", 250000, "the count of key range written into etcd.")
-	limit := flag.Int("limit", 3, "the limit of rounds to run failure set.")
+	limit := flag.Int("limit", -1, "the limit of rounds to run failure set (-1 to run without limits).")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
-
+	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
 	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")
 	flag.Parse()
 
@@ -53,6 +53,9 @@ func main() {
 		newFailureKillLeaderForLongTime(),
 		newFailureIsolate(),
 		newFailureIsolateAll(),
+		newFailureSlowNetworkOneMember(),
+		newFailureSlowNetworkLeader(),
+		newFailureSlowNetworkAll(),
 	}
 
 	schedule := failures
@@ -70,9 +73,10 @@ func main() {
 	}
 
 	t := &tester{
-		failures: schedule,
-		cluster:  c,
-		limit:    *limit,
+		failures:         schedule,
+		cluster:          c,
+		limit:            *limit,
+		consistencyCheck: *consistencyCheck,
 	}
 
 	sh := statusHandler{status: &t.status}

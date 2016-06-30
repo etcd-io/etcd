@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 func NewAlarmCommand() *cobra.Command {
 	ac := &cobra.Command{
 		Use:   "alarm <subcommand>",
-		Short: "alarm related command",
+		Short: "Alarm related commands",
 	}
 
 	ac.AddCommand(NewAlarmDisarmCommand())
@@ -37,7 +37,7 @@ func NewAlarmCommand() *cobra.Command {
 func NewAlarmDisarmCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "disarm",
-		Short: "disarm all alarms",
+		Short: "Disarms all alarms",
 		Run:   alarmDisarmCommandFunc,
 	}
 	return &cmd
@@ -60,7 +60,7 @@ func alarmDisarmCommandFunc(cmd *cobra.Command, args []string) {
 func NewAlarmListCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "list",
-		Short: "list all alarms",
+		Short: "Lists all alarms",
 		Run:   alarmListCommandFunc,
 	}
 	return &cmd
@@ -69,7 +69,7 @@ func NewAlarmListCommand() *cobra.Command {
 // alarmListCommandFunc executes the "alarm list" command.
 func alarmListCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("alarm disarm command accepts no arguments"))
+		ExitWithError(ExitBadArgs, fmt.Errorf("alarm list command accepts no arguments"))
 	}
 	ctx, cancel := commandCtx(cmd)
 	resp, err := mustClientFromCmd(cmd).AlarmList(ctx)

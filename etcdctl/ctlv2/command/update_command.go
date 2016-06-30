@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 // NewUpdateCommand returns the CLI command for "update".
@@ -32,8 +32,9 @@ func NewUpdateCommand() cli.Command {
 		Flags: []cli.Flag{
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			updateCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }

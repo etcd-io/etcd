@@ -1,4 +1,4 @@
-// Copyright 2016 Nippon Telegraph and Telephone Corporation.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,10 +24,11 @@ import (
 func NewAuthCommand() *cobra.Command {
 	ac := &cobra.Command{
 		Use:   "auth <enable or disable>",
-		Short: "Enable or disable authentication.",
+		Short: "Enable or disable authentication",
 	}
 
 	ac.AddCommand(newAuthEnableCommand())
+	ac.AddCommand(newAuthDisableCommand())
 
 	return ac
 }
@@ -35,7 +36,7 @@ func NewAuthCommand() *cobra.Command {
 func newAuthEnableCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "enable",
-		Short: "enable authentication",
+		Short: "Enables authentication",
 		Run:   authEnableCommandFunc,
 	}
 }
@@ -43,7 +44,7 @@ func newAuthEnableCommand() *cobra.Command {
 // authEnableCommandFunc executes the "auth enable" command.
 func authEnableCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("auth enable command does not accept argument."))
+		ExitWithError(ExitBadArgs, fmt.Errorf("auth enable command does not accept any arguments."))
 	}
 
 	ctx, cancel := commandCtx(cmd)
@@ -54,4 +55,28 @@ func authEnableCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	fmt.Println("Authentication Enabled")
+}
+
+func newAuthDisableCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "disable",
+		Short: "Disables authentication",
+		Run:   authDisableCommandFunc,
+	}
+}
+
+// authDisableCommandFunc executes the "auth disable" command.
+func authDisableCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("auth disable command does not accept any arguments."))
+	}
+
+	ctx, cancel := commandCtx(cmd)
+	_, err := mustClientFromCmd(cmd).Auth.AuthDisable(ctx)
+	cancel()
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Println("Authentication Disabled")
 }

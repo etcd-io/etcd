@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package clientv3
 import (
 	"testing"
 
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
 func TestEvent(t *testing.T) {
@@ -28,7 +28,7 @@ func TestEvent(t *testing.T) {
 	}{{
 		ev: &Event{
 			Type: EventTypePut,
-			Kv: &storagepb.KeyValue{
+			Kv: &mvccpb.KeyValue{
 				CreateRevision: 3,
 				ModRevision:    3,
 			},
@@ -37,7 +37,7 @@ func TestEvent(t *testing.T) {
 	}, {
 		ev: &Event{
 			Type: EventTypePut,
-			Kv: &storagepb.KeyValue{
+			Kv: &mvccpb.KeyValue{
 				CreateRevision: 3,
 				ModRevision:    4,
 			},

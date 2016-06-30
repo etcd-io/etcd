@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ func TestScanHistory(t *testing.T) {
 		t.Fatalf("scan error [/foo/foo/foo] [6] %d (%v)", e.Index(), err)
 	}
 
-	e, err = eh.scan("/foo/bar", true, 7)
+	e, _ = eh.scan("/foo/bar", true, 7)
 	if e != nil {
 		t.Fatalf("bad index shoud reuturn nil")
 	}

@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package integration
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"sort"
 	"testing"
@@ -25,19 +26,22 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
+	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	storagepb "github.com/coreos/etcd/storage/storagepb"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type watcherTest func(*testing.T, *watchctx)
 
 type watchctx struct {
-	clus    *integration.ClusterV3
-	w       clientv3.Watcher
-	wclient *clientv3.Client
-	kv      clientv3.KV
-	ch      clientv3.WatchChan
+	clus          *integration.ClusterV3
+	w             clientv3.Watcher
+	wclient       *clientv3.Client
+	kv            clientv3.KV
+	wclientMember int
+	kvMember      int
+	ch            clientv3.WatchChan
 }
 
 func runWatchTest(t *testing.T, f watcherTest) {
@@ -46,18 +50,20 @@ func runWatchTest(t *testing.T, f watcherTest) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	wclient := clus.RandClient()
+	wclientMember := rand.Intn(3)
+	wclient := clus.Client(wclientMember)
 	w := clientv3.NewWatcher(wclient)
 	defer w.Close()
 	// select a different client from wclient so puts succeed if
 	// a test knocks out the watcher client
-	kvclient := clus.RandClient()
-	for kvclient == wclient {
-		kvclient = clus.RandClient()
+	kvMember := rand.Intn(3)
+	for kvMember == wclientMember {
+		kvMember = rand.Intn(3)
 	}
+	kvclient := clus.Client(kvMember)
 	kv := clientv3.NewKV(kvclient)
 
-	wctx := &watchctx{clus, w, wclient, kv, nil}
+	wctx := &watchctx{clus, w, wclient, kv, wclientMember, kvMember, nil}
 	f(t, wctx)
 }
 
@@ -185,7 +191,7 @@ func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
 		defer close(donec)
 		// take down watcher connection
 		for {
-			wctx.wclient.ActiveConnection().Close()
+			wctx.clus.Members[wctx.wclientMember].DropConnections()
 			select {
 			case <-timer:
 				// spinning on close may live lock reconnection
@@ -219,8 +225,7 @@ func testWatchReconnInit(t *testing.T, wctx *watchctx) {
 	if wctx.ch = wctx.w.Watch(context.TODO(), "a"); wctx.ch == nil {
 		t.Fatalf("expected non-nil channel")
 	}
-	// take down watcher connection
-	wctx.wclient.ActiveConnection().Close()
+	wctx.clus.Members[wctx.wclientMember].DropConnections()
 	// watcher should recover
 	putAndWatch(t, wctx, "a", "a")
 }
@@ -237,7 +242,7 @@ func testWatchReconnRunning(t *testing.T, wctx *watchctx) {
 	}
 	putAndWatch(t, wctx, "a", "a")
 	// take down watcher connection
-	wctx.wclient.ActiveConnection().Close()
+	wctx.clus.Members[wctx.wclientMember].DropConnections()
 	// watcher should recover
 	putAndWatch(t, wctx, "a", "b")
 }
@@ -334,6 +339,62 @@ func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
 	}
 }
 
+// TestWatchResumeComapcted checks that the watcher gracefully closes in case
+// that it tries to resume to a revision that's been compacted out of the store.
+func TestWatchResumeCompacted(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// create a waiting watcher at rev 1
+	w := clientv3.NewWatcher(clus.Client(0))
+	defer w.Close()
+	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(1))
+	select {
+	case w := <-wch:
+		t.Errorf("unexpected message from wch %v", w)
+	default:
+	}
+	clus.Members[0].Stop(t)
+
+	ticker := time.After(time.Second * 10)
+	for clus.WaitLeader(t) <= 0 {
+		select {
+		case <-ticker:
+			t.Fatalf("failed to wait for new leader")
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+
+	// put some data and compact away
+	kv := clientv3.NewKV(clus.Client(1))
+	for i := 0; i < 5; i++ {
+		if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := kv.Compact(context.TODO(), 3); err != nil {
+		t.Fatal(err)
+	}
+
+	clus.Members[0].Restart(t)
+
+	// get compacted error message
+	wresp, ok := <-wch
+	if !ok {
+		t.Fatalf("expected wresp, but got closed channel")
+	}
+	if wresp.Err() != rpctypes.ErrCompacted {
+		t.Fatalf("wresp.Err() expected %v, but got %v", rpctypes.ErrCompacted, wresp.Err())
+	}
+	// ensure the channel is closed
+	if wresp, ok = <-wch; ok {
+		t.Fatalf("expected closed channel, but got %v", wresp)
+	}
+}
+
 // TestWatchCompactRevision ensures the CompactRevision error is given on a
 // compaction event ahead of a watcher.
 func TestWatchCompactRevision(t *testing.T) {
@@ -353,7 +414,7 @@ func TestWatchCompactRevision(t *testing.T) {
 	w := clientv3.NewWatcher(clus.RandClient())
 	defer w.Close()
 
-	if err := kv.Compact(context.TODO(), 4); err != nil {
+	if _, err := kv.Compact(context.TODO(), 4); err != nil {
 		t.Fatal(err)
 	}
 	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(2))
@@ -364,7 +425,7 @@ func TestWatchCompactRevision(t *testing.T) {
 		t.Fatalf("expected wresp, but got closed channel")
 	}
 	if wresp.Err() != rpctypes.ErrCompacted {
-		t.Fatalf("wresp.Err() expected ErrCompacteed, but got %v", wresp.Err())
+		t.Fatalf("wresp.Err() expected %v, but got %v", rpctypes.ErrCompacted, wresp.Err())
 	}
 
 	// ensure the channel is closed
@@ -419,7 +480,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 		}
 		if watchOnPut { // wait for put if watch on the put key
 			ev := []*clientv3.Event{{Type: clientv3.EventTypePut,
-				Kv: &storagepb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}}
+				Kv: &mvccpb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}}
 			if !reflect.DeepEqual(ev, resp.Events) {
 				t.Fatalf("expected %+v, got %+v", ev, resp.Events)
 			}
@@ -452,12 +513,12 @@ func TestWatchEventType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lease create failed: %v", err)
 	}
-	if _, err := client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(clientv3.LeaseID(lcr.ID))); err != nil {
+	if _, err := client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(lcr.ID)); err != nil {
 		t.Fatalf("Put failed: %v", err)
 	}
 
 	tests := []struct {
-		et       storagepb.Event_EventType
+		et       mvccpb.Event_EventType
 		isCreate bool
 		isModify bool
 	}{{
@@ -500,5 +561,115 @@ func TestWatchEventType(t *testing.T) {
 		if tt.isModify && !ev.IsModify() {
 			t.Errorf("#%d: event should be ModifyEvent", i)
 		}
+	}
+}
+
+func TestWatchErrConnClosed(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	wc := clientv3.NewWatcher(cli)
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		wc.Watch(context.TODO(), "foo")
+		if err := wc.Close(); err != nil && err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
+		}
+	}()
+
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+	clus.TakeClient(0)
+
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("wc.Watch took too long")
+	case <-donec:
+	}
+}
+
+func TestWatchAfterClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		wc := clientv3.NewWatcher(cli)
+		wc.Watch(context.TODO(), "foo")
+		if err := wc.Close(); err != nil && err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
+		}
+		close(donec)
+	}()
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("wc.Watch took too long")
+	case <-donec:
+	}
+}
+
+// TestWatchWithRequireLeader checks the watch channel closes when no leader.
+func TestWatchWithRequireLeader(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// something for the non-require leader watch to read as an event
+	if _, err := clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
+
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+	clus.Client(1).Close()
+	clus.Client(2).Close()
+	clus.TakeClient(1)
+	clus.TakeClient(2)
+
+	// wait for election timeout, then member[0] will not have a leader.
+	tickDuration := 10 * time.Millisecond
+	time.Sleep(time.Duration(3*clus.Members[0].ElectionTicks) * tickDuration)
+
+	chLeader := clus.Client(0).Watch(clientv3.WithRequireLeader(context.TODO()), "foo", clientv3.WithRev(1))
+	chNoLeader := clus.Client(0).Watch(context.TODO(), "foo", clientv3.WithRev(1))
+
+	select {
+	case resp, ok := <-chLeader:
+		if !ok {
+			t.Fatalf("expected %v watch channel, got closed channel", rpctypes.ErrNoLeader)
+		}
+		if resp.Err() != rpctypes.ErrNoLeader {
+			t.Fatalf("expected %v watch response error, got %+v", rpctypes.ErrNoLeader, resp)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("watch without leader took too long to close")
+	}
+
+	select {
+	case resp, ok := <-chLeader:
+		if ok {
+			t.Fatalf("expected closed channel, got response %v", resp)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("waited too long for channel to close")
+	}
+
+	if _, ok := <-chNoLeader; !ok {
+		t.Fatalf("expected response, got closed channel")
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"golang.org/x/net/context"
 )
 
@@ -33,13 +34,39 @@ func ExampleKV_put() {
 	defer cli.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := cli.Put(ctx, "sample_key", "sample_value")
+	_, err = cli.Put(ctx, "sample_key", "sample_value")
 	cancel()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("current revision:", resp.Header.Revision) // revision start at 1
-	// current revision: 2
+}
+
+func ExampleKV_putErrorHandling() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	_, err = cli.Put(ctx, "", "sample_value")
+	cancel()
+	if err != nil {
+		switch err {
+		case context.Canceled:
+			fmt.Printf("ctx is canceled by another routine: %v\n", err)
+		case context.DeadlineExceeded:
+			fmt.Printf("ctx is attached with a deadline is exceeded: %v\n", err)
+		case rpctypes.ErrEmptyKey:
+			fmt.Printf("client-side error: %v\n", err)
+		default:
+			fmt.Printf("bad cluster endpoints, which are not etcd servers: %v\n", err)
+		}
+	}
+	// Output: client-side error: etcdserver: key is not provided
 }
 
 func ExampleKV_get() {
@@ -66,7 +93,38 @@ func ExampleKV_get() {
 	for _, ev := range resp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
-	// foo : bar
+	// Output: foo : bar
+}
+
+func ExampleKV_getWithRev() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	presp, err := cli.Put(context.TODO(), "foo", "bar1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = cli.Put(context.TODO(), "foo", "bar2")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	resp, err := cli.Get(ctx, "foo", clientv3.WithRev(presp.Header.Revision))
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, ev := range resp.Kvs {
+		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+	}
+	// Output: foo : bar1
 }
 
 func ExampleKV_getSortedPrefix() {
@@ -97,6 +155,7 @@ func ExampleKV_getSortedPrefix() {
 	for _, ev := range resp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
+	// Output:
 	// key_2 : value
 	// key_1 : value
 	// key_0 : value
@@ -113,13 +172,23 @@ func ExampleKV_delete() {
 	defer cli.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	resp, err := cli.Delete(ctx, "key", clientv3.WithPrefix())
-	cancel()
+	defer cancel()
+
+	// count keys about to be deleted
+	gresp, err := cli.Get(ctx, "key", clientv3.WithPrefix())
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Deleted", resp.Deleted, "keys")
-	// Deleted n keys
+
+	// delete the keys
+	dresp, err := cli.Delete(ctx, "key", clientv3.WithPrefix())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Deleted all keys:", int64(len(gresp.Kvs)) == dresp.Deleted)
+	// Output:
+	// Deleted all keys: true
 }
 
 func ExampleKV_compact() {
@@ -141,7 +210,7 @@ func ExampleKV_compact() {
 	compRev := resp.Header.Revision // specify compact revision of your choice
 
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
-	err = cli.Compact(ctx, compRev)
+	_, err = cli.Compact(ctx, compRev)
 	cancel()
 	if err != nil {
 		log.Fatal(err)
@@ -184,7 +253,7 @@ func ExampleKV_txn() {
 	for _, ev := range gresp.Kvs {
 		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 	}
-	// key : XYZ
+	// Output: key : XYZ
 }
 
 func ExampleKV_do() {

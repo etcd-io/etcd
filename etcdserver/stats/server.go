@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -142,6 +142,9 @@ func (ss *ServerStats) SendAppendReq(reqSize int) {
 }
 
 func (ss *ServerStats) BecomeLeader() {
+	ss.Lock()
+	defer ss.Unlock()
+
 	if ss.State != raft.StateLeader {
 		ss.State = raft.StateLeader
 		ss.LeaderInfo.Name = ss.ID

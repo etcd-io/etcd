@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -61,6 +61,7 @@ func TestRestartMember(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
 	clusterMustProgress(t, c.Members)
 }
 
@@ -83,7 +84,7 @@ func TestLaunchDuplicateMemberShouldFail(t *testing.T) {
 
 func TestSnapshotAndRestartMember(t *testing.T) {
 	defer testutil.AfterTest(t)
-	m := mustNewMember(t, "snapAndRestartTest", nil, nil)
+	m := mustNewMember(t, memberConfig{name: "snapAndRestartTest"})
 	m.SnapCount = 100
 	m.Launch()
 	defer m.Terminate(t)
@@ -105,6 +106,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 	m.Stop(t)
 	m.Restart(t)
 
+	m.WaitOK(t)
 	for i := 0; i < 120; i++ {
 		cc := mustNewHTTPClient(t, []string{m.URL()}, nil)
 		kapi := client.NewKeysAPI(cc)

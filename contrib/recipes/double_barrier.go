@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ package recipe
 
 import (
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
 
@@ -67,7 +67,7 @@ func (b *DoubleBarrier) Enter() error {
 		b.client,
 		b.key+"/ready",
 		ek.Revision(),
-		[]storagepb.Event_EventType{storagepb.PUT})
+		[]mvccpb.Event_EventType{mvccpb.PUT})
 	return err
 }
 
@@ -109,7 +109,7 @@ func (b *DoubleBarrier) Leave() error {
 			b.client,
 			string(highest.Key),
 			highest.ModRevision,
-			[]storagepb.Event_EventType{storagepb.DELETE})
+			[]mvccpb.Event_EventType{mvccpb.DELETE})
 		if err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func (b *DoubleBarrier) Leave() error {
 	}
 
 	// delete self and wait on lowest process
-	if err := b.myKey.Delete(); err != nil {
+	if err = b.myKey.Delete(); err != nil {
 		return err
 	}
 
@@ -126,7 +126,7 @@ func (b *DoubleBarrier) Leave() error {
 		b.client,
 		key,
 		lowest.ModRevision,
-		[]storagepb.Event_EventType{storagepb.DELETE})
+		[]mvccpb.Event_EventType{mvccpb.DELETE})
 	if err != nil {
 		return err
 	}

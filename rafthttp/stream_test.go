@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -116,11 +116,9 @@ func TestStreamReaderDialRequest(t *testing.T) {
 	for i, tt := range []streamType{streamTypeMessage, streamTypeMsgAppV2} {
 		tr := &roundTripperRecorder{}
 		sr := &streamReader{
-			tr:     &Transport{streamRt: tr},
+			peerID: types.ID(2),
+			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1), ID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:  types.ID(1),
-			remote: types.ID(2),
-			cid:    types.ID(1),
 		}
 		sr.dial(tt)
 
@@ -166,11 +164,9 @@ func TestStreamReaderDialResult(t *testing.T) {
 			err:    tt.err,
 		}
 		sr := &streamReader{
-			tr:     &Transport{streamRt: tr},
+			peerID: types.ID(2),
+			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:  types.ID(1),
-			remote: types.ID(2),
-			cid:    types.ID(1),
 			errorc: make(chan error, 1),
 		}
 
@@ -194,11 +190,9 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 			header: http.Header{},
 		}
 		sr := &streamReader{
-			tr:     &Transport{streamRt: tr},
+			peerID: types.ID(2),
+			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			local:  types.ID(1),
-			remote: types.ID(2),
-			cid:    types.ID(1),
 		}
 
 		_, err := sr.dial(typ)
@@ -254,9 +248,19 @@ func TestStream(t *testing.T) {
 		h.sw = sw
 
 		picker := mustNewURLPicker(t, []string{srv.URL})
-		tr := &Transport{streamRt: &http.Transport{}}
-		sr := startStreamReader(tr, picker, tt.t, types.ID(1), types.ID(2), types.ID(1), newPeerStatus(types.ID(1)), recvc, propc, nil)
-		defer sr.stop()
+		tr := &Transport{streamRt: &http.Transport{}, ClusterID: types.ID(1)}
+
+		sr := &streamReader{
+			peerID: types.ID(2),
+			typ:    tt.t,
+			tr:     tr,
+			picker: picker,
+			status: newPeerStatus(types.ID(2)),
+			recvc:  recvc,
+			propc:  propc,
+		}
+		sr.start()
+
 		// wait for stream to work
 		var writec chan<- raftpb.Message
 		for {
@@ -277,6 +281,8 @@ func TestStream(t *testing.T) {
 		if !reflect.DeepEqual(m, tt.m) {
 			t.Fatalf("#%d: message = %+v, want %+v", i, m, tt.m)
 		}
+
+		sr.stop()
 	}
 }
 

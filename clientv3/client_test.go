@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -55,16 +55,16 @@ func TestDialTimeout(t *testing.T) {
 	}
 }
 
-func TestIsHalted(t *testing.T) {
-	if !isHalted(nil, fmt.Errorf("etcdserver: some etcdserver error")) {
+func TestIsHaltErr(t *testing.T) {
+	if !isHaltErr(nil, fmt.Errorf("etcdserver: some etcdserver error")) {
 		t.Errorf(`error prefixed with "etcdserver: " should be Halted`)
 	}
 	ctx, cancel := context.WithCancel(context.TODO())
-	if isHalted(ctx, nil) {
+	if isHaltErr(ctx, nil) {
 		t.Errorf("no error and active context should not be Halted")
 	}
 	cancel()
-	if !isHalted(ctx, nil) {
+	if !isHaltErr(ctx, nil) {
 		t.Errorf("cancel on context should be Halted")
 	}
 }

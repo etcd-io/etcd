@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"regexp"
 
-	pb "github.com/coreos/etcd/storage/storagepb"
+	pb "github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )

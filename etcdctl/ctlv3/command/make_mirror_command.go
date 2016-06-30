@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/mirror"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/storage/storagepb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -40,24 +40,24 @@ var (
 func NewMakeMirrorCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "make-mirror [options] <destination>",
-		Short: "make-mirror makes a mirror at the destination etcd cluster",
+		Short: "Makes a mirror at the destination etcd cluster",
 		Run:   makeMirrorCommandFunc,
 	}
 
-	c.Flags().StringVar(&mmprefix, "prefix", "", "the key-value prefix to mirror")
-	// TODO: add dest-prefix to mirror a prefix to a different prefix in the destionation cluster?
-	c.Flags().StringVar(&mmcert, "dest-cert", "", "identify secure client using this TLS certificate file for the destination cluster")
-	c.Flags().StringVar(&mmkey, "dest-key", "", "identify secure client using this TLS key file")
-	c.Flags().StringVar(&mmcacert, "dest-cacert", "", "verify certificates of TLS enabled secure servers using this CA bundle")
+	c.Flags().StringVar(&mmprefix, "prefix", "", "Key-value prefix to mirror")
+	// TODO: add dest-prefix to mirror a prefix to a different prefix in the destination cluster?
+	c.Flags().StringVar(&mmcert, "dest-cert", "", "Identify secure client using this TLS certificate file for the destination cluster")
+	c.Flags().StringVar(&mmkey, "dest-key", "", "Identify secure client using this TLS key file")
+	c.Flags().StringVar(&mmcacert, "dest-cacert", "", "Verify certificates of TLS enabled secure servers using this CA bundle")
 	// TODO: secure by default when etcd enables secure gRPC by default.
-	c.Flags().BoolVar(&mminsecureTr, "dest-insecure-transport", true, "disable transport security for client connections")
+	c.Flags().BoolVar(&mminsecureTr, "dest-insecure-transport", true, "Disable transport security for client connections")
 
 	return c
 }
 
 func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, errors.New("make-mirror takes one destination arguement."))
+		ExitWithError(ExitBadArgs, errors.New("make-mirror takes one destination argument."))
 	}
 
 	dialTimeout := dialTimeoutFromCmd(cmd)
@@ -68,7 +68,7 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 		insecureTransport: mminsecureTr,
 	}
 
-	dc := mustClient([]string{args[0]}, dialTimeout, sec)
+	dc := mustClient([]string{args[0]}, dialTimeout, sec, nil)
 	c := mustClientFromCmd(cmd)
 
 	err := makeMirror(context.TODO(), c, dc)
@@ -125,10 +125,10 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 				ops = []clientv3.Op{}
 			}
 			switch ev.Type {
-			case storagepb.PUT:
+			case mvccpb.PUT:
 				ops = append(ops, clientv3.OpPut(string(ev.Kv.Key), string(ev.Kv.Value)))
 				atomic.AddInt64(&total, 1)
-			case storagepb.DELETE, storagepb.EXPIRE:
+			case mvccpb.DELETE:
 				ops = append(ops, clientv3.OpDelete(string(ev.Kv.Key)))
 				atomic.AddInt64(&total, 1)
 			default:

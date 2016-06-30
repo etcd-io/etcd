@@ -18,14 +18,15 @@ message User {
 
 // Permission is a single entity
 message Permission {
-  bytes key = 1;
-
   enum Type {
     READ = 0;
     WRITE = 1;
     READWRITE = 2;
   }
-  Type permType = 2;
+  Type permType = 1;
+
+  bytes key = 2;
+  bytes range_end = 3;
 }
 
 // Role is a single entry in the bucket authRoles

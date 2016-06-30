@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 var (
 	dialTimeout    = 5 * time.Second
 	requestTimeout = 1 * time.Second
-	endpoints      = []string{"localhost:2379", "localhost:22379", "http://localhost:32379"}
+	endpoints      = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
 )
 
 func Example() {

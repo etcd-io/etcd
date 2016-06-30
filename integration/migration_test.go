@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 
 func TestUpgradeMember(t *testing.T) {
 	defer testutil.AfterTest(t)
-	m := mustNewMember(t, "integration046", nil, nil)
+	m := mustNewMember(t, memberConfig{name: "integration046"})
 	cmd := exec.Command("cp", "-r", "testdata/integration046_data/conf", "testdata/integration046_data/log", "testdata/integration046_data/snapshot", m.DataDir)
 	err := cmd.Run()
 	if err != nil {

@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import (
 	"os/exec"
 	"os/signal"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
 
@@ -36,8 +36,9 @@ func NewExecWatchCommand() cli.Command {
 			cli.IntFlag{Name: "after-index", Value: 0, Usage: "watch after the given index"},
 			cli.BoolFlag{Name: "recursive, r", Usage: "watch all values for key and child keys"},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(c *cli.Context) error {
 			execWatchCommandFunc(c, mustNewKeyAPI(c))
+			return nil
 		},
 	}
 }
@@ -76,7 +77,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 
 	index := 0
 	if c.Int("after-index") != 0 {
-		index = c.Int("after-index") + 1
+		index = c.Int("after-index")
 	}
 
 	recursive := c.Bool("recursive")
@@ -97,7 +98,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 			handleError(ExitServerError, err)
 		}
 		if resp.Node.Dir {
-			fmt.Fprintf(os.Stderr, "Ignored dir %s change", resp.Node.Key)
+			fmt.Fprintf(os.Stderr, "Ignored dir %s change\n", resp.Node.Key)
 			continue
 		}
 

@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,22 +32,22 @@ var (
 
 func TestConfigFromFile(t *testing.T) {
 	tests := []struct {
-		ym *YamlConfig
+		ym *yamlConfig
 
 		werr bool
 	}{
 		{
-			&YamlConfig{},
+			&yamlConfig{},
 			false,
 		},
 		{
-			&YamlConfig{
+			&yamlConfig{
 				InsecureTransport: true,
 			},
 			false,
 		},
 		{
-			&YamlConfig{
+			&yamlConfig{
 				Keyfile:               privateKeyPath,
 				Certfile:              certPath,
 				CAfile:                caPath,
@@ -56,14 +56,14 @@ func TestConfigFromFile(t *testing.T) {
 			false,
 		},
 		{
-			&YamlConfig{
+			&yamlConfig{
 				Keyfile:  "bad",
 				Certfile: "bad",
 			},
 			true,
 		},
 		{
-			&YamlConfig{
+			&yamlConfig{
 				Keyfile:  privateKeyPath,
 				Certfile: certPath,
 				CAfile:   "bad",

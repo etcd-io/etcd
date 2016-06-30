@@ -1,4 +1,4 @@
-# Libraries and Tools
+# Libraries and tools
 
 **Tools**
 
@@ -17,7 +17,8 @@
 
 **Go libraries**
 
-- [etcd/client](https://github.com/coreos/etcd/blob/master/client) - the officially maintained Go client
+- [etcd/clientv3](https://github.com/coreos/etcd/blob/master/clientv3) - the officially maintained Go client for v3
+- [etcd/client](https://github.com/coreos/etcd/blob/master/client) - the officially maintained Go client for v2
 - [go-etcd](https://github.com/coreos/go-etcd) - the deprecated official client. May be useful for older (<2.0.0) versions of etcd.
 
 **Java libraries**
@@ -28,6 +29,10 @@
 - [jurmous/etcd4j](https://github.com/jurmous/etcd4j) - Supports v2, Async/Sync, waits and SSL
 - [AdoHe/etcd4j](http://github.com/AdoHe/etcd4j) - Supports v2 (enhance for real production cluster)
 - [cdancy/etcd-rest](https://github.com/cdancy/etcd-rest) - Uses jclouds to provide a complete implementation of v2 API.
+
+**Scala libraries**
+
+- [maciej/etcd-client](https://github.com/maciej/etcd-client) - Supports v2. Akka HTTP-based fully async client
 
 **Python libraries**
 
@@ -88,6 +93,10 @@
 
 - [efrecon/etcd-tcl](https://github.com/efrecon/etcd-tcl) - Supports v2, except wait.
 
+**Gradle Plugins**
+
+- [gradle-etcd-rest-plugin](https://github.com/cdancy/gradle-etcd-rest-plugin) - Supports v2
+
 **Chef Integration**
 
 - [coderanger/etcd-chef](https://github.com/coderanger/etcd-chef)
@@ -123,3 +132,4 @@
 - [spf13/viper](https://github.com/spf13/viper) - Go configuration library, reads values from ENV, pflags, files, and etcd with optional encryption
 - [lytics/metafora](https://github.com/lytics/metafora) - Go distributed task library
 - [ryandoyle/nss-etcd](https://github.com/ryandoyle/nss-etcd) - A GNU libc NSS module for resolving names from etcd.
+- [Gru](https://github.com/dnaeon/gru) - Orchestration made easy with Go

@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,13 +64,13 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 			return
 		}
 
-		var data_kv kv
+		var dataKv kv
 		dec := gob.NewDecoder(bytes.NewBufferString(*data))
-		if err := dec.Decode(&data_kv); err != nil {
+		if err := dec.Decode(&dataKv); err != nil {
 			log.Fatalf("raftexample: could not decode message (%v)", err)
 		}
 		s.mu.Lock()
-		s.kvStore[data_kv.Key] = data_kv.Val
+		s.kvStore[dataKv.Key] = dataKv.Val
 		s.mu.Unlock()
 	}
 	if err, ok := <-errorC; ok {

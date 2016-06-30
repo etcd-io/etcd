@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -231,9 +232,14 @@ func TestIssue2681(t *testing.T) {
 }
 
 // Ensure we can remove a member after a snapshot then add a new one back.
-func TestIssue2746(t *testing.T) {
+func TestIssue2746(t *testing.T) { testIssue2746(t, 5) }
+
+// With 3 nodes TestIssue2476 sometimes had a shutdown with an inflight snapshot.
+func TestIssue2746WithThree(t *testing.T) { testIssue2746(t, 3) }
+
+func testIssue2746(t *testing.T, members int) {
 	defer testutil.AfterTest(t)
-	c := NewCluster(t, 5)
+	c := NewCluster(t, members)
 
 	for _, m := range c.Members {
 		m.SnapCount = 10
@@ -247,7 +253,7 @@ func TestIssue2746(t *testing.T) {
 		clusterMustProgress(t, c.Members)
 	}
 
-	c.RemoveMember(t, uint64(c.Members[4].s.ID()))
+	c.RemoveMember(t, uint64(c.Members[members-1].s.ID()))
 	c.waitLeader(t, c.Members)
 
 	c.AddMember(t)
@@ -301,7 +307,6 @@ func TestIssue3699(t *testing.T) {
 
 	// make node a unavailable
 	c.Members[0].Stop(t)
-	<-c.Members[0].s.StopNotify()
 
 	// add node d
 	c.AddMember(t)
@@ -317,24 +322,28 @@ func TestIssue3699(t *testing.T) {
 
 	// bring back node a
 	// node a will remain useless as long as d is the leader.
-	err := c.Members[0].Restart(t)
+	if err := c.Members[0].Restart(t); err != nil {
+		t.Fatal(err)
+	}
 	select {
+	// waiting for ReadyNotify can take several seconds
+	case <-time.After(10 * time.Second):
+		t.Fatalf("waited too long for ready notification")
 	case <-c.Members[0].s.StopNotify():
 		t.Fatalf("should not be stopped")
-	default:
+	case <-c.Members[0].s.ReadyNotify():
 	}
 	// must waitLeader so goroutines don't leak on terminate
-	leaderID = c.waitLeader(t, c.Members)
+	c.waitLeader(t, c.Members)
 
 	// try to participate in cluster
 	cc := mustNewHTTPClient(t, []string{c.URL(0)}, c.cfg.ClientTLS)
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	_, err = kapi.Set(ctx, "/foo", "bar", nil)
-	cancel()
-	if err != nil {
+	if _, err := kapi.Set(ctx, "/foo", "bar", nil); err != nil {
 		t.Fatalf("unexpected error on Set (%v)", err)
 	}
+	cancel()
 }
 
 // clusterMustProgress ensures that cluster can make progress. It creates

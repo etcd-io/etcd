@@ -1,6 +1,6 @@
-# Production Users
+# Production users
 
-This document tracks people and use cases for etcd in production. By creating a list of production use cases we hope to build a community of advisors that we can reach out to with experience using various etcd applications, operation environments, and cluster sizes. The etcd development team may reach out periodically to check-in on your experience and update this list.
+This document tracks people and use cases for etcd in production. By creating a list of production use cases we hope to build a community of advisors that we can reach out to with experience using various etcd applications, operation environments, and cluster sizes. The etcd development team may reach out periodically to check-in on how etcd is working in the field and update this list.
 
 ## discovery.etcd.io
 
@@ -48,4 +48,15 @@ CyCore Systems provides architecture and engineering for computing systems.  Thi
 
 Radius Intelligence uses Kubernetes running CoreOS to containerize and scale internal toolsets. Examples include running [JetBrains TeamCity][teamcity] and internal AWS security and cost reporting tools. etcd clusters back these clusters as well as provide some basic environment bootstrapping configuration keys.
 
+## Vonage
+
+- *Application*: system configuration for microservices, scheduling, locks (future - service discovery) 
+- *Launched*: August 2015
+- *Cluster Size*: 2 clusters of 5 members in 2 DCs, n local proxies 1-to-1 with microservice, (ssl and SRV look up)
+- *Order of Data Size*: kilobytes
+- *Operator*: Vonage [devAdmin][raoofm]
+- *Environment*: VMWare, AWS
+- *Backups*: Daily snapshots on VMs. Backups done for upgrades.
+
 [teamcity]: https://www.jetbrains.com/teamcity/
+[raoofm]:https://github.com/raoofm

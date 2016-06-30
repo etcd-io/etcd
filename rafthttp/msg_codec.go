@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,11 +28,11 @@ type messageEncoder struct {
 	w io.Writer
 }
 
-func (enc *messageEncoder) encode(m raftpb.Message) error {
+func (enc *messageEncoder) encode(m *raftpb.Message) error {
 	if err := binary.Write(enc.w, binary.BigEndian, uint64(m.Size())); err != nil {
 		return err
 	}
-	_, err := enc.w.Write(pbutil.MustMarshal(&m))
+	_, err := enc.w.Write(pbutil.MustMarshal(m))
 	return err
 }
 

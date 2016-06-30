@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import (
 func NewLockCommand() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "lock <lockname>",
-		Short: "lock acquires a named lock",
+		Short: "Acquires a named lock",
 		Run:   lockCommandFunc,
 	}
 	return c
@@ -80,7 +80,7 @@ func lockUntilSignal(c *clientv3.Client, lockname string) error {
 
 	select {
 	case <-donec:
-		return m.Unlock()
+		return m.Unlock(context.TODO())
 	case <-s.Done():
 	}
 

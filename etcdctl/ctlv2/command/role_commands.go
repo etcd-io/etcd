@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/pathutil"
+	"github.com/urfave/cli"
 )
 
 func NewRoleCommands() cli.Command {
@@ -92,7 +92,7 @@ func mustNewAuthRoleAPI(c *cli.Context) client.AuthRoleAPI {
 	return client.NewAuthRoleAPI(hc)
 }
 
-func actionRoleList(c *cli.Context) {
+func actionRoleList(c *cli.Context) error {
 	if len(c.Args()) != 0 {
 		fmt.Fprintln(os.Stderr, "No arguments accepted")
 		os.Exit(1)
@@ -109,9 +109,11 @@ func actionRoleList(c *cli.Context) {
 	for _, role := range roles {
 		fmt.Printf("%s\n", role)
 	}
+
+	return nil
 }
 
-func actionRoleAdd(c *cli.Context) {
+func actionRoleAdd(c *cli.Context) error {
 	api, role := mustRoleAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	defer cancel()
@@ -128,9 +130,10 @@ func actionRoleAdd(c *cli.Context) {
 	}
 
 	fmt.Printf("Role %s created\n", role)
+	return nil
 }
 
-func actionRoleRemove(c *cli.Context) {
+func actionRoleRemove(c *cli.Context) error {
 	api, role := mustRoleAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	err := api.RemoveRole(ctx, role)
@@ -141,24 +144,27 @@ func actionRoleRemove(c *cli.Context) {
 	}
 
 	fmt.Printf("Role %s removed\n", role)
+	return nil
 }
 
-func actionRoleGrant(c *cli.Context) {
+func actionRoleGrant(c *cli.Context) error {
 	roleGrantRevoke(c, true)
+	return nil
 }
 
-func actionRoleRevoke(c *cli.Context) {
+func actionRoleRevoke(c *cli.Context) error {
 	roleGrantRevoke(c, false)
+	return nil
 }
 
 func roleGrantRevoke(c *cli.Context, grant bool) {
 	path := c.String("path")
 	if path == "" {
-		fmt.Fprintln(os.Stderr, "No path specified; please use `-path`")
+		fmt.Fprintln(os.Stderr, "No path specified; please use `--path`")
 		os.Exit(1)
 	}
 	if pathutil.CanonicalURLPath(path) != path {
-		fmt.Fprintf(os.Stderr, "Not canonical path; please use `-path=%s`\n", pathutil.CanonicalURLPath(path))
+		fmt.Fprintf(os.Stderr, "Not canonical path; please use `--path=%s`\n", pathutil.CanonicalURLPath(path))
 		os.Exit(1)
 	}
 
@@ -172,7 +178,7 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 		}
 	}
 	if permcount != 1 {
-		fmt.Fprintln(os.Stderr, "Please specify exactly one of -read, -write or -readwrite")
+		fmt.Fprintln(os.Stderr, "Please specify exactly one of --read, --write or --readwrite")
 		os.Exit(1)
 	}
 	var permType client.PermissionType
@@ -214,7 +220,7 @@ func roleGrantRevoke(c *cli.Context, grant bool) {
 	fmt.Printf("Role %s updated\n", role)
 }
 
-func actionRoleGet(c *cli.Context) {
+func actionRoleGet(c *cli.Context) error {
 	api, rolename := mustRoleAPIAndName(c)
 
 	ctx, cancel := contextWithTotalTimeout(c)
@@ -233,6 +239,7 @@ func actionRoleGet(c *cli.Context) {
 	for _, v := range role.Permissions.KV.Write {
 		fmt.Printf("\t%s\n", v)
 	}
+	return nil
 }
 
 func mustRoleAPIAndName(c *cli.Context) (client.AuthRoleAPI, string) {

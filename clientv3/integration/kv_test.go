@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,16 +17,54 @@ package integration
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/etcd/storage/storagepb"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
+
+func TestKVPutError(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	var (
+		maxReqBytes = 1.5 * 1024 * 1024
+		quota       = int64(maxReqBytes * 1.2)
+	)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, QuotaBackendBytes: quota})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
+
+	_, err := kv.Put(ctx, "", "bar")
+	if err != rpctypes.ErrEmptyKey {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrEmptyKey, err)
+	}
+
+	_, err = kv.Put(ctx, "key", strings.Repeat("a", int(maxReqBytes+100))) // 1.5MB
+	if err != rpctypes.ErrRequestTooLarge {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrRequestTooLarge, err)
+	}
+
+	_, err = kv.Put(ctx, "foo1", strings.Repeat("a", int(maxReqBytes-50)))
+	if err != nil { // below quota
+		t.Fatal(err)
+	}
+
+	time.Sleep(500 * time.Millisecond) // give enough time for commit
+
+	_, err = kv.Put(ctx, "foo2", strings.Repeat("a", int(maxReqBytes-50)))
+	if err != rpctypes.ErrNoSpace { // over quota
+		t.Fatalf("expected %v, got %v", rpctypes.ErrNoSpace, err)
+	}
+}
 
 func TestKVPut(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -50,7 +88,7 @@ func TestKVPut(t *testing.T) {
 		leaseID  clientv3.LeaseID
 	}{
 		{"foo", "bar", clientv3.NoLease},
-		{"hello", "world", clientv3.LeaseID(resp.ID)},
+		{"hello", "world", resp.ID},
 	}
 
 	for i, tt := range tests {
@@ -71,6 +109,36 @@ func TestKVPut(t *testing.T) {
 			t.Errorf("#%d: val = %d, want %d", i, tt.leaseID, resp.Kvs[0].Lease)
 		}
 	}
+}
+
+func TestKVPutWithRequireLeader(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+
+	// wait for election timeout, then member[0] will not have a leader.
+	var (
+		electionTicks = 10
+		tickDuration  = 10 * time.Millisecond
+	)
+	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
+
+	kv := clientv3.NewKV(clus.Client(0))
+	_, err := kv.Put(clientv3.WithRequireLeader(context.Background()), "foo", "bar")
+	if err != rpctypes.ErrNoLeader {
+		t.Fatal(err)
+	}
+
+	// clients may give timeout errors since the members are stopped; take
+	// the clients so that terminating the cluster won't complain
+	clus.Client(1).Close()
+	clus.Client(2).Close()
+	clus.TakeClient(1)
+	clus.TakeClient(2)
 }
 
 func TestKVRange(t *testing.T) {
@@ -99,7 +167,7 @@ func TestKVRange(t *testing.T) {
 		rev        int64
 		opts       []clientv3.OpOption
 
-		wantSet []*storagepb.KeyValue
+		wantSet []*mvccpb.KeyValue
 	}{
 		// range first two
 		{
@@ -107,7 +175,7 @@ func TestKVRange(t *testing.T) {
 			0,
 			nil,
 
-			[]*storagepb.KeyValue{
+			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
 				{Key: []byte("b"), Value: nil, CreateRevision: 3, ModRevision: 3, Version: 1},
 			},
@@ -118,7 +186,7 @@ func TestKVRange(t *testing.T) {
 			0,
 			[]clientv3.OpOption{clientv3.WithSerializable()},
 
-			[]*storagepb.KeyValue{
+			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
 				{Key: []byte("b"), Value: nil, CreateRevision: 3, ModRevision: 3, Version: 1},
 			},
@@ -129,9 +197,17 @@ func TestKVRange(t *testing.T) {
 			2,
 			nil,
 
-			[]*storagepb.KeyValue{
+			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
 			},
+		},
+		// range all with countOnly
+		{
+			"a", "x",
+			2,
+			[]clientv3.OpOption{clientv3.WithCountOnly()},
+
+			nil,
 		},
 		// range all with SortByKey, SortAscend
 		{
@@ -139,7 +215,7 @@ func TestKVRange(t *testing.T) {
 			0,
 			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)},
 
-			[]*storagepb.KeyValue{
+			[]*mvccpb.KeyValue{
 				{Key: []byte("a"), Value: nil, CreateRevision: 2, ModRevision: 2, Version: 1},
 				{Key: []byte("b"), Value: nil, CreateRevision: 3, ModRevision: 3, Version: 1},
 				{Key: []byte("c"), Value: nil, CreateRevision: 4, ModRevision: 6, Version: 3},
@@ -154,7 +230,7 @@ func TestKVRange(t *testing.T) {
 			0,
 			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortDescend)},
 
-			[]*storagepb.KeyValue{
+			[]*mvccpb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
 				{Key: []byte("foo/abc"), Value: nil, CreateRevision: 8, ModRevision: 8, Version: 1},
 				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
@@ -169,7 +245,7 @@ func TestKVRange(t *testing.T) {
 			0,
 			[]clientv3.OpOption{clientv3.WithSort(clientv3.SortByModRevision, clientv3.SortDescend)},
 
-			[]*storagepb.KeyValue{
+			[]*mvccpb.KeyValue{
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
 				{Key: []byte("foo/abc"), Value: nil, CreateRevision: 8, ModRevision: 8, Version: 1},
 				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
@@ -184,7 +260,7 @@ func TestKVRange(t *testing.T) {
 			0,
 			[]clientv3.OpOption{clientv3.WithPrefix()},
 
-			[]*storagepb.KeyValue{
+			[]*mvccpb.KeyValue{
 				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
 				{Key: []byte("foo/abc"), Value: nil, CreateRevision: 8, ModRevision: 8, Version: 1},
 			},
@@ -195,7 +271,7 @@ func TestKVRange(t *testing.T) {
 			0,
 			[]clientv3.OpOption{clientv3.WithFromKey()},
 
-			[]*storagepb.KeyValue{
+			[]*mvccpb.KeyValue{
 				{Key: []byte("foo"), Value: nil, CreateRevision: 7, ModRevision: 7, Version: 1},
 				{Key: []byte("foo/abc"), Value: nil, CreateRevision: 8, ModRevision: 8, Version: 1},
 				{Key: []byte("fop"), Value: nil, CreateRevision: 9, ModRevision: 9, Version: 1},
@@ -216,6 +292,63 @@ func TestKVRange(t *testing.T) {
 		if !reflect.DeepEqual(tt.wantSet, resp.Kvs) {
 			t.Fatalf("#%d: resp.Kvs expected %+v, got %+v", i, tt.wantSet, resp.Kvs)
 		}
+	}
+}
+
+func TestKVGetErrConnClosed(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	kv := clientv3.NewKV(cli)
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		_, err := kv.Get(context.TODO(), "foo")
+		if err != nil && err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
+		}
+	}()
+
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+	clus.TakeClient(0)
+
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("kv.Get took too long")
+	case <-donec:
+	}
+}
+
+func TestKVNewAfterClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	clus.TakeClient(0)
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		kv := clientv3.NewKV(cli)
+		if _, err := kv.Get(context.TODO(), "foo"); err != grpc.ErrClientConnClosing {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
+		}
+		close(donec)
+	}()
+	select {
+	case <-time.After(3 * time.Second):
+		t.Fatal("kv.Get took too long")
+	case <-donec:
 	}
 }
 
@@ -323,6 +456,36 @@ func TestKVDelete(t *testing.T) {
 	}
 }
 
+func TestKVCompactError(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+	ctx := context.TODO()
+
+	for i := 0; i < 5; i++ {
+		if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
+			t.Fatalf("couldn't put 'foo' (%v)", err)
+		}
+	}
+	_, err := kv.Compact(ctx, 6)
+	if err != nil {
+		t.Fatalf("couldn't compact 6 (%v)", err)
+	}
+
+	_, err = kv.Compact(ctx, 6)
+	if err != rpctypes.ErrCompacted {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrCompacted, err)
+	}
+
+	_, err = kv.Compact(ctx, 100)
+	if err != rpctypes.ErrFutureRev {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrFutureRev, err)
+	}
+}
+
 func TestKVCompact(t *testing.T) {
 	defer testutil.AfterTest(t)
 
@@ -338,13 +501,13 @@ func TestKVCompact(t *testing.T) {
 		}
 	}
 
-	err := kv.Compact(ctx, 7)
+	_, err := kv.Compact(ctx, 7)
 	if err != nil {
 		t.Fatalf("couldn't compact kv space (%v)", err)
 	}
-	err = kv.Compact(ctx, 7)
+	_, err = kv.Compact(ctx, 7)
 	if err == nil || err != rpctypes.ErrCompacted {
-		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
+		t.Fatalf("error got %v, want %v", err, rpctypes.ErrCompacted)
 	}
 
 	wcli := clus.RandClient()
@@ -362,7 +525,7 @@ func TestKVCompact(t *testing.T) {
 		t.Fatalf("wchan got %v, expected closed", wr)
 	}
 
-	err = kv.Compact(ctx, 1000)
+	_, err = kv.Compact(ctx, 1000)
 	if err == nil || err != rpctypes.ErrFutureRev {
 		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
 	}
@@ -372,18 +535,22 @@ func TestKVCompact(t *testing.T) {
 func TestKVGetRetry(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clusterSize := 3
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: clusterSize})
 	defer clus.Terminate(t)
 
-	kv := clientv3.NewKV(clus.Client(0))
+	// because killing leader and following election
+	// could give no other endpoints for client reconnection
+	fIdx := (clus.WaitLeader(t) + 1) % clusterSize
+
+	kv := clientv3.NewKV(clus.Client(fIdx))
 	ctx := context.TODO()
 
 	if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
 		t.Fatal(err)
 	}
 
-	clus.Members[0].Stop(t)
-	<-clus.Members[0].StopNotify()
+	clus.Members[fIdx].Stop(t)
 
 	donec := make(chan struct{})
 	go func() {
@@ -392,7 +559,7 @@ func TestKVGetRetry(t *testing.T) {
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
-		wkvs := []*storagepb.KeyValue{
+		wkvs := []*mvccpb.KeyValue{
 			{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),
@@ -408,7 +575,7 @@ func TestKVGetRetry(t *testing.T) {
 	}()
 
 	time.Sleep(100 * time.Millisecond)
-	clus.Members[0].Restart(t)
+	clus.Members[fIdx].Restart(t)
 
 	select {
 	case <-time.After(5 * time.Second):
@@ -425,11 +592,10 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clientv3.NewKV(clus.Client(0))
-	ctx := context.TODO()
-
 	clus.Members[0].Stop(t)
-	<-clus.Members[0].StopNotify()
 
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
 	_, err := kv.Put(ctx, "foo", "bar")
 	if err == nil {
 		t.Fatalf("got success on disconnected put, wanted error")
@@ -438,7 +604,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get(ctx, "foo")
+		gresp, gerr := kv.Get(context.TODO(), "foo")
 		if gerr != nil {
 			t.Fatal(gerr)
 		}
@@ -478,5 +644,21 @@ func TestKVGetCancel(t *testing.T) {
 	newconn := clus.Client(0).ActiveConnection()
 	if oldconn != newconn {
 		t.Fatalf("cancel on get broke client connection")
+	}
+}
+
+// TestKVPutStoppedServerAndClose ensures closing after a failed Put works.
+func TestKVPutStoppedServerAndClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	cli := clus.Client(0)
+	clus.Members[0].Stop(t)
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	// this Put fails and triggers an asynchronous connection retry
+	_, err := cli.Put(ctx, "abc", "123")
+	cancel()
+	if !strings.Contains(err.Error(), "context deadline") {
+		t.Fatal(err)
 	}
 }

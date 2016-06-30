@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ func ExampleLease_grant() {
 	}
 
 	// after 5 seconds, the key 'foo' will be removed
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,13 +60,13 @@ func ExampleLease_revoke() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// revoking lease expires the key attached to its lease ID
-	_, err = cli.Revoke(context.TODO(), clientv3.LeaseID(resp.ID))
+	_, err = cli.Revoke(context.TODO(), resp.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func ExampleLease_revoke() {
 		log.Fatal(err)
 	}
 	fmt.Println("number of keys:", len(gresp.Kvs))
-	// number of keys: 0
+	// Output: number of keys: 0
 }
 
 func ExampleLease_keepAlive() {
@@ -94,16 +94,20 @@ func ExampleLease_keepAlive() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// the key 'foo' will be kept forever
-	_, err = cli.KeepAlive(context.TODO(), clientv3.LeaseID(resp.ID))
-	if err != nil {
-		log.Fatal(err)
+	ch, kaerr := cli.KeepAlive(context.TODO(), resp.ID)
+	if kaerr != nil {
+		log.Fatal(kaerr)
 	}
+
+	ka := <-ch
+	fmt.Println("ttl:", ka.TTL)
+	// Output: ttl: 5
 }
 
 func ExampleLease_keepAliveOnce() {
@@ -121,14 +125,17 @@ func ExampleLease_keepAliveOnce() {
 		log.Fatal(err)
 	}
 
-	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(resp.ID)))
+	_, err = cli.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// to renew the lease only once
-	_, err = cli.KeepAliveOnce(context.TODO(), clientv3.LeaseID(resp.ID))
-	if err != nil {
-		log.Fatal(err)
+	ka, kaerr := cli.KeepAliveOnce(context.TODO(), resp.ID)
+	if kaerr != nil {
+		log.Fatal(kaerr)
 	}
+
+	fmt.Println("ttl:", ka.TTL)
+	// Output: ttl: 5
 }

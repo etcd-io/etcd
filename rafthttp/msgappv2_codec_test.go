@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -107,7 +107,7 @@ func TestMsgAppV2(t *testing.T) {
 	dec := newMsgAppV2Decoder(b, types.ID(2), types.ID(1))
 
 	for i, tt := range tests {
-		if err := enc.encode(tt); err != nil {
+		if err := enc.encode(&tt); err != nil {
 			t.Errorf("#%d: unexpected encode message error: %v", i, err)
 			continue
 		}

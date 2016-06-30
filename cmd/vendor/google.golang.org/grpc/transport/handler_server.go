@@ -65,7 +65,7 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTr
 	if r.Method != "POST" {
 		return nil, errors.New("invalid gRPC request method")
 	}
-	if !strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+	if !validContentType(r.Header.Get("Content-Type")) {
 		return nil, errors.New("invalid gRPC request content-type")
 	}
 	if _, ok := w.(http.Flusher); !ok {
@@ -92,9 +92,12 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTr
 	}
 
 	var metakv []string
+	if r.Host != "" {
+		metakv = append(metakv, ":authority", r.Host)
+	}
 	for k, vv := range r.Header {
 		k = strings.ToLower(k)
-		if isReservedHeader(k) {
+		if isReservedHeader(k) && !isWhitelistedPseudoHeader(k) {
 			continue
 		}
 		for _, v := range vv {
@@ -108,7 +111,6 @@ func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTr
 				}
 			}
 			metakv = append(metakv, k, v)
-
 		}
 	}
 	st.headerMD = metadata.Pairs(metakv...)
@@ -196,6 +198,10 @@ func (ht *serverHandlerTransport) WriteStatus(s *Stream, statusCode codes.Code, 
 		}
 		if md := s.Trailer(); len(md) > 0 {
 			for k, vv := range md {
+				// Clients don't tolerate reading restricted headers after some non restricted ones were sent.
+				if isReservedHeader(k) {
+					continue
+				}
 				for _, v := range vv {
 					// http2 ResponseWriter mechanism to
 					// send undeclared Trailers after the
@@ -249,6 +255,10 @@ func (ht *serverHandlerTransport) WriteHeader(s *Stream, md metadata.MD) error {
 		ht.writeCommonHeaders(s)
 		h := ht.rw.Header()
 		for k, vv := range md {
+			// Clients don't tolerate reading restricted headers after some non restricted ones were sent.
+			if isReservedHeader(k) {
+				continue
+			}
 			for _, v := range vv {
 				h.Add(k, v)
 			}

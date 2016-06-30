@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -159,7 +159,7 @@ func testNonleaderStartElection(t *testing.T, state StateType) {
 		r.becomeCandidate()
 	}
 
-	for i := 0; i < 2*et; i++ {
+	for i := 1; i < 2*et; i++ {
 		r.tick()
 	}
 
@@ -785,7 +785,7 @@ func TestVoteRequest(t *testing.T) {
 		})
 		r.readMessages()
 
-		for i := 0; i < r.electionTimeout*2; i++ {
+		for i := 1; i < r.electionTimeout*2; i++ {
 			r.tickElection()
 		}
 

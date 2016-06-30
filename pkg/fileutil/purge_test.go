@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,9 +58,9 @@ func TestPurgeFile(t *testing.T) {
 
 	// purge routine should purge 7 out of 10 files and only keep the
 	// 3 most recent ones.
-	// wait for purging for at most 100ms.
+	// Wait for purging for at most 300ms.
 	var fnames []string
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 30; i++ {
 		fnames, err = ReadDir(dir)
 		if err != nil {
 			t.Fatal(err)
@@ -102,7 +102,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 
 	// create a purge barrier at 5
 	p := path.Join(dir, fmt.Sprintf("%d.test", 5))
-	l, err := LockFile(p, os.O_WRONLY, 0600)
+	l, err := LockFile(p, os.O_WRONLY, PrivateFileMode)
 	if err != nil {
 		t.Fatal(err)
 	}

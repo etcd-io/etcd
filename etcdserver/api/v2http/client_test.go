@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1939,9 +1939,9 @@ func TestTrimNodeExternPrefix(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		n := trimNodeExternPrefix(tt.n, pre)
-		if !reflect.DeepEqual(n, tt.wn) {
-			t.Errorf("#%d: node = %+v, want %+v", i, n, tt.wn)
+		trimNodeExternPrefix(tt.n, pre)
+		if !reflect.DeepEqual(tt.n, tt.wn) {
+			t.Errorf("#%d: node = %+v, want %+v", i, tt.n, tt.wn)
 		}
 	}
 }

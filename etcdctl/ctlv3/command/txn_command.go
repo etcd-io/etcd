@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,10 +34,10 @@ var (
 func NewTxnCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "txn [options]",
-		Short: "Txn processes all the requests in one transaction.",
+		Short: "Txn processes all the requests in one transaction",
 		Run:   txnCommandFunc,
 	}
-	cmd.Flags().BoolVarP(&txnInteractive, "interactive", "i", false, "input transaction in interactive mode")
+	cmd.Flags().BoolVarP(&txnInteractive, "interactive", "i", false, "Input transaction in interactive mode")
 	return cmd
 }
 

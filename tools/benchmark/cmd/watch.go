@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ changing the value of the watched keys with concurrent put
 requests.
 
 During the test, each watcher watches (--total/--watchers) keys 
+
 (a watcher might watch on the same key multiple times if 
 --watched-key-total is small).
 
@@ -64,7 +65,6 @@ var (
 	nrWatchCompleted       int32
 	nrRecvCompleted        int32
 	watchCompletedNotifier chan struct{}
-	putStartNotifier       chan struct{}
 	recvCompletedNotifier  chan struct{}
 )
 
@@ -89,6 +89,7 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	}
 
 	watched := make([]string, watchedKeyTotal)
+	numWatchers := make(map[string]int)
 	for i := range watched {
 		k := make([]byte, watchKeySize)
 		if watchSeqKeys {
@@ -108,8 +109,6 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		streams[i] = v3.NewWatcher(clients[i%len(clients)])
 	}
 
-	putStartNotifier = make(chan struct{})
-
 	// watching phase
 	results = make(chan result)
 	bar = pb.New(watchTotal)
@@ -127,7 +126,9 @@ func watchFunc(cmd *cobra.Command, args []string) {
 
 	go func() {
 		for i := 0; i < watchTotal; i++ {
-			requests <- watched[i%len(watched)]
+			key := watched[i%len(watched)]
+			requests <- key
+			numWatchers[key]++
 		}
 		close(requests)
 	}()
@@ -140,8 +141,10 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	<-pdoneC
 
 	// put phase
-	// total number of puts * number of watchers on each key
-	eventsTotal = watchPutTotal * (watchTotal / watchedKeyTotal)
+	eventsTotal = 0
+	for i := 0; i < watchPutTotal; i++ {
+		eventsTotal += numWatchers[watched[i%len(watched)]]
+	}
 	results = make(chan result)
 	bar = pb.New(eventsTotal)
 
@@ -150,7 +153,6 @@ func watchFunc(cmd *cobra.Command, args []string) {
 
 	atomic.StoreInt32(&nrRecvCompleted, 0)
 	recvCompletedNotifier = make(chan struct{})
-	close(putStartNotifier)
 
 	putreqc := make(chan v3.Op)
 
@@ -161,7 +163,7 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	pdoneC = printRate(results)
 
 	go func() {
-		for i := 0; i < eventsTotal; i++ {
+		for i := 0; i < watchPutTotal; i++ {
 			putreqc <- v3.OpPut(watched[i%(len(watched))], "data")
 			// TODO: use a real rate-limiter instead of sleep.
 			time.Sleep(time.Second / time.Duration(watchPutRate))
@@ -192,22 +194,21 @@ func doWatch(stream v3.Watcher, requests <-chan string) {
 	if atomic.LoadInt32(&nrWatchCompleted) == int32(watchTotalStreams) {
 		watchCompletedNotifier <- struct{}{}
 	}
-
-	<-putStartNotifier
 }
 
 func recvWatchChan(wch v3.WatchChan) {
-	for range wch {
+	for r := range wch {
+		st := time.Now()
+		for range r.Events {
+			results <- result{duration: time.Since(st), happened: time.Now()}
+			bar.Increment()
+			atomic.AddInt32(&nrRecvCompleted, 1)
+		}
+
 		if atomic.LoadInt32(&nrRecvCompleted) == int32(eventsTotal) {
 			recvCompletedNotifier <- struct{}{}
 			break
 		}
-
-		st := time.Now()
-		results <- result{duration: time.Since(st), happened: time.Now()}
-		bar.Increment()
-
-		atomic.AddInt32(&nrRecvCompleted, 1)
 	}
 }
 

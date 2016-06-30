@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 func NewAuthCommands() cli.Command {
@@ -44,12 +44,14 @@ func NewAuthCommands() cli.Command {
 	}
 }
 
-func actionAuthEnable(c *cli.Context) {
+func actionAuthEnable(c *cli.Context) error {
 	authEnableDisable(c, true)
+	return nil
 }
 
-func actionAuthDisable(c *cli.Context) {
+func actionAuthDisable(c *cli.Context) error {
 	authEnableDisable(c, false)
+	return nil
 }
 
 func mustNewAuthAPI(c *cli.Context) client.AuthAPI {

@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 package e2e
 
 import (
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -158,7 +160,6 @@ func testCtlV2Watch(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 
 func TestCtlV2GetRoleUser(t *testing.T)          { testCtlV2GetRoleUser(t, &configNoTLS) }
 func TestCtlV2GetRoleUserWithProxy(t *testing.T) { testCtlV2GetRoleUser(t, &configWithProxy) }
-
 func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	defer testutil.AfterTest(t)
 
@@ -181,6 +182,7 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	if err := etcdctlUserGet(epc, "username"); err != nil {
 		t.Fatalf("failed to get user (%v)", err)
 	}
+
 	// ensure double grant gives an error; was crashing in 2.3.1
 	regrantArgs := etcdctlPrefixArgs(epc)
 	regrantArgs = append(regrantArgs, "user", "grant", "--roles", "foo", "username")
@@ -191,7 +193,6 @@ func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 
 func TestCtlV2UserListUsername(t *testing.T) { testCtlV2UserList(t, "username") }
 func TestCtlV2UserListRoot(t *testing.T)     { testCtlV2UserList(t, "root") }
-
 func testCtlV2UserList(t *testing.T, username string) {
 	defer testutil.AfterTest(t)
 
@@ -225,6 +226,57 @@ func TestCtlV2RoleList(t *testing.T) {
 	}
 	if err := etcdctlRoleList(epc, "foo"); err != nil {
 		t.Fatalf("failed to list roles (%v)", err)
+	}
+}
+
+func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issues/5360
+	defer testutil.AfterTest(t)
+
+	backupDir, err := ioutil.TempDir("", "testbackup0.etcd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(backupDir)
+
+	epc1 := setupEtcdctlTest(t, &configNoTLS, false)
+	if err := etcdctlSet(epc1, "foo1", "bar"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := etcdctlBackup(epc1, epc1.procs[0].cfg.dataDirPath, backupDir); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := epc1.Close(); err != nil {
+		t.Fatalf("error closing etcd processes (%v)", err)
+	}
+
+	// restart from the backup directory
+	cfg2 := configNoTLS
+	cfg2.dataDirPath = backupDir
+	cfg2.keepDataDir = true
+	cfg2.forceNewCluster = true
+	epc2 := setupEtcdctlTest(t, &cfg2, false)
+
+	if _, err := epc2.procs[0].proc.Expect("etcdserver: published"); err != nil {
+		t.Fatal(err)
+	}
+
+	// check if backup went through correctly
+	if err := etcdctlGet(epc2, "foo1", "bar", false); err != nil {
+		t.Fatal(err)
+	}
+
+	// check if it can serve client requests
+	if err := etcdctlSet(epc2, "foo2", "bar"); err != nil {
+		t.Fatal(err)
+	}
+	if err := etcdctlGet(epc2, "foo2", "bar", false); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := epc2.Close(); err != nil {
+		t.Fatalf("error closing etcd processes (%v)", err)
 	}
 }
 
@@ -284,7 +336,7 @@ func etcdctlLs(clus *etcdProcessCluster, key string, quorum bool) error {
 }
 
 func etcdctlWatch(clus *etcdProcessCluster, key, value string, noSync bool) <-chan error {
-	cmdArgs := append(etcdctlPrefixArgs(clus), "watch", "--after-index 1", key)
+	cmdArgs := append(etcdctlPrefixArgs(clus), "watch", "--after-index=1", key)
 	if noSync {
 		cmdArgs = append(cmdArgs, "--no-sync")
 	}
@@ -323,6 +375,16 @@ func etcdctlUserGet(clus *etcdProcessCluster, user string) error {
 func etcdctlUserList(clus *etcdProcessCluster, expectedUser string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "user", "list")
 	return spawnWithExpect(cmdArgs, expectedUser)
+}
+
+func etcdctlAuthEnable(clus *etcdProcessCluster) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus), "auth", "enable")
+	return spawnWithExpect(cmdArgs, "Authentication Enabled")
+}
+
+func etcdctlBackup(clus *etcdProcessCluster, dataDir, backupDir string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus), "backup", "--data-dir", dataDir, "--backup-dir", backupDir)
+	return spawnWithExpects(cmdArgs)
 }
 
 func mustEtcdctl(t *testing.T) {

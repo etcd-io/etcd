@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -143,7 +143,7 @@ func compactKV(clients []*v3.Client) {
 	revToCompact := max(0, curRev-compactIndexDelta)
 	for _, c := range clients {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		err := c.KV.Compact(ctx, revToCompact)
+		_, err := c.KV.Compact(ctx, revToCompact)
 		cancel()
 		if err != nil {
 			panic(err)

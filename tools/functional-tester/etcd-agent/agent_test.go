@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 )
 
@@ -46,7 +47,7 @@ func TestAgentRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = a.stop()
+	err = a.stopWithSig(syscall.SIGTERM)
 	if err != nil {
 		t.Fatal(err)
 	}

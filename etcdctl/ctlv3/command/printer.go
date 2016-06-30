@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	spb "github.com/coreos/etcd/storage/storagepb"
+	spb "github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/dustin/go-humanize"
 	"github.com/olekukonko/tablewriter"
 )
@@ -51,8 +51,55 @@ func NewPrinter(printerType string, isHex bool) printer {
 		return &jsonPrinter{}
 	case "protobuf":
 		return &pbPrinter{}
+	case "table":
+		return &tablePrinter{}
 	}
 	return nil
+}
+
+func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string) {
+	hdr = []string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs"}
+	for _, m := range r.Members {
+		status := "started"
+		if len(m.Name) == 0 {
+			status = "unstarted"
+		}
+		rows = append(rows, []string{
+			fmt.Sprintf("%x", m.ID),
+			status,
+			m.Name,
+			strings.Join(m.PeerURLs, ","),
+			strings.Join(m.ClientURLs, ","),
+		})
+	}
+	return
+}
+
+func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]string) {
+	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index"}
+	for _, status := range statusList {
+		rows = append(rows, []string{
+			fmt.Sprint(status.Ep),
+			fmt.Sprintf("%x", status.Resp.Header.MemberId),
+			fmt.Sprint(status.Resp.Version),
+			fmt.Sprint(humanize.Bytes(uint64(status.Resp.DbSize))),
+			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
+			fmt.Sprint(status.Resp.RaftTerm),
+			fmt.Sprint(status.Resp.RaftIndex),
+		})
+	}
+	return
+}
+
+func makeDBStatusTable(ds dbstatus) (hdr []string, rows [][]string) {
+	hdr = []string{"hash", "revision", "total keys", "total size"}
+	rows = append(rows, []string{
+		fmt.Sprintf("%x", ds.Hash),
+		fmt.Sprint(ds.Revision),
+		fmt.Sprint(ds.TotalKey),
+		humanize.Bytes(uint64(ds.TotalSize)),
+	})
+	return
 }
 
 type simplePrinter struct {
@@ -81,11 +128,11 @@ func (s *simplePrinter) Txn(resp v3.TxnResponse) {
 	for _, r := range resp.Responses {
 		fmt.Println("")
 		switch v := r.Response.(type) {
-		case *pb.ResponseUnion_ResponseDeleteRange:
+		case *pb.ResponseOp_ResponseDeleteRange:
 			s.Del((v3.DeleteResponse)(*v.ResponseDeleteRange))
-		case *pb.ResponseUnion_ResponsePut:
+		case *pb.ResponseOp_ResponsePut:
 			s.Put((v3.PutResponse)(*v.ResponsePut))
-		case *pb.ResponseUnion_ResponseRange:
+		case *pb.ResponseOp_ResponseRange:
 			s.Get(((v3.GetResponse)(*v.ResponseRange)))
 		default:
 			fmt.Printf("unexpected response %+v\n", r)
@@ -107,69 +154,78 @@ func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
 }
 
 func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs", "Is Leader"})
-
-	for _, m := range resp.Members {
-		status := "started"
-		if len(m.Name) == 0 {
-			status = "unstarted"
-		}
-
-		table.Append([]string{
-			fmt.Sprintf("%x", m.ID),
-			status,
-			m.Name,
-			strings.Join(m.PeerURLs, ","),
-			strings.Join(m.ClientURLs, ","),
-			fmt.Sprint(m.IsLeader),
-		})
+	_, rows := makeMemberListTable(resp)
+	for _, row := range rows {
+		fmt.Println(strings.Join(row, ", "))
 	}
-
-	table.Render()
 }
 
 func (s *simplePrinter) EndpointStatus(statusList []epStatus) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index"})
-
-	for _, status := range statusList {
-		table.Append([]string{
-			fmt.Sprint(status.ep),
-			fmt.Sprintf("%x", status.resp.Header.MemberId),
-			fmt.Sprint(status.resp.Version),
-			fmt.Sprint(humanize.Bytes(uint64(status.resp.DbSize))),
-			fmt.Sprint(status.resp.Leader == status.resp.Header.MemberId),
-			fmt.Sprint(status.resp.RaftTerm),
-			fmt.Sprint(status.resp.RaftIndex),
-		})
+	_, rows := makeEndpointStatusTable(statusList)
+	for _, row := range rows {
+		fmt.Println(strings.Join(row, ", "))
 	}
-
-	table.Render()
 }
 
 func (s *simplePrinter) DBStatus(ds dbstatus) {
+	_, rows := makeDBStatusTable(ds)
+	for _, row := range rows {
+		fmt.Println(strings.Join(row, ", "))
+	}
+}
+
+type tablePrinter struct{}
+
+func (tp *tablePrinter) Del(r v3.DeleteResponse) {
+	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
+}
+func (tp *tablePrinter) Get(r v3.GetResponse) {
+	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
+}
+func (tp *tablePrinter) Put(r v3.PutResponse) {
+	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
+}
+func (tp *tablePrinter) Txn(r v3.TxnResponse) {
+	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
+}
+func (tp *tablePrinter) Watch(r v3.WatchResponse) {
+	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
+}
+func (tp *tablePrinter) Alarm(r v3.AlarmResponse) {
+	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
+}
+func (tp *tablePrinter) MemberList(r v3.MemberListResponse) {
+	hdr, rows := makeMemberListTable(r)
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"hash", "revision", "total keys", "total size"})
-
-	table.Append([]string{
-		fmt.Sprintf("%x", ds.hash),
-		fmt.Sprint(ds.revision),
-		fmt.Sprint(ds.totalKey),
-		humanize.Bytes(uint64(ds.totalSize)),
-	})
-
+	table.SetHeader(hdr)
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.Render()
+}
+func (tp *tablePrinter) EndpointStatus(r []epStatus) {
+	hdr, rows := makeEndpointStatusTable(r)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.Render()
+}
+func (tp *tablePrinter) DBStatus(r dbstatus) {
+	hdr, rows := makeDBStatusTable(r)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
+	for _, row := range rows {
+		table.Append(row)
+	}
 	table.Render()
 }
 
 type jsonPrinter struct{}
 
-func (p *jsonPrinter) Del(r v3.DeleteResponse) { printJSON(r) }
-func (p *jsonPrinter) Get(r v3.GetResponse) {
-	for _, kv := range r.Kvs {
-		printJSON(kv)
-	}
-}
+func (p *jsonPrinter) Del(r v3.DeleteResponse)            { printJSON(r) }
+func (p *jsonPrinter) Get(r v3.GetResponse)               { printJSON(r) }
 func (p *jsonPrinter) Put(r v3.PutResponse)               { printJSON(r) }
 func (p *jsonPrinter) Txn(r v3.TxnResponse)               { printJSON(r) }
 func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }
@@ -219,15 +275,15 @@ func (p *pbPrinter) Alarm(r v3.AlarmResponse) {
 	printPB((*pb.AlarmResponse)(&r))
 }
 
-func (pb *pbPrinter) MemberList(r v3.MemberListResponse) {
+func (p *pbPrinter) MemberList(r v3.MemberListResponse) {
+	printPB((*pb.MemberListResponse)(&r))
+}
+
+func (p *pbPrinter) EndpointStatus(statusList []epStatus) {
 	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 
-func (pb *pbPrinter) EndpointStatus(statusList []epStatus) {
-	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
-}
-
-func (pb *pbPrinter) DBStatus(r dbstatus) {
+func (p *pbPrinter) DBStatus(r dbstatus) {
 	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 

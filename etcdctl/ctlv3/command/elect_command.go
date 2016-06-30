@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ var (
 func NewElectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elect <election-name> [proposal]",
-		Short: "elect observes and participates in leader election",
+		Short: "Observes and participates in leader election",
 		Run:   electCommandFunc,
 	}
 	cmd.Flags().BoolVarP(&electListen, "listen", "l", false, "observation mode")
@@ -128,5 +128,5 @@ func campaign(c *clientv3.Client, election string, prop string) error {
 		return errors.New("elect: session expired")
 	}
 
-	return e.Resign()
+	return e.Resign(context.TODO())
 }

@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ func getSameValue(vals map[string]int64) (int64, bool) {
 			rv = v
 		}
 		if rv != v {
-			return -1, false
+			return rv, false
 		}
 	}
 	return rv, true

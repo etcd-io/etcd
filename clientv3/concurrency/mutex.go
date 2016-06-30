@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package concurrency
 
 import (
+	"fmt"
 	"sync"
 
 	v3 "github.com/coreos/etcd/clientv3"
@@ -37,25 +38,39 @@ func NewMutex(client *v3.Client, pfx string) *Mutex {
 // Lock locks the mutex with a cancellable context. If the context is cancelled
 // while trying to acquire the lock, the mutex tries to clean its stale lock entry.
 func (m *Mutex) Lock(ctx context.Context) error {
-	s, err := NewSession(m.client)
+	s, serr := NewSession(m.client)
+	if serr != nil {
+		return serr
+	}
+
+	m.myKey = fmt.Sprintf("%s/%x", m.pfx, s.Lease())
+	cmp := v3.Compare(v3.CreateRevision(m.myKey), "=", 0)
+	// put self in lock waiters via myKey; oldest waiter holds lock
+	put := v3.OpPut(m.myKey, "", v3.WithLease(s.Lease()))
+	// reuse key in case this session already holds the lock
+	get := v3.OpGet(m.myKey)
+	resp, err := m.client.Txn(ctx).If(cmp).Then(put).Else(get).Commit()
 	if err != nil {
 		return err
 	}
-	// put self in lock waiters via myKey; oldest waiter holds lock
-	m.myKey, m.myRev, err = NewUniqueKey(ctx, m.client, m.pfx, v3.WithLease(s.Lease()))
+	m.myRev = resp.Header.Revision
+	if !resp.Succeeded {
+		m.myRev = resp.Responses[0].GetResponseRange().Kvs[0].CreateRevision
+	}
+
 	// wait for deletion revisions prior to myKey
 	err = waitDeletes(ctx, m.client, m.pfx, v3.WithPrefix(), v3.WithRev(m.myRev-1))
 	// release lock key if cancelled
 	select {
 	case <-ctx.Done():
-		m.Unlock()
+		m.Unlock(m.client.Ctx())
 	default:
 	}
 	return err
 }
 
-func (m *Mutex) Unlock() error {
-	if _, err := m.client.Delete(m.client.Ctx(), m.myKey); err != nil {
+func (m *Mutex) Unlock(ctx context.Context) error {
+	if _, err := m.client.Delete(ctx, m.myKey); err != nil {
 		return err
 	}
 	m.myKey = "\x00"
@@ -77,7 +92,7 @@ func (lm *lockerMutex) Lock() {
 	}
 }
 func (lm *lockerMutex) Unlock() {
-	if err := lm.Mutex.Unlock(); err != nil {
+	if err := lm.Mutex.Unlock(lm.client.Ctx()); err != nil {
 		panic(err)
 	}
 }

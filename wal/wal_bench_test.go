@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ func benchmarkWriteEntry(b *testing.B, size int, batch int) {
 		b.Fatalf("err = %v, want nil", err)
 	}
 	data := make([]byte, size)
-	for i := 0; i < len(data); i++ {
+	for i := 0; i < size; i++ {
 		data[i] = byte(i)
 	}
 	e := &raftpb.Entry{Data: data}

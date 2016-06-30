@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package command
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -22,17 +23,19 @@ import (
 	"io"
 	"os"
 	"path"
+	"reflect"
 	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"github.com/coreos/etcd/storage"
-	"github.com/coreos/etcd/storage/backend"
 	"github.com/coreos/etcd/wal"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -40,7 +43,7 @@ import (
 
 const (
 	defaultName                     = "default"
-	defaultInitialAdvertisePeerURLs = "http://localhost:2380,http://localhost:7001"
+	defaultInitialAdvertisePeerURLs = "http://localhost:2380"
 )
 
 var (
@@ -49,13 +52,14 @@ var (
 	restoreDataDir      string
 	restorePeerURLs     string
 	restoreName         string
+	skipHashCheck       bool
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
 func NewSnapshotCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "snapshot",
-		Short: "snapshot manages etcd node snapshots.",
+		Use:   "snapshot <subcommand>",
+		Short: "Manages etcd node snapshots",
 	}
 	cmd.AddCommand(NewSnapshotSaveCommand())
 	cmd.AddCommand(NewSnapshotRestoreCommand())
@@ -66,7 +70,7 @@ func NewSnapshotCommand() *cobra.Command {
 func NewSnapshotSaveCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "save <filename>",
-		Short: "save stores an etcd node backend snapshot to a given file.",
+		Short: "Stores an etcd node backend snapshot to a given file",
 		Run:   snapshotSaveCommandFunc,
 	}
 }
@@ -74,22 +78,26 @@ func NewSnapshotSaveCommand() *cobra.Command {
 func newSnapshotStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status <filename>",
-		Short: "status gets backend snapshot status of a given file.",
-		Run:   snapshotStatusCommandFunc,
+		Short: "Gets backend snapshot status of a given file",
+		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
+The items in the lists are hash, revision, total keys, total size.
+`,
+		Run: snapshotStatusCommandFunc,
 	}
 }
 
 func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restore <filename>",
-		Short: "restore an etcd member snapshot to an etcd directory",
+		Short: "Restores an etcd member snapshot to an etcd directory",
 		Run:   snapshotRestoreCommandFunc,
 	}
-	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the data directory.")
-	cmd.Flags().StringVar(&restoreCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for restore bootstrap.")
-	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap.")
-	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster.")
-	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member.")
+	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the data directory")
+	cmd.Flags().StringVar(&restoreCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for restore bootstrap")
+	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap")
+	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
+	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
+	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
 
 	return cmd
 }
@@ -121,12 +129,13 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitInterrupted, rerr)
 	}
 
-	f.Sync()
+	fileutil.Fsync(f)
 
 	if rerr := os.Rename(partpath, path); rerr != nil {
 		exiterr := fmt.Errorf("could not rename %s to %s (%v)", partpath, path, rerr)
 		ExitWithError(ExitIO, exiterr)
 	}
+	fmt.Printf("Snapshot saved at %s\n", path)
 }
 
 func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
@@ -134,6 +143,7 @@ func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 		err := fmt.Errorf("snapshot status requires exactly one argument")
 		ExitWithError(ExitBadArgs, err)
 	}
+	initDisplayFromCmd(cmd)
 	ds := dbStatus(args[0])
 	display.DBStatus(ds)
 }
@@ -185,12 +195,12 @@ func initialClusterFromName(name string) string {
 	if name == "" {
 		n = defaultName
 	}
-	return fmt.Sprintf("%s=http://localhost:2380,%s=http://localhost:7001", n, n)
+	return fmt.Sprintf("%s=http://localhost:2380", n)
 }
 
 // makeWAL creates a WAL for the initial cluster
 func makeWAL(waldir string, cl *membership.RaftCluster) {
-	if err := os.MkdirAll(waldir, 0755); err != nil {
+	if err := fileutil.CreateDirAll(waldir); err != nil {
 		ExitWithError(ExitIO, err)
 	}
 
@@ -255,30 +265,78 @@ func makeDB(snapdir, dbfile string) {
 	}
 	defer f.Close()
 
-	if err := os.MkdirAll(snapdir, 0755); err != nil {
+	// get snapshot integrity hash
+	if _, err := f.Seek(-sha256.Size, os.SEEK_END); err != nil {
+		ExitWithError(ExitIO, err)
+	}
+	sha := make([]byte, sha256.Size)
+	if _, err := f.Read(sha); err != nil {
+		ExitWithError(ExitIO, err)
+	}
+	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+		ExitWithError(ExitIO, err)
+	}
+
+	if err := fileutil.CreateDirAll(snapdir); err != nil {
 		ExitWithError(ExitIO, err)
 	}
 
 	dbpath := path.Join(snapdir, "db")
-	db, dberr := os.OpenFile(dbpath, os.O_WRONLY|os.O_CREATE, 0600)
+	db, dberr := os.OpenFile(dbpath, os.O_RDWR|os.O_CREATE, 0600)
 	if dberr != nil {
 		ExitWithError(ExitIO, dberr)
 	}
 	if _, err := io.Copy(db, f); err != nil {
 		ExitWithError(ExitIO, err)
 	}
+
+	// truncate away integrity hash, if any.
+	off, serr := db.Seek(0, os.SEEK_END)
+	if serr != nil {
+		ExitWithError(ExitIO, serr)
+	}
+	hasHash := (off % 512) == sha256.Size
+	if hasHash {
+		if err := db.Truncate(off - sha256.Size); err != nil {
+			ExitWithError(ExitIO, err)
+		}
+	}
+
+	if !hasHash && !skipHashCheck {
+		err := fmt.Errorf("snapshot missing hash but --skip-hash-check=false")
+		ExitWithError(ExitBadArgs, err)
+	}
+
+	if hasHash && !skipHashCheck {
+		// check for match
+		if _, err := db.Seek(0, os.SEEK_SET); err != nil {
+			ExitWithError(ExitIO, err)
+		}
+		h := sha256.New()
+		if _, err := io.Copy(h, db); err != nil {
+			ExitWithError(ExitIO, err)
+		}
+		dbsha := h.Sum(nil)
+		if !reflect.DeepEqual(sha, dbsha) {
+			err := fmt.Errorf("expected sha256 %v, got %v", sha, dbsha)
+			ExitWithError(ExitInvalidInput, err)
+		}
+	}
+
+	// db hash is OK, can now modify DB so it can be part of a new cluster
 	db.Close()
 
 	// update consistentIndex so applies go through on etcdserver despite
 	// having a new raft instance
 	be := backend.NewDefaultBackend(dbpath)
-	s := storage.NewStore(be, nil, &initIndex{})
+	s := mvcc.NewStore(be, nil, &initIndex{})
 	id := s.TxnBegin()
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {
 		_, _, err := s.TxnDeleteRange(id, k, nil)
 		return err
 	}
+
 	// delete stored members from old cluster since using new members
 	btx.UnsafeForEach([]byte("members"), del)
 	btx.UnsafeForEach([]byte("members_removed"), del)
@@ -289,24 +347,29 @@ func makeDB(snapdir, dbfile string) {
 }
 
 type dbstatus struct {
-	hash      uint32
-	revision  int64
-	totalKey  int
-	totalSize int64
+	Hash      uint32 `json:"hash"`
+	Revision  int64  `json:"revision"`
+	TotalKey  int    `json:"totalKey"`
+	TotalSize int64  `json:"totalSize"`
 }
 
 func dbStatus(p string) dbstatus {
+	if _, err := os.Stat(p); err != nil {
+		ExitWithError(ExitError, err)
+	}
+
 	ds := dbstatus{}
 
-	db, err := bolt.Open(p, 0600, nil)
+	db, err := bolt.Open(p, 0400, nil)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+	defer db.Close()
 
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 
 	err = db.View(func(tx *bolt.Tx) error {
-		ds.totalSize = tx.Size()
+		ds.TotalSize = tx.Size()
 		c := tx.Cursor()
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
@@ -320,9 +383,9 @@ func dbStatus(p string) dbstatus {
 				h.Write(v)
 				if iskeyb {
 					rev := bytesToRev(k)
-					ds.revision = rev.main
+					ds.Revision = rev.main
 				}
-				ds.totalKey++
+				ds.TotalKey++
 				return nil
 			})
 		}
@@ -333,7 +396,7 @@ func dbStatus(p string) dbstatus {
 		ExitWithError(ExitError, err)
 	}
 
-	ds.hash = h.Sum32()
+	ds.Hash = h.Sum32()
 	return ds
 }
 

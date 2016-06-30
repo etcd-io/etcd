@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Key is a key/revision pair created by the client and stored on etcd
+// RemoteKV is a key/revision pair created by the client and stored on etcd
 type RemoteKV struct {
 	kv  v3.KV
 	key string

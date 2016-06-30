@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,11 +26,11 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-agent")
 
 func main() {
 	etcdPath := flag.String("etcd-path", filepath.Join(os.Getenv("GOPATH"), "bin/etcd"), "the path to etcd binary")
-	etcdLogPath := flag.String("etcd-log-path", "etcd.log", "the path to etcd log")
+	etcdLogDir := flag.String("etcd-log-dir", "etcd-log", "directory to store etcd logs")
 	port := flag.String("port", ":9027", "port to serve agent server")
 	flag.Parse()
 
-	a, err := newAgent(*etcdPath, *etcdLogPath)
+	a, err := newAgent(*etcdPath, *etcdLogDir)
 	if err != nil {
 		plog.Fatal(err)
 	}

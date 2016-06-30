@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,11 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"sort"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/storage/backend"
+	"github.com/coreos/etcd/mvcc/backend"
 )
 
 // TestLessorGrant ensures Lessor can grant wanted lease.
@@ -96,7 +97,7 @@ func TestLessorRevoke(t *testing.T) {
 		{"bar"},
 	}
 
-	if err := le.Attach(l.ID, items); err != nil {
+	if err = le.Attach(l.ID, items); err != nil {
 		t.Fatalf("failed to attach items to the lease: %v", err)
 	}
 
@@ -108,7 +109,8 @@ func TestLessorRevoke(t *testing.T) {
 		t.Errorf("got revoked lease %x", l.ID)
 	}
 
-	wdeleted := []string{"foo_", "bar_"}
+	wdeleted := []string{"bar_", "foo_"}
+	sort.Sort(sort.StringSlice(fd.deleted))
 	if !reflect.DeepEqual(fd.deleted, wdeleted) {
 		t.Errorf("deleted= %v, want %v", fd.deleted, wdeleted)
 	}

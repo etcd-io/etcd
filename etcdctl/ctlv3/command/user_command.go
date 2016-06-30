@@ -1,4 +1,4 @@
-// Copyright 2016 Nippon Telegraph and Telephone Corporation.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,17 +23,24 @@ import (
 	"golang.org/x/net/context"
 )
 
+var (
+	userShowDetail bool
+)
+
 // NewUserCommand returns the cobra command for "user".
 func NewUserCommand() *cobra.Command {
 	ac := &cobra.Command{
 		Use:   "user <subcommand>",
-		Short: "user related command",
+		Short: "User related commands",
 	}
 
 	ac.AddCommand(newUserAddCommand())
 	ac.AddCommand(newUserDeleteCommand())
+	ac.AddCommand(newUserGetCommand())
+	ac.AddCommand(newUserListCommand())
 	ac.AddCommand(newUserChangePasswordCommand())
-	ac.AddCommand(newUserGrantCommand())
+	ac.AddCommand(newUserGrantRoleCommand())
+	ac.AddCommand(newUserRevokeRoleCommand())
 
 	return ac
 }
@@ -45,11 +52,11 @@ var (
 func newUserAddCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "add <user name>",
-		Short: "add a new user",
+		Short: "Adds a new user",
 		Run:   userAddCommandFunc,
 	}
 
-	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "read password from stdin instead of interactive terminal")
+	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "Read password from stdin instead of interactive terminal")
 
 	return &cmd
 }
@@ -57,28 +64,56 @@ func newUserAddCommand() *cobra.Command {
 func newUserDeleteCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <user name>",
-		Short: "delete a user",
+		Short: "Deletes a user",
 		Run:   userDeleteCommandFunc,
+	}
+}
+
+func newUserGetCommand() *cobra.Command {
+	cmd := cobra.Command{
+		Use:   "get <user name>",
+		Short: "Gets detailed information of a user",
+		Run:   userGetCommandFunc,
+	}
+
+	cmd.Flags().BoolVar(&userShowDetail, "detail", false, "Show permissions of roles granted to the user")
+
+	return &cmd
+}
+
+func newUserListCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "Lists all users",
+		Run:   userListCommandFunc,
 	}
 }
 
 func newUserChangePasswordCommand() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "passwd <user name>",
-		Short: "change password of user",
+		Short: "Changes password of user",
 		Run:   userChangePasswordCommandFunc,
 	}
 
-	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "read password from stdin instead of interactive terminal")
+	cmd.Flags().BoolVar(&passwordInteractive, "interactive", true, "If true, read password from stdin instead of interactive terminal")
 
 	return &cmd
 }
 
-func newUserGrantCommand() *cobra.Command {
+func newUserGrantRoleCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "grant <user name> <role name>",
-		Short: "grant a role to a user",
-		Run:   userGrantCommandFunc,
+		Use:   "grant-role <user name> <role name>",
+		Short: "Grants a role to a user",
+		Run:   userGrantRoleCommandFunc,
+	}
+}
+
+func newUserRevokeRoleCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "revoke-role <user name> <role name>",
+		Short: "Revokes a role from a user",
+		Run:   userRevokeRoleCommandFunc,
 	}
 }
 
@@ -118,6 +153,55 @@ func userDeleteCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Printf("User %s deleted\n", args[0])
 }
 
+// userGetCommandFunc executes the "user get" command.
+func userGetCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user get command requires user name as its argument."))
+	}
+
+	name := args[0]
+	client := mustClientFromCmd(cmd)
+	resp, err := client.Auth.UserGet(context.TODO(), name)
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Printf("User: %s\n", name)
+	if !userShowDetail {
+		fmt.Printf("Roles:")
+		for _, role := range resp.Roles {
+			fmt.Printf(" %s", role)
+		}
+		fmt.Printf("\n")
+	} else {
+		for _, role := range resp.Roles {
+			fmt.Printf("\n")
+			roleResp, err := client.Auth.RoleGet(context.TODO(), role)
+			if err != nil {
+				ExitWithError(ExitError, err)
+			}
+
+			printRolePermissions(role, roleResp)
+		}
+	}
+}
+
+// userListCommandFunc executes the "user list" command.
+func userListCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user list command requires no arguments."))
+	}
+
+	resp, err := mustClientFromCmd(cmd).Auth.UserList(context.TODO())
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	for _, user := range resp.Users {
+		fmt.Printf("%s\n", user)
+	}
+}
+
 // userChangePasswordCommandFunc executes the "user passwd" command.
 func userChangePasswordCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
@@ -140,18 +224,32 @@ func userChangePasswordCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Println("Password updated")
 }
 
-// userGrantCommandFunc executes the "user grant" command.
-func userGrantCommandFunc(cmd *cobra.Command, args []string) {
+// userGrantRoleCommandFunc executes the "user grant-role" command.
+func userGrantRoleCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("user grant command requires user name and role name as its argument."))
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.UserGrant(context.TODO(), args[0], args[1])
+	_, err := mustClientFromCmd(cmd).Auth.UserGrantRole(context.TODO(), args[0], args[1])
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
 	fmt.Printf("Role %s is granted to user %s\n", args[1], args[0])
+}
+
+// userRevokeRoleCommandFunc executes the "user revoke-role" command.
+func userRevokeRoleCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 2 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("user revoke-role requires user name and role name as its argument."))
+	}
+
+	_, err := mustClientFromCmd(cmd).Auth.UserRevokeRole(context.TODO(), args[0], args[1])
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+
+	fmt.Printf("Role %s is revoked from user %s\n", args[1], args[0])
 }
 
 func readPasswordInteractive(name string) string {

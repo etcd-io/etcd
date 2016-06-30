@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,6 +60,12 @@ type Ready struct {
 	// HardState will be equal to empty state if there is no update.
 	pb.HardState
 
+	// ReadState can be used for node to serve linearizable read requests locally
+	// when its applied index is greater than the index in ReadState.
+	// Note that the readState will be returned when raft receives msgReadIndex.
+	// The returned is only valid for the request that requested to read.
+	ReadState
+
 	// Entries specifies entries to be saved to stable storage BEFORE
 	// Messages are sent.
 	Entries []pb.Entry
@@ -96,7 +102,7 @@ func IsEmptySnap(sp pb.Snapshot) bool {
 func (rd Ready) containsUpdates() bool {
 	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) ||
 		!IsEmptySnap(rd.Snapshot) || len(rd.Entries) > 0 ||
-		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0
+		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0 || rd.Index != None
 }
 
 // Node represents a node in a raft cluster.
@@ -200,6 +206,7 @@ func StartNode(c *Config, peers []Peer) Node {
 	}
 
 	n := newNode()
+	n.logger = c.Logger
 	go n.run(r)
 	return &n
 }
@@ -212,6 +219,7 @@ func RestartNode(c *Config) Node {
 	r := newRaft(c)
 
 	n := newNode()
+	n.logger = c.Logger
 	go n.run(r)
 	return &n
 }
@@ -228,6 +236,8 @@ type node struct {
 	done       chan struct{}
 	stop       chan struct{}
 	status     chan chan Status
+
+	logger Logger
 }
 
 func newNode() node {
@@ -238,10 +248,13 @@ func newNode() node {
 		confstatec: make(chan pb.ConfState),
 		readyc:     make(chan Ready),
 		advancec:   make(chan struct{}),
-		tickc:      make(chan struct{}),
-		done:       make(chan struct{}),
-		stop:       make(chan struct{}),
-		status:     make(chan chan Status),
+		// make tickc a buffered chan, so raft node can buffer some ticks when the node
+		// is busy processing raft messages. Raft node will resume process buffered
+		// ticks when it becomes idle.
+		tickc:  make(chan struct{}, 128),
+		done:   make(chan struct{}),
+		stop:   make(chan struct{}),
+		status: make(chan chan Status),
 	}
 }
 
@@ -325,7 +338,7 @@ func (n *node) run(r *raft) {
 				// block incoming proposal when local node is
 				// removed
 				if cc.NodeID == r.id {
-					n.propc = nil
+					propc = nil
 				}
 				r.removeNode(cc.NodeID)
 			case pb.ConfChangeUpdateNode:
@@ -354,7 +367,10 @@ func (n *node) run(r *raft) {
 			if !IsEmptySnap(rd.Snapshot) {
 				prevSnapi = rd.Snapshot.Metadata.Index
 			}
+
 			r.msgs = nil
+			r.readState.Index = None
+			r.readState.RequestCtx = nil
 			advancec = n.advancec
 		case <-advancec:
 			if prevHardSt.Commit != 0 {
@@ -381,6 +397,8 @@ func (n *node) Tick() {
 	select {
 	case n.tickc <- struct{}{}:
 	case <-n.done:
+	default:
+		n.logger.Warningf("A tick missed to fire. Node blocks too long!")
 	}
 }
 
@@ -469,6 +487,10 @@ func (n *node) ReportSnapshot(id uint64, status SnapshotStatus) {
 	}
 }
 
+func (n *node) ReadIndex(ctx context.Context, id uint64, rctx []byte) error {
+	return n.step(ctx, pb.Message{Type: pb.MsgReadIndex, From: id, Entries: []pb.Entry{{Data: rctx}}})
+}
+
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEntries(),
@@ -483,6 +505,13 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	}
 	if r.raftLog.unstable.snapshot != nil {
 		rd.Snapshot = *r.raftLog.unstable.snapshot
+	}
+	if r.readState.Index != None {
+		c := make([]byte, len(r.readState.RequestCtx))
+		copy(c, r.readState.RequestCtx)
+
+		rd.Index = r.readState.Index
+		rd.RequestCtx = c
 	}
 	return rd
 }

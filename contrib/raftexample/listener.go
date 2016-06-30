@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,9 +42,9 @@ func (ln stoppableListener) Accept() (c net.Conn, err error) {
 		tc, err := ln.AcceptTCP()
 		if err != nil {
 			errc <- err
-		} else {
-			connc <- tc
+			return
 		}
+		connc <- tc
 	}()
 	select {
 	case <-ln.stopc:

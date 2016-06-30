@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -167,9 +167,9 @@ func (pr *Progress) isPaused() bool {
 
 func (pr *Progress) snapshotFailure() { pr.PendingSnapshot = 0 }
 
-// maybeSnapshotAbort unsets pendingSnapshot if Match is equal or higher than
-// the pendingSnapshot
-func (pr *Progress) maybeSnapshotAbort() bool {
+// needSnapshotAbort returns true if snapshot progress's Match
+// is equal or higher than the pendingSnapshot.
+func (pr *Progress) needSnapshotAbort() bool {
 	return pr.State == ProgressStateSnapshot && pr.Match >= pr.PendingSnapshot
 }
 

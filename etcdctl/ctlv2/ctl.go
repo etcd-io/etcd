@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,18 +16,23 @@
 package ctlv2
 
 import (
+	"fmt"
 	"os"
 	"time"
 
-	"github.com/codegangsta/cli"
 	"github.com/coreos/etcd/etcdctl/ctlv2/command"
 	"github.com/coreos/etcd/version"
+	"github.com/urfave/cli"
 )
 
 func Start() {
 	app := cli.NewApp()
 	app.Name = "etcdctl"
 	app.Version = version.Version
+	cli.VersionPrinter = func(c *cli.Context) {
+		fmt.Fprintf(c.App.Writer, "etcdctl version: %v\n", c.App.Version)
+		fmt.Fprintln(c.App.Writer, "API version: 2")
+	}
 	app.Usage = "A simple command line client for etcd."
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{Name: "debug", Usage: "output cURL commands which can be used to reproduce the request"},
@@ -66,5 +71,9 @@ func Start() {
 		command.NewAuthCommands(),
 	}
 
-	app.Run(os.Args)
+	err := app.Run(os.Args)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

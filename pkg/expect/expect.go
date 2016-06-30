@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,6 +112,11 @@ func (ep *ExpectProcess) LineCount() int {
 
 // Stop kills the expect process and waits for it to exit.
 func (ep *ExpectProcess) Stop() error { return ep.close(true) }
+
+// Signal sends a signal to the expect process
+func (ep *ExpectProcess) Signal(sig os.Signal) error {
+	return ep.cmd.Process.Signal(sig)
+}
 
 // Close waits for the expect process to exit.
 func (ep *ExpectProcess) Close() error { return ep.close(false) }

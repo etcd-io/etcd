@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ var (
 func NewDelCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "del [options] <key> [range_end]",
-		Short: "Removes the specified key or range of keys [key, range_end).",
+		Short: "Removes the specified key or range of keys [key, range_end)",
 		Run:   delCommandFunc,
 	}
 

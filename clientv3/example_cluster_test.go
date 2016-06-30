@@ -1,4 +1,4 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,25 +37,7 @@ func ExampleCluster_memberList() {
 		log.Fatal(err)
 	}
 	fmt.Println("members:", len(resp.Members))
-	// members: 3
-}
-
-func ExampleCluster_memberLeader() {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   endpoints,
-		DialTimeout: dialTimeout,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
-
-	resp, err := cli.MemberLeader(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("leader:", resp.Name)
-	// leader: infra1
+	// Output: members: 3
 }
 
 func ExampleCluster_memberAdd() {

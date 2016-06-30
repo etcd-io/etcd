@@ -1,4 +1,4 @@
-// Copyright 2015 CoreOS, Inc.
+// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"math/rand"
 	"net"
 	"net/http"
@@ -25,14 +23,17 @@ import (
 	"time"
 
 	clientV2 "github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/transport"
 )
 
 func init() {
-	grpclog.SetLogger(log.New(ioutil.Discard, "", 0))
+	grpclog.SetLogger(plog)
 }
 
 type Stresser interface {
@@ -61,7 +62,8 @@ type stresser struct {
 }
 
 func (s *stresser) Stress() error {
-	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	// TODO: add backoff option
+	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, s.Endpoint)
 	}
@@ -93,13 +95,42 @@ func (s *stresser) Stress() error {
 				})
 				putcancel()
 				if err != nil {
-					if grpc.ErrorDesc(err) == context.DeadlineExceeded.Error() {
+					shouldContinue := false
+					switch grpc.ErrorDesc(err) {
+					case context.DeadlineExceeded.Error():
 						// This retries when request is triggered at the same time as
 						// leader failure. When we terminate the leader, the request to
 						// that leader cannot be processed, and times out. Also requests
 						// to followers cannot be forwarded to the old leader, so timing out
 						// as well. We want to keep stressing until the cluster elects a
 						// new leader and start processing requests again.
+						shouldContinue = true
+
+					case etcdserver.ErrTimeoutDueToLeaderFail.Error(), etcdserver.ErrTimeout.Error():
+						// This retries when request is triggered at the same time as
+						// leader failure and follower nodes receive time out errors
+						// from losing their leader. Followers should retry to connect
+						// to the new leader.
+						shouldContinue = true
+
+					case etcdserver.ErrStopped.Error():
+						// one of the etcd nodes stopped from failure injection
+						shouldContinue = true
+
+					case transport.ErrConnClosing.Desc:
+						// server closed the transport (failure injected node)
+						shouldContinue = true
+
+					case rpctypes.ErrNotCapable.Error():
+						// capability check has not been done (in the beginning)
+						shouldContinue = true
+
+						// default:
+						// errors from stresser.Cancel method:
+						// rpc error: code = 1 desc = context canceled (type grpc.rpcError)
+						// rpc error: code = 2 desc = grpc: the client connection is closing (type grpc.rpcError)
+					}
+					if shouldContinue {
 						continue
 					}
 					return
@@ -138,8 +169,6 @@ type stresserV2 struct {
 	KeySuffixRange int
 
 	N int
-	// TODO: not implemented
-	Interval time.Duration
 
 	mu      sync.Mutex
 	failure int
