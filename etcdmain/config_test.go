@@ -242,7 +242,7 @@ func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 func TestConfigFileConflictClusteringFlags(t *testing.T) {
 	tests := []struct {
 		InitialCluster string `json:"initial-cluster"`
-		DnsCluster     string `json:"discovery-srv"`
+		DNSCluster     string `json:"discovery-srv"`
 		Durl           string `json:"discovery"`
 	}{
 		{
@@ -250,17 +250,17 @@ func TestConfigFileConflictClusteringFlags(t *testing.T) {
 			Durl:           "http://example.com/abc",
 		},
 		{
-			DnsCluster: "example.com",
+			DNSCluster: "example.com",
 			Durl:       "http://example.com/abc",
 		},
 		{
 			InitialCluster: "0=localhost:8000",
-			DnsCluster:     "example.com",
+			DNSCluster:     "example.com",
 		},
 		{
 			InitialCluster: "0=localhost:8000",
 			Durl:           "http://example.com/abc",
-			DnsCluster:     "example.com",
+			DNSCluster:     "example.com",
 		},
 	}
 
