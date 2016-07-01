@@ -14,9 +14,7 @@
 
 package clientv3
 
-import (
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-)
+import pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
 type opType int
 
@@ -47,6 +45,9 @@ type Op struct {
 	// for range, watch
 	rev int64
 
+	// for delete
+	preserveKVs bool
+
 	// progressNotify is for progress updates.
 	progressNotify bool
 
@@ -76,7 +77,8 @@ func (op Op) toRequestOp() *pb.RequestOp {
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID)}
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: r}}
 	case tDeleteRange:
-		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
+		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end, PreserveKVs: op.preserveKVs}
+
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic("Unknown Op")
@@ -128,7 +130,9 @@ func OpPut(key, val string, opts ...OpOption) Op {
 	case ret.serializable:
 		panic("unexpected serializable in put")
 	case ret.countOnly:
-		panic("unexpected countOnly in delete")
+		panic("unexpected countOnly in put")
+	case ret.preserveKVs:
+		panic("unexpected preserveKVs in put")
 	}
 	return ret
 }
@@ -146,7 +150,9 @@ func opWatch(key string, opts ...OpOption) Op {
 	case ret.serializable:
 		panic("unexpected serializable in watch")
 	case ret.countOnly:
-		panic("unexpected countOnly in delete")
+		panic("unexpected countOnly in watch")
+	case ret.preserveKVs:
+		panic("unexpected preserveKVs in watch")
 	}
 	return ret
 }
@@ -256,6 +262,11 @@ func WithLastRev() []OpOption { return withTop(SortByModRevision, SortDescend) }
 // withTop gets the first key over the get's prefix given a sort order
 func withTop(target SortTarget, order SortOrder) []OpOption {
 	return []OpOption{WithPrefix(), WithSort(target, order), WithLimit(1)}
+}
+
+// WithPreserveKVs preserves the deleted KVs for attaching in responses.
+func WithPreserveKVs() OpOption {
+	return func(op *Op) { op.preserveKVs = true }
 }
 
 // WithProgressNotify makes watch server send periodic progress updates.

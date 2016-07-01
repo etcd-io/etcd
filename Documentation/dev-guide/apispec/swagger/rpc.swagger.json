@@ -671,6 +671,11 @@
           "format": "byte",
           "description": "key is the first key to delete in the range."
         },
+        "preserveKVs": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If preserveKVs is set, the deleted KVs will be preserved.\nThe preserved KVs will be returned as response.\nIt requires read permission to read the deleted KVs."
+        },
         "range_end": {
           "type": "string",
           "format": "byte",
@@ -681,6 +686,13 @@
     "etcdserverpbDeleteRangeResponse": {
       "type": "object",
       "properties": {
+        "KVs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/mvccpbKeyValue"
+          },
+          "description": "if preserveKVs is set in the request, the deleted KVs will be returned."
+        },
         "deleted": {
           "type": "string",
           "format": "int64",
