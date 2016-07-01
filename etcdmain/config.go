@@ -104,7 +104,7 @@ type config struct {
 	// clustering
 	apurls, acurls      []url.URL
 	clusterState        *flags.StringsFlag
-	DnsCluster          string `json:"discovery-srv"`
+	DNSCluster          string `json:"discovery-srv"`
 	Dproxy              string `json:"discovery-proxy"`
 	Durl                string `json:"discovery"`
 	fallback            *flags.StringsFlag
@@ -210,7 +210,7 @@ func NewConfig() *config {
 		plog.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
 	}
 	fs.StringVar(&cfg.Dproxy, "discovery-proxy", "", "HTTP proxy to use for traffic to discovery service.")
-	fs.StringVar(&cfg.DnsCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster.")
+	fs.StringVar(&cfg.DNSCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster.")
 	fs.StringVar(&cfg.InitialCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for bootstrapping.")
 	fs.StringVar(&cfg.InitialClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during bootstrap.")
 	fs.Var(cfg.clusterState, "initial-cluster-state", "Initial cluster state ('new' or 'existing').")
@@ -401,7 +401,7 @@ func (cfg *config) configFromFile() error {
 		"listen-client-urls":    (cfg.LCUrlsCfgFile != ""),
 		"advertise-client-urls": (cfg.AcurlsCfgFile != ""),
 		"initial-cluster":       (cfg.InitialCluster != ""),
-		"discovery-srv":         (cfg.DnsCluster != ""),
+		"discovery-srv":         (cfg.DNSCluster != ""),
 	}
 
 	return cfg.validateConfig(func(field string) bool {
@@ -424,7 +424,7 @@ func (cfg *config) validateConfig(isSet func(field string) bool) error {
 	nSet := 0
 	for _, v := range []bool{isSet("discovery"), isSet("initial-cluster"), isSet("discovery-srv")} {
 		if v {
-			nSet += 1
+			nSet++
 		}
 	}
 
