@@ -70,6 +70,10 @@ func (aa *authApplierV3) DeleteRange(txnID int64, r *pb.DeleteRangeRequest) (*pb
 	if !aa.as.IsDeleteRangePermitted(aa.user, r.Key, r.RangeEnd) {
 		return nil, auth.ErrPermissionDenied
 	}
+	if r.PreserveKVs && !aa.as.IsRangePermitted(aa.user, r.Key, r.RangeEnd) {
+		return nil, auth.ErrPermissionDenied
+	}
+
 	return aa.applierV3.DeleteRange(txnID, r)
 }
 
@@ -97,6 +101,10 @@ func (aa *authApplierV3) checkTxnReqsPermission(reqs []*pb.RequestOp) bool {
 		case *pb.RequestOp_RequestDeleteRange:
 			if tv.RequestDeleteRange == nil {
 				continue
+			}
+
+			if tv.RequestDeleteRange.PreserveKVs && !aa.as.IsRangePermitted(aa.user, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd) {
+				return false
 			}
 
 			if !aa.as.IsDeleteRangePermitted(aa.user, tv.RequestDeleteRange.Key, tv.RequestDeleteRange.RangeEnd) {

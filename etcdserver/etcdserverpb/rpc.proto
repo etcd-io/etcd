@@ -404,12 +404,19 @@ message DeleteRangeRequest {
   // If range_end is not given, the range is defined to contain only the key argument.
   // If range_end is '\0', the range is all keys greater than or equal to the key argument.
   bytes range_end = 2;
+
+  // If preserveKVs is set, the deleted KVs will be preserved for delete events
+  // The preserved KVs will be returned as response.
+  // It requires read permission to read the deleted KVs.
+  bool preserveKVs = 3;
 }
 
 message DeleteRangeResponse {
   ResponseHeader header = 1;
   // deleted is the number of keys deleted by the delete range request.
   int64 deleted = 2;
+  // if preserveKVs is set in the request, the deleted KVs will be returned.
+  repeated mvccpb.KeyValue KVs = 3;
 }
 
 message RequestOp {
