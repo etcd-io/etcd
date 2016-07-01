@@ -320,7 +320,6 @@ func (l *raftLog) slice(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 	if hi > l.unstable.offset {
 		unstable := l.unstable.slice(max(lo, l.unstable.offset), hi)
 		if len(ents) > 0 {
-			ents = append([]pb.Entry{}, ents...)
 			ents = append(ents, unstable...)
 		} else {
 			ents = unstable
@@ -340,7 +339,7 @@ func (l *raftLog) mustCheckOutOfBounds(lo, hi uint64) error {
 	}
 
 	length := l.lastIndex() - fi + 1
-	if lo < fi || hi > fi+length {
+	if hi > fi+length {
 		l.logger.Panicf("slice[%d,%d) out of bound [%d,%d]", lo, hi, fi, l.lastIndex())
 	}
 	return nil
