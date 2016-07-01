@@ -141,10 +141,7 @@ func (c *Client) dialTarget(endpoint string) (proto string, host string, creds *
 // dialSetupOpts gives the dial opts prior to any authentication
 func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts []grpc.DialOption) {
 	if c.cfg.DialTimeout > 0 {
-		opts = []grpc.DialOption{
-			grpc.WithTimeout(c.cfg.DialTimeout),
-			grpc.WithBlock(),
-		}
+		opts = []grpc.DialOption{grpc.WithTimeout(c.cfg.DialTimeout)}
 	}
 	opts = append(opts, dopts...)
 
@@ -249,6 +246,23 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 	client.conn = conn
 
+	// wait for a connection
+	if cfg.DialTimeout > 0 {
+		hasConn := false
+		waitc := time.After(cfg.DialTimeout)
+		select {
+		case <-client.balancer.readyc:
+			hasConn = true
+		case <-ctx.Done():
+		case <-waitc:
+		}
+		if !hasConn {
+			client.cancel()
+			conn.Close()
+			return nil, grpc.ErrClientConnTimeout
+		}
+	}
+
 	client.Cluster = NewCluster(client)
 	client.KV = NewKV(client)
 	client.Lease = NewLease(client)
@@ -291,9 +305,12 @@ func toErr(ctx context.Context, err error) error {
 		return nil
 	}
 	err = rpctypes.Error(err)
-	if ctx.Err() != nil && strings.Contains(err.Error(), "context") {
+	switch {
+	case ctx.Err() != nil && strings.Contains(err.Error(), "context"):
 		err = ctx.Err()
-	} else if strings.Contains(err.Error(), grpc.ErrClientConnClosing.Error()) {
+	case strings.Contains(err.Error(), ErrNoAvailableEndpoints.Error()):
+		err = ErrNoAvailableEndpoints
+	case strings.Contains(err.Error(), grpc.ErrClientConnClosing.Error()):
 		err = grpc.ErrClientConnClosing
 	}
 	return err

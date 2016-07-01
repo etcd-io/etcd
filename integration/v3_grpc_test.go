@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -960,7 +961,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	client, err := NewClientV3(clus.Members[0])
 	if client != nil || err == nil {
 		t.Fatalf("expected no client")
-	} else if err != grpc.ErrClientConnTimeout {
+	} else if err != clientv3.ErrNoAvailableEndpoints {
 		t.Fatalf("unexpected error (%v)", err)
 	}
 }
