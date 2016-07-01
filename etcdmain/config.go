@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -30,7 +29,6 @@ import (
 	"github.com/coreos/etcd/pkg/flags"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/version"
 	"github.com/ghodss/yaml"
 )
 
@@ -279,15 +277,14 @@ func (cfg *config) Parse(arguments []string) error {
 		os.Exit(2)
 	}
 	if len(cfg.FlagSet.Args()) != 0 {
+		if cfg.FlagSet.Arg(0) == "version" {
+			printVersion()
+		}
 		return fmt.Errorf("'%s' is not a valid flag", cfg.FlagSet.Arg(0))
 	}
 
 	if cfg.printVersion {
-		fmt.Printf("etcd Version: %s\n", version.Version)
-		fmt.Printf("Git SHA: %s\n", version.GitSHA)
-		fmt.Printf("Go Version: %s\n", runtime.Version())
-		fmt.Printf("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-		os.Exit(0)
+		printVersion()
 	}
 
 	var err error
