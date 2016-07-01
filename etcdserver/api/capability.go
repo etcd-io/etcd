@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/version"
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/pkg/capnslog"
 )
@@ -71,7 +72,7 @@ func runCapabilityLoop(s *etcdserver.EtcdServer) {
 				enableMapMu.Lock()
 				enabledMap = capabilityMaps[pv.String()]
 				enableMapMu.Unlock()
-				plog.Infof("enabled capabilities for version %s", pv)
+				plog.Infof("enabled capabilities for version %s", version.Cluster(pv.String()))
 			}
 		}
 
