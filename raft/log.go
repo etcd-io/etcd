@@ -340,7 +340,7 @@ func (l *raftLog) mustCheckOutOfBounds(lo, hi uint64) error {
 	}
 
 	length := l.lastIndex() - fi + 1
-	if lo < fi || hi > fi+length {
+	if hi > fi+length {
 		l.logger.Panicf("slice[%d,%d) out of bound [%d,%d]", lo, hi, fi, l.lastIndex())
 	}
 	return nil
