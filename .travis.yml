@@ -4,7 +4,6 @@ go_import_path: github.com/coreos/etcd
 sudo: false
 
 go:
-  - 1.5
   - 1.6
   - tip
 
@@ -22,10 +21,6 @@ matrix:
   allow_failures:
     - go: tip
   exclude:
-  - go: 1.5
-    env: TARGET=arm
-  - go: 1.5
-    env: TARGET=ppc64le
   - go: 1.6
     env: TARGET=arm64
   - go: tip
