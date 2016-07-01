@@ -357,7 +357,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		cl.SetStore(st)
 		cl.SetBackend(be)
 		cl.Recover()
-		if cl.Version() != nil && cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
+		if cl.Version() != nil && !cl.Version().LessThan(semver.Version{Major: 3}) && !beExist {
 			os.RemoveAll(bepath)
 			return nil, fmt.Errorf("database file (%v) of the backend is missing", bepath)
 		}
