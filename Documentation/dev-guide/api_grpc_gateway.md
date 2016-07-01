@@ -25,7 +25,7 @@ curl -L http://localhost:2379/v3alpha/kv/range \
 
 ## Swagger
 
-Generated [Swapper][swagger] API definitions can be found at [rpc.swagger.json][swagger-doc].
+Generated [Swagger][swagger] API definitions can be found at [rpc.swagger.json][swagger-doc].
 
 [api-ref]: ./api_reference_v3.md
 [go-client]: https://github.com/coreos/etcd/tree/master/clientv3
