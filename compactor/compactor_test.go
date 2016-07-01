@@ -27,11 +27,12 @@ import (
 
 func TestPeriodic(t *testing.T) {
 	fc := clockwork.NewFakeClock()
+	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
 	tb := &Periodic{
 		clock:        fc,
 		periodInHour: 1,
-		rg:           &fakeRevGetter{},
+		rg:           rg,
 		c:            compactable,
 	}
 
@@ -41,7 +42,7 @@ func TestPeriodic(t *testing.T) {
 	n := int(time.Hour / checkCompactionInterval)
 	for i := 0; i < 3; i++ {
 		for j := 0; j < n; j++ {
-			time.Sleep(5 * time.Millisecond)
+			rg.Wait(1)
 			fc.Advance(checkCompactionInterval)
 		}
 
@@ -58,10 +59,11 @@ func TestPeriodic(t *testing.T) {
 func TestPeriodicPause(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	compactable := &fakeCompactable{testutil.NewRecorderStream()}
+	rg := &fakeRevGetter{testutil.NewRecorderStream(), 0}
 	tb := &Periodic{
 		clock:        fc,
 		periodInHour: 1,
-		rg:           &fakeRevGetter{},
+		rg:           rg,
 		c:            compactable,
 	}
 
@@ -70,7 +72,7 @@ func TestPeriodicPause(t *testing.T) {
 
 	n := int(time.Hour / checkCompactionInterval)
 	for i := 0; i < 3*n; i++ {
-		time.Sleep(5 * time.Millisecond)
+		rg.Wait(1)
 		fc.Advance(checkCompactionInterval)
 	}
 
@@ -81,6 +83,7 @@ func TestPeriodicPause(t *testing.T) {
 	}
 
 	tb.Resume()
+	rg.Wait(1)
 	fc.Advance(checkCompactionInterval)
 
 	a, err := compactable.Wait(1)
@@ -102,10 +105,12 @@ func (fc *fakeCompactable) Compact(ctx context.Context, r *pb.CompactionRequest)
 }
 
 type fakeRevGetter struct {
+	testutil.Recorder
 	rev int64
 }
 
 func (fr *fakeRevGetter) Rev() int64 {
+	fr.Record(testutil.Action{Name: "g"})
 	fr.rev++
 	return fr.rev
 }
