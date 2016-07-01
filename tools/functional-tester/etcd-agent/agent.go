@@ -68,6 +68,7 @@ func newAgent(etcd, logDir string) (*Agent, error) {
 // start starts a new etcd process with the given args.
 func (a *Agent) start(args ...string) error {
 	a.cmd = exec.Command(a.cmd.Path, args...)
+	a.cmd.Env = []string{"GOFAIL_HTTP=:2381"}
 	a.cmd.Stdout = a.logfile
 	a.cmd.Stderr = a.logfile
 	err := a.cmd.Start()
@@ -119,16 +120,7 @@ func stopWithSig(cmd *exec.Cmd, sig os.Signal) error {
 
 // restart restarts the stopped etcd process.
 func (a *Agent) restart() error {
-	a.cmd = exec.Command(a.cmd.Path, a.cmd.Args[1:]...)
-	a.cmd.Stdout = a.logfile
-	a.cmd.Stderr = a.logfile
-	err := a.cmd.Start()
-	if err != nil {
-		return err
-	}
-
-	a.state = stateStarted
-	return nil
+	return a.start(a.cmd.Args[1:]...)
 }
 
 func (a *Agent) cleanup() error {

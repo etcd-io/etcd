@@ -58,6 +58,14 @@ func main() {
 		newFailureSlowNetworkAll(),
 	}
 
+	// ensure cluster is fully booted to know failpoints are available
+	c.WaitHealth()
+	fpFailures, fperr := failpointFailures(c)
+	if len(fpFailures) == 0 {
+		plog.Infof("no failpoints found (%v)", fperr)
+	}
+	failures = append(failures, fpFailures...)
+
 	schedule := failures
 	if schedCases != nil && *schedCases != "" {
 		cases := strings.Split(*schedCases, " ")

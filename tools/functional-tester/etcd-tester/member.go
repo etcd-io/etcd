@@ -29,11 +29,12 @@ import (
 )
 
 type member struct {
-	Agent     client.Agent
-	Endpoint  string
-	Name      string
-	ClientURL string
-	PeerURL   string
+	Agent        client.Agent
+	Endpoint     string
+	Name         string
+	ClientURL    string
+	PeerURL      string
+	FailpointURL string
 }
 
 func (m *member) ClusterEntry() string { return m.Name + "=" + m.PeerURL }

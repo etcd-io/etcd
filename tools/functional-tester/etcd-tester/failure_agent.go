@@ -71,11 +71,11 @@ func newFailureKillLeader() failure {
 }
 
 func newFailureKillOneForLongTime() failure {
-	return &failureDelay{newFailureKillOne()}
+	return &failureUntilSnapshot{newFailureKillOne()}
 }
 
 func newFailureKillLeaderForLongTime() failure {
-	return &failureDelay{newFailureKillLeader()}
+	return &failureUntilSnapshot{newFailureKillLeader()}
 }
 
 func injectDropPort(m *member) error  { return m.Agent.DropPort(peerURLPort) }

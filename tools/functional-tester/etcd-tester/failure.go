@@ -52,8 +52,13 @@ type failureLeader struct {
 	idx int
 }
 
-// failureDelay injects a failure and waits for a snapshot event
-type failureDelay struct{ failure }
+type failureDelay struct {
+	failure
+	delayDuration time.Duration
+}
+
+// failureUntilSnapshot injects a failure and waits for a snapshot event
+type failureUntilSnapshot struct{ failure }
 
 func (f *failureOne) Inject(c *cluster, round int) error {
 	return f.injectMember(c.Members[round%c.Size])
@@ -122,6 +127,14 @@ func (f *failureDelay) Inject(c *cluster, round int) error {
 	if err := f.failure.Inject(c, round); err != nil {
 		return err
 	}
+	time.Sleep(f.delayDuration)
+	return nil
+}
+
+func (f *failureUntilSnapshot) Inject(c *cluster, round int) error {
+	if err := f.failure.Inject(c, round); err != nil {
+		return err
+	}
 
 	if c.Size < 3 {
 		return nil
@@ -144,7 +157,7 @@ func (f *failureDelay) Inject(c *cluster, round int) error {
 	return fmt.Errorf("cluster too slow: only commit %d requests in %ds", end-start, retry)
 }
 
-func (f *failureDelay) Desc() string {
+func (f *failureUntilSnapshot) Desc() string {
 	return f.failure.Desc() + " for a long time and expect it to recover from an incoming snapshot"
 }
 
