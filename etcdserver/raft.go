@@ -468,7 +468,7 @@ func getIDs(snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 // If `self` is not inside the given ids, it creates a Raft entry to add a
 // default member with the given `self`.
 func createConfigChangeEnts(ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
-	ents := make([]raftpb.Entry, 0)
+	var ents []raftpb.Entry
 	next := index + 1
 	found := false
 	for _, id := range ids {

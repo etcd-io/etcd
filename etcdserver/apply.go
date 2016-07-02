@@ -348,7 +348,7 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	}
 
 	if changedKV {
-		revision += 1
+		revision++
 	}
 
 	txnResp := &pb.TxnResponse{}
