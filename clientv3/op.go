@@ -45,6 +45,8 @@ type Op struct {
 	// for range, watch
 	rev int64
 
+	prevKV bool
+
 	// for delete
 	preserveKVs bool
 
@@ -274,5 +276,13 @@ func WithPreserveKVs() OpOption {
 func WithProgressNotify() OpOption {
 	return func(op *Op) {
 		op.progressNotify = true
+	}
+}
+
+// WithPrevKV gets the previous key-value pair before the event happens. If the previous KV is already compacted,
+// nothing will be returned.
+func WithPrevKV() OpOption {
+	return func(op *Op) {
+		op.prevKV = true
 	}
 }

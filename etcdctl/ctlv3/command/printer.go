@@ -146,6 +146,9 @@ func (s *simplePrinter) Txn(resp v3.TxnResponse) {
 func (s *simplePrinter) Watch(resp v3.WatchResponse) {
 	for _, e := range resp.Events {
 		fmt.Println(e.Type)
+		if e.PrevKv != nil {
+			printKV(s.isHex, e.PrevKv)
+		}
 		printKV(s.isHex, e.Kv)
 	}
 }
