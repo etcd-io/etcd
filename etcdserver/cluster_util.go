@@ -102,7 +102,7 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 // getRemotePeerURLs returns peer urls of remote members in the cluster. The
 // returned list is sorted in ascending lexicographical order.
 func getRemotePeerURLs(cl *membership.RaftCluster, local string) []string {
-	us := make([]string, 0)
+	var us []string
 	for _, m := range cl.Members() {
 		if m.Name == local {
 			continue
