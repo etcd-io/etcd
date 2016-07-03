@@ -39,6 +39,8 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapi uint64,
 		plog.Panicf("store save should never fail: %v", err)
 	}
 
+	// commit kv to write metadata(for example: consistent index).
+	s.KV().Commit()
 	dbsnap := s.be.Snapshot()
 	// get a snapshot of v3 KV as readCloser
 	rc := newSnapshotReaderCloser(dbsnap)
