@@ -709,7 +709,7 @@ func TestTerm(t *testing.T) {
 
 	for j, tt := range tests {
 		term := mustTerm(l.term(tt.index))
-		if !reflect.DeepEqual(term, tt.w) {
+		if term != tt.w {
 			t.Errorf("#%d: at = %d, want %d", j, term, tt.w)
 		}
 	}
@@ -739,7 +739,7 @@ func TestTermWithUnstableSnapshot(t *testing.T) {
 
 	for i, tt := range tests {
 		term := mustTerm(l.term(tt.index))
-		if !reflect.DeepEqual(term, tt.w) {
+		if term != tt.w {
 			t.Errorf("#%d: at = %d, want %d", i, term, tt.w)
 		}
 	}
