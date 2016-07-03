@@ -1170,8 +1170,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			plog.Panicf("unexpected create snapshot error %v", err)
 		}
-		// commit v3 storage because WAL file before snapshot index
-		// could be removed after SaveSnap.
+		// commit kv to write metadata (for example: consistent index) to disk.
 		s.KV().Commit()
 		// SaveSnap saves the snapshot and releases the locked wal files
 		// to the snapshot index.
