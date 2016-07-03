@@ -210,9 +210,11 @@ func (sws *serverWatchStream) recvLoop() error {
 					sws.mu.Unlock()
 				}
 			}
-			// TODO: do we need to return error back to client?
 		default:
-			panic("not implemented")
+			// we probably should not shutdown the entire stream when
+			// receive an valid command.
+			// so just do nothing instead.
+			continue
 		}
 	}
 }
