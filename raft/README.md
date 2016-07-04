@@ -9,6 +9,27 @@ A simple example application, _raftexample_, is also available to help illustrat
 how to use this package in practice:
 https://github.com/coreos/etcd/tree/master/contrib/raftexample
 
+# Features
+
+This raft implementation is a full feature implementation of Raft protocol. Features includes:
+
+- Leader election
+- Log replication
+- Log compaction 
+- Membership changes
+- Leadership transfer extension
+- Lease-based linearizable read-only queries served by both the leader and followers
+
+This raft implementation also includes a few optional enhancements:
+
+- Optimistic pipelining to reduce log replication latency
+- Flow control for log replication
+- Batching Raft messages to reduce synchronized network I/O calls
+- Batching log entries to reduce disk synchronized I/O
+- Writing to leader's disk in parallel
+- Internal proposal redirection from followers to leader
+- Automatic stepping down when the leader loses quorum 
+
 ## Notable Users
 
 - [cockroachdb](https://github.com/cockroachdb/cockroach) A Scalable, Survivable, Strongly-Consistent SQL Database
