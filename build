@@ -12,7 +12,7 @@ fi
 
 # enable/disable failpoints
 toggle_failpoints() {
-	FAILPKGS="etcdserver/"
+	FAILPKGS="etcdserver/ mvcc/backend/"
 
 	mode="disable"
 	if [ ! -z "$FAILPOINTS" ]; then mode="enable"; fi
