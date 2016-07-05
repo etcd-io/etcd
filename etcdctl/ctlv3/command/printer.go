@@ -108,7 +108,7 @@ type simplePrinter struct {
 
 func (s *simplePrinter) Del(resp v3.DeleteResponse) {
 	fmt.Println(resp.Deleted)
-	for _, kv := range resp.KVs {
+	for _, kv := range resp.PrevKvs {
 		printKV(s.isHex, kv)
 	}
 }

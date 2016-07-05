@@ -671,10 +671,10 @@
           "format": "byte",
           "description": "key is the first key to delete in the range."
         },
-        "preserveKVs": {
+        "prev_kv": {
           "type": "boolean",
           "format": "boolean",
-          "description": "If preserveKVs is set, the deleted KVs will be preserved for delete events\nThe preserved KVs will be returned as response.\nIt requires read permission to read the deleted KVs."
+          "description": "If prev_kv is set, etcd gets the previous key-value pairs before deleting it.\nThe previous key-value pairs will be returned in the delte response."
         },
         "range_end": {
           "type": "string",
@@ -686,13 +686,6 @@
     "etcdserverpbDeleteRangeResponse": {
       "type": "object",
       "properties": {
-        "KVs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/mvccpbKeyValue"
-          },
-          "description": "if preserveKVs is set in the request, the deleted KVs will be returned."
-        },
         "deleted": {
           "type": "string",
           "format": "int64",
@@ -700,6 +693,13 @@
         },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "prev_kvs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/mvccpbKeyValue"
+          },
+          "description": "if prev_kv is set in the request, the previous key-value pairs will be returned."
         }
       }
     },
@@ -933,6 +933,11 @@
           "format": "int64",
           "description": "lease is the lease ID to associate with the key in the key-value store. A lease\nvalue of 0 indicates no lease."
         },
+        "prev_kv": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If prev_kv is set, etcd gets the previous key-value pair before changing it.\nThe previous key-value pair will be returned in the put response."
+        },
         "value": {
           "type": "string",
           "format": "byte",
@@ -945,6 +950,10 @@
       "properties": {
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "prev_kv": {
+          "$ref": "#/definitions/mvccpbKeyValue",
+          "description": "if prev_kv is set in the request, the previous key-value pair will be returned."
         }
       }
     },

@@ -391,10 +391,16 @@ message PutRequest {
   // lease is the lease ID to associate with the key in the key-value store. A lease
   // value of 0 indicates no lease.
   int64 lease = 3;
+
+  // If prev_kv is set, etcd gets the previous key-value pair before changing it.
+  // The previous key-value pair will be returned in the put response.
+  bool prev_kv = 4;
 }
 
 message PutResponse {
   ResponseHeader header = 1;
+  // if prev_kv is set in the request, the previous key-value pair will be returned.
+  mvccpb.KeyValue prev_kv = 2;
 }
 
 message DeleteRangeRequest {
@@ -405,18 +411,17 @@ message DeleteRangeRequest {
   // If range_end is '\0', the range is all keys greater than or equal to the key argument.
   bytes range_end = 2;
 
-  // If preserveKVs is set, the deleted KVs will be preserved for delete events
-  // The preserved KVs will be returned as response.
-  // It requires read permission to read the deleted KVs.
-  bool preserveKVs = 3;
+  // If prev_kv is set, etcd gets the previous key-value pairs before deleting it.
+  // The previous key-value pairs will be returned in the delte response.
+  bool prev_kv = 3;
 }
 
 message DeleteRangeResponse {
   ResponseHeader header = 1;
   // deleted is the number of keys deleted by the delete range request.
   int64 deleted = 2;
-  // if preserveKVs is set in the request, the deleted KVs will be returned.
-  repeated mvccpb.KeyValue KVs = 3;
+  // if prev_kv is set in the request, the previous key-value pairs will be returned.
+  repeated mvccpb.KeyValue prev_kvs = 3;
 }
 
 message RequestOp {
