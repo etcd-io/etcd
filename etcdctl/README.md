@@ -231,6 +231,8 @@ Watch watches events stream on keys or prefixes, [key or prefix, range_end) if `
 
 - prefix -- watch on a prefix if prefix is set.
 
+- prev-kv -- get the previous key-value pair before the event happens.
+
 - rev -- the revision to start watching. Specifying a revision is useful for observing past events.
 
 #### Input Format
@@ -245,7 +247,7 @@ watch [options] <key or prefix>\n
 
 ##### Simple reply
 
-- \<event\>\n\<key\>\n\<value\>\n\<event\>\n\<next_key\>\n\<next_value\>\n...
+- \<event\>[\n\<old_key\>\n\<old_value\>]\n\<key\>\n\<value\>\n\<event\>\n\<next_key\>\n\<next_value\>\n...
 
 - Additional error string if WATCH failed. Exit code is non-zero.
 

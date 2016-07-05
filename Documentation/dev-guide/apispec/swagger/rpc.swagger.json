@@ -674,7 +674,7 @@
         "preserveKVs": {
           "type": "boolean",
           "format": "boolean",
-          "description": "If preserveKVs is set, the deleted KVs will be preserved.\nThe preserved KVs will be returned as response.\nIt requires read permission to read the deleted KVs."
+          "description": "If preserveKVs is set, the deleted KVs will be preserved for delete events\nThe preserved KVs will be returned as response.\nIt requires read permission to read the deleted KVs."
         },
         "range_end": {
           "type": "string",
@@ -1204,6 +1204,11 @@
           "format": "byte",
           "description": "key is the key to register for watching."
         },
+        "prev_kv": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If prev_kv is set, created watcher gets the previous KV before the event happens.\nIf the previous KV is already compacted, nothing will be returned."
+        },
         "progress_notify": {
           "type": "boolean",
           "format": "boolean",
@@ -1272,6 +1277,10 @@
         "kv": {
           "$ref": "#/definitions/mvccpbKeyValue",
           "description": "kv holds the KeyValue for the event.\nA PUT event contains current kv pair.\nA PUT event with kv.Version=1 indicates the creation of a key.\nA DELETE/EXPIRE event contains the deleted key with\nits modification revision set to the revision of deletion."
+        },
+        "prev_kv": {
+          "$ref": "#/definitions/mvccpbKeyValue",
+          "description": "prev_kv holds the key-value pair before the event happens."
         },
         "type": {
           "$ref": "#/definitions/EventEventType",

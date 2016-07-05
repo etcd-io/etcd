@@ -574,6 +574,10 @@ message WatchCreateRequest {
   }
   // filters filter the events at server side before it sends back to the watcher.
   repeated FilterType filters = 5;
+
+  // If prev_kv is set, created watcher gets the previous KV before the event happens.
+  // If the previous KV is already compacted, nothing will be returned.
+  bool prev_kv = 6;
 }
 
 message WatchCancelRequest {
