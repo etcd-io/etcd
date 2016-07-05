@@ -12,6 +12,8 @@ The easiest way to get etcd is to use one of the pre-built release binaries whic
 
 For those wanting to try the very latest version, build etcd from the `master` branch.
 [Go](https://golang.org/) version 1.6+ (with HTTP2 support) is required to build the latest version of etcd.
+etcd vendors its dependency for official release binaries, while making vendoring optional to avoid import conflicts.
+[`build` script][build-script] would automatically include the vendored dependencies from [`cmd`][cmd-directory] directory.  
 
 Here are the commands to build an etcd binary from the `master` branch:
 
@@ -54,3 +56,6 @@ If OK is printed, then etcd is working!
 
 [github-release]: https://github.com/coreos/etcd/releases/
 [go]: https://golang.org/doc/install
+[build-script]: ../build
+[cmd-directory]: ../cmd
+

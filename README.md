@@ -39,13 +39,14 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, AppC (ACI), and Docker. Instructions for using these binaries are on the [GitHub releases page][github-release].
 
-For those wanting to try the very latest version, you can build the latest version of etcd from the `master` branch.
+For those wanting to try the very latest version, you can [build the latest version of etcd][dl-build] from the `master` branch.
 You will first need [*Go*](https://golang.org/) installed on your machine (version 1.6+ is required).
 All development occurs on `master`, including new features and bug fixes.
 Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
 
 [github-release]: https://github.com/coreos/etcd/releases/
 [branch-management]: ./Documentation/branch_management.md
+[dl-build]: ./Documentation/dl_build.md#build-the-latest-version
 
 ### Running etcd
 
