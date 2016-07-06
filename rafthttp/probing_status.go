@@ -48,7 +48,7 @@ func monitorProbingStatus(s probing.Status, id string) {
 		select {
 		case <-time.After(statusMonitoringInterval):
 			if !s.Health() {
-				plog.Warningf("health check for peer %s failed", id)
+				plog.Warningf("health check for peer %s could not connect", id)
 			}
 			if s.ClockDiff() > time.Second {
 				plog.Warningf("the clock difference against peer %s is too high [%v > %v]", id, s.ClockDiff(), time.Second)
