@@ -81,6 +81,10 @@ function integration_pass {
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
 }
 
+function grpcproxy_pass {
+	go test -timeout 10m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 $@ ${REPO_PATH}/integration
+}
+
 function release_pass {
 	UPGRADE_VER=$(git tag -l | tail -1)
 	if [ -n "$MANUAL_VER" ]; then
