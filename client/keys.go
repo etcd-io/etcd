@@ -337,7 +337,11 @@ func (k *httpKeysAPI) Set(ctx context.Context, key, val string, opts *SetOptions
 		act.Dir = opts.Dir
 	}
 
-	resp, body, err := k.client.Do(ctx, act)
+	doCtx := ctx
+	if act.PrevExist == PrevNoExist {
+		doCtx = context.WithValue(doCtx, &oneShotCtxValue, &oneShotCtxValue)
+	}
+	resp, body, err := k.client.Do(doCtx, act)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +389,8 @@ func (k *httpKeysAPI) Delete(ctx context.Context, key string, opts *DeleteOption
 		act.Recursive = opts.Recursive
 	}
 
-	resp, body, err := k.client.Do(ctx, act)
+	doCtx := context.WithValue(ctx, &oneShotCtxValue, &oneShotCtxValue)
+	resp, body, err := k.client.Do(doCtx, act)
 	if err != nil {
 		return nil, err
 	}
