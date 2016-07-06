@@ -159,6 +159,22 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 		rev int64
 		err error
 	)
+
+	var rr *mvcc.RangeResult
+	if p.PrevKv {
+		if txnID != noTxn {
+			rr, err = a.s.KV().TxnRange(txnID, p.Key, nil, mvcc.RangeOptions{})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			rr, err = a.s.KV().Range(p.Key, nil, mvcc.RangeOptions{})
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if txnID != noTxn {
 		rev, err = a.s.KV().TxnPut(txnID, p.Key, p.Value, lease.LeaseID(p.Lease))
 		if err != nil {
@@ -174,6 +190,9 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 		rev = a.s.KV().Put(p.Key, p.Value, leaseID)
 	}
 	resp.Header.Revision = rev
+	if rr != nil && len(rr.KVs) != 0 {
+		resp.PrevKv = &rr.KVs[0]
+	}
 	return resp, nil
 }
 
@@ -192,7 +211,7 @@ func (a *applierV3backend) DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (
 	}
 
 	var rr *mvcc.RangeResult
-	if dr.PreserveKVs {
+	if dr.PrevKv {
 		if txnID != noTxn {
 			rr, err = a.s.KV().TxnRange(txnID, dr.Key, dr.RangeEnd, mvcc.RangeOptions{})
 			if err != nil {
@@ -218,7 +237,7 @@ func (a *applierV3backend) DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (
 	resp.Deleted = n
 	if rr != nil {
 		for i := range rr.KVs {
-			resp.KVs = append(resp.KVs, &rr.KVs[i])
+			resp.PrevKvs = append(resp.PrevKvs, &rr.KVs[i])
 		}
 	}
 	resp.Header.Revision = rev

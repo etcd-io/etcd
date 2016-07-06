@@ -376,10 +376,10 @@ func TestV3PutMissingLease(t *testing.T) {
 func TestV3DeleteRange(t *testing.T) {
 	defer testutil.AfterTest(t)
 	tests := []struct {
-		keySet      []string
-		begin       string
-		end         string
-		preserveKVs bool
+		keySet []string
+		begin  string
+		end    string
+		prevKV bool
 
 		wantSet [][]byte
 		deleted int64
@@ -442,9 +442,9 @@ func TestV3DeleteRange(t *testing.T) {
 		}
 
 		dreq := &pb.DeleteRangeRequest{
-			Key:         []byte(tt.begin),
-			RangeEnd:    []byte(tt.end),
-			PreserveKVs: tt.preserveKVs,
+			Key:      []byte(tt.begin),
+			RangeEnd: []byte(tt.end),
+			PrevKv:   tt.prevKV,
 		}
 		dresp, err := kvc.DeleteRange(context.TODO(), dreq)
 		if err != nil {
@@ -453,9 +453,9 @@ func TestV3DeleteRange(t *testing.T) {
 		if tt.deleted != dresp.Deleted {
 			t.Errorf("expected %d on test %v, got %d", tt.deleted, i, dresp.Deleted)
 		}
-		if tt.preserveKVs {
-			if len(dresp.KVs) != int(dresp.Deleted) {
-				t.Errorf("preserve %d keys, want %d", len(dresp.KVs), dresp.Deleted)
+		if tt.prevKV {
+			if len(dresp.PrevKvs) != int(dresp.Deleted) {
+				t.Errorf("preserve %d keys, want %d", len(dresp.PrevKvs), dresp.Deleted)
 			}
 		}
 
