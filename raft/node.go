@@ -38,6 +38,8 @@ var (
 // SoftState provides state that is useful for logging and debugging.
 // The state is volatile and does not need to be persisted to the WAL.
 type SoftState struct {
+	// The Lead field must be the first element to keep 64-bit alignment for
+	// atomic access.
 	Lead      uint64
 	RaftState StateType
 }
