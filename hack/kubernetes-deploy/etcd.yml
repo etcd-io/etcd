@@ -23,7 +23,7 @@ metadata:
 spec:
   containers:
   - command:
-    - /etcd
+    - /usr/local/bin/etcd
     - --name
     - etcd0
     - --initial-advertise-peer-urls
@@ -82,7 +82,7 @@ metadata:
 spec:
   containers:
   - command:
-    - /etcd
+    - /usr/local/bin/etcd
     - --name
     - etcd1
     - --initial-advertise-peer-urls
@@ -141,7 +141,7 @@ metadata:
 spec:
   containers:
   - command:
-    - /etcd
+    - /usr/local/bin/etcd
     - --name
     - etcd2
     - --initial-advertise-peer-urls
