@@ -153,12 +153,17 @@ type Server interface {
 
 // EtcdServer is the production implementation of the Server interface
 type EtcdServer struct {
-	// r and inflightSnapshots must be the first elements to keep 64-bit alignment for atomic
-	// access to fields
+	// inflightSnapshots, appliedIndex, consistIndex must be the first
+	// elements to keep 64-bit alignment for atomic access to fields
 
 	// count the number of inflight snapshots.
 	// MUST use atomic operation to access this field.
 	inflightSnapshots int64
+	appliedIndex uint64
+	// consistent index used to hold the offset of current executing entry
+	// It is initialized to 0 before executing any entry.
+	consistIndex consistentIndex
+
 	Cfg               *ServerConfig
 
 	readych chan struct{}
@@ -194,10 +199,6 @@ type EtcdServer struct {
 	// compactor is used to auto-compact the KV.
 	compactor *compactor.Periodic
 
-	// consistent index used to hold the offset of current executing entry
-	// It is initialized to 0 before executing any entry.
-	consistIndex consistentIndex
-
 	// peerRt used to send requests (version, lease) to peers.
 	peerRt   http.RoundTripper
 	reqIDGen *idutil.Generator
@@ -211,8 +212,6 @@ type EtcdServer struct {
 	// wg is used to wait for the go routines that depends on the server state
 	// to exit when stopping the server.
 	wg sync.WaitGroup
-
-	appliedIndex uint64
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
