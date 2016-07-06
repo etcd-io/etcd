@@ -56,6 +56,9 @@ func (aa *authApplierV3) Put(txnID int64, r *pb.PutRequest) (*pb.PutResponse, er
 	if !aa.as.IsPutPermitted(aa.user, r.Key) {
 		return nil, auth.ErrPermissionDenied
 	}
+	if r.PrevKv && !aa.as.IsRangePermitted(aa.user, r.Key, nil) {
+		return nil, auth.ErrPermissionDenied
+	}
 	return aa.applierV3.Put(txnID, r)
 }
 
