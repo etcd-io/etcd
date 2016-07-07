@@ -184,6 +184,12 @@ func WithSort(target SortTarget, order SortOrder) OpOption {
 	}
 }
 
+// GetPrefixRangeEnd gets the range end of the prefix.
+// 'Get(foo, WithPrefix())' is equal to 'Get(foo, WithRange(GetPrefixRangeEnd(foo))'.
+func GetPrefixRangeEnd(prefix string) string {
+	return string(getPrefix([]byte(prefix)))
+}
+
 func getPrefix(key []byte) []byte {
 	end := make([]byte, len(key))
 	copy(end, key)
