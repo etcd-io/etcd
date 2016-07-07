@@ -113,7 +113,7 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 	if server.IsPprofEnabled() {
 		plog.Infof("pprof is enabled under %s", pprofPrefix)
 
-		mux.HandleFunc(pprofPrefix, pprof.Index)
+		mux.HandleFunc(pprofPrefix+"/", pprof.Index)
 		mux.HandleFunc(pprofPrefix+"/profile", pprof.Profile)
 		mux.HandleFunc(pprofPrefix+"/symbol", pprof.Symbol)
 		mux.HandleFunc(pprofPrefix+"/cmdline", pprof.Cmdline)

@@ -146,6 +146,6 @@ given by the consensus protocol.
 	
 profiling flags:
 	--enable-pprof 'false'
-		Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof"
+		Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
 `
 )
