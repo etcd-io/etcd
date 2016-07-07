@@ -20,8 +20,11 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
 )
+
+func init() { BcryptCost = bcrypt.MinCost }
 
 func TestUserAdd(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
