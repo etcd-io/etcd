@@ -54,8 +54,8 @@ const (
 	requestTimeout = 20 * time.Second
 
 	basePort     = 21000
-	urlScheme    = "unix"
-	urlSchemeTLS = "unixs"
+	UrlScheme    = "unix"
+	UrlSchemeTLS = "unixs"
 )
 
 var (
@@ -96,9 +96,9 @@ func init() {
 
 func schemeFromTLSInfo(tls *transport.TLSInfo) string {
 	if tls == nil {
-		return urlScheme
+		return UrlScheme
 	}
-	return urlSchemeTLS
+	return UrlSchemeTLS
 }
 
 func (c *cluster) fillClusterForMembers() error {
@@ -257,7 +257,7 @@ func (c *cluster) addMember(t *testing.T) {
 }
 
 func (c *cluster) addMemberByURL(t *testing.T, clientURL, peerURL string) error {
-	cc := mustNewHTTPClient(t, []string{clientURL}, c.cfg.ClientTLS)
+	cc := MustNewHTTPClient(t, []string{clientURL}, c.cfg.ClientTLS)
 	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	if _, err := ma.Add(ctx, peerURL); err != nil {
@@ -277,7 +277,7 @@ func (c *cluster) AddMember(t *testing.T) {
 
 func (c *cluster) RemoveMember(t *testing.T, id uint64) {
 	// send remove request to the cluster
-	cc := mustNewHTTPClient(t, c.URLs(), c.cfg.ClientTLS)
+	cc := MustNewHTTPClient(t, c.URLs(), c.cfg.ClientTLS)
 	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	if err := ma.Remove(ctx, types.ID(id).String()); err != nil {
@@ -312,7 +312,7 @@ func (c *cluster) Terminate(t *testing.T) {
 
 func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
 	for _, u := range c.URLs() {
-		cc := mustNewHTTPClient(t, []string{u}, c.cfg.ClientTLS)
+		cc := MustNewHTTPClient(t, []string{u}, c.cfg.ClientTLS)
 		ma := client.NewMembersAPI(cc)
 		for {
 			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
@@ -391,10 +391,10 @@ func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {
 func newLocalListener(t *testing.T) net.Listener {
 	c := atomic.AddInt64(&localListenCount, 1)
 	addr := fmt.Sprintf("127.0.0.1:%d.%d.sock", c+basePort, os.Getpid())
-	return newListenerWithAddr(t, addr)
+	return NewListenerWithAddr(t, addr)
 }
 
-func newListenerWithAddr(t *testing.T, addr string) net.Listener {
+func NewListenerWithAddr(t *testing.T, addr string) net.Listener {
 	l, err := transport.NewUnixListener(addr)
 	if err != nil {
 		t.Fatal(err)
@@ -614,7 +614,7 @@ func (m *member) Launch() error {
 }
 
 func (m *member) WaitOK(t *testing.T) {
-	cc := mustNewHTTPClient(t, []string{m.URL()}, m.ClientTLSInfo)
+	cc := MustNewHTTPClient(t, []string{m.URL()}, m.ClientTLSInfo)
 	kapi := client.NewKeysAPI(cc)
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
@@ -678,12 +678,12 @@ func (m *member) Restart(t *testing.T) error {
 	plog.Printf("restarting %s (%s)", m.Name, m.grpcAddr)
 	newPeerListeners := make([]net.Listener, 0)
 	for _, ln := range m.PeerListeners {
-		newPeerListeners = append(newPeerListeners, newListenerWithAddr(t, ln.Addr().String()))
+		newPeerListeners = append(newPeerListeners, NewListenerWithAddr(t, ln.Addr().String()))
 	}
 	m.PeerListeners = newPeerListeners
 	newClientListeners := make([]net.Listener, 0)
 	for _, ln := range m.ClientListeners {
-		newClientListeners = append(newClientListeners, newListenerWithAddr(t, ln.Addr().String()))
+		newClientListeners = append(newClientListeners, NewListenerWithAddr(t, ln.Addr().String()))
 	}
 	m.ClientListeners = newClientListeners
 
@@ -708,7 +708,7 @@ func (m *member) Terminate(t *testing.T) {
 	plog.Printf("terminated %s (%s)", m.Name, m.grpcAddr)
 }
 
-func mustNewHTTPClient(t *testing.T, eps []string, tls *transport.TLSInfo) client.Client {
+func MustNewHTTPClient(t *testing.T, eps []string, tls *transport.TLSInfo) client.Client {
 	cfgtls := transport.TLSInfo{}
 	if tls != nil {
 		cfgtls = *tls

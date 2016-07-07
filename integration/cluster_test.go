@@ -67,7 +67,7 @@ func testClusterUsingDiscovery(t *testing.T, size int) {
 	dc.Launch(t)
 	defer dc.Terminate(t)
 	// init discovery token space
-	dcc := mustNewHTTPClient(t, dc.URLs(), nil)
+	dcc := MustNewHTTPClient(t, dc.URLs(), nil)
 	dkapi := client.NewKeysAPI(dcc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size)); err != nil {
@@ -90,7 +90,7 @@ func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
 	dc.Launch(t)
 	defer dc.Terminate(t)
 	// init discovery token space
-	dcc := mustNewHTTPClient(t, dc.URLs(), nil)
+	dcc := MustNewHTTPClient(t, dc.URLs(), nil)
 	dkapi := client.NewKeysAPI(dcc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", 3)); err != nil {
@@ -157,7 +157,7 @@ func testDecreaseClusterSize(t *testing.T, size int) {
 func TestForceNewCluster(t *testing.T) {
 	c := NewCluster(t, 3)
 	c.Launch(t)
-	cc := mustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
+	cc := MustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	resp, err := kapi.Create(ctx, "/foo", "bar")
@@ -184,7 +184,7 @@ func TestForceNewCluster(t *testing.T) {
 	c.waitLeader(t, c.Members[:1])
 
 	// use new http client to init new connection
-	cc = mustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
+	cc = MustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
 	kapi = client.NewKeysAPI(cc)
 	// ensure force restart keep the old data, and new cluster can make progress
 	ctx, cancel = context.WithTimeout(context.Background(), requestTimeout)
@@ -273,7 +273,7 @@ func TestIssue2904(t *testing.T) {
 	c.Members[1].Stop(t)
 
 	// send remove member-1 request to the cluster.
-	cc := mustNewHTTPClient(t, c.URLs(), nil)
+	cc := MustNewHTTPClient(t, c.URLs(), nil)
 	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	// the proposal is not committed because member 1 is stopped, but the
@@ -337,7 +337,7 @@ func TestIssue3699(t *testing.T) {
 	c.waitLeader(t, c.Members)
 
 	// try to participate in cluster
-	cc := mustNewHTTPClient(t, []string{c.URL(0)}, c.cfg.ClientTLS)
+	cc := MustNewHTTPClient(t, []string{c.URL(0)}, c.cfg.ClientTLS)
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	if _, err := kapi.Set(ctx, "/foo", "bar", nil); err != nil {
@@ -350,7 +350,7 @@ func TestIssue3699(t *testing.T) {
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
 func clusterMustProgress(t *testing.T, membs []*member) {
-	cc := mustNewHTTPClient(t, []string{membs[0].URL()}, nil)
+	cc := MustNewHTTPClient(t, []string{membs[0].URL()}, nil)
 	kapi := client.NewKeysAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	key := fmt.Sprintf("foo%d", rand.Int())
@@ -362,7 +362,7 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 
 	for i, m := range membs {
 		u := m.URL()
-		mcc := mustNewHTTPClient(t, []string{u}, nil)
+		mcc := MustNewHTTPClient(t, []string{u}, nil)
 		mkapi := client.NewKeysAPI(mcc)
 		mctx, mcancel := context.WithTimeout(context.Background(), requestTimeout)
 		if _, err := mkapi.Watcher(key, &client.WatcherOptions{AfterIndex: resp.Node.ModifiedIndex - 1}).Next(mctx); err != nil {
