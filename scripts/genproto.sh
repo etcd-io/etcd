@@ -21,7 +21,7 @@ DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./mvcc/m
 
 # exact version of protoc-gen-gogo to build
 GOGO_PROTO_SHA="2752d97bbd91927dd1c43296dbf8700e50e2708c"
-GRPC_GATEWAY_SHA="dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
+GRPC_GATEWAY_SHA="04d03d2c0176f9060cc3da4945a71abc759648bc"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath

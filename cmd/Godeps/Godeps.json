@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.6",
+	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
@@ -67,15 +67,15 @@
 		},
 		{
 			"ImportPath": "github.com/gengo/grpc-gateway/runtime",
-			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
+			"Rev": "04d03d2c0176f9060cc3da4945a71abc759648bc"
 		},
 		{
 			"ImportPath": "github.com/gengo/grpc-gateway/runtime/internal",
-			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
+			"Rev": "04d03d2c0176f9060cc3da4945a71abc759648bc"
 		},
 		{
 			"ImportPath": "github.com/gengo/grpc-gateway/utilities",
-			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
+			"Rev": "04d03d2c0176f9060cc3da4945a71abc759648bc"
 		},
 		{
 			"ImportPath": "github.com/ghodss/yaml",
@@ -96,11 +96,11 @@
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/jsonpb",
-			"Rev": "8616e8ee5e20a1704615e6c8d7afcdac06087a67"
+			"Rev": "3852dcfda249c2097355a6aabb199a28d97b30df"
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "8616e8ee5e20a1704615e6c8d7afcdac06087a67"
+			"Rev": "3852dcfda249c2097355a6aabb199a28d97b30df"
 		},
 		{
 			"ImportPath": "github.com/google/btree",
