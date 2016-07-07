@@ -15,7 +15,9 @@
 package integration
 
 import (
+	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -67,5 +69,57 @@ func TestMirrorSync(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("failed to receive update in one second")
+	}
+}
+
+func TestMirrorSyncBase(t *testing.T) {
+	cluster := integration.NewClusterV3(nil, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(nil)
+
+	cli := cluster.Client(0)
+	ctx := context.TODO()
+
+	keyCh := make(chan string)
+	var wg sync.WaitGroup
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for key := range keyCh {
+				if _, err := cli.Put(ctx, key, "test"); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}()
+	}
+
+	for i := 0; i < 2000; i++ {
+		keyCh <- fmt.Sprintf("test%d", i)
+	}
+
+	close(keyCh)
+	wg.Wait()
+
+	syncer := mirror.NewSyncer(cli, "test", 0)
+	respCh, errCh := syncer.SyncBase(ctx)
+
+	count := 0
+
+	for resp := range respCh {
+		count = count + len(resp.Kvs)
+		if !resp.More {
+			break
+		}
+	}
+
+	for err := range errCh {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	if count != 2000 {
+		t.Errorf("unexpected kv count: %d", count)
 	}
 }
