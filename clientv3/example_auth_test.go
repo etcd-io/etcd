@@ -32,13 +32,11 @@ func ExampleAuth() {
 	}
 	defer cli.Close()
 
-	authapi := clientv3.NewAuth(cli)
-
-	if _, err = authapi.RoleAdd(context.TODO(), "root"); err != nil {
+	if _, err = cli.RoleAdd(context.TODO(), "root"); err != nil {
 		log.Fatal(err)
 	}
 
-	if _, err = authapi.RoleGrantPermission(
+	if _, err = cli.RoleGrantPermission(
 		context.TODO(),
 		"root", // role name
 		"foo",  // key
@@ -47,16 +45,13 @@ func ExampleAuth() {
 	); err != nil {
 		log.Fatal(err)
 	}
-
-	if _, err = authapi.UserAdd(context.TODO(), "root", "123"); err != nil {
+	if _, err = cli.UserAdd(context.TODO(), "root", "123"); err != nil {
 		log.Fatal(err)
 	}
-
-	if _, err = authapi.UserGrantRole(context.TODO(), "root", "root"); err != nil {
+	if _, err = cli.UserGrantRole(context.TODO(), "root", "root"); err != nil {
 		log.Fatal(err)
 	}
-
-	if _, err = authapi.AuthEnable(context.TODO()); err != nil {
+	if _, err = cli.AuthEnable(context.TODO()); err != nil {
 		log.Fatal(err)
 	}
 
@@ -71,12 +66,11 @@ func ExampleAuth() {
 	}
 	defer cliAuth.Close()
 
-	kv := clientv3.NewKV(cliAuth)
-	if _, err = kv.Put(context.TODO(), "foo1", "bar"); err != nil {
+	if _, err = cliAuth.Put(context.TODO(), "foo1", "bar"); err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = kv.Txn(context.TODO()).
+	_, err = cliAuth.Txn(context.TODO()).
 		If(clientv3.Compare(clientv3.Value("zoo1"), ">", "abc")).
 		Then(clientv3.OpPut("zoo1", "XYZ")).
 		Else(clientv3.OpPut("zoo1", "ABC")).
@@ -84,14 +78,13 @@ func ExampleAuth() {
 	fmt.Println(err)
 
 	// now check the permission
-	authapi2 := clientv3.NewAuth(cliAuth)
-	resp, err := authapi2.RoleGet(context.TODO(), "root")
+	resp, err := cliAuth.RoleGet(context.TODO(), "root")
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("root user permission: key %q, range end %q\n", resp.Perm[0].Key, resp.Perm[0].RangeEnd)
 
-	if _, err = authapi2.AuthDisable(context.TODO()); err != nil {
+	if _, err = cliAuth.AuthDisable(context.TODO()); err != nil {
 		log.Fatal(err)
 	}
 	// Output: etcdserver: permission denied
