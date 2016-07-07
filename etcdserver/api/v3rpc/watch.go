@@ -178,6 +178,7 @@ func (sws *serverWatchStream) recvLoop() error {
 			}
 			id := sws.watchStream.Watch(creq.Key, creq.RangeEnd, rev)
 			if id != -1 {
+				sws.mu.Lock()
 				if creq.ProgressNotify {
 					sws.mu.Lock()
 					sws.progress[id] = true
@@ -188,6 +189,7 @@ func (sws *serverWatchStream) recvLoop() error {
 					sws.prevKV[id] = true
 					sws.mu.Unlock()
 				}
+				sws.mu.Unlock()
 			}
 			wr := &pb.WatchResponse{
 				Header:   sws.newResponseHeader(wsrev),
@@ -259,7 +261,9 @@ func (sws *serverWatchStream) sendLoop() {
 			// or define protocol buffer with []mvccpb.Event.
 			evs := wresp.Events
 			events := make([]*mvccpb.Event, len(evs))
+			sws.mu.Lock()
 			needPrevKV := sws.prevKV[wresp.WatchID]
+			sws.mu.Unlock()
 			for i := range evs {
 				events[i] = &evs[i]
 
