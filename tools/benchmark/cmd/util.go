@@ -18,6 +18,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/coreos/etcd/clientv3"
 )
@@ -39,6 +40,17 @@ func mustCreateConn() *clientv3.Client {
 			os.Exit(1)
 		}
 		cfg.TLS = cfgtls
+	}
+
+	if len(user) != 0 {
+		splitted := strings.SplitN(user, ":", 2)
+		if len(splitted) != 2 {
+			fmt.Fprintf(os.Stderr, "bad user information: %s\n", user)
+			os.Exit(1)
+		}
+
+		cfg.Username = splitted[0]
+		cfg.Password = splitted[1]
 	}
 
 	client, err := clientv3.New(cfg)
