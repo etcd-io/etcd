@@ -36,6 +36,7 @@ type cluster struct {
 	v2Only bool // to be deprecated
 
 	datadir              string
+	stressQPS            int
 	stressKeySize        int
 	stressKeySuffixRange int
 
@@ -50,10 +51,11 @@ type ClusterStatus struct {
 }
 
 // newCluster starts and returns a new cluster. The caller should call Terminate when finished, to shut it down.
-func newCluster(agentEndpoints []string, datadir string, stressKeySize, stressKeySuffixRange int, isV2Only bool) (*cluster, error) {
+func newCluster(agentEndpoints []string, datadir string, stressQPS, stressKeySize, stressKeySuffixRange int, isV2Only bool) (*cluster, error) {
 	c := &cluster{
 		v2Only:               isV2Only,
 		datadir:              datadir,
+		stressQPS:            stressQPS,
 		stressKeySize:        stressKeySize,
 		stressKeySuffixRange: stressKeySuffixRange,
 	}
@@ -123,6 +125,7 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 				Endpoint:       m.grpcAddr(),
 				KeySize:        c.stressKeySize,
 				KeySuffixRange: c.stressKeySuffixRange,
+				qps:            c.stressQPS,
 				N:              stressN,
 			}
 		}
