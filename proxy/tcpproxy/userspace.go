@@ -78,6 +78,7 @@ func (tp *TCPProxy) Run() error {
 		tp.remotes = append(tp.remotes, &remote{addr: ep})
 	}
 
+	plog.Printf("ready to proxy client requests to %v", tp.Endpoints)
 	go tp.runMonitor()
 	for {
 		in, err := tp.Listener.Accept()
