@@ -1080,7 +1080,11 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	}
 
 	var ar *applyResult
-	if s.w.IsRegistered(id) || !noSideEffect(&raftReq) {
+	needResult := s.w.IsRegistered(id)
+	if needResult || !noSideEffect(&raftReq) {
+		if !needResult && raftReq.Txn != nil {
+			removeNeedlessRangeReqs(raftReq.Txn)
+		}
 		ar = s.applyV3.Apply(&raftReq)
 	}
 
