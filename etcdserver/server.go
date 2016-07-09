@@ -1076,8 +1076,16 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		id = raftReq.Header.ID
 	}
 
-	ar := s.applyV3.Apply(&raftReq)
+	var ar *applyResult
+	if s.w.IsRegistered(id) || !noSideEffect(&raftReq) {
+		ar = s.applyV3.Apply(&raftReq)
+	}
 	s.setAppliedIndex(e.Index)
+
+	if ar == nil {
+		return
+	}
+
 	if ar.err != ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.w.Trigger(id, ar)
 		return
