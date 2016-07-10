@@ -14,7 +14,11 @@
 
 package etcdmain
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/coreos/etcd/embed"
+)
 
 var (
 	usageline = `usage: etcd [flags]
@@ -48,9 +52,9 @@ member flags:
 		list of URLs to listen on for peer traffic.
 	--listen-client-urls 'http://localhost:2379'
 		list of URLs to listen on for client traffic.
-	--max-snapshots '` + strconv.Itoa(defaultMaxSnapshots) + `'
+	--max-snapshots '` + strconv.Itoa(embed.DefaultMaxSnapshots) + `'
 		maximum number of snapshot files to retain (0 is unlimited).
-	--max-wals '` + strconv.Itoa(defaultMaxWALs) + `'
+	--max-wals '` + strconv.Itoa(embed.DefaultMaxWALs) + `'
 		maximum number of wal files to retain (0 is unlimited).
 	--cors ''
 		comma-separated whitelist of origins for CORS (cross-origin resource sharing).

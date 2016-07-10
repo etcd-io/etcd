@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2016 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build windows
+/*
+Package embed provides bindings for embedding an etcd server in a program.
 
-package etcdmain
+Launch an embedded etcd server using the configuration defaults:
 
-// TODO(barakmich): So because file locking on Windows is untested, the
-// temporary fix is to default to unlimited snapshots and WAL files, with manual
-// removal. Perhaps not the most elegant solution, but it's at least safe and
-// we'd totally love a PR to fix the story around locking.
-const (
-	defaultMaxSnapshots = 0
-	defaultMaxWALs      = 0
-)
+	import (
+		"log"
+
+		"github.com/coreos/etcd/embed"
+	)
+
+	func main() {
+		cfg := embed.NewConfig()
+		cfg.Dir = "default.etcd"
+		e, err := embed.StartEtcd(cfg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer e.Close()
+		log.Fatal(<-e.Err())
+	}
+*/
+package embed

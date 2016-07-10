@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdmain
+package embed
 
 import (
 	"crypto/tls"
@@ -37,17 +37,23 @@ import (
 
 type serveCtx struct {
 	l        net.Listener
-	host     string
 	secure   bool
 	insecure bool
+
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func newServeCtx() *serveCtx {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &serveCtx{ctx: ctx, cancel: cancel}
 }
 
 // serve accepts incoming connections on the listener l,
 // creating a new service goroutine for each. The service goroutines
 // read requests and then call handler to reply to them.
-func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler http.Handler) error {
+func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handler http.Handler, errc chan<- error) error {
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
-
 	<-s.ReadyNotify()
 	plog.Info("ready to serve client requests")
 
@@ -56,12 +62,12 @@ func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler
 	if sctx.insecure {
 		gs := v3rpc.Server(s, nil)
 		grpcl := m.Match(cmux.HTTP2())
-		go func() { plog.Fatal(gs.Serve(grpcl)) }()
+		go func() { errc <- gs.Serve(grpcl) }()
 
 		opts := []grpc.DialOption{
 			grpc.WithInsecure(),
 		}
-		gwmux, err := registerGateway(sctx.l.Addr().String(), opts)
+		gwmux, err := sctx.registerGateway(opts)
 		if err != nil {
 			return err
 		}
@@ -74,8 +80,8 @@ func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler
 			ErrorLog: logger, // do not log user error
 		}
 		httpl := m.Match(cmux.HTTP1())
-		go func() { plog.Fatal(srvhttp.Serve(httpl)) }()
-		plog.Noticef("serving insecure client requests on %s, this is strongly discouraged!", sctx.host)
+		go func() { errc <- srvhttp.Serve(httpl) }()
+		plog.Noticef("serving insecure client requests on %s, this is strongly discouraged!", sctx.l.Addr().String())
 	}
 
 	if sctx.secure {
@@ -87,7 +93,7 @@ func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler
 		dtls.InsecureSkipVerify = true
 		creds := credentials.NewTLS(dtls)
 		opts := []grpc.DialOption{grpc.WithTransportCredentials(creds)}
-		gwmux, err := registerGateway(sctx.l.Addr().String(), opts)
+		gwmux, err := sctx.registerGateway(opts)
 		if err != nil {
 			return err
 		}
@@ -102,9 +108,9 @@ func serve(sctx *serveCtx, s *etcdserver.EtcdServer, tlscfg *tls.Config, handler
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
-		go func() { plog.Fatal(srv.Serve(tlsl)) }()
+		go func() { errc <- srv.Serve(tlsl) }()
 
-		plog.Infof("serving client requests on %s", sctx.host)
+		plog.Infof("serving client requests on %s", sctx.l.Addr().String())
 	}
 
 	return m.Serve()
@@ -133,30 +139,32 @@ func servePeerHTTP(l net.Listener, handler http.Handler) error {
 	return srv.Serve(l)
 }
 
-func registerGateway(addr string, opts []grpc.DialOption) (*gw.ServeMux, error) {
+func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, error) {
+	ctx := sctx.ctx
+	addr := sctx.l.Addr().String()
 	gwmux := gw.NewServeMux()
 
-	err := pb.RegisterKVHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	err := pb.RegisterKVHandlerFromEndpoint(ctx, gwmux, addr, opts)
 	if err != nil {
 		return nil, err
 	}
-	err = pb.RegisterWatchHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	err = pb.RegisterWatchHandlerFromEndpoint(ctx, gwmux, addr, opts)
 	if err != nil {
 		return nil, err
 	}
-	err = pb.RegisterLeaseHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	err = pb.RegisterLeaseHandlerFromEndpoint(ctx, gwmux, addr, opts)
 	if err != nil {
 		return nil, err
 	}
-	err = pb.RegisterClusterHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	err = pb.RegisterClusterHandlerFromEndpoint(ctx, gwmux, addr, opts)
 	if err != nil {
 		return nil, err
 	}
-	err = pb.RegisterMaintenanceHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	err = pb.RegisterMaintenanceHandlerFromEndpoint(ctx, gwmux, addr, opts)
 	if err != nil {
 		return nil, err
 	}
-	err = pb.RegisterAuthHandlerFromEndpoint(context.Background(), gwmux, addr, opts)
+	err = pb.RegisterAuthHandlerFromEndpoint(ctx, gwmux, addr, opts)
 	if err != nil {
 		return nil, err
 	}
