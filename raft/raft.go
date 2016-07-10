@@ -913,11 +913,9 @@ func (r *raft) restore(s pb.Snapshot) bool {
 	r.raftLog.restore(s)
 	r.prs = make(map[uint64]*Progress)
 	for _, n := range s.Metadata.ConfState.Nodes {
-		match, next := uint64(0), uint64(r.raftLog.lastIndex())+1
+		match, next := uint64(0), r.raftLog.lastIndex()+1
 		if n == r.id {
 			match = next - 1
-		} else {
-			match = 0
 		}
 		r.setProgress(n, match, next)
 		r.logger.Infof("%x restored progress of %x [%s]", r.id, n, r.prs[n])
