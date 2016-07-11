@@ -57,7 +57,18 @@ function unit_tests {
 }
 
 function integration_tests {
-	echo "Running integration tests..."
+	if [ "$RELEASE_TEST" = "y" ]; then
+		UPGRADE_VER=$(git tag -l | tail -1)
+		if [ -n "$MANUAL_VER" ]; then
+			# in case, we need to test against different version
+			UPGRADE_VER=$MANUAL_VER
+		fi
+		echo "Running release upgrade tests with" etcd $UPGRADE_VER
+		curl -L https://github.com/coreos/etcd/releases/download/$UPGRADE_VER/etcd-$UPGRADE_VER-linux-amd64.tar.gz -o /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz
+		tar xzvf /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz -C /tmp/ --strip-components=1
+		mv /tmp/etcd ./bin/etcd-last-release
+	fi;
+
 	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e &
 	e2epid="$!"
 	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration &
@@ -210,4 +221,3 @@ if [ -n "$INTEGRATION" ]; then
 	integration_tests
 fi
 echo "Success"
-

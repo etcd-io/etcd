@@ -52,7 +52,7 @@ func TestCtlV3Migrate(t *testing.T) {
 	for i := range epc.procs {
 		dataDirs[i] = epc.procs[i].cfg.dataDirPath
 	}
-	if err := epc.Stop(); err != nil {
+	if err := epc.StopAll(); err != nil {
 		t.Fatalf("error closing etcd processes (%v)", err)
 	}
 
@@ -74,7 +74,7 @@ func TestCtlV3Migrate(t *testing.T) {
 	for i := range epc.procs {
 		epc.procs[i].cfg.keepDataDir = true
 	}
-	if err := epc.Restart(); err != nil {
+	if err := epc.RestartAll(); err != nil {
 		t.Fatal(err)
 	}
 
