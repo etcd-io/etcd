@@ -827,6 +827,7 @@ func stepFollower(r *raft, m pb.Message) {
 		r.handleHeartbeat(m)
 	case pb.MsgSnap:
 		r.electionElapsed = 0
+		r.lead = m.From
 		r.handleSnapshot(m)
 	case pb.MsgVote:
 		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
