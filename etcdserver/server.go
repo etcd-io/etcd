@@ -226,15 +226,6 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		return nil, fmt.Errorf("cannot access data directory: %v", terr)
 	}
 
-	// Run the migrations.
-	dataVer, err := version.DetectDataDir(cfg.DataDir)
-	if err != nil {
-		return nil, err
-	}
-	if err = upgradeDataDir(cfg.DataDir, cfg.Name, dataVer); err != nil {
-		return nil, err
-	}
-
 	haveWAL := wal.Exist(cfg.WALDir())
 
 	if err = fileutil.TouchDirAll(cfg.SnapDir()); err != nil {
