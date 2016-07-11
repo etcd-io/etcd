@@ -2217,6 +2217,7 @@ func TestLeaderTransferWithCheckQuorum(t *testing.T) {
 		r.checkQuorum = true
 	}
 
+	// Letting peer 2 electionElapsed reach to timeout so that it can vote for peer 1
 	f := nt.peers[2].(*raft)
 	for i := 0; i < f.electionTimeout; i++ {
 		f.tick()

@@ -39,8 +39,10 @@ const (
 
 // Possible values for CampaignType
 const (
-	LeaderElection CampaignType = "LeaderElection"
-	LeaderTransfer CampaignType = "LeaderTransfer"
+	// campaignElection represents the type of normal election
+	campaignElection CampaignType = "CampaignElection"
+	// campaignTransfer represents the type of leader transfer
+	campaignTransfer CampaignType = "CampaignTransfer"
 )
 
 // CampaignType represents the type of campaigning
@@ -544,7 +546,12 @@ func (r *raft) campaign(t CampaignType) {
 		}
 		r.logger.Infof("%x [logterm: %d, index: %d] sent vote request to %x at term %d",
 			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), id, r.Term)
-		r.send(pb.Message{To: id, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Entries: []pb.Entry{{Data: []byte(t)}}})
+
+		var entries []pb.Entry
+		if t == campaignTransfer {
+			entries = []pb.Entry{{Data: []byte(t)}}
+		}
+		r.send(pb.Message{To: id, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Entries: entries})
 	}
 }
 
@@ -569,7 +576,7 @@ func (r *raft) Step(m pb.Message) error {
 	if m.Type == pb.MsgHup {
 		if r.state != StateLeader {
 			r.logger.Infof("%x is starting a new election at term %d", r.id, r.Term)
-			r.campaign(LeaderElection)
+			r.campaign(campaignElection)
 		} else {
 			r.logger.Debugf("%x ignoring MsgHup because already leader", r.id)
 		}
@@ -587,7 +594,7 @@ func (r *raft) Step(m pb.Message) error {
 	case m.Term > r.Term:
 		lead := m.From
 		if m.Type == pb.MsgVote {
-			force := len(m.Entries) == 1 && bytes.Equal(m.Entries[0].Data, []byte(LeaderTransfer))
+			force := len(m.Entries) == 1 && bytes.Equal(m.Entries[0].Data, []byte(campaignTransfer))
 			inLease := r.checkQuorum && r.state != StateCandidate && r.electionElapsed < r.electionTimeout
 			if !force && inLease {
 				// If a server receives a RequestVote request within the minimum election timeout
@@ -856,7 +863,7 @@ func stepFollower(r *raft, m pb.Message) {
 		}
 	case pb.MsgTimeoutNow:
 		r.logger.Infof("%x [term %d] received MsgTimeoutNow from %x and starts an election to get leadership.", r.id, r.Term, m.From)
-		r.campaign(LeaderTransfer)
+		r.campaign(campaignTransfer)
 	case pb.MsgReadIndex:
 		if r.lead == None {
 			r.logger.Infof("%x no leader at term %d; dropping index reading msg", r.id, r.Term)
