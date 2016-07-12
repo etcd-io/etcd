@@ -111,16 +111,16 @@ peer-transport-security:
   ca-file:
 
   # Path to the peer server TLS cert file.
-  peer-cert-file: 
+  cert-file: 
 
   # Path to the peer server TLS key file.
-  peer-key-file: 
+  key-file: 
 
   # Enable peer client cert authentication.
-  peer-client-cert-auth: false
+  client-cert-auth: false
 
   # Path to the peer server TLS trusted CA key file.
-  peer-trusted-ca-file: 
+  trusted-ca-file: 
 
   # Peer TLS using generated certificates.
   auto-tls: false
