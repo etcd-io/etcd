@@ -1901,6 +1901,10 @@ func TestRestoreFromSnapMsg(t *testing.T) {
 	sm := newTestRaft(2, []uint64{1, 2}, 10, 1, NewMemoryStorage())
 	sm.Step(m)
 
+	if sm.lead != uint64(1) {
+		t.Errorf("sm.lead = %d, want 1", sm.lead)
+	}
+
 	// TODO(bdarnell): what should this test?
 }
 
