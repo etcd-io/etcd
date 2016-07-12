@@ -75,7 +75,6 @@ type Progress struct {
 
 func (pr *Progress) resetState(state ProgressStateType) {
 	pr.Paused = false
-	pr.RecentActive = false
 	pr.PendingSnapshot = 0
 	pr.State = state
 	pr.ins.reset()
