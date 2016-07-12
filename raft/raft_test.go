@@ -2212,6 +2212,42 @@ func TestLeaderTransferToUpToDateNode(t *testing.T) {
 	checkLeaderTransferState(t, lead, StateLeader, 1)
 }
 
+// TestLeaderTransferWithCheckQuorum ensures transferring leader still works
+// even the current leader is still under its leader lease
+func TestLeaderTransferWithCheckQuorum(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	for i := 1; i < 4; i++ {
+		r := nt.peers[uint64(i)].(*raft)
+		r.checkQuorum = true
+	}
+
+	// Letting peer 2 electionElapsed reach to timeout so that it can vote for peer 1
+	f := nt.peers[2].(*raft)
+	for i := 0; i < f.electionTimeout; i++ {
+		f.tick()
+	}
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	lead := nt.peers[1].(*raft)
+
+	if lead.lead != 1 {
+		t.Fatalf("after election leader is %x, want 1", lead.lead)
+	}
+
+	// Transfer leadership to 2.
+	nt.send(pb.Message{From: 2, To: 1, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateFollower, 2)
+
+	// After some log replication, transfer leadership back to 1.
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+
+	nt.send(pb.Message{From: 1, To: 2, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
 func TestLeaderTransferToSlowFollower(t *testing.T) {
 	defaultLogger.EnableDebug()
 	nt := newNetwork(nil, nil, nil)
