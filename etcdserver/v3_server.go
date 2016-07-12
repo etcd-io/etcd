@@ -36,6 +36,12 @@ const (
 
 	// max timeout for waiting a v3 request to go through raft.
 	maxV3RequestTimeout = 5 * time.Second
+
+	// In the health case, there might be a small gap (10s of entries) between
+	// the applied index and commited index.
+	// However, if the committed entries are very heavy to apply, the gap might grow.
+	// We should stop accepting new proposals if the gap growing to a certain point.
+	maxGapBetweenApplyAndCommitIndex = 1000
 )
 
 type RaftKV interface {
@@ -506,6 +512,12 @@ func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {
 }
 
 func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+	ai := s.getAppliedIndex()
+	ci := s.getCommittedIndex()
+	if ci > ai+maxGapBetweenApplyAndCommitIndex {
+		return nil, ErrTooManyRequests
+	}
+
 	r.Header = &pb.RequestHeader{
 		ID: s.reqIDGen.Next(),
 	}

@@ -156,6 +156,7 @@ type EtcdServer struct {
 	// inflightSnapshots holds count the number of snapshots currently inflight.
 	inflightSnapshots int64  // must use atomic operations to access; keep 64-bit aligned.
 	appliedIndex      uint64 // must use atomic operations to access; keep 64-bit aligned.
+	committedIndex    uint64 // must use atomic operations to access; keep 64-bit aligned.
 	// consistIndex used to hold the offset of current executing entry
 	// It is initialized to 0 before executing any entry.
 	consistIndex consistentIndex // must use atomic operations to access; keep 64-bit aligned.
@@ -574,6 +575,16 @@ func (s *EtcdServer) run() {
 	for {
 		select {
 		case ap := <-s.r.apply():
+			var ci uint64
+			if len(ap.entries) != 0 {
+				ci = ap.entries[len(ap.entries)-1].Index
+			}
+			if ap.snapshot.Metadata.Index > ci {
+				ci = ap.snapshot.Metadata.Index
+			}
+			if ci != 0 {
+				s.setCommittedIndex(ci)
+			}
 			f := func(context.Context) { s.applyAll(&ep, &ap) }
 			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
@@ -1341,4 +1352,12 @@ func (s *EtcdServer) getAppliedIndex() uint64 {
 
 func (s *EtcdServer) setAppliedIndex(v uint64) {
 	atomic.StoreUint64(&s.appliedIndex, v)
+}
+
+func (s *EtcdServer) getCommittedIndex() uint64 {
+	return atomic.LoadUint64(&s.committedIndex)
+}
+
+func (s *EtcdServer) setCommittedIndex(v uint64) {
+	atomic.StoreUint64(&s.committedIndex, v)
 }
