@@ -57,7 +57,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 [data_model]: learning/data_model.md
 [demo]: demo.md
 [download_build]: dl_build.md
-[embed_etcd]: ../embed/
+[embed_etcd]: https://godoc.org/github.com/coreos/etcd/embed
 [failures]: op-guide/failures.md
 [glossary]: learning/glossary.md
 [interacting]: dev-guide/interacting_v3.md
