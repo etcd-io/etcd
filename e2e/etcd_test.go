@@ -345,18 +345,8 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 
 func (epc *etcdProcessCluster) Start() (err error) {
 	readyC := make(chan error, epc.cfg.clusterSize+epc.cfg.proxySize)
-	readyStr := "enabled capabilities for version"
 	for i := range epc.procs {
-		go func(etcdp *etcdProcess) {
-			etcdp.donec = make(chan struct{})
-			rs := readyStr
-			if etcdp.cfg.isProxy {
-				rs = "httpproxy: endpoints found"
-			}
-			_, err := etcdp.proc.Expect(rs)
-			readyC <- err
-			close(etcdp.donec)
-		}(epc.procs[i])
+		go func(n int) { readyC <- epc.procs[n].waitReady() }(i)
 	}
 	for range epc.procs {
 		if err := <-readyC; err != nil {
@@ -379,28 +369,6 @@ func (epc *etcdProcessCluster) RestartAll() error {
 	return epc.Start()
 }
 
-func (epr *etcdProcess) Restart() error {
-	proc, err := newEtcdProcess(epr.cfg)
-	if err != nil {
-		epr.Stop()
-		return err
-	}
-	*epr = *proc
-
-	readyStr := "enabled capabilities for version"
-	if proc.cfg.isProxy {
-		readyStr = "httpproxy: endpoints found"
-	}
-
-	if _, err = proc.proc.Expect(readyStr); err != nil {
-		epr.Stop()
-		return err
-	}
-	close(proc.donec)
-
-	return nil
-}
-
 func (epc *etcdProcessCluster) StopAll() (err error) {
 	for _, p := range epc.procs {
 		if p == nil {
@@ -418,24 +386,56 @@ func (epc *etcdProcessCluster) StopAll() (err error) {
 	return err
 }
 
-func (epr *etcdProcess) Stop() error {
-	if epr == nil {
-		return nil
-	}
-
-	if err := epr.proc.Stop(); err != nil {
-		return err
-	}
-
-	<-epr.donec
-	return nil
-}
-
 func (epc *etcdProcessCluster) Close() error {
 	err := epc.StopAll()
 	for _, p := range epc.procs {
 		os.RemoveAll(p.cfg.dataDirPath)
 	}
+	return err
+}
+
+func (ep *etcdProcess) Restart() error {
+	newEp, err := newEtcdProcess(ep.cfg)
+	if err != nil {
+		ep.Stop()
+		return err
+	}
+	*ep = *newEp
+	if err = ep.waitReady(); err != nil {
+		ep.Stop()
+		return err
+	}
+	return nil
+}
+
+func (ep *etcdProcess) Stop() error {
+	if ep == nil {
+		return nil
+	}
+	if err := ep.proc.Stop(); err != nil {
+		return err
+	}
+	<-ep.donec
+	return nil
+}
+
+func (ep *etcdProcess) waitReady() error {
+	readyStrs := []string{"enabled capabilities for version", "published"}
+	if ep.cfg.isProxy {
+		readyStrs = []string{"httpproxy: endpoints found"}
+	}
+	c := 0
+	matchSet := func(l string) bool {
+		for _, s := range readyStrs {
+			if strings.Contains(l, s) {
+				c++
+				break
+			}
+		}
+		return c == len(readyStrs)
+	}
+	_, err := ep.proc.ExpectFunc(matchSet)
+	close(ep.donec)
 	return err
 }
 
