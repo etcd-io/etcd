@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/pkg/cors"
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/pkg/capnslog"
 )
@@ -81,10 +82,16 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		e.Clients = append(e.Clients, sctx.l)
 	}
 
-	urlsmap, token, uerr := cfg.PeerURLsMapAndToken("etcd")
-	if uerr != nil {
-		err = fmt.Errorf("error setting up initial cluster: %v", uerr)
-		return
+	var (
+		urlsmap types.URLsMap
+		token   string
+	)
+
+	if !isMemberInitialized(cfg) {
+		urlsmap, token, err = cfg.PeerURLsMapAndToken("etcd")
+		if err != nil {
+			return nil, fmt.Errorf("error setting up initial cluster: %v", err)
+		}
 	}
 
 	srvcfg := &etcdserver.ServerConfig{
