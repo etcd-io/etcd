@@ -103,6 +103,13 @@ type Response struct {
 	err     error
 }
 
+func NewResponse(event *store.Event, err error) *Response {
+	return &Response{
+		Event: event,
+		err:   err,
+	}
+}
+
 type Server interface {
 	// Start performs any initialization of the Server necessary for it to
 	// begin serving requests. It must be called before Do or Process.

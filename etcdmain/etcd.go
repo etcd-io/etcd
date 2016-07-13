@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
@@ -40,6 +41,7 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy/httpproxy"
+	"github.com/coreos/etcd/proxy/httpproxy/cache"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/go-systemd/daemon"
@@ -67,6 +69,8 @@ const (
 	// in a cluster, so it should reserve 96.
 	// For the safety, we set the total reserved number to 150.
 	reservedInternalFDNum = 150
+
+	keysPrefix = "/v2/keys"
 )
 
 var (
@@ -508,6 +512,14 @@ func startProxy(cfg *config) error {
 	if cfg.isReadonlyProxy() {
 		ph = httpproxy.NewReadonlyHandler(ph)
 	}
+
+	//TODO: complete new client logic
+	c, err := client.New(clientCfg)
+	client := client.NewKeysAPI(c)
+	kh := &cache.KeysHandler{
+		Server: cache.NewCacheServer(client),
+	}
+
 	// Start a proxy server goroutine for each listen address
 	for _, u := range cfg.lcurls {
 		var (
@@ -531,6 +543,8 @@ func startProxy(cfg *config) error {
 			plog.Info("proxy: listening for client requests on ", host)
 			mux := http.NewServeMux()
 			mux.Handle("/metrics", prometheus.Handler())
+			mux.Handle(keysPrefix, kh)
+			mux.Handle(keysPrefix+"/", kh)
 			mux.Handle("/", ph)
 			plog.Fatal(http.Serve(l, mux))
 		}()
