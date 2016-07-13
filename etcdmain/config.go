@@ -116,7 +116,7 @@ func newConfig() *config {
 
 	fs := cfg.FlagSet
 	fs.Usage = func() {
-		fmt.Println(usageline)
+		fmt.Fprintln(os.Stderr, usageline)
 	}
 
 	fs.StringVar(&cfg.configFile, "config-file", "", "Path to the server configuration file")
