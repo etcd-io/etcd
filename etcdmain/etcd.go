@@ -194,9 +194,16 @@ func startEtcdOrProxyV2() {
 
 // startEtcd launches the etcd server and HTTP handlers for client/server communication.
 func startEtcd(cfg *config) (<-chan struct{}, error) {
-	urlsmap, token, err := getPeerURLsMapAndToken(cfg, "etcd")
-	if err != nil {
-		return nil, fmt.Errorf("error setting up initial cluster: %v", err)
+	var (
+		urlsmap types.URLsMap
+		token   string
+		err     error
+	)
+	if !isMemberInitialized(cfg) {
+		urlsmap, token, err = getPeerURLsMapAndToken(cfg, "etcd")
+		if err != nil {
+			return nil, fmt.Errorf("error setting up initial cluster: %v", err)
+		}
 	}
 
 	if cfg.PeerAutoTLS && cfg.peerTLSInfo.Empty() {
