@@ -26,15 +26,15 @@ func TestConvert(t *testing.T) {
 	e2 := ErrGRPCEmptyKey
 	e3 := ErrEmptyKey
 
-	if e1 != e2 {
-		t.Fatalf("expected 'true', got %T != %T", e1, e2)
+	if e1.Error() != e2.Error() {
+		t.Fatalf("expected %q == %q", e1.Error(), e2.Error())
 	}
 	if grpc.Code(e1) != e3.(EtcdError).Code() {
 		t.Fatalf("expected them to be equal, got %v / %v", grpc.Code(e1), e3.(EtcdError).Code())
 	}
 
-	if e1 == e3 {
-		t.Fatalf("expected 'false', got %T == %T", e1, e3)
+	if e1.Error() == e3.Error() {
+		t.Fatalf("expected %q != %q", e1.Error(), e3.Error())
 	}
 	if grpc.Code(e2) != e3.(EtcdError).Code() {
 		t.Fatalf("expected them to be equal, got %v / %v", grpc.Code(e2), e3.(EtcdError).Code())
