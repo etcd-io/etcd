@@ -55,18 +55,22 @@ type stresser struct {
 	qps int
 	N   int
 
-	mu sync.Mutex
-	wg *sync.WaitGroup
+	cmu      sync.Mutex
+	canceled bool
 
+	mu          sync.Mutex
+	wg          *sync.WaitGroup
+	conn        *grpc.ClientConn
 	rateLimiter *rate.Limiter
-
-	cancel func()
-	conn   *grpc.ClientConn
-
-	success int
+	cancel      func()
+	success     int
 }
 
 func (s *stresser) Stress() error {
+	s.cmu.Lock()
+	s.canceled = false
+	s.cmu.Unlock()
+
 	// TODO: add backoff option
 	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -79,11 +83,10 @@ func (s *stresser) Stress() error {
 	wg.Add(s.N)
 
 	s.mu.Lock()
-	s.conn = conn
-	s.cancel = cancel
 	s.wg = wg
+	s.conn = conn
 	s.rateLimiter = rate.NewLimiter(rate.Every(time.Second), s.qps)
-	s.mu.Unlock()
+	s.cancel = cancel
 
 	kvc := pb.NewKVClient(conn)
 
@@ -91,6 +94,10 @@ func (s *stresser) Stress() error {
 		go s.run(ctx, kvc)
 	}
 
+	// hold lock until here to block concurrent cancellation
+	s.mu.Unlock()
+
+	plog.Printf("stresser %q is started", s.Endpoint)
 	<-ctx.Done()
 	return nil
 }
@@ -100,6 +107,18 @@ func (s *stresser) run(ctx context.Context, kvc pb.KVClient) {
 
 	for {
 		if err := s.rateLimiter.Wait(ctx); err == context.Canceled {
+			return
+		}
+
+		// when rateLimiter releases timer after limit and the context
+		// cancellation overlaps at the same time, the rate limiter will
+		// return nil. This ensures no more requests go through after
+		// cancellation.
+		s.cmu.Lock()
+		canceled := s.canceled
+		s.cmu.Unlock()
+		if canceled {
+			plog.Printf("stresser %q is already canceled", s.Endpoint)
 			return
 		}
 
@@ -160,12 +179,18 @@ func (s *stresser) run(ctx context.Context, kvc pb.KVClient) {
 }
 
 func (s *stresser) Cancel() {
+	s.cmu.Lock()
+	s.canceled = true
+	s.cmu.Unlock()
+
 	s.mu.Lock()
-	cancel, conn, wg := s.cancel, s.conn, s.wg
+	s.cancel()
+	s.conn.Close()
+	wg := s.wg
 	s.mu.Unlock()
-	cancel()
+
 	wg.Wait()
-	conn.Close()
+	plog.Printf("stresser %q is canceled", s.Endpoint)
 }
 
 func (s *stresser) Report() (int, int) {
