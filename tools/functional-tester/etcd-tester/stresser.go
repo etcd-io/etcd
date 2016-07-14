@@ -72,7 +72,6 @@ func (s *stresser) Stress() error {
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, s.Endpoint)
 	}
-	defer conn.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	wg := &sync.WaitGroup{}
@@ -91,7 +90,7 @@ func (s *stresser) Stress() error {
 		go s.run(ctx, kvc)
 	}
 
-	<-ctx.Done()
+	plog.Printf("stresser %q is started", s.Endpoint)
 	return nil
 }
 
@@ -161,11 +160,13 @@ func (s *stresser) run(ctx context.Context, kvc pb.KVClient) {
 
 func (s *stresser) Cancel() {
 	s.mu.Lock()
-	cancel, conn, wg := s.cancel, s.conn, s.wg
+	s.cancel()
+	s.conn.Close()
+	wg := s.wg
 	s.mu.Unlock()
-	cancel()
+
 	wg.Wait()
-	conn.Close()
+	plog.Printf("stresser %q is canceled", s.Endpoint)
 }
 
 func (s *stresser) Report() (int, int) {
