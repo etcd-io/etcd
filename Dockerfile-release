@@ -6,5 +6,5 @@ RUN mkdir -p /var/etcd/
 
 EXPOSE 2379 2380
 
-# Define default entrypoint.
-ENTRYPOINT ["/usr/local/bin/etcd"]
+# Define default command.
+CMD ["/usr/local/bin/etcd"]
