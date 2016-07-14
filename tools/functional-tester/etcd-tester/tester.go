@@ -149,15 +149,14 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 	var (
 		revs   map[string]int64
 		hashes map[string]int64
-		rerr   error
 		ok     bool
 	)
 	for i := 0; i < 7; i++ {
 		time.Sleep(time.Second)
 
-		revs, hashes, rerr = tt.cluster.getRevisionHash()
-		if rerr != nil {
-			plog.Printf("%s #%d failed to get current revisions (%v)", tt.logPrefix(), i, rerr)
+		revs, hashes, err = tt.cluster.getRevisionHash()
+		if err != nil {
+			plog.Printf("%s #%d failed to get current revisions (%v)", tt.logPrefix(), i, err)
 			continue
 		}
 		if tt.currentRevision, ok = getSameValue(revs); ok {
@@ -168,10 +167,9 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 	}
 	plog.Printf("%s updated current revisions with %d", tt.logPrefix(), tt.currentRevision)
 
-	if !ok || rerr != nil {
+	if !ok || err != nil {
 		plog.Printf("%s checking current revisions failed [revisions: %v]", tt.logPrefix(), revs)
 		failed = true
-		err = tt.cleanup()
 		return
 	}
 	plog.Printf("%s all members are consistent with current revisions [revisions: %v]", tt.logPrefix(), revs)
@@ -180,7 +178,6 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 	if _, ok = getSameValue(hashes); !ok {
 		plog.Printf("%s checking current storage hashes failed [hashes: %v]", tt.logPrefix(), hashes)
 		failed = true
-		err = tt.cleanup()
 		return
 	}
 	plog.Printf("%s all members are consistent with storage hashes", tt.logPrefix())
