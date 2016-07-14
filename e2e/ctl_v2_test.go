@@ -258,10 +258,6 @@ func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issue
 	cfg2.forceNewCluster = true
 	epc2 := setupEtcdctlTest(t, &cfg2, false)
 
-	if _, err := epc2.procs[0].proc.Expect("etcdserver: published"); err != nil {
-		t.Fatal(err)
-	}
-
 	// check if backup went through correctly
 	if err := etcdctlGet(epc2, "foo1", "bar", false); err != nil {
 		t.Fatal(err)
