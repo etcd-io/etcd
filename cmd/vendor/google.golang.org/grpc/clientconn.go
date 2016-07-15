@@ -218,27 +218,26 @@ func Dial(target string, opts ...DialOption) (*ClientConn, error) {
 	for _, opt := range opts {
 		opt(&cc.dopts)
 	}
+
+	// Set defaults.
 	if cc.dopts.codec == nil {
-		// Set the default codec.
 		cc.dopts.codec = protoCodec{}
 	}
-
 	if cc.dopts.bs == nil {
 		cc.dopts.bs = DefaultBackoffConfig
 	}
-
-	cc.balancer = cc.dopts.balancer
-	if cc.balancer == nil {
-		cc.balancer = RoundRobin(nil)
+	if cc.dopts.balancer == nil {
+		cc.dopts.balancer = RoundRobin(nil)
 	}
-	if err := cc.balancer.Start(target); err != nil {
+
+	if err := cc.dopts.balancer.Start(target); err != nil {
 		return nil, err
 	}
 	var (
 		ok    bool
 		addrs []Address
 	)
-	ch := cc.balancer.Notify()
+	ch := cc.dopts.balancer.Notify()
 	if ch == nil {
 		// There is no name resolver installed.
 		addrs = append(addrs, Address{Addr: target})
@@ -319,7 +318,6 @@ func (s ConnectivityState) String() string {
 // ClientConn represents a client connection to an RPC server.
 type ClientConn struct {
 	target    string
-	balancer  Balancer
 	authority string
 	dopts     dialOptions
 
@@ -328,7 +326,7 @@ type ClientConn struct {
 }
 
 func (cc *ClientConn) lbWatcher() {
-	for addrs := range cc.balancer.Notify() {
+	for addrs := range cc.dopts.balancer.Notify() {
 		var (
 			add []Address   // Addresses need to setup connections.
 			del []*addrConn // Connections need to tear down.
@@ -424,15 +422,14 @@ func (cc *ClientConn) newAddrConn(addr Address, skipWait bool) error {
 }
 
 func (cc *ClientConn) getTransport(ctx context.Context, opts BalancerGetOptions) (transport.ClientTransport, func(), error) {
-	// TODO(zhaoq): Implement fail-fast logic.
-	addr, put, err := cc.balancer.Get(ctx, opts)
+	addr, put, err := cc.dopts.balancer.Get(ctx, opts)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, toRPCErr(err)
 	}
 	cc.mu.RLock()
 	if cc.conns == nil {
 		cc.mu.RUnlock()
-		return nil, nil, ErrClientConnClosing
+		return nil, nil, toRPCErr(ErrClientConnClosing)
 	}
 	ac, ok := cc.conns[addr]
 	cc.mu.RUnlock()
@@ -440,9 +437,9 @@ func (cc *ClientConn) getTransport(ctx context.Context, opts BalancerGetOptions)
 		if put != nil {
 			put()
 		}
-		return nil, nil, transport.StreamErrorf(codes.Internal, "grpc: failed to find the transport to send the rpc")
+		return nil, nil, Errorf(codes.Internal, "grpc: failed to find the transport to send the rpc")
 	}
-	t, err := ac.wait(ctx)
+	t, err := ac.wait(ctx, !opts.BlockingWait)
 	if err != nil {
 		if put != nil {
 			put()
@@ -462,7 +459,7 @@ func (cc *ClientConn) Close() error {
 	conns := cc.conns
 	cc.conns = nil
 	cc.mu.Unlock()
-	cc.balancer.Close()
+	cc.dopts.balancer.Close()
 	for _, ac := range conns {
 		ac.tearDown(ErrClientConnClosing)
 	}
@@ -610,7 +607,7 @@ func (ac *addrConn) resetTransport(closeTransport bool) error {
 			close(ac.ready)
 			ac.ready = nil
 		}
-		ac.down = ac.cc.balancer.Up(ac.addr)
+		ac.down = ac.cc.dopts.balancer.Up(ac.addr)
 		ac.mu.Unlock()
 		return nil
 	}
@@ -649,8 +646,9 @@ func (ac *addrConn) transportMonitor() {
 	}
 }
 
-// wait blocks until i) the new transport is up or ii) ctx is done or iii) ac is closed.
-func (ac *addrConn) wait(ctx context.Context) (transport.ClientTransport, error) {
+// wait blocks until i) the new transport is up or ii) ctx is done or iii) ac is closed or
+// iv) transport is in TransientFailure and the RPC is fail-fast.
+func (ac *addrConn) wait(ctx context.Context, failFast bool) (transport.ClientTransport, error) {
 	for {
 		ac.mu.Lock()
 		switch {
@@ -661,6 +659,9 @@ func (ac *addrConn) wait(ctx context.Context) (transport.ClientTransport, error)
 			ct := ac.transport
 			ac.mu.Unlock()
 			return ct, nil
+		case ac.state == TransientFailure && failFast:
+			ac.mu.Unlock()
+			return nil, Errorf(codes.Unavailable, "grpc: RPC failed fast due to transport failure")
 		default:
 			ready := ac.ready
 			if ready == nil {
@@ -670,7 +671,7 @@ func (ac *addrConn) wait(ctx context.Context) (transport.ClientTransport, error)
 			ac.mu.Unlock()
 			select {
 			case <-ctx.Done():
-				return nil, transport.ContextErr(ctx.Err())
+				return nil, toRPCErr(ctx.Err())
 			// Wait until the new transport is ready or failed.
 			case <-ready:
 			}

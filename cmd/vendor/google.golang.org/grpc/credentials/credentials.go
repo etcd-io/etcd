@@ -66,7 +66,7 @@ type PerRPCCredentials interface {
 	// TODO(zhaoq): Define the set of the qualified keys instead of leaving
 	// it as an arbitrary string.
 	GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error)
-	// RequireTransportSecurity indicates whether the credentails requires
+	// RequireTransportSecurity indicates whether the credentials requires
 	// transport security.
 	RequireTransportSecurity() bool
 }
@@ -116,7 +116,7 @@ func (t TLSInfo) AuthType() string {
 // tlsCreds is the credentials required for authenticating a connection using TLS.
 type tlsCreds struct {
 	// TLS configuration
-	config tls.Config
+	config *tls.Config
 }
 
 func (c tlsCreds) Info() ProtocolInfo {
@@ -151,14 +151,16 @@ func (c *tlsCreds) ClientHandshake(addr string, rawConn net.Conn, timeout time.D
 			errChannel <- timeoutError{}
 		})
 	}
+	// use local cfg to avoid clobbering ServerName if using multiple endpoints
+	cfg := *c.config
 	if c.config.ServerName == "" {
 		colonPos := strings.LastIndex(addr, ":")
 		if colonPos == -1 {
 			colonPos = len(addr)
 		}
-		c.config.ServerName = addr[:colonPos]
+		cfg.ServerName = addr[:colonPos]
 	}
-	conn := tls.Client(rawConn, &c.config)
+	conn := tls.Client(rawConn, &cfg)
 	if timeout == 0 {
 		err = conn.Handshake()
 	} else {
@@ -177,7 +179,7 @@ func (c *tlsCreds) ClientHandshake(addr string, rawConn net.Conn, timeout time.D
 }
 
 func (c *tlsCreds) ServerHandshake(rawConn net.Conn) (net.Conn, AuthInfo, error) {
-	conn := tls.Server(rawConn, &c.config)
+	conn := tls.Server(rawConn, c.config)
 	if err := conn.Handshake(); err != nil {
 		rawConn.Close()
 		return nil, nil, err
@@ -187,7 +189,7 @@ func (c *tlsCreds) ServerHandshake(rawConn net.Conn) (net.Conn, AuthInfo, error)
 
 // NewTLS uses c to construct a TransportCredentials based on TLS.
 func NewTLS(c *tls.Config) TransportCredentials {
-	tc := &tlsCreds{*c}
+	tc := &tlsCreds{c}
 	tc.config.NextProtos = alpnProtoStr
 	return tc
 }

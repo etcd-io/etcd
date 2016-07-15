@@ -191,7 +191,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 		}
 
 		_, err := kvc.Txn(context.Background(), txn)
-		if err != rpctypes.ErrGRPCTooManyOps {
+		if !eqErrGRPC(err, rpctypes.ErrGRPCTooManyOps) {
 			t.Errorf("#%d: err = %v, want %v", i, err, rpctypes.ErrGRPCTooManyOps)
 		}
 	}
@@ -257,7 +257,7 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 	for i, tt := range tests {
 		txn := &pb.TxnRequest{Success: tt.txnSuccess}
 		_, err := kvc.Txn(context.Background(), txn)
-		if err != tt.werr {
+		if !eqErrGRPC(err, tt.werr) {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}
 	}
@@ -481,8 +481,8 @@ func TestV3DeleteRange(t *testing.T) {
 	}
 }
 
-// TestV3TxnInvaildRange tests txn
-func TestV3TxnInvaildRange(t *testing.T) {
+// TestV3TxnInvalidRange tests that invalid ranges are rejected in txns.
+func TestV3TxnInvalidRange(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -513,14 +513,14 @@ func TestV3TxnInvaildRange(t *testing.T) {
 		Request: &pb.RequestOp_RequestRange{
 			RequestRange: rreq}})
 
-	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrGRPCFutureRev {
+	if _, err := kvc.Txn(context.TODO(), txn); !eqErrGRPC(err, rpctypes.ErrGRPCFutureRev) {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCFutureRev)
 	}
 
 	// compacted rev
 	tv, _ := txn.Success[1].Request.(*pb.RequestOp_RequestRange)
 	tv.RequestRange.Revision = 1
-	if _, err := kvc.Txn(context.TODO(), txn); err != rpctypes.ErrGRPCCompacted {
+	if _, err := kvc.Txn(context.TODO(), txn); !eqErrGRPC(err, rpctypes.ErrGRPCCompacted) {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCCompacted)
 	}
 }
@@ -538,7 +538,7 @@ func TestV3TooLargeRequest(t *testing.T) {
 	preq := &pb.PutRequest{Key: []byte("foo"), Value: largeV}
 
 	_, err := kvc.Put(context.Background(), preq)
-	if err != rpctypes.ErrGRPCRequestTooLarge {
+	if !eqErrGRPC(err, rpctypes.ErrGRPCRequestTooLarge) {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCRequestTooLarge)
 	}
 }
@@ -585,14 +585,14 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 
 	// test small put that fits in quota
 	smallbuf := make([]byte, 512)
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err != nil {
+	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}, grpc.FailFast(false)); err != nil {
 		t.Fatal(err)
 	}
 
 	// test big put
 	bigbuf := make([]byte, 64*1024)
 	_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: bigbuf})
-	if err == nil || err != rpctypes.ErrGRPCNoSpace {
+	if !eqErrGRPC(err, rpctypes.ErrGRPCNoSpace) {
 		t.Fatalf("big put got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
 	}
 
@@ -608,7 +608,7 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 	txnreq := &pb.TxnRequest{}
 	txnreq.Success = append(txnreq.Success, puttxn)
 	_, txnerr := kvc.Txn(context.TODO(), txnreq)
-	if txnerr == nil || err != rpctypes.ErrGRPCNoSpace {
+	if !eqErrGRPC(txnerr, rpctypes.ErrGRPCNoSpace) {
 		t.Fatalf("big txn got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
 	}
 }
@@ -632,7 +632,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 
 	// test small put still works
 	smallbuf := make([]byte, 1024)
-	_, serr := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
+	_, serr := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}, grpc.FailFast(false))
 	if serr != nil {
 		t.Fatal(serr)
 	}
@@ -707,7 +707,7 @@ func TestV3AlarmDeactivate(t *testing.T) {
 	key := []byte("abc")
 	smallbuf := make([]byte, 512)
 	_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
-	if err == nil && err != rpctypes.ErrGRPCNoSpace {
+	if err == nil && !eqErrGRPC(err, rpctypes.ErrGRPCNoSpace) {
 		t.Fatalf("put got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
 	}
 
@@ -1060,4 +1060,8 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
+}
+
+func eqErrGRPC(err1 error, err2 error) bool {
+	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
 }
