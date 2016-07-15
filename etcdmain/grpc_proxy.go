@@ -88,9 +88,11 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}
 
 	kvp := grpcproxy.NewKvProxy(client)
+	watchp := grpcproxy.NewWatchProxy(client)
 
 	server := grpc.NewServer()
 	pb.RegisterKVServer(server, kvp)
+	pb.RegisterWatchServer(server, watchp)
 
 	server.Serve(l)
 }
