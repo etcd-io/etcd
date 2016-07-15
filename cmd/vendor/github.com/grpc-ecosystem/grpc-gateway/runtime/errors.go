@@ -104,6 +104,7 @@ func DefaultHTTPError(ctx context.Context, marshaler Marshaler, w http.ResponseW
 	}
 
 	handleForwardResponseServerMetadata(w, md)
+	handleForwardResponseTrailerHeader(w, md)
 	st := HTTPStatusFromCode(grpc.Code(err))
 	w.WriteHeader(st)
 	if _, err := w.Write(buf); err != nil {

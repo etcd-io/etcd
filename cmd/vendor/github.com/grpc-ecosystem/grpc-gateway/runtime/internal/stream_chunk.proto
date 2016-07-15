@@ -1,5 +1,5 @@
 syntax = "proto3";
-package gengo.grpc.gateway.runtime;
+package grpc.gateway.runtime;
 option go_package = "internal";
 
 // StreamError is a response type which is returned when

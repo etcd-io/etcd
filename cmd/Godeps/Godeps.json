@@ -66,18 +66,6 @@
 			"Rev": "8929fe90cee4b2cb9deb468b51fb34eba64d1bf0"
 		},
 		{
-			"ImportPath": "github.com/gengo/grpc-gateway/runtime",
-			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
-		},
-		{
-			"ImportPath": "github.com/gengo/grpc-gateway/runtime/internal",
-			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
-		},
-		{
-			"ImportPath": "github.com/gengo/grpc-gateway/utilities",
-			"Rev": "dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
-		},
-		{
 			"ImportPath": "github.com/ghodss/yaml",
 			"Rev": "73d445a93680fa1a78ae23a5839bad48f32ba1ee"
 		},
@@ -105,6 +93,21 @@
 		{
 			"ImportPath": "github.com/google/btree",
 			"Rev": "7d79101e329e5a3adf994758c578dab82b90c017"
+		},
+		{
+			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/runtime",
+			"Comment": "v1.0.0-8-gf52d055",
+			"Rev": "f52d055dc48aec25854ed7d31862f78913cf17d1"
+		},
+		{
+			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/runtime/internal",
+			"Comment": "v1.0.0-8-gf52d055",
+			"Rev": "f52d055dc48aec25854ed7d31862f78913cf17d1"
+		},
+		{
+			"ImportPath": "github.com/grpc-ecosystem/grpc-gateway/utilities",
+			"Comment": "v1.0.0-8-gf52d055",
+			"Rev": "f52d055dc48aec25854ed7d31862f78913cf17d1"
 		},
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
