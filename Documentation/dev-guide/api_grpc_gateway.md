@@ -31,7 +31,7 @@ Generated [Swagger][swagger] API definitions can be found at [rpc.swagger.json][
 [go-client]: https://github.com/coreos/etcd/tree/master/clientv3
 [etcdctl]: https://github.com/coreos/etcd/tree/master/etcdctl
 [grpc]: http://www.grpc.io/
-[grpc-gateway]: https://github.com/gengo/grpc-gateway
+[grpc-gateway]: https://github.com/grpc-ecosystem/grpc-gateway
 [json-mapping]: https://developers.google.com/protocol-buffers/docs/proto3#json
 [swagger]: http://swagger.io/
 [swagger-doc]: apispec/swagger/rpc.swagger.json
