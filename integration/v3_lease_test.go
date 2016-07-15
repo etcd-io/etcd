@@ -106,7 +106,7 @@ func TestV3LeaseGrantByID(t *testing.T) {
 	lresp, err = toGRPC(clus.RandClient()).Lease.LeaseGrant(
 		context.TODO(),
 		&pb.LeaseGrantRequest{ID: 1, TTL: 1})
-	if err != rpctypes.ErrGRPCLeaseExist {
+	if !eqErrGRPC(err, rpctypes.ErrGRPCLeaseExist) {
 		t.Error(err)
 	}
 
@@ -242,7 +242,7 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 	badLeaseID := int64(0x12345678)
 	putr := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: badLeaseID}
 	_, err := toGRPC(clus.RandClient()).KV.Put(ctx, putr)
-	if err != rpctypes.ErrGRPCLeaseNotFound {
+	if !eqErrGRPC(err, rpctypes.ErrGRPCLeaseNotFound) {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCCompacted)
 	}
 }
@@ -424,7 +424,7 @@ func leaseExist(t *testing.T, clus *ClusterV3, leaseID int64) bool {
 		return false
 	}
 
-	if err == rpctypes.ErrGRPCLeaseExist {
+	if eqErrGRPC(err, rpctypes.ErrGRPCLeaseExist) {
 		return true
 	}
 	t.Fatalf("unexpecter error %v", err)
