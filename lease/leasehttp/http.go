@@ -89,6 +89,7 @@ func RenewHTTP(id lease.LeaseID, url string, rt http.RoundTripper, timeout time.
 		return -1, err
 	}
 	b, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
 	if err != nil {
 		return -1, err
 	}
