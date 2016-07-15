@@ -21,7 +21,7 @@ DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./mvcc/m
 
 # exact version of protoc-gen-gogo to build
 GOGO_PROTO_SHA="2752d97bbd91927dd1c43296dbf8700e50e2708c"
-GRPC_GATEWAY_SHA="dcb844349dc5d2cb0300fdc4d2d374839d0d2e13"
+GRPC_GATEWAY_SHA="f52d055dc48aec25854ed7d31862f78913cf17d1"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath
@@ -32,7 +32,7 @@ COREOS_ROOT="${GOPATH}/src/github.com/coreos"
 ETCD_ROOT="${COREOS_ROOT}/etcd"
 GOGOPROTO_ROOT="${GOPATH}/src/github.com/gogo/protobuf"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
-GRPC_GATEWAY_ROOT="${GOPATH}/src/github.com/gengo/grpc-gateway"
+GRPC_GATEWAY_ROOT="${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway"
 
 rm -f "${ETCD_ROOT}"
 mkdir -p "${COREOS_ROOT}"
@@ -48,8 +48,8 @@ pushd "${GOGOPROTO_ROOT}"
 popd
 
 # generate gateway code
-go get -u github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway
-go get -u github.com/gengo/grpc-gateway/protoc-gen-swagger
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
 pushd "${GRPC_GATEWAY_ROOT}"
 	git reset --hard "${GRPC_GATEWAY_SHA}"
 	go install ./protoc-gen-grpc-gateway
