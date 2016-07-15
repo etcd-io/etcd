@@ -12,6 +12,10 @@ set -e
 
 source ./build
 
+if [ -z "$PASSES" ]; then
+	PASSES="fmt dep compile build unit"
+fi
+
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
 GOSIMPLE_UNUSED_PATHS=$(go list ./... | sed -e 's/github.com\/coreos\/etcd\///g' | grep -vE 'cmd|vendor|rafttest|github.com/coreos/etcd$|client$')
@@ -45,29 +49,25 @@ fi
 # split TEST into an array and prepend REPO_PATH to each local package
 split=(${TEST// / })
 TEST=${split[@]/#/${REPO_PATH}/}
-MACHINE_TYPE=$(uname -m)
-if [ $MACHINE_TYPE != "armv7l" ]; then
+
+# determine whether target supports race detection
+if [ -z "$GOARCH" ]; then
+	MACHINE_TYPE=$(uname -m)
+	if [ "$MACHINE_TYPE" == "x86_64" ]; then
+		RACE="--race"
+	fi
+elif [ "$GOARCH" == "amd64" ]; then
 	RACE="--race"
 fi
 
-function unit_tests {
-	echo "Running tests..."
+function unit_pass {
+	echo "Running unit tests..."
 	# only -run=Test so examples can run in integration tests
 	go test -timeout 3m ${COVER} ${RACE} -cpu 1,2,4 -run=Test $@ ${TEST}
 }
 
-function integration_tests {
-	if [ "$RELEASE_TEST" = "y" ]; then
-		UPGRADE_VER=$(git tag -l | tail -1)
-		if [ -n "$MANUAL_VER" ]; then
-			# in case, we need to test against different version
-			UPGRADE_VER=$MANUAL_VER
-		fi
-		echo "Running release upgrade tests with" etcd $UPGRADE_VER
-		curl -L https://github.com/coreos/etcd/releases/download/$UPGRADE_VER/etcd-$UPGRADE_VER-linux-amd64.tar.gz -o /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz
-		tar xzvf /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz -C /tmp/ --strip-components=1
-		mv /tmp/etcd ./bin/etcd-last-release
-	fi;
+function integration_pass {
+	echo "Running integration tests..."
 
 	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e &
 	e2epid="$!"
@@ -81,7 +81,21 @@ function integration_tests {
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
 }
 
-function fmt_tests {
+function release_pass {
+	UPGRADE_VER=$(git tag -l | tail -1)
+	if [ -n "$MANUAL_VER" ]; then
+		# in case, we need to test against different version
+		UPGRADE_VER=$MANUAL_VER
+	fi
+	echo "Running release upgrade tests with" etcd $UPGRADE_VER
+	curl -L https://github.com/coreos/etcd/releases/download/$UPGRADE_VER/etcd-$UPGRADE_VER-linux-amd64.tar.gz -o /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz
+	tar xzvf /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz -C /tmp/ --strip-components=1
+	mv /tmp/etcd ./bin/etcd-last-release
+}
+
+function fmt_pass {
+	toggle_failpoints disable
+
 	echo "Checking gofmt..."
 	fmtRes=$(gofmt -l -s -d $FMT)
 	if [ -n "${fmtRes}" ]; then
@@ -183,7 +197,7 @@ function fmt_tests {
 	done
 }
 
-function dep_tests {
+function dep_pass {
 	echo "Checking package dependencies..."
 	# don't pull in etcdserver package
 	pushd clientv3 >/dev/null
@@ -196,28 +210,24 @@ function dep_tests {
 	fi
 }
 
-function compile_tests {
+function compile_pass {
 	echo "Checking build..."
 	go build -v ./tools/...
 }
 
+# fail fast on static tests
+function build_pass {
+	GO_BUILD_FLAGS="-a -v" etcd_build
+}
+
 # Set up gopath so tests use vendored dependencies
 export GOPATH=${PWD}/gopath
-rm -rf $GOPATH/src
+rm -f $GOPATH/src
 mkdir -p $GOPATH
 ln -s ${PWD}/cmd/vendor $GOPATH/src
 
-# fail fast on static tests
-toggle_failpoints disable
-fmt_tests
-dep_tests
-compile_tests
+for pass in $PASSES; do
+	${pass}_pass
+done
 
-# fail fast on static tests
-GO_BUILD_FLAGS="-a -v" etcd_build
-
-unit_tests
-if [ -n "$INTEGRATION" ]; then
-	integration_tests
-fi
 echo "Success"
