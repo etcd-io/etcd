@@ -12,7 +12,7 @@ On each etcd node, specify the cluster members:
 TOKEN=token-01
 CLUSTER_STATE=new
 NAME_1=machine-1
-NAME_2=machine-2
+NAME_2=machine-2 
 NAME_3=machine-3
 HOST_1=10.240.0.17
 HOST_2=10.240.0.18
