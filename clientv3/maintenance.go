@@ -19,6 +19,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type (
@@ -67,7 +68,7 @@ func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
 		Alarm:    pb.AlarmType_NONE, // all
 	}
 	for {
-		resp, err := m.remote.Alarm(ctx, req)
+		resp, err := m.remote.Alarm(ctx, req, grpc.FailFast(false))
 		if err == nil {
 			return (*AlarmResponse)(resp), nil
 		}
@@ -100,7 +101,7 @@ func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmR
 		return &ret, nil
 	}
 
-	resp, err := m.remote.Alarm(ctx, req)
+	resp, err := m.remote.Alarm(ctx, req, grpc.FailFast(false))
 	if err == nil {
 		return (*AlarmResponse)(resp), nil
 	}
@@ -114,7 +115,7 @@ func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*Defragm
 	}
 	defer conn.Close()
 	remote := pb.NewMaintenanceClient(conn)
-	resp, err := remote.Defragment(ctx, &pb.DefragmentRequest{})
+	resp, err := remote.Defragment(ctx, &pb.DefragmentRequest{}, grpc.FailFast(false))
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -128,7 +129,7 @@ func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusRespo
 	}
 	defer conn.Close()
 	remote := pb.NewMaintenanceClient(conn)
-	resp, err := remote.Status(ctx, &pb.StatusRequest{})
+	resp, err := remote.Status(ctx, &pb.StatusRequest{}, grpc.FailFast(false))
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -136,7 +137,7 @@ func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusRespo
 }
 
 func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
-	ss, err := m.remote.Snapshot(ctx, &pb.SnapshotRequest{})
+	ss, err := m.remote.Snapshot(ctx, &pb.SnapshotRequest{}, grpc.FailFast(false))
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
