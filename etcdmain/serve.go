@@ -29,7 +29,7 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 
 	"github.com/cockroachdb/cmux"
-	gw "github.com/gengo/grpc-gateway/runtime"
+	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
