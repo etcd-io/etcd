@@ -15,13 +15,553 @@
     "application/json"
   ],
   "paths": {
+    "/v3alpha/auth/authenticate": {
+      "post": {
+        "summary": "Authenticate processes an authenticate request.",
+        "operationId": "Authenticate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthenticateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/disable": {
+      "post": {
+        "summary": "AuthDisable disables authentication.",
+        "operationId": "AuthDisable",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthDisableResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthDisableRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/enable": {
+      "post": {
+        "summary": "AuthEnable enables authentication.",
+        "operationId": "AuthEnable",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthEnableResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthEnableRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/role/add": {
+      "post": {
+        "summary": "RoleAdd adds a new role.",
+        "operationId": "RoleAdd",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleAddResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleAddRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/role/delete": {
+      "post": {
+        "summary": "RoleDelete deletes a specified role.",
+        "operationId": "RoleDelete",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleDeleteResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleDeleteRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/role/get": {
+      "post": {
+        "summary": "RoleGet gets detailed role information.",
+        "operationId": "RoleGet",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleGetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleGetRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/role/grant": {
+      "post": {
+        "summary": "RoleGrantPermission grants a permission of a specified key or range to a specified role.",
+        "operationId": "RoleGrantPermission",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleGrantPermissionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleGrantPermissionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/role/list": {
+      "post": {
+        "summary": "RoleList gets lists of all roles.",
+        "operationId": "RoleList",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleListResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleListRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/role/revoke": {
+      "post": {
+        "summary": "RoleRevokePermission revokes a key or range permission of a specified role.",
+        "operationId": "RoleRevokePermission",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleRevokePermissionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleRevokePermissionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/user/add": {
+      "post": {
+        "summary": "UserAdd adds a new user.",
+        "operationId": "UserAdd",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserAddResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserAddRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/user/changepw": {
+      "post": {
+        "summary": "UserChangePassword changes the password of a specified user.",
+        "operationId": "UserChangePassword",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserChangePasswordResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserChangePasswordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/user/delete": {
+      "post": {
+        "summary": "UserDelete deletes a specified user.",
+        "operationId": "UserDelete",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserDeleteResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserDeleteRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/user/get": {
+      "post": {
+        "summary": "UserGet gets detailed user information.",
+        "operationId": "UserGet",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserGetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserGetRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/user/grant": {
+      "post": {
+        "summary": "UserGrant grants a role to a specified user.",
+        "operationId": "UserGrantRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserGrantRoleResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserGrantRoleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/user/list": {
+      "post": {
+        "summary": "UserList gets a list of all users.",
+        "operationId": "UserList",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserListResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserListRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/auth/user/revoke": {
+      "post": {
+        "summary": "UserRevokeRole revokes a role of specified user.",
+        "operationId": "UserRevokeRole",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserRevokeRoleResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserRevokeRoleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3alpha/cluster/member/add": {
+      "post": {
+        "summary": "MemberAdd adds a member into the cluster.",
+        "operationId": "MemberAdd",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberAddResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberAddRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v3alpha/cluster/member/list": {
+      "post": {
+        "summary": "MemberList lists all the members in the cluster.",
+        "operationId": "MemberList",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberListResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberListRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v3alpha/cluster/member/remove": {
+      "post": {
+        "summary": "MemberRemove removes an existing member from the cluster.",
+        "operationId": "MemberRemove",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberRemoveResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberRemoveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v3alpha/cluster/member/update": {
+      "post": {
+        "summary": "MemberUpdate updates the member configuration.",
+        "operationId": "MemberUpdate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberUpdateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberUpdateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
     "/v3alpha/kv/compaction": {
       "post": {
         "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
         "operationId": "Compact",
         "responses": {
           "200": {
-            "description": "Description",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/etcdserverpbCompactionResponse"
             }
@@ -42,13 +582,40 @@
         ]
       }
     },
+    "/v3alpha/kv/lease/revoke": {
+      "post": {
+        "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
+        "operationId": "LeaseRevoke",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseRevokeResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseRevokeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
     "/v3alpha/kv/put": {
       "post": {
         "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
         "operationId": "Put",
         "responses": {
           "200": {
-            "description": "Description",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/etcdserverpbPutResponse"
             }
@@ -75,7 +642,7 @@
         "operationId": "Range",
         "responses": {
           "200": {
-            "description": "Description",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/etcdserverpbRangeResponse"
             }
@@ -102,7 +669,7 @@
         "operationId": "Txn",
         "responses": {
           "200": {
-            "description": "Description",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/etcdserverpbTxnResponse"
             }
@@ -120,6 +687,224 @@
         ],
         "tags": [
           "KV"
+        ]
+      }
+    },
+    "/v3alpha/lease/grant": {
+      "post": {
+        "summary": "LeaseGrant creates a lease which expires if the server does not receive a keepAlive\nwithin a given time to live period. All keys attached to the lease will be expired and\ndeleted if the lease expires. Each expired key generates a delete event in the event history.",
+        "operationId": "LeaseGrant",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseGrantResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseGrantRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3alpha/lease/keepalive": {
+      "post": {
+        "summary": "LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client\nto the server and streaming keep alive responses from the server to the client.",
+        "operationId": "LeaseKeepAlive",
+        "responses": {
+          "200": {
+            "description": "(streaming responses)",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "(streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseKeepAliveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3alpha/maintenance/alarm": {
+      "post": {
+        "summary": "Alarm activates, deactivates, and queries alarms regarding cluster health.",
+        "operationId": "Alarm",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAlarmResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAlarmRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3alpha/maintenance/defragment": {
+      "post": {
+        "summary": "Defragment defragments a member's backend database to recover storage space.",
+        "operationId": "Defragment",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDefragmentResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDefragmentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3alpha/maintenance/hash": {
+      "post": {
+        "summary": "Hash returns the hash of the local KV state for consistency checking purpose.\nThis is designed for testing; do not use this in production when there\nare ongoing transactions.",
+        "operationId": "Hash",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbHashResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbHashRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3alpha/maintenance/snapshot": {
+      "post": {
+        "summary": "Snapshot sends a snapshot of the entire backend from a member over a stream to a client.",
+        "operationId": "Snapshot",
+        "responses": {
+          "200": {
+            "description": "(streaming responses)",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbSnapshotResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbSnapshotRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3alpha/maintenance/status": {
+      "post": {
+        "summary": "Status gets the status of the member.",
+        "operationId": "Status",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbStatusResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbStatusRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3alpha/watch": {
+      "post": {
+        "summary": "Watch watches for events happening or that have happened. Both input and output\nare streams; the input stream is for creating and canceling watchers and the output\nstream sends events. One watch RPC can watch on multiple key ranges, streaming events\nfor several watches at once. The entire event history can be watched starting from the\nlast compaction revision.",
+        "operationId": "Watch",
+        "responses": {
+          "200": {
+            "description": "(streaming responses)",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbWatchResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "(streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbWatchRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Watch"
         ]
       }
     }
