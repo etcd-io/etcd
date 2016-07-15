@@ -4,7 +4,18 @@ ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
 RUN mkdir -p /var/etcd/
 
+ENV USER 2379
+
+RUN addgroup -S $USER
+RUN adduser -G $USER -u $USER -S -D -k /var/etcd -h /var/etcd $USER-etcd
+
+CMD chown --recursive $USER-etcd:$USER-etcd /var/etcd
+CMD chmod --recursive 755 /var/etcd
+
+USER $USER
+
 EXPOSE 2379 2380
 
 # Define default command.
 CMD ["/usr/local/bin/etcd"]
+
