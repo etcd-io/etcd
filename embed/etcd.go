@@ -66,7 +66,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	e = &Etcd{cfg: *inCfg}
 	cfg := &e.cfg
 	defer func() {
-		if err != nil {
+		if e != nil && err != nil {
 			e.Close()
 			e = nil
 		}
@@ -90,7 +90,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if !isMemberInitialized(cfg) {
 		urlsmap, token, err = cfg.PeerURLsMapAndToken("etcd")
 		if err != nil {
-			return nil, fmt.Errorf("error setting up initial cluster: %v", err)
+			return e, fmt.Errorf("error setting up initial cluster: %v", err)
 		}
 	}
 
