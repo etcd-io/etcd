@@ -17,6 +17,7 @@ package clientv3
 import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type (
@@ -100,7 +101,7 @@ func (kv *kv) Delete(ctx context.Context, key string, opts ...OpOption) (*Delete
 }
 
 func (kv *kv) Compact(ctx context.Context, rev int64, opts ...CompactOption) (*CompactResponse, error) {
-	resp, err := kv.remote.Compact(ctx, OpCompact(rev, opts...).toRequest())
+	resp, err := kv.remote.Compact(ctx, OpCompact(rev, opts...).toRequest(), grpc.FailFast(false))
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
@@ -150,21 +151,21 @@ func (kv *kv) do(ctx context.Context, op Op) (OpResponse, error) {
 			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
 		}
 
-		resp, err = kv.remote.Range(ctx, r)
+		resp, err = kv.remote.Range(ctx, r, grpc.FailFast(false))
 		if err == nil {
 			return OpResponse{get: (*GetResponse)(resp)}, nil
 		}
 	case tPut:
 		var resp *pb.PutResponse
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV}
-		resp, err = kv.remote.Put(ctx, r)
+		resp, err = kv.remote.Put(ctx, r, grpc.FailFast(false))
 		if err == nil {
 			return OpResponse{put: (*PutResponse)(resp)}, nil
 		}
 	case tDeleteRange:
 		var resp *pb.DeleteRangeResponse
 		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
-		resp, err = kv.remote.DeleteRange(ctx, r)
+		resp, err = kv.remote.DeleteRange(ctx, r, grpc.FailFast(false))
 		if err == nil {
 			return OpResponse{del: (*DeleteResponse)(resp)}, nil
 		}
