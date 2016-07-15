@@ -585,7 +585,7 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 
 	// test small put that fits in quota
 	smallbuf := make([]byte, 512)
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err != nil {
+	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}, grpc.FailFast(false)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -632,7 +632,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 
 	// test small put still works
 	smallbuf := make([]byte, 1024)
-	_, serr := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
+	_, serr := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}, grpc.FailFast(false))
 	if serr != nil {
 		t.Fatal(serr)
 	}
