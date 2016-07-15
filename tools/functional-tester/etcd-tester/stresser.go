@@ -109,7 +109,8 @@ func (s *stresser) run(ctx context.Context, kvc pb.KVClient) {
 		_, err := kvc.Put(putctx, &pb.PutRequest{
 			Key:   []byte(fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))),
 			Value: []byte(randStr(s.KeySize)),
-		})
+		},
+			grpc.FailFast(false))
 		putcancel()
 		if err != nil {
 			shouldContinue := false

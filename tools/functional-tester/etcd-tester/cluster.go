@@ -25,6 +25,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -263,7 +264,7 @@ func (c *cluster) compactKV(rev int64, timeout time.Duration) (err error) {
 		kvc := pb.NewKVClient(conn)
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		plog.Printf("[compact kv #%d] starting (endpoint %s)", i, u)
-		_, cerr := kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev, Physical: true})
+		_, cerr := kvc.Compact(ctx, &pb.CompactionRequest{Revision: rev, Physical: true}, grpc.FailFast(false))
 		cancel()
 		conn.Close()
 		succeed := true

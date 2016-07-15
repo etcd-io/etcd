@@ -93,7 +93,7 @@ func (m *member) RevHash() (int64, int64, error) {
 	}
 	mt := pb.NewMaintenanceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	resp, err := mt.Hash(ctx, &pb.HashRequest{})
+	resp, err := mt.Hash(ctx, &pb.HashRequest{}, grpc.FailFast(false))
 	cancel()
 	conn.Close()
 
