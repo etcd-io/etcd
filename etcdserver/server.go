@@ -1044,6 +1044,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		s.consistIndex.setConsistentIndex(e.Index)
 		shouldApplyV3 = true
 	}
+	defer s.setAppliedIndex(e.Index)
 
 	// raft state machine may generate noop entry when leader confirmation.
 	// skip it in advance to avoid some potential bug in the future
@@ -1082,7 +1083,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	if s.w.IsRegistered(id) || !noSideEffect(&raftReq) {
 		ar = s.applyV3.Apply(&raftReq)
 	}
-	s.setAppliedIndex(e.Index)
 
 	if ar == nil {
 		return
