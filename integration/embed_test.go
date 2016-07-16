@@ -42,10 +42,7 @@ func TestEmbedEtcd(t *testing.T) {
 		{wpeers: 1, wclients: 2},
 	}
 
-	// 4000x so no conflict with e2e tests
-	url1, _ := url.Parse("http://localhost:40000")
-	url2, _ := url.Parse("http://localhost:40001")
-	url3, _ := url.Parse("http://localhost:40002")
+	urls := newEmbedURLs(10)
 
 	// setup defaults
 	for i := range tests {
@@ -53,13 +50,13 @@ func TestEmbedEtcd(t *testing.T) {
 	}
 
 	tests[0].cfg.Durl = "abc"
-	setupEmbedCfg(&tests[1].cfg, []url.URL{*url1}, []url.URL{*url2})
+	setupEmbedCfg(&tests[1].cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
 	tests[1].cfg.ACUrls = nil
 	tests[2].cfg.TickMs = tests[2].cfg.ElectionMs - 1
 	tests[3].cfg.ElectionMs = 999999
-	setupEmbedCfg(&tests[4].cfg, []url.URL{*url1}, []url.URL{*url2})
-	setupEmbedCfg(&tests[5].cfg, []url.URL{*url1}, []url.URL{*url2, *url3})
-	setupEmbedCfg(&tests[6].cfg, []url.URL{*url1, *url2}, []url.URL{*url3})
+	setupEmbedCfg(&tests[4].cfg, []url.URL{urls[2]}, []url.URL{urls[3]})
+	setupEmbedCfg(&tests[5].cfg, []url.URL{urls[4]}, []url.URL{urls[5], urls[6]})
+	setupEmbedCfg(&tests[6].cfg, []url.URL{urls[7], urls[8]}, []url.URL{urls[9]})
 
 	dir := path.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
 	os.RemoveAll(dir)
@@ -89,6 +86,18 @@ func TestEmbedEtcd(t *testing.T) {
 		}
 		e.Close()
 	}
+}
+
+// 4000x so no conflict with e2e tests
+var embedBasePort = 40000
+
+func newEmbedURLs(n int) (urls []url.URL) {
+	for i := 0; i < n; i++ {
+		u, _ := url.Parse(fmt.Sprintf("http://localhost:%d", embedBasePort+i))
+		urls = append(urls, *u)
+	}
+	embedBasePort += n
+	return
 }
 
 func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
