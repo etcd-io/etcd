@@ -220,12 +220,6 @@ function build_pass {
 	GO_BUILD_FLAGS="-a -v" etcd_build
 }
 
-# Set up gopath so tests use vendored dependencies
-export GOPATH=${PWD}/gopath
-rm -f $GOPATH/src
-mkdir -p $GOPATH
-ln -s ${PWD}/cmd/vendor $GOPATH/src
-
 for pass in $PASSES; do
 	${pass}_pass
 done
