@@ -123,6 +123,7 @@ type securityConfig struct {
 	KeyFile       string `json:"key-file"`
 	CertAuth      bool   `json:"client-cert-auth"`
 	TrustedCAFile string `json:"trusted-ca-file"`
+	CRLFile       string `json:"crl-file"`
 	AutoTLS       bool   `json:"auto-tls"`
 }
 
@@ -214,6 +215,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 		tls.KeyFile = ysc.KeyFile
 		tls.ClientCertAuth = ysc.CertAuth
 		tls.TrustedCAFile = ysc.TrustedCAFile
+		tls.CRLFile = ysc.CRLFile
 	}
 	copySecurityDetails(&cfg.ClientTLSInfo, &cfg.ClientSecurityJSON)
 	copySecurityDetails(&cfg.PeerTLSInfo, &cfg.PeerSecurityJSON)

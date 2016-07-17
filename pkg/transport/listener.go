@@ -65,6 +65,7 @@ type TLSInfo struct {
 	KeyFile        string
 	CAFile         string
 	TrustedCAFile  string
+	CRLFile        string
 	ClientCertAuth bool
 
 	selfCert bool
@@ -75,7 +76,7 @@ type TLSInfo struct {
 }
 
 func (info TLSInfo) String() string {
-	return fmt.Sprintf("cert = %s, key = %s, ca = %s, trusted-ca = %s, client-cert-auth = %v", info.CertFile, info.KeyFile, info.CAFile, info.TrustedCAFile, info.ClientCertAuth)
+	return fmt.Sprintf("cert = %s, key = %s, ca = %s, trusted-ca = %s, cert-auth = %v, crl-file = %s", info.CertFile, info.KeyFile, info.CAFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile)
 }
 
 func (info TLSInfo) Empty() bool {

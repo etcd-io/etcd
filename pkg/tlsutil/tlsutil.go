@@ -18,7 +18,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
+	"net/http"
+
+	etcdErr "github.com/coreos/etcd/error"
 )
 
 // NewCertPool creates x509 certPool with provided CA files.
@@ -69,4 +73,17 @@ func NewCert(certfile, keyfile string, parseFunc func([]byte, []byte) (tls.Certi
 		return nil, err
 	}
 	return &tlsCert, nil
+}
+
+func RevocationCheck(handler http.Handler, checker func(*http.Request, string) error, CRLpath string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		err := checker(req, CRLpath)
+		if err == nil {
+			handler.ServeHTTP(w, req)
+			return
+		}
+		w.WriteHeader(http.StatusForbidden)
+		e := etcdErr.NewError(etcdErr.EcodeUnauthorized, fmt.Sprint(err), 0)
+		e.WriteTo(w)
+	})
 }

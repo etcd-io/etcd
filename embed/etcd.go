@@ -16,15 +16,18 @@ package embed
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"path"
 
+	"github.com/cloudflare/cfssl/revoke"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/pkg/cors"
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
+	"github.com/coreos/etcd/pkg/tlsutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
@@ -280,6 +283,27 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 	return sctxs, nil
 }
 
+func revokeCheckHandler(req *http.Request, CRLpath string) error {
+	if req.TLS == nil {
+		return nil
+	}
+	for _, cert := range req.TLS.PeerCertificates {
+		var revoked, ok bool
+		if CRLpath != "" {
+			revoked, ok = revoke.VerifyCertificateByCRLPath(cert, CRLpath)
+		} else {
+			revoked, ok = revoke.VerifyCertificate(cert)
+		}
+		if !ok {
+			return errors.New("Cert check failed")
+		}
+		if revoked {
+			return errors.New("Cert if revoked")
+		}
+	}
+	return nil
+}
+
 func (e *Etcd) serve() (err error) {
 	var ctlscfg *tls.Config
 	if !e.cfg.ClientTLSInfo.Empty() {
@@ -294,16 +318,23 @@ func (e *Etcd) serve() (err error) {
 	}
 
 	// Start the peer server in a goroutine
-	ph := v2http.NewPeerHandler(e.Server)
+	ph := tlsutil.RevocationCheck(
+		v2http.NewPeerHandler(e.Server),
+		revokeCheckHandler,
+		e.cfg.PeerTLSInfo.CRLFile)
 	for _, l := range e.Peers {
 		go func(l net.Listener) {
 			e.errc <- servePeerHTTP(l, ph)
 		}(l)
 	}
 
+	clientHandler := tlsutil.RevocationCheck(
+		v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
+		revokeCheckHandler,
+		e.cfg.ClientTLSInfo.CRLFile)
 	// Start a client server goroutine for each listen address
 	ch := http.Handler(&cors.CORSHandler{
-		Handler: v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
+		Handler: clientHandler,
 		Info:    e.cfg.CorsInfo,
 	})
 	for _, sctx := range e.sctxs {
