@@ -56,6 +56,10 @@ func (this *Extension) Equal(that *Extension) bool {
 	return bytes.Equal(this.enc, that.enc)
 }
 
+func (this *Extension) Compare(that *Extension) int {
+	return bytes.Compare(this.enc, that.enc)
+}
+
 func SizeOfExtensionMap(m map[int32]Extension) (n int) {
 	return sizeExtensionMap(m)
 }
