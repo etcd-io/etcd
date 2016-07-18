@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "go1.6",
+	"GoVersion": "devel-a6dbfc1",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
@@ -71,8 +71,8 @@
 		},
 		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
-			"Comment": "v0.2-13-gc3995ae",
-			"Rev": "c3995ae437bb78d1189f4f147dfe5f87ad3596e4"
+			"Comment": "v0.2-33-ge18d7aa",
+			"Rev": "e18d7aa8f8c624c915db340349aad4c49b10d173"
 		},
 		{
 			"ImportPath": "github.com/golang/glog",
