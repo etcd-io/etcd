@@ -17,9 +17,13 @@ package clientv3
 import (
 	"testing"
 	"time"
+
+	"github.com/coreos/etcd/pkg/testutil"
 )
 
 func TestTxnPanics(t *testing.T) {
+	defer testutil.AfterTest(t)
+
 	kv := &kv{}
 
 	errc := make(chan string)
