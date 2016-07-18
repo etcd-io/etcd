@@ -1,5 +1,8 @@
 #!/bin/sh -e
 
+CDIR=$(cd `dirname "$0"` && pwd)
+cd "$CDIR"
+
 # set some environment variables
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/etcd"
@@ -35,7 +38,15 @@ etcd_build() {
 	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "-s" -o ${out}/etcdctl ${REPO_PATH}/cmd/etcdctl
 }
 
+etcd_setup_gopath() {
+	export GOPATH=${CDIR}/gopath
+	rm -f $GOPATH/src
+	mkdir -p $GOPATH
+	ln -s ${CDIR}/cmd/vendor $GOPATH/src
+}
+
 toggle_failpoints
+etcd_setup_gopath
 
 # don't build when sourced
 (echo "$0" | grep "/build$" > /dev/null) && etcd_build || true
