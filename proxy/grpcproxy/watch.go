@@ -21,6 +21,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -104,6 +105,7 @@ func (sws *serverWatchStream) recvLoop() error {
 				ch: sws.watchCh,
 
 				progress: cr.ProgressNotify,
+				filters:  v3rpc.FiltersFromRequest(cr),
 			}
 			if cr.StartRevision != 0 {
 				sws.addDedicatedWatcher(watcher, cr.StartRevision)
