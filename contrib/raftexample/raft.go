@@ -38,8 +38,8 @@ import (
 type raftNode struct {
 	proposeC    <-chan string            // proposed messages (k,v)
 	confChangeC <-chan raftpb.ConfChange // proposed cluster config changes
-	commitC     chan *string             // entries committed to log (k,v)
-	errorC      chan error               // errors from raft session
+	commitC     chan<- *string           // entries committed to log (k,v)
+	errorC      chan<- error             // errors from raft session
 
 	id        int      // client ID for raft session
 	peers     []string // raft peer URLs
@@ -65,11 +65,14 @@ type raftNode struct {
 func newRaftNode(id int, peers []string, join bool, proposeC <-chan string,
 	confChangeC <-chan raftpb.ConfChange) (<-chan *string, <-chan error) {
 
+	commitC := make(chan *string)
+	errorC := make(chan error)
+
 	rc := &raftNode{
 		proposeC:    proposeC,
 		confChangeC: confChangeC,
-		commitC:     make(chan *string),
-		errorC:      make(chan error),
+		commitC:     commitC,
+		errorC:      errorC,
 		id:          id,
 		peers:       peers,
 		join:        join,
@@ -81,7 +84,7 @@ func newRaftNode(id int, peers []string, join bool, proposeC <-chan string,
 		// rest of structure populated after WAL replay
 	}
 	go rc.startRaft()
-	return rc.commitC, rc.errorC
+	return commitC, errorC
 }
 
 // publishEntries writes committed log entries to commit channel and returns
