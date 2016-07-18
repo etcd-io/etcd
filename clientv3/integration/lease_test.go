@@ -359,7 +359,8 @@ func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
 	if kerr != nil {
 		t.Fatal(kerr)
 	}
-	if kresp := <-rc; kresp.ID != resp.ID {
+	kresp := <-rc
+	if kresp.ID != resp.ID {
 		t.Fatalf("ID = %x, want %x", kresp.ID, resp.ID)
 	}
 
@@ -374,13 +375,14 @@ func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
 
 	clus.Members[0].Restart(t)
 
-	select {
-	case ka, ok := <-rc:
-		if ok {
-			t.Fatalf("unexpected keepalive %v", ka)
+	// some keep-alives may still be buffered; drain until close
+	timer := time.After(time.Duration(kresp.TTL) * time.Second)
+	for kresp != nil {
+		select {
+		case kresp = <-rc:
+		case <-timer:
+			t.Fatalf("keepalive channel did not close")
 		}
-	case <-time.After(5 * time.Second):
-		t.Fatalf("keepalive channel did not close")
 	}
 }
 
