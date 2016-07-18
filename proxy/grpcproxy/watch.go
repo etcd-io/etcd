@@ -32,7 +32,7 @@ type watchProxy struct {
 	nextStreamID int64
 }
 
-func NewWatchProxy(c *clientv3.Client) *watchProxy {
+func NewWatchProxy(c *clientv3.Client) pb.WatchServer {
 	return &watchProxy{
 		c: c,
 		wgs: watchergroups{

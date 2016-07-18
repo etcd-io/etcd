@@ -50,10 +50,11 @@ func TestKVProxyRange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
+	client.Close()
 }
 
 type kvproxyTestServer struct {
-	kp     *kvProxy
+	kp     pb.KVServer
 	server *grpc.Server
 	l      net.Listener
 }
@@ -61,7 +62,6 @@ type kvproxyTestServer struct {
 func (kts *kvproxyTestServer) close() {
 	kts.server.Stop()
 	kts.l.Close()
-	kts.kp.Close()
 }
 
 func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {

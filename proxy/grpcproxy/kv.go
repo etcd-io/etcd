@@ -27,7 +27,7 @@ type kvProxy struct {
 	cache  cache.Cache
 }
 
-func NewKvProxy(c *clientv3.Client) *kvProxy {
+func NewKvProxy(c *clientv3.Client) pb.KVServer {
 	return &kvProxy{
 		client: c,
 		cache:  cache.NewCache(cache.DefaultMaxEntries),
@@ -100,10 +100,6 @@ func (p *kvProxy) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Com
 	}
 
 	return (*pb.CompactionResponse)(resp), err
-}
-
-func (p *kvProxy) Close() error {
-	return p.client.Close()
 }
 
 func requestOpToOp(union *pb.RequestOp) clientv3.Op {
