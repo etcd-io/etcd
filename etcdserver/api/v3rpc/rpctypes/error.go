@@ -53,6 +53,7 @@ var (
 
 	ErrGRPCNoLeader   = grpc.Errorf(codes.Unavailable, "etcdserver: no leader")
 	ErrGRPCNotCapable = grpc.Errorf(codes.Unavailable, "etcdserver: not capable")
+	ErrGRPCStopped    = grpc.Errorf(codes.Unavailable, "etcdserver: server stopped")
 
 	errStringToError = map[string]error{
 		grpc.ErrorDesc(ErrGRPCEmptyKey):     ErrGRPCEmptyKey,
@@ -87,6 +88,7 @@ var (
 
 		grpc.ErrorDesc(ErrGRPCNoLeader):   ErrGRPCNoLeader,
 		grpc.ErrorDesc(ErrGRPCNotCapable): ErrGRPCNotCapable,
+		grpc.ErrorDesc(ErrGRPCStopped):    ErrGRPCStopped,
 	}
 
 	// client-side error
@@ -122,6 +124,7 @@ var (
 
 	ErrNoLeader   = Error(ErrGRPCNoLeader)
 	ErrNotCapable = Error(ErrGRPCNotCapable)
+	ErrStopped    = Error(ErrGRPCStopped)
 )
 
 // EtcdError defines gRPC server errors.
