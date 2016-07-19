@@ -29,6 +29,7 @@ type watcher struct {
 	id int64
 	wr watchRange
 
+	rev      int64
 	filters  []mvcc.FilterFunc
 	progress bool
 	ch       chan<- *pb.WatchResponse
@@ -39,15 +40,17 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		return
 	}
 
-	// todo: filter out the events that this watcher already seen.
-
 	events := make([]*mvccpb.Event, 0, len(wr.Events))
 
 	for i := range wr.Events {
-		filtered := false
-
 		ev := (*mvccpb.Event)(wr.Events[i])
+		if ev.Kv.ModRevision <= w.rev {
+			continue
+		} else {
+			w.rev = ev.Kv.ModRevision
+		}
 
+		filtered := false
 		if len(w.filters) != 0 {
 			for _, filter := range w.filters {
 				if filter(*ev) {
