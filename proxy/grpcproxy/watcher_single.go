@@ -31,8 +31,7 @@ type watcherSingle struct {
 
 	w watcher
 
-	rev         int64 // current revision
-	lastSeenRev int64
+	lastStoreRev int64 // last seen revision of the remote mvcc store
 
 	donec chan struct{}
 }
@@ -53,9 +52,8 @@ func (ws watcherSingle) run() {
 	defer close(ws.donec)
 
 	for wr := range ws.ch {
-		ws.rev = wr.Header.Revision
+		ws.lastStoreRev = wr.Header.Revision
 		ws.w.send(wr)
-		ws.lastSeenRev = wr.Events[len(wr.Events)-1].Kv.ModRevision
 
 		if ws.sws.maybeCoalesceWatcher(ws) {
 			return
@@ -64,9 +62,10 @@ func (ws watcherSingle) run() {
 }
 
 // canPromote returns true if a watcherSingle can promote itself to a watchergroup
-// when it already caught up with the current revision.
+// when it already caught up with the last seen revision from the response header
+// of an etcd server.
 func (ws watcherSingle) canPromote() bool {
-	return ws.rev == ws.lastSeenRev
+	return ws.w.rev == ws.lastStoreRev
 }
 
 func (ws watcherSingle) stop() {
