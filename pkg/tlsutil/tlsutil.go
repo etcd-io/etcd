@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/cloudflare/cfssl/revoke"
+
 	etcdErr "github.com/coreos/etcd/error"
 )
 
@@ -75,9 +77,31 @@ func NewCert(certfile, keyfile string, parseFunc func([]byte, []byte) (tls.Certi
 	return &tlsCert, nil
 }
 
-func RevocationCheck(handler http.Handler, checker func(*http.Request, string) error, CRLpath string) http.Handler {
+func revokeCheckHandler(req *http.Request, CRLpath string, revokeChecker *revoke.Revoke) error {
+	if req.TLS == nil {
+		return nil
+	}
+	for _, cert := range req.TLS.PeerCertificates {
+		var revoked, ok bool
+		if CRLpath != "" {
+			revoked, ok = revokeChecker.VerifyCertificateByCRLPath(cert, CRLpath)
+		} else {
+			revoked, ok = revokeChecker.VerifyCertificate(cert)
+		}
+		if !ok {
+			return fmt.Errorf("cert check failed (CN=%s, Serial: %s)", cert.Subject.CommonName, cert.SerialNumber.String())
+		}
+		if revoked {
+			return fmt.Errorf("Cert is revoked (CN=%s, Serial: %s)", cert.Subject.CommonName, cert.SerialNumber.String())
+		}
+	}
+	return nil
+}
+
+func NewRevokeHandler(handler http.Handler, CRLpath string) http.Handler {
+	revokeChecker := revoke.NewRevokeChecker()
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		err := checker(req, CRLpath)
+		err := revokeCheckHandler(req, CRLpath, revokeChecker)
 		if err == nil {
 			handler.ServeHTTP(w, req)
 			return
