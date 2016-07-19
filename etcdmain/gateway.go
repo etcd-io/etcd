@@ -20,6 +20,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/proxy/tcpproxy"
 	"github.com/spf13/cobra"
 )
@@ -27,6 +28,7 @@ import (
 var (
 	gatewayListenAddr string
 	gatewayEndpoints  []string
+	gatewayDNSCluster string
 	getewayRetryDelay time.Duration
 )
 
@@ -61,13 +63,26 @@ func newGatewayStartCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&gatewayListenAddr, "listen-addr", "127.0.0.1:23790", "listen address")
+	cmd.Flags().StringVar(&gatewayDNSCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster")
+
 	cmd.Flags().StringSliceVar(&gatewayEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
+
 	cmd.Flags().DurationVar(&getewayRetryDelay, "retry-delay", time.Minute, "duration of delay before retrying failed endpoints")
 
 	return &cmd
 }
 
 func startGateway(cmd *cobra.Command, args []string) {
+	endpoints := gatewayEndpoints
+	if gatewayDNSCluster != "" {
+		eps, err := client.NewSRVDiscover().Discover(gatewayDNSCluster)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		plog.Infof("discovered the cluster %s from %s", eps, gatewayDNSCluster)
+	}
+
 	l, err := net.Listen("tcp", gatewayListenAddr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -76,7 +91,7 @@ func startGateway(cmd *cobra.Command, args []string) {
 
 	tp := tcpproxy.TCPProxy{
 		Listener:        l,
-		Endpoints:       gatewayEndpoints,
+		Endpoints:       endpoints,
 		MonitorInterval: getewayRetryDelay,
 	}
 
