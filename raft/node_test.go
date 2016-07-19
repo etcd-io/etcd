@@ -180,7 +180,7 @@ func TestNodeReadIndex(t *testing.T) {
 
 	r.step = appendStep
 	wrequestCtx = []byte("somedata2")
-	n.ReadIndex(context.TODO(), r.id, wrequestCtx)
+	n.ReadIndex(context.TODO(), wrequestCtx)
 	n.Stop()
 
 	if len(msgs) != 1 {
