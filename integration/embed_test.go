@@ -88,15 +88,11 @@ func TestEmbedEtcd(t *testing.T) {
 	}
 }
 
-// 4000x so no conflict with e2e tests
-var embedBasePort = 40000
-
 func newEmbedURLs(n int) (urls []url.URL) {
 	for i := 0; i < n; i++ {
-		u, _ := url.Parse(fmt.Sprintf("http://localhost:%d", embedBasePort+i))
+		u, _ := url.Parse(fmt.Sprintf("unix://localhost:%d.%d.sock", os.Getpid(), i))
 		urls = append(urls, *u)
 	}
-	embedBasePort += n
 	return
 }
 
