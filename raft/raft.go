@@ -681,8 +681,12 @@ func stepLeader(r *raft, m pb.Message) {
 		if r.checkQuorum {
 			ri = r.raftLog.committed
 		}
-
-		r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: ri, Entries: m.Entries})
+		if m.From == None || m.From == r.id { // from local member
+			r.readState.Index = ri
+			r.readState.RequestCtx = m.Entries[0].Data
+		} else {
+			r.send(pb.Message{To: m.From, Type: pb.MsgReadIndexResp, Index: ri, Entries: m.Entries})
+		}
 		return
 	}
 
