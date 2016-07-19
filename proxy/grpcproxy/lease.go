@@ -25,7 +25,7 @@ type leaseProxy struct {
 	client *clientv3.Client
 }
 
-func NewLeaseProxy(c *clientv3.Client) *leaseProxy {
+func NewLeaseProxy(c *clientv3.Client) pb.LeaseServer {
 	return &leaseProxy{
 		client: c,
 	}
