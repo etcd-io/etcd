@@ -400,7 +400,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 func TestWatchCompactRevision(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// set some keys
