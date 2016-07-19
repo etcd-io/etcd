@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -57,7 +58,13 @@ func TestDialTimeout(t *testing.T) {
 
 func TestIsHaltErr(t *testing.T) {
 	if !isHaltErr(nil, fmt.Errorf("etcdserver: some etcdserver error")) {
-		t.Errorf(`error prefixed with "etcdserver: " should be Halted`)
+		t.Errorf(`error prefixed with "etcdserver: " should be Halted by default`)
+	}
+	if isHaltErr(nil, etcdserver.ErrStopped) {
+		t.Errorf("error %v should not halt", etcdserver.ErrStopped)
+	}
+	if isHaltErr(nil, etcdserver.ErrNoLeader) {
+		t.Errorf("error %v should not halt", etcdserver.ErrNoLeader)
 	}
 	ctx, cancel := context.WithCancel(context.TODO())
 	if isHaltErr(ctx, nil) {
