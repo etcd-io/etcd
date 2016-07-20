@@ -84,7 +84,7 @@ func (r *Revoke) revCheck(cert *x509.Certificate, localCRLPath string) (revoked,
 			}
 			return false, false
 		} else if revoked {
-			log.Info("certificate is revoked via CRL")
+			log.Infof("certificate is revoked via local CRL file (CN=%s, Serial: %s)", cert.Subject.CommonName, cert.SerialNumber)
 			return true, true
 		}
 	}
@@ -102,7 +102,7 @@ func (r *Revoke) revCheck(cert *x509.Certificate, localCRLPath string) (revoked,
 			}
 			return false, false
 		} else if revoked {
-			log.Info("certificate is revoked via CRL")
+			log.Info("certificate is revoked via CRL (CN=%s, Serial: %s)", cert.Subject.CommonName, cert.SerialNumber)
 			return true, true
 		}
 
@@ -186,20 +186,20 @@ func (r *Revoke) FetchLocalCRL(path string, force bool) error {
 	if u.Scheme == "" && (shouldFetchCRL || force) {
 		if _, err := os.Stat(path); err != nil {
 			return fmt.Errorf("failed to read local CRL path: %v", err)
-		} else {
-			tmp, err := ioutil.ReadFile(path)
-			if err != nil {
-				return fmt.Errorf("failed to read local CRL path: %v", err)
-			}
-			crl, err := x509.ParseCRL(tmp)
-			if err != nil {
-				return fmt.Errorf("failed to parse local CRL file: %v", err)
-			}
-
-			r.CRLSetLck.Lock()
-			r.CRLSet[path] = crl
-			r.CRLSetLck.Unlock()
 		}
+
+		tmp, err := ioutil.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to read local CRL path: %v", err)
+		}
+		crl, err := x509.ParseCRL(tmp)
+		if err != nil {
+			return fmt.Errorf("failed to parse local CRL file: %v", err)
+		}
+
+		r.CRLSetLck.Lock()
+		r.CRLSet[path] = crl
+		r.CRLSetLck.Unlock()
 	}
 
 	return nil
@@ -252,7 +252,6 @@ func (r *Revoke) certIsRevokedCRL(cert *x509.Certificate, url string, fetchLocal
 
 	for _, revoked := range r.CRLSet[url].TBSCertList.RevokedCertificates {
 		if cert.SerialNumber.Cmp(revoked.SerialNumber) == 0 {
-			log.Info("Serial number match: intermediate is revoked.")
 			return true, true
 		}
 	}

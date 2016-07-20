@@ -89,10 +89,10 @@ func revokeCheckHandler(req *http.Request, CRLpath string, revokeChecker *revoke
 			revoked, ok = revokeChecker.VerifyCertificate(cert)
 		}
 		if !ok {
-			return fmt.Errorf("cert check failed (CN=%s, Serial: %s)", cert.Subject.CommonName, cert.SerialNumber.String())
+			return fmt.Errorf("cert check failed")
 		}
 		if revoked {
-			return fmt.Errorf("Cert is revoked (CN=%s, Serial: %s)", cert.Subject.CommonName, cert.SerialNumber.String())
+			return fmt.Errorf("Cert is revoked")
 		}
 	}
 	return nil
