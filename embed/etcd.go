@@ -300,7 +300,8 @@ func (e *Etcd) serve() (err error) {
 		// Enable CRL checker handler for the peer server
 		ph = tlsutil.NewRevokeHandler(
 			v2http.NewPeerHandler(e.Server),
-			e.cfg.PeerTLSInfo.CRLFile)
+			e.cfg.PeerTLSInfo.CRLFile,
+			e.cfg.PeerTLSInfo.CRLHardFail)
 	} else {
 		ph = v2http.NewPeerHandler(e.Server)
 	}
@@ -315,7 +316,8 @@ func (e *Etcd) serve() (err error) {
 		// Enable CRL checker handler for the client server
 		clientHandler = tlsutil.NewRevokeHandler(
 			v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
-			e.cfg.ClientTLSInfo.CRLFile)
+			e.cfg.ClientTLSInfo.CRLFile,
+			e.cfg.ClientTLSInfo.CRLHardFail)
 	} else {
 		clientHandler = v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout())
 	}

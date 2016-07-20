@@ -174,6 +174,7 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.ClientTLSInfo.ClientCertAuth, "client-cert-auth", false, "Enable client cert authentication.")
 	fs.StringVar(&cfg.ClientTLSInfo.TrustedCAFile, "trusted-ca-file", "", "Path to the client server TLS trusted CA key file.")
 	fs.BoolVar(&cfg.ClientTLSInfo.CRLCheck, "crl-check", false, "Enable CRL check for the client server. Works only when --client-cert-auth flag is set.")
+	fs.BoolVar(&cfg.ClientTLSInfo.CRLHardFail, "crl-hard-fail", true, "Enable hard fail revocation plan for the the client server. Fail CRL check if CRL is unavailable.")
 	fs.StringVar(&cfg.ClientTLSInfo.CRLFile, "crl-file", "", "Path to the client server certificate revocation list file. If set, automatically enables --crl-check flag.")
 	fs.BoolVar(&cfg.ClientAutoTLS, "auto-tls", false, "Client TLS using generated certificates")
 	fs.StringVar(&cfg.PeerTLSInfo.CAFile, "peer-ca-file", "", "DEPRECATED: Path to the peer server TLS CA file.")
@@ -182,6 +183,7 @@ func newConfig() *config {
 	fs.BoolVar(&cfg.PeerTLSInfo.ClientCertAuth, "peer-client-cert-auth", false, "Enable peer client cert authentication.")
 	fs.StringVar(&cfg.PeerTLSInfo.TrustedCAFile, "peer-trusted-ca-file", "", "Path to the peer server TLS trusted CA file.")
 	fs.BoolVar(&cfg.PeerTLSInfo.CRLCheck, "peer-crl-check", false, "Enable CRL check for the peer server. Works only when --peer-client-cert-auth flag is set.")
+	fs.BoolVar(&cfg.PeerTLSInfo.CRLHardFail, "peer-crl-hard-fail", true, "Enable hard fail revocation plan for the the peer server. Fail CRL check if CRL is unavailable.")
 	fs.StringVar(&cfg.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer server certificate revocation list file. If set, automatically enables --peer-crl-check flag.")
 	fs.BoolVar(&cfg.PeerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 

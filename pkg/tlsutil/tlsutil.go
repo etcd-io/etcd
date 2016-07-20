@@ -18,13 +18,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
 	"github.com/cloudflare/cfssl/revoke"
-
-	etcdErr "github.com/coreos/etcd/error"
 )
 
 // NewCertPool creates x509 certPool with provided CA files.
@@ -77,9 +74,9 @@ func NewCert(certfile, keyfile string, parseFunc func([]byte, []byte) (tls.Certi
 	return &tlsCert, nil
 }
 
-func revokeCheckHandler(req *http.Request, CRLpath string, revokeChecker *revoke.Revoke) error {
+func isReqCertValid(req *http.Request, CRLpath string, revokeChecker *revoke.Revoke) bool {
 	if req.TLS == nil {
-		return nil
+		return true
 	}
 	for _, cert := range req.TLS.PeerCertificates {
 		var revoked, ok bool
@@ -88,26 +85,23 @@ func revokeCheckHandler(req *http.Request, CRLpath string, revokeChecker *revoke
 		} else {
 			revoked, ok = revokeChecker.VerifyCertificate(cert)
 		}
-		if !ok {
-			return fmt.Errorf("cert check failed")
+		if !ok && revokeChecker.HardFail {
+			return false
 		}
 		if revoked {
-			return fmt.Errorf("Cert is revoked")
+			return false
 		}
 	}
-	return nil
+	return true
 }
 
-func NewRevokeHandler(handler http.Handler, CRLpath string) http.Handler {
-	revokeChecker := revoke.New()
+func NewRevokeHandler(handler http.Handler, CRLpath string, hardfail bool) http.Handler {
+	revokeChecker := revoke.New(hardfail)
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		err := revokeCheckHandler(req, CRLpath, revokeChecker)
-		if err == nil {
+		if isReqCertValid(req, CRLpath, revokeChecker) {
 			handler.ServeHTTP(w, req)
 			return
 		}
 		w.WriteHeader(http.StatusForbidden)
-		e := etcdErr.NewError(etcdErr.EcodeUnauthorized, fmt.Sprint(err), 0)
-		e.WriteTo(w)
 	})
 }

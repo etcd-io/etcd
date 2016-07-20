@@ -31,6 +31,8 @@ type Revoke struct {
 	// status of a certificate (i.e. due to network failure) causes
 	// verification to fail (a hard failure).
 	HardFail bool
+	// HardFailLck is a Mutex locker for the HardFail
+	HardFailLck sync.Mutex
 	// CRLSet associates a PKIX certificate list with the URL the CRL is
 	// fetched from.
 	CRLSet map[string]*pkix.CertificateList
@@ -38,10 +40,11 @@ type Revoke struct {
 	CRLSetLck sync.Mutex
 }
 
-// New creates Revoke config structure
-func New() *Revoke {
+// New creates Revoke config structure.
+// Accepts hardfail bool variableas an option
+func New(hardfail bool) *Revoke {
 	return &Revoke{
-		HardFail: false,
+		HardFail: hardfail,
 		CRLSet:   map[string]*pkix.CertificateList{},
 	}
 }
