@@ -65,11 +65,12 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 	sec := auth.NewStore(server, timeout)
 
 	kh := &keysHandler{
-		sec:     sec,
-		server:  server,
-		cluster: server.Cluster(),
-		timer:   server,
-		timeout: timeout,
+		sec:                   sec,
+		server:                server,
+		cluster:               server.Cluster(),
+		timer:                 server,
+		timeout:               timeout,
+		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
 	}
 
 	sh := &statsHandler{
@@ -82,6 +83,7 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 		cluster: server.Cluster(),
 		timeout: timeout,
 		clock:   clockwork.NewRealClock(),
+		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
 	}
 
 	dmh := &deprecatedMachinesHandler{
@@ -89,8 +91,9 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 	}
 
 	sech := &authHandler{
-		sec:     sec,
-		cluster: server.Cluster(),
+		sec:                   sec,
+		cluster:               server.Cluster(),
+		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
 	}
 
 	mux := http.NewServeMux()
@@ -132,11 +135,12 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 }
 
 type keysHandler struct {
-	sec     auth.Store
-	server  etcdserver.Server
-	cluster api.Cluster
-	timer   etcdserver.RaftTimer
-	timeout time.Duration
+	sec                   auth.Store
+	server                etcdserver.Server
+	cluster               api.Cluster
+	timer                 etcdserver.RaftTimer
+	timeout               time.Duration
+	clientCertAuthEnabled bool
 }
 
 func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -156,7 +160,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The path must be valid at this point (we've parsed the request successfully).
-	if !hasKeyPrefixAccess(h.sec, r, r.URL.Path[len(keysPrefix):], rr.Recursive) {
+	if !hasKeyPrefixAccess(h.sec, r, r.URL.Path[len(keysPrefix):], rr.Recursive, h.clientCertAuthEnabled) {
 		writeKeyNoAuth(w)
 		return
 	}
@@ -199,18 +203,19 @@ func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 }
 
 type membersHandler struct {
-	sec     auth.Store
-	server  etcdserver.Server
-	cluster api.Cluster
-	timeout time.Duration
-	clock   clockwork.Clock
+	sec                   auth.Store
+	server                etcdserver.Server
+	cluster               api.Cluster
+	timeout               time.Duration
+	clock                 clockwork.Clock
+	clientCertAuthEnabled bool
 }
 
 func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "POST", "DELETE", "PUT") {
 		return
 	}
-	if !hasWriteRootAccess(h.sec, r) {
+	if !hasWriteRootAccess(h.sec, r, h.clientCertAuthEnabled) {
 		writeNoAuth(w, r)
 		return
 	}
