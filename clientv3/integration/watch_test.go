@@ -487,7 +487,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 		} else if len(resp.Events) != 0 { // wait for notification otherwise
 			t.Fatalf("expected no events, but got %+v", resp.Events)
 		}
-	case <-time.After(2 * pi):
+	case <-time.After(time.Duration(1.5 * float64(pi))):
 		t.Fatalf("watch response expected in %v, but timed out", pi)
 	}
 }

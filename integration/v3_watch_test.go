@@ -971,7 +971,7 @@ func TestWatchWithProgressNotify(t *testing.T) {
 	}
 
 	// no more notification
-	rok, resp := waitResponse(wStream, testInterval+time.Second)
+	rok, resp := waitResponse(wStream, time.Second)
 	if !rok {
 		t.Errorf("unexpected pb.WatchResponse is received %+v", resp)
 	}
