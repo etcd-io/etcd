@@ -23,14 +23,14 @@ import (
 )
 
 type kvProxy struct {
-	client *clientv3.Client
-	cache  cache.Cache
+	kv    clientv3.KV
+	cache cache.Cache
 }
 
 func NewKvProxy(c *clientv3.Client) pb.KVServer {
 	return &kvProxy{
-		client: c,
-		cache:  cache.NewCache(cache.DefaultMaxEntries),
+		kv:    c.KV,
+		cache: cache.NewCache(cache.DefaultMaxEntries),
 	}
 }
 
@@ -46,7 +46,7 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 		}
 	}
 
-	resp, err := p.client.Do(ctx, RangeRequestToOp(r))
+	resp, err := p.kv.Do(ctx, RangeRequestToOp(r))
 	if err != nil {
 		return nil, err
 	}
@@ -57,17 +57,17 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 }
 
 func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	resp, err := p.client.Do(ctx, PutRequestToOp(r))
+	resp, err := p.kv.Do(ctx, PutRequestToOp(r))
 	return (*pb.PutResponse)(resp.Put()), err
 }
 
 func (p *kvProxy) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	resp, err := p.client.Do(ctx, DelRequestToOp(r))
+	resp, err := p.kv.Do(ctx, DelRequestToOp(r))
 	return (*pb.DeleteRangeResponse)(resp.Del()), err
 }
 
 func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	txn := p.client.Txn(ctx)
+	txn := p.kv.Txn(ctx)
 	cmps := make([]clientv3.Cmp, len(r.Compare))
 	thenops := make([]clientv3.Op, len(r.Success))
 	elseops := make([]clientv3.Op, len(r.Failure))
@@ -94,7 +94,7 @@ func (p *kvProxy) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Com
 		opts = append(opts, clientv3.WithCompactPhysical())
 	}
 
-	resp, err := p.client.KV.Compact(ctx, r.Revision, opts...)
+	resp, err := p.kv.Compact(ctx, r.Revision, opts...)
 	if err == nil {
 		p.cache.Compact(r.Revision)
 	}
@@ -151,6 +151,8 @@ func DelRequestToOp(r *pb.DeleteRangeRequest) clientv3.Op {
 	if len(r.RangeEnd) != 0 {
 		opts = append(opts, clientv3.WithRange(string(r.RangeEnd)))
 	}
-
+	if r.PrevKv {
+		opts = append(opts, clientv3.WithPrevKV())
+	}
 	return clientv3.OpDelete(string(r.Key), opts...)
 }
