@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
@@ -87,15 +88,34 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	var err error
 
 	if r.Serializable {
-		var user string
-		user, err = s.usernameFromCtx(ctx)
-		if err != nil {
-			return nil, err
+		for {
+			authInfo, err := s.authInfoFromCtx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			hdr := &pb.RequestHeader{}
+			if authInfo != nil {
+				hdr.Username = authInfo.Username
+				hdr.AuthRevision = authInfo.Revision
+			}
+
+			result = s.applyV3.Apply(&pb.InternalRaftRequest{Header: hdr, Range: r})
+
+			if result.err != nil {
+				if result.err == auth.ErrAuthOldRevision {
+					continue
+				}
+				break
+			}
+
+			if authInfo == nil || authInfo.Revision == s.authStore.Revision() {
+				break
+			}
+
+			// The revision that authorized this request is obsolete.
+			// For avoiding TOCTOU problem, retry of the request is required.
 		}
-		result = s.applyV3.Apply(
-			&pb.InternalRaftRequest{
-				Header: &pb.RequestHeader{Username: user},
-				Range:  r})
 	} else {
 		result, err = s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Range: r})
 	}
@@ -135,14 +155,34 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 	var err error
 
 	if isTxnSerializable(r) {
-		user, err := s.usernameFromCtx(ctx)
-		if err != nil {
-			return nil, err
+		for {
+			authInfo, err := s.authInfoFromCtx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			hdr := &pb.RequestHeader{}
+			if authInfo != nil {
+				hdr.Username = authInfo.Username
+				hdr.AuthRevision = authInfo.Revision
+			}
+
+			result = s.applyV3.Apply(&pb.InternalRaftRequest{Header: hdr, Txn: r})
+
+			if result.err != nil {
+				if result.err == auth.ErrAuthOldRevision {
+					continue
+				}
+				break
+			}
+
+			if authInfo == nil || authInfo.Revision == s.authStore.Revision() {
+				break
+			}
+
+			// The revision that authorized this request is obsolete.
+			// For avoiding TOCTOU problem, retry of this request is required.
 		}
-		result = s.applyV3.Apply(
-			&pb.InternalRaftRequest{
-				Header: &pb.RequestHeader{Username: user},
-				Txn:    r})
 	} else {
 		result, err = s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	}
@@ -170,7 +210,7 @@ func isTxnSerializable(r *pb.TxnRequest) bool {
 }
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Compaction: r})
+	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Compaction: r})
 	if r.Physical && result != nil && result.physc != nil {
 		<-result.physc
 		// The compaction is done deleting keys; the hash is now settled
@@ -203,7 +243,7 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 		// only use positive int64 id's
 		r.ID = int64(s.reqIDGen.Next() & ((1 << 63) - 1))
 	}
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{LeaseGrant: r})
+	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{LeaseGrant: r})
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +254,7 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
+	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +300,7 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 }
 
 func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Alarm: r})
+	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Alarm: r})
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +311,7 @@ func (s *EtcdServer) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmRe
 }
 
 func (s *EtcdServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{AuthEnable: r})
+	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{AuthEnable: r})
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +344,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 		SimpleToken: st,
 	}
 
-	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
+	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
 	if err != nil {
 		return nil, err
 	}
@@ -487,31 +527,31 @@ func (s *EtcdServer) isValidSimpleToken(token string) bool {
 	return true
 }
 
-func (s *EtcdServer) usernameFromCtx(ctx context.Context) (string, error) {
+func (s *EtcdServer) authInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error) {
 	md, ok := metadata.FromContext(ctx)
 	if !ok {
-		return "", nil
+		return nil, nil
 	}
 
 	ts, tok := md["token"]
 	if !tok {
-		return "", nil
+		return nil, nil
 	}
 
 	token := ts[0]
 	if !s.isValidSimpleToken(token) {
-		return "", ErrInvalidAuthToken
+		return nil, ErrInvalidAuthToken
 	}
 
-	username, uok := s.AuthStore().UsernameFromToken(token)
+	authInfo, uok := s.AuthStore().AuthInfoFromToken(token)
 	if !uok {
 		plog.Warningf("invalid auth token: %s", token)
-		return "", ErrInvalidAuthToken
+		return nil, ErrInvalidAuthToken
 	}
-	return username, nil
+	return authInfo, nil
 }
 
-func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
 	ai := s.getAppliedIndex()
 	ci := s.getCommittedIndex()
 	if ci > ai+maxGapBetweenApplyAndCommitIndex {
@@ -521,11 +561,15 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 	r.Header = &pb.RequestHeader{
 		ID: s.reqIDGen.Next(),
 	}
-	username, err := s.usernameFromCtx(ctx)
+
+	authInfo, err := s.authInfoFromCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
-	r.Header.Username = username
+	if authInfo != nil {
+		r.Header.Username = authInfo.Username
+		r.Header.AuthRevision = authInfo.Revision
+	}
 
 	data, err := r.Marshal()
 	if err != nil {
@@ -560,6 +604,19 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 	case <-s.done:
 		return nil, ErrStopped
 	}
+}
+
+func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.InternalRaftRequest) (*applyResult, error) {
+	var result *applyResult
+	var err error
+	for {
+		result, err = s.processInternalRaftRequestOnce(ctx, r)
+		if err != auth.ErrAuthOldRevision {
+			break
+		}
+	}
+
+	return result, err
 }
 
 // Watchable returns a watchable interface attached to the etcdserver.
