@@ -31,13 +31,11 @@ type Revoke struct {
 	// status of a certificate (i.e. due to network failure) causes
 	// verification to fail (a hard failure).
 	HardFail bool
-	// HardFailLck is a Mutex locker for the HardFail
-	HardFailLck sync.Mutex
 	// CRLSet associates a PKIX certificate list with the URL the CRL is
 	// fetched from.
 	CRLSet map[string]*pkix.CertificateList
-	// CRLSetLck is a Mutex lokcer for the CRLSet
-	CRLSetLck sync.Mutex
+	// Lck is a Mutex locker for the struct
+	Lck sync.Mutex
 }
 
 // New creates Revoke config structure.
@@ -161,9 +159,9 @@ func (r *Revoke) isInMemoryCRLValid(key string) bool {
 	crl, ok := r.CRLSet[key]
 	if ok && crl == nil {
 		ok = false
-		r.CRLSetLck.Lock()
+		r.Lck.Lock()
 		delete(r.CRLSet, key)
-		r.CRLSetLck.Unlock()
+		r.Lck.Unlock()
 	}
 
 	if ok {
@@ -200,9 +198,9 @@ func (r *Revoke) FetchLocalCRL(path string, force bool) error {
 			return fmt.Errorf("failed to parse local CRL file: %v", err)
 		}
 
-		r.CRLSetLck.Lock()
+		r.Lck.Lock()
 		r.CRLSet[path] = crl
-		r.CRLSetLck.Unlock()
+		r.Lck.Unlock()
 	}
 
 	return nil
@@ -230,9 +228,9 @@ func (r *Revoke) FetchRemoteCRL(url string, cert *x509.Certificate, force bool) 
 			}
 		}
 
-		r.CRLSetLck.Lock()
+		r.Lck.Lock()
 		r.CRLSet[url] = crl
-		r.CRLSetLck.Unlock()
+		r.Lck.Unlock()
 	}
 
 	return nil
