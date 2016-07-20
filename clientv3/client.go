@@ -275,8 +275,13 @@ func isHaltErr(ctx context.Context, err error) bool {
 	if err == nil {
 		return false
 	}
-	return strings.HasPrefix(grpc.ErrorDesc(err), "etcdserver: ") ||
-		strings.Contains(err.Error(), grpc.ErrClientConnClosing.Error())
+	eErr := rpctypes.Error(err)
+	if _, ok := eErr.(rpctypes.EtcdError); ok {
+		return eErr != rpctypes.ErrStopped && eErr != rpctypes.ErrNoLeader
+	}
+	// treat etcdserver errors not recognized by the client as halting
+	return strings.Contains(err.Error(), grpc.ErrClientConnClosing.Error()) ||
+		strings.Contains(err.Error(), "etcdserver:")
 }
 
 func toErr(ctx context.Context, err error) error {
