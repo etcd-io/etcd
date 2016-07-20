@@ -173,14 +173,16 @@ func newConfig() *config {
 	fs.StringVar(&cfg.ClientTLSInfo.KeyFile, "key-file", "", "Path to the client server TLS key file.")
 	fs.BoolVar(&cfg.ClientTLSInfo.ClientCertAuth, "client-cert-auth", false, "Enable client cert authentication.")
 	fs.StringVar(&cfg.ClientTLSInfo.TrustedCAFile, "trusted-ca-file", "", "Path to the client server TLS trusted CA key file.")
-	fs.StringVar(&cfg.ClientTLSInfo.CRLFile, "crl-file", "", "Path to the client server certificate revocation list file.")
+	fs.BoolVar(&cfg.ClientTLSInfo.CRLCheck, "crl-check", false, "Enable CRL check for the client server. Works only when --client-cert-auth flag is set.")
+	fs.StringVar(&cfg.ClientTLSInfo.CRLFile, "crl-file", "", "Path to the client server certificate revocation list file. If set, automatically enables --crl-check flag.")
 	fs.BoolVar(&cfg.ClientAutoTLS, "auto-tls", false, "Client TLS using generated certificates")
 	fs.StringVar(&cfg.PeerTLSInfo.CAFile, "peer-ca-file", "", "DEPRECATED: Path to the peer server TLS CA file.")
 	fs.StringVar(&cfg.PeerTLSInfo.CertFile, "peer-cert-file", "", "Path to the peer server TLS cert file.")
 	fs.StringVar(&cfg.PeerTLSInfo.KeyFile, "peer-key-file", "", "Path to the peer server TLS key file.")
 	fs.BoolVar(&cfg.PeerTLSInfo.ClientCertAuth, "peer-client-cert-auth", false, "Enable peer client cert authentication.")
 	fs.StringVar(&cfg.PeerTLSInfo.TrustedCAFile, "peer-trusted-ca-file", "", "Path to the peer server TLS trusted CA file.")
-	fs.StringVar(&cfg.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer server certificate revocation list file.")
+	fs.BoolVar(&cfg.PeerTLSInfo.CRLCheck, "peer-crl-check", false, "Enable CRL check for the peer server. Works only when --peer-client-cert-auth flag is set.")
+	fs.StringVar(&cfg.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer server certificate revocation list file. If set, automatically enables --peer-crl-check flag.")
 	fs.BoolVar(&cfg.PeerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 
 	// logging
@@ -233,6 +235,14 @@ func (cfg *config) parse(arguments []string) error {
 		err = cfg.configFromFile(cfg.configFile)
 	} else {
 		err = cfg.configFromCmdLine()
+	}
+
+	if cfg.ClientTLSInfo.CRLFile != "" && cfg.ClientTLSInfo.ClientCertAuth {
+		cfg.ClientTLSInfo.CRLCheck = true
+	}
+
+	if cfg.PeerTLSInfo.CRLFile != "" && cfg.PeerTLSInfo.ClientCertAuth {
+		cfg.PeerTLSInfo.CRLCheck = true
 	}
 	return err
 }

@@ -295,18 +295,30 @@ func (e *Etcd) serve() (err error) {
 	}
 
 	// Start the peer server in a goroutine
-	ph := tlsutil.NewRevokeHandler(
-		v2http.NewPeerHandler(e.Server),
-		e.cfg.PeerTLSInfo.CRLFile)
+	var ph, clientHandler http.Handler
+	if e.cfg.PeerTLSInfo.CRLCheck {
+		// Enable CRL checker handler for the peer server
+		ph = tlsutil.NewRevokeHandler(
+			v2http.NewPeerHandler(e.Server),
+			e.cfg.PeerTLSInfo.CRLFile)
+	} else {
+		ph = v2http.NewPeerHandler(e.Server)
+	}
+	// Start the peer server in a goroutine
 	for _, l := range e.Peers {
 		go func(l net.Listener) {
 			e.errc <- servePeerHTTP(l, ph)
 		}(l)
 	}
 
-	clientHandler := tlsutil.NewRevokeHandler(
-		v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
-		e.cfg.ClientTLSInfo.CRLFile)
+	if e.cfg.ClientTLSInfo.CRLCheck {
+		// Enable CRL checker handler for the client server
+		clientHandler = tlsutil.NewRevokeHandler(
+			v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
+			e.cfg.ClientTLSInfo.CRLFile)
+	} else {
+		clientHandler = v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout())
+	}
 	// Start a client server goroutine for each listen address
 	ch := http.Handler(&cors.CORSHandler{
 		Handler: clientHandler,
