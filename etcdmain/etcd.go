@@ -368,6 +368,7 @@ func startEtcd(cfg *config) (<-chan struct{}, error) {
 		QuotaBackendBytes:       cfg.QuotaBackendBytes,
 		StrictReconfigCheck:     cfg.StrictReconfigCheck,
 		EnablePprof:             cfg.enablePprof,
+		ClientCertAuthEnabled:   cfg.clientTLSInfo.ClientCertAuth,
 	}
 	var s *etcdserver.EtcdServer
 	s, err = etcdserver.NewServer(srvcfg)
