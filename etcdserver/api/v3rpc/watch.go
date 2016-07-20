@@ -295,7 +295,8 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 
 			sws.mu.Lock()
-			if _, ok := sws.progress[wresp.WatchID]; ok {
+			if len(evs) > 0 && sws.progress[wresp.WatchID] {
+				// elide next progress update if sent a key update
 				sws.progress[wresp.WatchID] = false
 			}
 			sws.mu.Unlock()
