@@ -184,6 +184,13 @@ func equalAny(v1, v2 reflect.Value, prop *Properties) bool {
 		}
 		return true
 	case reflect.Ptr:
+		// Maps may have nil values in them, so check for nil.
+		if v1.IsNil() && v2.IsNil() {
+			return true
+		}
+		if v1.IsNil() != v2.IsNil() {
+			return false
+		}
 		return equalAny(v1.Elem(), v2.Elem(), prop)
 	case reflect.Slice:
 		if v1.Type().Elem().Kind() == reflect.Uint8 {
