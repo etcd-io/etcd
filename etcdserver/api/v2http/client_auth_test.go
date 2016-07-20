@@ -720,13 +720,13 @@ func TestPrefixAccess(t *testing.T) {
 	}
 
 	for i, tt := range table {
-		if tt.hasRoot != hasRootAccess(tt.store, tt.req) {
+		if tt.hasRoot != hasRootAccess(tt.store, tt.req, true) {
 			t.Errorf("#%d: hasRoot doesn't match (expected %v)", i, tt.hasRoot)
 		}
-		if tt.hasKeyPrefixAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, false) {
+		if tt.hasKeyPrefixAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, false, true) {
 			t.Errorf("#%d: hasKeyPrefixAccess doesn't match (expected %v)", i, tt.hasRoot)
 		}
-		if tt.hasRecursiveAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, true) {
+		if tt.hasRecursiveAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, true, true) {
 			t.Errorf("#%d: hasRecursiveAccess doesn't match (expected %v)", i, tt.hasRoot)
 		}
 	}
