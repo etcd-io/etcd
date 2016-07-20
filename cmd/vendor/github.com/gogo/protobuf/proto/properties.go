@@ -770,9 +770,11 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 		if f.Name == "XXX_unrecognized" { // special case
 			prop.unrecField = toField(&f)
 		}
-		oneof := f.Tag.Get("protobuf_oneof") != "" // special case
-		if oneof {
+		oneof := f.Tag.Get("protobuf_oneof") // special case
+		if oneof != "" {
 			isOneofMessage = true
+			// Oneof fields don't use the traditional protobuf tag.
+			p.OrigName = oneof
 		}
 		prop.Prop[i] = p
 		prop.order[i] = i
@@ -783,7 +785,7 @@ func getPropertiesLocked(t reflect.Type) *StructProperties {
 			}
 			print("\n")
 		}
-		if p.enc == nil && !strings.HasPrefix(f.Name, "XXX_") && !oneof {
+		if p.enc == nil && !strings.HasPrefix(f.Name, "XXX_") && oneof == "" {
 			fmt.Fprintln(os.Stderr, "proto: no encoder for", f.Name, f.Type.String(), "[GetProperties]")
 		}
 	}
@@ -921,3 +923,17 @@ func MessageName(x Message) string { return revProtoTypes[reflect.TypeOf(x)] }
 
 // MessageType returns the message type (pointer to struct) for a named message.
 func MessageType(name string) reflect.Type { return protoTypes[name] }
+
+// A registry of all linked proto files.
+var (
+	protoFiles = make(map[string][]byte) // file name => fileDescriptor
+)
+
+// RegisterFile is called from generated code and maps from the
+// full file name of a .proto file to its compressed FileDescriptorProto.
+func RegisterFile(filename string, fileDescriptor []byte) {
+	protoFiles[filename] = fileDescriptor
+}
+
+// FileDescriptor returns the compressed FileDescriptorProto for a .proto file.
+func FileDescriptor(filename string) []byte { return protoFiles[filename] }

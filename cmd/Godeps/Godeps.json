@@ -70,9 +70,14 @@
 			"Rev": "73d445a93680fa1a78ae23a5839bad48f32ba1ee"
 		},
 		{
+			"ImportPath": "github.com/gogo/protobuf/jsonpb",
+			"Comment": "v0.2-47-ge57a569",
+			"Rev": "e57a569e1882958f6b188cb42231d6db87701f2a"
+		},
+		{
 			"ImportPath": "github.com/gogo/protobuf/proto",
-			"Comment": "v0.2-33-ge18d7aa",
-			"Rev": "e18d7aa8f8c624c915db340349aad4c49b10d173"
+			"Comment": "v0.2-47-ge57a569",
+			"Rev": "e57a569e1882958f6b188cb42231d6db87701f2a"
 		},
 		{
 			"ImportPath": "github.com/golang/glog",
