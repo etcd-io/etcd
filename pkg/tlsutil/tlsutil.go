@@ -99,7 +99,7 @@ func revokeCheckHandler(req *http.Request, CRLpath string, revokeChecker *revoke
 }
 
 func NewRevokeHandler(handler http.Handler, CRLpath string) http.Handler {
-	revokeChecker := revoke.NewRevokeChecker()
+	revokeChecker := revoke.New()
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		err := revokeCheckHandler(req, CRLpath, revokeChecker)
 		if err == nil {

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	neturl "net/url"
 	"os"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ocsp"
@@ -33,11 +34,16 @@ type Revoke struct {
 	// CRLSet associates a PKIX certificate list with the URL the CRL is
 	// fetched from.
 	CRLSet map[string]*pkix.CertificateList
+	// CRLSetLck is a Mutex lokcer for the CRLSet
+	CRLSetLck sync.Mutex
 }
 
-// NewRevokeChecker creates Revoke config structure
-func NewRevokeChecker() *Revoke {
-	return &Revoke{false, map[string]*pkix.CertificateList{}}
+// New creates Revoke config structure
+func New() *Revoke {
+	return &Revoke{
+		HardFail: false,
+		CRLSet:   map[string]*pkix.CertificateList{},
+	}
 }
 
 // We can't handle LDAP certificates, so this checks to see if the
@@ -152,7 +158,9 @@ func (r *Revoke) isInMemoryCRLValid(key string) bool {
 	crl, ok := r.CRLSet[key]
 	if ok && crl == nil {
 		ok = false
+		r.CRLSetLck.Lock()
 		delete(r.CRLSet, key)
+		r.CRLSetLck.Unlock()
 	}
 
 	if ok {
@@ -176,7 +184,9 @@ func (r *Revoke) FetchLocalCRL(path string, force bool) error {
 	}
 
 	if u.Scheme == "" && (shouldFetchCRL || force) {
-		if _, err := os.Stat(path); err == nil {
+		if _, err := os.Stat(path); err != nil {
+			return fmt.Errorf("failed to read local CRL path: %v", err)
+		} else {
 			tmp, err := ioutil.ReadFile(path)
 			if err != nil {
 				return fmt.Errorf("failed to read local CRL path: %v", err)
@@ -185,9 +195,10 @@ func (r *Revoke) FetchLocalCRL(path string, force bool) error {
 			if err != nil {
 				return fmt.Errorf("failed to parse local CRL file: %v", err)
 			}
+
+			r.CRLSetLck.Lock()
 			r.CRLSet[path] = crl
-		} else {
-			return fmt.Errorf("failed to read local CRL path: %v", err)
+			r.CRLSetLck.Unlock()
 		}
 	}
 
@@ -216,7 +227,9 @@ func (r *Revoke) FetchRemoteCRL(url string, cert *x509.Certificate, force bool) 
 			}
 		}
 
+		r.CRLSetLck.Lock()
 		r.CRLSet[url] = crl
+		r.CRLSetLck.Unlock()
 	}
 
 	return nil
