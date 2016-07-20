@@ -151,6 +151,8 @@ func DelRequestToOp(r *pb.DeleteRangeRequest) clientv3.Op {
 	if len(r.RangeEnd) != 0 {
 		opts = append(opts, clientv3.WithRange(string(r.RangeEnd)))
 	}
-
+	if r.PrevKv {
+		opts = append(opts, clientv3.WithPrevKV())
+	}
 	return clientv3.OpDelete(string(r.Key), opts...)
 }
