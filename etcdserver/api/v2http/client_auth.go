@@ -26,15 +26,16 @@ import (
 )
 
 type authHandler struct {
-	sec     auth.Store
-	cluster api.Cluster
+	sec                   auth.Store
+	cluster               api.Cluster
+	clientCertAuthEnabled bool
 }
 
-func hasWriteRootAccess(sec auth.Store, r *http.Request) bool {
+func hasWriteRootAccess(sec auth.Store, r *http.Request, clientCertAuthEnabled bool) bool {
 	if r.Method == "GET" || r.Method == "HEAD" {
 		return true
 	}
-	return hasRootAccess(sec, r)
+	return hasRootAccess(sec, r, clientCertAuthEnabled)
 }
 
 func userFromBasicAuth(sec auth.Store, r *http.Request) *auth.User {
@@ -74,7 +75,7 @@ func userFromClientCertificate(sec auth.Store, r *http.Request) *auth.User {
 	return nil
 }
 
-func hasRootAccess(sec auth.Store, r *http.Request) bool {
+func hasRootAccess(sec auth.Store, r *http.Request, clientCertAuthEnabled bool) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
 		return true
@@ -84,7 +85,7 @@ func hasRootAccess(sec auth.Store, r *http.Request) bool {
 	}
 
 	var rootUser *auth.User
-	if r.Header.Get("Authorization") == "" {
+	if r.Header.Get("Authorization") == "" && clientCertAuthEnabled {
 		rootUser = userFromClientCertificate(sec, r)
 		if rootUser == nil {
 			return false
@@ -105,7 +106,7 @@ func hasRootAccess(sec auth.Store, r *http.Request) bool {
 	return false
 }
 
-func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive bool) bool {
+func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive, clientCertAuthEnabled bool) bool {
 	if sec == nil {
 		// No store means no auth available, eg, tests.
 		return true
@@ -115,7 +116,7 @@ func hasKeyPrefixAccess(sec auth.Store, r *http.Request, key string, recursive b
 	}
 
 	var user *auth.User
-	if r.Header.Get("Authorization") == "" {
+	if r.Header.Get("Authorization") == "" && clientCertAuthEnabled {
 		user = userFromClientCertificate(sec, r)
 		if user == nil {
 			plog.Warningf("auth: no authorization provided, checking guest access")
@@ -178,7 +179,7 @@ func (sh *authHandler) baseRoles(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	if !hasRootAccess(sh.sec, r) {
+	if !hasRootAccess(sh.sec, r, sh.clientCertAuthEnabled) {
 		writeNoAuth(w, r)
 		return
 	}
@@ -242,7 +243,7 @@ func (sh *authHandler) forRole(w http.ResponseWriter, r *http.Request, role stri
 	if !allowMethod(w, r.Method, "GET", "PUT", "DELETE") {
 		return
 	}
-	if !hasRootAccess(sh.sec, r) {
+	if !hasRootAccess(sh.sec, r, sh.clientCertAuthEnabled) {
 		writeNoAuth(w, r)
 		return
 	}
@@ -326,7 +327,7 @@ func (sh *authHandler) baseUsers(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	if !hasRootAccess(sh.sec, r) {
+	if !hasRootAccess(sh.sec, r, sh.clientCertAuthEnabled) {
 		writeNoAuth(w, r)
 		return
 	}
@@ -398,7 +399,7 @@ func (sh *authHandler) forUser(w http.ResponseWriter, r *http.Request, user stri
 	if !allowMethod(w, r.Method, "GET", "PUT", "DELETE") {
 		return
 	}
-	if !hasRootAccess(sh.sec, r) {
+	if !hasRootAccess(sh.sec, r, sh.clientCertAuthEnabled) {
 		writeNoAuth(w, r)
 		return
 	}
@@ -511,7 +512,7 @@ func (sh *authHandler) enableDisable(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "PUT", "DELETE") {
 		return
 	}
-	if !hasWriteRootAccess(sh.sec, r) {
+	if !hasWriteRootAccess(sh.sec, r, sh.clientCertAuthEnabled) {
 		writeNoAuth(w, r)
 		return
 	}
