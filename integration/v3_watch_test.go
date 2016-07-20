@@ -672,6 +672,9 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 	if err := wStream.Send(wreq); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
+	if resp, err := wStream.Recv(); err != nil || resp.Created == false {
+		t.Fatalf("create response failed: resp=%v, err=%v", resp, err)
+	}
 
 	kvc := toGRPC(clus.RandClient()).KV
 	txn := pb.TxnRequest{}
@@ -696,9 +699,6 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 		resp, err := wStream.Recv()
 		if err != nil {
 			t.Errorf("wStream.Recv error: %v", err)
-		}
-		if resp.Created {
-			continue
 		}
 		events = append(events, resp.Events...)
 	}
