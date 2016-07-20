@@ -149,13 +149,14 @@ type etcdProcessClusterConfig struct {
 
 	snapCount int // default is 10000
 
-	clientTLS         clientConnType
-	isPeerTLS         bool
-	isPeerAutoTLS     bool
-	isClientAutoTLS   bool
-	forceNewCluster   bool
-	initialToken      string
-	quotaBackendBytes int64
+	clientTLS             clientConnType
+	clientCertAuthEnabled bool
+	isPeerTLS             bool
+	isPeerAutoTLS         bool
+	isClientAutoTLS       bool
+	forceNewCluster       bool
+	initialToken          string
+	quotaBackendBytes     int64
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -325,6 +326,10 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 				"--ca-file", caPath,
 			}
 			args = append(args, tlsClientArgs...)
+
+			if cfg.clientCertAuthEnabled {
+				args = append(args, "--client-cert-auth")
+			}
 		}
 	}
 
