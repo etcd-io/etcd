@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/cloudflare/cfssl/revoke"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/pkg/cors"
@@ -294,14 +295,17 @@ func (e *Etcd) serve() (err error) {
 		plog.Infof("cors = %s", e.cfg.CorsInfo)
 	}
 
-	// Start the peer server in a goroutine
-	var ph, clientHandler http.Handler
+	// Define the peer server handler
+	var ph http.Handler
 	if e.cfg.PeerTLSInfo.CRLCheck {
 		// Enable CRL checker handler for the peer server
+		peerRH := revoke.New(e.cfg.PeerTLSInfo.CRLHardFail)
+		if err = peerRH.SetLocalCRL(e.cfg.PeerTLSInfo.CRLFile); err != nil {
+			return err
+		}
 		ph = tlsutil.NewRevokeHandler(
 			v2http.NewPeerHandler(e.Server),
-			e.cfg.PeerTLSInfo.CRLFile,
-			e.cfg.PeerTLSInfo.CRLHardFail)
+			peerRH)
 	} else {
 		ph = v2http.NewPeerHandler(e.Server)
 	}
@@ -312,12 +316,17 @@ func (e *Etcd) serve() (err error) {
 		}(l)
 	}
 
+	// Define the client server handler
+	var clientHandler http.Handler
 	if e.cfg.ClientTLSInfo.CRLCheck {
 		// Enable CRL checker handler for the client server
+		clientRH := revoke.New(e.cfg.ClientTLSInfo.CRLHardFail)
+		if err = clientRH.SetLocalCRL(e.cfg.ClientTLSInfo.CRLFile); err != nil {
+			return err
+		}
 		clientHandler = tlsutil.NewRevokeHandler(
 			v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
-			e.cfg.ClientTLSInfo.CRLFile,
-			e.cfg.ClientTLSInfo.CRLHardFail)
+			clientRH)
 	} else {
 		clientHandler = v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout())
 	}

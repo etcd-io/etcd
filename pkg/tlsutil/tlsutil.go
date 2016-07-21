@@ -74,18 +74,13 @@ func NewCert(certfile, keyfile string, parseFunc func([]byte, []byte) (tls.Certi
 	return &tlsCert, nil
 }
 
-func isReqCertValid(req *http.Request, CRLpath string, revokeChecker *revoke.Revoke) bool {
+func isReqCertValid(req *http.Request, rc *revoke.Revoke) bool {
 	if req.TLS == nil {
 		return true
 	}
 	for _, cert := range req.TLS.PeerCertificates {
-		var revoked, ok bool
-		if CRLpath != "" {
-			revoked, ok = revokeChecker.VerifyCertificateByCRLPath(cert, CRLpath)
-		} else {
-			revoked, ok = revokeChecker.VerifyCertificate(cert)
-		}
-		if !ok && revokeChecker.HardFail {
+		revoked, ok := rc.VerifyCertificate(cert)
+		if !ok && rc.HardFail() {
 			return false
 		}
 		if revoked {
@@ -95,10 +90,9 @@ func isReqCertValid(req *http.Request, CRLpath string, revokeChecker *revoke.Rev
 	return true
 }
 
-func NewRevokeHandler(handler http.Handler, CRLpath string, hardfail bool) http.Handler {
-	revokeChecker := revoke.New(hardfail)
+func NewRevokeHandler(handler http.Handler, rc *revoke.Revoke) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if isReqCertValid(req, CRLpath, revokeChecker) {
+		if isReqCertValid(req, rc) {
 			handler.ServeHTTP(w, req)
 			return
 		}

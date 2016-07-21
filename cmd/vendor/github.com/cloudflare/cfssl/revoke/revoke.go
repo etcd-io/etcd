@@ -10,7 +10,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,24 +26,66 @@ import (
 
 // Revoke type contains configuration for each new revoke instance
 type Revoke struct {
+	// LocalCRL contains path to the local CRL file. When set, certificate
+	// will be checked only using local CRL script, remote methods will be
+	// skipped.
+	localCRL string
 	// HardFail determines whether the failure to check the revocation
 	// status of a certificate (i.e. due to network failure) causes
 	// verification to fail (a hard failure).
-	HardFail bool
-	// CRLSet associates a PKIX certificate list with the URL the CRL is
+	hardFail bool
+	// crlSet associates a PKIX certificate list with the URL the CRL is
 	// fetched from.
-	CRLSet map[string]*pkix.CertificateList
-	// Lck is a Mutex locker for the struct
-	Lck sync.Mutex
+	crlSet map[string]*pkix.CertificateList
+	// lck is a Mutex locker for the struct
+	lck sync.Mutex
 }
 
 // New creates Revoke config structure.
-// Accepts hardfail bool variableas an option
+// Accepts hardfail bool variable as an option
 func New(hardfail bool) *Revoke {
 	return &Revoke{
-		HardFail: hardfail,
-		CRLSet:   map[string]*pkix.CertificateList{},
+		localCRL: "",
+		hardFail: hardfail,
+		crlSet:   map[string]*pkix.CertificateList{},
 	}
+}
+
+// SetLocalCRL sets localCRL path into the Revoke struct
+func (r *Revoke) SetLocalCRL(localCRLpath string) error {
+	if localCRLpath == "" {
+		r.lck.Lock()
+		if _, ok := r.crlSet[r.localCRL]; ok {
+			delete(r.crlSet, r.localCRL)
+		}
+		r.localCRL = ""
+		r.lck.Unlock()
+		return nil
+	}
+	if u, err := neturl.Parse(r.localCRL); err != nil {
+		return err
+	} else if u.Scheme != "" {
+		return fmt.Errorf("Path is not valid: %s", localCRLpath)
+	}
+
+	if err := r.fetchLocalCRL(localCRLpath, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetHardFail allows to dynamically set hardfail bool into the
+// Revoke struct
+func (r *Revoke) SetHardFail(hardfail bool) {
+	r.lck.Lock()
+	r.hardFail = hardfail
+	r.lck.Unlock()
+}
+
+// HardFail returns hardfail bool from the Revoke struct
+func (r *Revoke) HardFail() bool {
+	return r.hardFail
 }
 
 // We can't handle LDAP certificates, so this checks to see if the
@@ -76,11 +117,11 @@ func ldapURL(url string) bool {
 //
 //  true, false:  failure to check revocation status causes
 //                  verification to fail
-func (r *Revoke) revCheck(cert *x509.Certificate, localCRLPath string) (revoked, ok bool) {
-	if localCRLPath != "" {
-		if revoked, ok := r.certIsRevokedCRL(cert, localCRLPath, true); !ok {
-			log.Warning("error checking revocation via CRL")
-			if r.HardFail {
+func (r *Revoke) revCheck(cert *x509.Certificate) (revoked, ok bool) {
+	if r.localCRL != "" {
+		if revoked, ok := r.certIsRevokedCRL(cert, r.localCRL); !ok {
+			log.Warning("error checking revocation via local CRL file")
+			if r.hardFail {
 				return true, false
 			}
 			return false, false
@@ -96,9 +137,9 @@ func (r *Revoke) revCheck(cert *x509.Certificate, localCRLPath string) (revoked,
 			continue
 		}
 
-		if revoked, ok := r.certIsRevokedCRL(cert, url, false); !ok {
+		if revoked, ok := r.certIsRevokedCRL(cert, url); !ok {
 			log.Warning("error checking revocation via CRL")
-			if r.HardFail {
+			if r.hardFail {
 				return true, false
 			}
 			return false, false
@@ -107,14 +148,14 @@ func (r *Revoke) revCheck(cert *x509.Certificate, localCRLPath string) (revoked,
 			return true, true
 		}
 
-		if revoked, ok := certIsRevokedOCSP(cert, r.HardFail); !ok {
+		if revoked, ok := certIsRevokedOCSP(cert, r.hardFail); !ok {
 			log.Warning("error checking revocation via OCSP")
-			if r.HardFail {
+			if r.hardFail {
 				return true, false
 			}
 			return false, false
 		} else if revoked {
-			log.Info("certificate is revoked via OCSP")
+			log.Info("certificate is revoked via OCSP (CN=%s, Serial: %s)", cert.Subject.CommonName, cert.SerialNumber)
 			return true, true
 		}
 	}
@@ -128,7 +169,7 @@ func fetchCRL(url string) (*pkix.CertificateList, error) {
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode >= 300 {
-		return nil, errors.New("failed to retrieve CRL")
+		return nil, fmt.Errorf("failed to retrieve CRL")
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -156,12 +197,12 @@ func getIssuer(cert *x509.Certificate) *x509.Certificate {
 
 // checks whether CRL in memory is valid
 func (r *Revoke) isInMemoryCRLValid(key string) bool {
-	crl, ok := r.CRLSet[key]
+	crl, ok := r.crlSet[key]
 	if ok && crl == nil {
 		ok = false
-		r.Lck.Lock()
-		delete(r.CRLSet, key)
-		r.Lck.Unlock()
+		r.lck.Lock()
+		delete(r.crlSet, key)
+		r.lck.Unlock()
 	}
 
 	if ok {
@@ -173,23 +214,15 @@ func (r *Revoke) isInMemoryCRLValid(key string) bool {
 	return false
 }
 
-// FetchLocalCRL reads CRL from the local filesystem
+// fetchLocalCRL reads CRL from the local filesystem
 // force flag allows you to update the CRL
-func (r *Revoke) FetchLocalCRL(path string, force bool) error {
-	shouldFetchCRL := !r.isInMemoryCRLValid(path)
-
-	u, err := neturl.Parse(path)
-	if err != nil {
-		log.Warningf("failed to parse CRL url: %v", err)
-		return err
-	}
-
-	if u.Scheme == "" && (shouldFetchCRL || force) {
-		if _, err := os.Stat(path); err != nil {
+func (r *Revoke) fetchLocalCRL(newLocalCRL string, force bool) error {
+	if force || !r.isInMemoryCRLValid(newLocalCRL) {
+		if _, err := os.Stat(newLocalCRL); err != nil {
 			return fmt.Errorf("failed to read local CRL path: %v", err)
 		}
 
-		tmp, err := ioutil.ReadFile(path)
+		tmp, err := ioutil.ReadFile(newLocalCRL)
 		if err != nil {
 			return fmt.Errorf("failed to read local CRL path: %v", err)
 		}
@@ -198,9 +231,15 @@ func (r *Revoke) FetchLocalCRL(path string, force bool) error {
 			return fmt.Errorf("failed to parse local CRL file: %v", err)
 		}
 
-		r.Lck.Lock()
-		r.CRLSet[path] = crl
-		r.Lck.Unlock()
+		r.lck.Lock()
+		r.crlSet[newLocalCRL] = crl
+		if r.localCRL != newLocalCRL {
+			if _, ok := r.crlSet[r.localCRL]; ok {
+				delete(r.crlSet, r.localCRL)
+			}
+			r.localCRL = newLocalCRL
+		}
+		r.lck.Unlock()
 	}
 
 	return nil
@@ -228,9 +267,9 @@ func (r *Revoke) FetchRemoteCRL(url string, cert *x509.Certificate, force bool) 
 			}
 		}
 
-		r.Lck.Lock()
-		r.CRLSet[url] = crl
-		r.Lck.Unlock()
+		r.lck.Lock()
+		r.crlSet[url] = crl
+		r.lck.Unlock()
 	}
 
 	return nil
@@ -238,10 +277,10 @@ func (r *Revoke) FetchRemoteCRL(url string, cert *x509.Certificate, force bool) 
 
 // check a cert against a specific CRL. Returns the same bool pair
 // as revCheck.
-func (r *Revoke) certIsRevokedCRL(cert *x509.Certificate, url string, fetchLocal bool) (revoked, ok bool) {
+func (r *Revoke) certIsRevokedCRL(cert *x509.Certificate, url string) (revoked, ok bool) {
 	var err error
-	if fetchLocal {
-		err = r.FetchLocalCRL(url, false)
+	if url == r.localCRL {
+		err = r.fetchLocalCRL(r.localCRL, false)
 	} else {
 		err = r.FetchRemoteCRL(url, cert, false)
 	}
@@ -251,7 +290,7 @@ func (r *Revoke) certIsRevokedCRL(cert *x509.Certificate, url string, fetchLocal
 		return false, false
 	}
 
-	for _, revoked := range r.CRLSet[url].TBSCertList.RevokedCertificates {
+	for _, revoked := range r.crlSet[url].TBSCertList.RevokedCertificates {
 		if cert.SerialNumber.Cmp(revoked.SerialNumber) == 0 {
 			return true, true
 		}
@@ -280,17 +319,7 @@ func (r *Revoke) VerifyCertificate(cert *x509.Certificate) (revoked, ok bool) {
 		return true, true
 	}
 
-	return r.revCheck(cert, "")
-}
-
-// VerifyCertificateByCRLPath ensures that the certificate passed in hasn't
-// expired and checks the local CRL path.
-func (r *Revoke) VerifyCertificateByCRLPath(cert *x509.Certificate, crlPath string) (revoked, ok bool) {
-	if !verifyCertTime(cert) {
-		return true, true
-	}
-
-	return r.revCheck(cert, crlPath)
+	return r.revCheck(cert)
 }
 
 func fetchRemote(url string) (*x509.Certificate, error) {
@@ -381,7 +410,7 @@ func sendOCSPRequest(server string, req []byte, issuer *x509.Certificate) (*ocsp
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("failed to retrieve OSCP")
+		return nil, fmt.Errorf("failed to retrieve OSCP")
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -392,15 +421,15 @@ func sendOCSPRequest(server string, req []byte, issuer *x509.Certificate) (*ocsp
 
 	switch {
 	case bytes.Equal(body, ocsp.UnauthorizedErrorResponse):
-		return nil, errors.New("OSCP unauthorized")
+		return nil, fmt.Errorf("OSCP unauthorized")
 	case bytes.Equal(body, ocsp.MalformedRequestErrorResponse):
-		return nil, errors.New("OSCP malformed")
+		return nil, fmt.Errorf("OSCP malformed")
 	case bytes.Equal(body, ocsp.InternalErrorErrorResponse):
-		return nil, errors.New("OSCP internal error")
+		return nil, fmt.Errorf("OSCP internal error")
 	case bytes.Equal(body, ocsp.TryLaterErrorResponse):
-		return nil, errors.New("OSCP try later")
+		return nil, fmt.Errorf("OSCP try later")
 	case bytes.Equal(body, ocsp.SigRequredErrorResponse):
-		return nil, errors.New("OSCP signature required")
+		return nil, fmt.Errorf("OSCP signature required")
 	}
 
 	return ocsp.ParseResponse(body, issuer)
