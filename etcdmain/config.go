@@ -205,6 +205,9 @@ func newConfig() *config {
 	// additional metrics
 	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include histogram metrics")
 
+	// auth
+	fs.StringVar(&cfg.AuthToken, "auth-token", cfg.AuthToken, "Specify auth token specific options.")
+
 	// ignored
 	for _, f := range cfg.ignored {
 		fs.Var(&flags.IgnoredFlag{Name: f}, f, "")

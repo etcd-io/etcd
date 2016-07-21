@@ -118,6 +118,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		QuotaBackendBytes:       cfg.QuotaBackendBytes,
 		StrictReconfigCheck:     cfg.StrictReconfigCheck,
 		ClientCertAuthEnabled:   cfg.ClientTLSInfo.ClientCertAuth,
+		AuthToken:               cfg.AuthToken,
 	}
 
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
