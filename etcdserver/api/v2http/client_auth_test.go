@@ -15,9 +15,13 @@
 package v2http
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -440,6 +444,32 @@ func mustAuthRequest(method, username, password string) *http.Request {
 	return req
 }
 
+func unauthedRequest(method string) *http.Request {
+	req, err := http.NewRequest(method, "path", strings.NewReader(""))
+	if err != nil {
+		panic("Cannot make request: " + err.Error())
+	}
+	return req
+}
+
+func tlsAuthedRequest(req *http.Request, certname string) *http.Request {
+	bytes, err := ioutil.ReadFile(fmt.Sprintf("testdata/%s.pem", certname))
+	if err != nil {
+		panic(err)
+	}
+
+	block, _ := pem.Decode(bytes)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	req.TLS = &tls.ConnectionState{
+		VerifiedChains: [][]*x509.Certificate{{cert}},
+	}
+	return req
+}
+
 func TestPrefixAccess(t *testing.T) {
 	var table = []struct {
 		key                string
@@ -690,14 +720,161 @@ func TestPrefixAccess(t *testing.T) {
 	}
 
 	for i, tt := range table {
-		if tt.hasRoot != hasRootAccess(tt.store, tt.req) {
+		if tt.hasRoot != hasRootAccess(tt.store, tt.req, true) {
 			t.Errorf("#%d: hasRoot doesn't match (expected %v)", i, tt.hasRoot)
 		}
-		if tt.hasKeyPrefixAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, false) {
+		if tt.hasKeyPrefixAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, false, true) {
 			t.Errorf("#%d: hasKeyPrefixAccess doesn't match (expected %v)", i, tt.hasRoot)
 		}
-		if tt.hasRecursiveAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, true) {
+		if tt.hasRecursiveAccess != hasKeyPrefixAccess(tt.store, tt.req, tt.key, true, true) {
 			t.Errorf("#%d: hasRecursiveAccess doesn't match (expected %v)", i, tt.hasRoot)
+		}
+	}
+}
+
+func TestUserFromClientCertificate(t *testing.T) {
+	witherror := &mockAuthStore{
+		users: map[string]*auth.User{
+			"user": {
+				User:     "user",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+			"basicauth": {
+				User:     "basicauth",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+		},
+		roles: map[string]*auth.Role{
+			"root": {
+				Role: "root",
+			},
+		},
+		err: errors.New(""),
+	}
+
+	noerror := &mockAuthStore{
+		users: map[string]*auth.User{
+			"user": {
+				User:     "user",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+			"basicauth": {
+				User:     "basicauth",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+		},
+		roles: map[string]*auth.Role{
+			"root": {
+				Role: "root",
+			},
+		},
+	}
+
+	var table = []struct {
+		req        *http.Request
+		userExists bool
+		store      auth.Store
+		username   string
+	}{
+		{
+			// non tls request
+			req:        unauthedRequest("GET"),
+			userExists: false,
+			store:      witherror,
+		},
+		{
+			// cert with cn of existing user
+			req:        tlsAuthedRequest(unauthedRequest("GET"), "user"),
+			userExists: true,
+			username:   "user",
+			store:      noerror,
+		},
+		{
+			// cert with cn of non-existing user
+			req:        tlsAuthedRequest(unauthedRequest("GET"), "otheruser"),
+			userExists: false,
+			store:      witherror,
+		},
+	}
+
+	for i, tt := range table {
+		user := userFromClientCertificate(tt.store, tt.req)
+		userExists := user != nil
+
+		if tt.userExists != userExists {
+			t.Errorf("#%d: userFromClientCertificate doesn't match (expected %v)", i, tt.userExists)
+		}
+		if user != nil && (tt.username != user.User) {
+			t.Errorf("#%d: userFromClientCertificate username doesn't match (expected %s, got %s)", i, tt.username, user.User)
+		}
+	}
+}
+
+func TestUserFromBasicAuth(t *testing.T) {
+	sec := &mockAuthStore{
+		users: map[string]*auth.User{
+			"user": {
+				User:     "user",
+				Roles:    []string{"root"},
+				Password: "password",
+			},
+		},
+		roles: map[string]*auth.Role{
+			"root": {
+				Role: "root",
+			},
+		},
+	}
+
+	var table = []struct {
+		username   string
+		req        *http.Request
+		userExists bool
+	}{
+		{
+			// valid user, valid pass
+			username:   "user",
+			req:        mustAuthRequest("GET", "user", "password"),
+			userExists: true,
+		},
+		{
+			// valid user, bad pass
+			username:   "user",
+			req:        mustAuthRequest("GET", "user", "badpass"),
+			userExists: false,
+		},
+		{
+			// valid user, no pass
+			username:   "user",
+			req:        mustAuthRequest("GET", "user", ""),
+			userExists: false,
+		},
+		{
+			// missing user
+			username:   "missing",
+			req:        mustAuthRequest("GET", "missing", "badpass"),
+			userExists: false,
+		},
+		{
+			// no basic auth
+			req:        unauthedRequest("GET"),
+			userExists: false,
+		},
+	}
+
+	for i, tt := range table {
+		user := userFromBasicAuth(sec, tt.req)
+		userExists := user != nil
+
+		if tt.userExists != userExists {
+			t.Errorf("#%d: userFromBasicAuth doesn't match (expected %v)", i, tt.userExists)
+		}
+		if user != nil && (tt.username != user.User) {
+			t.Errorf("#%d: userFromBasicAuth username doesn't match (expected %s, got %s)", i, tt.username, user.User)
 		}
 	}
 }
