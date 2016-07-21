@@ -127,7 +127,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	e.errc = make(chan error, len(e.Peers)+len(e.Clients)+2*len(e.sctxs))
 
 	e.Server.Start()
-	e.serve()
+	if err = e.serve(); err != nil {
+		return
+	}
 	<-e.Server.ReadyNotify()
 	return
 }
