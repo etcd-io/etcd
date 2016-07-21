@@ -160,12 +160,12 @@ func startEtcdOrProxyV2() {
 		// for accepting connections. The etcd instance should be
 		// joined with the cluster and ready to serve incoming
 		// connections.
-		err := daemon.SdNotify("READY=1")
+		sent, err := daemon.SdNotify("READY=1")
 		if err != nil {
 			plog.Errorf("failed to notify systemd for readiness: %v", err)
-			if err == daemon.SdNotifyNoSocket {
-				plog.Errorf("forgot to set Type=notify in systemd service file?")
-			}
+		}
+		if !sent {
+			plog.Errorf("forgot to set Type=notify in systemd service file?")
 		}
 	}
 
