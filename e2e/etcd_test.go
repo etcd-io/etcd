@@ -31,6 +31,8 @@ const (
 	certPath            = "../integration/fixtures/server.crt"
 	privateKeyPath      = "../integration/fixtures/server.key.insecure"
 	caPath              = "../integration/fixtures/ca.crt"
+	defaultBinPath      = "../bin/etcd"
+	defaultCtlBinPath   = "../bin/etcdctl"
 )
 
 type clientConnType int
@@ -205,7 +207,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 	}
 
 	if cfg.execPath == "" {
-		cfg.execPath = "../bin/etcd"
+		cfg.execPath = defaultBinPath
 	}
 	if cfg.snapCount == 0 {
 		cfg.snapCount = etcdserver.DefaultSnapCount

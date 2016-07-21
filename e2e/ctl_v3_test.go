@@ -148,7 +148,7 @@ func (cx *ctlCtx) PrefixArgs() []string {
 		}
 		endpoints = strings.Join(es, ",")
 	}
-	cmdArgs := []string{"../bin/etcdctl", "--endpoints", endpoints, "--dial-timeout", cx.dialTimeout.String()}
+	cmdArgs := []string{defaultCtlBinPath, "--endpoints", endpoints, "--dial-timeout", cx.dialTimeout.String()}
 	if cx.epc.cfg.clientTLS == clientTLS {
 		if cx.epc.cfg.isClientAutoTLS {
 			cmdArgs = append(cmdArgs, "--insecure-transport=false", "--insecure-skip-tls-verify")
