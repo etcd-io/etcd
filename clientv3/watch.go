@@ -164,8 +164,12 @@ type watcherStream struct {
 }
 
 func NewWatcher(c *Client) Watcher {
+	return NewWatchFromWatchClient(pb.NewWatchClient(c.conn))
+}
+
+func NewWatchFromWatchClient(wc pb.WatchClient) Watcher {
 	return &watcher{
-		remote:  pb.NewWatchClient(c.conn),
+		remote:  wc,
 		streams: make(map[string]*watchGrpcStream),
 	}
 }
