@@ -50,7 +50,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 
 	sws := serverWatchStream{
 		c:      wp.c,
-		groups: wp.wgs,
+		groups: &wp.wgs,
 
 		id:         wp.nextStreamID,
 		gRPCStream: stream,
@@ -71,7 +71,7 @@ type serverWatchStream struct {
 	c  *clientv3.Client
 
 	mu      sync.Mutex // make sure any access of groups and singles is atomic
-	groups  watchergroups
+	groups  *watchergroups
 	singles map[int64]*watcherSingle
 
 	gRPCStream pb.Watch_WatchServer
