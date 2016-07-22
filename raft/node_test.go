@@ -15,6 +15,7 @@
 package raft
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 	"time"
@@ -137,7 +138,7 @@ func TestNodePropose(t *testing.T) {
 	if msgs[0].Type != raftpb.MsgProp {
 		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgProp)
 	}
-	if !reflect.DeepEqual(msgs[0].Entries[0].Data, []byte("somedata")) {
+	if !bytes.Equal(msgs[0].Entries[0].Data, []byte("somedata")) {
 		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, []byte("somedata"))
 	}
 }
@@ -165,7 +166,7 @@ func TestNodeReadIndex(t *testing.T) {
 			t.Errorf("ReadIndex = %d, want %d", rd.Index, wreadIndex)
 		}
 
-		if !reflect.DeepEqual(rd.RequestCtx, wrequestCtx) {
+		if !bytes.Equal(rd.RequestCtx, wrequestCtx) {
 			t.Errorf("RequestCtx = %v, want %v", rd.RequestCtx, wrequestCtx)
 		}
 
@@ -189,7 +190,7 @@ func TestNodeReadIndex(t *testing.T) {
 	if msgs[0].Type != raftpb.MsgReadIndex {
 		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgReadIndex)
 	}
-	if !reflect.DeepEqual(msgs[0].Entries[0].Data, wrequestCtx) {
+	if !bytes.Equal(msgs[0].Entries[0].Data, wrequestCtx) {
 		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, wrequestCtx)
 	}
 }
@@ -232,7 +233,7 @@ func TestNodeProposeConfig(t *testing.T) {
 	if msgs[0].Type != raftpb.MsgProp {
 		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgProp)
 	}
-	if !reflect.DeepEqual(msgs[0].Entries[0].Data, ccdata) {
+	if !bytes.Equal(msgs[0].Entries[0].Data, ccdata) {
 		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, ccdata)
 	}
 }
