@@ -103,6 +103,9 @@ func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 	handleSend := func() error {
 		var protoReq WatchRequest
 		err = dec.Decode(&protoReq)
+		if err == io.EOF {
+			return err
+		}
 		if err != nil {
 			grpclog.Printf("Failed to decode request: %v", err)
 			return err
@@ -175,6 +178,9 @@ func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marsh
 	handleSend := func() error {
 		var protoReq LeaseKeepAliveRequest
 		err = dec.Decode(&protoReq)
+		if err == io.EOF {
+			return err
+		}
 		if err != nil {
 			grpclog.Printf("Failed to decode request: %v", err)
 			return err
