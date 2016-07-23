@@ -557,7 +557,7 @@
     },
     "/v3alpha/kv/compaction": {
       "post": {
-        "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
+        "summary": "Compact compacts the event history in the etcd key-value store. The key-value\nstore should be periodically compacted or the event history will continue to grow\nindefinitely.",
         "operationId": "Compact",
         "responses": {
           "200": {
@@ -574,6 +574,33 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/etcdserverpbCompactionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KV"
+        ]
+      }
+    },
+    "/v3alpha/kv/deleterange": {
+      "post": {
+        "summary": "DeleteRange deletes the given range from the key-value store.\nA delete request increments the revision of the key-value store\nand generates a delete event in the event history for every deleted key.",
+        "operationId": "DeleteRange",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDeleteRangeResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDeleteRangeRequest"
             }
           }
         ],
@@ -665,7 +692,7 @@
     },
     "/v3alpha/kv/txn": {
       "post": {
-        "summary": "DeleteRange deletes the given range from the key-value store.\nA delete request increments the revision of the key-value store\nand generates a delete event in the event history for every deleted key.",
+        "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
         "operationId": "Txn",
         "responses": {
           "200": {
