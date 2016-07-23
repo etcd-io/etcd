@@ -82,7 +82,18 @@ type serverWatchStream struct {
 	nextWatcherID int64
 }
 
+func (sws *serverWatchStream) close() {
+	close(sws.watchCh)
+	close(sws.ctrlCh)
+	for _, ws := range sws.singles {
+		ws.stop()
+	}
+	sws.groups.stop()
+}
+
 func (sws *serverWatchStream) recvLoop() error {
+	defer sws.close()
+
 	for {
 		req, err := sws.gRPCStream.Recv()
 		if err == io.EOF {

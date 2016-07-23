@@ -86,3 +86,11 @@ func (wgs *watchergroups) maybeJoinWatcherSingle(rid receiverID, ws watcherSingl
 
 	return false
 }
+
+func (wgs *watchergroups) stop() {
+	wgs.mu.Lock()
+	defer wgs.mu.Unlock()
+	for _, wg := range wgs.groups {
+		wg.stop()
+	}
+}
