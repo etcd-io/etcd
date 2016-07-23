@@ -22,7 +22,7 @@ import (
 )
 
 type watchergroups struct {
-	c *clientv3.Client
+	cw clientv3.Watcher
 
 	mu        sync.Mutex
 	groups    map[watchRange]*watcherGroup
@@ -42,7 +42,7 @@ func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	wch := wgs.c.Watch(ctx, w.wr.key, clientv3.WithRange(w.wr.end), clientv3.WithProgressNotify())
+	wch := wgs.cw.Watch(ctx, w.wr.key, clientv3.WithRange(w.wr.end), clientv3.WithProgressNotify())
 	watchg := newWatchergroup(wch, cancel)
 	watchg.add(rid, w)
 	go watchg.run()
