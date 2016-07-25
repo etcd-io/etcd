@@ -356,15 +356,12 @@ func TestNodeStart(t *testing.T) {
 	}
 	wants := []Ready{
 		{
-			SoftState: &SoftState{Lead: 1, RaftState: StateLeader},
-			HardState: raftpb.HardState{Term: 2, Commit: 2, Vote: 1},
+			HardState: raftpb.HardState{Term: 1, Commit: 1, Vote: 0},
 			Entries: []raftpb.Entry{
 				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
-				{Term: 2, Index: 2},
 			},
 			CommittedEntries: []raftpb.Entry{
 				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
-				{Term: 2, Index: 2},
 			},
 		},
 		{
@@ -384,7 +381,6 @@ func TestNodeStart(t *testing.T) {
 	}
 	n := StartNode(c, []Peer{{ID: 1}})
 	defer n.Stop()
-	n.Campaign(ctx)
 	g := <-n.Ready()
 	if !reflect.DeepEqual(g, wants[0]) {
 		t.Fatalf("#%d: g = %+v,\n             w   %+v", 1, g, wants[0])
@@ -392,6 +388,11 @@ func TestNodeStart(t *testing.T) {
 		storage.Append(g.Entries)
 		n.Advance()
 	}
+
+	n.Campaign(ctx)
+	rd := <-n.Ready()
+	storage.Append(rd.Entries)
+	n.Advance()
 
 	n.Propose(ctx, []byte("foo"))
 	if g2 := <-n.Ready(); !reflect.DeepEqual(g2, wants[1]) {
@@ -507,10 +508,14 @@ func TestNodeAdvance(t *testing.T) {
 	}
 	n := StartNode(c, []Peer{{ID: 1}})
 	defer n.Stop()
+	rd := <-n.Ready()
+	storage.Append(rd.Entries)
+	n.Advance()
+
 	n.Campaign(ctx)
 	<-n.Ready()
+
 	n.Propose(ctx, []byte("foo"))
-	var rd Ready
 	select {
 	case rd = <-n.Ready():
 		t.Fatalf("unexpected Ready before Advance: %+v", rd)
