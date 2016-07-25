@@ -128,7 +128,9 @@ type securityConfig struct {
 
 // NewConfig creates a new Config populated with default values.
 func NewConfig() *Config {
+	lpurl, _ := url.Parse(DefaultListenPeerURLs)
 	apurl, _ := url.Parse(DefaultInitialAdvertisePeerURLs)
+	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
 	cfg := &Config{
 		CorsInfo:            &cors.CORSInfo{},
@@ -138,6 +140,8 @@ func NewConfig() *Config {
 		SnapCount:           etcdserver.DefaultSnapCount,
 		TickMs:              100,
 		ElectionMs:          1000,
+		LPUrls:              []url.URL{*lpurl},
+		LCUrls:              []url.URL{*lcurl},
 		APUrls:              []url.URL{*apurl},
 		ACUrls:              []url.URL{*acurl},
 		ClusterState:        ClusterStateFlagNew,
