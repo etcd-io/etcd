@@ -33,7 +33,12 @@ service KV {
   // DeleteRange deletes the given range from the key-value store.
   // A delete request increments the revision of the key-value store
   // and generates a delete event in the event history for every deleted key.
-  rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {}
+  rpc DeleteRange(DeleteRangeRequest) returns (DeleteRangeResponse) {
+      option (google.api.http) = {
+        post: "/v3alpha/kv/deleterange"
+        body: "*"
+    };
+  }
 
   // Txn processes multiple requests in a single transaction.
   // A txn request increments the revision of the key-value store
