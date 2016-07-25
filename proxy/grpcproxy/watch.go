@@ -26,7 +26,7 @@ import (
 )
 
 type watchProxy struct {
-	c   *clientv3.Client
+	cw  clientv3.Watcher
 	wgs watchergroups
 
 	mu           sync.Mutex
@@ -35,9 +35,9 @@ type watchProxy struct {
 
 func NewWatchProxy(c *clientv3.Client) pb.WatchServer {
 	return &watchProxy{
-		c: c,
+		cw: c.Watcher,
 		wgs: watchergroups{
-			c:      c,
+			cw:     c.Watcher,
 			groups: make(map[watchRange]*watcherGroup),
 		},
 	}
@@ -49,7 +49,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 	wp.mu.Unlock()
 
 	sws := serverWatchStream{
-		c:      wp.c,
+		cw:     wp.cw,
 		groups: &wp.wgs,
 
 		id:         wp.nextStreamID,
@@ -68,7 +68,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 
 type serverWatchStream struct {
 	id int64
-	c  *clientv3.Client
+	cw clientv3.Watcher
 
 	mu      sync.Mutex // make sure any access of groups and singles is atomic
 	groups  *watchergroups
@@ -82,7 +82,18 @@ type serverWatchStream struct {
 	nextWatcherID int64
 }
 
+func (sws *serverWatchStream) close() {
+	close(sws.watchCh)
+	close(sws.ctrlCh)
+	for _, ws := range sws.singles {
+		ws.stop()
+	}
+	sws.groups.stop()
+}
+
 func (sws *serverWatchStream) recvLoop() error {
+	defer sws.close()
+
 	for {
 		req, err := sws.gRPCStream.Recv()
 		if err == io.EOF {
@@ -170,7 +181,7 @@ func (sws *serverWatchStream) addDedicatedWatcher(w watcher, rev int64) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	wch := sws.c.Watch(ctx,
+	wch := sws.cw.Watch(ctx,
 		w.wr.key, clientv3.WithRange(w.wr.end),
 		clientv3.WithRev(rev),
 		clientv3.WithProgressNotify(),
