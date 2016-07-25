@@ -43,6 +43,7 @@ import (
 	systemdutil "github.com/coreos/go-systemd/util"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/prometheus/client_golang/prometheus"
+	"google.golang.org/grpc"
 )
 
 type dirType string
@@ -56,6 +57,8 @@ var (
 )
 
 func startEtcdOrProxyV2() {
+	grpc.EnableTracing = false
+
 	cfg := newConfig()
 	err := cfg.parse(os.Args[1:])
 	if err != nil {
