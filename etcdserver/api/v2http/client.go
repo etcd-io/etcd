@@ -130,7 +130,6 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 		mux.Handle(pprofPrefix+"/block", pprof.Handler("block"))
 	}
 
-	api.RunCapabilityLoop(server)
 	return requestLogger(mux)
 }
 
