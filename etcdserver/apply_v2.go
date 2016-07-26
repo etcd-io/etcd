@@ -19,6 +19,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -86,7 +87,7 @@ func (a *applierV2store) Put(r *pb.Request) Response {
 		}
 		if r.Path == membership.StoreClusterVersionKey() {
 			if a.cluster != nil {
-				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)))
+				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability)
 			}
 			// return an empty response since there is no consumer.
 			return Response{}
