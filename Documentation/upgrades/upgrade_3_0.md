@@ -18,7 +18,7 @@ Also, to ensure a smooth rolling upgrade, the running cluster must be healthy. Y
 
 Before upgrading etcd, always test the services relying on etcd in a staging environment before deploying the upgrade to the production environment.
 
-Before beginning,  [backup the etcd data directory](admin_guide.md#backing-up-the-datastore). Should something go wrong with the upgrade, it is possible to use this backup to [downgrade](#downgrade) back to existing etcd version.
+Before beginning,  [backup the etcd data directory](../v2/admin_guide.md#backing-up-the-datastore). Should something go wrong with the upgrade, it is possible to use this backup to [downgrade](#downgrade) back to existing etcd version.
 
 #### Mixed Versions
 
@@ -34,7 +34,7 @@ For a much larger total data size, 100MB or more , this one-time process might t
 
 If all members have been upgraded to v3.0, the cluster will be upgraded to v3.0, and downgrade from this completed state is **not possible**. If any single member is still v2.3, however, the cluster and its operations remains “v2.3”, and it is possible from this mixed cluster state to return to using a v2.3 etcd binary on all members.
 
-Please [backup the data directory](admin_guide.md#backing-up-the-datastore) of all etcd members to make downgrading the cluster possible even after it has been completely upgraded.
+Please [backup the data directory](../v2/admin_guide.md#backing-up-the-datastore) of all etcd members to make downgrading the cluster possible even after it has been completely upgraded.
 
 ### Upgrade Procedure
 
@@ -64,7 +64,7 @@ When each etcd process is stopped, expected errors will be logged by other clust
 2016-06-27 15:21:48.624175 I | rafthttp: the connection with 8211f1d0f64f3269 became inactive
 ```
 
-It’s a good idea at this point to  [backup the etcd data directory](https://github.com/coreos/etcd/blob/master/Documentation/v2/admin_guide.md#backing-up-the-datastore) to provide a downgrade path should any problems occur:
+It’s a good idea at this point to  [backup the etcd data directory](../v2/admin_guide.md#backing-up-the-datastore) to provide a downgrade path should any problems occur:
 
 ```
 $ etcdctl backup \
