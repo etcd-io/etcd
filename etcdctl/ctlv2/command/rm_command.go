@@ -57,8 +57,7 @@ func rmCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if err != nil {
 		handleError(ExitServerError, err)
 	}
-
-	if !resp.Node.Dir {
+	if !resp.Node.Dir || c.GlobalString("output") != "simple" {
 		printResponseKey(resp, c.GlobalString("output"))
 	}
 }

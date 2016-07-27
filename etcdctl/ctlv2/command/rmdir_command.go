@@ -48,7 +48,7 @@ func rmdirCommandFunc(c *cli.Context, ki client.KeysAPI) {
 		handleError(ExitServerError, err)
 	}
 
-	if !resp.Node.Dir {
+	if !resp.Node.Dir || c.GlobalString("output") != "simple" {
 		printResponseKey(resp, c.GlobalString("output"))
 	}
 }

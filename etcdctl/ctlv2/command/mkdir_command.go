@@ -48,9 +48,12 @@ func mkdirCommandFunc(c *cli.Context, ki client.KeysAPI, prevExist client.PrevEx
 	ttl := c.Int("ttl")
 
 	ctx, cancel := contextWithTotalTimeout(c)
-	_, err := ki.Set(ctx, key, "", &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: prevExist})
+	resp, err := ki.Set(ctx, key, "", &client.SetOptions{TTL: time.Duration(ttl) * time.Second, Dir: true, PrevExist: prevExist})
 	cancel()
 	if err != nil {
 		handleError(ExitServerError, err)
+	}
+	if c.GlobalString("output") != "simple" {
+		printResponseKey(resp, c.GlobalString("output"))
 	}
 }
