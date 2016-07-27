@@ -200,13 +200,14 @@ func (c *RaftCluster) SetBackend(be backend.Backend) {
 	mustCreateBackendBuckets(c.be)
 }
 
-func (c *RaftCluster) Recover() {
+func (c *RaftCluster) Recover(onSet func(*semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 
 	c.members, c.removed = membersFromStore(c.store)
 	c.version = clusterVersionFromStore(c.store)
 	mustDetectDowngrade(c.version)
+	onSet(c.version)
 
 	for _, m := range c.members {
 		plog.Infof("added member %s %v to cluster %s from store", m.ID, m.PeerURLs, c.id)
@@ -356,7 +357,7 @@ func (c *RaftCluster) Version() *semver.Version {
 	return semver.Must(semver.NewVersion(c.version.String()))
 }
 
-func (c *RaftCluster) SetVersion(ver *semver.Version) {
+func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version)) {
 	c.Lock()
 	defer c.Unlock()
 	if c.version != nil {
@@ -372,6 +373,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version) {
 	if c.be != nil {
 		mustSaveClusterVersionToBackend(c.be, ver)
 	}
+	onSet(ver)
 }
 
 func (c *RaftCluster) IsReadyToAddNewMember() bool {
