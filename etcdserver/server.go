@@ -181,13 +181,16 @@ type EtcdServer struct {
 
 	applyV2 ApplierV2
 
-	applyV3    applierV3
-	kv         mvcc.ConsistentWatchableKV
-	lessor     lease.Lessor
-	bemu       sync.Mutex
-	be         backend.Backend
-	authStore  auth.AuthStore
-	alarmStore *alarm.AlarmStore
+	// applyV3 is the applier with auth and quotas
+	applyV3 applierV3
+	// applyV3Base is the core applier without auth or quotas
+	applyV3Base applierV3
+	kv          mvcc.ConsistentWatchableKV
+	lessor      lease.Lessor
+	bemu        sync.Mutex
+	be          backend.Backend
+	authStore   auth.AuthStore
+	alarmStore  *alarm.AlarmStore
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -405,6 +408,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		srv.compactor.Run()
 	}
 
+	srv.applyV3Base = &applierV3backend{srv}
 	if err = srv.restoreAlarms(); err != nil {
 		return nil, err
 	}
