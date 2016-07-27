@@ -117,8 +117,11 @@ func request_Watch_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 		return nil
 	}
 	if err := handleSend(); err != nil {
-		if err := stream.CloseSend(); err != nil {
-			grpclog.Printf("Failed to terminate client stream: %v", err)
+		if cerr := stream.CloseSend(); cerr != nil {
+			grpclog.Printf("Failed to terminate client stream: %v", cerr)
+		}
+		if err == io.EOF {
+			return stream, metadata, nil
 		}
 		return nil, metadata, err
 	}
@@ -192,8 +195,11 @@ func request_Lease_LeaseKeepAlive_0(ctx context.Context, marshaler runtime.Marsh
 		return nil
 	}
 	if err := handleSend(); err != nil {
-		if err := stream.CloseSend(); err != nil {
-			grpclog.Printf("Failed to terminate client stream: %v", err)
+		if cerr := stream.CloseSend(); cerr != nil {
+			grpclog.Printf("Failed to terminate client stream: %v", cerr)
+		}
+		if err == io.EOF {
+			return stream, metadata, nil
 		}
 		return nil, metadata, err
 	}
