@@ -136,21 +136,7 @@ type Node interface {
 	// However, as an optimization, the application may call Advance while it is applying the
 	// commands. For example. when the last Ready contains a snapshot, the application might take
 	// a long time to apply the snapshot data. To continue receiving Ready without blocking raft
-	// progress, it can call Advance before finishing applying the last ready. To make this optimization
-	// work safely, when the application receives a Ready with softState.RaftState equal to Candidate
-	// it MUST apply all pending configuration changes if there is any.
-	//
-	// Here is a simple solution that waiting for ALL pending entries to get applied.
-	// ```
-	// ...
-	// rd := <-n.Ready()
-	// go apply(rd.CommittedEntries) // optimization to apply asynchronously in FIFO order.
-	// if rd.SoftState.RaftState == StateCandidate {
-	//     waitAllApplied()
-	// }
-	// n.Advance()
-	// ...
-	//```
+	// progress, it can call Advance before finishing applying the last ready.
 	Advance()
 	// ApplyConfChange applies config change to the local node.
 	// Returns an opaque ConfState protobuf which must be recorded
