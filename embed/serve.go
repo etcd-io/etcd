@@ -42,6 +42,8 @@ type serveCtx struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	userHandlers map[string]http.Handler
 }
 
 func newServeCtx() *serveCtx {
@@ -72,9 +74,8 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 			return err
 		}
 
-		httpmux := http.NewServeMux()
-		httpmux.Handle("/v3alpha/", gwmux)
-		httpmux.Handle("/", handler)
+		httpmux := sctx.createMux(gwmux, handler)
+
 		srvhttp := &http.Server{
 			Handler:  httpmux,
 			ErrorLog: logger, // do not log user error
@@ -100,9 +101,8 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 
 		tlsl := tls.NewListener(m.Match(cmux.Any()), tlscfg)
 		// TODO: add debug flag; enable logging when debug flag is set
-		httpmux := http.NewServeMux()
-		httpmux.Handle("/v3alpha/", gwmux)
-		httpmux.Handle("/", handler)
+		httpmux := sctx.createMux(gwmux, handler)
+
 		srv := &http.Server{
 			Handler:   httpmux,
 			TLSConfig: tlscfg,
@@ -169,4 +169,15 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 		return nil, err
 	}
 	return gwmux, nil
+}
+
+func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.ServeMux {
+	httpmux := http.NewServeMux()
+	for path, h := range sctx.userHandlers {
+		httpmux.Handle(path, h)
+	}
+
+	httpmux.Handle("/v3alpha/", gwmux)
+	httpmux.Handle("/", handler)
+	return httpmux
 }
