@@ -50,6 +50,9 @@ type Op struct {
 
 	// progressNotify is for progress updates.
 	progressNotify bool
+	// filters for watchers
+	filterPut    bool
+	filterDelete bool
 
 	// for put
 	val     []byte
@@ -111,6 +114,8 @@ func OpDelete(key string, opts ...OpOption) Op {
 		panic("unexpected serializable in delete")
 	case ret.countOnly:
 		panic("unexpected countOnly in delete")
+	case ret.filterDelete, ret.filterPut:
+		panic("unexpected filter in delete")
 	}
 	return ret
 }
@@ -131,6 +136,8 @@ func OpPut(key, val string, opts ...OpOption) Op {
 		panic("unexpected serializable in put")
 	case ret.countOnly:
 		panic("unexpected countOnly in put")
+	case ret.filterDelete, ret.filterPut:
+		panic("unexpected filter in put")
 	}
 	return ret
 }
@@ -272,6 +279,16 @@ func WithProgressNotify() OpOption {
 	return func(op *Op) {
 		op.progressNotify = true
 	}
+}
+
+// WithFilterPut discards PUT events from the watcher.
+func WithFilterPut() OpOption {
+	return func(op *Op) { op.filterPut = true }
+}
+
+// WithFilterDelete discards DELETE events from the watcher.
+func WithFilterDelete() OpOption {
+	return func(op *Op) { op.filterDelete = true }
 }
 
 // WithPrevKV gets the previous key-value pair before the event happens. If the previous KV is already compacted,

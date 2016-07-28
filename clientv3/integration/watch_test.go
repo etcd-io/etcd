@@ -673,3 +673,39 @@ func TestWatchWithRequireLeader(t *testing.T) {
 		t.Fatalf("expected response, got closed channel")
 	}
 }
+
+// TestWatchWithFilter checks that watch filtering works.
+func TestWatchWithFilter(t *testing.T) {
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	client := cluster.RandClient()
+	ctx := context.Background()
+
+	wcNoPut := client.Watch(ctx, "a", clientv3.WithFilterPut())
+	wcNoDel := client.Watch(ctx, "a", clientv3.WithFilterDelete())
+
+	if _, err := client.Put(ctx, "a", "abc"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Delete(ctx, "a"); err != nil {
+		t.Fatal(err)
+	}
+
+	npResp := <-wcNoPut
+	if len(npResp.Events) != 1 || npResp.Events[0].Type != clientv3.EventTypeDelete {
+		t.Fatalf("expected delete event, got %+v", npResp.Events)
+	}
+	ndResp := <-wcNoDel
+	if len(ndResp.Events) != 1 || ndResp.Events[0].Type != clientv3.EventTypePut {
+		t.Fatalf("expected put event, got %+v", ndResp.Events)
+	}
+
+	select {
+	case resp := <-wcNoPut:
+		t.Fatalf("unexpected event on filtered put (%+v)", resp)
+	case resp := <-wcNoDel:
+		t.Fatalf("unexpected event on filtered delete (%+v)", resp)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
