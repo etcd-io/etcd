@@ -277,6 +277,7 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 				plog.Info("stopping listening for client requests on ", u.Host)
 			}
 		}()
+		sctx.userHandlers = cfg.UserHandlers
 		sctxs[u.Host] = sctx
 	}
 	return sctxs, nil

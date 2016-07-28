@@ -17,6 +17,7 @@ package embed
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -98,6 +99,12 @@ type Config struct {
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
+
+	// UserHandlers is for registering users handlers and only used for
+	// embedding etcd into other applications.
+	// The map key is the route path for the handler, and
+	// you must ensure it can't be conflicted with etcd's.
+	UserHandlers map[string]http.Handler `json:"-"`
 }
 
 // configYAML holds the config suitable for yaml parsing
