@@ -40,12 +40,15 @@ func TestPeriodic(t *testing.T) {
 	defer tb.Stop()
 
 	n := int(time.Hour / checkCompactionInterval)
+	// collect 3 hours of revisions
 	for i := 0; i < 3; i++ {
+		// advance one hour, one revision for each interval
 		for j := 0; j < n; j++ {
-			rg.Wait(1)
 			fc.Advance(checkCompactionInterval)
+			rg.Wait(1)
 		}
-
+		// ready to acknowledge hour "i"; unblock clock
+		fc.Advance(checkCompactionInterval)
 		a, err := compactable.Wait(1)
 		if err != nil {
 			t.Fatal(err)
