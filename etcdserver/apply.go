@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -245,80 +244,10 @@ func (a *applierV3backend) DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (
 }
 
 func (a *applierV3backend) Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	resp := &pb.RangeResponse{}
-	resp.Header = &pb.ResponseHeader{}
-
-	var (
-		rr  *mvcc.RangeResult
-		err error
-	)
-
-	if isGteRange(r.RangeEnd) {
-		r.RangeEnd = []byte{}
-	}
-
-	limit := r.Limit
-	if r.SortOrder != pb.RangeRequest_NONE {
-		// fetch everything; sort and truncate afterwards
-		limit = 0
-	}
-	if limit > 0 {
-		// fetch one extra for 'more' flag
-		limit = limit + 1
-	}
-
-	ro := mvcc.RangeOptions{
-		Limit: limit,
-		Rev:   r.Revision,
-		Count: r.CountOnly,
-	}
-
-	if txnID != noTxn {
-		rr, err = a.s.KV().TxnRange(txnID, r.Key, r.RangeEnd, ro)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		rr, err = a.s.KV().Range(r.Key, r.RangeEnd, ro)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if r.SortOrder != pb.RangeRequest_NONE {
-		var sorter sort.Interface
-		switch {
-		case r.SortTarget == pb.RangeRequest_KEY:
-			sorter = &kvSortByKey{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_VERSION:
-			sorter = &kvSortByVersion{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_CREATE:
-			sorter = &kvSortByCreate{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_MOD:
-			sorter = &kvSortByMod{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_VALUE:
-			sorter = &kvSortByValue{&kvSort{rr.KVs}}
-		}
-		switch {
-		case r.SortOrder == pb.RangeRequest_ASCEND:
-			sort.Sort(sorter)
-		case r.SortOrder == pb.RangeRequest_DESCEND:
-			sort.Sort(sort.Reverse(sorter))
-		}
-	}
-
-	if r.Limit > 0 && len(rr.KVs) > int(r.Limit) {
-		rr.KVs = rr.KVs[:r.Limit]
-		resp.More = true
-	}
-
-	resp.Header.Revision = rr.Rev
-	resp.Count = int64(rr.Count)
-	for i := range rr.KVs {
-		if r.KeysOnly {
-			rr.KVs[i].Value = nil
-		}
-		resp.Kvs = append(resp.Kvs, &rr.KVs[i])
+	resp := &pb.RangeResponse{Header: &pb.ResponseHeader{Revision: txnID}}
+	if txnID == noTxn {
+		// txn holds lock on Rev(), so patch up real rev in Txn() function
+		resp.Header.Revision = a.s.KV().Rev()
 	}
 	return resp, nil
 }
@@ -360,10 +289,12 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	resps := make([]*pb.ResponseOp, len(reqs))
 	changedKV := false
 	for i := range reqs {
-		if reqs[i].GetRequestRange() == nil {
+		resps[i] = a.applyUnion(txnID, reqs[i])
+		if rr := resps[i].GetResponseRange(); rr != nil {
+			rr.Header.Revision = revision
+		} else {
 			changedKV = true
 		}
-		resps[i] = a.applyUnion(txnID, reqs[i])
 	}
 
 	if changedKV {
@@ -689,45 +620,6 @@ func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 		err = ErrNoSpace
 	}
 	return resp, err
-}
-
-type kvSort struct{ kvs []mvccpb.KeyValue }
-
-func (s *kvSort) Swap(i, j int) {
-	t := s.kvs[i]
-	s.kvs[i] = s.kvs[j]
-	s.kvs[j] = t
-}
-func (s *kvSort) Len() int { return len(s.kvs) }
-
-type kvSortByKey struct{ *kvSort }
-
-func (s *kvSortByKey) Less(i, j int) bool {
-	return bytes.Compare(s.kvs[i].Key, s.kvs[j].Key) < 0
-}
-
-type kvSortByVersion struct{ *kvSort }
-
-func (s *kvSortByVersion) Less(i, j int) bool {
-	return (s.kvs[i].Version - s.kvs[j].Version) < 0
-}
-
-type kvSortByCreate struct{ *kvSort }
-
-func (s *kvSortByCreate) Less(i, j int) bool {
-	return (s.kvs[i].CreateRevision - s.kvs[j].CreateRevision) < 0
-}
-
-type kvSortByMod struct{ *kvSort }
-
-func (s *kvSortByMod) Less(i, j int) bool {
-	return (s.kvs[i].ModRevision - s.kvs[j].ModRevision) < 0
-}
-
-type kvSortByValue struct{ *kvSort }
-
-func (s *kvSortByValue) Less(i, j int) bool {
-	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
 }
 
 func (a *applierV3backend) checkRequestLeases(reqs []*pb.RequestOp) error {

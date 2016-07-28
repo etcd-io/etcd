@@ -15,6 +15,8 @@
 package etcdserver
 
 import (
+	"bytes"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +26,7 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 )
@@ -94,8 +97,12 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
 		}
-		return resp, err
+		if ferr := fetchRange(s.KV(), r, resp); ferr != nil {
+			return nil, ferr
+		}
+		return resp, nil
 	}
+
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Range: r})
 	if err != nil {
 		return nil, err
@@ -103,7 +110,11 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	if result.err != nil {
 		return nil, result.err
 	}
-	return result.resp.(*pb.RangeResponse), nil
+	resp := result.resp.(*pb.RangeResponse)
+	if err := fetchRange(s.KV(), r, resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
@@ -139,8 +150,12 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
 		}
-		return resp, err
+		if ferr := fetchTxn(s.KV(), r, resp); ferr != nil {
+			return nil, ferr
+		}
+		return resp, nil
 	}
+
 	result, err := s.processInternalRaftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
@@ -148,7 +163,11 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 	if result.err != nil {
 		return nil, result.err
 	}
-	return result.resp.(*pb.TxnResponse), nil
+	resp := result.resp.(*pb.TxnResponse)
+	if err := fetchTxn(s.KV(), r, resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func isTxnSerializable(r *pb.TxnRequest) bool {
@@ -509,28 +528,24 @@ func (s *EtcdServer) authInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error
 
 // doSerialize handles the auth logic, with permissions checked by "chk", for a serialized request "get". Returns a non-nil error on authentication failure.
 func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) error, get func()) error {
+	var ai *auth.AuthInfo
 	for {
-		ai, err := s.authInfoFromCtx(ctx)
+		authInfo, err := s.authInfoFromCtx(ctx)
 		if err != nil {
 			return err
 		}
-		if ai == nil {
-			// chk expects non-nil AuthInfo; use empty credentials
+		if ai = authInfo; ai == nil {
 			ai = &auth.AuthInfo{}
 		}
 		if err = chk(ai); err != nil {
-			if err == auth.ErrAuthOldRevision {
-				continue
-			}
 			return err
 		}
-		// fetch response for serialized request
 		get()
-		//  empty credentials or current auth info means no need to retry
-		if ai.Revision == 0 || ai.Revision == s.authStore.Revision() {
+		if authInfo == nil || authInfo.Revision == s.authStore.Revision() {
 			return nil
 		}
-		// avoid TOCTOU error, retry of the request is required.
+		// The revision that authorized this request is obsolete.
+		// For avoiding TOCTOU problem, retry of the request is required.
 	}
 }
 
@@ -604,3 +619,126 @@ func (s *EtcdServer) processInternalRaftRequest(ctx context.Context, r pb.Intern
 
 // Watchable returns a watchable interface attached to the etcdserver.
 func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
+
+func fetchTxn(kv mvcc.KV, req *pb.TxnRequest, resp *pb.TxnResponse) error {
+	reqs := req.Success
+	if !resp.Succeeded {
+		reqs = req.Failure
+	}
+	for i, u := range resp.Responses {
+		if rr := u.GetResponseRange(); rr != nil {
+			if err := fetchRange(kv, reqs[i].GetRequestRange(), rr); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func fetchRange(kv mvcc.KV, req *pb.RangeRequest, resp *pb.RangeResponse) error {
+	if isGteRange(req.RangeEnd) {
+		req.RangeEnd = []byte{}
+	}
+
+	limit := req.Limit
+	if req.SortOrder != pb.RangeRequest_NONE {
+		// fetch everything; sort and truncate afterwards
+		limit = 0
+	}
+	if limit > 0 {
+		// fetch one extra for 'more' flag
+		limit = limit + 1
+	}
+
+	ro := mvcc.RangeOptions{Limit: limit, Count: req.CountOnly}
+	if req.Revision == 0 {
+		ro.Rev = resp.Header.Revision
+	} else {
+		ro.Rev = req.Revision
+	}
+
+	rr, err := kv.Range(req.Key, req.RangeEnd, ro)
+	if err != nil {
+		return err
+	}
+	resp.Count = int64(rr.Count)
+
+	if req.SortOrder != pb.RangeRequest_NONE {
+		var sorter sort.Interface
+		switch {
+		case req.SortTarget == pb.RangeRequest_KEY:
+			sorter = &kvSortByKey{&kvSort{rr.KVs}}
+		case req.SortTarget == pb.RangeRequest_VERSION:
+			sorter = &kvSortByVersion{&kvSort{rr.KVs}}
+		case req.SortTarget == pb.RangeRequest_CREATE:
+			sorter = &kvSortByCreate{&kvSort{rr.KVs}}
+		case req.SortTarget == pb.RangeRequest_MOD:
+			sorter = &kvSortByMod{&kvSort{rr.KVs}}
+		case req.SortTarget == pb.RangeRequest_VALUE:
+			sorter = &kvSortByValue{&kvSort{rr.KVs}}
+		}
+		switch {
+		case req.SortOrder == pb.RangeRequest_ASCEND:
+			sort.Sort(sorter)
+		case req.SortOrder == pb.RangeRequest_DESCEND:
+			sort.Sort(sort.Reverse(sorter))
+		}
+	}
+
+	if req.Limit > 0 && len(rr.KVs) > int(req.Limit) {
+		// fetches one extra key from backend to compute More
+		rr.KVs = rr.KVs[:req.Limit]
+		resp.More = true
+	}
+
+	resp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
+	for i := range rr.KVs {
+		resp.Kvs[i] = &rr.KVs[i]
+	}
+	if req.KeysOnly {
+		for _, kv := range resp.Kvs {
+			kv.Value = nil
+		}
+	}
+
+	return nil
+}
+
+type kvSort struct{ kvs []mvccpb.KeyValue }
+
+func (s *kvSort) Swap(i, j int) {
+	t := s.kvs[i]
+	s.kvs[i] = s.kvs[j]
+	s.kvs[j] = t
+}
+func (s *kvSort) Len() int { return len(s.kvs) }
+
+type kvSortByKey struct{ *kvSort }
+
+func (s *kvSortByKey) Less(i, j int) bool {
+	return bytes.Compare(s.kvs[i].Key, s.kvs[j].Key) < 0
+}
+
+type kvSortByVersion struct{ *kvSort }
+
+func (s *kvSortByVersion) Less(i, j int) bool {
+	return (s.kvs[i].Version - s.kvs[j].Version) < 0
+}
+
+type kvSortByCreate struct{ *kvSort }
+
+func (s *kvSortByCreate) Less(i, j int) bool {
+	return (s.kvs[i].CreateRevision - s.kvs[j].CreateRevision) < 0
+}
+
+type kvSortByMod struct{ *kvSort }
+
+func (s *kvSortByMod) Less(i, j int) bool {
+	return (s.kvs[i].ModRevision - s.kvs[j].ModRevision) < 0
+}
+
+type kvSortByValue struct{ *kvSort }
+
+func (s *kvSortByValue) Less(i, j int) bool {
+	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
+}
