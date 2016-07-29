@@ -1278,6 +1278,12 @@ func TestLeaderElectionWithCheckQuorum(t *testing.T) {
 	b.checkQuorum = true
 	c.checkQuorum = true
 
+	// we can not let system choosing the value of randomizedElectionTimeout
+	// otherwise it will introduce some uncertainty into this test case
+	// we need to ensure randomizedElectionTimeout > electionTimeout here
+	a.randomizedElectionTimeout = a.electionTimeout + 1
+	b.randomizedElectionTimeout = b.electionTimeout + 2
+
 	nt := newNetwork(a, b, c)
 
 	// Letting b's electionElapsed reach to timeout so that it can vote for a
@@ -1322,6 +1328,11 @@ func TestFreeStuckCandidateWithCheckQuorum(t *testing.T) {
 	a.checkQuorum = true
 	b.checkQuorum = true
 	c.checkQuorum = true
+
+	// we can not let system choosing the value of randomizedElectionTimeout
+	// otherwise it will introduce some uncertainty into this test case
+	// we need to ensure randomizedElectionTimeout > electionTimeout here
+	b.randomizedElectionTimeout = b.electionTimeout + 1
 
 	nt := newNetwork(a, b, c)
 	for i := 0; i < b.electionTimeout; i++ {
@@ -1379,6 +1390,11 @@ func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
 	a.checkQuorum = true
 	b.checkQuorum = true
 
+	// we can not let system choosing the value of randomizedElectionTimeout
+	// otherwise it will introduce some uncertainty into this test case
+	// we need to ensure randomizedElectionTimeout > electionTimeout here
+	b.randomizedElectionTimeout = b.electionTimeout + 1
+
 	nt := newNetwork(a, b)
 	// Need to remove 2 again to make it a non-promotable node since newNetwork overwritten some internal states
 	b.delProgress(2)
@@ -1413,6 +1429,11 @@ func TestReadIndexWithCheckQuorum(t *testing.T) {
 	a.checkQuorum = true
 	b.checkQuorum = true
 	c.checkQuorum = true
+
+	// we can not let system choosing the value of randomizedElectionTimeout
+	// otherwise it will introduce some uncertainty into this test case
+	// we need to ensure randomizedElectionTimeout > electionTimeout here
+	b.randomizedElectionTimeout = b.electionTimeout + 1
 
 	nt := newNetwork(a, b, c)
 	for i := 0; i < b.electionTimeout; i++ {
