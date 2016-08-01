@@ -31,8 +31,8 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 ## Write release note
 
 - Write introduction for the new release. For example, what major bug we fix, what new features we introduce or what performance improvement we make.
-- Write changelog for the last release. ChangeLog should be straightforward and easy to understand for the end-user.
 - Put `[GH XXXX]` at the head of change line to reference Pull Request that introduces the change. Moreover, add a link on it to jump to the Pull Request.
+- Find PRs with `release-note` label and explain them in `NEWS` file, as a straightforward summary of changes for end-users.
 
 ## Tag version
 
