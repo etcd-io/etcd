@@ -180,14 +180,14 @@ func (s *stresser) Stress() error {
 	s.stressTable = createStressTable(stressEntries)
 
 	for i := 0; i < s.N; i++ {
-		go s.run(ctx, kvc)
+		go s.run(ctx)
 	}
 
 	plog.Printf("stresser %q is started", s.Endpoint)
 	return nil
 }
 
-func (s *stresser) run(ctx context.Context, kvc pb.KVClient) {
+func (s *stresser) run(ctx context.Context) {
 	defer s.wg.Done()
 
 	for {
