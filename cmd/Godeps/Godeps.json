@@ -197,7 +197,7 @@
 		},
 		{
 			"ImportPath": "github.com/xiang90/probing",
-			"Rev": "6a0cc1ae81b4cc11db5e491e030e4b98fba79c19"
+			"Rev": "95bd620af35406ab93d7f5bf320dba4b4667982e"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
