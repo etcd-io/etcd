@@ -121,7 +121,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 		}
 	}
 	// kill lease, expect Leave unblock
-	s, err := concurrency.NewSession(clus.clients[0])
+	s, err := concurrency.NewSession(clus.clients[0], 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 
 func dropSessionLease(clus *ClusterV3) {
 	for _, client := range clus.clients {
-		s, _ := concurrency.NewSession(client)
+		s, _ := concurrency.NewSession(client, 0)
 		s.Orphan()
 	}
 }

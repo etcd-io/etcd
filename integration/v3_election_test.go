@@ -44,7 +44,7 @@ func TestElectionWait(t *testing.T) {
 		nextc = append(nextc, make(chan struct{}))
 		go func(ch chan struct{}) {
 			for j := 0; j < leaders; j++ {
-				b := concurrency.NewElection(newClient(), "test-election")
+				b := concurrency.NewElection(newClient(), "test-election", 0)
 				cctx, cancel := context.WithCancel(context.TODO())
 				defer cancel()
 				s, ok := <-b.Observe(cctx)
@@ -62,7 +62,7 @@ func TestElectionWait(t *testing.T) {
 	// elect some leaders
 	for i := 0; i < leaders; i++ {
 		go func() {
-			e := concurrency.NewElection(newClient(), "test-election")
+			e := concurrency.NewElection(newClient(), "test-election", 0)
 			ev := fmt.Sprintf("electval-%v", time.Now().UnixNano())
 			if err := e.Campaign(context.TODO(), ev); err != nil {
 				t.Fatalf("failed volunteer (%v)", err)
@@ -103,7 +103,7 @@ func TestElectionFailover(t *testing.T) {
 	defer cancel()
 
 	// first leader (elected)
-	e := concurrency.NewElection(clus.clients[0], "test-election")
+	e := concurrency.NewElection(clus.clients[0], "test-election", 0)
 	if err := e.Campaign(context.TODO(), "foo"); err != nil {
 		t.Fatalf("failed volunteer (%v)", err)
 	}
@@ -121,7 +121,7 @@ func TestElectionFailover(t *testing.T) {
 	// next leader
 	electedc := make(chan struct{})
 	go func() {
-		ee := concurrency.NewElection(clus.clients[1], "test-election")
+		ee := concurrency.NewElection(clus.clients[1], "test-election", 0)
 		if eer := ee.Campaign(context.TODO(), "bar"); eer != nil {
 			t.Fatal(eer)
 		}
@@ -129,7 +129,7 @@ func TestElectionFailover(t *testing.T) {
 	}()
 
 	// invoke leader failover
-	session, serr := concurrency.NewSession(clus.clients[0])
+	session, serr := concurrency.NewSession(clus.clients[0], 0)
 	if serr != nil {
 		t.Fatal(serr)
 	}
@@ -138,7 +138,7 @@ func TestElectionFailover(t *testing.T) {
 	}
 
 	// check new leader
-	e = concurrency.NewElection(clus.clients[2], "test-election")
+	e = concurrency.NewElection(clus.clients[2], "test-election", 0)
 	resp, ok = <-e.Observe(cctx)
 	if !ok {
 		t.Fatalf("could not wait for second election; channel closed")
@@ -159,11 +159,11 @@ func TestElectionSessionRecampaign(t *testing.T) {
 	defer clus.Terminate(t)
 	cli := clus.RandClient()
 
-	e := concurrency.NewElection(cli, "test-elect")
+	e := concurrency.NewElection(cli, "test-elect", 0)
 	if err := e.Campaign(context.TODO(), "abc"); err != nil {
 		t.Fatal(err)
 	}
-	e2 := concurrency.NewElection(cli, "test-elect")
+	e2 := concurrency.NewElection(cli, "test-elect", 0)
 	if err := e2.Campaign(context.TODO(), "def"); err != nil {
 		t.Fatal(err)
 	}

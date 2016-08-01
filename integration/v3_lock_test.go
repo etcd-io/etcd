@@ -49,7 +49,7 @@ func testMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client) 
 	lockedC := make(chan *concurrency.Mutex)
 	for i := 0; i < waiters; i++ {
 		go func() {
-			m := concurrency.NewMutex(chooseClient(), "test-mutex")
+			m := concurrency.NewMutex(chooseClient(), "test-mutex", 0)
 			if err := m.Lock(context.TODO()); err != nil {
 				t.Fatalf("could not wait on lock (%v)", err)
 			}
@@ -82,11 +82,11 @@ func TestMutexSessionRelock(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	cli := clus.RandClient()
-	m := concurrency.NewMutex(cli, "test-mutex")
+	m := concurrency.NewMutex(cli, "test-mutex", 0)
 	if err := m.Lock(context.TODO()); err != nil {
 		t.Fatal(err)
 	}
-	m2 := concurrency.NewMutex(cli, "test-mutex")
+	m2 := concurrency.NewMutex(cli, "test-mutex", 0)
 	if err := m2.Lock(context.TODO()); err != nil {
 		t.Fatal(err)
 	}

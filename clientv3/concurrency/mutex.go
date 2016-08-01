@@ -26,19 +26,23 @@ import (
 type Mutex struct {
 	client *v3.Client
 
-	pfx   string
-	myKey string
-	myRev int64
+	timeout int
+	pfx     string
+	myKey   string
+	myRev   int64
 }
 
-func NewMutex(client *v3.Client, pfx string) *Mutex {
-	return &Mutex{client, pfx, "", -1}
+// NewMutex creates a new distributed mutex with given name. The mutex will be
+// auto released if the lock holder fails for the given timeout in seconds.
+// If timeout is <=0, default 60 seconds timeout will be used.
+func NewMutex(client *v3.Client, name string, timeout int) *Mutex {
+	return &Mutex{client, timeout, name, "", -1}
 }
 
 // Lock locks the mutex with a cancellable context. If the context is cancelled
 // while trying to acquire the lock, the mutex tries to clean its stale lock entry.
 func (m *Mutex) Lock(ctx context.Context) error {
-	s, serr := NewSession(m.client)
+	s, serr := NewSession(m.client, m.timeout)
 	if serr != nil {
 		return serr
 	}
@@ -98,6 +102,6 @@ func (lm *lockerMutex) Unlock() {
 }
 
 // NewLocker creates a sync.Locker backed by an etcd mutex.
-func NewLocker(client *v3.Client, pfx string) sync.Locker {
-	return &lockerMutex{NewMutex(client, pfx)}
+func NewLocker(client *v3.Client, pfx string, timeout int) sync.Locker {
+	return &lockerMutex{NewMutex(client, pfx, timeout)}
 }
