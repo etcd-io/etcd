@@ -717,6 +717,36 @@ func TestPrefixAccess(t *testing.T) {
 			hasKeyPrefixAccess: false,
 			hasRecursiveAccess: false,
 		},
+		{ // guest access in non-TLS mode
+			key: "/foo",
+			req: (func() *http.Request {
+				return mustJSONRequest(t, "GET", "somepath", "")
+			})(),
+			store: &mockAuthStore{
+				enabled: true,
+				users: map[string]*auth.User{
+					"root": {
+						User:     "root",
+						Password: goodPassword,
+						Roles:    []string{"root"},
+					},
+				},
+				roles: map[string]*auth.Role{
+					"guest": {
+						Role: "guest",
+						Permissions: auth.Permissions{
+							KV: auth.RWPermission{
+								Read:  []string{"/foo*"},
+								Write: []string{"/foo*"},
+							},
+						},
+					},
+				},
+			},
+			hasRoot:            false,
+			hasKeyPrefixAccess: true,
+			hasRecursiveAccess: true,
+		},
 	}
 
 	for i, tt := range table {
