@@ -39,6 +39,7 @@ before_install:
  - go get -v github.com/chzchzchz/goword
  - go get -v honnef.co/go/simple/cmd/gosimple
  - go get -v honnef.co/go/unused/cmd/unused
+ - go get -v github.com/kisielk/errcheck
 
 # disable godep restore override
 install:

@@ -13,7 +13,7 @@ set -e
 source ./build
 
 if [ -z "$PASSES" ]; then
-	PASSES="fmt dep compile build unit"
+	PASSES="fmt dep compile build unit errcheck"
 fi
 
 # TODO: 'client' pkg fails with gosimple from generated files
@@ -211,6 +211,15 @@ function dep_pass {
 	if [ ! -z "$deps" ]; then
 		echo -e "clientv3 has masked dependencies:\n${deps}"
 		exit 255
+	fi
+}
+
+function errcheck_pass {
+	echo "Running errcheck tests..."
+	if which errcheck > /dev/null ; then
+		errcheck -ignoretests ${TEST}
+	else
+		echo "Skipping errcheck..."
 	fi
 }
 
