@@ -152,7 +152,18 @@ func TestServeRaftPrefix(t *testing.T) {
 		req.Header.Set("X-Server-Version", version.Version)
 		rw := httptest.NewRecorder()
 		h := newPipelineHandler(NewNopTransporter(), tt.p, types.ID(0))
-		h.ServeHTTP(rw, req)
+
+		// goroutine because the handler panics to disconnect on raft error
+		donec := make(chan struct{})
+		go func() {
+			defer func() {
+				recover()
+				close(donec)
+			}()
+			h.ServeHTTP(rw, req)
+		}()
+		<-donec
+
 		if rw.Code != tt.wcode {
 			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
 		}
