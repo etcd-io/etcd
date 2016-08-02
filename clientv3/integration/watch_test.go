@@ -709,3 +709,21 @@ func TestWatchWithFilter(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 }
+
+// TestWatchWithCreatedNotification checks that createdNotification works.
+func TestWatchWithCreatedNotification(t *testing.T) {
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	client := cluster.RandClient()
+
+	ctx := context.Background()
+
+	createC := client.Watch(ctx, "a", clientv3.WithCreatedNotify())
+
+	resp := <-createC
+
+	if !resp.Created {
+		t.Fatalf("expected created event, got %v", resp)
+	}
+}
