@@ -85,13 +85,7 @@ func getPeersFlagValue(c *cli.Context) []string {
 }
 
 func getDomainDiscoveryFlagValue(c *cli.Context) ([]string, error) {
-	domainstr := c.GlobalString("discovery-srv")
-
-	// Use an environment variable if nothing was supplied on the
-	// command line
-	if domainstr == "" {
-		domainstr = os.Getenv("ETCDCTL_DISCOVERY_SRV")
-	}
+	domainstr, insecure := getDiscoveryDomain(c)
 
 	// If we still don't have domain discovery, return nothing
 	if domainstr == "" {
@@ -103,8 +97,30 @@ func getDomainDiscoveryFlagValue(c *cli.Context) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if insecure {
+		return eps, err
+	}
+	// strip insecure connections
+	ret := []string{}
+	for _, ep := range eps {
+		if strings.HasPrefix("http://", ep) {
+			fmt.Fprintf(os.Stderr, "ignoring discovered insecure endpoint %q\n", ep)
+			continue
+		}
+		ret = append(ret, ep)
+	}
+	return ret, err
+}
 
-	return eps, err
+func getDiscoveryDomain(c *cli.Context) (domainstr string, insecure bool) {
+	domainstr = c.GlobalString("discovery-srv")
+	// Use an environment variable if nothing was supplied on the
+	// command line
+	if domainstr == "" {
+		domainstr = os.Getenv("ETCDCTL_DISCOVERY_SRV")
+	}
+	insecure = c.GlobalBool("insecure-discovery") || (os.Getenv("ETCDCTL_INSECURE_DISCOVERY") != "")
+	return domainstr, insecure
 }
 
 func getEndpoints(c *cli.Context) ([]string, error) {
@@ -151,10 +167,15 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		keyfile = os.Getenv("ETCDCTL_KEY_FILE")
 	}
 
+	discoveryDomain, insecure := getDiscoveryDomain(c)
+	if insecure {
+		discoveryDomain = ""
+	}
 	tls := transport.TLSInfo{
-		CAFile:   cafile,
-		CertFile: certfile,
-		KeyFile:  keyfile,
+		CAFile:     cafile,
+		CertFile:   certfile,
+		KeyFile:    keyfile,
+		ServerName: discoveryDomain,
 	}
 
 	dialTimeout := defaultDialTimeout
