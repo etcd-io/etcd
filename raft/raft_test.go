@@ -1235,9 +1235,8 @@ func TestLeaderSupersedingWithCheckQuorum(t *testing.T) {
 	c.checkQuorum = true
 
 	nt := newNetwork(a, b, c)
+	setRandomizedElectionTimeout(b, b.electionTimeout+1)
 
-	// Prevent campaigning from b
-	b.randomizedElectionTimeout = b.electionTimeout + 1
 	for i := 0; i < b.electionTimeout; i++ {
 		b.tick()
 	}
@@ -1278,13 +1277,9 @@ func TestLeaderElectionWithCheckQuorum(t *testing.T) {
 	b.checkQuorum = true
 	c.checkQuorum = true
 
-	// we can not let system choosing the value of randomizedElectionTimeout
-	// otherwise it will introduce some uncertainty into this test case
-	// we need to ensure randomizedElectionTimeout > electionTimeout here
-	a.randomizedElectionTimeout = a.electionTimeout + 1
-	b.randomizedElectionTimeout = b.electionTimeout + 2
-
 	nt := newNetwork(a, b, c)
+	setRandomizedElectionTimeout(a, a.electionTimeout+1)
+	setRandomizedElectionTimeout(b, b.electionTimeout+2)
 
 	// Letting b's electionElapsed reach to timeout so that it can vote for a
 	for i := 0; i < b.electionTimeout; i++ {
@@ -1329,12 +1324,9 @@ func TestFreeStuckCandidateWithCheckQuorum(t *testing.T) {
 	b.checkQuorum = true
 	c.checkQuorum = true
 
-	// we can not let system choosing the value of randomizedElectionTimeout
-	// otherwise it will introduce some uncertainty into this test case
-	// we need to ensure randomizedElectionTimeout > electionTimeout here
-	b.randomizedElectionTimeout = b.electionTimeout + 1
-
 	nt := newNetwork(a, b, c)
+	setRandomizedElectionTimeout(b, b.electionTimeout+1)
+
 	for i := 0; i < b.electionTimeout; i++ {
 		b.tick()
 	}
@@ -1390,12 +1382,8 @@ func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
 	a.checkQuorum = true
 	b.checkQuorum = true
 
-	// we can not let system choosing the value of randomizedElectionTimeout
-	// otherwise it will introduce some uncertainty into this test case
-	// we need to ensure randomizedElectionTimeout > electionTimeout here
-	b.randomizedElectionTimeout = b.electionTimeout + 1
-
 	nt := newNetwork(a, b)
+	setRandomizedElectionTimeout(b, b.electionTimeout+1)
 	// Need to remove 2 again to make it a non-promotable node since newNetwork overwritten some internal states
 	b.delProgress(2)
 
@@ -1430,12 +1418,9 @@ func TestReadIndexWithCheckQuorum(t *testing.T) {
 	b.checkQuorum = true
 	c.checkQuorum = true
 
-	// we can not let system choosing the value of randomizedElectionTimeout
-	// otherwise it will introduce some uncertainty into this test case
-	// we need to ensure randomizedElectionTimeout > electionTimeout here
-	b.randomizedElectionTimeout = b.electionTimeout + 1
-
 	nt := newNetwork(a, b, c)
+	setRandomizedElectionTimeout(b, b.electionTimeout+1)
+
 	for i := 0; i < b.electionTimeout; i++ {
 		b.tick()
 	}
@@ -2631,6 +2616,13 @@ func idsBySize(size int) []uint64 {
 		ids[i] = 1 + uint64(i)
 	}
 	return ids
+}
+
+// setRandomizedElectionTimeout set up the value by caller instead of choosing
+// by system, in some test scenario we need to fill in some expected value to
+// ensure the certainty
+func setRandomizedElectionTimeout(r *raft, v int) {
+	r.randomizedElectionTimeout = v
 }
 
 func newTestConfig(id uint64, peers []uint64, election, heartbeat int, storage Storage) *Config {
