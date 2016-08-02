@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
+	"math"
 	"math/rand"
 	"net/http"
 	"os"
@@ -393,7 +394,8 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
 	srv.be = be
-	srv.lessor = lease.NewLessor(srv.be)
+	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * time.Duration(cfg.TickMs) * time.Millisecond
+	srv.lessor = lease.NewLessor(srv.be, int64(math.Ceil(minTTL.Seconds())))
 	srv.kv = mvcc.New(srv.be, srv.lessor, &srv.consistIndex)
 	if beExist {
 		kvindex := srv.kv.ConsistentIndex()
