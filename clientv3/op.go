@@ -50,6 +50,8 @@ type Op struct {
 
 	// progressNotify is for progress updates.
 	progressNotify bool
+	// createdNotify is for created event
+	createdNotify bool
 	// filters for watchers
 	filterPut    bool
 	filterDelete bool
@@ -116,6 +118,8 @@ func OpDelete(key string, opts ...OpOption) Op {
 		panic("unexpected countOnly in delete")
 	case ret.filterDelete, ret.filterPut:
 		panic("unexpected filter in delete")
+	case ret.createdNotify:
+		panic("unexpected createdNotify in delete")
 	}
 	return ret
 }
@@ -138,6 +142,8 @@ func OpPut(key, val string, opts ...OpOption) Op {
 		panic("unexpected countOnly in put")
 	case ret.filterDelete, ret.filterPut:
 		panic("unexpected filter in put")
+	case ret.createdNotify:
+		panic("unexpected createdNotify in put")
 	}
 	return ret
 }
@@ -278,6 +284,13 @@ func withTop(target SortTarget, order SortOrder) []OpOption {
 func WithProgressNotify() OpOption {
 	return func(op *Op) {
 		op.progressNotify = true
+	}
+}
+
+// WithCreatedNotify makes watch server sends the created event.
+func WithCreatedNotify() OpOption {
+	return func(op *Op) {
+		op.createdNotify = true
 	}
 }
 
