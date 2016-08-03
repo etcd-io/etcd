@@ -92,7 +92,7 @@ func (wr *WatchResponse) Err() error {
 
 // IsProgressNotify returns true if the WatchResponse is progress notification.
 func (wr *WatchResponse) IsProgressNotify() bool {
-	return len(wr.Events) == 0 && !wr.Canceled
+	return len(wr.Events) == 0 && !wr.Canceled && !wr.Created
 }
 
 // watcher implements the Watcher interface

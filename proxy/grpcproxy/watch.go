@@ -123,19 +123,7 @@ func (sws *serverWatchStream) recvLoop() error {
 			} else {
 				sws.addCoalescedWatcher(watcher)
 			}
-
-			wresp := &pb.WatchResponse{
-				Header:  &pb.ResponseHeader{}, // TODO: fill in header
-				WatchId: sws.nextWatcherID,
-				Created: true,
-			}
-
 			sws.nextWatcherID++
-			select {
-			case sws.ctrlCh <- wresp:
-			default:
-				panic("handle this")
-			}
 
 		case *pb.WatchRequest_CancelRequest:
 			sws.removeWatcher(uv.CancelRequest.WatchId)
@@ -185,6 +173,7 @@ func (sws *serverWatchStream) addDedicatedWatcher(w watcher, rev int64) {
 		w.wr.key, clientv3.WithRange(w.wr.end),
 		clientv3.WithRev(rev),
 		clientv3.WithProgressNotify(),
+		clientv3.WithCreatedNotify(),
 	)
 
 	ws := newWatcherSingle(wch, cancel, w, sws)

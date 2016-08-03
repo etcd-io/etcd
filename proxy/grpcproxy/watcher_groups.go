@@ -42,7 +42,12 @@ func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	wch := wgs.cw.Watch(ctx, w.wr.key, clientv3.WithRange(w.wr.end), clientv3.WithProgressNotify())
+	wch := wgs.cw.Watch(ctx, w.wr.key,
+		clientv3.WithRange(w.wr.end),
+		clientv3.WithProgressNotify(),
+		clientv3.WithCreatedNotify(),
+	)
+
 	watchg := newWatchergroup(wch, cancel)
 	watchg.add(rid, w)
 	go watchg.run()
