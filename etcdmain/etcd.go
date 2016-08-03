@@ -561,6 +561,9 @@ func getPeerURLsMapAndToken(cfg *config, which string) (urlsmap types.URLsMap, t
 		if err != nil {
 			return nil, "", err
 		}
+		if strings.Contains(clusterStr, "https://") && cfg.peerTLSInfo.CAFile == "" {
+			cfg.peerTLSInfo.ServerName = cfg.DnsCluster
+		}
 		urlsmap, err = types.NewURLsMap(clusterStr)
 		// only etcd member must belong to the discovered cluster.
 		// proxy does not need to belong to the discovered cluster.
