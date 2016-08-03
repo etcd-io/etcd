@@ -66,12 +66,13 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 	}
 
 	// all events are filtered out?
-	if !wr.IsProgressNotify() && len(events) == 0 {
+	if !wr.IsProgressNotify() && !wr.Created && len(events) == 0 {
 		return
 	}
 
 	pbwr := &pb.WatchResponse{
 		Header:  &wr.Header,
+		Created: wr.Created,
 		WatchId: w.id,
 		Events:  events,
 	}
