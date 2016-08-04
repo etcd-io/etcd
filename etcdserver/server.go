@@ -658,6 +658,12 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	newbe := backend.NewDefaultBackend(fn)
 
+	if s.lessor != nil {
+		plog.Info("recovering lessor...")
+		s.lessor.Recover(newbe, s.kv)
+		plog.Info("finished recovering lessor")
+	}
+
 	plog.Info("restoring mvcc store...")
 
 	if err := s.kv.Restore(newbe); err != nil {
@@ -683,12 +689,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	s.be = newbe
 	s.bemu.Unlock()
-
-	if s.lessor != nil {
-		plog.Info("recovering lessor...")
-		s.lessor.Recover(newbe, s.kv)
-		plog.Info("finished recovering lessor")
-	}
 
 	plog.Info("recovering alarms...")
 	if err := s.restoreAlarms(); err != nil {
