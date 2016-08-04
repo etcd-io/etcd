@@ -1295,6 +1295,10 @@ func TestLeaderElectionWithCheckQuorum(t *testing.T) {
 		t.Errorf("state = %s, want %s", c.state, StateFollower)
 	}
 
+	// need to reset randomizedElectionTimeout larger than electionTimeout again,
+	// because the value might be reset to electionTimeout since the last state changes
+	setRandomizedElectionTimeout(a, a.electionTimeout+1)
+	setRandomizedElectionTimeout(b, b.electionTimeout+2)
 	for i := 0; i < a.electionTimeout; i++ {
 		a.tick()
 	}
@@ -2225,6 +2229,7 @@ func TestLeaderTransferWithCheckQuorum(t *testing.T) {
 	for i := 1; i < 4; i++ {
 		r := nt.peers[uint64(i)].(*raft)
 		r.checkQuorum = true
+		setRandomizedElectionTimeout(r, r.electionTimeout+i)
 	}
 
 	// Letting peer 2 electionElapsed reach to timeout so that it can vote for peer 1
