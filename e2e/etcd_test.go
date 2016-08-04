@@ -31,8 +31,11 @@ const (
 	certPath            = "../integration/fixtures/server.crt"
 	privateKeyPath      = "../integration/fixtures/server.key.insecure"
 	caPath              = "../integration/fixtures/ca.crt"
-	defaultBinPath      = "../bin/etcd"
-	defaultCtlBinPath   = "../bin/etcdctl"
+)
+
+var (
+	binPath    string
+	ctlBinPath string
 )
 
 type clientConnType int
@@ -202,12 +205,15 @@ func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
 }
 
 func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
+	binPath = binDir + "/etcd"
+	ctlBinPath = binDir + "/etcdctl"
+
 	if cfg.basePort == 0 {
 		cfg.basePort = etcdProcessBasePort
 	}
 
 	if cfg.execPath == "" {
-		cfg.execPath = defaultBinPath
+		cfg.execPath = binPath
 	}
 	if cfg.snapCount == 0 {
 		cfg.snapCount = etcdserver.DefaultSnapCount
