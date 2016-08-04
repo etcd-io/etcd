@@ -232,16 +232,19 @@ func (le *lessor) Revoke(id LeaseID) error {
 			}
 		}
 
+		le.mu.Lock()
+		defer le.mu.Unlock()
+		delete(le.leaseMap, l.ID)
+		// lease deletion needs to be in the same backend transcation with the
+		// kv deletion. Or we might end up with not executing the revoke or not
+		// deleting the keys if etcdserver fails in between.
+		l.removeFrom(le.b)
+
 		err := le.rd.TxnEnd(tid)
 		if err != nil {
 			panic(err)
 		}
 	}
-
-	le.mu.Lock()
-	defer le.mu.Unlock()
-	delete(le.leaseMap, l.ID)
-	l.removeFrom(le.b)
 
 	return nil
 }
@@ -470,9 +473,7 @@ func (l Lease) persistTo(b backend.Backend) {
 func (l Lease) removeFrom(b backend.Backend) {
 	key := int64ToBytes(int64(l.ID))
 
-	b.BatchTx().Lock()
 	b.BatchTx().UnsafeDelete(leaseBucketName, key)
-	b.BatchTx().Unlock()
 }
 
 // refresh refreshes the expiry of the lease.
