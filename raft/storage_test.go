@@ -256,3 +256,30 @@ func TestStorageAppend(t *testing.T) {
 		}
 	}
 }
+
+func TestStorageApplySnapshot(t *testing.T) {
+	cs := &pb.ConfState{Nodes: []uint64{1, 2, 3}}
+	data := []byte("data")
+
+	tests := []pb.Snapshot{{Data: data, Metadata: pb.SnapshotMetadata{Index: 4, Term: 4, ConfState: *cs}},
+		{Data: data, Metadata: pb.SnapshotMetadata{Index: 3, Term: 3, ConfState: *cs}},
+	}
+
+	s := NewMemoryStorage()
+
+	//Apply Snapshot successful
+	i := 0
+	tt := tests[i]
+	err := s.ApplySnapshot(tt)
+	if err != nil {
+		t.Errorf("#%d: err = %v, want %v", i, err, nil)
+	}
+
+	//Apply Snapshot fails due to ErrSnapOutOfDate
+	i = 1
+	tt = tests[i]
+	err = s.ApplySnapshot(tt)
+	if err != ErrSnapOutOfDate {
+		t.Errorf("#%d: err = %v, want %v", i, err, ErrSnapOutOfDate)
+	}
+}
