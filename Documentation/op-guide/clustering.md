@@ -357,6 +357,8 @@ To help clients discover the etcd cluster, the following DNS SRV records are loo
 
 If `_etcd-client-ssl._tcp.example.com` is found, clients will attempt to communicate with the etcd cluster over SSL/TLS.
 
+If etcd is using TLS without a custom certificate authority, the discovery domain (e.g., example.com) must match the SRV record domain (e.g., infra1.example.com). This is to mitigate attacks that forge SRV records to point to a different domain; the domain would have a valid certificate under PKI but be controlled by an unknown third party.
+
 #### Create DNS SRV records
 
 ```
