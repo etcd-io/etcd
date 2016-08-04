@@ -43,13 +43,18 @@ var (
 
 type LeaseID int64
 
-// RangeDeleter defines an interface with DeleteRange method.
+// RangeDeleter defines an interface with Txn and DeleteRange method.
 // We define this interface only for lessor to limit the number
 // of methods of mvcc.KV to what lessor actually needs.
 //
 // Having a minimum interface makes testing easy.
 type RangeDeleter interface {
-	DeleteRange(key, end []byte) (int64, int64)
+	// TxnBegin see comments on mvcc.KV
+	TxnBegin() int64
+	// TxnEnd see comments on mvcc.KV
+	TxnEnd(txnID int64) error
+	// TxnDeleteRange see comments on mvcc.KV
+	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
 }
 
 // Lessor owns leases. It can grant, revoke, renew and modify leases for lessee.
@@ -219,8 +224,17 @@ func (le *lessor) Revoke(id LeaseID) error {
 	le.mu.Unlock()
 
 	if le.rd != nil {
+		tid := le.rd.TxnBegin()
 		for item := range l.itemSet {
-			le.rd.DeleteRange([]byte(item.Key), nil)
+			_, _, err := le.rd.TxnDeleteRange(tid, []byte(item.Key), nil)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		err := le.rd.TxnEnd(tid)
+		if err != nil {
+			panic(err)
 		}
 	}
 
