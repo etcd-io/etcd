@@ -153,6 +153,7 @@ func NewConfig() *Config {
 		ACUrls:              []url.URL{*acurl},
 		ClusterState:        ClusterStateFlagNew,
 		InitialClusterToken: "etcd-cluster",
+		StrictReconfigCheck: true,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
