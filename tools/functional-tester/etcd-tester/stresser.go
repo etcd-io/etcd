@@ -90,11 +90,12 @@ func newStressRange(kvc pb.KVClient, keySuffixRange int) stressFunc {
 	}
 }
 
-func newStressRangePrefix(kvc pb.KVClient, keySuffixRange int) stressFunc {
+func newStressRangeInterval(kvc pb.KVClient, keySuffixRange, keyRangeLimit int) stressFunc {
 	return func(ctx context.Context) error {
 		_, err := kvc.Range(ctx, &pb.RangeRequest{
 			Key:      []byte("foo"),
-			RangeEnd: []byte(fmt.Sprintf("foo%d", rand.Intn(keySuffixRange))),
+			RangeEnd: []byte(fmt.Sprintf("foo%d", keySuffixRange)),
+			Limit:    int64(keyRangeLimit),
 		}, grpc.FailFast(false))
 		return err
 	}
@@ -109,11 +110,23 @@ func newStressDelete(kvc pb.KVClient, keySuffixRange int) stressFunc {
 	}
 }
 
-func newStressDeletePrefix(kvc pb.KVClient, keySuffixRange int) stressFunc {
+func newStressDeleteInterval(kvc pb.KVClient, keySuffixRange, keyRangeLimit int) stressFunc {
 	return func(ctx context.Context) error {
-		_, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
+		resp, _ := kvc.Range(ctx, &pb.RangeRequest{
 			Key:      []byte("foo"),
-			RangeEnd: []byte(fmt.Sprintf("foo%d", rand.Intn(keySuffixRange))),
+			RangeEnd: []byte(fmt.Sprintf("foo%d", keySuffixRange)),
+			Limit:    int64(keyRangeLimit),
+		}, grpc.FailFast(false))
+
+		start, end := []byte("foo"), []byte(fmt.Sprintf("foo%d", keyRangeLimit))
+		if resp != nil && resp.Count > 0 {
+			start = resp.Kvs[0].Key
+			end = resp.Kvs[len(resp.Kvs)-1].Key
+		}
+
+		_, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
+			Key:      start,
+			RangeEnd: end,
 		}, grpc.FailFast(false))
 		return err
 	}
@@ -131,8 +144,9 @@ type Stresser interface {
 type stresser struct {
 	Endpoint string
 
-	KeySize        int
-	KeySuffixRange int
+	keySize        int
+	keySuffixRange int
+	keyRangeLimit  int
 
 	qps int
 	N   int
@@ -171,11 +185,11 @@ func (s *stresser) Stress() error {
 	kvc := pb.NewKVClient(conn)
 
 	var stressEntries = []stressEntry{
-		{weight: 0.7, f: newStressPut(kvc, s.KeySuffixRange, s.KeySize)},
-		{weight: 0.07, f: newStressRange(kvc, s.KeySuffixRange)},
-		{weight: 0.07, f: newStressRangePrefix(kvc, s.KeySuffixRange)},
-		{weight: 0.07, f: newStressDelete(kvc, s.KeySuffixRange)},
-		{weight: 0.07, f: newStressDeletePrefix(kvc, s.KeySuffixRange)},
+		{weight: 0.7, f: newStressPut(kvc, s.keySuffixRange, s.keySize)},
+		{weight: 0.07, f: newStressRange(kvc, s.keySuffixRange)},
+		{weight: 0.07, f: newStressRangeInterval(kvc, s.keySuffixRange, s.keyRangeLimit)},
+		{weight: 0.07, f: newStressDelete(kvc, s.keySuffixRange)},
+		{weight: 0.07, f: newStressDeleteInterval(kvc, s.keySuffixRange, s.keyRangeLimit)},
 	}
 	s.stressTable = createStressTable(stressEntries)
 
@@ -272,8 +286,8 @@ func (s *stresser) Report() (int, int) {
 type stresserV2 struct {
 	Endpoint string
 
-	KeySize        int
-	KeySuffixRange int
+	keySize        int
+	keySuffixRange int
 
 	N int
 
@@ -308,8 +322,8 @@ func (s *stresserV2) Stress() error {
 		go func() {
 			for {
 				setctx, setcancel := context.WithTimeout(ctx, clientV2.DefaultRequestTimeout)
-				key := fmt.Sprintf("foo%d", rand.Intn(s.KeySuffixRange))
-				_, err := kv.Set(setctx, key, string(randBytes(s.KeySize)), nil)
+				key := fmt.Sprintf("foo%d", rand.Intn(s.keySuffixRange))
+				_, err := kv.Set(setctx, key, string(randBytes(s.keySize)), nil)
 				setcancel()
 				if err == context.Canceled {
 					return
