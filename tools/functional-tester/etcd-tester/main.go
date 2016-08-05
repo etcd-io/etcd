@@ -29,8 +29,9 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-tester")
 func main() {
 	endpointStr := flag.String("agent-endpoints", "localhost:9027", "HTTP RPC endpoints of agents. Do not specify the schema.")
 	datadir := flag.String("data-dir", "agent.etcd", "etcd data directory location on agent machine.")
-	stressKeySize := flag.Int("stress-key-size", 100, "the size of each key written into etcd.")
-	stressKeySuffixRange := flag.Int("stress-key-count", 250000, "the count of key range written into etcd.")
+	stressKeySize := flag.Uint("stress-key-size", 100, "the size of each key written into etcd.")
+	stressKeySuffixRange := flag.Uint("stress-key-count", 250000, "the count of key range written into etcd.")
+	stressKeyRangeLimit := flag.Uint("stress-range-limit", 50, "maximum number of keys to range or delete.")
 	limit := flag.Int("limit", -1, "the limit of rounds to run failure set (-1 to run without limits).")
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
@@ -38,9 +39,15 @@ func main() {
 	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")
 	flag.Parse()
 
-	endpoints := strings.Split(*endpointStr, ",")
-	c, err := newCluster(endpoints, *datadir, *stressQPS, *stressKeySize, *stressKeySuffixRange, *isV2Only)
-	if err != nil {
+	c := &cluster{
+		v2Only:               *isV2Only,
+		datadir:              *datadir,
+		stressQPS:            *stressQPS,
+		stressKeySize:        int(*stressKeySize),
+		stressKeySuffixRange: int(*stressKeySuffixRange),
+		stressKeyRangeLimit:  int(*stressKeyRangeLimit),
+	}
+	if err := c.bootstrap(strings.Split(*endpointStr, ",")); err != nil {
 		plog.Fatal(err)
 	}
 	defer c.Terminate()
