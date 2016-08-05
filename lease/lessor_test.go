@@ -225,9 +225,17 @@ type fakeDeleter struct {
 	deleted []string
 }
 
-func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
+func (fd *fakeDeleter) TxnBegin() int64 {
+	return 0
+}
+
+func (fd *fakeDeleter) TxnEnd(txnID int64) error {
+	return nil
+}
+
+func (fd *fakeDeleter) TxnDeleteRange(tid int64, key, end []byte) (int64, int64, error) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
-	return 0, 0
+	return 0, 0, nil
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
