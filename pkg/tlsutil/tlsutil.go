@@ -80,7 +80,7 @@ func isReqCertValid(req *http.Request, rc *revoke.Revoke) bool {
 	}
 	for _, cert := range req.TLS.PeerCertificates {
 		revoked, ok := rc.VerifyCertificate(cert)
-		if !ok && rc.HardFail() {
+		if !ok && rc.IsHardFail() {
 			return false
 		}
 		if revoked {
