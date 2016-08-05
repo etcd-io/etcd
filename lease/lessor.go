@@ -223,27 +223,29 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// unlock before doing external work
 	le.mu.Unlock()
 
-	if le.rd != nil {
-		tid := le.rd.TxnBegin()
-		for item := range l.itemSet {
-			_, _, err := le.rd.TxnDeleteRange(tid, []byte(item.Key), nil)
-			if err != nil {
-				panic(err)
-			}
-		}
+	if le.rd == nil {
+		return nil
+	}
 
-		le.mu.Lock()
-		defer le.mu.Unlock()
-		delete(le.leaseMap, l.ID)
-		// lease deletion needs to be in the same backend transcation with the
-		// kv deletion. Or we might end up with not executing the revoke or not
-		// deleting the keys if etcdserver fails in between.
-		l.removeFrom(le.b)
-
-		err := le.rd.TxnEnd(tid)
+	tid := le.rd.TxnBegin()
+	for item := range l.itemSet {
+		_, _, err := le.rd.TxnDeleteRange(tid, []byte(item.Key), nil)
 		if err != nil {
 			panic(err)
 		}
+	}
+
+	le.mu.Lock()
+	defer le.mu.Unlock()
+	delete(le.leaseMap, l.ID)
+	// lease deletion needs to be in the same backend transaction with the
+	// kv deletion. Or we might end up with not executing the revoke or not
+	// deleting the keys if etcdserver fails in between.
+	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
+
+	err := le.rd.TxnEnd(tid)
+	if err != nil {
+		panic(err)
 	}
 
 	return nil
@@ -468,12 +470,6 @@ func (l Lease) persistTo(b backend.Backend) {
 	b.BatchTx().Lock()
 	b.BatchTx().UnsafePut(leaseBucketName, key, val)
 	b.BatchTx().Unlock()
-}
-
-func (l Lease) removeFrom(b backend.Backend) {
-	key := int64ToBytes(int64(l.ID))
-
-	b.BatchTx().UnsafeDelete(leaseBucketName, key)
 }
 
 // refresh refreshes the expiry of the lease.
