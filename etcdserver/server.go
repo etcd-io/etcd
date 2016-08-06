@@ -65,6 +65,10 @@ const (
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
 
+	// HealthInterval is the minimum time the cluster should be healthy
+	// before accepting add member requests.
+	HealthInterval = 5 * time.Second
+
 	purgeFileInterval = 30 * time.Second
 	// monitorVersionInterval should be smaller than the timeout
 	// on the connection. Or we will not be able to reuse the connection
@@ -814,10 +818,16 @@ func (s *EtcdServer) LeaderStats() []byte {
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) error {
-	if s.Cfg.StrictReconfigCheck && !s.cluster.IsReadyToAddNewMember() {
-		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
-		// In such a case adding a new member is allowed unconditionally
-		return ErrNotEnoughStartedMembers
+	if s.Cfg.StrictReconfigCheck {
+		// by default StrictReconfigCheck is enabled; reject new members if unhealthy
+		if !s.cluster.IsReadyToAddNewMember() {
+			plog.Warningf("not enough started members, rejecting member add %+v", memb)
+			return ErrNotEnoughStartedMembers
+		}
+		if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), s.cluster.Members()) {
+			plog.Warningf("not healthy for reconfigure, rejecting member add %+v", memb)
+			return ErrUnhealthy
+		}
 	}
 
 	// TODO: move Member to protobuf type

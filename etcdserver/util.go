@@ -40,3 +40,14 @@ func isConnectedSince(transport rafthttp.Transporter, since time.Time, remote ty
 	t := transport.ActiveSince(remote)
 	return !t.IsZero() && t.Before(since)
 }
+
+// isConnectedFullySince checks whether the local member is connected to all
+// members in the cluster since the given time.
+func isConnectedFullySince(transport rafthttp.Transporter, since time.Time, self types.ID, members []*membership.Member) bool {
+	for _, m := range members {
+		if m.ID != self && !isConnectedSince(transport, since, m.ID) {
+			return false
+		}
+	}
+	return true
+}
