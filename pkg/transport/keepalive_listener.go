@@ -82,7 +82,7 @@ func (l *tlsKeepaliveListener) Accept() (c net.Conn, err error) {
 	return
 }
 
-// NewListener creates a Listener which accepts connections from an inner
+// newTLSKeepaliveListener creates a Listener which accepts connections from an inner
 // Listener and wraps each connection with Server.
 // The configuration config must be non-nil and must have
 // at least one certificate.
