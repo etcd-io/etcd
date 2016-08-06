@@ -25,7 +25,7 @@ type URLsMap map[string]URLs
 
 // NewURLsMap returns a URLsMap instantiated from the given string,
 // which consists of discovery-formatted names-to-URLs, like:
-// mach0=http://1.1.1.1:2380,mach0=http://2.2.2.2::2380,mach1=http://3.3.3.3:2380,mach2=http://4.4.4.4:2380
+// mach0=http://1.1.1.1:2380,mach1=http://2.2.2.2:2380,mach2=http://3.3.3.3:2380,mach3=http://4.4.4.4:2380
 func NewURLsMap(s string) (URLsMap, error) {
 	m := parse(s)
 
