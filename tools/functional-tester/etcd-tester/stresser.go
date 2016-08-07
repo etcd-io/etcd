@@ -180,7 +180,7 @@ func (s *stresser) Stress() error {
 	s.conn = conn
 	s.cancel = cancel
 	s.wg = wg
-	s.rateLimiter = rate.NewLimiter(rate.Every(time.Second), s.qps)
+	s.rateLimiter = rate.NewLimiter(rate.Limit(s.qps), s.qps)
 	s.mu.Unlock()
 
 	kvc := pb.NewKVClient(conn)
