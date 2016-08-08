@@ -21,7 +21,7 @@ OK
 
 ## Read keys
 
-Applications can read values of keys from an etcd cluster. Queries may read a single key, or a range of keys. 
+Applications can read values of keys from an etcd cluster. Queries may read a single key, or a range of keys.
 
 Suppose the etcd cluster has stored the following keys:
 
@@ -61,7 +61,7 @@ Suppose an etcd cluster already has the following keys:
 ``` bash
 $ etcdctl put foo bar         # revision = 2
 $ etcdctl put foo1 bar1       # revision = 3
-$ etcdctl put foo bar_new     # revision = 4 
+$ etcdctl put foo bar_new     # revision = 4
 $ etcdctl put foo1 bar1_new   # revision = 5
 ```
 
@@ -118,7 +118,7 @@ Applications can watch on a key or a range of keys to monitor for any updates.
 Here is the command to watch on key `foo`:
 
 ```bash
-$ etcdctl watch foo 
+$ etcdctl watch foo
 # in another terminal: etcdctl put foo bar
 foo
 bar
@@ -145,11 +145,12 @@ Suppose we finished the following sequence of operations:
 ``` bash
 etcdctl put foo bar         # revision = 2
 etcdctl put foo1 bar1       # revision = 3
-etcdctl put foo bar_new     # revision = 4 
+etcdctl put foo bar_new     # revision = 4
 etcdctl put foo1 bar1_new   # revision = 5
 ```
 
 Here is an example to watch the historical changes:
+
 ```bash
 # watch for changes on key `foo` since revision 2
 $ etcdctl watch --rev=2 foo
@@ -188,7 +189,7 @@ Applications can grant leases for keys from an etcd cluster. When a key is attac
 
 Here is the command to grant a lease:
 
-```
+```bash
 # grant a lease with 10 second TTL
 $ etcdctl lease grant 10
 lease 32695410dcc0ca06 granted with TTL(10s)
@@ -204,7 +205,7 @@ Applications revoke leases by lease ID. Revoking a lease deletes all of its atta
 
 Suppose we finished the following sequence of operations:
 
-```
+```bash
 $ etcdctl lease grant 10
 lease 32695410dcc0ca06 granted with TTL(10s)
 $ etcdctl put --lease=32695410dcc0ca06 foo bar
@@ -213,7 +214,7 @@ OK
 
 Here is the command to revoke the same lease:
 
-```
+```bash
 $ etcdctl lease revoke 32695410dcc0ca06
 lease 32695410dcc0ca06 revoked
 
@@ -227,14 +228,14 @@ Applications can keep a lease alive by refreshing its TTL so it does not expire.
 
 Suppose we finished the following sequence of operations:
 
-```
+```bash
 $ etcdctl lease grant 10
 lease 32695410dcc0ca06 granted with TTL(10s)
 ```
 
 Here is the command to keep the same lease alive:
 
-```
+```bash
 $ etcdctl lease keep-alive 32695410dcc0ca0
 lease 32695410dcc0ca0 keepalived with TTL(100)
 lease 32695410dcc0ca0 keepalived with TTL(100)
