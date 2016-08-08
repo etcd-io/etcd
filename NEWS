@@ -1,0 +1,20 @@
+etcd v3.0.4 (2016-07-27)
+
+  - v2 auth can now use common name from TLS certificate when --client-cert-auth is enabled
+  - v2 etcdctl ls command now supports --output=json
+  - Add /var/lib/etcd directory to etcd official Docker image
+
+
+etcd v3.0.3 (2016-07-15)
+
+  - Revert Dockerfile to use CMD, instead of ENTRYPOINT, to support etcdctl run
+  - Docker commands for v3.0.2 won't work without specifying executable binary paths
+  - v3 etcdctl default endpoints are now 127.0.0.1:2379
+
+
+etcd v3.0.2 (2016-07-08)
+
+  - Dockerfile uses ENTRYPOINT, instead of CMD, to run etcd without binary path specified
+
+
+etcd v3.0.1 (2016-07-01)
