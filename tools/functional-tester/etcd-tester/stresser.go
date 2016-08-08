@@ -74,7 +74,7 @@ func (st *stressTable) choose() stressFunc {
 func newStressPut(kvc pb.KVClient, keySuffixRange, keySize int) stressFunc {
 	return func(ctx context.Context) error {
 		_, err := kvc.Put(ctx, &pb.PutRequest{
-			Key:   []byte(fmt.Sprintf("foo%d", rand.Intn(keySuffixRange))),
+			Key:   []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
 			Value: randBytes(keySize),
 		}, grpc.FailFast(false))
 		return err
@@ -84,18 +84,19 @@ func newStressPut(kvc pb.KVClient, keySuffixRange, keySize int) stressFunc {
 func newStressRange(kvc pb.KVClient, keySuffixRange int) stressFunc {
 	return func(ctx context.Context) error {
 		_, err := kvc.Range(ctx, &pb.RangeRequest{
-			Key: []byte(fmt.Sprintf("foo%d", rand.Intn(keySuffixRange))),
+			Key: []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
 		}, grpc.FailFast(false))
 		return err
 	}
 }
 
-func newStressRangeInterval(kvc pb.KVClient, keySuffixRange, keyRangeLimit int) stressFunc {
+func newStressRangeInterval(kvc pb.KVClient, keySuffixRange int) stressFunc {
 	return func(ctx context.Context) error {
+		start := rand.Intn(keySuffixRange)
+		end := start + 500
 		_, err := kvc.Range(ctx, &pb.RangeRequest{
-			Key:      []byte("foo"),
-			RangeEnd: []byte(fmt.Sprintf("foo%d", keySuffixRange)),
-			Limit:    int64(keyRangeLimit),
+			Key:      []byte(fmt.Sprintf("foo%016x", start)),
+			RangeEnd: []byte(fmt.Sprintf("foo%016x", end)),
 		}, grpc.FailFast(false))
 		return err
 	}
@@ -104,29 +105,19 @@ func newStressRangeInterval(kvc pb.KVClient, keySuffixRange, keyRangeLimit int) 
 func newStressDelete(kvc pb.KVClient, keySuffixRange int) stressFunc {
 	return func(ctx context.Context) error {
 		_, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
-			Key: []byte(fmt.Sprintf("foo%d", rand.Intn(keySuffixRange))),
+			Key: []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
 		}, grpc.FailFast(false))
 		return err
 	}
 }
 
-func newStressDeleteInterval(kvc pb.KVClient, keySuffixRange, keyRangeLimit int) stressFunc {
+func newStressDeleteInterval(kvc pb.KVClient, keySuffixRange int) stressFunc {
 	return func(ctx context.Context) error {
-		resp, _ := kvc.Range(ctx, &pb.RangeRequest{
-			Key:      []byte("foo"),
-			RangeEnd: []byte(fmt.Sprintf("foo%d", keySuffixRange)),
-			Limit:    int64(keyRangeLimit),
-		}, grpc.FailFast(false))
-
-		start, end := []byte("foo"), []byte(fmt.Sprintf("foo%d", keyRangeLimit))
-		if resp != nil && resp.Count > 0 {
-			start = resp.Kvs[0].Key
-			end = resp.Kvs[len(resp.Kvs)-1].Key
-		}
-
+		start := rand.Intn(keySuffixRange)
+		end := start + 500
 		_, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
-			Key:      start,
-			RangeEnd: end,
+			Key:      []byte(fmt.Sprintf("foo%016x", start)),
+			RangeEnd: []byte(fmt.Sprintf("foo%016x", end)),
 		}, grpc.FailFast(false))
 		return err
 	}
@@ -146,7 +137,6 @@ type stresser struct {
 
 	keySize        int
 	keySuffixRange int
-	keyRangeLimit  int
 
 	N int
 
@@ -190,9 +180,9 @@ func (s *stresser) Stress() error {
 	var stressEntries = []stressEntry{
 		{weight: 0.7, f: newStressPut(kvc, s.keySuffixRange, s.keySize)},
 		{weight: 0.07, f: newStressRange(kvc, s.keySuffixRange)},
-		{weight: 0.07, f: newStressRangeInterval(kvc, s.keySuffixRange, s.keyRangeLimit)},
+		{weight: 0.07, f: newStressRangeInterval(kvc, s.keySuffixRange)},
 		{weight: 0.07, f: newStressDelete(kvc, s.keySuffixRange)},
-		{weight: 0.07, f: newStressDeleteInterval(kvc, s.keySuffixRange, s.keyRangeLimit)},
+		{weight: 0.07, f: newStressDeleteInterval(kvc, s.keySuffixRange)},
 	}
 	s.stressTable = createStressTable(stressEntries)
 
@@ -255,15 +245,16 @@ func (s *stresser) run(ctx context.Context) {
 				// capability check has not been done (in the beginning)
 				continue
 
-				// default:
-				// errors from stresser.Cancel method:
-				// rpc error: code = 1 desc = context canceled (type grpc.rpcError)
-				// rpc error: code = 2 desc = grpc: the client connection is closing (type grpc.rpcError)
 			case rpctypes.ErrTooManyRequests.Error():
 				// hitting the recovering member.
 				continue
 
 			case context.Canceled.Error():
+				// from stresser.Cancel method:
+				return
+
+			case grpc.ErrClientConnClosing.Error():
+				// from stresser.Cancel method:
 				return
 			}
 
@@ -335,7 +326,7 @@ func (s *stresserV2) Stress() error {
 		go func() {
 			for {
 				setctx, setcancel := context.WithTimeout(ctx, clientV2.DefaultRequestTimeout)
-				key := fmt.Sprintf("foo%d", rand.Intn(s.keySuffixRange))
+				key := fmt.Sprintf("foo%016x", rand.Intn(s.keySuffixRange))
 				_, err := kv.Set(setctx, key, string(randBytes(s.keySize)), nil)
 				setcancel()
 				if err == context.Canceled {

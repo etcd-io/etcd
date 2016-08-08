@@ -31,7 +31,6 @@ func main() {
 	datadir := flag.String("data-dir", "agent.etcd", "etcd data directory location on agent machine.")
 	stressKeySize := flag.Uint("stress-key-size", 100, "the size of each key written into etcd.")
 	stressKeySuffixRange := flag.Uint("stress-key-count", 250000, "the count of key range written into etcd.")
-	stressKeyRangeLimit := flag.Uint("stress-range-limit", 50, "maximum number of keys to range or delete.")
 	limit := flag.Int("limit", -1, "the limit of rounds to run failure set (-1 to run without limits).")
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
@@ -45,7 +44,6 @@ func main() {
 		stressQPS:            *stressQPS,
 		stressKeySize:        int(*stressKeySize),
 		stressKeySuffixRange: int(*stressKeySuffixRange),
-		stressKeyRangeLimit:  int(*stressKeyRangeLimit),
 	}
 	if err := c.bootstrap(strings.Split(*endpointStr, ",")); err != nil {
 		plog.Fatal(err)
