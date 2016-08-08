@@ -33,7 +33,7 @@ func main() {
 	stressKeySuffixRange := flag.Uint("stress-key-count", 250000, "the count of key range written into etcd.")
 	stressKeyRangeLimit := flag.Uint("stress-range-limit", 50, "maximum number of keys to range or delete.")
 	limit := flag.Int("limit", -1, "the limit of rounds to run failure set (-1 to run without limits).")
-	stressQPS := flag.Int("stress-qps", 3000, "maximum number of stresser requests per second.")
+	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
 	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
 	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")

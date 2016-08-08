@@ -148,8 +148,7 @@ type stresser struct {
 	keySuffixRange int
 	keyRangeLimit  int
 
-	qps int
-	N   int
+	N int
 
 	mu sync.Mutex
 	wg *sync.WaitGroup
@@ -166,6 +165,10 @@ type stresser struct {
 }
 
 func (s *stresser) Stress() error {
+	if s.rateLimiter == nil {
+		panic("expect rateLimiter to be set")
+	}
+
 	// TODO: add backoff option
 	conn, err := grpc.Dial(s.Endpoint, grpc.WithInsecure())
 	if err != nil {
@@ -180,7 +183,6 @@ func (s *stresser) Stress() error {
 	s.conn = conn
 	s.cancel = cancel
 	s.wg = wg
-	s.rateLimiter = rate.NewLimiter(rate.Limit(s.qps), s.qps)
 	s.mu.Unlock()
 
 	kvc := pb.NewKVClient(conn)
