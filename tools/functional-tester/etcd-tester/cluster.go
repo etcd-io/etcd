@@ -41,7 +41,6 @@ type cluster struct {
 	stressQPS            int
 	stressKeySize        int
 	stressKeySuffixRange int
-	stressKeyRangeLimit  int
 
 	Size      int
 	Stressers []Stresser
@@ -114,7 +113,6 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 				Endpoint:       m.grpcAddr(),
 				keySize:        c.stressKeySize,
 				keySuffixRange: c.stressKeySuffixRange,
-				keyRangeLimit:  c.stressKeyRangeLimit,
 				N:              stressN,
 				rateLimiter:    limiter,
 			}

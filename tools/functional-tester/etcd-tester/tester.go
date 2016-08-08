@@ -52,6 +52,8 @@ func (tt *tester) runLoop() {
 			}
 			continue
 		}
+		// -1 so that logPrefix doesn't print out 'case'
+		tt.status.setCase(-1)
 
 		revToCompact := max(0, tt.currentRevision-10000)
 		compactN := revToCompact - prevCompactRev
@@ -80,9 +82,6 @@ func (tt *tester) runLoop() {
 }
 
 func (tt *tester) doRound(round int) (bool, error) {
-	// -1 so that logPrefix doesn't print out 'case'
-	defer tt.status.setCase(-1)
-
 	for j, f := range tt.failures {
 		caseTotalCounter.WithLabelValues(f.Desc()).Inc()
 		tt.status.setCase(j)
