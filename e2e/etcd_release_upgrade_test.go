@@ -37,6 +37,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	copiedCfg := configNoTLS
 	copiedCfg.execPath = lastReleaseBinary
 	copiedCfg.snapCount = 3
+	copiedCfg.baseScheme = "unix" // to avoid port conflict
 
 	epc, err := newEtcdProcessCluster(&copiedCfg)
 	if err != nil {
