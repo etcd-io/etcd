@@ -25,6 +25,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
 
@@ -99,6 +100,7 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 	// 'out of memory' error. Put rate limits in server side.
 	stressN := 100
 	c.Stressers = make([]Stresser, len(members))
+	limiter := rate.NewLimiter(rate.Limit(c.stressQPS), c.stressQPS)
 	for i, m := range members {
 		if c.v2Only {
 			c.Stressers[i] = &stresserV2{
@@ -113,8 +115,8 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 				keySize:        c.stressKeySize,
 				keySuffixRange: c.stressKeySuffixRange,
 				keyRangeLimit:  c.stressKeyRangeLimit,
-				qps:            c.stressQPS,
 				N:              stressN,
+				rateLimiter:    limiter,
 			}
 		}
 		go c.Stressers[i].Stress()
