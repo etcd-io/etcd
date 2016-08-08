@@ -131,6 +131,8 @@ type etcdProcessConfig struct {
 	dataDirPath string
 	keepDataDir bool
 
+	purl url.URL
+
 	acurl string
 	// additional url for tls connection when the etcd process
 	// serves both http and https
@@ -146,8 +148,11 @@ type etcdProcessClusterConfig struct {
 	keepDataDir bool
 
 	clusterSize int
-	basePort    int
-	proxySize   int
+
+	baseScheme string
+	basePort   int
+
+	proxySize int
 
 	snapCount int // default is 10000
 
@@ -217,9 +222,12 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 	if cfg.clientTLS == clientTLS {
 		clientScheme = "https"
 	}
-	peerScheme := "http"
+	peerScheme := cfg.baseScheme
+	if peerScheme == "" {
+		peerScheme = "http"
+	}
 	if cfg.isPeerTLS {
-		peerScheme = "https"
+		peerScheme += "s"
 	}
 
 	etcdCfgs := make([]*etcdProcessConfig, cfg.clusterSize+cfg.proxySize)
@@ -277,6 +285,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			args:        args,
 			dataDirPath: dataDirPath,
 			keepDataDir: cfg.keepDataDir,
+			purl:        purl,
 			acurl:       curl,
 			acurltls:    curltls,
 			acurlHost:   curlHost,
@@ -381,14 +390,13 @@ func (epc *etcdProcessCluster) StopAll() (err error) {
 		if p == nil {
 			continue
 		}
-		if curErr := p.proc.Stop(); curErr != nil {
+		if curErr := p.Stop(); curErr != nil {
 			if err != nil {
 				err = fmt.Errorf("%v; %v", err, curErr)
 			} else {
 				err = curErr
 			}
 		}
-		<-p.donec
 	}
 	return err
 }
@@ -423,6 +431,10 @@ func (ep *etcdProcess) Stop() error {
 		return err
 	}
 	<-ep.donec
+
+	if ep.cfg.purl.Scheme == "unix" || ep.cfg.purl.Scheme == "unixs" {
+		os.RemoveAll(ep.cfg.purl.Host)
+	}
 	return nil
 }
 
