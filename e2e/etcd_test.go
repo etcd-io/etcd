@@ -26,16 +26,14 @@ import (
 	"github.com/coreos/etcd/pkg/fileutil"
 )
 
-const (
-	etcdProcessBasePort = 20000
-	certPath            = "../integration/fixtures/server.crt"
-	privateKeyPath      = "../integration/fixtures/server.key.insecure"
-	caPath              = "../integration/fixtures/ca.crt"
-)
+const etcdProcessBasePort = 20000
 
 var (
-	binPath    string
-	ctlBinPath string
+	binPath        string
+	ctlBinPath     string
+	certPath       string
+	privateKeyPath string
+	caPath         string
 )
 
 type clientConnType int
@@ -207,6 +205,9 @@ func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
 func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 	binPath = binDir + "/etcd"
 	ctlBinPath = binDir + "/etcdctl"
+	certPath = certDir + "/server.crt"
+	privateKeyPath = certDir + "/server.key.insecure"
+	caPath = certDir + "/ca.crt"
 
 	if cfg.basePort == 0 {
 		cfg.basePort = etcdProcessBasePort

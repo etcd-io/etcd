@@ -14,11 +14,13 @@ import (
 )
 
 var binDir string
+var certDir string
 
 func TestMain(m *testing.M) {
 	os.Setenv("ETCD_UNSUPPORTED_ARCH", runtime.GOARCH)
 
 	flag.StringVar(&binDir, "bin-dir", "../bin", "The directory for store etcd and etcdctl binaries.")
+	flag.StringVar(&certDir, "cert-dir", "../integration/fixtures", "The directory for store certificate files.")
 	flag.Parse()
 
 	v := m.Run()
