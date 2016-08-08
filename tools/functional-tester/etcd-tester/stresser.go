@@ -233,6 +233,10 @@ func (s *stresser) run(ctx context.Context) {
 				// to the new leader.
 				continue
 
+			case etcdserver.ErrTooManyRequests.Error():
+				// applier fell behind
+				shouldContinue = true
+
 			case etcdserver.ErrStopped.Error():
 				// one of the etcd nodes stopped from failure injection
 				continue
