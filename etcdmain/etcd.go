@@ -258,15 +258,12 @@ func startProxy(cfg *config) error {
 	clientURLs := []string{}
 	uf := func() []string {
 		gcls, gerr := etcdserver.GetClusterFromRemotePeers(peerURLs, tr)
-		// TODO: remove the 2nd check when we fix GetClusterFromRemotePeers
-		// GetClusterFromRemotePeers should not return nil error with an invalid empty cluster
+
 		if gerr != nil {
 			plog.Warningf("proxy: %v", gerr)
 			return []string{}
 		}
-		if len(gcls.Members()) == 0 {
-			return clientURLs
-		}
+
 		clientURLs = gcls.ClientURLs()
 
 		urls := struct{ PeerURLs []string }{gcls.PeerURLs()}
