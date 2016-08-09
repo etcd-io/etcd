@@ -193,6 +193,14 @@ func WithRev(rev int64) OpOption { return func(op *Op) { op.rev = rev } }
 // 'order' can be either 'SortNone', 'SortAscend', 'SortDescend'.
 func WithSort(target SortTarget, order SortOrder) OpOption {
 	return func(op *Op) {
+		if target == SortByKey && order == SortAscend {
+			// If order != SortNone, server fetches the entire key-space,
+			// and then applies the sort and limit, if provided.
+			// Since current mvcc.Range implementation returns results
+			// sorted by keys in lexiographically ascending order,
+			// client should ignore SortOrder if the target is SortByKey.
+			order = SortNone
+		}
 		op.sort = &SortOption{target, order}
 	}
 }

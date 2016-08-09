@@ -123,7 +123,8 @@ func (m *member) SetHealthKeyV3() error {
 		return fmt.Errorf("%v (%s)", err, m.ClientURL)
 	}
 	defer cli.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	// give enough time-out in case expensive requests (range/delete) are pending
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	_, err = cli.Put(ctx, "health", "good")
 	cancel()
 	if err != nil {

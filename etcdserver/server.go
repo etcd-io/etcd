@@ -65,6 +65,10 @@ const (
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
 
+	// HealthInterval is the minimum time the cluster should be healthy
+	// before accepting add member requests.
+	HealthInterval = 5 * time.Second
+
 	purgeFileInterval = 30 * time.Second
 	// monitorVersionInterval should be smaller than the timeout
 	// on the connection. Or we will not be able to reuse the connection
@@ -395,6 +399,9 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 
 	srv.be = be
 	minTTL := time.Duration((3*cfg.ElectionTicks)/2) * time.Duration(cfg.TickMs) * time.Millisecond
+
+	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
+	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	srv.lessor = lease.NewLessor(srv.be, int64(math.Ceil(minTTL.Seconds())))
 	srv.kv = mvcc.New(srv.be, srv.lessor, &srv.consistIndex)
 	if beExist {
@@ -404,6 +411,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
+
 	srv.authStore = auth.NewAuthStore(srv.be)
 	if h := cfg.AutoCompactionRetention; h != 0 {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
@@ -660,6 +668,14 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	newbe := backend.NewDefaultBackend(fn)
 
+	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
+	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
+	if s.lessor != nil {
+		plog.Info("recovering lessor...")
+		s.lessor.Recover(newbe, s.kv)
+		plog.Info("finished recovering lessor")
+	}
+
 	plog.Info("restoring mvcc store...")
 
 	if err := s.kv.Restore(newbe); err != nil {
@@ -685,12 +701,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	s.be = newbe
 	s.bemu.Unlock()
-
-	if s.lessor != nil {
-		plog.Info("recovering lessor...")
-		s.lessor.Recover(newbe, s.kv)
-		plog.Info("finished recovering lessor")
-	}
 
 	plog.Info("recovering alarms...")
 	if err := s.restoreAlarms(); err != nil {
@@ -808,10 +818,16 @@ func (s *EtcdServer) LeaderStats() []byte {
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
 func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) error {
-	if s.Cfg.StrictReconfigCheck && !s.cluster.IsReadyToAddNewMember() {
-		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
-		// In such a case adding a new member is allowed unconditionally
-		return ErrNotEnoughStartedMembers
+	if s.Cfg.StrictReconfigCheck {
+		// by default StrictReconfigCheck is enabled; reject new members if unhealthy
+		if !s.cluster.IsReadyToAddNewMember() {
+			plog.Warningf("not enough started members, rejecting member add %+v", memb)
+			return ErrNotEnoughStartedMembers
+		}
+		if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), s.cluster.Members()) {
+			plog.Warningf("not healthy for reconfigure, rejecting member add %+v", memb)
+			return ErrUnhealthy
+		}
 	}
 
 	// TODO: move Member to protobuf type

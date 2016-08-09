@@ -20,10 +20,12 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"golang.org/x/net/context"
@@ -344,6 +346,49 @@ func TestIssue3699(t *testing.T) {
 		t.Fatalf("unexpected error on Set (%v)", err)
 	}
 	cancel()
+}
+
+// TestRejectUnhealthyAdd ensures an unhealthy cluster rejects adding members.
+func TestRejectUnhealthyAdd(t *testing.T) {
+	defer testutil.AfterTest(t)
+	c := NewCluster(t, 3)
+	for _, m := range c.Members {
+		m.ServerConfig.StrictReconfigCheck = true
+	}
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// make cluster unhealthy and wait for downed peer
+	c.Members[0].Stop(t)
+	c.WaitLeader(t)
+
+	// all attempts to add member should fail
+	for i := 1; i < len(c.Members); i++ {
+		err := c.addMemberByURL(t, c.URL(i), "unix://foo:12345")
+		if err == nil {
+			t.Fatalf("should have failed adding peer")
+		}
+		// TODO: client should return descriptive error codes for internal errors
+		if !strings.Contains(err.Error(), "has no leader") {
+			t.Errorf("unexpected error (%v)", err)
+		}
+	}
+
+	// make cluster healthy
+	c.Members[0].Restart(t)
+	c.WaitLeader(t)
+	time.Sleep(2 * etcdserver.HealthInterval)
+
+	// add member should succeed now that it's healthy
+	var err error
+	for i := 1; i < len(c.Members); i++ {
+		if err = c.addMemberByURL(t, c.URL(i), "unix://foo:12345"); err == nil {
+			break
+		}
+	}
+	if err != nil {
+		t.Fatalf("should have added peer to healthy cluster (%v)", err)
+	}
 }
 
 // clusterMustProgress ensures that cluster can make progress. It creates

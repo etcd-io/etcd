@@ -25,6 +25,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
 
@@ -49,21 +50,6 @@ type cluster struct {
 
 type ClusterStatus struct {
 	AgentStatuses map[string]client.Status
-}
-
-// newCluster starts and returns a new cluster. The caller should call Terminate when finished, to shut it down.
-func newCluster(agentEndpoints []string, datadir string, stressQPS, stressKeySize, stressKeySuffixRange int, isV2Only bool) (*cluster, error) {
-	c := &cluster{
-		v2Only:               isV2Only,
-		datadir:              datadir,
-		stressQPS:            stressQPS,
-		stressKeySize:        stressKeySize,
-		stressKeySuffixRange: stressKeySuffixRange,
-	}
-	if err := c.bootstrap(agentEndpoints); err != nil {
-		return nil, err
-	}
-	return c, nil
 }
 
 func (c *cluster) bootstrap(agentEndpoints []string) error {
@@ -113,21 +99,22 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 	// 'out of memory' error. Put rate limits in server side.
 	stressN := 100
 	c.Stressers = make([]Stresser, len(members))
+	limiter := rate.NewLimiter(rate.Limit(c.stressQPS), c.stressQPS)
 	for i, m := range members {
 		if c.v2Only {
 			c.Stressers[i] = &stresserV2{
 				Endpoint:       m.ClientURL,
-				KeySize:        c.stressKeySize,
-				KeySuffixRange: c.stressKeySuffixRange,
+				keySize:        c.stressKeySize,
+				keySuffixRange: c.stressKeySuffixRange,
 				N:              stressN,
 			}
 		} else {
 			c.Stressers[i] = &stresser{
 				Endpoint:       m.grpcAddr(),
-				KeySize:        c.stressKeySize,
-				KeySuffixRange: c.stressKeySuffixRange,
-				qps:            c.stressQPS,
+				keySize:        c.stressKeySize,
+				keySuffixRange: c.stressKeySuffixRange,
 				N:              stressN,
+				rateLimiter:    limiter,
 			}
 		}
 		go c.Stressers[i].Stress()
