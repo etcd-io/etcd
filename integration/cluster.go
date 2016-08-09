@@ -708,6 +708,32 @@ func (m *member) Terminate(t *testing.T) {
 	plog.Printf("terminated %s (%s)", m.Name, m.grpcAddr)
 }
 
+// Metric gets the metric value for a member
+func (m *member) Metric(metricName string) (string, error) {
+	cfgtls := transport.TLSInfo{}
+	tr, err := transport.NewTimeoutTransport(cfgtls, time.Second, time.Second, time.Second)
+	if err != nil {
+		return "", err
+	}
+	cli := &http.Client{Transport: tr}
+	resp, err := cli.Get(m.ClientURLs[0].String() + "/metrics")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	b, rerr := ioutil.ReadAll(resp.Body)
+	if rerr != nil {
+		return "", rerr
+	}
+	lines := strings.Split(string(b), "\n")
+	for _, l := range lines {
+		if strings.HasPrefix(l, metricName) {
+			return strings.Split(l, " ")[1], nil
+		}
+	}
+	return "", nil
+}
+
 func MustNewHTTPClient(t *testing.T, eps []string, tls *transport.TLSInfo) client.Client {
 	cfgtls := transport.TLSInfo{}
 	if tls != nil {
