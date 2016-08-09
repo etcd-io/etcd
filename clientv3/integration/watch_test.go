@@ -727,3 +727,27 @@ func TestWatchWithCreatedNotification(t *testing.T) {
 		t.Fatalf("expected created event, got %v", resp)
 	}
 }
+
+// TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
+func TestWatchCancelOnServer(t *testing.T) {
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	client := cluster.RandClient()
+
+	for i := 0; i < 10; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		client.Watch(ctx, "a", clientv3.WithCreatedNotify())
+		cancel()
+	}
+	// wait for cancels to propagate
+	time.Sleep(time.Second)
+
+	watchers, err := cluster.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if watchers != "0" {
+		t.Fatalf("expected 0 watchers, got %q", watchers)
+	}
+}
