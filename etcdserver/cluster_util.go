@@ -94,16 +94,7 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 			}
 			continue
 		}
-		// check the length of membership members
-		// if the membership members are present then prepare and return raft cluster
-		// if membership members are not present then the raft cluster formed will be
-		// an invalid empty cluster hence return an no raft cluster member error
-		if len(membs) > 0 {
-			return membership.NewClusterFromMembers("", id, membs), nil
-		} else {
-			return nil, fmt.Errorf("could not detect raft cluster member(s) from the urls.")
-		}
-
+		return membership.NewClusterFromMembers("", id, membs), nil
 	}
 	return nil, fmt.Errorf("could not retrieve cluster information from the given urls")
 }
