@@ -87,6 +87,12 @@ func getClusterFromRemotePeers(urls []string, timeout time.Duration, logerr bool
 			}
 			continue
 		}
+		if len(membs) == 0 {
+			if logerr {
+				plog.Warningf("no members found in url %v", u)
+			}
+			continue
+		}
 		id, err := types.IDFromString(resp.Header.Get("X-Etcd-Cluster-ID"))
 		if err != nil {
 			if logerr {
