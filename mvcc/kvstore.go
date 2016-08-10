@@ -498,7 +498,7 @@ func (s *store) rangeKeys(key, end []byte, limit, rangeRev int64, countOnly bool
 			break
 		}
 	}
-	return kvs, len(kvs), curRev, nil
+	return kvs, len(revpairs), curRev, nil
 }
 
 func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
