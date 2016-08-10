@@ -323,7 +323,7 @@ func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
 		}
 		endpoints = strings.Join(es, ",")
 	}
-	cmdArgs := []string{defaultCtlBinPath, "--endpoints", endpoints}
+	cmdArgs := []string{ctlBinPath, "--endpoints", endpoints}
 	if clus.cfg.clientTLS == clientTLS {
 		cmdArgs = append(cmdArgs, "--ca-file", caPath, "--cert-file", certPath, "--key-file", privateKeyPath)
 	}

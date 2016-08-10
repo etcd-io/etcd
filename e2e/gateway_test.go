@@ -41,14 +41,14 @@ func TestGateway(t *testing.T) {
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
 
-	err = spawnWithExpect([]string{defaultCtlBinPath, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
+	err = spawnWithExpect([]string{ctlBinPath, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
 	if err != nil {
 		t.Errorf("failed to finish put request through gateway: %v", err)
 	}
 }
 
 func startGateway(t *testing.T, endpoints string) *expect.ExpectProcess {
-	p, err := expect.NewExpect(defaultBinPath, "gateway", "--endpoints="+endpoints, "start")
+	p, err := expect.NewExpect(binPath, "gateway", "--endpoints="+endpoints, "start")
 	if err != nil {
 		t.Fatal(err)
 	}
