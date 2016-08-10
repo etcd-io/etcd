@@ -446,8 +446,13 @@ func (ep *etcdProcess) Stop() error {
 }
 
 func (ep *etcdProcess) waitReady() error {
+	defer close(ep.donec)
+	return waitReadyExpectProc(ep.proc, ep.cfg.isProxy)
+}
+
+func waitReadyExpectProc(exproc *expect.ExpectProcess, isProxy bool) error {
 	readyStrs := []string{"enabled capabilities for version", "published"}
-	if ep.cfg.isProxy {
+	if isProxy {
 		readyStrs = []string{"httpproxy: endpoints found"}
 	}
 	c := 0
@@ -460,8 +465,7 @@ func (ep *etcdProcess) waitReady() error {
 		}
 		return c == len(readyStrs)
 	}
-	_, err := ep.proc.ExpectFunc(matchSet)
-	close(ep.donec)
+	_, err := exproc.ExpectFunc(matchSet)
 	return err
 }
 
