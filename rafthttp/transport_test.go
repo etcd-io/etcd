@@ -66,6 +66,37 @@ func TestTransportSend(t *testing.T) {
 	}
 }
 
+func TestTransportCutMend(t *testing.T) {
+	ss := &stats.ServerStats{}
+	ss.Initialize()
+	peer1 := newFakePeer()
+	peer2 := newFakePeer()
+	tr := &Transport{
+		ServerStats: ss,
+		peers:       map[types.ID]Peer{types.ID(1): peer1, types.ID(2): peer2},
+	}
+
+	tr.CutPeer(types.ID(1))
+
+	wmsgsTo := []raftpb.Message{
+		// good message
+		{Type: raftpb.MsgProp, To: 1},
+		{Type: raftpb.MsgApp, To: 1},
+	}
+
+	tr.Send(wmsgsTo)
+	if len(peer1.msgs) > 0 {
+		t.Fatalf("msgs expected to be ignored, got %+v", peer1.msgs)
+	}
+
+	tr.MendPeer(types.ID(1))
+
+	tr.Send(wmsgsTo)
+	if !reflect.DeepEqual(peer1.msgs, wmsgsTo) {
+		t.Errorf("msgs to peer 1 = %+v, want %+v", peer1.msgs, wmsgsTo)
+	}
+}
+
 func TestTransportAdd(t *testing.T) {
 	ls := stats.NewLeaderStats("")
 	tr := &Transport{
