@@ -165,6 +165,7 @@ type etcdProcessClusterConfig struct {
 	forceNewCluster       bool
 	initialToken          string
 	quotaBackendBytes     int64
+	noStrictReconfig      bool
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -284,6 +285,9 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			args = append(args,
 				"--quota-backend-bytes", fmt.Sprintf("%d", cfg.quotaBackendBytes),
 			)
+		}
+		if cfg.noStrictReconfig {
+			args = append(args, "--strict-reconfig-check=false")
 		}
 
 		args = append(args, cfg.tlsArgs()...)
