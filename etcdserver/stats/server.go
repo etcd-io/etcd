@@ -123,13 +123,11 @@ func (ss *ServerStats) SendAppendReq(reqSize int) {
 	ss.Lock()
 	defer ss.Unlock()
 
-	now := time.Now()
-
-	ss.becomeLeader(now)
+	ss.becomeLeader()
 
 	ss.sendRateQueue.Insert(
 		&RequestStats{
-			SendingTime: now,
+			SendingTime: time.Now(),
 			Size:        reqSize,
 		},
 	)
@@ -140,15 +138,13 @@ func (ss *ServerStats) SendAppendReq(reqSize int) {
 func (ss *ServerStats) BecomeLeader() {
 	ss.Lock()
 	defer ss.Unlock()
-
-	ss.becomeLeader(time.Now())
+	ss.becomeLeader()
 }
 
-func (ss *ServerStats) becomeLeader(now time.Time) {
-
+func (ss *ServerStats) becomeLeader() {
 	if ss.State != raft.StateLeader {
 		ss.State = raft.StateLeader
 		ss.LeaderInfo.Name = ss.ID
-		ss.LeaderInfo.StartTime = now
+		ss.LeaderInfo.StartTime = time.Now()
 	}
 }
