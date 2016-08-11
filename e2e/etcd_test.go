@@ -26,13 +26,14 @@ import (
 	"github.com/coreos/etcd/pkg/fileutil"
 )
 
-const (
-	etcdProcessBasePort = 20000
-	certPath            = "../integration/fixtures/server.crt"
-	privateKeyPath      = "../integration/fixtures/server.key.insecure"
-	caPath              = "../integration/fixtures/ca.crt"
-	defaultBinPath      = "../bin/etcd"
-	defaultCtlBinPath   = "../bin/etcdctl"
+const etcdProcessBasePort = 20000
+
+var (
+	binPath        string
+	ctlBinPath     string
+	certPath       string
+	privateKeyPath string
+	caPath         string
 )
 
 type clientConnType int
@@ -207,12 +208,18 @@ func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
 }
 
 func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
+	binPath = binDir + "/etcd"
+	ctlBinPath = binDir + "/etcdctl"
+	certPath = certDir + "/server.crt"
+	privateKeyPath = certDir + "/server.key.insecure"
+	caPath = certDir + "/ca.crt"
+
 	if cfg.basePort == 0 {
 		cfg.basePort = etcdProcessBasePort
 	}
 
 	if cfg.execPath == "" {
-		cfg.execPath = defaultBinPath
+		cfg.execPath = binPath
 	}
 	if cfg.snapCount == 0 {
 		cfg.snapCount = etcdserver.DefaultSnapCount
@@ -439,8 +446,13 @@ func (ep *etcdProcess) Stop() error {
 }
 
 func (ep *etcdProcess) waitReady() error {
+	defer close(ep.donec)
+	return waitReadyExpectProc(ep.proc, ep.cfg.isProxy)
+}
+
+func waitReadyExpectProc(exproc *expect.ExpectProcess, isProxy bool) error {
 	readyStrs := []string{"enabled capabilities for version", "published"}
-	if ep.cfg.isProxy {
+	if isProxy {
 		readyStrs = []string{"httpproxy: endpoints found"}
 	}
 	c := 0
@@ -453,8 +465,7 @@ func (ep *etcdProcess) waitReady() error {
 		}
 		return c == len(readyStrs)
 	}
-	_, err := ep.proc.ExpectFunc(matchSet)
-	close(ep.donec)
+	_, err := exproc.ExpectFunc(matchSet)
 	return err
 }
 

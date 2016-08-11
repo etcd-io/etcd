@@ -160,7 +160,7 @@ func NewConfig() *Config {
 }
 
 func ConfigFromFile(path string) (*Config, error) {
-	cfg := &configYAML{}
+	cfg := &configYAML{Config: *NewConfig()}
 	if err := cfg.configFromFile(path); err != nil {
 		return nil, err
 	}
