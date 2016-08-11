@@ -276,12 +276,18 @@ func (c *cluster) AddMember(t *testing.T) {
 }
 
 func (c *cluster) RemoveMember(t *testing.T, id uint64) {
+	if err := c.removeMember(t, id); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (c *cluster) removeMember(t *testing.T, id uint64) error {
 	// send remove request to the cluster
 	cc := MustNewHTTPClient(t, c.URLs(), c.cfg.ClientTLS)
 	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	if err := ma.Remove(ctx, types.ID(id).String()); err != nil {
-		t.Fatalf("unexpected remove error %v", err)
+		return err
 	}
 	cancel()
 	newMembers := make([]*member, 0)
@@ -302,6 +308,7 @@ func (c *cluster) RemoveMember(t *testing.T, id uint64) {
 	}
 	c.Members = newMembers
 	c.waitMembersMatch(t, c.HTTPMembers())
+	return nil
 }
 
 func (c *cluster) Terminate(t *testing.T) {

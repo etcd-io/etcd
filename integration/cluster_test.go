@@ -391,6 +391,52 @@ func TestRejectUnhealthyAdd(t *testing.T) {
 	}
 }
 
+// TestRejectUnhealthyRemove ensures an unhealthy cluster rejects removing members
+// if quorum will be lost.
+func TestRejectUnhealthyRemove(t *testing.T) {
+	defer testutil.AfterTest(t)
+	c := NewCluster(t, 5)
+	for _, m := range c.Members {
+		m.ServerConfig.StrictReconfigCheck = true
+	}
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// make cluster unhealthy and wait for downed peer; (3 up, 2 down)
+	c.Members[0].Stop(t)
+	c.Members[1].Stop(t)
+	c.WaitLeader(t)
+
+	// reject remove active member since (3,2)-(1,0) => (2,2) lacks quorum
+	err := c.removeMember(t, uint64(c.Members[2].s.ID()))
+	if err == nil {
+		t.Fatalf("should reject quorum breaking remove")
+	}
+	// TODO: client should return more descriptive error codes for internal errors
+	if !strings.Contains(err.Error(), "has no leader") {
+		t.Errorf("unexpected error (%v)", err)
+	}
+
+	// member stopped after launch; wait for missing heartbeats
+	time.Sleep(time.Duration(electionTicks * int(tickDuration)))
+
+	// permit remove dead member since (3,2) - (0,1) => (3,1) has quorum
+	if err = c.removeMember(t, uint64(c.Members[0].s.ID())); err != nil {
+		t.Fatalf("should accept removing down member")
+	}
+
+	// bring cluster to (4,1)
+	c.Members[0].Restart(t)
+
+	// restarted member must be connected for a HealthInterval before remove is accepted
+	time.Sleep((3 * etcdserver.HealthInterval) / 2)
+
+	// accept remove member since (4,1)-(1,0) => (3,1) has quorum
+	if err = c.removeMember(t, uint64(c.Members[0].s.ID())); err != nil {
+		t.Fatalf("expected to remove member, got error %v", err)
+	}
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
