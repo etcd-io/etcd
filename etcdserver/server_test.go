@@ -1369,10 +1369,11 @@ func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
 	n.Record(testutil.Action{Name: "Step"})
 	return nil
 }
-func (n *nodeRecorder) Status() raft.Status                              { return raft.Status{} }
-func (n *nodeRecorder) Ready() <-chan raft.Ready                         { return nil }
-func (n *nodeRecorder) ReadIndex(ctx context.Context, rctx []byte) error { return nil }
-func (n *nodeRecorder) Advance()                                         {}
+func (n *nodeRecorder) Status() raft.Status                                             { return raft.Status{} }
+func (n *nodeRecorder) Ready() <-chan raft.Ready                                        { return nil }
+func (n *nodeRecorder) TransferLeadership(ctx context.Context, lead, transferee uint64) {}
+func (n *nodeRecorder) ReadIndex(ctx context.Context, rctx []byte) error                { return nil }
+func (n *nodeRecorder) Advance()                                                        {}
 func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChange) *raftpb.ConfState {
 	n.Record(testutil.Action{Name: "ApplyConfChange", Params: []interface{}{conf}})
 	return &raftpb.ConfState{}
