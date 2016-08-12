@@ -1263,6 +1263,22 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	}()
 }
 
+// CutPeer drops messages to the specified peer.
+func (s *EtcdServer) CutPeer(id types.ID) {
+	tr, ok := s.r.transport.(*rafthttp.Transport)
+	if ok {
+		tr.CutPeer(id)
+	}
+}
+
+// MendPeer recovers the message dropping behavior of the given peer.
+func (s *EtcdServer) MendPeer(id types.ID) {
+	tr, ok := s.r.transport.(*rafthttp.Transport)
+	if ok {
+		tr.MendPeer(id)
+	}
+}
+
 func (s *EtcdServer) PauseSending() { s.r.pauseSending() }
 
 func (s *EtcdServer) ResumeSending() { s.r.resumeSending() }
