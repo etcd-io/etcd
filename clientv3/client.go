@@ -138,11 +138,13 @@ func (c *Client) dialTarget(endpoint string) (proto string, host string, creds *
 	return
 }
 
-// dialSetupOpts gives the dial opts prioer to any authentication
-func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) []grpc.DialOption {
-	opts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithTimeout(c.cfg.DialTimeout),
+// dialSetupOpts gives the dial opts prior to any authentication
+func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts []grpc.DialOption) {
+	if c.cfg.DialTimeout > 0 {
+		opts = []grpc.DialOption{
+			grpc.WithTimeout(c.cfg.DialTimeout),
+			grpc.WithBlock(),
+		}
 	}
 	opts = append(opts, dopts...)
 
