@@ -336,6 +336,7 @@ func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
 
 func (c *cluster) WaitLeader(t *testing.T) int { return c.waitLeader(t, c.Members) }
 
+// waitLeader waits until given members agree on the same leader.
 func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
@@ -367,6 +368,28 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	}
 
 	return -1
+}
+
+func (c *cluster) WaitNoLeader(t *testing.T) { c.waitNoLeader(t, c.Members) }
+
+// waitNoLeader waits until given members lose leader.
+func (c *cluster) waitNoLeader(t *testing.T, membs []*member) {
+	noLeader := false
+	for !noLeader {
+		noLeader = true
+		for _, m := range membs {
+			select {
+			case <-m.s.StopNotify():
+				continue
+			default:
+			}
+			if m.s.Lead() != 0 {
+				noLeader = false
+				time.Sleep(10 * tickDuration)
+				break
+			}
+		}
+	}
 }
 
 func (c *cluster) waitVersion() {
@@ -500,6 +523,10 @@ func (m *member) listenGRPC() error {
 	m.grpcAddr = m.grpcBridge.URL()
 	m.grpcListener = l
 	return nil
+}
+
+func (m *member) electionTimeout() time.Duration {
+	return time.Duration(m.s.Cfg.ElectionTicks) * time.Millisecond
 }
 
 func (m *member) DropConnections() { m.grpcBridge.Reset() }
@@ -739,6 +766,22 @@ func (m *member) Metric(metricName string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+// InjectPartition drops connections from m to others, vice versa.
+func (m *member) InjectPartition(t *testing.T, others []*member) {
+	for _, other := range others {
+		m.s.CutPeer(other.s.ID())
+		other.s.CutPeer(m.s.ID())
+	}
+}
+
+// RecoverPartition recovers connections from m to others, vice versa.
+func (m *member) RecoverPartition(t *testing.T, others []*member) {
+	for _, other := range others {
+		m.s.MendPeer(other.s.ID())
+		other.s.MendPeer(m.s.ID())
+	}
 }
 
 func MustNewHTTPClient(t *testing.T, eps []string, tls *transport.TLSInfo) client.Client {
