@@ -288,6 +288,18 @@ func TestV3TxnRevision(t *testing.T) {
 		t.Fatalf("got rev %d, wanted rev %d", tresp.Header.Revision, presp.Header.Revision)
 	}
 
+	txndr := &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{RequestDeleteRange: &pb.DeleteRangeRequest{Key: []byte("def")}}}
+	txn = &pb.TxnRequest{Success: []*pb.RequestOp{txndr}}
+	tresp, err = kvc.Txn(context.TODO(), txn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// did not update revision
+	if presp.Header.Revision != tresp.Header.Revision {
+		t.Fatalf("got rev %d, wanted rev %d", tresp.Header.Revision, presp.Header.Revision)
+	}
+
 	txnput := &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: &pb.PutRequest{Key: []byte("abc"), Value: []byte("123")}}}
 	txn = &pb.TxnRequest{Success: []*pb.RequestOp{txnput}}
 	tresp, err = kvc.Txn(context.TODO(), txn)

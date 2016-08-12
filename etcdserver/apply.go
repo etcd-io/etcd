@@ -345,34 +345,23 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 		return nil, err
 	}
 
-	revision := a.s.KV().Rev()
-
 	// When executing the operations of txn, we need to hold the txn lock.
 	// So the reader will not see any intermediate results.
 	txnID := a.s.KV().TxnBegin()
-	defer func() {
-		err := a.s.KV().TxnEnd(txnID)
-		if err != nil {
-			panic(fmt.Sprint("unexpected error when closing txn", txnID))
-		}
-	}()
 
 	resps := make([]*pb.ResponseOp, len(reqs))
-	changedKV := false
 	for i := range reqs {
-		if reqs[i].GetRequestRange() == nil {
-			changedKV = true
-		}
 		resps[i] = a.applyUnion(txnID, reqs[i])
 	}
 
-	if changedKV {
-		revision += 1
+	err := a.s.KV().TxnEnd(txnID)
+	if err != nil {
+		panic(fmt.Sprint("unexpected error when closing txn", txnID))
 	}
 
 	txnResp := &pb.TxnResponse{}
 	txnResp.Header = &pb.ResponseHeader{}
-	txnResp.Header.Revision = revision
+	txnResp.Header.Revision = a.s.KV().Rev()
 	txnResp.Responses = resps
 	txnResp.Succeeded = ok
 	return txnResp, nil
