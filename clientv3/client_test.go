@@ -56,6 +56,15 @@ func TestDialTimeout(t *testing.T) {
 	}
 }
 
+func TestDialNoTimeout(t *testing.T) {
+	cfg := Config{Endpoints: []string{"127.0.0.1:12345"}}
+	c, err := New(cfg)
+	if c == nil || err != nil {
+		t.Fatalf("new client with DialNoWait should succeed, got %v", err)
+	}
+	c.Close()
+}
+
 func TestIsHaltErr(t *testing.T) {
 	if !isHaltErr(nil, fmt.Errorf("etcdserver: some etcdserver error")) {
 		t.Errorf(`error prefixed with "etcdserver: " should be Halted by default`)
