@@ -47,7 +47,10 @@ func TestPeriodic(t *testing.T) {
 			fc.Advance(checkCompactionInterval)
 			rg.Wait(1)
 		}
-		// ready to acknowledge hour "i"; unblock clock
+		// ready to acknowledge hour "i"
+		// block until compactor calls clock.After()
+		fc.BlockUntil(1)
+		// unblock the After()
 		fc.Advance(checkCompactionInterval)
 		a, err := compactable.Wait(1)
 		if err != nil {
