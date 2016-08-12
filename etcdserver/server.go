@@ -844,10 +844,9 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) erro
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
-	if s.Cfg.StrictReconfigCheck && !s.cluster.IsReadyToRemoveMember(id) {
-		// If s.cfg.StrictReconfigCheck is false, it means the option --strict-reconfig-check isn't passed to etcd.
-		// In such a case removing a member is allowed unconditionally
-		return ErrNotEnoughStartedMembers
+	// by default StrictReconfigCheck is enabled; reject removal if leads to quorum loss
+	if err := s.mayRemoveMember(types.ID(id)); err != nil {
+		return err
 	}
 
 	cc := raftpb.ConfChange{
@@ -855,6 +854,32 @@ func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
 		NodeID: id,
 	}
 	return s.configure(ctx, cc)
+}
+
+func (s *EtcdServer) mayRemoveMember(id types.ID) error {
+	if !s.Cfg.StrictReconfigCheck {
+		return nil
+	}
+
+	if !s.cluster.IsReadyToRemoveMember(uint64(id)) {
+		plog.Warningf("not enough started members, rejecting remove member %s", id)
+		return ErrNotEnoughStartedMembers
+	}
+
+	// downed member is safe to remove since it's not part of the active quorum
+	if t := s.r.transport.ActiveSince(id); id != s.ID() && t.IsZero() {
+		return nil
+	}
+
+	// protect quorum if some members are down
+	m := s.cluster.Members()
+	active := numConnectedSince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), m)
+	if (active - 1) < 1+((len(m)-1)/2) {
+		plog.Warningf("reconfigure breaks active quorum, rejecting remove member %s", id)
+		return ErrUnhealthy
+	}
+
+	return nil
 }
 
 func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) error {
