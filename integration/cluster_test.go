@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"golang.org/x/net/context"
@@ -460,5 +461,38 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 			t.Fatalf("#%d: watch on %s error: %v", i, u, err)
 		}
 		mcancel()
+	}
+}
+
+func TestTransferLeader(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	leaderIdx := clus.WaitLeader(t)
+
+	err := clus.Members[leaderIdx].s.TransferLeadership()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTransferLeaderStopTrigger(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	oldLeadIdx := clus.WaitLeader(t)
+	clus.Members[oldLeadIdx].StopWithAutoLeaderTransfer(t)
+
+	// issue put to one of the other member
+	kvc := toGRPC(clus.Client((oldLeadIdx + 1) % 3)).KV
+	sctx, scancel := context.WithTimeout(context.TODO(), clus.Members[oldLeadIdx].electionTimeout())
+	_, err := kvc.Range(sctx, &etcdserverpb.RangeRequest{Key: []byte("foo")})
+	scancel()
+	if err != nil {
+		t.Fatal(err)
 	}
 }
