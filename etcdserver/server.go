@@ -775,15 +775,74 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 	ep.snapi = ep.appliedi
 }
 
-// Stop stops the server gracefully, and shuts down the running goroutine.
-// Stop should be called after a Start(s), otherwise it will block forever.
-func (s *EtcdServer) Stop() {
+func (s *EtcdServer) isMultiNode() bool {
+	return s.cluster != nil && len(s.cluster.MemberIDs()) > 1
+}
+
+func (s *EtcdServer) isLeader() bool {
+	return uint64(s.ID()) == s.Lead()
+}
+
+// transferLeadership transfers the leader to the given transferee.
+// TODO: maybe expose to client?
+func (s *EtcdServer) transferLeadership(ctx context.Context, lead, transferee uint64) error {
+	now := time.Now()
+	interval := time.Duration(s.Cfg.TickMs) * time.Millisecond
+
+	plog.Infof("%s starts leadership transfer from %s to %s", s.ID(), types.ID(lead), types.ID(transferee))
+	s.r.TransferLeadership(ctx, lead, transferee)
+	for s.Lead() != transferee {
+		select {
+		case <-ctx.Done(): // time out
+			return ErrTimeoutLeaderTransfer
+		case <-time.After(interval):
+		}
+	}
+
+	// TODO: drain all requests, or drop all messages to the old leader
+
+	plog.Infof("%s finished leadership transfer from %s to to %s (took %v)", s.ID(), types.ID(lead), types.ID(transferee), time.Since(now))
+	return nil
+}
+
+// TransferLeadership transfers the leader to the chosen transferee.
+func (s *EtcdServer) TransferLeadership() error {
+	if !s.isMultiNode() || !s.isLeader() {
+		plog.Printf("skipping leader transfer since multi-node %v or is-leader %v", s.isMultiNode(), s.isLeader())
+		return nil
+	}
+
+	transferee, ok := longestConnected(s.r.transport, s.cluster.MemberIDs())
+	if !ok {
+		return ErrUnhealthy
+	}
+
+	tm := s.Cfg.ReqTimeout()
+	ctx, cancel := context.WithTimeout(context.TODO(), tm)
+	err := s.transferLeadership(ctx, s.Lead(), uint64(transferee))
+	cancel()
+	return err
+}
+
+// HardStop stops the server without coordination with other members in the cluster.
+func (s *EtcdServer) HardStop() {
 	select {
 	case s.stop <- struct{}{}:
 	case <-s.done:
 		return
 	}
 	<-s.done
+}
+
+// Stop stops the server gracefully, and shuts down the running goroutine.
+// Stop should be called after a Start(s), otherwise it will block forever.
+// When stopping leader, Stop transfers its leadership to one of its peers
+// before stopping the server.
+func (s *EtcdServer) Stop() {
+	if err := s.TransferLeadership(); err != nil {
+		plog.Warningf("%s failed to transfer leadership (%v)", s.ID(), err)
+	}
+	s.HardStop()
 }
 
 // ReadyNotify returns a channel that will be closed when the server
