@@ -66,6 +66,12 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 
 func (b *simpleBalancer) Start(target string) error { return nil }
 
+func (b *simpleBalancer) ConnectNotify() <-chan struct{} {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.upc
+}
+
 func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	b.mu.Lock()
 	if len(b.upEps) == 0 {
