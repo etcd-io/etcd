@@ -46,9 +46,11 @@ type Client struct {
 	Auth
 	Maintenance
 
-	conn  *grpc.ClientConn
-	cfg   Config
-	creds *credentials.TransportCredentials
+	conn         *grpc.ClientConn
+	cfg          Config
+	creds        *credentials.TransportCredentials
+	balancer     *simpleBalancer
+	retryWrapper retryRpcFunc
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -239,12 +241,13 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 	}
 
-	b := newSimpleBalancer(cfg.Endpoints)
-	conn, err := client.dial(cfg.Endpoints[0], grpc.WithBalancer(b))
+	client.balancer = newSimpleBalancer(cfg.Endpoints)
+	conn, err := client.dial(cfg.Endpoints[0], grpc.WithBalancer(client.balancer))
 	if err != nil {
 		return nil, err
 	}
 	client.conn = conn
+	client.retryWrapper = client.newRetryWrapper()
 
 	// wait for a connection
 	if cfg.DialTimeout > 0 {
@@ -296,8 +299,12 @@ func isHaltErr(ctx context.Context, err error) bool {
 		return eErr != rpctypes.ErrStopped && eErr != rpctypes.ErrNoLeader
 	}
 	// treat etcdserver errors not recognized by the client as halting
-	return strings.Contains(err.Error(), grpc.ErrClientConnClosing.Error()) ||
-		strings.Contains(err.Error(), "etcdserver:")
+	return isConnClosing(err) || strings.Contains(err.Error(), "etcdserver:")
+}
+
+// isConnClosing returns true if the error matches a grpc client closing error
+func isConnClosing(err error) bool {
+	return strings.Contains(err.Error(), grpc.ErrClientConnClosing.Error())
 }
 
 func toErr(ctx context.Context, err error) error {
