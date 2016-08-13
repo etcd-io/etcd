@@ -687,7 +687,7 @@ func (m *member) Close() {
 		m.grpcServer.Stop()
 		m.grpcServer = nil
 	}
-	m.s.Stop()
+	m.s.HardStop()
 	for _, hs := range m.hss {
 		hs.CloseClientConnections()
 		hs.Close()
@@ -697,6 +697,15 @@ func (m *member) Close() {
 // Stop stops the member, but the data dir of the member is preserved.
 func (m *member) Stop(t *testing.T) {
 	plog.Printf("stopping %s (%s)", m.Name, m.grpcAddr)
+	m.Close()
+	m.hss = nil
+	plog.Printf("stopped %s (%s)", m.Name, m.grpcAddr)
+}
+
+// StopWithAutoLeaderTransfer stops the member with auto leader transfer.
+func (m *member) StopWithAutoLeaderTransfer(t *testing.T) {
+	plog.Printf("stopping %s (%s)", m.Name, m.grpcAddr)
+	m.s.TransferLeadership()
 	m.Close()
 	m.hss = nil
 	plog.Printf("stopped %s (%s)", m.Name, m.grpcAddr)

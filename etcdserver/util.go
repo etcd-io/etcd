@@ -52,3 +52,30 @@ func numConnectedSince(transport rafthttp.Transporter, since time.Time, self typ
 	}
 	return connectedNum
 }
+
+// longestConnected chooses the member with longest active-since-time.
+// It returns false, if nothing is active.
+func longestConnected(tp rafthttp.Transporter, membs []types.ID) (types.ID, bool) {
+	var longest types.ID
+	var oldest time.Time
+	for _, id := range membs {
+		tm := tp.ActiveSince(id)
+		if tm.IsZero() { // inactive
+			continue
+		}
+
+		if oldest.IsZero() { // first longest candidate
+			oldest = tm
+			longest = id
+		}
+
+		if tm.Before(oldest) {
+			oldest = tm
+			longest = id
+		}
+	}
+	if uint64(longest) == 0 {
+		return longest, false
+	}
+	return longest, true
+}
