@@ -92,7 +92,7 @@ type serverWatchStream struct {
 	mu sync.Mutex
 	// progress tracks the watchID that stream might need to send
 	// progress to.
-	// TOOD: combine progress and prevKV into a single struct?
+	// TODO: combine progress and prevKV into a single struct?
 	progress map[mvcc.WatchID]bool
 	prevKV   map[mvcc.WatchID]bool
 
