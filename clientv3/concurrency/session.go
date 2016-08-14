@@ -24,7 +24,7 @@ import (
 // only keep one ephemeral lease per client
 var clientSessions clientSessionMgr = clientSessionMgr{sessions: make(map[*v3.Client]*Session)}
 
-const sessionTTL = 60
+const defaultSessionTTL = 60
 
 type clientSessionMgr struct {
 	sessions map[*v3.Client]*Session
@@ -41,15 +41,20 @@ type Session struct {
 	donec  <-chan struct{}
 }
 
-// NewSession gets the leased session for a client.
-func NewSession(client *v3.Client) (*Session, error) {
+// NewSession gets the leased session for a client with given TTL in seconds.
+// If TTL is <= 0, the default 60 seconds TTL will be used.
+func NewSession(client *v3.Client, ttl int) (*Session, error) {
 	clientSessions.mu.Lock()
 	defer clientSessions.mu.Unlock()
 	if s, ok := clientSessions.sessions[client]; ok {
 		return s, nil
 	}
 
-	resp, err := client.Grant(client.Ctx(), sessionTTL)
+	if ttl <= 0 {
+		ttl = defaultSessionTTL
+	}
+
+	resp, err := client.Grant(client.Ctx(), defaultSessionTTL)
 	if err != nil {
 		return nil, err
 	}

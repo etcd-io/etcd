@@ -31,6 +31,7 @@ var (
 type Election struct {
 	client *v3.Client
 
+	timeout   int
 	keyPrefix string
 
 	leaderKey     string
@@ -39,14 +40,17 @@ type Election struct {
 }
 
 // NewElection returns a new election on a given key prefix.
-func NewElection(client *v3.Client, pfx string) *Election {
-	return &Election{client: client, keyPrefix: pfx}
+// The leader will be auto step-down if it fails for the given
+// timeout in seconds.
+// If timeout is <=0, default 60 seconds timeout will be used.
+func NewElection(client *v3.Client, pfx string, timeout int) *Election {
+	return &Election{client: client, timeout: timeout, keyPrefix: pfx}
 }
 
 // Campaign puts a value as eligible for the election. It blocks until
 // it is elected, an error occurs, or the context is cancelled.
 func (e *Election) Campaign(ctx context.Context, val string) error {
-	s, serr := NewSession(e.client)
+	s, serr := NewSession(e.client, e.timeout)
 	if serr != nil {
 		return serr
 	}
