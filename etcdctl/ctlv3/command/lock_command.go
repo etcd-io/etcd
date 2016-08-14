@@ -46,7 +46,12 @@ func lockCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func lockUntilSignal(c *clientv3.Client, lockname string) error {
-	m := concurrency.NewMutex(c, lockname)
+	s, err := concurrency.NewSession(c)
+	if err != nil {
+		return err
+	}
+
+	m := concurrency.NewMutex(s, lockname)
 	ctx, cancel := context.WithCancel(context.TODO())
 
 	// unlock in case of ordinary shutdown

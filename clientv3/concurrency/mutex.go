@@ -24,24 +24,22 @@ import (
 
 // Mutex implements the sync Locker interface with etcd
 type Mutex struct {
-	client *v3.Client
+	s *Session
 
 	pfx   string
 	myKey string
 	myRev int64
 }
 
-func NewMutex(client *v3.Client, pfx string) *Mutex {
-	return &Mutex{client, pfx, "", -1}
+func NewMutex(s *Session, pfx string) *Mutex {
+	return &Mutex{s, pfx, "", -1}
 }
 
 // Lock locks the mutex with a cancellable context. If the context is cancelled
 // while trying to acquire the lock, the mutex tries to clean its stale lock entry.
 func (m *Mutex) Lock(ctx context.Context) error {
-	s, serr := NewSession(m.client)
-	if serr != nil {
-		return serr
-	}
+	s := m.s
+	client := m.s.Client()
 
 	m.myKey = fmt.Sprintf("%s/%x", m.pfx, s.Lease())
 	cmp := v3.Compare(v3.CreateRevision(m.myKey), "=", 0)
@@ -49,7 +47,7 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	put := v3.OpPut(m.myKey, "", v3.WithLease(s.Lease()))
 	// reuse key in case this session already holds the lock
 	get := v3.OpGet(m.myKey)
-	resp, err := m.client.Txn(ctx).If(cmp).Then(put).Else(get).Commit()
+	resp, err := client.Txn(ctx).If(cmp).Then(put).Else(get).Commit()
 	if err != nil {
 		return err
 	}
@@ -59,18 +57,19 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	}
 
 	// wait for deletion revisions prior to myKey
-	err = waitDeletes(ctx, m.client, m.pfx, v3.WithPrefix(), v3.WithRev(m.myRev-1))
+	err = waitDeletes(ctx, client, m.pfx, v3.WithPrefix(), v3.WithRev(m.myRev-1))
 	// release lock key if cancelled
 	select {
 	case <-ctx.Done():
-		m.Unlock(m.client.Ctx())
+		m.Unlock(client.Ctx())
 	default:
 	}
 	return err
 }
 
 func (m *Mutex) Unlock(ctx context.Context) error {
-	if _, err := m.client.Delete(ctx, m.myKey); err != nil {
+	client := m.s.Client()
+	if _, err := client.Delete(ctx, m.myKey); err != nil {
 		return err
 	}
 	m.myKey = "\x00"
@@ -87,17 +86,19 @@ func (m *Mutex) Key() string { return m.myKey }
 type lockerMutex struct{ *Mutex }
 
 func (lm *lockerMutex) Lock() {
-	if err := lm.Mutex.Lock(lm.client.Ctx()); err != nil {
+	client := lm.s.Client()
+	if err := lm.Mutex.Lock(client.Ctx()); err != nil {
 		panic(err)
 	}
 }
 func (lm *lockerMutex) Unlock() {
-	if err := lm.Mutex.Unlock(lm.client.Ctx()); err != nil {
+	client := lm.s.Client()
+	if err := lm.Mutex.Unlock(client.Ctx()); err != nil {
 		panic(err)
 	}
 }
 
 // NewLocker creates a sync.Locker backed by an etcd mutex.
-func NewLocker(client *v3.Client, pfx string) sync.Locker {
-	return &lockerMutex{NewMutex(client, pfx)}
+func NewLocker(s *Session, pfx string) sync.Locker {
+	return &lockerMutex{NewMutex(s, pfx)}
 }
