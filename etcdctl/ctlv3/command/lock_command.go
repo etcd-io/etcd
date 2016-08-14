@@ -37,7 +37,7 @@ func NewLockCommand() *cobra.Command {
 
 func lockCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, errors.New("lock takes one lock name arguement."))
+		ExitWithError(ExitBadArgs, errors.New("lock takes one lock name argument."))
 	}
 	c := mustClientFromCmd(cmd)
 	if err := lockUntilSignal(c, args[0]); err != nil {
