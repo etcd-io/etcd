@@ -18,42 +18,6 @@
 // than linking against them.
 package util
 
-// #include <stdlib.h>
-// #include <sys/types.h>
-// #include <unistd.h>
-//
-// int
-// my_sd_pid_get_owner_uid(void *f, pid_t pid, uid_t *uid)
-// {
-//   int (*sd_pid_get_owner_uid)(pid_t, uid_t *);
-//
-//   sd_pid_get_owner_uid = (int (*)(pid_t, uid_t *))f;
-//   return sd_pid_get_owner_uid(pid, uid);
-// }
-//
-// int
-// my_sd_pid_get_unit(void *f, pid_t pid, char **unit)
-// {
-//   int (*sd_pid_get_unit)(pid_t, char **);
-//
-//   sd_pid_get_unit = (int (*)(pid_t, char **))f;
-//   return sd_pid_get_unit(pid, unit);
-// }
-//
-// int
-// my_sd_pid_get_slice(void *f, pid_t pid, char **slice)
-// {
-//   int (*sd_pid_get_slice)(pid_t, char **);
-//
-//   sd_pid_get_slice = (int (*)(pid_t, char **))f;
-//   return sd_pid_get_slice(pid, slice);
-// }
-//
-// int
-// am_session_leader()
-// {
-//   return (getsid(0) == getpid());
-// }
 import (
 	"fmt"
 	"io/ioutil"
@@ -61,14 +25,44 @@ import (
 	"strings"
 )
 
-var libsystemdNames = []string{
-	// systemd < 209
-	"libsystemd-login.so.0",
-	"libsystemd-login.so",
+var (
+	ErrNoCGO = fmt.Errorf("go-systemd built with CGO disabled")
+)
 
-	// systemd >= 209 merged libsystemd-login into libsystemd proper
-	"libsystemd.so.0",
-	"libsystemd.so",
+// GetRunningSlice attempts to retrieve the name of the systemd slice in which
+// the current process is running.
+// This function is a wrapper around the libsystemd C library; if it cannot be
+// opened, an error is returned.
+func GetRunningSlice() (string, error) {
+	return getRunningSlice()
+}
+
+// RunningFromSystemService tries to detect whether the current process has
+// been invoked from a system service. The condition for this is whether the
+// process is _not_ a user process. User processes are those running in session
+// scopes or under per-user `systemd --user` instances.
+//
+// To avoid false positives on systems without `pam_systemd` (which is
+// responsible for creating user sessions), this function also uses a heuristic
+// to detect whether it's being invoked from a session leader process. This is
+// the case if the current process is executed directly from a service file
+// (e.g. with `ExecStart=/this/cmd`). Note that this heuristic will fail if the
+// command is instead launched in a subshell or similar so that it is not
+// session leader (e.g. `ExecStart=/bin/bash -c "/this/cmd"`)
+//
+// This function is a wrapper around the libsystemd C library; if this is
+// unable to successfully open a handle to the library for any reason (e.g. it
+// cannot be found), an error will be returned.
+func RunningFromSystemService() (bool, error) {
+	return runningFromSystemService()
+}
+
+// CurrentUnitName attempts to retrieve the name of the systemd system unit
+// from which the calling process has been invoked. It wraps the systemd
+// `sd_pid_get_unit` call, with the same caveat: for processes not part of a
+// systemd system unit, this function will return an error.
+func CurrentUnitName() (string, error) {
+	return currentUnitName()
 }
 
 // IsRunningSystemd checks whether the host was booted with systemd as its init

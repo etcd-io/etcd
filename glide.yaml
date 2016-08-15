@@ -1,0 +1,150 @@
+package: github.com/coreos/etcd
+import:
+- package: bitbucket.org/ww/goautoneg
+  version: '''75cd24fc2f2c2a2088577d12123ddee5f54e0675'''
+- package: github.com/akrennmair/gopcap
+  version: 00e11033259acb75598ba416495bb708d864a010
+- package: github.com/beorn7/perks
+  version: b965b613227fddccbfffe13eae360ed3fa822f8d
+  subpackages:
+  - quantile
+- package: github.com/bgentry/speakeasy
+  version: 36e9cfdd690967f4f690c6edcc9ffacd006014a0
+- package: github.com/boltdb/bolt
+  version: dfb21201d9270c1082d5fb0f07f500311ff72f18
+- package: github.com/cockroachdb/cmux
+  version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
+- package: github.com/coreos/go-semver
+  version: 568e959cd89871e61434c1143528d9162da89ef2
+  subpackages:
+  - semver
+- package: github.com/coreos/go-systemd
+  version: bfdc81d0d7e0fb19447b08571f63b774495251ce
+  subpackages:
+  - daemon
+  - journal
+  - util
+- package: github.com/coreos/pkg
+  version: fa29b1d70f0beaddd4c7021607cc3c3be8ce94b8
+  subpackages:
+  - capnslog
+- package: github.com/cpuguy83/go-md2man
+  version: 71acacd42f85e5e82f70a55327789582a5200a90
+  subpackages:
+  - md2man
+- package: github.com/dustin/go-humanize
+  version: 8929fe90cee4b2cb9deb468b51fb34eba64d1bf0
+- package: github.com/ghodss/yaml
+  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- package: github.com/gogo/protobuf
+  version: e18d7aa8f8c624c915db340349aad4c49b10d173
+  subpackages:
+  - proto
+- package: github.com/golang/glog
+  version: 44145f04b68cf362d9c4df2182967c2275eaefed
+- package: github.com/golang/groupcache
+  version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
+  subpackages:
+  - lru
+- package: github.com/golang/protobuf
+  version: 8616e8ee5e20a1704615e6c8d7afcdac06087a67
+  subpackages:
+  - jsonpb
+  - proto
+- package: github.com/google/btree
+  version: 7d79101e329e5a3adf994758c578dab82b90c017
+- package: github.com/grpc-ecosystem/grpc-gateway
+  version: f52d055dc48aec25854ed7d31862f78913cf17d1
+  subpackages:
+  - runtime
+  - runtime/internal
+  - utilities
+- package: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- package: github.com/jonboulle/clockwork
+  version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
+- package: github.com/kballard/go-shellquote
+  version: d8ec1a69a250a17bb0e419c386eac1f3711dc142
+- package: github.com/kr/pty
+  version: f7ee69f31298ecbe5d2b349c711e2547a617d398
+- package: github.com/mattn/go-runewidth
+  version: d6bea18f789704b5f83375793155289da36a3c7f
+- package: github.com/matttproud/golang_protobuf_extensions
+  version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
+  subpackages:
+  - pbutil
+- package: github.com/olekukonko/tablewriter
+  version: cca8bbc0798408af109aaaa239cbd2634846b340
+- package: github.com/prometheus/client_golang
+  version: e51041b3fa41cece0dca035740ba6411905be473
+  subpackages:
+  - prometheus
+- package: github.com/prometheus/client_model
+  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  subpackages:
+  - go
+- package: github.com/prometheus/common
+  version: ffe929a3f4c4faeaa10f2b9535c2b1be3ad15650
+  subpackages:
+  - expfmt
+  - model
+- package: github.com/prometheus/procfs
+  version: 454a56f35412459b5e684fd5ec0f9211b94f002a
+- package: github.com/russross/blackfriday
+  version: 300106c228d52c8941d4b3de6054a6062a86dda3
+- package: github.com/shurcooL/sanitized_anchor_name
+  version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
+- package: github.com/spacejam/loghisto
+  version: 323309774dec8b7430187e46cd0793974ccca04a
+- package: github.com/spf13/cobra
+  version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
+- package: github.com/spf13/pflag
+  version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
+- package: github.com/stretchr/testify
+  version: 9cc77fa25329013ce07362c7742952ff887361f2
+  subpackages:
+  - assert
+- package: github.com/ugorji/go
+  version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
+  subpackages:
+  - codec
+- package: github.com/urfave/cli
+  version: 6011f165dc288c72abd8acd7722f837c5c64198d
+- package: github.com/xiang90/probing
+  version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
+- package: golang.org/x/crypto
+  version: 1351f936d976c60a0a48d728281922cf63eafb8d
+  subpackages:
+  - bcrypt
+  - blowfish
+- package: golang.org/x/net
+  version: 6acef71eb69611914f7a30939ea9f6e194c78172
+  subpackages:
+  - context
+  - http2
+  - http2/hpack
+  - internal/timeseries
+  - trace
+- package: golang.org/x/sys
+  version: 9c60d1c508f5134d1ca726b4641db998f2523357
+  subpackages:
+  - unix
+- package: golang.org/x/time
+  version: a4bde12657593d5e90d0533a3e4fd95e635124cb
+  subpackages:
+  - rate
+- package: google.golang.org/grpc
+  version: 02fca896ff5f50c6bbbee0860345a49344b37a03
+  subpackages:
+  - codes
+  - credentials
+  - grpclog
+  - internal
+  - metadata
+  - naming
+  - peer
+  - transport
+- package: gopkg.in/cheggaaa/pb.v1
+  version: 29ad9b62f9e0274422d738242b94a5b89440bfa6
+- package: gopkg.in/yaml.v2
+  version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
