@@ -43,8 +43,16 @@ func (tl *timeList) Wait(deadline time.Time) <-chan struct{} {
 	tl.l.Lock()
 	defer tl.l.Unlock()
 	ch := make(chan struct{}, 1)
-	// The given deadline SHOULD be unique.
-	tl.m[deadline.UnixNano()] = ch
+	// The given deadline SHOULD be unique but CI manages to get
+	// the same nano time in the unit tests.
+	nano := deadline.UnixNano()
+	for {
+		if tl.m[nano] == nil {
+			tl.m[nano] = ch
+			break
+		}
+		nano++
+	}
 	return ch
 }
 
