@@ -49,8 +49,9 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 	wp.mu.Unlock()
 
 	sws := serverWatchStream{
-		cw:     wp.cw,
-		groups: &wp.wgs,
+		cw:      wp.cw,
+		groups:  &wp.wgs,
+		singles: make(map[int64]*watcherSingle),
 
 		id:         wp.nextStreamID,
 		gRPCStream: stream,
