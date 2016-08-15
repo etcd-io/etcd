@@ -1,5 +1,5 @@
-hash: b8c8aebe162aaf9ba23295e348e4099476753911e408d867948e5f42bbff4ca5
-updated: 2016-08-15T12:09:23.38281433-07:00
+hash: d56fcba6f86aae631325ec24baa27b102e915f533ed63391807795f78e8c25f6
+updated: 2016-08-15T12:13:05.482527088-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -20,7 +20,7 @@ imports:
   subpackages:
   - semver
 - name: github.com/coreos/go-systemd
-  version: d6c05a1dcbb5ac02b7653da4d99e5db340c20778
+  version: bfdc81d0d7e0fb19447b08571f63b774495251ce
   subpackages:
   - daemon
   - journal
@@ -113,7 +113,7 @@ imports:
 - name: github.com/urfave/cli
   version: 6011f165dc288c72abd8acd7722f837c5c64198d
 - name: github.com/xiang90/probing
-  version: 95bd620af35406ab93d7f5bf320dba4b4667982e
+  version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
 - name: golang.org/x/crypto
   version: 1351f936d976c60a0a48d728281922cf63eafb8d
   subpackages:
