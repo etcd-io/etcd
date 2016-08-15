@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/cors"
+	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/ghodss/yaml"
@@ -33,13 +34,9 @@ const (
 	ClusterStateFlagNew      = "new"
 	ClusterStateFlagExisting = "existing"
 
-	DefaultName                     = "default"
-	DefaultInitialAdvertisePeerURLs = "http://localhost:2380"
-	DefaultAdvertiseClientURLs      = "http://localhost:2379"
-	DefaultListenPeerURLs           = "http://localhost:2380"
-	DefaultListenClientURLs         = "http://localhost:2379"
-	DefaultMaxSnapshots             = 5
-	DefaultMaxWALs                  = 5
+	DefaultName         = "default"
+	DefaultMaxSnapshots = 5
+	DefaultMaxWALs      = 5
 
 	// maxElectionMs specifies the maximum value of election timeout.
 	// More details are listed in ../Documentation/tuning.md#time-parameters.
@@ -50,7 +47,27 @@ var (
 	ErrConflictBootstrapFlags = fmt.Errorf("multiple discovery or bootstrap flags are set. " +
 		"Choose one of \"initial-cluster\", \"discovery\" or \"discovery-srv\"")
 	ErrUnsetAdvertiseClientURLsFlag = fmt.Errorf("--advertise-client-urls is required when --listen-client-urls is set explicitly")
+
+	DefaultListenPeerURLs           = "http://localhost:2380"
+	DefaultListenClientURLs         = "http://localhost:2379"
+	DefaultInitialAdvertisePeerURLs = "http://localhost:2380"
+	DefaultAdvertiseClientURLs      = "http://localhost:2379"
+
+	defaultHostname   string = "localhost"
+	defaultHostStatus error
 )
+
+func init() {
+	ip, err := netutil.GetDefaultHost()
+	if err != nil {
+		defaultHostStatus = err
+		return
+	}
+	// found default host, advertise on it
+	DefaultInitialAdvertisePeerURLs = "http://" + ip + ":2380"
+	DefaultAdvertiseClientURLs = "http://" + ip + ":2379"
+	defaultHostname = ip
+}
 
 // Config holds the arguments for configuring an etcd server.
 type Config struct {
@@ -317,3 +334,15 @@ func (cfg Config) InitialClusterFromName(name string) (ret string) {
 
 func (cfg Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
 func (cfg Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
+
+// IsDefaultHost returns the default hostname, if used, and the error, if any,
+// from getting the machine's default host.
+func (cfg Config) IsDefaultHost() (string, error) {
+	if len(cfg.APUrls) == 1 && cfg.APUrls[0].String() == DefaultInitialAdvertisePeerURLs {
+		return defaultHostname, defaultHostStatus
+	}
+	if len(cfg.ACUrls) == 1 && cfg.ACUrls[0].String() == DefaultAdvertiseClientURLs {
+		return defaultHostname, defaultHostStatus
+	}
+	return "", defaultHostStatus
+}
