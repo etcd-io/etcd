@@ -413,7 +413,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("stream reader is stopped")
 	default:
 	}
-	cr.cancel = httputil.RequestCanceler(cr.tr.streamRt, req)
+	cr.cancel = httputil.RequestCanceler(req)
 	cr.mu.Unlock()
 
 	resp, err := cr.tr.streamRt.RoundTrip(req)

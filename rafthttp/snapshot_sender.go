@@ -103,7 +103,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 // post posts the given request.
 // It returns nil when request is sent out and processed successfully.
 func (s *snapshotSender) post(req *http.Request) (err error) {
-	cancel := httputil.RequestCanceler(s.tr.pipelineRt, req)
+	cancel := httputil.RequestCanceler(req)
 
 	type responseAndError struct {
 		resp *http.Response
