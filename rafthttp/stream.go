@@ -443,18 +443,14 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	case http.StatusGone:
 		httputil.GracefulClose(resp)
 		cr.picker.unreachable(u)
-		err := fmt.Errorf("the member has been permanently removed from the cluster")
-		select {
-		case cr.errorc <- err:
-		default:
-		}
-		return nil, err
+		reportCriticalError(errMemberRemoved, cr.errorc)
+		return nil, errMemberRemoved
 	case http.StatusOK:
 		return resp.Body, nil
 	case http.StatusNotFound:
 		httputil.GracefulClose(resp)
 		cr.picker.unreachable(u)
-		return nil, fmt.Errorf("peer %s faild to fine local node %s", cr.peerID, cr.tr.ID)
+		return nil, fmt.Errorf("peer %s failed to find local node %s", cr.peerID, cr.tr.ID)
 	case http.StatusPreconditionFailed:
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
