@@ -145,7 +145,11 @@ func doSTM(ctx context.Context, client *v3.Client, requests <-chan stmApply) {
 
 	var m *v3sync.Mutex
 	if stmMutex {
-		m = v3sync.NewMutex(client, "stmlock")
+		s, err := v3sync.NewSession(client)
+		if err != nil {
+			panic(err)
+		}
+		m = v3sync.NewMutex(s, "stmlock")
 	}
 
 	for applyf := range requests {
