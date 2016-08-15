@@ -41,5 +41,5 @@ if (-not $env:GOPATH) {
 $env:CGO_ENABLED = 0
 $env:GO15VENDOREXPERIMENT = 1
 $GIT_SHA="$(git rev-parse --short HEAD)"
-go build -a -installsuffix cgo -ldflags "-s -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA" -o bin\etcd.exe "$REPO_PATH\cmd"
+go build -a -installsuffix cgo -ldflags "-s -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA" -o bin\etcd.exe "$REPO_PATH\cmd\etcd"
 go build -a -installsuffix cgo -ldflags "-s" -o bin\etcdctl.exe "$REPO_PATH\cmd\etcdctl"

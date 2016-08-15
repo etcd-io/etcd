@@ -42,7 +42,7 @@ before_install:
 
 # disable godep restore override
 install:
- - pushd cmd/ && go get -t -v ./... && popd
+ - pushd cmd/etcd && go get -t -v ./... && popd
 
 script:
  - >
