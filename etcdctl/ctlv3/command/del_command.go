@@ -60,7 +60,7 @@ func getDelOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	key := args[0]
 	if len(args) > 1 {
 		if delPrefix {
-			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments, only accept one arguement when `--prefix` is set."))
+			ExitWithError(ExitBadArgs, fmt.Errorf("too many arguments, only accept one argument when `--prefix` is set."))
 		}
 		opts = append(opts, clientv3.WithRange(args[1]))
 	}

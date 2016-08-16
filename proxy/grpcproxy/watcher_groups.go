@@ -72,10 +72,10 @@ func (wgs *watchergroups) maybeJoinWatcherSingle(rid receiverID, ws watcherSingl
 	wgs.mu.Lock()
 	defer wgs.mu.Unlock()
 
-	gropu, ok := wgs.groups[ws.w.wr]
+	group, ok := wgs.groups[ws.w.wr]
 	if ok {
-		if ws.w.rev >= gropu.rev {
-			gropu.add(receiverID{streamID: ws.sws.id, watcherID: ws.w.id}, ws.w)
+		if ws.w.rev >= group.rev {
+			group.add(receiverID{streamID: ws.sws.id, watcherID: ws.w.id}, ws.w)
 			return true
 		}
 		return false

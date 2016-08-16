@@ -427,7 +427,7 @@ func etcdctlBackup(clus *etcdProcessCluster, dataDir, backupDir string) error {
 }
 
 func mustEtcdctl(t *testing.T) {
-	if !fileutil.Exist("../bin/etcdctl") {
+	if !fileutil.Exist(binDir + "/etcdctl") {
 		t.Fatalf("could not find etcdctl binary")
 	}
 }

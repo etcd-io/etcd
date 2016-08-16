@@ -25,15 +25,25 @@ import (
 func TestDoubleBarrier(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-	defer dropSessionLease(clus)
 
 	waiters := 10
+	session, err := concurrency.NewSession(clus.RandClient())
+	if err != nil {
+		t.Error(err)
+	}
+	defer session.Orphan()
 
-	b := recipe.NewDoubleBarrier(clus.RandClient(), "test-barrier", waiters)
+	b := recipe.NewDoubleBarrier(session, "test-barrier", waiters)
 	donec := make(chan struct{})
 	for i := 0; i < waiters-1; i++ {
 		go func() {
-			bb := recipe.NewDoubleBarrier(clus.RandClient(), "test-barrier", waiters)
+			session, err := concurrency.NewSession(clus.RandClient())
+			if err != nil {
+				t.Error(err)
+			}
+			defer session.Orphan()
+
+			bb := recipe.NewDoubleBarrier(session, "test-barrier", waiters)
 			if err := bb.Enter(); err != nil {
 				t.Fatalf("could not enter on barrier (%v)", err)
 			}
@@ -86,15 +96,25 @@ func TestDoubleBarrier(t *testing.T) {
 func TestDoubleBarrierFailover(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-	defer dropSessionLease(clus)
 
 	waiters := 10
 	donec := make(chan struct{})
 
+	s0, err := concurrency.NewSession(clus.clients[0])
+	if err != nil {
+		t.Error(err)
+	}
+	defer s0.Orphan()
+	s1, err := concurrency.NewSession(clus.clients[0])
+	if err != nil {
+		t.Error(err)
+	}
+	defer s1.Orphan()
+
 	// sacrificial barrier holder; lease will be revoked
 	go func() {
-		b := recipe.NewDoubleBarrier(clus.clients[0], "test-barrier", waiters)
-		if err := b.Enter(); err != nil {
+		b := recipe.NewDoubleBarrier(s0, "test-barrier", waiters)
+		if err = b.Enter(); err != nil {
 			t.Fatalf("could not enter on barrier (%v)", err)
 		}
 		donec <- struct{}{}
@@ -102,8 +122,8 @@ func TestDoubleBarrierFailover(t *testing.T) {
 
 	for i := 0; i < waiters-1; i++ {
 		go func() {
-			b := recipe.NewDoubleBarrier(clus.clients[1], "test-barrier", waiters)
-			if err := b.Enter(); err != nil {
+			b := recipe.NewDoubleBarrier(s1, "test-barrier", waiters)
+			if err = b.Enter(); err != nil {
 				t.Fatalf("could not enter on barrier (%v)", err)
 			}
 			donec <- struct{}{}
@@ -120,12 +140,8 @@ func TestDoubleBarrierFailover(t *testing.T) {
 			t.Fatalf("timed out waiting for enter, %d", i)
 		}
 	}
-	// kill lease, expect Leave unblock
-	s, err := concurrency.NewSession(clus.clients[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = s.Close(); err != nil {
+
+	if err = s0.Close(); err != nil {
 		t.Fatal(err)
 	}
 	// join on rest of waiters
@@ -135,12 +151,5 @@ func TestDoubleBarrierFailover(t *testing.T) {
 		case <-time.After(10 * time.Second):
 			t.Fatalf("timed out waiting for leave, %d", i)
 		}
-	}
-}
-
-func dropSessionLease(clus *ClusterV3) {
-	for _, client := range clus.clients {
-		s, _ := concurrency.NewSession(client)
-		s.Orphan()
 	}
 }

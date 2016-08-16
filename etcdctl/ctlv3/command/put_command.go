@@ -42,7 +42,7 @@ Insert '--' for workaround:
 $ put <key> -- <value>
 $ put -- <key> <value>
 
-If <value> isn't given as command line arguement, this command tries to read the value from standard input.
+If <value> isn't given as command line argument, this command tries to read the value from standard input.
 For example,
 $ cat file | put <key>
 will store the content of the file to <key>.

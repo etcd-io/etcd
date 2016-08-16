@@ -332,7 +332,16 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 	default:
 		plog.Panicf("unhandled stream type %s", t)
 	}
-	cr.closer = rc
+	select {
+	case <-cr.stopc:
+		cr.mu.Unlock()
+		if err := rc.Close(); err != nil {
+			return err
+		}
+		return io.EOF
+	default:
+		cr.closer = rc
+	}
 	cr.mu.Unlock()
 
 	for {
@@ -413,7 +422,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("stream reader is stopped")
 	default:
 	}
-	cr.cancel = httputil.RequestCanceler(cr.tr.streamRt, req)
+	cr.cancel = httputil.RequestCanceler(req)
 	cr.mu.Unlock()
 
 	resp, err := cr.tr.streamRt.RoundTrip(req)
@@ -434,18 +443,14 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	case http.StatusGone:
 		httputil.GracefulClose(resp)
 		cr.picker.unreachable(u)
-		err := fmt.Errorf("the member has been permanently removed from the cluster")
-		select {
-		case cr.errorc <- err:
-		default:
-		}
-		return nil, err
+		reportCriticalError(errMemberRemoved, cr.errorc)
+		return nil, errMemberRemoved
 	case http.StatusOK:
 		return resp.Body, nil
 	case http.StatusNotFound:
 		httputil.GracefulClose(resp)
 		cr.picker.unreachable(u)
-		return nil, fmt.Errorf("peer %s faild to fine local node %s", cr.peerID, cr.tr.ID)
+		return nil, fmt.Errorf("peer %s failed to find local node %s", cr.peerID, cr.tr.ID)
 	case http.StatusPreconditionFailed:
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {

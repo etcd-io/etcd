@@ -101,6 +101,7 @@ func (s *status) reset() {
 
 	s.srtt = 0
 	s.total = 0
+	s.loss = 0
 	s.health = false
 	s.clockdiff = 0
 	s.err = nil

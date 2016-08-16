@@ -39,7 +39,7 @@ const (
 	maxV3RequestTimeout = 5 * time.Second
 
 	// In the health case, there might be a small gap (10s of entries) between
-	// the applied index and commited index.
+	// the applied index and committed index.
 	// However, if the committed entries are very heavy to apply, the gap might grow.
 	// We should stop accepting new proposals if the gap growing to a certain point.
 	maxGapBetweenApplyAndCommitIndex = 1000

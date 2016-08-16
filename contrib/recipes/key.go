@@ -160,12 +160,8 @@ func (rk *RemoteKV) Put(val string) error {
 type EphemeralKV struct{ RemoteKV }
 
 // NewEphemeralKV creates a new key/value pair associated with a session lease
-func NewEphemeralKV(client *v3.Client, key, val string) (*EphemeralKV, error) {
-	s, err := concurrency.NewSession(client)
-	if err != nil {
-		return nil, err
-	}
-	k, err := NewKV(client, key, val, s.Lease())
+func NewEphemeralKV(s *concurrency.Session, key, val string) (*EphemeralKV, error) {
+	k, err := NewKV(s.Client(), key, val, s.Lease())
 	if err != nil {
 		return nil, err
 	}
@@ -173,15 +169,15 @@ func NewEphemeralKV(client *v3.Client, key, val string) (*EphemeralKV, error) {
 }
 
 // NewUniqueEphemeralKey creates a new unique valueless key associated with a session lease
-func NewUniqueEphemeralKey(client *v3.Client, prefix string) (*EphemeralKV, error) {
-	return NewUniqueEphemeralKV(client, prefix, "")
+func NewUniqueEphemeralKey(s *concurrency.Session, prefix string) (*EphemeralKV, error) {
+	return NewUniqueEphemeralKV(s, prefix, "")
 }
 
 // NewUniqueEphemeralKV creates a new unique key/value pair associated with a session lease
-func NewUniqueEphemeralKV(client *v3.Client, prefix, val string) (ek *EphemeralKV, err error) {
+func NewUniqueEphemeralKV(s *concurrency.Session, prefix, val string) (ek *EphemeralKV, err error) {
 	for {
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
-		ek, err = NewEphemeralKV(client, newKey, val)
+		ek, err = NewEphemeralKV(s, newKey, val)
 		if err == nil || err != ErrKeyExists {
 			break
 		}
