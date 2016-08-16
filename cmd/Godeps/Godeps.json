@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/coreos/etcd",
-	"GoVersion": "devel-a6dbfc1",
+	"GoVersion": "go1.7",
 	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
@@ -237,48 +237,48 @@
 		},
 		{
 			"ImportPath": "google.golang.org/grpc",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/codes",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/credentials",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/grpclog",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/internal",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/metadata",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/naming",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/peer",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "google.golang.org/grpc/transport",
-			"Comment": "v1.0.0-6-g02fca89",
-			"Rev": "02fca896ff5f50c6bbbee0860345a49344b37a03"
+			"Comment": "v1.0.0-174-gc278196",
+			"Rev": "c2781963b3af261a37e0f14fdcb7c1fa13259e1f"
 		},
 		{
 			"ImportPath": "gopkg.in/cheggaaa/pb.v1",
