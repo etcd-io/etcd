@@ -49,7 +49,7 @@ script:
  - >
     case "${TARGET}" in
       amd64)
-        GOARCH=amd64 ./test
+        GOARCH=amd64 PASSES="fmt dep compile build unit" ./test
         ;;
       386)
         GOARCH=386 PASSES="build unit" ./test
