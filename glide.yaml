@@ -148,3 +148,7 @@ import:
   version: 29ad9b62f9e0274422d738242b94a5b89440bfa6
 - package: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+- package: github.com/coreos/gofail
+  version: 5265c3c0ac338f99d5672678bc40bf0ed819671a
+  subpackages:
+  - runtime
