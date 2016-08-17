@@ -21,28 +21,28 @@ import (
 
 func TestWaitTime(t *testing.T) {
 	wt := NewTimeList()
-	ch1 := wt.Wait(time.Now())
 	t1 := time.Now()
-	wt.Trigger(t1)
+	ch1 := wt.Wait(t1)
+	wt.Trigger(time.Unix(0, t1.UnixNano()+1))
 	select {
 	case <-ch1:
-	case <-time.After(100 * time.Millisecond):
+	default:
 		t.Fatalf("cannot receive from ch as expected")
 	}
 
-	ch2 := wt.Wait(time.Now())
 	t2 := time.Now()
-	wt.Trigger(t1)
-	select {
-	case <-ch2:
-		t.Fatalf("unexpected to receive from ch")
-	case <-time.After(10 * time.Millisecond):
-	}
+	ch2 := wt.Wait(t2)
 	wt.Trigger(t2)
 	select {
 	case <-ch2:
-	case <-time.After(10 * time.Millisecond):
-		t.Fatalf("cannot receive from ch as expected")
+		t.Fatalf("unexpected to receive from ch2")
+	default:
+	}
+	wt.Trigger(time.Unix(0, t2.UnixNano()+1))
+	select {
+	case <-ch2:
+	default:
+		t.Fatalf("cannot receive from ch2 as expected")
 	}
 }
 
