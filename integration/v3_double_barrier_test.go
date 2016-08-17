@@ -114,8 +114,8 @@ func TestDoubleBarrierFailover(t *testing.T) {
 	// sacrificial barrier holder; lease will be revoked
 	go func() {
 		b := recipe.NewDoubleBarrier(s0, "test-barrier", waiters)
-		if err = b.Enter(); err != nil {
-			t.Fatalf("could not enter on barrier (%v)", err)
+		if berr := b.Enter(); berr != nil {
+			t.Fatalf("could not enter on barrier (%v)", berr)
 		}
 		donec <- struct{}{}
 	}()
@@ -123,8 +123,8 @@ func TestDoubleBarrierFailover(t *testing.T) {
 	for i := 0; i < waiters-1; i++ {
 		go func() {
 			b := recipe.NewDoubleBarrier(s1, "test-barrier", waiters)
-			if err = b.Enter(); err != nil {
-				t.Fatalf("could not enter on barrier (%v)", err)
+			if berr := b.Enter(); berr != nil {
+				t.Fatalf("could not enter on barrier (%v)", berr)
 			}
 			donec <- struct{}{}
 			b.Leave()
