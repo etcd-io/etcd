@@ -39,6 +39,7 @@ type cluster struct {
 
 	datadir              string
 	stressQPS            int
+	stressKeyLargeSize   int
 	stressKeySize        int
 	stressKeySuffixRange int
 
@@ -111,6 +112,7 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 		} else {
 			c.Stressers[i] = &stresser{
 				Endpoint:       m.grpcAddr(),
+				keyLargeSize:   c.stressKeyLargeSize,
 				keySize:        c.stressKeySize,
 				keySuffixRange: c.stressKeySuffixRange,
 				N:              stressN,
