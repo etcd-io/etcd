@@ -29,7 +29,8 @@ var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-tester")
 func main() {
 	endpointStr := flag.String("agent-endpoints", "localhost:9027", "HTTP RPC endpoints of agents. Do not specify the schema.")
 	datadir := flag.String("data-dir", "agent.etcd", "etcd data directory location on agent machine.")
-	stressKeySize := flag.Uint("stress-key-size", 100, "the size of each key written into etcd.")
+	stressKeyLargeSize := flag.Uint("stress-key-large-size", 32*1024+1, "the size of each large key written into etcd.")
+	stressKeySize := flag.Uint("stress-key-size", 100, "the size of each small key written into etcd.")
 	stressKeySuffixRange := flag.Uint("stress-key-count", 250000, "the count of key range written into etcd.")
 	limit := flag.Int("limit", -1, "the limit of rounds to run failure set (-1 to run without limits).")
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
@@ -42,6 +43,7 @@ func main() {
 		v2Only:               *isV2Only,
 		datadir:              *datadir,
 		stressQPS:            *stressQPS,
+		stressKeyLargeSize:   int(*stressKeyLargeSize),
 		stressKeySize:        int(*stressKeySize),
 		stressKeySuffixRange: int(*stressKeySuffixRange),
 	}

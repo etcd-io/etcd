@@ -135,6 +135,7 @@ type Stresser interface {
 type stresser struct {
 	Endpoint string
 
+	keyLargeSize   int
 	keySize        int
 	keySuffixRange int
 
@@ -179,6 +180,10 @@ func (s *stresser) Stress() error {
 
 	var stressEntries = []stressEntry{
 		{weight: 0.7, f: newStressPut(kvc, s.keySuffixRange, s.keySize)},
+		{
+			weight: 0.7 * float32(s.keySize) / float32(s.keyLargeSize),
+			f:      newStressPut(kvc, s.keySuffixRange, s.keyLargeSize),
+		},
 		{weight: 0.07, f: newStressRange(kvc, s.keySuffixRange)},
 		{weight: 0.07, f: newStressRangeInterval(kvc, s.keySuffixRange)},
 		{weight: 0.07, f: newStressDelete(kvc, s.keySuffixRange)},
