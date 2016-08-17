@@ -50,7 +50,9 @@ func TestNetworkPartition5MembersLeaderInMinority(t *testing.T) {
 
 	// recover network partition (bi-directional)
 	recoverPartition(t, minorityMembers, majorityMembers)
-	clusterMustProgress(t, clus.Members)
+
+	// write to majority first
+	clusterMustProgress(t, append(majorityMembers, minorityMembers...))
 }
 
 func TestNetworkPartition5MembersLeaderInMajority(t *testing.T) {
@@ -86,7 +88,9 @@ func TestNetworkPartition5MembersLeaderInMajority(t *testing.T) {
 
 	// recover network partition (bi-directional)
 	recoverPartition(t, majorityMembers, minorityMembers)
-	clusterMustProgress(t, clus.Members)
+
+	// write to majority first
+	clusterMustProgress(t, append(majorityMembers, minorityMembers...))
 }
 
 func TestNetworkPartition4Members(t *testing.T) {
@@ -112,6 +116,10 @@ func TestNetworkPartition4Members(t *testing.T) {
 
 	// recover network partition (bi-directional)
 	recoverPartition(t, leaderPartition, followerPartition)
+
+	// need to wait since it recovered with no leader
+	clus.WaitLeader(t)
+
 	clusterMustProgress(t, clus.Members)
 }
 
