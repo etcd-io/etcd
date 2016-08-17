@@ -32,7 +32,7 @@ import (
 )
 
 func init() {
-	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
+	capnslog.SetGlobalLogLevel(capnslog.INFO)
 }
 
 func TestV2Set(t *testing.T) {
