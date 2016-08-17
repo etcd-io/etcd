@@ -1,5 +1,5 @@
-hash: c04a6b4fa79b3e780e38f875e3863551c8a7e5a1d1020b9a3a06268d50e592e3
-updated: 2016-08-15T15:51:12.533454067-07:00
+hash: 772308b285e752f35b2e87f75271501d23bbd9e72840dd1980fc6cf38a406b69
+updated: 2016-08-16T16:30:32.22550013-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -64,7 +64,7 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jonboulle/clockwork
-  version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
+  version: 2eee05ed794112d45db504eb05aa693efd2b8b09
 - name: github.com/kballard/go-shellquote
   version: d8ec1a69a250a17bb0e419c386eac1f3711dc142
 - name: github.com/kr/pty
