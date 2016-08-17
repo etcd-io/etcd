@@ -801,14 +801,19 @@ func (s *EtcdServer) transferLeadership(ctx context.Context, lead, transferee ui
 
 	// TODO: drain all requests, or drop all messages to the old leader
 
-	plog.Infof("%s finished leadership transfer from %s to to %s (took %v)", s.ID(), types.ID(lead), types.ID(transferee), time.Since(now))
+	plog.Infof("%s finished leadership transfer from %s to %s (took %v)", s.ID(), types.ID(lead), types.ID(transferee), time.Since(now))
 	return nil
 }
 
 // TransferLeadership transfers the leader to the chosen transferee.
 func (s *EtcdServer) TransferLeadership() error {
-	if !s.isMultiNode() || !s.isLeader() {
-		plog.Printf("skipping leader transfer since multi-node %v or is-leader %v", s.isMultiNode(), s.isLeader())
+	if !s.isLeader() {
+		plog.Printf("skipped leadership transfer for stopping non-leader member")
+		return nil
+	}
+
+	if !s.isMultiNode() {
+		plog.Printf("skipped leadership transfer for single member cluster")
 		return nil
 	}
 
