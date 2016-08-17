@@ -1,3 +1,9 @@
+etcd v3.0.5 (2016-08-19)
+
+  - SRV records (e.g., infra1.example.com) must match the discovery domain
+    (i.e., example.com) when using the default certificate authority.
+
+
 etcd v3.0.4 (2016-07-27)
 
   - v2 auth can now use common name from TLS certificate when --client-cert-auth is enabled
