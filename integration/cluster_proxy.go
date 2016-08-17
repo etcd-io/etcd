@@ -17,24 +17,34 @@
 package integration
 
 import (
+	"sync"
+
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/proxy/grpcproxy"
 )
 
-var proxies map[*clientv3.Client]grpcAPI = make(map[*clientv3.Client]grpcAPI)
+var (
+	pmu     sync.Mutex
+	proxies map[*clientv3.Client]grpcAPI = make(map[*clientv3.Client]grpcAPI)
+)
 
 func toGRPC(c *clientv3.Client) grpcAPI {
+	pmu.Lock()
+	defer pmu.Unlock()
+
 	if v, ok := proxies[c]; ok {
 		return v
 	}
-	return grpcAPI{
+	api := grpcAPI{
 		pb.NewClusterClient(c.ActiveConnection()),
 		grpcproxy.KvServerToKvClient(grpcproxy.NewKvProxy(c)),
 		pb.NewLeaseClient(c.ActiveConnection()),
 		grpcproxy.WatchServerToWatchClient(grpcproxy.NewWatchProxy(c)),
 		pb.NewMaintenanceClient(c.ActiveConnection()),
 	}
+	proxies[c] = api
+	return api
 }
 
 func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
@@ -43,7 +53,7 @@ func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
 		return nil, err
 	}
 
-	proxies[c] = toGRPC(c)
+	toGRPC(c)
 	c.KV = clientv3.NewKVFromKVClient(grpcproxy.KvServerToKvClient(grpcproxy.NewKvProxy(c)))
 	c.Watcher = clientv3.NewWatchFromWatchClient(grpcproxy.WatchServerToWatchClient(grpcproxy.NewWatchProxy(c)))
 	return c, nil
