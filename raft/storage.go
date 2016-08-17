@@ -25,6 +25,10 @@ import (
 // index is unavailable because it predates the last snapshot.
 var ErrCompacted = errors.New("requested index is unavailable due to compaction")
 
+// ErrTermUnavailable is returned by Storage interface when the requested Term
+// is unavailable for the index.
+var ErrTermUnavailable = errors.New("requested term at index is unavailable")
+
 // ErrSnapOutOfDate is returned by Storage.CreateSnapshot when a requested
 // index is older than the existing snapshot.
 var ErrSnapOutOfDate = errors.New("requested index is older than the existing snapshot")
@@ -129,6 +133,9 @@ func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 	offset := ms.ents[0].Index
 	if i < offset {
 		return 0, ErrCompacted
+	}
+	if int(i-offset) >= len(ms.ents) {
+		return 0, ErrTermUnavailable
 	}
 	return ms.ents[i-offset].Term, nil
 }
