@@ -698,22 +698,16 @@ func TestTerm(t *testing.T) {
 	tests := []struct {
 		index uint64
 		w     uint64
-		werr  error
 	}{
-		{offset - 1, 0, ErrTermUnavailable},
-		{offset, 1, nil},
-		{offset + num/2, num / 2, nil},
-		{offset + num - 1, num - 1, nil},
-		{offset + num, 0, ErrTermUnavailable},
+		{offset - 1, 0},
+		{offset, 1},
+		{offset + num/2, num / 2},
+		{offset + num - 1, num - 1},
+		{offset + num, 0},
 	}
 
 	for j, tt := range tests {
-		term, err := l.term(tt.index)
-
-		if err != tt.werr {
-			t.Errorf("#%d: at = %d, got: %d, want %d", j, term, err, tt.werr)
-		}
-
+		term := mustTerm(l.term(tt.index))
 		if term != tt.w {
 			t.Errorf("#%d: at = %d, want %d", j, term, tt.w)
 		}
@@ -732,25 +726,20 @@ func TestTermWithUnstableSnapshot(t *testing.T) {
 	tests := []struct {
 		index uint64
 		w     uint64
-		werr  error
 	}{
 		// cannot get term from storage
-		{storagesnapi, 0, ErrTermUnavailable},
+		{storagesnapi, 0},
 		// cannot get term from the gap between storage ents and unstable snapshot
-		{storagesnapi + 1, 0, ErrTermUnavailable},
-		{unstablesnapi - 1, 0, ErrTermUnavailable},
+		{storagesnapi + 1, 0},
+		{unstablesnapi - 1, 0},
 		// get term from unstable snapshot index
-		{unstablesnapi, 1, nil},
+		{unstablesnapi, 1},
 	}
 
-	for _, tt := range tests {
-		term, err := l.term(tt.index)
-		if err != tt.werr {
-			t.Errorf("#%d: at = %d, got: %d, want %d", tt.index, term, err, tt.werr)
-		}
-
+	for i, tt := range tests {
+		term := mustTerm(l.term(tt.index))
 		if term != tt.w {
-			t.Errorf("#%d: at = %d, want %d", tt.index, term, tt.w)
+			t.Errorf("#%d: at = %d, want %d", i, term, tt.w)
 		}
 	}
 }

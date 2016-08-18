@@ -220,7 +220,8 @@ func (l *raftLog) term(i uint64) (uint64, error) {
 	// the valid term range is [index of dummy entry, last index]
 	dummyIndex := l.firstIndex() - 1
 	if i < dummyIndex || i > l.lastIndex() {
-		return 0, ErrTermUnavailable
+		// TODO: return an error instead?
+		return 0, nil
 	}
 
 	if t, ok := l.unstable.maybeTerm(i); ok {
