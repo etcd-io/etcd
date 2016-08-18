@@ -39,14 +39,15 @@ etcd_build() {
 }
 
 etcd_setup_gopath() {
-	export GOPATH=${CDIR}/gopath
-	rm -f $GOPATH/src
-	mkdir -p $GOPATH
-	ln -s ${CDIR}/cmd/vendor $GOPATH/src
+	etcdGOPATH=${CDIR}/gopath
+	# preserve old gopath to support building with unvendored tooling deps (e.g., gofail)
+	export GOPATH=${etcdGOPATH}:$GOPATH
+	rm -f ${etcdGOPATH}/src
+	mkdir -p ${etcdGOPATH}
+	ln -s ${CDIR}/cmd/vendor ${etcdGOPATH}/src
 }
 
 toggle_failpoints
-etcd_setup_gopath
 
 # don't build when sourced
 (echo "$0" | grep "/build$" > /dev/null) && etcd_build || true

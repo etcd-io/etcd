@@ -20,11 +20,14 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
 func TestDialTimeout(t *testing.T) {
+	defer testutil.AfterTest(t)
+
 	donec := make(chan error)
 	go func() {
 		// without timeout, grpc keeps redialing if connection refused

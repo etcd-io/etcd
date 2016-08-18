@@ -736,14 +736,14 @@ func TestServeMembersCreate(t *testing.T) {
 		t.Errorf("cid = %s, want %s", gcid, wcid)
 	}
 
-	wb := `{"id":"2a86a83729b330d5","name":"","peerURLs":["http://127.0.0.1:1"],"clientURLs":[]}` + "\n"
+	wb := `{"id":"c29b431f04be0bc7","name":"","peerURLs":["http://127.0.0.1:1"],"clientURLs":[]}` + "\n"
 	g := rw.Body.String()
 	if g != wb {
 		t.Errorf("got body=%q, want %q", g, wb)
 	}
 
 	wm := membership.Member{
-		ID: 3064321551348478165,
+		ID: 14022875665250782151,
 		RaftAttributes: membership.RaftAttributes{
 			PeerURLs: []string{"http://127.0.0.1:1"},
 		},

@@ -1,5 +1,5 @@
-hash: d56fcba6f86aae631325ec24baa27b102e915f533ed63391807795f78e8c25f6
-updated: 2016-08-15T12:13:05.482527088-07:00
+hash: 772308b285e752f35b2e87f75271501d23bbd9e72840dd1980fc6cf38a406b69
+updated: 2016-08-16T16:30:32.22550013-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -64,7 +64,7 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jonboulle/clockwork
-  version: 72f9bd7c4e0c2a40055ab3d0f09654f730cce982
+  version: 2eee05ed794112d45db504eb05aa693efd2b8b09
 - name: github.com/kballard/go-shellquote
   version: d8ec1a69a250a17bb0e419c386eac1f3711dc142
 - name: github.com/kr/pty
@@ -136,7 +136,7 @@ imports:
   subpackages:
   - rate
 - name: google.golang.org/grpc
-  version: 02fca896ff5f50c6bbbee0860345a49344b37a03
+  version: c2781963b3af261a37e0f14fdcb7c1fa13259e1f
   subpackages:
   - codes
   - credentials

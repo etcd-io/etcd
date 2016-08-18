@@ -456,6 +456,10 @@ $ etcd --name infra2 \
 --listen-peer-urls http://10.0.1.12:2380
 ```
 
+### Gateway
+
+etcd gateway is a simple TCP proxy that forwards network data to the etcd cluster. Please read [gateway guide] for more information.
+
 ### Proxy
 
 When the `--proxy` flag is set, etcd runs in [proxy mode][proxy]. This proxy mode only supports the etcd v2 API; there are no plans to support the v3 API. Instead, for v3 API support, there will be a new proxy with enhanced features following the etcd 3.0 release.
@@ -472,3 +476,4 @@ To setup an etcd cluster with proxies of v2 API, please read the the [clustering
 [clustering_etcd2]: https://github.com/coreos/etcd/blob/release-2.3/Documentation/clustering.md
 [security-guide]: security.md
 [tls-setup]: /hack/tls-setup
+[gateway]: gateway.md

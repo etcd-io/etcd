@@ -12,6 +12,9 @@ set -e
 
 source ./build
 
+# build tests with vendored dependencies
+etcd_setup_gopath
+
 if [ -z "$PASSES" ]; then
 	PASSES="fmt dep compile build unit"
 fi
