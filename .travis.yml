@@ -54,6 +54,7 @@ script:
         GOARCH=386 PASSES="build unit" ./test
         ;;
       *)
-        GOARCH="${TARGET}" ./build
+        # test building out of gopath
+        GO_BUILD_FLAGS="-a -v" GOPATH=/bad-go-path GOARCH="${TARGET}" ./build
         ;;
     esac
