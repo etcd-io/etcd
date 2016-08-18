@@ -186,9 +186,8 @@ func (cw *streamWriter) run() {
 			cw.r.ReportUnreachable(m.To)
 
 		case conn := <-cw.connc:
-			if cw.close() {
-				plog.Warningf("closed an existing TCP streaming connection with peer %s (%s writer)", cw.peerID, t)
-			}
+			cw.mu.Lock()
+			closed := cw.closeUnlocked()
 			t = conn.t
 			switch conn.t {
 			case streamTypeMsgAppV2:
@@ -200,19 +199,22 @@ func (cw *streamWriter) run() {
 			}
 			flusher = conn.Flusher
 			unflushed = 0
-			cw.mu.Lock()
 			cw.status.activate()
 			cw.closer = conn.Closer
 			cw.working = true
 			cw.mu.Unlock()
+
+			if closed {
+				plog.Warningf("closed an existing TCP streaming connection with peer %s (%s writer)", cw.peerID, t)
+			}
 			plog.Infof("established a TCP streaming connection with peer %s (%s writer)", cw.peerID, t)
 			heartbeatc, msgc = tickc, cw.msgc
 		case <-cw.stopc:
 			if cw.close() {
 				plog.Infof("closed the TCP streaming connection with peer %s (%s writer)", cw.peerID, t)
 			}
-			close(cw.done)
 			plog.Infof("stopped streaming with peer %s (writer)", cw.peerID)
+			close(cw.done)
 			return
 		}
 	}
@@ -227,6 +229,10 @@ func (cw *streamWriter) writec() (chan<- raftpb.Message, bool) {
 func (cw *streamWriter) close() bool {
 	cw.mu.Lock()
 	defer cw.mu.Unlock()
+	return cw.closeUnlocked()
+}
+
+func (cw *streamWriter) closeUnlocked() bool {
 	if !cw.working {
 		return false
 	}

@@ -47,40 +47,33 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 	var wfc *fakeWriteFlushCloser
 	for i := 0; i < 3; i++ {
 		prevwfc := wfc
-		wfc = &fakeWriteFlushCloser{}
+		wfc = newFakeWriteFlushCloser(nil)
 		sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
 
-		// sw.attach happens asynchronously. Waits for its result in a for loop to make the
-		// test more robust on slow CI.
-		for j := 0; j < 3; j++ {
-			testutil.WaitSchedule()
-			// previous attached connection should be closed
-			if prevwfc != nil && !prevwfc.Closed() {
-				continue
-			}
-			// write chan is available
-			if _, ok := sw.writec(); !ok {
-				continue
-			}
-		}
-
 		// previous attached connection should be closed
-		if prevwfc != nil && !prevwfc.Closed() {
-			t.Errorf("#%d: close of previous connection = %v, want true", i, prevwfc.Closed())
-		}
-		// write chan is available
-		if _, ok := sw.writec(); !ok {
-			t.Errorf("#%d: working status = %v, want true", i, ok)
+		if prevwfc != nil {
+			select {
+			case <-prevwfc.closed:
+			case <-time.After(time.Second):
+				t.Errorf("#%d: close of previous connection timed out", i)
+			}
 		}
 
-		sw.msgc <- raftpb.Message{}
-		testutil.WaitSchedule()
-		// write chan is available
-		if _, ok := sw.writec(); !ok {
+		// msgc has been swapped with a new one now that prevwfc is closed
+		msgc, ok := sw.writec()
+		if !ok {
 			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
-		if wfc.Written() == 0 {
+		msgc <- raftpb.Message{}
+
+		select {
+		case <-wfc.writec:
+		case <-time.After(time.Second):
 			t.Errorf("#%d: failed to write to the underlying connection", i)
+		}
+		// write chan is still available
+		if _, ok := sw.writec(); !ok {
+			t.Errorf("#%d: working status = %v, want true", i, ok)
 		}
 	}
 
@@ -99,23 +92,24 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 	sw := startStreamWriter(types.ID(1), newPeerStatus(types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 	defer sw.stop()
-	wfc := &fakeWriteFlushCloser{err: errors.New("blah")}
+	wfc := newFakeWriteFlushCloser(errors.New("blah"))
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
 
 	sw.msgc <- raftpb.Message{}
-	testutil.WaitSchedule()
+	select {
+	case <-wfc.closed:
+	case <-time.After(time.Second):
+		t.Errorf("failed to close the underlying connection in time")
+	}
 	// no longer working
 	if _, ok := sw.writec(); ok {
 		t.Errorf("working = %v, want false", ok)
-	}
-	if !wfc.Closed() {
-		t.Errorf("failed to close the underlying connection")
 	}
 }
 
 func TestStreamReaderDialRequest(t *testing.T) {
 	for i, tt := range []streamType{streamTypeMessage, streamTypeMsgAppV2} {
-		tr := &roundTripperRecorder{}
+		tr := &roundTripperRecorder{rec: &testutil.RecorderBuffered{}}
 		sr := &streamReader{
 			peerID: types.ID(2),
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1), ID: types.ID(1)},
@@ -123,7 +117,12 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		}
 		sr.dial(tt)
 
-		req := tr.Request()
+		act, err := tr.rec.Wait(1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := act[0].Params[0].(*http.Request)
+
 		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint() + "/1")
 		if req.URL.String() != wurl {
 			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
@@ -377,13 +376,25 @@ type fakeWriteFlushCloser struct {
 	mu      sync.Mutex
 	err     error
 	written int
-	closed  bool
+	closed  chan struct{}
+	writec  chan struct{}
+}
+
+func newFakeWriteFlushCloser(err error) *fakeWriteFlushCloser {
+	return &fakeWriteFlushCloser{
+		err:    err,
+		closed: make(chan struct{}),
+		writec: make(chan struct{}, 1),
+	}
 }
 
 func (wfc *fakeWriteFlushCloser) Write(p []byte) (n int, err error) {
 	wfc.mu.Lock()
 	defer wfc.mu.Unlock()
-
+	select {
+	case wfc.writec <- struct{}{}:
+	default:
+	}
 	wfc.written += len(p)
 	return len(p), wfc.err
 }
@@ -391,10 +402,7 @@ func (wfc *fakeWriteFlushCloser) Write(p []byte) (n int, err error) {
 func (wfc *fakeWriteFlushCloser) Flush() {}
 
 func (wfc *fakeWriteFlushCloser) Close() error {
-	wfc.mu.Lock()
-	defer wfc.mu.Unlock()
-
-	wfc.closed = true
+	close(wfc.closed)
 	return wfc.err
 }
 
@@ -405,9 +413,12 @@ func (wfc *fakeWriteFlushCloser) Written() int {
 }
 
 func (wfc *fakeWriteFlushCloser) Closed() bool {
-	wfc.mu.Lock()
-	defer wfc.mu.Unlock()
-	return wfc.closed
+	select {
+	case <-wfc.closed:
+		return true
+	default:
+		return false
+	}
 }
 
 type fakeStreamHandler struct {
