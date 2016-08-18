@@ -35,7 +35,6 @@ func NewKvProxy(c *clientv3.Client) pb.KVServer {
 }
 
 func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	// if request set Serializable, serve it from local cache first
 	if r.Serializable {
 		resp, err := p.cache.Get(r)
 		switch err {
@@ -51,17 +50,22 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 		return nil, err
 	}
 
-	p.cache.Add(r, (*pb.RangeResponse)(resp.Get()))
+	// cache linearizable as serializable
+	r.Serializable = true
+	gresp := (*pb.RangeResponse)(resp.Get())
+	p.cache.Add(r, gresp)
 
-	return (*pb.RangeResponse)(resp.Get()), nil
+	return gresp, nil
 }
 
 func (p *kvProxy) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
+	p.cache.Invalidate(r.Key, nil)
 	resp, err := p.kv.Do(ctx, PutRequestToOp(r))
 	return (*pb.PutResponse)(resp.Put()), err
 }
 
 func (p *kvProxy) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+	p.cache.Invalidate(r.Key, r.RangeEnd)
 	resp, err := p.kv.Do(ctx, DelRequestToOp(r))
 	return (*pb.DeleteRangeResponse)(resp.Del()), err
 }
