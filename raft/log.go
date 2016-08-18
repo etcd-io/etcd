@@ -220,8 +220,7 @@ func (l *raftLog) term(i uint64) (uint64, error) {
 	// the valid term range is [index of dummy entry, last index]
 	dummyIndex := l.firstIndex() - 1
 	if i < dummyIndex || i > l.lastIndex() {
-		// TODO: return an error instead?
-		return 0, nil
+		return 0, ErrTermUnavailable
 	}
 
 	if t, ok := l.unstable.maybeTerm(i); ok {
@@ -232,7 +231,7 @@ func (l *raftLog) term(i uint64) (uint64, error) {
 	if err == nil {
 		return t, nil
 	}
-	if err == ErrCompacted {
+	if err == ErrCompacted || err == ErrTermUnavailable {
 		return 0, err
 	}
 	panic(err) // TODO(bdarnell)
