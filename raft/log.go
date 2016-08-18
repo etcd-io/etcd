@@ -232,7 +232,7 @@ func (l *raftLog) term(i uint64) (uint64, error) {
 	if err == nil {
 		return t, nil
 	}
-	if err == ErrCompacted {
+	if err == ErrCompacted || err == ErrUnavailable {
 		return 0, err
 	}
 	panic(err) // TODO(bdarnell)
