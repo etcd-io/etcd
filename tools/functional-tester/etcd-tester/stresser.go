@@ -76,7 +76,7 @@ func newStressPut(kvc pb.KVClient, keySuffixRange, keySize int) stressFunc {
 		_, err := kvc.Put(ctx, &pb.PutRequest{
 			Key:   []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
 			Value: randBytes(keySize),
-		}, grpc.FailFast(false))
+		})
 		return err
 	}
 }
@@ -85,7 +85,7 @@ func newStressRange(kvc pb.KVClient, keySuffixRange int) stressFunc {
 	return func(ctx context.Context) error {
 		_, err := kvc.Range(ctx, &pb.RangeRequest{
 			Key: []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
-		}, grpc.FailFast(false))
+		})
 		return err
 	}
 }
@@ -97,7 +97,7 @@ func newStressRangeInterval(kvc pb.KVClient, keySuffixRange int) stressFunc {
 		_, err := kvc.Range(ctx, &pb.RangeRequest{
 			Key:      []byte(fmt.Sprintf("foo%016x", start)),
 			RangeEnd: []byte(fmt.Sprintf("foo%016x", end)),
-		}, grpc.FailFast(false))
+		})
 		return err
 	}
 }
@@ -106,7 +106,7 @@ func newStressDelete(kvc pb.KVClient, keySuffixRange int) stressFunc {
 	return func(ctx context.Context) error {
 		_, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
 			Key: []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
-		}, grpc.FailFast(false))
+		})
 		return err
 	}
 }
@@ -118,7 +118,7 @@ func newStressDeleteInterval(kvc pb.KVClient, keySuffixRange int) stressFunc {
 		_, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
 			Key:      []byte(fmt.Sprintf("foo%016x", start)),
 			RangeEnd: []byte(fmt.Sprintf("foo%016x", end)),
-		}, grpc.FailFast(false))
+		})
 		return err
 	}
 }
