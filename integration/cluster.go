@@ -702,13 +702,13 @@ func (m *member) Stop(t *testing.T) {
 	plog.Printf("stopped %s (%s)", m.Name, m.grpcAddr)
 }
 
-// StopWithAutoLeaderTransfer stops the member with auto leader transfer.
-func (m *member) StopWithAutoLeaderTransfer(t *testing.T) {
-	plog.Printf("stopping %s (%s)", m.Name, m.grpcAddr)
-	m.s.TransferLeadership()
-	m.Close()
-	m.hss = nil
-	plog.Printf("stopped %s (%s)", m.Name, m.grpcAddr)
+// checkLeaderTransition waits for leader transition, returning the new leader ID.
+func checkLeaderTransition(t *testing.T, m *member, oldLead uint64) uint64 {
+	interval := time.Duration(m.s.Cfg.TickMs) * time.Millisecond
+	for m.s.Lead() == 0 || (m.s.Lead() == oldLead) {
+		time.Sleep(interval)
+	}
+	return m.s.Lead()
 }
 
 // StopNotify unblocks when a member stop completes
