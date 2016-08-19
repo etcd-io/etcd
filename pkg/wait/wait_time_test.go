@@ -29,18 +29,25 @@ func TestWaitTime(t *testing.T) {
 		t.Fatalf("cannot receive from ch as expected")
 	}
 
-	ch2 := wt.Wait(2)
-	wt.Trigger(1)
+	ch2 := wt.Wait(4)
+	wt.Trigger(3)
 	select {
 	case <-ch2:
 		t.Fatalf("unexpected to receive from ch2")
 	default:
 	}
-	wt.Trigger(3)
+	wt.Trigger(4)
 	select {
 	case <-ch2:
 	default:
 		t.Fatalf("cannot receive from ch2 as expected")
+	}
+
+	select {
+	// wait on a triggered deadline
+	case <-wt.Wait(4):
+	default:
+		t.Fatalf("unexpected blocking when wait on triggered deadline")
 	}
 }
 

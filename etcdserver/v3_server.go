@@ -463,24 +463,12 @@ func (s *EtcdServer) isValidSimpleToken(token string) bool {
 		return false
 	}
 
-	// CAUTION: below index synchronization is required because this node
-	// might not receive and apply the log entry of Authenticate() RPC.
-	authApplied := false
-	for i := 0; i < 10; i++ {
-		if uint64(index) <= s.getAppliedIndex() {
-			authApplied = true
-			break
-		}
-
-		time.Sleep(100 * time.Millisecond)
+	select {
+	case <-s.applyWait.Wait(uint64(index)):
+		return true
+	case <-s.stop:
+		return true
 	}
-
-	if !authApplied {
-		plog.Errorf("timeout of waiting Authenticate() RPC")
-		return false
-	}
-
-	return true
 }
 
 func (s *EtcdServer) authInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error) {
