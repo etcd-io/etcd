@@ -25,6 +25,7 @@ func TestCtlV3AuthWriteKey(t *testing.T)            { testCtl(t, authCredWriteKe
 func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateTest) }
 func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
 func TestCtlV3AuthRoleRevokeDuringOps(t *testing.T) { testCtl(t, authRoleRevokeDuringOpsTest) }
+func TestCtlV3AuthTxn(t *testing.T)                 { testCtl(t, authTestTxn) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -337,6 +338,87 @@ func authSetupTestUser(cx ctlCtx) {
 	}
 	cmd := append(cx.PrefixArgs(), "role", "grant-permission", "test-role", "readwrite", "foo")
 	if err := spawnWithExpect(cmd, "Role test-role updated"); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestTxn(cx ctlCtx) {
+	// keys with 1 suffix aren't granted to test-user
+	// keys with 2 suffix are granted to test-user
+
+	keys := []string{"c1", "s1", "f1"}
+	grantedKeys := []string{"c2", "s2", "f2"}
+	for _, key := range keys {
+		if err := ctlV3Put(cx, key, "v", ""); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+
+	for _, key := range grantedKeys {
+		if err := ctlV3Put(cx, key, "v", ""); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// grant keys to test-user
+	cx.user, cx.pass = "root", "root"
+	for _, key := range grantedKeys {
+		if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, key, ""}); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+
+	// now test txn
+	cx.interactive = true
+	cx.user, cx.pass = "test-user", "pass"
+
+	rqs := txnRequests{
+		compare:  []string{`version("c2") = "1"`},
+		ifSucess: []string{"get s2"},
+		ifFail:   []string{"get f2"},
+		results:  []string{"SUCCESS", "s2", "v"},
+	}
+	if err := ctlV3Txn(cx, rqs); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// a key of compare case isn't granted
+	rqs = txnRequests{
+		compare:  []string{`version("c1") = "1"`},
+		ifSucess: []string{"get s2"},
+		ifFail:   []string{"get f2"},
+		results:  []string{"Error:  etcdserver: permission denied"},
+	}
+	if err := ctlV3Txn(cx, rqs); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// a key of success case isn't granted
+	rqs = txnRequests{
+		compare:  []string{`version("c2") = "1"`},
+		ifSucess: []string{"get s1"},
+		ifFail:   []string{"get f2"},
+		results:  []string{"Error:  etcdserver: permission denied"},
+	}
+	if err := ctlV3Txn(cx, rqs); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// a key of failure case isn't granted
+	rqs = txnRequests{
+		compare:  []string{`version("c2") = "1"`},
+		ifSucess: []string{"get s2"},
+		ifFail:   []string{"get f1"},
+		results:  []string{"Error:  etcdserver: permission denied"},
+	}
+	if err := ctlV3Txn(cx, rqs); err != nil {
 		cx.t.Fatal(err)
 	}
 }
