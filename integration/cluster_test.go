@@ -26,7 +26,6 @@ import (
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
 	"golang.org/x/net/context"
@@ -470,29 +469,41 @@ func TestTransferLeader(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	leaderIdx := clus.WaitLeader(t)
+	oldLeadIdx := clus.WaitLeader(t)
+	oldLeadID := uint64(clus.Members[oldLeadIdx].s.ID())
 
-	err := clus.Members[leaderIdx].s.TransferLeadership()
+	// ensure followers go through leader transition while learship transfer
+	idc := make(chan uint64)
+	for i := range clus.Members {
+		if oldLeadIdx != i {
+			go func(m *member) {
+				idc <- checkLeaderTransition(t, m, oldLeadID)
+			}(clus.Members[i])
+		}
+	}
+
+	err := clus.Members[oldLeadIdx].s.TransferLeadership()
 	if err != nil {
 		t.Fatal(err)
 	}
-}
 
-func TestTransferLeaderStopTrigger(t *testing.T) {
-	defer testutil.AfterTest(t)
+	// wait until leader transitions have happened
+	var newLeadIDs [2]uint64
+	for i := range newLeadIDs {
+		select {
+		case newLeadIDs[i] = <-idc:
+		case <-time.After(time.Second):
+			t.Fatal("timed out waiting for leader transition")
+		}
+	}
 
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
-	defer clus.Terminate(t)
+	// remaining members must agree on the same leader
+	if newLeadIDs[0] != newLeadIDs[1] {
+		t.Fatalf("expected same new leader %d == %d", newLeadIDs[0], newLeadIDs[1])
+	}
 
-	oldLeadIdx := clus.WaitLeader(t)
-	clus.Members[oldLeadIdx].StopWithAutoLeaderTransfer(t)
-
-	// issue put to one of the other member
-	kvc := toGRPC(clus.Client((oldLeadIdx + 1) % 3)).KV
-	sctx, scancel := context.WithTimeout(context.TODO(), clus.Members[oldLeadIdx].electionTimeout())
-	_, err := kvc.Range(sctx, &etcdserverpb.RangeRequest{Key: []byte("foo")})
-	scancel()
-	if err != nil {
-		t.Fatal(err)
+	// new leader must be different than the old leader
+	if oldLeadID == newLeadIDs[0] {
+		t.Fatalf("expected old leader %d != new leader %d", oldLeadID, newLeadIDs[0])
 	}
 }
