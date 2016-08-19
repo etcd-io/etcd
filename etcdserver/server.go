@@ -190,12 +190,14 @@ type EtcdServer struct {
 	applyV3 applierV3
 	// applyV3Base is the core applier without auth or quotas
 	applyV3Base applierV3
-	kv          mvcc.ConsistentWatchableKV
-	lessor      lease.Lessor
-	bemu        sync.Mutex
-	be          backend.Backend
-	authStore   auth.AuthStore
-	alarmStore  *alarm.AlarmStore
+	applyWait   wait.WaitTime
+
+	kv         mvcc.ConsistentWatchableKV
+	lessor     lease.Lessor
+	bemu       sync.Mutex
+	be         backend.Backend
+	authStore  auth.AuthStore
+	alarmStore *alarm.AlarmStore
 
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
@@ -475,6 +477,7 @@ func (s *EtcdServer) start() {
 		s.snapCount = DefaultSnapCount
 	}
 	s.w = wait.New()
+	s.applyWait = wait.NewTimeList()
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
 	if s.ClusterVersion() != nil {
@@ -629,10 +632,12 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
 		plog.Warningf("avoid queries with large range/delete range!")
 	}
 	proposalsApplied.Set(float64(ep.appliedi))
+	s.applyWait.Trigger(ep.appliedi)
 	// wait for the raft routine to finish the disk writes before triggering a
 	// snapshot. or applied index might be greater than the last index in raft
 	// storage, since the raft routine might be slower than apply routine.
 	<-apply.raftDone
+
 	s.triggerSnapshot(ep)
 	select {
 	// snapshot requested via send()
