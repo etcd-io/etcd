@@ -59,11 +59,10 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 			}
 		}
 
-		// msgc has been swapped with a new one now that prevwfc is closed
-		msgc, ok := sw.writec()
-		if !ok {
-			t.Errorf("#%d: working status = %v, want true", i, ok)
-		}
+		// if prevwfc != nil, the new msgc is ready since prevwfc has closed
+		// if prevwfc == nil, the first connection may be pending, but the first
+		// msgc is already available since it's set on calling startStreamwriter
+		msgc, _ := sw.writec()
 		msgc <- raftpb.Message{}
 
 		select {
