@@ -381,14 +381,15 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	}
 	w, id, cid, st, ents := readWAL(cfg.WALDir(), walsnap)
 
-	// discard the previously uncommitted entries
-	for i, ent := range ents {
-		if ent.Index > st.Commit {
-			plog.Infof("discarding %d uncommitted WAL entries ", len(ents)-i)
-			ents = ents[:i]
-			break
-		}
+	// discard the previous uncommitted entries
+	entsToKeep := st.Commit - ents[0].Index + 1
+	// if index of the first entry present is newer to the
+	// last commited entry due to compaction set entries to keep to 0
+	if entsToKeep < 0 {
+		entsToKeep = 0
 	}
+	plog.Infof("discarding %d uncommitted WAL entries ", uint64(len(ents))-entsToKeep)
+	ents = ents[:entsToKeep]
 
 	// force append the configuration change entries
 	toAppEnts := createConfigChangeEnts(getIDs(snapshot, ents), uint64(id), st.Term, st.Commit)
