@@ -287,7 +287,8 @@ func withTop(target SortTarget, order SortOrder) []OpOption {
 	return []OpOption{WithPrefix(), WithSort(target, order), WithLimit(1)}
 }
 
-// WithProgressNotify makes watch server send periodic progress updates.
+// WithProgressNotify makes watch server send periodic progress updates
+// every 10 minutes when there is no incoming events.
 // Progress updates have zero events in WatchResponse.
 func WithProgressNotify() OpOption {
 	return func(op *Op) {
