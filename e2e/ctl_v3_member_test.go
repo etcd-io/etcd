@@ -84,20 +84,11 @@ func memberRemoveTest(cx ctlCtx) {
 	}
 
 	var (
-		n2            = n1 - 1
 		memIDToRemove = fmt.Sprintf("%x", resp.Header.MemberId)
 		cluserID      = fmt.Sprintf("%x", resp.Header.ClusterId)
 	)
 	if err = ctlV3MemberRemove(cx, memIDToRemove, cluserID); err != nil {
 		cx.t.Fatal(err)
-	}
-
-	resp, err = getMemberList(cx)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if n2 != len(resp.Members) {
-		cx.t.Fatalf("expected %d, got %d", n2, len(resp.Members))
 	}
 }
 
@@ -112,27 +103,6 @@ func memberAddTest(cx ctlCtx) {
 	if err := spawnWithExpect(cmdArgs, " added to cluster "); err != nil {
 		cx.t.Fatal(err)
 	}
-
-	mresp, err := getMemberList(cx)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if len(mresp.Members) != 2 {
-		cx.t.Fatalf("expected 2, got %d", len(mresp.Members))
-	}
-
-	found := false
-	for _, mem := range mresp.Members {
-		for _, v := range mem.PeerURLs {
-			if v == peerURL {
-				found = true
-				break
-			}
-		}
-	}
-	if !found {
-		cx.t.Fatalf("expected %s in PeerURLs, got %+v", peerURL, mresp.Members)
-	}
 }
 
 func memberUpdateTest(cx ctlCtx) {
@@ -145,17 +115,5 @@ func memberUpdateTest(cx ctlCtx) {
 	cmdArgs := append(cx.PrefixArgs(), "member", "update", fmt.Sprintf("%x", mr.Members[0].ID), fmt.Sprintf("--peer-urls=%s", peerURL))
 	if err = spawnWithExpect(cmdArgs, " updated in cluster "); err != nil {
 		cx.t.Fatal(err)
-	}
-
-	mresp, err := getMemberList(cx)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if len(mresp.Members) != 1 {
-		cx.t.Fatalf("expected 1, got %d", len(mresp.Members))
-	}
-
-	if mresp.Members[0].PeerURLs[0] != peerURL {
-		cx.t.Fatalf("expected %s in PeerURLs, got %+v", peerURL, mresp.Members)
 	}
 }
