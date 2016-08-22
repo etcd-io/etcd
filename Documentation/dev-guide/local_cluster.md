@@ -28,7 +28,7 @@ bar
 
 ## Local multi-member cluster
 
-A Procfile is provided to easily set up a local multi-member cluster. Start a multi-member cluster with a few commands:
+A `Procfile` at the base of this git repo is provided to easily set up a local multi-member cluster. To start a multi-member cluster go to the root of an etcd source tree and run:
 
 ```
 # install goreman program to control Profile-based applications.
