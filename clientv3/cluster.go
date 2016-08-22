@@ -30,7 +30,7 @@ type (
 
 type Cluster interface {
 	// MemberList lists the current cluster membership.
-	MemberList(ctx context.Context) (*MemberListResponse, error)
+	MemberList(ctx context.Context, opts ...MemberListOption) (*MemberListResponse, error)
 
 	// MemberAdd adds a new member into the cluster.
 	MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error)
@@ -43,11 +43,15 @@ type Cluster interface {
 }
 
 type cluster struct {
-	remote pb.ClusterClient
+	remote   pb.ClusterClient
+	removeKV pb.KVClient
 }
 
 func NewCluster(c *Client) Cluster {
-	return &cluster{remote: RetryClusterClient(c)}
+	return &cluster{
+		remote:   RetryClusterClient(c),
+		removeKV: RetryKVClient(c),
+	}
 }
 
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
@@ -88,15 +92,50 @@ func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []strin
 	}
 }
 
-func (c *cluster) MemberList(ctx context.Context) (*MemberListResponse, error) {
+func (c *cluster) MemberList(ctx context.Context, opts ...MemberListOption) (*MemberListResponse, error) {
+	ops := &memberListOptions{}
+	for _, opt := range opts {
+		opt(ops)
+	}
+
 	// it is safe to retry on list.
 	for {
+		var memberID uint64
+		if !ops.serializable {
+			rresp, err := c.removeKV.Range(ctx, &pb.RangeRequest{Key: []byte("list")})
+			if err != nil {
+				if isHaltErr(ctx, err) {
+					return nil, toErr(ctx, err)
+				}
+				continue
+			}
+			memberID = rresp.Header.MemberId
+		}
+
 		resp, err := c.remote.MemberList(ctx, &pb.MemberListRequest{}, grpc.FailFast(false))
 		if err == nil {
+			if !ops.serializable && resp.Header.MemberId != memberID {
+				continue
+			}
 			return (*MemberListResponse)(resp), nil
 		}
 		if isHaltErr(ctx, err) {
 			return nil, toErr(ctx, err)
 		}
+	}
+}
+
+type memberListOptions struct {
+	serializable bool
+}
+
+// MemberlistOption configures memberlist.
+type MemberListOption func(*memberListOptions)
+
+// WithMemberListSerializable makes 'Memberlist' request serializable. By default,
+// it's linearizable.
+func WithMemberListSerializable() MemberListOption {
+	return func(mo *memberListOptions) {
+		mo.serializable = true
 	}
 }
