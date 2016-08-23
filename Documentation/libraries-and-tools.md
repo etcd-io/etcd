@@ -80,6 +80,7 @@
 **PHP Libraries**
 
 - [linkorb/etcd-php](https://github.com/linkorb/etcd-php)
+- [activecollab/etcd](https://github.com/activecollab/etcd) 
 
 **Haskell libraries**
 
