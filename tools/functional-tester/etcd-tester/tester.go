@@ -50,6 +50,7 @@ func (tt *tester) runLoop() {
 			if err != nil || tt.cleanup() != nil {
 				return
 			}
+			prevCompactRev = 0 // reset after clean up
 			continue
 		}
 		// -1 so that logPrefix doesn't print out 'case'
@@ -58,7 +59,7 @@ func (tt *tester) runLoop() {
 		revToCompact := max(0, tt.currentRevision-10000)
 		compactN := revToCompact - prevCompactRev
 		timeout := 10 * time.Second
-		if prevCompactRev != 0 && compactN > 0 {
+		if compactN > 0 {
 			timeout += time.Duration(compactN/compactQPS) * time.Second
 		}
 		prevCompactRev = revToCompact
@@ -69,6 +70,7 @@ func (tt *tester) runLoop() {
 			if err := tt.cleanup(); err != nil {
 				return
 			}
+			prevCompactRev = 0 // reset after clean up
 		}
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			if err := tt.defrag(); err != nil {
