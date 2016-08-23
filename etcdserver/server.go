@@ -1275,6 +1275,13 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	clone := s.store.Clone()
+	// commit kv to write metadata (for example: consistent index) to disk.
+	// KV().commit() updates the consistent index in backend.
+	// All operations that update consistent index must be called sequentially
+	// from applyAll function.
+	// So KV().Commit() cannot run in parallel with apply. It has to be called outside
+	// the go routine created below.
+	s.KV().Commit()
 
 	s.wg.Add(1)
 	go func() {
@@ -1295,8 +1302,6 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			}
 			plog.Panicf("unexpected create snapshot error %v", err)
 		}
-		// commit kv to write metadata (for example: consistent index) to disk.
-		s.KV().Commit()
 		// SaveSnap saves the snapshot and releases the locked wal files
 		// to the snapshot index.
 		if err = s.r.storage.SaveSnap(snap); err != nil {
