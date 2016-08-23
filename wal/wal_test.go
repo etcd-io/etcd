@@ -666,7 +666,7 @@ func TestOpenOnTornWrite(t *testing.T) {
 		}
 	}
 
-	fn := w.tail().Name()
+	fn := path.Join(p, path.Base(w.tail().Name()))
 	w.Close()
 
 	// clobber some entry with 0's to simulate a torn write
