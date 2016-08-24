@@ -648,16 +648,47 @@ func TestKVGetCancel(t *testing.T) {
 	}
 }
 
-// TestKVPutStoppedServerAndClose ensures closing after a failed Put works.
-func TestKVPutStoppedServerAndClose(t *testing.T) {
+// TestKVGetStoppedServerAndClose ensures closing after a failed Get works.
+func TestKVGetStoppedServerAndClose(t *testing.T) {
 	defer testutil.AfterTest(t)
+
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
+
 	cli := clus.Client(0)
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	// this Get fails and triggers an asynchronous connection retry
+	_, err := cli.Get(ctx, "abc")
+	cancel()
+	if !strings.Contains(err.Error(), "context deadline") {
+		t.Fatal(err)
+	}
+}
+
+// TestKVPutStoppedServerAndClose ensures closing after a failed Put works.
+func TestKVPutStoppedServerAndClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	clus.Members[0].Stop(t)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	// get retries on all errors.
+	// so here we use it to eat the potential broken pipe error for the next put.
+	// grpc client might see a broken pipe error when we issue the get request before
+	// grpc finds out the original connection is down due to the member shutdown.
+	_, err := cli.Get(ctx, "abc")
+	cancel()
+	if !strings.Contains(err.Error(), "context deadline") {
+		t.Fatal(err)
+	}
+
 	// this Put fails and triggers an asynchronous connection retry
-	_, err := cli.Put(ctx, "abc", "123")
+	_, err = cli.Put(ctx, "abc", "123")
 	cancel()
 	if !strings.Contains(err.Error(), "context deadline") {
 		t.Fatal(err)
