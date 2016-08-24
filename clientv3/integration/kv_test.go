@@ -735,3 +735,18 @@ func TestKVGetResetLoneEndpoint(t *testing.T) {
 	case <-donec:
 	}
 }
+
+// TestKVCloseGet ensures that a Get cancels when the client closes.
+func TestKVCloseGet(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	clus.Members[0].Stop(t)
+	cli := clus.Client(0)
+	clus.TakeClient(0)
+	_, err := cli.Get(context.Background(), "foo")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+}
