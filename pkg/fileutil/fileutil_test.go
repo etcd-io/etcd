@@ -118,3 +118,42 @@ func TestExist(t *testing.T) {
 		t.Errorf("exist = %v, want false", g)
 	}
 }
+
+func TestZeroToEnd(t *testing.T) {
+	f, err := ioutil.TempFile(os.TempDir(), "fileutil")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	b := make([]byte, 1024)
+	for i := range b {
+		b[i] = 12
+	}
+	if _, err = f.Write(b); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = f.Seek(512, os.SEEK_SET); err != nil {
+		t.Fatal(err)
+	}
+	if err = ZeroToEnd(f); err != nil {
+		t.Fatal(err)
+	}
+	off, serr := f.Seek(0, os.SEEK_CUR)
+	if serr != nil {
+		t.Fatal(serr)
+	}
+	if off != 512 {
+		t.Fatalf("expected offset 512, got %d", off)
+	}
+
+	b = make([]byte, 512)
+	if _, err = f.Read(b); err != nil {
+		t.Fatal(err)
+	}
+	for i := range b {
+		if b[i] != 0 {
+			t.Errorf("expected b[%d] = 0, got %d", i, b[i])
+		}
+	}
+}
