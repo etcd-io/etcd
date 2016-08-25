@@ -19,6 +19,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"io/ioutil"
+	"net/http"
+
+	"github.com/cloudflare/cfssl/revoke"
 )
 
 // NewCertPool creates x509 certPool with provided CA files.
@@ -69,4 +72,30 @@ func NewCert(certfile, keyfile string, parseFunc func([]byte, []byte) (tls.Certi
 		return nil, err
 	}
 	return &tlsCert, nil
+}
+
+func isReqCertValid(req *http.Request, rc *revoke.Revoke) bool {
+	if req.TLS == nil {
+		return true
+	}
+	for _, cert := range req.TLS.PeerCertificates {
+		revoked, ok := rc.VerifyCertificate(cert)
+		if !ok && rc.IsHardFail() {
+			return false
+		}
+		if revoked {
+			return false
+		}
+	}
+	return true
+}
+
+func NewRevokeHandler(handler http.Handler, rc *revoke.Revoke) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if isReqCertValid(req, rc) {
+			handler.ServeHTTP(w, req)
+			return
+		}
+		w.WriteHeader(http.StatusForbidden)
+	})
 }
