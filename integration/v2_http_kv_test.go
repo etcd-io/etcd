@@ -977,8 +977,8 @@ func TestV2Head(t *testing.T) {
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
 	}
-	if resp.ContentLength <= 0 {
-		t.Errorf("ContentLength = %d, want > 0", resp.ContentLength)
+	if resp.ContentLength != 0 {
+		t.Errorf("ContentLength = %d, want == 0", resp.ContentLength)
 	}
 
 	resp, err = tc.PutForm(fullURL, v)
@@ -995,8 +995,8 @@ func TestV2Head(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusOK)
 	}
-	if resp.ContentLength <= 0 {
-		t.Errorf("ContentLength = %d, want > 0", resp.ContentLength)
+	if resp.ContentLength != 0 {
+		t.Errorf("ContentLength = %d, want == 0", resp.ContentLength)
 	}
 }
 
