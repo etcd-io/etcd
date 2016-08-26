@@ -73,6 +73,7 @@ func TestTxnWriteFail(t *testing.T) {
 	}()
 
 	go func() {
+		defer close(getc)
 		select {
 		case <-time.After(5 * time.Second):
 			t.Fatalf("timed out waiting for txn fail")
@@ -86,11 +87,10 @@ func TestTxnWriteFail(t *testing.T) {
 		if len(gresp.Kvs) != 0 {
 			t.Fatalf("expected no keys, got %v", gresp.Kvs)
 		}
-		close(getc)
 	}()
 
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(2 * clus.Members[1].ServerConfig.ReqTimeout()):
 		t.Fatalf("timed out waiting for get")
 	case <-getc:
 	}
@@ -125,7 +125,7 @@ func TestTxnReadRetry(t *testing.T) {
 	clus.Members[0].Restart(t)
 	select {
 	case <-donec:
-	case <-time.After(5 * time.Second):
+	case <-time.After(2 * clus.Members[1].ServerConfig.ReqTimeout()):
 		t.Fatalf("waited too long")
 	}
 }

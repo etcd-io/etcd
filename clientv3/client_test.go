@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -72,11 +72,11 @@ func TestIsHaltErr(t *testing.T) {
 	if !isHaltErr(nil, fmt.Errorf("etcdserver: some etcdserver error")) {
 		t.Errorf(`error prefixed with "etcdserver: " should be Halted by default`)
 	}
-	if isHaltErr(nil, etcdserver.ErrStopped) {
-		t.Errorf("error %v should not halt", etcdserver.ErrStopped)
+	if isHaltErr(nil, rpctypes.ErrGRPCStopped) {
+		t.Errorf("error %v should not halt", rpctypes.ErrGRPCStopped)
 	}
-	if isHaltErr(nil, etcdserver.ErrNoLeader) {
-		t.Errorf("error %v should not halt", etcdserver.ErrNoLeader)
+	if isHaltErr(nil, rpctypes.ErrGRPCNoLeader) {
+		t.Errorf("error %v should not halt", rpctypes.ErrGRPCNoLeader)
 	}
 	ctx, cancel := context.WithCancel(context.TODO())
 	if isHaltErr(ctx, nil) {

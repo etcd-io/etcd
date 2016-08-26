@@ -32,13 +32,21 @@ func togRPCError(err error) error {
 		return rpctypes.ErrGRPCFutureRev
 	case lease.ErrLeaseNotFound:
 		return rpctypes.ErrGRPCLeaseNotFound
-	// TODO: handle error from raft and timeout
 	case etcdserver.ErrRequestTooLarge:
 		return rpctypes.ErrGRPCRequestTooLarge
 	case etcdserver.ErrNoSpace:
 		return rpctypes.ErrGRPCNoSpace
 	case etcdserver.ErrTooManyRequests:
 		return rpctypes.ErrTooManyRequests
+
+	case etcdserver.ErrNoLeader:
+		return rpctypes.ErrGRPCNoLeader
+	case etcdserver.ErrStopped:
+		return rpctypes.ErrGRPCStopped
+	case etcdserver.ErrTimeout:
+		return rpctypes.ErrGRPCTimeout
+	case etcdserver.ErrTimeoutDueToLeaderFail:
+		return rpctypes.ErrGRPCTimeoutDueToLeaderFail
 
 	case auth.ErrRootUserNotExist:
 		return rpctypes.ErrGRPCRootUserNotExist
