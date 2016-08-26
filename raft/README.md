@@ -26,7 +26,13 @@ This raft implementation is a full feature implementation of Raft protocol. Feat
 - Log compaction 
 - Membership changes
 - Leadership transfer extension
-- Lease-based linearizable read-only queries served by both the leader and followers
+- Efficient linearizable read-only queries served by both the leader and followers
+ - leader checks with quorum and bypasses Raft log before processing read-only queries
+ - followers asks leader to get a safe read index before processing read-only queries
+- More efficient lease-based linearizable read-only queries served by both the leader and followers
+ - leader bypasses Raft log and processing read-only queries locally
+ - followers asks leader to get a safe read index before processing read-only queries
+ - this approach relies on the clock of the all the machines in raft group
 
 This raft implementation also includes a few optional enhancements:
 

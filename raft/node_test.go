@@ -150,24 +150,19 @@ func TestNodeReadIndex(t *testing.T) {
 	appendStep := func(r *raft, m raftpb.Message) {
 		msgs = append(msgs, m)
 	}
-	wreadIndex := uint64(1)
-	wrequestCtx := []byte("somedata")
+	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
 
 	n := newNode()
 	s := NewMemoryStorage()
 	r := newTestRaft(1, []uint64{1}, 10, 1, s)
-	r.readState.Index = wreadIndex
-	r.readState.RequestCtx = wrequestCtx
+	r.readStates = wrs
+
 	go n.run(r)
 	n.Campaign(context.TODO())
 	for {
 		rd := <-n.Ready()
-		if rd.Index != wreadIndex {
-			t.Errorf("ReadIndex = %d, want %d", rd.Index, wreadIndex)
-		}
-
-		if !bytes.Equal(rd.RequestCtx, wrequestCtx) {
-			t.Errorf("RequestCtx = %v, want %v", rd.RequestCtx, wrequestCtx)
+		if !reflect.DeepEqual(rd.ReadStates, wrs) {
+			t.Errorf("ReadStates = %v, want %v", rd.ReadStates, wrs)
 		}
 
 		s.Append(rd.Entries)
@@ -180,7 +175,7 @@ func TestNodeReadIndex(t *testing.T) {
 	}
 
 	r.step = appendStep
-	wrequestCtx = []byte("somedata2")
+	wrequestCtx := []byte("somedata2")
 	n.ReadIndex(context.TODO(), wrequestCtx)
 	n.Stop()
 
