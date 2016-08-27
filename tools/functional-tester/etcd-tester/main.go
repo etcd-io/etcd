@@ -93,6 +93,8 @@ func main() {
 		cluster:          c,
 		limit:            *limit,
 		consistencyCheck: *consistencyCheck,
+		compactQPS:       50000,
+		compactCount:     100000,
 	}
 
 	sh := statusHandler{status: &t.status}

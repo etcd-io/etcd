@@ -27,11 +27,18 @@ type tester struct {
 
 	status          Status
 	currentRevision int64
-}
 
-// compactQPS is rough number of compact requests per second.
-// Previous tests showed etcd can compact about 60,000 entries per second.
-const compactQPS = 50000
+	// lastCompactRevision to record previous compact revision
+	// and use it to estimate compact timeout.
+	lastCompactRevision int64
+
+	// compactQPS is rough number of compact requests per second.
+	// Previous tests showed etcd can compact about 60,000 entries per second.
+	compactQPS int64
+
+	// compactCount is the minimum number of entries to trigger compact.
+	compactCount int64
+}
 
 func (tt *tester) runLoop() {
 	tt.status.Since = time.Now()
@@ -41,7 +48,6 @@ func (tt *tester) runLoop() {
 		tt.status.Failures = append(tt.status.Failures, f.Desc())
 	}
 
-	var prevCompactRev int64
 	for round := 0; round < tt.limit || tt.limit == -1; round++ {
 		tt.status.setRound(round)
 		roundTotalCounter.Inc()
@@ -50,28 +56,11 @@ func (tt *tester) runLoop() {
 			if err != nil || tt.cleanup() != nil {
 				return
 			}
-			prevCompactRev = 0 // reset after clean up
 			continue
 		}
 		// -1 so that logPrefix doesn't print out 'case'
 		tt.status.setCase(-1)
 
-		revToCompact := max(0, tt.currentRevision-10000)
-		compactN := revToCompact - prevCompactRev
-		timeout := 10 * time.Second
-		if compactN > 0 {
-			timeout += time.Duration(compactN/compactQPS) * time.Second
-		}
-		prevCompactRev = revToCompact
-
-		plog.Printf("%s compacting %d entries (timeout %v)", tt.logPrefix(), compactN, timeout)
-		if err := tt.compact(revToCompact, timeout); err != nil {
-			plog.Warningf("%s functional-tester compact got error (%v)", tt.logPrefix(), err)
-			if err := tt.cleanup(); err != nil {
-				return
-			}
-			prevCompactRev = 0 // reset after clean up
-		}
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			if err := tt.defrag(); err != nil {
 				plog.Warningf("%s functional-tester returning with error (%v)", tt.logPrefix(), err)
@@ -129,6 +118,11 @@ func (tt *tester) doRound(round int) (bool, error) {
 			return false, nil
 		}
 		plog.Printf("%s succeed!", tt.logPrefix())
+
+		if err := tt.compact(); err != nil {
+			plog.Warningf("%s functional-tester returning with tt.compact error (%v)", tt.logPrefix(), err)
+			return false, err
+		}
 	}
 	return true, nil
 }
@@ -190,7 +184,20 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 	return
 }
 
-func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
+func (tt *tester) compact() (err error) {
+	rev := max(0, tt.currentRevision-10000)
+	compactN := rev - tt.lastCompactRevision
+	timeout := 10 * time.Second
+	if compactN > 0 {
+		timeout += time.Duration(compactN/tt.compactQPS) * time.Second
+	}
+	if tt.compactCount > compactN {
+		plog.Printf("%s only %d entries to compact... skipping...", tt.logPrefix(), compactN)
+		return nil
+	}
+	tt.lastCompactRevision = rev
+
+	plog.Printf("%s compacting %d entries (timeout %v)", tt.logPrefix(), compactN, timeout)
 	tt.cancelStressers()
 	defer func() {
 		serr := tt.startStressers()
@@ -242,6 +249,10 @@ func (tt *tester) logPrefix() string {
 }
 
 func (tt *tester) cleanup() error {
+	defer func() {
+		tt.lastCompactRevision = 0 // reset after clean up
+	}()
+
 	roundFailedTotalCounter.Inc()
 	desc := "compact/defrag"
 	if tt.status.Case != -1 {
