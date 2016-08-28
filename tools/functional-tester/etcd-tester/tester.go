@@ -122,13 +122,9 @@ func (tt *tester) doRound(round int) (bool, error) {
 			continue
 		}
 
-		failed, err := tt.checkConsistency()
-		if err != nil {
+		if err := tt.checkConsistency(); err != nil {
 			plog.Warningf("%s functional-tester returning with tt.checkConsistency error (%v)", tt.logPrefix(), err)
 			return false, err
-		}
-		if failed {
-			return false, nil
 		}
 		plog.Printf("%s succeed!", tt.logPrefix())
 	}
@@ -144,7 +140,7 @@ func (tt *tester) updateRevision() error {
 	return err
 }
 
-func (tt *tester) checkConsistency() (failed bool, err error) {
+func (tt *tester) checkConsistency() (err error) {
 	tt.cancelStressers()
 	defer func() {
 		if err == nil {
@@ -172,23 +168,23 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 
 		plog.Printf("%s #%d inconsistent current revisions %+v", tt.logPrefix(), i, revs)
 	}
-	plog.Printf("%s updated current revisions with %d", tt.logPrefix(), tt.currentRevision)
-
 	if !ok || err != nil {
-		plog.Printf("%s checking current revisions failed [revisions: %v]", tt.logPrefix(), revs)
-		failed = true
+		err = fmt.Errorf("checking current revisions failed [err: %v, revisions: %v]", err, revs)
+		plog.Printf("%s %v", tt.logPrefix(), err)
 		return
 	}
 	plog.Printf("%s all members are consistent with current revisions [revisions: %v]", tt.logPrefix(), revs)
 
 	plog.Printf("%s checking current storage hashes...", tt.logPrefix())
 	if _, ok = getSameValue(hashes); !ok {
-		plog.Printf("%s checking current storage hashes failed [hashes: %v]", tt.logPrefix(), hashes)
-		failed = true
+		err = fmt.Errorf("inconsistent hashes [%v]", hashes)
+		plog.Printf("%s %v", tt.logPrefix(), err)
 		return
 	}
 	plog.Printf("%s all members are consistent with storage hashes", tt.logPrefix())
-	return
+
+	plog.Printf("%s updated current revision to %d", tt.logPrefix(), tt.currentRevision)
+	return nil
 }
 
 func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
