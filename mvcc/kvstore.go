@@ -323,10 +323,9 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 }
 
 func (s *store) Hash() (uint32, int64, error) {
-	s.b.ForceCommit()
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.b.ForceCommit()
 
 	// ignore hash consistent index field for now.
 	// consistent index might be changed due to v2 internal sync, which
