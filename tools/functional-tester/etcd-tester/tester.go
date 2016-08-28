@@ -47,7 +47,7 @@ func (tt *tester) runLoop() {
 		roundTotalCounter.Inc()
 
 		if ok, err := tt.doRound(round); !ok {
-			if err != nil || tt.cleanup() != nil {
+			if err != nil {
 				return
 			}
 			prevCompactRev = 0 // reset after clean up
@@ -67,9 +67,6 @@ func (tt *tester) runLoop() {
 		plog.Printf("%s compacting %d entries (timeout %v)", tt.logPrefix(), compactN, timeout)
 		if err := tt.compact(revToCompact, timeout); err != nil {
 			plog.Warningf("%s functional-tester compact got error (%v)", tt.logPrefix(), err)
-			if err := tt.cleanup(); err != nil {
-				return
-			}
 			prevCompactRev = 0 // reset after clean up
 		}
 		if round > 0 && round%500 == 0 { // every 500 rounds
@@ -176,6 +173,10 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 	if !ok || err != nil {
 		plog.Printf("%s checking current revisions failed [revisions: %v]", tt.logPrefix(), revs)
 		failed = true
+		cerr := tt.cleanup()
+		if cerr != nil {
+			err = fmt.Errorf("%v; %v", err, cerr)
+		}
 		return
 	}
 	plog.Printf("%s all members are consistent with current revisions [revisions: %v]", tt.logPrefix(), revs)
@@ -184,6 +185,7 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 	if _, ok = getSameValue(hashes); !ok {
 		plog.Printf("%s checking current storage hashes failed [hashes: %v]", tt.logPrefix(), hashes)
 		failed = true
+		err = tt.cleanup()
 		return
 	}
 	plog.Printf("%s all members are consistent with storage hashes", tt.logPrefix())
@@ -201,6 +203,10 @@ func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
 
 	plog.Printf("%s compacting storage (current revision %d, compact revision %d)", tt.logPrefix(), tt.currentRevision, rev)
 	if err = tt.cluster.compactKV(rev, timeout); err != nil {
+		cerr := tt.cleanup()
+		if cerr != nil {
+			err = fmt.Errorf("%v; %v", err, cerr)
+		}
 		return err
 	}
 	plog.Printf("%s compacted storage (compact revision %d)", tt.logPrefix(), rev)
@@ -208,6 +214,10 @@ func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
 	plog.Printf("%s checking compaction (compact revision %d)", tt.logPrefix(), rev)
 	if err = tt.cluster.checkCompact(rev); err != nil {
 		plog.Warningf("%s checkCompact error (%v)", tt.logPrefix(), err)
+		cerr := tt.cleanup()
+		if cerr != nil {
+			err = fmt.Errorf("%v; %v", err, cerr)
+		}
 		return err
 	}
 
