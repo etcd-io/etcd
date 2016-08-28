@@ -32,7 +32,7 @@ type Mutex struct {
 }
 
 func NewMutex(client *v3.Client, pfx string) *Mutex {
-	return &Mutex{client, pfx, "", -1}
+	return &Mutex{client, pfx + "/", "", -1}
 }
 
 // Lock locks the mutex with a cancellable context. If the context is cancelled
@@ -43,7 +43,7 @@ func (m *Mutex) Lock(ctx context.Context) error {
 		return serr
 	}
 
-	m.myKey = fmt.Sprintf("%s/%x", m.pfx, s.Lease())
+	m.myKey = fmt.Sprintf("%s%x", m.pfx, s.Lease())
 	cmp := v3.Compare(v3.CreateRevision(m.myKey), "=", 0)
 	// put self in lock waiters via myKey; oldest waiter holds lock
 	put := v3.OpPut(m.myKey, "", v3.WithLease(s.Lease()))

@@ -40,7 +40,7 @@ type Election struct {
 
 // NewElection returns a new election on a given key prefix.
 func NewElection(client *v3.Client, pfx string) *Election {
-	return &Election{client: client, keyPrefix: pfx}
+	return &Election{client: client, keyPrefix: pfx + "/"}
 }
 
 // Campaign puts a value as eligible for the election. It blocks until
@@ -59,7 +59,6 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 	if err != nil {
 		return err
 	}
-
 	e.leaderKey, e.leaderRev, e.leaderSession = k, resp.Header.Revision, s
 	if !resp.Succeeded {
 		kv := resp.Responses[0].GetResponseRange().Kvs[0]
