@@ -47,8 +47,10 @@ func (tt *tester) runLoop() {
 		roundTotalCounter.Inc()
 
 		if ok, err := tt.doRound(round); !ok {
-			if err != nil || tt.cleanup() != nil {
-				return
+			if err != nil {
+				if tt.cleanup() != nil {
+					return
+				}
 			}
 			prevCompactRev = 0 // reset after clean up
 			continue
@@ -67,7 +69,7 @@ func (tt *tester) runLoop() {
 		plog.Printf("%s compacting %d entries (timeout %v)", tt.logPrefix(), compactN, timeout)
 		if err := tt.compact(revToCompact, timeout); err != nil {
 			plog.Warningf("%s functional-tester compact got error (%v)", tt.logPrefix(), err)
-			if err := tt.cleanup(); err != nil {
+			if tt.cleanup() != nil {
 				return
 			}
 			prevCompactRev = 0 // reset after clean up
@@ -145,9 +147,8 @@ func (tt *tester) updateRevision() error {
 func (tt *tester) checkConsistency() (failed bool, err error) {
 	tt.cancelStressers()
 	defer func() {
-		serr := tt.startStressers()
 		if err == nil {
-			err = serr
+			err = tt.startStressers()
 		}
 	}()
 
@@ -193,9 +194,8 @@ func (tt *tester) checkConsistency() (failed bool, err error) {
 func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
 	tt.cancelStressers()
 	defer func() {
-		serr := tt.startStressers()
 		if err == nil {
-			err = serr
+			err = tt.startStressers()
 		}
 	}()
 
