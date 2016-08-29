@@ -24,13 +24,15 @@ import (
 	"golang.org/x/net/context"
 )
 
-func printKV(isHex bool, kv *pb.KeyValue) {
+func printKV(isHex bool, valueOnly bool, kv *pb.KeyValue) {
 	k, v := string(kv.Key), string(kv.Value)
 	if isHex {
 		k = addHexPrefix(hex.EncodeToString(kv.Key))
 		v = addHexPrefix(hex.EncodeToString(kv.Value))
 	}
-	fmt.Println(k)
+	if !valueOnly {
+		fmt.Println(k)
+	}
 	fmt.Println(v)
 }
 

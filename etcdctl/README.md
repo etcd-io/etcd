@@ -69,6 +69,8 @@ GET gets the key or a range of keys [key, range_end) if `range-end` is given.
 
 - rev -- specify the kv revision
 
+- print-value-only -- print only value when used with write-out=simple
+
 TODO: add consistency, from, prefix
 
 #### Return value
