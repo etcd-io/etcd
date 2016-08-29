@@ -266,14 +266,14 @@ func makeDB(snapdir, dbfile string) {
 	defer f.Close()
 
 	// get snapshot integrity hash
-	if _, err := f.Seek(-sha256.Size, os.SEEK_END); err != nil {
+	if _, err := f.Seek(-sha256.Size, io.SeekEnd); err != nil {
 		ExitWithError(ExitIO, err)
 	}
 	sha := make([]byte, sha256.Size)
 	if _, err := f.Read(sha); err != nil {
 		ExitWithError(ExitIO, err)
 	}
-	if _, err := f.Seek(0, os.SEEK_SET); err != nil {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		ExitWithError(ExitIO, err)
 	}
 
@@ -291,7 +291,7 @@ func makeDB(snapdir, dbfile string) {
 	}
 
 	// truncate away integrity hash, if any.
-	off, serr := db.Seek(0, os.SEEK_END)
+	off, serr := db.Seek(0, io.SeekEnd)
 	if serr != nil {
 		ExitWithError(ExitIO, serr)
 	}
@@ -309,7 +309,7 @@ func makeDB(snapdir, dbfile string) {
 
 	if hasHash && !skipHashCheck {
 		// check for match
-		if _, err := db.Seek(0, os.SEEK_SET); err != nil {
+		if _, err := db.Seek(0, io.SeekStart); err != nil {
 			ExitWithError(ExitIO, err)
 		}
 		h := sha256.New()
