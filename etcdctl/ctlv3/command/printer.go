@@ -103,26 +103,27 @@ func makeDBStatusTable(ds dbstatus) (hdr []string, rows [][]string) {
 }
 
 type simplePrinter struct {
-	isHex bool
+	isHex     bool
+	valueOnly bool
 }
 
 func (s *simplePrinter) Del(resp v3.DeleteResponse) {
 	fmt.Println(resp.Deleted)
 	for _, kv := range resp.PrevKvs {
-		printKV(s.isHex, kv)
+		printKV(s.isHex, s.valueOnly, kv)
 	}
 }
 
 func (s *simplePrinter) Get(resp v3.GetResponse) {
 	for _, kv := range resp.Kvs {
-		printKV(s.isHex, kv)
+		printKV(s.isHex, s.valueOnly, kv)
 	}
 }
 
 func (s *simplePrinter) Put(r v3.PutResponse) {
 	fmt.Println("OK")
 	if r.PrevKv != nil {
-		printKV(s.isHex, r.PrevKv)
+		printKV(s.isHex, s.valueOnly, r.PrevKv)
 	}
 }
 
@@ -152,9 +153,9 @@ func (s *simplePrinter) Watch(resp v3.WatchResponse) {
 	for _, e := range resp.Events {
 		fmt.Println(e.Type)
 		if e.PrevKv != nil {
-			printKV(s.isHex, e.PrevKv)
+			printKV(s.isHex, s.valueOnly, e.PrevKv)
 		}
-		printKV(s.isHex, e.Kv)
+		printKV(s.isHex, s.valueOnly, e.Kv)
 	}
 }
 

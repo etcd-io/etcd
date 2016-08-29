@@ -31,6 +31,7 @@ var (
 	getFromKey     bool
 	getRev         int64
 	getKeysOnly    bool
+	printValueOnly bool
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -49,6 +50,7 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "Get keys that are greater than or equal to the given key")
 	cmd.Flags().Int64Var(&getRev, "rev", 0, "Specify the kv revision")
 	cmd.Flags().BoolVar(&getKeysOnly, "keys-only", false, "Get only the keys")
+	cmd.Flags().BoolVar(&printValueOnly, "print-value-only", false, `Only write values when using the "simple" output format`)
 	return cmd
 }
 
@@ -62,6 +64,13 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
+	if printValueOnly {
+		dp, simple := (display).(*simplePrinter)
+		if !simple {
+			ExitWithError(ExitBadArgs, fmt.Errorf("print-value-only is only for `--write-out=simple`."))
+		}
+		dp.valueOnly = true
+	}
 	display.Get(*resp)
 }
 
