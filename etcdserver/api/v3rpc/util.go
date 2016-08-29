@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"google.golang.org/grpc"
@@ -26,6 +27,15 @@ import (
 
 func togRPCError(err error) error {
 	switch err {
+	case membership.ErrIDRemoved:
+		return rpctypes.ErrGRPCMemberNotFound
+	case membership.ErrIDNotFound:
+		return rpctypes.ErrGRPCMemberNotFound
+	case membership.ErrIDExists:
+		return rpctypes.ErrGRPCMemberExist
+	case membership.ErrPeerURLexists:
+		return rpctypes.ErrGRPCPeerURLExist
+
 	case mvcc.ErrCompacted:
 		return rpctypes.ErrGRPCCompacted
 	case mvcc.ErrFutureRev:
@@ -71,6 +81,6 @@ func togRPCError(err error) error {
 	case auth.ErrAuthNotEnabled:
 		return rpctypes.ErrGRPCAuthNotEnabled
 	default:
-		return grpc.Errorf(codes.Internal, err.Error())
+		return grpc.Errorf(codes.Unknown, err.Error())
 	}
 }
