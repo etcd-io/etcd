@@ -60,7 +60,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 		}
 	}
 
-	offset, err := w.tail().Seek(0, os.SEEK_CUR)
+	offset, err := w.tail().Seek(0, io.SeekCurrent)
 	if err != nil {
 		t.Fatal(err)
 	}
