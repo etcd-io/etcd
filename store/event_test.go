@@ -14,7 +14,11 @@
 
 package store
 
-import "testing"
+import (
+	"testing"
+
+	etcdErr "github.com/coreos/etcd/error"
+)
 
 // TestEventQueue tests a queue with capacity = 100
 // Add 200 events into that queue, and test if the
@@ -83,6 +87,26 @@ func TestScanHistory(t *testing.T) {
 	e, _ = eh.scan("/foo/bar", true, 7)
 	if e != nil {
 		t.Fatalf("bad index shoud reuturn nil")
+	}
+}
+
+func TestEventIndexHistoryCleared(t *testing.T) {
+	eh := newEventHistory(5)
+
+	// Add
+	eh.addEvent(newEvent(Create, "/foo", 1, 1))
+	eh.addEvent(newEvent(Create, "/foo/bar", 2, 2))
+	eh.addEvent(newEvent(Create, "/foo/foo", 3, 3))
+	eh.addEvent(newEvent(Create, "/foo/bar/bar", 4, 4))
+	eh.addEvent(newEvent(Create, "/foo/foo/foo", 5, 5))
+
+	// Add a new event which will replace/de-queue the first entry
+	eh.addEvent(newEvent(Create, "/foo/bar/bar/bar", 6, 6))
+
+	// test for the event which has been replaced.
+	_, err := eh.scan("/foo", false, 1)
+	if err == nil || err.ErrorCode != etcdErr.EcodeEventIndexCleared {
+		t.Fatalf("scan error cleared index should return err with %d got (%v)", etcdErr.EcodeEventIndexCleared, err)
 	}
 }
 
