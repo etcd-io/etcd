@@ -118,7 +118,7 @@ type chanStream struct {
 	ctx   context.Context
 }
 
-func (s *chanStream) Context() context.Context { return s.Context() }
+func (s *chanStream) Context() context.Context { return s.ctx }
 
 func (s *chanStream) SendMsg(m interface{}) error {
 	select {
