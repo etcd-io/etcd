@@ -45,9 +45,9 @@ func TestV2Set(t *testing.T) {
 	tc := NewTestClient()
 	v := url.Values{}
 	v.Set("value", "bar")
-	vAndNoData := url.Values{}
-	vAndNoData.Set("value", "bar")
-	vAndNoData.Set("noDataOnSuccess", "true")
+	vAndNoValue := url.Values{}
+	vAndNoValue.Set("value", "bar")
+	vAndNoValue.Set("noValueOnSuccess", "true")
 
 	tests := []struct {
 		relativeURL string
@@ -74,8 +74,8 @@ func TestV2Set(t *testing.T) {
 			`{"action":"set","node":{"key":"/fooempty","value":"","modifiedIndex":6,"createdIndex":6}}`,
 		},
 		{
-			"/v2/keys/foo/nodata",
-			vAndNoData,
+			"/v2/keys/foo/novalue",
+			vAndNoValue,
 			http.StatusCreated,
 			`{"action":"set"}`,
 		},
@@ -192,24 +192,24 @@ func TestV2CreateUpdate(t *testing.T) {
 				"cause":     "/nonexist",
 			},
 		},
-		// create with no data on success
+		// create with no value on success
 		{
-			"/v2/keys/create/nodata",
-			url.Values(map[string][]string{"value": {"XXX"}, "prevExist": {"false"}, "noDataOnSucces": {"true"}}),
+			"/v2/keys/create/novalue",
+			url.Values(map[string][]string{"value": {"XXX"}, "prevExist": {"false"}, "noValueOnSuccess": {"true"}}),
 			http.StatusCreated,
 			map[string]interface{}{},
 		},
-		// update with no data on success
+		// update with no value on success
 		{
-			"/v2/keys/create/nodata",
-			url.Values(map[string][]string{"value": {"XXX"}, "prevExist": {"true"}, "noDataOnSucces": {"true"}}),
+			"/v2/keys/create/novalue",
+			url.Values(map[string][]string{"value": {"XXX"}, "prevExist": {"true"}, "noValueOnSuccess": {"true"}}),
 			http.StatusOK,
 			map[string]interface{}{},
 		},
-		// created key failed with no data on success
+		// created key failed with no value on success
 		{
 			"/v2/keys/create/foo",
-			url.Values(map[string][]string{"value": {"XXX"}, "prevExist": {"false"}, "noDataOnSucces": {"true"}}),
+			url.Values(map[string][]string{"value": {"XXX"}, "prevExist": {"false"}, "noValueOnSuccess": {"true"}}),
 			http.StatusPreconditionFailed,
 			map[string]interface{}{
 				"errorCode": float64(105),
@@ -348,7 +348,7 @@ func TestV2CAS(t *testing.T) {
 		},
 		{
 			"/v2/keys/cas/foo",
-			url.Values(map[string][]string{"value": {"YYY"}, "prevIndex": {"6"}, "noDataOnSuccess": {"true"}}),
+			url.Values(map[string][]string{"value": {"YYY"}, "prevIndex": {"6"}, "noValueOnSuccess": {"true"}}),
 			http.StatusOK,
 			map[string]interface{}{
 				"action": "compareAndSwap",
@@ -356,7 +356,7 @@ func TestV2CAS(t *testing.T) {
 		},
 		{
 			"/v2/keys/cas/foo",
-			url.Values(map[string][]string{"value": {"YYY"}, "prevIndex": {"10"}, "noDataOnSuccess": {"true"}}),
+			url.Values(map[string][]string{"value": {"YYY"}, "prevIndex": {"10"}, "noValueOnSuccess": {"true"}}),
 			http.StatusPreconditionFailed,
 			map[string]interface{}{
 				"errorCode": float64(101),
