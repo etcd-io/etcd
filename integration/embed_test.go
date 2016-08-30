@@ -65,6 +65,9 @@ func TestEmbedEtcd(t *testing.T) {
 	for i, tt := range tests {
 		tests[i].cfg.Dir = dir
 		e, err := embed.StartEtcd(&tests[i].cfg)
+		if e != nil {
+			<-e.Server.ReadyNotify() // wait for e.Server to join the cluster
+		}
 		if tt.werr != "" {
 			if err == nil || !strings.Contains(err.Error(), tt.werr) {
 				t.Errorf("%d: expected error with %q, got %v", i, tt.werr, err)
