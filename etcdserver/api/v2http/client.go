@@ -153,7 +153,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	clock := clockwork.NewRealClock()
 	startTime := clock.Now()
-	rr, noDataOnSuccess, err := parseKeyRequest(r, clock)
+	rr, noValueOnSuccess, err := parseKeyRequest(r, clock)
 	if err != nil {
 		writeKeyError(w, err)
 		return
@@ -175,7 +175,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case resp.Event != nil:
-		if err := writeKeyEvent(w, resp.Event, noDataOnSuccess, h.timer); err != nil {
+		if err := writeKeyEvent(w, resp.Event, noValueOnSuccess, h.timer); err != nil {
 			// Should never be reached
 			plog.Errorf("error writing event (%v)", err)
 		}
@@ -450,7 +450,7 @@ func logHandleFunc(w http.ResponseWriter, r *http.Request) {
 // a server Request, performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
 func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Request, bool, error) {
-	noDataOnSuccess := false
+	noValueOnSuccess := false
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()
@@ -537,10 +537,10 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 		)
 	}
 
-	if noDataOnSuccess, err = getBool(r.Form, "noDataOnSuccess"); err != nil {
+	if noValueOnSuccess, err = getBool(r.Form, "noValueOnSuccess"); err != nil {
 		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
-			`invalid value for "noDataOnSuccess"`,
+			`invalid value for "noValueOnSuccess"`,
 		)
 	}
 
@@ -629,13 +629,13 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 		rr.Expiration = clock.Now().Add(expr).UnixNano()
 	}
 
-	return rr, noDataOnSuccess, nil
+	return rr, noValueOnSuccess, nil
 }
 
 // writeKeyEvent trims the prefix of key path in a single Event under
 // StoreKeysPrefix, serializes it and writes the resulting JSON to the given
 // ResponseWriter, along with the appropriate headers.
-func writeKeyEvent(w http.ResponseWriter, ev *store.Event, noDataOnSuccess bool, rt etcdserver.RaftTimer) error {
+func writeKeyEvent(w http.ResponseWriter, ev *store.Event, noValueOnSuccess bool, rt etcdserver.RaftTimer) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
@@ -649,7 +649,7 @@ func writeKeyEvent(w http.ResponseWriter, ev *store.Event, noDataOnSuccess bool,
 	}
 
 	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
-	if noDataOnSuccess &&
+	if noValueOnSuccess &&
 		(ev.Action == store.Set || ev.Action == store.CompareAndSwap ||
 			ev.Action == store.Create || ev.Action == store.Update) {
 		ev.Node = nil

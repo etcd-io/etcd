@@ -384,9 +384,9 @@ func TestGoodParseRequest(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	fc.Advance(1111)
 	tests := []struct {
-		in     *http.Request
-		w      etcdserverpb.Request
-		noData bool
+		in      *http.Request
+		w       etcdserverpb.Request
+		noValue bool
 	}{
 		{
 			// good prefix, all other values default
@@ -606,11 +606,11 @@ func TestGoodParseRequest(t *testing.T) {
 			false,
 		},
 		{
-			// noDataOnSuccess specified
+			// noValueOnSuccess specified
 			mustNewForm(
 				t,
 				"foo",
-				url.Values{"noDataOnSuccess": []string{"true"}},
+				url.Values{"noValueOnSuccess": []string{"true"}},
 			),
 			etcdserverpb.Request{
 				Method: "PUT",
@@ -621,13 +621,13 @@ func TestGoodParseRequest(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		got, noDataOnFailure, err := parseKeyRequest(tt.in, fc)
+		got, noValueOnSuccess, err := parseKeyRequest(tt.in, fc)
 		if err != nil {
 			t.Errorf("#%d: err = %v, want %v", i, err, nil)
 		}
 
-		if noDataOnFailure != tt.noData {
-			t.Errorf("#%d: noData=%t, want %t", i, noDataOnFailure, tt.noData)
+		if noValueOnSuccess != tt.noValue {
+			t.Errorf("#%d: noValue=%t, want %t", i, noValueOnSuccess, tt.noValue)
 		}
 
 		if !reflect.DeepEqual(got, tt.w) {
@@ -1159,9 +1159,9 @@ func TestWriteEvent(t *testing.T) {
 	}
 
 	tests := []struct {
-		ev     *store.Event
-		noData bool
-		idx    string
+		ev      *store.Event
+		noValue bool
+		idx     string
 		// TODO(jonboulle): check body as well as just status code
 		code int
 		err  error
@@ -1194,7 +1194,7 @@ func TestWriteEvent(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		writeKeyEvent(rw, tt.ev, tt.noData, dummyRaftTimer{})
+		writeKeyEvent(rw, tt.ev, tt.noValue, dummyRaftTimer{})
 		if gct := rw.Header().Get("Content-Type"); gct != "application/json" {
 			t.Errorf("case %d: bad Content-Type: got %q, want application/json", i, gct)
 		}
@@ -1613,7 +1613,7 @@ func TestServeKeysEvent(t *testing.T) {
 			mustNewForm(
 				t,
 				"foo",
-				url.Values{"noDataOnSuccess": []string{"true"}},
+				url.Values{"noValueOnSuccess": []string{"true"}},
 			),
 			etcdserver.Response{
 				Event: &store.Event{
