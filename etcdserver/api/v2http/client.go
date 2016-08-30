@@ -576,7 +576,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if _, ok := r.Form["refresh"]; ok {
 		bv, err := getBool(r.Form, "refresh")
 		if err != nil {
-			return emptyReq, etcdErr.NewRequestError(
+			return emptyReq, false, etcdErr.NewRequestError(
 				etcdErr.EcodeInvalidField,
 				"invalid value for refresh",
 			)
@@ -585,13 +585,13 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 		if refresh != nil && *refresh {
 			val := r.FormValue("value")
 			if _, ok := r.Form["value"]; ok && val != "" {
-				return emptyReq, etcdErr.NewRequestError(
+				return emptyReq, false, etcdErr.NewRequestError(
 					etcdErr.EcodeRefreshValue,
 					`A value was provided on a refresh`,
 				)
 			}
 			if ttl == nil {
-				return emptyReq, etcdErr.NewRequestError(
+				return emptyReq, false, etcdErr.NewRequestError(
 					etcdErr.EcodeRefreshTTLRequired,
 					`No TTL value set`,
 				)

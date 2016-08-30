@@ -196,7 +196,7 @@ func TestBadRefreshRequest(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		got, err := parseKeyRequest(tt.in, clockwork.NewFakeClock())
+		got, _, err := parseKeyRequest(tt.in, clockwork.NewFakeClock())
 		if err == nil {
 			t.Errorf("#%d: unexpected nil error!", i)
 			continue
