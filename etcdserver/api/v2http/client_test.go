@@ -196,7 +196,7 @@ func TestBadRefreshRequest(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		got, err := parseKeyRequest(tt.in, clockwork.NewFakeClock())
+		got, _, err := parseKeyRequest(tt.in, clockwork.NewFakeClock())
 		if err == nil {
 			t.Errorf("#%d: unexpected nil error!", i)
 			continue
@@ -360,7 +360,7 @@ func TestBadParseRequest(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		got, err := parseKeyRequest(tt.in, clockwork.NewFakeClock())
+		got, _, err := parseKeyRequest(tt.in, clockwork.NewFakeClock())
 		if err == nil {
 			t.Errorf("#%d: unexpected nil error!", i)
 			continue
@@ -384,8 +384,9 @@ func TestGoodParseRequest(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	fc.Advance(1111)
 	tests := []struct {
-		in *http.Request
-		w  etcdserverpb.Request
+		in      *http.Request
+		w       etcdserverpb.Request
+		noValue bool
 	}{
 		{
 			// good prefix, all other values default
@@ -394,6 +395,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Method: "GET",
 				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// value specified
@@ -407,6 +409,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Val:    "some_value",
 				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// prevIndex specified
@@ -420,6 +423,7 @@ func TestGoodParseRequest(t *testing.T) {
 				PrevIndex: 98765,
 				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// recursive specified
@@ -433,6 +437,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Recursive: true,
 				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// sorted specified
@@ -446,6 +451,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Sorted: true,
 				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// quorum specified
@@ -459,6 +465,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Quorum: true,
 				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// wait specified
@@ -468,6 +475,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Wait:   true,
 				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// empty TTL specified
@@ -477,6 +485,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Path:       path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 				Expiration: 0,
 			},
+			false,
 		},
 		{
 			// non-empty TTL specified
@@ -486,6 +495,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Path:       path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 				Expiration: fc.Now().Add(5678 * time.Second).UnixNano(),
 			},
+			false,
 		},
 		{
 			// zero TTL specified
@@ -495,6 +505,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Path:       path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 				Expiration: fc.Now().UnixNano(),
 			},
+			false,
 		},
 		{
 			// dir specified
@@ -504,6 +515,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Dir:    true,
 				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// dir specified negatively
@@ -513,6 +525,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Dir:    false,
 				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// prevExist should be non-null if specified
@@ -526,6 +539,7 @@ func TestGoodParseRequest(t *testing.T) {
 				PrevExist: boolp(true),
 				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		{
 			// prevExist should be non-null if specified
@@ -539,6 +553,7 @@ func TestGoodParseRequest(t *testing.T) {
 				PrevExist: boolp(false),
 				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		// mix various fields
 		{
@@ -558,6 +573,7 @@ func TestGoodParseRequest(t *testing.T) {
 				Val:       "some value",
 				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		// query parameters should be used if given
 		{
@@ -571,6 +587,7 @@ func TestGoodParseRequest(t *testing.T) {
 				PrevValue: "woof",
 				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
 		},
 		// but form values should take precedence over query parameters
 		{
@@ -586,14 +603,33 @@ func TestGoodParseRequest(t *testing.T) {
 				PrevValue: "miaow",
 				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
 			},
+			false,
+		},
+		{
+			// noValueOnSuccess specified
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"noValueOnSuccess": []string{"true"}},
+			),
+			etcdserverpb.Request{
+				Method: "PUT",
+				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+			},
+			true,
 		},
 	}
 
 	for i, tt := range tests {
-		got, err := parseKeyRequest(tt.in, fc)
+		got, noValueOnSuccess, err := parseKeyRequest(tt.in, fc)
 		if err != nil {
 			t.Errorf("#%d: err = %v, want %v", i, err, nil)
 		}
+
+		if noValueOnSuccess != tt.noValue {
+			t.Errorf("#%d: noValue=%t, want %t", i, noValueOnSuccess, tt.noValue)
+		}
+
 		if !reflect.DeepEqual(got, tt.w) {
 			t.Errorf("#%d: request=%#v, want %#v", i, got, tt.w)
 		}
@@ -1112,7 +1148,7 @@ func TestServeMembersFail(t *testing.T) {
 func TestWriteEvent(t *testing.T) {
 	// nil event should not panic
 	rec := httptest.NewRecorder()
-	writeKeyEvent(rec, nil, dummyRaftTimer{})
+	writeKeyEvent(rec, nil, false, dummyRaftTimer{})
 	h := rec.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
@@ -1123,8 +1159,9 @@ func TestWriteEvent(t *testing.T) {
 	}
 
 	tests := []struct {
-		ev  *store.Event
-		idx string
+		ev      *store.Event
+		noValue bool
+		idx     string
 		// TODO(jonboulle): check body as well as just status code
 		code int
 		err  error
@@ -1136,6 +1173,7 @@ func TestWriteEvent(t *testing.T) {
 				Node:     &store.NodeExtern{},
 				PrevNode: &store.NodeExtern{},
 			},
+			false,
 			"0",
 			http.StatusOK,
 			nil,
@@ -1147,6 +1185,7 @@ func TestWriteEvent(t *testing.T) {
 				Node:     &store.NodeExtern{},
 				PrevNode: &store.NodeExtern{},
 			},
+			false,
 			"0",
 			http.StatusCreated,
 			nil,
@@ -1155,7 +1194,7 @@ func TestWriteEvent(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		writeKeyEvent(rw, tt.ev, dummyRaftTimer{})
+		writeKeyEvent(rw, tt.ev, tt.noValue, dummyRaftTimer{})
 		if gct := rw.Header().Get("Content-Type"); gct != "application/json" {
 			t.Errorf("case %d: bad Content-Type: got %q, want application/json", i, gct)
 		}
@@ -1550,45 +1589,76 @@ func TestServeKeysGood(t *testing.T) {
 }
 
 func TestServeKeysEvent(t *testing.T) {
-	req := mustNewRequest(t, "foo")
-	server := &resServer{
-		etcdserver.Response{
-			Event: &store.Event{
+	tests := []struct {
+		req   *http.Request
+		rsp   etcdserver.Response
+		wcode int
+		event *store.Event
+	}{
+		{
+			mustNewRequest(t, "foo"),
+			etcdserver.Response{
+				Event: &store.Event{
+					Action: store.Get,
+					Node:   &store.NodeExtern{},
+				},
+			},
+			http.StatusOK,
+			&store.Event{
 				Action: store.Get,
 				Node:   &store.NodeExtern{},
 			},
 		},
+		{
+			mustNewForm(
+				t,
+				"foo",
+				url.Values{"noValueOnSuccess": []string{"true"}},
+			),
+			etcdserver.Response{
+				Event: &store.Event{
+					Action: store.CompareAndSwap,
+					Node:   &store.NodeExtern{},
+				},
+			},
+			http.StatusOK,
+			&store.Event{
+				Action: store.CompareAndSwap,
+				Node:   nil,
+			},
+		},
 	}
+
+	server := &resServer{}
 	h := &keysHandler{
 		timeout: time.Hour,
 		server:  server,
 		cluster: &fakeCluster{id: 1},
 		timer:   &dummyRaftTimer{},
 	}
-	rw := httptest.NewRecorder()
 
-	h.ServeHTTP(rw, req)
+	for _, tt := range tests {
+		server.res = tt.rsp
+		rw := httptest.NewRecorder()
+		h.ServeHTTP(rw, tt.req)
 
-	wcode := http.StatusOK
-	wbody := mustMarshalEvent(
-		t,
-		&store.Event{
-			Action: store.Get,
-			Node:   &store.NodeExtern{},
-		},
-	)
+		wbody := mustMarshalEvent(
+			t,
+			tt.event,
+		)
 
-	if rw.Code != wcode {
-		t.Errorf("got code=%d, want %d", rw.Code, wcode)
-	}
-	gcid := rw.Header().Get("X-Etcd-Cluster-ID")
-	wcid := h.cluster.ID().String()
-	if gcid != wcid {
-		t.Errorf("cid = %s, want %s", gcid, wcid)
-	}
-	g := rw.Body.String()
-	if g != wbody {
-		t.Errorf("got body=%#v, want %#v", g, wbody)
+		if rw.Code != tt.wcode {
+			t.Errorf("got code=%d, want %d", rw.Code, tt.wcode)
+		}
+		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
+		wcid := h.cluster.ID().String()
+		if gcid != wcid {
+			t.Errorf("cid = %s, want %s", gcid, wcid)
+		}
+		g := rw.Body.String()
+		if g != wbody {
+			t.Errorf("got body=%#v, want %#v", g, wbody)
+		}
 	}
 }
 

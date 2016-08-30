@@ -559,6 +559,25 @@ Let's create a key-value pair first: `foo=one`.
 curl http://127.0.0.1:2379/v2/keys/foo -XPUT -d value=one
 ```
 
+```json
+{
+    "action":"set",
+    "node":{
+        "key":"/foo",
+        "value":"one",
+        "modifiedIndex":4,
+        "createdIndex":4
+    }
+}
+```
+
+Specifying `noValueOnSuccess` option skips returning the node as value.
+
+```sh
+curl http://127.0.0.1:2379/v2/keys/foo?noValueOnSuccess=true -XPUT -d value=one
+# {"action":"set"}
+```
+
 Now let's try some invalid `CompareAndSwap` commands.
 
 Trying to set this existing key with `prevExist=false` fails as expected:
