@@ -598,7 +598,7 @@ func (r *raft) Step(m pb.Message) error {
 		lead := m.From
 		if m.Type == pb.MsgVote {
 			force := bytes.Equal(m.Context, []byte(campaignTransfer))
-			inLease := r.checkQuorum && r.state != StateCandidate && r.electionElapsed < r.electionTimeout
+			inLease := r.checkQuorum && r.lead != None && r.electionElapsed < r.electionTimeout
 			if !force && inLease {
 				// If a server receives a RequestVote request within the minimum election timeout
 				// of hearing from a current leader, it does not update its term or grant its vote

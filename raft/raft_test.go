@@ -1281,10 +1281,8 @@ func TestLeaderElectionWithCheckQuorum(t *testing.T) {
 	setRandomizedElectionTimeout(a, a.electionTimeout+1)
 	setRandomizedElectionTimeout(b, b.electionTimeout+2)
 
-	// Letting b's electionElapsed reach to timeout so that it can vote for a
-	for i := 0; i < b.electionTimeout; i++ {
-		b.tick()
-	}
+	// Immediately after creation, votes are cast regardless of the
+	// election timeout.
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 
 	if a.state != StateLeader {
