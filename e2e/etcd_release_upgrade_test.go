@@ -17,6 +17,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -84,5 +85,72 @@ func TestReleaseUpgrade(t *testing.T) {
 				cx.t.Fatalf("#%d-%d: ctlV3Get error (%v)", i, j, err)
 			}
 		}
+	}
+}
+
+func TestReleaseUpgradeWithRestart(t *testing.T) {
+	lastReleaseBinary := binDir + "/etcd-last-release"
+	if !fileutil.Exist(lastReleaseBinary) {
+		t.Skipf("%q does not exist", lastReleaseBinary)
+	}
+
+	defer testutil.AfterTest(t)
+
+	copiedCfg := configNoTLS
+	copiedCfg.execPath = lastReleaseBinary
+	copiedCfg.snapCount = 10
+	copiedCfg.baseScheme = "unix"
+
+	epc, err := newEtcdProcessCluster(&copiedCfg)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	defer func() {
+		if errC := epc.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	}()
+
+	os.Setenv("ETCDCTL_API", "3")
+	defer os.Unsetenv("ETCDCTL_API")
+	cx := ctlCtx{
+		t:           t,
+		cfg:         configNoTLS,
+		dialTimeout: 7 * time.Second,
+		quorum:      true,
+		epc:         epc,
+	}
+	var kvs []kv
+	for i := 0; i < 50; i++ {
+		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
+	}
+	for i := range kvs {
+		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
+			cx.t.Fatalf("#%d: ctlV3Put error (%v)", i, err)
+		}
+	}
+
+	for i := range epc.procs {
+		if err := epc.procs[i].Stop(); err != nil {
+			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
+		}
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(epc.procs))
+	for i := range epc.procs {
+		go func(i int) {
+			epc.procs[i].cfg.execPath = binDir + "/etcd"
+			epc.procs[i].cfg.keepDataDir = true
+			if err := epc.procs[i].Restart(); err != nil {
+				t.Fatalf("error restarting etcd process (%v)", err)
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+
+	if err := ctlV3Get(cx, []string{kvs[0].key}, []kv{kvs[0]}...); err != nil {
+		t.Fatal(err)
 	}
 }
