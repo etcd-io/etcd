@@ -86,9 +86,23 @@ type serverWatchStream struct {
 func (sws *serverWatchStream) close() {
 	close(sws.watchCh)
 	close(sws.ctrlCh)
+
+	var wg sync.WaitGroup
+	sws.mu.Lock()
 	for _, ws := range sws.singles {
+		wg.Add(1)
 		ws.stop()
+		// copy the range variable to avoid race
+		copyws := ws
+		go func() {
+			<-copyws.stopNotify()
+			wg.Done()
+		}()
 	}
+	sws.mu.Unlock()
+
+	wg.Wait()
+
 	sws.groups.stop()
 }
 
