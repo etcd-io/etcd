@@ -33,6 +33,6 @@ func (w *WAL) renameWal(tmpdirpath string) (*WAL, error) {
 		return nil, err
 	}
 
-	w.fp = newFilePipeline(w.dir, SegmentSizeBytes)
+	w.fp = newFilePipeline(w.dir, segmentSizeBytes)
 	return w, nil
 }
