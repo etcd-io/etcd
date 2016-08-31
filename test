@@ -89,12 +89,13 @@ function grpcproxy_pass {
 }
 
 function release_pass {
-	UPGRADE_VER=$(git tag -l | tail -1)
+	# to grab latest patch release; bump this up for every minor release
+	UPGRADE_VER=$(git tag -l | grep v3.0 | tail -1)
 	if [ -n "$MANUAL_VER" ]; then
 		# in case, we need to test against different version
 		UPGRADE_VER=$MANUAL_VER
 	fi
-	echo "Running release upgrade tests with" etcd $UPGRADE_VER
+	echo "Downloading" etcd $UPGRADE_VER
 	curl -L https://github.com/coreos/etcd/releases/download/$UPGRADE_VER/etcd-$UPGRADE_VER-linux-amd64.tar.gz -o /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz
 	tar xzvf /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz -C /tmp/ --strip-components=1
 	mv /tmp/etcd ./bin/etcd-last-release
