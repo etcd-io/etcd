@@ -318,6 +318,10 @@ func TestIssue3699(t *testing.T) {
 	for leaderID != 3 {
 		c.Members[leaderID].Stop(t)
 		<-c.Members[leaderID].s.StopNotify()
+		// do not restart the killed member immediately.
+		// the member will advance its election timeout after restart,
+		// so it will have a better chance to become the leader again.
+		time.Sleep(time.Duration(electionTicks * int(tickDuration)))
 		c.Members[leaderID].Restart(t)
 		leaderID = c.waitLeader(t, c.Members)
 	}
