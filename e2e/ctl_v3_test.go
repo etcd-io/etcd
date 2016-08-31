@@ -146,15 +146,7 @@ func (cx *ctlCtx) PrefixArgs() []string {
 		panic("v3 proxy not implemented")
 	}
 
-	endpoints := ""
-	if backends := cx.epc.backends(); len(backends) != 0 {
-		es := []string{}
-		for _, b := range backends {
-			es = append(es, stripSchema(b.cfg.acurl))
-		}
-		endpoints = strings.Join(es, ",")
-	}
-	cmdArgs := []string{ctlBinPath, "--endpoints", endpoints, "--dial-timeout", cx.dialTimeout.String()}
+	cmdArgs := []string{ctlBinPath, "--endpoints", strings.Join(cx.epc.grpcEndpoints(), ","), "--dial-timeout", cx.dialTimeout.String()}
 	if cx.epc.cfg.clientTLS == clientTLS {
 		if cx.epc.cfg.isClientAutoTLS {
 			cmdArgs = append(cmdArgs, "--insecure-transport=false", "--insecure-skip-tls-verify")
@@ -172,14 +164,4 @@ func (cx *ctlCtx) PrefixArgs() []string {
 
 func isGRPCTimedout(err error) bool {
 	return strings.Contains(err.Error(), "grpc: timed out trying to connect")
-}
-
-func stripSchema(s string) string {
-	if strings.HasPrefix(s, "http://") {
-		s = strings.Replace(s, "http://", "", -1)
-	}
-	if strings.HasPrefix(s, "https://") {
-		s = strings.Replace(s, "https://", "", -1)
-	}
-	return s
 }
