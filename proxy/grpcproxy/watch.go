@@ -86,10 +86,12 @@ type serverWatchStream struct {
 func (sws *serverWatchStream) close() {
 	close(sws.watchCh)
 	close(sws.ctrlCh)
+	sws.mu.Lock()
 	for _, ws := range sws.singles {
 		ws.stop()
 	}
 	sws.groups.stop()
+	sws.mu.Unlock()
 }
 
 func (sws *serverWatchStream) recvLoop() error {
