@@ -1,3 +1,8 @@
+etcd v3.0.7 (2016-08-31)
+
+  - SRV records only allow A records (RFC 2052)
+
+
 etcd v3.0.5 (2016-08-19)
 
   - SRV records (e.g., infra1.example.com) must match the discovery domain
