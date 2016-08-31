@@ -54,34 +54,18 @@ func watchCommandFunc(cmd *cobra.Command, args []string) {
 		watchInteractiveFunc(cmd, args)
 		return
 	}
-	if len(args) < 1 || len(args) > 2 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("watch in non-interactive mode requires one or two arguments as key or prefix, with range end"))
-	}
-
-	opts := []clientv3.OpOption{clientv3.WithRev(watchRev)}
-	key := args[0]
-	if len(args) == 2 {
-		if watchPrefix {
-			ExitWithError(ExitBadArgs, fmt.Errorf("`range_end` and `--prefix` cannot be set at the same time, choose one"))
-		}
-		opts = append(opts, clientv3.WithRange(args[1]))
-	}
-
-	if watchPrefix {
-		opts = append(opts, clientv3.WithPrefix())
-	}
-	if watchPrevKey {
-		opts = append(opts, clientv3.WithPrevKV())
-	}
 
 	c := mustClientFromCmd(cmd)
-	wc := c.Watch(context.TODO(), key, opts...)
-	printWatchCh(wc)
-	err := c.Close()
-	if err == nil {
-		ExitWithError(ExitInterrupted, fmt.Errorf("watch is canceled by the server"))
+	wc, err := getWatchChan(c, args)
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
 	}
-	ExitWithError(ExitBadConnection, err)
+
+	printWatchCh(wc)
+	if err = c.Close(); err != nil {
+		ExitWithError(ExitBadConnection, err)
+	}
+	ExitWithError(ExitInterrupted, fmt.Errorf("watch is canceled by the server"))
 }
 
 func watchInteractiveFunc(cmd *cobra.Command, args []string) {
@@ -113,30 +97,34 @@ func watchInteractiveFunc(cmd *cobra.Command, args []string) {
 			fmt.Fprintf(os.Stderr, "Invalid command %s (%v)\n", l, err)
 			continue
 		}
-		moreargs := flagset.Args()
-		if len(moreargs) < 1 || len(moreargs) > 2 {
-			fmt.Fprintf(os.Stderr, "Invalid command %s (Too few or many arguments)\n", l)
+		ch, err := getWatchChan(c, flagset.Args())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Invalid command %s (%v)\n", l, err)
 			continue
 		}
-		var key string
-		_, err = fmt.Sscanf(moreargs[0], "%q", &key)
-		if err != nil {
-			key = moreargs[0]
-		}
-		opts := []clientv3.OpOption{clientv3.WithRev(watchRev)}
-		if len(moreargs) == 2 {
-			if watchPrefix {
-				fmt.Fprintf(os.Stderr, "`range_end` and `--prefix` cannot be set at the same time, choose one\n")
-				continue
-			}
-			opts = append(opts, clientv3.WithRange(moreargs[1]))
-		}
-		if watchPrefix {
-			opts = append(opts, clientv3.WithPrefix())
-		}
-		ch := c.Watch(context.TODO(), key, opts...)
 		go printWatchCh(ch)
 	}
+}
+
+func getWatchChan(c *clientv3.Client, args []string) (clientv3.WatchChan, error) {
+	if len(args) < 1 || len(args) > 2 {
+		return nil, fmt.Errorf("bad number of arguments")
+	}
+	key := args[0]
+	opts := []clientv3.OpOption{clientv3.WithRev(watchRev)}
+	if len(args) == 2 {
+		if watchPrefix {
+			return nil, fmt.Errorf("`range_end` and `--prefix` are mutually exclusive")
+		}
+		opts = append(opts, clientv3.WithRange(args[1]))
+	}
+	if watchPrefix {
+		opts = append(opts, clientv3.WithPrefix())
+	}
+	if watchPrevKey {
+		opts = append(opts, clientv3.WithPrevKV())
+	}
+	return c.Watch(context.TODO(), key, opts...), nil
 }
 
 func printWatchCh(ch clientv3.WatchChan) {
