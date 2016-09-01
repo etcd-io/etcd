@@ -477,7 +477,7 @@ func (w *watchGrpcStream) run() {
 		// watch client failed to recv; spawn another if possible
 		// TODO report watch client errors from errc?
 		case err := <-w.errc:
-			if toErr(w.ctx, err) == v3rpc.ErrNoLeader {
+			if isHaltErr(w.ctx, err) || toErr(w.ctx, err) == v3rpc.ErrNoLeader {
 				closeErr = err
 				return
 			}
