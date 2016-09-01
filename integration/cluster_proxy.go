@@ -56,5 +56,13 @@ func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
 	toGRPC(c)
 	c.KV = clientv3.NewKVFromKVClient(grpcproxy.KvServerToKvClient(grpcproxy.NewKvProxy(c)))
 	c.Watcher = clientv3.NewWatchFromWatchClient(grpcproxy.WatchServerToWatchClient(grpcproxy.NewWatchProxy(c)))
+
+	go func() {
+		select {
+		case <-c.Ctx().Done():
+			c.Watcher.Close()
+		}
+	}()
+
 	return c, nil
 }
