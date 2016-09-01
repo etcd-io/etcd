@@ -172,7 +172,16 @@ type watcherStream struct {
 }
 
 func NewWatcher(c *Client) Watcher {
-	return NewWatchFromWatchClient(pb.NewWatchClient(c.conn))
+	w := NewWatchFromWatchClient(pb.NewWatchClient(c.conn))
+
+	go func() {
+		select {
+		case <-c.Ctx().Done():
+			w.Close()
+		}
+	}()
+
+	return w
 }
 
 func NewWatchFromWatchClient(wc pb.WatchClient) Watcher {

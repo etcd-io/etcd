@@ -20,9 +20,12 @@ import (
 
 	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/contrib/recipes"
+	"github.com/coreos/etcd/pkg/testutil"
 )
 
 func TestDoubleBarrier(t *testing.T) {
+	defer testutil.AfterTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
@@ -94,6 +97,8 @@ func TestDoubleBarrier(t *testing.T) {
 }
 
 func TestDoubleBarrierFailover(t *testing.T) {
+	defer testutil.AfterTest(t)
+
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 

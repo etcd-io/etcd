@@ -120,6 +120,14 @@ func NewLease(c *Client) Lease {
 	l.stopCtx, l.stopCancel = context.WithCancel(context.Background())
 	go l.recvKeepAliveLoop()
 	go l.deadlineLoop()
+
+	go func() {
+		select {
+		case <-c.Ctx().Done():
+			l.Close()
+		}
+	}()
+
 	return l
 }
 

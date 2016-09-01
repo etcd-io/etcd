@@ -75,6 +75,8 @@ func (wgs *watchergroups) maybeJoinWatcherSingle(rid receiverID, ws watcherSingl
 	group, ok := wgs.groups[ws.w.wr]
 	if ok {
 		if ws.w.rev >= group.rev {
+			// cancel the dedicated watcher and join into the existing watcher group
+			ws.cancel()
 			group.add(receiverID{streamID: ws.sws.id, watcherID: ws.w.id}, ws.w)
 			return true
 		}
