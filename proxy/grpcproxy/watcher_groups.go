@@ -27,6 +27,8 @@ type watchergroups struct {
 	mu        sync.Mutex
 	groups    map[watchRange]*watcherGroup
 	idToGroup map[receiverID]*watcherGroup
+
+	proxyCtx context.Context
 }
 
 func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
@@ -40,7 +42,7 @@ func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(wgs.proxyCtx)
 
 	wch := wgs.cw.Watch(ctx, w.wr.key,
 		clientv3.WithRange(w.wr.end),
@@ -98,4 +100,5 @@ func (wgs *watchergroups) stop() {
 	for _, wg := range wgs.groups {
 		wg.stop()
 	}
+	wgs.groups = nil
 }
