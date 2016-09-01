@@ -70,5 +70,8 @@ func (ws watcherSingle) canPromote() bool {
 
 func (ws watcherSingle) stop() {
 	ws.cancel()
-	<-ws.donec
+}
+
+func (ws watcherSingle) stopNotify() <-chan struct{} {
+	return ws.donec
 }
