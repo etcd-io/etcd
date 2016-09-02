@@ -18,6 +18,8 @@ import (
 	"sync"
 
 	"github.com/coreos/etcd/clientv3"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
 	"golang.org/x/net/context"
 )
 
@@ -38,8 +40,21 @@ func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
 	groups := wgs.groups
 
 	if wg, ok := groups[w.wr]; ok {
-		wg.add(rid, w)
+		rev := wg.add(rid, w)
 		wgs.idToGroup[rid] = wg
+
+		resp := &pb.WatchResponse{
+			Header: &pb.ResponseHeader{
+				// todo: fill in ClusterId
+				// todo: fill in MemberId:
+				Revision: rev,
+				// todo: fill in RaftTerm:
+			},
+			WatchId: rid.watcherID,
+			Created: true,
+		}
+		w.ch <- resp
+
 		return
 	}
 
