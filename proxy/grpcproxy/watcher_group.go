@@ -70,7 +70,6 @@ func (wg *watcherGroup) broadcast(wr clientv3.WatchResponse) {
 func (wg *watcherGroup) add(rid receiverID, w watcher) {
 	wg.mu.Lock()
 	defer wg.mu.Unlock()
-
 	wg.receivers[rid] = w
 }
 
@@ -91,4 +90,10 @@ func (wg *watcherGroup) isEmpty() bool {
 func (wg *watcherGroup) stop() {
 	wg.cancel()
 	<-wg.donec
+}
+
+func (wg *watcherGroup) revision() int64 {
+	wg.mu.Lock()
+	defer wg.mu.Unlock()
+	return wg.rev
 }
