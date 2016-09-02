@@ -43,6 +43,14 @@ func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
 		rev := wg.add(rid, w)
 		wgs.idToGroup[rid] = wg
 
+		if rev == 0 {
+			// The group is newly created, the create event has not been delivered
+			// to this group yet.
+			// We can rely on etcd server to deliver the create event.
+			// Or we might end up sending created event twice.
+			return
+		}
+
 		resp := &pb.WatchResponse{
 			Header: &pb.ResponseHeader{
 				// todo: fill in ClusterId
