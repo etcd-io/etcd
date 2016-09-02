@@ -42,12 +42,16 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 
 	events := make([]*mvccpb.Event, 0, len(wr.Events))
 
+	var lastRev int64
 	for i := range wr.Events {
 		ev := (*mvccpb.Event)(wr.Events[i])
 		if ev.Kv.ModRevision <= w.rev {
 			continue
 		} else {
-			w.rev = ev.Kv.ModRevision
+			// We cannot update w.rev here.
+			// txn can have multiple events with the same rev.
+			// If we update w.rev here, we would skip some events in the same txn.
+			lastRev = ev.Kv.ModRevision
 		}
 
 		filtered := false
@@ -63,6 +67,10 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		if !filtered {
 			events = append(events, ev)
 		}
+	}
+
+	if lastRev > w.rev {
+		w.rev = lastRev
 	}
 
 	// all events are filtered out?
