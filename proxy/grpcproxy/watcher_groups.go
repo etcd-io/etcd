@@ -39,6 +39,7 @@ func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
 
 	if wg, ok := groups[w.wr]; ok {
 		wg.add(rid, w)
+		wgs.idToGroup[rid] = wg
 		return
 	}
 
@@ -54,20 +55,22 @@ func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
 	watchg.add(rid, w)
 	go watchg.run()
 	groups[w.wr] = watchg
+	wgs.idToGroup[rid] = watchg
 }
 
-func (wgs *watchergroups) removeWatcher(rid receiverID) bool {
+func (wgs *watchergroups) removeWatcher(rid receiverID) (int64, bool) {
 	wgs.mu.Lock()
 	defer wgs.mu.Unlock()
 
 	if g, ok := wgs.idToGroup[rid]; ok {
 		g.delete(rid)
+		delete(wgs.idToGroup, rid)
 		if g.isEmpty() {
 			g.stop()
 		}
-		return true
+		return g.revision(), true
 	}
-	return false
+	return -1, false
 }
 
 func (wgs *watchergroups) maybeJoinWatcherSingle(rid receiverID, ws watcherSingle) bool {
