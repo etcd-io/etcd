@@ -243,7 +243,7 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 	var cfg authCfg
 
 	splitted := strings.SplitN(userFlag, ":", 2)
-	if len(splitted) == 0 {
+	if len(splitted) < 2 {
 		cfg.username = userFlag
 		cfg.password, err = speakeasy.Ask("Password: ")
 		if err != nil {
