@@ -67,7 +67,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 		id:         wp.nextStreamID,
 		gRPCStream: stream,
 
-		watchCh: make(chan *pb.WatchResponse, 10),
+		watchCh: make(chan *pb.WatchResponse, 1024),
 
 		proxyCtx: wp.ctx,
 	}
