@@ -33,9 +33,10 @@ The protobuf encoding of the PUT [RPC response][etcdrpc].
 #### Examples
 
 ``` bash
-./etcdctl PUT foo bar --lease=0x1234abcd
+./etcdctl put foo bar --lease=1234abcd
 OK
-./etcdctl range foo
+./etcdctl get foo
+foo
 bar
 ```
 
@@ -135,7 +136,7 @@ The protobuf encoding of the DeleteRange [RPC response][etcdrpc].
 OK
 ./etcdctl del foo
 1
-./etcdctl range foo
+./etcdctl get foo
 ```
 
 ### TXN [options]

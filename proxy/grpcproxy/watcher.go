@@ -15,6 +15,8 @@
 package grpcproxy
 
 import (
+	"time"
+
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
@@ -86,7 +88,9 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 	}
 	select {
 	case w.ch <- pbwr:
-	default:
-		panic("handle this")
+	case <-time.After(50 * time.Millisecond):
+		// close the watch chan will notify the stream sender.
+		// the stream will gc all its watchers.
+		close(w.ch)
 	}
 }
