@@ -23,6 +23,12 @@ import (
 )
 
 func TestMessage(t *testing.T) {
+	// Lower readBytesLimit to make test pass in restricted resources environment
+	originalLimit := readBytesLimit
+	readBytesLimit = 1000
+	defer func() {
+		readBytesLimit = originalLimit
+	}()
 	tests := []struct {
 		msg       raftpb.Message
 		encodeErr error
