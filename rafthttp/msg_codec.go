@@ -43,7 +43,7 @@ type messageDecoder struct {
 }
 
 var (
-	readBytesLimit     uint64 = 512 * 1024 // 512 MB
+	readBytesLimit     uint64 = 512 * 1024 * 1024 // 512 MB
 	ErrExceedSizeLimit        = errors.New("rafthttp: error limit exceeded")
 )
 
