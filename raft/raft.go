@@ -22,6 +22,8 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
@@ -44,6 +46,25 @@ const (
 	// campaignTransfer represents the type of leader transfer
 	campaignTransfer CampaignType = "CampaignTransfer"
 )
+
+// lockedRand is a small wrapper around rand.Rand to provide
+// synchronization. Only the methods needed by the code are exposed
+// (e.g. Intn).
+type lockedRand struct {
+	mu   sync.Mutex
+	rand *rand.Rand
+}
+
+func (r *lockedRand) Intn(n int) int {
+	r.mu.Lock()
+	v := r.rand.Intn(n)
+	r.mu.Unlock()
+	return v
+}
+
+var globalRand = &lockedRand{
+	rand: rand.New(rand.NewSource(time.Now().UnixNano())),
+}
 
 // CampaignType represents the type of campaigning
 // the reason we use the type of string instead of uint64
@@ -205,7 +226,6 @@ type raft struct {
 	// when raft changes its state to follower or candidate.
 	randomizedElectionTimeout int
 
-	rand *rand.Rand
 	tick func()
 	step stepFunc
 
@@ -244,7 +264,6 @@ func newRaft(c *Config) *raft {
 		logger:           c.Logger,
 		checkQuorum:      c.CheckQuorum,
 	}
-	r.rand = rand.New(rand.NewSource(int64(c.ID)))
 	for _, p := range peers {
 		r.prs[p] = &Progress{Next: 1, ins: newInflights(r.maxInflight)}
 	}
@@ -1024,7 +1043,7 @@ func (r *raft) pastElectionTimeout() bool {
 }
 
 func (r *raft) resetRandomizedElectionTimeout() {
-	r.randomizedElectionTimeout = r.electionTimeout + r.rand.Intn(r.electionTimeout)
+	r.randomizedElectionTimeout = r.electionTimeout + globalRand.Intn(r.electionTimeout)
 }
 
 // checkQuorumActive returns true if the quorum is active from
