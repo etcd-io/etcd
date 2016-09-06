@@ -32,35 +32,63 @@ func ExampleAuth() {
 	}
 	defer cli.Close()
 
-	authapi := clientv3.NewAuth(cli)
-
-	if _, err = authapi.RoleAdd(context.TODO(), "root"); err != nil {
+	if _, err = cli.RoleAdd(context.TODO(), "root"); err != nil {
+		log.Fatal(err)
+	}
+	if _, err = cli.UserAdd(context.TODO(), "root", "123"); err != nil {
+		log.Fatal(err)
+	}
+	if _, err = cli.UserGrantRole(context.TODO(), "root", "root"); err != nil {
 		log.Fatal(err)
 	}
 
-	if _, err = authapi.RoleGrantPermission(
+	if _, err = cli.RoleAdd(context.TODO(), "r"); err != nil {
+		log.Fatal(err)
+	}
+
+	if _, err = cli.RoleGrantPermission(
 		context.TODO(),
-		"root", // role name
-		"foo",  // key
-		"zoo",  // range end
+		"r",   // role name
+		"foo", // key
+		"zoo", // range end
 		clientv3.PermissionType(clientv3.PermReadWrite),
 	); err != nil {
 		log.Fatal(err)
 	}
-
-	if _, err = authapi.UserAdd(context.TODO(), "root", "123"); err != nil {
+	if _, err = cli.UserAdd(context.TODO(), "u", "123"); err != nil {
 		log.Fatal(err)
 	}
-
-	if _, err = authapi.UserGrantRole(context.TODO(), "root", "root"); err != nil {
+	if _, err = cli.UserGrantRole(context.TODO(), "u", "r"); err != nil {
 		log.Fatal(err)
 	}
-
-	if _, err = authapi.AuthEnable(context.TODO()); err != nil {
+	if _, err = cli.AuthEnable(context.TODO()); err != nil {
 		log.Fatal(err)
 	}
 
 	cliAuth, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+		Username:    "u",
+		Password:    "123",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cliAuth.Close()
+
+	if _, err = cliAuth.Put(context.TODO(), "foo1", "bar"); err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = cliAuth.Txn(context.TODO()).
+		If(clientv3.Compare(clientv3.Value("zoo1"), ">", "abc")).
+		Then(clientv3.OpPut("zoo1", "XYZ")).
+		Else(clientv3.OpPut("zoo1", "ABC")).
+		Commit()
+	fmt.Println(err)
+
+	// now check the permission with the root account
+	rootCli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: dialTimeout,
 		Username:    "root",
@@ -69,31 +97,17 @@ func ExampleAuth() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer cliAuth.Close()
+	defer rootCli.Close()
 
-	kv := clientv3.NewKV(cliAuth)
-	if _, err = kv.Put(context.TODO(), "foo1", "bar"); err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = kv.Txn(context.TODO()).
-		If(clientv3.Compare(clientv3.Value("zoo1"), ">", "abc")).
-		Then(clientv3.OpPut("zoo1", "XYZ")).
-		Else(clientv3.OpPut("zoo1", "ABC")).
-		Commit()
-	fmt.Println(err)
-
-	// now check the permission
-	authapi2 := clientv3.NewAuth(cliAuth)
-	resp, err := authapi2.RoleGet(context.TODO(), "root")
+	resp, err := rootCli.RoleGet(context.TODO(), "r")
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("root user permission: key %q, range end %q\n", resp.Perm[0].Key, resp.Perm[0].RangeEnd)
+	fmt.Printf("user u permission: key %q, range end %q\n", resp.Perm[0].Key, resp.Perm[0].RangeEnd)
 
-	if _, err = authapi2.AuthDisable(context.TODO()); err != nil {
+	if _, err = rootCli.AuthDisable(context.TODO()); err != nil {
 		log.Fatal(err)
 	}
 	// Output: etcdserver: permission denied
-	// root user permission: key "foo", range end "zoo"
+	// user u permission: key "foo", range end "zoo"
 }
