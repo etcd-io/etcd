@@ -11,11 +11,8 @@ if [ -z "${VERSION}" ]; then
 	exit 255
 fi
 
-# A non-installed actool can be used, for example:
-# ACTOOL=../../appc/spec/bin/actool
-ACTOOL=${ACTOOL:-actool}
-if ! command -v $ACTOOL >/dev/null; then
-    echo "cannot find actool ($ACTOOL)"
+if ! command -v acbuild >/dev/null; then
+    echo "cannot find acbuild"
     exit 1
 fi
 

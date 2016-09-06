@@ -48,7 +48,7 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 
 ## Build Release Binaries and Images
 
-- Ensure `actool` is available, or installing it through `go get github.com/appc/spec/actool`.
+- Ensure `acbuild` is available.
 - Ensure `docker` is available.
 
 Run release script in root directory:
