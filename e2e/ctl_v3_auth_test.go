@@ -111,11 +111,11 @@ func authCredWriteKeyTest(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	// confirm root role doesn't grant access to all keys
-	if err := ctlV3PutFailPerm(cx, "foo", "bar"); err != nil {
+	// confirm root role can access to all keys
+	if err := ctlV3Put(cx, "foo", "bar", ""); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := ctlV3GetFailPerm(cx, "foo"); err != nil {
+	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -126,17 +126,17 @@ func authCredWriteKeyTest(cx ctlCtx) {
 	}
 	// confirm put failed
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "a"}}...); err != nil {
+	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	// try good user
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3Put(cx, "foo", "bar", ""); err != nil {
+	if err := ctlV3Put(cx, "foo", "bar2", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 	// confirm put succeeded
-	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
+	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar2"}}...); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -147,7 +147,7 @@ func authCredWriteKeyTest(cx ctlCtx) {
 	}
 	// confirm put failed
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar"}}...); err != nil {
+	if err := ctlV3Get(cx, []string{"foo"}, []kv{{"foo", "bar2"}}...); err != nil {
 		cx.t.Fatal(err)
 	}
 }
