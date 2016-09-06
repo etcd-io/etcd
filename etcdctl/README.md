@@ -12,7 +12,7 @@ PUT assigns the specified value with the specified key. If key already holds a v
 
 #### Options
 
-- lease -- lease ID (in hexadecimal) to attach to the key.
+- lease -- lease ID (in hexadecimal) to attach to the key. Refer '### LEASE GRANT \<ttl\>' section about creaing the lease before it can be attached to the key.
 
 #### Return value
 
@@ -33,10 +33,8 @@ The protobuf encoding of the PUT [RPC response][etcdrpc].
 #### Examples
 
 ``` bash
-./etcdctl PUT foo bar --lease=0x1234abcd
+./etcdctl put foo bar --lease=1234abcd
 OK
-./etcdctl range foo
-bar
 ```
 
 #### Notes
