@@ -64,12 +64,17 @@ type Progress struct {
 	RecentActive bool
 
 	// inflights is a sliding window for the inflight messages.
+	// Each inflight message might contain more than one entries
+	// and has a size limit defined in raft config as MaxSizePerMsg.
+	// Thus inflight effectively limits both the number of inflight messages
+	// and the bandwidth each Progress can use.
 	// When inflights is full, no more message should be sent.
 	// When a leader sends out a message, the index of the last
 	// entry should be added to inflights. The index MUST be added
 	// into inflights in order.
 	// When a leader receives a reply, the previous inflights should
-	// be freed by calling inflights.freeTo.
+	// be freed by calling inflights.freeTo with the index of the last
+	// received entry.
 	ins *inflights
 }
 
@@ -182,14 +187,13 @@ type inflights struct {
 	// number of inflights in the buffer
 	count int
 
-	// the size of the buffer
-	size   int
+	// buffer contains the index of the last entry
+	// inside one message.
 	buffer []uint64
 }
 
 func newInflights(size int) *inflights {
 	return &inflights{
-		size:   size,
 		buffer: make([]uint64, size),
 	}
 }
@@ -200,8 +204,9 @@ func (in *inflights) add(inflight uint64) {
 		panic("cannot add into a full inflights")
 	}
 	next := in.start + in.count
-	if next >= in.size {
-		next -= in.size
+	size := in.size()
+	if next >= size {
+		next -= size
 	}
 	in.buffer[next] = inflight
 	in.count++
@@ -219,10 +224,10 @@ func (in *inflights) freeTo(to uint64) {
 		if to < in.buffer[idx] { // found the first large inflight
 			break
 		}
-
+		size := in.size()
 		// increase index and maybe rotate
-		if idx++; idx >= in.size {
-			idx -= in.size
+		if idx++; idx >= size {
+			idx -= size
 		}
 	}
 	// free i inflights and set new start index
@@ -234,7 +239,11 @@ func (in *inflights) freeFirstOne() { in.freeTo(in.buffer[in.start]) }
 
 // full returns true if the inflights is full.
 func (in *inflights) full() bool {
-	return in.count == in.size
+	return in.count == len(in.buffer)
+}
+
+func (in *inflights) size() int {
+	return len(in.buffer)
 }
 
 // resets frees all inflights.
