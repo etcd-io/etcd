@@ -105,7 +105,7 @@ ETCD_INITIAL_CLUSTER_STATE=existing
 
 ### Stop the proxy process
 
-Stop the existing proxy so we can wipe it's state on disk and reload it with the new configuration:
+Stop the existing proxy so we can wipe its state on disk and reload it with the new configuration:
 
 ``` bash
 px aux | grep etcd
