@@ -236,9 +236,9 @@ lease 32695410dcc0ca06 granted with TTL(10s)
 Here is the command to keep the same lease alive:
 
 ```bash
-$ etcdctl lease keep-alive 32695410dcc0ca0
-lease 32695410dcc0ca0 keepalived with TTL(100)
-lease 32695410dcc0ca0 keepalived with TTL(100)
-lease 32695410dcc0ca0 keepalived with TTL(100)
+$ etcdctl lease keep-alive 32695410dcc0ca06
+lease 32695410dcc0ca06 keepalived with TTL(100)
+lease 32695410dcc0ca06 keepalived with TTL(100)
+lease 32695410dcc0ca06 keepalived with TTL(100)
 ...
 ```
