@@ -106,7 +106,7 @@ func TestGetMergedPerms(t *testing.T) {
 		},
 		{
 			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("b"), []byte("")}, {[]byte("c"), []byte("")}, {[]byte("d"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("d"), []byte("")}},
+			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("c"), []byte("")}, {[]byte("d"), []byte("")}},
 		},
 		// duplicate ranges
 		{
@@ -123,7 +123,7 @@ func TestGetMergedPerms(t *testing.T) {
 	for i, tt := range tests {
 		result := mergeRangePerms(tt.params)
 		if !isPermsEqual(result, tt.want) {
-			t.Errorf("#%d: result=%q, want=%q", i, result, tt.want)
+			t.Fatalf("#%d: result=%q, want=%q", i, result, tt.want)
 		}
 	}
 }

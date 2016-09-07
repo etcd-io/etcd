@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/wildcard"
 )
 
 type authApplierV3 struct {
@@ -75,10 +76,12 @@ func (aa *authApplierV3) Range(txnID int64, r *pb.RangeRequest) (*pb.RangeRespon
 	if err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
 		return nil, err
 	}
+	wildcard.ExpandWildcardToRange(r, true)
 	return aa.applierV3.Range(txnID, r)
 }
 
 func (aa *authApplierV3) DeleteRange(txnID int64, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+	wildcard.ExpandWildcardToRange(r, true)
 	if err := aa.as.IsDeleteRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
 		return nil, err
 	}
