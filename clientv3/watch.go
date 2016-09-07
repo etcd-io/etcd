@@ -708,6 +708,10 @@ func (w *watchGrpcStream) resumeWatchers(wc pb.Watch_WatchClient) error {
 	w.mu.RUnlock()
 
 	for _, ws := range streams {
+		// drain recvc so no old WatchResponses (e.g., Created messages)
+		// are processed while resuming
+		ws.drain()
+
 		// pause serveStream
 		ws.resumec <- -1
 
@@ -738,6 +742,17 @@ func (w *watchGrpcStream) resumeWatchers(wc pb.Watch_WatchClient) error {
 		ws.resumec <- ws.lastRev
 	}
 	return nil
+}
+
+// drain removes all buffered WatchResponses from the stream's receive channel.
+func (ws *watcherStream) drain() {
+	for {
+		select {
+		case <-ws.recvc:
+		default:
+			return
+		}
+	}
 }
 
 // toPB converts an internal watch request structure to its protobuf messagefunc (wr *watchRequest)
