@@ -56,6 +56,7 @@ func NewWatchProxy(c *clientv3.Client) pb.WatchServer {
 func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 	wp.mu.Lock()
 	wp.nextStreamID++
+	sid := wp.nextStreamID
 	wp.mu.Unlock()
 
 	sws := serverWatchStream{
@@ -64,10 +65,10 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 		singles:  make(map[int64]*watcherSingle),
 		inGroups: make(map[int64]struct{}),
 
-		id:         wp.nextStreamID,
+		id:         sid,
 		gRPCStream: stream,
 
-		watchCh: make(chan *pb.WatchResponse, 10),
+		watchCh: make(chan *pb.WatchResponse, 1024),
 
 		proxyCtx: wp.ctx,
 	}
