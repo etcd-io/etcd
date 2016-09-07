@@ -136,7 +136,7 @@ The protobuf encoding of the DeleteRange [RPC response][etcdrpc].
 OK
 ./etcdctl del foo
 1
-./etcdctl range foo
+./etcdctl get foo
 ```
 
 ### TXN [options]
