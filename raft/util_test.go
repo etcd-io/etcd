@@ -95,10 +95,10 @@ func TestIsLocalMsg(t *testing.T) {
 		{pb.MsgReadIndexResp, false},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		got := IsLocalMsg(tt.msgt)
 		if got != tt.isLocal {
-			t.Errorf("should be %v, but got %v", tt.isLocal, got)
+			t.Errorf("#%d: got %v, want %v", i, got, tt.isLocal)
 		}
 	}
 }
