@@ -2196,7 +2196,7 @@ func TestCommitAfterRemoveNode(t *testing.T) {
 }
 
 // TestLeaderTransferToUpToDateNode verifies transferring should succeed
-// if the transferee has the most up-to-date log entires when transfer starts.
+// if the transferee has the most up-to-date log entries when transfer starts.
 func TestLeaderTransferToUpToDateNode(t *testing.T) {
 	nt := newNetwork(nil, nil, nil)
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -2216,6 +2216,34 @@ func TestLeaderTransferToUpToDateNode(t *testing.T) {
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 
 	nt.send(pb.Message{From: 1, To: 2, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateLeader, 1)
+}
+
+// TestLeaderTransferToUpToDateNodeFromFollower verifies transferring should succeed
+// if the transferee has the most up-to-date log entries when transfer starts.
+// Not like TestLeaderTransferToUpToDateNode, where the leader transfer message
+// is sent to the leader, in this test case every leader transfer message is sent
+// to the follower.
+func TestLeaderTransferToUpToDateNodeFromFollower(t *testing.T) {
+	nt := newNetwork(nil, nil, nil)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	lead := nt.peers[1].(*raft)
+
+	if lead.lead != 1 {
+		t.Fatalf("after election leader is %x, want 1", lead.lead)
+	}
+
+	// Transfer leadership to 2.
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgTransferLeader})
+
+	checkLeaderTransferState(t, lead, StateFollower, 2)
+
+	// After some log replication, transfer leadership back to 1.
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgTransferLeader})
 
 	checkLeaderTransferState(t, lead, StateLeader, 1)
 }
