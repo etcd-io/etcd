@@ -77,12 +77,13 @@ func readCompares(r *bufio.Reader) (cmps []clientv3.Cmp) {
 		if err != nil {
 			ExitWithError(ExitInvalidInput, err)
 		}
-		if len(line) == 1 {
+
+		// remove space from the line
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
 			break
 		}
 
-		// remove trialling \n
-		line = line[:len(line)-1]
 		cmp, err := parseCompare(line)
 		if err != nil {
 			ExitWithError(ExitInvalidInput, err)
@@ -99,12 +100,13 @@ func readOps(r *bufio.Reader) (ops []clientv3.Op) {
 		if err != nil {
 			ExitWithError(ExitInvalidInput, err)
 		}
-		if len(line) == 1 {
+
+		// remove space from the line
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
 			break
 		}
 
-		// remove trialling \n
-		line = line[:len(line)-1]
 		op, err := parseRequestUnion(line)
 		if err != nil {
 			ExitWithError(ExitInvalidInput, err)
