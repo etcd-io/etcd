@@ -56,6 +56,7 @@ var (
 	ErrGRPCStopped                = grpc.Errorf(codes.Unavailable, "etcdserver: server stopped")
 	ErrGRPCTimeout                = grpc.Errorf(codes.Unavailable, "etcdserver: request timed out")
 	ErrGRPCTimeoutDueToLeaderFail = grpc.Errorf(codes.Unavailable, "etcdserver: request timed out, possibly due to previous leader failure")
+	ErrGRPCUnhealthy              = grpc.Errorf(codes.Unavailable, "etcdserver: unhealthy cluster")
 
 	errStringToError = map[string]error{
 		grpc.ErrorDesc(ErrGRPCEmptyKey):     ErrGRPCEmptyKey,
@@ -93,6 +94,7 @@ var (
 		grpc.ErrorDesc(ErrGRPCStopped):                ErrGRPCStopped,
 		grpc.ErrorDesc(ErrGRPCTimeout):                ErrGRPCTimeout,
 		grpc.ErrorDesc(ErrGRPCTimeoutDueToLeaderFail): ErrGRPCTimeoutDueToLeaderFail,
+		grpc.ErrorDesc(ErrGRPCUnhealthy):              ErrGRPCUnhealthy,
 	}
 
 	// client-side error
@@ -131,6 +133,7 @@ var (
 	ErrStopped                = Error(ErrGRPCStopped)
 	ErrTimeout                = Error(ErrGRPCTimeout)
 	ErrTimeoutDueToLeaderFail = Error(ErrGRPCTimeoutDueToLeaderFail)
+	ErrUnhealthy              = Error(ErrGRPCUnhealthy)
 )
 
 // EtcdError defines gRPC server errors.
