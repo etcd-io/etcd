@@ -16,6 +16,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -28,9 +29,26 @@ func main() {
 	etcdPath := flag.String("etcd-path", filepath.Join(os.Getenv("GOPATH"), "bin/etcd"), "the path to etcd binary")
 	etcdLogDir := flag.String("etcd-log-dir", "etcd-log", "directory to store etcd logs")
 	port := flag.String("port", ":9027", "port to serve agent server")
+	useRoot := flag.Bool("use-root", true, "use root permissions")
+	failpointAddr := flag.String("failpoint-addr", ":2381", "interface for gofail's HTTP server")
 	flag.Parse()
 
-	a, err := newAgent(*etcdPath, *etcdLogDir)
+	cfg := AgentConfig{
+		EtcdPath:      *etcdPath,
+		LogDir:        *etcdLogDir,
+		FailpointAddr: *failpointAddr,
+		UseRoot:       *useRoot,
+	}
+
+	if *useRoot && os.Getuid() != 0 {
+		fmt.Println("got --use-root=true but not root user")
+		os.Exit(1)
+	}
+	if *useRoot == false {
+		fmt.Println("root permissions disabled, agent will not modify network")
+	}
+
+	a, err := newAgent(cfg)
 	if err != nil {
 		plog.Fatal(err)
 	}

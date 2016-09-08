@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	defaultAgent, err := newAgent(etcdPath, "etcd.log")
+	defaultAgent, err := newAgent(AgentConfig{EtcdPath: etcdPath, LogDir: "etcd.log"})
 	if err != nil {
 		log.Panic(err)
 	}

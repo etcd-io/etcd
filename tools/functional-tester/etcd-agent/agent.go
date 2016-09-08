@@ -39,36 +39,44 @@ type Agent struct {
 
 	cmd     *exec.Cmd
 	logfile *os.File
-	logDir  string
+
+	cfg AgentConfig
 }
 
-func newAgent(etcd, logDir string) (*Agent, error) {
+type AgentConfig struct {
+	EtcdPath      string
+	LogDir        string
+	FailpointAddr string
+	UseRoot       bool
+}
+
+func newAgent(cfg AgentConfig) (*Agent, error) {
 	// check if the file exists
-	_, err := os.Stat(etcd)
+	_, err := os.Stat(cfg.EtcdPath)
 	if err != nil {
 		return nil, err
 	}
 
-	c := exec.Command(etcd)
+	c := exec.Command(cfg.EtcdPath)
 
-	err = fileutil.TouchDirAll(logDir)
+	err = fileutil.TouchDirAll(cfg.LogDir)
 	if err != nil {
 		return nil, err
 	}
 
 	var f *os.File
-	f, err = os.Create(filepath.Join(logDir, "etcd.log"))
+	f, err = os.Create(filepath.Join(cfg.LogDir, "etcd.log"))
 	if err != nil {
 		return nil, err
 	}
 
-	return &Agent{state: stateUninitialized, cmd: c, logfile: f, logDir: logDir}, nil
+	return &Agent{state: stateUninitialized, cmd: c, logfile: f, cfg: cfg}, nil
 }
 
 // start starts a new etcd process with the given args.
 func (a *Agent) start(args ...string) error {
 	a.cmd = exec.Command(a.cmd.Path, args...)
-	a.cmd.Env = []string{"GOFAIL_HTTP=:2381"}
+	a.cmd.Env = []string{"GOFAIL_HTTP=" + a.cfg.FailpointAddr}
 	a.cmd.Stdout = a.logfile
 	a.cmd.Stderr = a.logfile
 	err := a.cmd.Start()
@@ -131,15 +139,15 @@ func (a *Agent) cleanup() error {
 	a.state = stateUninitialized
 
 	a.logfile.Close()
-	if err := archiveLogAndDataDir(a.logDir, a.dataDir()); err != nil {
+	if err := archiveLogAndDataDir(a.cfg.LogDir, a.dataDir()); err != nil {
 		return err
 	}
 
-	if err := fileutil.TouchDirAll(a.logDir); err != nil {
+	if err := fileutil.TouchDirAll(a.cfg.LogDir); err != nil {
 		return err
 	}
 
-	f, err := os.Create(filepath.Join(a.logDir, "etcd.log"))
+	f, err := os.Create(filepath.Join(a.cfg.LogDir, "etcd.log"))
 	if err != nil {
 		return err
 	}
@@ -170,14 +178,23 @@ func (a *Agent) terminate() error {
 }
 
 func (a *Agent) dropPort(port int) error {
+	if !a.cfg.UseRoot {
+		return nil
+	}
 	return netutil.DropPort(port)
 }
 
 func (a *Agent) recoverPort(port int) error {
+	if !a.cfg.UseRoot {
+		return nil
+	}
 	return netutil.RecoverPort(port)
 }
 
 func (a *Agent) setLatency(ms, rv int) error {
+	if !a.cfg.UseRoot {
+		return nil
+	}
 	if ms == 0 {
 		return netutil.RemoveLatency()
 	}
