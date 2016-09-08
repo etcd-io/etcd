@@ -35,6 +35,8 @@ type printer interface {
 	Txn(v3.TxnResponse)
 	Watch(v3.WatchResponse)
 
+	TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool)
+
 	MemberList(v3.MemberListResponse)
 
 	EndpointStatus([]epStatus)
@@ -159,6 +161,18 @@ func (s *simplePrinter) Watch(resp v3.WatchResponse) {
 	}
 }
 
+func (s *simplePrinter) TimeToLive(resp v3.LeaseTimeToLiveResponse, keys bool) {
+	txt := fmt.Sprintf("lease %016x granted with TTL(%ds), remaining(%ds)", resp.ID, resp.GrantedTTL, resp.TTL)
+	if keys {
+		ks := make([]string, len(resp.Keys))
+		for i := range resp.Keys {
+			ks[i] = string(resp.Keys[i])
+		}
+		txt += fmt.Sprintf(", attached keys(%v)", ks)
+	}
+	fmt.Println(txt)
+}
+
 func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
 	for _, e := range resp.Alarms {
 		fmt.Printf("%+v\n", e)
@@ -203,6 +217,9 @@ func (tp *tablePrinter) Txn(r v3.TxnResponse) {
 func (tp *tablePrinter) Watch(r v3.WatchResponse) {
 	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
 }
+func (tp *tablePrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
+	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
+}
 func (tp *tablePrinter) Alarm(r v3.AlarmResponse) {
 	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
 }
@@ -236,15 +253,16 @@ func (tp *tablePrinter) DBStatus(r dbstatus) {
 
 type jsonPrinter struct{}
 
-func (p *jsonPrinter) Del(r v3.DeleteResponse)            { printJSON(r) }
-func (p *jsonPrinter) Get(r v3.GetResponse)               { printJSON(r) }
-func (p *jsonPrinter) Put(r v3.PutResponse)               { printJSON(r) }
-func (p *jsonPrinter) Txn(r v3.TxnResponse)               { printJSON(r) }
-func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }
-func (p *jsonPrinter) Alarm(r v3.AlarmResponse)           { printJSON(r) }
-func (p *jsonPrinter) MemberList(r v3.MemberListResponse) { printJSON(r) }
-func (p *jsonPrinter) EndpointStatus(r []epStatus)        { printJSON(r) }
-func (p *jsonPrinter) DBStatus(r dbstatus)                { printJSON(r) }
+func (p *jsonPrinter) Del(r v3.DeleteResponse)                            { printJSON(r) }
+func (p *jsonPrinter) Get(r v3.GetResponse)                               { printJSON(r) }
+func (p *jsonPrinter) Put(r v3.PutResponse)                               { printJSON(r) }
+func (p *jsonPrinter) Txn(r v3.TxnResponse)                               { printJSON(r) }
+func (p *jsonPrinter) Watch(r v3.WatchResponse)                           { printJSON(r) }
+func (p *jsonPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) { printJSON(r) }
+func (p *jsonPrinter) Alarm(r v3.AlarmResponse)                           { printJSON(r) }
+func (p *jsonPrinter) MemberList(r v3.MemberListResponse)                 { printJSON(r) }
+func (p *jsonPrinter) EndpointStatus(r []epStatus)                        { printJSON(r) }
+func (p *jsonPrinter) DBStatus(r dbstatus)                                { printJSON(r) }
 
 func printJSON(v interface{}) {
 	b, err := json.Marshal(v)
@@ -281,6 +299,10 @@ func (p *pbPrinter) Watch(r v3.WatchResponse) {
 	for _, ev := range r.Events {
 		printPB((*spb.Event)(ev))
 	}
+}
+
+func (p *pbPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
+	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
 }
 
 func (p *pbPrinter) Alarm(r v3.AlarmResponse) {

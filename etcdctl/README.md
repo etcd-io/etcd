@@ -326,6 +326,40 @@ LEASE REVOKE destroys a given lease, deleting all attached keys.
 lease 32695410dcc0ca06 revoked
 ```
 
+
+### LEASE TIMETOLIVE \<leaseID\>
+
+LEASE TIMETOLIVE retrieves the lease information with the given lease ID.
+
+#### Return value
+
+- On success, prints lease information.
+
+- On failure, prints an error message and returns with a non-zero exit code.
+
+#### Example
+
+```bash
+./etcdctl lease grant 500
+lease 2d8257079fa1bc0c granted with TTL(500s)
+
+./etcdctl put foo1 bar --lease=2d8257079fa1bc0c
+./etcdctl put foo2 bar --lease=2d8257079fa1bc0c
+
+./etcdctl lease timetolive 2d8257079fa1bc0c
+lease 2d8257079fa1bc0c granted with TTL(500s), remaining(481s)
+
+./etcdctl lease timetolive 2d8257079fa1bc0c --keys
+lease 2d8257079fa1bc0c granted with TTL(500s), remaining(472s), attached keys([foo2 foo1])
+
+./etcdctl lease timetolive 2d8257079fa1bc0c --write-out=json
+{"cluster_id":17186838941855831277,"member_id":4845372305070271874,"revision":3,"raft_term":2,"id":3279279168933706764,"ttl":465,"granted-ttl":500,"keys":null}
+
+./etcdctl lease timetolive 2d8257079fa1bc0c --write-out=json --keys
+{"cluster_id":17186838941855831277,"member_id":4845372305070271874,"revision":3,"raft_term":2,"id":3279279168933706764,"ttl":459,"granted-ttl":500,"keys":["Zm9vMQ==","Zm9vMg=="]}
+```
+
+
 ### LEASE KEEP-ALIVE \<leaseID\>
 
 LEASE KEEP-ALIVE periodically refreshes a lease so it does not expire.
