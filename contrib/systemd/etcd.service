@@ -1,6 +1,7 @@
 [Unit]
 Description=etcd key-value store
 Documentation=https://github.com/coreos/etcd
+After=network.target
 
 [Service]
 User=etcd
