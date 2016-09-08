@@ -41,6 +41,11 @@ func (lp *leaseProxy) LeaseRevoke(ctx context.Context, rr *pb.LeaseRevokeRequest
 	return pb.NewLeaseClient(conn).LeaseRevoke(ctx, rr)
 }
 
+func (lp *leaseProxy) LeaseTimeToLive(ctx context.Context, rr *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
+	conn := lp.client.ActiveConnection()
+	return pb.NewLeaseClient(conn).LeaseTimeToLive(ctx, rr)
+}
+
 func (lp *leaseProxy) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) error {
 	conn := lp.client.ActiveConnection()
 	ctx, cancel := context.WithCancel(stream.Context())
