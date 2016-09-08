@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"time"
 
@@ -164,4 +165,15 @@ func (m *member) grpcAddr() string {
 		panic(err)
 	}
 	return u.Host
+}
+
+func (m *member) peerPort() (port int) {
+	_, portStr, err := net.SplitHostPort(m.PeerURL)
+	if err != nil {
+		panic(err)
+	}
+	if _, err = fmt.Sscanf(portStr, "%d", &port); err != nil {
+		panic(err)
+	}
+	return port
 }

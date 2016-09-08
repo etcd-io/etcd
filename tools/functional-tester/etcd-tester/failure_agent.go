@@ -78,8 +78,8 @@ func newFailureKillLeaderForLongTime() failure {
 	return &failureUntilSnapshot{newFailureKillLeader()}
 }
 
-func injectDropPort(m *member) error  { return m.Agent.DropPort(peerURLPort) }
-func recoverDropPort(m *member) error { return m.Agent.RecoverPort(peerURLPort) }
+func injectDropPort(m *member) error  { return m.Agent.DropPort(m.peerPort()) }
+func recoverDropPort(m *member) error { return m.Agent.RecoverPort(m.peerPort()) }
 
 func newFailureIsolate() failure {
 	return &failureOne{

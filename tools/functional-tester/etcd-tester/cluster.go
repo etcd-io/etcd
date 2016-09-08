@@ -29,15 +29,21 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	peerURLPort   = 2380
-	failpointPort = 2381
-)
+// agentConfig holds information needed to interact/configure an agent and its etcd process
+type agentConfig struct {
+	endpoint      string
+	clientPort    int
+	peerPort      int
+	failpointPort int
+
+	datadir string
+}
 
 type cluster struct {
+	agents []agentConfig
+
 	v2Only bool // to be deprecated
 
-	datadir              string
 	stressQPS            int
 	stressKeyLargeSize   int
 	stressKeySize        int
@@ -53,27 +59,27 @@ type ClusterStatus struct {
 	AgentStatuses map[string]client.Status
 }
 
-func (c *cluster) bootstrap(agentEndpoints []string) error {
-	size := len(agentEndpoints)
+func (c *cluster) bootstrap() error {
+	size := len(c.agents)
 
 	members := make([]*member, size)
 	memberNameURLs := make([]string, size)
-	for i, u := range agentEndpoints {
-		agent, err := client.NewAgent(u)
+	for i, a := range c.agents {
+		agent, err := client.NewAgent(a.endpoint)
 		if err != nil {
 			return err
 		}
-		host, _, err := net.SplitHostPort(u)
+		host, _, err := net.SplitHostPort(a.endpoint)
 		if err != nil {
 			return err
 		}
 		members[i] = &member{
 			Agent:        agent,
-			Endpoint:     u,
+			Endpoint:     a.endpoint,
 			Name:         fmt.Sprintf("etcd-%d", i),
-			ClientURL:    fmt.Sprintf("http://%s:2379", host),
-			PeerURL:      fmt.Sprintf("http://%s:%d", host, peerURLPort),
-			FailpointURL: fmt.Sprintf("http://%s:%d", host, failpointPort),
+			ClientURL:    fmt.Sprintf("http://%s:%d", host, a.clientPort),
+			PeerURL:      fmt.Sprintf("http://%s:%d", host, a.peerPort),
+			FailpointURL: fmt.Sprintf("http://%s:%d", host, a.failpointPort),
 		}
 		memberNameURLs[i] = members[i].ClusterEntry()
 	}
@@ -83,7 +89,7 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 	for i, m := range members {
 		flags := append(
 			m.Flags(),
-			"--data-dir", c.datadir,
+			"--data-dir", c.agents[i].datadir,
 			"--initial-cluster-token", token,
 			"--initial-cluster", clusterStr)
 
@@ -127,13 +133,7 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 	return nil
 }
 
-func (c *cluster) Reset() error {
-	eps := make([]string, len(c.Members))
-	for i, m := range c.Members {
-		eps[i] = m.Endpoint
-	}
-	return c.bootstrap(eps)
-}
+func (c *cluster) Reset() error { return c.bootstrap() }
 
 func (c *cluster) WaitHealth() error {
 	var err error
