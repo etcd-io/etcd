@@ -821,6 +821,22 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 
 
 
+##### message `LeaseInternalRequest` (lease/leasepb/lease.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| LeaseTimeToLiveRequest |  | etcdserverpb.LeaseTimeToLiveRequest |
+
+
+
+##### message `LeaseInternalResponse` (lease/leasepb/lease.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| LeaseTimeToLiveResponse |  | etcdserverpb.LeaseTimeToLiveResponse |
+
+
+
 ##### message `Permission` (auth/authpb/auth.proto)
 
 Permission is a single entity
