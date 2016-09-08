@@ -15,6 +15,8 @@
 package integration
 
 import (
+	"reflect"
+	"sort"
 	"testing"
 	"time"
 
@@ -454,4 +456,57 @@ func TestLeaseKeepAliveTTLTimeout(t *testing.T) {
 	}
 
 	clus.Members[0].Restart(t)
+}
+
+func TestLeaseTimeToLive(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	lapi := clientv3.NewLease(clus.RandClient())
+	defer lapi.Close()
+
+	resp, err := lapi.Grant(context.Background(), 10)
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+
+	kv := clientv3.NewKV(clus.RandClient())
+	keys := []string{"foo1", "foo2"}
+	for i := range keys {
+		if _, err = kv.Put(context.TODO(), keys[i], "bar", clientv3.WithLease(resp.ID)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	lresp, lerr := lapi.TimeToLive(context.Background(), resp.ID, clientv3.WithAttachedKeys())
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	if lresp.ID != resp.ID {
+		t.Fatalf("leaseID expected %d, got %d", resp.ID, lresp.ID)
+	}
+	if lresp.GrantedTTL != int64(10) {
+		t.Fatalf("GrantedTTL expected %d, got %d", 10, lresp.GrantedTTL)
+	}
+	if lresp.TTL == 0 || lresp.TTL > lresp.GrantedTTL {
+		t.Fatalf("unexpected TTL %d (granted %d)", lresp.TTL, lresp.GrantedTTL)
+	}
+	ks := make([]string, len(lresp.Keys))
+	for i := range lresp.Keys {
+		ks[i] = string(lresp.Keys[i])
+	}
+	sort.Strings(ks)
+	if !reflect.DeepEqual(ks, keys) {
+		t.Fatalf("keys expected %v, got %v", keys, ks)
+	}
+
+	lresp, lerr = lapi.TimeToLive(context.Background(), resp.ID)
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	if len(lresp.Keys) != 0 {
+		t.Fatalf("unexpected keys %+v", lresp.Keys)
+	}
 }

@@ -59,6 +59,7 @@ for grpc-gateway
 | LeaseGrant | LeaseGrantRequest | LeaseGrantResponse | LeaseGrant creates a lease which expires if the server does not receive a keepAlive within a given time to live period. All keys attached to the lease will be expired and deleted if the lease expires. Each expired key generates a delete event in the event history. |
 | LeaseRevoke | LeaseRevokeRequest | LeaseRevokeResponse | LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted. |
 | LeaseKeepAlive | LeaseKeepAliveRequest | LeaseKeepAliveResponse | LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client to the server and streaming keep alive responses from the server to the client. |
+| LeaseTimeToLive | LeaseTimeToLiveRequest | LeaseTimeToLiveResponse | LeaseTimeToLive retrieves lease information. |
 
 
 
@@ -510,6 +511,27 @@ Empty field.
 
 
 
+##### message `LeaseTimeToLiveRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| ID | ID is the lease ID for the lease. | int64 |
+| keys | keys is true to query all the keys attached to this lease. | bool |
+
+
+
+##### message `LeaseTimeToLiveResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+| ID | ID is the lease ID from the keep alive request. | int64 |
+| TTL | TTL is the remaining TTL in seconds for the lease; the lease will expire in under TTL+1 seconds. | int64 |
+| grantedTTL | GrantedTTL is the initial granted time in seconds upon lease creation/renewal. | int64 |
+| keys | Keys is the list of keys attached to this lease. | (slice of) bytes |
+
+
+
 ##### message `Member` (etcdserver/etcdserverpb/rpc.proto)
 
 | Field | Description | Type |
@@ -796,6 +818,22 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | ----- | ----------- | ---- |
 | ID |  | int64 |
 | TTL |  | int64 |
+
+
+
+##### message `LeaseInternalRequest` (lease/leasepb/lease.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| LeaseTimeToLiveRequest |  | etcdserverpb.LeaseTimeToLiveRequest |
+
+
+
+##### message `LeaseInternalResponse` (lease/leasepb/lease.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| LeaseTimeToLiveResponse |  | etcdserverpb.LeaseTimeToLiveResponse |
 
 
 

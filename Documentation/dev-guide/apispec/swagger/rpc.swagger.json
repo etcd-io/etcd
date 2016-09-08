@@ -636,6 +636,33 @@
         ]
       }
     },
+    "/v3alpha/kv/lease/timetolive": {
+      "post": {
+        "summary": "LeaseTimeToLive retrieves lease information.",
+        "operationId": "LeaseTimeToLive",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
     "/v3alpha/kv/put": {
       "post": {
         "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
@@ -1611,6 +1638,52 @@
       "properties": {
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbLeaseTimeToLiveRequest": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the lease ID for the lease."
+        },
+        "keys": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "keys is true to query all the keys attached to this lease."
+        }
+      }
+    },
+    "etcdserverpbLeaseTimeToLiveResponse": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the lease ID from the keep alive request."
+        },
+        "TTL": {
+          "type": "string",
+          "format": "int64",
+          "description": "TTL is the remaining TTL in seconds for the lease; the lease will expire in under TTL+1 seconds."
+        },
+        "grantedTTL": {
+          "type": "string",
+          "format": "int64",
+          "description": "GrantedTTL is the initial granted time in seconds upon lease creation/renewal."
+        },
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          },
+          "description": "Keys is the list of keys attached to this lease."
         }
       }
     },

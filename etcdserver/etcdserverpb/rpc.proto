@@ -104,8 +104,15 @@ service Lease {
     };
   }
 
+  // LeaseTimeToLive retrieves lease information.
+  rpc LeaseTimeToLive(LeaseTimeToLiveRequest) returns (LeaseTimeToLiveResponse) {
+      option (google.api.http) = {
+        post: "/v3alpha/kv/lease/timetolive"
+        body: "*"
+    };
+  }
+
   // TODO(xiangli) List all existing Leases?
-  // TODO(xiangli) Get details information (expirations, leased keys, etc.) of a lease?
 }
 
 service Cluster {
@@ -656,6 +663,25 @@ message LeaseKeepAliveResponse {
   int64 ID = 2;
   // TTL is the new time-to-live for the lease.
   int64 TTL = 3;
+}
+
+message LeaseTimeToLiveRequest {
+  // ID is the lease ID for the lease.
+  int64 ID = 1;
+  // keys is true to query all the keys attached to this lease.
+  bool keys = 2;
+}
+
+message LeaseTimeToLiveResponse {
+  ResponseHeader header = 1;
+  // ID is the lease ID from the keep alive request.
+  int64 ID = 2;
+  // TTL is the remaining TTL in seconds for the lease; the lease will expire in under TTL+1 seconds.
+  int64 TTL = 3;
+  // GrantedTTL is the initial granted time in seconds upon lease creation/renewal.
+  int64 grantedTTL = 4;
+  // Keys is the list of keys attached to this lease.
+  repeated bytes keys = 5;
 }
 
 message Member {

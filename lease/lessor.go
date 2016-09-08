@@ -480,6 +480,20 @@ func (l *Lease) refresh(extend time.Duration) {
 // forever sets the expiry of lease to be forever.
 func (l *Lease) forever() { l.expiry = forever }
 
+// Keys returns all the keys attached to the lease.
+func (l *Lease) Keys() []string {
+	keys := make([]string, 0, len(l.itemSet))
+	for k := range l.itemSet {
+		keys = append(keys, k.Key)
+	}
+	return keys
+}
+
+// Remaining returns the remaining time of the lease.
+func (l *Lease) Remaining() time.Duration {
+	return l.expiry.Sub(time.Now())
+}
+
 type LeaseItem struct {
 	Key string
 }

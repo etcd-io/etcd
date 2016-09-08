@@ -83,7 +83,6 @@ func (op Op) toRequestOp() *pb.RequestOp {
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: r}}
 	case tDeleteRange:
 		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
-
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic("Unknown Op")
@@ -319,4 +318,33 @@ func WithPrevKV() OpOption {
 	return func(op *Op) {
 		op.prevKV = true
 	}
+}
+
+// LeaseOp represents an Operation that lease can execute.
+type LeaseOp struct {
+	id LeaseID
+
+	// for TimeToLive
+	attachedKeys bool
+}
+
+// LeaseOption configures lease operations.
+type LeaseOption func(*LeaseOp)
+
+func (op *LeaseOp) applyOpts(opts []LeaseOption) {
+	for _, opt := range opts {
+		opt(op)
+	}
+}
+
+// WithAttachedKeys requests lease timetolive API to return
+// attached keys of given lease ID.
+func WithAttachedKeys() LeaseOption {
+	return func(op *LeaseOp) { op.attachedKeys = true }
+}
+
+func toLeaseTimeToLiveRequest(id LeaseID, opts ...LeaseOption) *pb.LeaseTimeToLiveRequest {
+	ret := &LeaseOp{id: id}
+	ret.applyOpts(opts)
+	return &pb.LeaseTimeToLiveRequest{ID: int64(id), Keys: ret.attachedKeys}
 }

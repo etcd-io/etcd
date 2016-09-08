@@ -21,8 +21,35 @@ import (
 	"testing"
 )
 
-func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
-func TestCtlV3LeaseRevoke(t *testing.T)    { testCtl(t, leaseTestRevoke) }
+func TestCtlV3LeaseGrantTimeToLive(t *testing.T) { testCtl(t, leaseTestGrantTimeToLive) }
+func TestCtlV3LeaseKeepAlive(t *testing.T)       { testCtl(t, leaseTestKeepAlive) }
+func TestCtlV3LeaseRevoke(t *testing.T)          { testCtl(t, leaseTestRevoke) }
+
+func leaseTestGrantTimeToLive(cx ctlCtx) {
+	id, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cmdArgs := append(cx.PrefixArgs(), "lease", "timetolive", id, "--keys")
+	proc, err := spawnCmd(cmdArgs)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	line, err := proc.Expect(" granted with TTL(")
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	if err = proc.Close(); err != nil {
+		cx.t.Fatal(err)
+	}
+	if !strings.Contains(line, ", attached keys") {
+		cx.t.Fatalf("expected 'attached keys', got %q", line)
+	}
+	if !strings.Contains(line, id) {
+		cx.t.Fatalf("expected leaseID %q, got %q", id, line)
+	}
+}
 
 func leaseTestKeepAlive(cx ctlCtx) {
 	// put with TTL 10 seconds and keep-alive
