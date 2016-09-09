@@ -507,11 +507,7 @@ func (w *WAL) Close() error {
 		}
 	}
 
-	if err := w.dirFile.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return w.dirFile.Close()
 }
 
 func (w *WAL) saveEntry(e *raftpb.Entry) error {
