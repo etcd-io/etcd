@@ -320,8 +320,8 @@ func (cr *streamReader) run() {
 		// overhead when retry.
 		case <-time.After(100 * time.Millisecond):
 		case <-cr.stopc:
-			close(cr.done)
 			plog.Infof("stopped streaming with peer %s (%s reader)", cr.peerID, t)
+			close(cr.done)
 			return
 		}
 	}
