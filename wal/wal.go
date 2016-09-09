@@ -113,7 +113,7 @@ func Create(dirpath string, metadata []byte) (*WAL, error) {
 	if _, err = f.Seek(0, os.SEEK_END); err != nil {
 		return nil, err
 	}
-	if err := fileutil.Preallocate(f.File, segmentSizeBytes, true); err != nil {
+	if err = fileutil.Preallocate(f.File, segmentSizeBytes, true); err != nil {
 		return nil, err
 	}
 
