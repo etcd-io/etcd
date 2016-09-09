@@ -504,12 +504,7 @@ func (w *WAL) Close() error {
 			plog.Errorf("failed to unlock during closing wal: %s", err)
 		}
 	}
-
-	if err := w.dirFile.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return w.dirFile.Close()
 }
 
 func (w *WAL) saveEntry(e *raftpb.Entry) error {
