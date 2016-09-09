@@ -34,10 +34,10 @@ The protobuf encoding of the PUT [RPC response][etcdrpc].
 
 ``` bash
 ./etcdctl put foo bar --lease=1234abcd
-OK
+# OK
 ./etcdctl get foo
-foo
-bar
+# foo
+# bar
 ```
 
 #### Notes
@@ -94,8 +94,8 @@ The protobuf encoding of the [RPC message][etcdrpc] for a key-value pair for eac
 
 ``` bash
 ./etcdctl get foo
-foo
-bar
+# foo
+# bar
 ```
 
 #### Notes
@@ -133,9 +133,9 @@ The protobuf encoding of the DeleteRange [RPC response][etcdrpc].
 
 ``` bash
 ./etcdctl put foo bar
-OK
+# OK
 ./etcdctl del foo
-1
+# 1
 ./etcdctl get foo
 ```
 
@@ -198,11 +198,11 @@ put key1 "overwrote-key1"
 put key1 "created-key1"
 put key2 "some extra key"
 
-FAILURE
+# FAILURE
 
-OK
+# OK
 
-OK
+# OK
 ```
 
 txn in non-interactive mode:
@@ -215,12 +215,12 @@ put key1 "created-key1"
 put key2 "some extra key"
 
 '
-FAILURE
+# FAILURE
 
-OK
+# OK
 
-OK
-````
+# OK
+```
 
 ### WATCH [options] [key or prefix] [range_end]
 
@@ -268,9 +268,9 @@ The protobuf encoding of the [RPC message][storagerpc] for each received Event.
 
 ``` bash
 ./etcdctl watch foo
-PUT
-foo
-bar
+# PUT
+# foo
+# bar
 ```
 
 ##### Interactive
@@ -279,12 +279,12 @@ bar
 ./etcdctl watch -i
 watch foo
 watch foo
-PUT
-foo
-bar
-PUT
-foo
-bar
+# PUT
+# foo
+# bar
+# PUT
+# foo
+# bar
 ```
 
 ### LEASE \<subcommand\>
@@ -306,7 +306,7 @@ greater than or equal to the requested TTL value.
 
 ```bash
 ./etcdctl lease grant 10
-lease 32695410dcc0ca06 granted with TTL(10s)
+# lease 32695410dcc0ca06 granted with TTL(10s)
 ```
 
 ### LEASE REVOKE \<leaseID\>
@@ -323,7 +323,7 @@ LEASE REVOKE destroys a given lease, deleting all attached keys.
 
 ```bash
 ./etcdctl lease revoke 32695410dcc0ca06
-lease 32695410dcc0ca06 revoked
+# lease 32695410dcc0ca06 revoked
 ```
 
 
@@ -341,22 +341,22 @@ LEASE TIMETOLIVE retrieves the lease information with the given lease ID.
 
 ```bash
 ./etcdctl lease grant 500
-lease 2d8257079fa1bc0c granted with TTL(500s)
+# lease 2d8257079fa1bc0c granted with TTL(500s)
 
 ./etcdctl put foo1 bar --lease=2d8257079fa1bc0c
 ./etcdctl put foo2 bar --lease=2d8257079fa1bc0c
 
 ./etcdctl lease timetolive 2d8257079fa1bc0c
-lease 2d8257079fa1bc0c granted with TTL(500s), remaining(481s)
+# lease 2d8257079fa1bc0c granted with TTL(500s), remaining(481s)
 
 ./etcdctl lease timetolive 2d8257079fa1bc0c --keys
-lease 2d8257079fa1bc0c granted with TTL(500s), remaining(472s), attached keys([foo2 foo1])
+# lease 2d8257079fa1bc0c granted with TTL(500s), remaining(472s), attached keys([foo2 foo1])
 
 ./etcdctl lease timetolive 2d8257079fa1bc0c --write-out=json
-{"cluster_id":17186838941855831277,"member_id":4845372305070271874,"revision":3,"raft_term":2,"id":3279279168933706764,"ttl":465,"granted-ttl":500,"keys":null}
+# {"cluster_id":17186838941855831277,"member_id":4845372305070271874,"revision":3,"raft_term":2,"id":3279279168933706764,"ttl":465,"granted-ttl":500,"keys":null}
 
 ./etcdctl lease timetolive 2d8257079fa1bc0c --write-out=json --keys
-{"cluster_id":17186838941855831277,"member_id":4845372305070271874,"revision":3,"raft_term":2,"id":3279279168933706764,"ttl":459,"granted-ttl":500,"keys":["Zm9vMQ==","Zm9vMg=="]}
+# {"cluster_id":17186838941855831277,"member_id":4845372305070271874,"revision":3,"raft_term":2,"id":3279279168933706764,"ttl":459,"granted-ttl":500,"keys":["Zm9vMQ==","Zm9vMg=="]}
 ```
 
 
@@ -372,10 +372,10 @@ LEASE KEEP-ALIVE periodically refreshes a lease so it does not expire.
 
 #### Example
 ```bash
-/etcdctl lease keep-alive 32695410dcc0ca0
-lease 32695410dcc0ca0 keepalived with TTL(100)
-lease 32695410dcc0ca0 keepalived with TTL(100)
-lease 32695410dcc0ca0 keepalived with TTL(100)
+./etcdctl lease keep-alive 32695410dcc0ca0
+# lease 32695410dcc0ca0 keepalived with TTL(100)
+# lease 32695410dcc0ca0 keepalived with TTL(100)
+# lease 32695410dcc0ca0 keepalived with TTL(100)
 ...
 ```
 
@@ -402,7 +402,7 @@ MEMBER ADD introduces a new member into the etcd cluster as a new peer.
 
 ```bash
 ./etcdctl member add newMember --peer-urls=https://127.0.0.1:12345
-Member 2be1eb8f84b7f63e added to cluster ef37ad9dc622a7c4
+# Member 2be1eb8f84b7f63e added to cluster ef37ad9dc622a7c4
 ```
 
 
@@ -424,7 +424,7 @@ MEMBER UPDATE sets the peer URLs for an existing member in the etcd cluster.
 
 ```bash
 ./etcdctl member update 2be1eb8f84b7f63e --peer-urls=https://127.0.0.1:11112
-Member 2be1eb8f84b7f63e updated in cluster ef37ad9dc622a7c4
+# Member 2be1eb8f84b7f63e updated in cluster ef37ad9dc622a7c4
 ```
 
 
@@ -442,7 +442,7 @@ MEMBER REMOVE removes a member of an etcd cluster from participating in cluster 
 
 ```bash
 ./etcdctl member remove 2be1eb8f84b7f63e
-Member 2be1eb8f84b7f63e removed from cluster ef37ad9dc622a7c4
+# Member 2be1eb8f84b7f63e removed from cluster ef37ad9dc622a7c4
 ```
 
 ### MEMBER LIST
@@ -467,14 +467,14 @@ The protobuf encoding of the MEMBER LIST [RPC response][member_list_rpc].
 
 ```bash
 ./etcdctl member list
-8211f1d0f64f3269, started, infra1, http://127.0.0.1:12380, http://127.0.0.1:2379
-91bc3c398fb3c146, started, infra2, http://127.0.0.1:22380, http://127.0.0.1:22379
-fd422379fda50e48, started, infra3, http://127.0.0.1:32380, http://127.0.0.1:32379
+# 8211f1d0f64f3269, started, infra1, http://127.0.0.1:12380, http://127.0.0.1:2379
+# 91bc3c398fb3c146, started, infra2, http://127.0.0.1:22380, http://127.0.0.1:22379
+# fd422379fda50e48, started, infra3, http://127.0.0.1:32380, http://127.0.0.1:32379
 ```
 
 ```bash
 ./etcdctl -w json member list
-{"header":{"cluster_id":17237436991929493444,"member_id":9372538179322589801,"raft_term":2},"members":[{"ID":9372538179322589801,"name":"infra1","peerURLs":["http://127.0.0.1:12380"],"clientURLs":["http://127.0.0.1:2379"]},{"ID":10501334649042878790,"name":"infra2","peerURLs":["http://127.0.0.1:22380"],"clientURLs":["http://127.0.0.1:22379"]},{"ID":18249187646912138824,"name":"infra3","peerURLs":["http://127.0.0.1:32380"],"clientURLs":["http://127.0.0.1:32379"]}]}
+# {"header":{"cluster_id":17237436991929493444,"member_id":9372538179322589801,"raft_term":2},"members":[{"ID":9372538179322589801,"name":"infra1","peerURLs":["http://127.0.0.1:12380"],"clientURLs":["http://127.0.0.1:2379"]},{"ID":10501334649042878790,"name":"infra2","peerURLs":["http://127.0.0.1:22380"],"clientURLs":["http://127.0.0.1:22379"]},{"ID":18249187646912138824,"name":"infra3","peerURLs":["http://127.0.0.1:32380"],"clientURLs":["http://127.0.0.1:32379"]}]}
 ```
 
 ```bash
@@ -509,9 +509,9 @@ when it cannot participate in consensus with the rest of the cluster.
 
 ```bash
 ./etcdctl endpoint health
-127.0.0.1:32379 is healthy: successfully committed proposal: took = 2.130877ms
-127.0.0.1:2379 is healthy: successfully committed proposal: took = 2.095242ms
-127.0.0.1:22379 is healthy: successfully committed proposal: took = 2.083263ms
+# 127.0.0.1:32379 is healthy: successfully committed proposal: took = 2.130877ms
+# 127.0.0.1:2379 is healthy: successfully committed proposal: took = 2.095242ms
+# 127.0.0.1:22379 is healthy: successfully committed proposal: took = 2.083263ms
 ```
 
 ### ENDPOINT STATUS
@@ -536,14 +536,14 @@ ENDPOINT STATUS does not support protobuf encoded output.
 
 ```bash
 ./etcdctl endpoint status
-127.0.0.1:2379, 8211f1d0f64f3269, 3.0.0, 25 kB, false, 2, 63
-127.0.0.1:22379, 91bc3c398fb3c146, 3.0.0, 25 kB, false, 2, 63
-127.0.0.1:32379, fd422379fda50e48, 3.0.0, 25 kB, true, 2, 63
+# 127.0.0.1:2379, 8211f1d0f64f3269, 3.0.0, 25 kB, false, 2, 63
+# 127.0.0.1:22379, 91bc3c398fb3c146, 3.0.0, 25 kB, false, 2, 63
+# 127.0.0.1:32379, fd422379fda50e48, 3.0.0, 25 kB, true, 2, 63
 ```
 
 ```bash
 ./etcdctl -w json endpoint status
-[{"Endpoint":"127.0.0.1:2379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":9372538179322589801,"revision":2,"raft_term":2},"version":"3.0.0","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}},{"Endpoint":"127.0.0.1:22379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":10501334649042878790,"revision":2,"raft_term":2},"version":"3.0.0","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}},{"Endpoint":"127.0.0.1:32379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":18249187646912138824,"revision":2,"raft_term":2},"version":"3.0.0","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}}]
+# [{"Endpoint":"127.0.0.1:2379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":9372538179322589801,"revision":2,"raft_term":2},"version":"3.0.0","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}},{"Endpoint":"127.0.0.1:22379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":10501334649042878790,"revision":2,"raft_term":2},"version":"3.0.0","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}},{"Endpoint":"127.0.0.1:32379","Status":{"header":{"cluster_id":17237436991929493444,"member_id":18249187646912138824,"revision":2,"raft_term":2},"version":"3.0.0","dbSize":24576,"leader":18249187646912138824,"raftIndex":32623,"raftTerm":2}}]
 ```
 
 ```bash
@@ -570,7 +570,7 @@ LOCK acquires a distributed named mutex with a given name. Once the lock is acqu
 #### Example
 ```bash
 ./etcdctl lock mylock
-mylock/1234534535445
+# mylock/1234534535445
 
 
 ```
@@ -602,8 +602,8 @@ Whenever a leader is elected, its proposal is given as output.
 #### Example
 ```bash
 ./etcdctl elect myelection foo
-myelection/1456952310051373265
-foo
+# myelection/1456952310051373265
+# foo
 
 ```
 
@@ -628,7 +628,7 @@ all superseded keys may be compacted away to reclaim storage space in the etcd b
 #### Example
 ```bash
 ./etcdctl compaction 1234
-compacted revision 1234
+# compacted revision 1234
 ```
 
 ### DEFRAG
@@ -648,8 +648,8 @@ the database, the etcd member releases this free space back to the file system.
 #### Example
 ```bash
 ./etcdctl --endpoints=localhost:2379,badendpoint:2379 defrag
-Finished defragmenting etcd member[localhost:2379]
-Failed to defragment etcd member[badendpoint:2379] (grpc: timed out trying to connect)
+# Finished defragmenting etcd member[localhost:2379]
+# Failed to defragment etcd member[badendpoint:2379] (grpc: timed out trying to connect)
 ```
 
 
@@ -679,8 +679,8 @@ Simple reply
 
 ```
 ./etcdctl make-mirror mirror.example.com:2379
-10
-18
+# 10
+# 18
 ```
 
 [mirror]: ./doc/mirror_maker.md
@@ -770,12 +770,12 @@ SNAPSHOT STATUS does not support protobuf encoded output.
 #### Examples
 ```bash
 ./etcdctl snapshot status file.db
-cf1550fb, 3, 3, 25 kB
+# cf1550fb, 3, 3, 25 kB
 ```
 
 ```bash
 ./etcdctl -write-out=json snapshot status file.db
-{"hash":3474280699,"revision":3,"totalKey":3,"totalSize":24576}
+# {"hash":3474280699,"revision":3,"totalKey":3,"totalSize":24576}
 ```
 
 ```bash
@@ -837,7 +837,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 ```
 ./etcdctl --data-dir=/var/etcd --transformer=k8s-transformer
-finished transforming keys
+# finished transforming keys
 ```
 
 ### AUTH \<enable or disable\>
@@ -855,13 +855,22 @@ finished transforming keys
 #### Examples
 
 ``` bash
-etcdctl user add root
-etcdctl user grant-role root root
-etcdctl user get root
-etcdctl role add root
-etcdctl role get root
-
-etcdctl auth enable
+./etcdctl user add root
+# Password of root:#type password for root
+# Type password of root again for confirmation:#re-type password for root
+# User root created
+./etcdctl user grant-role root root
+# Role root is granted to user root
+./etcdctl user get root
+# User: root
+# Roles: root
+./etcdctl role add root
+# Role root created
+./etcdctl role get root
+# Role root
+# KV Read:
+# KV Write:
+./etcdctl auth enable
 # Authentication Enabled
 ```
 
@@ -880,7 +889,8 @@ etcdctl auth enable
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 role add myrole
+./etcdctl --user=root:123 role add myrole
+# Role myrole created
 ```
 
 ### ROLE DELETE \<role name\>
@@ -898,7 +908,7 @@ etcdctl --user=root:123 role add myrole
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 role delete myrole
+./etcdctl --user=root:123 role delete myrole
 # Role myrole deleted
 ```
 
@@ -917,12 +927,12 @@ etcdctl --user=root:123 role delete myrole
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 role get myrole
+./etcdctl --user=root:123 role get myrole
 # Role myrole
 # KV Read:
-# 	foo
+# foo
 # KV Write:
-# 	foo
+# foo
 ```
 
 ### ROLE GRANT-PERMISSION \<role name\> \<permission type\> \<key\> [endkey]
@@ -940,7 +950,7 @@ etcdctl --user=root:123 role get myrole
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 role grant-permission myrole readwrite foo
+./etcdctl --user=root:123 role grant-permission myrole readwrite foo
 # Role myrole updated
 ```
 
@@ -959,7 +969,7 @@ etcdctl --user=root:123 role grant-permission myrole readwrite foo
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 role revoke-permission myrole foo
+./etcdctl --user=root:123 role revoke-permission myrole foo
 # Permission of key foo is revoked from role myrole
 ```
 
@@ -978,9 +988,9 @@ etcdctl --user=root:123 role revoke-permission myrole foo
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 user add myuser
-# Password of myuser: 
-# Type password of myuser again for confirmation: 
+./etcdctl --user=root:123 user add myuser
+# Password of myuser: #type password for my user
+# Type password of myuser again for confirmation:#re-type password for my user 
 # User myuser created
 ```
 
@@ -999,7 +1009,7 @@ etcdctl --user=root:123 user add myuser
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 user delete myuser
+./etcdctl --user=root:123 user delete myuser
 # User myuser deleted
 ```
 
@@ -1018,7 +1028,7 @@ etcdctl --user=root:123 user delete myuser
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 user get myuser
+./etcdctl --user=root:123 user get myuser
 # User: myuser
 # Roles:
 ```
@@ -1042,9 +1052,9 @@ etcdctl --user=root:123 user get myuser
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 user passwd myuser
-# Password of myuser: 
-# Type password of myuser again for confirmation: 
+./etcdctl --user=root:123 user passwd myuser
+# Password of myuser: #type new password for my user
+# Type password of myuser again for confirmation: #re-type the new password for my user 
 # Password updated
 ```
 
@@ -1063,7 +1073,7 @@ etcdctl --user=root:123 user passwd myuser
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 user grant-role userA roleA
+./etcdctl --user=root:123 user grant-role userA roleA
 # Role roleA is granted to user userA
 ```
 
@@ -1082,7 +1092,7 @@ etcdctl --user=root:123 user grant-role userA roleA
 #### Examples
 
 ``` bash
-etcdctl --user=root:123 user revoke-role userA roleA
+./etcdctl --user=root:123 user revoke-role userA roleA
 # Role roleA is revoked from user userA
 ```
 
