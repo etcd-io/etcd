@@ -43,7 +43,7 @@ To run the functional tests on a single machine using Goreman, build with the pr
 
 ```sh
 ./tools/functional-tester/build
-goreman -f tools/functional-tester/Procfile
+goreman -f tools/functional-tester/Procfile start
 ```
 
 Notes:
