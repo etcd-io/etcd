@@ -79,7 +79,7 @@ func TestAgentTerminate(t *testing.T) {
 
 // newTestAgent creates a test agent and with a temp data directory.
 func newTestAgent(t *testing.T) (*Agent, string) {
-	a, err := newAgent(etcdPath, "etcd.log")
+	a, err := newAgent(AgentConfig{EtcdPath: etcdPath, LogDir: "etcd.log"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -35,3 +35,17 @@ Notes:
 - Docker image is based on Alpine Linux OS running in privileged mode to allow iptables manipulation.
 - To specify testing parameters (etcd-tester arguments) modify tools/functional-tester/docker/docker-compose.yml or start etcd-tester manually
 - (OSX) make sure that etcd binary is built for linux/amd64 (eg. `rm bin/etcd;GOOS=linux GOARCH=amd64 ./tools/functional-tester/test`) otherwise you get `exec format error`
+
+
+## with Goreman
+
+To run the functional tests on a single machine using Goreman, build with the provided build script and run with the provided Procfile:
+
+```sh
+./tools/functional-tester/build
+goreman -f tools/functional-tester/Procfile
+```
+
+Notes:
+- The etcd-agent will not run with root privileges; iptables manipulation is disabled.
+- To specify testing parameters (etcd-tester arguments) modify tools/functional-tester/Procfile or start etcd-tester manually
