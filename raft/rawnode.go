@@ -66,6 +66,9 @@ func (rn *RawNode) commitReady(rd Ready) {
 	if !IsEmptySnap(rd.Snapshot) {
 		rn.raft.raftLog.stableSnapTo(rd.Snapshot.Metadata.Index)
 	}
+	if len(rd.ReadStates) != 0 {
+		rn.raft.readStates = nil
+	}
 }
 
 // NewRawNode returns a new RawNode given configuration and a list of raft peers.
@@ -205,6 +208,9 @@ func (rn *RawNode) HasReady() bool {
 	if len(r.msgs) > 0 || len(r.raftLog.unstableEntries()) > 0 || r.raftLog.hasNextEnts() {
 		return true
 	}
+	if len(r.readStates) != 0 {
+		return true
+	}
 	return false
 }
 
@@ -235,4 +241,12 @@ func (rn *RawNode) ReportSnapshot(id uint64, status SnapshotStatus) {
 // TransferLeader tries to transfer leadership to the given transferee.
 func (rn *RawNode) TransferLeader(transferee uint64) {
 	_ = rn.raft.Step(pb.Message{Type: pb.MsgTransferLeader, From: transferee})
+}
+
+// ReadIndex requests a read state. The read state will be set in ready.
+// Read State has a read index. Once the application advances further than the read
+// index, any linearizable read requests issued before the read request can be
+// processed safely. The read state will have the same rctx attached.
+func (rn *RawNode) ReadIndex(rctx []byte) {
+	_ = rn.raft.Step(pb.Message{Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: rctx}}})
 }

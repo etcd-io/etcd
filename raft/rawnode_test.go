@@ -110,6 +110,66 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 	}
 }
 
+// TestRawNodeReadIndex ensures that Rawnode.ReadIndex sends the MsgReadIndex message
+// to the underlying raft. It also ensures that ReadState can be read out.
+func TestRawNodeReadIndex(t *testing.T) {
+	msgs := []raftpb.Message{}
+	appendStep := func(r *raft, m raftpb.Message) {
+		msgs = append(msgs, m)
+	}
+	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
+
+	s := NewMemoryStorage()
+	c := newTestConfig(1, nil, 10, 1, s)
+	rawNode, err := NewRawNode(c, []Peer{{ID: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rawNode.raft.readStates = wrs
+	// ensure the ReadStates can be read out
+	hasReady := rawNode.HasReady()
+	if hasReady != true {
+		t.Errorf("HasReady() returns %t, want %t", hasReady, true)
+	}
+	rd := rawNode.Ready()
+	if !reflect.DeepEqual(rd.ReadStates, wrs) {
+		t.Errorf("ReadStates = %d, want %d", rd.ReadStates, wrs)
+	}
+	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+	// ensure raft.readStates is reset after advance
+	if rawNode.raft.readStates != nil {
+		t.Errorf("readStates = %v, want %v", rawNode.raft.readStates, nil)
+	}
+
+	wrequestCtx := []byte("somedata2")
+	rawNode.Campaign()
+	for {
+		rd = rawNode.Ready()
+		s.Append(rd.Entries)
+
+		if rd.SoftState.Lead == rawNode.raft.id {
+			rawNode.Advance(rd)
+
+			// Once we are the leader, issue a ReadIndex request
+			rawNode.raft.step = appendStep
+			rawNode.ReadIndex(wrequestCtx)
+			break
+		}
+		rawNode.Advance(rd)
+	}
+	// ensure that MsgReadIndex message is sent to the underlying raft
+	if len(msgs) != 1 {
+		t.Fatalf("len(msgs) = %d, want %d", len(msgs), 1)
+	}
+	if msgs[0].Type != raftpb.MsgReadIndex {
+		t.Errorf("msg type = %d, want %d", msgs[0].Type, raftpb.MsgReadIndex)
+	}
+	if !bytes.Equal(msgs[0].Entries[0].Data, wrequestCtx) {
+		t.Errorf("data = %v, want %v", msgs[0].Entries[0].Data, wrequestCtx)
+	}
+}
+
 // TestBlockProposal from node_test.go has no equivalent in rawNode because there is
 // no leader check in RawNode.
 
