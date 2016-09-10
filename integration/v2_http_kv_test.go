@@ -28,12 +28,7 @@ import (
 
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/transport"
-	"github.com/coreos/pkg/capnslog"
 )
-
-func init() {
-	capnslog.SetGlobalLogLevel(capnslog.CRITICAL)
-}
 
 func TestV2Set(t *testing.T) {
 	defer testutil.AfterTest(t)
