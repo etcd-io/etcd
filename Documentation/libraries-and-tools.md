@@ -23,6 +23,7 @@
 
 **Java libraries**
 
+- [coreos/jetcd](https://github.com/coreos/jetcd) - Supports v3
 - [boonproject/etcd](https://github.com/boonproject/boon/blob/master/etcd/README.md) - Supports v2, Async/Sync and waits
 - [justinsb/jetcd](https://github.com/justinsb/jetcd)
 - [diwakergupta/jetcd](https://github.com/diwakergupta/jetcd) - Supports v2
