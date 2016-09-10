@@ -70,6 +70,8 @@ All these metrics are prefixed with `etcd_network_`
 |---------------------------|--------------------------------------------------------------------|---------------|
 | peer_sent_bytes_total           | The total number of bytes sent to the peer with ID `To`.         | Counter(To)   |
 | peer_received_bytes_total       | The total number of bytes received from the peer with ID `From`. | Counter(From) |
+| peer_sent_failures_total        | The total number of send failures from the peer with ID `To`.         | Counter(To)   |
+| peer_received_failures_total    | The total number of receive failures from the peer with ID `From`. | Counter(From) |
 | peer_round_trip_time_seconds    | Round-Trip-Time histogram between peers.                         | Histogram(To) |
 | client_grpc_sent_bytes_total    | The total number of bytes sent to grpc clients.                  | Counter   |
 | client_grpc_received_bytes_total| The total number of bytes received to grpc clients.              | Counter   |
