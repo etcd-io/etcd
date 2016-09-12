@@ -32,9 +32,9 @@ func isSubset(a, b *rangePerm) bool {
 		// b is a key, a is a range
 		return false
 	case len(a.end) == 0:
-		return 0 <= bytes.Compare(a.begin, b.begin) && bytes.Compare(a.begin, b.end) <= 0
+		return 0 <= bytes.Compare(a.begin, b.begin) && bytes.Compare(a.begin, b.end) < 0
 	default:
-		return 0 <= bytes.Compare(a.begin, b.begin) && bytes.Compare(a.end, b.end) <= 0
+		return 0 <= bytes.Compare(a.begin, b.begin) && bytes.Compare(a.end, b.end) < 0
 	}
 }
 
