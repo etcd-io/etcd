@@ -25,8 +25,9 @@ import (
 )
 
 var (
-	DefaultMaxEntries = 2048
-	ErrCompacted      = rpctypes.ErrGRPCCompacted
+	DefaultMaxEntries   = 2048
+	ErrCompacted        = rpctypes.ErrGRPCCompacted
+	MaxRangeRequestSize = 1024 * 4
 )
 
 type Cache interface {
@@ -37,19 +38,25 @@ type Cache interface {
 }
 
 // keyFunc returns the key of an request, which is used to look up in the cache for it's caching response.
-func keyFunc(req *pb.RangeRequest) string {
-	// TODO: use marshalTo to reduce allocation
-	b, err := req.Marshal()
+// should be invoked after aquiring cache mutex
+func (c *cache) keyFunc(req *pb.RangeRequest) string {
+	var byteslice = c.sliceRangeRequestMarshal
+	len := req.Size()
+	if len > MaxRangeRequestSize {
+		byteslice = make([]byte, len)
+	}
+	n, err := req.MarshalTo(byteslice)
 	if err != nil {
 		panic(err)
 	}
-	return string(b)
+	return string(byteslice[:n])
 }
 
 func NewCache(maxCacheEntries int) Cache {
 	return &cache{
-		lru:          lru.New(maxCacheEntries),
-		compactedRev: -1,
+		lru:                      lru.New(maxCacheEntries),
+		compactedRev:             -1,
+		sliceRangeRequestMarshal: make([]byte, MaxRangeRequestSize),
 	}
 }
 
@@ -62,14 +69,18 @@ type cache struct {
 	cachedRanges adt.IntervalTree
 
 	compactedRev int64
+	// a temporary space used for Marshalling the RangeRequest for cache keyFunc
+	// should be used in keyFunc function only
+	sliceRangeRequestMarshal []byte
 }
 
 // Add adds the response of a request to the cache if its revision is larger than the compacted revision of the cache.
 func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
-	key := keyFunc(req)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	key := c.keyFunc(req)
 
 	if req.Revision > c.compactedRev {
 		c.lru.Add(key, resp)
@@ -102,10 +113,10 @@ func (c *cache) Add(req *pb.RangeRequest, resp *pb.RangeResponse) {
 // Get looks up the caching response for a given request.
 // Get is also responsible for lazy eviction when accessing compacted entries.
 func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
-	key := keyFunc(req)
-
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	key := c.keyFunc(req)
 
 	if req.Revision < c.compactedRev {
 		c.lru.Remove(key)
