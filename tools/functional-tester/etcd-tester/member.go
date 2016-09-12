@@ -168,7 +168,11 @@ func (m *member) grpcAddr() string {
 }
 
 func (m *member) peerPort() (port int) {
-	_, portStr, err := net.SplitHostPort(m.PeerURL)
+	u, err := url.Parse(m.PeerURL)
+	if err != nil {
+		panic(err)
+	}
+	_, portStr, err := net.SplitHostPort(u.Host)
 	if err != nil {
 		panic(err)
 	}
