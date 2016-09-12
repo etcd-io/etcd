@@ -382,6 +382,14 @@ message RangeRequest {
  
   // count_only when set returns only the count of the keys in the range.
   bool count_only = 9;
+
+  // min_mod_revision is the lower bound for returned key mod revisions; all keys with
+  // lesser mod revisions will be filtered away.
+  int64 min_mod_revision = 10;
+
+  // max_mod_revision is the upper bound for returned key mod revisions; all keys with
+  // greater mod revisions will be filtered away.
+  int64 max_mod_revision = 11;
 }
 
 message RangeResponse {
