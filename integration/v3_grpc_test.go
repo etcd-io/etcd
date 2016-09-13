@@ -896,6 +896,37 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{false, false, false, false},
 		},
+		// min/max create rev
+		{
+			[]string{"rev2", "rev3", "rev2", "rev2", "rev6", "rev3"},
+			[]pb.RangeRequest{
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MinCreateRevision: 3,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MaxCreateRevision: 3,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MinCreateRevision: 3,
+					MaxCreateRevision: 5,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MaxCreateRevision: 10,
+				},
+			},
+
+			[][]string{
+				{"rev3", "rev6"},
+				{"rev2", "rev3"},
+				{"rev3"},
+				{"rev2", "rev3", "rev6"},
+			},
+			[]bool{false, false, false, false},
+		},
 	}
 
 	for i, tt := range tests {
