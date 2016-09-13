@@ -47,6 +47,10 @@ func TestGetMergedPerms(t *testing.T) {
 			[]*rangePerm{{[]byte("a"), []byte("b")}},
 		},
 		{
+			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("")}},
+			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("")}},
+		},
+		{
 			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("c")}},
 			[]*rangePerm{{[]byte("a"), []byte("c")}},
 		},
@@ -106,7 +110,7 @@ func TestGetMergedPerms(t *testing.T) {
 		},
 		{
 			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("b"), []byte("")}, {[]byte("c"), []byte("")}, {[]byte("d"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("d"), []byte("")}},
+			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("c"), []byte("")}, {[]byte("d"), []byte("")}},
 		},
 		// duplicate ranges
 		{
