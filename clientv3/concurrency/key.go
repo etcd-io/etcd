@@ -26,14 +26,20 @@ import (
 func waitDelete(ctx context.Context, client *v3.Client, key string, rev int64) error {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	var wr v3.WatchResponse
 	wch := client.Watch(cctx, key, v3.WithRev(rev))
-	for wr := range wch {
+	for wr = range wch {
 		for _, ev := range wr.Events {
 			if ev.Type == mvccpb.DELETE {
 				return nil
 			}
 		}
 	}
+	if err := wr.Err(); err != nil {
+		return err
+	}
+
 	if err := ctx.Err(); err != nil {
 		return err
 	}
