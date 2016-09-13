@@ -860,6 +860,37 @@ func TestHTTPClusterClientAutoSyncFail(t *testing.T) {
 	}
 }
 
+func TestHTTPClusterClientGetVersion(t *testing.T) {
+	body := []byte(`{"etcdserver":"2.3.2","etcdcluster":"2.3.0"}`)
+	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
+		{
+			resp: http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Length": []string{"44"}}},
+			body: body,
+		},
+	})
+
+	hc := &httpClusterClient{
+		clientFactory: cf,
+		rand:          rand.New(rand.NewSource(0)),
+	}
+	err := hc.SetEndpoints([]string{"http://127.0.0.1:4003", "http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"})
+	if err != nil {
+		t.Fatalf("unexpected error during setup: %#v", err)
+	}
+
+	actual, err := hc.GetVersion(context.Background())
+	if err != nil {
+		t.Errorf("non-nil error: %#v", err)
+	}
+	expected := &VersionResponse{
+		ServerVersion:  "2.3.2",
+		ClusterVersion: "2.3.0",
+	}
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("incorrect Response: want=%#v got=%#v", expected, actual)
+	}
+}
+
 // TestHTTPClusterClientSyncPinEndpoint tests that Sync() pins the endpoint when
 // it gets the exactly same member list as before.
 func TestHTTPClusterClientSyncPinEndpoint(t *testing.T) {
