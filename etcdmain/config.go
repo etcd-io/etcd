@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/url"
 	"os"
 	"runtime"
@@ -410,6 +411,13 @@ func (cfg *config) configFromFile() error {
 }
 
 func (cfg *config) validateConfig(isSet func(field string) bool) error {
+	if err := checkBindURLs(cfg.lpurls); err != nil {
+		return err
+	}
+	if err := checkBindURLs(cfg.lcurls); err != nil {
+		return err
+	}
+
 	// when etcd runs in member mode user needs to set --advertise-client-urls if --listen-client-urls is set.
 	// TODO(yichengq): check this for joining through discovery service case
 	mayFallbackToProxy := isSet("discovery") && cfg.fallback.String() == fallbackFlagProxy
@@ -456,3 +464,27 @@ func (cfg config) isReadonlyProxy() bool       { return cfg.proxy.String() == pr
 func (cfg config) shouldFallbackToProxy() bool { return cfg.fallback.String() == fallbackFlagProxy }
 
 func (cfg config) electionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
+
+// checkBindURLs returns an error if any URL uses a domain name.
+// TODO: return error in 3.2.0
+func checkBindURLs(urls []url.URL) error {
+	for _, url := range urls {
+		if url.Scheme == "unix" || url.Scheme == "unixs" {
+			continue
+		}
+		host, _, err := net.SplitHostPort(url.Host)
+		if err != nil {
+			return err
+		}
+		if host == "localhost" {
+			// special case for local address
+			// TODO: support /etc/hosts ?
+			continue
+		}
+		if net.ParseIP(host) == nil {
+			err := fmt.Errorf("expected IP in URL for binding (%s)", url.String())
+			plog.Warning(err)
+		}
+	}
+	return nil
+}
