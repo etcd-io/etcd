@@ -67,9 +67,9 @@ func TestPipelineKeepSendingWhenPostError(t *testing.T) {
 }
 
 func TestPipelineExceedMaximumServing(t *testing.T) {
-	tr := newRoundTripperBlocker()
+	rt := newRoundTripperBlocker()
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
-	tp := &Transport{pipelineRt: tr}
+	tp := &Transport{pipelineRt: rt}
 	p := startTestPipeline(tp, picker)
 	defer p.stop()
 
@@ -91,12 +91,12 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 	}
 
 	// unblock the senders and force them to send out the data
-	tr.unblock()
+	rt.unblock()
 
 	// It could send new data after previous ones succeed
 	select {
 	case p.msgc <- raftpb.Message{}:
-	case <-time.After(10 * time.Millisecond):
+	case <-time.After(time.Second):
 		t.Errorf("failed to send out message")
 	}
 }
