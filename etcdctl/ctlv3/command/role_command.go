@@ -22,6 +22,10 @@ import (
 	"golang.org/x/net/context"
 )
 
+var (
+	grantPermissionPrefix bool
+)
+
 // NewRoleCommand returns the cobra command for "role".
 func NewRoleCommand() *cobra.Command {
 	ac := &cobra.Command{
@@ -72,11 +76,15 @@ func newRoleListCommand() *cobra.Command {
 }
 
 func newRoleGrantPermissionCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "grant-permission <role name> <permission type> <key> [endkey]",
 		Short: "Grants a key to a role",
 		Run:   roleGrantPermissionCommandFunc,
 	}
+
+	cmd.Flags().BoolVar(&grantPermissionPrefix, "prefix", false, "grant a prefix permission")
+
+	return cmd
 }
 
 func newRoleRevokePermissionCommand() *cobra.Command {
@@ -183,7 +191,12 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 
 	rangeEnd := ""
 	if 4 <= len(args) {
+		if grantPermissionPrefix {
+			ExitWithError(ExitBadArgs, fmt.Errorf("don't pass both of --prefix option and range end to grant permission command"))
+		}
 		rangeEnd = args[3]
+	} else if grantPermissionPrefix {
+		rangeEnd = clientv3.GetPrefixRangeEnd(args[2])
 	}
 
 	_, err = mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], args[2], rangeEnd, perm)
