@@ -40,8 +40,6 @@ func TestEmbedEtcd(t *testing.T) {
 		{wpeers: 1, wclients: 1},
 		{wpeers: 2, wclients: 1},
 		{wpeers: 1, wclients: 2},
-		{werr: "expected IP"},
-		{werr: "expected IP"},
 	}
 
 	urls := newEmbedURLs(10)
@@ -59,10 +57,6 @@ func TestEmbedEtcd(t *testing.T) {
 	setupEmbedCfg(&tests[4].cfg, []url.URL{urls[2]}, []url.URL{urls[3]})
 	setupEmbedCfg(&tests[5].cfg, []url.URL{urls[4]}, []url.URL{urls[5], urls[6]})
 	setupEmbedCfg(&tests[6].cfg, []url.URL{urls[7], urls[8]}, []url.URL{urls[9]})
-
-	dnsURL, _ := url.Parse("http://whatever.test:12345")
-	tests[7].cfg.LCUrls = []url.URL{*dnsURL}
-	tests[8].cfg.LPUrls = []url.URL{*dnsURL}
 
 	dir := path.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
 	os.RemoveAll(dir)

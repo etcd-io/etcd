@@ -17,7 +17,6 @@ package embed
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -254,13 +253,6 @@ func (cfg *configYAML) configFromFile(path string) error {
 }
 
 func (cfg *Config) Validate() error {
-	if err := checkBindURLs(cfg.LPUrls); err != nil {
-		return err
-	}
-	if err := checkBindURLs(cfg.LCUrls); err != nil {
-		return err
-	}
-
 	// Check if conflicting flags are passed.
 	nSet := 0
 	for _, v := range []bool{cfg.Durl != "", cfg.InitialCluster != "", cfg.DNSCluster != ""} {
@@ -353,23 +345,4 @@ func (cfg Config) IsDefaultHost() (string, error) {
 		return defaultHostname, defaultHostStatus
 	}
 	return "", defaultHostStatus
-}
-
-// checkBindURLs returns an error if any URL uses a domain name.
-func checkBindURLs(urls []url.URL) error {
-	for _, url := range urls {
-		if url.Scheme == "unix" || url.Scheme == "unixs" {
-			continue
-		}
-		host := strings.Split(url.Host, ":")[0]
-		if host == "localhost" {
-			// special case for local address
-			// TODO: support /etc/hosts ?
-			continue
-		}
-		if net.ParseIP(host) == nil {
-			return fmt.Errorf("expected IP in URL for binding (%s)", url.String())
-		}
-	}
-	return nil
 }
