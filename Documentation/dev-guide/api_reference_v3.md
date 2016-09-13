@@ -641,6 +641,8 @@ Empty field.
 | serializable | serializable sets the range request to use serializable member-local reads. Range requests are linearizable by default; linearizable requests have higher latency and lower throughput than serializable requests but reflect the current consensus of the cluster. For better performance, in exchange for possible stale reads, a serializable range request is served locally without needing to reach consensus with other nodes in the cluster. | bool |
 | keys_only | keys_only when set returns only the keys and not the values. | bool |
 | count_only | count_only when set returns only the count of the keys in the range. | bool |
+| min_mod_revision | min_mod_revision is the lower bound for returned key mod revisions; all keys with lesser mod revisions will be filtered away. | int64 |
+| max_mod_revision | max_mod_revision is the upper bound for returned key mod revisions; all keys with greater mod revisions will be filtered away. | int64 |
 
 
 

@@ -865,6 +865,37 @@ func TestV3RangeRequest(t *testing.T) {
 			},
 			[]bool{true, true, true, true, false},
 		},
+		// min/max mod rev
+		{
+			[]string{"rev2", "rev3", "rev4", "rev5", "rev6"},
+			[]pb.RangeRequest{
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MinModRevision: 3,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MaxModRevision: 3,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MinModRevision: 3,
+					MaxModRevision: 5,
+				},
+				{
+					Key: []byte{0}, RangeEnd: []byte{0},
+					MaxModRevision: 10,
+				},
+			},
+
+			[][]string{
+				{"rev3", "rev4", "rev5", "rev6"},
+				{"rev2", "rev3"},
+				{"rev3", "rev4", "rev5"},
+				{"rev2", "rev3", "rev4", "rev5", "rev6"},
+			},
+			[]bool{false, false, false, false},
+		},
 	}
 
 	for i, tt := range tests {

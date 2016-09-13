@@ -1865,6 +1865,16 @@
           "format": "int64",
           "description": "limit is a limit on the number of keys returned for the request."
         },
+        "max_mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "max_mod_revision is the upper bound for returned key mod revisions; all keys with\ngreater mod revisions will be filtered away."
+        },
+        "min_mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "min_mod_revision is the lower bound for returned key mod revisions; all keys with\nlesser mod revisions will be filtered away."
+        },
         "range_end": {
           "type": "string",
           "format": "byte",

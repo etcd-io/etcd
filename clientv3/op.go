@@ -41,6 +41,8 @@ type Op struct {
 	serializable bool
 	keysOnly     bool
 	countOnly    bool
+	minModRev    int64
+	maxModRev    int64
 
 	// for range, watch
 	rev int64
@@ -61,23 +63,32 @@ type Op struct {
 	leaseID LeaseID
 }
 
+func (op Op) toRangeRequest() *pb.RangeRequest {
+	if op.t != tRange {
+		panic("op.t != tRange")
+	}
+	r := &pb.RangeRequest{
+		Key:            op.key,
+		RangeEnd:       op.end,
+		Limit:          op.limit,
+		Revision:       op.rev,
+		Serializable:   op.serializable,
+		KeysOnly:       op.keysOnly,
+		CountOnly:      op.countOnly,
+		MinModRevision: op.minModRev,
+		MaxModRevision: op.maxModRev,
+	}
+	if op.sort != nil {
+		r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
+		r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
+	}
+	return r
+}
+
 func (op Op) toRequestOp() *pb.RequestOp {
 	switch op.t {
 	case tRange:
-		r := &pb.RangeRequest{
-			Key:          op.key,
-			RangeEnd:     op.end,
-			Limit:        op.limit,
-			Revision:     op.rev,
-			Serializable: op.serializable,
-			KeysOnly:     op.keysOnly,
-			CountOnly:    op.countOnly,
-		}
-		if op.sort != nil {
-			r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
-			r.SortTarget = pb.RangeRequest_SortTarget(op.sort.Target)
-		}
-		return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: r}}
+		return &pb.RequestOp{Request: &pb.RequestOp_RequestRange{RequestRange: op.toRangeRequest()}}
 	case tPut:
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV}
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: r}}
@@ -115,6 +126,8 @@ func OpDelete(key string, opts ...OpOption) Op {
 		panic("unexpected serializable in delete")
 	case ret.countOnly:
 		panic("unexpected countOnly in delete")
+	case ret.minModRev != 0, ret.maxModRev != 0:
+		panic("unexpected mod revision filter in delete")
 	case ret.filterDelete, ret.filterPut:
 		panic("unexpected filter in delete")
 	case ret.createdNotify:
@@ -139,6 +152,8 @@ func OpPut(key, val string, opts ...OpOption) Op {
 		panic("unexpected serializable in put")
 	case ret.countOnly:
 		panic("unexpected countOnly in put")
+	case ret.minModRev != 0, ret.maxModRev != 0:
+		panic("unexpected mod revision filter in delete")
 	case ret.filterDelete, ret.filterPut:
 		panic("unexpected filter in put")
 	case ret.createdNotify:
@@ -161,6 +176,8 @@ func opWatch(key string, opts ...OpOption) Op {
 		panic("unexpected serializable in watch")
 	case ret.countOnly:
 		panic("unexpected countOnly in watch")
+	case ret.minModRev != 0, ret.maxModRev != 0:
+		panic("unexpected mod revision filter in watch")
 	}
 	return ret
 }
@@ -262,6 +279,12 @@ func WithKeysOnly() OpOption {
 func WithCountOnly() OpOption {
 	return func(op *Op) { op.countOnly = true }
 }
+
+// WithMinModRev filters out keys for Get with modification revisions less than the given revision.
+func WithMinModRev(rev int64) OpOption { return func(op *Op) { op.minModRev = rev } }
+
+// WithMaxModRev filters out keys for Get with modification revisions greater than the given revision.
+func WithMaxModRev(rev int64) OpOption { return func(op *Op) { op.maxModRev = rev } }
 
 // WithFirstCreate gets the key with the oldest creation revision in the request range.
 func WithFirstCreate() []OpOption { return withTop(SortByCreateRevision, SortAscend) }
