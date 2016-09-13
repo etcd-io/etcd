@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/ghodss/yaml"
+	"net/url"
 )
 
 func TestConfigFileOtherFields(t *testing.T) {
@@ -58,6 +59,32 @@ func TestConfigFileOtherFields(t *testing.T) {
 	}
 	if !ptls.equals(&cfg.PeerTLSInfo) {
 		t.Errorf("PeerTLS = %v, want %v", cfg.PeerTLSInfo, ptls)
+	}
+}
+
+func Test_checkBindURLs(t *testing.T) {
+	testCases := []struct {
+		url string
+		ok  bool
+	}{
+		{"http://[::]:8080", true},
+		{"http://localhost:2439", true},
+		{"http://example.com", false},
+		{"http://127.0.0.1", false},
+		{"http://127.0.0.1:2439", true},
+	}
+	for _, tt := range testCases {
+		u, err := url.Parse(tt.url)
+		if err != nil {
+			t.Fatalf("Failed to parse test case url=%v: %v", u, err)
+		}
+		err = checkBindURLs([]url.URL{*u})
+		if tt.ok && err != nil {
+			t.Errorf("Correct url = %v check failed: %v", u, err)
+		}
+		if !tt.ok && err == nil {
+			t.Errorf("Incorrect url = %v check succeeded", u)
+		}
 	}
 }
 

@@ -357,18 +357,21 @@ func (cfg Config) IsDefaultHost() (string, error) {
 
 // checkBindURLs returns an error if any URL uses a domain name.
 func checkBindURLs(urls []url.URL) error {
-	for _, url := range urls {
-		if url.Scheme == "unix" || url.Scheme == "unixs" {
+	for _, u := range urls {
+		if u.Scheme == "unix" || u.Scheme == "unixs" {
 			continue
 		}
-		host := strings.Split(url.Host, ":")[0]
+		host, _, err := net.SplitHostPort(u.Host)
+		if err != nil {
+			return fmt.Errorf("failed to split host in url (%s): %s ", u.Host, err.Error())
+		}
 		if host == "localhost" {
 			// special case for local address
 			// TODO: support /etc/hosts ?
 			continue
 		}
 		if net.ParseIP(host) == nil {
-			return fmt.Errorf("expected IP in URL for binding (%s)", url.String())
+			return fmt.Errorf("expected IP in URL for binding (%s)", u.String())
 		}
 	}
 	return nil
