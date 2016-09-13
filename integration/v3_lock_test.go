@@ -133,7 +133,7 @@ func testRWMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 				t.Error(err)
 			}
 			rwm := recipe.NewRWMutex(session, "test-rwmutex")
-			if rand.Intn(1) == 0 {
+			if rand.Intn(2) == 0 {
 				if err := rwm.RLock(); err != nil {
 					t.Fatalf("could not rlock (%v)", err)
 				}
