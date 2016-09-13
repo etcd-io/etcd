@@ -344,7 +344,10 @@ LEASE TIMETOLIVE retrieves the lease information with the given lease ID.
 # lease 2d8257079fa1bc0c granted with TTL(500s)
 
 ./etcdctl put foo1 bar --lease=2d8257079fa1bc0c
+# OK
+
 ./etcdctl put foo2 bar --lease=2d8257079fa1bc0c
+# OK
 
 ./etcdctl lease timetolive 2d8257079fa1bc0c
 # lease 2d8257079fa1bc0c granted with TTL(500s), remaining(481s)
