@@ -294,7 +294,7 @@ func (s *EtcdServer) waitLeader() (*membership.Member, error) {
 		select {
 		case <-time.After(dur):
 			leader = s.cluster.Member(s.Leader())
-		case <-s.done:
+		case <-s.stopping:
 			return nil, ErrStopped
 		}
 	}

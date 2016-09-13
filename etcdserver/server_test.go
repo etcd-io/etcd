@@ -706,8 +706,8 @@ func TestDoProposalStopped(t *testing.T) {
 	}
 	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
-	srv.done = make(chan struct{})
-	close(srv.done)
+	srv.stopping = make(chan struct{})
+	close(srv.stopping)
 	_, err := srv.Do(context.Background(), pb.Request{Method: "PUT", ID: 1})
 	if err != ErrStopped {
 		t.Errorf("err = %v, want %v", err, ErrStopped)
@@ -1217,10 +1217,11 @@ func TestPublishStopped(t *testing.T) {
 		cluster:  &membership.RaftCluster{},
 		w:        mockwait.NewNop(),
 		done:     make(chan struct{}),
+		stopping: make(chan struct{}),
 		stop:     make(chan struct{}),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
-	close(srv.done)
+	close(srv.stopping)
 	srv.publish(time.Hour)
 }
 
@@ -1231,11 +1232,11 @@ func TestPublishRetry(t *testing.T) {
 		Cfg:      &ServerConfig{TickMs: 1},
 		r:        raftNode{Node: n},
 		w:        mockwait.NewNop(),
-		done:     make(chan struct{}),
+		stopping: make(chan struct{}),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 	}
 	// TODO: use fakeClockwork
-	time.AfterFunc(10*time.Millisecond, func() { close(srv.done) })
+	time.AfterFunc(10*time.Millisecond, func() { close(srv.stopping) })
 	srv.publish(10 * time.Nanosecond)
 
 	action := n.Action()
