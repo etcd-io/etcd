@@ -1411,11 +1411,65 @@ func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
 	}
 }
 
-func TestReadIndexWithCheckQuorum(t *testing.T) {
+func TestReadOnlyOptionSafe(t *testing.T) {
 	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 
+	nt := newNetwork(a, b, c)
+	setRandomizedElectionTimeout(b, b.electionTimeout+1)
+
+	for i := 0; i < b.electionTimeout; i++ {
+		b.tick()
+	}
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	if a.state != StateLeader {
+		t.Fatalf("state = %s, want %s", a.state, StateLeader)
+	}
+
+	tests := []struct {
+		sm        *raft
+		proposals int
+		wri       uint64
+		wctx      []byte
+	}{
+		{b, 10, 11, []byte("ctx1")},
+		{c, 10, 21, []byte("ctx2")},
+		{b, 10, 31, []byte("ctx3")},
+		{c, 10, 41, []byte("ctx4")},
+	}
+
+	for i, tt := range tests {
+		for j := 0; j < tt.proposals; j++ {
+			nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
+		}
+
+		nt.send(pb.Message{From: tt.sm.id, To: tt.sm.id, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: tt.wctx}}})
+
+		r := tt.sm
+		if len(r.readStates) == 0 {
+			t.Errorf("#%d: len(readStates) = 0, want non-zero", i)
+		}
+		rs := r.readStates[0]
+		if rs.Index != tt.wri {
+			t.Errorf("#%d: readIndex = %d, want %d", i, rs.Index, tt.wri)
+		}
+
+		if !bytes.Equal(rs.RequestCtx, tt.wctx) {
+			t.Errorf("#%d: requestCtx = %v, want %v", i, rs.RequestCtx, tt.wctx)
+		}
+		r.readStates = nil
+	}
+}
+
+func TestReadOnlyOptionLease(t *testing.T) {
+	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	a.readOnly.option = ReadOnlyLeaseBased
+	b.readOnly.option = ReadOnlyLeaseBased
+	c.readOnly.option = ReadOnlyLeaseBased
 	a.checkQuorum = true
 	b.checkQuorum = true
 	c.checkQuorum = true
@@ -1444,7 +1498,7 @@ func TestReadIndexWithCheckQuorum(t *testing.T) {
 		{c, 10, 41, []byte("ctx4")},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		for j := 0; j < tt.proposals; j++ {
 			nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 		}
@@ -1452,20 +1506,25 @@ func TestReadIndexWithCheckQuorum(t *testing.T) {
 		nt.send(pb.Message{From: tt.sm.id, To: tt.sm.id, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: tt.wctx}}})
 
 		r := tt.sm
-		if r.readState.Index != tt.wri {
-			t.Errorf("readIndex = %d, want %d", r.readState.Index, tt.wri)
+		rs := r.readStates[0]
+		if rs.Index != tt.wri {
+			t.Errorf("#%d: readIndex = %d, want %d", i, rs.Index, tt.wri)
 		}
 
-		if !bytes.Equal(r.readState.RequestCtx, tt.wctx) {
-			t.Errorf("requestCtx = %v, want %v", r.readState.RequestCtx, tt.wctx)
+		if !bytes.Equal(rs.RequestCtx, tt.wctx) {
+			t.Errorf("#%d: requestCtx = %v, want %v", i, rs.RequestCtx, tt.wctx)
 		}
+		r.readStates = nil
 	}
 }
 
-func TestReadIndexWithoutCheckQuorum(t *testing.T) {
+func TestReadOnlyOptionLeaseWithoutCheckQuorum(t *testing.T) {
 	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	a.readOnly.option = ReadOnlyLeaseBased
+	b.readOnly.option = ReadOnlyLeaseBased
+	c.readOnly.option = ReadOnlyLeaseBased
 
 	nt := newNetwork(a, b, c)
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -1473,12 +1532,13 @@ func TestReadIndexWithoutCheckQuorum(t *testing.T) {
 	ctx := []byte("ctx1")
 	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: ctx}}})
 
-	if b.readState.Index != None {
-		t.Errorf("readIndex = %d, want %d", b.readState.Index, None)
+	rs := b.readStates[0]
+	if rs.Index != None {
+		t.Errorf("readIndex = %d, want %d", rs.Index, None)
 	}
 
-	if !bytes.Equal(b.readState.RequestCtx, ctx) {
-		t.Errorf("requestCtx = %v, want %v", b.readState.RequestCtx, ctx)
+	if !bytes.Equal(rs.RequestCtx, ctx) {
+		t.Errorf("requestCtx = %v, want %v", rs.RequestCtx, ctx)
 	}
 }
 
