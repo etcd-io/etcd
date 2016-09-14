@@ -16,6 +16,7 @@ package command
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
@@ -126,12 +127,23 @@ func roleDeleteCommandFunc(cmd *cobra.Command, args []string) {
 func printRolePermissions(name string, resp *clientv3.AuthRoleGetResponse) {
 	fmt.Printf("Role %s\n", name)
 	fmt.Println("KV Read:")
+
+	printRange := func(perm *clientv3.Permission) {
+		sKey := string(perm.Key)
+		sRangeEnd := string(perm.RangeEnd)
+		fmt.Printf("\t[%s, %s)", sKey, sRangeEnd)
+		if strings.Compare(clientv3.GetPrefixRangeEnd(sKey), sRangeEnd) == 0 {
+			fmt.Printf(" (prefix %s)", sKey)
+		}
+		fmt.Printf("\n")
+	}
+
 	for _, perm := range resp.Perm {
 		if perm.PermType == clientv3.PermRead || perm.PermType == clientv3.PermReadWrite {
 			if len(perm.RangeEnd) == 0 {
 				fmt.Printf("\t%s\n", string(perm.Key))
 			} else {
-				fmt.Printf("\t[%s, %s)\n", string(perm.Key), string(perm.RangeEnd))
+				printRange((*clientv3.Permission)(perm))
 			}
 		}
 	}
@@ -141,7 +153,7 @@ func printRolePermissions(name string, resp *clientv3.AuthRoleGetResponse) {
 			if len(perm.RangeEnd) == 0 {
 				fmt.Printf("\t%s\n", string(perm.Key))
 			} else {
-				fmt.Printf("\t[%s, %s)\n", string(perm.Key), string(perm.RangeEnd))
+				printRange((*clientv3.Permission)(perm))
 			}
 		}
 	}
