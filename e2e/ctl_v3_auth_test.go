@@ -17,6 +17,8 @@ package e2e
 import (
 	"fmt"
 	"testing"
+
+	"github.com/coreos/etcd/clientv3"
 )
 
 func TestCtlV3AuthEnable(t *testing.T)              { testCtl(t, authEnableTest) }
@@ -26,6 +28,7 @@ func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateT
 func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
 func TestCtlV3AuthRoleRevokeDuringOps(t *testing.T) { testCtl(t, authRoleRevokeDuringOpsTest) }
 func TestCtlV3AuthTxn(t *testing.T)                 { testCtl(t, authTestTxn) }
+func TestCtlV3AuthPerfixPerm(t *testing.T)          { testCtl(t, authTestPrefixPerm) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -172,7 +175,7 @@ func authRoleUpdateTest(cx ctlCtx) {
 
 	// grant a new key
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "hoo", ""}); err != nil {
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "hoo", "", false}); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -268,7 +271,7 @@ func authRoleRevokeDuringOpsTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 	// grant a new key to the new role
-	if err := ctlV3RoleGrantPermission(cx, "test-role2", grantingPerm{true, true, "hoo", ""}); err != nil {
+	if err := ctlV3RoleGrantPermission(cx, "test-role2", grantingPerm{true, true, "hoo", "", false}); err != nil {
 		cx.t.Fatal(err)
 	}
 	// grant the new role to the user
@@ -370,7 +373,7 @@ func authTestTxn(cx ctlCtx) {
 	// grant keys to test-user
 	cx.user, cx.pass = "root", "root"
 	for _, key := range grantedKeys {
-		if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, key, ""}); err != nil {
+		if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, key, "", false}); err != nil {
 			cx.t.Fatal(err)
 		}
 	}
@@ -419,6 +422,35 @@ func authTestTxn(cx ctlCtx) {
 		results:  []string{"Error:  etcdserver: permission denied"},
 	}
 	if err := ctlV3Txn(cx, rqs); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestPrefixPerm(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	prefix := "/prefix/" // directory like prefix
+	// grant keys to test-user
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, prefix, "", true}); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// try a prefix granted permission
+	cx.user, cx.pass = "test-user", "pass"
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("%s%d", prefix, i)
+		if err := ctlV3Put(cx, key, "val", ""); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+
+	if err := ctlV3PutFailPerm(cx, clientv3.GetPrefixRangeEnd(prefix), "baz"); err != nil {
 		cx.t.Fatal(err)
 	}
 }

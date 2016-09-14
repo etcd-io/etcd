@@ -101,6 +101,9 @@ func ctlV3Role(cx ctlCtx, args []string, expStr string) error {
 
 func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) error {
 	cmdArgs := append(cx.PrefixArgs(), "role", "grant-permission")
+	if perm.prefix {
+		cmdArgs = append(cmdArgs, "--prefix")
+	}
 	cmdArgs = append(cmdArgs, rolename)
 	cmdArgs = append(cmdArgs, grantingPermToArgs(perm)...)
 
@@ -137,6 +140,7 @@ type grantingPerm struct {
 	write    bool
 	key      string
 	rangeEnd string
+	prefix   bool
 }
 
 func grantingPermToArgs(perm grantingPerm) []string {
