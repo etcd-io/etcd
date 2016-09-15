@@ -167,7 +167,7 @@ func TestIssue6361(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = epc.backends()[0].Stop(); err != nil {
+	if err = epc.processes()[0].Stop(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -187,7 +187,7 @@ func TestIssue6361(t *testing.T) {
 			epc.procs[0].cfg.args[i+1] = newDataDir
 		}
 	}
-	if err = epc.backends()[0].Restart(); err != nil {
+	if err = epc.processes()[0].Restart(); err != nil {
 		t.Fatal(err)
 	}
 
