@@ -1865,10 +1865,20 @@
           "format": "int64",
           "description": "limit is a limit on the number of keys returned for the request."
         },
+        "max_create_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "max_create_revision is the upper bound for returned key create revisions; all keys with\ngreater create revisions will be filtered away."
+        },
         "max_mod_revision": {
           "type": "string",
           "format": "int64",
           "description": "max_mod_revision is the upper bound for returned key mod revisions; all keys with\ngreater mod revisions will be filtered away."
+        },
+        "min_create_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "min_create_revision is the lower bound for returned key create revisions; all keys with\nlesser create trevisions will be filtered away."
         },
         "min_mod_revision": {
           "type": "string",

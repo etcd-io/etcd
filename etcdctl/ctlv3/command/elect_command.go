@@ -114,11 +114,6 @@ func campaign(c *clientv3.Client, election string, prop string) error {
 		close(donec)
 	}()
 
-	s, serr := concurrency.NewSession(c)
-	if serr != nil {
-		return serr
-	}
-
 	if err = e.Campaign(ctx, prop); err != nil {
 		return err
 	}

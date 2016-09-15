@@ -43,6 +43,8 @@ type Op struct {
 	countOnly    bool
 	minModRev    int64
 	maxModRev    int64
+	minCreateRev int64
+	maxCreateRev int64
 
 	// for range, watch
 	rev int64
@@ -68,15 +70,17 @@ func (op Op) toRangeRequest() *pb.RangeRequest {
 		panic("op.t != tRange")
 	}
 	r := &pb.RangeRequest{
-		Key:            op.key,
-		RangeEnd:       op.end,
-		Limit:          op.limit,
-		Revision:       op.rev,
-		Serializable:   op.serializable,
-		KeysOnly:       op.keysOnly,
-		CountOnly:      op.countOnly,
-		MinModRevision: op.minModRev,
-		MaxModRevision: op.maxModRev,
+		Key:               op.key,
+		RangeEnd:          op.end,
+		Limit:             op.limit,
+		Revision:          op.rev,
+		Serializable:      op.serializable,
+		KeysOnly:          op.keysOnly,
+		CountOnly:         op.countOnly,
+		MinModRevision:    op.minModRev,
+		MaxModRevision:    op.maxModRev,
+		MinCreateRevision: op.minCreateRev,
+		MaxCreateRevision: op.maxCreateRev,
 	}
 	if op.sort != nil {
 		r.SortOrder = pb.RangeRequest_SortOrder(op.sort.Order)
@@ -128,6 +132,8 @@ func OpDelete(key string, opts ...OpOption) Op {
 		panic("unexpected countOnly in delete")
 	case ret.minModRev != 0, ret.maxModRev != 0:
 		panic("unexpected mod revision filter in delete")
+	case ret.minCreateRev != 0, ret.maxCreateRev != 0:
+		panic("unexpected create revision filter in delete")
 	case ret.filterDelete, ret.filterPut:
 		panic("unexpected filter in delete")
 	case ret.createdNotify:
@@ -153,7 +159,9 @@ func OpPut(key, val string, opts ...OpOption) Op {
 	case ret.countOnly:
 		panic("unexpected countOnly in put")
 	case ret.minModRev != 0, ret.maxModRev != 0:
-		panic("unexpected mod revision filter in delete")
+		panic("unexpected mod revision filter in put")
+	case ret.minCreateRev != 0, ret.maxCreateRev != 0:
+		panic("unexpected create revision filter in put")
 	case ret.filterDelete, ret.filterPut:
 		panic("unexpected filter in put")
 	case ret.createdNotify:
@@ -178,6 +186,8 @@ func opWatch(key string, opts ...OpOption) Op {
 		panic("unexpected countOnly in watch")
 	case ret.minModRev != 0, ret.maxModRev != 0:
 		panic("unexpected mod revision filter in watch")
+	case ret.minCreateRev != 0, ret.maxCreateRev != 0:
+		panic("unexpected create revision filter in watch")
 	}
 	return ret
 }
@@ -285,6 +295,12 @@ func WithMinModRev(rev int64) OpOption { return func(op *Op) { op.minModRev = re
 
 // WithMaxModRev filters out keys for Get with modification revisions greater than the given revision.
 func WithMaxModRev(rev int64) OpOption { return func(op *Op) { op.maxModRev = rev } }
+
+// WithMinCreateRev filters out keys for Get with creation revisions less than the given revision.
+func WithMinCreateRev(rev int64) OpOption { return func(op *Op) { op.minCreateRev = rev } }
+
+// WithMaxCreateRev filters out keys for Get with creation revisions greater than the given revision.
+func WithMaxCreateRev(rev int64) OpOption { return func(op *Op) { op.maxCreateRev = rev } }
 
 // WithFirstCreate gets the key with the oldest creation revision in the request range.
 func WithFirstCreate() []OpOption { return withTop(SortByCreateRevision, SortAscend) }

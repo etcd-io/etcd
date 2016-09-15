@@ -643,6 +643,8 @@ Empty field.
 | count_only | count_only when set returns only the count of the keys in the range. | bool |
 | min_mod_revision | min_mod_revision is the lower bound for returned key mod revisions; all keys with lesser mod revisions will be filtered away. | int64 |
 | max_mod_revision | max_mod_revision is the upper bound for returned key mod revisions; all keys with greater mod revisions will be filtered away. | int64 |
+| min_create_revision | min_create_revision is the lower bound for returned key create revisions; all keys with lesser create trevisions will be filtered away. | int64 |
+| max_create_revision | max_create_revision is the upper bound for returned key create revisions; all keys with greater create revisions will be filtered away. | int64 |
 
 
 

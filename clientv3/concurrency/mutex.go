@@ -57,7 +57,7 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	}
 
 	// wait for deletion revisions prior to myKey
-	err = waitDeletes(ctx, client, m.pfx, v3.WithPrefix(), v3.WithRev(m.myRev-1))
+	err = waitDeletes(ctx, client, m.pfx, m.myRev-1)
 	// release lock key if cancelled
 	select {
 	case <-ctx.Done():
