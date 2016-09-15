@@ -132,6 +132,8 @@ type etcdProcessConfig struct {
 	dataDirPath string
 	keepDataDir bool
 
+	name string
+
 	purl url.URL
 
 	acurl string
@@ -139,6 +141,9 @@ type etcdProcessConfig struct {
 	// serves both http and https
 	acurltls  string
 	acurlHost string
+
+	initialToken   string
+	initialCluster string
 
 	isProxy bool
 }
@@ -292,14 +297,16 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 
 		args = append(args, cfg.tlsArgs()...)
 		etcdCfgs[i] = &etcdProcessConfig{
-			execPath:    cfg.execPath,
-			args:        args,
-			dataDirPath: dataDirPath,
-			keepDataDir: cfg.keepDataDir,
-			purl:        purl,
-			acurl:       curl,
-			acurltls:    curltls,
-			acurlHost:   curlHost,
+			execPath:     cfg.execPath,
+			args:         args,
+			dataDirPath:  dataDirPath,
+			keepDataDir:  cfg.keepDataDir,
+			name:         name,
+			purl:         purl,
+			acurl:        curl,
+			acurltls:     curltls,
+			acurlHost:    curlHost,
+			initialToken: cfg.initialToken,
 		}
 	}
 	for i := 0; i < cfg.proxySize; i++ {
@@ -323,6 +330,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			args:        args,
 			dataDirPath: dataDirPath,
 			keepDataDir: cfg.keepDataDir,
+			name:        name,
 			acurl:       curl.String(),
 			acurlHost:   curlHost,
 			isProxy:     true,
@@ -331,6 +339,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 
 	initialClusterArgs := []string{"--initial-cluster", strings.Join(initialCluster, ",")}
 	for i := range etcdCfgs {
+		etcdCfgs[i].initialCluster = strings.Join(initialCluster, ",")
 		etcdCfgs[i].args = append(etcdCfgs[i].args, initialClusterArgs...)
 	}
 
