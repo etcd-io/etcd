@@ -91,6 +91,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 		// machine knows about it, it would pause a while and retry sending
 		// new snapshot message.
 		s.r.ReportSnapshot(m.To, raft.SnapshotFailure)
+		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
 		return
 	}
 	s.status.activate()
