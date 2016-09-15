@@ -761,6 +761,9 @@ func trimErrorPrefix(err error, prefix string) error {
 
 func unmarshalRequest(r *http.Request, req json.Unmarshaler, w http.ResponseWriter) bool {
 	ctype := r.Header.Get("Content-Type")
+	if strings.Contains(ctype, ";") {
+		ctype = strings.Split(ctype, ";")[0]
+	}
 	if ctype != "application/json" {
 		writeError(w, r, httptypes.NewHTTPError(http.StatusUnsupportedMediaType, fmt.Sprintf("Bad Content-Type %s, accept application/json", ctype)))
 		return false
