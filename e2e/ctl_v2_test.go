@@ -316,9 +316,9 @@ func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
 	endpoints := ""
 	if proxies := clus.proxies(); len(proxies) != 0 {
 		endpoints = proxies[0].cfg.acurl
-	} else if backends := clus.backends(); len(backends) != 0 {
+	} else if processes := clus.processes(); len(processes) != 0 {
 		es := []string{}
-		for _, b := range backends {
+		for _, b := range processes {
 			es = append(es, b.cfg.acurl)
 		}
 		endpoints = strings.Join(es, ",")

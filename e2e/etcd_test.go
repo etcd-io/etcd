@@ -528,13 +528,13 @@ func (epc *etcdProcessCluster) proxies() []*etcdProcess {
 	return epc.procs[epc.cfg.clusterSize:]
 }
 
-func (epc *etcdProcessCluster) backends() []*etcdProcess {
+func (epc *etcdProcessCluster) processes() []*etcdProcess {
 	return epc.procs[:epc.cfg.clusterSize]
 }
 
 func (epc *etcdProcessCluster) endpoints() []string {
 	eps := make([]string, epc.cfg.clusterSize)
-	for i, ep := range epc.backends() {
+	for i, ep := range epc.processes() {
 		eps[i] = ep.cfg.acurl
 	}
 	return eps
@@ -542,7 +542,7 @@ func (epc *etcdProcessCluster) endpoints() []string {
 
 func (epc *etcdProcessCluster) grpcEndpoints() []string {
 	eps := make([]string, epc.cfg.clusterSize)
-	for i, ep := range epc.backends() {
+	for i, ep := range epc.processes() {
 		eps[i] = ep.cfg.acurlHost
 	}
 	return eps
