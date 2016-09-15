@@ -32,7 +32,7 @@ The protobuf encoding of the PUT [RPC response][etcdrpc].
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl put foo bar --lease=1234abcd
 # OK
 ./etcdctl get foo
@@ -47,7 +47,7 @@ If \<value\> isn't given as command line argument, this command tries to read th
 When \<value\> begins with '-', \<value\> is interpreted as a flag.
 Insert '--' for workaround:
 
-``` bash
+```bash
 ./etcdctl put <key> -- <value>
 ./etcdctl put -- <key> <value>
 ```
@@ -92,7 +92,7 @@ The protobuf encoding of the [RPC message][etcdrpc] for a key-value pair for eac
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl get foo
 # foo
 # bar
@@ -131,7 +131,7 @@ The protobuf encoding of the DeleteRange [RPC response][etcdrpc].
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl put foo bar
 # OK
 ./etcdctl del foo
@@ -189,7 +189,7 @@ The protobuf encoding of the Txn [RPC response][etcdrpc].
 #### Examples
 
 txn in interactive mode:
-``` bash
+```bash
 ./etcdctl txn -i
 mod("key1") > "0"
 
@@ -206,7 +206,7 @@ put key2 "some extra key"
 ```
 
 txn in non-interactive mode:
-```
+```bash
 ./etcdctl txn <<<'mod("key1") > "0"
 
 put key1 "overwrote-key1"
@@ -215,6 +215,7 @@ put key1 "created-key1"
 put key2 "some extra key"
 
 '
+
 # FAILURE
 
 # OK
@@ -266,7 +267,7 @@ The protobuf encoding of the [RPC message][storagerpc] for each received Event.
 
 ##### Non-interactive
 
-``` bash
+```bash
 ./etcdctl watch foo
 # PUT
 # foo
@@ -275,7 +276,7 @@ The protobuf encoding of the [RPC message][storagerpc] for each received Event.
 
 ##### Interactive
 
-``` bash
+```bash
 ./etcdctl watch -i
 watch foo
 watch foo
@@ -857,7 +858,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl user add root
 # Password of root:#type password for root
 # Type password of root again for confirmation:#re-type password for root
@@ -891,7 +892,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 role add myrole
 # Role myrole created
 ```
@@ -910,7 +911,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 role delete myrole
 # Role myrole deleted
 ```
@@ -929,7 +930,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 role get myrole
 # Role myrole
 # KV Read:
@@ -952,7 +953,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 role grant-permission myrole readwrite foo
 # Role myrole updated
 ```
@@ -971,7 +972,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 role revoke-permission myrole foo
 # Permission of key foo is revoked from role myrole
 ```
@@ -990,7 +991,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 user add myuser
 # Password of myuser: #type password for my user
 # Type password of myuser again for confirmation:#re-type password for my user 
@@ -1011,7 +1012,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 user delete myuser
 # User myuser deleted
 ```
@@ -1030,7 +1031,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 user get myuser
 # User: myuser
 # Roles:
@@ -1054,7 +1055,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 user passwd myuser
 # Password of myuser: #type new password for my user
 # Type password of myuser again for confirmation: #re-type the new password for my user 
@@ -1075,7 +1076,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 user grant-role userA roleA
 # Role roleA is granted to user userA
 ```
@@ -1094,7 +1095,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 
 #### Examples
 
-``` bash
+```bash
 ./etcdctl --user=root:123 user revoke-role userA roleA
 # Role roleA is revoked from user userA
 ```
