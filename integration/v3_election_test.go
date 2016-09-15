@@ -188,11 +188,8 @@ func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 	if _, err := cli.Put(context.TODO(), "testa", "value"); err != nil {
 		t.Fatal(err)
 	}
-	s, serr := concurrency.NewSession(cli)
-	if serr != nil {
-		t.Fatal(serr)
-	}
-	e := concurrency.NewElection(s, "test")
+
+	e := concurrency.NewElection(cli, "test")
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	err := e.Campaign(ctx, "abc")
 	cancel()
