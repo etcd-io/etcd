@@ -123,6 +123,18 @@ func (rn *RawNode) Tick() {
 	rn.raft.tick()
 }
 
+// TickQuiesced advances the internal logical clock by a single tick without
+// performing any other state machine processing. It allows the caller to avoid
+// periodic heartbeats and elections when all of the peers in a Raft group are
+// known to be at the same state. Expected usage is to periodically invoke Tick
+// or TickQuiesced depending on whether the group is "active" or "quiesced".
+//
+// WARNING: Be very careful about using this method as it subverts the Raft
+// state machine. You should probably be using Tick instead.
+func (rn *RawNode) TickQuiesced() {
+	rn.raft.electionElapsed++
+}
+
 // Campaign causes this RawNode to transition to candidate state.
 func (rn *RawNode) Campaign() error {
 	return rn.raft.Step(pb.Message{
