@@ -115,7 +115,7 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 
 	partpath := path + ".part"
 	f, err := os.Create(partpath)
-	defer f.Close()
+
 	if err != nil {
 		exiterr := fmt.Errorf("could not open %s (%v)", partpath, err)
 		ExitWithError(ExitBadArgs, exiterr)
@@ -133,6 +133,8 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	fileutil.Fsync(f)
+
+	f.Close()
 
 	if rerr := os.Rename(partpath, path); rerr != nil {
 		exiterr := fmt.Errorf("could not rename %s to %s (%v)", partpath, path, rerr)
