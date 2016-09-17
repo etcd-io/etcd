@@ -671,6 +671,10 @@ the database, the etcd member releases this free space back to the file system.
 
 - prefix -- The key-value prefix to mirror
 
+- dest-prefix -- The destination prefix to mirror a prefix to a different prefix in the destination cluster
+
+- no-dest-prefix -- Mirror key-values to the root of the destination cluster
+
 #### Return value
 
 Simple reply
