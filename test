@@ -21,7 +21,7 @@ fi
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
-GOSIMPLE_UNUSED_PATHS=$(go list ./... | sed -e 's/github.com\/coreos\/etcd\///g' | grep -vE 'cmd|vendor|rafttest|github.com/coreos/etcd$|client$')
+GOSIMPLE_UNUSED_PATHS=$(go list ./... | sed -e 's/github.com\/coreos\/etcd\///g' | grep -vE 'cmd|gopath|vendor|rafttest|github.com/coreos/etcd$|client$')
 
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
