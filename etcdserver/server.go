@@ -81,6 +81,9 @@ const (
 	maxInFlightMsgSnap = 16
 
 	releaseDelayAfterSnapshot = 30 * time.Second
+
+	// maxPendingRevokes is the maximum number of outstanding expired lease revocations.
+	maxPendingRevokes = 16
 )
 
 var (
@@ -619,8 +622,19 @@ func (s *EtcdServer) run() {
 			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
 			s.goAttach(func() {
-				for _, l := range leases {
-					s.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: int64(l.ID)})
+				// Increases throughput of expired leases deletion process through parallelization
+				c := make(chan struct{}, maxPendingRevokes)
+				for _, lease := range leases {
+					select {
+					case c <- struct{}{}:
+					case <-s.stopping:
+						return
+					}
+					lid := lease.ID
+					s.goAttach(func() {
+						s.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: int64(lid)})
+						<-c
+					})
 				}
 			})
 		case err := <-s.errorc:
