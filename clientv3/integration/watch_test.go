@@ -211,6 +211,14 @@ func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
 	stopc <- struct{}{}
 	<-donec
 
+	// spinning on dropping connections may trigger a leader election
+	// due to resource starvation; l-read to ensure the cluster is stable
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	if _, err := wctx.kv.Get(ctx, "_"); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+
 	// ensure watcher works
 	putAndWatch(t, wctx, "a", "a")
 }
