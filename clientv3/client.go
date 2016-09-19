@@ -99,6 +99,12 @@ func (c *Client) Ctx() context.Context { return c.ctx }
 // Endpoints lists the registered endpoints for the client.
 func (c *Client) Endpoints() []string { return c.cfg.Endpoints }
 
+// SetEndpoints updates client's endpoints.
+func (c *Client) SetEndpoints(eps ...string) {
+	c.cfg.Endpoints = eps
+	c.balancer.updateAddrs(eps)
+}
+
 type authTokenCredential struct {
 	token string
 }
@@ -113,19 +119,31 @@ func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...str
 	}, nil
 }
 
-func (c *Client) dialTarget(endpoint string) (proto string, host string, creds *credentials.TransportCredentials) {
+func parseEndpoint(endpoint string) (proto string, host string, scheme bool) {
 	proto = "tcp"
 	host = endpoint
-	creds = c.creds
 	url, uerr := url.Parse(endpoint)
 	if uerr != nil || !strings.Contains(endpoint, "://") {
 		return
 	}
+	scheme = true
+
 	// strip scheme:// prefix since grpc dials by host
 	host = url.Host
 	switch url.Scheme {
+	case "http", "https":
 	case "unix":
 		proto = "unix"
+	default:
+		proto, host = "", ""
+	}
+	return
+}
+
+func (c *Client) processCreds(protocol string) (creds *credentials.TransportCredentials) {
+	creds = c.creds
+	switch protocol {
+	case "unix":
 	case "http":
 		creds = nil
 	case "https":
@@ -136,7 +154,7 @@ func (c *Client) dialTarget(endpoint string) (proto string, host string, creds *
 		emptyCreds := credentials.NewTLS(tlsconfig)
 		creds = &emptyCreds
 	default:
-		return "", "", nil
+		creds = nil
 	}
 	return
 }
@@ -148,17 +166,8 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 	}
 	opts = append(opts, dopts...)
 
-	// grpc issues TLS cert checks using the string passed into dial so
-	// that string must be the host. To recover the full scheme://host URL,
-	// have a map from hosts to the original endpoint.
-	host2ep := make(map[string]string)
-	for i := range c.cfg.Endpoints {
-		_, host, _ := c.dialTarget(c.cfg.Endpoints[i])
-		host2ep[host] = c.cfg.Endpoints[i]
-	}
-
 	f := func(host string, t time.Duration) (net.Conn, error) {
-		proto, host, _ := c.dialTarget(host2ep[host])
+		proto, host, _ := parseEndpoint(c.balancer.getEndpoint(host))
 		if proto == "" {
 			return nil, fmt.Errorf("unknown scheme for %q", host)
 		}
@@ -171,7 +180,10 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 	}
 	opts = append(opts, grpc.WithDialer(f))
 
-	_, _, creds := c.dialTarget(endpoint)
+	creds := c.creds
+	if proto, _, scheme := parseEndpoint(endpoint); scheme {
+		creds = c.processCreds(proto)
+	}
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(*creds))
 	} else {
