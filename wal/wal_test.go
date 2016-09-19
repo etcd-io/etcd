@@ -213,6 +213,39 @@ func TestCut(t *testing.T) {
 	}
 }
 
+func TestSaveWithCut(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p, []byte("metadata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	state := raftpb.HardState{Term: 1}
+	if err = w.Save(state, nil); err != nil {
+		t.Fatal(err)
+	}
+	bigData := make([]byte, 500)
+	totalSize := 0
+	// set a lower value for SegmentSizeBytes, else the test takes too long to complete
+	restoreLater := SegmentSizeBytes
+	SegmentSizeBytes = 2 * 1024
+	var index uint64 = 0
+	for ; totalSize < int(SegmentSizeBytes); index++ {
+		ents := []raftpb.Entry{{Index: index, Term: 1, Data: bigData}}
+		if err = w.Save(state, ents); err != nil {
+			t.Fatal(err)
+		}
+		totalSize += 500
+	}
+	SegmentSizeBytes = restoreLater
+}
+
 func TestRecover(t *testing.T) {
 	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
