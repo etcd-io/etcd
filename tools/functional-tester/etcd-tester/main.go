@@ -114,10 +114,14 @@ func main() {
 	}
 
 	t := &tester{
-		failures:         schedule,
-		cluster:          c,
-		limit:            *limit,
-		consistencyCheck: *consistencyCheck,
+		failures: schedule,
+		cluster:  c,
+		limit:    *limit,
+		checker:  newNoChecker(),
+	}
+
+	if *consistencyCheck && !c.v2Only {
+		t.checker = newHashChecker(t)
 	}
 
 	sh := statusHandler{status: &t.status}

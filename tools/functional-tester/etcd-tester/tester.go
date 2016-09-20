@@ -20,10 +20,10 @@ import (
 )
 
 type tester struct {
-	failures         []failure
-	cluster          *cluster
-	limit            int
-	consistencyCheck bool
+	failures []failure
+	cluster  *cluster
+	limit    int
+	checker  Checker
 
 	status          Status
 	currentRevision int64
@@ -109,82 +109,47 @@ func (tt *tester) doRound(round int) (bool, error) {
 		}
 		plog.Printf("%s recovered failure", tt.logPrefix())
 
-		if tt.cluster.v2Only {
-			plog.Printf("%s succeed!", tt.logPrefix())
-			continue
-		}
-
-		if !tt.consistencyCheck {
-			if err := tt.updateRevision(); err != nil {
-				plog.Warningf("%s functional-tester returning with tt.updateRevision error (%v)", tt.logPrefix(), err)
-				return false, err
-			}
-			continue
-		}
-
 		if err := tt.checkConsistency(); err != nil {
 			plog.Warningf("%s functional-tester returning with tt.checkConsistency error (%v)", tt.logPrefix(), err)
 			return false, err
 		}
+
 		plog.Printf("%s succeed!", tt.logPrefix())
 	}
 	return true, nil
 }
 
 func (tt *tester) updateRevision() error {
+	if tt.cluster.v2Only {
+		return nil
+	}
+
 	revs, _, err := tt.cluster.getRevisionHash()
 	for _, rev := range revs {
 		tt.currentRevision = rev
 		break // just need get one of the current revisions
 	}
+
+	plog.Printf("%s updated current revision to %d", tt.logPrefix(), tt.currentRevision)
 	return err
 }
 
 func (tt *tester) checkConsistency() (err error) {
 	tt.cancelStressers()
 	defer func() {
-		if err == nil {
-			err = tt.startStressers()
-		}
-	}()
-
-	plog.Printf("%s updating current revisions...", tt.logPrefix())
-	var (
-		revs   map[string]int64
-		hashes map[string]int64
-		ok     bool
-	)
-	for i := 0; i < 7; i++ {
-		time.Sleep(time.Second)
-
-		revs, hashes, err = tt.cluster.getRevisionHash()
 		if err != nil {
-			plog.Printf("%s #%d failed to get current revisions (%v)", tt.logPrefix(), i, err)
-			continue
+			return
 		}
-		if tt.currentRevision, ok = getSameValue(revs); ok {
-			break
+		if err = tt.updateRevision(); err != nil {
+			plog.Warningf("%s functional-tester returning with tt.updateRevision error (%v)", tt.logPrefix(), err)
+			return
 		}
-
-		plog.Printf("%s #%d inconsistent current revisions %+v", tt.logPrefix(), i, revs)
-	}
-	if !ok || err != nil {
-		err = fmt.Errorf("checking current revisions failed [err: %v, revisions: %v]", err, revs)
+		err = tt.startStressers()
+	}()
+	if err = tt.checker.Check(); err != nil {
 		plog.Printf("%s %v", tt.logPrefix(), err)
-		return
 	}
-	plog.Printf("%s all members are consistent with current revisions [revisions: %v]", tt.logPrefix(), revs)
-
-	plog.Printf("%s checking current storage hashes...", tt.logPrefix())
-	if _, ok = getSameValue(hashes); !ok {
-		err = fmt.Errorf("inconsistent hashes [%v]", hashes)
-		plog.Printf("%s %v", tt.logPrefix(), err)
-		return
-	}
-	plog.Printf("%s all members are consistent with storage hashes", tt.logPrefix())
-
-	plog.Printf("%s updated current revision to %d", tt.logPrefix(), tt.currentRevision)
-	return nil
+	return err
 }
 
 func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
