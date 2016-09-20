@@ -47,7 +47,7 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().StringVar(&getSortTarget, "sort-by", "", "Sort target; CREATE, KEY, MODIFY, VALUE, or VERSION")
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "Maximum number of results")
 	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "Get keys with matching prefix")
-	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "Get keys that are greater than or equal to the given key")
+	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "Get keys that are greater than or equal to the given key using byte compare")
 	cmd.Flags().Int64Var(&getRev, "rev", 0, "Specify the kv revision")
 	cmd.Flags().BoolVar(&getKeysOnly, "keys-only", false, "Get only the keys")
 	cmd.Flags().BoolVar(&printValueOnly, "print-value-only", false, `Only write values when using the "simple" output format`)
