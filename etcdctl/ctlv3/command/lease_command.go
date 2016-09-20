@@ -103,7 +103,7 @@ var timeToLiveKeys bool
 // NewLeaseTimeToLiveCommand returns the cobra command for "lease timetolive".
 func NewLeaseTimeToLiveCommand() *cobra.Command {
 	lc := &cobra.Command{
-		Use:   "timetolive <leaseID>",
+		Use:   "timetolive <leaseID> [options]",
 		Short: "Get lease information",
 
 		Run: leaseTimeToLiveCommandFunc,

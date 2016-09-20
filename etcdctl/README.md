@@ -328,9 +328,13 @@ LEASE REVOKE destroys a given lease, deleting all attached keys.
 ```
 
 
-### LEASE TIMETOLIVE \<leaseID\>
+### LEASE TIMETOLIVE \<leaseID\> [options]
 
 LEASE TIMETOLIVE retrieves the lease information with the given lease ID.
+
+#### Options
+
+- keys -- Get keys attached to this lease
 
 #### Return value
 
