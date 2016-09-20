@@ -186,6 +186,7 @@ func (b *backend) Size() int64 {
 }
 
 func (b *backend) run() {
+	defer b.db.Close()
 	defer close(b.donec)
 	t := time.NewTimer(b.batchInterval)
 	defer t.Stop()
