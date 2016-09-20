@@ -72,7 +72,11 @@ GET gets the key or a range of keys [key, range_end) if `range-end` is given.
 
 - print-value-only -- print only value when used with write-out=simple
 
-TODO: add consistency, from, prefix
+- consistency -- Linearizable(l) or Serializable(s)
+
+- from-key -- Get keys that are greater than or equal to the given key using byte compare
+
+- keys-only -- Get only the keys
 
 #### Return value
 
@@ -93,9 +97,29 @@ The protobuf encoding of the [RPC message][etcdrpc] for a key-value pair for eac
 #### Examples
 
 ```bash
+./etcdctl put foo bar
+# OK
+./etcdctl put foo1 bar1
+# OK
+./etcdctl put foo2 bar2
+# OK
+./etcdctl put foo3 bar3
+# OK
 ./etcdctl get foo
 # foo
 # bar
+./etcdctl get --from-key foo1
+# foo1
+# bar1
+# foo2
+# bar2
+# foo3
+# bar3
+./etcdctl get foo1 foo3
+# foo1
+# bar1
+# foo2
+# bar2
 ```
 
 #### Notes
@@ -1002,7 +1026,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 ```bash
 ./etcdctl --user=root:123 user add myuser
 # Password of myuser: #type password for my user
-# Type password of myuser again for confirmation:#re-type password for my user 
+# Type password of myuser again for confirmation:#re-type password for my user
 # User myuser created
 ```
 
@@ -1066,7 +1090,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 ```bash
 ./etcdctl --user=root:123 user passwd myuser
 # Password of myuser: #type new password for my user
-# Type password of myuser again for confirmation: #re-type the new password for my user 
+# Type password of myuser again for confirmation: #re-type the new password for my user
 # Password updated
 ```
 
