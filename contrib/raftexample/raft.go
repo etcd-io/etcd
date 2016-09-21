@@ -25,10 +25,12 @@ import (
 	"net/url"
 
 	"github.com/coreos/etcd/etcdserver/stats"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 	"golang.org/x/net/context"
@@ -45,12 +47,14 @@ type raftNode struct {
 	peers     []string // raft peer URLs
 	join      bool     // node is joining an existing cluster
 	waldir    string   // path to WAL directory
+	snapdir   string   // path to snapshot directory
 	lastIndex uint64   // index of log at start
 
 	// raft backing for the commit/error channel
 	node        raft.Node
 	raftStorage *raft.MemoryStorage
 	wal         *wal.WAL
+	snapshotter *snap.Snapshotter
 	transport   *rafthttp.Transport
 	stopc       chan struct{} // signals proposal channel closed
 	httpstopc   chan struct{} // signals http server to shutdown
@@ -77,6 +81,7 @@ func newRaftNode(id int, peers []string, join bool, proposeC <-chan string,
 		peers:       peers,
 		join:        join,
 		waldir:      fmt.Sprintf("raftexample-%d", id),
+		snapdir:     fmt.Sprintf("raftexample-%d-snap", id),
 		raftStorage: raft.NewMemoryStorage(),
 		stopc:       make(chan struct{}),
 		httpstopc:   make(chan struct{}),
@@ -85,6 +90,20 @@ func newRaftNode(id int, peers []string, join bool, proposeC <-chan string,
 	}
 	go rc.startRaft()
 	return commitC, errorC
+}
+
+func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
+	if err := rc.snapshotter.SaveSnap(snap); err != nil {
+		return err
+	}
+	walSnap := walpb.Snapshot{
+		Index: snap.Metadata.Index,
+		Term:  snap.Metadata.Term,
+	}
+	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
+		return err
+	}
+	return rc.wal.ReleaseLockTo(snap.Metadata.Index)
 }
 
 // publishEntries writes committed log entries to commit channel and returns
@@ -184,8 +203,14 @@ func (rc *raftNode) writeError(err error) {
 }
 
 func (rc *raftNode) startRaft() {
+	if !fileutil.Exist(rc.snapdir) {
+		if err := os.Mkdir(rc.snapdir, 0750); err != nil {
+			log.Fatalf("raftexample: cannot create dir for snapshot (%v)", err)
+		}
+	}
 	oldwal := wal.Exist(rc.waldir)
 	rc.wal = rc.replayWAL()
+	rc.snapshotter = snap.New(rc.snapdir)
 
 	rpeers := make([]raft.Peer, len(rc.peers))
 	for i := range rpeers {
@@ -290,6 +315,10 @@ func (rc *raftNode) serveChannels() {
 		// store raft entries to wal, then publish over commit channel
 		case rd := <-rc.node.Ready():
 			rc.wal.Save(rd.HardState, rd.Entries)
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				rc.saveSnap(rd.Snapshot)
+				rc.raftStorage.ApplySnapshot(rd.Snapshot)
+			}
 			rc.raftStorage.Append(rd.Entries)
 			rc.transport.Send(rd.Messages)
 			if ok := rc.publishEntries(rd.CommittedEntries); !ok {

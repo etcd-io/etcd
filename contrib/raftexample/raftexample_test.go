@@ -47,6 +47,7 @@ func newCluster(n int) *cluster {
 
 	for i := range clus.peers {
 		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
+		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", i+1))
 		clus.proposeC[i] = make(chan string, 1)
 		clus.confChangeC[i] = make(chan raftpb.ConfChange, 1)
 		clus.commitC[i], clus.errorC[i] = newRaftNode(i+1, clus.peers, false, clus.proposeC[i], clus.confChangeC[i])
@@ -79,6 +80,7 @@ func (clus *cluster) Close() (err error) {
 		}
 		// clean intermediates
 		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
+		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", i+1))
 	}
 	return err
 }
