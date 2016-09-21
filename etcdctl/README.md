@@ -135,6 +135,8 @@ Removes the specified key or range of keys [key, range_end) if `range-end` is gi
 
 - prefix -- delete keys by matching prefix
 
+- prev-kv -- return deleted key-value pairs
+
 TODO: --from
 
 #### Return value
