@@ -213,6 +213,69 @@ func TestCut(t *testing.T) {
 	}
 }
 
+func TestSaveWithCut(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p, []byte("metadata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state := raftpb.HardState{Term: 1}
+	if err = w.Save(state, nil); err != nil {
+		t.Fatal(err)
+	}
+	bigData := make([]byte, 500)
+	strdata := "Hello World!!"
+	copy(bigData, strdata)
+	// set a lower value for SegmentSizeBytes, else the test takes too long to complete
+	restoreLater := SegmentSizeBytes
+	const EntrySize int = 500
+	SegmentSizeBytes = 2 * 1024
+	defer func() { SegmentSizeBytes = restoreLater }()
+	var index uint64 = 0
+	for totalSize := 0; totalSize < int(SegmentSizeBytes); totalSize += EntrySize {
+		ents := []raftpb.Entry{{Index: index, Term: 1, Data: bigData}}
+		if err = w.Save(state, ents); err != nil {
+			t.Fatal(err)
+		}
+		index++
+	}
+
+	w.Close()
+
+	neww, err := Open(p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	defer neww.Close()
+	wname := walName(1, index)
+	if g := path.Base(neww.tail().Name()); g != wname {
+		t.Errorf("name = %s, want %s", g, wname)
+	}
+
+	_, newhardstate, entries, err := neww.ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(newhardstate, state) {
+		t.Errorf("Hard State = %+v, want %+v", newhardstate, state)
+	}
+	if len(entries) != int(SegmentSizeBytes/int64(EntrySize)) {
+		t.Errorf("Number of entries = %d, expected = %d", len(entries), int(SegmentSizeBytes/int64(EntrySize)))
+	}
+	for _, oneent := range entries {
+		if !bytes.Equal(oneent.Data, bigData) {
+			t.Errorf("the saved data does not match at Index %d : found: %s , want :%s", oneent.Index, oneent.Data, bigData)
+		}
+	}
+}
+
 func TestRecover(t *testing.T) {
 	p, err := ioutil.TempDir(os.TempDir(), "waltest")
 	if err != nil {
