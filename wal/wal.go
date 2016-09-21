@@ -563,7 +563,6 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 		return nil
 	}
 
-	// TODO: add a test for this code path when refactoring the tests
 	return w.cut()
 }
 
