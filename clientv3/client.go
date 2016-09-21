@@ -105,6 +105,38 @@ func (c *Client) SetEndpoints(eps ...string) {
 	c.balancer.updateAddrs(eps)
 }
 
+// Sync synchronizes client's endpoints with the known endpoints from the etcd membership.
+func (c *Client) Sync(ctx context.Context) error {
+	mresp, err := c.MemberList(ctx)
+	if err != nil {
+		return err
+	}
+	var eps []string
+	for _, m := range mresp.Members {
+		eps = append(eps, m.ClientURLs...)
+	}
+	c.SetEndpoints(eps...)
+	return nil
+}
+
+func (c *Client) autoSync() {
+	if c.cfg.AutoSyncInterval == time.Duration(0) {
+		return
+	}
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-time.After(c.cfg.AutoSyncInterval):
+			ctx, _ := context.WithTimeout(c.ctx, 5*time.Second)
+			if err := c.Sync(ctx); err != nil && err != c.ctx.Err() {
+				logger.Println("Auto sync endpoints failed:", err)
+			}
+		}
+	}
+}
+
 type authTokenCredential struct {
 	token string
 }
@@ -292,6 +324,7 @@ func newClient(cfg *Config) (*Client, error) {
 		logger.Set(log.New(ioutil.Discard, "", 0))
 	}
 
+	go client.autoSync()
 	return client, nil
 }
 

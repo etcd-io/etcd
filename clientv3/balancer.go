@@ -96,10 +96,24 @@ func getHost2ep(eps []string) map[string]string {
 }
 
 func (b *simpleBalancer) updateAddrs(eps []string) {
+	np := getHost2ep(eps)
+
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.host2ep = getHost2ep(eps)
+	match := len(np) == len(b.host2ep)
+	for k, v := range np {
+		if b.host2ep[k] != v {
+			match = false
+			break
+		}
+	}
+	if match {
+		// same endpoints, so no need to update address
+		return
+	}
+
+	b.host2ep = np
 
 	addrs := make([]grpc.Address, 0, len(eps))
 	for i := range eps {
