@@ -762,6 +762,8 @@ The snapshot restore options closely resemble to those used in the `etcd` comman
 
 - name -- Human-readable name for the etcd cluster member being restored.
 
+- skip-hash-check -- Ignore snapshot integrity hash value (required if copied from data directory)
+
 #### Return value
 
 - On success, a new etcd data directory is initialized.
