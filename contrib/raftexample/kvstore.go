@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"log"
 	"sync"
 )
@@ -76,4 +77,21 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 	if err, ok := <-errorC; ok {
 		log.Fatal(err)
 	}
+}
+
+func (s *kvstore) getSnapshot() ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return json.Marshal(s.kvStore)
+}
+
+func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
+	var store map[string]string
+	if err := json.Unmarshal(snapshot, &store); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.kvStore = store
+	s.mu.Unlock()
+	return nil
 }
