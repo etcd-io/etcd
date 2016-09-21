@@ -25,31 +25,38 @@ func TestCtlV3MakeMirrorModifyDestPrefix(t *testing.T) { testCtl(t, makeMirrorMo
 func TestCtlV3MakeMirrorNoDestPrefix(t *testing.T)     { testCtl(t, makeMirrorNoDestPrefixTest) }
 
 func makeMirrorTest(cx ctlCtx) {
-	flags := []string{}
-	var kvs = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
-	var prefix = "key"
-	testMirrorOp(cx, flags, kvs, kvs, prefix, prefix)
+	var (
+		flags  = []string{}
+		kvs    = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
+		prefix = "key"
+	)
+	testMirrorCommand(cx, flags, kvs, kvs, prefix, prefix)
 }
 
 func makeMirrorModifyDestPrefixTest(cx ctlCtx) {
-	flags := []string{"--prefix", "o_", "--dest-prefix", "d_"}
-	var kvs = []kv{{"o_key1", "val1"}, {"o_key2", "val2"}, {"o_key3", "val3"}}
-	var kvs2 = []kv{{"d_key1", "val1"}, {"d_key2", "val2"}, {"d_key3", "val3"}}
-	var srcprefix = "o_"
-	var destprefix = "d_"
-	testMirrorOp(cx, flags, kvs, kvs2, srcprefix, destprefix)
+	var (
+		flags      = []string{"--prefix", "o_", "--dest-prefix", "d_"}
+		kvs        = []kv{{"o_key1", "val1"}, {"o_key2", "val2"}, {"o_key3", "val3"}}
+		kvs2       = []kv{{"d_key1", "val1"}, {"d_key2", "val2"}, {"d_key3", "val3"}}
+		srcprefix  = "o_"
+		destprefix = "d_"
+	)
+	testMirrorCommand(cx, flags, kvs, kvs2, srcprefix, destprefix)
 }
 
 func makeMirrorNoDestPrefixTest(cx ctlCtx) {
-	flags := []string{"--prefix", "o_", "--no-dest-prefix"}
-	var kvs = []kv{{"o_key1", "val1"}, {"o_key2", "val2"}, {"o_key3", "val3"}}
-	var kvs2 = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
-	var srcprefix = "o_"
-	var destprefix = "key"
-	testMirrorOp(cx, flags, kvs, kvs2, srcprefix, destprefix)
+	var (
+		flags      = []string{"--prefix", "o_", "--no-dest-prefix"}
+		kvs        = []kv{{"o_key1", "val1"}, {"o_key2", "val2"}, {"o_key3", "val3"}}
+		kvs2       = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
+		srcprefix  = "o_"
+		destprefix = "key"
+	)
+
+	testMirrorCommand(cx, flags, kvs, kvs2, srcprefix, destprefix)
 }
 
-func testMirrorOp(cx ctlCtx, flags []string, sourcekvs, destkvs []kv, srcprefix, destprefix string) {
+func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs, destkvs []kv, srcprefix, destprefix string) {
 	// set up another cluster to mirror with
 	mirrorcfg := configAutoTLS
 	mirrorcfg.clusterSize = 1
