@@ -42,7 +42,7 @@ func NewMemberCommand() *cobra.Command {
 // NewMemberAddCommand returns the cobra command for "member add".
 func NewMemberAddCommand() *cobra.Command {
 	cc := &cobra.Command{
-		Use:   "add <memberName>",
+		Use:   "add <memberName> [options]",
 		Short: "Adds a member into the cluster",
 
 		Run: memberAddCommandFunc,
@@ -68,7 +68,7 @@ func NewMemberRemoveCommand() *cobra.Command {
 // NewMemberUpdateCommand returns the cobra command for "member update".
 func NewMemberUpdateCommand() *cobra.Command {
 	cc := &cobra.Command{
-		Use:   "update <memberID>",
+		Use:   "update <memberID> [options]",
 		Short: "Updates a member in the cluster",
 
 		Run: memberUpdateCommandFunc,
