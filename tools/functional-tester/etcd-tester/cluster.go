@@ -25,7 +25,6 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
-	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
 
@@ -53,6 +52,8 @@ type cluster struct {
 	Stressers []Stresser
 
 	Members []*member
+
+	stressBuilder stressBuilder
 }
 
 type ClusterStatus struct {
@@ -102,29 +103,9 @@ func (c *cluster) bootstrap() error {
 		}
 	}
 
-	// TODO: Too intensive stressers can panic etcd member with
-	// 'out of memory' error. Put rate limits in server side.
-	stressN := 100
 	c.Stressers = make([]Stresser, len(members))
-	limiter := rate.NewLimiter(rate.Limit(c.stressQPS), c.stressQPS)
 	for i, m := range members {
-		if c.v2Only {
-			c.Stressers[i] = &stresserV2{
-				Endpoint:       m.ClientURL,
-				keySize:        c.stressKeySize,
-				keySuffixRange: c.stressKeySuffixRange,
-				N:              stressN,
-			}
-		} else {
-			c.Stressers[i] = &stresser{
-				Endpoint:       m.grpcAddr(),
-				keyLargeSize:   c.stressKeyLargeSize,
-				keySize:        c.stressKeySize,
-				keySuffixRange: c.stressKeySuffixRange,
-				N:              stressN,
-				rateLimiter:    limiter,
-			}
-		}
+		c.Stressers[i] = c.stressBuilder(m)
 		go c.Stressers[i].Stress()
 	}
 
