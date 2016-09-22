@@ -30,13 +30,13 @@ import (
 )
 
 var (
-	mminsecureTr    bool
-	mmcert          string
-	mmkey           string
-	mmcacert        string
-	mmprefix        string
-	mmdestprefix    string
-	mmremdestprefix bool
+	mminsecureTr   bool
+	mmcert         string
+	mmkey          string
+	mmcacert       string
+	mmprefix       string
+	mmdestprefix   string
+	mmnodestprefix bool
 )
 
 // NewMakeMirrorCommand returns the cobra command for "makeMirror".
@@ -49,7 +49,7 @@ func NewMakeMirrorCommand() *cobra.Command {
 
 	c.Flags().StringVar(&mmprefix, "prefix", "", "Key-value prefix to mirror")
 	c.Flags().StringVar(&mmdestprefix, "dest-prefix", "", "destination prefix to mirror a prefix to a different prefix in the destination cluster")
-	c.Flags().BoolVar(&mmremdestprefix, "no-dest-prefix", false, "mirror key-values to the root of the destination cluster")
+	c.Flags().BoolVar(&mmnodestprefix, "no-dest-prefix", false, "mirror key-values to the root of the destination cluster")
 	c.Flags().StringVar(&mmcert, "dest-cert", "", "Identify secure client using this TLS certificate file for the destination cluster")
 	c.Flags().StringVar(&mmkey, "dest-key", "", "Identify secure client using this TLS key file")
 	c.Flags().StringVar(&mmcacert, "dest-cacert", "", "Verify certificates of TLS enabled secure servers using this CA bundle")
@@ -94,12 +94,12 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 	rc, errc := s.SyncBase(ctx)
 
 	// if destination prefix is specified and remove destination prefix is true return error
-	if mmremdestprefix && len(mmdestprefix) > 0 {
-		ExitWithError(ExitBadArgs, fmt.Errorf("`--dest-prefix` and `--rem-dest-prefix` cannot be set at the same time, choose one."))
+	if mmnodestprefix && len(mmdestprefix) > 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one."))
 	}
 
 	// if remove destination prefix is false and destination prefix is empty set the value of destination prefix same as prefix
-	if !mmremdestprefix && len(mmdestprefix) == 0 {
+	if !mmnodestprefix && len(mmdestprefix) == 0 {
 		mmdestprefix = mmprefix
 	}
 
