@@ -137,7 +137,7 @@ Removes the specified key or range of keys [key, range_end) if `range-end` is gi
 
 - prev-kv -- return deleted key-value pairs
 
-TODO: --from
+- from-key -- delete keys that are greater than or equal to the given key using byte compare
 
 #### Return value
 
@@ -163,6 +163,40 @@ The protobuf encoding of the DeleteRange [RPC response][etcdrpc].
 ./etcdctl del foo
 # 1
 ./etcdctl get foo
+```
+
+```bash
+./etcdctl put key val
+# OK
+./etcdctl del --prev-kv key
+# 1
+# key
+# val
+./etcdctl get key
+```
+
+```bash
+./etcdctl put a 123
+# OK
+./etcdctl put b 456
+# OK
+./etcdctl put z 789
+# OK
+./etcdctl del --from-key a
+# 3
+./etcdctl get --from-key a
+```
+
+```bash
+./etcdctl put zoo val
+# OK
+./etcdctl put zoo1 val1
+# OK
+./etcdctl put zoo2 val2
+# OK
+./etcdctl del --prefix zoo
+# 3
+./etcdctl get zoo2
 ```
 
 ### TXN [options]
