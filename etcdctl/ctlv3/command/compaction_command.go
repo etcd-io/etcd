@@ -27,7 +27,7 @@ var compactPhysical bool
 // NewCompactionCommand returns the cobra command for "compaction".
 func NewCompactionCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "compaction <revision>",
+		Use:   "compaction [options] <revision>",
 		Short: "Compacts the event history in etcd",
 		Run:   compactionCommandFunc,
 	}
