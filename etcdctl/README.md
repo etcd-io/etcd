@@ -418,7 +418,7 @@ LEASE KEEP-ALIVE periodically refreshes a lease so it does not expire.
 
 MEMBER provides commands for managing etcd cluster membership.
 
-### MEMBER ADD \<memberName\>
+### MEMBER ADD \<memberName\> [options]
 
 MEMBER ADD introduces a new member into the etcd cluster as a new peer.
 
@@ -440,7 +440,7 @@ MEMBER ADD introduces a new member into the etcd cluster as a new peer.
 ```
 
 
-### MEMBER UPDATE \<memberID\>
+### MEMBER UPDATE \<memberID\> [options]
 
 MEMBER UPDATE sets the peer URLs for an existing member in the etcd cluster.
 
