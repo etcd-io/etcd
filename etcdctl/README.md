@@ -647,11 +647,15 @@ The lease length of a leader defaults to 60 seconds. If a candidate is abnormall
 progress may be delayed by up to 60 seconds.
 
 
-### COMPACTION \<revision\>
+### COMPACTION [options] \<revision\>
 
 COMPACTION discards all etcd event history prior to a given revision. Since etcd uses a multiversion concurrency control
 model, it preserves all key updates as event history. When the event history up to some revision is no longer needed,
 all superseded keys may be compacted away to reclaim storage space in the etcd backend database.
+
+#### Options
+
+- physical -- 'true' to wait for compaction to physically remove all old revisions
 
 #### Return value
 
