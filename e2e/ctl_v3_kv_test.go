@@ -192,6 +192,11 @@ func delTest(cx ctlCtx) {
 			[]string{"key", "--prefix"},
 			3,
 		},
+		{
+			[]kv{{"zoo1", "bar"}, {"zoo2", "bar2"}, {"zoo3", "bar3"}},
+			[]string{"zoo1", "--from-key"},
+			3,
+		},
 	}
 
 	for i, tt := range tests {
