@@ -58,31 +58,42 @@ func TestRestart(t *testing.T) {
 		n := startNode(uint64(i), peers, nt.nodeNetwork(uint64(i)))
 		nodes = append(nodes, n)
 	}
+	waitLeader(nodes) // to prevent dropping proposals
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	for i := 0; i < 300; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 	nodes[1].stop()
+	waitLeader(nodes, nodes[1].id)
+
+	time.Sleep(500 * time.Millisecond)
 	for i := 0; i < 300; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 	nodes[2].stop()
+	waitLeader(nodes, nodes[1].id, nodes[2].id)
+
+	time.Sleep(500 * time.Millisecond)
 	for i := 0; i < 300; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 	nodes[2].restart()
+	waitLeader(nodes, nodes[1].id)
+
+	time.Sleep(500 * time.Millisecond)
 	for i := 0; i < 300; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 	nodes[1].restart()
+	waitLeader(nodes)
 
 	// give some time for nodes to catch up with the raft leader
 	time.Sleep(500 * time.Millisecond)
 	for _, n := range nodes {
 		n.stop()
 		if n.state.Commit != 1206 {
-			t.Errorf("commit = %d, want = 1206", n.state.Commit)
+			t.Errorf("%d commit = %d, want = 1206", n.id, n.state.Commit)
 		}
 	}
 }
