@@ -369,3 +369,66 @@ func randBytes(size int) []byte {
 	}
 	return data
 }
+
+// nopStresser implements Stresser that does nothing
+type nopStresser struct {
+	start time.Time
+	qps   int
+}
+
+func (s *nopStresser) Stress() error { return nil }
+func (s *nopStresser) Cancel()       {}
+func (s *nopStresser) Report() (int, int) {
+	return int(time.Since(s.start).Seconds()) * s.qps, 0
+}
+
+type stressConfig struct {
+	qps            int
+	keyLargeSize   int
+	keySize        int
+	keySuffixRange int
+	v2             bool
+}
+
+type stressBuilder func(m *member) Stresser
+
+func newStressBuilder(s string, sc *stressConfig) stressBuilder {
+	switch s {
+	case "nop":
+		return func(*member) Stresser {
+			return &nopStresser{
+				start: time.Now(),
+				qps:   sc.qps,
+			}
+		}
+	case "default":
+		// TODO: Too intensive stressers can panic etcd member with
+		// 'out of memory' error. Put rate limits in server side.
+		stressN := 100
+		l := rate.NewLimiter(rate.Limit(sc.qps), sc.qps)
+
+		return func(m *member) Stresser {
+			if sc.v2 {
+				return &stresserV2{
+					Endpoint:       m.ClientURL,
+					keySize:        sc.keySize,
+					keySuffixRange: sc.keySuffixRange,
+					N:              stressN,
+				}
+			} else {
+				return &stresser{
+					Endpoint:       m.grpcAddr(),
+					keyLargeSize:   sc.keyLargeSize,
+					keySize:        sc.keySize,
+					keySuffixRange: sc.keySuffixRange,
+					N:              stressN,
+					rateLimiter:    l,
+				}
+			}
+		}
+	default:
+		plog.Panicf("unknown stresser type: %s\n", s)
+	}
+
+	return nil // never reach here
+}
