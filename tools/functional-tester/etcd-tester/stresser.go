@@ -165,16 +165,11 @@ func (s *stresser) Stress() error {
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, s.Endpoint)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
 
 	wg := &sync.WaitGroup{}
 	wg.Add(s.N)
-
-	s.mu.Lock()
 	s.conn = conn
-	s.cancel = cancel
 	s.wg = wg
-	s.mu.Unlock()
 
 	kvc := pb.NewKVClient(conn)
 
@@ -191,6 +186,8 @@ func (s *stresser) Stress() error {
 	}
 	s.stressTable = createStressTable(stressEntries)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
 	for i := 0; i < s.N; i++ {
 		go s.run(ctx)
 	}
