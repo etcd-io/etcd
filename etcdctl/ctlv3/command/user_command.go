@@ -51,7 +51,7 @@ var (
 
 func newUserAddCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "add <user name>",
+		Use:   "add <user name> [options]",
 		Short: "Adds a new user",
 		Run:   userAddCommandFunc,
 	}
@@ -71,7 +71,7 @@ func newUserDeleteCommand() *cobra.Command {
 
 func newUserGetCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "get <user name>",
+		Use:   "get <user name> [options]",
 		Short: "Gets detailed information of a user",
 		Run:   userGetCommandFunc,
 	}
@@ -91,7 +91,7 @@ func newUserListCommand() *cobra.Command {
 
 func newUserChangePasswordCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "passwd <user name>",
+		Use:   "passwd <user name> [options]",
 		Short: "Changes password of user",
 		Run:   userChangePasswordCommandFunc,
 	}
