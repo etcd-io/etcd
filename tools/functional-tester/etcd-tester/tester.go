@@ -92,7 +92,6 @@ func (tt *tester) doRound(round int) (bool, error) {
 			plog.Printf("%s wait full health error: %v", tt.logPrefix(), err)
 			return false, nil
 		}
-
 		plog.Printf("%s injecting failure %q", tt.logPrefix(), f.Desc())
 		if err := f.Inject(tt.cluster, round); err != nil {
 			plog.Printf("%s injection error: %v", tt.logPrefix(), err)
@@ -147,6 +146,7 @@ func (tt *tester) checkConsistency() (err error) {
 	if err = tt.cluster.Checker.Check(); err != nil {
 		plog.Printf("%s %v", tt.logPrefix(), err)
 	}
+
 	return err
 }
 

@@ -45,9 +45,10 @@ type cluster struct {
 	consistencyCheck bool
 	Size             int
 
-	Stressers     []Stresser
-	stressBuilder stressBuilder
-	Checker       Checker
+	Stressers            []Stresser
+	stressBuilder        stressBuilder
+	leaseStresserBuilder leaseStresserBuilder
+	Checker              Checker
 
 	Members []*member
 }
@@ -99,17 +100,26 @@ func (c *cluster) bootstrap() error {
 		}
 	}
 
-	c.Stressers = make([]Stresser, len(members))
+	c.Stressers = make([]Stresser, 0)
+	leaseStressers := make([]Stresser, len(members))
 	for i, m := range members {
-		c.Stressers[i] = c.stressBuilder(m)
+		lStresser := c.leaseStresserBuilder(m)
+		leaseStressers[i] = lStresser
+		c.Stressers = append(c.Stressers, c.stressBuilder(m), lStresser)
+	}
+
+	for i := range c.Stressers {
 		go c.Stressers[i].Stress()
 	}
 
+	var checkers []Checker
 	if c.consistencyCheck && !c.v2Only {
-		c.Checker = newHashChecker(hashAndRevGetter(c))
+		checkers = append(checkers, newHashChecker(hashAndRevGetter(c)), newLeaseChecker(leaseStressers))
 	} else {
-		c.Checker = newNoChecker()
+		checkers = append(checkers, newNoChecker())
 	}
+
+	c.Checker = newCompositeChecker(checkers)
 
 	c.Size = size
 	c.Members = members
@@ -176,6 +186,7 @@ func (c *cluster) Cleanup() error {
 	for _, s := range c.Stressers {
 		s.Cancel()
 	}
+
 	return lasterr
 }
 

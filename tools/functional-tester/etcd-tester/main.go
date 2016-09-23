@@ -58,6 +58,7 @@ func main() {
 	pports := portsFromArg(*peerPorts, len(eps), defaultPeerPort)
 	fports := portsFromArg(*failpointPorts, len(eps), defaultFailpointPort)
 	agents := make([]agentConfig, len(eps))
+
 	for i := range eps {
 		agents[i].endpoint = eps[i]
 		agents[i].clientPort = cports[i]
@@ -74,11 +75,18 @@ func main() {
 		v2:             *isV2Only,
 	}
 
+	lsConfig := &leaseStressConfig{
+		numLeases:    10,
+		keysPerLease: 10,
+		qps:          *stressQPS, // only used to create nop stresser in leaseStresserBuilder
+	}
+
 	c := &cluster{
-		agents:           agents,
-		v2Only:           *isV2Only,
-		stressBuilder:    newStressBuilder(*stresserType, sConfig),
-		consistencyCheck: *consistencyCheck,
+		agents:               agents,
+		v2Only:               *isV2Only,
+		stressBuilder:        newStressBuilder(*stresserType, sConfig),
+		leaseStresserBuilder: newLeaseStresserBuilder(*stresserType, lsConfig),
+		consistencyCheck:     *consistencyCheck,
 	}
 
 	if err := c.bootstrap(); err != nil {
@@ -121,7 +129,6 @@ func main() {
 			schedule[i] = failures[caseNum]
 		}
 	}
-
 	t := &tester{
 		failures: schedule,
 		cluster:  c,
