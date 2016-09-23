@@ -1,5 +1,5 @@
-hash: 9d37c5aecd92dfa9b789162e389d87564aa7e7a18f9c1f14ea57d06c0165a1cf
-updated: 2016-08-18T20:16:50.783927627-07:00
+hash: 0e7d50c7716873a35f2d14542747525a35af1e5bb734b3696bc1ff78d30107b4
+updated: 2016-09-23T12:52:52.300796603-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -54,7 +54,7 @@ imports:
   - jsonpb
   - proto
 - name: github.com/google/btree
-  version: 7d79101e329e5a3adf994758c578dab82b90c017
+  version: 7364763242911ab6d418d2722e237194938ebad0
 - name: github.com/grpc-ecosystem/grpc-gateway
   version: f52d055dc48aec25854ed7d31862f78913cf17d1
   subpackages:

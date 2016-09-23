@@ -22,7 +22,7 @@
 // See some discussion on the matter here:
 //   http://google-opensource.blogspot.com/2013/01/c-containers-that-save-memory-and-time.html
 // Note, though, that this project is in no way related to the C++ B-Tree
-// implmentation written about there.
+// implementation written about there.
 //
 // Within this tree, each node contains a slice of items and a (possibly nil)
 // slice of children.  For basic numeric values or raw structs, this can cause
@@ -44,7 +44,7 @@
 // widely used ordered tree implementation in the Go ecosystem currently.
 // Its functions, therefore, exactly mirror those of
 // llrb.LLRB where possible.  Unlike gollrb, though, we currently don't
-// support storing multiple equivalent values or backwards iteration.
+// support storing multiple equivalent values.
 package btree
 
 import (
@@ -138,8 +138,8 @@ func (s *items) insertAt(index int, item Item) {
 // back.
 func (s *items) removeAt(index int) Item {
 	item := (*s)[index]
-	(*s)[index] = nil
 	copy((*s)[index:], (*s)[index+1:])
+	(*s)[len(*s)-1] = nil
 	*s = (*s)[:len(*s)-1]
 	return item
 }
@@ -183,8 +183,8 @@ func (s *children) insertAt(index int, n *node) {
 // back.
 func (s *children) removeAt(index int) *node {
 	n := (*s)[index]
-	(*s)[index] = nil
 	copy((*s)[index:], (*s)[index+1:])
+	(*s)[len(*s)-1] = nil
 	*s = (*s)[:len(*s)-1]
 	return n
 }
@@ -419,34 +419,77 @@ func (n *node) growChildAndRemove(i int, item Item, minItems int, typ toRemove) 
 	return n.remove(item, minItems, typ)
 }
 
+type direction int
+
+const (
+	descend = direction(-1)
+	ascend  = direction(+1)
+)
+
 // iterate provides a simple method for iterating over elements in the tree.
-// It could probably use some work to be extra-efficient (it calls from() a
-// little more than it should), but it works pretty well for now.
 //
-// It requires that 'from' and 'to' both return true for values we should hit
-// with the iterator.  It should also be the case that 'from' returns true for
-// values less than or equal to values 'to' returns true for, and 'to'
-// returns true for values greater than or equal to those that 'from'
-// does.
-func (n *node) iterate(from, to func(Item) bool, iter ItemIterator) bool {
-	for i, item := range n.items {
-		if !from(item) {
-			continue
+// When ascending, the 'start' should be less than 'stop' and when descending,
+// the 'start' should be greater than 'stop'. Setting 'includeStart' to true
+// will force the iterator to include the first item when it equals 'start',
+// thus creating a "greaterOrEqual" or "lessThanEqual" rather than just a
+// "greaterThan" or "lessThan" queries.
+func (n *node) iterate(dir direction, start, stop Item, includeStart bool, hit bool, iter ItemIterator) (bool, bool) {
+	var ok bool
+	switch dir {
+	case ascend:
+		for i := 0; i < len(n.items); i++ {
+			if start != nil && n.items[i].Less(start) {
+				continue
+			}
+			if len(n.children) > 0 {
+				if hit, ok = n.children[i].iterate(dir, start, stop, includeStart, hit, iter); !ok {
+					return hit, false
+				}
+			}
+			if !includeStart && !hit && start != nil && !start.Less(n.items[i]) {
+				hit = true
+				continue
+			}
+			hit = true
+			if stop != nil && !n.items[i].Less(stop) {
+				return hit, false
+			}
+			if !iter(n.items[i]) {
+				return hit, false
+			}
 		}
-		if len(n.children) > 0 && !n.children[i].iterate(from, to, iter) {
-			return false
+		if len(n.children) > 0 {
+			if hit, ok = n.children[len(n.children)-1].iterate(dir, start, stop, includeStart, hit, iter); !ok {
+				return hit, false
+			}
 		}
-		if !to(item) {
-			return false
+	case descend:
+		for i := len(n.items) - 1; i >= 0; i-- {
+			if start != nil && !n.items[i].Less(start) {
+				if !includeStart || hit || start.Less(n.items[i]) {
+					continue
+				}
+			}
+			if len(n.children) > 0 {
+				if hit, ok = n.children[i+1].iterate(dir, start, stop, includeStart, hit, iter); !ok {
+					return hit, false
+				}
+			}
+			if stop != nil && !stop.Less(n.items[i]) {
+				return hit, false //	continue
+			}
+			hit = true
+			if !iter(n.items[i]) {
+				return hit, false
+			}
 		}
-		if !iter(item) {
-			return false
+		if len(n.children) > 0 {
+			if hit, ok = n.children[0].iterate(dir, start, stop, includeStart, hit, iter); !ok {
+				return hit, false
+			}
 		}
 	}
-	if len(n.children) > 0 {
-		return n.children[len(n.children)-1].iterate(from, to, iter)
-	}
-	return true
+	return hit, true
 }
 
 // Used for testing/debugging purposes.
@@ -569,10 +612,7 @@ func (t *BTree) AscendRange(greaterOrEqual, lessThan Item, iterator ItemIterator
 	if t.root == nil {
 		return
 	}
-	t.root.iterate(
-		func(a Item) bool { return !a.Less(greaterOrEqual) },
-		func(a Item) bool { return a.Less(lessThan) },
-		iterator)
+	t.root.iterate(ascend, greaterOrEqual, lessThan, true, false, iterator)
 }
 
 // AscendLessThan calls the iterator for every value in the tree within the range
@@ -581,10 +621,7 @@ func (t *BTree) AscendLessThan(pivot Item, iterator ItemIterator) {
 	if t.root == nil {
 		return
 	}
-	t.root.iterate(
-		func(a Item) bool { return true },
-		func(a Item) bool { return a.Less(pivot) },
-		iterator)
+	t.root.iterate(ascend, nil, pivot, false, false, iterator)
 }
 
 // AscendGreaterOrEqual calls the iterator for every value in the tree within
@@ -593,10 +630,7 @@ func (t *BTree) AscendGreaterOrEqual(pivot Item, iterator ItemIterator) {
 	if t.root == nil {
 		return
 	}
-	t.root.iterate(
-		func(a Item) bool { return !a.Less(pivot) },
-		func(a Item) bool { return true },
-		iterator)
+	t.root.iterate(ascend, pivot, nil, true, false, iterator)
 }
 
 // Ascend calls the iterator for every value in the tree within the range
@@ -605,10 +639,43 @@ func (t *BTree) Ascend(iterator ItemIterator) {
 	if t.root == nil {
 		return
 	}
-	t.root.iterate(
-		func(a Item) bool { return true },
-		func(a Item) bool { return true },
-		iterator)
+	t.root.iterate(ascend, nil, nil, false, false, iterator)
+}
+
+// DescendRange calls the iterator for every value in the tree within the range
+// [lessOrEqual, greaterThan), until iterator returns false.
+func (t *BTree) DescendRange(lessOrEqual, greaterThan Item, iterator ItemIterator) {
+	if t.root == nil {
+		return
+	}
+	t.root.iterate(descend, lessOrEqual, greaterThan, true, false, iterator)
+}
+
+// DescendLessOrEqual calls the iterator for every value in the tree within the range
+// [pivot, first], until iterator returns false.
+func (t *BTree) DescendLessOrEqual(pivot Item, iterator ItemIterator) {
+	if t.root == nil {
+		return
+	}
+	t.root.iterate(descend, pivot, nil, true, false, iterator)
+}
+
+// DescendGreaterThan calls the iterator for every value in the tree within
+// the range (pivot, last], until iterator returns false.
+func (t *BTree) DescendGreaterThan(pivot Item, iterator ItemIterator) {
+	if t.root == nil {
+		return
+	}
+	t.root.iterate(descend, nil, pivot, false, false, iterator)
+}
+
+// Descend calls the iterator for every value in the tree within the range
+// [last, first], until iterator returns false.
+func (t *BTree) Descend(iterator ItemIterator) {
+	if t.root == nil {
+		return
+	}
+	t.root.iterate(descend, nil, nil, false, false, iterator)
 }
 
 // Get looks for the key item in the tree, returning it.  It returns nil if
