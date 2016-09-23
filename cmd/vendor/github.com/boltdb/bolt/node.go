@@ -1,11 +1,18 @@
 package bolt
 
 import (
+	"log"
+	"encoding/hex"
 	"bytes"
 	"fmt"
 	"sort"
 	"unsafe"
 )
+
+// dump node contents to the log.
+// set verbosity to enable.
+const dump_verbosity_put = 0
+const dump_verbosity_write = 0
 
 // node represents an in-memory, deserialized page.
 type node struct {
@@ -138,6 +145,7 @@ func (n *node) put(oldKey, newKey, value []byte, pgid pgid, flags uint32) {
 	inode.value = value
 	inode.pgid = pgid
 	_assert(len(inode.key) > 0, "put: zero-length inode key")
+	if (dump_verbosity_put > 0) { n.dump("put", dump_verbosity_put) }
 }
 
 // del removes a key from the node.
@@ -242,7 +250,7 @@ func (n *node) write(p *page) {
 		b = b[vlen:]
 	}
 
-	// DEBUG ONLY: n.dump()
+	if (dump_verbosity_write > 0) { n.dump("write", dump_verbosity_write) }
 }
 
 // split breaks up a node into multiple smaller nodes, if appropriate.
@@ -558,32 +566,64 @@ func (n *node) free() {
 	}
 }
 
-// dump writes the contents of the node to STDERR for debugging purposes.
-/*
-func (n *node) dump() {
-	// Write node header.
+// debugging routines
+func hexdump(a []byte, n int) string {
+	if len(a) > n {
+		return hex.Dump(a[:n])
+	}
+	return hex.Dump(a)
+}
+
+func trunc(a []byte, n int) []byte {
+	if len(a) > n {
+		return a[:n]
+	}
+	return a
+}
+
+func (n *node) dump(s string, verbosity int) {
+	if verbosity < 1 { return }
+
 	var typ = "branch"
 	if n.isLeaf {
 		typ = "leaf"
 	}
-	warnf("[NODE %d {type=%s count=%d}]", n.pgid, typ, len(n.inodes))
+
+	log.Printf("%s: [NODE %d {type=%s count=%d}]", s, n.pgid, typ, len(n.inodes))
+
+	if verbosity == 1 { return }
 
 	// Write out abbreviated version of each item.
-	for _, item := range n.inodes {
-		if n.isLeaf {
-			if item.flags&bucketLeafFlag != 0 {
-				bucket := (*bucket)(unsafe.Pointer(&item.value[0]))
-				warnf("+L %08x -> (bucket root=%d)", trunc(item.key, 4), bucket.root)
+	if verbosity == 2 {
+		for _, item := range n.inodes {
+			if n.isLeaf {
+				if item.flags&bucketLeafFlag != 0 {
+					bucket := (*bucket)(unsafe.Pointer(&item.value[0]))
+					log.Printf("+L %08x -> (bucket root=%d)", trunc(item.key, 4), bucket.root)
+				} else {
+					log.Printf("+L %08x -> %08x", trunc(item.key, 4), trunc(item.value, 4))
+				}
 			} else {
-				warnf("+L %08x -> %08x", trunc(item.key, 4), trunc(item.value, 4))
+				log.Printf("+B %08x -> pgid=%d", trunc(item.key, 4), item.pgid)
 			}
-		} else {
-			warnf("+B %08x -> pgid=%d", trunc(item.key, 4), item.pgid)
+		}
+	} else {
+		for _, item := range n.inodes {
+			if n.isLeaf {
+				if item.flags&bucketLeafFlag != 0 {
+					bucket := (*bucket)(unsafe.Pointer(&item.value[0]))
+					log.Printf("  +L r %08x -> (bucket root=%d)\n%s", trunc(item.key, 4), bucket.root, hexdump(item.key, 16))
+				} else {
+					log.Printf("  +L key (%d)\n%s", len(item.key), hexdump(item.key, 16))
+					log.Printf("     value (%d)\n%s", len(item.value), hexdump(item.value, 4 * 16))
+				}
+			} else {
+					log.Printf("  +B   %08x -> pgid=%d\n%s", trunc(item.key, 4), item.pgid, hexdump(item.key, 16))
+			}
 		}
 	}
-	warn("")
+	log.Printf("--------------")
 }
-*/
 
 type nodes []*node
 
