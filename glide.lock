@@ -65,8 +65,6 @@ imports:
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jonboulle/clockwork
   version: 2eee05ed794112d45db504eb05aa693efd2b8b09
-- name: github.com/kballard/go-shellquote
-  version: d8ec1a69a250a17bb0e419c386eac1f3711dc142
 - name: github.com/kr/pty
   version: f7ee69f31298ecbe5d2b349c711e2547a617d398
 - name: github.com/mattn/go-runewidth
