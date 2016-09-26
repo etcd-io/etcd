@@ -8,6 +8,18 @@ By default, etcdctl talks to the etcd server with the v2 API for backward compat
 export ETCDCTL_API=3
 ```
 
+## Find versions
+
+etcdctl version and Server API version can be useful in finding the appropriate commands to be used for performing various opertions on etcd.
+
+Here is the command to find the versions:
+
+```bash
+$ etcdctl version
+etcdctl version: 3.1.0-alpha.0+git
+API version: 3.1
+```
+
 ## Write a key
 
 Applications store keys into the etcd cluster by writing to keys. Every stored key is replicated to all etcd cluster members through the Raft protocol to achieve consistency and reliability.
@@ -18,6 +30,17 @@ Here is the command to set the value of key `foo` to `bar`:
 $ etcdctl put foo bar
 OK
 ```
+
+Also a key can be set for a specified interval of time by attaching lease to it.
+
+Here is the command to set the value of key `foo1` to `bar1` for 10s.
+
+```bash
+$ etcdctl put foo1 bar1 --lease=1234abcd
+OK
+```
+
+Note: The lease id `1234abcd` in the above command refers to id returned on creating the lease of 10s. This id can then be attached to the key.
 
 ## Read keys
 
