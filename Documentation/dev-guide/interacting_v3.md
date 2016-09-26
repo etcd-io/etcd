@@ -48,7 +48,7 @@ Applications can read values of keys from an etcd cluster. Queries may read a si
 
 Suppose the etcd cluster has stored the following keys:
 
-```
+```bash
 foo = bar
 foo1 = bar1
 foo3 = bar3
@@ -106,7 +106,7 @@ Since every modification to the etcd cluster key-value store increments the glob
 
 Suppose an etcd cluster already has the following keys:
 
-``` bash
+```bash
 foo = bar         # revision = 2
 foo1 = bar1       # revision = 3
 foo = bar_new     # revision = 4
@@ -147,7 +147,7 @@ Applications may want to read keys which are greater than or equal to the byte v
 
 Suppose an etcd cluster already has the following keys:
 
-``` bash
+```bash
 a = 123
 b = 456
 z = 789
@@ -167,6 +167,20 @@ z
 
 Applications can delete a key or a range of keys from an etcd cluster.
 
+Suppose an etcd cluster already has the following keys:
+
+```bash
+foo = bar
+foo1 = bar1
+foo3 = bar3
+zoo = val
+zoo1 = val1
+zoo2 = val2
+a = 123
+b = 456
+z = 789
+```
+
 Here is the command to delete key `foo`:
 
 ```bash
@@ -178,6 +192,29 @@ Here is the command to delete keys ranging from `foo` to `foo9`:
 
 ```bash
 $ etcdctl del foo foo9
+2 # two keys are deleted
+```
+
+Here is the command to delete key `zoo` with the deleted key value pair returned:
+
+```bash
+$ etcdctl del --prev-kv zoo 
+1   # one key is deleted
+zoo # deleted key
+val # the value of the deleted key
+```
+
+Here is the command to delete keys having prefix as `zoo`:
+
+```bash
+$ etcdctl del --prefix zoo 
+2 # two keys are deleted
+```
+
+Here is the command to delete keys which are greater than or equal to the byte value of key `b` :
+
+```bash
+$ etcdctl del --from-key b
 2 # two keys are deleted
 ```
 
@@ -212,7 +249,7 @@ Applications may want to watch for historical changes of keys in etcd. For examp
 
 Suppose we finished the following sequence of operations:
 
-``` bash
+```bash
 etcdctl put foo bar         # revision = 2
 etcdctl put foo1 bar1       # revision = 3
 etcdctl put foo bar_new     # revision = 4
