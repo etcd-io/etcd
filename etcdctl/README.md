@@ -6,6 +6,24 @@ Make sure to set environment variable `ETCDCTL_API=3`. For etcdctl v2, please ch
 
 ## Commands
 
+### VERSION
+
+Prints the version of etcdctl
+
+#### Return value
+
+##### Simple reply
+
+- Prints etcd version and API version
+
+#### Examples
+
+```bash
+./etcdctl version
+# etcdctl version: 3.1.0-alpha.0+git
+# API version: 3.1
+```
+
 ### PUT [options] \<key\> \<value\>
 
 PUT assigns the specified value with the specified key. If key already holds a value, it is overwritten.
@@ -918,39 +936,9 @@ The provided transformer should read until EOF and flush the stdout before exiti
 # finished transforming keys
 ```
 
-### AUTH \<enable or disable\>
+### ROLE \<subcommand\>
 
-`auth enable` activates authentication on an etcd cluster and `auth disable` deactivates. When authentication is enabled, etcd checks all requests for appropriate authorization.
-
-#### Return value
-
-##### Simple reply
-
-- `Authentication Enabled`. Exit code is zero.
-
-- Error string if AUTH failed. Exit code is non-zero.
-
-#### Examples
-
-```bash
-./etcdctl user add root
-# Password of root:#type password for root
-# Type password of root again for confirmation:#re-type password for root
-# User root created
-./etcdctl user grant-role root root
-# Role root is granted to user root
-./etcdctl user get root
-# User: root
-# Roles: root
-./etcdctl role add root
-# Role root created
-./etcdctl role get root
-# Role root
-# KV Read:
-# KV Write:
-./etcdctl auth enable
-# Authentication Enabled
-```
+ROLE is used to specify differnt roles which can be assigned to etcd user(s).
 
 ### ROLE ADD \<role name\>
 
@@ -969,25 +957,6 @@ The provided transformer should read until EOF and flush the stdout before exiti
 ```bash
 ./etcdctl --user=root:123 role add myrole
 # Role myrole created
-```
-
-### ROLE DELETE \<role name\>
-
-`role delete` deletes a role.
-
-#### Return value
-
-##### Simple reply
-
-- `Role <role name> deleted`. Exit code is zero.
-
-- Error string if failed. Exit code is non-zero.
-
-#### Examples
-
-```bash
-./etcdctl --user=root:123 role delete myrole
-# Role myrole deleted
 ```
 
 ### ROLE GET \<role name\>
@@ -1013,9 +982,13 @@ The provided transformer should read until EOF and flush the stdout before exiti
 # foo
 ```
 
-### ROLE GRANT-PERMISSION \<role name\> \<permission type\> \<key\> [endkey]
+### ROLE GRANT-PERMISSION [options] \<role name\> \<permission type\> \<key\> [endkey]
 
 `role grant-permission` grants a key to a role.
+
+#### Options
+
+- prefix -- grant a prefix permission
 
 #### Return value
 
@@ -1051,9 +1024,36 @@ The provided transformer should read until EOF and flush the stdout before exiti
 # Permission of key foo is revoked from role myrole
 ```
 
-### USER ADD \<user name\>
+### ROLE DELETE \<role name\>
+
+`role delete` deletes a role.
+
+#### Return value
+
+##### Simple reply
+
+- `Role <role name> deleted`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+```bash
+./etcdctl --user=root:123 role delete myrole
+# Role myrole deleted
+```
+
+### USER \<subcommand\>
+
+USER provides commands for managing users of etcd.
+
+### USER ADD \<user name\> [options]
 
 `user add` creates a user.
+
+#### Options
+
+- interactive -- Read password from stdin instead of interactive terminal
 
 #### Return value
 
@@ -1072,28 +1072,13 @@ The provided transformer should read until EOF and flush the stdout before exiti
 # User myuser created
 ```
 
-### USER DELETE \<user name\>
-
-`user delete` deletes a user.
-
-#### Return value
-
-##### Simple reply
-
-- `User <user name> deleted`. Exit code is zero.
-
-- Error string if failed. Exit code is non-zero.
-
-#### Examples
-
-```bash
-./etcdctl --user=root:123 user delete myuser
-# User myuser deleted
-```
-
-### USER GET \<user name\>
+### USER GET \<user name\> [options]
 
 `user get` lists detailed user information.
+
+#### Options
+
+- detail -- Show permissions of roles granted to the user
 
 #### Return value
 
@@ -1111,7 +1096,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 # Roles:
 ```
 
-### USER PASSWD \<user name\>
+### USER PASSWD \<user name\> [options]
 
 `user passwd` changes a user's password.
 
@@ -1174,11 +1159,118 @@ The provided transformer should read until EOF and flush the stdout before exiti
 # Role roleA is revoked from user userA
 ```
 
+### USER DELETE \<user name\>
+
+`user delete` deletes a user.
+
+#### Return value
+
+##### Simple reply
+
+- `User <user name> deleted`. Exit code is zero.
+
+- Error string if failed. Exit code is non-zero.
+
+#### Examples
+
+```bash
+./etcdctl --user=root:123 user delete myuser
+# User myuser deleted
+```
+
+### AUTH \<enable or disable\>
+
+`auth enable` activates authentication on an etcd cluster and `auth disable` deactivates. When authentication is enabled, etcd checks all requests for appropriate authorization.
+
+#### Return value
+
+##### Simple reply
+
+- `Authentication Enabled`. Exit code is zero.
+
+- Error string if AUTH failed. Exit code is non-zero.
+
+#### Examples
+
+```bash
+./etcdctl user add root
+# Password of root:#type password for root
+# Type password of root again for confirmation:#re-type password for root
+# User root created
+./etcdctl user grant-role root root
+# Role root is granted to user root
+./etcdctl user get root
+# User: root
+# Roles: root
+./etcdctl role add root
+# Role root created
+./etcdctl role get root
+# Role root
+# KV Read:
+# KV Write:
+./etcdctl auth enable
+# Authentication Enabled
+```
+
+## ALARM \<subcommand\>
+
+Provides alarm related commands
+
+### ALARM DISARM
+
+`alarm disarm` Disarms all alarms
+
+#### Return value
+
+##### Simple reply
+
+- `alarm:<alarm type>` if alarm is present
+
+- `` if alarm is not present
+
+#### Examples
+
+```bash
+./etcdctl alarm disarm
+```
+
+If NOSPACE alarm is present:
+
+```bash
+./etcdctl alarm disarm
+# alarm:NOSPACE
+```
+
+### ALARM LIST
+
+`alarm list` Lists all alarms
+
+#### Return value
+
+##### Simple reply
+
+- `alarm:<alarm type>` if alarm is present
+
+- `` if alarm is not present
+
+#### Examples
+
+```bash
+./etcdctl alarm list
+```
+
+If NOSPACE alarm is present:
+
+```bash
+./etcdctl alarm list
+# alarm:NOSPACE
+```
+
 ## Notes
 
 - JSON encoding for keys and values uses base64 since they are byte strings.
 
-
+- 
 [etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
 [storagerpc]: ../mvcc/mvccpb/kv.proto
 [member_list_rpc]: ../etcdserver/etcdserverpb/rpc.proto#L493-L497

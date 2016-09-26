@@ -78,7 +78,7 @@ func newRoleListCommand() *cobra.Command {
 
 func newRoleGrantPermissionCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "grant-permission <role name> <permission type> <key> [endkey]",
+		Use:   "grant-permission [options] <role name> <permission type> <key> [endkey]",
 		Short: "Grants a key to a role",
 		Run:   roleGrantPermissionCommandFunc,
 	}
