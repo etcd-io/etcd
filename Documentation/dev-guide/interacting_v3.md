@@ -4,7 +4,7 @@ Users mostly interact with etcd by putting or getting the value of a key. This s
 
 By default, etcdctl talks to the etcd server with the v2 API for backward compatibility. For etcdctl to speak to etcd using the v3 API, the API version must be set to version 3 via the `ETCDCTL_API` environment variable.
 
-``` bash
+```bash
 export ETCDCTL_API=3
 ```
 
@@ -26,7 +26,7 @@ Applications store keys into the etcd cluster by writing to keys. Every stored k
 
 Here is the command to set the value of key `foo` to `bar`:
 
-``` bash
+```bash
 $ etcdctl put foo bar
 OK
 ```
@@ -62,6 +62,21 @@ foo
 bar
 ```
 
+Here is the command to read the value of key `foo` in hex format:
+
+```bash
+$ etcdctl get foo --hex
+\x66\x6f\x6f          # Key
+\x62\x61\x72          # Value
+```
+
+Here is the command to read only the value of key `foo`:
+
+```bash
+$ etcdctl get foo --print-value-only
+bar
+```
+
 Here is the command to range over the keys from `foo` to `foo9`:
 
 ```bash
@@ -74,6 +89,16 @@ foo3
 bar3
 ```
 
+Here is the command to range over the keys from `foo` to `foo9` limiting the number of results to 2:
+
+```bash
+$ etcdctl get foo foo9 --limit 2
+foo
+bar
+foo1
+bar1
+```
+
 ## Read past version of keys
 
 Applications may want to read superseded versions of a key. For example, an application may wish to roll back to an old configuration by accessing an earlier version of a key. Alternatively, an application may want a consistent view over multiple keys through multiple requests by accessing key history.
@@ -82,10 +107,10 @@ Since every modification to the etcd cluster key-value store increments the glob
 Suppose an etcd cluster already has the following keys:
 
 ``` bash
-$ etcdctl put foo bar         # revision = 2
-$ etcdctl put foo1 bar1       # revision = 3
-$ etcdctl put foo bar_new     # revision = 4
-$ etcdctl put foo1 bar1_new   # revision = 5
+foo = bar         # revision = 2
+foo1 = bar1       # revision = 3
+foo = bar_new     # revision = 4
+foo1 = bar1_new   # revision = 5
 ```
 
 Here are an example to access the past versions of keys:
@@ -114,6 +139,28 @@ foo
 bar
 
 $ etcdctl get --rev=1 foo foo9 # access the versions of keys at revision 1
+```
+
+## Read keys which are greater than or equal to the byte value of the specified key
+
+Applications may want to read keys which are greater than or equal to the byte value of the specified key.
+
+Suppose an etcd cluster already has the following keys:
+
+``` bash
+a = 123
+b = 456
+z = 789
+```
+
+Here is the command to read keys which are greater than or equal to the byte value of key `b` :
+
+```bash
+$ etcdctl get --from-key b
+b
+456
+z
+789
 ```
 
 ## Delete keys
