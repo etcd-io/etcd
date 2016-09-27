@@ -227,8 +227,19 @@ Here is the command to watch on key `foo`:
 ```bash
 $ etcdctl watch foo
 # in another terminal: etcdctl put foo bar
+PUT
 foo
 bar
+```
+
+Here is the command to watch on key `foo` in hex format:
+
+```bash
+$ etcdctl watch foo --hex
+# in another terminal: etcdctl put foo bar
+PUT
+\x66\x6f\x6f          # Key
+\x62\x61\x72          # Value
 ```
 
 Here is the command to watch on a range key from `foo` to `foo9`:
@@ -236,11 +247,43 @@ Here is the command to watch on a range key from `foo` to `foo9`:
 ```bash
 $ etcdctl watch foo foo9
 # in another terminal: etcdctl put foo bar
+PUT
 foo
 bar
 # in another terminal: etcdctl put foo1 bar1
+PUT
 foo1
 bar1
+```
+
+Here is the command to watch on keys having prefix `foo`:
+
+```bash
+$ etcdctl watch --prefix foo
+# in another terminal: etcdctl put foo bar
+PUT
+foo
+bar
+# in another terminal: etcdctl put fooz1 barz1
+PUT
+fooz1
+barz1
+```
+
+Here is the command to watch on multiple keys `foo` and `zoo`:
+
+```bash
+$ etcdctl watch -i 
+$ watch foo
+$ watch zoo
+# in another terminal: etcdctl put foo bar
+PUT
+foo
+bar
+# in another terminal: etcdctl put zoo val
+PUT
+zoo
+val
 ```
 
 ## Watch historical changes of keys
@@ -250,10 +293,14 @@ Applications may want to watch for historical changes of keys in etcd. For examp
 Suppose we finished the following sequence of operations:
 
 ```bash
-etcdctl put foo bar         # revision = 2
-etcdctl put foo1 bar1       # revision = 3
-etcdctl put foo bar_new     # revision = 4
-etcdctl put foo1 bar1_new   # revision = 5
+$ etcdctl put foo bar         # revision = 2
+OK
+$ etcdctl put foo1 bar1       # revision = 3
+OK
+$ etcdctl put foo bar_new     # revision = 4
+OK
+$ etcdctl put foo1 bar1_new   # revision = 5
+OK
 ```
 
 Here is an example to watch the historical changes:
@@ -267,12 +314,27 @@ bar
 PUT
 foo
 bar_new
+```
 
+```bash
 # watch for changes on key `foo` since revision 3
 $ etcdctl watch --rev=3 foo
 PUT
 foo
 bar_new
+```
+
+Here is an example to watch only from the last historical change:
+
+```bash
+# watch for changes on key `foo` and return last revision value along with modified value
+$ etcdctl watch --prev-kv foo
+# in another terminal: etcdctl put foo bar_latest
+PUT
+foo         # key
+bar_new     # last value of foo key before modification
+foo         # key
+bar_latest  # value of foo key after modification
 ```
 
 ## Compacted revisions
