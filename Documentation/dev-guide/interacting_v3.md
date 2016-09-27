@@ -352,6 +352,13 @@ $ etcdctl get --rev=4 foo
 Error:  rpc error: code = 11 desc = etcdserver: mvcc: required revision has been compacted
 ```
 
+Note: The current revision of etcd server can be found using get command on any key (existent or non-existent) in json format. Example is shown below for mykey which does not exist in etcd server:
+
+```bash
+$ etcdctl get mykey -w=json
+{"header":{"cluster_id":14841639068965178418,"member_id":10276657743932975437,"revision":15,"raft_term":4}}
+```
+
 ## Grant leases
 
 Applications can grant leases for keys from an etcd cluster. When a key is attached to a lease, its lifetime is bound to the lease's lifetime which in turn is governed by a time-to-live (TTL). Each lease has a minimum time-to-live (TTL) value specified by the application at grant time. The lease's actual TTL value is at least the minimum TTL and is chosen by the etcd cluster. Once a lease's TTL elapses, the lease expires and all attached keys are deleted.
@@ -410,4 +417,41 @@ lease 32695410dcc0ca06 keepalived with TTL(100)
 lease 32695410dcc0ca06 keepalived with TTL(100)
 lease 32695410dcc0ca06 keepalived with TTL(100)
 ...
+```
+
+## Get lease information
+
+Applications may want to know about lease information, so that they can be renewed or to check if the lease still exists or it has expired. Applications may also want to know the keys to which a particular lease is attached.
+
+Suppose we finished the following sequence of operations:
+
+```bash
+# grant a lease with 500 second TTL
+$ etcdctl lease grant 500
+lease 694d5765fc71500b granted with TTL(500s)
+
+# attach key zoo1 to lease 694d5765fc71500b
+$ etcdctl put zoo1 val1 --lease=694d5765fc71500b
+OK
+
+# attach key zoo2 to lease 694d5765fc71500b
+$ etcdctl put zoo2 val2 --lease=694d5765fc71500b
+OK
+```
+
+Here is the command to get information about the lease:
+
+```bash
+$ etcdctl lease timetolive 694d5765fc71500b
+lease 694d5765fc71500b granted with TTL(500s), remaining(258s)
+```
+
+Here is the command to get information about the lease along with the keys attached with the lease:
+
+```bash
+$ etcdctl lease timetolive --keys 694d5765fc71500b
+lease 694d5765fc71500b granted with TTL(500s), remaining(132s), attached keys([zoo2 zoo1])
+
+# if the lease has expired or does not exist it will give the below response:
+Error:  etcdserver: requested lease not found
 ```
