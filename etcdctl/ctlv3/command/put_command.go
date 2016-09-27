@@ -50,7 +50,7 @@ will store the content of the file to <key>.
 		Run: putCommandFunc,
 	}
 	cmd.Flags().StringVar(&leaseStr, "lease", "0", "lease ID (in hexadecimal) to attach to the key")
-	cmd.Flags().BoolVar(&putPrevKV, "prev-kv", false, "return changed key-value pairs")
+	cmd.Flags().BoolVar(&putPrevKV, "prev-kv", false, "return the previous key-value pair before modification")
 	return cmd
 }
 
