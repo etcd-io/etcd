@@ -79,3 +79,19 @@ func longestConnected(tp rafthttp.Transporter, membs []types.ID) (types.ID, bool
 	}
 	return longest, true
 }
+
+type notifier struct {
+	c   chan struct{}
+	err error
+}
+
+func newNotifier() *notifier {
+	return &notifier{
+		c: make(chan struct{}, 0),
+	}
+}
+
+func (nc *notifier) notify(err error) {
+	nc.err = err
+	close(nc.c)
+}

@@ -177,12 +177,22 @@ type EtcdServer struct {
 	snapCount uint64
 
 	w wait.Wait
+
+	readMu sync.RWMutex
+	// read routine notifies etcd server that it waits for reading by sending an empty struct to
+	// readwaitC
+	readwaitc chan struct{}
+	// readNotifier is used to notify the read routine that it can process the request
+	// when there is no error
+	readNotifier *notifier
+
 	// stop signals the run goroutine should shutdown.
 	stop chan struct{}
 	// stopping is closed by run goroutine on shutdown.
 	stopping chan struct{}
 	// done is closed when all goroutines from start() complete.
-	done       chan struct{}
+	done chan struct{}
+
 	errorc     chan error
 	id         types.ID
 	attributes membership.Attributes
@@ -391,6 +401,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 			ticker:      time.Tick(time.Duration(cfg.TickMs) * time.Millisecond),
 			raftStorage: s,
 			storage:     NewStorage(w, ss),
+			readStateC:  make(chan raft.ReadState, 1),
 		},
 		id:            id,
 		attributes:    membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
@@ -478,6 +489,7 @@ func (s *EtcdServer) Start() {
 	s.goAttach(s.purgeFile)
 	s.goAttach(func() { monitorFileDescriptor(s.stopping) })
 	s.goAttach(s.monitorVersions)
+	s.goAttach(s.linearizableReadLoop)
 }
 
 // start prepares and starts server in a new goroutine. It is no longer safe to
@@ -493,6 +505,8 @@ func (s *EtcdServer) start() {
 	s.done = make(chan struct{})
 	s.stop = make(chan struct{})
 	s.stopping = make(chan struct{})
+	s.readwaitc = make(chan struct{}, 1)
+	s.readNotifier = newNotifier()
 	if s.ClusterVersion() != nil {
 		plog.Infof("starting server... [version: %v, cluster version: %v]", version.Version, version.Cluster(s.ClusterVersion().String()))
 	} else {
