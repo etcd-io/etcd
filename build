@@ -40,7 +40,10 @@ etcd_setup_gopath() {
 	cd "$CDIR"
 	etcdGOPATH=${CDIR}/gopath
 	# preserve old gopath to support building with unvendored tooling deps (e.g., gofail)
-	export GOPATH=${etcdGOPATH}:$GOPATH
+	if [ -n "$GOPATH" ]; then
+		GOPATH=":$GOPATH"
+	fi
+	export GOPATH=${etcdGOPATH}$GOPATH
 	rm -f ${etcdGOPATH}/src
 	mkdir -p ${etcdGOPATH}
 	ln -s ${CDIR}/cmd/vendor ${etcdGOPATH}/src
