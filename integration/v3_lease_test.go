@@ -243,7 +243,31 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 	putr := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: badLeaseID}
 	_, err := toGRPC(clus.RandClient()).KV.Put(ctx, putr)
 	if !eqErrGRPC(err, rpctypes.ErrGRPCLeaseNotFound) {
-		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCCompacted)
+		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCLeaseNotFound)
+	}
+}
+
+// TestV3GetNonExistLease tests the case where the non exist lease is report as lease not found error using LeaseTimeToLive()
+// A bug was found when a non leader etcd server returns nil instead of lease not found error which caues the server to crash.
+// related issue https://github.com/coreos/etcd/issues/6537
+func TestV3GetNonExistLease(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	leaseTTLr := &pb.LeaseTimeToLiveRequest{
+		ID:   123,
+		Keys: true,
+	}
+
+	for _, client := range clus.clients {
+		_, err := toGRPC(client).Lease.LeaseTimeToLive(ctx, leaseTTLr)
+		if !eqErrGRPC(err, rpctypes.ErrGRPCLeaseNotFound) {
+			t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCLeaseNotFound)
+		}
 	}
 }
 
