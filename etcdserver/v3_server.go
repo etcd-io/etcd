@@ -308,17 +308,15 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 		return nil, err
 	}
 
-	var lresp *pb.LeaseTimeToLiveResponse
 	for _, url := range leader.PeerURLs {
 		lurl := url + leasehttp.LeaseInternalPrefix
 		var iresp *leasepb.LeaseInternalResponse
 		iresp, err = leasehttp.TimeToLiveHTTP(ctx, lease.LeaseID(r.ID), r.Keys, lurl, s.peerRt)
 		if err == nil {
-			lresp = iresp.LeaseTimeToLiveResponse
-			break
+			return iresp.LeaseTimeToLiveResponse, nil
 		}
 	}
-	return lresp, nil
+	return nil, err
 }
 
 func (s *EtcdServer) waitLeader() (*membership.Member, error) {
