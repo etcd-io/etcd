@@ -1434,10 +1434,12 @@ func TestReadOnlyOptionSafe(t *testing.T) {
 		wri       uint64
 		wctx      []byte
 	}{
-		{b, 10, 11, []byte("ctx1")},
-		{c, 10, 21, []byte("ctx2")},
-		{b, 10, 31, []byte("ctx3")},
-		{c, 10, 41, []byte("ctx4")},
+		{a, 10, 11, []byte("ctx1")},
+		{b, 10, 21, []byte("ctx2")},
+		{c, 10, 31, []byte("ctx3")},
+		{a, 10, 41, []byte("ctx4")},
+		{b, 10, 51, []byte("ctx5")},
+		{c, 10, 61, []byte("ctx6")},
 	}
 
 	for i, tt := range tests {
@@ -1492,10 +1494,12 @@ func TestReadOnlyOptionLease(t *testing.T) {
 		wri       uint64
 		wctx      []byte
 	}{
-		{b, 10, 11, []byte("ctx1")},
-		{c, 10, 21, []byte("ctx2")},
-		{b, 10, 31, []byte("ctx3")},
-		{c, 10, 41, []byte("ctx4")},
+		{a, 10, 11, []byte("ctx1")},
+		{b, 10, 21, []byte("ctx2")},
+		{c, 10, 31, []byte("ctx3")},
+		{a, 10, 41, []byte("ctx4")},
+		{b, 10, 51, []byte("ctx5")},
+		{c, 10, 61, []byte("ctx6")},
 	}
 
 	for i, tt := range tests {

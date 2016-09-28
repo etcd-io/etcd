@@ -157,6 +157,11 @@ func TestUnstableMaybeTerm(t *testing.T) {
 			true, 1,
 		},
 		{
+			[]pb.Entry{{Index: 5, Term: 1}}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
+			3,
+			false, 0,
+		},
+		{
 			[]pb.Entry{}, 5, &pb.Snapshot{Metadata: pb.SnapshotMetadata{Index: 4, Term: 1}},
 			5,
 			false, 0,
