@@ -61,7 +61,7 @@ func TestNew(t *testing.T) {
 	}
 
 	var wb bytes.Buffer
-	e := newEncoder(&wb, 0)
+	e := newEncoder(&wb, 0, 0)
 	err = e.encode(&walpb.Record{Type: crcType, Crc: 0})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
@@ -528,7 +528,7 @@ func TestSaveEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	var est raftpb.HardState
 	w := WAL{
-		encoder: newEncoder(&buf, 0),
+		encoder: newEncoder(&buf, 0, 0),
 	}
 	if err := w.saveState(&est); err != nil {
 		t.Errorf("err = %v, want nil", err)
