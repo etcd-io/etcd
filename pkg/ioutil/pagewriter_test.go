@@ -25,7 +25,7 @@ func TestPageWriterRandom(t *testing.T) {
 	pageBytes := 128
 	buf := make([]byte, 4*defaultBufferBytes)
 	cw := &checkPageWriter{pageBytes: pageBytes, t: t}
-	w := NewPageWriter(cw, pageBytes)
+	w := NewPageWriter(cw, pageBytes, 0)
 	n := 0
 	for i := 0; i < 4096; i++ {
 		c, err := w.Write(buf[:rand.Intn(len(buf))])
@@ -51,7 +51,7 @@ func TestPageWriterPartialSlack(t *testing.T) {
 	pageBytes := 128
 	buf := make([]byte, defaultBufferBytes)
 	cw := &checkPageWriter{pageBytes: 64, t: t}
-	w := NewPageWriter(cw, pageBytes)
+	w := NewPageWriter(cw, pageBytes, 0)
 	// put writer in non-zero page offset
 	if _, err := w.Write(buf[:64]); err != nil {
 		t.Fatal(err)
@@ -79,6 +79,35 @@ func TestPageWriterPartialSlack(t *testing.T) {
 	}
 	if cw.writes != 2 {
 		t.Fatalf("got %d writes, expected 2", cw.writes)
+	}
+}
+
+// TestPageWriterOffset tests if page writer correctly repositions when offset is given.
+func TestPageWriterOffset(t *testing.T) {
+	defaultBufferBytes = 1024
+	pageBytes := 128
+	buf := make([]byte, defaultBufferBytes)
+	cw := &checkPageWriter{pageBytes: 64, t: t}
+	w := NewPageWriter(cw, pageBytes, 0)
+	if _, err := w.Write(buf[:64]); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if w.pageOffset != 64 {
+		t.Fatalf("w.pageOffset expected 64, got %d", w.pageOffset)
+	}
+
+	w = NewPageWriter(cw, w.pageOffset, pageBytes)
+	if _, err := w.Write(buf[:64]); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if w.pageOffset != 0 {
+		t.Fatalf("w.pageOffset expected 0, got %d", w.pageOffset)
 	}
 }
 
