@@ -32,6 +32,8 @@ PUT assigns the specified value with the specified key. If key already holds a v
 
 - lease -- lease ID (in hexadecimal) to attach to the key.
 
+- prev-kv -- return the previous key-value pair before modification.
+
 #### Return value
 
 ##### Simple reply
@@ -56,6 +58,16 @@ The protobuf encoding of the PUT [RPC response][etcdrpc].
 ./etcdctl get foo
 # foo
 # bar
+```
+
+```bash
+./etcdctl put foo bar1 --prev-kv
+# OK
+# foo
+# bar
+./etcdctl get foo
+# foo
+# bar1
 ```
 
 #### Notes
@@ -690,7 +702,6 @@ Whenever a leader is elected, its proposal is given as output.
 ./etcdctl elect myelection foo
 # myelection/1456952310051373265
 # foo
-
 ```
 
 #### Notes
@@ -760,6 +771,8 @@ the database, the etcd member releases this free space back to the file system.
 - dest-prefix -- The destination prefix to mirror a prefix to a different prefix in the destination cluster
 
 - no-dest-prefix -- Mirror key-values to the root of the destination cluster
+
+- dest-insecure-transport -- Disable transport security for client connections
 
 #### Return value
 
