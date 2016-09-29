@@ -135,6 +135,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	return
 }
 
+// Config returns the current configuration.
+func (e *Etcd) Config() Config {
+	return e.cfg
+}
+
 func (e *Etcd) Close() {
 	for _, sctx := range e.sctxs {
 		sctx.cancel()
