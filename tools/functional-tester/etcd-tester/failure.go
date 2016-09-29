@@ -172,3 +172,8 @@ func killMap(size int, seed int) map[int]bool {
 		}
 	}
 }
+
+type failureNop failureByFunc
+
+func (f *failureNop) Inject(c *cluster, round int) error  { return nil }
+func (f *failureNop) Recover(c *cluster, round int) error { return nil }

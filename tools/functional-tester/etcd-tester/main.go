@@ -49,6 +49,7 @@ func main() {
 	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
 	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")
 	stresserType := flag.String("stresser", "default", "specify stresser (\"default\" or \"nop\").")
+	failureTypes := flag.String("failures", "default,failpoints", "specify failures (concat of \"default\" and \"failpoints\").")
 	flag.Parse()
 
 	eps := strings.Split(*endpointStr, ",")
@@ -83,27 +84,19 @@ func main() {
 	}
 	defer c.Terminate()
 
-	failures := []failure{
-		newFailureKillAll(),
-		newFailureKillMajority(),
-		newFailureKillOne(),
-		newFailureKillLeader(),
-		newFailureKillOneForLongTime(),
-		newFailureKillLeaderForLongTime(),
-		newFailureIsolate(),
-		newFailureIsolateAll(),
-		newFailureSlowNetworkOneMember(),
-		newFailureSlowNetworkLeader(),
-		newFailureSlowNetworkAll(),
-	}
-
 	// ensure cluster is fully booted to know failpoints are available
 	c.WaitHealth()
-	fpFailures, fperr := failpointFailures(c)
-	if len(fpFailures) == 0 {
-		plog.Infof("no failpoints found (%v)", fperr)
+
+	var failures []failure
+
+	if failureTypes != nil && *failureTypes != "" {
+		failures = makeFailures(*failureTypes, c)
 	}
-	failures = append(failures, fpFailures...)
+
+	if len(failures) == 0 {
+		plog.Infof("no failures\n")
+		failures = append(failures, newFailureNop())
+	}
 
 	schedule := failures
 	if schedCases != nil && *schedCases != "" {
@@ -159,4 +152,42 @@ func portsFromArg(arg string, n, defaultPort int) []int {
 		}
 	}
 	return ret
+}
+
+func makeFailures(types string, c *cluster) []failure {
+	var failures []failure
+
+	fails := strings.Split(types, ",")
+	for i := range fails {
+		switch fails[i] {
+		case "default":
+			defaultFailures := []failure{
+				newFailureKillAll(),
+				newFailureKillMajority(),
+				newFailureKillOne(),
+				newFailureKillLeader(),
+				newFailureKillOneForLongTime(),
+				newFailureKillLeaderForLongTime(),
+				newFailureIsolate(),
+				newFailureIsolateAll(),
+				newFailureSlowNetworkOneMember(),
+				newFailureSlowNetworkLeader(),
+				newFailureSlowNetworkAll(),
+			}
+			failures = append(failures, defaultFailures...)
+
+		case "failpoints":
+			fpFailures, fperr := failpointFailures(c)
+			if len(fpFailures) == 0 {
+				plog.Infof("no failpoints found (%v)", fperr)
+			}
+			failures = append(failures, fpFailures...)
+
+		default:
+			plog.Errorf("unknown failure: %s\n", fails[i])
+			os.Exit(1)
+		}
+	}
+
+	return failures
 }

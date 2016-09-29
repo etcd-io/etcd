@@ -139,3 +139,9 @@ func newFailureSlowNetworkAll() failure {
 		recoverMember: recoverLatency,
 	}
 }
+
+func newFailureNop() failure {
+	return &failureNop{
+		description: "no failure",
+	}
+}
