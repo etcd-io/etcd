@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/pkg", "osutil")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "pkg/osutil")
 )
 
 func Unsetenv(key string) error {
