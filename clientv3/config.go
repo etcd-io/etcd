@@ -25,7 +25,8 @@ import (
 )
 
 type Config struct {
-	// Endpoints is a list of URLs
+	// Endpoints is a list of URLs.
+	// Make sure to strip scheme:// prefixes since grpc dials by host.
 	Endpoints []string
 
 	// AutoSyncInterval is the interval to update endpoints with its latest members.
