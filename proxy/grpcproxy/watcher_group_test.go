@@ -40,7 +40,7 @@ func TestWatchgroupBroadcast(t *testing.T) {
 	}
 
 	// send a progress response
-	wch <- clientv3.WatchResponse{}
+	wch <- clientv3.WatchResponse{Header: pb.ResponseHeader{Revision: 1}}
 
 	for _, ch := range chs {
 		<-ch
