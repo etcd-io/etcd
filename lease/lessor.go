@@ -274,10 +274,7 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 func (le *lessor) Lookup(id LeaseID) *Lease {
 	le.mu.Lock()
 	defer le.mu.Unlock()
-	if l, ok := le.leaseMap[id]; ok {
-		return l
-	}
-	return nil
+	return le.leaseMap[id]
 }
 
 func (le *lessor) Promote(extend time.Duration) {
@@ -406,15 +403,6 @@ func (le *lessor) findExpiredLeases() []*Lease {
 	}
 
 	return leases
-}
-
-// get gets the lease with given id.
-// get is a helper function for testing, at least for now.
-func (le *lessor) get(id LeaseID) *Lease {
-	le.mu.Lock()
-	defer le.mu.Unlock()
-
-	return le.leaseMap[id]
 }
 
 func (le *lessor) initAndRecover() {
