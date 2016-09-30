@@ -43,7 +43,7 @@ func TestLessorGrant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not grant lease 1 (%v)", err)
 	}
-	gl := le.get(l.ID)
+	gl := le.Lookup(l.ID)
 
 	if !reflect.DeepEqual(gl, l) {
 		t.Errorf("lease = %v, want %v", gl, l)
@@ -107,7 +107,7 @@ func TestLessorRevoke(t *testing.T) {
 		t.Fatal("failed to revoke lease:", err)
 	}
 
-	if le.get(l.ID) != nil {
+	if le.Lookup(l.ID) != nil {
 		t.Errorf("got revoked lease %x", l.ID)
 	}
 
@@ -149,7 +149,7 @@ func TestLessorRenew(t *testing.T) {
 		t.Errorf("ttl = %d, want %d", ttl, l.TTL)
 	}
 
-	l = le.get(l.ID)
+	l = le.Lookup(l.ID)
 	if l.expiry.Sub(time.Now()) < 9*time.Second {
 		t.Errorf("failed to renew the lease")
 	}
@@ -210,12 +210,12 @@ func TestLessorRecover(t *testing.T) {
 
 	// Create a new lessor with the same backend
 	nle := newLessor(be, minLeaseTTL)
-	nl1 := nle.get(l1.ID)
+	nl1 := nle.Lookup(l1.ID)
 	if nl1 == nil || nl1.TTL != l1.TTL {
 		t.Errorf("nl1 = %v, want nl1.TTL= %d", nl1.TTL, l1.TTL)
 	}
 
-	nl2 := nle.get(l2.ID)
+	nl2 := nle.Lookup(l2.ID)
 	if nl2 == nil || nl2.TTL != l2.TTL {
 		t.Errorf("nl2 = %v, want nl2.TTL= %d", nl2.TTL, l2.TTL)
 	}
