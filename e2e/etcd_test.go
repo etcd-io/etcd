@@ -424,6 +424,11 @@ func (epc *etcdProcessCluster) StopAll() (err error) {
 func (epc *etcdProcessCluster) Close() error {
 	err := epc.StopAll()
 	for _, p := range epc.procs {
+		// p is nil when newEtcdProcess fails in the middle
+		// Close still gets called to clean up test data
+		if p == nil {
+			continue
+		}
 		os.RemoveAll(p.cfg.dataDirPath)
 	}
 	return err
