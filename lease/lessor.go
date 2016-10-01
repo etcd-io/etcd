@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
+	"sort"
 	"sync"
 	"time"
 
@@ -228,8 +229,16 @@ func (le *lessor) Revoke(id LeaseID) error {
 	}
 
 	tid := le.rd.TxnBegin()
+
+	// sort keys so deletes are in same order among all members,
+	// otherwise the backened hashes will be different
+	keys := make([]string, 0, len(l.itemSet))
 	for item := range l.itemSet {
-		_, _, err := le.rd.TxnDeleteRange(tid, []byte(item.Key), nil)
+		keys = append(keys, item.Key)
+	}
+	sort.StringSlice(keys).Sort()
+	for _, key := range keys {
+		_, _, err := le.rd.TxnDeleteRange(tid, []byte(key), nil)
 		if err != nil {
 			panic(err)
 		}
