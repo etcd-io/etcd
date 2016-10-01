@@ -140,7 +140,7 @@ func (e *Etcd) Config() Config {
 	return e.cfg
 }
 
-func (e *Etcd) Close() {
+func (e *Etcd) close(hard bool) {
 	for _, sctx := range e.sctxs {
 		sctx.cancel()
 	}
@@ -155,8 +155,23 @@ func (e *Etcd) Close() {
 		}
 	}
 	if e.Server != nil {
+		if hard {
+			e.Server.HardStop()
+			return
+		}
 		e.Server.Stop()
 	}
+}
+
+// Close gracefully closes the Etcd server with leader transfer.
+func (e *Etcd) Close() {
+	e.close(false)
+}
+
+// ForceClose closes the Etcd server without leader transfer.
+// This is useful for testing.
+func (e *Etcd) ForceClose() {
+	e.close(true)
 }
 
 func (e *Etcd) Err() <-chan error { return e.errc }
