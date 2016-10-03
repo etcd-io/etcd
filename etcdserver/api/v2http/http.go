@@ -35,7 +35,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver/api", "v2http")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdserver/api/v2http")
 	mlog = logutil.NewMergeLogger(plog)
 )
 
