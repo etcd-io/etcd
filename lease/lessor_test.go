@@ -221,6 +221,108 @@ func TestLessorRecover(t *testing.T) {
 	}
 }
 
+func TestLessorExpire(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	testMinTTL := int64(1)
+
+	le := newLessor(be, testMinTTL)
+	defer le.Stop()
+
+	le.Promote(1 * time.Second)
+	l, err := le.Grant(1, testMinTTL)
+	if err != nil {
+		t.Fatalf("failed to create lease: %v", err)
+	}
+
+	select {
+	case el := <-le.ExpiredLeasesC():
+		if el[0].ID != l.ID {
+			t.Fatalf("expired id = %x, want %x", el[0].ID, l.ID)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("failed to receive expired lease")
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		// expired lease cannot be renewed
+		if _, err := le.Renew(l.ID); err != ErrLeaseNotFound {
+			t.Fatalf("unexpected renew")
+		}
+		donec <- struct{}{}
+	}()
+
+	select {
+	case <-donec:
+		t.Fatalf("renew finished before lease revocation")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	// expired lease can be revoked
+	if err := le.Revoke(l.ID); err != nil {
+		t.Fatalf("failed to revoke expired lease: %v", err)
+	}
+
+	select {
+	case <-donec:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("renew has not returned after lease revocation")
+	}
+}
+
+func TestLessorExpireAndDemote(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	testMinTTL := int64(1)
+
+	le := newLessor(be, testMinTTL)
+	defer le.Stop()
+
+	le.Promote(1 * time.Second)
+	l, err := le.Grant(1, testMinTTL)
+	if err != nil {
+		t.Fatalf("failed to create lease: %v", err)
+	}
+
+	select {
+	case el := <-le.ExpiredLeasesC():
+		if el[0].ID != l.ID {
+			t.Fatalf("expired id = %x, want %x", el[0].ID, l.ID)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("failed to receive expired lease")
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		// expired lease cannot be renewed
+		if _, err := le.Renew(l.ID); err != ErrNotPrimary {
+			t.Fatalf("unexpected renew: %v", err)
+		}
+		donec <- struct{}{}
+	}()
+
+	select {
+	case <-donec:
+		t.Fatalf("renew finished before demotion")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	// demote will cause the renew request to fail with ErrNotPrimary
+	le.Demote()
+
+	select {
+	case <-donec:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("renew has not returned after lessor demotion")
+	}
+}
+
 type fakeDeleter struct {
 	deleted []string
 }
