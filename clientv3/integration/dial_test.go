@@ -15,11 +15,17 @@
 package integration
 
 import (
+	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"net/url"
+	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
@@ -57,4 +63,70 @@ func TestDialSetEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	cancel()
+}
+
+var (
+	testMu   sync.Mutex
+	testPort = 31000
+)
+
+// TestDialWithHTTPS ensures that client can handle 'https' scheme in endpoints.
+func TestDialWithHTTPS(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	testMu.Lock()
+	port := testPort
+	testPort += 10 // to avoid port conflicts
+	testMu.Unlock()
+
+	dir, err := ioutil.TempDir(os.TempDir(), "dial-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	// set up single-node cluster with client auto TLS
+	cfg := embed.NewConfig()
+	cfg.Dir = dir
+
+	cfg.ClientAutoTLS = true
+	clientURL := url.URL{Scheme: "https", Host: fmt.Sprintf("localhost:%d", port)}
+	cfg.LCUrls, cfg.ACUrls = []url.URL{clientURL}, []url.URL{clientURL}
+
+	peerURL := url.URL{Scheme: "http", Host: fmt.Sprintf("localhost:%d", port+1)}
+	cfg.LPUrls, cfg.APUrls = []url.URL{peerURL}, []url.URL{peerURL}
+	cfg.InitialCluster = cfg.Name + "=" + peerURL.String()
+
+	srv, err := embed.StartEtcd(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nc := srv.Config() // overwrite config after processing ClientTLSInfo
+	cfg = &nc
+
+	<-srv.Server.ReadyNotify()
+	defer func() {
+		srv.Close()
+		<-srv.Err()
+	}()
+
+	// wait for leader election to finish
+	time.Sleep(500 * time.Millisecond)
+
+	ccfg := clientv3.Config{Endpoints: []string{clientURL.String()}}
+	tcfg, err := cfg.ClientTLSInfo.ClientConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ccfg.TLS = tcfg
+
+	cli, err := clientv3.New(ccfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	if _, err = cli.Get(context.Background(), "foo"); err != nil {
+		t.Fatal(err)
+	}
 }

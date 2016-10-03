@@ -151,14 +151,14 @@ func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...str
 	}, nil
 }
 
-func parseEndpoint(endpoint string) (proto string, host string, scheme bool) {
+func parseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	proto = "tcp"
 	host = endpoint
 	url, uerr := url.Parse(endpoint)
 	if uerr != nil || !strings.Contains(endpoint, "://") {
 		return
 	}
-	scheme = true
+	scheme = url.Scheme
 
 	// strip scheme:// prefix since grpc dials by host
 	host = url.Host
@@ -172,9 +172,9 @@ func parseEndpoint(endpoint string) (proto string, host string, scheme bool) {
 	return
 }
 
-func (c *Client) processCreds(protocol string) (creds *credentials.TransportCredentials) {
+func (c *Client) processCreds(scheme string) (creds *credentials.TransportCredentials) {
 	creds = c.creds
-	switch protocol {
+	switch scheme {
 	case "unix":
 	case "http":
 		creds = nil
@@ -213,8 +213,8 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 	opts = append(opts, grpc.WithDialer(f))
 
 	creds := c.creds
-	if proto, _, scheme := parseEndpoint(endpoint); scheme {
-		creds = c.processCreds(proto)
+	if _, _, scheme := parseEndpoint(endpoint); len(scheme) != 0 {
+		creds = c.processCreds(scheme)
 	}
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(*creds))
