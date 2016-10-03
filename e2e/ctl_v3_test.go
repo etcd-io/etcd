@@ -37,6 +37,18 @@ func ctlV3Version(cx ctlCtx) error {
 	return spawnWithExpect(cmdArgs, version.Version)
 }
 
+// TestCtlV3DialWithHTTPScheme ensures that client handles endpoints with HTTPS scheme.
+func TestCtlV3DialWithHTTPScheme(t *testing.T) {
+	testCtl(t, dialWithSchemeTest, withCfg(configClientTLS))
+}
+
+func dialWithSchemeTest(cx ctlCtx) {
+	cmdArgs := append(cx.prefixArgs(cx.epc.endpoints()), "put", "foo", "bar")
+	if err := spawnWithExpect(cmdArgs, "OK"); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
 type ctlCtx struct {
 	t                 *testing.T
 	cfg               etcdProcessClusterConfig
@@ -141,12 +153,12 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	}
 }
 
-func (cx *ctlCtx) PrefixArgs() []string {
+func (cx *ctlCtx) prefixArgs(eps []string) []string {
 	if len(cx.epc.proxies()) > 0 { // TODO: add proxy check as in v2
 		panic("v3 proxy not implemented")
 	}
 
-	cmdArgs := []string{ctlBinPath, "--endpoints", strings.Join(cx.epc.grpcEndpoints(), ","), "--dial-timeout", cx.dialTimeout.String()}
+	cmdArgs := []string{ctlBinPath, "--endpoints", strings.Join(eps, ","), "--dial-timeout", cx.dialTimeout.String()}
 	if cx.epc.cfg.clientTLS == clientTLS {
 		if cx.epc.cfg.isClientAutoTLS {
 			cmdArgs = append(cmdArgs, "--insecure-transport=false", "--insecure-skip-tls-verify")
@@ -160,6 +172,10 @@ func (cx *ctlCtx) PrefixArgs() []string {
 	}
 
 	return cmdArgs
+}
+
+func (cx *ctlCtx) PrefixArgs() []string {
+	return cx.prefixArgs(cx.epc.grpcEndpoints())
 }
 
 func isGRPCTimedout(err error) bool {
