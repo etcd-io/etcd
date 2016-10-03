@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/etcdserver", "api")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdserver/api")
 
 	// capabilityMaps is a static map of version to capability map.
 	// the base capabilities is the set of capability 2.0 supports.
