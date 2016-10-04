@@ -839,3 +839,32 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3))
 		}
 	}
 }
+
+// TestWatchCanelAndCloseClient ensures that canceling a watcher then immediately
+// closing the client does not return a client closing error.
+func TestWatchCancelAndCloseClient(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	cli := clus.Client(0)
+	ctx, cancel := context.WithCancel(context.Background())
+	wch := cli.Watch(ctx, "abc")
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		select {
+		case wr, ok := <-wch:
+			if ok {
+				t.Fatalf("expected closed watch after cancel(), got resp=%+v err=%v", wr, wr.Err())
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for closed channel")
+		}
+	}()
+	cancel()
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+	<-donec
+	clus.TakeClient(0)
+}
