@@ -33,6 +33,10 @@ TEST_PKGS=`find . -name \*_test.go | while read a; do dirname $a; done | sort | 
 FORMATTABLE=`find . -name \*.go | while read a; do echo $(dirname $a)/"*.go"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
 TESTABLE_AND_FORMATTABLE=`echo "$TEST_PKGS" | egrep -v "$INTEGRATION_PKGS"`
 
+if [ -z "$GOARCH" ]; then
+	GOARCH=$(go env GOARCH);
+fi
+
 # user has not provided PKG override
 if [ -z "$PKG" ]; then
 	TEST=$TESTABLE_AND_FORMATTABLE
@@ -54,12 +58,7 @@ split=(${TEST// / })
 TEST=${split[@]/#/${REPO_PATH}/}
 
 # determine whether target supports race detection
-if [ -z "$GOARCH" ]; then
-	MACHINE_TYPE=$(uname -m)
-	if [ "$MACHINE_TYPE" == "x86_64" ]; then
-		RACE="--race"
-	fi
-elif [ "$GOARCH" == "amd64" ]; then
+if [ "$GOARCH" == "amd64" ]; then
 	RACE="--race"
 fi
 
@@ -89,15 +88,31 @@ function grpcproxy_pass {
 }
 
 function release_pass {
+	rm -f ./bin/etcd-last-release
 	# to grab latest patch release; bump this up for every minor release
 	UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.0.*" | head -1)
 	if [ -n "$MANUAL_VER" ]; then
 		# in case, we need to test against different version
 		UPGRADE_VER=$MANUAL_VER
 	fi
-	echo "Downloading" etcd $UPGRADE_VER
-	curl -L https://github.com/coreos/etcd/releases/download/$UPGRADE_VER/etcd-$UPGRADE_VER-linux-amd64.tar.gz -o /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz
-	tar xzvf /tmp/etcd-$UPGRADE_VER-linux-amd64.tar.gz -C /tmp/ --strip-components=1
+
+	local file="etcd-$UPGRADE_VER-linux-$GOARCH.tar.gz"
+	echo "Downloading $file"
+
+	set +e
+	curl --fail -L https://github.com/coreos/etcd/releases/download/$UPGRADE_VER/$file -o /tmp/$file
+	local result=$?
+	set -e
+	case $result in
+		0)	;;
+		22)	return 0
+			;;
+		*)	exit $result
+			;;
+	esac
+
+	tar xzvf /tmp/$file -C /tmp/ --strip-components=1
+	mkdir -p ./bin
 	mv /tmp/etcd ./bin/etcd-last-release
 }
 
