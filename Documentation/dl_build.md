@@ -28,7 +28,7 @@ $ echo $GOPATH
 
 $ mkdir -p $GOPATH/src/github.com/coreos
 $ cd $GOPATH/src/github.com/coreos
-$ git clone github.com:coreos/etcd.git
+$ git clone https://github.com/coreos/etcd.git
 $ cd etcd
 $ ./build
 $ ./bin/etcd
