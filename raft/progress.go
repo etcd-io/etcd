@@ -64,12 +64,17 @@ type Progress struct {
 	RecentActive bool
 
 	// inflights is a sliding window for the inflight messages.
+	// Each inflight message contains one or more log entries.
+	// The max number of entries per message is defined in raft config as MaxSizePerMsg.
+	// Thus inflight effectively limits both the number of inflight messages
+	// and the bandwidth each Progress can use.
 	// When inflights is full, no more message should be sent.
 	// When a leader sends out a message, the index of the last
 	// entry should be added to inflights. The index MUST be added
 	// into inflights in order.
 	// When a leader receives a reply, the previous inflights should
-	// be freed by calling inflights.freeTo.
+	// be freed by calling inflights.freeTo with the index of the last
+	// received entry.
 	ins *inflights
 }
 
@@ -183,7 +188,10 @@ type inflights struct {
 	count int
 
 	// the size of the buffer
-	size   int
+	size int
+
+	// buffer contains the index of the last entry
+	// inside one message.
 	buffer []uint64
 }
 
@@ -199,8 +207,9 @@ func (in *inflights) add(inflight uint64) {
 		panic("cannot add into a full inflights")
 	}
 	next := in.start + in.count
-	if next >= in.size {
-		next -= in.size
+	size := in.size
+	if next >= size {
+		next -= size
 	}
 	if next >= len(in.buffer) {
 		in.growBuf()
@@ -238,8 +247,9 @@ func (in *inflights) freeTo(to uint64) {
 		}
 
 		// increase index and maybe rotate
-		if idx++; idx >= in.size {
-			idx -= in.size
+		size := in.size
+		if idx++; idx >= size {
+			idx -= size
 		}
 	}
 	// free i inflights and set new start index
