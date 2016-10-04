@@ -364,7 +364,7 @@ func (w *watchGrpcStream) closeSubstream(ws *watcherStream) {
 	default:
 	}
 	// close subscriber's channel
-	if closeErr := w.closeErr; closeErr != nil {
+	if closeErr := w.closeErr; closeErr != nil && ws.initReq.ctx.Err() == nil {
 		go w.sendCloseSubstream(ws, &WatchResponse{closeErr: w.closeErr})
 	} else {
 		close(ws.outc)
