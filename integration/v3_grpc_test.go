@@ -17,6 +17,7 @@ package integration
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -583,10 +584,12 @@ func TestV3Hash(t *testing.T) {
 // TestV3StorageQuotaAPI tests the V3 server respects quotas at the API layer
 func TestV3StorageQuotaAPI(t *testing.T) {
 	defer testutil.AfterTest(t)
+	quotasize := int64(16 * os.Getpagesize())
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 
-	clus.Members[0].QuotaBackendBytes = 64 * 1024
+	// Set a quota on one node
+	clus.Members[0].QuotaBackendBytes = quotasize
 	clus.Members[0].Stop(t)
 	clus.Members[0].Restart(t)
 
@@ -602,7 +605,7 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 	}
 
 	// test big put
-	bigbuf := make([]byte, 64*1024)
+	bigbuf := make([]byte, quotasize)
 	_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: bigbuf})
 	if !eqErrGRPC(err, rpctypes.ErrGRPCNoSpace) {
 		t.Fatalf("big put got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
@@ -628,14 +631,15 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply
 func TestV3StorageQuotaApply(t *testing.T) {
 	testutil.AfterTest(t)
+	quotasize := int64(16 * os.Getpagesize())
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 	kvc0 := toGRPC(clus.Client(0)).KV
 	kvc1 := toGRPC(clus.Client(1)).KV
 
-	// force a node to have a different quota
-	clus.Members[0].QuotaBackendBytes = 64 * 1024
+	// Set a quota on one node
+	clus.Members[0].QuotaBackendBytes = quotasize
 	clus.Members[0].Stop(t)
 	clus.Members[0].Restart(t)
 	clus.waitLeader(t, clus.Members)
@@ -650,7 +654,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	}
 
 	// test big put
-	bigbuf := make([]byte, 64*1024)
+	bigbuf := make([]byte, quotasize)
 	_, err := kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: bigbuf})
 	if err != nil {
 		t.Fatal(err)
