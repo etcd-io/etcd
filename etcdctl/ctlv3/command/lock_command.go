@@ -64,11 +64,6 @@ func lockUntilSignal(c *clientv3.Client, lockname string) error {
 		close(donec)
 	}()
 
-	s, serr := concurrency.NewSession(c)
-	if serr != nil {
-		return serr
-	}
-
 	if err := m.Lock(ctx); err != nil {
 		return err
 	}
