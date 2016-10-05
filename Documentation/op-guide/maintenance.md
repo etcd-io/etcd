@@ -49,7 +49,7 @@ Finished defragmenting etcd member[127.0.0.1:2379]
 
 ## Space quota
 
-The space quota in `etcd` ensures the cluster operates in a reliable fashion. Without a space quota, `etcd` may suffer from poor performance if the keyspace grows excessively large, or it may simply run out of storage space, leading to unpredictable cluster behavior. If the keyspace's backend database for any member exceeds the space quota, `etcd` raises a cluster-wide alarm that puts the cluster into a maintenance mode which only accepts key reads and deletes. After freeing enough space in the keyspace, the alarm can be disarmed and the cluster will resume normal operation.
+The space quota in `etcd` ensures the cluster operates in a reliable fashion. Without a space quota, `etcd` may suffer from poor performance if the keyspace grows excessively large, or it may simply run out of storage space, leading to unpredictable cluster behavior. If the keyspace's backend database for any member exceeds the space quota, `etcd` raises a cluster-wide alarm that puts the cluster into a maintenance mode which only accepts key reads and deletes. Only after freeing enough space in the keyspace and defragmenting the backend database, along with clearing the space quota alarm can the cluster resume normal operation.
 
 By default, `etcd` sets a conservative space quota suitable for most applications, but it may be configured on the command line, in bytes:
 
@@ -77,7 +77,7 @@ $ etcdctl alarm list
 memberID:13803658152347727308 alarm:NOSPACE 
 ```
 
-Removing excessive keyspace data will put the cluster back within the quota limits so the alarm can be disarmed:
+Removing excessive keyspace data and defragmenting the backend database will put the cluster back within the quota limits:
 
 ```sh
 # get current revision
