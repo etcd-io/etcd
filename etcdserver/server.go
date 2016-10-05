@@ -1210,6 +1210,11 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		case s.forceVersionC <- struct{}{}:
 		default:
 		}
+		// promote lessor when the local member is leader and finished
+		// applying all entries from the last term.
+		if s.isLeader() {
+			s.lessor.Promote(s.Cfg.electionTimeout())
+		}
 		return
 	}
 
