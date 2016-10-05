@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/mvccpb"
@@ -1077,5 +1078,50 @@ func TestV3WatchWithFilter(t *testing.T) {
 		}
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("failed to receive delete event")
+	}
+}
+
+func TestV3WatchWithPrevKV(t *testing.T) {
+	cluster := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+	etcdcli := cluster.RandClient()
+
+	tests := []struct {
+		key  string
+		vals []string
+	}{{
+		key:  "foo",
+		vals: []string{"bar1", "bar2"},
+	}, {
+		key:  "/abc",
+		vals: []string{"first", "second"},
+	}}
+	for i, tt := range tests {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+
+		_, err := etcdcli.Put(ctx, tt.key, tt.vals[0])
+		if err != nil {
+			t.Fatalf("fail to Put: %v", err)
+		}
+
+		wch := etcdcli.Watch(ctx, tt.key, clientv3.WithPrefix(), clientv3.WithPrevKV())
+
+		_, err = etcdcli.Put(ctx, tt.key, tt.vals[1])
+		if err != nil {
+			t.Fatalf("fail to Put: %v", err)
+		}
+
+		select {
+		case watchResp := <-wch:
+			if tt.vals[1] != string(watchResp.Events[0].Kv.Value) {
+				t.Errorf("#%d: unequal value: want=%s, get=%s", i, tt.vals[1], watchResp.Events[0].Kv.Value)
+			}
+			if tt.vals[0] != string(watchResp.Events[0].PrevKv.Value) {
+				t.Errorf("#%d: unequal value: want=%s, get=%s", i, tt.vals[0], watchResp.Events[0].PrevKv.Value)
+			}
+		case <-ctx.Done():
+			t.Error("timeout waiting for watch response")
+		}
+		cancel()
 	}
 }
