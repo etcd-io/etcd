@@ -23,7 +23,7 @@ func TestCtlV3Alarm(t *testing.T) { testCtl(t, alarmTest, withQuota(64*1024)) }
 
 func alarmTest(cx ctlCtx) {
 	// test small put still works
-	smallbuf := strings.Repeat("a", int(cx.quotaBackendBytes/100))
+	smallbuf := strings.Repeat("a", 64)
 	if err := ctlV3Put(cx, "abc", smallbuf, ""); err != nil {
 		cx.t.Fatal(err)
 	}
