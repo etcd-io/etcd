@@ -55,7 +55,7 @@ By default, `etcd` sets a conservative space quota suitable for most application
 
 ```sh
 # set a very small 16MB quota
-$ etcd --quota-backend-bytes=16777216
+$ etcd --quota-backend-bytes=$((16*1024*1024))
 ```
 
 The space quota can be triggered with a loop:
@@ -81,10 +81,9 @@ Removing excessive keyspace data and defragmenting the backend database will put
 
 ```sh
 # get current revision
-$ ETCDCTL_API=3 etcdctl --endpoints=:2379 endpoint status
-[{"Endpoint":"127.0.0.1:2379","Status":{"header":{"cluster_id":8925027824743593106,"member_id":13803658152347727308,"revision":1516,"raft_term":2},"version":"2.3.0+git","dbSize":17973248,"leader":13803658152347727308,"raftIndex":6359,"raftTerm":2}}]
+$ rev=$(ETCDCTL_API=3 etcdctl --endpoints=:2379 endpoint status --write-out="json" | egrep -o '"revision":[0-9]*' | egrep -o '[0-9]*')
 # compact away all old revisions
-$ ETCDCTL_API=3 etcdctl compact 1516
+$ ETCDCTL_API=3 etdctl compact $rev
 compacted revision 1516
 # defragment away excessive space
 $ ETCDCTL_API=3 etcdctl defrag
