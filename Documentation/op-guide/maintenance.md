@@ -62,18 +62,18 @@ The space quota can be triggered with a loop:
 
 ```sh
 # fill keyspace
-$ while [ 1 ]; do dd if=/dev/urandom bs=1024 count=1024  | etcdctl put key  || break; done
+$ while [ 1 ]; do dd if=/dev/urandom bs=1024 count=1024  | ETCDCTL_API=3 etcdctl put key  || break; done
 ...
 Error:  rpc error: code = 8 desc = etcdserver: mvcc: database space exceeded
 # confirm quota space is exceeded
-$ etcdctl --write-out=table endpoint status
+$ ETCDCTL_API=3 etcdctl --write-out=table endpoint status
 +----------------+------------------+-----------+---------+-----------+-----------+------------+
 |    ENDPOINT    |        ID        |  VERSION  | DB SIZE | IS LEADER | RAFT TERM | RAFT INDEX |
 +----------------+------------------+-----------+---------+-----------+-----------+------------+
 | 127.0.0.1:2379 | bf9071f4639c75cc | 2.3.0+git | 18 MB   | true      |         2 |       3332 |
 +----------------+------------------+-----------+---------+-----------+-----------+------------+
 # confirm alarm is raised
-$ etcdctl alarm list
+$ ETCDCTL_API=3 etcdctl alarm list
 memberID:13803658152347727308 alarm:NOSPACE 
 ```
 
@@ -81,19 +81,19 @@ Removing excessive keyspace data and defragmenting the backend database will put
 
 ```sh
 # get current revision
-$ etcdctl --endpoints=:2379 endpoint status
+$ ETCDCTL_API=3 etcdctl --endpoints=:2379 endpoint status
 [{"Endpoint":"127.0.0.1:2379","Status":{"header":{"cluster_id":8925027824743593106,"member_id":13803658152347727308,"revision":1516,"raft_term":2},"version":"2.3.0+git","dbSize":17973248,"leader":13803658152347727308,"raftIndex":6359,"raftTerm":2}}]
 # compact away all old revisions
-$ etdctl compact 1516
+$ ETCDCTL_API=3 etcdctl compact 1516
 compacted revision 1516
 # defragment away excessive space
-$ etcdctl defrag
+$ ETCDCTL_API=3 etcdctl defrag
 Finished defragmenting etcd member[127.0.0.1:2379]
 # disarm alarm
-$ etcdctl alarm disarm
+$ ETCDCTL_API=3 etcdctl alarm disarm
 memberID:13803658152347727308 alarm:NOSPACE 
 # test puts are allowed again
-$ etdctl put newkey 123
+$ ETCDCTL_API=3 etcdctl put newkey 123
 OK
 ```
 
