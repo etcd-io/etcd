@@ -96,7 +96,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Header:     &pb.ResponseHeader{},
 				ID:         lreq.LeaseTimeToLiveRequest.ID,
 				TTL:        int64(l.Remaining().Seconds()),
-				GrantedTTL: l.TTL,
+				GrantedTTL: l.TTL(),
 			},
 		}
 		if lreq.LeaseTimeToLiveRequest.Keys {

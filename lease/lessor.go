@@ -196,7 +196,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	// with longer TTL to reduce renew load.
 	l := &Lease{
 		ID:      id,
-		TTL:     ttl,
+		ttl:     ttl,
 		itemSet: make(map[LeaseItem]struct{}),
 		revokec: make(chan struct{}),
 	}
@@ -208,8 +208,8 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 		return nil, ErrLeaseExists
 	}
 
-	if l.TTL < le.minLeaseTTL {
-		l.TTL = le.minLeaseTTL
+	if l.ttl < le.minLeaseTTL {
+		l.ttl = le.minLeaseTTL
 	}
 
 	if le.isPrimary() {
@@ -311,7 +311,7 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	}
 
 	l.refresh(0)
-	return l.TTL, nil
+	return l.ttl, nil
 }
 
 func (le *lessor) Lookup(id LeaseID) *Lease {
@@ -470,7 +470,7 @@ func (le *lessor) initAndRecover() {
 		}
 		le.leaseMap[ID] = &Lease{
 			ID:  ID,
-			TTL: lpb.TTL,
+			ttl: lpb.TTL,
 			// itemSet will be filled in when recover key-value pairs
 			// set expiry to forever, refresh when promoted
 			itemSet: make(map[LeaseItem]struct{}),
@@ -485,7 +485,7 @@ func (le *lessor) initAndRecover() {
 
 type Lease struct {
 	ID  LeaseID
-	TTL int64 // time to live in seconds
+	ttl int64 // time to live in seconds
 
 	itemSet map[LeaseItem]struct{}
 	// expiry time in unixnano
@@ -493,14 +493,14 @@ type Lease struct {
 	revokec chan struct{}
 }
 
-func (l Lease) expired() bool {
+func (l *Lease) expired() bool {
 	return l.Remaining() <= 0
 }
 
-func (l Lease) persistTo(b backend.Backend) {
+func (l *Lease) persistTo(b backend.Backend) {
 	key := int64ToBytes(int64(l.ID))
 
-	lpb := leasepb.Lease{ID: int64(l.ID), TTL: int64(l.TTL)}
+	lpb := leasepb.Lease{ID: int64(l.ID), TTL: int64(l.ttl)}
 	val, err := lpb.Marshal()
 	if err != nil {
 		panic("failed to marshal lease proto item")
@@ -511,9 +511,14 @@ func (l Lease) persistTo(b backend.Backend) {
 	b.BatchTx().Unlock()
 }
 
+// TTL returns the TTL of the Lease.
+func (l *Lease) TTL() int64 {
+	return l.ttl
+}
+
 // refresh refreshes the expiry of the lease.
 func (l *Lease) refresh(extend time.Duration) {
-	l.expiry = time.Now().Add(extend + time.Second*time.Duration(l.TTL))
+	l.expiry = time.Now().Add(extend + time.Second*time.Duration(l.ttl))
 }
 
 // forever sets the expiry of lease to be forever.
