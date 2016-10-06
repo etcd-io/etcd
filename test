@@ -70,6 +70,20 @@ function unit_pass {
 
 function integration_pass {
 	echo "Running integration tests..."
+	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration
+	go test -timeout 1m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/client/integration
+	go test -timeout 10m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
+	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
+	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
+}
+
+function e2e_pass {
+	echo "Running e2e tests..."
+	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e
+}
+
+function integration_e2e_pass {
+	echo "Running integration and e2e tests..."
 
 	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e &
 	e2epid="$!"
