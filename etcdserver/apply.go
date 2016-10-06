@@ -508,7 +508,7 @@ func (a *applierV3backend) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantR
 	resp := &pb.LeaseGrantResponse{}
 	if err == nil {
 		resp.ID = int64(l.ID)
-		resp.TTL = l.TTL
+		resp.TTL = l.TTL()
 		resp.Header = &pb.ResponseHeader{Revision: a.s.KV().Rev()}
 	}
 

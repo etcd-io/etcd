@@ -338,7 +338,7 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 			return nil, lease.ErrLeaseNotFound
 		}
 		// TODO: fill out ResponseHeader
-		resp := &pb.LeaseTimeToLiveResponse{Header: &pb.ResponseHeader{}, ID: r.ID, TTL: int64(le.Remaining().Seconds()), GrantedTTL: le.TTL}
+		resp := &pb.LeaseTimeToLiveResponse{Header: &pb.ResponseHeader{}, ID: r.ID, TTL: int64(le.Remaining().Seconds()), GrantedTTL: le.TTL()}
 		if r.Keys {
 			ks := le.Keys()
 			kbs := make([][]byte, len(ks))
