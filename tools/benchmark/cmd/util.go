@@ -86,8 +86,12 @@ func mustRandBytes(n int) []byte {
 }
 
 func newReport() report.Report {
-	if sample {
-		return report.NewReportSample("%4.4f")
+	p := "%4.4f"
+	if precise {
+		p = "%g"
 	}
-	return report.NewReport("%4.4f")
+	if sample {
+		return report.NewReportSample(p)
+	}
+	return report.NewReport(p)
 }

@@ -37,6 +37,7 @@ var (
 	endpoints    []string
 	totalConns   uint
 	totalClients uint
+	precise      bool
 	sample       bool
 
 	bar *pb.ProgressBar
@@ -55,6 +56,7 @@ func init() {
 	RootCmd.PersistentFlags().UintVar(&totalConns, "conns", 1, "Total number of gRPC connections")
 	RootCmd.PersistentFlags().UintVar(&totalClients, "clients", 1, "Total number of gRPC clients")
 
+	RootCmd.PersistentFlags().BoolVar(&precise, "precise", false, "use full floating point precision")
 	RootCmd.PersistentFlags().BoolVar(&sample, "sample", false, "'true' to sample requests for every second")
 	RootCmd.PersistentFlags().StringVar(&tls.CertFile, "cert", "", "identify HTTPS client using this SSL certificate file")
 	RootCmd.PersistentFlags().StringVar(&tls.KeyFile, "key", "", "identify HTTPS client using this SSL key file")
