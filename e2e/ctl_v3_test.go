@@ -144,11 +144,13 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 		testFunc(ret)
 	}()
 
+	timeout := 2*ret.dialTimeout + time.Second
+	if ret.dialTimeout == 0 {
+		timeout = 30 * time.Second
+	}
 	select {
-	case <-time.After(2*ret.dialTimeout + time.Second):
-		if ret.dialTimeout > 0 {
-			t.Fatalf("test timed out for %v", ret.dialTimeout)
-		}
+	case <-time.After(timeout):
+		t.Fatalf("test timed out after %v", timeout)
 	case <-donec:
 	}
 }
