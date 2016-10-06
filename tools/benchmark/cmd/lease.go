@@ -15,9 +15,12 @@
 package cmd
 
 import (
+	"fmt"
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/report"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"gopkg.in/cheggaaa/pb.v1"
@@ -40,53 +43,39 @@ func init() {
 }
 
 func leaseKeepaliveFunc(cmd *cobra.Command, args []string) {
-	results = make(chan result)
 	requests := make(chan struct{})
-	bar = pb.New(leaseKeepaliveTotal)
-
 	clients := mustCreateClients(totalClients, totalConns)
 
+	bar = pb.New(leaseKeepaliveTotal)
 	bar.Format("Bom !")
 	bar.Start()
 
+	r := newReport()
 	for i := range clients {
 		wg.Add(1)
-		go doLeaseKeepalive(context.Background(), clients[i].Lease, requests)
+		go func(c v3.Lease) {
+			defer wg.Done()
+			resp, err := c.Grant(context.Background(), 100)
+			if err != nil {
+				panic(err)
+			}
+			for _ = range requests {
+				st := time.Now()
+				_, err := c.KeepAliveOnce(context.TODO(), resp.ID)
+				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+				bar.Increment()
+			}
+		}(clients[i])
 	}
-
-	pdoneC := printReport(results)
 
 	for i := 0; i < leaseKeepaliveTotal; i++ {
 		requests <- struct{}{}
 	}
 	close(requests)
 
+	rc := r.Run()
 	wg.Wait()
-
+	close(r.Results())
 	bar.Finish()
-
-	close(results)
-	<-pdoneC
-}
-
-func doLeaseKeepalive(ctx context.Context, client v3.Lease, requests <-chan struct{}) {
-	defer wg.Done()
-
-	resp, err := client.Grant(ctx, 100)
-	if err != nil {
-		panic(err)
-	}
-
-	for _ = range requests {
-		st := time.Now()
-
-		_, err := client.KeepAliveOnce(ctx, resp.ID)
-
-		var errStr string
-		if err != nil {
-			errStr = err.Error()
-		}
-		results <- result{errStr: errStr, duration: time.Since(st), happened: time.Now()}
-		bar.Increment()
-	}
+	fmt.Printf("%s", <-rc)
 }

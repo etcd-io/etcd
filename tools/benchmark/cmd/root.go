@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/coreos/etcd/pkg/transport"
+
 	"github.com/spf13/cobra"
 	"gopkg.in/cheggaaa/pb.v1"
 )
@@ -38,9 +39,8 @@ var (
 	totalClients uint
 	sample       bool
 
-	bar     *pb.ProgressBar
-	results chan result
-	wg      sync.WaitGroup
+	bar *pb.ProgressBar
+	wg  sync.WaitGroup
 
 	tls transport.TLSInfo
 

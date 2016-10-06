@@ -20,6 +20,8 @@ import (
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/report"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"gopkg.in/cheggaaa/pb.v1"
@@ -65,21 +67,26 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	results = make(chan result)
 	requests := make(chan v3.Op, totalClients)
-	bar = pb.New(rangeTotal)
-
 	clients := mustCreateClients(totalClients, totalConns)
 
+	bar = pb.New(rangeTotal)
 	bar.Format("Bom !")
 	bar.Start()
 
+	r := newReport()
 	for i := range clients {
 		wg.Add(1)
-		go doRange(clients[i].KV, requests)
+		go func(c *v3.Client) {
+			defer wg.Done()
+			for op := range requests {
+				st := time.Now()
+				_, err := c.Do(context.Background(), op)
+				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+				bar.Increment()
+			}
+		}(clients[i])
 	}
-
-	pdoneC := printReport(results)
 
 	go func() {
 		for i := 0; i < rangeTotal; i++ {
@@ -93,26 +100,9 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		close(requests)
 	}()
 
+	rc := r.Run()
 	wg.Wait()
-
+	close(r.Results())
 	bar.Finish()
-
-	close(results)
-	<-pdoneC
-}
-
-func doRange(client v3.KV, requests <-chan v3.Op) {
-	defer wg.Done()
-
-	for op := range requests {
-		st := time.Now()
-		_, err := client.Do(context.Background(), op)
-
-		var errStr string
-		if err != nil {
-			errStr = err.Error()
-		}
-		results <- result{errStr: errStr, duration: time.Since(st), happened: time.Now()}
-		bar.Increment()
-	}
+	fmt.Printf("%s", <-rc)
 }
