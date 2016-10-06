@@ -60,6 +60,11 @@ func togRPCError(err error) error {
 	case etcdserver.ErrUnhealthy:
 		return rpctypes.ErrGRPCUnhealthy
 
+	case lease.ErrLeaseNotFound:
+		return rpctypes.ErrGRPCLeaseNotFound
+	case lease.ErrLeaseExists:
+		return rpctypes.ErrGRPCLeaseExist
+
 	case auth.ErrRootUserNotExist:
 		return rpctypes.ErrGRPCRootUserNotExist
 	case auth.ErrRootRoleNotExist:
