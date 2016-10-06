@@ -39,6 +39,31 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 	}
 }
 
+// BenchmarkWatchableStoreTxnPut benchmarks the Put operation
+// with transaction begin and end, where transaction involves
+// some synchronization operations, such as mutex locking.
+func BenchmarkWatchableStoreTxnPut(b *testing.B) {
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := New(be, &lease.FakeLessor{}, &i)
+	defer cleanup(s, be, tmpPath)
+
+	// arbitrary number of bytes
+	bytesN := 64
+	keys := createBytesSlice(bytesN, b.N)
+	vals := createBytesSlice(bytesN, b.N)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		id := s.TxnBegin()
+		if _, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease); err != nil {
+			plog.Fatalf("txn put error: %v", err)
+		}
+		s.TxnEnd(id)
+	}
+}
+
 // BenchmarkWatchableStoreWatchSyncPut benchmarks the case of
 // many synced watchers receiving a Put notification.
 func BenchmarkWatchableStoreWatchSyncPut(b *testing.B) {

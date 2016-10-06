@@ -78,6 +78,10 @@ func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
 // newWatcherBatch maps watchers to their matched events. It enables quick
 // events look up by watcher.
 func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
+	// Don't allocate anything if we don't have any watchers.
+	if wg.size() == 0 {
+		return nil
+	}
 	wb := make(watcherBatch)
 	for _, ev := range evs {
 		for w := range wg.watcherSetByKey(string(ev.Kv.Key)) {
@@ -256,8 +260,11 @@ func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 // watcherSetByKey gets the set of watchers that receive events on the given key.
 func (wg *watcherGroup) watcherSetByKey(key string) watcherSet {
 	wkeys := wg.keyWatchers[key]
-	wranges := wg.ranges.Stab(adt.NewStringAffinePoint(key))
-
+	// Don't allocate intervals slice if we do not have any range watchers
+	var wranges []*adt.IntervalValue
+	if wg.ranges.Len() != 0 {
+		wranges = wg.ranges.Stab(adt.NewStringAffinePoint(key))
+	}
 	// zero-copy cases
 	switch {
 	case len(wranges) == 0:
