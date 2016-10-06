@@ -72,7 +72,7 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 	return sb
 }
 
-func (b *simpleBalancer) Start(target string) error { return nil }
+func (b *simpleBalancer) Start(target string, config grpc.BalancerConfig) error { return nil }
 
 func (b *simpleBalancer) ConnectNotify() <-chan struct{} {
 	b.mu.Lock()
