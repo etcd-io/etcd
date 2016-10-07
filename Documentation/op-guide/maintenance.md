@@ -83,7 +83,7 @@ Removing excessive keyspace data and defragmenting the backend database will put
 # get current revision
 $ rev=$(ETCDCTL_API=3 etcdctl --endpoints=:2379 endpoint status --write-out="json" | egrep -o '"revision":[0-9]*' | egrep -o '[0-9]*')
 # compact away all old revisions
-$ ETCDCTL_API=3 etdctl compact $rev
+$ ETCDCTL_API=3 etcdctl compact $rev
 compacted revision 1516
 # defragment away excessive space
 $ ETCDCTL_API=3 etcdctl defrag
