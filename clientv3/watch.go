@@ -148,6 +148,8 @@ type watchRequest struct {
 	rev int64
 	// progressNotify is for progress updates.
 	progressNotify bool
+	// get the previous key-value pair before the event happens
+	prevKV bool
 	// retc receives a chan WatchResponse once the watcher is established
 	retc chan chan WatchResponse
 }
@@ -222,6 +224,7 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 		end:            string(ow.end),
 		rev:            ow.rev,
 		progressNotify: ow.progressNotify,
+		prevKV:         ow.prevKV,
 		retc:           make(chan chan WatchResponse, 1),
 	}
 
@@ -673,6 +676,7 @@ func (wr *watchRequest) toPB() *pb.WatchRequest {
 		Key:            []byte(wr.key),
 		RangeEnd:       []byte(wr.end),
 		ProgressNotify: wr.progressNotify,
+		PrevKv:         wr.prevKV,
 	}
 	cr := &pb.WatchRequest_CreateRequest{CreateRequest: req}
 	return &pb.WatchRequest{RequestUnion: cr}
