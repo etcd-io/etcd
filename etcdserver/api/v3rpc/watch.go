@@ -180,14 +180,10 @@ func (sws *serverWatchStream) recvLoop() error {
 			if id != -1 {
 				sws.mu.Lock()
 				if creq.ProgressNotify {
-					sws.mu.Lock()
 					sws.progress[id] = true
-					sws.mu.Unlock()
 				}
 				if creq.PrevKv {
-					sws.mu.Lock()
 					sws.prevKV[id] = true
-					sws.mu.Unlock()
 				}
 				sws.mu.Unlock()
 			}
