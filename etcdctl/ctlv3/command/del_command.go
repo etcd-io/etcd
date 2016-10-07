@@ -23,6 +23,7 @@ import (
 
 var (
 	delPrefix bool
+	delPrevKV bool
 )
 
 // NewDelCommand returns the cobra command for "del".
@@ -34,6 +35,7 @@ func NewDelCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&delPrefix, "prefix", false, "delete keys with matching prefix")
+	cmd.Flags().BoolVar(&delPrevKV, "prev-kv", false, "return deleted key-value pairs")
 	return cmd
 }
 
@@ -64,6 +66,9 @@ func getDelOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 
 	if delPrefix {
 		opts = append(opts, clientv3.WithPrefix())
+	}
+	if delPrevKV {
+		opts = append(opts, clientv3.WithPrevKV())
 	}
 
 	return key, opts
