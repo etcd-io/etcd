@@ -274,3 +274,11 @@ func WithProgressNotify() OpOption {
 		op.progressNotify = true
 	}
 }
+
+// WithPrevKV gets the previous key-value pair before the event happens. If the previous KV is already compacted,
+// nothing will be returned.
+func WithPrevKV() OpOption {
+	return func(op *Op) {
+		op.prevKV = true
+	}
+}
