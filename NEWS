@@ -1,3 +1,12 @@
+etcd v3.0.11 (2016-10-07)
+  - server returns previous key-value (optional)
+    - clientv3 WithPrevKV option
+    - v3 etcdctl prev-kv flag
+
+
+etcd v3.0.10 (2016-09-23)
+
+
 etcd v3.0.9 (2016-09-15)
 
   - warn on domain names on listen URLs (v3.2 will reject domain names)
