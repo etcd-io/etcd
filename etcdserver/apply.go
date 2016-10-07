@@ -210,6 +210,21 @@ func (a *applierV3backend) DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (
 		dr.RangeEnd = []byte{}
 	}
 
+	var rr *mvcc.RangeResult
+	if dr.PrevKv {
+		if txnID != noTxn {
+			rr, err = a.s.KV().TxnRange(txnID, dr.Key, dr.RangeEnd, mvcc.RangeOptions{})
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			rr, err = a.s.KV().Range(dr.Key, dr.RangeEnd, mvcc.RangeOptions{})
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if txnID != noTxn {
 		n, rev, err = a.s.KV().TxnDeleteRange(txnID, dr.Key, dr.RangeEnd)
 		if err != nil {
@@ -220,6 +235,11 @@ func (a *applierV3backend) DeleteRange(txnID int64, dr *pb.DeleteRangeRequest) (
 	}
 
 	resp.Deleted = n
+	if rr != nil {
+		for i := range rr.KVs {
+			resp.PrevKvs = append(resp.PrevKvs, &rr.KVs[i])
+		}
+	}
 	resp.Header.Revision = rev
 	return resp, nil
 }
