@@ -574,6 +574,9 @@ message WatchCreateRequest {
   // wish to recover a disconnected watcher starting from a recent known revision.
   // The etcd server may decide how often it will send notifications based on current load.
   bool progress_notify = 4;
+  // If prev_kv is set, created watcher gets the previous KV before the event happens.
+  // If the previous KV is already compacted, nothing will be returned.
+  bool prev_kv = 6;
 }
 
 message WatchCancelRequest {
