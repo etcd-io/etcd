@@ -379,6 +379,7 @@ func TestV3DeleteRange(t *testing.T) {
 		keySet []string
 		begin  string
 		end    string
+		prevKV bool
 
 		wantSet [][]byte
 		deleted int64
@@ -386,38 +387,44 @@ func TestV3DeleteRange(t *testing.T) {
 		// delete middle
 		{
 			[]string{"foo", "foo/abc", "fop"},
-			"foo/", "fop",
+			"foo/", "fop", false,
 			[][]byte{[]byte("foo"), []byte("fop")}, 1,
 		},
 		// no delete
 		{
 			[]string{"foo", "foo/abc", "fop"},
-			"foo/", "foo/",
+			"foo/", "foo/", false,
 			[][]byte{[]byte("foo"), []byte("foo/abc"), []byte("fop")}, 0,
 		},
 		// delete first
 		{
 			[]string{"foo", "foo/abc", "fop"},
-			"fo", "fop",
+			"fo", "fop", false,
 			[][]byte{[]byte("fop")}, 2,
 		},
 		// delete tail
 		{
 			[]string{"foo", "foo/abc", "fop"},
-			"foo/", "fos",
+			"foo/", "fos", false,
 			[][]byte{[]byte("foo")}, 2,
 		},
 		// delete exact
 		{
 			[]string{"foo", "foo/abc", "fop"},
-			"foo/abc", "",
+			"foo/abc", "", false,
 			[][]byte{[]byte("foo"), []byte("fop")}, 1,
 		},
 		// delete none, [x,x)
 		{
 			[]string{"foo"},
-			"foo", "foo",
+			"foo", "foo", false,
 			[][]byte{[]byte("foo")}, 0,
+		},
+		// delete middle with preserveKVs set
+		{
+			[]string{"foo", "foo/abc", "fop"},
+			"foo/", "fop", true,
+			[][]byte{[]byte("foo"), []byte("fop")}, 1,
 		},
 	}
 
@@ -436,13 +443,20 @@ func TestV3DeleteRange(t *testing.T) {
 
 		dreq := &pb.DeleteRangeRequest{
 			Key:      []byte(tt.begin),
-			RangeEnd: []byte(tt.end)}
+			RangeEnd: []byte(tt.end),
+			PrevKv:   tt.prevKV,
+		}
 		dresp, err := kvc.DeleteRange(context.TODO(), dreq)
 		if err != nil {
 			t.Fatalf("couldn't delete range on test %d (%v)", i, err)
 		}
 		if tt.deleted != dresp.Deleted {
 			t.Errorf("expected %d on test %v, got %d", tt.deleted, i, dresp.Deleted)
+		}
+		if tt.prevKV {
+			if len(dresp.PrevKvs) != int(dresp.Deleted) {
+				t.Errorf("preserve %d keys, want %d", len(dresp.PrevKvs), dresp.Deleted)
+			}
 		}
 
 		rreq := &pb.RangeRequest{Key: []byte{0x0}, RangeEnd: []byte{0xff}}
