@@ -20,6 +20,7 @@ import (
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/report"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -70,47 +71,39 @@ func watchGetFunc(cmd *cobra.Command, args []string) {
 		streams[i] = v3.NewWatcher(clients[i%len(clients)])
 	}
 
-	// results from trying to do serialized gets with concurrent watchers
-	results = make(chan result)
-
 	bar = pb.New(watchGetTotalWatchers * watchEvents)
 	bar.Format("Bom !")
 	bar.Start()
 
-	pdoneC := printReport(results)
-	wg.Add(watchGetTotalWatchers)
+	// report from trying to do serialized gets with concurrent watchers
+	r := newReport()
 	ctx, cancel := context.WithCancel(context.TODO())
 	f := func() {
-		doSerializedGet(ctx, getClient[0], results)
+		defer close(r.Results())
+		for {
+			st := time.Now()
+			_, err := getClient[0].Get(ctx, "abc", v3.WithSerializable())
+			if ctx.Err() != nil {
+				break
+			}
+			r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+		}
 	}
+
+	wg.Add(watchGetTotalWatchers)
 	for i := 0; i < watchGetTotalWatchers; i++ {
 		go doUnsyncWatch(streams[i%len(streams)], watchRev, f)
 	}
+
+	rc := r.Run()
 	wg.Wait()
 	cancel()
 	bar.Finish()
-	fmt.Printf("Get during watch summary:\n")
-	<-pdoneC
-}
-
-func doSerializedGet(ctx context.Context, client *v3.Client, results chan result) {
-	for {
-		st := time.Now()
-		_, err := client.Get(ctx, "abc", v3.WithSerializable())
-		if ctx.Err() != nil {
-			break
-		}
-		var errStr string
-		if err != nil {
-			errStr = err.Error()
-		}
-		res := result{errStr: errStr, duration: time.Since(st), happened: time.Now()}
-		results <- res
-	}
-	close(results)
+	fmt.Printf("Get during watch summary:\n%s", <-rc)
 }
 
 func doUnsyncWatch(stream v3.Watcher, rev int64, f func()) {
+	defer wg.Done()
 	wch := stream.Watch(context.TODO(), "watchkey", v3.WithRev(rev))
 	if wch == nil {
 		panic("could not open watch channel")
@@ -122,5 +115,4 @@ func doUnsyncWatch(stream v3.Watcher, rev int64, f func()) {
 		i += len(wev.Events)
 		bar.Add(len(wev.Events))
 	}
-	wg.Done()
 }

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/report"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
@@ -110,18 +111,16 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	}
 
 	// watching phase
-	results = make(chan result)
 	bar = pb.New(watchTotal)
-
 	bar.Format("Bom !")
 	bar.Start()
 
-	pdoneC := printRate(results)
-
 	atomic.StoreInt32(&nrWatchCompleted, int32(0))
 	watchCompletedNotifier = make(chan struct{})
+
+	r := report.NewReportRate("%4.4f")
 	for i := range streams {
-		go doWatch(streams[i], requests)
+		go doWatch(streams[i], requests, r.Results())
 	}
 
 	go func() {
@@ -133,34 +132,37 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		close(requests)
 	}()
 
+	rc := r.Run()
 	<-watchCompletedNotifier
 	bar.Finish()
-
-	fmt.Printf("Watch creation summary:\n")
-	close(results)
-	<-pdoneC
+	close(r.Results())
+	fmt.Printf("Watch creation summary:\n%s", <-rc)
 
 	// put phase
 	eventsTotal = 0
 	for i := 0; i < watchPutTotal; i++ {
 		eventsTotal += numWatchers[watched[i%len(watched)]]
 	}
-	results = make(chan result)
-	bar = pb.New(eventsTotal)
 
+	bar = pb.New(eventsTotal)
 	bar.Format("Bom !")
 	bar.Start()
 
 	atomic.StoreInt32(&nrRecvCompleted, 0)
 	recvCompletedNotifier = make(chan struct{})
-
 	putreqc := make(chan v3.Op)
 
+	r = report.NewReportRate("%4.4f")
 	for i := 0; i < watchPutTotal; i++ {
-		go doPutForWatch(context.TODO(), clients[i%len(clients)].KV, putreqc)
+		go func(c *v3.Client) {
+			for op := range putreqc {
+				if _, err := c.Do(context.TODO(), op); err != nil {
+					fmt.Fprintf(os.Stderr, "failed to Put for watch benchmark: %v\n", err)
+					os.Exit(1)
+				}
+			}
+		}(clients[i%len(clients)])
 	}
-
-	pdoneC = printRate(results)
 
 	go func() {
 		for i := 0; i < watchPutTotal; i++ {
@@ -171,24 +173,20 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		close(putreqc)
 	}()
 
+	rc = r.Run()
 	<-recvCompletedNotifier
 	bar.Finish()
-	fmt.Printf("Watch events received summary:\n")
-	close(results)
-	<-pdoneC
+	close(r.Results())
+	fmt.Printf("Watch events received summary:\n%s", <-rc)
 }
 
-func doWatch(stream v3.Watcher, requests <-chan string) {
+func doWatch(stream v3.Watcher, requests <-chan string, results chan<- report.Result) {
 	for r := range requests {
 		st := time.Now()
 		wch := stream.Watch(context.TODO(), r)
-		var errStr string
-		if wch == nil {
-			errStr = "could not open watch channel"
-		}
-		results <- result{errStr: errStr, duration: time.Since(st), happened: time.Now()}
+		results <- report.Result{Start: st, End: time.Now()}
 		bar.Increment()
-		go recvWatchChan(wch)
+		go recvWatchChan(wch, results)
 	}
 	atomic.AddInt32(&nrWatchCompleted, 1)
 	if atomic.LoadInt32(&nrWatchCompleted) == int32(watchTotalStreams) {
@@ -196,11 +194,11 @@ func doWatch(stream v3.Watcher, requests <-chan string) {
 	}
 }
 
-func recvWatchChan(wch v3.WatchChan) {
+func recvWatchChan(wch v3.WatchChan, results chan<- report.Result) {
 	for r := range wch {
 		st := time.Now()
 		for range r.Events {
-			results <- result{duration: time.Since(st), happened: time.Now()}
+			results <- report.Result{Start: st, End: time.Now()}
 			bar.Increment()
 			atomic.AddInt32(&nrRecvCompleted, 1)
 		}
@@ -208,16 +206,6 @@ func recvWatchChan(wch v3.WatchChan) {
 		if atomic.LoadInt32(&nrRecvCompleted) == int32(eventsTotal) {
 			recvCompletedNotifier <- struct{}{}
 			break
-		}
-	}
-}
-
-func doPutForWatch(ctx context.Context, client v3.KV, requests <-chan v3.Op) {
-	for op := range requests {
-		_, err := client.Do(ctx, op)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to Put for watch benchmark: %v\n", err)
-			os.Exit(1)
 		}
 	}
 }

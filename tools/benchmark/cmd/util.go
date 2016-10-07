@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/report"
 )
 
 var (
@@ -82,4 +83,15 @@ func mustRandBytes(n int) []byte {
 		os.Exit(1)
 	}
 	return rb
+}
+
+func newReport() report.Report {
+	p := "%4.4f"
+	if precise {
+		p = "%g"
+	}
+	if sample {
+		return report.NewReportSample(p)
+	}
+	return report.NewReport(p)
 }

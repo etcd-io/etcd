@@ -23,6 +23,8 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 	v3sync "github.com/coreos/etcd/clientv3/concurrency"
+	"github.com/coreos/etcd/pkg/report"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 	"gopkg.in/cheggaaa/pb.v1"
@@ -89,21 +91,18 @@ func stmFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	results = make(chan result)
 	requests := make(chan stmApply, totalClients)
-	bar = pb.New(stmTotal)
-
 	clients := mustCreateClients(totalClients, totalConns)
 
+	bar = pb.New(stmTotal)
 	bar.Format("Bom !")
 	bar.Start()
 
+	r := newReport()
 	for i := range clients {
 		wg.Add(1)
-		go doSTM(context.Background(), clients[i], requests)
+		go doSTM(clients[i], requests, r.Results())
 	}
-
-	pdoneC := printReport(results)
 
 	go func() {
 		for i := 0; i < stmTotal; i++ {
@@ -132,15 +131,14 @@ func stmFunc(cmd *cobra.Command, args []string) {
 		close(requests)
 	}()
 
+	rc := r.Run()
 	wg.Wait()
-
+	close(r.Results())
 	bar.Finish()
-
-	close(results)
-	<-pdoneC
+	fmt.Printf("%s", <-rc)
 }
 
-func doSTM(ctx context.Context, client *v3.Client, requests <-chan stmApply) {
+func doSTM(client *v3.Client, requests <-chan stmApply, results chan<- report.Result) {
 	defer wg.Done()
 
 	var m *v3sync.Mutex
@@ -161,11 +159,7 @@ func doSTM(ctx context.Context, client *v3.Client, requests <-chan stmApply) {
 		if m != nil {
 			m.Unlock(context.TODO())
 		}
-		var errStr string
-		if err != nil {
-			errStr = err.Error()
-		}
-		results <- result{errStr: errStr, duration: time.Since(st), happened: time.Now()}
+		results <- report.Result{Err: err, Start: st, End: time.Now()}
 		bar.Increment()
 	}
 }
