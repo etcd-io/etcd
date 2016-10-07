@@ -427,6 +427,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | key | key is the first key to delete in the range. | bytes |
 | range_end | range_end is the key following the last key to delete for the range [key, range_end). If range_end is not given, the range is defined to contain only the key argument. If range_end is '\0', the range is all keys greater than or equal to the key argument. | bytes |
+| prev_kv | If prev_kv is set, etcd gets the previous key-value pairs before deleting it. The previous key-value pairs will be returned in the delte response. | bool |
 
 
 
@@ -436,6 +437,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | deleted | deleted is the number of keys deleted by the delete range request. | int64 |
+| prev_kvs | if prev_kv is set in the request, the previous key-value pairs will be returned. | (slice of) mvccpb.KeyValue |
 
 
 
@@ -591,6 +593,7 @@ Empty field.
 | key | key is the key, in bytes, to put into the key-value store. | bytes |
 | value | value is the value, in bytes, to associate with the key in the key-value store. | bytes |
 | lease | lease is the lease ID to associate with the key in the key-value store. A lease value of 0 indicates no lease. | int64 |
+| prev_kv | If prev_kv is set, etcd gets the previous key-value pair before changing it. The previous key-value pair will be returned in the put response. | bool |
 
 
 
@@ -599,6 +602,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+| prev_kv | if prev_kv is set in the request, the previous key-value pair will be returned. | mvccpb.KeyValue |
 
 
 

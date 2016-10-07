@@ -1474,6 +1474,11 @@
           "format": "byte",
           "description": "key is the first key to delete in the range."
         },
+        "prev_kv": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If prev_kv is set, etcd gets the previous key-value pairs before deleting it.\nThe previous key-value pairs will be returned in the delte response."
+        },
         "range_end": {
           "type": "string",
           "format": "byte",
@@ -1491,6 +1496,13 @@
         },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "prev_kvs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/mvccpbKeyValue"
+          },
+          "description": "if prev_kv is set in the request, the previous key-value pairs will be returned."
         }
       }
     },
@@ -1724,6 +1736,11 @@
           "format": "int64",
           "description": "lease is the lease ID to associate with the key in the key-value store. A lease\nvalue of 0 indicates no lease."
         },
+        "prev_kv": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If prev_kv is set, etcd gets the previous key-value pair before changing it.\nThe previous key-value pair will be returned in the put response."
+        },
         "value": {
           "type": "string",
           "format": "byte",
@@ -1736,6 +1753,10 @@
       "properties": {
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "prev_kv": {
+          "$ref": "#/definitions/mvccpbKeyValue",
+          "description": "if prev_kv is set in the request, the previous key-value pair will be returned."
         }
       }
     },
