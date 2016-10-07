@@ -47,6 +47,9 @@ type Op struct {
 	// for range, watch
 	rev int64
 
+	// for watch, put, delete
+	prevKV bool
+
 	// progressNotify is for progress updates.
 	progressNotify bool
 
@@ -76,7 +79,7 @@ func (op Op) toRequestOp() *pb.RequestOp {
 		r := &pb.PutRequest{Key: op.key, Value: op.val, Lease: int64(op.leaseID), PrevKv: op.prevKV}
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestPut{RequestPut: r}}
 	case tDeleteRange:
-		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end}
+		r := &pb.DeleteRangeRequest{Key: op.key, RangeEnd: op.end, PrevKv: op.prevKV}
 		return &pb.RequestOp{Request: &pb.RequestOp_RequestDeleteRange{RequestDeleteRange: r}}
 	default:
 		panic("Unknown Op")
