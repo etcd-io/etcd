@@ -21,6 +21,9 @@ import (
 
 func TestCtlV3EndpointHealth(t *testing.T) { testCtl(t, endpointHealthTest, withQuorum()) }
 func TestCtlV3EndpointStatus(t *testing.T) { testCtl(t, endpointStatusTest, withQuorum()) }
+func TestCtlV3EndpointHealthWithAuth(t *testing.T) {
+	testCtl(t, endpointHealthTestWithAuth, withQuorum())
+}
 
 func endpointHealthTest(cx ctlCtx) {
 	if err := ctlV3EndpointHealth(cx); err != nil {
@@ -51,4 +54,32 @@ func ctlV3EndpointStatus(cx ctlCtx) error {
 		eps = append(eps, u.Host)
 	}
 	return spawnWithExpects(cmdArgs, eps...)
+}
+
+func ctlV3EndpointHealthFailPermissionDenied(cx ctlCtx) error {
+	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health")
+	lines := make([]string, cx.epc.cfg.clusterSize)
+	for i := range lines {
+		lines[i] = "is unhealthy: failed to commit proposal: etcdserver: permission denied"
+	}
+	return spawnWithExpects(cmdArgs, lines...)
+}
+
+func endpointHealthTestWithAuth(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	if err := ctlV3EndpointHealth(cx); err != nil {
+		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
+	}
+
+	// health checking with an ordinal user must fail because the user isn't granted a permission of the key "health"
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3EndpointHealthFailPermissionDenied(cx); err != nil {
+		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
+	}
 }
