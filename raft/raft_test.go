@@ -290,19 +290,21 @@ func TestProgressPaused(t *testing.T) {
 func TestLeaderElection(t *testing.T) {
 	tests := []struct {
 		*network
-		state StateType
+		state   StateType
+		expTerm uint64
 	}{
-		{newNetwork(nil, nil, nil), StateLeader},
-		{newNetwork(nil, nil, nopStepper), StateLeader},
-		{newNetwork(nil, nopStepper, nopStepper), StateCandidate},
-		{newNetwork(nil, nopStepper, nopStepper, nil), StateCandidate},
-		{newNetwork(nil, nopStepper, nopStepper, nil, nil), StateLeader},
+		{newNetwork(nil, nil, nil), StateLeader, 1},
+		{newNetwork(nil, nil, nopStepper), StateLeader, 1},
+		{newNetwork(nil, nopStepper, nopStepper), StateCandidate, 1},
+		{newNetwork(nil, nopStepper, nopStepper, nil), StateCandidate, 1},
+		{newNetwork(nil, nopStepper, nopStepper, nil, nil), StateLeader, 1},
 
-		// three logs further along than 0
-		{newNetwork(nil, ents(1), ents(2), ents(1, 3), nil), StateFollower},
+		// three logs further along than 0, but in the same term so rejections
+		// are returned instead of the votes being ignored.
+		{newNetwork(nil, ents(1), ents(1), ents(1, 1), nil), StateFollower, 1},
 
 		// logs converge
-		{newNetwork(ents(1), nil, ents(2), ents(1), nil), StateLeader},
+		{newNetwork(ents(1), nil, ents(2), ents(1), nil), StateLeader, 2},
 	}
 
 	for i, tt := range tests {
@@ -311,8 +313,8 @@ func TestLeaderElection(t *testing.T) {
 		if sm.state != tt.state {
 			t.Errorf("#%d: state = %s, want %s", i, sm.state, tt.state)
 		}
-		if g := sm.Term; g != 1 {
-			t.Errorf("#%d: term = %d, want %d", i, g, 1)
+		if g := sm.Term; g != tt.expTerm {
+			t.Errorf("#%d: term = %d, want %d", i, g, tt.expTerm)
 		}
 	}
 }
@@ -2585,7 +2587,7 @@ func ents(terms ...uint64) *raft {
 		storage.Append([]pb.Entry{{Index: uint64(i + 1), Term: term}})
 	}
 	sm := newTestRaft(1, []uint64{}, 5, 1, storage)
-	sm.reset(0)
+	sm.reset(terms[len(terms)-1])
 	return sm
 }
 
@@ -2620,7 +2622,7 @@ func newNetwork(peers ...stateMachine) *network {
 			for i := 0; i < size; i++ {
 				v.prs[peerAddrs[i]] = &Progress{}
 			}
-			v.reset(0)
+			v.reset(v.Term)
 			npeers[id] = v
 		case *blackHole:
 			npeers[id] = v
