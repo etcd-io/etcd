@@ -76,8 +76,6 @@ protoc -I. \
     --swagger_out=logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
     ./etcdserver/etcdserverpb/rpc.proto
 
-rm -rf ${PWD}/gopath.proto
-
 # TODO: change this whenever we add more swagger API
 mv \
 	Documentation/dev-guide/apispec/swagger/etcdserver/etcdserverpb/rpc.swagger.json \
@@ -112,4 +110,3 @@ if [ "$1" = "-g" ]; then
 else
 	echo "skipping grpc API reference document auto-generation..."
 fi
-
