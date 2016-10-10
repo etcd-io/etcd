@@ -1,5 +1,5 @@
-hash: 8363b260167c451ce8e3863fe01e234808b4598d1025ceefb8bdb11fb0ce83ca
-updated: 2016-10-10T10:59:55.934552225-07:00
+hash: f1f10632a41d55b08f5b1cc3fff1e3522fcc98663bb1ea13cb9aa9827c1c7a5f
+updated: 2016-10-10T11:03:32.434091858-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -130,7 +130,7 @@ imports:
   subpackages:
   - rate
 - name: google.golang.org/grpc
-  version: 231b4cfea0e79843053a33f5fe90bd4d84b23cd3
+  version: b1a2821ca5a4fd6b6e48ddfbb7d6d7584d839d21
   subpackages:
   - codes
   - credentials
