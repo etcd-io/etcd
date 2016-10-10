@@ -1,5 +1,5 @@
-hash: 0e7d50c7716873a35f2d14542747525a35af1e5bb734b3696bc1ff78d30107b4
-updated: 2016-09-23T12:52:52.300796603-07:00
+hash: f1f10632a41d55b08f5b1cc3fff1e3522fcc98663bb1ea13cb9aa9827c1c7a5f
+updated: 2016-10-10T11:03:32.434091858-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -100,10 +100,6 @@ imports:
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
   version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
-- name: github.com/stretchr/testify
-  version: 9cc77fa25329013ce07362c7742952ff887361f2
-  subpackages:
-  - assert
 - name: github.com/ugorji/go
   version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
   subpackages:
@@ -134,7 +130,7 @@ imports:
   subpackages:
   - rate
 - name: google.golang.org/grpc
-  version: 231b4cfea0e79843053a33f5fe90bd4d84b23cd3
+  version: b1a2821ca5a4fd6b6e48ddfbb7d6d7584d839d21
   subpackages:
   - codes
   - credentials
@@ -148,4 +144,9 @@ imports:
   version: 29ad9b62f9e0274422d738242b94a5b89440bfa6
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
-testImports: []
+testImports:
+- name: github.com/stretchr/testify
+  version: ""
+  repo: https://github.com/stretchr/testify.git
+  subpackages:
+  - assert

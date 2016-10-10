@@ -98,10 +98,6 @@ import:
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - package: github.com/spf13/pflag
   version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
-- package: github.com/stretchr/testify
-  version: 9cc77fa25329013ce07362c7742952ff887361f2
-  subpackages:
-  - assert
 - package: github.com/ugorji/go
   version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
   subpackages:
@@ -132,7 +128,7 @@ import:
   subpackages:
   - rate
 - package: google.golang.org/grpc
-  version: 231b4cfea0e79843053a33f5fe90bd4d84b23cd3
+  version: v1.0.2
   subpackages:
   - codes
   - credentials
@@ -146,3 +142,10 @@ import:
   version: 29ad9b62f9e0274422d738242b94a5b89440bfa6
 - package: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+testImport:
+- package: github.com/stretchr/testify
+  repo: https://github.com/stretchr/testify.git
+  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
+  subpackages:
+  - assert
+
