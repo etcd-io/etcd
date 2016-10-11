@@ -18,8 +18,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net"
 	"net/url"
 	"strings"
@@ -317,12 +315,6 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
 	client.Maintenance = NewMaintenance(client)
-	if cfg.Logger != nil {
-		logger.Set(cfg.Logger)
-	} else {
-		// disable client side grpc by default
-		logger.Set(log.New(ioutil.Discard, "", 0))
-	}
 
 	go client.autoSync()
 	return client, nil
