@@ -23,6 +23,7 @@ Administrators who need to create reliable and scalable key-value stores for the
 
  - [Setting up etcd clusters][clustering]
  - [Setting up etcd gateways][gateway]
+ - [Setting up etcd gRPC proxy (pre-alpha)][grpc_proxy]
  - [Run etcd clusters inside containers][container]
  - [Configuration][conf]
  - [Security][security]
@@ -62,6 +63,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 [failures]: op-guide/failures.md
 [gateway]: op-guide/gateway.md
 [glossary]: learning/glossary.md
+[grpc_proxy]: op-guide/grpc_proxy.md
 [interacting]: dev-guide/interacting_v3.md
 [local_cluster]: dev-guide/local_cluster.md
 [performance]: op-guide/performance.md
