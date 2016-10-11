@@ -462,7 +462,7 @@ func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestOp) *pb.Resp
 		if tv.RequestRange != nil {
 			resp, err := a.Range(txnID, tv.RequestRange)
 			if err != nil {
-				panic("unexpected error during txn")
+				plog.Panicf("unexpected error during txn: %v", err)
 			}
 			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponseRange{ResponseRange: resp}}
 		}
@@ -470,7 +470,7 @@ func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestOp) *pb.Resp
 		if tv.RequestPut != nil {
 			resp, err := a.Put(txnID, tv.RequestPut)
 			if err != nil {
-				panic("unexpected error during txn")
+				plog.Panicf("unexpected error during txn: %v", err)
 			}
 			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponsePut{ResponsePut: resp}}
 		}
@@ -478,7 +478,7 @@ func (a *applierV3backend) applyUnion(txnID int64, union *pb.RequestOp) *pb.Resp
 		if tv.RequestDeleteRange != nil {
 			resp, err := a.DeleteRange(txnID, tv.RequestDeleteRange)
 			if err != nil {
-				panic("unexpected error during txn")
+				plog.Panicf("unexpected error during txn: %v", err)
 			}
 			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponseDeleteRange{ResponseDeleteRange: resp}}
 		}
