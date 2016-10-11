@@ -1,6 +1,13 @@
 $ORG_PATH="github.com/coreos"
 $REPO_PATH="$ORG_PATH/etcd"
 $PWD = $((Get-Item -Path ".\" -Verbose).FullName)
+$GO_LDFLAGS="-s"
+
+# Set $Env:GO_LDFLAGS=" "(space) for building with all symbols for debugging.
+if ($Env:GO_LDFLAGS.length -gt 0) {
+	$GO_LDFLAGS=$Env:GO_LDFLAGS
+}
+$GO_LDFLAGS="$GO_LDFLAGS -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA"
 
 # rebuild symlinks
 echo "Rebuilding symlinks"
@@ -41,5 +48,5 @@ if (-not $env:GOPATH) {
 $env:CGO_ENABLED = 0
 $env:GO15VENDOREXPERIMENT = 1
 $GIT_SHA="$(git rev-parse --short HEAD)"
-go build -a -installsuffix cgo -ldflags "-s -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA" -o bin\etcd.exe "$REPO_PATH\cmd\etcd"
-go build -a -installsuffix cgo -ldflags "-s" -o bin\etcdctl.exe "$REPO_PATH\cmd\etcdctl"
+go build -a -installsuffix cgo -ldflags $GO_LDFLAGS -o bin\etcd.exe "$REPO_PATH\cmd\etcd"
+go build -a -installsuffix cgo -ldflags $GO_LDFLAGS -o bin\etcdctl.exe "$REPO_PATH\cmd\etcdctl"
