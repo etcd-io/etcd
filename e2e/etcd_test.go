@@ -510,6 +510,7 @@ func spawnWithExpects(args []string, xs ...string) error {
 		for {
 			l, err := proc.ExpectFunc(lineFunc)
 			if err != nil {
+				proc.Close()
 				return fmt.Errorf("%v (expected %q, got %q)", err, txt, lines)
 			}
 			lines = append(lines, l)
