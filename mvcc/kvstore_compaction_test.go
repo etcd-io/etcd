@@ -15,8 +15,10 @@
 package mvcc
 
 import (
+	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
@@ -91,5 +93,43 @@ func TestScheduleCompaction(t *testing.T) {
 		tx.Unlock()
 
 		cleanup(s, b, tmpPath)
+	}
+}
+
+func TestCompactAllAndRestore(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s0 := NewStore(b, &lease.FakeLessor{}, nil)
+	defer os.Remove(tmpPath)
+
+	s0.Put([]byte("foo"), []byte("bar"), lease.NoLease)
+	s0.Put([]byte("foo"), []byte("bar1"), lease.NoLease)
+	s0.Put([]byte("foo"), []byte("bar2"), lease.NoLease)
+	s0.DeleteRange([]byte("foo"), nil)
+
+	rev := s0.Rev()
+	// compact all keys
+	done, err := s0.Compact(rev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("timeout waiting for compaction to finish")
+	}
+
+	err = s0.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s1 := NewStore(b, &lease.FakeLessor{}, nil)
+	if s1.Rev() != rev {
+		t.Errorf("rev = %v, want %v", s1.Rev(), rev)
+	}
+	_, err = s1.Range([]byte("foo"), nil, RangeOptions{})
+	if err != nil {
+		t.Errorf("unexpect range error %v", err)
 	}
 }
