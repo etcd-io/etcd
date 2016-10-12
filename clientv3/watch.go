@@ -396,15 +396,17 @@ func (w *watchGrpcStream) run() {
 		for _, ws := range w.substreams {
 			if _, ok := closing[ws]; !ok {
 				close(ws.recvc)
+				closing[ws] = struct{}{}
 			}
 		}
 		for _, ws := range w.resuming {
 			if _, ok := closing[ws]; ws != nil && !ok {
 				close(ws.recvc)
+				closing[ws] = struct{}{}
 			}
 		}
 		w.joinSubstreams()
-		for toClose := len(w.substreams) + len(w.resuming); toClose > 0; toClose-- {
+		for range closing {
 			w.closeSubstream(<-w.closingc)
 		}
 
