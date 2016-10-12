@@ -50,6 +50,7 @@ func main() {
 	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")
 	stresserType := flag.String("stresser", "default", "specify stresser (\"default\" or \"nop\").")
 	failureTypes := flag.String("failures", "default,failpoints", "specify failures (concat of \"default\" and \"failpoints\").")
+	externalFailures := flag.String("external-failures", "", "specify a path of script for enabling/disabling an external fault injector")
 	flag.Parse()
 
 	eps := strings.Split(*endpointStr, ",")
@@ -91,6 +92,14 @@ func main() {
 
 	if failureTypes != nil && *failureTypes != "" {
 		failures = makeFailures(*failureTypes, c)
+	}
+
+	if externalFailures != nil && *externalFailures != "" {
+		if len(failures) != 0 {
+			plog.Errorf("specify only one of -failures or -external-failures")
+			os.Exit(1)
+		}
+		failures = append(failures, newFailureExternal(*externalFailures))
 	}
 
 	if len(failures) == 0 {

@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"time"
 )
 
@@ -177,3 +178,20 @@ type failureNop failureByFunc
 
 func (f *failureNop) Inject(c *cluster, round int) error  { return nil }
 func (f *failureNop) Recover(c *cluster, round int) error { return nil }
+
+type failureExternal struct {
+	failure
+
+	description string
+	scriptPath  string
+}
+
+func (f *failureExternal) Inject(c *cluster, round int) error {
+	return exec.Command(f.scriptPath, "enable", fmt.Sprintf("%d", round)).Run()
+}
+
+func (f *failureExternal) Recover(c *cluster, round int) error {
+	return exec.Command(f.scriptPath, "disable", fmt.Sprintf("%d", round)).Run()
+}
+
+func (f *failureExternal) Desc() string { return f.description }
