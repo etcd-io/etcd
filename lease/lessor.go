@@ -76,6 +76,10 @@ type Lessor interface {
 	// If the lease does not exist, an error will be returned.
 	Attach(id LeaseID, items []LeaseItem) error
 
+	// GetLease returns LeaseID for given item.
+	// If no lease found, NoLease value will be returned.
+	GetLease(item LeaseItem) LeaseID
+
 	// Detach detaches given leaseItem from the lease with given LeaseID.
 	// If the lease does not exist, an error will be returned.
 	Detach(id LeaseID, items []LeaseItem) error
@@ -123,6 +127,8 @@ type lessor struct {
 	// findExpiredLeases and Renew should be the most frequent operations.
 	leaseMap map[LeaseID]*Lease
 
+	itemMap map[LeaseItem]LeaseID
+
 	// When a lease expires, the lessor will delete the
 	// leased range (or key) by the RangeDeleter.
 	rd RangeDeleter
@@ -149,6 +155,7 @@ func NewLessor(b backend.Backend, minLeaseTTL int64) Lessor {
 func newLessor(b backend.Backend, minLeaseTTL int64) *lessor {
 	l := &lessor{
 		leaseMap:    make(map[LeaseID]*Lease),
+		itemMap:     make(map[LeaseItem]LeaseID),
 		b:           b,
 		minLeaseTTL: minLeaseTTL,
 		// expiredC is a small buffered chan to avoid unnecessary blocking.
@@ -361,8 +368,16 @@ func (le *lessor) Attach(id LeaseID, items []LeaseItem) error {
 
 	for _, it := range items {
 		l.itemSet[it] = struct{}{}
+		le.itemMap[it] = id
 	}
 	return nil
+}
+
+func (le *lessor) GetLease(item LeaseItem) LeaseID {
+	le.mu.Lock()
+	id := le.itemMap[item]
+	le.mu.Unlock()
+	return id
 }
 
 // Detach detaches items from the lease with given ID.
@@ -378,6 +393,7 @@ func (le *lessor) Detach(id LeaseID, items []LeaseItem) error {
 
 	for _, it := range items {
 		delete(l.itemSet, it)
+		delete(le.itemMap, it)
 	}
 	return nil
 }
@@ -389,7 +405,7 @@ func (le *lessor) Recover(b backend.Backend, rd RangeDeleter) {
 	le.b = b
 	le.rd = rd
 	le.leaseMap = make(map[LeaseID]*Lease)
-
+	le.itemMap = make(map[LeaseItem]LeaseID)
 	le.initAndRecover()
 }
 
@@ -560,6 +576,7 @@ func (fl *FakeLessor) Revoke(id LeaseID) error { return nil }
 
 func (fl *FakeLessor) Attach(id LeaseID, items []LeaseItem) error { return nil }
 
+func (fl *FakeLessor) GetLease(item LeaseItem) LeaseID            { return 0 }
 func (fl *FakeLessor) Detach(id LeaseID, items []LeaseItem) error { return nil }
 
 func (fl *FakeLessor) Promote(extend time.Duration) {}

@@ -45,6 +45,23 @@ func BenchmarkStorePut(b *testing.B) {
 	}
 }
 
+// BenchmarkStoreTxnPutUpdate is same as above, but instead updates single key
+func BenchmarkStorePutUpdate(b *testing.B) {
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(be, &lease.FakeLessor{}, &i)
+	defer cleanup(s, be, tmpPath)
+
+	// arbitrary number of bytes
+	keys := createBytesSlice(64, 1)
+	vals := createBytesSlice(1024, 1)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.Put(keys[0], vals[0], lease.NoLease)
+	}
+}
+
 // BenchmarkStoreTxnPut benchmarks the Put operation
 // with transaction begin and end, where transaction involves
 // some synchronization operations, such as mutex locking.

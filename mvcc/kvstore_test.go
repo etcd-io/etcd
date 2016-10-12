@@ -144,7 +144,6 @@ func TestStorePut(t *testing.T) {
 
 		if tt.rr != nil {
 			wact = []testutil.Action{
-				{"range", []interface{}{keyBucketName, newTestKeyBytes(tt.r.rev, false), []byte(nil), int64(0)}},
 				{"seqput", []interface{}{keyBucketName, tt.wkey, data}},
 			}
 		}
@@ -306,7 +305,6 @@ func TestStoreDeleteRange(t *testing.T) {
 		}
 		wact := []testutil.Action{
 			{"seqput", []interface{}{keyBucketName, tt.wkey, data}},
-			{"range", []interface{}{keyBucketName, newTestKeyBytes(revision{2, 0}, false), []byte(nil), int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
