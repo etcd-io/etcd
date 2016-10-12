@@ -517,17 +517,10 @@ func (s *store) put(key, value []byte, leaseID lease.LeaseID) {
 
 	// if the key exists before, use its previous created and
 	// get its previous leaseID
-	grev, created, ver, err := s.kvindex.Get(key, rev)
+	_, created, ver, err := s.kvindex.Get(key, rev)
 	if err == nil {
 		c = created.main
-		ibytes := newRevBytes()
-		revToBytes(grev, ibytes)
-		_, vs := s.tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
-		var kv mvccpb.KeyValue
-		if err = kv.Unmarshal(vs[0]); err != nil {
-			plog.Fatalf("cannot unmarshal value: %v", err)
-		}
-		oldLease = lease.LeaseID(kv.Lease)
+		oldLease = s.le.GetLease(lease.LeaseItem{Key: string(key)})
 	}
 
 	ibytes := newRevBytes()
@@ -619,17 +612,11 @@ func (s *store) delete(key []byte, rev revision) {
 	s.changes = append(s.changes, kv)
 	s.currentRev.sub += 1
 
-	ibytes = newRevBytes()
-	revToBytes(rev, ibytes)
-	_, vs := s.tx.UnsafeRange(keyBucketName, ibytes, nil, 0)
+	item := lease.LeaseItem{Key: string(key)}
+	leaseID := s.le.GetLease(item)
 
-	kv.Reset()
-	if err = kv.Unmarshal(vs[0]); err != nil {
-		plog.Fatalf("cannot unmarshal value: %v", err)
-	}
-
-	if lease.LeaseID(kv.Lease) != lease.NoLease {
-		err = s.le.Detach(lease.LeaseID(kv.Lease), []lease.LeaseItem{{Key: string(kv.Key)}})
+	if leaseID != lease.NoLease {
+		err = s.le.Detach(leaseID, []lease.LeaseItem{item})
 		if err != nil {
 			plog.Errorf("cannot detach %v", err)
 		}
