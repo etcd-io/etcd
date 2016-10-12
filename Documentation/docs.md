@@ -14,6 +14,7 @@ The easiest way to get started using etcd as a distributed key-value store is to
  - [Interacting with etcd][interacting]
  - [API references][api_ref]
  - [gRPC gateway][api_grpc_gateway]
+ - [gRPC naming and discovery][grpc_naming]
  - [Embedding etcd][embed_etcd]
  - [Experimental features and APIs][experimental]
 
@@ -60,6 +61,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 [demo]: demo.md
 [download_build]: dl_build.md
 [embed_etcd]: https://godoc.org/github.com/coreos/etcd/embed
+[grpc_naming]: dev-guide/grpc_naming.md
 [failures]: op-guide/failures.md
 [gateway]: op-guide/gateway.md
 [glossary]: learning/glossary.md
