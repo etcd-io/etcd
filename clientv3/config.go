@@ -38,9 +38,6 @@ type Config struct {
 	// TLS holds the client secure credentials, if any.
 	TLS *tls.Config
 
-	// Logger is the logger used by client library.
-	Logger Logger
-
 	// Username is a username for authentication
 	Username string
 
