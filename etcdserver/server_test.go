@@ -939,8 +939,8 @@ func TestTriggerSnap(t *testing.T) {
 		srv.Do(context.Background(), pb.Request{Method: "PUT"})
 	}
 
-	srv.Stop()
 	<-donec
+	srv.Stop()
 }
 
 // TestConcurrentApplyAndSnapshotV3 will send out snapshots concurrently with
