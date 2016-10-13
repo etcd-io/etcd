@@ -35,7 +35,7 @@ const (
 	// to apply functions instead of a valid txn ID.
 	noTxn = -1
 
-	warnApplyDuration = 10 * time.Millisecond
+	warnApplyDuration = 100 * time.Millisecond
 )
 
 type applyResult struct {
