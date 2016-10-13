@@ -419,24 +419,42 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	st, err := s.AuthStore().GenSimpleToken()
-	if err != nil {
-		return nil, err
+	var result *applyResult
+
+	for {
+		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
+		if err != nil {
+			plog.Errorf("invalid authentication request to user %s was issued", r.Name)
+			return nil, err
+		}
+
+		st, err := s.AuthStore().GenSimpleToken()
+		if err != nil {
+			return nil, err
+		}
+
+		internalReq := &pb.InternalAuthenticateRequest{
+			Name:        r.Name,
+			Password:    r.Password,
+			SimpleToken: st,
+		}
+
+		result, err = s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
+		if err != nil {
+			return nil, err
+		}
+		if result.err != nil {
+			return nil, result.err
+		}
+
+		if checkedRevision != s.AuthStore().Revision() {
+			plog.Infof("revision when password checked is obsolete, retrying")
+			continue
+		}
+
+		break
 	}
 
-	internalReq := &pb.InternalAuthenticateRequest{
-		Name:        r.Name,
-		Password:    r.Password,
-		SimpleToken: st,
-	}
-
-	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Authenticate: internalReq})
-	if err != nil {
-		return nil, err
-	}
-	if result.err != nil {
-		return nil, result.err
-	}
 	return result.resp.(*pb.AuthenticateResponse), nil
 }
 
