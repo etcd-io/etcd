@@ -956,3 +956,29 @@ func TestWatchStressResumeClose(t *testing.T) {
 	}
 	clus.TakeClient(0)
 }
+
+// TestWatchCancelWithNoConnection ensures that canceling a watcher closes
+// response channels even when it does not have any connections to endpoints.
+func TestWatchCancelWithNoConnection(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	cli := clus.Client(0)
+	ctx, cancel := context.WithCancel(context.Background())
+	wch := cli.Watch(ctx, "abc")
+	time.Sleep(time.Second * 3)
+	clus.Members[0].Terminate(t)
+	time.Sleep(time.Second * 3)
+	go cancel()
+	select {
+	case wr, ok := <-wch:
+		if ok {
+			t.Fatalf("expected closed watch after cancel(), got resp=%+v err=%v", wr, wr.Err())
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for closed channel")
+	}
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+	clus.TakeClient(0)
+}
