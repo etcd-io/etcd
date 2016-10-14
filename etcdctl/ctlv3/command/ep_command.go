@@ -25,6 +25,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	healthCheckKey string
+)
+
 // NewEndpointCommand returns the cobra command for "endpoint".
 func NewEndpointCommand() *cobra.Command {
 	ec := &cobra.Command{
@@ -44,6 +48,9 @@ func newEpHealthCommand() *cobra.Command {
 		Short: "Checks the healthiness of endpoints specified in `--endpoints` flag",
 		Run:   epHealthCommandFunc,
 	}
+
+	cmd.Flags().StringVar(&healthCheckKey, "health-check-key", "health", "The key used to perform the health check. Makes sure the user can access the key.")
+
 	return cmd
 }
 
@@ -94,7 +101,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			// get a random key. As long as we can get the response without an error, the
 			// endpoint is health.
 			ctx, cancel := commandCtx(cmd)
-			_, err = cli.Get(ctx, "health")
+			_, err = cli.Get(ctx, healthCheckKey)
 			cancel()
 			if err != nil {
 				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)

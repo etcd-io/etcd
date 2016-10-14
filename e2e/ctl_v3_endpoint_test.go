@@ -40,6 +40,15 @@ func ctlV3EndpointHealth(cx ctlCtx) error {
 	return spawnWithExpects(cmdArgs, lines...)
 }
 
+func ctlV3EndpointHealthWithKey(cx ctlCtx, key string) error {
+	cmdArgs := append(cx.PrefixArgs(), "endpoint", "health", "--health-check-key", key)
+	lines := make([]string, cx.epc.cfg.clusterSize)
+	for i := range lines {
+		lines[i] = "is healthy"
+	}
+	return spawnWithExpects(cmdArgs, lines...)
+}
+
 func endpointStatusTest(cx ctlCtx) {
 	if err := ctlV3EndpointStatus(cx); err != nil {
 		cx.t.Fatalf("endpointStatusTest ctlV3EndpointStatus error (%v)", err)
@@ -80,6 +89,16 @@ func endpointHealthTestWithAuth(cx ctlCtx) {
 	// health checking with an ordinal user must fail because the user isn't granted a permission of the key "health"
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3EndpointHealthFailPermissionDenied(cx); err != nil {
+		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "custom-key", "", false}); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3EndpointHealthWithKey(cx, "custom-key"); err != nil {
 		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
 	}
 }
