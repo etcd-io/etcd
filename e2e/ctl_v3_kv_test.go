@@ -25,6 +25,9 @@ func TestCtlV3PutClientTLS(t *testing.T)     { testCtl(t, putTest, withCfg(confi
 func TestCtlV3PutClientAutoTLS(t *testing.T) { testCtl(t, putTest, withCfg(configClientAutoTLS)) }
 func TestCtlV3PutPeerTLS(t *testing.T)       { testCtl(t, putTest, withCfg(configPeerTLS)) }
 func TestCtlV3PutTimeout(t *testing.T)       { testCtl(t, putTest, withDialTimeout(0)) }
+func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
+	testCtl(t, putTest, withCfg(configClientTLS), withFlagByEnv())
+}
 
 func TestCtlV3Get(t *testing.T)              { testCtl(t, getTest) }
 func TestCtlV3GetNoTLS(t *testing.T)         { testCtl(t, getTest, withCfg(configNoTLS)) }
