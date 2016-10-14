@@ -74,7 +74,7 @@ func SetFlagsFromEnv(prefix string, fs *flag.FlagSet) error {
 	var err error
 	alreadySet := make(map[string]bool)
 	fs.Visit(func(f *flag.Flag) {
-		alreadySet[flagToEnv(prefix, f.Name)] = true
+		alreadySet[FlagToEnv(prefix, f.Name)] = true
 	})
 	usedEnvKey := make(map[string]bool)
 	fs.VisitAll(func(f *flag.Flag) {
@@ -94,7 +94,7 @@ func SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error {
 	usedEnvKey := make(map[string]bool)
 	fs.VisitAll(func(f *pflag.Flag) {
 		if f.Changed {
-			alreadySet[flagToEnv(prefix, f.Name)] = true
+			alreadySet[FlagToEnv(prefix, f.Name)] = true
 		}
 		if serr := setFlagFromEnv(fs, prefix, f.Name, usedEnvKey, alreadySet, false); serr != nil {
 			err = serr
@@ -103,7 +103,8 @@ func SetPflagsFromEnv(prefix string, fs *pflag.FlagSet) error {
 	return err
 }
 
-func flagToEnv(prefix, name string) string {
+// FlagToEnv converts flag string to upper-case environment variable key string.
+func FlagToEnv(prefix, name string) string {
 	return prefix + "_" + strings.ToUpper(strings.Replace(name, "-", "_", -1))
 }
 
@@ -131,7 +132,7 @@ type flagSetter interface {
 }
 
 func setFlagFromEnv(fs flagSetter, prefix, fname string, usedEnvKey, alreadySet map[string]bool, log bool) error {
-	key := flagToEnv(prefix, fname)
+	key := FlagToEnv(prefix, fname)
 	if !alreadySet[key] {
 		val := os.Getenv(key)
 		if val != "" {
