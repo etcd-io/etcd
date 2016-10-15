@@ -1,7 +1,14 @@
 $ORG_PATH="github.com/coreos"
 $REPO_PATH="$ORG_PATH/etcd"
 $PWD = $((Get-Item -Path ".\" -Verbose).FullName)
+$FSROOT = $((Get-Location).Drive.Name+":")
+$FSYS = $((Get-WMIObject win32_logicaldisk -filter "DeviceID = '$FSROOT'").filesystem)
 $GO_LDFLAGS="-s"
+
+if ($FSYS.StartsWith("FAT","CurrentCultureIgnoreCase")) {
+	echo "Error: Cannot build etcd using the $FSYS filesystem (use NTFS instead)"
+	exit 1
+}
 
 # Set $Env:GO_LDFLAGS=" "(space) for building with all symbols for debugging.
 if ($Env:GO_LDFLAGS.length -gt 0) {
@@ -10,7 +17,6 @@ if ($Env:GO_LDFLAGS.length -gt 0) {
 $GO_LDFLAGS="$GO_LDFLAGS -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA"
 
 # rebuild symlinks
-echo "Rebuilding symlinks"
 git ls-files -s cmd | select-string -pattern 120000 | ForEach {
 	$l = $_.ToString()
 	$lnkname = $l.Split('	')[1]
@@ -20,27 +26,54 @@ git ls-files -s cmd | select-string -pattern 120000 | ForEach {
 
 	$terms = $lnkname.Split("\")
 	$dirname = $terms[0..($terms.length-2)] -join "\"
-	
 	$lnkname = "$PWD\$lnkname"
 	$targetAbs = "$((Get-Item -Path "$dirname\$target").FullName)"
 	$targetAbs = $targetAbs.Replace("/", "\")
+
 	if (test-path -pathtype container "$targetAbs") {
-		# rd so deleting junction doesn't take files with it
-		cmd /c rd "$lnkname"
-		cmd /c del /A /F "$lnkname"
-		cmd /c mklink /J "$lnkname" "$targetAbs"
+		if (Test-Path "$lnkname") {
+			if ((Get-Item "$lnkname") -is [System.IO.DirectoryInfo]) {
+				# rd so deleting junction doesn't take files with it
+				cmd /c rd  "$lnkname"
+			}
+		}
+		if (Test-Path "$lnkname") {
+			if (!((Get-Item "$lnkname") -is [System.IO.DirectoryInfo])) {
+				cmd /c del /A /F  "$lnkname"
+			}
+		}
+		cmd /c mklink /J  "$lnkname"   "$targetAbs"  ">NUL"
 	} else {
-		cmd /c del /A /F "$lnkname"
-		cmd /c mklink /H "$lnkname" "$targetAbs"
+		# Remove file with symlink data (first run)
+		if (Test-Path "$lnkname") {
+			cmd /c del /A /F  "$lnkname"
+		}
+		cmd /c mklink /H  "$lnkname"   "$targetAbs"  ">NUL"
 	}
 }
 
 if (-not $env:GOPATH) {
 	$orgpath="$PWD\gopath\src\" + $ORG_PATH.Replace("/", "\")
-	cmd /c rd "$orgpath\etcd"
-	cmd /c del "$orgpath"
-	cmd /c mkdir "$orgpath"
-	cmd /c mklink /J "$orgpath\etcd" "$PWD"
+	if (Test-Path "$orgpath\etcd") {
+		if ((Get-Item "$orgpath\etcd") -is [System.IO.DirectoryInfo]) {
+			# rd so deleting junction doesn't take files with it
+			cmd /c rd  "$orgpath\etcd"
+		}
+	}
+	if (Test-Path "$orgpath") {
+		if ((Get-Item "$orgpath") -is [System.IO.DirectoryInfo]) {
+			# rd so deleting junction doesn't take files with it
+			cmd /c rd  "$orgpath"
+		}
+	}
+	if (Test-Path "$orgpath") {
+		if (!((Get-Item "$orgpath") -is [System.IO.DirectoryInfo])) {
+			# Remove file with symlink data (first run)
+			cmd /c del /A /F  "$orgpath"
+		}
+	}
+	cmd /c mkdir  "$orgpath"
+	cmd /c mklink /J  "$orgpath\etcd"   "$PWD"  ">NUL"
 	$env:GOPATH = "$PWD\gopath"
 }
 
