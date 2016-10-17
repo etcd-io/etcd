@@ -72,7 +72,12 @@ func getDelOp(cmd *cobra.Command, args []string) (string, []clientv3.OpOption) {
 	}
 
 	if delPrefix {
-		opts = append(opts, clientv3.WithPrefix())
+		if len(key) == 0 {
+			key = "\x00"
+			opts = append(opts, clientv3.WithFromKey())
+		} else {
+			opts = append(opts, clientv3.WithPrefix())
+		}
 	}
 	if delPrevKV {
 		opts = append(opts, clientv3.WithPrevKV())
