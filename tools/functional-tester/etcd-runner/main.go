@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -32,11 +33,15 @@ import (
 	"github.com/coreos/etcd/clientv3/concurrency"
 )
 
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
+
 func main() {
 	log.SetFlags(log.Lmicroseconds)
 
 	endpointStr := flag.String("endpoints", "localhost:2379", "endpoints of etcd cluster")
-	mode := flag.String("mode", "lock-racer", "test mode (election, lock-racer, lease-renewer)")
+	mode := flag.String("mode", "watcher", "test mode (election, lock-racer, lease-renewer, watcher)")
 	round := flag.Int("rounds", 100, "number of rounds to run")
 	flag.Parse()
 	eps := strings.Split(*endpointStr, ",")
@@ -48,6 +53,8 @@ func main() {
 		runRacer(eps, *round)
 	case "lease-renewer":
 		runLeaseRenewer(eps)
+	case "watcher":
+		runWatcher(eps)
 	default:
 		fmt.Fprintf(os.Stderr, "unsupported mode %v\n", *mode)
 	}
@@ -212,6 +219,137 @@ func runRacer(eps []string, round int) {
 	doRounds(rcs, round)
 }
 
+func runWatcher(eps []string) {
+	runningTime := 60 * time.Second // time for which operation should be performed
+	noOfPrefixes := 36              // total number of prefixes which will be watched upon
+	watchPerPrefix := 10            // number of watchers per prefix
+	reqRate := 30                   // put request per second
+	keyPrePrefix := 30              // max number of keyPrePrefixs for put operation
+
+	prefixes := generateUniqueKeys(5, noOfPrefixes)
+	keys := generateRandomKeys(10, keyPrePrefix)
+
+	var (
+		revision int64
+		wg       sync.WaitGroup
+		gr       *clientv3.GetResponse
+		err      error
+	)
+
+	ctx := context.Background()
+	// create client for performing get and put operations
+	client := randClient(eps)
+	defer client.Close()
+
+	// get revision using get request
+	gr, err = client.Get(ctx, "non-existant")
+	if err != nil {
+		log.Fatal("Error occured while trying to get the revision.")
+	}
+	revision = gr.Header.Revision
+
+	ctxt, cancel := context.WithDeadline(ctx, time.Now().Add(runningTime))
+	defer cancel()
+
+	// generate and put keys in cluster
+	limiter := rate.NewLimiter(rate.Limit(reqRate), reqRate)
+
+	go func() {
+		count := 0
+		for i := 0; i < len(keys); i++ {
+			for j := 0; j < len(prefixes); j++ {
+				key := prefixes[j] + "-" + keys[i]
+				// limit key put as per reqRate
+				if err = limiter.Wait(ctxt); err != nil {
+					break
+				}
+
+				// perform the put operation
+				_, err = client.Put(ctxt, key, key)
+				count++
+				if err == context.DeadlineExceeded {
+					break
+				}
+
+				if err != nil {
+					log.Printf("Error: %v occured while trying to key: %v, value : %v to kv store.", err, key, key)
+					continue
+				}
+			}
+		}
+	}()
+
+	wg.Add(noOfPrefixes * watchPerPrefix)
+	for i := 0; i < noOfPrefixes; i++ {
+		for j := 0; j < watchPerPrefix; j++ {
+			go func(prefix string) {
+				defer wg.Done()
+
+				rc := randClient(eps)
+				defer rc.Close()
+
+				wc := rc.Watch(ctx, prefix, clientv3.WithPrefix(), clientv3.WithRev(revision))
+
+				for n := 0; n < len(keys); {
+					select {
+					case watchChan := <-wc:
+						for _, event := range watchChan.Events {
+							expectedKey := prefix + "-" + keys[n]
+							if expectedKey != string(event.Kv.Key) {
+								log.Fatalf("expected key %q, got %q", expectedKey, string(event.Kv.Key))
+							}
+							n++
+						}
+					case <-ctxt.Done():
+						return
+					}
+				}
+			}(prefixes[i])
+		}
+	}
+	wg.Wait()
+}
+
+func generateUniqueKeys(maxstrlen uint, keynos int) []string {
+	keyMap := make(map[string]bool)
+	keys := make([]string, 0)
+	count := 0
+	key := ""
+	for {
+		key = generateRandomKey(maxstrlen)
+		_, ok := keyMap[key]
+		if !ok {
+			keyMap[key] = true
+			keys = append(keys, key)
+			count++
+			if len(keys) == keynos {
+				break
+			}
+		}
+	}
+	return keys
+}
+
+func generateRandomKeys(maxstrlen uint, keynos int) []string {
+	keys := make([]string, 0)
+	key := ""
+	for i := 0; i < keynos; i++ {
+		key = generateRandomKey(maxstrlen)
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func generateRandomKey(strlen uint) string {
+	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
+	result := make([]byte, strlen)
+	for i := 0; i < int(strlen); i++ {
+		result[i] = chars[rand.Intn(len(chars))]
+	}
+	key := string(result)
+	return key
+}
+
 func randClient(eps []string) *clientv3.Client {
 	neps := make([]string, len(eps))
 	copy(neps, eps)
@@ -284,8 +422,8 @@ func doRounds(rcs []roundClient, rounds int) {
 			log.Panic("no progress after 1 minute!")
 		}
 	}
-
 	wg.Wait()
+
 	for _, rc := range rcs {
 		rc.c.Close()
 	}
