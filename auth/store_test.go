@@ -67,7 +67,7 @@ func enableAuthAndCreateRoot(as *authStore) error {
 	return as.AuthEnable()
 }
 
-func TestAuthenticate(t *testing.T) {
+func TestCheckPassword(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer func() {
 		b.Close()
@@ -87,8 +87,7 @@ func TestAuthenticate(t *testing.T) {
 	}
 
 	// auth a non-existing user
-	ctx1 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx1, "foo-test", "bar")
+	_, err = as.CheckPassword("foo-test", "bar")
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
@@ -97,15 +96,13 @@ func TestAuthenticate(t *testing.T) {
 	}
 
 	// auth an existing user with correct password
-	ctx2 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(2)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx2, "foo", "bar")
+	_, err = as.CheckPassword("foo", "bar")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// auth an existing user but with wrong password
-	ctx3 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(3)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx3, "foo", "")
+	_, err = as.CheckPassword("foo", "")
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
