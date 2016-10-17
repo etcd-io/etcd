@@ -180,6 +180,16 @@ func delTest(cx ctlCtx) {
 
 		deletedNum int
 	}{
+		{ // delete all keys
+			[]kv{{"foo1", "bar"}, {"foo2", "bar"}, {"foo3", "bar"}},
+			[]string{"", "--prefix"},
+			3,
+		},
+		{ // delete all keys
+			[]kv{{"foo1", "bar"}, {"foo2", "bar"}, {"foo3", "bar"}},
+			[]string{"", "--from-key"},
+			3,
+		},
 		{
 			[]kv{{"this", "value"}},
 			[]string{"that"},
