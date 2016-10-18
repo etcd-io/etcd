@@ -199,6 +199,10 @@ func getUsernamePassword(prompt, usernameFlag string) (username string, password
 		if err != nil {
 			return "", "", err
 		}
+	} else if colon == 0 {
+		// Empty username
+		fmt.Fprintln(os.Stderr, "Invalid username")
+		os.Exit(1)
 	} else {
 		username = usernameFlag[:colon]
 		password = usernameFlag[colon+1:]
