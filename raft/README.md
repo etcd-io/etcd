@@ -56,8 +56,7 @@ This raft implementation also includes a few optional enhancements:
 The primary object in raft is a Node. You either start a Node from scratch
 using raft.StartNode or start a Node from some initial state using raft.RestartNode.
 
-To start a node from scratch:
-
+To start a three-node cluster
 ```go
   storage := raft.NewMemoryStorage()
   c := &Config{
@@ -68,16 +67,30 @@ To start a node from scratch:
     MaxSizePerMsg:   4096,
     MaxInflightMsgs: 256,
   }
+  // Set peer list to the other nodes in the cluster.
+  // Note that they need to be started separately as well.
   n := raft.StartNode(c, []raft.Peer{{ID: 0x02}, {ID: 0x03}})
 ```
 
-To restart a node from previous state:
+You can start a single node cluster, like so:
+```go
+  // Create storage and config as shown above.
+  // Set peer list to itself, so this node can become the leader of this single-node cluster.
+  peers := []raft.Peer{{ID: 0x01}}
+  n := raft.StartNode(c, peers)
+```
 
+To allow a new node to join this cluster, do not pass in any peers. First, you need add the node to the existing cluster by calling `ProposeConfChange` on any existing node inside the cluster. Then, you can start the node with empty peer list, like so:
+```go
+  // Create storage and config as shown above.
+  n := raft.StartNode(c, nil)
+```
+
+To restart a node from previous state:
 ```go
   storage := raft.NewMemoryStorage()
 
-  // recover the in-memory storage from persistent
-  // snapshot, state and entries.
+  // Recover the in-memory storage from persistent snapshot, state and entries.
   storage.ApplySnapshot(snapshot)
   storage.SetHardState(state)
   storage.Append(entries)
@@ -91,8 +104,8 @@ To restart a node from previous state:
     MaxInflightMsgs: 256,
   }
 
-  // restart raft without peer information.
-  // peer information is already included in the storage.
+  // Restart raft without peer information.
+  // Peer information is already included in the storage.
   n := raft.RestartNode(c)
 ```
 
