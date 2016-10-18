@@ -24,14 +24,18 @@ type Checker interface {
 	Check() error
 }
 
-type hashChecker struct {
-	tt *tester
+type hashAndRevGetter interface {
+	getRevisionHash() (revs map[string]int64, hashes map[string]int64, err error)
 }
 
-func newHashChecker(tt *tester) Checker { return &hashChecker{tt} }
+type hashChecker struct {
+	hrg hashAndRevGetter
+}
+
+func newHashChecker(hrg hashAndRevGetter) Checker { return &hashChecker{hrg} }
 
 func (hc *hashChecker) Check() (err error) {
-	plog.Printf("%s fetching current revisions...", hc.tt.logPrefix())
+	plog.Printf("fetching current revisions...")
 	var (
 		revs   map[string]int64
 		hashes map[string]int64
@@ -40,28 +44,28 @@ func (hc *hashChecker) Check() (err error) {
 	for i := 0; i < 7; i++ {
 		time.Sleep(time.Second)
 
-		revs, hashes, err = hc.tt.cluster.getRevisionHash()
+		revs, hashes, err = hc.hrg.getRevisionHash()
 		if err != nil {
-			plog.Printf("%s #%d failed to get current revisions (%v)", hc.tt.logPrefix(), i, err)
+			plog.Printf("#%d failed to get current revisions (%v)", i, err)
 			continue
 		}
 		if _, ok = getSameValue(revs); ok {
 			break
 		}
 
-		plog.Printf("%s #%d inconsistent current revisions %+v", hc.tt.logPrefix(), i, revs)
+		plog.Printf("#%d inconsistent current revisions %+v", i, revs)
 	}
 	if !ok || err != nil {
 		return fmt.Errorf("checking current revisions failed [err: %v, revisions: %v]", err, revs)
 	}
-	plog.Printf("%s all members are consistent with current revisions [revisions: %v]", hc.tt.logPrefix(), revs)
+	plog.Printf("all members are consistent with current revisions [revisions: %v]", revs)
 
-	plog.Printf("%s checking current storage hashes...", hc.tt.logPrefix())
+	plog.Printf("checking current storage hashes...")
 	if _, ok = getSameValue(hashes); !ok {
 		return fmt.Errorf("inconsistent hashes [%v]", hashes)
 	}
 
-	plog.Printf("%s all members are consistent with storage hashes", hc.tt.logPrefix())
+	plog.Printf("all members are consistent with storage hashes")
 	return nil
 }
 

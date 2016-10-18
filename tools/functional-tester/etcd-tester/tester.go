@@ -20,11 +20,9 @@ import (
 )
 
 type tester struct {
-	failures []failure
-	cluster  *cluster
-	limit    int
-	checker  Checker
-
+	failures        []failure
+	cluster         *cluster
+	limit           int
 	status          Status
 	currentRevision int64
 }
@@ -146,7 +144,7 @@ func (tt *tester) checkConsistency() (err error) {
 		}
 		err = tt.startStressers()
 	}()
-	if err = tt.checker.Check(); err != nil {
+	if err = tt.cluster.Checker.Check(); err != nil {
 		plog.Printf("%s %v", tt.logPrefix(), err)
 	}
 	return err
