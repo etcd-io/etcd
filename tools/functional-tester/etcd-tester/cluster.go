@@ -41,19 +41,15 @@ type agentConfig struct {
 type cluster struct {
 	agents []agentConfig
 
-	v2Only bool // to be deprecated
+	v2Only           bool // to be deprecated
+	consistencyCheck bool
+	Size             int
 
-	stressQPS            int
-	stressKeyLargeSize   int
-	stressKeySize        int
-	stressKeySuffixRange int
-
-	Size      int
-	Stressers []Stresser
+	Stressers     []Stresser
+	stressBuilder stressBuilder
+	Checker       Checker
 
 	Members []*member
-
-	stressBuilder stressBuilder
 }
 
 type ClusterStatus struct {
@@ -107,6 +103,12 @@ func (c *cluster) bootstrap() error {
 	for i, m := range members {
 		c.Stressers[i] = c.stressBuilder(m)
 		go c.Stressers[i].Stress()
+	}
+
+	if c.consistencyCheck && !c.v2Only {
+		c.Checker = newHashChecker(hashAndRevGetter(c))
+	} else {
+		c.Checker = newNoChecker()
 	}
 
 	c.Size = size

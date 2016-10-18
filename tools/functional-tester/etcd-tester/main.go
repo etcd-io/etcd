@@ -74,9 +74,10 @@ func main() {
 	}
 
 	c := &cluster{
-		agents:        agents,
-		v2Only:        *isV2Only,
-		stressBuilder: newStressBuilder(*stresserType, sConfig),
+		agents:           agents,
+		v2Only:           *isV2Only,
+		stressBuilder:    newStressBuilder(*stresserType, sConfig),
+		consistencyCheck: *consistencyCheck,
 	}
 
 	if err := c.bootstrap(); err != nil {
@@ -116,11 +117,6 @@ func main() {
 		failures: schedule,
 		cluster:  c,
 		limit:    *limit,
-		checker:  newNoChecker(),
-	}
-
-	if *consistencyCheck && !c.v2Only {
-		t.checker = newHashChecker(t)
 	}
 
 	sh := statusHandler{status: &t.status}
