@@ -366,6 +366,82 @@ func TestLeaderCycle(t *testing.T) {
 	}
 }
 
+func TestVoteFromAnyState(t *testing.T) {
+	for _, vt := range []pb.MessageType{pb.MsgVote, pb.MsgPreVote} {
+		for st := StateType(0); st < numStates; st++ {
+			r := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+			r.Term = 1
+
+			switch st {
+			case StateFollower:
+				r.becomeFollower(r.Term, 3)
+			case StatePreCandidate:
+				r.becomePreCandidate()
+			case StateCandidate:
+				r.becomeCandidate()
+			case StateLeader:
+				r.becomeCandidate()
+				r.becomeLeader()
+			}
+
+			// Note that setting our state above may have advanced r.Term
+			// past its initial value.
+			origTerm := r.Term
+			newTerm := r.Term + 1
+
+			msg := pb.Message{
+				From:    2,
+				To:      1,
+				Type:    vt,
+				Term:    newTerm,
+				LogTerm: newTerm,
+				Index:   42,
+			}
+			if err := r.Step(msg); err != nil {
+				t.Errorf("%s,%s: Step failed: %s", vt, st, err)
+			}
+			if len(r.msgs) != 1 {
+				t.Errorf("%s,%s: %d response messages, want 1: %+v", vt, st, len(r.msgs), r.msgs)
+			} else {
+				resp := r.msgs[0]
+				if resp.Type != voteRespMsgType(vt) {
+					t.Errorf("%s,%s: response message is %s, want %s",
+						vt, st, resp.Type, voteRespMsgType(vt))
+				}
+				if resp.Reject {
+					t.Errorf("%s,%s: unexpected rejection", vt, st)
+				}
+			}
+
+			// If this was a real vote, we reset our state and term.
+			if vt == pb.MsgVote {
+				if r.state != StateFollower {
+					t.Errorf("%s,%s: state %s, want %s", vt, StateFollower, r.state, st)
+				}
+				if r.Term != newTerm {
+					t.Errorf("%s,%s: term %d, want %d", vt, st, r.Term, newTerm)
+				}
+				if r.Vote != 2 {
+					t.Errorf("%s,%s: vote %d, want 2", vt, st, r.Vote)
+				}
+			} else {
+				// In a prevote, nothing changes.
+				if r.state != st {
+					t.Errorf("%s,%s: state %s, want %s", vt, st, r.state, st)
+				}
+				if r.Term != origTerm {
+					t.Errorf("%s,%s: term %d, want %d", vt, st, r.Term, origTerm)
+				}
+				// if st == StateFollower or StatePreCandidate, r hasn't voted yet.
+				// In StateCandidate or StateLeader, it's voted for itself.
+				if r.Vote != None && r.Vote != 1 {
+					t.Errorf("%s,%s: vote %d, want %d or 1", vt, st, r.Vote, None)
+				}
+			}
+		}
+	}
+}
+
 func TestLogReplication(t *testing.T) {
 	tests := []struct {
 		*network
