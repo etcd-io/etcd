@@ -62,7 +62,7 @@ function main {
 		export GOARCH="amd64"
 
 		pushd etcd >/dev/null
-			./build
+			GO_LDFLAGS="-s" ./build
 		popd >/dev/null
 
 		TARGET="etcd-${VER}-${GOOS}-${GOARCH}"
