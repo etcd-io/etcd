@@ -3,18 +3,14 @@ $REPO_PATH="$ORG_PATH/etcd"
 $PWD = $((Get-Item -Path ".\" -Verbose).FullName)
 $FSROOT = $((Get-Location).Drive.Name+":")
 $FSYS = $((Get-WMIObject win32_logicaldisk -filter "DeviceID = '$FSROOT'").filesystem)
-$GO_LDFLAGS="-s"
 
 if ($FSYS.StartsWith("FAT","CurrentCultureIgnoreCase")) {
 	echo "Error: Cannot build etcd using the $FSYS filesystem (use NTFS instead)"
 	exit 1
 }
 
-# Set $Env:GO_LDFLAGS=" "(space) for building with all symbols for debugging.
-if ($Env:GO_LDFLAGS.length -gt 0) {
-	$GO_LDFLAGS=$Env:GO_LDFLAGS
-}
-$GO_LDFLAGS="$GO_LDFLAGS -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA"
+# Set $Env:GO_LDFLAGS="-s" for building without symbols.
+$GO_LDFLAGS="$Env:GO_LDFLAGS -X $REPO_PATH/cmd/vendor/$REPO_PATH/version.GitSHA=$GIT_SHA"
 
 # rebuild symlinks
 git ls-files -s cmd | select-string -pattern 120000 | ForEach {
