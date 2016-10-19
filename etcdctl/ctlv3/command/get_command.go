@@ -43,7 +43,7 @@ func NewGetCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&getConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
-	cmd.Flags().StringVar(&getSortOrder, "order", "", "Order of results; ASCEND or DESCEND")
+	cmd.Flags().StringVar(&getSortOrder, "order", "", "Order of results; ASCEND or DESCEND (ASCEND by default)")
 	cmd.Flags().StringVar(&getSortTarget, "sort-by", "", "Sort target; CREATE, KEY, MODIFY, VALUE, or VERSION")
 	cmd.Flags().Int64Var(&getLimit, "limit", 0, "Maximum number of results")
 	cmd.Flags().BoolVar(&getPrefix, "prefix", false, "Get keys with matching prefix")

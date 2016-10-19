@@ -858,6 +858,12 @@ func TestV3RangeRequest(t *testing.T) {
 					SortOrder:  pb.RangeRequest_DESCEND,
 					SortTarget: pb.RangeRequest_CREATE,
 				},
+				{ // sort ASCEND by default
+					Key: []byte("a"), RangeEnd: []byte("z"),
+					Limit:      10,
+					SortOrder:  pb.RangeRequest_NONE,
+					SortTarget: pb.RangeRequest_CREATE,
+				},
 			},
 
 			[][]string{
@@ -866,8 +872,9 @@ func TestV3RangeRequest(t *testing.T) {
 				{"b"},
 				{"c"},
 				{},
+				{"b", "a", "c", "d"},
 			},
-			[]bool{true, true, true, true, false},
+			[]bool{true, true, true, true, false, false},
 		},
 		// min/max mod rev
 		{
