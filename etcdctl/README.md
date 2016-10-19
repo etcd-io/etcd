@@ -292,10 +292,13 @@ The protobuf encoding of the Txn [RPC response][etcdrpc].
 txn in interactive mode:
 ```bash
 ./etcdctl txn -i
+# compares:
 mod("key1") > "0"
 
+# success requests (get, put, delete):
 put key1 "overwrote-key1"
 
+# failure requests (get, put, delete):
 put key1 "created-key1"
 put key2 "some extra key"
 
