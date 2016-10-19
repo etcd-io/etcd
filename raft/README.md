@@ -47,8 +47,9 @@ This raft implementation also includes a few optional enhancements:
 ## Notable Users
 
 - [cockroachdb](https://github.com/cockroachdb/cockroach) A Scalable, Survivable, Strongly-Consistent SQL Database
+- [dgraph](https://github.com/dgraph-io/dgraph) A Scalable, Distributed, Low Latency, High Throughput Graph Database
 - [etcd](https://github.com/coreos/etcd) A distributed reliable key-value store
-- [tikv](https://github.com/pingcap/tikv) Distributed transactional key value database powered by Rust and Raft
+- [tikv](https://github.com/pingcap/tikv) A Distributed transactional key value database powered by Rust and Raft
 - [swarmkit](https://github.com/docker/swarmkit) A toolkit for orchestrating distributed systems at any scale.
 
 ## Usage
