@@ -11,8 +11,7 @@ if [ ! -z "$FAILPOINTS" ]; then
 	GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
 
-# Set GO_LDFLAGS="" for building with all symbols for debugging.
-if [ -z "${GO_LDFLAGS+x}" ]; then GO_LDFLAGS="-s"; fi
+# Set GO_LDFLAGS="-s" for building without symbols for debugging.
 GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/cmd/vendor/${REPO_PATH}/version.GitSHA=${GIT_SHA}"
 
 # enable/disable failpoints
