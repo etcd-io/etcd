@@ -18,6 +18,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/coreos/etcd/clientv3"
+	"golang.org/x/net/context"
 )
 
 func TestCtlV3Alarm(t *testing.T) {
@@ -34,8 +38,7 @@ func alarmTest(cx ctlCtx) {
 
 	// write some chunks to fill up the database
 	buf := strings.Repeat("b", int(os.Getpagesize()))
-	var rev int64
-	for ; ; rev++ {
+	for {
 		if err := ctlV3Put(cx, "2nd_test", buf, ""); err != nil {
 			if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
 				cx.t.Fatal(err)
@@ -56,8 +59,24 @@ func alarmTest(cx ctlCtx) {
 		}
 	}
 
+	eps := cx.epc.grpcEndpoints()
+
+	// get latest revision to compact
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   eps,
+		DialTimeout: 3 * time.Second,
+	})
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	defer cli.Close()
+	sresp, err := cli.Status(context.TODO(), eps[0])
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
 	// make some space
-	if err := ctlV3Compact(cx, rev, true); err != nil {
+	if err := ctlV3Compact(cx, sresp.Header.Revision, true); err != nil {
 		cx.t.Fatal(err)
 	}
 	if err := ctlV3Defrag(cx); err != nil {
