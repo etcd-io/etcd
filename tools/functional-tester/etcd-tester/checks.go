@@ -46,9 +46,8 @@ func (hc *hashChecker) Check() (err error) {
 		hashes map[string]int64
 		ok     bool
 	)
-	for i := 0; i < 7; i++ {
-		time.Sleep(time.Second)
-
+	// retry in case of transient failure
+	for i := 0; i < 3; i++ {
 		revs, hashes, err = hc.hrg.getRevisionHash()
 		if err != nil {
 			plog.Printf("#%d failed to get current revisions (%v)", i, err)
@@ -59,6 +58,7 @@ func (hc *hashChecker) Check() (err error) {
 		}
 
 		plog.Printf("#%d inconsistent current revisions %+v", i, revs)
+		time.Sleep(time.Second)
 	}
 	if !ok || err != nil {
 		return fmt.Errorf("checking current revisions failed [err: %v, revisions: %v]", err, revs)
