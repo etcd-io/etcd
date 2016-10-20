@@ -48,7 +48,7 @@ func TestScheduleCompaction(t *testing.T) {
 		{
 			1,
 			map[revision]struct{}{
-				revision{main: 1}: {},
+				{main: 1}: {},
 			},
 			revs,
 		},
@@ -56,8 +56,8 @@ func TestScheduleCompaction(t *testing.T) {
 		{
 			3,
 			map[revision]struct{}{
-				revision{main: 2}: {},
-				revision{main: 3}: {},
+				{main: 2}: {},
+				{main: 3}: {},
 			},
 			revs[1:],
 		},
