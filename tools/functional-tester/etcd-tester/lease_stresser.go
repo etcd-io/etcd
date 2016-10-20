@@ -69,6 +69,15 @@ func (al *atomicLeases) add(leaseID int64, t time.Time) {
 	al.rwLock.Unlock()
 }
 
+func (al *atomicLeases) update(leaseID int64, t time.Time) {
+	al.rwLock.Lock()
+	_, ok := al.leases[leaseID]
+	if ok {
+		al.leases[leaseID] = t
+	}
+	al.rwLock.Unlock()
+}
+
 func (al *atomicLeases) read(leaseID int64) (rv time.Time, ok bool) {
 	al.rwLock.RLock()
 	rv, ok = al.leases[leaseID]
@@ -279,20 +288,13 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 		case <-time.After(500 * time.Millisecond):
 		case <-ls.ctx.Done():
 			plog.Debugf("keepLeaseAlive lease %v context canceled ", leaseID)
-			_, leaseDropped := ls.revokedLeases.read(leaseID)
-			// it is possible that a lease exists in both revoked leases and alive leases map.
-			// this scenerio can occur if a lease is renewed at the moment that the lease is revoked.
-			// If renewing request arrives before revoking request and client recieves renewing response after the revoking response,
-			// then revoking logic would remove the lease from aliveLeases map and put it into revokedLeases map.
-			// immediately after, the renewing logic (down below) will update lease's timestamp by adding the lease back to aliveLeases map.
-			// therefore, a lease can exist in both aliveLeases and revokedLeases map and needs to be removed from aliveLeases.
-			// it is also possible that lease expires at invariant checking phase but not at keepLeaseAlive() phase.
+			// it is  possible that lease expires at invariant checking phase but not at keepLeaseAlive() phase.
 			// this scenerio is possible when alive lease is just about to expire when keepLeaseAlive() exists and expires at invariant checking phase.
 			// to circumvent that scenerio, we check each lease before keepalive loop exist to see if it has been renewed in last TTL/2 duration.
 			// if it is renewed, this means that invariant checking have at least ttl/2 time before lease exipres which is long enough for the checking to finish.
 			// if it is not renewed, we remove the lease from the alive map so that the lease doesn't exipre during invariant checking
-			renewTime, _ := ls.aliveLeases.read(leaseID)
-			if leaseDropped || renewTime.Add(TTL/2*time.Second).Before(time.Now()) {
+			renewTime, ok := ls.aliveLeases.read(leaseID)
+			if ok && renewTime.Add(TTL/2*time.Second).Before(time.Now()) {
 				ls.aliveLeases.remove(leaseID)
 				plog.Debugf("keepLeaseAlive lease %v has not been renewed. drop it.", leaseID)
 			}
@@ -326,9 +328,9 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 			ls.aliveLeases.remove(leaseID)
 			return
 		}
-		// update lease's renew time
+		// renew lease timestamp only if lease is present
 		plog.Debugf("keepLeaseAlive renew lease %v", leaseID)
-		ls.aliveLeases.add(leaseID, leaseRenewTime)
+		ls.aliveLeases.update(leaseID, leaseRenewTime)
 	}
 }
 
