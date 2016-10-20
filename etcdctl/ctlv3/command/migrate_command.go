@@ -220,7 +220,7 @@ func writeKeys(w io.Writer, n *store.NodeExtern) uint64 {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-	fmt.Fprintf(w, string(b))
+	fmt.Fprint(w, string(b))
 	for _, nn := range nodes {
 		max := writeKeys(w, nn)
 		if max > maxIndex {
