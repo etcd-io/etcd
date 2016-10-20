@@ -216,7 +216,7 @@ To recover from such scenarios, etcd provides functionality to backup and restor
 
 #### Backing up the datastore
 
-**NB:** Windows users must stop etcd before running the backup command.
+**Note:** Windows users must stop etcd before running the backup command.
 
 The first step of the recovery is to backup the data directory and wal directory, if stored separately, on a functioning etcd node. To do this, use the `etcdctl backup` command, passing in the original data (and wal) directory used by etcd. For example:
 
@@ -262,7 +262,9 @@ Once you have verified that etcd has started successfully, shut it down and move
 
 Now that the node is running successfully, [change its advertised peer URLs][update-a-member], as the `--force-new-cluster` option has set the peer URL to the default listening on localhost.
 
-You can then add more nodes to the cluster and restore resiliency. See the [add a new member][add-a-member] guide for more details. **NB:** If you are trying to restore your cluster using old failed etcd nodes, please make sure you have stopped old etcd instances and removed their old data directories specified by the data-dir configuration parameter.
+You can then add more nodes to the cluster and restore resiliency. See the [add a new member][add-a-member] guide for more details.
+
+**Note:** If you are trying to restore your cluster using old failed etcd nodes, please make sure you have stopped old etcd instances and removed their old data directories specified by the data-dir configuration parameter.
 
 ### Client Request Timeout
 
