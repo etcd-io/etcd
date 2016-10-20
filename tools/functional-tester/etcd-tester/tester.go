@@ -104,6 +104,11 @@ func (tt *tester) doRound(round int) (bool, error) {
 			plog.Printf("%s recovery error: %v", tt.logPrefix(), err)
 			return false, nil
 		}
+		plog.Printf("%s wait until cluster is healthy", tt.logPrefix())
+		if err := tt.cluster.WaitHealth(); err != nil {
+			plog.Printf("%s wait full health error: %v", tt.logPrefix(), err)
+			return false, nil
+		}
 		plog.Printf("%s recovered failure", tt.logPrefix())
 
 		if err := tt.checkConsistency(); err != nil {
