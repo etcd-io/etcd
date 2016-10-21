@@ -94,6 +94,10 @@
 
 - [ropensci/etseed](https://github.com/ropensci/etseed)
 
+**Nim libraries**
+
+- [etcd_client](https://github.com/FedericoCeratto/nim-etcd-client)
+
 **Tcl libraries**
 
 - [efrecon/etcd-tcl](https://github.com/efrecon/etcd-tcl) - Supports v2, except wait.
