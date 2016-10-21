@@ -15,6 +15,8 @@
 package concurrency
 
 import (
+	"time"
+
 	v3 "github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
 )
@@ -25,6 +27,7 @@ const defaultSessionTTL = 60
 // Fault-tolerant applications may use sessions to reason about liveness.
 type Session struct {
 	client *v3.Client
+	opts   *sessionOptions
 	id     v3.LeaseID
 
 	cancel context.CancelFunc
@@ -51,7 +54,7 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 	}
 
 	donec := make(chan struct{})
-	s := &Session{client: client, id: id, cancel: cancel, donec: donec}
+	s := &Session{client: client, opts: ops, id: id, cancel: cancel, donec: donec}
 
 	// keep the lease alive until client error or cancelled context
 	go func() {
@@ -87,7 +90,10 @@ func (s *Session) Orphan() {
 // Close orphans the session and revokes the session lease.
 func (s *Session) Close() error {
 	s.Orphan()
-	_, err := s.client.Revoke(s.client.Ctx(), s.id)
+	// if revoke takes longer than the ttl, lease is expired anyway
+	ctx, cancel := context.WithTimeout(s.client.Ctx(), time.Duration(s.opts.ttl)*time.Second)
+	_, err := s.client.Revoke(ctx, s.id)
+	cancel()
 	return err
 }
 
