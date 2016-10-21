@@ -86,6 +86,7 @@ func NewFromConfigFile(path string) (*Client, error) {
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
 	c.cancel()
+	c.Watcher.Close()
 	return toErr(c.ctx, c.conn.Close())
 }
 

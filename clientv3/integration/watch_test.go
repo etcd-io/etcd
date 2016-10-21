@@ -868,3 +868,26 @@ func TestWatchCancelAndCloseClient(t *testing.T) {
 	<-donec
 	clus.TakeClient(0)
 }
+
+// TestWatchStressResumeClose establishes a bunch of watchers, disconnects
+// to put them in resuming mode, cancels them so some resumes by cancel fail,
+// then closes the watcher interface to ensure correct clean up.
+func TestWatchStressResumeClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	cli := clus.Client(0)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// add more watches than can be resumed before the cancel
+	wchs := make([]clientv3.WatchChan, 2000)
+	for i := range wchs {
+		wchs[i] = cli.Watch(ctx, "abc")
+	}
+	clus.Members[0].DropConnections()
+	cancel()
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
+	clus.TakeClient(0)
+}
