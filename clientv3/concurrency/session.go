@@ -36,18 +36,18 @@ type Session struct {
 
 // NewSession gets the leased session for a client.
 func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
-	ops := &sessionOptions{ttl: defaultSessionTTL}
+	ops := &sessionOptions{ttl: defaultSessionTTL, ctx: client.Ctx()}
 	for _, opt := range opts {
 		opt(ops)
 	}
 
-	resp, err := client.Grant(client.Ctx(), int64(ops.ttl))
+	resp, err := client.Grant(ops.ctx, int64(ops.ttl))
 	if err != nil {
 		return nil, err
 	}
 	id := v3.LeaseID(resp.ID)
 
-	ctx, cancel := context.WithCancel(client.Ctx())
+	ctx, cancel := context.WithCancel(ops.ctx)
 	keepAlive, err := client.KeepAlive(ctx, id)
 	if err != nil || keepAlive == nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (s *Session) Orphan() {
 func (s *Session) Close() error {
 	s.Orphan()
 	// if revoke takes longer than the ttl, lease is expired anyway
-	ctx, cancel := context.WithTimeout(s.client.Ctx(), time.Duration(s.opts.ttl)*time.Second)
+	ctx, cancel := context.WithTimeout(s.opts.ctx, time.Duration(s.opts.ttl)*time.Second)
 	_, err := s.client.Revoke(ctx, s.id)
 	cancel()
 	return err
@@ -99,6 +99,7 @@ func (s *Session) Close() error {
 
 type sessionOptions struct {
 	ttl int
+	ctx context.Context
 }
 
 // SessionOption configures Session.
@@ -111,5 +112,16 @@ func WithTTL(ttl int) SessionOption {
 		if ttl > 0 {
 			so.ttl = ttl
 		}
+	}
+}
+
+// WithContext assigns a context to the session instead of defaulting to
+// using the client context. This is useful for canceling NewSession and
+// Close operations immediately without having to close the client. If the
+// context is canceled before Close() completes, the session's lease will be
+// abandoned and left to expire instead of being revoked.
+func WithContext(ctx context.Context) SessionOption {
+	return func(so *sessionOptions) {
+		so.ctx = ctx
 	}
 }
