@@ -162,7 +162,20 @@ func (t *batchTx) commit(stop bool) {
 		if t.pending == 0 && !stop {
 			t.backend.mu.RLock()
 			defer t.backend.mu.RUnlock()
-			atomic.StoreInt64(&t.backend.size, t.tx.Size())
+
+			// batchTx.commit(true) calls *bolt.Tx.Commit, which
+			// initializes *bolt.Tx.db and *bolt.Tx.meta as nil,
+			// and subsequent *bolt.Tx.Size() call panics.
+			//
+			// This nil pointer reference panic happens when:
+			//   1. batchTx.commit(false) from newBatchTx
+			//   2. batchTx.commit(true) from stopping backend
+			//   3. batchTx.commit(false) from inflight mvcc Hash call
+			//
+			// Check if db is nil to prevent this panic
+			if t.tx.DB() != nil {
+				atomic.StoreInt64(&t.backend.size, t.tx.Size())
+			}
 			return
 		}
 		start := time.Now()
