@@ -532,6 +532,20 @@ func newTestKeyBytes(rev revision, tombstone bool) []byte {
 	return bytes
 }
 
+// TestStoreHashAfterForceCommit ensures that later Hash call to
+// closed backend with ForceCommit does not panic.
+func TestStoreHashAfterForceCommit(t *testing.T) {
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	kv := NewStore(be, &lease.FakeLessor{}, nil)
+	defer os.Remove(tmpPath)
+
+	// as in EtcdServer.HardStop
+	kv.Close()
+	be.Close()
+
+	kv.Hash()
+}
+
 func newFakeStore() *store {
 	b := &fakeBackend{&fakeBatchTx{
 		Recorder:   &testutil.RecorderBuffered{},
