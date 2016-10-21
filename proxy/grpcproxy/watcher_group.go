@@ -68,10 +68,14 @@ func (wg *watcherGroup) broadcast(wr clientv3.WatchResponse) {
 }
 
 // add adds the watcher into the group with given ID.
-// The current revision of the watcherGroup is returned.
+// The current revision of the watcherGroup is returned or -1
+// if the watcher is at a revision prior to the watcher group.
 func (wg *watcherGroup) add(rid receiverID, w watcher) int64 {
 	wg.mu.Lock()
 	defer wg.mu.Unlock()
+	if wg.rev > w.rev {
+		return -1
+	}
 	wg.receivers[rid] = w
 	return wg.rev
 }
