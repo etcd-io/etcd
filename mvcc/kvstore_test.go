@@ -329,7 +329,7 @@ func TestStoreCompact(t *testing.T) {
 	fi := s.kvindex.(*fakeIndex)
 
 	s.currentRev = revision{3, 0}
-	fi.indexCompactRespc <- map[revision]struct{}{revision{1, 0}: {}}
+	fi.indexCompactRespc <- map[revision]struct{}{{1, 0}: {}}
 	key1 := newTestKeyBytes(revision{1, 0}, false)
 	key2 := newTestKeyBytes(revision{2, 0}, false)
 	b.tx.rangeRespc <- rangeResp{[][]byte{key1, key2}, nil}
