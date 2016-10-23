@@ -125,6 +125,7 @@ func (kv *kv) Do(ctx context.Context, op Op) (OpResponse, error) {
 		if err == nil {
 			return resp, nil
 		}
+
 		if isHaltErr(ctx, err) {
 			return resp, toErr(ctx, err)
 		}
