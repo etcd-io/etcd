@@ -75,6 +75,12 @@ const (
 	//
 	// This mode should be used with Client.AutoSync().
 	EndpointSelectionPrioritizeLeader
+
+	// CAUTION: EndpointSelectionPrioritizeFollower is for benchmarking purpose.
+	// If 'SelectionMode' is set to 'EndpointSelectionPrioritizeFollower',
+	// requests are sent to followers in the cluster. The purpose of this mode
+	// is just for stabilizing benchmarking results.
+	EndpointSelectionPrioritizeFollower
 )
 
 type Config struct {
@@ -304,6 +310,20 @@ func (c *httpClusterClient) SetEndpoints(eps []string) error {
 		}
 		// If endpoints doesn't have the lu, just keep c.pinned = 0.
 		// Forwarding between follower and leader would be required but it works.
+	case EndpointSelectionPrioritizeFollower:
+		c.endpoints = neps
+		lep, err := c.getLeaderEndpoint()
+		if err != nil {
+			// maybe election is ongoing
+			c.pinned = 0
+		}
+
+		for i := range c.endpoints {
+			if c.endpoints[i].String() != lep {
+				c.pinned = i
+				break
+			}
+		}
 	default:
 		return fmt.Errorf("invalid endpoint selection mode: %d", c.selectionMode)
 	}
