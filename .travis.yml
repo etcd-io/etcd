@@ -15,6 +15,7 @@ env:
    - TARGET=arm64
    - TARGET=arm
    - TARGET=386
+   - TARGET=ppc64le
 
 matrix:
   fast_finish: true
@@ -27,6 +28,8 @@ matrix:
     env: TARGET=arm64
   - go: tip
     env: TARGET=386
+  - go: tip
+    env: TARGET=ppc64le
 
 addons:
   apt:
