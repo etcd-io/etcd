@@ -24,7 +24,7 @@ Also, we use 3 etcd 2.1.0 alpha-stage members to form cluster to get base perfor
 
 ## Testing
 
-Bootstrap another machine and use the [boom HTTP benchmark tool][boom] to send requests to each etcd member. Check the [benchmark hacking guide][hack-benchmark] for detailed instructions.
+Bootstrap another machine and use the [hey HTTP benchmark tool][hey] to send requests to each etcd member. Check the [benchmark hacking guide][hack-benchmark] for detailed instructions.
 
 ## Performance
 
@@ -66,7 +66,7 @@ Bootstrap another machine and use the [boom HTTP benchmark tool][boom] to send r
 
 - write QPS to all servers is increased by 30~80% because follower could receive latest commit index earlier and commit proposals faster.
 
-[boom]: https://github.com/rakyll/boom
+[hey]: https://github.com/rakyll/hey
 [c7146bd5]: https://github.com/coreos/etcd/commits/c7146bd5f2c73716091262edc638401bb8229144
 [etcd-2.1-benchmark]: etcd-2-1-0-alpha-benchmarks.md
 [hack-benchmark]: /hack/benchmark/

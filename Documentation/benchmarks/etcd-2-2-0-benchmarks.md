@@ -24,7 +24,7 @@ Go OS/Arch: linux/amd64
 
 ## Testing
 
-Bootstrap another machine, outside of the etcd cluster, and run the [`boom` HTTP benchmark tool](https://github.com/rakyll/boom) with a connection reuse patch to send requests to each etcd cluster member. See the [benchmark instructions](../../hack/benchmark/) for the patch and the steps to reproduce our procedures.
+Bootstrap another machine, outside of the etcd cluster, and run the [`hey` HTTP benchmark tool](https://github.com/rakyll/hey) with a connection reuse patch to send requests to each etcd cluster member. See the [benchmark instructions](../../hack/benchmark/) for the patch and the steps to reproduce our procedures.
 
 The performance is calulated through results of 100 benchmark rounds.
 
