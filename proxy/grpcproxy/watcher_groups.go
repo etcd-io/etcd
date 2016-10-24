@@ -102,11 +102,7 @@ func (wgs *watchergroups) maybeJoinWatcherSingle(rid receiverID, ws watcherSingl
 
 	group, ok := wgs.groups[ws.w.wr]
 	if ok {
-		if ws.w.rev >= group.rev {
-			group.add(receiverID{streamID: ws.sws.id, watcherID: ws.w.id}, ws.w)
-			return true
-		}
-		return false
+		return group.add(receiverID{streamID: ws.sws.id, watcherID: ws.w.id}, ws.w) != -1
 	}
 
 	if ws.canPromote() {
