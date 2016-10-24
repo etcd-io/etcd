@@ -15,19 +15,19 @@
 package clientv3
 
 import (
-	"errors"
 	"net/url"
 	"strings"
 	"sync"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 // ErrNoAddrAvilable is returned by Get() when the balancer does not have
 // any active connection to endpoints at the time.
 // This error is returned only when opts.BlockingWait is true.
-var ErrNoAddrAvilable = errors.New("there is no address available")
+var ErrNoAddrAvilable = grpc.Errorf(codes.Unavailable, "there is no address available")
 
 // simpleBalancer does the bare minimum to expose multiple eps
 // to the grpc reconnection code path
@@ -173,9 +173,14 @@ func (b *simpleBalancer) Get(ctx context.Context, opts grpc.BalancerGetOptions) 
 	// an address it has notified via Notify immediately instead of blocking.
 	if !opts.BlockingWait {
 		b.mu.RLock()
+		closed := b.closed
 		addr = b.pinAddr
 		upEps := len(b.upEps)
 		b.mu.RUnlock()
+		if closed {
+			return grpc.Address{Addr: ""}, nil, grpc.ErrClientConnClosing
+		}
+
 		if upEps == 0 {
 			return grpc.Address{Addr: ""}, nil, ErrNoAddrAvilable
 		}

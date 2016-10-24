@@ -52,7 +52,7 @@ func NewCluster(c *Client) Cluster {
 
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
 	r := &pb.MemberAddRequest{PeerURLs: peerAddrs}
-	resp, err := c.remote.MemberAdd(ctx, r, grpc.FailFast(false))
+	resp, err := c.remote.MemberAdd(ctx, r)
 	if err == nil {
 		return (*MemberAddResponse)(resp), nil
 	}
@@ -64,7 +64,7 @@ func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAdd
 
 func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error) {
 	r := &pb.MemberRemoveRequest{ID: id}
-	resp, err := c.remote.MemberRemove(ctx, r, grpc.FailFast(false))
+	resp, err := c.remote.MemberRemove(ctx, r)
 	if err == nil {
 		return (*MemberRemoveResponse)(resp), nil
 	}
