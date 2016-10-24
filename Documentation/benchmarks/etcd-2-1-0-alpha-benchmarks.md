@@ -14,7 +14,7 @@ GCE n1-highcpu-2 machine type
 
 ## Testing
 
-Bootstrap another machine and use the [boom HTTP benchmark tool][boom] to send requests to each etcd member. Check the [benchmark hacking guide][hack-benchmark] for detailed instructions.
+Bootstrap another machine and use the [hey HTTP benchmark tool][hey] to send requests to each etcd member. Check the [benchmark hacking guide][hack-benchmark] for detailed instructions.
 
 ## Performance
 
@@ -48,5 +48,5 @@ Bootstrap another machine and use the [boom HTTP benchmark tool][boom] to send r
 | 256               | 64                | all servers        | 1033      | 121.5 |
 | 256               | 256               | all servers        | 3061      | 119.3 |
 
-[boom]: https://github.com/rakyll/boom
+[hey]: https://github.com/rakyll/hey
 [hack-benchmark]: /hack/benchmark/
