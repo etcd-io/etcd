@@ -211,13 +211,14 @@ func (ls *leaseStresser) createLeases() {
 			defer wg.Done()
 			leaseID, err := ls.createLease()
 			if err != nil {
-				plog.Errorf("lease creation error: (%v)", err)
+				plog.Debugf("lease creation error: (%v)", err)
 				return
 			}
 			plog.Debugf("lease %v created", leaseID)
 			// if attaching keys to the lease encountered an error, we don't add the lease to the aliveLeases map
 			// because invariant check on the lease will fail due to keys not found
 			if err := ls.attachKeysWithLease(leaseID); err != nil {
+				plog.Debugf("unable to attach keys to lease %d error (%v)", leaseID, err)
 				return
 			}
 			ls.aliveLeases.add(leaseID, time.Now())
@@ -239,6 +240,7 @@ func (ls *leaseStresser) randomlyDropLeases() {
 			// if randomlyDropLease encountered an error such as context is cancelled, remove the lease from aliveLeases
 			// becasue we can't tell whether the lease is dropped or not.
 			if err != nil {
+				plog.Debugf("drop lease %v has failed error (%v)", leaseID, err)
 				ls.aliveLeases.remove(leaseID)
 				return
 			}
@@ -271,7 +273,6 @@ func (ls *leaseStresser) hasLeaseExpired(ctx context.Context, leaseID int64) (bo
 // Since the format of keys contains about leaseID, finding keys base on "<leaseID>" prefix
 // determines whether the attached keys for a given leaseID has been deleted or not
 func (ls *leaseStresser) hasKeysAttachedToLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
-	// plog.Infof("retriving keys attached to lease %v", leaseID)
 	resp, err := ls.kvc.Range(ctx, &pb.RangeRequest{
 		Key:      []byte(fmt.Sprintf("%d", leaseID)),
 		RangeEnd: []byte(clientv3.GetPrefixRangeEnd(fmt.Sprintf("%d", leaseID))),
@@ -368,7 +369,6 @@ func (ls *leaseStresser) attachKeysWithLease(leaseID int64) error {
 			return err
 		}
 	}
-
 	return ls.ctx.Err()
 }
 
