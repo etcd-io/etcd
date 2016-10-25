@@ -72,7 +72,7 @@ func runElection(eps []string, rounds int) {
 		observedLeader := ""
 		validateWaiters := 0
 
-		rcs[i].c = randClient(eps)
+		rcs[i].c = newClient(eps)
 		var (
 			s   *concurrency.Session
 			err error
@@ -143,7 +143,7 @@ func runElection(eps []string, rounds int) {
 }
 
 func runLeaseRenewer(eps []string) {
-	c := randClient(eps)
+	c := newClient(eps)
 	ctx := context.Background()
 
 	for {
@@ -189,7 +189,7 @@ func runRacer(eps []string, round int) {
 	ctx := context.Background()
 	cnt := 0
 	for i := range rcs {
-		rcs[i].c = randClient(eps)
+		rcs[i].c = newClient(eps)
 		var (
 			s   *concurrency.Session
 			err error
@@ -246,7 +246,7 @@ func performWatchOnPrefixes(ctx context.Context, eps []string, round int) {
 	)
 
 	// create client for performing get and put operations
-	client := randClient(eps)
+	client := newClient(eps)
 	defer client.Close()
 
 	// get revision using get request
@@ -304,7 +304,7 @@ func performWatchOnPrefixes(ctx context.Context, eps []string, round int) {
 			go func(prefix string) {
 				defer wg.Done()
 
-				rc := randClient(eps)
+				rc := newClient(eps)
 				rcs = append(rcs, rc)
 
 				wc := rc.Watch(ctxc, prefix, clientv3.WithPrefix(), clientv3.WithRev(revision))
@@ -402,15 +402,7 @@ func generateRandomKey(strlen uint) string {
 	return key
 }
 
-func randClient(eps []string) *clientv3.Client {
-	neps := make([]string, len(eps))
-	copy(neps, eps)
-
-	for i := range neps {
-		j := rand.Intn(i + 1)
-		neps[i], neps[j] = neps[j], neps[i]
-	}
-
+func newClient(eps []string) *clientv3.Client {
 	c, err := clientv3.New(clientv3.Config{
 		Endpoints:   eps,
 		DialTimeout: 5 * time.Second,
