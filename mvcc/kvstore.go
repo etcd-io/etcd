@@ -322,19 +322,23 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 	return ch, nil
 }
 
+// DefaultIgnores is a map of keys to ignore in hash checking.
+var DefaultIgnores map[backend.IgnoreKey]struct{}
+
+func init() {
+	DefaultIgnores = map[backend.IgnoreKey]struct{}{
+		// consistent index might be changed due to v2 internal sync, which
+		// is not controllable by the user.
+		{Bucket: string(metaBucketName), Key: string(consistentIndexKeyName)}: {},
+	}
+}
+
 func (s *store) Hash() (uint32, int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.b.ForceCommit()
 
-	// ignore hash consistent index field for now.
-	// consistent index might be changed due to v2 internal sync, which
-	// is not controllable by the user.
-	ignores := make(map[backend.IgnoreKey]struct{})
-	bk := backend.IgnoreKey{Bucket: string(metaBucketName), Key: string(consistentIndexKeyName)}
-	ignores[bk] = struct{}{}
-
-	h, err := s.b.Hash(ignores)
+	h, err := s.b.Hash(DefaultIgnores)
 	rev := s.currentRev.main
 	return h, rev, err
 }
