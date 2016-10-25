@@ -88,7 +88,7 @@ func TestAuthenticate(t *testing.T) {
 
 	// auth a non-existing user
 	ctx1 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx1, "foo-test", "bar")
+	_, err = as.AsyncAuthenticateParam(ctx1, "foo-test", "bar")
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
@@ -96,16 +96,26 @@ func TestAuthenticate(t *testing.T) {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
 
+	var params interface{}
+
 	// auth an existing user with correct password
 	ctx2 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(2)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx2, "foo", "bar")
+	params, err = as.AsyncAuthenticateParam(ctx2, "foo", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = as.AsyncAuthenticate(params)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// auth an existing user but with wrong password
 	ctx3 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(3)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx3, "foo", "")
+	params, err = as.AsyncAuthenticateParam(ctx3, "foo", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = as.AsyncAuthenticate(params)
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
@@ -168,11 +178,14 @@ func TestUserChangePassword(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var params interface{}
+
 	ctx1 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx1, "foo", "")
+	params, err = as.AsyncAuthenticateParam(ctx1, "foo", "")
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = as.AsyncAuthenticate(params)
 
 	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", Password: "bar"})
 	if err != nil {
@@ -180,10 +193,11 @@ func TestUserChangePassword(t *testing.T) {
 	}
 
 	ctx2 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(2)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx2, "foo", "bar")
+	params, err = as.AsyncAuthenticateParam(ctx2, "foo", "bar")
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, err = as.AsyncAuthenticate(params)
 
 	// change a non-existing user
 	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", Password: "bar"})

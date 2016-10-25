@@ -80,8 +80,11 @@ type AuthStore interface {
 	// AuthDisable turns off the authentication feature
 	AuthDisable()
 
-	// Authenticate does authentication based on given user name and password
-	Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error)
+	// AsyncAuthenticateParam creates a parameter that is required for later AsyncAuthenticate
+	AsyncAuthenticateParam(ctx context.Context, username, password string) (interface{}, error)
+
+	// AsyncAuthenticate does authentication based on given user name and password
+	AsyncAuthenticate(interface{}) (*pb.AuthenticateResponse, error)
 
 	// Recover recovers the state of auth store from the given backend
 	Recover(b backend.Backend)
@@ -214,7 +217,20 @@ func (as *authStore) AuthDisable() {
 	plog.Noticef("Authentication disabled")
 }
 
-func (as *authStore) Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error) {
+// asyncAuthParam is used for passing parameters required for authenticate
+// between AsyncAuthenticateParam() and AsyncAuthenticate().
+// From external packages, it must be seen as interface{}
+type asyncAuthParam struct {
+	user               *authpb.User
+	username, password string // parameters given by Authenticate() RPC
+
+	simpleToken string
+	index       uint64
+
+	revision uint64 // revision when a user was obtained
+}
+
+func (as *authStore) AsyncAuthenticateParam(ctx context.Context, username, password string) (interface{}, error) {
 	if !as.isAuthEnabled() {
 		return nil, ErrAuthNotEnabled
 	}
@@ -232,15 +248,38 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 		return nil, ErrAuthFailed
 	}
 
-	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
-		plog.Noticef("authentication failed, invalid password for user %s", username)
-		return &pb.AuthenticateResponse{}, ErrAuthFailed
+	return &asyncAuthParam{
+		user:        user,
+		username:    username,
+		password:    password,
+		simpleToken: simpleToken,
+		index:       index,
+		revision:    as.revision,
+	}, nil
+}
+
+func (as *authStore) AsyncAuthenticate(p interface{}) (*pb.AuthenticateResponse, error) {
+	params := p.(*asyncAuthParam)
+	var token string
+
+	for {
+		if bcrypt.CompareHashAndPassword(params.user.Password, []byte(params.password)) != nil {
+			plog.Noticef("authentication failed, invalid password for user %s", params.username)
+			return &pb.AuthenticateResponse{}, ErrAuthFailed
+		}
+
+		token = fmt.Sprintf("%s.%d", params.simpleToken, params.index)
+		as.assignSimpleTokenToUser(params.username, token)
+
+		if params.revision == as.revision {
+			plog.Debugf("authorized %s, token is %s", params.username, token)
+			break
+		}
+
+		// revisions do not match, need to retry
+		as.invalidateUser(params.username)
 	}
 
-	token := fmt.Sprintf("%s.%d", simpleToken, index)
-	as.assignSimpleTokenToUser(username, token)
-
-	plog.Infof("authorized %s, token is %s", username, token)
 	return &pb.AuthenticateResponse{Token: token}, nil
 }
 

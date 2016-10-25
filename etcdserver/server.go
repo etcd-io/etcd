@@ -1305,6 +1305,23 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		id = raftReq.Header.ID
 	}
 
+	if needAsyncApply(&raftReq) {
+		aa, err := s.applyV3.AsyncApplyBuilder(&raftReq)
+		if err != nil {
+			ar := &applyResult{err: err}
+			s.w.Trigger(id, ar)
+
+			return
+		}
+
+		go func(a *asyncApplyer) {
+			ar := a.f(a.params)
+			s.w.Trigger(id, ar)
+		}(aa)
+
+		return
+	}
+
 	var ar *applyResult
 	needResult := s.w.IsRegistered(id)
 	if needResult || !noSideEffect(&raftReq) {
