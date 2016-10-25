@@ -68,6 +68,11 @@ const (
 	DefaultFreeListSize = 32
 )
 
+var (
+	nilItems    = make(items, 16)
+	nilChildren = make(children, 16)
+)
+
 // FreeList represents a free list of btree nodes. By default each
 // BTree has its own FreeList, but multiple BTrees can share the same
 // FreeList.
@@ -87,7 +92,9 @@ func (f *FreeList) newNode() (n *node) {
 	if index < 0 {
 		return new(node)
 	}
-	f.freelist, n = f.freelist[:index], f.freelist[index]
+	n = f.freelist[index]
+	f.freelist[index] = nil
+	f.freelist = f.freelist[:index]
 	return
 }
 
@@ -153,6 +160,16 @@ func (s *items) pop() (out Item) {
 	return
 }
 
+// truncate truncates this instance at index so that it contains only the
+// first index items. index must be less than or equal to length.
+func (s *items) truncate(index int) {
+	var toClear items
+	*s, toClear = (*s)[:index], (*s)[index:]
+	for len(toClear) > 0 {
+		toClear = toClear[copy(toClear, nilItems):]
+	}
+}
+
 // find returns the index where the given item should be inserted into this
 // list.  'found' is true if the item already exists in the list at the given
 // index.
@@ -198,6 +215,16 @@ func (s *children) pop() (out *node) {
 	return
 }
 
+// truncate truncates this instance at index so that it contains only the
+// first index children. index must be less than or equal to length.
+func (s *children) truncate(index int) {
+	var toClear children
+	*s, toClear = (*s)[:index], (*s)[index:]
+	for len(toClear) > 0 {
+		toClear = toClear[copy(toClear, nilChildren):]
+	}
+}
+
 // node is an internal node in a tree.
 //
 // It must at all times maintain the invariant that either
@@ -216,10 +243,10 @@ func (n *node) split(i int) (Item, *node) {
 	item := n.items[i]
 	next := n.t.newNode()
 	next.items = append(next.items, n.items[i+1:]...)
-	n.items = n.items[:i]
+	n.items.truncate(i)
 	if len(n.children) > 0 {
 		next.children = append(next.children, n.children[i+1:]...)
-		n.children = n.children[:i+1]
+		n.children.truncate(i + 1)
 	}
 	return item, next
 }
@@ -532,14 +559,9 @@ func (t *BTree) newNode() (n *node) {
 }
 
 func (t *BTree) freeNode(n *node) {
-	for i := range n.items {
-		n.items[i] = nil // clear to allow GC
-	}
-	n.items = n.items[:0]
-	for i := range n.children {
-		n.children[i] = nil // clear to allow GC
-	}
-	n.children = n.children[:0]
+	// clear to allow GC
+	n.items.truncate(0)
+	n.children.truncate(0)
 	n.t = nil // clear to allow GC
 	t.freelist.freeNode(n)
 }
