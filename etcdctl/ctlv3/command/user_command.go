@@ -123,6 +123,10 @@ func userAddCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("user add command requires user name as its argument."))
 	}
 
+	if len(args[0]) == 0 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("empty user name is not allowed."))
+	}
+
 	var password string
 
 	if !passwordInteractive {
