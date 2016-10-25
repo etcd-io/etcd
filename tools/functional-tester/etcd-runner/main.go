@@ -236,7 +236,7 @@ func performWatchOnPrefixes(ctx context.Context, eps []string, round int) {
 	prefixes := generateUniqueKeys(5, noOfPrefixes)
 	keys := generateRandomKeys(10, keyPrePrefix)
 
-	roundPrefix := fmt.Sprint("%16x", round)
+	roundPrefix := fmt.Sprintf("%16x", round)
 
 	var (
 		revision int64
