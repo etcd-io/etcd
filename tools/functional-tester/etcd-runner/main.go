@@ -33,6 +33,8 @@ import (
 	"github.com/coreos/etcd/clientv3/concurrency"
 )
 
+var clientTimeout int64
+
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
@@ -43,6 +45,7 @@ func main() {
 	endpointStr := flag.String("endpoints", "localhost:2379", "endpoints of etcd cluster")
 	mode := flag.String("mode", "watcher", "test mode (election, lock-racer, lease-renewer, watcher)")
 	round := flag.Int("rounds", 100, "number of rounds to run")
+	flag.Int64Var(&clientTimeout, "client-timeout", 60, "max timeout seconds for a client to get connection")
 	flag.Parse()
 	eps := strings.Split(*endpointStr, ",")
 
@@ -405,7 +408,7 @@ func generateRandomKey(strlen uint) string {
 func newClient(eps []string) *clientv3.Client {
 	c, err := clientv3.New(clientv3.Config{
 		Endpoints:   eps,
-		DialTimeout: 5 * time.Second,
+		DialTimeout: time.Duration(clientTimeout) * time.Second,
 	})
 	if err != nil {
 		log.Fatal(err)
