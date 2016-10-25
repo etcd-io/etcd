@@ -37,6 +37,8 @@ const (
 	StateFollower StateType = iota
 	StateCandidate
 	StateLeader
+	StatePreCandidate
+	numStates
 )
 
 type ReadOnlyOption int
@@ -55,7 +57,11 @@ const (
 
 // Possible values for CampaignType
 const (
-	// campaignElection represents the type of normal election
+	// campaignPreElection represents the first phase of a normal election when
+	// Config.PreVote is true.
+	campaignPreElection CampaignType = "CampaignPreElection"
+	// campaignElection represents a normal (time-based) election (the second phase
+	// of the election when Config.PreVote is true).
 	campaignElection CampaignType = "CampaignElection"
 	// campaignTransfer represents the type of leader transfer
 	campaignTransfer CampaignType = "CampaignTransfer"
@@ -92,6 +98,7 @@ var stmap = [...]string{
 	"StateFollower",
 	"StateCandidate",
 	"StateLeader",
+	"StatePreCandidate",
 }
 
 func (st StateType) String() string {
@@ -148,6 +155,11 @@ type Config struct {
 	// CheckQuorum specifies if the leader should check quorum activity. Leader
 	// steps down when quorum is not active for an electionTimeout.
 	CheckQuorum bool
+
+	// PreVote enables the Pre-Vote algorithm described in raft thesis section
+	// 9.6. This prevents disruption when a node that has been partitioned away
+	// rejoins the cluster.
+	PreVote bool
 
 	// ReadOnlyOption specifies how the read only request is processed.
 	//
@@ -236,6 +248,7 @@ type raft struct {
 	heartbeatElapsed int
 
 	checkQuorum bool
+	preVote     bool
 
 	heartbeatTimeout int
 	electionTimeout  int
@@ -280,6 +293,7 @@ func newRaft(c *Config) *raft {
 		heartbeatTimeout: c.HeartbeatTick,
 		logger:           c.Logger,
 		checkQuorum:      c.CheckQuorum,
+		preVote:          c.PreVote,
 		readOnly:         newReadOnly(c.ReadOnlyOption),
 	}
 	for _, p := range peers {
@@ -329,11 +343,22 @@ func (r *raft) nodes() []uint64 {
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
 	m.From = r.id
-	// do not attach term to MsgProp
-	// proposals are a way to forward to the leader and
-	// should be treated as local message.
-	if m.Type != pb.MsgProp {
-		m.Term = r.Term
+	if m.Type == pb.MsgVote || m.Type == pb.MsgPreVote {
+		if m.Term == 0 {
+			// PreVote RPCs are sent at a term other than our actual term, so the code
+			// that sends these messages is responsible for setting the term.
+			panic(fmt.Sprintf("term should be set when sending %s", m.Type))
+		}
+	} else {
+		if m.Term != 0 {
+			panic(fmt.Sprintf("term should not be set when sending %s (was %d)", m.Type, m.Term))
+		}
+		// do not attach term to MsgProp
+		// proposals are a way to forward to the leader and
+		// should be treated as local message.
+		if m.Type != pb.MsgProp {
+			m.Term = r.Term
+		}
 	}
 	r.msgs = append(r.msgs, m)
 }
@@ -555,6 +580,20 @@ func (r *raft) becomeCandidate() {
 	r.logger.Infof("%x became candidate at term %d", r.id, r.Term)
 }
 
+func (r *raft) becomePreCandidate() {
+	// TODO(xiangli) remove the panic when the raft implementation is stable
+	if r.state == StateLeader {
+		panic("invalid transition [leader -> pre-candidate]")
+	}
+	// Becoming a pre-candidate changes our step functions and state,
+	// but doesn't change anything else. In particular it does not increase
+	// r.Term or change r.Vote.
+	r.step = stepCandidate
+	r.tick = r.tickElection
+	r.state = StatePreCandidate
+	r.logger.Infof("%x became pre-candidate at term %d", r.id, r.Term)
+}
+
 func (r *raft) becomeLeader() {
 	// TODO(xiangli) remove the panic when the raft implementation is stable
 	if r.state == StateFollower {
@@ -583,31 +622,48 @@ func (r *raft) becomeLeader() {
 }
 
 func (r *raft) campaign(t CampaignType) {
-	r.becomeCandidate()
-	if r.quorum() == r.poll(r.id, true) {
-		r.becomeLeader()
+	var term uint64
+	var voteMsg pb.MessageType
+	if t == campaignPreElection {
+		r.becomePreCandidate()
+		voteMsg = pb.MsgPreVote
+		// PreVote RPCs are sent for the next term before we've incremented r.Term.
+		term = r.Term + 1
+	} else {
+		r.becomeCandidate()
+		voteMsg = pb.MsgVote
+		term = r.Term
+	}
+	if r.quorum() == r.poll(r.id, voteRespMsgType(voteMsg), true) {
+		// We won the election after voting for ourselves (which must mean that
+		// this is a single-node cluster). Advance to the next state.
+		if t == campaignPreElection {
+			r.campaign(campaignElection)
+		} else {
+			r.becomeLeader()
+		}
 		return
 	}
 	for id := range r.prs {
 		if id == r.id {
 			continue
 		}
-		r.logger.Infof("%x [logterm: %d, index: %d] sent vote request to %x at term %d",
-			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), id, r.Term)
+		r.logger.Infof("%x [logterm: %d, index: %d] sent %s request to %x at term %d",
+			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), voteMsg, id, r.Term)
 
 		var ctx []byte
 		if t == campaignTransfer {
 			ctx = []byte(t)
 		}
-		r.send(pb.Message{To: id, Type: pb.MsgVote, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Context: ctx})
+		r.send(pb.Message{Term: term, To: id, Type: voteMsg, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Context: ctx})
 	}
 }
 
-func (r *raft) poll(id uint64, v bool) (granted int) {
+func (r *raft) poll(id uint64, t pb.MessageType, v bool) (granted int) {
 	if v {
-		r.logger.Infof("%x received vote from %x at term %d", r.id, id, r.Term)
+		r.logger.Infof("%x received %s from %x at term %d", r.id, t, id, r.Term)
 	} else {
-		r.logger.Infof("%x received vote rejection from %x at term %d", r.id, id, r.Term)
+		r.logger.Infof("%x received %s rejection from %x at term %d", r.id, t, id, r.Term)
 	}
 	if _, ok := r.votes[id]; !ok {
 		r.votes[id] = v
@@ -621,7 +677,65 @@ func (r *raft) poll(id uint64, v bool) (granted int) {
 }
 
 func (r *raft) Step(m pb.Message) error {
-	if m.Type == pb.MsgHup {
+	// Handle the message term, which may result in our stepping down to a follower.
+	switch {
+	case m.Term == 0:
+		// local message
+	case m.Term > r.Term:
+		lead := m.From
+		if m.Type == pb.MsgVote || m.Type == pb.MsgPreVote {
+			force := bytes.Equal(m.Context, []byte(campaignTransfer))
+			inLease := r.checkQuorum && r.lead != None && r.electionElapsed < r.electionTimeout
+			if !force && inLease {
+				// If a server receives a RequestVote request within the minimum election timeout
+				// of hearing from a current leader, it does not update its term or grant its vote
+				r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] ignored %s from %x [logterm: %d, index: %d] at term %d: lease is not expired (remaining ticks: %d)",
+					r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term, r.electionTimeout-r.electionElapsed)
+				return nil
+			}
+			lead = None
+		}
+		switch {
+		case m.Type == pb.MsgPreVote:
+			// Never change our term in response to a PreVote
+		case m.Type == pb.MsgPreVoteResp && !m.Reject:
+			// We send pre-vote requests with a term in our future. If the
+			// pre-vote is granted, we will increment our term when we get a
+			// quorum. If it is not, the term comes from the node that
+			// rejected our vote so we should become a follower at the new
+			// term.
+		default:
+			r.logger.Infof("%x [term: %d] received a %s message with higher term from %x [term: %d]",
+				r.id, r.Term, m.Type, m.From, m.Term)
+			r.becomeFollower(m.Term, lead)
+		}
+
+	case m.Term < r.Term:
+		if r.checkQuorum && (m.Type == pb.MsgHeartbeat || m.Type == pb.MsgApp) {
+			// We have received messages from a leader at a lower term. It is possible
+			// that these messages were simply delayed in the network, but this could
+			// also mean that this node has advanced its term number during a network
+			// partition, and it is now unable to either win an election or to rejoin
+			// the majority on the old term. If checkQuorum is false, this will be
+			// handled by incrementing term numbers in response to MsgVote with a
+			// higher term, but if checkQuorum is true we may not advance the term on
+			// MsgVote and must generate other messages to advance the term. The net
+			// result of these two features is to minimize the disruption caused by
+			// nodes that have been removed from the cluster's configuration: a
+			// removed node will send MsgVotes (or MsgPreVotes) which will be ignored,
+			// but it will not receive MsgApp or MsgHeartbeat, so it will not create
+			// disruptive term increases
+			r.send(pb.Message{To: m.From, Type: pb.MsgAppResp})
+		} else {
+			// ignore other cases
+			r.logger.Infof("%x [term: %d] ignored a %s message with lower term from %x [term: %d]",
+				r.id, r.Term, m.Type, m.From, m.Term)
+		}
+		return nil
+	}
+
+	switch m.Type {
+	case pb.MsgHup:
 		if r.state != StateLeader {
 			ents, err := r.raftLog.slice(r.raftLog.applied+1, r.raftLog.committed+1, noLimit)
 			if err != nil {
@@ -633,53 +747,36 @@ func (r *raft) Step(m pb.Message) error {
 			}
 
 			r.logger.Infof("%x is starting a new election at term %d", r.id, r.Term)
-			r.campaign(campaignElection)
+			if r.preVote {
+				r.campaign(campaignPreElection)
+			} else {
+				r.campaign(campaignElection)
+			}
 		} else {
 			r.logger.Debugf("%x ignoring MsgHup because already leader", r.id)
 		}
-		return nil
-	}
 
-	switch {
-	case m.Term == 0:
-		// local message
-	case m.Term > r.Term:
-		lead := m.From
-		if m.Type == pb.MsgVote {
-			force := bytes.Equal(m.Context, []byte(campaignTransfer))
-			inLease := r.checkQuorum && r.lead != None && r.electionElapsed < r.electionTimeout
-			if !force && inLease {
-				// If a server receives a RequestVote request within the minimum election timeout
-				// of hearing from a current leader, it does not update its term or grant its vote
-				r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] ignored vote from %x [logterm: %d, index: %d] at term %d: lease is not expired (remaining ticks: %d)",
-					r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term, r.electionTimeout-r.electionElapsed)
-				return nil
+	case pb.MsgVote, pb.MsgPreVote:
+		// The m.Term > r.Term clause is for MsgPreVote. For MsgVote m.Term should
+		// always equal r.Term.
+		if (r.Vote == None || m.Term > r.Term || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
+			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] cast %s for %x [logterm: %d, index: %d] at term %d",
+				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
+			r.send(pb.Message{To: m.From, Type: voteRespMsgType(m.Type)})
+			if m.Type == pb.MsgVote {
+				// Only record real votes.
+				r.electionElapsed = 0
+				r.Vote = m.From
 			}
-			lead = None
-		}
-		r.logger.Infof("%x [term: %d] received a %s message with higher term from %x [term: %d]",
-			r.id, r.Term, m.Type, m.From, m.Term)
-		r.becomeFollower(m.Term, lead)
-	case m.Term < r.Term:
-		if r.checkQuorum && (m.Type == pb.MsgHeartbeat || m.Type == pb.MsgApp) {
-			// We have received messages from a leader at a lower term. It is possible that these messages were
-			// simply delayed in the network, but this could also mean that this node has advanced its term number
-			// during a network partition, and it is now unable to either win an election or to rejoin the majority
-			// on the old term. If checkQuorum is false, this will be handled by incrementing term numbers in response
-			// to MsgVote with a higher term, but if checkQuorum is true we may not advance the term on MsgVote and
-			// must generate other messages to advance the term. The net result of these two features is to minimize
-			// the disruption caused by nodes that have been removed from the cluster's configuration: a removed node
-			// will send MsgVotes which will be ignored, but it will not receive MsgApp or MsgHeartbeat, so it will not
-			// create disruptive term increases
-			r.send(pb.Message{To: m.From, Type: pb.MsgAppResp})
 		} else {
-			// ignore other cases
-			r.logger.Infof("%x [term: %d] ignored a %s message with lower term from %x [term: %d]",
-				r.id, r.Term, m.Type, m.From, m.Term)
+			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected %s from %x [logterm: %d, index: %d] at term %d",
+				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
+			r.send(pb.Message{To: m.From, Type: voteRespMsgType(m.Type), Reject: true})
 		}
-		return nil
+
+	default:
+		r.step(r, m)
 	}
-	r.step(r, m)
 	return nil
 }
 
@@ -722,11 +819,6 @@ func stepLeader(r *raft, m pb.Message) {
 		}
 		r.appendEntry(m.Entries...)
 		r.bcastAppend()
-		return
-	case pb.MsgVote:
-		r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
-			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
 		return
 	case pb.MsgReadIndex:
 		if r.quorum() > 1 {
@@ -884,7 +976,18 @@ func stepLeader(r *raft, m pb.Message) {
 	}
 }
 
+// stepCandidate is shared by StateCandidate and StatePreCandidate; the difference is
+// whether they respond to MsgVoteResp or MsgPreVoteResp.
 func stepCandidate(r *raft, m pb.Message) {
+	// Only handle vote responses corresponding to our candidacy (while in
+	// StateCandidate, we may get stale MsgPreVoteResp messages in this term from
+	// our pre-candidate state).
+	var myVoteRespType pb.MessageType
+	if r.state == StatePreCandidate {
+		myVoteRespType = pb.MsgPreVoteResp
+	} else {
+		myVoteRespType = pb.MsgVoteResp
+	}
 	switch m.Type {
 	case pb.MsgProp:
 		r.logger.Infof("%x no leader at term %d; dropping proposal", r.id, r.Term)
@@ -898,17 +1001,17 @@ func stepCandidate(r *raft, m pb.Message) {
 	case pb.MsgSnap:
 		r.becomeFollower(m.Term, m.From)
 		r.handleSnapshot(m)
-	case pb.MsgVote:
-		r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
-			r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-		r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
-	case pb.MsgVoteResp:
-		gr := r.poll(m.From, !m.Reject)
-		r.logger.Infof("%x [quorum:%d] has received %d votes and %d vote rejections", r.id, r.quorum(), gr, len(r.votes)-gr)
+	case myVoteRespType:
+		gr := r.poll(m.From, m.Type, !m.Reject)
+		r.logger.Infof("%x [quorum:%d] has received %d %s votes and %d vote rejections", r.id, r.quorum(), gr, m.Type, len(r.votes)-gr)
 		switch r.quorum() {
 		case gr:
-			r.becomeLeader()
-			r.bcastAppend()
+			if r.state == StatePreCandidate {
+				r.campaign(campaignElection)
+			} else {
+				r.becomeLeader()
+				r.bcastAppend()
+			}
 		case len(r.votes) - gr:
 			r.becomeFollower(r.Term, None)
 		}
@@ -938,18 +1041,6 @@ func stepFollower(r *raft, m pb.Message) {
 		r.electionElapsed = 0
 		r.lead = m.From
 		r.handleSnapshot(m)
-	case pb.MsgVote:
-		if (r.Vote == None || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
-			r.electionElapsed = 0
-			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] voted for %x [logterm: %d, index: %d] at term %d",
-				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-			r.Vote = m.From
-			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp})
-		} else {
-			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected vote from %x [logterm: %d, index: %d] at term %d",
-				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.From, m.LogTerm, m.Index, r.Term)
-			r.send(pb.Message{To: m.From, Type: pb.MsgVoteResp, Reject: true})
-		}
 	case pb.MsgTransferLeader:
 		if r.lead == None {
 			r.logger.Infof("%x no leader at term %d; dropping leader transfer msg", r.id, r.Term)
@@ -959,6 +1050,9 @@ func stepFollower(r *raft, m pb.Message) {
 		r.send(m)
 	case pb.MsgTimeoutNow:
 		r.logger.Infof("%x [term %d] received MsgTimeoutNow from %x and starts an election to get leadership.", r.id, r.Term, m.From)
+		// Leadership transfers never use pre-vote even if r.preVote is true; we
+		// know we are not recovering from a partition so there is no need for the
+		// extra round trip.
 		r.campaign(campaignTransfer)
 	case pb.MsgReadIndex:
 		if r.lead == None {
