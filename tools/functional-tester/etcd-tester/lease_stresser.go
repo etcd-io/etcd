@@ -30,7 +30,7 @@ import (
 
 const (
 	// time to live for lease
-	TTL = 30
+	TTL = 120
 	// leasesStressRoundPs indicates the rate that leaseStresser.run() creates and deletes leases per second
 	leasesStressRoundPs = 1
 )
