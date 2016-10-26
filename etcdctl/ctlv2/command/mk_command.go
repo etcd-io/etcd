@@ -31,7 +31,7 @@ func NewMakeCommand() cli.Command {
 		ArgsUsage: "<key> <value>",
 		Flags: []cli.Flag{
 			cli.BoolFlag{Name: "in-order", Usage: "create in-order key under directory <key>"},
-			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
+			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live in seconds"},
 		},
 		Action: func(c *cli.Context) error {
 			mkCommandFunc(c, mustNewKeyAPI(c))
