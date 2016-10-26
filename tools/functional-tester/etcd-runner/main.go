@@ -33,7 +33,13 @@ import (
 	"github.com/coreos/etcd/clientv3/concurrency"
 )
 
-var clientTimeout int64
+var (
+	endpointStr   string
+	mode          string
+	rounds        int
+	clientTimeout int64
+	eps           []string
+)
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -42,28 +48,28 @@ func init() {
 func main() {
 	log.SetFlags(log.Lmicroseconds)
 
-	endpointStr := flag.String("endpoints", "localhost:2379", "endpoints of etcd cluster")
-	mode := flag.String("mode", "watcher", "test mode (election, lock-racer, lease-renewer, watcher)")
-	round := flag.Int("rounds", 100, "number of rounds to run")
+	flag.StringVar(&endpointStr, "endpoints", "localhost:2379", "endpoints of etcd cluster")
+	flag.StringVar(&mode, "mode", "watcher", "test mode (election, lock-racer, lease-renewer, watcher)")
+	flag.IntVar(&rounds, "rounds", 100, "number of rounds to run")
 	flag.Int64Var(&clientTimeout, "client-timeout", 60, "max timeout seconds for a client to get connection")
 	flag.Parse()
-	eps := strings.Split(*endpointStr, ",")
+	eps = strings.Split(endpointStr, ",")
 
-	switch *mode {
+	switch mode {
 	case "election":
-		runElection(eps, *round)
+		runElection()
 	case "lock-racer":
-		runRacer(eps, *round)
+		runRacer()
 	case "lease-renewer":
-		runLeaseRenewer(eps)
+		runLeaseRenewer()
 	case "watcher":
-		runWatcher(eps, *round)
+		runWatcher()
 	default:
-		fmt.Fprintf(os.Stderr, "unsupported mode %v\n", *mode)
+		fmt.Fprintf(os.Stderr, "unsupported mode %v\n", mode)
 	}
 }
 
-func runElection(eps []string, rounds int) {
+func runElection() {
 	rcs := make([]roundClient, 15)
 	validatec, releasec := make(chan struct{}, len(rcs)), make(chan struct{}, len(rcs))
 	for range rcs {
@@ -75,7 +81,7 @@ func runElection(eps []string, rounds int) {
 		observedLeader := ""
 		validateWaiters := 0
 
-		rcs[i].c = newClient(eps)
+		rcs[i].c = newClient()
 		var (
 			s   *concurrency.Session
 			err error
@@ -142,11 +148,11 @@ func runElection(eps []string, rounds int) {
 			return nil
 		}
 	}
-	doRounds(rcs, rounds)
+	doRounds(rcs)
 }
 
-func runLeaseRenewer(eps []string) {
-	c := newClient(eps)
+func runLeaseRenewer() {
+	c := newClient()
 	ctx := context.Background()
 
 	for {
@@ -187,12 +193,12 @@ func runLeaseRenewer(eps []string) {
 	}
 }
 
-func runRacer(eps []string, round int) {
+func runRacer() {
 	rcs := make([]roundClient, 15)
 	ctx := context.Background()
 	cnt := 0
 	for i := range rcs {
-		rcs[i].c = newClient(eps)
+		rcs[i].c = newClient()
 		var (
 			s   *concurrency.Session
 			err error
@@ -219,17 +225,17 @@ func runRacer(eps []string, round int) {
 			return nil
 		}
 	}
-	doRounds(rcs, round)
+	doRounds(rcs)
 }
 
-func runWatcher(eps []string, limit int) {
+func runWatcher() {
 	ctx := context.Background()
-	for round := 0; round < limit; round++ {
-		performWatchOnPrefixes(ctx, eps, round)
+	for round := 0; round < rounds; round++ {
+		performWatchOnPrefixes(ctx, round)
 	}
 }
 
-func performWatchOnPrefixes(ctx context.Context, eps []string, round int) {
+func performWatchOnPrefixes(ctx context.Context, round int) {
 	runningTime := 60 * time.Second // time for which operation should be performed
 	noOfPrefixes := 36              // total number of prefixes which will be watched upon
 	watchPerPrefix := 10            // number of watchers per prefix
@@ -249,7 +255,7 @@ func performWatchOnPrefixes(ctx context.Context, eps []string, round int) {
 	)
 
 	// create client for performing get and put operations
-	client := newClient(eps)
+	client := newClient()
 	defer client.Close()
 
 	// get revision using get request
@@ -307,7 +313,7 @@ func performWatchOnPrefixes(ctx context.Context, eps []string, round int) {
 			go func(prefix string) {
 				defer wg.Done()
 
-				rc := newClient(eps)
+				rc := newClient()
 				rcs = append(rcs, rc)
 
 				wc := rc.Watch(ctxc, prefix, clientv3.WithPrefix(), clientv3.WithRev(revision))
@@ -405,7 +411,7 @@ func generateRandomKey(strlen uint) string {
 	return key
 }
 
-func newClient(eps []string) *clientv3.Client {
+func newClient() *clientv3.Client {
 	c, err := clientv3.New(clientv3.Config{
 		Endpoints:   eps,
 		DialTimeout: time.Duration(clientTimeout) * time.Second,
@@ -424,7 +430,7 @@ type roundClient struct {
 	release  func() error
 }
 
-func doRounds(rcs []roundClient, rounds int) {
+func doRounds(rcs []roundClient) {
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
