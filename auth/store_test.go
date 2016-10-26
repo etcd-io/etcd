@@ -20,6 +20,7 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/wait"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
 )
@@ -33,7 +34,7 @@ func TestUserAdd(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, wait.NewTimeList())
 	ua := &pb.AuthUserAddRequest{Name: "foo"}
 	_, err := as.UserAdd(ua) // add a non-existing user
 	if err != nil {
@@ -74,7 +75,7 @@ func TestAuthenticate(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, wait.NewTimeList())
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +132,7 @@ func TestUserDelete(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, wait.NewTimeList())
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -167,7 +168,7 @@ func TestUserChangePassword(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, wait.NewTimeList())
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -216,7 +217,7 @@ func TestRoleAdd(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, wait.NewTimeList())
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -236,7 +237,7 @@ func TestUserGrant(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, wait.NewTimeList())
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)

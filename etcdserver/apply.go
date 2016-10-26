@@ -50,6 +50,8 @@ type applyResult struct {
 type asyncApplyer struct {
 	params interface{}
 	f      func(interface{}) *applyResult
+	id     uint64
+	index  uint64
 }
 
 func (aa *asyncApplyer) AsyncApply() *applyResult {

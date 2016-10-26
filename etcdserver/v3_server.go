@@ -594,7 +594,7 @@ func (s *EtcdServer) isValidSimpleToken(token string) bool {
 	}
 
 	select {
-	case <-s.applyWait.Wait(uint64(index)):
+	case <-s.authApplyWait.Wait(uint64(index)):
 		return true
 	case <-s.stop:
 		return true

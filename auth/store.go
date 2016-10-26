@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
@@ -162,6 +163,8 @@ type authStore struct {
 	simpleTokens   map[string]string // token -> username
 
 	revision uint64
+
+	applyWait wait.WaitTime
 }
 
 func (as *authStore) AuthEnable() error {
@@ -260,26 +263,26 @@ func (as *authStore) AsyncAuthenticateParam(ctx context.Context, username, passw
 
 func (as *authStore) AsyncAuthenticate(p interface{}) (*pb.AuthenticateResponse, error) {
 	params := p.(*asyncAuthParam)
-	var token string
+	token := fmt.Sprintf("%s.%d", params.simpleToken, params.index)
 
-	for {
-		if bcrypt.CompareHashAndPassword(params.user.Password, []byte(params.password)) != nil {
-			plog.Noticef("authentication failed, invalid password for user %s", params.username)
-			return &pb.AuthenticateResponse{}, ErrAuthFailed
-		}
+	defer func(index uint64) {
+		as.applyWait.Trigger(index)
+	}(params.index)
 
-		token = fmt.Sprintf("%s.%d", params.simpleToken, params.index)
-		as.assignSimpleTokenToUser(params.username, token)
-
-		if params.revision == as.revision {
-			plog.Debugf("authorized %s, token is %s", params.username, token)
-			break
-		}
-
-		// revisions do not match, need to retry
-		as.invalidateUser(params.username)
+	if bcrypt.CompareHashAndPassword(params.user.Password, []byte(params.password)) != nil {
+		plog.Noticef("authentication failed, invalid password for user %s", params.username)
+		return &pb.AuthenticateResponse{}, ErrAuthFailed
 	}
 
+	as.assignSimpleTokenToUser(params.username, token)
+
+	if params.revision != as.revision {
+		// revisions do not match, need to retry
+		as.invalidateUser(params.username)
+		return &pb.AuthenticateResponse{}, ErrAuthOldRevision
+	}
+
+	plog.Debugf("authorized %s, token is %s", params.username, token)
 	return &pb.AuthenticateResponse{Token: token}, nil
 }
 
@@ -851,7 +854,7 @@ func (as *authStore) isAuthEnabled() bool {
 	return as.enabled
 }
 
-func NewAuthStore(be backend.Backend) *authStore {
+func NewAuthStore(be backend.Backend, applyWait wait.WaitTime) *authStore {
 	tx := be.BatchTx()
 	tx.Lock()
 
@@ -863,6 +866,7 @@ func NewAuthStore(be backend.Backend) *authStore {
 		be:           be,
 		simpleTokens: make(map[string]string),
 		revision:     0,
+		applyWait:    applyWait,
 	}
 
 	as.commitRevision(tx)
