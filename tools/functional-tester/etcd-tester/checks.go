@@ -171,8 +171,10 @@ func (lc *leaseChecker) checkInvariant(lStresser Stresser) error {
 	if err := checkLeasesExpired(ls); err != nil {
 		return err
 	}
-	ls.revokedLeases = &atomicLeases{leases: make(map[int64]time.Time)}
-	return checkLeasesAlive(ls)
+	if err := checkLeasesAlive(ls); err != nil {
+		return err
+	}
+	return checkShortLivedLeases(ls)
 }
 
 func checkLeasesExpired(ls *leaseStresser) error {
@@ -183,6 +185,12 @@ func checkLeasesExpired(ls *leaseStresser) error {
 func checkLeasesAlive(ls *leaseStresser) error {
 	plog.Infof("alive leases %v", ls.aliveLeases.getLeasesMap())
 	return checkLeases(false, ls, ls.aliveLeases.getLeasesMap())
+}
+
+// checkShortLivedLeases() verifies that the short lived leases are indeed being deleted.
+func checkShortLivedLeases(ls *leaseStresser) error {
+	plog.Infof("short lived leases %v", ls.shortLivedLeases.getLeasesMap())
+	return checkLeases(true, ls, ls.shortLivedLeases.getLeasesMap())
 }
 
 func checkLeases(expired bool, ls *leaseStresser, leases map[int64]time.Time) error {
