@@ -36,7 +36,7 @@ func NewSetCommand() cli.Command {
 
    $ set -- <key> <value>`,
 		Flags: []cli.Flag{
-			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
+			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live in seconds"},
 			cli.StringFlag{Name: "swap-with-value", Value: "", Usage: "previous value"},
 			cli.IntFlag{Name: "swap-with-index", Value: 0, Usage: "previous index"},
 		},

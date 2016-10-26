@@ -29,7 +29,7 @@ func NewMakeDirCommand() cli.Command {
 		Usage:     "make a new directory",
 		ArgsUsage: "<key>",
 		Flags: []cli.Flag{
-			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
+			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live in seconds"},
 		},
 		Action: func(c *cli.Context) error {
 			mkdirCommandFunc(c, mustNewKeyAPI(c), client.PrevNoExist)
