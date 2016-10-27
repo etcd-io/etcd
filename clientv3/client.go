@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -246,6 +247,10 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 		}
 		opts = append(opts, grpc.WithPerRPCCredentials(authTokenCredential{token: resp.Token}))
 	}
+
+	// add metrics options
+	opts = append(opts, grpc.WithUnaryInterceptor(prometheus.UnaryClientInterceptor))
+	opts = append(opts, grpc.WithStreamInterceptor(prometheus.StreamClientInterceptor))
 
 	conn, err := grpc.Dial(host, opts...)
 	if err != nil {
