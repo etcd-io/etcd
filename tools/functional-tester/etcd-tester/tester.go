@@ -44,11 +44,10 @@ func (tt *tester) runLoop() {
 		tt.status.setRound(round)
 		roundTotalCounter.Inc()
 
-		if ok, err := tt.doRound(round); !ok {
-			if err != nil {
-				if tt.cleanup() != nil {
-					return
-				}
+		if err := tt.doRound(round); err != nil {
+			plog.Warningf("%s functional-tester returning with error (%v)", tt.logPrefix, err)
+			if tt.cleanup() != nil {
+				return
 			}
 			prevCompactRev = 0 // reset after clean up
 			continue
@@ -83,42 +82,37 @@ func (tt *tester) runLoop() {
 	plog.Printf("%s functional-tester is finished", tt.logPrefix())
 }
 
-func (tt *tester) doRound(round int) (bool, error) {
+func (tt *tester) doRound(round int) error {
 	for j, f := range tt.failures {
 		caseTotalCounter.WithLabelValues(f.Desc()).Inc()
 		tt.status.setCase(j)
 
 		if err := tt.cluster.WaitHealth(); err != nil {
-			plog.Printf("%s wait full health error: %v", tt.logPrefix(), err)
-			return false, nil
+			return fmt.Errorf("wait full health error: %v", err)
 		}
 		plog.Printf("%s injecting failure %q", tt.logPrefix(), f.Desc())
 		if err := f.Inject(tt.cluster, round); err != nil {
-			plog.Printf("%s injection error: %v", tt.logPrefix(), err)
-			return false, nil
+			return fmt.Errorf("injection error: %v", err)
 		}
 		plog.Printf("%s injected failure", tt.logPrefix())
 
 		plog.Printf("%s recovering failure %q", tt.logPrefix(), f.Desc())
 		if err := f.Recover(tt.cluster, round); err != nil {
-			plog.Printf("%s recovery error: %v", tt.logPrefix(), err)
-			return false, nil
+			return fmt.Errorf("recovery error: %v", err)
 		}
 		plog.Printf("%s wait until cluster is healthy", tt.logPrefix())
 		if err := tt.cluster.WaitHealth(); err != nil {
-			plog.Printf("%s wait full health error: %v", tt.logPrefix(), err)
-			return false, nil
+			return fmt.Errorf("wait full health error: %v", err)
 		}
 		plog.Printf("%s recovered failure", tt.logPrefix())
 
 		if err := tt.checkConsistency(); err != nil {
-			plog.Warningf("%s functional-tester returning with tt.checkConsistency error (%v)", tt.logPrefix(), err)
-			return false, err
+			return fmt.Errorf("tt.checkConsistency error (%v)", err)
 		}
 
 		plog.Printf("%s succeed!", tt.logPrefix())
 	}
-	return true, nil
+	return nil
 }
 
 func (tt *tester) updateRevision() error {
