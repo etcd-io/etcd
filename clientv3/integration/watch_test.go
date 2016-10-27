@@ -771,6 +771,36 @@ func TestWatchWithCreatedNotification(t *testing.T) {
 	}
 }
 
+// TestWatchWithCreatedNotificationDropConn ensures that
+// a watcher with created notify does not post duplicate
+// created events from disconnect.
+func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer cluster.Terminate(t)
+
+	client := cluster.RandClient()
+
+	wch := client.Watch(context.Background(), "a", clientv3.WithCreatedNotify())
+
+	resp := <-wch
+
+	if !resp.Created {
+		t.Fatalf("expected created event, got %v", resp)
+	}
+
+	cluster.Members[0].DropConnections()
+
+	// try to receive from watch channel again
+	// ensure it doesn't post another createNotify
+	select {
+	case wresp := <-wch:
+		t.Fatalf("got unexpected watch response: %+v\n", wresp)
+	case <-time.After(time.Second):
+		// watcher may not reconnect by the time it hits the select,
+		// so it wouldn't have a chance to filter out the second create event
+	}
+}
+
 // TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
 func TestWatchCancelOnServer(t *testing.T) {
 	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
