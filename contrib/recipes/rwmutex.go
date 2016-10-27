@@ -34,7 +34,7 @@ func NewRWMutex(s *concurrency.Session, prefix string) *RWMutex {
 }
 
 func (rwm *RWMutex) RLock() error {
-	rk, err := NewUniqueEphemeralKey(rwm.s, rwm.pfx+"read")
+	rk, err := newUniqueEphemeralKey(rwm.s, rwm.pfx+"read")
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func (rwm *RWMutex) RLock() error {
 }
 
 func (rwm *RWMutex) Lock() error {
-	rk, err := NewUniqueEphemeralKey(rwm.s, rwm.pfx+"write")
+	rk, err := newUniqueEphemeralKey(rwm.s, rwm.pfx+"write")
 	if err != nil {
 		return err
 	}
