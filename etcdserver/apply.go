@@ -26,7 +26,6 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/gogo/protobuf/proto"
-	"golang.org/x/net/context"
 )
 
 const (
@@ -48,20 +47,20 @@ type applyResult struct {
 }
 
 type asyncApplyer struct {
-	params interface{}
-	f      func(interface{}) *applyResult
-	id     uint64
-	index  uint64
+	r     *pb.InternalRaftRequest
+	f     func(*pb.InternalRaftRequest, uint64) *applyResult
+	id    uint64
+	index uint64
 }
 
 func (aa *asyncApplyer) AsyncApply() *applyResult {
-	return aa.f(aa.params)
+	return aa.f(aa.r, aa.index)
 }
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
 	Apply(r *pb.InternalRaftRequest) *applyResult
-	AsyncApplyBuilder(r *pb.InternalRaftRequest) (*asyncApplyer, error)
+	AsyncApplyBuilder(r *pb.InternalRaftRequest) *asyncApplyer
 
 	Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, error)
 	Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResponse, error)
@@ -162,26 +161,19 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	return ar
 }
 
-func (a *applierV3backend) AsyncApplyBuilder(r *pb.InternalRaftRequest) (*asyncApplyer, error) {
-	switch {
-	case r.Authenticate != nil:
-		ctx := context.WithValue(context.WithValue(context.TODO(), "index", a.s.consistIndex.ConsistentIndex()), "simpleToken", r.Authenticate.SimpleToken)
-		params, err := a.s.AuthStore().AsyncAuthenticateParam(ctx, r.Authenticate.Name, r.Authenticate.Password)
-
-		if err != nil {
-			return nil, err
-		}
-
-		f := func(params interface{}) *applyResult {
+func (a *applierV3backend) AsyncApplyBuilder(r *pb.InternalRaftRequest) *asyncApplyer {
+	f := func(r *pb.InternalRaftRequest, index uint64) *applyResult {
+		switch {
+		case r.Authenticate != nil:
 			ar := &applyResult{}
-			ar.resp, ar.err = a.s.AuthStore().AsyncAuthenticate(params)
+			ar.resp, ar.err = a.s.AuthStore().AsyncAuthenticate(r.Authenticate, index)
 			return ar
+		default:
+			panic("not implemented")
 		}
-
-		return &asyncApplyer{params: params, f: f}, nil
-	default:
-		panic("not implemented")
 	}
+
+	return &asyncApplyer{r: r, f: f}
 }
 
 func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, error) {

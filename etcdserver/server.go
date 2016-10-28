@@ -460,7 +460,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		for {
 			select {
 			case a := <-s.asyncApplyCh:
-				ar := a.f(a.params)
+				ar := a.f(a.r, a.index)
 				s.w.Trigger(a.id, ar)
 			case <-s.asyncApplyStopCh:
 				return
@@ -1332,14 +1332,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	}
 
 	if needAsyncApply(&raftReq) {
-		aa, err := s.applyV3.AsyncApplyBuilder(&raftReq)
-		if err != nil {
-			ar := &applyResult{err: err}
-			s.w.Trigger(id, ar)
-
-			return
-		}
-
+		aa := s.applyV3.AsyncApplyBuilder(&raftReq)
 		aa.id = id
 		aa.index = e.Index
 		s.asyncApplyCh <- aa

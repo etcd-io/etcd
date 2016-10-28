@@ -22,7 +22,6 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/wait"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/net/context"
 )
 
 func init() { BcryptCost = bcrypt.MinCost }
@@ -88,8 +87,7 @@ func TestAuthenticate(t *testing.T) {
 	}
 
 	// auth a non-existing user
-	ctx1 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", "dummy")
-	_, err = as.AsyncAuthenticateParam(ctx1, "foo-test", "bar")
+	_, err = as.AsyncAuthenticate(&pb.InternalAuthenticateRequest{Name: "foo-test", Password: "bar", SimpleToken: "dummy"}, uint64(1))
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
@@ -97,26 +95,14 @@ func TestAuthenticate(t *testing.T) {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
 
-	var params interface{}
-
 	// auth an existing user with correct password
-	ctx2 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(2)), "simpleToken", "dummy")
-	params, err = as.AsyncAuthenticateParam(ctx2, "foo", "bar")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = as.AsyncAuthenticate(params)
+	_, err = as.AsyncAuthenticate(&pb.InternalAuthenticateRequest{Name: "foo", Password: "bar", SimpleToken: "dummy"}, uint64(2))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// auth an existing user but with wrong password
-	ctx3 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(3)), "simpleToken", "dummy")
-	params, err = as.AsyncAuthenticateParam(ctx3, "foo", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = as.AsyncAuthenticate(params)
+	_, err = as.AsyncAuthenticate(&pb.InternalAuthenticateRequest{Name: "foo", Password: "", SimpleToken: "dummy"}, uint64(3))
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
@@ -179,26 +165,20 @@ func TestUserChangePassword(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var params interface{}
-
-	ctx1 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", "dummy")
-	params, err = as.AsyncAuthenticateParam(ctx1, "foo", "")
+	_, err = as.AsyncAuthenticate(&pb.InternalAuthenticateRequest{Name: "foo", Password: "", SimpleToken: "dummy"}, uint64(1))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = as.AsyncAuthenticate(params)
 
 	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", Password: "bar"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ctx2 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(2)), "simpleToken", "dummy")
-	params, err = as.AsyncAuthenticateParam(ctx2, "foo", "bar")
+	_, err = as.AsyncAuthenticate(&pb.InternalAuthenticateRequest{Name: "foo", Password: "bar", SimpleToken: "dummy"}, uint64(2))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = as.AsyncAuthenticate(params)
 
 	// change a non-existing user
 	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-test", Password: "bar"})
