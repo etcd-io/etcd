@@ -672,8 +672,12 @@ func TestWatchWithRequireLeader(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	// something for the non-require leader watch to read as an event
-	if _, err := clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
+	// Put a key for the non-require leader watch to read as an event.
+	// The watchers will be on member[0]; put key through member[0] to
+	// ensure that it receives the update so watching after killing quorum
+	// is guaranteed to have the key.
+	liveClient := clus.Client(0)
+	if _, err := liveClient.Put(context.TODO(), "foo", "bar"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -688,8 +692,8 @@ func TestWatchWithRequireLeader(t *testing.T) {
 	tickDuration := 10 * time.Millisecond
 	time.Sleep(time.Duration(3*clus.Members[0].ElectionTicks) * tickDuration)
 
-	chLeader := clus.Client(0).Watch(clientv3.WithRequireLeader(context.TODO()), "foo", clientv3.WithRev(1))
-	chNoLeader := clus.Client(0).Watch(context.TODO(), "foo", clientv3.WithRev(1))
+	chLeader := liveClient.Watch(clientv3.WithRequireLeader(context.TODO()), "foo", clientv3.WithRev(1))
+	chNoLeader := liveClient.Watch(context.TODO(), "foo", clientv3.WithRev(1))
 
 	select {
 	case resp, ok := <-chLeader:
