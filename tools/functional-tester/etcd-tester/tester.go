@@ -45,7 +45,7 @@ func (tt *tester) runLoop() {
 		roundTotalCounter.Inc()
 
 		if err := tt.doRound(round); err != nil {
-			plog.Warningf("%s functional-tester returning with error (%v)", tt.logPrefix, err)
+			plog.Warningf("%s functional-tester returning with error (%v)", tt.logPrefix(), err)
 			if tt.cleanup() != nil {
 				return
 			}
