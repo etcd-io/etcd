@@ -54,7 +54,6 @@ func (ws watcherSingle) run() {
 	for wr := range ws.ch {
 		ws.lastStoreRev = wr.Header.Revision
 		ws.w.send(wr)
-
 		if ws.sws.maybeCoalesceWatcher(ws) {
 			return
 		}
