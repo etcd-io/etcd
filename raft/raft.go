@@ -353,10 +353,11 @@ func (r *raft) send(m pb.Message) {
 		if m.Term != 0 {
 			panic(fmt.Sprintf("term should not be set when sending %s (was %d)", m.Type, m.Term))
 		}
-		// do not attach term to MsgProp
+		// do not attach term to MsgProp, MsgReadIndex
 		// proposals are a way to forward to the leader and
 		// should be treated as local message.
-		if m.Type != pb.MsgProp {
+		// MsgReadIndex is also forwarded to leader.
+		if m.Type != pb.MsgProp && m.Type != pb.MsgReadIndex {
 			m.Term = r.Term
 		}
 	}
