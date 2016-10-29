@@ -67,26 +67,9 @@ func main() {
 		agents[i].datadir = *datadir
 	}
 
-	sConfig := &stressConfig{
-		qps:            *stressQPS,
-		keyLargeSize:   int(*stressKeyLargeSize),
-		keySize:        int(*stressKeySize),
-		keySuffixRange: int(*stressKeySuffixRange),
-		v2:             *isV2Only,
-	}
-
-	lsConfig := &leaseStressConfig{
-		numLeases:    10,
-		keysPerLease: 10,
-		qps:          *stressQPS, // only used to create nop stresser in leaseStresserBuilder
-	}
-
 	c := &cluster{
-		agents:               agents,
-		v2Only:               *isV2Only,
-		stressBuilder:        newStressBuilder(*stresserType, sConfig),
-		leaseStresserBuilder: newLeaseStresserBuilder(*stresserType, lsConfig),
-		consistencyCheck:     *consistencyCheck,
+		agents: agents,
+		v2Only: *isV2Only,
 	}
 
 	if err := c.bootstrap(); err != nil {
@@ -129,10 +112,26 @@ func main() {
 			schedule[i] = failures[caseNum]
 		}
 	}
+
+	sConfig := &stressConfig{
+		qps:            *stressQPS,
+		keyLargeSize:   int(*stressKeyLargeSize),
+		keySize:        int(*stressKeySize),
+		keySuffixRange: int(*stressKeySuffixRange),
+		v2:             *isV2Only,
+	}
+	lsConfig := &leaseStressConfig{
+		numLeases:    10,
+		keysPerLease: 10,
+		qps:          *stressQPS,
+	}
 	t := &tester{
-		failures: schedule,
-		cluster:  c,
-		limit:    *limit,
+		failures:             schedule,
+		cluster:              c,
+		limit:                *limit,
+		stressBuilder:        newStressBuilder(*stresserType, sConfig),
+		leaseStresserBuilder: newLeaseStresserBuilder(*stresserType, lsConfig),
+		consistencyCheck:     *consistencyCheck,
 	}
 
 	sh := statusHandler{status: &t.status}

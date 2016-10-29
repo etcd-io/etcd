@@ -39,17 +39,9 @@ type agentConfig struct {
 }
 
 type cluster struct {
-	agents []agentConfig
-
-	v2Only           bool // to be deprecated
-	consistencyCheck bool
-	Size             int
-
-	Stressers            []Stresser
-	stressBuilder        stressBuilder
-	leaseStresserBuilder leaseStresserBuilder
-	Checker              Checker
-
+	agents  []agentConfig
+	v2Only  bool // to be deprecated
+	Size    int
 	Members []*member
 }
 
@@ -100,27 +92,6 @@ func (c *cluster) bootstrap() error {
 		}
 	}
 
-	c.Stressers = make([]Stresser, 0)
-	leaseStressers := make([]Stresser, len(members))
-	for i, m := range members {
-		lStresser := c.leaseStresserBuilder(m)
-		leaseStressers[i] = lStresser
-		c.Stressers = append(c.Stressers, c.stressBuilder(m), lStresser)
-	}
-
-	for i := range c.Stressers {
-		go c.Stressers[i].Stress()
-	}
-
-	var checkers []Checker
-	if c.consistencyCheck && !c.v2Only {
-		checkers = append(checkers, newHashChecker(hashAndRevGetter(c)), newLeaseChecker(leaseStressers))
-	} else {
-		checkers = append(checkers, newNoChecker())
-	}
-
-	c.Checker = newCompositeChecker(checkers)
-
 	c.Size = size
 	c.Members = members
 	return nil
@@ -167,15 +138,6 @@ func (c *cluster) GetLeader() (int, error) {
 	return 0, fmt.Errorf("no leader found")
 }
 
-func (c *cluster) Report() (success, failure int) {
-	for _, stress := range c.Stressers {
-		s, f := stress.Report()
-		success += s
-		failure += f
-	}
-	return
-}
-
 func (c *cluster) Cleanup() error {
 	var lasterr error
 	for _, m := range c.Members {
@@ -183,19 +145,12 @@ func (c *cluster) Cleanup() error {
 			lasterr = err
 		}
 	}
-	for _, s := range c.Stressers {
-		s.Cancel()
-	}
-
 	return lasterr
 }
 
 func (c *cluster) Terminate() {
 	for _, m := range c.Members {
 		m.Agent.Terminate()
-	}
-	for _, s := range c.Stressers {
-		s.Cancel()
 	}
 }
 
@@ -215,6 +170,22 @@ func (c *cluster) Status() ClusterStatus {
 		cs.AgentStatuses[desc] = s
 	}
 	return cs
+}
+
+func (c *cluster) maxRev() (rev int64, err error) {
+	for _, m := range c.Members {
+		curRev, _, curErr := m.RevHash()
+		if curErr != nil {
+			err = curErr
+		}
+		if curRev > rev {
+			rev = curRev
+		}
+	}
+	if rev == 0 {
+		return 0, err
+	}
+	return rev, nil
 }
 
 func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) {

@@ -25,6 +25,12 @@ type tester struct {
 	limit           int
 	status          Status
 	currentRevision int64
+
+	Stressers            []Stresser
+	stressBuilder        stressBuilder
+	leaseStresserBuilder leaseStresserBuilder
+	Checker              Checker
+	consistencyCheck     bool
 }
 
 // compactQPS is rough number of compact requests per second.
@@ -38,6 +44,8 @@ func (tt *tester) runLoop() {
 	for _, f := range tt.failures {
 		tt.status.Failures = append(tt.status.Failures, f.Desc())
 	}
+
+	tt.setupStressers()
 
 	var prevCompactRev int64
 	for round := 0; round < tt.limit || tt.limit == -1; round++ {
@@ -80,6 +88,27 @@ func (tt *tester) runLoop() {
 	}
 
 	plog.Printf("%s functional-tester is finished", tt.logPrefix())
+}
+
+func (tt *tester) setupStressers() {
+	tt.Stressers = make([]Stresser, 0)
+	leaseStressers := make([]Stresser, 0, 2*len(tt.cluster.Members))
+	for i, m := range tt.cluster.Members {
+		lStresser := tt.leaseStresserBuilder(m)
+		leaseStressers[i] = lStresser
+		tt.Stressers = append(tt.Stressers, tt.stressBuilder(m), lStresser)
+	}
+	for i := range tt.Stressers {
+		go tt.Stressers[i].Stress()
+	}
+	if !tt.consistencyCheck || tt.cluster.v2Only {
+		tt.Checker = newNoChecker()
+		return
+	}
+	tt.Checker = newCompositeChecker([]Checker{
+		newHashChecker(hashAndRevGetter(tt.cluster)),
+		newLeaseChecker(leaseStressers)},
+	)
 }
 
 func (tt *tester) doRound(round int) error {
@@ -142,7 +171,7 @@ func (tt *tester) checkConsistency() (err error) {
 		}
 		err = tt.startStressers()
 	}()
-	if err = tt.cluster.Checker.Check(); err != nil {
+	if err = tt.Checker.Check(); err != nil {
 		plog.Printf("%s %v", tt.logPrefix(), err)
 	}
 
@@ -207,6 +236,7 @@ func (tt *tester) cleanup() error {
 	}
 	caseFailedTotalCounter.WithLabelValues(desc).Inc()
 
+	tt.cancelStressers()
 	plog.Printf("%s cleaning up...", tt.logPrefix())
 	if err := tt.cluster.Cleanup(); err != nil {
 		plog.Warningf("%s cleanup error: %v", tt.logPrefix(), err)
@@ -223,7 +253,7 @@ func (tt *tester) cleanup() error {
 
 func (tt *tester) cancelStressers() {
 	plog.Printf("%s canceling the stressers...", tt.logPrefix())
-	for _, s := range tt.cluster.Stressers {
+	for _, s := range tt.Stressers {
 		s.Cancel()
 	}
 	plog.Printf("%s canceled stressers", tt.logPrefix())
@@ -231,11 +261,20 @@ func (tt *tester) cancelStressers() {
 
 func (tt *tester) startStressers() error {
 	plog.Printf("%s starting the stressers...", tt.logPrefix())
-	for _, s := range tt.cluster.Stressers {
+	for _, s := range tt.Stressers {
 		if err := s.Stress(); err != nil {
 			return err
 		}
 	}
 	plog.Printf("%s started stressers", tt.logPrefix())
 	return nil
+}
+
+func (tt *tester) Report() (success, failure int) {
+	for _, stresser := range tt.Stressers {
+		s, f := stresser.Report()
+		success += s
+		failure += f
+	}
+	return
 }
