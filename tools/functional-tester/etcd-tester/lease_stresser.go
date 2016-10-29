@@ -32,15 +32,7 @@ const (
 	// time to live for lease
 	TTL      = 120
 	TTLShort = 2
-	// leasesStressRoundPs indicates the rate that leaseStresser.run() creates and deletes leases per second
-	leasesStressRoundPs = 1
 )
-
-type leaseStressConfig struct {
-	numLeases    int
-	keysPerLease int
-	qps          int
-}
 
 type leaseStresser struct {
 	endpoint string
@@ -110,36 +102,6 @@ func (al *atomicLeases) getLeasesMap() map[int64]time.Time {
 	return leasesCopy
 }
 
-type leaseStresserBuilder func(m *member) Stresser
-
-func newLeaseStresserBuilder(s string, lsConfig *leaseStressConfig) leaseStresserBuilder {
-	// TODO: probably need to combine newLeaseStresserBuilder with newStresserBuilder to have a unified stresser builder.
-	switch s {
-	case "nop":
-		return func(*member) Stresser {
-			return &nopStresser{
-				start: time.Now(),
-				qps:   lsConfig.qps,
-			}
-		}
-	case "default":
-		return func(mem *member) Stresser {
-			// limit lease stresser to run 1 round per second
-			l := rate.NewLimiter(rate.Limit(leasesStressRoundPs), leasesStressRoundPs)
-			return &leaseStresser{
-				endpoint:     mem.grpcAddr(),
-				numLeases:    lsConfig.numLeases,
-				keysPerLease: lsConfig.keysPerLease,
-				rateLimiter:  l,
-			}
-		}
-	default:
-		plog.Panicf("unknown stresser type: %s\n", s)
-	}
-	// never reach here
-	return nil
-}
-
 func (ls *leaseStresser) setupOnce() error {
 	if ls.aliveLeases != nil {
 		return nil
@@ -185,7 +147,8 @@ func (ls *leaseStresser) run() {
 	defer ls.runWg.Done()
 	ls.restartKeepAlives()
 	for {
-		if err := ls.rateLimiter.Wait(ls.ctx); err == context.Canceled {
+		err := ls.rateLimiter.WaitN(ls.ctx, ls.numLeases*ls.keysPerLease)
+		if err == context.Canceled {
 			return
 		}
 		plog.Debugf("creating lease on %v", ls.endpoint)
@@ -437,3 +400,5 @@ func (ls *leaseStresser) Cancel() {
 func (ls *leaseStresser) Report() (int, int) {
 	return ls.success, ls.failure
 }
+
+func (ls *leaseStresser) Checker() Checker { return &leaseChecker{ls} }

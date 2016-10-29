@@ -139,8 +139,12 @@ func (f *failureUntilSnapshot) Inject(c *cluster, round int) error {
 	if c.Size < 3 {
 		return nil
 	}
+	// maxRev may fail since failure just injected, retry if failed.
 	startRev, err := c.maxRev()
-	if err != nil {
+	for i := 0; i < 10 && startRev == 0; i++ {
+		startRev, err = c.maxRev()
+	}
+	if startRev == 0 {
 		return err
 	}
 	lastRev := startRev
@@ -148,9 +152,7 @@ func (f *failureUntilSnapshot) Inject(c *cluster, round int) error {
 	// Give it 3-times time to create a new snapshot.
 	retry := snapshotCount / 1000 * 3
 	for j := 0; j < retry; j++ {
-		if lastRev, err = c.maxRev(); err != nil {
-			return err
-		}
+		lastRev, err = c.maxRev()
 		// If the number of proposals committed is bigger than snapshot count,
 		// a new snapshot should have been created.
 		if lastRev-startRev > snapshotCount {

@@ -23,6 +23,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/time/rate"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcd-tester")
@@ -47,8 +48,7 @@ func main() {
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
 	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
-	isV2Only := flag.Bool("v2-only", false, "'true' to run V2 only tester.")
-	stresserType := flag.String("stresser", "default", "specify stresser (\"default\" or \"nop\").")
+	stresserType := flag.String("stresser", "keys,lease", "comma separated list of stressers (keys, lease, v2keys, nop).")
 	failureTypes := flag.String("failures", "default,failpoints", "specify failures (concat of \"default\" and \"failpoints\").")
 	externalFailures := flag.String("external-failures", "", "specify a path of script for enabling/disabling an external fault injector")
 	flag.Parse()
@@ -67,11 +67,7 @@ func main() {
 		agents[i].datadir = *datadir
 	}
 
-	c := &cluster{
-		agents: agents,
-		v2Only: *isV2Only,
-	}
-
+	c := &cluster{agents: agents}
 	if err := c.bootstrap(); err != nil {
 		plog.Fatal(err)
 	}
@@ -113,25 +109,23 @@ func main() {
 		}
 	}
 
-	sConfig := &stressConfig{
-		qps:            *stressQPS,
+	scfg := stressConfig{
+		rateLimiter:    rate.NewLimiter(rate.Limit(*stressQPS), *stressQPS),
 		keyLargeSize:   int(*stressKeyLargeSize),
 		keySize:        int(*stressKeySize),
 		keySuffixRange: int(*stressKeySuffixRange),
-		v2:             *isV2Only,
+		numLeases:      10,
+		keysPerLease:   10,
 	}
-	lsConfig := &leaseStressConfig{
-		numLeases:    10,
-		keysPerLease: 10,
-		qps:          *stressQPS,
-	}
+
 	t := &tester{
-		failures:             schedule,
-		cluster:              c,
-		limit:                *limit,
-		stressBuilder:        newStressBuilder(*stresserType, sConfig),
-		leaseStresserBuilder: newLeaseStresserBuilder(*stresserType, lsConfig),
-		consistencyCheck:     *consistencyCheck,
+		failures: schedule,
+		cluster:  c,
+		limit:    *limit,
+
+		scfg:         scfg,
+		stresserType: *stresserType,
+		doChecks:     *consistencyCheck,
 	}
 
 	sh := statusHandler{status: &t.status}

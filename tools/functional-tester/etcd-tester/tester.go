@@ -20,17 +20,19 @@ import (
 )
 
 type tester struct {
+	cluster *cluster
+	limit   int
+
 	failures        []failure
-	cluster         *cluster
-	limit           int
 	status          Status
 	currentRevision int64
 
-	Stressers            []Stresser
-	stressBuilder        stressBuilder
-	leaseStresserBuilder leaseStresserBuilder
-	Checker              Checker
-	consistencyCheck     bool
+	stresserType string
+	scfg         stressConfig
+	doChecks     bool
+
+	stresser Stresser
+	checker  Checker
 }
 
 // compactQPS is rough number of compact requests per second.
@@ -45,7 +47,10 @@ func (tt *tester) runLoop() {
 		tt.status.Failures = append(tt.status.Failures, f.Desc())
 	}
 
-	tt.setupStressers()
+	if err := tt.resetStressCheck(); err != nil {
+		plog.Errorf("%s failed to start stresser (%v)", err)
+		return
+	}
 
 	var prevCompactRev int64
 	for round := 0; round < tt.limit || tt.limit == -1; round++ {
@@ -90,27 +95,6 @@ func (tt *tester) runLoop() {
 	plog.Printf("%s functional-tester is finished", tt.logPrefix())
 }
 
-func (tt *tester) setupStressers() {
-	tt.Stressers = make([]Stresser, 0)
-	leaseStressers := make([]Stresser, 0, 2*len(tt.cluster.Members))
-	for i, m := range tt.cluster.Members {
-		lStresser := tt.leaseStresserBuilder(m)
-		leaseStressers[i] = lStresser
-		tt.Stressers = append(tt.Stressers, tt.stressBuilder(m), lStresser)
-	}
-	for i := range tt.Stressers {
-		go tt.Stressers[i].Stress()
-	}
-	if !tt.consistencyCheck || tt.cluster.v2Only {
-		tt.Checker = newNoChecker()
-		return
-	}
-	tt.Checker = newCompositeChecker([]Checker{
-		newHashChecker(hashAndRevGetter(tt.cluster)),
-		newLeaseChecker(leaseStressers)},
-	)
-}
-
 func (tt *tester) doRound(round int) error {
 	for j, f := range tt.failures {
 		caseTotalCounter.WithLabelValues(f.Desc()).Inc()
@@ -129,26 +113,21 @@ func (tt *tester) doRound(round int) error {
 		if err := f.Recover(tt.cluster, round); err != nil {
 			return fmt.Errorf("recovery error: %v", err)
 		}
+		plog.Printf("%s recovered failure", tt.logPrefix())
+		tt.cancelStresser()
 		plog.Printf("%s wait until cluster is healthy", tt.logPrefix())
 		if err := tt.cluster.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
-		plog.Printf("%s recovered failure", tt.logPrefix())
-
 		if err := tt.checkConsistency(); err != nil {
 			return fmt.Errorf("tt.checkConsistency error (%v)", err)
 		}
-
 		plog.Printf("%s succeed!", tt.logPrefix())
 	}
 	return nil
 }
 
 func (tt *tester) updateRevision() error {
-	if tt.cluster.v2Only {
-		return nil
-	}
-
 	revs, _, err := tt.cluster.getRevisionHash()
 	for _, rev := range revs {
 		tt.currentRevision = rev
@@ -160,7 +139,6 @@ func (tt *tester) updateRevision() error {
 }
 
 func (tt *tester) checkConsistency() (err error) {
-	tt.cancelStressers()
 	defer func() {
 		if err != nil {
 			return
@@ -169,20 +147,19 @@ func (tt *tester) checkConsistency() (err error) {
 			plog.Warningf("%s functional-tester returning with tt.updateRevision error (%v)", tt.logPrefix(), err)
 			return
 		}
-		err = tt.startStressers()
+		err = tt.startStresser()
 	}()
-	if err = tt.Checker.Check(); err != nil {
+	if err = tt.checker.Check(); err != nil {
 		plog.Printf("%s %v", tt.logPrefix(), err)
 	}
-
 	return err
 }
 
 func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
-	tt.cancelStressers()
+	tt.cancelStresser()
 	defer func() {
 		if err == nil {
-			err = tt.startStressers()
+			err = tt.startStresser()
 		}
 	}()
 
@@ -211,7 +188,6 @@ func (tt *tester) defrag() error {
 		}
 		return err
 	}
-
 	plog.Printf("%s defragmented...", tt.logPrefix())
 	return nil
 }
@@ -236,45 +212,49 @@ func (tt *tester) cleanup() error {
 	}
 	caseFailedTotalCounter.WithLabelValues(desc).Inc()
 
-	tt.cancelStressers()
-	plog.Printf("%s cleaning up...", tt.logPrefix())
+	tt.cancelStresser()
 	if err := tt.cluster.Cleanup(); err != nil {
 		plog.Warningf("%s cleanup error: %v", tt.logPrefix(), err)
 		return err
 	}
-
 	if err := tt.cluster.Reset(); err != nil {
 		plog.Warningf("%s cleanup Bootstrap error: %v", tt.logPrefix(), err)
 		return err
 	}
-
-	return nil
+	return tt.resetStressCheck()
 }
 
-func (tt *tester) cancelStressers() {
+func (tt *tester) cancelStresser() {
 	plog.Printf("%s canceling the stressers...", tt.logPrefix())
-	for _, s := range tt.Stressers {
-		s.Cancel()
-	}
+	tt.stresser.Cancel()
 	plog.Printf("%s canceled stressers", tt.logPrefix())
 }
 
-func (tt *tester) startStressers() error {
+func (tt *tester) startStresser() (err error) {
 	plog.Printf("%s starting the stressers...", tt.logPrefix())
-	for _, s := range tt.Stressers {
-		if err := s.Stress(); err != nil {
-			return err
-		}
-	}
+	err = tt.stresser.Stress()
 	plog.Printf("%s started stressers", tt.logPrefix())
-	return nil
+	return err
 }
 
-func (tt *tester) Report() (success, failure int) {
-	for _, stresser := range tt.Stressers {
-		s, f := stresser.Report()
-		success += s
-		failure += f
+func (tt *tester) resetStressCheck() error {
+	plog.Infof("%s resetting stressers and checkers...", tt.logPrefix())
+	cs := &compositeStresser{}
+	for _, m := range tt.cluster.Members {
+		s := NewStresser(tt.stresserType, &tt.scfg, m)
+		cs.stressers = append(cs.stressers, s)
 	}
-	return
+	tt.stresser = cs
+	if !tt.doChecks {
+		tt.checker = newNoChecker()
+		return tt.startStresser()
+	}
+	chk := newHashChecker(hashAndRevGetter(tt.cluster))
+	if schk := cs.Checker(); schk != nil {
+		chk = newCompositeChecker([]Checker{chk, schk})
+	}
+	tt.checker = chk
+	return tt.startStresser()
 }
+
+func (tt *tester) Report() (success, failure int) { return tt.stresser.Report() }

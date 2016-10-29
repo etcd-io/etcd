@@ -17,7 +17,6 @@ package main
 import (
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"golang.org/x/net/context"
@@ -133,76 +132,31 @@ func (hc *hashChecker) Check() error {
 	return hc.checkRevAndHashes()
 }
 
-type leaseChecker struct {
-	leaseStressers []Stresser
-}
-
-func newLeaseChecker(leaseStressers []Stresser) Checker { return &leaseChecker{leaseStressers} }
+type leaseChecker struct{ ls *leaseStresser }
 
 func (lc *leaseChecker) Check() error {
-	plog.Info("lease stresser invariant check...")
-	errc := make(chan error)
-	for _, ls := range lc.leaseStressers {
-		go func(s Stresser) { errc <- lc.checkInvariant(s) }(ls)
-	}
-	var errs []error
-	for i := 0; i < len(lc.leaseStressers); i++ {
-		if err := <-errc; err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) == 0 {
-		return nil
-	}
-	return fmt.Errorf("lease stresser encounters error: (%v)", fromErrsToString(errs))
-}
-
-func fromErrsToString(errs []error) string {
-	stringArr := make([]string, len(errs))
-	for i, err := range errs {
-		stringArr[i] = err.Error()
-	}
-	return strings.Join(stringArr, ",")
-}
-
-func (lc *leaseChecker) checkInvariant(lStresser Stresser) error {
-	ls := lStresser.(*leaseStresser)
-	if err := checkLeasesExpired(ls); err != nil {
+	plog.Infof("checking revoked leases %v", lc.ls.revokedLeases.leases)
+	if err := lc.check(true, lc.ls.revokedLeases.leases); err != nil {
 		return err
 	}
-	if err := checkLeasesAlive(ls); err != nil {
+	plog.Infof("checking alive leases %v", lc.ls.aliveLeases.leases)
+	if err := lc.check(false, lc.ls.aliveLeases.leases); err != nil {
 		return err
 	}
-	return checkShortLivedLeases(ls)
+	plog.Infof("checking short lived leases %v", lc.ls.shortLivedLeases.leases)
+	return lc.check(true, lc.ls.shortLivedLeases.leases)
 }
 
-func checkLeasesExpired(ls *leaseStresser) error {
-	plog.Infof("revoked leases %v", ls.revokedLeases.getLeasesMap())
-	return checkLeases(true, ls, ls.revokedLeases.getLeasesMap())
-}
-
-func checkLeasesAlive(ls *leaseStresser) error {
-	plog.Infof("alive leases %v", ls.aliveLeases.getLeasesMap())
-	return checkLeases(false, ls, ls.aliveLeases.getLeasesMap())
-}
-
-// checkShortLivedLeases() verifies that the short lived leases are indeed being deleted.
-func checkShortLivedLeases(ls *leaseStresser) error {
-	plog.Infof("short lived leases %v", ls.shortLivedLeases.getLeasesMap())
-	return checkLeases(true, ls, ls.shortLivedLeases.getLeasesMap())
-}
-
-func checkLeases(expired bool, ls *leaseStresser, leases map[int64]time.Time) error {
+func (lc *leaseChecker) check(expired bool, leases map[int64]time.Time) error {
 	ctx, cancel := context.WithTimeout(context.Background(), leaseCheckerTimeout)
 	defer cancel()
 	for leaseID := range leases {
-		keysExpired, err := ls.hasKeysAttachedToLeaseExpired(ctx, leaseID)
+		keysExpired, err := lc.ls.hasKeysAttachedToLeaseExpired(ctx, leaseID)
 		if err != nil {
 			plog.Errorf("hasKeysAttachedToLeaseExpired error: (%v)", err)
 			return err
 		}
-		leaseExpired, err := ls.hasLeaseExpired(ctx, leaseID)
+		leaseExpired, err := lc.ls.hasLeaseExpired(ctx, leaseID)
 		if err != nil {
 			plog.Errorf("hasLeaseExpired error: (%v)", err)
 			return err
@@ -217,22 +171,25 @@ func checkLeases(expired bool, ls *leaseStresser, leases map[int64]time.Time) er
 	return nil
 }
 
-type compositeChecker struct {
-	checkers []Checker
-}
+// compositeChecker implements a checker that runs a slice of Checkers concurrently.
+type compositeChecker struct{ checkers []Checker }
 
 func newCompositeChecker(checkers []Checker) Checker {
 	return &compositeChecker{checkers}
 }
 
 func (cchecker *compositeChecker) Check() error {
-	for _, checker := range cchecker.checkers {
-		if err := checker.Check(); err != nil {
-			return err
+	errc := make(chan error)
+	for _, c := range cchecker.checkers {
+		go func(chk Checker) { errc <- chk.Check() }(c)
+	}
+	var errs []error
+	for range cchecker.checkers {
+		if err := <-errc; err != nil {
+			errs = append(errs, err)
 		}
 	}
-
-	return nil
+	return errsToError(errs)
 }
 
 type noChecker struct{}

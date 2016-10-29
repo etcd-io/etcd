@@ -40,7 +40,6 @@ type agentConfig struct {
 
 type cluster struct {
 	agents  []agentConfig
-	v2Only  bool // to be deprecated
 	Size    int
 	Members []*member
 }
@@ -105,13 +104,9 @@ func (c *cluster) WaitHealth() error {
 	// TODO: set it to a reasonable value. It is set that high because
 	// follower may use long time to catch up the leader when reboot under
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
-	healthFunc := func(m *member) error { return m.SetHealthKeyV3() }
-	if c.v2Only {
-		healthFunc = func(m *member) error { return m.SetHealthKeyV2() }
-	}
 	for i := 0; i < 60; i++ {
 		for _, m := range c.Members {
-			if err = healthFunc(m); err != nil {
+			if err = m.SetHealthKeyV3(); err != nil {
 				break
 			}
 		}
@@ -126,9 +121,6 @@ func (c *cluster) WaitHealth() error {
 
 // GetLeader returns the index of leader and error if any.
 func (c *cluster) GetLeader() (int, error) {
-	if c.v2Only {
-		return 0, nil
-	}
 	for i, m := range c.Members {
 		isLeader, err := m.IsLeader()
 		if isLeader || err != nil {
@@ -172,20 +164,27 @@ func (c *cluster) Status() ClusterStatus {
 	return cs
 }
 
+// maxRev returns the maximum revision found on the cluster.
 func (c *cluster) maxRev() (rev int64, err error) {
-	for _, m := range c.Members {
-		curRev, _, curErr := m.RevHash()
-		if curErr != nil {
-			err = curErr
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
+	revc, errc := make(chan int64, len(c.Members)), make(chan error, len(c.Members))
+	for i := range c.Members {
+		go func(m *member) {
+			mrev, merr := m.Rev(ctx)
+			revc <- mrev
+			errc <- merr
+		}(c.Members[i])
+	}
+	for i := 0; i < len(c.Members); i++ {
+		if merr := <-errc; merr != nil {
+			err = merr
 		}
-		if curRev > rev {
-			rev = curRev
+		if mrev := <-revc; mrev > rev {
+			rev = mrev
 		}
 	}
-	if rev == 0 {
-		return 0, err
-	}
-	return rev, nil
+	return rev, err
 }
 
 func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) {
