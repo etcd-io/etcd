@@ -169,7 +169,7 @@ As described in the above, the best practice of adding new members is to configu
 
 For avoiding this problem, etcd provides an option `-strict-reconfig-check`. If this option is passed to etcd, etcd rejects reconfiguration requests if the number of started members will be less than a quorum of the reconfigured cluster.
 
-It is recommended to enable this option. However, it is disabled by default because of keeping compatibility.
+It is enabled by default.
 
 [add member]: #add-a-new-member
 [cluster-reconf]: #cluster-reconfiguration-operations
