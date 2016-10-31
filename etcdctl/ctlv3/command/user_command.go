@@ -124,19 +124,30 @@ func userAddCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	var password string
+	var user string
 
-	if !passwordInteractive {
-		fmt.Scanf("%s", &password)
+	splitted := strings.SplitN(args[0], ":", 2)
+	if len(splitted) < 2 {
+		user = args[0]
+		if !passwordInteractive {
+			fmt.Scanf("%s", &password)
+		} else {
+			password = readPasswordInteractive(args[0])
+		}
 	} else {
-		password = readPasswordInteractive(args[0])
+		user = splitted[0]
+		password = splitted[1]
+		if len(user) == 0 {
+			ExitWithError(ExitBadArgs, fmt.Errorf("empty user name is not allowed."))
+		}
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.UserAdd(context.TODO(), args[0], password)
+	_, err := mustClientFromCmd(cmd).Auth.UserAdd(context.TODO(), user, password)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("User %s created\n", args[0])
+	fmt.Printf("User %s created\n", user)
 }
 
 // userDeleteCommandFunc executes the "user delete" command.
