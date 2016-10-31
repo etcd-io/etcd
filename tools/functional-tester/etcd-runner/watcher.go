@@ -56,7 +56,7 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 	defer client.Close()
 
 	// get revision using get request
-	gr = getWithRetry(client, ctx, "non-existant")
+	gr = getWithRetry(client, ctx, "non-existent")
 	revision = gr.Header.Revision
 
 	ctxt, cancel := context.WithDeadline(ctx, time.Now().Add(runningTime))

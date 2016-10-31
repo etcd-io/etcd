@@ -272,7 +272,7 @@ func (ls *leaseStresser) randomlyDropLeases() {
 			defer wg.Done()
 			dropped, err := ls.randomlyDropLease(leaseID)
 			// if randomlyDropLease encountered an error such as context is cancelled, remove the lease from aliveLeases
-			// becasue we can't tell whether the lease is dropped or not.
+			// because we can't tell whether the lease is dropped or not.
 			if err != nil {
 				plog.Debugf("drop lease %v has failed error (%v)", leaseID, err)
 				ls.aliveLeases.remove(leaseID)
