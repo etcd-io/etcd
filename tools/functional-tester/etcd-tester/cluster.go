@@ -39,17 +39,8 @@ type agentConfig struct {
 }
 
 type cluster struct {
-	agents []agentConfig
-
-	v2Only           bool // to be deprecated
-	consistencyCheck bool
-	Size             int
-
-	Stressers            []Stresser
-	stressBuilder        stressBuilder
-	leaseStresserBuilder leaseStresserBuilder
-	Checker              Checker
-
+	agents  []agentConfig
+	Size    int
 	Members []*member
 }
 
@@ -100,27 +91,6 @@ func (c *cluster) bootstrap() error {
 		}
 	}
 
-	c.Stressers = make([]Stresser, 0)
-	leaseStressers := make([]Stresser, len(members))
-	for i, m := range members {
-		lStresser := c.leaseStresserBuilder(m)
-		leaseStressers[i] = lStresser
-		c.Stressers = append(c.Stressers, c.stressBuilder(m), lStresser)
-	}
-
-	for i := range c.Stressers {
-		go c.Stressers[i].Stress()
-	}
-
-	var checkers []Checker
-	if c.consistencyCheck && !c.v2Only {
-		checkers = append(checkers, newHashChecker(hashAndRevGetter(c)), newLeaseChecker(leaseStressers))
-	} else {
-		checkers = append(checkers, newNoChecker())
-	}
-
-	c.Checker = newCompositeChecker(checkers)
-
 	c.Size = size
 	c.Members = members
 	return nil
@@ -134,13 +104,9 @@ func (c *cluster) WaitHealth() error {
 	// TODO: set it to a reasonable value. It is set that high because
 	// follower may use long time to catch up the leader when reboot under
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
-	healthFunc := func(m *member) error { return m.SetHealthKeyV3() }
-	if c.v2Only {
-		healthFunc = func(m *member) error { return m.SetHealthKeyV2() }
-	}
 	for i := 0; i < 60; i++ {
 		for _, m := range c.Members {
-			if err = healthFunc(m); err != nil {
+			if err = m.SetHealthKeyV3(); err != nil {
 				break
 			}
 		}
@@ -155,9 +121,6 @@ func (c *cluster) WaitHealth() error {
 
 // GetLeader returns the index of leader and error if any.
 func (c *cluster) GetLeader() (int, error) {
-	if c.v2Only {
-		return 0, nil
-	}
 	for i, m := range c.Members {
 		isLeader, err := m.IsLeader()
 		if isLeader || err != nil {
@@ -167,15 +130,6 @@ func (c *cluster) GetLeader() (int, error) {
 	return 0, fmt.Errorf("no leader found")
 }
 
-func (c *cluster) Report() (success, failure int) {
-	for _, stress := range c.Stressers {
-		s, f := stress.Report()
-		success += s
-		failure += f
-	}
-	return
-}
-
 func (c *cluster) Cleanup() error {
 	var lasterr error
 	for _, m := range c.Members {
@@ -183,19 +137,12 @@ func (c *cluster) Cleanup() error {
 			lasterr = err
 		}
 	}
-	for _, s := range c.Stressers {
-		s.Cancel()
-	}
-
 	return lasterr
 }
 
 func (c *cluster) Terminate() {
 	for _, m := range c.Members {
 		m.Agent.Terminate()
-	}
-	for _, s := range c.Stressers {
-		s.Cancel()
 	}
 }
 
@@ -215,6 +162,29 @@ func (c *cluster) Status() ClusterStatus {
 		cs.AgentStatuses[desc] = s
 	}
 	return cs
+}
+
+// maxRev returns the maximum revision found on the cluster.
+func (c *cluster) maxRev() (rev int64, err error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
+	revc, errc := make(chan int64, len(c.Members)), make(chan error, len(c.Members))
+	for i := range c.Members {
+		go func(m *member) {
+			mrev, merr := m.Rev(ctx)
+			revc <- mrev
+			errc <- merr
+		}(c.Members[i])
+	}
+	for i := 0; i < len(c.Members); i++ {
+		if merr := <-errc; merr != nil {
+			err = merr
+		}
+		if mrev := <-revc; mrev > rev {
+			rev = mrev
+		}
+	}
+	return rev, err
 }
 
 func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) {

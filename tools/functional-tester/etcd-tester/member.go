@@ -23,7 +23,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	clientv2 "github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
@@ -105,6 +104,19 @@ func (m *member) RevHash() (int64, int64, error) {
 	return resp.Header.Revision, int64(resp.Hash), nil
 }
 
+func (m *member) Rev(ctx context.Context) (int64, error) {
+	cli, err := m.newClientV3()
+	if err != nil {
+		return 0, err
+	}
+	defer cli.Close()
+	resp, err := cli.Status(ctx, m.ClientURL)
+	if err != nil {
+		return 0, err
+	}
+	return resp.Header.Revision, nil
+}
+
 func (m *member) IsLeader() (bool, error) {
 	cli, err := m.newClientV3()
 	if err != nil {
@@ -132,19 +144,6 @@ func (m *member) SetHealthKeyV3() error {
 		return fmt.Errorf("%v (%s)", err, m.ClientURL)
 	}
 	return nil
-}
-
-func (m *member) SetHealthKeyV2() error {
-	cfg := clientv2.Config{Endpoints: []string{m.ClientURL}}
-	c, err := clientv2.New(cfg)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	kapi := clientv2.NewKeysAPI(c)
-	_, err = kapi.Set(ctx, "health", "good", nil)
-	cancel()
-	return err
 }
 
 func (m *member) newClientV3() (*clientv3.Client, error) {

@@ -136,26 +136,31 @@ func (f *failureUntilSnapshot) Inject(c *cluster, round int) error {
 	if err := f.failure.Inject(c, round); err != nil {
 		return err
 	}
-
 	if c.Size < 3 {
 		return nil
 	}
-
-	start, _ := c.Report()
-	end := start
+	// maxRev may fail since failure just injected, retry if failed.
+	startRev, err := c.maxRev()
+	for i := 0; i < 10 && startRev == 0; i++ {
+		startRev, err = c.maxRev()
+	}
+	if startRev == 0 {
+		return err
+	}
+	lastRev := startRev
 	// Normal healthy cluster could accept 1000req/s at least.
 	// Give it 3-times time to create a new snapshot.
 	retry := snapshotCount / 1000 * 3
 	for j := 0; j < retry; j++ {
-		end, _ = c.Report()
+		lastRev, err = c.maxRev()
 		// If the number of proposals committed is bigger than snapshot count,
 		// a new snapshot should have been created.
-		if end-start > snapshotCount {
+		if lastRev-startRev > snapshotCount {
 			return nil
 		}
 		time.Sleep(time.Second)
 	}
-	return fmt.Errorf("cluster too slow: only commit %d requests in %ds", end-start, retry)
+	return fmt.Errorf("cluster too slow: only commit %d requests in %ds", lastRev-startRev, retry)
 }
 
 func (f *failureUntilSnapshot) Desc() string {
