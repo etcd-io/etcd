@@ -26,7 +26,6 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/gogo/protobuf/proto"
-	"golang.org/x/net/context"
 )
 
 const (
@@ -47,9 +46,21 @@ type applyResult struct {
 	physc <-chan struct{}
 }
 
+type asyncApplyer struct {
+	r     *pb.InternalRaftRequest
+	f     func(*pb.InternalRaftRequest, uint64) *applyResult
+	id    uint64
+	index uint64
+}
+
+func (aa *asyncApplyer) AsyncApply() *applyResult {
+	return aa.f(aa.r, aa.index)
+}
+
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
 	Apply(r *pb.InternalRaftRequest) *applyResult
+	AsyncApplyBuilder(r *pb.InternalRaftRequest) *asyncApplyer
 
 	Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, error)
 	Range(txnID int64, r *pb.RangeRequest) (*pb.RangeResponse, error)
@@ -61,8 +72,6 @@ type applierV3 interface {
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
 
 	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
-
-	Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error)
 
 	AuthEnable() (*pb.AuthEnableResponse, error)
 	AuthDisable() (*pb.AuthDisableResponse, error)
@@ -115,7 +124,7 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 	case r.Alarm != nil:
 		ar.resp, ar.err = a.s.applyV3.Alarm(r.Alarm)
 	case r.Authenticate != nil:
-		ar.resp, ar.err = a.s.applyV3.Authenticate(r.Authenticate)
+		panic("Authenticate() entry must be applied asynchronously")
 	case r.AuthEnable != nil:
 		ar.resp, ar.err = a.s.applyV3.AuthEnable()
 	case r.AuthDisable != nil:
@@ -150,6 +159,21 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest) *applyResult {
 		panic("not implemented")
 	}
 	return ar
+}
+
+func (a *applierV3backend) AsyncApplyBuilder(r *pb.InternalRaftRequest) *asyncApplyer {
+	f := func(r *pb.InternalRaftRequest, index uint64) *applyResult {
+		switch {
+		case r.Authenticate != nil:
+			ar := &applyResult{}
+			ar.resp, ar.err = a.s.AuthStore().AsyncAuthenticate(r.Authenticate, index)
+			return ar
+		default:
+			panic("not implemented")
+		}
+	}
+
+	return &asyncApplyer{r: r, f: f}
 }
 
 func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, error) {
@@ -613,11 +637,6 @@ func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
 	return &pb.AuthDisableResponse{}, nil
 }
 
-func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	ctx := context.WithValue(context.WithValue(context.TODO(), "index", a.s.consistIndex.ConsistentIndex()), "simpleToken", r.SimpleToken)
-	return a.s.AuthStore().Authenticate(ctx, r.Name, r.Password)
-}
-
 func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
 	return a.s.AuthStore().UserAdd(r)
 }
@@ -802,6 +821,10 @@ func isGteRange(rangeEnd []byte) bool {
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {
 	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil
+}
+
+func needAsyncApply(r *pb.InternalRaftRequest) bool {
+	return r.Authenticate != nil
 }
 
 func removeNeedlessRangeReqs(txn *pb.TxnRequest) {

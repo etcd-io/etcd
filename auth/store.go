@@ -26,9 +26,9 @@ import (
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/wait"
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/net/context"
 )
 
 var (
@@ -80,8 +80,8 @@ type AuthStore interface {
 	// AuthDisable turns off the authentication feature
 	AuthDisable()
 
-	// Authenticate does authentication based on given user name and password
-	Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error)
+	// AsyncAuthenticate does authentication based on given user name and password
+	AsyncAuthenticate(r *pb.InternalAuthenticateRequest, index uint64) (*pb.AuthenticateResponse, error)
 
 	// Recover recovers the state of auth store from the given backend
 	Recover(b backend.Backend)
@@ -146,9 +146,6 @@ type AuthStore interface {
 
 	// Revision gets current revision of authStore
 	Revision() uint64
-
-	// CheckPassword checks a given pair of username and password is correct
-	CheckPassword(username, password string) (uint64, error)
 }
 
 type authStore struct {
@@ -162,6 +159,8 @@ type authStore struct {
 	simpleTokens   map[string]string // token -> username
 
 	revision uint64
+
+	applyWait wait.WaitTime
 }
 
 func (as *authStore) AuthEnable() error {
@@ -217,47 +216,35 @@ func (as *authStore) AuthDisable() {
 	plog.Noticef("Authentication disabled")
 }
 
-func (as *authStore) Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error) {
+func (as *authStore) AsyncAuthenticate(r *pb.InternalAuthenticateRequest, index uint64) (*pb.AuthenticateResponse, error) {
 	if !as.isAuthEnabled() {
 		return nil, ErrAuthNotEnabled
 	}
 
-	// TODO(mitake): after adding jwt support, branching based on values of ctx is required
-	index := ctx.Value("index").(uint64)
-	simpleToken := ctx.Value("simpleToken").(string)
-
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
 
-	user := getUser(tx, username)
+	user := getUser(tx, r.Name)
 	if user == nil {
 		return nil, ErrAuthFailed
 	}
 
-	token := fmt.Sprintf("%s.%d", simpleToken, index)
-	as.assignSimpleTokenToUser(username, token)
+	token := fmt.Sprintf("%s.%d", r.SimpleToken, index)
 
-	plog.Infof("authorized %s, token is %s", username, token)
+	defer func(i uint64) {
+		as.applyWait.Trigger(i)
+	}(index)
+
+	if bcrypt.CompareHashAndPassword(user.Password, []byte(r.Password)) != nil {
+		plog.Noticef("authentication failed, invalid password for user %s", r.Name)
+		return &pb.AuthenticateResponse{}, ErrAuthFailed
+	}
+
+	as.assignSimpleTokenToUser(r.Name, token)
+
+	plog.Debugf("authorized %s, token is %s", r.Name, token)
 	return &pb.AuthenticateResponse{Token: token}, nil
-}
-
-func (as *authStore) CheckPassword(username, password string) (uint64, error) {
-	tx := as.be.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
-
-	user := getUser(tx, username)
-	if user == nil {
-		return 0, ErrAuthFailed
-	}
-
-	if bcrypt.CompareHashAndPassword(user.Password, []byte(password)) != nil {
-		plog.Noticef("authentication failed, invalid password for user %s", username)
-		return 0, ErrAuthFailed
-	}
-
-	return getRevision(tx), nil
 }
 
 func (as *authStore) Recover(be backend.Backend) {
@@ -828,7 +815,7 @@ func (as *authStore) isAuthEnabled() bool {
 	return as.enabled
 }
 
-func NewAuthStore(be backend.Backend) *authStore {
+func NewAuthStore(be backend.Backend, applyWait wait.WaitTime) *authStore {
 	tx := be.BatchTx()
 	tx.Lock()
 
@@ -840,6 +827,7 @@ func NewAuthStore(be backend.Backend) *authStore {
 		be:           be,
 		simpleTokens: make(map[string]string),
 		revision:     0,
+		applyWait:    applyWait,
 	}
 
 	as.commitRevision(tx)

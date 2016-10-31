@@ -237,6 +237,15 @@ type EtcdServer struct {
 	// wg is used to wait for the go routines that depends on the server state
 	// to exit when stopping the server.
 	wg sync.WaitGroup
+
+	// authApplyWait is an auth specific applyWait.
+	// It is required for detecting a given token is activated or not.
+	authApplyWait wait.WaitTime
+
+	// asyncApplyCh is a channel for delegating a process of async apply process
+	// to a specific goroutine.
+	asyncApplyCh     chan *asyncApplyer
+	asyncApplyStopCh chan struct{}
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -444,7 +453,22 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
 
-	srv.authStore = auth.NewAuthStore(srv.be)
+	srv.asyncApplyCh = make(chan *asyncApplyer)
+	srv.asyncApplyStopCh = make(chan struct{})
+	go func(s *EtcdServer) {
+		for {
+			select {
+			case a := <-s.asyncApplyCh:
+				ar := a.f(a.r, a.index)
+				s.w.Trigger(a.id, ar)
+			case <-s.asyncApplyStopCh:
+				return
+			}
+		}
+	}(srv)
+
+	srv.authApplyWait = wait.NewTimeList()
+	srv.authStore = auth.NewAuthStore(srv.be, srv.authApplyWait)
 	if h := cfg.AutoCompactionRetention; h != 0 {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
@@ -671,6 +695,8 @@ func (s *EtcdServer) run() {
 			s.compactor.Stop()
 		}
 		close(s.done)
+
+		s.asyncApplyStopCh <- struct{}{}
 	}()
 
 	var expiredLeaseC <-chan []*lease.Lease
@@ -1259,6 +1285,14 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	id := raftReq.ID
 	if id == 0 {
 		id = raftReq.Header.ID
+	}
+
+	if needAsyncApply(&raftReq) {
+		aa := s.applyV3.AsyncApplyBuilder(&raftReq)
+		aa.id = id
+		aa.index = e.Index
+		s.asyncApplyCh <- aa
+		return
 	}
 
 	var ar *applyResult
