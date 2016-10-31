@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/stringutil"
 	"golang.org/x/time/rate"
 )
 
@@ -40,8 +40,8 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 	reqRate := 30                   // put request per second
 	keyPrePrefix := 30              // max number of keyPrePrefixs for put operation
 
-	prefixes := generateUniqueKeys(5, noOfPrefixes)
-	keys := generateRandomKeys(10, keyPrePrefix)
+	prefixes := stringutil.UniqueStrings(5, noOfPrefixes)
+	keys := stringutil.RandomStrings(10, keyPrePrefix)
 
 	roundPrefix := fmt.Sprintf("%16x", round)
 
@@ -166,44 +166,4 @@ func getWithRetry(client *clientv3.Client, ctx context.Context, key string) *cli
 			return gr
 		}
 	}
-}
-
-func generateUniqueKeys(maxstrlen uint, keynos int) []string {
-	keyMap := make(map[string]bool)
-	keys := make([]string, 0)
-	count := 0
-	key := ""
-	for {
-		key = generateRandomKey(maxstrlen)
-		_, ok := keyMap[key]
-		if !ok {
-			keyMap[key] = true
-			keys = append(keys, key)
-			count++
-			if len(keys) == keynos {
-				break
-			}
-		}
-	}
-	return keys
-}
-
-func generateRandomKeys(maxstrlen uint, keynos int) []string {
-	keys := make([]string, 0)
-	key := ""
-	for i := 0; i < keynos; i++ {
-		key = generateRandomKey(maxstrlen)
-		keys = append(keys, key)
-	}
-	return keys
-}
-
-func generateRandomKey(strlen uint) string {
-	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
-	result := make([]byte, strlen)
-	for i := 0; i < int(strlen); i++ {
-		result[i] = chars[rand.Intn(len(chars))]
-	}
-	key := string(result)
-	return key
 }
