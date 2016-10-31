@@ -40,7 +40,7 @@ func TestBalancerGetUnblocking(t *testing.T) {
 	down2 := sb.Up(grpc.Address{Addr: endpoints[2]})
 	addrFirst, putFun, err := sb.Get(context.Background(), unblockingOpts)
 	if err != nil {
-		t.Errorf("Get() with up endpoints should sucess, got %v", err)
+		t.Errorf("Get() with up endpoints should success, got %v", err)
 	}
 	if addrFirst.Addr != endpoints[1] && addrFirst.Addr != endpoints[2] {
 		t.Errorf("Get() didn't return expected address, got %v", addrFirst)
@@ -80,7 +80,7 @@ func TestBalancerGetBlocking(t *testing.T) {
 	}()
 	addrFirst, putFun, err := sb.Get(context.Background(), blockingOpts)
 	if err != nil {
-		t.Errorf("Get() with up endpoints should sucess, got %v", err)
+		t.Errorf("Get() with up endpoints should success, got %v", err)
 	}
 	if addrFirst.Addr != endpoints[1] {
 		t.Errorf("Get() didn't return expected address, got %v", addrFirst)

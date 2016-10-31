@@ -1243,7 +1243,7 @@ func TestPublishRetry(t *testing.T) {
 			t.Errorf("len(action) = %d, want >= 2 (%v)", len(action), err)
 		}
 		close(srv.stopping)
-		// drain remaing actions, if any, so publish can terminate
+		// drain remaining actions, if any, so publish can terminate
 		for {
 			select {
 			case <-ch:
