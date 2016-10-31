@@ -16,15 +16,13 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	"golang.org/x/net/context"
 )
 
 const (
-	retries             = 7
-	stabilizationPeriod = 3 * time.Second
+	retries = 7
 )
 
 type Checker interface {
@@ -45,87 +43,32 @@ func newHashChecker(hrg hashAndRevGetter) Checker { return &hashChecker{hrg} }
 const leaseCheckerTimeout = 10 * time.Second
 
 func (hc *hashChecker) checkRevAndHashes() (err error) {
-	// retries in case of transient failure or etcd nodes have not stablized yet.
 	var (
-		revsStable   bool
-		hashesStable bool
+		revs   map[string]int64
+		hashes map[string]int64
 	)
+
+	// retries in case of transient failure or etcd cluster has not stablized yet.
 	for i := 0; i < retries; i++ {
-		revsStable, err = hc.areRevisonsStable()
-		if err != nil || !revsStable {
-			continue
+		revs, hashes, err = hc.hrg.getRevisionHash()
+		if err != nil {
+			plog.Warningf("retry %i. failed to retrieve revison and hash (%v)", i, err)
+		} else {
+			sameRev := getSameValue(revs)
+			sameHashes := getSameValue(hashes)
+			if sameRev && sameHashes {
+				return nil
+			}
+			plog.Warningf("retry %i. etcd cluster is not stable: [revisions: %v] and [hashes: %v]", i, revs, hashes)
 		}
-		hashesStable, err = hc.areHashesStable()
-		if err != nil || !hashesStable {
-			continue
-		}
-		// hashes must be stable at this point
-		return nil
+		time.Sleep(time.Second)
 	}
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed revision and hash check (%v)", err)
 	}
 
-	if !revsStable || !hashesStable {
-		return fmt.Errorf("checkRevAndHashes detects inconsistency: [revisions stable %v] [hashes stable %v]", revsStable, hashesStable)
-	}
-
-	return err
-}
-
-func (hc *hashChecker) areRevisonsStable() (rv bool, err error) {
-	var preRevs map[string]int64
-	for i := 0; i < 2; i++ {
-		revs, _, err := hc.hrg.getRevisionHash()
-		if err != nil {
-			return false, err
-		}
-
-		_, sameRev := getSameValue(revs)
-		if !sameRev {
-			plog.Printf("current revisions are not consistent: revisions [revisions: %v]", revs)
-			return false, nil
-		}
-		// sleep for N seconds. after that, check to make sure that revisions don't change
-		if i == 0 {
-			preRevs = revs
-			time.Sleep(stabilizationPeriod)
-		} else if !reflect.DeepEqual(revs, preRevs) {
-			// use map comparison logic found in http://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
-			plog.Printf("revisions are not stable: [current revisions: %v] [previous revisions: %v]", revs, preRevs)
-			return false, nil
-		}
-	}
-	plog.Printf("revisions are stable: revisions [revisions: %v]", preRevs)
-	return true, nil
-}
-
-func (hc *hashChecker) areHashesStable() (rv bool, err error) {
-	var prevHashes map[string]int64
-	for i := 0; i < 2; i++ {
-		revs, hashes, err := hc.hrg.getRevisionHash()
-		if err != nil {
-			return false, err
-		}
-		_, sameRev := getSameValue(revs)
-		_, sameHashes := getSameValue(hashes)
-		if !sameRev || !sameHashes {
-			plog.Printf("hashes are not stable: revisions [revisions: %v] and hashes [hashes: %v]", revs, hashes)
-			return false, nil
-		}
-		// sleep for N seconds. after that, check to make sure that the hashes and revisions don't change
-		if i == 0 {
-			time.Sleep(stabilizationPeriod)
-			prevHashes = hashes
-		} else if !reflect.DeepEqual(hashes, prevHashes) {
-			// use map comparison logic found in http://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
-			plog.Printf("hashes are not stable: [current hashes: %v] [previous hashes: %v]", hashes, prevHashes)
-			return false, nil
-		}
-	}
-	plog.Printf("hashes are stable: hashes [hashes: %v]", prevHashes)
-	return true, nil
+	return fmt.Errorf("etcd cluster is not stable: [revisions: %v] and [hashes: %v]", revs, hashes)
 }
 
 func (hc *hashChecker) Check() error {

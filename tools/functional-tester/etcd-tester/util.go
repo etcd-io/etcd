@@ -19,17 +19,17 @@ import (
 	"strings"
 )
 
-func getSameValue(vals map[string]int64) (int64, bool) {
+func getSameValue(vals map[string]int64) bool {
 	var rv int64
 	for _, v := range vals {
 		if rv == 0 {
 			rv = v
 		}
 		if rv != v {
-			return rv, false
+			return false
 		}
 	}
-	return rv, true
+	return true
 }
 
 func max(n1, n2 int64) int64 {
