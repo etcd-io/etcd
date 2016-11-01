@@ -372,7 +372,7 @@ func (rc *raftNode) serveChannels() {
 
 	// send proposals over raft
 	go func() {
-		var confChangeCount uint64 = 0
+		var confChangeCount uint64
 
 		for rc.proposeC != nil && rc.confChangeC != nil {
 			select {

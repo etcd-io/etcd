@@ -63,7 +63,7 @@ var (
 
 	// integration test uses unique ports, counting up, to listen for each
 	// member, ensuring restarted members can listen on the same port again.
-	localListenCount int64 = 0
+	localListenCount int64
 
 	testTLSInfo = transport.TLSInfo{
 		KeyFile:        "./fixtures/server.key.insecure",
