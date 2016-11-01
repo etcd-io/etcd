@@ -47,7 +47,7 @@ func main() {
 	limit := flag.Int("limit", -1, "the limit of rounds to run failure set (-1 to run without limits).")
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
-	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
+	checkType := flag.String("checker", "hash", "comma separated list of checkers (hash, stable, nop).")
 	stresserType := flag.String("stresser", "keys,lease", "comma separated list of stressers (keys, lease, v2keys, nop).")
 	failureTypes := flag.String("failures", "default,failpoints", "specify failures (concat of \"default\" and \"failpoints\").")
 	externalFailures := flag.String("external-failures", "", "specify a path of script for enabling/disabling an external fault injector")
@@ -125,7 +125,7 @@ func main() {
 
 		scfg:         scfg,
 		stresserType: *stresserType,
-		doChecks:     *consistencyCheck,
+		checkType:    *checkType,
 	}
 
 	sh := statusHandler{status: &t.status}

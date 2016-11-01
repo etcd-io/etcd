@@ -16,13 +16,21 @@ package main
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 	"time"
 
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 )
 
 const (
-	retries = 7
+	hashCheckerRetries = 7
+
+	stabilizeQPS      = 10
+	stabilizeDuration = 3 * time.Second
+
+	leaseCheckerTimeout = 10 * time.Second
 )
 
 type Checker interface {
@@ -40,8 +48,6 @@ type hashChecker struct {
 
 func newHashChecker(hrg hashAndRevGetter) Checker { return &hashChecker{hrg} }
 
-const leaseCheckerTimeout = 10 * time.Second
-
 func (hc *hashChecker) checkRevAndHashes() (err error) {
 	var (
 		revs   map[string]int64
@@ -49,7 +55,7 @@ func (hc *hashChecker) checkRevAndHashes() (err error) {
 	)
 
 	// retries in case of transient failure or etcd cluster has not stablized yet.
-	for i := 0; i < retries; i++ {
+	for i := 0; i < hashCheckerRetries; i++ {
 		revs, hashes, err = hc.hrg.getRevisionHash()
 		if err != nil {
 			plog.Warningf("retry %i. failed to retrieve revison and hash (%v)", i, err)
@@ -139,3 +145,62 @@ type noChecker struct{}
 
 func newNoChecker() Checker        { return &noChecker{} }
 func (nc *noChecker) Check() error { return nil }
+
+// stabilizeChecker implements a checker that waits for a check to pass,
+// then confirms the cluster revision and hash remains the same up to
+// some timeout.
+type stabilizeChecker struct {
+	chk  Checker
+	clus *cluster
+}
+
+func (sc *stabilizeChecker) Check() error {
+	if err := sc.chk.Check(); err != nil {
+		return err
+	}
+	// rev and hash should not change for over stabilization time
+	rev, hash, rerr := sc.clus.getRevisionHash()
+	if rerr != nil {
+		return rerr
+	}
+	// sample rev and hash until timeout
+	ctx, cancel := context.WithTimeout(context.TODO(), stabilizeDuration)
+	defer cancel()
+	r := rate.NewLimiter(rate.Limit(stabilizeQPS), stabilizeQPS)
+	for {
+		if err := r.Wait(ctx); err != nil {
+			// stable for a while
+			break
+		}
+		newRev, newHash, err := sc.clus.getRevisionHash()
+		if err != nil {
+			return err
+		}
+		if reflect.DeepEqual(newRev, rev) && reflect.DeepEqual(newHash, hash) {
+			continue
+		}
+		return fmt.Errorf("stabilize expected (%v,%v), got (%v,%v)", rev, hash, newRev, newHash)
+	}
+	return nil
+}
+
+func NewChecker(s string, c *cluster) Checker {
+	types := strings.Split(s, ",")
+	if len(types) > 1 {
+		chks := make([]Checker, len(types))
+		for i, t := range types {
+			chks[i] = NewChecker(t, c)
+		}
+		return &compositeChecker{chks}
+	}
+	switch s {
+	case "nop":
+		return newNoChecker()
+	case "hash":
+		return newHashChecker(c)
+	case "stable":
+		return &stabilizeChecker{newHashChecker(c), c}
+	default:
+		panic("unknown checker " + s)
+	}
+}

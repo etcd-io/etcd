@@ -20,16 +20,19 @@ import (
 )
 
 type tester struct {
-	cluster *cluster
-	limit   int
+	// configuration
+
+	cluster      *cluster
+	limit        int
+	stresserType string
+	scfg         stressConfig
+	checkType    string
+
+	// internal
 
 	failures        []failure
 	status          Status
 	currentRevision int64
-
-	stresserType string
-	scfg         stressConfig
-	doChecks     bool
 
 	stresser Stresser
 	checker  Checker
@@ -245,15 +248,13 @@ func (tt *tester) resetStressCheck() error {
 		cs.stressers = append(cs.stressers, s)
 	}
 	tt.stresser = cs
-	if !tt.doChecks {
-		tt.checker = newNoChecker()
+	tt.checker = NewChecker(tt.checkType, tt.cluster)
+	if tt.checkType == "nop" {
 		return tt.startStresser()
 	}
-	chk := newHashChecker(hashAndRevGetter(tt.cluster))
 	if schk := cs.Checker(); schk != nil {
-		chk = newCompositeChecker([]Checker{chk, schk})
+		tt.checker = newCompositeChecker([]Checker{tt.checker, schk})
 	}
-	tt.checker = chk
 	return tt.startStresser()
 }
 
