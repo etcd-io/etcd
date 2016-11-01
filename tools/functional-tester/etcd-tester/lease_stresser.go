@@ -391,9 +391,6 @@ func (ls *leaseStresser) Cancel() {
 	ls.cancel()
 	ls.runWg.Wait()
 	ls.aliveWg.Wait()
-	// we sleep for TTLShort seconds to make sure leases in shortLivedLeases are expired
-	// leaseChecker will then verify that those leases are indeed expired
-	time.Sleep(TTLShort * time.Second)
 	plog.Infof("lease stresser %q is canceled", ls.endpoint)
 }
 
