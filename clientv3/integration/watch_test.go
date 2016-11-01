@@ -614,18 +614,19 @@ func TestWatchErrConnClosed(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
+	defer cli.Close()
 	wc := clientv3.NewWatcher(cli)
 
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		wc.Watch(context.TODO(), "foo")
-		if err := wc.Close(); err != nil && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
+		ch := wc.Watch(context.TODO(), "foo")
+		if wr := <-ch; grpc.ErrorDesc(wr.Err()) != grpc.ErrClientConnClosing.Error() {
+			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, grpc.ErrorDesc(wr.Err()))
 		}
 	}()
 
-	if err := cli.Close(); err != nil {
+	if err := cli.ActiveConnection().Close(); err != nil {
 		t.Fatal(err)
 	}
 	clus.TakeClient(0)
