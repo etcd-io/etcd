@@ -29,6 +29,7 @@ import (
 func runWatcher(getClient getClientFunc, limit int) {
 	ctx := context.Background()
 	for round := 0; round < limit; round++ {
+		fmt.Println("round", round)
 		performWatchOnPrefixes(ctx, getClient, round)
 	}
 }
@@ -55,8 +56,10 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 	client := getClient()
 	defer client.Close()
 
-	// get revision using get request
-	gr = getWithRetry(client, ctx, "non-existent")
+	gr, err = getKey(ctx, client, "non-existent")
+	if err != nil {
+		log.Fatalf("failed to get the initial revision: %v", err)
+	}
 	revision = gr.Header.Revision
 
 	ctxt, cancel := context.WithDeadline(ctx, time.Now().Add(runningTime))
@@ -66,34 +69,14 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 	limiter := rate.NewLimiter(rate.Limit(reqRate), reqRate)
 
 	go func() {
-		var modrevision int64
 		for _, key := range keys {
 			for _, prefix := range prefixes {
-				key := roundPrefix + "-" + prefix + "-" + key
-
-				// limit key put as per reqRate
 				if err = limiter.Wait(ctxt); err != nil {
-					break
+					return
 				}
-
-				modrevision = 0
-				gr = getWithRetry(client, ctxt, key)
-				kvs := gr.Kvs
-				if len(kvs) > 0 {
-					modrevision = gr.Kvs[0].ModRevision
-				}
-
-				for {
-					txn := client.Txn(ctxt)
-					_, err = txn.If(clientv3.Compare(clientv3.ModRevision(key), "=", modrevision)).Then(clientv3.OpPut(key, key)).Commit()
-
-					if err == nil {
-						break
-					}
-
-					if err == context.DeadlineExceeded {
-						return
-					}
+				if err = putKeyAtMostOnce(ctxt, client, roundPrefix+"-"+prefix+"-"+key); err != nil {
+					log.Fatalf("failed to put key: %v", err)
+					return
 				}
 			}
 		}
@@ -104,38 +87,25 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 	wcs := make([]clientv3.WatchChan, 0)
 	rcs := make([]*clientv3.Client, 0)
 
-	wg.Add(noOfPrefixes * watchPerPrefix)
 	for _, prefix := range prefixes {
 		for j := 0; j < watchPerPrefix; j++ {
-			go func(prefix string) {
+			rc := getClient()
+			rcs = append(rcs, rc)
+
+			watchPrefix := roundPrefix + "-" + prefix
+
+			wc := rc.Watch(ctxc, watchPrefix, clientv3.WithPrefix(), clientv3.WithRev(revision))
+			wcs = append(wcs, wc)
+
+			wg.Add(1)
+			go func() {
 				defer wg.Done()
-
-				rc := getClient()
-				rcs = append(rcs, rc)
-
-				wc := rc.Watch(ctxc, prefix, clientv3.WithPrefix(), clientv3.WithRev(revision))
-				wcs = append(wcs, wc)
-				for n := 0; n < len(keys); {
-					select {
-					case watchChan := <-wc:
-						for _, event := range watchChan.Events {
-							expectedKey := prefix + "-" + keys[n]
-							receivedKey := string(event.Kv.Key)
-							if expectedKey != receivedKey {
-								log.Fatalf("expected key %q, got %q for prefix : %q\n", expectedKey, receivedKey, prefix)
-							}
-							n++
-						}
-					case <-ctxt.Done():
-						return
-					}
-				}
-			}(roundPrefix + "-" + prefix)
+				checkWatchResponse(wc, watchPrefix, keys)
+			}()
 		}
 	}
 	wg.Wait()
 
-	// cancel all watch channels
 	cancelc()
 
 	// verify all watch channels are closed
@@ -149,21 +119,64 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 		rc.Close()
 	}
 
-	deletePrefixWithRety(client, ctx, roundPrefix)
+	if err = deletePrefix(ctx, client, roundPrefix); err != nil {
+		log.Fatalf("failed to clean up keys after test: %v", err)
+	}
 }
 
-func deletePrefixWithRety(client *clientv3.Client, ctx context.Context, key string) {
-	for {
-		if _, err := client.Delete(ctx, key, clientv3.WithRange(key+"z")); err == nil {
-			return
+func checkWatchResponse(wc clientv3.WatchChan, prefix string, keys []string) {
+	for n := 0; n < len(keys); {
+		wr, more := <-wc
+		if !more {
+			log.Fatalf("expect more keys (received %d/%d) for %s", len(keys), n, prefix)
+		}
+		for _, event := range wr.Events {
+			expectedKey := prefix + "-" + keys[n]
+			receivedKey := string(event.Kv.Key)
+			if expectedKey != receivedKey {
+				log.Fatalf("expected key %q, got %q for prefix : %q\n", expectedKey, receivedKey, prefix)
+			}
+			n++
 		}
 	}
 }
 
-func getWithRetry(client *clientv3.Client, ctx context.Context, key string) *clientv3.GetResponse {
-	for {
+func putKeyAtMostOnce(ctx context.Context, client *clientv3.Client, key string) error {
+	gr, err := getKey(ctx, client, key)
+	if err != nil {
+		return err
+	}
+
+	var modrev int64
+	if len(gr.Kvs) > 0 {
+		modrev = gr.Kvs[0].ModRevision
+	}
+
+	for ctx.Err() == nil {
+		_, err := client.Txn(ctx).If(clientv3.Compare(clientv3.ModRevision(key), "=", modrev)).Then(clientv3.OpPut(key, key)).Commit()
+
+		if err == nil {
+			return nil
+		}
+	}
+
+	return ctx.Err()
+}
+
+func deletePrefix(ctx context.Context, client *clientv3.Client, key string) error {
+	for ctx.Err() == nil {
+		if _, err := client.Delete(ctx, key, clientv3.WithPrefix()); err == nil {
+			return nil
+		}
+	}
+	return ctx.Err()
+}
+
+func getKey(ctx context.Context, client *clientv3.Client, key string) (*clientv3.GetResponse, error) {
+	for ctx.Err() == nil {
 		if gr, err := client.Get(ctx, key); err == nil {
-			return gr
+			return gr, nil
 		}
 	}
+	return nil, ctx.Err()
 }
