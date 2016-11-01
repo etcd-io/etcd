@@ -421,6 +421,11 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
 	var result *applyResult
 
+	err := s.linearizableReadNotify(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	for {
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
 		if err != nil {
