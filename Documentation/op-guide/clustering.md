@@ -218,7 +218,7 @@ To better understand the design of the discovery service protocol, we suggest re
 
 #### Lifetime of a discovery URL
 
-A discovery URL identifies a unique etcd cluster. Instead of reusing an existing discovery URL, a new cluster must create new discovery URLs.
+A discovery URL identifies a unique etcd cluster. Instead of reusing an existing discovery URL, each etcd instance shares a new discovery URL to bootstrap the new cluster.
 
 Moreover, discovery URLs should ONLY be used for the initial bootstrapping of a cluster. To change cluster membership after the cluster is already running, see the [runtime reconfiguration][runtime-conf] guide.
 
@@ -271,7 +271,7 @@ $ curl https://discovery.etcd.io/new?size=3
 https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
-This will create the cluster with an initial (default) size of 3 members. If no size is specified, a default of 3 is used.
+This will create the cluster with an initial size of 3 members. If no size is specified, a default of 3 is used.
 
 ```
 ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
