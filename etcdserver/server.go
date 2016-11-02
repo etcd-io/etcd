@@ -265,7 +265,22 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 
 	bepath := path.Join(cfg.SnapDir(), databaseFilename)
 	beExist := fileutil.Exist(bepath)
-	be := backend.NewDefaultBackend(bepath)
+
+	var be backend.Backend
+	beOpened := make(chan struct{})
+	go func() {
+		be = backend.NewDefaultBackend(bepath)
+		beOpened <- struct{}{}
+	}()
+
+	select {
+	case <-beOpened:
+	case <-time.After(time.Second):
+		plog.Warningf("another etcd process is running with the same data dir and holding the file lock.")
+		plog.Warningf("waiting for it to exit before starting...")
+		<-beOpened
+	}
+
 	defer func() {
 		if err != nil {
 			be.Close()
