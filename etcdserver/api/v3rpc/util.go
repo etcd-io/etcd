@@ -71,6 +71,8 @@ func togRPCError(err error) error {
 		return rpctypes.ErrGRPCRootRoleNotExist
 	case auth.ErrUserAlreadyExist:
 		return rpctypes.ErrGRPCUserAlreadyExist
+	case auth.ErrUserEmpty:
+		return rpctypes.ErrGRPCUserEmpty
 	case auth.ErrUserNotFound:
 		return rpctypes.ErrGRPCUserNotFound
 	case auth.ErrRoleAlreadyExist:

@@ -46,6 +46,12 @@ func TestUserAdd(t *testing.T) {
 	if err != ErrUserAlreadyExist {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
 	}
+
+	ua = &pb.AuthUserAddRequest{Name: ""}
+	_, err = as.UserAdd(ua) // add a user with empty name
+	if err != ErrUserEmpty {
+		t.Fatal(err)
+	}
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
