@@ -19,9 +19,11 @@ import (
 	"sync"
 
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
@@ -33,6 +35,8 @@ type watchProxy struct {
 	nextStreamID int64
 
 	ctx context.Context
+
+	leader *leaderNotifier
 }
 
 func NewWatchProxy(c *clientv3.Client) pb.WatchServer {
@@ -44,22 +48,44 @@ func NewWatchProxy(c *clientv3.Client) pb.WatchServer {
 			idToGroup: make(map[receiverID]*watcherGroup),
 			proxyCtx:  c.Ctx(),
 		},
-		ctx: c.Ctx(),
+		ctx:    c.Ctx(),
+		leader: newLeaderNotifier(c),
 	}
 	go func() {
 		<-wp.ctx.Done()
+		wp.leader.close()
 		wp.wgs.stop()
 	}()
 	return wp
 }
 
 func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
+	var requirec chan struct{}
+	if md, ok := metadata.FromContext(stream.Context()); ok {
+		v := md[rpctypes.MetadataRequireLeaderKey]
+		if len(v) > 0 && v[0] == rpctypes.MetadataHasLeader {
+			requirec = make(chan struct{})
+		}
+	}
+
+	ctx, cancel := context.WithCancel(stream.Context())
 	wp.mu.Lock()
 	wp.nextStreamID++
 	sid := wp.nextStreamID
+	if requirec != nil {
+		ctxcancel := cancel
+		cancel = func() {
+			wp.leader.delete(stream.Context())
+			ctxcancel()
+		}
+		lcancel := func() {
+			close(requirec)
+			ctxcancel()
+		}
+		wp.leader.add(stream.Context(), lcancel)
+	}
 	wp.mu.Unlock()
 
-	ctx, cancel := context.WithCancel(wp.ctx)
 	sws := serverWatchStream{
 		cw:       wp.cw,
 		groups:   &wp.wgs,
@@ -71,13 +97,30 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 
 		watchCh: make(chan *pb.WatchResponse, 1024),
 
-		ctx:    ctx,
-		cancel: cancel,
+		proxyCtx: wp.ctx,
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 
-	go sws.recvLoop()
-	sws.sendLoop()
-	return wp.ctx.Err()
+	// recv/send => terminate server stream
+	donec := make(chan struct{}, 2)
+	go func() {
+		defer func() { donec <- struct{}{} }()
+		sws.recvLoop()
+	}()
+	go func() {
+		defer func() { donec <- struct{}{} }()
+		sws.sendLoop()
+	}()
+	<-donec
+	sws.close()
+
+	select {
+	case <-requirec:
+		return rpctypes.ErrNoLeader
+	default:
+		return sws.ctx.Err()
+	}
 }
 
 type serverWatchStream struct {
@@ -95,8 +138,9 @@ type serverWatchStream struct {
 
 	nextWatcherID int64
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	proxyCtx context.Context
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 func (sws *serverWatchStream) close() {
@@ -129,8 +173,6 @@ func (sws *serverWatchStream) close() {
 }
 
 func (sws *serverWatchStream) recvLoop() error {
-	defer sws.close()
-
 	for {
 		req, err := sws.gRPCStream.Recv()
 		if err == io.EOF {
@@ -196,7 +238,7 @@ func (sws *serverWatchStream) addCoalescedWatcher(w watcher) {
 }
 
 func (sws *serverWatchStream) addDedicatedWatcher(w watcher, rev int64) {
-	ctx, cancel := context.WithCancel(sws.ctx)
+	ctx, cancel := context.WithCancel(sws.proxyCtx)
 	wch := sws.cw.Watch(ctx,
 		w.wr.key, clientv3.WithRange(w.wr.end),
 		clientv3.WithRev(rev),
