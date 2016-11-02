@@ -43,12 +43,12 @@ func NewMakeCommand() cli.Command {
 // mkCommandFunc executes the "mk" command.
 func mkCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		handleError(ExitBadArgs, errors.New("key required"))
+		handleError(c, ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	value, err := argOrStdin(c.Args(), os.Stdin, 1)
 	if err != nil {
-		handleError(ExitBadArgs, errors.New("value required"))
+		handleError(c, ExitBadArgs, errors.New("value required"))
 	}
 
 	ttl := c.Int("ttl")
@@ -69,7 +69,7 @@ func mkCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	}
 	cancel()
 	if err != nil {
-		handleError(ExitServerError, err)
+		handleError(c, ExitServerError, err)
 	}
 
 	printResponseKey(resp, c.GlobalString("output"))

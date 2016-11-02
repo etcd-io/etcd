@@ -237,10 +237,10 @@ func mustNewClient(c *cli.Context) client.Client {
 			if err == client.ErrNoEndpoints {
 				fmt.Fprintf(os.Stderr, "etcd cluster has no published client endpoints.\n")
 				fmt.Fprintf(os.Stderr, "Try '--no-sync' if you want to access non-published client endpoints(%s).\n", strings.Join(hc.Endpoints(), ","))
-				handleError(ExitServerError, err)
+				handleError(c, ExitServerError, err)
 			}
 			if isConnectionError(err) {
-				handleError(ExitBadConnection, err)
+				handleError(c, ExitBadConnection, err)
 			}
 		}
 		if debug {

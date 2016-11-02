@@ -43,7 +43,7 @@ func NewRemoveCommand() cli.Command {
 // rmCommandFunc executes the "rm" command.
 func rmCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		handleError(ExitBadArgs, errors.New("key required"))
+		handleError(c, ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	recursive := c.Bool("recursive")
@@ -55,7 +55,7 @@ func rmCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	resp, err := ki.Delete(ctx, key, &client.DeleteOptions{PrevIndex: uint64(prevIndex), PrevValue: prevValue, Dir: dir, Recursive: recursive})
 	cancel()
 	if err != nil {
-		handleError(ExitServerError, err)
+		handleError(c, ExitServerError, err)
 	}
 	if !resp.Node.Dir || c.GlobalString("output") != "simple" {
 		printResponseKey(resp, c.GlobalString("output"))

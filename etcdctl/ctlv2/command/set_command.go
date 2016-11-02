@@ -50,12 +50,12 @@ func NewSetCommand() cli.Command {
 // setCommandFunc executes the "set" command.
 func setCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		handleError(ExitBadArgs, errors.New("key required"))
+		handleError(c, ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	value, err := argOrStdin(c.Args(), os.Stdin, 1)
 	if err != nil {
-		handleError(ExitBadArgs, errors.New("value required"))
+		handleError(c, ExitBadArgs, errors.New("value required"))
 	}
 
 	ttl := c.Int("ttl")
@@ -66,7 +66,7 @@ func setCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevIndex: uint64(prevIndex), PrevValue: prevValue})
 	cancel()
 	if err != nil {
-		handleError(ExitServerError, err)
+		handleError(c, ExitServerError, err)
 	}
 
 	printResponseKey(resp, c.GlobalString("output"))

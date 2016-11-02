@@ -54,7 +54,7 @@ func handleClusterHealth(c *cli.Context) error {
 
 	tr, err := getTransport(c)
 	if err != nil {
-		handleError(ExitServerError, err)
+		handleError(c, ExitServerError, err)
 	}
 
 	hc := http.Client{
@@ -66,7 +66,7 @@ func handleClusterHealth(c *cli.Context) error {
 	ms, err := mi.List(context.TODO())
 	if err != nil {
 		fmt.Println("cluster may be unhealthy: failed to list members")
-		handleError(ExitServerError, err)
+		handleError(c, ExitServerError, err)
 	}
 
 	for {
