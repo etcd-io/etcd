@@ -17,6 +17,8 @@ package grpcproxy
 import (
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
@@ -30,8 +32,8 @@ func TestWatchgroupBroadcast(t *testing.T) {
 	for i := range chs {
 		chs[i] = make(chan *pb.WatchResponse, 1)
 		w := watcher{
-			id: int64(i),
-			ch: chs[i],
+			id:  int64(i),
+			sws: &serverWatchStream{watchCh: chs[i], ctx: context.TODO()},
 
 			progress: true,
 		}

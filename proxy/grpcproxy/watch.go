@@ -59,6 +59,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 	sid := wp.nextStreamID
 	wp.mu.Unlock()
 
+	ctx, cancel := context.WithCancel(wp.ctx)
 	sws := serverWatchStream{
 		cw:       wp.cw,
 		groups:   &wp.wgs,
@@ -70,7 +71,8 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 
 		watchCh: make(chan *pb.WatchResponse, 1024),
 
-		proxyCtx: wp.ctx,
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	go sws.recvLoop()
@@ -93,11 +95,13 @@ type serverWatchStream struct {
 
 	nextWatcherID int64
 
-	proxyCtx context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func (sws *serverWatchStream) close() {
 	var wg sync.WaitGroup
+	sws.cancel()
 	sws.mu.Lock()
 	wg.Add(len(sws.singles) + len(sws.inGroups))
 	for _, ws := range sws.singles {
@@ -145,8 +149,8 @@ func (sws *serverWatchStream) recvLoop() error {
 					key: string(cr.Key),
 					end: string(cr.RangeEnd),
 				},
-				id: sws.nextWatcherID,
-				ch: sws.watchCh,
+				id:  sws.nextWatcherID,
+				sws: sws,
 
 				progress: cr.ProgressNotify,
 				filters:  v3rpc.FiltersFromRequest(cr),
@@ -176,7 +180,7 @@ func (sws *serverWatchStream) sendLoop() {
 			if err := sws.gRPCStream.Send(wresp); err != nil {
 				return
 			}
-		case <-sws.proxyCtx.Done():
+		case <-sws.ctx.Done():
 			return
 		}
 	}
@@ -192,18 +196,15 @@ func (sws *serverWatchStream) addCoalescedWatcher(w watcher) {
 }
 
 func (sws *serverWatchStream) addDedicatedWatcher(w watcher, rev int64) {
-	sws.mu.Lock()
-	defer sws.mu.Unlock()
-
-	ctx, cancel := context.WithCancel(sws.proxyCtx)
-
+	ctx, cancel := context.WithCancel(sws.ctx)
 	wch := sws.cw.Watch(ctx,
 		w.wr.key, clientv3.WithRange(w.wr.end),
 		clientv3.WithRev(rev),
 		clientv3.WithProgressNotify(),
 		clientv3.WithCreatedNotify(),
 	)
-
+	sws.mu.Lock()
+	defer sws.mu.Unlock()
 	ws := newWatcherSingle(wch, cancel, w, sws)
 	sws.singles[w.id] = ws
 	go ws.run()
@@ -213,12 +214,11 @@ func (sws *serverWatchStream) maybeCoalesceWatcher(ws watcherSingle) bool {
 	sws.mu.Lock()
 	defer sws.mu.Unlock()
 
-	rid := receiverID{streamID: sws.id, watcherID: ws.w.id}
 	// do not add new watchers when stream is closing
 	if sws.inGroups == nil {
 		return false
 	}
-	if sws.groups.maybeJoinWatcherSingle(rid, ws) {
+	if sws.groups.maybeJoinWatcherSingle(ws) {
 		delete(sws.singles, ws.w.id)
 		sws.inGroups[ws.w.id] = struct{}{}
 		return true

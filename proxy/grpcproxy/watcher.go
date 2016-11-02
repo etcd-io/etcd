@@ -28,13 +28,13 @@ type watchRange struct {
 }
 
 type watcher struct {
-	id int64
-	wr watchRange
+	id  int64
+	wr  watchRange
+	sws *serverWatchStream
 
 	rev      int64
 	filters  []mvcc.FilterFunc
 	progress bool
-	ch       chan<- *pb.WatchResponse
 }
 
 func (w *watcher) send(wr clientv3.WatchResponse) {
@@ -87,10 +87,8 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		Events:  events,
 	}
 	select {
-	case w.ch <- pbwr:
+	case w.sws.watchCh <- pbwr:
 	case <-time.After(50 * time.Millisecond):
-		// close the watch chan will notify the stream sender.
-		// the stream will gc all its watchers.
-		close(w.ch)
+		w.sws.cancel()
 	}
 }

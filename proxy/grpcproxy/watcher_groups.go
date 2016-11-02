@@ -61,8 +61,10 @@ func (wgs *watchergroups) addWatcher(rid receiverID, w watcher) {
 			WatchId: rid.watcherID,
 			Created: true,
 		}
-		w.ch <- resp
-
+		select {
+		case w.sws.watchCh <- resp:
+		case <-w.sws.ctx.Done():
+		}
 		return
 	}
 
@@ -96,24 +98,24 @@ func (wgs *watchergroups) removeWatcher(rid receiverID) (int64, bool) {
 	return -1, false
 }
 
-func (wgs *watchergroups) maybeJoinWatcherSingle(rid receiverID, ws watcherSingle) bool {
+func (wgs *watchergroups) maybeJoinWatcherSingle(ws watcherSingle) bool {
 	wgs.mu.Lock()
 	defer wgs.mu.Unlock()
 
+	rid := receiverID{streamID: ws.sws.id, watcherID: ws.w.id}
 	group, ok := wgs.groups[ws.w.wr]
 	if ok {
-		return group.add(receiverID{streamID: ws.sws.id, watcherID: ws.w.id}, ws.w) != -1
+		return group.add(rid, ws.w) != -1
 	}
-
-	if ws.canPromote() {
-		wg := newWatchergroup(ws.ch, ws.cancel)
-		wgs.groups[ws.w.wr] = wg
-		wg.add(receiverID{streamID: ws.sws.id, watcherID: ws.w.id}, ws.w)
-		go wg.run()
-		return true
+	if !ws.canPromote() {
+		return false
 	}
-
-	return false
+	wg := newWatchergroup(ws.ch, ws.cancel)
+	wgs.groups[ws.w.wr] = wg
+	wgs.idToGroup[rid] = wg
+	wg.add(rid, ws.w)
+	go wg.run()
+	return true
 }
 
 func (wgs *watchergroups) stop() {
