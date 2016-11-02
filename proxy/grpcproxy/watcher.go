@@ -28,18 +28,35 @@ type watchRange struct {
 }
 
 type watcher struct {
-	id  int64
-	wr  watchRange
-	sws *serverWatchStream
+	// user configuration
 
-	rev      int64
+	wr       watchRange
 	filters  []mvcc.FilterFunc
 	progress bool
+
+	// id is the id returned to the client on its watch stream.
+	id int64
+	// nextrev is the minimum expected next event revision.
+	nextrev int64
+	// lastHeader has the last header sent over the stream.
+	lastHeader pb.ResponseHeader
+
+	// wps is the parent.
+	wps *watchProxyStream
 }
 
+// send filters out repeated events by discarding revisions older
+// than the last one sent over the watch channel.
 func (w *watcher) send(wr clientv3.WatchResponse) {
 	if wr.IsProgressNotify() && !w.progress {
 		return
+	}
+	if w.nextrev > wr.Header.Revision && len(wr.Events) > 0 {
+		return
+	}
+	if w.nextrev == 0 {
+		// current watch; expect updates following this revision
+		w.nextrev = wr.Header.Revision + 1
 	}
 
 	events := make([]*mvccpb.Event, 0, len(wr.Events))
@@ -47,12 +64,12 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 	var lastRev int64
 	for i := range wr.Events {
 		ev := (*mvccpb.Event)(wr.Events[i])
-		if ev.Kv.ModRevision <= w.rev {
+		if ev.Kv.ModRevision < w.nextrev {
 			continue
 		} else {
 			// We cannot update w.rev here.
 			// txn can have multiple events with the same rev.
-			// If we update w.rev here, we would skip some events in the same txn.
+			// If w.nextrev updates here, it would skip events in the same txn.
 			lastRev = ev.Kv.ModRevision
 		}
 
@@ -71,8 +88,8 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		}
 	}
 
-	if lastRev > w.rev {
-		w.rev = lastRev
+	if lastRev >= w.nextrev {
+		w.nextrev = lastRev + 1
 	}
 
 	// all events are filtered out?
@@ -80,15 +97,22 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		return
 	}
 
-	pbwr := &pb.WatchResponse{
+	w.lastHeader = wr.Header
+	w.post(&pb.WatchResponse{
 		Header:  &wr.Header,
 		Created: wr.Created,
 		WatchId: w.id,
 		Events:  events,
-	}
+	})
+}
+
+// post puts a watch response on the watcher's proxy stream channel
+func (w *watcher) post(wr *pb.WatchResponse) bool {
 	select {
-	case w.sws.watchCh <- pbwr:
+	case w.wps.watchCh <- wr:
 	case <-time.After(50 * time.Millisecond):
-		w.sws.cancel()
+		w.wps.cancel()
+		return false
 	}
+	return true
 }
