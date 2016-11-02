@@ -49,7 +49,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	argslen := len(args)
 
 	if argslen < 2 {
-		handleError(ExitBadArgs, errors.New("key and command to exec required"))
+		handleError(c, ExitBadArgs, errors.New("key and command to exec required"))
 	}
 
 	var (
@@ -95,7 +95,7 @@ func execWatchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	for {
 		resp, err := w.Next(context.TODO())
 		if err != nil {
-			handleError(ExitServerError, err)
+			handleError(c, ExitServerError, err)
 		}
 		if resp.Node.Dir {
 			fmt.Fprintf(os.Stderr, "Ignored dir %s change\n", resp.Node.Key)
