@@ -862,17 +862,20 @@ func TestSnapshot(t *testing.T) {
 
 	go func() {
 		gaction, _ := p.Wait(1)
+		defer func() { ch <- struct{}{} }()
+
 		if len(gaction) != 1 {
 			t.Fatalf("len(action) = %d, want 1", len(gaction))
 		}
 		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "SaveSnap"}) {
 			t.Errorf("action = %s, want SaveSnap", gaction[0])
 		}
-		ch <- struct{}{}
 	}()
 
 	go func() {
 		gaction, _ := st.Wait(2)
+		defer func() { ch <- struct{}{} }()
+
 		if len(gaction) != 2 {
 			t.Fatalf("len(action) = %d, want 2", len(gaction))
 		}
@@ -882,7 +885,6 @@ func TestSnapshot(t *testing.T) {
 		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
 			t.Errorf("action = %s, want SaveNoCopy", gaction[1])
 		}
-		ch <- struct{}{}
 	}()
 
 	srv.snapshot(1, raftpb.ConfState{Nodes: []uint64{1}})
