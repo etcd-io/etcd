@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -326,6 +327,7 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 		if err == nil {
 			break
 		}
+		err = convertEOFToNoLeader(err)
 	}
 	return ttl, err
 }
@@ -363,8 +365,21 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 		if err == nil {
 			return iresp.LeaseTimeToLiveResponse, nil
 		}
+		err = convertEOFToNoLeader(err)
 	}
 	return nil, err
+}
+
+// convertEOFToNoLeader converts EOF erros to ErrNoLeader because
+// lease renew, timetolive requests to followers are forwarded to leader,
+// and follower might not be able to reach leader from transient network
+// errors (often EOF errors). By returning ErrNoLeader, signal clients
+// to retry its requests.
+func convertEOFToNoLeader(err error) error {
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		return ErrNoLeader
+	}
+	return err
 }
 
 func (s *EtcdServer) waitLeader() (*membership.Member, error) {
