@@ -47,6 +47,7 @@ var (
 	ErrRootUserNotExist     = errors.New("auth: root user does not exist")
 	ErrRootRoleNotExist     = errors.New("auth: root user does not have root role")
 	ErrUserAlreadyExist     = errors.New("auth: user already exists")
+	ErrUserEmpty            = errors.New("auth: user name is empty")
 	ErrUserNotFound         = errors.New("auth: user not found")
 	ErrRoleAlreadyExist     = errors.New("auth: role already exists")
 	ErrRoleNotFound         = errors.New("auth: role not found")
@@ -282,6 +283,10 @@ func (as *authStore) Recover(be backend.Backend) {
 }
 
 func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
+	if len(r.Name) == 0 {
+		return nil, ErrUserEmpty
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(r.Password), BcryptCost)
 	if err != nil {
 		plog.Errorf("failed to hash password: %s", err)
