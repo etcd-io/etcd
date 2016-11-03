@@ -45,9 +45,10 @@ import (
 )
 
 var (
-	migrateDatadir     string
-	migrateWALdir      string
-	migrateTransformer string
+	migrateExcludeTTLKey bool
+	migrateDatadir       string
+	migrateWALdir        string
+	migrateTransformer   string
 )
 
 // NewMigrateCommand returns the cobra command for "migrate".
@@ -58,6 +59,7 @@ func NewMigrateCommand() *cobra.Command {
 		Run:   migrateCommandFunc,
 	}
 
+	mc.Flags().BoolVar(&migrateExcludeTTLKey, "no-ttl", false, "Do not convert TTL keys")
 	mc.Flags().StringVar(&migrateDatadir, "data-dir", "", "Path to the data directory")
 	mc.Flags().StringVar(&migrateWALdir, "wal-dir", "", "Path to the WAL directory")
 	mc.Flags().StringVar(&migrateTransformer, "transformer", "", "Path to the user-provided transformer program")
@@ -253,11 +255,13 @@ func writeKeys(w io.Writer, n *store.NodeExtern) uint64 {
 	if n.Dir {
 		n.Nodes = nil
 	}
-	b, err := json.Marshal(n)
-	if err != nil {
-		ExitWithError(ExitError, err)
+	if !migrateExcludeTTLKey || n.TTL == 0 {
+		b, err := json.Marshal(n)
+		if err != nil {
+			ExitWithError(ExitError, err)
+		}
+		fmt.Fprint(w, string(b))
 	}
-	fmt.Fprint(w, string(b))
 	for _, nn := range nodes {
 		max := writeKeys(w, nn)
 		if max > maxIndex {
