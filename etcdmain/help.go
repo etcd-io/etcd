@@ -139,6 +139,8 @@ logging flags
 		enable debug-level logging for etcd.
 	--log-package-levels ''
 		specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG').
+	--log-output 'default'
+		specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
 
 unsafe flags:
 
