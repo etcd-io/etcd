@@ -51,7 +51,7 @@ var (
 
 func newUserAddCommand() *cobra.Command {
 	cmd := cobra.Command{
-		Use:   "add <user name> [options]",
+		Use:   "add <user name or user:password> [options]",
 		Short: "Adds a new user",
 		Run:   userAddCommandFunc,
 	}

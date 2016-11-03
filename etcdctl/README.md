@@ -1074,7 +1074,7 @@ ROLE is used to specify differnt roles which can be assigned to etcd user(s).
 
 USER provides commands for managing users of etcd.
 
-### USER ADD \<user name\> [options]
+### USER ADD \<user name or user:password\> [options]
 
 `user add` creates a user.
 
