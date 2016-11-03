@@ -258,12 +258,18 @@ func (ls *leaseStresser) getLeaseByID(ctx context.Context, leaseID int64) (*pb.L
 }
 
 func (ls *leaseStresser) hasLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
-	resp, err := ls.getLeaseByID(ctx, leaseID)
-	plog.Debugf("hasLeaseExpired %v resp %v error (%v)", leaseID, resp, err)
-	if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
-		return true, nil
+	// keep retrying until lease's state is known or ctx is being canceled
+	for ctx.Err() == nil {
+		resp, err := ls.getLeaseByID(ctx, leaseID)
+		if err == nil {
+			return false, nil
+		}
+		if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
+			return true, nil
+		}
+		plog.Warningf("hasLeaseExpired %v resp %v error (%v)", leaseID, resp, err)
 	}
-	return false, err
+	return false, ctx.Err()
 }
 
 // The keys attached to the lease has the format of "<leaseID>_<idx>" where idx is the ordering key creation
