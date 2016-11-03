@@ -392,6 +392,9 @@ func setupLogging(cfg *config) {
 		}
 		repoLog.SetLogLevel(settings)
 	}
+
+	// to not use NewDefaultFormatter, which automatically detects journald
+	capnslog.SetFormatter(capnslog.NewPrettyFormatter(os.Stderr, cfg.Debug))
 }
 
 func checkSupportArch() {
