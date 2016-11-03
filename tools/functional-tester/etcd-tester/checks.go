@@ -54,14 +54,14 @@ func (hc *hashChecker) checkRevAndHashes() (err error) {
 	for i := 0; i < retries; i++ {
 		revs, hashes, err = hc.hrg.getRevisionHash()
 		if err != nil {
-			plog.Warningf("retry %i. failed to retrieve revison and hash (%v)", i, err)
+			plog.Warningf("retry %d. failed to retrieve revison and hash (%v)", i, err)
 		} else {
 			sameRev := getSameValue(revs)
 			sameHashes := getSameValue(hashes)
 			if sameRev && sameHashes {
 				return nil
 			}
-			plog.Warningf("retry %i. etcd cluster is not stable: [revisions: %v] and [hashes: %v]", i, revs, hashes)
+			plog.Warningf("retry %d. etcd cluster is not stable: [revisions: %v] and [hashes: %v]", i, revs, hashes)
 		}
 		time.Sleep(time.Second)
 	}
