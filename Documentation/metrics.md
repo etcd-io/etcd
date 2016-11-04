@@ -90,6 +90,7 @@ All these metrics are prefixed with `etcd_grpc_`
 |--------------------------------|-------------------------------------------------------------------------------------|------------------------|
 | requests_total                 | Total number of received requests                                                   | Counter(method)        |
 | requests_failed_total                   | Total number of failed requests.                                                    | Counter(method,error)  |
+| active_streams                   | Total number of active streams.                                                    | Gauge(method)  |
 | unary_requests_duration_seconds     | Bucketed handling duration of the requests.                                         | Histogram(method)      |
 
 

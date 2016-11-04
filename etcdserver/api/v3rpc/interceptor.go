@@ -110,7 +110,9 @@ func metricsStreamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.
 	service, method := splitMethodName(info.FullMethod)
 	receivedCounter.WithLabelValues(service, method).Inc()
 
+	streamsGauage.WithLabelValues(service, method).Inc()
 	err := handler(srv, ss)
+	streamsGauage.WithLabelValues(service, method).Dec()
 	if err != nil {
 		failedCounter.WithLabelValues(service, method, grpc.Code(err).String()).Inc()
 	}
