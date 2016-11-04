@@ -16,6 +16,7 @@ package rafttest
 
 import (
 	"log"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/raft"
@@ -33,6 +34,9 @@ type node struct {
 	// stable
 	storage *raft.MemoryStorage
 	state   raftpb.HardState
+
+	mu   sync.Mutex
+	lead uint64
 }
 
 func startNode(id uint64, peers []raft.Peer, iface iface) *node {
@@ -57,7 +61,48 @@ func startNode(id uint64, peers []raft.Peer, iface iface) *node {
 	return n
 }
 
+func waitLeader(nodes []*node, excludes ...uint64) int {
+	em := make(map[uint64]struct{})
+	for _, ei := range excludes {
+		em[ei] = struct{}{}
+	}
+	for {
+		lead := raft.None
+		first := true
+		leadIdx := -1
+		for i, nd := range nodes {
+			if _, ok := em[nd.id]; ok {
+				continue
+			}
+			if first {
+				nd.mu.Lock()
+				lead = nd.lead
+				nd.mu.Unlock()
+				leadIdx = i
+				first = false
+				continue
+			}
+			nd.mu.Lock()
+			if lead != nd.lead {
+				nd.mu.Unlock()
+				lead = raft.None
+				leadIdx = i
+				break
+			}
+			nd.mu.Unlock()
+		}
+		if lead != raft.None {
+			return leadIdx
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
 func (n *node) start() {
+	n.mu.Lock()
+	n.lead = raft.None
+	n.mu.Unlock()
+
 	n.stopc = make(chan struct{})
 	ticker := time.Tick(5 * time.Millisecond)
 
@@ -67,6 +112,11 @@ func (n *node) start() {
 			case <-ticker:
 				n.Tick()
 			case rd := <-n.Ready():
+				if rd.SoftState != nil {
+					n.mu.Lock()
+					n.lead = rd.SoftState.Lead
+					n.mu.Unlock()
+				}
 				if !raft.IsEmptyHardState(rd.HardState) {
 					n.state = rd.HardState
 					n.storage.SetHardState(n.state)
@@ -79,6 +129,14 @@ func (n *node) start() {
 				}
 				n.Advance()
 			case m := <-n.iface.recv():
+				n.mu.Lock()
+				if m.Type == raftpb.MsgProp && n.lead == raft.None {
+					// drop proposals when there is no leader
+					// this can happen when MsgProp was sent to old leader
+					n.mu.Unlock()
+					continue
+				}
+				n.mu.Unlock()
 				n.Step(context.TODO(), m)
 			case <-n.stopc:
 				n.Stop()
