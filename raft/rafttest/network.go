@@ -100,8 +100,20 @@ func (rn *raftNetwork) send(m raftpb.Message) {
 		time.Sleep(time.Duration(rd))
 	}
 
+	// use marshal/unmarshal to copy message to avoid data race.
+	b, err := m.Marshal()
+	if err != nil {
+		panic(err)
+	}
+
+	var cm raftpb.Message
+	err = cm.Unmarshal(b)
+	if err != nil {
+		panic(err)
+	}
+
 	select {
-	case to <- m:
+	case to <- cm:
 	default:
 		// drop messages when the receiver queue is full.
 	}

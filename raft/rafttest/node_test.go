@@ -33,18 +33,18 @@ func TestBasicProgress(t *testing.T) {
 		nodes = append(nodes, n)
 	}
 
-	time.Sleep(10 * time.Millisecond)
+	waitLeader(nodes)
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	if !waitCommitConverge(nodes, 100) {
+		t.Errorf("commits failed to converge!")
+	}
+
 	for _, n := range nodes {
 		n.stop()
-		if n.state.Commit != 10006 {
-			t.Errorf("commit = %d, want = 10006", n.state.Commit)
-		}
 	}
 }
 
@@ -59,31 +59,32 @@ func TestRestart(t *testing.T) {
 		nodes = append(nodes, n)
 	}
 
-	time.Sleep(50 * time.Millisecond)
-	for i := 0; i < 300; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
-	}
-	nodes[1].stop()
-	for i := 0; i < 300; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
-	}
-	nodes[2].stop()
-	for i := 0; i < 300; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
-	}
-	nodes[2].restart()
-	for i := 0; i < 300; i++ {
-		nodes[0].Propose(context.TODO(), []byte("somedata"))
-	}
-	nodes[1].restart()
+	l := waitLeader(nodes)
+	k1, k2 := (l+1)%5, (l+2)%5
 
-	// give some time for nodes to catch up with the raft leader
-	time.Sleep(500 * time.Millisecond)
+	for i := 0; i < 30; i++ {
+		nodes[l].Propose(context.TODO(), []byte("somedata"))
+	}
+	nodes[k1].stop()
+	for i := 0; i < 30; i++ {
+		nodes[(l+3)%5].Propose(context.TODO(), []byte("somedata"))
+	}
+	nodes[k2].stop()
+	for i := 0; i < 30; i++ {
+		nodes[(l+4)%5].Propose(context.TODO(), []byte("somedata"))
+	}
+	nodes[k2].restart()
+	for i := 0; i < 30; i++ {
+		nodes[l].Propose(context.TODO(), []byte("somedata"))
+	}
+	nodes[k1].restart()
+
+	if !waitCommitConverge(nodes, 120) {
+		t.Errorf("commits failed to converge!")
+	}
+
 	for _, n := range nodes {
 		n.stop()
-		if n.state.Commit != 1206 {
-			t.Errorf("commit = %d, want = 1206", n.state.Commit)
-		}
 	}
 }
 
@@ -98,30 +99,77 @@ func TestPause(t *testing.T) {
 		nodes = append(nodes, n)
 	}
 
-	time.Sleep(50 * time.Millisecond)
-	for i := 0; i < 300; i++ {
+	waitLeader(nodes)
+
+	for i := 0; i < 30; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 	nodes[1].pause()
-	for i := 0; i < 300; i++ {
+	for i := 0; i < 30; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 	nodes[2].pause()
-	for i := 0; i < 300; i++ {
+	for i := 0; i < 30; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 	nodes[2].resume()
-	for i := 0; i < 300; i++ {
+	for i := 0; i < 30; i++ {
 		nodes[0].Propose(context.TODO(), []byte("somedata"))
 	}
 	nodes[1].resume()
 
-	// give some time for nodes to catch up with the raft leader
-	time.Sleep(300 * time.Millisecond)
+	if !waitCommitConverge(nodes, 120) {
+		t.Errorf("commits failed to converge!")
+	}
+
 	for _, n := range nodes {
 		n.stop()
-		if n.state.Commit != 1206 {
-			t.Errorf("commit = %d, want = 1206", n.state.Commit)
+	}
+}
+
+func waitLeader(ns []*node) int {
+	var l map[uint64]struct{}
+	var lindex int
+
+	for {
+		l = make(map[uint64]struct{})
+
+		for i, n := range ns {
+			lead := n.Status().SoftState.Lead
+			if lead != 0 {
+				l[lead] = struct{}{}
+				if n.id == lead {
+					lindex = i
+				}
+			}
+		}
+
+		if len(l) == 1 {
+			return lindex
 		}
 	}
+}
+
+func waitCommitConverge(ns []*node, target uint64) bool {
+	var c map[uint64]struct{}
+
+	for i := 0; i < 50; i++ {
+		c = make(map[uint64]struct{})
+		var good int
+
+		for _, n := range ns {
+			commit := n.Node.Status().HardState.Commit
+			c[commit] = struct{}{}
+			if commit > target {
+				good++
+			}
+		}
+
+		if len(c) == 1 && good == len(ns) {
+			return true
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return false
 }
