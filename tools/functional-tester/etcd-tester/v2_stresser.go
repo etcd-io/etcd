@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -40,9 +41,8 @@ type v2Stresser struct {
 
 	wg sync.WaitGroup
 
-	mu      sync.Mutex
-	failure int
-	success int
+	mu                sync.Mutex
+	atomicModifiedKey int64
 
 	cancel func()
 }
@@ -84,17 +84,13 @@ func (s *v2Stresser) run(ctx context.Context, kv clientV2.KeysAPI) {
 		setctx, setcancel := context.WithTimeout(ctx, clientV2.DefaultRequestTimeout)
 		key := fmt.Sprintf("foo%016x", rand.Intn(s.keySuffixRange))
 		_, err := kv.Set(setctx, key, string(randBytes(s.keySize)), nil)
+		if err == nil {
+			atomic.AddInt64(&s.atomicModifiedKey, 1)
+		}
 		setcancel()
 		if err == context.Canceled {
 			return
 		}
-		s.mu.Lock()
-		if err != nil {
-			s.failure++
-		} else {
-			s.success++
-		}
-		s.mu.Unlock()
 	}
 }
 
@@ -103,10 +99,8 @@ func (s *v2Stresser) Cancel() {
 	s.wg.Wait()
 }
 
-func (s *v2Stresser) Report() (success int, failure int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.success, s.failure
+func (s *v2Stresser) ModifiedKeys() int64 {
+	return atomic.LoadInt64(&s.atomicModifiedKey)
 }
 
 func (s *v2Stresser) Checker() Checker { return nil }

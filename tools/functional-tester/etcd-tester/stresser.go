@@ -30,8 +30,8 @@ type Stresser interface {
 	Stress() error
 	// Cancel cancels the stress test on the etcd cluster
 	Cancel()
-	// Report reports the success and failure of the stress test
-	Report() (success int, failure int)
+	// ModifiedKeys reports the number of keys created and deleted by stresser
+	ModifiedKeys() int64
 	// Checker returns an invariant checker for after the stresser is canceled.
 	Checker() Checker
 }
@@ -44,8 +44,8 @@ type nopStresser struct {
 
 func (s *nopStresser) Stress() error { return nil }
 func (s *nopStresser) Cancel()       {}
-func (s *nopStresser) Report() (int, int) {
-	return int(time.Since(s.start).Seconds()) * s.qps, 0
+func (s *nopStresser) ModifiedKeys() int64 {
+	return 0
 }
 func (s *nopStresser) Checker() Checker { return nil }
 
@@ -79,13 +79,11 @@ func (cs *compositeStresser) Cancel() {
 	wg.Wait()
 }
 
-func (cs *compositeStresser) Report() (succ int, fail int) {
+func (cs *compositeStresser) ModifiedKeys() (modifiedKey int64) {
 	for _, stress := range cs.stressers {
-		s, f := stress.Report()
-		succ += s
-		fail += f
+		modifiedKey += stress.ModifiedKeys()
 	}
-	return succ, fail
+	return modifiedKey
 }
 
 func (cs *compositeStresser) Checker() Checker {
