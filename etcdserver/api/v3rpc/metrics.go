@@ -33,6 +33,14 @@ var (
 			Help:      "Counter of failed requests.",
 		}, []string{"grpc_service", "grpc_method", "grpc_code"})
 
+	streamsGauage = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "grpc",
+			Name:      "active_streams",
+			Help:      "Number of active streams.",
+		}, []string{"grpc_service", "grpc_method"})
+
 	handlingDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: "etcd",
@@ -60,6 +68,7 @@ var (
 func init() {
 	prometheus.MustRegister(receivedCounter)
 	prometheus.MustRegister(failedCounter)
+	prometheus.MustRegister(streamsGauage)
 	prometheus.MustRegister(handlingDuration)
 
 	prometheus.MustRegister(sentBytes)
