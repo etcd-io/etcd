@@ -89,7 +89,15 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	}
 
 	resp, err := txn.If(cmps...).Then(thenops...).Else(elseops...).Commit()
-	return (*pb.TxnResponse)(resp), err
+
+	if err != nil {
+		return nil, err
+	}
+	// txn may claim an outdated key is updated; be safe and invalidate
+	for _, cmp := range r.Compare {
+		p.cache.Invalidate(cmp.Key, nil)
+	}
+	return (*pb.TxnResponse)(resp), nil
 }
 
 func (p *kvProxy) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
