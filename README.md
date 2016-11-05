@@ -93,6 +93,10 @@ This will bring up 3 etcd members `infra1`, `infra2` and `infra3` and etcd proxy
 
 Every cluster member and proxy accepts key value reads and key value writes.
 
+### Running etcd on Kubernetes
+
+If you want to run etcd cluster on Kubernetes, try [etcd operator](https://github.com/coreos/etcd-operator).
+
 ### Next steps
 
 Now it's time to dig into the full etcd API and other guides.
@@ -131,4 +135,5 @@ See [reporting bugs](Documentation/reporting_bugs.md) for details about reportin
 ### License
 
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+
 
