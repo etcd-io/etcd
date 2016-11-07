@@ -2835,6 +2835,21 @@ func checkLeaderTransferState(t *testing.T, r *raft, state StateType, lead uint6
 	}
 }
 
+// TestTransferNonMember verifies that when a MsgTimeoutNow arrives at
+// a node that has been removed from the group, nothing happens.
+// (previously, if the node also got votes, it would panic as it
+// transitioned to StateLeader)
+func TestTransferNonMember(t *testing.T) {
+	r := newTestRaft(1, []uint64{2, 3, 4}, 5, 1, NewMemoryStorage())
+	r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgTimeoutNow})
+
+	r.Step(pb.Message{From: 2, To: 1, Type: pb.MsgVoteResp})
+	r.Step(pb.Message{From: 3, To: 1, Type: pb.MsgVoteResp})
+	if r.state != StateFollower {
+		t.Fatalf("state is %s, want StateFollower", r.state)
+	}
+}
+
 func ents(terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
