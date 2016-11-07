@@ -24,6 +24,7 @@ import (
 	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 const (
@@ -391,7 +392,9 @@ func (w *watchGrpcStream) run() {
 	closing := make(map[*watcherStream]struct{})
 
 	defer func() {
-		w.closeErr = closeErr
+		if grpc.Code(closeErr) != codes.Canceled {
+			w.closeErr = closeErr
+		}
 		// shutdown substreams and resuming substreams
 		for _, ws := range w.substreams {
 			if _, ok := closing[ws]; !ok {
@@ -643,12 +646,7 @@ func (w *watchGrpcStream) serveSubstream(ws *watcherStream, resumec chan struct{
 	// lazily send cancel message if events on missing id
 }
 
-func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
-	// connect to grpc stream
-	wc, err := w.openWatchClient()
-	if err != nil {
-		return nil, v3rpc.Error(err)
-	}
+func (w *watchGrpcStream) newWatchClient() (ws pb.Watch_WatchClient, err error) {
 	// mark all substreams as resuming
 	if len(w.substreams)+len(w.resuming) > 0 {
 		close(w.resumec)
@@ -658,15 +656,60 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 			ws.id = -1
 			w.resuming = append(w.resuming, ws)
 		}
-		for _, ws := range w.resuming {
-			if ws == nil || ws.closing {
-				continue
-			}
-			ws.donec = make(chan struct{})
-			go w.serveSubstream(ws, w.resumec)
-		}
 	}
 	w.substreams = make(map[int64]*watcherStream)
+
+	// accept cancels while reconnecting
+	donec := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(len(w.resuming))
+	cancels := make(chan struct{}, len(w.resuming))
+	for i := range w.resuming {
+		ws := w.resuming[i]
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ws.initReq.ctx.Done():
+				ws.closing = true
+				close(ws.outc)
+				cancels <- struct{}{}
+			case <-donec:
+			}
+		}()
+	}
+
+	ctx, cancel := context.WithCancel(w.ctx)
+	if len(w.resuming) > 0 {
+		go func(n int) {
+			for i := 0; i < n; i++ {
+				select {
+				case <-cancels:
+				case <-donec:
+					return
+				}
+			}
+			cancel()
+		}(len(w.resuming))
+	}
+
+	// connect to grpc stream
+	wc, err := w.openWatchClient(ctx)
+	// clean up cancel waiters
+	close(donec)
+	wg.Wait()
+
+	if err != nil {
+		return nil, v3rpc.Error(err)
+	}
+
+	for _, ws := range w.resuming {
+		if ws == nil || ws.closing {
+			continue
+		}
+		ws.donec = make(chan struct{})
+		go w.serveSubstream(ws, w.resumec)
+	}
+
 	// receive data from new grpc stream
 	go w.serveWatchClient(wc)
 	return wc, nil
@@ -685,7 +728,7 @@ func (w *watchGrpcStream) joinSubstreams() {
 }
 
 // openWatchClient retries opening a watchclient until retryConnection fails
-func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error) {
+func (w *watchGrpcStream) openWatchClient(ctx context.Context) (ws pb.Watch_WatchClient, err error) {
 	for {
 		select {
 		case <-w.stopc:
@@ -695,10 +738,10 @@ func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error)
 			return nil, err
 		default:
 		}
-		if ws, err = w.remote.Watch(w.ctx, grpc.FailFast(false)); ws != nil && err == nil {
+		if ws, err = w.remote.Watch(ctx, grpc.FailFast(false)); ws != nil && err == nil {
 			break
 		}
-		if isHaltErr(w.ctx, err) {
+		if isHaltErr(ctx, err) {
 			return nil, v3rpc.Error(err)
 		}
 	}
