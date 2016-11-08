@@ -153,6 +153,28 @@ func TestWatcherWatchPrefix(t *testing.T) {
 	}
 }
 
+// TestWatcherWatchWrongRange ensures that watcher with wrong 'end' range
+// does not create watcher, which panics when canceling in range tree.
+func TestWatcherWatchWrongRange(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := WatchableKV(newWatchableStore(b, &lease.FakeLessor{}, nil))
+	defer cleanup(s, b, tmpPath)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	if id := w.Watch([]byte("foa"), []byte("foa"), 1); id != -1 {
+		t.Fatalf("key == end range given; id expected -1, got %d", id)
+	}
+	if id := w.Watch([]byte("fob"), []byte("foa"), 1); id != -1 {
+		t.Fatalf("key > end range given; id expected -1, got %d", id)
+	}
+	// watch request with 'WithFromKey' has empty-byte range end
+	if id := w.Watch([]byte("foo"), []byte{}, 1); id != 0 {
+		t.Fatalf("\x00 is range given; id expected 0, got %d", id)
+	}
+}
+
 func TestWatchDeleteRange(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
 	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
