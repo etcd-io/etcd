@@ -126,7 +126,7 @@ $ etcd --name infra2 --initial-advertise-peer-urls https://10.0.1.12:2380 \
 
 If the cluster needs encrypted communication but does not require authenticated connections, etcd can be configured to automatically generate its keys. On initialization, each member creates its own set of keys based on its advertised IP addresses and hosts.
 
-On each machine, etcd would be started with these flag:
+On each machine, etcd would be started with these flags:
 
 ```
 $ etcd --name infra0 --initial-advertise-peer-urls https://10.0.1.10:2380 \
@@ -205,7 +205,7 @@ exit 1
 
 ## Discovery
 
-In a number of cases, the IPs of the cluster peers may not be known ahead of time. This is common when utilizing cloud providers or when the network uses DHCP. In these cases, rather than specifying a static configuration, use an existing etcd cluster to bootstrap a new one. We call this process "discovery".
+In a number of cases, the IPs of the cluster peers may not be known ahead of time. This is common when utilizing cloud providers or when the network uses DHCP. In these cases, rather than specifying a static configuration, use an existing etcd cluster to bootstrap a new one. This process is called "discovery".
 
 There two methods that can be used for discovery:
 
@@ -214,17 +214,17 @@ There two methods that can be used for discovery:
 
 ### etcd discovery
 
-To better understand the design about discovery service protocol, we suggest reading the discovery service protocol [documentation][discovery-proto].
+To better understand the design of the discovery service protocol, we suggest reading the discovery service protocol [documentation][discovery-proto].
 
 #### Lifetime of a discovery URL
 
-A discovery URL identifies a unique etcd cluster. Instead of reusing a discovery URL, always create discovery URLs for new clusters.
+A discovery URL identifies a unique etcd cluster. Instead of reusing an existing discovery URL, each etcd instance shares a new discovery URL to bootstrap the new cluster.
 
 Moreover, discovery URLs should ONLY be used for the initial bootstrapping of a cluster. To change cluster membership after the cluster is already running, see the [runtime reconfiguration][runtime-conf] guide.
 
 #### Custom etcd discovery service
 
-Discovery uses an existing cluster to bootstrap itself. If using a private etcd cluster, can create a URL like so:
+Discovery uses an existing cluster to bootstrap itself. If using a private etcd cluster, create a URL like so:
 
 ```
 $ curl -X PUT https://myetcd.local/v2/keys/discovery/6c007a14875d53d9bf0ef5a6fc0257c817f0fb83/_config/size -d value=3
@@ -271,7 +271,7 @@ $ curl https://discovery.etcd.io/new?size=3
 https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
-This will create the cluster with an initial expected size of 3 members. If no size is specified, a default of 3 is used.
+This will create the cluster with an initial size of 3 members. If no size is specified, a default of 3 is used.
 
 ```
 ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
@@ -281,7 +281,7 @@ ETCD_DISCOVERY=https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573d
 --discovery https://discovery.etcd.io/3e86b59982e49066c5d813af1c2e2579cbf573de
 ```
 
-**Each member must have a different name flag specified. `Hostname` or `machine-id` can be a good choice. Or discovery will fail due to duplicated name.**
+**Each member must have a different name flag specified or else discovery will fail due to duplicated names. `Hostname` or `machine-id` can be a good choice. **
 
 Now we start etcd with those relevant flags for each member:
 

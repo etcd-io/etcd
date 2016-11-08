@@ -52,7 +52,7 @@ func TestV3ClientMetrics(t *testing.T) {
 
 		ln, err = transport.NewUnixListener(addr)
 		if err != nil {
-			t.Fatalf("Error : %v occured while listening on addr : %v", err, addr)
+			t.Fatalf("Error: %v occurred while listening on addr: %v", err, addr)
 		}
 
 		err = srv.Serve(ln)
@@ -86,19 +86,19 @@ func TestV3ClientMetrics(t *testing.T) {
 
 	pAfter := sumCountersForMetricAndLabels(t, url, "grpc_client_started_total", "Put", "unary")
 	if pBefore+1 != pAfter {
-		t.Errorf("grpc_client_started_total expected : %d, got : %d", 1, pAfter-pBefore)
+		t.Errorf("grpc_client_started_total expected %d, got %d", 1, pAfter-pBefore)
 	}
 
 	// consume watch response
 	select {
 	case <-wc:
 	case <-time.After(10 * time.Second):
-		t.Error("Timeout occured for getting watch response")
+		t.Error("Timeout occurred for getting watch response")
 	}
 
 	wAfter := sumCountersForMetricAndLabels(t, url, "grpc_client_msg_received_total", "Watch", "bidi_stream")
 	if wBefore+1 != wAfter {
-		t.Errorf("grpc_client_msg_received_total expected : %d, got %d", 1, wAfter-wBefore)
+		t.Errorf("grpc_client_msg_received_total expected %d, got %d", 1, wAfter-wBefore)
 	}
 
 	ln.Close()
@@ -127,7 +127,7 @@ func sumCountersForMetricAndLabels(t *testing.T, url string, metricName string, 
 		valueString := line[strings.LastIndex(line, " ")+1 : len(line)-1]
 		valueFloat, err := strconv.ParseFloat(valueString, 32)
 		if err != nil {
-			t.Fatalf("failed parsing value for line: %v and matchingLabelValues : %v \n", line, matchingLabelValues)
+			t.Fatalf("failed parsing value for line: %v and matchingLabelValues: %v", line, matchingLabelValues)
 		}
 		count += int(valueFloat)
 	}
@@ -138,7 +138,7 @@ func getHTTPBodyAsLines(t *testing.T, url string) []string {
 	cfgtls := transport.TLSInfo{}
 	tr, err := transport.NewTransport(cfgtls, time.Second)
 	if err != nil {
-		t.Fatalf("Error getting transport : %v", err)
+		t.Fatalf("Error getting transport: %v", err)
 	}
 
 	tr.MaxIdleConns = -1
