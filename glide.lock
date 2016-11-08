@@ -3,8 +3,6 @@ updated: 2016-10-25T10:52:07.505501079-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
-- name: github.com/akrennmair/gopcap
-  version: 00e11033259acb75598ba416495bb708d864a010
 - name: github.com/beorn7/perks
   version: b965b613227fddccbfffe13eae360ed3fa822f8d
   subpackages:
