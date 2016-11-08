@@ -1,5 +1,5 @@
-hash: 3b5f7efc103b59a08cc0260e6df4cf6fe65ceded020d3d67daa6453a2713edb3
-updated: 2016-10-25T10:52:07.505501079-07:00
+hash: 89172434644ec6c94fc8e019fb5e0be6183012e57298ee902282b1edbcf613cb
+updated: 2016-11-08T13:09:58.808406619-08:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -40,8 +40,6 @@ imports:
   version: e18d7aa8f8c624c915db340349aad4c49b10d173
   subpackages:
   - proto
-- name: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed
 - name: github.com/golang/groupcache
   version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
   subpackages:
@@ -53,6 +51,8 @@ imports:
   - proto
 - name: github.com/google/btree
   version: 925471ac9e2131377a91e1595defec898166fe49
+- name: github.com/grpc-ecosystem/go-grpc-prometheus
+  version: 6b7015e65d366bf3f19b2b2a000a831940f0f7e0
 - name: github.com/grpc-ecosystem/grpc-gateway
   version: f52d055dc48aec25854ed7d31862f78913cf17d1
   subpackages:
@@ -92,12 +92,14 @@ imports:
   version: 300106c228d52c8941d4b3de6054a6062a86dda3
 - name: github.com/shurcooL/sanitized_anchor_name
   version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
-- name: github.com/spacejam/loghisto
-  version: 323309774dec8b7430187e46cd0793974ccca04a
 - name: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
   version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
+- name: github.com/stretchr/testify
+  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
+  subpackages:
+  - assert
 - name: github.com/ugorji/go
   version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
   subpackages:
@@ -106,8 +108,6 @@ imports:
   version: 6011f165dc288c72abd8acd7722f837c5c64198d
 - name: github.com/xiang90/probing
   version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
--package: github.com/grpc-ecosystem/go-grpc-prometheus
-  version: 6b7015e65d366bf3f19b2b2a000a831940f0f7e0
 - name: golang.org/x/crypto
   version: 1351f936d976c60a0a48d728281922cf63eafb8d
   subpackages:
@@ -145,8 +145,11 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 testImports:
-- name: github.com/stretchr/testify
-  version: ""
-  repo: https://github.com/stretchr/testify.git
+- name: github.com/davecgh/go-spew
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
-  - assert
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
