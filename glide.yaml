@@ -2,8 +2,6 @@ package: github.com/coreos/etcd
 import:
 - package: bitbucket.org/ww/goautoneg
   version: '''75cd24fc2f2c2a2088577d12123ddee5f54e0675'''
-- package: github.com/akrennmair/gopcap
-  version: 00e11033259acb75598ba416495bb708d864a010
 - package: github.com/beorn7/perks
   version: b965b613227fddccbfffe13eae360ed3fa822f8d
   subpackages:
