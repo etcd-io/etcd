@@ -348,6 +348,51 @@ func TestV3WatchFutureRevision(t *testing.T) {
 	}
 }
 
+// TestV3WatchWrongRange tests wrong range does not create watchers.
+func TestV3WatchWrongRange(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	wAPI := toGRPC(clus.RandClient()).Watch
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	wStream, err := wAPI.Watch(ctx)
+	if err != nil {
+		t.Fatalf("wAPI.Watch error: %v", err)
+	}
+
+	tests := []struct {
+		key      []byte
+		end      []byte
+		canceled bool
+	}{
+		{[]byte("a"), []byte("a"), true},  // wrong range end
+		{[]byte("b"), []byte("a"), true},  // wrong range end
+		{[]byte("foo"), []byte{0}, false}, // watch request with 'WithFromKey'
+	}
+	for i, tt := range tests {
+		if err := wStream.Send(&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
+			CreateRequest: &pb.WatchCreateRequest{Key: tt.key, RangeEnd: tt.end, StartRevision: 1}}}); err != nil {
+			t.Fatalf("#%d: wStream.Send error: %v", i, err)
+		}
+		cresp, err := wStream.Recv()
+		if err != nil {
+			t.Fatalf("#%d: wStream.Recv error: %v", i, err)
+		}
+		if !cresp.Created {
+			t.Fatalf("#%d: create %v, want %v", i, cresp.Created, true)
+		}
+		if cresp.Canceled != tt.canceled {
+			t.Fatalf("#%d: canceled %v, want %v", i, tt.canceled, cresp.Canceled)
+		}
+		if tt.canceled && cresp.WatchId != -1 {
+			t.Fatalf("#%d: canceled watch ID %d, want -1", i, cresp.WatchId)
+		}
+	}
+}
+
 // TestV3WatchCancelSynced tests Watch APIs cancellation from synced map.
 func TestV3WatchCancelSynced(t *testing.T) {
 	defer testutil.AfterTest(t)

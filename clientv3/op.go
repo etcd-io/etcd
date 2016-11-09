@@ -223,7 +223,7 @@ func WithSort(target SortTarget, order SortOrder) OpOption {
 			// If order != SortNone, server fetches the entire key-space,
 			// and then applies the sort and limit, if provided.
 			// Since current mvcc.Range implementation returns results
-			// sorted by keys in lexiographically ascending order,
+			// sorted by keys in lexicographically ascending order,
 			// client should ignore SortOrder if the target is SortByKey.
 			order = SortNone
 		}
@@ -261,14 +261,15 @@ func WithPrefix() OpOption {
 	}
 }
 
-// WithRange specifies the range of 'Get' or 'Delete' requests.
+// WithRange specifies the range of 'Get', 'Delete', 'Watch' requests.
 // For example, 'Get' requests with 'WithRange(end)' returns
 // the keys in the range [key, end).
+// endKey must be lexicographically greater than start key.
 func WithRange(endKey string) OpOption {
 	return func(op *Op) { op.end = []byte(endKey) }
 }
 
-// WithFromKey specifies the range of 'Get' or 'Delete' requests
+// WithFromKey specifies the range of 'Get', 'Delete', 'Watch' requests
 // to be equal or greater than the key in the argument.
 func WithFromKey() OpOption { return WithRange("\x00") }
 
