@@ -427,7 +427,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | key | key is the first key to delete in the range. | bytes |
-| range_end | range_end is the key following the last key to delete for the range [key, range_end). If range_end is not given, the range is defined to contain only the key argument. If range_end is '\0', the range is all keys greater than or equal to the key argument. | bytes |
+| range_end | range_end is the key following the last key to delete for the range [key, range_end). If range_end is not given, the range is defined to contain only the key argument. If range_end is one bit larger than the given key, then the range is all the all keys with the prefix (the given key). If range_end is '\0', the range is all keys greater than or equal to the key argument. | bytes |
 | prev_kv | If prev_kv is set, etcd gets the previous key-value pairs before deleting it. The previous key-value pairs will be returned in the delte response. | bool |
 
 
@@ -762,7 +762,7 @@ From google paxosdb paper: Our implementation hinges around a powerful primitive
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | key | key is the key to register for watching. | bytes |
-| range_end | range_end is the end of the range [key, range_end) to watch. If range_end is not given, only the key argument is watched. If range_end is equal to '\0', all keys greater than or equal to the key argument are watched. | bytes |
+| range_end | range_end is the end of the range [key, range_end) to watch. If range_end is not given, only the key argument is watched. If range_end is equal to '\0', all keys greater than or equal to the key argument are watched. If the range_end is one bit larger than the given key, then all keys with the prefix (the given key) will be watched. | bytes |
 | start_revision | start_revision is an optional revision to watch from (inclusive). No start_revision is "now". | int64 |
 | progress_notify | progress_notify is set so that the etcd server will periodically send a WatchResponse with no events to the new watcher if there are no recent events. It is useful when clients wish to recover a disconnected watcher starting from a recent known revision. The etcd server may decide how often it will send notifications based on current load. | bool |
 | filters | filter out put event. filter out delete event. filters filter the events at server side before it sends back to the watcher. | (slice of) FilterType |

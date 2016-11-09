@@ -978,7 +978,8 @@
       "enum": [
         "EQUAL",
         "GREATER",
-        "LESS"
+        "LESS",
+        "NOT_EQUAL"
       ],
       "default": "EQUAL"
     },
@@ -1518,7 +1519,7 @@
         "range_end": {
           "type": "string",
           "format": "byte",
-          "description": "range_end is the key following the last key to delete for the range [key, range_end).\nIf range_end is not given, the range is defined to contain only the key argument.\nIf range_end is '\\0', the range is all keys greater than or equal to the key argument."
+          "description": "range_end is the key following the last key to delete for the range [key, range_end).\nIf range_end is not given, the range is defined to contain only the key argument.\nIf range_end is one bit larger than the given key, then the range is all\nthe all keys with the prefix (the given key).\nIf range_end is '\\0', the range is all keys greater than or equal to the key argument."
         }
       }
     },
