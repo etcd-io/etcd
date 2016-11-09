@@ -48,11 +48,11 @@ func (tt *tester) runLoop() {
 	}
 
 	if err := tt.resetStressCheck(); err != nil {
-		plog.Errorf("%s failed to start stresser (%v)", err)
+		plog.Errorf("%s failed to start stresser (%v)", tt.logPrefix(), err)
 		return
 	}
 
-	var prevCompactRev int64
+	var preModifiedKey int64
 	for round := 0; round < tt.limit || tt.limit == -1; round++ {
 		tt.status.setRound(round)
 		roundTotalCounter.Inc()
@@ -62,27 +62,27 @@ func (tt *tester) runLoop() {
 			if tt.cleanup() != nil {
 				return
 			}
-			prevCompactRev = 0 // reset after clean up
+			// reset preModifiedKey after clean up
+			preModifiedKey = 0
 			continue
 		}
 		// -1 so that logPrefix doesn't print out 'case'
 		tt.status.setCase(-1)
 
 		revToCompact := max(0, tt.currentRevision-10000)
-		compactN := revToCompact - prevCompactRev
+		currentModifiedKey := tt.stresser.ModifiedKeys()
+		modifiedKey := currentModifiedKey - preModifiedKey
+		preModifiedKey = currentModifiedKey
 		timeout := 10 * time.Second
-		if compactN > 0 {
-			timeout += time.Duration(compactN/compactQPS) * time.Second
-		}
-		prevCompactRev = revToCompact
-
-		plog.Printf("%s compacting %d entries (timeout %v)", tt.logPrefix(), compactN, timeout)
+		timeout += time.Duration(modifiedKey/compactQPS) * time.Second
+		plog.Printf("%s compacting %d modifications (timeout %v)", tt.logPrefix(), modifiedKey, timeout)
 		if err := tt.compact(revToCompact, timeout); err != nil {
 			plog.Warningf("%s functional-tester compact got error (%v)", tt.logPrefix(), err)
 			if tt.cleanup() != nil {
 				return
 			}
-			prevCompactRev = 0 // reset after clean up
+			// reset preModifiedKey after clean up
+			preModifiedKey = 0
 		}
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			if err := tt.defrag(); err != nil {
@@ -257,4 +257,4 @@ func (tt *tester) resetStressCheck() error {
 	return tt.startStresser()
 }
 
-func (tt *tester) Report() (success, failure int) { return tt.stresser.Report() }
+func (tt *tester) Report() int64 { return tt.stresser.ModifiedKeys() }

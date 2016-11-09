@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/net/context" // grpc does a comparison on context.Cancel; can't use "context" package
@@ -46,9 +47,8 @@ type keyStresser struct {
 
 	cancel func()
 	conn   *grpc.ClientConn
-
-	success int
-	failure int
+	// atomicModifiedKeys records the number of keys created and deleted by the stresser.
+	atomicModifiedKeys int64
 
 	stressTable *stressTable
 }
@@ -100,18 +100,13 @@ func (s *keyStresser) run(ctx context.Context) {
 		// and immediate leader election. Find out what other cases this
 		// could be timed out.
 		sctx, scancel := context.WithTimeout(ctx, 10*time.Second)
-		err := s.stressTable.choose()(sctx)
+		err, modifiedKeys := s.stressTable.choose()(sctx)
 		scancel()
 		if err == nil {
-			s.mu.Lock()
-			s.success++
-			s.mu.Unlock()
+			atomic.AddInt64(&s.atomicModifiedKeys, modifiedKeys)
 			continue
 		}
 
-		s.mu.Lock()
-		s.failure++
-		s.mu.Unlock()
 		switch grpc.ErrorDesc(err) {
 		case context.DeadlineExceeded.Error():
 			// This retries when request is triggered at the same time as
@@ -140,8 +135,7 @@ func (s *keyStresser) run(ctx context.Context) {
 			// from stresser.Cancel method:
 			return
 		default:
-			su, fa := s.Report()
-			plog.Errorf("keyStresser %v (success %d, failure %d) exited with error (%v)", s.Endpoint, su, fa, err)
+			plog.Errorf("keyStresser %v exited with error (%v)", s.Endpoint, err)
 			return
 		}
 	}
@@ -154,15 +148,13 @@ func (s *keyStresser) Cancel() {
 	plog.Infof("keyStresser %q is canceled", s.Endpoint)
 }
 
-func (s *keyStresser) Report() (int, int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.success, s.failure
+func (s *keyStresser) ModifiedKeys() int64 {
+	return atomic.LoadInt64(&s.atomicModifiedKeys)
 }
 
 func (s *keyStresser) Checker() Checker { return nil }
 
-type stressFunc func(ctx context.Context) error
+type stressFunc func(ctx context.Context) (err error, modifiedKeys int64)
 
 type stressEntry struct {
 	weight float32
@@ -197,53 +189,56 @@ func (st *stressTable) choose() stressFunc {
 }
 
 func newStressPut(kvc pb.KVClient, keySuffixRange, keySize int) stressFunc {
-	return func(ctx context.Context) error {
+	return func(ctx context.Context) (error, int64) {
 		_, err := kvc.Put(ctx, &pb.PutRequest{
 			Key:   []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
 			Value: randBytes(keySize),
 		}, grpc.FailFast(false))
-		return err
+		return err, 1
 	}
 }
 
 func newStressRange(kvc pb.KVClient, keySuffixRange int) stressFunc {
-	return func(ctx context.Context) error {
+	return func(ctx context.Context) (error, int64) {
 		_, err := kvc.Range(ctx, &pb.RangeRequest{
 			Key: []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
 		}, grpc.FailFast(false))
-		return err
+		return err, 0
 	}
 }
 
 func newStressRangeInterval(kvc pb.KVClient, keySuffixRange int) stressFunc {
-	return func(ctx context.Context) error {
+	return func(ctx context.Context) (error, int64) {
 		start := rand.Intn(keySuffixRange)
 		end := start + 500
 		_, err := kvc.Range(ctx, &pb.RangeRequest{
 			Key:      []byte(fmt.Sprintf("foo%016x", start)),
 			RangeEnd: []byte(fmt.Sprintf("foo%016x", end)),
 		}, grpc.FailFast(false))
-		return err
+		return err, 0
 	}
 }
 
 func newStressDelete(kvc pb.KVClient, keySuffixRange int) stressFunc {
-	return func(ctx context.Context) error {
+	return func(ctx context.Context) (error, int64) {
 		_, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
 			Key: []byte(fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange))),
 		}, grpc.FailFast(false))
-		return err
+		return err, 1
 	}
 }
 
 func newStressDeleteInterval(kvc pb.KVClient, keySuffixRange int) stressFunc {
-	return func(ctx context.Context) error {
+	return func(ctx context.Context) (error, int64) {
 		start := rand.Intn(keySuffixRange)
 		end := start + 500
-		_, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
+		resp, err := kvc.DeleteRange(ctx, &pb.DeleteRangeRequest{
 			Key:      []byte(fmt.Sprintf("foo%016x", start)),
 			RangeEnd: []byte(fmt.Sprintf("foo%016x", end)),
 		}, grpc.FailFast(false))
-		return err
+		if err == nil {
+			return nil, resp.Deleted
+		}
+		return err, 0
 	}
 }

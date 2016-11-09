@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"sync/atomic"
+
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
@@ -43,11 +45,10 @@ type leaseStresser struct {
 	ctx      context.Context
 
 	rateLimiter *rate.Limiter
-
-	success      int
-	failure      int
-	numLeases    int
-	keysPerLease int
+	// atomicModifiedKey records the number of keys created and deleted during a test case
+	atomicModifiedKey int64
+	numLeases         int
+	keysPerLease      int
 
 	aliveLeases      *atomicLeases
 	revokedLeases    *atomicLeases
@@ -147,7 +148,9 @@ func (ls *leaseStresser) run() {
 	defer ls.runWg.Done()
 	ls.restartKeepAlives()
 	for {
-		err := ls.rateLimiter.WaitN(ls.ctx, ls.numLeases*ls.keysPerLease)
+		// the number of keys created and deleted is roughly 2x the number of created keys for an iteration.
+		// the rateLimiter therefore consumes 2x ls.numLeases*ls.keysPerLease tokens where each token represents a create/delete operation for key.
+		err := ls.rateLimiter.WaitN(ls.ctx, 2*ls.numLeases*ls.keysPerLease)
 		if err == context.Canceled {
 			return
 		}
@@ -366,6 +369,8 @@ func (ls *leaseStresser) attachKeysWithLease(leaseID int64) error {
 		txn := &pb.TxnRequest{Success: txnPuts}
 		_, err := ls.kvc.Txn(ls.ctx, txn)
 		if err == nil {
+			// since all created keys will be deleted too, the number of operations on keys will be roughly 2x the number of created keys
+			atomic.AddInt64(&ls.atomicModifiedKey, 2*int64(ls.keysPerLease))
 			return nil
 		}
 		if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
@@ -400,8 +405,8 @@ func (ls *leaseStresser) Cancel() {
 	plog.Infof("lease stresser %q is canceled", ls.endpoint)
 }
 
-func (ls *leaseStresser) Report() (int, int) {
-	return ls.success, ls.failure
+func (ls *leaseStresser) ModifiedKeys() int64 {
+	return atomic.LoadInt64(&ls.atomicModifiedKey)
 }
 
 func (ls *leaseStresser) Checker() Checker { return &leaseChecker{ls} }
