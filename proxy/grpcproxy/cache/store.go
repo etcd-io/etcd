@@ -134,14 +134,14 @@ func (c *cache) Invalidate(key, endkey []byte) {
 	}
 
 	ivs = c.cachedRanges.Stab(ivl)
-	c.cachedRanges.Delete(ivl)
-
 	for _, iv := range ivs {
 		keys := iv.Val.([]string)
 		for _, key := range keys {
 			c.lru.Remove(key)
 		}
 	}
+	// delete after removing all keys since it is destructive to 'ivs'
+	c.cachedRanges.Delete(ivl)
 }
 
 // Compact invalidate all caching response before the given rev.

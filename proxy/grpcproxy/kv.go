@@ -70,6 +70,22 @@ func (p *kvProxy) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*p
 	return (*pb.DeleteRangeResponse)(resp.Del()), err
 }
 
+func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp) {
+	for i := range resps {
+		switch tv := resps[i].Response.(type) {
+		case *pb.ResponseOp_ResponsePut:
+			p.cache.Invalidate(reqs[i].GetRequestPut().Key, nil)
+		case *pb.ResponseOp_ResponseDeleteRange:
+			rdr := reqs[i].GetRequestDeleteRange()
+			p.cache.Invalidate(rdr.Key, rdr.RangeEnd)
+		case *pb.ResponseOp_ResponseRange:
+			req := reqs[i].GetRequestRange()
+			req.Serializable = true
+			p.cache.Add(req, tv.ResponseRange)
+		}
+	}
+}
+
 func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	txn := p.kv.Txn(ctx)
 	cmps := make([]clientv3.Cmp, len(r.Compare))
@@ -96,6 +112,12 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	// txn may claim an outdated key is updated; be safe and invalidate
 	for _, cmp := range r.Compare {
 		p.cache.Invalidate(cmp.Key, nil)
+	}
+	// update any fetched keys
+	if resp.Succeeded {
+		p.txnToCache(r.Success, resp.Responses)
+	} else {
+		p.txnToCache(r.Failure, resp.Responses)
 	}
 	return (*pb.TxnResponse)(resp), nil
 }
