@@ -31,16 +31,16 @@ type GRPCResolver struct {
 	Client *etcd.Client
 }
 
-func (gr *GRPCResolver) Update(ctx context.Context, target string, nm naming.Update) (err error) {
+func (gr *GRPCResolver) Update(ctx context.Context, target string, nm naming.Update, opts ...etcd.OpOption) (err error) {
 	switch nm.Op {
 	case naming.Add:
 		var v []byte
 		if v, err = json.Marshal(nm); err != nil {
 			return grpc.Errorf(codes.InvalidArgument, err.Error())
 		}
-		_, err = gr.Client.KV.Put(ctx, target+"/"+nm.Addr, string(v))
+		_, err = gr.Client.KV.Put(ctx, target+"/"+nm.Addr, string(v), opts...)
 	case naming.Delete:
-		_, err = gr.Client.Delete(ctx, target+"/"+nm.Addr)
+		_, err = gr.Client.Delete(ctx, target+"/"+nm.Addr, opts...)
 	default:
 		return grpc.Errorf(codes.InvalidArgument, "naming: bad naming op")
 	}
