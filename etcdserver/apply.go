@@ -451,6 +451,10 @@ func (a *applierV3backend) applyCompare(c *pb.Compare) (int64, bool) {
 		if result != 0 {
 			return rev, false
 		}
+	case pb.Compare_NOT_EQUAL:
+		if result == 0 {
+			return rev, false
+		}
 	case pb.Compare_GREATER:
 		if result != 1 {
 			return rev, false

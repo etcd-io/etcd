@@ -41,6 +41,11 @@ func txnTestSuccess(cx ctlCtx) {
 	}
 	rqs := []txnRequests{
 		{
+			compare:  []string{`value("key1") != "value2"`, `value("key2") != "value1"`},
+			ifSucess: []string{"get key1", "get key2"},
+			results:  []string{"SUCCESS", "key1", "value1", "key2", "value2"},
+		},
+		{
 			compare:  []string{`version("key1") = "1"`, `version("key2") = "1"`},
 			ifSucess: []string{"get key1", "get key2", `put "key \"with\" space" "value \x23"`},
 			ifFail:   []string{`put key1 "fail"`, `put key2 "fail"`},
@@ -60,14 +65,27 @@ func txnTestSuccess(cx ctlCtx) {
 }
 
 func txnTestFail(cx ctlCtx) {
-	rqs := txnRequests{
-		compare:  []string{`version("key") < "0"`},
-		ifSucess: []string{`put key "success"`},
-		ifFail:   []string{`put key "fail"`},
-		results:  []string{"FAILURE", "OK"},
+	if err := ctlV3Put(cx, "key1", "value1", ""); err != nil {
+		cx.t.Fatalf("txnTestSuccess ctlV3Put error (%v)", err)
 	}
-	if err := ctlV3Txn(cx, rqs); err != nil {
-		cx.t.Fatal(err)
+	rqs := []txnRequests{
+		{
+			compare:  []string{`version("key") < "0"`},
+			ifSucess: []string{`put key "success"`},
+			ifFail:   []string{`put key "fail"`},
+			results:  []string{"FAILURE", "OK"},
+		},
+		{
+			compare:  []string{`value("key1") != "value1"`},
+			ifSucess: []string{`put key1 "success"`},
+			ifFail:   []string{`put key1 "fail"`},
+			results:  []string{"FAILURE", "OK"},
+		},
+	}
+	for _, rq := range rqs {
+		if err := ctlV3Txn(cx, rq); err != nil {
+			cx.t.Fatal(err)
+		}
 	}
 }
 
