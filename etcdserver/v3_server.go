@@ -47,7 +47,7 @@ const (
 	// the applied index and committed index.
 	// However, if the committed entries are very heavy to apply, the gap might grow.
 	// We should stop accepting new proposals if the gap growing to a certain point.
-	maxGapBetweenApplyAndCommitIndex = 1000
+	maxGapBetweenApplyAndCommitIndex = 5000
 )
 
 var (
