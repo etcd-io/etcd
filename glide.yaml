@@ -25,7 +25,7 @@ import:
 - package: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - package: github.com/gogo/protobuf
-  version: e18d7aa8f8c624c915db340349aad4c49b10d173
+  version: 8d70fb3182befc465c4a1eac8ad4d38ff49778e2
   subpackages:
   - proto
 - package: github.com/golang/groupcache
@@ -33,14 +33,14 @@ import:
   subpackages:
   - lru
 - package: github.com/golang/protobuf
-  version: 8616e8ee5e20a1704615e6c8d7afcdac06087a67
+  version: 4bd1920723d7b7c925de087aa32e2187708897f7
   subpackages:
   - jsonpb
   - proto
 - package: github.com/google/btree
   version: 925471ac9e2131377a91e1595defec898166fe49
 - package: github.com/grpc-ecosystem/grpc-gateway
-  version: f52d055dc48aec25854ed7d31862f78913cf17d1
+  version: 84398b94e188ee336f307779b57b3aa91af7063c
   subpackages:
   - runtime
   - runtime/internal
@@ -87,7 +87,7 @@ import:
   subpackages:
   - rate
 - package: google.golang.org/grpc
-  version: v1.0.2
+  version: v1.0.4
   subpackages:
   - codes
   - credentials
