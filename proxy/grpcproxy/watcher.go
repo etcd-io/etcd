@@ -27,6 +27,10 @@ type watchRange struct {
 	key, end string
 }
 
+func (wr *watchRange) valid() bool {
+	return len(wr.end) == 0 || wr.end > wr.key || (wr.end[0] == 0 && len(wr.end) == 1)
+}
+
 type watcher struct {
 	// user configuration
 

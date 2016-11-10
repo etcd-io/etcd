@@ -213,6 +213,10 @@ func (wps *watchProxyStream) recvLoop() error {
 				progress: cr.ProgressNotify,
 				filters:  v3rpc.FiltersFromRequest(cr),
 			}
+			if !w.wr.valid() {
+				w.post(&pb.WatchResponse{WatchId: -1, Created: true, Canceled: true})
+				continue
+			}
 			wps.nextWatcherID++
 			w.nextrev = cr.StartRevision
 			wps.watchers[w.id] = w
