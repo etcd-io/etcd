@@ -47,3 +47,31 @@ TODO
 ## Abusive clients protection
 
 The gRPC proxy caches responses for requests when it does not break consistency requirements. This can protect the etcd server from abusive clients in tight for loops.
+
+## Start etcd gRPC proxy
+
+Consider an etcd cluster with the following static endpoints:
+
+|Name|Address|Hostname|
+|------|---------|------------------|
+|infra0|10.0.1.10|infra0.example.com|
+|infra1|10.0.1.11|infra1.example.com|
+|infra2|10.0.1.12|infra2.example.com|
+
+Start the etcd gRPC proxy to use these static endpoints with the command:
+
+```bash
+$ etcd grpc-proxy start --endpoints=infra0.example.com,infra1.example.com,infra2.example.com --listen-addr=127.0.0.1:2379
+```
+
+The etcd gRPC proxy starts and listens on port 8080. It forwards client requests to one of the three endpoints provided above.
+
+Sending requests through the proxy:
+
+```bash
+$ ETCDCTL_API=3 ./etcdctl --endpoints=127.0.0.1:2379 put foo bar
+OK
+$ ETCDCTL_API=3 ./etcdctl --endpoints=127.0.0.1:2379 get foo
+foo
+bar
+```
