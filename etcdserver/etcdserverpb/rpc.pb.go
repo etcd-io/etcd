@@ -1187,7 +1187,7 @@ type WatchCreateRequest struct {
 	// The etcd server may decide how often it will send notifications based on current load.
 	ProgressNotify bool `protobuf:"varint,4,opt,name=progress_notify,json=progressNotify,proto3" json:"progress_notify,omitempty"`
 	// filters filter the events at server side before it sends back to the watcher.
-	Filters []WatchCreateRequest_FilterType `protobuf:"varint,5,rep,name=filters,enum=etcdserverpb.WatchCreateRequest_FilterType" json:"filters,omitempty"`
+	Filters []WatchCreateRequest_FilterType `protobuf:"varint,5,rep,packed,name=filters,enum=etcdserverpb.WatchCreateRequest_FilterType" json:"filters,omitempty"`
 	// If prev_kv is set, created watcher gets the previous KV before the event happens.
 	// If the previous KV is already compacted, nothing will be returned.
 	PrevKv bool `protobuf:"varint,6,opt,name=prev_kv,json=prevKv,proto3" json:"prev_kv,omitempty"`
@@ -2164,7 +2164,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion3
+const _ = grpc.SupportPackageIsVersion4
 
 // Client API for KV service
 
@@ -2387,7 +2387,7 @@ var _KV_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptorRpc,
+	Metadata: "rpc.proto",
 }
 
 // Client API for Watch service
@@ -2493,7 +2493,7 @@ var _Watch_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: fileDescriptorRpc,
+	Metadata: "rpc.proto",
 }
 
 // Client API for Lease service
@@ -2703,7 +2703,7 @@ var _Lease_serviceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: fileDescriptorRpc,
+	Metadata: "rpc.proto",
 }
 
 // Client API for Cluster service
@@ -2874,7 +2874,7 @@ var _Cluster_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptorRpc,
+	Metadata: "rpc.proto",
 }
 
 // Client API for Maintenance service
@@ -3112,7 +3112,7 @@ var _Maintenance_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: fileDescriptorRpc,
+	Metadata: "rpc.proto",
 }
 
 // Client API for Auth service
@@ -3703,167 +3703,167 @@ var _Auth_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: fileDescriptorRpc,
+	Metadata: "rpc.proto",
 }
 
-func (m *ResponseHeader) Marshal() (data []byte, err error) {
+func (m *ResponseHeader) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *ResponseHeader) MarshalTo(data []byte) (int, error) {
+func (m *ResponseHeader) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.ClusterId != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ClusterId))
+		i = encodeVarintRpc(dAtA, i, uint64(m.ClusterId))
 	}
 	if m.MemberId != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.MemberId))
+		i = encodeVarintRpc(dAtA, i, uint64(m.MemberId))
 	}
 	if m.Revision != 0 {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Revision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Revision))
 	}
 	if m.RaftTerm != 0 {
-		data[i] = 0x20
+		dAtA[i] = 0x20
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.RaftTerm))
+		i = encodeVarintRpc(dAtA, i, uint64(m.RaftTerm))
 	}
 	return i, nil
 }
 
-func (m *RangeRequest) Marshal() (data []byte, err error) {
+func (m *RangeRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *RangeRequest) MarshalTo(data []byte) (int, error) {
+func (m *RangeRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Key) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-		i += copy(data[i:], m.Key)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Key)))
+		i += copy(dAtA[i:], m.Key)
 	}
 	if len(m.RangeEnd) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
-		i += copy(data[i:], m.RangeEnd)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.RangeEnd)))
+		i += copy(dAtA[i:], m.RangeEnd)
 	}
 	if m.Limit != 0 {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Limit))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Limit))
 	}
 	if m.Revision != 0 {
-		data[i] = 0x20
+		dAtA[i] = 0x20
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Revision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Revision))
 	}
 	if m.SortOrder != 0 {
-		data[i] = 0x28
+		dAtA[i] = 0x28
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.SortOrder))
+		i = encodeVarintRpc(dAtA, i, uint64(m.SortOrder))
 	}
 	if m.SortTarget != 0 {
-		data[i] = 0x30
+		dAtA[i] = 0x30
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.SortTarget))
+		i = encodeVarintRpc(dAtA, i, uint64(m.SortTarget))
 	}
 	if m.Serializable {
-		data[i] = 0x38
+		dAtA[i] = 0x38
 		i++
 		if m.Serializable {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.KeysOnly {
-		data[i] = 0x40
+		dAtA[i] = 0x40
 		i++
 		if m.KeysOnly {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.CountOnly {
-		data[i] = 0x48
+		dAtA[i] = 0x48
 		i++
 		if m.CountOnly {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.MinModRevision != 0 {
-		data[i] = 0x50
+		dAtA[i] = 0x50
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.MinModRevision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.MinModRevision))
 	}
 	if m.MaxModRevision != 0 {
-		data[i] = 0x58
+		dAtA[i] = 0x58
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.MaxModRevision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.MaxModRevision))
 	}
 	if m.MinCreateRevision != 0 {
-		data[i] = 0x60
+		dAtA[i] = 0x60
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.MinCreateRevision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.MinCreateRevision))
 	}
 	if m.MaxCreateRevision != 0 {
-		data[i] = 0x68
+		dAtA[i] = 0x68
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.MaxCreateRevision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.MaxCreateRevision))
 	}
 	return i, nil
 }
 
-func (m *RangeResponse) Marshal() (data []byte, err error) {
+func (m *RangeResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *RangeResponse) MarshalTo(data []byte) (int, error) {
+func (m *RangeResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n1, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n1, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -3871,10 +3871,10 @@ func (m *RangeResponse) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Kvs) > 0 {
 		for _, msg := range m.Kvs {
-			data[i] = 0x12
+			dAtA[i] = 0x12
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -3882,98 +3882,98 @@ func (m *RangeResponse) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if m.More {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
 		if m.More {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.Count != 0 {
-		data[i] = 0x20
+		dAtA[i] = 0x20
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Count))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Count))
 	}
 	return i, nil
 }
 
-func (m *PutRequest) Marshal() (data []byte, err error) {
+func (m *PutRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *PutRequest) MarshalTo(data []byte) (int, error) {
+func (m *PutRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Key) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-		i += copy(data[i:], m.Key)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Key)))
+		i += copy(dAtA[i:], m.Key)
 	}
 	if len(m.Value) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Value)))
-		i += copy(data[i:], m.Value)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Value)))
+		i += copy(dAtA[i:], m.Value)
 	}
 	if m.Lease != 0 {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Lease))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Lease))
 	}
 	if m.PrevKv {
-		data[i] = 0x20
+		dAtA[i] = 0x20
 		i++
 		if m.PrevKv {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	return i, nil
 }
 
-func (m *PutResponse) Marshal() (data []byte, err error) {
+func (m *PutResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *PutResponse) MarshalTo(data []byte) (int, error) {
+func (m *PutResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n2, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n2, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n2
 	}
 	if m.PrevKv != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.PrevKv.Size()))
-		n3, err := m.PrevKv.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.PrevKv.Size()))
+		n3, err := m.PrevKv.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -3982,82 +3982,82 @@ func (m *PutResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *DeleteRangeRequest) Marshal() (data []byte, err error) {
+func (m *DeleteRangeRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *DeleteRangeRequest) MarshalTo(data []byte) (int, error) {
+func (m *DeleteRangeRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Key) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-		i += copy(data[i:], m.Key)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Key)))
+		i += copy(dAtA[i:], m.Key)
 	}
 	if len(m.RangeEnd) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
-		i += copy(data[i:], m.RangeEnd)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.RangeEnd)))
+		i += copy(dAtA[i:], m.RangeEnd)
 	}
 	if m.PrevKv {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
 		if m.PrevKv {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	return i, nil
 }
 
-func (m *DeleteRangeResponse) Marshal() (data []byte, err error) {
+func (m *DeleteRangeResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *DeleteRangeResponse) MarshalTo(data []byte) (int, error) {
+func (m *DeleteRangeResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n4, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n4, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n4
 	}
 	if m.Deleted != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Deleted))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Deleted))
 	}
 	if len(m.PrevKvs) > 0 {
 		for _, msg := range m.PrevKvs {
-			data[i] = 0x1a
+			dAtA[i] = 0x1a
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -4067,23 +4067,23 @@ func (m *DeleteRangeResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RequestOp) Marshal() (data []byte, err error) {
+func (m *RequestOp) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *RequestOp) MarshalTo(data []byte) (int, error) {
+func (m *RequestOp) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Request != nil {
-		nn5, err := m.Request.MarshalTo(data[i:])
+		nn5, err := m.Request.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4092,13 +4092,13 @@ func (m *RequestOp) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RequestOp_RequestRange) MarshalTo(data []byte) (int, error) {
+func (m *RequestOp_RequestRange) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.RequestRange != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.RequestRange.Size()))
-		n6, err := m.RequestRange.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.RequestRange.Size()))
+		n6, err := m.RequestRange.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4106,13 +4106,13 @@ func (m *RequestOp_RequestRange) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *RequestOp_RequestPut) MarshalTo(data []byte) (int, error) {
+func (m *RequestOp_RequestPut) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.RequestPut != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.RequestPut.Size()))
-		n7, err := m.RequestPut.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.RequestPut.Size()))
+		n7, err := m.RequestPut.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4120,13 +4120,13 @@ func (m *RequestOp_RequestPut) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *RequestOp_RequestDeleteRange) MarshalTo(data []byte) (int, error) {
+func (m *RequestOp_RequestDeleteRange) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.RequestDeleteRange != nil {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.RequestDeleteRange.Size()))
-		n8, err := m.RequestDeleteRange.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.RequestDeleteRange.Size()))
+		n8, err := m.RequestDeleteRange.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4134,23 +4134,23 @@ func (m *RequestOp_RequestDeleteRange) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *ResponseOp) Marshal() (data []byte, err error) {
+func (m *ResponseOp) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *ResponseOp) MarshalTo(data []byte) (int, error) {
+func (m *ResponseOp) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Response != nil {
-		nn9, err := m.Response.MarshalTo(data[i:])
+		nn9, err := m.Response.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4159,13 +4159,13 @@ func (m *ResponseOp) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *ResponseOp_ResponseRange) MarshalTo(data []byte) (int, error) {
+func (m *ResponseOp_ResponseRange) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.ResponseRange != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ResponseRange.Size()))
-		n10, err := m.ResponseRange.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.ResponseRange.Size()))
+		n10, err := m.ResponseRange.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4173,13 +4173,13 @@ func (m *ResponseOp_ResponseRange) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *ResponseOp_ResponsePut) MarshalTo(data []byte) (int, error) {
+func (m *ResponseOp_ResponsePut) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.ResponsePut != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ResponsePut.Size()))
-		n11, err := m.ResponsePut.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.ResponsePut.Size()))
+		n11, err := m.ResponsePut.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4187,13 +4187,13 @@ func (m *ResponseOp_ResponsePut) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *ResponseOp_ResponseDeleteRange) MarshalTo(data []byte) (int, error) {
+func (m *ResponseOp_ResponseDeleteRange) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.ResponseDeleteRange != nil {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ResponseDeleteRange.Size()))
-		n12, err := m.ResponseDeleteRange.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.ResponseDeleteRange.Size()))
+		n12, err := m.ResponseDeleteRange.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4201,39 +4201,39 @@ func (m *ResponseOp_ResponseDeleteRange) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *Compare) Marshal() (data []byte, err error) {
+func (m *Compare) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *Compare) MarshalTo(data []byte) (int, error) {
+func (m *Compare) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Result != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Result))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Result))
 	}
 	if m.Target != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Target))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Target))
 	}
 	if len(m.Key) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-		i += copy(data[i:], m.Key)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Key)))
+		i += copy(dAtA[i:], m.Key)
 	}
 	if m.TargetUnion != nil {
-		nn13, err := m.TargetUnion.MarshalTo(data[i:])
+		nn13, err := m.TargetUnion.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4242,58 +4242,58 @@ func (m *Compare) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Compare_Version) MarshalTo(data []byte) (int, error) {
+func (m *Compare_Version) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
-	data[i] = 0x20
+	dAtA[i] = 0x20
 	i++
-	i = encodeVarintRpc(data, i, uint64(m.Version))
+	i = encodeVarintRpc(dAtA, i, uint64(m.Version))
 	return i, nil
 }
-func (m *Compare_CreateRevision) MarshalTo(data []byte) (int, error) {
+func (m *Compare_CreateRevision) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
-	data[i] = 0x28
+	dAtA[i] = 0x28
 	i++
-	i = encodeVarintRpc(data, i, uint64(m.CreateRevision))
+	i = encodeVarintRpc(dAtA, i, uint64(m.CreateRevision))
 	return i, nil
 }
-func (m *Compare_ModRevision) MarshalTo(data []byte) (int, error) {
+func (m *Compare_ModRevision) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
-	data[i] = 0x30
+	dAtA[i] = 0x30
 	i++
-	i = encodeVarintRpc(data, i, uint64(m.ModRevision))
+	i = encodeVarintRpc(dAtA, i, uint64(m.ModRevision))
 	return i, nil
 }
-func (m *Compare_Value) MarshalTo(data []byte) (int, error) {
+func (m *Compare_Value) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.Value != nil {
-		data[i] = 0x3a
+		dAtA[i] = 0x3a
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Value)))
-		i += copy(data[i:], m.Value)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Value)))
+		i += copy(dAtA[i:], m.Value)
 	}
 	return i, nil
 }
-func (m *TxnRequest) Marshal() (data []byte, err error) {
+func (m *TxnRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *TxnRequest) MarshalTo(data []byte) (int, error) {
+func (m *TxnRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Compare) > 0 {
 		for _, msg := range m.Compare {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -4302,10 +4302,10 @@ func (m *TxnRequest) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Success) > 0 {
 		for _, msg := range m.Success {
-			data[i] = 0x12
+			dAtA[i] = 0x12
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -4314,10 +4314,10 @@ func (m *TxnRequest) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Failure) > 0 {
 		for _, msg := range m.Failure {
-			data[i] = 0x1a
+			dAtA[i] = 0x1a
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -4327,47 +4327,47 @@ func (m *TxnRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *TxnResponse) Marshal() (data []byte, err error) {
+func (m *TxnResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *TxnResponse) MarshalTo(data []byte) (int, error) {
+func (m *TxnResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n14, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n14, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n14
 	}
 	if m.Succeeded {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
 		if m.Succeeded {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if len(m.Responses) > 0 {
 		for _, msg := range m.Responses {
-			data[i] = 0x1a
+			dAtA[i] = 0x1a
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -4377,59 +4377,59 @@ func (m *TxnResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *CompactionRequest) Marshal() (data []byte, err error) {
+func (m *CompactionRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *CompactionRequest) MarshalTo(data []byte) (int, error) {
+func (m *CompactionRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Revision != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Revision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Revision))
 	}
 	if m.Physical {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
 		if m.Physical {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	return i, nil
 }
 
-func (m *CompactionResponse) Marshal() (data []byte, err error) {
+func (m *CompactionResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *CompactionResponse) MarshalTo(data []byte) (int, error) {
+func (m *CompactionResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n15, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n15, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4438,17 +4438,17 @@ func (m *CompactionResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *HashRequest) Marshal() (data []byte, err error) {
+func (m *HashRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *HashRequest) MarshalTo(data []byte) (int, error) {
+func (m *HashRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -4456,50 +4456,50 @@ func (m *HashRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *HashResponse) Marshal() (data []byte, err error) {
+func (m *HashResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *HashResponse) MarshalTo(data []byte) (int, error) {
+func (m *HashResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n16, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n16, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n16
 	}
 	if m.Hash != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Hash))
+		i = encodeVarintRpc(dAtA, i, uint64(m.Hash))
 	}
 	return i, nil
 }
 
-func (m *SnapshotRequest) Marshal() (data []byte, err error) {
+func (m *SnapshotRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *SnapshotRequest) MarshalTo(data []byte) (int, error) {
+func (m *SnapshotRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -4507,62 +4507,62 @@ func (m *SnapshotRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *SnapshotResponse) Marshal() (data []byte, err error) {
+func (m *SnapshotResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *SnapshotResponse) MarshalTo(data []byte) (int, error) {
+func (m *SnapshotResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n17, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n17, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n17
 	}
 	if m.RemainingBytes != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.RemainingBytes))
+		i = encodeVarintRpc(dAtA, i, uint64(m.RemainingBytes))
 	}
 	if len(m.Blob) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Blob)))
-		i += copy(data[i:], m.Blob)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Blob)))
+		i += copy(dAtA[i:], m.Blob)
 	}
 	return i, nil
 }
 
-func (m *WatchRequest) Marshal() (data []byte, err error) {
+func (m *WatchRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *WatchRequest) MarshalTo(data []byte) (int, error) {
+func (m *WatchRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.RequestUnion != nil {
-		nn18, err := m.RequestUnion.MarshalTo(data[i:])
+		nn18, err := m.RequestUnion.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4571,13 +4571,13 @@ func (m *WatchRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *WatchRequest_CreateRequest) MarshalTo(data []byte) (int, error) {
+func (m *WatchRequest_CreateRequest) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.CreateRequest != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.CreateRequest.Size()))
-		n19, err := m.CreateRequest.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.CreateRequest.Size()))
+		n19, err := m.CreateRequest.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4585,13 +4585,13 @@ func (m *WatchRequest_CreateRequest) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *WatchRequest_CancelRequest) MarshalTo(data []byte) (int, error) {
+func (m *WatchRequest_CancelRequest) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.CancelRequest != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.CancelRequest.Size()))
-		n20, err := m.CancelRequest.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.CancelRequest.Size()))
+		n20, err := m.CancelRequest.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -4599,152 +4599,162 @@ func (m *WatchRequest_CancelRequest) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *WatchCreateRequest) Marshal() (data []byte, err error) {
+func (m *WatchCreateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *WatchCreateRequest) MarshalTo(data []byte) (int, error) {
+func (m *WatchCreateRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Key) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-		i += copy(data[i:], m.Key)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Key)))
+		i += copy(dAtA[i:], m.Key)
 	}
 	if len(m.RangeEnd) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
-		i += copy(data[i:], m.RangeEnd)
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.RangeEnd)))
+		i += copy(dAtA[i:], m.RangeEnd)
 	}
 	if m.StartRevision != 0 {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.StartRevision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.StartRevision))
 	}
 	if m.ProgressNotify {
-		data[i] = 0x20
+		dAtA[i] = 0x20
 		i++
 		if m.ProgressNotify {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if len(m.Filters) > 0 {
+		dAtA22 := make([]byte, len(m.Filters)*10)
+		var j21 int
 		for _, num := range m.Filters {
-			data[i] = 0x28
-			i++
-			i = encodeVarintRpc(data, i, uint64(num))
+			for num >= 1<<7 {
+				dAtA22[j21] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j21++
+			}
+			dAtA22[j21] = uint8(num)
+			j21++
 		}
+		dAtA[i] = 0x2a
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(j21))
+		i += copy(dAtA[i:], dAtA22[:j21])
 	}
 	if m.PrevKv {
-		data[i] = 0x30
+		dAtA[i] = 0x30
 		i++
 		if m.PrevKv {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	return i, nil
 }
 
-func (m *WatchCancelRequest) Marshal() (data []byte, err error) {
+func (m *WatchCancelRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *WatchCancelRequest) MarshalTo(data []byte) (int, error) {
+func (m *WatchCancelRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.WatchId != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.WatchId))
+		i = encodeVarintRpc(dAtA, i, uint64(m.WatchId))
 	}
 	return i, nil
 }
 
-func (m *WatchResponse) Marshal() (data []byte, err error) {
+func (m *WatchResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *WatchResponse) MarshalTo(data []byte) (int, error) {
+func (m *WatchResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n21, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n23, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n21
+		i += n23
 	}
 	if m.WatchId != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.WatchId))
+		i = encodeVarintRpc(dAtA, i, uint64(m.WatchId))
 	}
 	if m.Created {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
 		if m.Created {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.Canceled {
-		data[i] = 0x20
+		dAtA[i] = 0x20
 		i++
 		if m.Canceled {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.CompactRevision != 0 {
-		data[i] = 0x28
+		dAtA[i] = 0x28
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.CompactRevision))
+		i = encodeVarintRpc(dAtA, i, uint64(m.CompactRevision))
 	}
 	if len(m.Events) > 0 {
 		for _, msg := range m.Events {
-			data[i] = 0x5a
+			dAtA[i] = 0x5a
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -4754,513 +4764,396 @@ func (m *WatchResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *LeaseGrantRequest) Marshal() (data []byte, err error) {
+func (m *LeaseGrantRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LeaseGrantRequest) MarshalTo(data []byte) (int, error) {
+func (m *LeaseGrantRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.TTL != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.TTL))
+		i = encodeVarintRpc(dAtA, i, uint64(m.TTL))
 	}
 	if m.ID != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
 	}
 	return i, nil
 }
 
-func (m *LeaseGrantResponse) Marshal() (data []byte, err error) {
+func (m *LeaseGrantResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LeaseGrantResponse) MarshalTo(data []byte) (int, error) {
+func (m *LeaseGrantResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n22, err := m.Header.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n22
-	}
-	if m.ID != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
-	}
-	if m.TTL != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.TTL))
-	}
-	if len(m.Error) > 0 {
-		data[i] = 0x22
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Error)))
-		i += copy(data[i:], m.Error)
-	}
-	return i, nil
-}
-
-func (m *LeaseRevokeRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LeaseRevokeRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.ID != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
-	}
-	return i, nil
-}
-
-func (m *LeaseRevokeResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LeaseRevokeResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Header != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n23, err := m.Header.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n23
-	}
-	return i, nil
-}
-
-func (m *LeaseKeepAliveRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LeaseKeepAliveRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.ID != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
-	}
-	return i, nil
-}
-
-func (m *LeaseKeepAliveResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LeaseKeepAliveResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Header != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n24, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n24, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n24
 	}
 	if m.ID != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
 	}
 	if m.TTL != 0 {
-		data[i] = 0x18
+		dAtA[i] = 0x18
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.TTL))
+		i = encodeVarintRpc(dAtA, i, uint64(m.TTL))
+	}
+	if len(m.Error) > 0 {
+		dAtA[i] = 0x22
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Error)))
+		i += copy(dAtA[i:], m.Error)
 	}
 	return i, nil
 }
 
-func (m *LeaseTimeToLiveRequest) Marshal() (data []byte, err error) {
+func (m *LeaseRevokeRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LeaseTimeToLiveRequest) MarshalTo(data []byte) (int, error) {
+func (m *LeaseRevokeRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.ID != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
-	}
-	if m.Keys {
-		data[i] = 0x10
-		i++
-		if m.Keys {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
 	}
 	return i, nil
 }
 
-func (m *LeaseTimeToLiveResponse) Marshal() (data []byte, err error) {
+func (m *LeaseRevokeResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LeaseTimeToLiveResponse) MarshalTo(data []byte) (int, error) {
+func (m *LeaseRevokeResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n25, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n25, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n25
 	}
-	if m.ID != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
-	}
-	if m.TTL != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.TTL))
-	}
-	if m.GrantedTTL != 0 {
-		data[i] = 0x20
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.GrantedTTL))
-	}
-	if len(m.Keys) > 0 {
-		for _, b := range m.Keys {
-			data[i] = 0x2a
-			i++
-			i = encodeVarintRpc(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
-		}
-	}
 	return i, nil
 }
 
-func (m *Member) Marshal() (data []byte, err error) {
+func (m *LeaseKeepAliveRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *Member) MarshalTo(data []byte) (int, error) {
+func (m *LeaseKeepAliveRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.ID != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
-	}
-	if len(m.Name) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
-	}
-	if len(m.PeerURLs) > 0 {
-		for _, s := range m.PeerURLs {
-			data[i] = 0x1a
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	if len(m.ClientURLs) > 0 {
-		for _, s := range m.ClientURLs {
-			data[i] = 0x22
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
 	}
 	return i, nil
 }
 
-func (m *MemberAddRequest) Marshal() (data []byte, err error) {
+func (m *LeaseKeepAliveResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *MemberAddRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.PeerURLs) > 0 {
-		for _, s := range m.PeerURLs {
-			data[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	return i, nil
-}
-
-func (m *MemberAddResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *MemberAddResponse) MarshalTo(data []byte) (int, error) {
+func (m *LeaseKeepAliveResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n26, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n26, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n26
 	}
-	if m.Member != nil {
-		data[i] = 0x12
+	if m.ID != 0 {
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Member.Size()))
-		n27, err := m.Member.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if m.TTL != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.TTL))
+	}
+	return i, nil
+}
+
+func (m *LeaseTimeToLiveRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *LeaseTimeToLiveRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.ID != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if m.Keys {
+		dAtA[i] = 0x10
+		i++
+		if m.Keys {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i++
+	}
+	return i, nil
+}
+
+func (m *LeaseTimeToLiveResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *LeaseTimeToLiveResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Header != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n27, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n27
 	}
+	if m.ID != 0 {
+		dAtA[i] = 0x10
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if m.TTL != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.TTL))
+	}
+	if m.GrantedTTL != 0 {
+		dAtA[i] = 0x20
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.GrantedTTL))
+	}
+	if len(m.Keys) > 0 {
+		for _, b := range m.Keys {
+			dAtA[i] = 0x2a
+			i++
+			i = encodeVarintRpc(dAtA, i, uint64(len(b)))
+			i += copy(dAtA[i:], b)
+		}
+	}
 	return i, nil
 }
 
-func (m *MemberRemoveRequest) Marshal() (data []byte, err error) {
+func (m *Member) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *MemberRemoveRequest) MarshalTo(data []byte) (int, error) {
+func (m *Member) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.ID != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if len(m.Name) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
+			dAtA[i] = 0x1a
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	if len(m.ClientURLs) > 0 {
+		for _, s := range m.ClientURLs {
+			dAtA[i] = 0x22
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
 	}
 	return i, nil
 }
 
-func (m *MemberRemoveResponse) Marshal() (data []byte, err error) {
+func (m *MemberAddRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *MemberRemoveResponse) MarshalTo(data []byte) (int, error) {
+func (m *MemberAddRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
+			dAtA[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	return i, nil
+}
+
+func (m *MemberAddResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MemberAddResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n28, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n28, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n28
 	}
-	return i, nil
-}
-
-func (m *MemberUpdateRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *MemberUpdateRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.ID != 0 {
-		data[i] = 0x8
+	if m.Member != nil {
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.ID))
-	}
-	if len(m.PeerURLs) > 0 {
-		for _, s := range m.PeerURLs {
-			data[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	return i, nil
-}
-
-func (m *MemberUpdateResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *MemberUpdateResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Header != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n29, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Member.Size()))
+		n29, err := m.Member.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -5269,102 +5162,115 @@ func (m *MemberUpdateResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *MemberListRequest) Marshal() (data []byte, err error) {
+func (m *MemberRemoveRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *MemberListRequest) MarshalTo(data []byte) (int, error) {
+func (m *MemberRemoveRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
+	if m.ID != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
 	return i, nil
 }
 
-func (m *MemberListResponse) Marshal() (data []byte, err error) {
+func (m *MemberRemoveResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *MemberListResponse) MarshalTo(data []byte) (int, error) {
+func (m *MemberRemoveResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n30, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n30, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n30
 	}
-	if len(m.Members) > 0 {
-		for _, msg := range m.Members {
-			data[i] = 0x12
+	return i, nil
+}
+
+func (m *MemberUpdateRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MemberUpdateRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.ID != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.ID))
+	}
+	if len(m.PeerURLs) > 0 {
+		for _, s := range m.PeerURLs {
+			dAtA[i] = 0x12
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
 			}
-			i += n
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
 		}
 	}
 	return i, nil
 }
 
-func (m *DefragmentRequest) Marshal() (data []byte, err error) {
+func (m *MemberUpdateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *DefragmentRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *DefragmentResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *DefragmentResponse) MarshalTo(data []byte) (int, error) {
+func (m *MemberUpdateResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n31, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n31, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -5373,98 +5279,55 @@ func (m *DefragmentResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AlarmRequest) Marshal() (data []byte, err error) {
+func (m *MemberListRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AlarmRequest) MarshalTo(data []byte) (int, error) {
+func (m *MemberListRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Action != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Action))
-	}
-	if m.MemberID != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.MemberID))
-	}
-	if m.Alarm != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Alarm))
-	}
 	return i, nil
 }
 
-func (m *AlarmMember) Marshal() (data []byte, err error) {
+func (m *MemberListResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AlarmMember) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.MemberID != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.MemberID))
-	}
-	if m.Alarm != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Alarm))
-	}
-	return i, nil
-}
-
-func (m *AlarmResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AlarmResponse) MarshalTo(data []byte) (int, error) {
+func (m *MemberListResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n32, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n32, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n32
 	}
-	if len(m.Alarms) > 0 {
-		for _, msg := range m.Alarms {
-			data[i] = 0x12
+	if len(m.Members) > 0 {
+		for _, msg := range m.Members {
+			dAtA[i] = 0x12
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -5474,17 +5337,17 @@ func (m *AlarmResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *StatusRequest) Marshal() (data []byte, err error) {
+func (m *DefragmentRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *StatusRequest) MarshalTo(data []byte) (int, error) {
+func (m *DefragmentRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -5492,520 +5355,575 @@ func (m *StatusRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *StatusResponse) Marshal() (data []byte, err error) {
+func (m *DefragmentResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *StatusResponse) MarshalTo(data []byte) (int, error) {
+func (m *DefragmentResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n33, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n33, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n33
 	}
-	if len(m.Version) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Version)))
-		i += copy(data[i:], m.Version)
-	}
-	if m.DbSize != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.DbSize))
-	}
-	if m.Leader != 0 {
-		data[i] = 0x20
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Leader))
-	}
-	if m.RaftIndex != 0 {
-		data[i] = 0x28
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.RaftIndex))
-	}
-	if m.RaftTerm != 0 {
-		data[i] = 0x30
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.RaftTerm))
-	}
 	return i, nil
 }
 
-func (m *AuthEnableRequest) Marshal() (data []byte, err error) {
+func (m *AlarmRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthEnableRequest) MarshalTo(data []byte) (int, error) {
+func (m *AlarmRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	return i, nil
-}
-
-func (m *AuthDisableRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthDisableRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *AuthenticateRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthenticateRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Name) > 0 {
-		data[i] = 0xa
+	if m.Action != 0 {
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
+		i = encodeVarintRpc(dAtA, i, uint64(m.Action))
 	}
-	if len(m.Password) > 0 {
-		data[i] = 0x12
+	if m.MemberID != 0 {
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Password)))
-		i += copy(data[i:], m.Password)
+		i = encodeVarintRpc(dAtA, i, uint64(m.MemberID))
+	}
+	if m.Alarm != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.Alarm))
 	}
 	return i, nil
 }
 
-func (m *AuthUserAddRequest) Marshal() (data []byte, err error) {
+func (m *AlarmMember) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthUserAddRequest) MarshalTo(data []byte) (int, error) {
+func (m *AlarmMember) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.Name) > 0 {
-		data[i] = 0xa
+	if m.MemberID != 0 {
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
+		i = encodeVarintRpc(dAtA, i, uint64(m.MemberID))
 	}
-	if len(m.Password) > 0 {
-		data[i] = 0x12
+	if m.Alarm != 0 {
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Password)))
-		i += copy(data[i:], m.Password)
+		i = encodeVarintRpc(dAtA, i, uint64(m.Alarm))
 	}
 	return i, nil
 }
 
-func (m *AuthUserGetRequest) Marshal() (data []byte, err error) {
+func (m *AlarmResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthUserGetRequest) MarshalTo(data []byte) (int, error) {
+func (m *AlarmResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.Name) > 0 {
-		data[i] = 0xa
+	if m.Header != nil {
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
-	}
-	return i, nil
-}
-
-func (m *AuthUserDeleteRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthUserDeleteRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Name) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
-	}
-	return i, nil
-}
-
-func (m *AuthUserChangePasswordRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthUserChangePasswordRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Name) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
-	}
-	if len(m.Password) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Password)))
-		i += copy(data[i:], m.Password)
-	}
-	return i, nil
-}
-
-func (m *AuthUserGrantRoleRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthUserGrantRoleRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.User) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.User)))
-		i += copy(data[i:], m.User)
-	}
-	if len(m.Role) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Role)))
-		i += copy(data[i:], m.Role)
-	}
-	return i, nil
-}
-
-func (m *AuthUserRevokeRoleRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthUserRevokeRoleRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Name) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
-	}
-	if len(m.Role) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Role)))
-		i += copy(data[i:], m.Role)
-	}
-	return i, nil
-}
-
-func (m *AuthRoleAddRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthRoleAddRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Name) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
-	}
-	return i, nil
-}
-
-func (m *AuthRoleGetRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthRoleGetRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Role) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Role)))
-		i += copy(data[i:], m.Role)
-	}
-	return i, nil
-}
-
-func (m *AuthUserListRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthUserListRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *AuthRoleListRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthRoleListRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func (m *AuthRoleDeleteRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthRoleDeleteRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Role) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Role)))
-		i += copy(data[i:], m.Role)
-	}
-	return i, nil
-}
-
-func (m *AuthRoleGrantPermissionRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthRoleGrantPermissionRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Name) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Name)))
-		i += copy(data[i:], m.Name)
-	}
-	if m.Perm != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Perm.Size()))
-		n34, err := m.Perm.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n34, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n34
 	}
+	if len(m.Alarms) > 0 {
+		for _, msg := range m.Alarms {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
 	return i, nil
 }
 
-func (m *AuthRoleRevokePermissionRequest) Marshal() (data []byte, err error) {
+func (m *StatusRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthRoleRevokePermissionRequest) MarshalTo(data []byte) (int, error) {
+func (m *StatusRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if len(m.Role) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Role)))
-		i += copy(data[i:], m.Role)
-	}
-	if len(m.Key) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Key)))
-		i += copy(data[i:], m.Key)
-	}
-	if len(m.RangeEnd) > 0 {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.RangeEnd)))
-		i += copy(data[i:], m.RangeEnd)
-	}
 	return i, nil
 }
 
-func (m *AuthEnableResponse) Marshal() (data []byte, err error) {
+func (m *StatusResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthEnableResponse) MarshalTo(data []byte) (int, error) {
+func (m *StatusResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n35, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n35, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n35
 	}
+	if len(m.Version) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Version)))
+		i += copy(dAtA[i:], m.Version)
+	}
+	if m.DbSize != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.DbSize))
+	}
+	if m.Leader != 0 {
+		dAtA[i] = 0x20
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.Leader))
+	}
+	if m.RaftIndex != 0 {
+		dAtA[i] = 0x28
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.RaftIndex))
+	}
+	if m.RaftTerm != 0 {
+		dAtA[i] = 0x30
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.RaftTerm))
+	}
 	return i, nil
 }
 
-func (m *AuthDisableResponse) Marshal() (data []byte, err error) {
+func (m *AuthEnableRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthDisableResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthEnableRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.Header != nil {
-		data[i] = 0xa
+	return i, nil
+}
+
+func (m *AuthDisableRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthDisableRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *AuthenticateRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthenticateRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n36, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.Password) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Password)))
+		i += copy(dAtA[i:], m.Password)
+	}
+	return i, nil
+}
+
+func (m *AuthUserAddRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthUserAddRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.Password) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Password)))
+		i += copy(dAtA[i:], m.Password)
+	}
+	return i, nil
+}
+
+func (m *AuthUserGetRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthUserGetRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	return i, nil
+}
+
+func (m *AuthUserDeleteRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthUserDeleteRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	return i, nil
+}
+
+func (m *AuthUserChangePasswordRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthUserChangePasswordRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.Password) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Password)))
+		i += copy(dAtA[i:], m.Password)
+	}
+	return i, nil
+}
+
+func (m *AuthUserGrantRoleRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthUserGrantRoleRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.User) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.User)))
+		i += copy(dAtA[i:], m.User)
+	}
+	if len(m.Role) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
+		i += copy(dAtA[i:], m.Role)
+	}
+	return i, nil
+}
+
+func (m *AuthUserRevokeRoleRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthUserRevokeRoleRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if len(m.Role) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
+		i += copy(dAtA[i:], m.Role)
+	}
+	return i, nil
+}
+
+func (m *AuthRoleAddRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleAddRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	return i, nil
+}
+
+func (m *AuthRoleGetRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleGetRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Role) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
+		i += copy(dAtA[i:], m.Role)
+	}
+	return i, nil
+}
+
+func (m *AuthUserListRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthUserListRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *AuthRoleListRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleListRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func (m *AuthRoleDeleteRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleDeleteRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Role) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
+		i += copy(dAtA[i:], m.Role)
+	}
+	return i, nil
+}
+
+func (m *AuthRoleGrantPermissionRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleGrantPermissionRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
+	}
+	if m.Perm != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.Perm.Size()))
+		n36, err := m.Perm.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -6014,60 +5932,90 @@ func (m *AuthDisableResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AuthenticateResponse) Marshal() (data []byte, err error) {
+func (m *AuthRoleRevokePermissionRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthenticateResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthRoleRevokePermissionRequest) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Role) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Role)))
+		i += copy(dAtA[i:], m.Role)
+	}
+	if len(m.Key) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Key)))
+		i += copy(dAtA[i:], m.Key)
+	}
+	if len(m.RangeEnd) > 0 {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.RangeEnd)))
+		i += copy(dAtA[i:], m.RangeEnd)
+	}
+	return i, nil
+}
+
+func (m *AuthEnableResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthEnableResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n37, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n37, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n37
 	}
-	if len(m.Token) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintRpc(data, i, uint64(len(m.Token)))
-		i += copy(data[i:], m.Token)
-	}
 	return i, nil
 }
 
-func (m *AuthUserAddResponse) Marshal() (data []byte, err error) {
+func (m *AuthDisableResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthUserAddResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthDisableResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n38, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n38, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -6076,69 +6024,60 @@ func (m *AuthUserAddResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AuthUserGetResponse) Marshal() (data []byte, err error) {
+func (m *AuthenticateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthUserGetResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthenticateResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n39, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n39, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n39
 	}
-	if len(m.Roles) > 0 {
-		for _, s := range m.Roles {
-			data[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
+	if len(m.Token) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(len(m.Token)))
+		i += copy(dAtA[i:], m.Token)
 	}
 	return i, nil
 }
 
-func (m *AuthUserDeleteResponse) Marshal() (data []byte, err error) {
+func (m *AuthUserAddResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthUserDeleteResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthUserAddResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n40, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n40, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -6147,54 +6086,69 @@ func (m *AuthUserDeleteResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AuthUserChangePasswordResponse) Marshal() (data []byte, err error) {
+func (m *AuthUserGetResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthUserChangePasswordResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthUserGetResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n41, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n41, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n41
 	}
+	if len(m.Roles) > 0 {
+		for _, s := range m.Roles {
+			dAtA[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
 	return i, nil
 }
 
-func (m *AuthUserGrantRoleResponse) Marshal() (data []byte, err error) {
+func (m *AuthUserDeleteResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthUserGrantRoleResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthUserDeleteResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n42, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n42, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -6203,26 +6157,26 @@ func (m *AuthUserGrantRoleResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AuthUserRevokeRoleResponse) Marshal() (data []byte, err error) {
+func (m *AuthUserChangePasswordResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthUserRevokeRoleResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthUserChangePasswordResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n43, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n43, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -6231,26 +6185,26 @@ func (m *AuthUserRevokeRoleResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AuthRoleAddResponse) Marshal() (data []byte, err error) {
+func (m *AuthUserGrantRoleResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthRoleAddResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthUserGrantRoleResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n44, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n44, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -6259,37 +6213,93 @@ func (m *AuthRoleAddResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AuthRoleGetResponse) Marshal() (data []byte, err error) {
+func (m *AuthUserRevokeRoleResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthRoleGetResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthUserRevokeRoleResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n45, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n45, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n45
 	}
+	return i, nil
+}
+
+func (m *AuthRoleAddResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleAddResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Header != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n46, err := m.Header.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n46
+	}
+	return i, nil
+}
+
+func (m *AuthRoleGetResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleGetResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Header != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n47, err := m.Header.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n47
+	}
 	if len(m.Perm) > 0 {
 		for _, msg := range m.Perm {
-			data[i] = 0x12
+			dAtA[i] = 0x12
 			i++
-			i = encodeVarintRpc(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintRpc(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -6299,168 +6309,112 @@ func (m *AuthRoleGetResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *AuthRoleListResponse) Marshal() (data []byte, err error) {
+func (m *AuthRoleListResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthRoleListResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthRoleListResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n46, err := m.Header.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n46
-	}
-	if len(m.Roles) > 0 {
-		for _, s := range m.Roles {
-			data[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	return i, nil
-}
-
-func (m *AuthUserListResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthUserListResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Header != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n47, err := m.Header.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n47
-	}
-	if len(m.Users) > 0 {
-		for _, s := range m.Users {
-			data[i] = 0x12
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	return i, nil
-}
-
-func (m *AuthRoleDeleteResponse) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthRoleDeleteResponse) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Header != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n48, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n48, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n48
 	}
+	if len(m.Roles) > 0 {
+		for _, s := range m.Roles {
+			dAtA[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
 	return i, nil
 }
 
-func (m *AuthRoleGrantPermissionResponse) Marshal() (data []byte, err error) {
+func (m *AuthUserListResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthRoleGrantPermissionResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthUserListResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n49, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n49, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n49
 	}
+	if len(m.Users) > 0 {
+		for _, s := range m.Users {
+			dAtA[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
 	return i, nil
 }
 
-func (m *AuthRoleRevokePermissionResponse) Marshal() (data []byte, err error) {
+func (m *AuthRoleDeleteResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *AuthRoleRevokePermissionResponse) MarshalTo(data []byte) (int, error) {
+func (m *AuthRoleDeleteResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.Header != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintRpc(data, i, uint64(m.Header.Size()))
-		n50, err := m.Header.MarshalTo(data[i:])
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n50, err := m.Header.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -6469,31 +6423,87 @@ func (m *AuthRoleRevokePermissionResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func encodeFixed64Rpc(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func (m *AuthRoleGrantPermissionResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleGrantPermissionResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Header != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n51, err := m.Header.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n51
+	}
+	return i, nil
+}
+
+func (m *AuthRoleRevokePermissionResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthRoleRevokePermissionResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Header != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintRpc(dAtA, i, uint64(m.Header.Size()))
+		n52, err := m.Header.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n52
+	}
+	return i, nil
+}
+
+func encodeFixed64Rpc(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Rpc(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Rpc(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintRpc(data []byte, offset int, v uint64) int {
+func encodeVarintRpc(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 func (m *ResponseHeader) Size() (n int) {
@@ -6923,9 +6933,11 @@ func (m *WatchCreateRequest) Size() (n int) {
 		n += 2
 	}
 	if len(m.Filters) > 0 {
+		l = 0
 		for _, e := range m.Filters {
-			n += 1 + sovRpc(uint64(e))
+			l += sovRpc(uint64(e))
 		}
+		n += 1 + sovRpc(uint64(l)) + l
 	}
 	if m.PrevKv {
 		n += 2
@@ -7668,8 +7680,8 @@ func sovRpc(x uint64) (n int) {
 func sozRpc(x uint64) (n int) {
 	return sovRpc(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *ResponseHeader) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *ResponseHeader) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -7681,7 +7693,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -7709,7 +7721,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ClusterId |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7728,7 +7740,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MemberId |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7747,7 +7759,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Revision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7766,7 +7778,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.RaftTerm |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7775,7 +7787,7 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -7794,8 +7806,8 @@ func (m *ResponseHeader) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RangeRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *RangeRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -7807,7 +7819,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -7835,7 +7847,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7849,7 +7861,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
 			if m.Key == nil {
 				m.Key = []byte{}
 			}
@@ -7866,7 +7878,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7880,7 +7892,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RangeEnd = append(m.RangeEnd[:0], data[iNdEx:postIndex]...)
+			m.RangeEnd = append(m.RangeEnd[:0], dAtA[iNdEx:postIndex]...)
 			if m.RangeEnd == nil {
 				m.RangeEnd = []byte{}
 			}
@@ -7897,7 +7909,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Limit |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7916,7 +7928,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Revision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7935,7 +7947,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.SortOrder |= (RangeRequest_SortOrder(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7954,7 +7966,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.SortTarget |= (RangeRequest_SortTarget(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7973,7 +7985,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -7993,7 +8005,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8013,7 +8025,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8033,7 +8045,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MinModRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8052,7 +8064,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MaxModRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8071,7 +8083,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MinCreateRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8090,7 +8102,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MaxCreateRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8099,7 +8111,7 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -8118,8 +8130,8 @@ func (m *RangeRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RangeResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *RangeResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -8131,7 +8143,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -8159,7 +8171,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8176,7 +8188,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8192,7 +8204,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8207,7 +8219,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Kvs = append(m.Kvs, &mvccpb.KeyValue{})
-			if err := m.Kvs[len(m.Kvs)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Kvs[len(m.Kvs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8223,7 +8235,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8243,7 +8255,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Count |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8252,7 +8264,7 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -8271,8 +8283,8 @@ func (m *RangeResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *PutRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *PutRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -8284,7 +8296,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -8312,7 +8324,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8326,7 +8338,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
 			if m.Key == nil {
 				m.Key = []byte{}
 			}
@@ -8343,7 +8355,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8357,7 +8369,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Value = append(m.Value[:0], data[iNdEx:postIndex]...)
+			m.Value = append(m.Value[:0], dAtA[iNdEx:postIndex]...)
 			if m.Value == nil {
 				m.Value = []byte{}
 			}
@@ -8374,7 +8386,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Lease |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8393,7 +8405,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8403,7 +8415,7 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 			m.PrevKv = bool(v != 0)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -8422,8 +8434,8 @@ func (m *PutRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *PutResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *PutResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -8435,7 +8447,7 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -8463,7 +8475,7 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8480,7 +8492,7 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8496,7 +8508,7 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8513,13 +8525,13 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 			if m.PrevKv == nil {
 				m.PrevKv = &mvccpb.KeyValue{}
 			}
-			if err := m.PrevKv.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.PrevKv.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -8538,8 +8550,8 @@ func (m *PutResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *DeleteRangeRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -8551,7 +8563,7 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -8579,7 +8591,7 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8593,7 +8605,7 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
 			if m.Key == nil {
 				m.Key = []byte{}
 			}
@@ -8610,7 +8622,7 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8624,7 +8636,7 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RangeEnd = append(m.RangeEnd[:0], data[iNdEx:postIndex]...)
+			m.RangeEnd = append(m.RangeEnd[:0], dAtA[iNdEx:postIndex]...)
 			if m.RangeEnd == nil {
 				m.RangeEnd = []byte{}
 			}
@@ -8641,7 +8653,7 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8651,7 +8663,7 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 			m.PrevKv = bool(v != 0)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -8670,8 +8682,8 @@ func (m *DeleteRangeRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *DeleteRangeResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -8683,7 +8695,7 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -8711,7 +8723,7 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8728,7 +8740,7 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -8744,7 +8756,7 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Deleted |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8763,7 +8775,7 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8778,13 +8790,13 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.PrevKvs = append(m.PrevKvs, &mvccpb.KeyValue{})
-			if err := m.PrevKvs[len(m.PrevKvs)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.PrevKvs[len(m.PrevKvs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -8803,8 +8815,8 @@ func (m *DeleteRangeResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RequestOp) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *RequestOp) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -8816,7 +8828,7 @@ func (m *RequestOp) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -8844,7 +8856,7 @@ func (m *RequestOp) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8859,7 +8871,7 @@ func (m *RequestOp) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &RangeRequest{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Request = &RequestOp_RequestRange{v}
@@ -8876,7 +8888,7 @@ func (m *RequestOp) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8891,7 +8903,7 @@ func (m *RequestOp) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &PutRequest{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Request = &RequestOp_RequestPut{v}
@@ -8908,7 +8920,7 @@ func (m *RequestOp) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -8923,14 +8935,14 @@ func (m *RequestOp) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &DeleteRangeRequest{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Request = &RequestOp_RequestDeleteRange{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -8949,8 +8961,8 @@ func (m *RequestOp) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *ResponseOp) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *ResponseOp) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -8962,7 +8974,7 @@ func (m *ResponseOp) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -8990,7 +9002,7 @@ func (m *ResponseOp) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9005,7 +9017,7 @@ func (m *ResponseOp) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &RangeResponse{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Response = &ResponseOp_ResponseRange{v}
@@ -9022,7 +9034,7 @@ func (m *ResponseOp) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9037,7 +9049,7 @@ func (m *ResponseOp) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &PutResponse{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Response = &ResponseOp_ResponsePut{v}
@@ -9054,7 +9066,7 @@ func (m *ResponseOp) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9069,14 +9081,14 @@ func (m *ResponseOp) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &DeleteRangeResponse{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Response = &ResponseOp_ResponseDeleteRange{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9095,8 +9107,8 @@ func (m *ResponseOp) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Compare) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *Compare) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9108,7 +9120,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9136,7 +9148,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Result |= (Compare_CompareResult(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9155,7 +9167,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Target |= (Compare_CompareTarget(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9174,7 +9186,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9188,7 +9200,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
 			if m.Key == nil {
 				m.Key = []byte{}
 			}
@@ -9205,7 +9217,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9225,7 +9237,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9245,7 +9257,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9265,7 +9277,7 @@ func (m *Compare) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9280,12 +9292,12 @@ func (m *Compare) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := make([]byte, postIndex-iNdEx)
-			copy(v, data[iNdEx:postIndex])
+			copy(v, dAtA[iNdEx:postIndex])
 			m.TargetUnion = &Compare_Value{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9304,8 +9316,8 @@ func (m *Compare) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *TxnRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *TxnRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9317,7 +9329,7 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9345,7 +9357,7 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9360,7 +9372,7 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Compare = append(m.Compare, &Compare{})
-			if err := m.Compare[len(m.Compare)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Compare[len(m.Compare)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -9376,7 +9388,7 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9391,7 +9403,7 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Success = append(m.Success, &RequestOp{})
-			if err := m.Success[len(m.Success)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Success[len(m.Success)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -9407,7 +9419,7 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9422,13 +9434,13 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Failure = append(m.Failure, &RequestOp{})
-			if err := m.Failure[len(m.Failure)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Failure[len(m.Failure)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9447,8 +9459,8 @@ func (m *TxnRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *TxnResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *TxnResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9460,7 +9472,7 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9488,7 +9500,7 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9505,7 +9517,7 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -9521,7 +9533,7 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9541,7 +9553,7 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9556,13 +9568,13 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Responses = append(m.Responses, &ResponseOp{})
-			if err := m.Responses[len(m.Responses)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Responses[len(m.Responses)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9581,8 +9593,8 @@ func (m *TxnResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *CompactionRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *CompactionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9594,7 +9606,7 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9622,7 +9634,7 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Revision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9641,7 +9653,7 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9651,7 +9663,7 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 			m.Physical = bool(v != 0)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9670,8 +9682,8 @@ func (m *CompactionRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *CompactionResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *CompactionResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9683,7 +9695,7 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9711,7 +9723,7 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9728,13 +9740,13 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9753,8 +9765,8 @@ func (m *CompactionResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *HashRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *HashRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9766,7 +9778,7 @@ func (m *HashRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9784,7 +9796,7 @@ func (m *HashRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9803,8 +9815,8 @@ func (m *HashRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *HashResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *HashResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9816,7 +9828,7 @@ func (m *HashResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9844,7 +9856,7 @@ func (m *HashResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9861,7 +9873,7 @@ func (m *HashResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -9877,7 +9889,7 @@ func (m *HashResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Hash |= (uint32(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -9886,7 +9898,7 @@ func (m *HashResponse) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9905,8 +9917,8 @@ func (m *HashResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *SnapshotRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *SnapshotRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9918,7 +9930,7 @@ func (m *SnapshotRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9936,7 +9948,7 @@ func (m *SnapshotRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -9955,8 +9967,8 @@ func (m *SnapshotRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *SnapshotResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *SnapshotResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -9968,7 +9980,7 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -9996,7 +10008,7 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10013,7 +10025,7 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -10029,7 +10041,7 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.RemainingBytes |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10048,7 +10060,7 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10062,14 +10074,14 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Blob = append(m.Blob[:0], data[iNdEx:postIndex]...)
+			m.Blob = append(m.Blob[:0], dAtA[iNdEx:postIndex]...)
 			if m.Blob == nil {
 				m.Blob = []byte{}
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -10088,8 +10100,8 @@ func (m *SnapshotResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *WatchRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *WatchRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -10101,7 +10113,7 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -10129,7 +10141,7 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10144,7 +10156,7 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &WatchCreateRequest{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.RequestUnion = &WatchRequest_CreateRequest{v}
@@ -10161,7 +10173,7 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10176,14 +10188,14 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &WatchCancelRequest{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.RequestUnion = &WatchRequest_CancelRequest{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -10202,8 +10214,8 @@ func (m *WatchRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *WatchCreateRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *WatchCreateRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -10215,7 +10227,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -10243,7 +10255,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10257,7 +10269,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = append(m.Key[:0], data[iNdEx:postIndex]...)
+			m.Key = append(m.Key[:0], dAtA[iNdEx:postIndex]...)
 			if m.Key == nil {
 				m.Key = []byte{}
 			}
@@ -10274,7 +10286,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10288,7 +10300,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RangeEnd = append(m.RangeEnd[:0], data[iNdEx:postIndex]...)
+			m.RangeEnd = append(m.RangeEnd[:0], dAtA[iNdEx:postIndex]...)
 			if m.RangeEnd == nil {
 				m.RangeEnd = []byte{}
 			}
@@ -10305,7 +10317,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.StartRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10324,7 +10336,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10333,25 +10345,67 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			}
 			m.ProgressNotify = bool(v != 0)
 		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
-			}
-			var v WatchCreateRequest_FilterType
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowRpc
+			if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowRpc
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
 				}
-				if iNdEx >= l {
+				if packedLen < 0 {
+					return ErrInvalidLengthRpc
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex > l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (WatchCreateRequest_FilterType(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
+				for iNdEx < postIndex {
+					var v WatchCreateRequest_FilterType
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowRpc
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= (WatchCreateRequest_FilterType(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Filters = append(m.Filters, v)
 				}
+			} else if wireType == 0 {
+				var v WatchCreateRequest_FilterType
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowRpc
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (WatchCreateRequest_FilterType(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Filters = append(m.Filters, v)
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Filters", wireType)
 			}
-			m.Filters = append(m.Filters, v)
 		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PrevKv", wireType)
@@ -10364,7 +10418,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10374,7 +10428,7 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 			m.PrevKv = bool(v != 0)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -10393,8 +10447,8 @@ func (m *WatchCreateRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *WatchCancelRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *WatchCancelRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -10406,7 +10460,7 @@ func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -10434,7 +10488,7 @@ func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.WatchId |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10443,7 +10497,7 @@ func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -10462,8 +10516,8 @@ func (m *WatchCancelRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *WatchResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *WatchResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -10475,7 +10529,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -10503,7 +10557,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10520,7 +10574,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -10536,7 +10590,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.WatchId |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10555,7 +10609,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10575,7 +10629,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10595,7 +10649,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.CompactRevision |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10614,7 +10668,7 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10629,13 +10683,13 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Events = append(m.Events, &mvccpb.Event{})
-			if err := m.Events[len(m.Events)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Events[len(m.Events)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -10654,8 +10708,8 @@ func (m *WatchResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseGrantRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseGrantRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -10667,7 +10721,7 @@ func (m *LeaseGrantRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -10695,7 +10749,7 @@ func (m *LeaseGrantRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.TTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10714,7 +10768,7 @@ func (m *LeaseGrantRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10723,7 +10777,7 @@ func (m *LeaseGrantRequest) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -10742,8 +10796,8 @@ func (m *LeaseGrantRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseGrantResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -10755,7 +10809,7 @@ func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -10783,7 +10837,7 @@ func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10800,7 +10854,7 @@ func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -10816,7 +10870,7 @@ func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10835,7 +10889,7 @@ func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.TTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10854,7 +10908,7 @@ func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10869,11 +10923,11 @@ func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Error = string(data[iNdEx:postIndex])
+			m.Error = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -10892,8 +10946,8 @@ func (m *LeaseGrantResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseRevokeRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -10905,7 +10959,7 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -10933,7 +10987,7 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -10942,7 +10996,7 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -10961,8 +11015,8 @@ func (m *LeaseRevokeRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseRevokeResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -10974,7 +11028,7 @@ func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11002,7 +11056,7 @@ func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11019,13 +11073,13 @@ func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11044,8 +11098,8 @@ func (m *LeaseRevokeResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseKeepAliveRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11057,7 +11111,7 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11085,7 +11139,7 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11094,7 +11148,7 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11113,8 +11167,8 @@ func (m *LeaseKeepAliveRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseKeepAliveResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11126,7 +11180,7 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11154,7 +11208,7 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11171,7 +11225,7 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -11187,7 +11241,7 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11206,7 +11260,7 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.TTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11215,7 +11269,7 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11234,8 +11288,8 @@ func (m *LeaseKeepAliveResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseTimeToLiveRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseTimeToLiveRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11247,7 +11301,7 @@ func (m *LeaseTimeToLiveRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11275,7 +11329,7 @@ func (m *LeaseTimeToLiveRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11294,7 +11348,7 @@ func (m *LeaseTimeToLiveRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11304,7 +11358,7 @@ func (m *LeaseTimeToLiveRequest) Unmarshal(data []byte) error {
 			m.Keys = bool(v != 0)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11323,8 +11377,8 @@ func (m *LeaseTimeToLiveRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseTimeToLiveResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11336,7 +11390,7 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11364,7 +11418,7 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11381,7 +11435,7 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -11397,7 +11451,7 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11416,7 +11470,7 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.TTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11435,7 +11489,7 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.GrantedTTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11454,7 +11508,7 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11469,11 +11523,11 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Keys = append(m.Keys, make([]byte, postIndex-iNdEx))
-			copy(m.Keys[len(m.Keys)-1], data[iNdEx:postIndex])
+			copy(m.Keys[len(m.Keys)-1], dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11492,8 +11546,8 @@ func (m *LeaseTimeToLiveResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Member) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *Member) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11505,7 +11559,7 @@ func (m *Member) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11533,7 +11587,7 @@ func (m *Member) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11552,7 +11606,7 @@ func (m *Member) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11567,7 +11621,7 @@ func (m *Member) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -11581,7 +11635,7 @@ func (m *Member) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11596,7 +11650,7 @@ func (m *Member) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PeerURLs = append(m.PeerURLs, string(data[iNdEx:postIndex]))
+			m.PeerURLs = append(m.PeerURLs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -11610,7 +11664,7 @@ func (m *Member) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11625,11 +11679,11 @@ func (m *Member) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ClientURLs = append(m.ClientURLs, string(data[iNdEx:postIndex]))
+			m.ClientURLs = append(m.ClientURLs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11648,8 +11702,8 @@ func (m *Member) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *MemberAddRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *MemberAddRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11661,7 +11715,7 @@ func (m *MemberAddRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11689,7 +11743,7 @@ func (m *MemberAddRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11704,11 +11758,11 @@ func (m *MemberAddRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PeerURLs = append(m.PeerURLs, string(data[iNdEx:postIndex]))
+			m.PeerURLs = append(m.PeerURLs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11727,8 +11781,8 @@ func (m *MemberAddRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *MemberAddResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *MemberAddResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11740,7 +11794,7 @@ func (m *MemberAddResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11768,7 +11822,7 @@ func (m *MemberAddResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11785,7 +11839,7 @@ func (m *MemberAddResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -11801,7 +11855,7 @@ func (m *MemberAddResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11818,13 +11872,13 @@ func (m *MemberAddResponse) Unmarshal(data []byte) error {
 			if m.Member == nil {
 				m.Member = &Member{}
 			}
-			if err := m.Member.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Member.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11843,8 +11897,8 @@ func (m *MemberAddResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *MemberRemoveRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *MemberRemoveRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11856,7 +11910,7 @@ func (m *MemberRemoveRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11884,7 +11938,7 @@ func (m *MemberRemoveRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11893,7 +11947,7 @@ func (m *MemberRemoveRequest) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11912,8 +11966,8 @@ func (m *MemberRemoveRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *MemberRemoveResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *MemberRemoveResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -11925,7 +11979,7 @@ func (m *MemberRemoveResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -11953,7 +12007,7 @@ func (m *MemberRemoveResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -11970,13 +12024,13 @@ func (m *MemberRemoveResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -11995,8 +12049,8 @@ func (m *MemberRemoveResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *MemberUpdateRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *MemberUpdateRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12008,7 +12062,7 @@ func (m *MemberUpdateRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12036,7 +12090,7 @@ func (m *MemberUpdateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12055,7 +12109,7 @@ func (m *MemberUpdateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12070,11 +12124,11 @@ func (m *MemberUpdateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PeerURLs = append(m.PeerURLs, string(data[iNdEx:postIndex]))
+			m.PeerURLs = append(m.PeerURLs, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12093,8 +12147,8 @@ func (m *MemberUpdateRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *MemberUpdateResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *MemberUpdateResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12106,7 +12160,7 @@ func (m *MemberUpdateResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12134,7 +12188,7 @@ func (m *MemberUpdateResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12151,13 +12205,13 @@ func (m *MemberUpdateResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12176,8 +12230,8 @@ func (m *MemberUpdateResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *MemberListRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *MemberListRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12189,7 +12243,7 @@ func (m *MemberListRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12207,7 +12261,7 @@ func (m *MemberListRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12226,8 +12280,8 @@ func (m *MemberListRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *MemberListResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *MemberListResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12239,7 +12293,7 @@ func (m *MemberListResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12267,7 +12321,7 @@ func (m *MemberListResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12284,7 +12338,7 @@ func (m *MemberListResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -12300,7 +12354,7 @@ func (m *MemberListResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12315,13 +12369,13 @@ func (m *MemberListResponse) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Members = append(m.Members, &Member{})
-			if err := m.Members[len(m.Members)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Members[len(m.Members)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12340,8 +12394,8 @@ func (m *MemberListResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DefragmentRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *DefragmentRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12353,7 +12407,7 @@ func (m *DefragmentRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12371,7 +12425,7 @@ func (m *DefragmentRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12390,8 +12444,8 @@ func (m *DefragmentRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *DefragmentResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *DefragmentResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12403,7 +12457,7 @@ func (m *DefragmentResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12431,7 +12485,7 @@ func (m *DefragmentResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12448,13 +12502,13 @@ func (m *DefragmentResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12473,8 +12527,8 @@ func (m *DefragmentResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AlarmRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AlarmRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12486,7 +12540,7 @@ func (m *AlarmRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12514,7 +12568,7 @@ func (m *AlarmRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Action |= (AlarmRequest_AlarmAction(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12533,7 +12587,7 @@ func (m *AlarmRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MemberID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12552,7 +12606,7 @@ func (m *AlarmRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Alarm |= (AlarmType(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12561,7 +12615,7 @@ func (m *AlarmRequest) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12580,8 +12634,8 @@ func (m *AlarmRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AlarmMember) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AlarmMember) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12593,7 +12647,7 @@ func (m *AlarmMember) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12621,7 +12675,7 @@ func (m *AlarmMember) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MemberID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12640,7 +12694,7 @@ func (m *AlarmMember) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Alarm |= (AlarmType(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12649,7 +12703,7 @@ func (m *AlarmMember) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12668,8 +12722,8 @@ func (m *AlarmMember) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AlarmResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AlarmResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12681,7 +12735,7 @@ func (m *AlarmResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12709,7 +12763,7 @@ func (m *AlarmResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12726,7 +12780,7 @@ func (m *AlarmResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -12742,7 +12796,7 @@ func (m *AlarmResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12757,13 +12811,13 @@ func (m *AlarmResponse) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Alarms = append(m.Alarms, &AlarmMember{})
-			if err := m.Alarms[len(m.Alarms)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Alarms[len(m.Alarms)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12782,8 +12836,8 @@ func (m *AlarmResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *StatusRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *StatusRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12795,7 +12849,7 @@ func (m *StatusRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12813,7 +12867,7 @@ func (m *StatusRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -12832,8 +12886,8 @@ func (m *StatusRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *StatusResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *StatusResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -12845,7 +12899,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -12873,7 +12927,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12890,7 +12944,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -12906,7 +12960,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12921,7 +12975,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Version = string(data[iNdEx:postIndex])
+			m.Version = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -12935,7 +12989,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.DbSize |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12954,7 +13008,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.Leader |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12973,7 +13027,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.RaftIndex |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -12992,7 +13046,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.RaftTerm |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13001,7 +13055,7 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13020,8 +13074,8 @@ func (m *StatusResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthEnableRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthEnableRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13033,7 +13087,7 @@ func (m *AuthEnableRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13051,7 +13105,7 @@ func (m *AuthEnableRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13070,8 +13124,8 @@ func (m *AuthEnableRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthDisableRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthDisableRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13083,7 +13137,7 @@ func (m *AuthDisableRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13101,7 +13155,7 @@ func (m *AuthDisableRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13120,8 +13174,8 @@ func (m *AuthDisableRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthenticateRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthenticateRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13133,7 +13187,7 @@ func (m *AuthenticateRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13161,7 +13215,7 @@ func (m *AuthenticateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13176,7 +13230,7 @@ func (m *AuthenticateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -13190,7 +13244,7 @@ func (m *AuthenticateRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13205,11 +13259,11 @@ func (m *AuthenticateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Password = string(data[iNdEx:postIndex])
+			m.Password = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13228,8 +13282,8 @@ func (m *AuthenticateRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserAddRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserAddRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13241,7 +13295,7 @@ func (m *AuthUserAddRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13269,7 +13323,7 @@ func (m *AuthUserAddRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13284,7 +13338,7 @@ func (m *AuthUserAddRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -13298,7 +13352,7 @@ func (m *AuthUserAddRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13313,11 +13367,11 @@ func (m *AuthUserAddRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Password = string(data[iNdEx:postIndex])
+			m.Password = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13336,8 +13390,8 @@ func (m *AuthUserAddRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserGetRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserGetRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13349,7 +13403,7 @@ func (m *AuthUserGetRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13377,7 +13431,7 @@ func (m *AuthUserGetRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13392,11 +13446,11 @@ func (m *AuthUserGetRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13415,8 +13469,8 @@ func (m *AuthUserGetRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserDeleteRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserDeleteRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13428,7 +13482,7 @@ func (m *AuthUserDeleteRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13456,7 +13510,7 @@ func (m *AuthUserDeleteRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13471,11 +13525,11 @@ func (m *AuthUserDeleteRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13494,8 +13548,8 @@ func (m *AuthUserDeleteRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserChangePasswordRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserChangePasswordRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13507,7 +13561,7 @@ func (m *AuthUserChangePasswordRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13535,7 +13589,7 @@ func (m *AuthUserChangePasswordRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13550,7 +13604,7 @@ func (m *AuthUserChangePasswordRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -13564,7 +13618,7 @@ func (m *AuthUserChangePasswordRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13579,11 +13633,11 @@ func (m *AuthUserChangePasswordRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Password = string(data[iNdEx:postIndex])
+			m.Password = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13602,8 +13656,8 @@ func (m *AuthUserChangePasswordRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserGrantRoleRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserGrantRoleRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13615,7 +13669,7 @@ func (m *AuthUserGrantRoleRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13643,7 +13697,7 @@ func (m *AuthUserGrantRoleRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13658,7 +13712,7 @@ func (m *AuthUserGrantRoleRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.User = string(data[iNdEx:postIndex])
+			m.User = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -13672,7 +13726,7 @@ func (m *AuthUserGrantRoleRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13687,11 +13741,11 @@ func (m *AuthUserGrantRoleRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Role = string(data[iNdEx:postIndex])
+			m.Role = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13710,8 +13764,8 @@ func (m *AuthUserGrantRoleRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserRevokeRoleRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserRevokeRoleRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13723,7 +13777,7 @@ func (m *AuthUserRevokeRoleRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13751,7 +13805,7 @@ func (m *AuthUserRevokeRoleRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13766,7 +13820,7 @@ func (m *AuthUserRevokeRoleRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -13780,7 +13834,7 @@ func (m *AuthUserRevokeRoleRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13795,11 +13849,11 @@ func (m *AuthUserRevokeRoleRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Role = string(data[iNdEx:postIndex])
+			m.Role = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13818,8 +13872,8 @@ func (m *AuthUserRevokeRoleRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleAddRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleAddRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13831,7 +13885,7 @@ func (m *AuthRoleAddRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13859,7 +13913,7 @@ func (m *AuthRoleAddRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13874,11 +13928,11 @@ func (m *AuthRoleAddRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13897,8 +13951,8 @@ func (m *AuthRoleAddRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleGetRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleGetRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13910,7 +13964,7 @@ func (m *AuthRoleGetRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -13938,7 +13992,7 @@ func (m *AuthRoleGetRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -13953,11 +14007,11 @@ func (m *AuthRoleGetRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Role = string(data[iNdEx:postIndex])
+			m.Role = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -13976,8 +14030,8 @@ func (m *AuthRoleGetRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserListRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserListRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -13989,7 +14043,7 @@ func (m *AuthUserListRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14007,7 +14061,7 @@ func (m *AuthUserListRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14026,8 +14080,8 @@ func (m *AuthUserListRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleListRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleListRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14039,7 +14093,7 @@ func (m *AuthRoleListRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14057,7 +14111,7 @@ func (m *AuthRoleListRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14076,8 +14130,8 @@ func (m *AuthRoleListRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleDeleteRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleDeleteRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14089,7 +14143,7 @@ func (m *AuthRoleDeleteRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14117,7 +14171,7 @@ func (m *AuthRoleDeleteRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14132,11 +14186,11 @@ func (m *AuthRoleDeleteRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Role = string(data[iNdEx:postIndex])
+			m.Role = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14155,8 +14209,8 @@ func (m *AuthRoleDeleteRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleGrantPermissionRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleGrantPermissionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14168,7 +14222,7 @@ func (m *AuthRoleGrantPermissionRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14196,7 +14250,7 @@ func (m *AuthRoleGrantPermissionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14211,7 +14265,7 @@ func (m *AuthRoleGrantPermissionRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Name = string(data[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -14225,7 +14279,7 @@ func (m *AuthRoleGrantPermissionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14242,13 +14296,13 @@ func (m *AuthRoleGrantPermissionRequest) Unmarshal(data []byte) error {
 			if m.Perm == nil {
 				m.Perm = &authpb.Permission{}
 			}
-			if err := m.Perm.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Perm.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14267,8 +14321,8 @@ func (m *AuthRoleGrantPermissionRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleRevokePermissionRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14280,7 +14334,7 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14308,7 +14362,7 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14323,7 +14377,7 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Role = string(data[iNdEx:postIndex])
+			m.Role = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -14337,7 +14391,7 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14352,7 +14406,7 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Key = string(data[iNdEx:postIndex])
+			m.Key = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -14366,7 +14420,7 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14381,11 +14435,11 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RangeEnd = string(data[iNdEx:postIndex])
+			m.RangeEnd = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14404,8 +14458,8 @@ func (m *AuthRoleRevokePermissionRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthEnableResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthEnableResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14417,7 +14471,7 @@ func (m *AuthEnableResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14445,7 +14499,7 @@ func (m *AuthEnableResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14462,13 +14516,13 @@ func (m *AuthEnableResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14487,8 +14541,8 @@ func (m *AuthEnableResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthDisableResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthDisableResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14500,7 +14554,7 @@ func (m *AuthDisableResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14528,7 +14582,7 @@ func (m *AuthDisableResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14545,13 +14599,13 @@ func (m *AuthDisableResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14570,8 +14624,8 @@ func (m *AuthDisableResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthenticateResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthenticateResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14583,7 +14637,7 @@ func (m *AuthenticateResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14611,7 +14665,7 @@ func (m *AuthenticateResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14628,7 +14682,7 @@ func (m *AuthenticateResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -14644,7 +14698,7 @@ func (m *AuthenticateResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14659,11 +14713,11 @@ func (m *AuthenticateResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Token = string(data[iNdEx:postIndex])
+			m.Token = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14682,8 +14736,8 @@ func (m *AuthenticateResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserAddResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserAddResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14695,7 +14749,7 @@ func (m *AuthUserAddResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14723,7 +14777,7 @@ func (m *AuthUserAddResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14740,13 +14794,13 @@ func (m *AuthUserAddResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14765,8 +14819,8 @@ func (m *AuthUserAddResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserGetResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserGetResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14778,7 +14832,7 @@ func (m *AuthUserGetResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14806,7 +14860,7 @@ func (m *AuthUserGetResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14823,7 +14877,7 @@ func (m *AuthUserGetResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -14839,7 +14893,7 @@ func (m *AuthUserGetResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14854,11 +14908,11 @@ func (m *AuthUserGetResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Roles = append(m.Roles, string(data[iNdEx:postIndex]))
+			m.Roles = append(m.Roles, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14877,8 +14931,8 @@ func (m *AuthUserGetResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserDeleteResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserDeleteResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14890,7 +14944,7 @@ func (m *AuthUserDeleteResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -14918,7 +14972,7 @@ func (m *AuthUserDeleteResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -14935,13 +14989,13 @@ func (m *AuthUserDeleteResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -14960,8 +15014,8 @@ func (m *AuthUserDeleteResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserChangePasswordResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserChangePasswordResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -14973,7 +15027,7 @@ func (m *AuthUserChangePasswordResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15001,7 +15055,7 @@ func (m *AuthUserChangePasswordResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15018,13 +15072,13 @@ func (m *AuthUserChangePasswordResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15043,8 +15097,8 @@ func (m *AuthUserChangePasswordResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserGrantRoleResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserGrantRoleResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15056,7 +15110,7 @@ func (m *AuthUserGrantRoleResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15084,7 +15138,7 @@ func (m *AuthUserGrantRoleResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15101,13 +15155,13 @@ func (m *AuthUserGrantRoleResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15126,8 +15180,8 @@ func (m *AuthUserGrantRoleResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserRevokeRoleResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserRevokeRoleResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15139,7 +15193,7 @@ func (m *AuthUserRevokeRoleResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15167,7 +15221,7 @@ func (m *AuthUserRevokeRoleResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15184,13 +15238,13 @@ func (m *AuthUserRevokeRoleResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15209,8 +15263,8 @@ func (m *AuthUserRevokeRoleResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleAddResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleAddResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15222,7 +15276,7 @@ func (m *AuthRoleAddResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15250,7 +15304,7 @@ func (m *AuthRoleAddResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15267,13 +15321,13 @@ func (m *AuthRoleAddResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15292,8 +15346,8 @@ func (m *AuthRoleAddResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleGetResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleGetResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15305,7 +15359,7 @@ func (m *AuthRoleGetResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15333,7 +15387,7 @@ func (m *AuthRoleGetResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15350,7 +15404,7 @@ func (m *AuthRoleGetResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -15366,7 +15420,7 @@ func (m *AuthRoleGetResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15381,13 +15435,13 @@ func (m *AuthRoleGetResponse) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Perm = append(m.Perm, &authpb.Permission{})
-			if err := m.Perm[len(m.Perm)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Perm[len(m.Perm)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15406,8 +15460,8 @@ func (m *AuthRoleGetResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleListResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleListResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15419,7 +15473,7 @@ func (m *AuthRoleListResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15447,7 +15501,7 @@ func (m *AuthRoleListResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15464,7 +15518,7 @@ func (m *AuthRoleListResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -15480,7 +15534,7 @@ func (m *AuthRoleListResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15495,11 +15549,11 @@ func (m *AuthRoleListResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Roles = append(m.Roles, string(data[iNdEx:postIndex]))
+			m.Roles = append(m.Roles, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15518,8 +15572,8 @@ func (m *AuthRoleListResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthUserListResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthUserListResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15531,7 +15585,7 @@ func (m *AuthUserListResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15559,7 +15613,7 @@ func (m *AuthUserListResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15576,7 +15630,7 @@ func (m *AuthUserListResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -15592,7 +15646,7 @@ func (m *AuthUserListResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15607,11 +15661,11 @@ func (m *AuthUserListResponse) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Users = append(m.Users, string(data[iNdEx:postIndex]))
+			m.Users = append(m.Users, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15630,8 +15684,8 @@ func (m *AuthUserListResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleDeleteResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleDeleteResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15643,7 +15697,7 @@ func (m *AuthRoleDeleteResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15671,7 +15725,7 @@ func (m *AuthRoleDeleteResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15688,13 +15742,13 @@ func (m *AuthRoleDeleteResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15713,8 +15767,8 @@ func (m *AuthRoleDeleteResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleGrantPermissionResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleGrantPermissionResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15726,7 +15780,7 @@ func (m *AuthRoleGrantPermissionResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15754,7 +15808,7 @@ func (m *AuthRoleGrantPermissionResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15771,13 +15825,13 @@ func (m *AuthRoleGrantPermissionResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15796,8 +15850,8 @@ func (m *AuthRoleGrantPermissionResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *AuthRoleRevokePermissionResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *AuthRoleRevokePermissionResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -15809,7 +15863,7 @@ func (m *AuthRoleRevokePermissionResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15837,7 +15891,7 @@ func (m *AuthRoleRevokePermissionResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15854,13 +15908,13 @@ func (m *AuthRoleRevokePermissionResponse) Unmarshal(data []byte) error {
 			if m.Header == nil {
 				m.Header = &ResponseHeader{}
 			}
-			if err := m.Header.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Header.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipRpc(data[iNdEx:])
+			skippy, err := skipRpc(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -15879,8 +15933,8 @@ func (m *AuthRoleRevokePermissionResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipRpc(data []byte) (n int, err error) {
-	l := len(data)
+func skipRpc(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -15891,7 +15945,7 @@ func skipRpc(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -15909,7 +15963,7 @@ func skipRpc(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -15926,7 +15980,7 @@ func skipRpc(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -15949,7 +16003,7 @@ func skipRpc(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -15960,7 +16014,7 @@ func skipRpc(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipRpc(data[start:])
+				next, err := skipRpc(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
@@ -15983,6 +16037,8 @@ var (
 	ErrInvalidLengthRpc = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowRpc   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto.RegisterFile("rpc.proto", fileDescriptorRpc) }
 
 var fileDescriptorRpc = []byte{
 	// 3401 bytes of a gzipped FileDescriptorProto

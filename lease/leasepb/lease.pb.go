@@ -34,7 +34,9 @@ var _ = math.Inf
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
-const _ = proto.ProtoPackageIsVersion1
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 type Lease struct {
 	ID  int64 `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
@@ -69,54 +71,54 @@ func init() {
 	proto.RegisterType((*LeaseInternalRequest)(nil), "leasepb.LeaseInternalRequest")
 	proto.RegisterType((*LeaseInternalResponse)(nil), "leasepb.LeaseInternalResponse")
 }
-func (m *Lease) Marshal() (data []byte, err error) {
+func (m *Lease) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *Lease) MarshalTo(data []byte) (int, error) {
+func (m *Lease) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.ID != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintLease(data, i, uint64(m.ID))
+		i = encodeVarintLease(dAtA, i, uint64(m.ID))
 	}
 	if m.TTL != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintLease(data, i, uint64(m.TTL))
+		i = encodeVarintLease(dAtA, i, uint64(m.TTL))
 	}
 	return i, nil
 }
 
-func (m *LeaseInternalRequest) Marshal() (data []byte, err error) {
+func (m *LeaseInternalRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LeaseInternalRequest) MarshalTo(data []byte) (int, error) {
+func (m *LeaseInternalRequest) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.LeaseTimeToLiveRequest != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintLease(data, i, uint64(m.LeaseTimeToLiveRequest.Size()))
-		n1, err := m.LeaseTimeToLiveRequest.MarshalTo(data[i:])
+		i = encodeVarintLease(dAtA, i, uint64(m.LeaseTimeToLiveRequest.Size()))
+		n1, err := m.LeaseTimeToLiveRequest.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -125,26 +127,26 @@ func (m *LeaseInternalRequest) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *LeaseInternalResponse) Marshal() (data []byte, err error) {
+func (m *LeaseInternalResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *LeaseInternalResponse) MarshalTo(data []byte) (int, error) {
+func (m *LeaseInternalResponse) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.LeaseTimeToLiveResponse != nil {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintLease(data, i, uint64(m.LeaseTimeToLiveResponse.Size()))
-		n2, err := m.LeaseTimeToLiveResponse.MarshalTo(data[i:])
+		i = encodeVarintLease(dAtA, i, uint64(m.LeaseTimeToLiveResponse.Size()))
+		n2, err := m.LeaseTimeToLiveResponse.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -153,31 +155,31 @@ func (m *LeaseInternalResponse) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func encodeFixed64Lease(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func encodeFixed64Lease(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Lease(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Lease(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintLease(data []byte, offset int, v uint64) int {
+func encodeVarintLease(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 func (m *Lease) Size() (n int) {
@@ -225,8 +227,8 @@ func sovLease(x uint64) (n int) {
 func sozLease(x uint64) (n int) {
 	return sovLease(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-func (m *Lease) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *Lease) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -238,7 +240,7 @@ func (m *Lease) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -266,7 +268,7 @@ func (m *Lease) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -285,7 +287,7 @@ func (m *Lease) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.TTL |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -294,7 +296,7 @@ func (m *Lease) Unmarshal(data []byte) error {
 			}
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLease(data[iNdEx:])
+			skippy, err := skipLease(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -313,8 +315,8 @@ func (m *Lease) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseInternalRequest) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseInternalRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -326,7 +328,7 @@ func (m *LeaseInternalRequest) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -354,7 +356,7 @@ func (m *LeaseInternalRequest) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -371,13 +373,13 @@ func (m *LeaseInternalRequest) Unmarshal(data []byte) error {
 			if m.LeaseTimeToLiveRequest == nil {
 				m.LeaseTimeToLiveRequest = &etcdserverpb.LeaseTimeToLiveRequest{}
 			}
-			if err := m.LeaseTimeToLiveRequest.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.LeaseTimeToLiveRequest.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLease(data[iNdEx:])
+			skippy, err := skipLease(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -396,8 +398,8 @@ func (m *LeaseInternalRequest) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *LeaseInternalResponse) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *LeaseInternalResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -409,7 +411,7 @@ func (m *LeaseInternalResponse) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -437,7 +439,7 @@ func (m *LeaseInternalResponse) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -454,13 +456,13 @@ func (m *LeaseInternalResponse) Unmarshal(data []byte) error {
 			if m.LeaseTimeToLiveResponse == nil {
 				m.LeaseTimeToLiveResponse = &etcdserverpb.LeaseTimeToLiveResponse{}
 			}
-			if err := m.LeaseTimeToLiveResponse.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.LeaseTimeToLiveResponse.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipLease(data[iNdEx:])
+			skippy, err := skipLease(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -479,8 +481,8 @@ func (m *LeaseInternalResponse) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipLease(data []byte) (n int, err error) {
-	l := len(data)
+func skipLease(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -491,7 +493,7 @@ func skipLease(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -509,7 +511,7 @@ func skipLease(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -526,7 +528,7 @@ func skipLease(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -549,7 +551,7 @@ func skipLease(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -560,7 +562,7 @@ func skipLease(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipLease(data[start:])
+				next, err := skipLease(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
@@ -583,6 +585,8 @@ var (
 	ErrInvalidLengthLease = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowLease   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto.RegisterFile("lease.proto", fileDescriptorLease) }
 
 var fileDescriptorLease = []byte{
 	// 233 bytes of a gzipped FileDescriptorProto
