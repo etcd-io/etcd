@@ -1,7 +1,12 @@
 package runewidth
 
-var EastAsianWidth = IsEastAsian()
-var DefaultCondition = &Condition{EastAsianWidth}
+var (
+	// EastAsianWidth will be set true if the current locale is CJK
+	EastAsianWidth = IsEastAsian()
+
+	// DefaultCondition is a condition in current locale
+	DefaultCondition = &Condition{EastAsianWidth}
+)
 
 type interval struct {
 	first rune
@@ -302,10 +307,12 @@ var ctypes = []intervalType{
 	{0x100000, 0x10FFFE, ambiguous},
 }
 
+// Condition have flag EastAsianWidth whether the current locale is CJK or not.
 type Condition struct {
 	EastAsianWidth bool
 }
 
+// NewCondition return new instance of Condition which is current locale.
 func NewCondition() *Condition {
 	return &Condition{EastAsianWidth}
 }
@@ -344,6 +351,7 @@ func (c *Condition) RuneWidth(r rune) int {
 	return 1
 }
 
+// StringWidth return width as you can see
 func (c *Condition) StringWidth(s string) (width int) {
 	for _, r := range []rune(s) {
 		width += c.RuneWidth(r)
@@ -351,6 +359,7 @@ func (c *Condition) StringWidth(s string) (width int) {
 	return width
 }
 
+// Truncate return string truncated with w cells
 func (c *Condition) Truncate(s string, w int, tail string) string {
 	if c.StringWidth(s) <= w {
 		return s
@@ -370,6 +379,7 @@ func (c *Condition) Truncate(s string, w int, tail string) string {
 	return string(r[0:i]) + tail
 }
 
+// Wrap return string wrapped with w cells
 func (c *Condition) Wrap(s string, w int) string {
 	width := 0
 	out := ""
@@ -392,6 +402,7 @@ func (c *Condition) Wrap(s string, w int) string {
 	return out
 }
 
+// FillLeft return string filled in left by spaces in w cells
 func (c *Condition) FillLeft(s string, w int) string {
 	width := c.StringWidth(s)
 	count := w - width
@@ -405,6 +416,7 @@ func (c *Condition) FillLeft(s string, w int) string {
 	return s
 }
 
+// FillRight return string filled in left by spaces in w cells
 func (c *Condition) FillRight(s string, w int) string {
 	width := c.StringWidth(s)
 	count := w - width
@@ -438,27 +450,32 @@ func IsAmbiguousWidth(r rune) bool {
 	return ct(r) == ambiguous
 }
 
-// IsAmbiguousWidth returns whether is ambiguous width or not.
+// IsNeutralWidth returns whether is neutral width or not.
 func IsNeutralWidth(r rune) bool {
 	return ct(r) == neutral
 }
 
+// StringWidth return width as you can see
 func StringWidth(s string) (width int) {
 	return DefaultCondition.StringWidth(s)
 }
 
+// Truncate return string truncated with w cells
 func Truncate(s string, w int, tail string) string {
 	return DefaultCondition.Truncate(s, w, tail)
 }
 
+// Wrap return string wrapped with w cells
 func Wrap(s string, w int) string {
 	return DefaultCondition.Wrap(s, w)
 }
 
+// FillLeft return string filled in left by spaces in w cells
 func FillLeft(s string, w int) string {
 	return DefaultCondition.FillLeft(s, w)
 }
 
+// FillRight return string filled in left by spaces in w cells
 func FillRight(s string, w int) string {
 	return DefaultCondition.FillRight(s, w)
 }

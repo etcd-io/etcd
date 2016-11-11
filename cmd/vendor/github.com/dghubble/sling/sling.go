@@ -1,13 +1,13 @@
 package sling
 
 import (
-	"encoding/base64"
+	"bytes"
 	"encoding/json"
+	goquery "github.com/google/go-querystring/query"
 	"io"
 	"net/http"
 	"net/url"
-
-	goquery "github.com/google/go-querystring/query"
+	"strings"
 )
 
 const (
@@ -16,17 +16,10 @@ const (
 	formContentType = "application/x-www-form-urlencoded"
 )
 
-// Doer executes http requests.  It is implemented by *http.Client.  You can
-// wrap *http.Client with layers of Doers to form a stack of client-side
-// middleware.
-type Doer interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // Sling is an HTTP Request builder and sender.
 type Sling struct {
 	// http Client for doing requests
-	httpClient Doer
+	httpClient *http.Client
 	// HTTP method (GET, POST, etc.)
 	method string
 	// raw url string for requests
@@ -35,8 +28,10 @@ type Sling struct {
 	header http.Header
 	// url tagged query structs
 	queryStructs []interface{}
-	// body provider
-	bodyProvider BodyProvider
+	// json tagged body struct
+	bodyJSON interface{}
+	// url tagged body struct (form)
+	bodyForm interface{}
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -73,7 +68,8 @@ func (s *Sling) New() *Sling {
 		rawURL:       s.rawURL,
 		header:       headerCopy,
 		queryStructs: append([]interface{}{}, s.queryStructs...),
-		bodyProvider: s.bodyProvider,
+		bodyJSON:     s.bodyJSON,
+		bodyForm:     s.bodyForm,
 	}
 }
 
@@ -83,18 +79,9 @@ func (s *Sling) New() *Sling {
 // the http.DefaultClient will be used.
 func (s *Sling) Client(httpClient *http.Client) *Sling {
 	if httpClient == nil {
-		return s.Doer(http.DefaultClient)
-	}
-	return s.Doer(httpClient)
-}
-
-// Doer sets the custom Doer implementation used to do requests.
-// If a nil client is given, the http.DefaultClient will be used.
-func (s *Sling) Doer(doer Doer) *Sling {
-	if doer == nil {
 		s.httpClient = http.DefaultClient
 	} else {
-		s.httpClient = doer
+		s.httpClient = httpClient
 	}
 	return s
 }
@@ -153,20 +140,6 @@ func (s *Sling) Set(key, value string) *Sling {
 	return s
 }
 
-// SetBasicAuth sets the Authorization header to use HTTP Basic Authentication
-// with the provided username and password. With HTTP Basic Authentication
-// the provided username and password are not encrypted.
-func (s *Sling) SetBasicAuth(username, password string) *Sling {
-	return s.Set("Authorization", "Basic "+basicAuth(username, password))
-}
-
-// basicAuth returns the base64 encoded username:password for basic auth copied
-// from net/http.
-func basicAuth(username, password string) string {
-	auth := username + ":" + password
-	return base64.StdEncoding.EncodeToString([]byte(auth))
-}
-
 // Url
 
 // Base sets the rawURL. If you intend to extend the url with Path,
@@ -202,52 +175,28 @@ func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 
 // Body
 
-// Body sets the Sling's body. The body value will be set as the Body on new
-// requests (see Request()).
-// If the provided body is also an io.Closer, the request Body will be closed
-// by http.Client methods.
-func (s *Sling) Body(body io.Reader) *Sling {
-	if body == nil {
-		return s
-	}
-	return s.BodyProvider(bodyProvider{body: body})
-}
-
-// BodyProvider sets the Sling's body provider.
-func (s *Sling) BodyProvider(body BodyProvider) *Sling {
-	if body == nil {
-		return s
-	}
-	s.bodyProvider = body
-
-	ct := body.ContentType()
-	if ct != "" {
-		s.Set(contentType, ct)
-	}
-
-	return s
-}
-
 // BodyJSON sets the Sling's bodyJSON. The value pointed to by the bodyJSON
-// will be JSON encoded as the Body on new requests (see Request()).
+// will be JSON encoded to set the Body on new requests (see Request()).
 // The bodyJSON argument should be a pointer to a JSON tagged struct. See
 // https://golang.org/pkg/encoding/json/#MarshalIndent for details.
 func (s *Sling) BodyJSON(bodyJSON interface{}) *Sling {
-	if bodyJSON == nil {
-		return s
+	if bodyJSON != nil {
+		s.bodyJSON = bodyJSON
+		s.Set(contentType, jsonContentType)
 	}
-	return s.BodyProvider(jsonBodyProvider{payload: bodyJSON})
+	return s
 }
 
-// BodyForm sets the Sling's bodyForm. The value pointed to by the bodyForm
-// will be url encoded as the Body on new requests (see Request()).
-// The bodyForm argument should be a pointer to a url tagged struct. See
+// BodyForm sets the Sling's bodyForm. The value pointed to by the
+// bodyForm will be url encoded to set the Body on new requests.
+// The bodyStruct argument should be a pointer to a url tagged struct. See
 // https://godoc.org/github.com/google/go-querystring/query for details.
 func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
-	if bodyForm == nil {
-		return s
+	if bodyForm != nil {
+		s.bodyForm = bodyForm
+		s.Set(contentType, formContentType)
 	}
-	return s.BodyProvider(formBodyProvider{payload: bodyForm})
+	return s
 }
 
 // Requests
@@ -260,18 +209,13 @@ func (s *Sling) Request() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	err = addQueryStructs(reqURL, s.queryStructs)
 	if err != nil {
 		return nil, err
 	}
-
-	var body io.Reader
-	if s.bodyProvider != nil {
-		body, err = s.bodyProvider.Body()
-		if err != nil {
-			return nil, err
-		}
+	body, err := s.getRequestBody()
+	if err != nil {
+		return nil, err
 	}
 	req, err := http.NewRequest(s.method, reqURL.String(), body)
 	if err != nil {
@@ -304,6 +248,47 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 	// url.Values format to a sorted "url encoded" string, e.g. "key=val&foo=bar"
 	reqURL.RawQuery = urlValues.Encode()
 	return nil
+}
+
+// getRequestBody returns the io.Reader which should be used as the body
+// of new Requests.
+func (s *Sling) getRequestBody() (body io.Reader, err error) {
+	if s.bodyJSON != nil && s.header.Get(contentType) == jsonContentType {
+		body, err = encodeBodyJSON(s.bodyJSON)
+		if err != nil {
+			return nil, err
+		}
+	} else if s.bodyForm != nil && s.header.Get(contentType) == formContentType {
+		body, err = encodeBodyForm(s.bodyForm)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return body, nil
+}
+
+// encodeBodyJSON JSON encodes the value pointed to by bodyJSON into an
+// io.Reader, typically for use as a Request Body.
+func encodeBodyJSON(bodyJSON interface{}) (io.Reader, error) {
+	var buf = new(bytes.Buffer)
+	if bodyJSON != nil {
+		buf = &bytes.Buffer{}
+		err := json.NewEncoder(buf).Encode(bodyJSON)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return buf, nil
+}
+
+// encodeBodyForm url encodes the value pointed to by bodyForm into an
+// io.Reader, typically for use as a Request Body.
+func encodeBodyForm(bodyForm interface{}) (io.Reader, error) {
+	values, err := goquery.Values(bodyForm)
+	if err != nil {
+		return nil, err
+	}
+	return strings.NewReader(values.Encode()), nil
 }
 
 // addHeaders adds the key, value pairs from the given http.Header to the
@@ -351,7 +336,7 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 	}
 	// when err is nil, resp contains a non-nil resp.Body which must be closed
 	defer resp.Body.Close()
-	if successV != nil || failureV != nil {
+	if strings.Contains(resp.Header.Get(contentType), jsonContentType) {
 		err = decodeResponseJSON(resp, successV, failureV)
 	}
 	return resp, err

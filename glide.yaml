@@ -56,7 +56,7 @@ import:
   subpackages:
   - prometheus
 - package: github.com/spf13/cobra
-  version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
+  version: 6e91dded25d73176bf7f60b40dd7aa1f0bf9be8d
 - package: github.com/spf13/pflag
   version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
 - package: github.com/ugorji/go

@@ -8,10 +8,9 @@ import "golang.org/x/net/context"
 
 // Datastore kinds for the metadata entities.
 const (
-	namespaceKind   = "__namespace__"
-	kindKind        = "__kind__"
-	propertyKind    = "__property__"
-	entityGroupKind = "__entitygroup__"
+	namespaceKind = "__namespace__"
+	kindKind      = "__kind__"
+	propertyKind  = "__property__"
 )
 
 // Namespaces returns all the datastore namespaces.

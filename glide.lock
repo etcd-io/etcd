@@ -1,10 +1,8 @@
-hash: 93d5ee1318c98aca7c4b42e057239806a565e5aadebdd79e260f95c206098358
-updated: 2016-11-10T12:00:18.624405955-08:00
+hash: 8f08c3bce8763085ced495783b60d615963b489272464b049de15f3c97fe552c
+updated: 2016-11-10T17:32:45.127094636-08:00
 imports:
-- name: bitbucket.org/ww/goautoneg
-  version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
 - name: github.com/beorn7/perks
-  version: b965b613227fddccbfffe13eae360ed3fa822f8d
+  version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
 - name: github.com/bgentry/speakeasy
@@ -28,14 +26,20 @@ imports:
   subpackages:
   - capnslog
   - dlopen
+- name: github.com/coreos/protodoc
+  version: f4164b1cce80b5eba4c835d08483f552dc568b7c
+  subpackages:
+  - parse
 - name: github.com/cpuguy83/go-md2man
-  version: 71acacd42f85e5e82f70a55327789582a5200a90
+  version: a65d4d2de4d5f7c74868dfa9b202a3c8be315aaa
   subpackages:
   - md2man
 - name: github.com/dghubble/sling
-  version: c961a4334054e64299d16f8a31bd686ee2565ae4
+  version: 9024207e2108fcd88df6a4614a19bf524cec4879
 - name: github.com/dustin/go-humanize
   version: 8929fe90cee4b2cb9deb468b51fb34eba64d1bf0
+- name: github.com/fsnotify/fsnotify
+  version: fd9ec7deca8bf46ecd2a795baaacf2b3a9be1197
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
 - name: github.com/gogo/protobuf
@@ -85,7 +89,7 @@ imports:
   - vanity/test/slick
   - version
 - name: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/groupcache
   version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
   subpackages:
@@ -135,20 +139,39 @@ imports:
   - runtime/internal
   - third_party/googleapis/google/api
   - utilities
+- name: github.com/hashicorp/hcl
+  version: 3d702911d9708e8fea66cd77e04bd451ff25d3b1
+  subpackages:
+  - hcl/ast
+  - hcl/parser
+  - hcl/scanner
+  - hcl/strconv
+  - hcl/token
+  - json/parser
+  - json/scanner
+  - json/token
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jonboulle/clockwork
   version: 2eee05ed794112d45db504eb05aa693efd2b8b09
 - name: github.com/kr/pty
   version: f7ee69f31298ecbe5d2b349c711e2547a617d398
+- name: github.com/magiconair/properties
+  version: 0723e352fa358f9322c938cc2dadda874e9151a9
 - name: github.com/mattn/go-runewidth
-  version: d6bea18f789704b5f83375793155289da36a3c7f
+  version: 737072b4e32b7a5018b4a7125da8d12de90e8045
 - name: github.com/matttproud/golang_protobuf_extensions
-  version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
+  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
   subpackages:
   - pbutil
+- name: github.com/mitchellh/mapstructure
+  version: f3009df150dadf309fdee4a54ed65c124afad715
 - name: github.com/olekukonko/tablewriter
   version: cca8bbc0798408af109aaaa239cbd2634846b340
+- name: github.com/pelletier/go-buffruneio
+  version: df1e16fde7fc330a0ca68167c23bf7ed6ac31d6d
+- name: github.com/pelletier/go-toml
+  version: 45932ad32dfdd20826f5671da37a5f3ce9f26a8d
 - name: github.com/prometheus/client_golang
   version: e51041b3fa41cece0dca035740ba6411905be473
   subpackages:
@@ -158,22 +181,36 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: ffe929a3f4c4faeaa10f2b9535c2b1be3ad15650
+  version: f36a8da2241e626287bf1adfa7bc2f66bbc6770b
   subpackages:
   - expfmt
+  - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: 454a56f35412459b5e684fd5ec0f9211b94f002a
+  version: abf152e5f3e97f2fafac028d2cc06c1feb87ffa5
 - name: github.com/rogpeppe/fastuuid
   version: 6724a57986aff9bff1a1770e9347036def7c89f6
 - name: github.com/russross/blackfriday
-  version: 300106c228d52c8941d4b3de6054a6062a86dda3
+  version: 5f33e7b7878355cd2b7e6b8eefc48a5472c69f70
 - name: github.com/shurcooL/sanitized_anchor_name
-  version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
+  version: 1dba4b3954bc059efc3991ec364f9f9a35f597d2
+- name: github.com/spf13/afero
+  version: 06b7e5f50606ecd49148a01a6008942d9b669217
+  subpackages:
+  - mem
+- name: github.com/spf13/cast
+  version: 2580bc98dc0e62908119e4737030cc2fdfc45e4c
 - name: github.com/spf13/cobra
-  version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
+  version: 6e91dded25d73176bf7f60b40dd7aa1f0bf9be8d
+  subpackages:
+  - cobra/cmd
+  - doc
+- name: github.com/spf13/jwalterweatherman
+  version: 33c24e77fb80341fe7130ee7c594256ff08ccc46
 - name: github.com/spf13/pflag
   version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
+- name: github.com/spf13/viper
+  version: 651d9d916abc3c3d6a91a12549495caba5edffd2
 - name: github.com/stretchr/testify
   version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
   subpackages:
@@ -203,9 +240,14 @@ imports:
   - trace
   - websocket
 - name: golang.org/x/sys
-  version: 9c60d1c508f5134d1ca726b4641db998f2523357
+  version: b699b7032584f0953262cb2788a0ca19bb494703
   subpackages:
   - unix
+- name: golang.org/x/text
+  version: a263ba8db058568bb9beba166777d9c9dbe75d68
+  subpackages:
+  - transform
+  - unicode/norm
 - name: golang.org/x/time
   version: a4bde12657593d5e90d0533a3e4fd95e635124cb
   subpackages:
@@ -258,7 +300,7 @@ imports:
   - refactor/rename
   - refactor/satisfy
 - name: google.golang.org/appengine
-  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
+  version: 150dc57a1b433e64154302bdc40b6bb8aefa313a
   subpackages:
   - datastore
   - internal
