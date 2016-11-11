@@ -334,7 +334,7 @@ func (q *Query) toProto(dst *pb.Query, appID string) error {
 // Count returns the number of results for the query.
 //
 // The running time and number of API calls made by Count scale linearly with
-// with the sum of the query's offset and limit. Unless the result count is
+// the sum of the query's offset and limit. Unless the result count is
 // expected to be small, it is best to specify a limit; otherwise Count will
 // continue until it finishes counting or the provided context expires.
 func (q *Query) Count(c context.Context) (int, error) {

@@ -187,9 +187,11 @@ func getStructCodecLocked(t reflect.Type) (ret *structCodec, retErr error) {
 
 	for i := range c.byIndex {
 		f := t.Field(i)
-		name, opts := f.Tag.Get("datastore"), ""
-		if i := strings.Index(name, ","); i != -1 {
-			name, opts = name[:i], name[i+1:]
+		tags := strings.Split(f.Tag.Get("datastore"), ",")
+		name := tags[0]
+		opts := make(map[string]bool)
+		for _, t := range tags[1:] {
+			opts[t] = true
 		}
 		if name == "" {
 			if !f.Anonymous {
@@ -246,7 +248,7 @@ func getStructCodecLocked(t reflect.Type) (ret *structCodec, retErr error) {
 
 		c.byIndex[i] = structTag{
 			name:    name,
-			noIndex: opts == "noindex",
+			noIndex: opts["noindex"],
 		}
 	}
 	c.complete = true

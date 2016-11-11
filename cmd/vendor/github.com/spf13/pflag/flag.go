@@ -242,6 +242,17 @@ func (f *FlagSet) HasFlags() bool {
 	return len(f.formal) > 0
 }
 
+// HasAvailableFlags returns a bool to indicate if the FlagSet has any flags
+// definied that are not hidden or deprecated.
+func (f *FlagSet) HasAvailableFlags() bool {
+	for _, flag := range f.formal {
+		if !flag.Hidden && len(flag.Deprecated) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // VisitAll visits the command-line flags in lexicographical order, calling
 // fn for each.  It visits all flags, even those not set.
 func VisitAll(fn func(*Flag)) {
@@ -405,7 +416,75 @@ func Set(name, value string) error {
 // otherwise, the default values of all defined flags in the set.
 func (f *FlagSet) PrintDefaults() {
 	usages := f.FlagUsages()
-	fmt.Fprintf(f.out(), "%s", usages)
+	fmt.Fprint(f.out(), usages)
+}
+
+// defaultIsZeroValue returns true if the default value for this flag represents
+// a zero value.
+func (f *Flag) defaultIsZeroValue() bool {
+	switch f.Value.(type) {
+	case boolFlag:
+		return f.DefValue == "false"
+	case *durationValue:
+		// Beginning in Go 1.7, duration zero values are "0s"
+		return f.DefValue == "0" || f.DefValue == "0s"
+	case *intValue, *int8Value, *int32Value, *int64Value, *uintValue, *uint8Value, *uint16Value, *uint32Value, *uint64Value, *countValue, *float32Value, *float64Value:
+		return f.DefValue == "0"
+	case *stringValue:
+		return f.DefValue == ""
+	case *ipValue, *ipMaskValue, *ipNetValue:
+		return f.DefValue == "<nil>"
+	case *intSliceValue, *stringSliceValue, *stringArrayValue:
+		return f.DefValue == "[]"
+	default:
+		switch f.Value.String() {
+		case "false":
+			return true
+		case "<nil>":
+			return true
+		case "":
+			return true
+		case "0":
+			return true
+		}
+		return false
+	}
+}
+
+// UnquoteUsage extracts a back-quoted name from the usage
+// string for a flag and returns it and the un-quoted usage.
+// Given "a `name` to show" it returns ("name", "a name to show").
+// If there are no back quotes, the name is an educated guess of the
+// type of the flag's value, or the empty string if the flag is boolean.
+func UnquoteUsage(flag *Flag) (name string, usage string) {
+	// Look for a back-quoted name, but avoid the strings package.
+	usage = flag.Usage
+	for i := 0; i < len(usage); i++ {
+		if usage[i] == '`' {
+			for j := i + 1; j < len(usage); j++ {
+				if usage[j] == '`' {
+					name = usage[i+1 : j]
+					usage = usage[:i] + name + usage[j+1:]
+					return name, usage
+				}
+			}
+			break // Only one back quote; use type name.
+		}
+	}
+
+	name = flag.Value.Type()
+	switch name {
+	case "bool":
+		name = ""
+	case "float64":
+		name = "float"
+	case "int64":
+		name = "int"
+	case "uint64":
+		name = "uint"
+	}
+
+	return
 }
 
 // FlagUsages Returns a string containing the usage information for all flags in
@@ -413,35 +492,62 @@ func (f *FlagSet) PrintDefaults() {
 func (f *FlagSet) FlagUsages() string {
 	x := new(bytes.Buffer)
 
+	lines := make([]string, 0, len(f.formal))
+
+	maxlen := 0
 	f.VisitAll(func(flag *Flag) {
 		if len(flag.Deprecated) > 0 || flag.Hidden {
 			return
 		}
-		format := ""
+
+		line := ""
 		if len(flag.Shorthand) > 0 && len(flag.ShorthandDeprecated) == 0 {
-			format = "  -%s, --%s"
+			line = fmt.Sprintf("  -%s, --%s", flag.Shorthand, flag.Name)
 		} else {
-			format = "   %s   --%s"
+			line = fmt.Sprintf("      --%s", flag.Name)
+		}
+
+		varname, usage := UnquoteUsage(flag)
+		if len(varname) > 0 {
+			line += " " + varname
 		}
 		if len(flag.NoOptDefVal) > 0 {
-			format = format + "["
+			switch flag.Value.Type() {
+			case "string":
+				line += fmt.Sprintf("[=\"%s\"]", flag.NoOptDefVal)
+			case "bool":
+				if flag.NoOptDefVal != "true" {
+					line += fmt.Sprintf("[=%s]", flag.NoOptDefVal)
+				}
+			default:
+				line += fmt.Sprintf("[=%s]", flag.NoOptDefVal)
+			}
 		}
-		if flag.Value.Type() == "string" {
-			// put quotes on the value
-			format = format + "=%q"
-		} else {
-			format = format + "=%s"
+
+		// This special character will be replaced with spacing once the
+		// correct alignment is calculated
+		line += "\x00"
+		if len(line) > maxlen {
+			maxlen = len(line)
 		}
-		if len(flag.NoOptDefVal) > 0 {
-			format = format + "]"
+
+		line += usage
+		if !flag.defaultIsZeroValue() {
+			if flag.Value.Type() == "string" {
+				line += fmt.Sprintf(" (default \"%s\")", flag.DefValue)
+			} else {
+				line += fmt.Sprintf(" (default %s)", flag.DefValue)
+			}
 		}
-		format = format + ": %s\n"
-		shorthand := flag.Shorthand
-		if len(flag.ShorthandDeprecated) > 0 {
-			shorthand = ""
-		}
-		fmt.Fprintf(x, format, shorthand, flag.Name, flag.DefValue, flag.Usage)
+
+		lines = append(lines, line)
 	})
+
+	for _, line := range lines {
+		sidx := strings.Index(line, "\x00")
+		spacing := strings.Repeat(" ", maxlen-sidx)
+		fmt.Fprintln(x, line[:sidx], spacing, line[sidx+1:])
+	}
 
 	return x.String()
 }
@@ -463,6 +569,8 @@ func defaultUsage(f *FlagSet) {
 
 // Usage prints to standard error a usage message documenting all defined command-line flags.
 // The function is a variable that may be changed to point to a custom function.
+// By default it prints a simple header and calls PrintDefaults; for details about the
+// format of the output and how to control it, see the documentation for PrintDefaults.
 var Usage = func() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 	PrintDefaults()
@@ -683,6 +791,9 @@ func (f *FlagSet) parseLongArg(s string, args []string) (a []string, err error) 
 }
 
 func (f *FlagSet) parseSingleShortArg(shorthands string, args []string) (outShorts string, outArgs []string, err error) {
+	if strings.HasPrefix(shorthands, "test.") {
+		return
+	}
 	outArgs = args
 	outShorts = shorthands[1:]
 	c := shorthands[0]
@@ -806,7 +917,7 @@ func Parsed() bool {
 	return CommandLine.Parsed()
 }
 
-// The default set of command-line flags, parsed from os.Args.
+// CommandLine is the default set of command-line flags, parsed from os.Args.
 var CommandLine = NewFlagSet(os.Args[0], ExitOnError)
 
 // NewFlagSet returns a new, empty flag set with the specified name and
