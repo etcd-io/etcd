@@ -59,6 +59,7 @@ func newWatchBroadcast(wp *watchProxy, w *watcher, update func(*watchBroadcast))
 				clientv3.WithProgressNotify(),
 				clientv3.WithCreatedNotify(),
 				clientv3.WithRev(wb.nextrev),
+				clientv3.WithPrevKV(),
 			)
 			for wr := range wch {
 				wb.bcast(wr)
