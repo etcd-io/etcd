@@ -1,5 +1,5 @@
-hash: 8f08c3bce8763085ced495783b60d615963b489272464b049de15f3c97fe552c
-updated: 2016-11-10T17:32:45.127094636-08:00
+hash: c7001e49df78e2297642bfe301213badae9ac8c4a770b8aaa3ba3bfabd951f63
+updated: 2016-11-10T17:43:50.35956843-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -208,7 +208,7 @@ imports:
 - name: github.com/spf13/jwalterweatherman
   version: 33c24e77fb80341fe7130ee7c594256ff08ccc46
 - name: github.com/spf13/pflag
-  version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
+  version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/spf13/viper
   version: 651d9d916abc3c3d6a91a12549495caba5edffd2
 - name: github.com/stretchr/testify
