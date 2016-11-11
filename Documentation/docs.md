@@ -28,7 +28,7 @@ Administrators who need to create reliable and scalable key-value stores for the
  - [Run etcd clusters inside containers][container]
  - [Configuration][conf]
  - [Security][security]
- - Monitoring
+ - [Monitoring][monitoring]
  - [Maintenance][maintenance]
  - [Understand failures][failures]
  - [Disaster recovery][recovery]
@@ -72,6 +72,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 [recovery]: op-guide/recovery.md
 [maintenance]: op-guide/maintenance.md
 [security]: op-guide/security.md
+[monitoring]: op-guide/monitoring.md
 [v2_migration]: op-guide/v2-migration.md
 [container]: op-guide/container.md
 [understand_apis]: learning/api.md
