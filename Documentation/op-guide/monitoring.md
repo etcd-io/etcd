@@ -69,6 +69,11 @@ Access: proxy
 
 Then import the default [etcd dashboard template][template] and customize; see the [demo][demo].
 
+Sample dashboard:
+
+![](./etcd-sample-grafana.png)
+
+
 [prometheus]: https://prometheus.io/
 [grafana]: http://grafana.org/
 [template]: ./grafana.json
