@@ -211,6 +211,7 @@ func (wps *watchProxyStream) recvLoop() error {
 
 				nextrev:  cr.StartRevision,
 				progress: cr.ProgressNotify,
+				prevKV:   cr.PrevKv,
 				filters:  v3rpc.FiltersFromRequest(cr),
 			}
 			if !w.wr.valid() {

@@ -37,6 +37,7 @@ type watcher struct {
 	wr       watchRange
 	filters  []mvcc.FilterFunc
 	progress bool
+	prevKV   bool
 
 	// id is the id returned to the client on its watch stream.
 	id int64
@@ -78,18 +79,22 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		}
 
 		filtered := false
-		if len(w.filters) != 0 {
-			for _, filter := range w.filters {
-				if filter(*ev) {
-					filtered = true
-					break
-				}
+		for _, filter := range w.filters {
+			if filter(*ev) {
+				filtered = true
+				break
 			}
 		}
-
-		if !filtered {
-			events = append(events, ev)
+		if filtered {
+			continue
 		}
+
+		if !w.prevKV {
+			evCopy := *ev
+			evCopy.PrevKv = nil
+			ev = &evCopy
+		}
+		events = append(events, ev)
 	}
 
 	if lastRev >= w.nextrev {
