@@ -82,31 +82,7 @@ All these metrics are prefixed with `etcd_network_`
 
 ### gRPC requests
 
-These metrics describe the requests served by a specific etcd member: total received requests, total failed requests, and processing latency. They are useful for tracking user-generated traffic hitting the etcd cluster.
-
-All these metrics are prefixed with `etcd_grpc_`
-
-| Name                           | Description                                                                         | Type                   |
-|--------------------------------|-------------------------------------------------------------------------------------|------------------------|
-| requests_total                 | Total number of received requests                                                   | Counter(method)        |
-| requests_failed_total                   | Total number of failed requests.                                                    | Counter(method,error)  |
-| active_streams                   | Total number of active streams.                                                    | Gauge(method)  |
-| unary_requests_duration_seconds     | Bucketed handling duration of the requests.                                         | Histogram(method)      |
-
-
-Example Prometheus queries that may be useful from these metrics (across all etcd members):
- 
- * `sum(rate(etcd_grpc_requests_failed_total{job="etcd"}[1m]) by (grpc_method) / sum(rate(etcd_grpc_total{job="etcd"})[1m]) by (grpc_method)` 
-    
-    Shows the fraction of events that failed by gRPC method across all members, across a time window of `1m`.
- 
- * `sum(rate(etcd_grpc_requests_total{job="etcd",grpc_method="PUT"})[1m]) by (grpc_method)`
-    
-    Shows the rate of PUT requests across all members, across a time window of `1m`.
-    
- * `histogram_quantile(0.9, sum(rate(etcd_grpc_unary_requests_duration_seconds{job="etcd",grpc_method="PUT"}[5m]) ) by (le))`
-    
-    Show the 0.90-tile latency (in seconds) of PUT request handling across all members, with a window of `5m`. 
+These metrics are exposed via [go-grpc-prometheus][go-grpc-prometheus].
 
 ## etcd_debugging namespace metrics
 
@@ -137,3 +113,4 @@ Heavy file descriptor (`process_open_fds`) usage (i.e., near the process's file 
 [prometheus-getting-started]: http://prometheus.io/docs/introduction/getting_started/
 [prometheus-naming]: http://prometheus.io/docs/practices/naming/
 [v2-http-metrics]: v2/metrics.md#http-requests
+[go-grpc-prometheus]: https://github.com/grpc-ecosystem/go-grpc-prometheus

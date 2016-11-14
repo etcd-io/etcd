@@ -115,20 +115,20 @@
                     "stack": false,
                     "steppedLine": false,
                     "targets": [{
-                            "expr": "sum(rate(etcd_grpc_requests_total [1m]))",
+                            "expr": "sum(rate({grpc_type=\"unary\",grpc_code!=\"OK\"} [1m]))",
                             "intervalFactor": 2,
                             "legendFormat": "{{instance}} RPC Rate",
-                            "metric": "etcd_grpc_requests_total",
+                            "metric": "grpc_server_started_total",
                             "refId": "A",
-                            "step": 4
+                            "step": 2
                         },
                         {
-                            "expr": "sum(rate(etcd_grpc_requests_failed_total [1m]))",
+                            "expr": "sum(rate(grpc_server_started_total{grpc_type=\"unary\",grpc_code!=\"OK\"} [1m])) - sum(rate(grpc_server_handled_total{grpc_type=\"unary\"} [1m]))",
                             "intervalFactor": 2,
                             "legendFormat": "{{instance}} RPC Failed Rate",
-                            "metric": "etcd_grpc_requests_failed_total",
+                            "metric": "grpc_server_handled_total",
                             "refId": "B",
-                            "step": 4
+                            "step": 2
                         }
                     ],
                     "thresholds": [],
@@ -197,18 +197,18 @@
                     "stack": true,
                     "steppedLine": false,
                     "targets": [{
-                            "expr": "sum(etcd_grpc_active_streams {grpc_service=\"etcdserverpb.Watch\"})",
+                            "expr": "sum(grpc_server_started_total {grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",grpc_code!=\"OK\"}) - sum(grpc_server_handled_total {grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"})",
                             "intervalFactor": 2,
                             "legendFormat": "Watch Streams",
-                            "metric": "etcd_grpc_active_streams",
+                            "metric": "grpc_server_handled_total",
                             "refId": "A",
                             "step": 4
                         },
                         {
-                            "expr": "sum(etcd_grpc_active_streams {grpc_service=\"etcdserverpb.Lease\"})",
+                            "expr": "sum(grpc_server_started_total {grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"}) - sum(grpc_server_handled_total {grpc_service=\"etcdserverpb.Lease\",grpc_type=\"bidi_stream\"})",
                             "intervalFactor": 2,
                             "legendFormat": "Lease Streams",
-                            "metric": "etcd_grpc_active_streams",
+                            "metric": "grpc_server_handled_total",
                             "refId": "B",
                             "step": 4
                         }
