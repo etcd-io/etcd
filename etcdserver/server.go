@@ -679,6 +679,9 @@ func (s *EtcdServer) run() {
 		if s.kv != nil {
 			s.kv.Close()
 		}
+		if s.authStore != nil {
+			s.authStore.Close()
+		}
 		if s.be != nil {
 			s.be.Close()
 		}
