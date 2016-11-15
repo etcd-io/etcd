@@ -81,7 +81,10 @@ func newWatchBroadcast(wp *watchProxy, w *watcher, update func(*watchBroadcast))
 func (wb *watchBroadcast) bcast(wr clientv3.WatchResponse) {
 	wb.mu.Lock()
 	defer wb.mu.Unlock()
-	wb.nextrev = wr.Header.Revision + 1
+	// watchers start on the given revision, if any; ignore header rev on create
+	if wb.responses > 0 || wb.nextrev == 0 {
+		wb.nextrev = wr.Header.Revision + 1
+	}
 	wb.responses++
 	for r := range wb.receivers {
 		r.send(wr)
