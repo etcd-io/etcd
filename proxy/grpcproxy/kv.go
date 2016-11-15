@@ -51,9 +51,10 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 	}
 
 	// cache linearizable as serializable
-	r.Serializable = true
+	req := *r
+	req.Serializable = true
 	gresp := (*pb.RangeResponse)(resp.Get())
-	p.cache.Add(r, gresp)
+	p.cache.Add(&req, gresp)
 
 	return gresp, nil
 }
@@ -79,9 +80,9 @@ func (p *kvProxy) txnToCache(reqs []*pb.RequestOp, resps []*pb.ResponseOp) {
 			rdr := reqs[i].GetRequestDeleteRange()
 			p.cache.Invalidate(rdr.Key, rdr.RangeEnd)
 		case *pb.ResponseOp_ResponseRange:
-			req := reqs[i].GetRequestRange()
+			req := *(reqs[i].GetRequestRange())
 			req.Serializable = true
-			p.cache.Add(req, tv.ResponseRange)
+			p.cache.Add(&req, tv.ResponseRange)
 		}
 	}
 }
