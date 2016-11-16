@@ -463,6 +463,7 @@ func (s *store) restore() error {
 			scheduledCompact = 0
 		}
 	}
+
 	tx.Unlock()
 
 	if scheduledCompact != 0 {

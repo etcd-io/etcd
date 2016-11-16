@@ -85,3 +85,40 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 		s.TxnEnd(id)
 	}
 }
+
+// benchmarkStoreRestore benchmarks the restore operation
+func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(be, &lease.FakeLessor{}, &i)
+	defer cleanup(s, be, tmpPath)
+
+	// arbitrary number of bytes
+	bytesN := 64
+	keys := createBytesSlice(bytesN, b.N)
+	vals := createBytesSlice(bytesN, b.N)
+
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < revsPerKey; j++ {
+			id := s.TxnBegin()
+			if _, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease); err != nil {
+				plog.Fatalf("txn put error: %v", err)
+			}
+			s.TxnEnd(id)
+		}
+	}
+	b.ResetTimer()
+	s = NewStore(be, &lease.FakeLessor{}, &i)
+}
+
+func BenchmarkStoreRestoreRevs1(b *testing.B) {
+	benchmarkStoreRestore(1, b)
+}
+
+func BenchmarkStoreRestoreRevs10(b *testing.B) {
+	benchmarkStoreRestore(10, b)
+}
+
+func BenchmarkStoreRestoreRevs20(b *testing.B) {
+	benchmarkStoreRestore(20, b)
+}
