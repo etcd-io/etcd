@@ -380,6 +380,11 @@ func (s *store) restore() error {
 
 	keyToLease := make(map[string]lease.LeaseID)
 
+	// use an unordered map to hold the temp index data to speed up
+	// the initial key index recovery.
+	// we will convert this unordered map into the tree index later.
+	unordered := make(map[string]*keyIndex, 100000)
+
 	// restore index
 	tx := s.b.BatchTx()
 	tx.Lock()
@@ -402,11 +407,20 @@ func (s *store) restore() error {
 		// restore index
 		switch {
 		case isTombstone(key):
-			s.kvindex.Tombstone(kv.Key, rev)
+			if ki, ok := unordered[string(kv.Key)]; ok {
+				ki.tombstone(rev.main, rev.sub)
+			}
 			delete(keyToLease, string(kv.Key))
 
 		default:
-			s.kvindex.Restore(kv.Key, revision{kv.CreateRevision, 0}, rev, kv.Version)
+			ki, ok := unordered[string(kv.Key)]
+			if ok {
+				ki.put(rev.main, rev.sub)
+			} else {
+				ki = &keyIndex{key: kv.Key}
+				ki.restore(revision{kv.CreateRevision, 0}, rev, kv.Version)
+				unordered[string(kv.Key)] = ki
+			}
 
 			if lid := lease.LeaseID(kv.Lease); lid != lease.NoLease {
 				keyToLease[string(kv.Key)] = lid
@@ -417,6 +431,11 @@ func (s *store) restore() error {
 
 		// update revision
 		s.currentRev = rev
+	}
+
+	// restore the tree index from the unordered index.
+	for _, v := range unordered {
+		s.kvindex.Insert(v)
 	}
 
 	// keys in the range [compacted revision -N, compaction] might all be deleted due to compaction.
@@ -444,7 +463,6 @@ func (s *store) restore() error {
 			scheduledCompact = 0
 		}
 	}
-
 	tx.Unlock()
 
 	if scheduledCompact != 0 {
