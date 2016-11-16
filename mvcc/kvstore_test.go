@@ -405,9 +405,14 @@ func TestStoreRestore(t *testing.T) {
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
 	}
+
+	gens := []generation{
+		{created: revision{4, 0}, ver: 2, revs: []revision{{3, 0}, {5, 0}}},
+		{created: revision{0, 0}, ver: 0, revs: nil},
+	}
+	ki := &keyIndex{key: []byte("foo"), modified: revision{5, 0}, generations: gens}
 	wact = []testutil.Action{
-		{"restore", []interface{}{[]byte("foo"), revision{4, 0}, revision{3, 0}, int64(1)}},
-		{"tombstone", []interface{}{[]byte("foo"), revision{5, 0}}},
+		{"insert", []interface{}{ki}},
 	}
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
@@ -667,6 +672,10 @@ func (i *fakeIndex) Compact(rev int64) map[revision]struct{} {
 	return <-i.indexCompactRespc
 }
 func (i *fakeIndex) Equal(b index) bool { return false }
+
+func (i *fakeIndex) Insert(ki *keyIndex) {
+	i.Recorder.Record(testutil.Action{Name: "insert", Params: []interface{}{ki}})
+}
 
 func createBytesSlice(bytesN, sliceN int) [][]byte {
 	rs := [][]byte{}
