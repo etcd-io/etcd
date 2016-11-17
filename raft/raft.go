@@ -813,6 +813,7 @@ func stepLeader(r *raft, m pb.Message) {
 		for i, e := range m.Entries {
 			if e.Type == pb.EntryConfChange {
 				if r.pendingConf {
+					r.logger.Infof("propose conf %s ignored since pending unapplied configuration", e.String())
 					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
 				}
 				r.pendingConf = true
@@ -1145,6 +1146,7 @@ func (r *raft) promotable() bool {
 }
 
 func (r *raft) addNode(id uint64) {
+	r.pendingConf = false
 	if _, ok := r.prs[id]; ok {
 		// Ignore any redundant addNode calls (which can happen because the
 		// initial bootstrapping entries are applied twice).
@@ -1152,7 +1154,6 @@ func (r *raft) addNode(id uint64) {
 	}
 
 	r.setProgress(id, 0, r.raftLog.lastIndex()+1)
-	r.pendingConf = false
 }
 
 func (r *raft) removeNode(id uint64) {
