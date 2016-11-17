@@ -12,22 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !linux !386,!amd64
+// +build linux
 
 package netutil
 
-import (
-	"fmt"
-	"runtime"
-)
+import "testing"
 
-// GetDefaultHost fetches the a resolvable name that corresponds
-// to the machine's default routable interface
-func GetDefaultHost() (string, error) {
-	return "", fmt.Errorf("default host not supported on %s_%s", runtime.GOOS, runtime.GOARCH)
-}
-
-// GetDefaultInterface fetches the device name of default routable interface.
-func GetDefaultInterface() (string, error) {
-	return "", fmt.Errorf("default host not supported on %s_%s", runtime.GOOS, runtime.GOARCH)
+func TestGetDefaultInterface(t *testing.T) {
+	ifc, err := GetDefaultInterface()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("default network interface: %q\n", ifc)
 }
