@@ -8,6 +8,8 @@ etcd v3 uses [gRPC][grpc] for its messaging protocol. The etcd project includes 
 
 The gateway accepts a [JSON mapping][json-mapping] for etcd's [protocol buffer][api-ref] message definitions. Note that `key` and `value` fields are defined as byte arrays and therefore must be base64 encoded in JSON.
 
+Use `curl` to put and get a key:
+
 ```bash
 <<COMMENT
 https://www.base64encode.org/
@@ -17,11 +19,24 @@ COMMENT
 
 curl -L http://localhost:2379/v3alpha/kv/put \
 	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+# {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"}}
 
 curl -L http://localhost:2379/v3alpha/kv/range \
 	-X POST -d '{"key": "Zm9v"}'
+# {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}],"count":"1"}
 ```
 
+Use `curl` to watch a key:
+
+```bash
+curl http://localhost:2379/v3alpha/watch \
+        -X POST -d '{"create_request": {"key":"Zm9v"} }' &
+# {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"1","raft_term":"2"},"created":true}}
+
+curl -L http://localhost:2379/v3alpha/kv/put \
+	-X POST -d '{"key": "Zm9v", "value": "YmFy"}' >/dev/null 2>&1
+# {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"2"},"events":[{"kv":{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}}]}}
+```
 
 ## Swagger
 

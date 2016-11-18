@@ -120,7 +120,8 @@ type cURLReq struct {
 	username string
 	password string
 
-	isTLS bool
+	isTLS   bool
+	timeout int
 
 	endpoint string
 
@@ -150,6 +151,9 @@ func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []stri
 		cmdArgs = append(cmdArgs, "-L", "-u", fmt.Sprintf("%s:%s", req.username, req.password), ep)
 	} else {
 		cmdArgs = append(cmdArgs, "-L", ep)
+	}
+	if req.timeout != 0 {
+		cmdArgs = append(cmdArgs, "-m", fmt.Sprintf("%d", req.timeout))
 	}
 
 	switch method {
