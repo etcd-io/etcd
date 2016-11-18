@@ -948,21 +948,23 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 // returned closing the WatchClient stream. Or the response will
 // be returned.
 func waitResponse(wc pb.Watch_WatchClient, timeout time.Duration) (bool, *pb.WatchResponse) {
-	rCh := make(chan *pb.WatchResponse)
+	rCh := make(chan *pb.WatchResponse, 1)
+	donec := make(chan struct{})
+	defer close(donec)
 	go func() {
 		resp, _ := wc.Recv()
-		rCh <- resp
+		select {
+		case rCh <- resp:
+		case <-donec:
+		}
 	}()
 	select {
 	case nr := <-rCh:
 		return false, nr
 	case <-time.After(timeout):
 	}
+	// didn't get response
 	wc.CloseSend()
-	rv, ok := <-rCh
-	if rv != nil || !ok {
-		return false, rv
-	}
 	return true, nil
 }
 
