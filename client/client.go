@@ -159,6 +159,7 @@ func (cfg *Config) checkRedirect() CheckRedirectFunc {
 type CancelableTransport interface {
 	http.RoundTripper
 	CancelRequest(req *http.Request)
+	CloseIdleConnections()
 }
 
 type CheckRedirectFunc func(via int) error

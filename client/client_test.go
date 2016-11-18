@@ -113,6 +113,9 @@ func (t *fakeTransport) CancelRequest(*http.Request) {
 	t.startCancel <- struct{}{}
 }
 
+func (t *fakeTransport) CloseIdleConnections() {
+}
+
 type fakeAction struct{}
 
 func (a *fakeAction) HTTPRequest(url.URL) *http.Request {
