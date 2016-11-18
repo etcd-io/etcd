@@ -655,9 +655,6 @@ func (i *fakeIndex) Range(key, end []byte, atRev int64) ([][]byte, []revision) {
 func (i *fakeIndex) Put(key []byte, rev revision) {
 	i.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{key, rev}})
 }
-func (i *fakeIndex) Restore(key []byte, created, modified revision, ver int64) {
-	i.Recorder.Record(testutil.Action{Name: "restore", Params: []interface{}{key, created, modified, ver}})
-}
 func (i *fakeIndex) Tombstone(key []byte, rev revision) error {
 	i.Recorder.Record(testutil.Action{Name: "tombstone", Params: []interface{}{key, rev}})
 	return nil
