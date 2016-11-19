@@ -116,13 +116,12 @@ func (wbs *watchBroadcasts) empty() bool { return len(wbs.bcasts) == 0 }
 
 func (wbs *watchBroadcasts) stop() {
 	wbs.mu.Lock()
-	defer wbs.mu.Unlock()
-
 	for wb := range wbs.bcasts {
 		wb.stop()
 	}
 	wbs.bcasts = nil
 	close(wbs.updatec)
+	wbs.mu.Unlock()
 	<-wbs.donec
 }
 
