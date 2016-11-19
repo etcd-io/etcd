@@ -17,6 +17,7 @@ package etcdmain
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -27,6 +28,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+
+	"github.com/cockroachdb/cmux"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -74,6 +79,16 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if l, err = transport.NewKeepAliveListener(l, "tcp", nil); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	plog.Infof("listening for grpc-proxy client requests on %s", grpcProxyListenAddr)
+	defer func() {
+		l.Close()
+		plog.Infof("stopping listening for grpc-proxy client requests on %s", grpcProxyListenAddr)
+	}()
+	m := cmux.New(l)
 
 	cfg, err := newClientCfg()
 	if err != nil {
@@ -94,15 +109,36 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	mainp := grpcproxy.NewMaintenanceProxy(client)
 	authp := grpcproxy.NewAuthProxy(client)
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	)
 	pb.RegisterKVServer(server, kvp)
 	pb.RegisterWatchServer(server, watchp)
 	pb.RegisterClusterServer(server, clusterp)
 	pb.RegisterLeaseServer(server, leasep)
 	pb.RegisterMaintenanceServer(server, mainp)
 	pb.RegisterAuthServer(server, authp)
+	grpc_prometheus.Register(server)
 
-	server.Serve(l)
+	errc := make(chan error)
+
+	grpcl := m.Match(cmux.HTTP2())
+	go func() { errc <- server.Serve(grpcl) }()
+
+	httpmux := http.NewServeMux()
+	httpmux.HandleFunc("/", http.NotFound)
+	httpmux.Handle("/metrics", prometheus.Handler())
+	srvhttp := &http.Server{
+		Handler: httpmux,
+	}
+	httpl := m.Match(cmux.HTTP1())
+	go func() { errc <- srvhttp.Serve(httpl) }()
+
+	go func() { errc <- m.Serve() }()
+
+	fmt.Fprintln(os.Stderr, <-errc)
+	os.Exit(1)
 }
 
 func newClientCfg() (*clientv3.Config, error) {
