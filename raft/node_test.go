@@ -325,13 +325,15 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	cc1 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
 	ccdata1, _ := cc1.Marshal()
 	n.ProposeConfChange(context.TODO(), cc1)
+	time.Sleep(time.Millisecond * 10)
 	// try add the same node again
 	n.ProposeConfChange(context.TODO(), cc1)
+	time.Sleep(time.Millisecond * 10)
 	// the new node join should be ok
 	cc2 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
 	ccdata2, _ := cc2.Marshal()
 	n.ProposeConfChange(context.TODO(), cc2)
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 10)
 
 	if len(rdyEntries) != 4 {
 		t.Errorf("len(entry) = %d, want %d, %v\n", len(rdyEntries), 3, rdyEntries)
