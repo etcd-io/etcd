@@ -301,9 +301,14 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	n.Campaign(context.TODO())
 	rdyEntries := make([]raftpb.Entry, 0)
 	ticker := time.NewTicker(time.Millisecond * 100)
+	done := make(chan struct{})
+	stop := make(chan struct{})
 	go func() {
+		defer close(done)
 		for {
 			select {
+			case <-stop:
+				return
 			case <-ticker.C:
 				n.Tick()
 			case rd := <-n.Ready():
@@ -334,6 +339,8 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	ccdata2, _ := cc2.Marshal()
 	n.ProposeConfChange(context.TODO(), cc2)
 	time.Sleep(time.Millisecond * 10)
+	close(stop)
+	<-done
 
 	if len(rdyEntries) != 4 {
 		t.Errorf("len(entry) = %d, want %d, %v\n", len(rdyEntries), 3, rdyEntries)
