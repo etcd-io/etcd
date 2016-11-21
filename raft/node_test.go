@@ -303,7 +303,8 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	ticker := time.NewTicker(time.Millisecond * 100)
 	done := make(chan struct{})
 	stop := make(chan struct{})
-	applyChan := make(chan struct{})
+	applyConfChan := make(chan struct{})
+
 	go func() {
 		defer close(done)
 		for {
@@ -322,25 +323,29 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 						var cc raftpb.ConfChange
 						cc.Unmarshal(e.Data)
 						n.ApplyConfChange(cc)
+						applyConfChan <- struct{}{}
 					}
 				}
 				n.Advance()
-				applyChan <- struct{}{}
 			}
 		}
 	}()
+
 	cc1 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
 	ccdata1, _ := cc1.Marshal()
 	n.ProposeConfChange(context.TODO(), cc1)
-	<-applyChan
+	<-applyConfChan
+
 	// try add the same node again
 	n.ProposeConfChange(context.TODO(), cc1)
-	<-applyChan
+	<-applyConfChan
+
 	// the new node join should be ok
 	cc2 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
 	ccdata2, _ := cc2.Marshal()
 	n.ProposeConfChange(context.TODO(), cc2)
-	<-applyChan
+	<-applyConfChan
+
 	close(stop)
 	<-done
 
