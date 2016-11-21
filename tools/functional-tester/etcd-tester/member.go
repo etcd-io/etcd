@@ -154,7 +154,7 @@ func (m *member) newClientV3() (*clientv3.Client, error) {
 }
 
 func (m *member) dialGRPC() (*grpc.ClientConn, error) {
-	return grpc.Dial(m.grpcAddr(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second))
+	return grpc.Dial(m.grpcAddr(), grpc.WithInsecure(), grpc.WithTimeout(5*time.Second), grpc.WithBlock())
 }
 
 // grpcAddr gets the host from clientURL so it works with grpc.Dial()
