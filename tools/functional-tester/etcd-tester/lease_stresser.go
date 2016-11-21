@@ -114,7 +114,7 @@ func (ls *leaseStresser) setupOnce() error {
 		panic("expect keysPerLease to be set")
 	}
 
-	conn, err := grpc.Dial(ls.endpoint, grpc.WithInsecure())
+	conn, err := grpc.Dial(ls.endpoint, grpc.WithInsecure(), grpc.WithBackoffMaxDelay(1*time.Second))
 	if err != nil {
 		return fmt.Errorf("%v (%s)", err, ls.endpoint)
 	}
