@@ -1022,7 +1022,7 @@ func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) err
 	// in the state machine layer
 	// However, both of membership change and role management requires the root privilege.
 	// So careful operation by admins can prevent the problem.
-	authInfo, err := s.AuthStore().AuthInfoFromCtx(ctx)
+	authInfo, err := s.AuthInfoFromCtx(ctx)
 	if err != nil {
 		return err
 	}

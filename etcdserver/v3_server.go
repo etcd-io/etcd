@@ -617,7 +617,7 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 // doSerialize handles the auth logic, with permissions checked by "chk", for a serialized request "get". Returns a non-nil error on authentication failure.
 func (s *EtcdServer) doSerialize(ctx context.Context, chk func(*auth.AuthInfo) error, get func()) error {
 	for {
-		ai, err := s.AuthStore().AuthInfoFromCtx(ctx)
+		ai, err := s.AuthInfoFromCtx(ctx)
 		if err != nil {
 			return err
 		}
@@ -652,7 +652,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		ID: s.reqIDGen.Next(),
 	}
 
-	authInfo, err := s.AuthStore().AuthInfoFromCtx(ctx)
+	authInfo, err := s.AuthInfoFromCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -801,4 +801,15 @@ func (s *EtcdServer) linearizableReadNotify(ctx context.Context) error {
 	case <-s.done:
 		return ErrStopped
 	}
+}
+
+func (s *EtcdServer) AuthInfoFromCtx(ctx context.Context) (*auth.AuthInfo, error) {
+	if s.Cfg.ClientCertAuthEnabled {
+		authInfo := s.AuthStore().AuthInfoFromTLS(ctx)
+		if authInfo != nil {
+			return authInfo, nil
+		}
+	}
+
+	return s.AuthStore().AuthInfoFromCtx(ctx)
 }

@@ -30,7 +30,9 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 )
 
 var (
@@ -159,6 +161,9 @@ type AuthStore interface {
 
 	// AuthInfoFromCtx gets AuthInfo from gRPC's context
 	AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error)
+
+	// AuthInfoFromTLS gets AuthInfo from TLS info of gRPC's context
+	AuthInfoFromTLS(ctx context.Context) *AuthInfo
 }
 
 type authStore struct {
@@ -948,6 +953,28 @@ func (as *authStore) isValidSimpleToken(token string, ctx context.Context) bool 
 	}
 
 	return false
+}
+
+func (as *authStore) AuthInfoFromTLS(ctx context.Context) *AuthInfo {
+	peer, ok := peer.FromContext(ctx)
+	if !ok || peer == nil || peer.AuthInfo == nil {
+		return nil
+	}
+
+	tlsInfo := peer.AuthInfo.(credentials.TLSInfo)
+	for _, chains := range tlsInfo.State.VerifiedChains {
+		for _, chain := range chains {
+			cn := chain.Subject.CommonName
+			plog.Debugf("found common name %s", cn)
+
+			return &AuthInfo{
+				Username: cn,
+				Revision: as.Revision(),
+			}
+		}
+	}
+
+	return nil
 }
 
 func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
