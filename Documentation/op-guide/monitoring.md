@@ -67,7 +67,9 @@ Url:    http://localhost:9090
 Access: proxy
 ```
 
-Then import the default [etcd dashboard template][template] and customize; see the [demo][demo].
+Then import the default [etcd dashboard template][template] and customize. For instance, if Prometheus data source name is `my-etcd`, the `datasource` field values in JSON also need to be `my-etcd`.
+
+See the [demo][demo].
 
 Sample dashboard:
 
