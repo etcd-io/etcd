@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -57,6 +59,7 @@ var (
 	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
 	ErrAuthNotEnabled       = errors.New("auth: authentication is not enabled")
 	ErrAuthOldRevision      = errors.New("auth: revision in header is old")
+	ErrInvalidAuthToken     = errors.New("auth: invalid auth token")
 
 	// BcryptCost is the algorithm cost / strength for hashing auth passwords
 	BcryptCost = bcrypt.DefaultCost
@@ -153,6 +156,9 @@ type AuthStore interface {
 
 	// Close does cleanup of AuthStore
 	Close() error
+
+	// AuthInfoFromCtx gets AuthInfo from gRPC's context
+	AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error)
 }
 
 type authStore struct {
@@ -167,6 +173,8 @@ type authStore struct {
 	simpleTokenKeeper *simpleTokenTTLKeeper
 
 	revision uint64
+
+	indexWaiter func(uint64) <-chan struct{}
 }
 
 func (as *authStore) AuthEnable() error {
@@ -871,7 +879,7 @@ func (as *authStore) isAuthEnabled() bool {
 	return as.enabled
 }
 
-func NewAuthStore(be backend.Backend) *authStore {
+func NewAuthStore(be backend.Backend, indexWaiter func(uint64) <-chan struct{}) *authStore {
 	tx := be.BatchTx()
 	tx.Lock()
 
@@ -883,6 +891,7 @@ func NewAuthStore(be backend.Backend) *authStore {
 		be:           be,
 		simpleTokens: make(map[string]string),
 		revision:     0,
+		indexWaiter:  indexWaiter,
 	}
 
 	as.commitRevision(tx)
@@ -920,4 +929,47 @@ func getRevision(tx backend.BatchTx) uint64 {
 
 func (as *authStore) Revision() uint64 {
 	return as.revision
+}
+
+func (as *authStore) isValidSimpleToken(token string, ctx context.Context) bool {
+	splitted := strings.Split(token, ".")
+	if len(splitted) != 2 {
+		return false
+	}
+	index, err := strconv.Atoi(splitted[1])
+	if err != nil {
+		return false
+	}
+
+	select {
+	case <-as.indexWaiter(uint64(index)):
+		return true
+	case <-ctx.Done():
+	}
+
+	return false
+}
+
+func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
+	md, ok := metadata.FromContext(ctx)
+	if !ok {
+		return nil, nil
+	}
+
+	ts, tok := md["token"]
+	if !tok {
+		return nil, nil
+	}
+
+	token := ts[0]
+	if !as.isValidSimpleToken(token, ctx) {
+		return nil, ErrInvalidAuthToken
+	}
+
+	authInfo, uok := as.AuthInfoFromToken(token)
+	if !uok {
+		plog.Warningf("invalid auth token: %s", token)
+		return nil, ErrInvalidAuthToken
+	}
+	return authInfo, nil
 }
