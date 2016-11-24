@@ -111,18 +111,20 @@ func actionUserAdd(c *cli.Context) error {
 	api, userarg := mustUserAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	defer cancel()
-	user, _, _ := getUsernamePassword("", userarg+":")
+
+	user, pass, err := getUsernamePassword("New password: ", userarg)
+
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error reading user/password:", err)
+		os.Exit(1)
+	}
 	currentUser, err := api.GetUser(ctx, user)
+
 	if currentUser != nil {
 		fmt.Fprintf(os.Stderr, "User %s already exists\n", user)
 		os.Exit(1)
 	}
 
-	_, pass, err := getUsernamePassword("New password: ", userarg)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error reading password:", err)
-		os.Exit(1)
-	}
 	err = api.AddUser(ctx, user, pass)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
