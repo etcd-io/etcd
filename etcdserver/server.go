@@ -459,7 +459,10 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
 
-	srv.authStore = auth.NewAuthStore(srv.be)
+	srv.authStore = auth.NewAuthStore(srv.be,
+		func(index uint64) <-chan struct{} {
+			return srv.applyWait.Wait(index)
+		})
 	if h := cfg.AutoCompactionRetention; h != 0 {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
@@ -1019,7 +1022,7 @@ func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) err
 	// in the state machine layer
 	// However, both of membership change and role management requires the root privilege.
 	// So careful operation by admins can prevent the problem.
-	authInfo, err := s.authInfoFromCtx(ctx)
+	authInfo, err := s.AuthStore().AuthInfoFromCtx(ctx)
 	if err != nil {
 		return err
 	}
