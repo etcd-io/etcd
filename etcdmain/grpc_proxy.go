@@ -15,6 +15,7 @@
 package etcdmain
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -119,7 +120,6 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	pb.RegisterLeaseServer(server, leasep)
 	pb.RegisterMaintenanceServer(server, mainp)
 	pb.RegisterAuthServer(server, authp)
-	grpc_prometheus.Register(server)
 
 	errc := make(chan error)
 
@@ -132,7 +132,14 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	srvhttp := &http.Server{
 		Handler: httpmux,
 	}
-	httpl := m.Match(cmux.HTTP1())
+
+	var httpl net.Listener
+	if cfg.TLS != nil {
+		srvhttp.TLSConfig = cfg.TLS
+		httpl = tls.NewListener(m.Match(cmux.Any()), cfg.TLS)
+	} else {
+		httpl = m.Match(cmux.HTTP1())
+	}
 	go func() { errc <- srvhttp.Serve(httpl) }()
 
 	go func() { errc <- m.Serve() }()
