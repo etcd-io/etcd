@@ -29,6 +29,11 @@ func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteD
 func TestCtlV3AuthRoleRevokeDuringOps(t *testing.T) { testCtl(t, authRoleRevokeDuringOpsTest) }
 func TestCtlV3AuthTxn(t *testing.T)                 { testCtl(t, authTestTxn) }
 func TestCtlV3AuthPerfixPerm(t *testing.T)          { testCtl(t, authTestPrefixPerm) }
+func TestCtlV3AuthMemberAdd(t *testing.T)           { testCtl(t, authTestMemberAdd) }
+func TestCtlV3AuthMemberRemove(t *testing.T) {
+	testCtl(t, authTestMemberRemove, withQuorum(), withNoStrictReconfig())
+}
+func TestCtlV3AuthMemberUpdate(t *testing.T) { testCtl(t, authTestMemberUpdate) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -451,6 +456,94 @@ func authTestPrefixPerm(cx ctlCtx) {
 	}
 
 	if err := ctlV3PutFailPerm(cx, clientv3.GetPrefixRangeEnd(prefix), "baz"); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestMemberAdd(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
+	// ordinal user cannot add a new member
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3MemberAdd(cx, peerURL); err == nil {
+		cx.t.Fatalf("ordinal user must not be allowed to add a member")
+	}
+
+	// root can add a new member
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3MemberAdd(cx, peerURL); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestMemberRemove(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	n1 := cx.cfg.clusterSize
+	if n1 < 2 {
+		cx.t.Fatalf("%d-node is too small to test 'member remove'", n1)
+	}
+	resp, err := getMemberList(cx)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	if n1 != len(resp.Members) {
+		cx.t.Fatalf("expected %d, got %d", n1, len(resp.Members))
+	}
+
+	var (
+		memIDToRemove = fmt.Sprintf("%x", resp.Header.MemberId)
+		clusterID     = fmt.Sprintf("%x", resp.Header.ClusterId)
+	)
+
+	// ordinal user cannot remove a member
+	cx.user, cx.pass = "test-user", "pass"
+	if err = ctlV3MemberRemove(cx, memIDToRemove, clusterID); err == nil {
+		cx.t.Fatalf("ordinal user must not be allowed to remove a member")
+	}
+
+	// root can remove a member
+	cx.user, cx.pass = "root", "root"
+	if err = ctlV3MemberRemove(cx, memIDToRemove, clusterID); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestMemberUpdate(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	mr, err := getMemberList(cx)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// ordinal user cannot update a member
+	cx.user, cx.pass = "test-user", "pass"
+	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
+	memberID := fmt.Sprintf("%x", mr.Members[0].ID)
+	if err = ctlV3MemberUpdate(cx, memberID, peerURL); err == nil {
+		cx.t.Fatalf("ordinal user must not be allowed to update a member")
+	}
+
+	// root can update a member
+	cx.user, cx.pass = "root", "root"
+	if err = ctlV3MemberUpdate(cx, memberID, peerURL); err != nil {
 		cx.t.Fatal(err)
 	}
 }
