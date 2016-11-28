@@ -1002,7 +1002,32 @@ func (s *EtcdServer) LeaderStats() []byte {
 
 func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
+func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) error {
+	if s.authStore == nil {
+		// In the context of ordinal etcd process, s.authStore will never be nil.
+		// This branch is for handling cases in server_test.go
+		return nil
+	}
+
+	// Note that this permission check is done in the API layer,
+	// so TOCTOU problem can be caused potentially in a schedule like this:
+	// update membership with user A -> revoke root role of A -> apply membership change
+	// in the state machine layer
+	// However, both of membership change and role management requires the root privilege.
+	// So careful operation by admins can prevent the problem.
+	authInfo, err := s.authInfoFromCtx(ctx)
+	if err != nil {
+		return err
+	}
+
+	return s.AuthStore().IsAdminPermitted(authInfo)
+}
+
 func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) error {
+	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+		return err
+	}
+
 	if s.Cfg.StrictReconfigCheck {
 		// by default StrictReconfigCheck is enabled; reject new members if unhealthy
 		if !s.cluster.IsReadyToAddNewMember() {
@@ -1029,6 +1054,10 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) erro
 }
 
 func (s *EtcdServer) RemoveMember(ctx context.Context, id uint64) error {
+	if err := s.checkMembershipOperationPermission(ctx); err != nil {
+		return err
+	}
+
 	// by default StrictReconfigCheck is enabled; reject removal if leads to quorum loss
 	if err := s.mayRemoveMember(types.ID(id)); err != nil {
 		return err
@@ -1068,8 +1097,12 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 }
 
 func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) error {
-	b, err := json.Marshal(memb)
-	if err != nil {
+	b, merr := json.Marshal(memb)
+	if merr != nil {
+		return merr
+	}
+
+	if err := s.checkMembershipOperationPermission(ctx); err != nil {
 		return err
 	}
 	cc := raftpb.ConfChange{
