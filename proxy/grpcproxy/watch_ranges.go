@@ -53,8 +53,7 @@ func (wrs *watchRanges) delete(w *watcher) {
 	if !ok {
 		panic("deleting missing range")
 	}
-	wbs.delete(w)
-	if wbs.empty() {
+	if wbs.delete(w) == 0 {
 		wbs.stop()
 		delete(wrs.bcasts, w.wr)
 	}
