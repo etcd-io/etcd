@@ -20,9 +20,15 @@ import (
 )
 
 const (
-	snapshotCount      = 10000
-	slowNetworkLatency = 500 // 500 millisecond
-	randomVariation    = 50
+	snapshotCount               = 10000
+	slowNetworkLatency          = 500   // 500 millisecond
+	partitionNetworkLatency     = 30000 // 30000 millisecond
+	randomVariation             = 50
+	packetCorruptionPercentage  = 25
+	packetLossPercentage        = 25
+	packetReorderingPercentage  = 25
+	packetReorderingCorrelation = 50
+	packetReorderingDelay       = 50 // 50 millisecond
 
 	// Wait more when it recovers from slow network, because network layer
 	// needs extra time to propagate traffic control (tc command) change.
@@ -97,6 +103,70 @@ func newFailureIsolateAll() failure {
 	}
 }
 
+func injectPacketCorruption(m *member) error {
+	if err := m.Agent.SetPacketCorruption(25); err != nil {
+		m.Agent.RemovePacketCorruption()
+		return err
+	}
+	return nil
+}
+
+func recoverPacketCorruption(m *member) error {
+	if err := m.Agent.RemovePacketCorruption(); err != nil {
+		return err
+	}
+	time.Sleep(waitRecover)
+	return nil
+}
+
+func injectPacketReordering(m *member) error {
+	if err := m.Agent.SetPacketReordering(packetReorderingPercentage, packetReorderingCorrelation, packetReorderingDelay); err != nil {
+		m.Agent.RemovePacketReordering()
+		return err
+	}
+	return nil
+}
+
+func recoverPacketReordering(m *member) error {
+	if err := m.Agent.RemovePacketReordering(); err != nil {
+		return err
+	}
+	time.Sleep(waitRecover)
+	return nil
+}
+
+func injectPacketLoss(m *member) error {
+	if err := m.Agent.SetPacketLoss(packetLossPercentage); err != nil {
+		m.Agent.RemovePacketLoss()
+		return err
+	}
+	return nil
+}
+
+func recoverPacketLoss(m *member) error {
+	if err := m.Agent.RemovePacketLoss(); err != nil {
+		return err
+	}
+	time.Sleep(waitRecover)
+	return nil
+}
+
+func injectPartitioning(m *member) error {
+	if err := m.Agent.SetPartitioning(partitionNetworkLatency, randomVariation); err != nil {
+		m.Agent.RemovePartitioning()
+		return err
+	}
+	return nil
+}
+
+func recoverPartitioning(m *member) error {
+	if err := m.Agent.RemovePartitioning(); err != nil {
+		return err
+	}
+	time.Sleep(waitRecover)
+	return nil
+}
+
 func injectLatency(m *member) error {
 	if err := m.Agent.SetLatency(slowNetworkLatency, randomVariation); err != nil {
 		m.Agent.RemoveLatency()
@@ -137,6 +207,118 @@ func newFailureSlowNetworkAll() failure {
 		description:   "slow down all members' network",
 		injectMember:  injectLatency,
 		recoverMember: recoverLatency,
+	}
+}
+
+func newFailureCorruptedNetworkOneMember() failure {
+	desc := fmt.Sprintf("inject packet corruption to one member's network with a probablity of %d", packetCorruptionPercentage)
+	return &failureOne{
+		description:   description(desc),
+		injectMember:  injectPacketCorruption,
+		recoverMember: recoverPacketCorruption,
+	}
+}
+
+func newFailureCorruptedNetworkLeader() failure {
+	desc := fmt.Sprintf("inject packet corruption to leader's network with a probablity of %d", packetCorruptionPercentage)
+	ff := failureByFunc{
+		description:   description(desc),
+		injectMember:  injectPacketCorruption,
+		recoverMember: recoverPacketCorruption,
+	}
+	return &failureLeader{ff, 0}
+}
+
+func newFailureCorruptedNetworkAll() failure {
+	desc := fmt.Sprintf("inject packet corruption to all member's network with a probablity of %d", packetCorruptionPercentage)
+	return &failureAll{
+		description:   description(desc),
+		injectMember:  injectPacketCorruption,
+		recoverMember: recoverPacketCorruption,
+	}
+}
+
+func newFailurePacketReorderingOneMember() failure {
+	desc := fmt.Sprintf("inject packet reordering to one member's network with a probablity of %d", packetCorruptionPercentage)
+	return &failureOne{
+		description:   description(desc),
+		injectMember:  injectPacketReordering,
+		recoverMember: recoverPacketReordering,
+	}
+}
+
+func newFailurePacketReorderingLeader() failure {
+	desc := fmt.Sprintf("inject packet reordering to leader's network with a probablity of %d", packetCorruptionPercentage)
+	ff := failureByFunc{
+		description:   description(desc),
+		injectMember:  injectPacketReordering,
+		recoverMember: recoverPacketReordering,
+	}
+	return &failureLeader{ff, 0}
+}
+
+func newFailurePacketReorderingAll() failure {
+	desc := fmt.Sprintf("inject packet reordering to all member's network with a probablity of %d", packetCorruptionPercentage)
+	return &failureAll{
+		description:   description(desc),
+		injectMember:  injectPacketReordering,
+		recoverMember: recoverPacketReordering,
+	}
+}
+
+func newFailurePacketLossOneMember() failure {
+	desc := fmt.Sprintf("inject packet loss to one member's network with a probablity of %d", packetLossPercentage)
+	return &failureOne{
+		description:   description(desc),
+		injectMember:  injectPacketLoss,
+		recoverMember: recoverPacketLoss,
+	}
+}
+
+func newFailurePacketLossLeader() failure {
+	desc := fmt.Sprintf("inject packet loss to leader's network with a probablity of %d", packetLossPercentage)
+	ff := failureByFunc{
+		description:   description(desc),
+		injectMember:  injectPacketLoss,
+		recoverMember: recoverPacketLoss,
+	}
+	return &failureLeader{ff, 0}
+}
+
+func newFailurePacketLossAll() failure {
+	desc := fmt.Sprintf("inject packet loss to all member's network with a probablity of %d", packetLossPercentage)
+	return &failureAll{
+		description:   description(desc),
+		injectMember:  injectPacketLoss,
+		recoverMember: recoverPacketLoss,
+	}
+}
+
+func newFailureNetworkPartitionOneMember() failure {
+	desc := fmt.Sprintf("create network partition to one member's network by adding %d ms latency", partitionNetworkLatency)
+	return &failureOne{
+		description:   description(desc),
+		injectMember:  injectPartitioning,
+		recoverMember: recoverPartitioning,
+	}
+}
+
+func newFailureNetworkPartitionLeader() failure {
+	desc := fmt.Sprintf("create network partition to one member's network by adding %d ms latency", partitionNetworkLatency)
+	ff := failureByFunc{
+		description:   description(desc),
+		injectMember:  injectPartitioning,
+		recoverMember: recoverPartitioning,
+	}
+	return &failureLeader{ff, 0}
+}
+
+func newFailureNetworkPartitionAll() failure {
+	desc := fmt.Sprintf("create network partition to one member's network by adding %d ms latency", partitionNetworkLatency)
+	return &failureAll{
+		description:   description(desc),
+		injectMember:  injectPartitioning,
+		recoverMember: recoverPartitioning,
 	}
 }
 

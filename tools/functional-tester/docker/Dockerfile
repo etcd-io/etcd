@@ -1,6 +1,6 @@
 FROM alpine
 RUN apk update 
-RUN apk add -v iptables sudo
+RUN apk --update add iptables bash iproute2
 ADD bin/etcd-agent /
 ADD bin/etcd /
 ADD bin/etcd-tester /

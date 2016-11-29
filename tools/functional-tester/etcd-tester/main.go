@@ -178,6 +178,18 @@ func makeFailures(types string, c *cluster) []failure {
 				newFailureSlowNetworkOneMember(),
 				newFailureSlowNetworkLeader(),
 				newFailureSlowNetworkAll(),
+				newFailureCorruptedNetworkOneMember(),
+				newFailureCorruptedNetworkLeader(),
+				newFailureCorruptedNetworkAll(),
+				newFailurePacketReorderingOneMember(),
+				newFailurePacketReorderingLeader(),
+				newFailurePacketReorderingAll(),
+				newFailurePacketLossOneMember(),
+				newFailurePacketLossLeader(),
+				newFailurePacketLossAll(),
+				newFailureNetworkPartitionOneMember(),
+				newFailureNetworkPartitionLeader(),
+				newFailureNetworkPartitionAll(),
 			}
 			failures = append(failures, defaultFailures...)
 
