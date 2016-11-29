@@ -26,7 +26,10 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 )
 
-const minLeaseTTL = int64(5)
+const (
+	minLeaseTTL         = int64(5)
+	minLeaseTTLDuration = time.Duration(minLeaseTTL) * time.Second
+)
 
 // TestLessorGrant ensures Lessor can grant wanted lease.
 // The granted lease should have a unique ID with a term
@@ -48,8 +51,8 @@ func TestLessorGrant(t *testing.T) {
 	if !reflect.DeepEqual(gl, l) {
 		t.Errorf("lease = %v, want %v", gl, l)
 	}
-	if l.expiry.Sub(time.Now()) < time.Duration(minLeaseTTL)*time.Second-time.Second {
-		t.Errorf("term = %v, want at least %v", l.expiry.Sub(time.Now()), time.Duration(minLeaseTTL)*time.Second-time.Second)
+	if l.Remaining() < minLeaseTTLDuration-time.Second {
+		t.Errorf("term = %v, want at least %v", l.Remaining(), minLeaseTTLDuration-time.Second)
 	}
 
 	nl, err := le.Grant(1, 1)
@@ -152,7 +155,7 @@ func TestLessorRenew(t *testing.T) {
 	}
 
 	l = le.Lookup(l.ID)
-	if l.expiry.Sub(time.Now()) < 9*time.Second {
+	if l.Remaining() < 9*time.Second {
 		t.Errorf("failed to renew the lease")
 	}
 }

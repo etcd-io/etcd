@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/etcd/lease/leasepb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/monotime"
 )
 
 const (
@@ -33,9 +34,8 @@ const (
 
 var (
 	leaseBucketName = []byte("lease")
-	// do not use maxInt64 since it can overflow time which will add
-	// the offset of unix time (1970yr to seconds).
-	forever = time.Unix(math.MaxInt64>>1, 0)
+
+	forever = monotime.Time(math.MaxInt64)
 
 	ErrNotPrimary    = errors.New("not a primary lessor")
 	ErrLeaseNotFound = errors.New("lease not found")
@@ -504,8 +504,8 @@ type Lease struct {
 	ttl int64 // time to live in seconds
 
 	itemSet map[LeaseItem]struct{}
-	// expiry time in unixnano
-	expiry  time.Time
+	// expiry is time when lease should expire
+	expiry  monotime.Time
 	revokec chan struct{}
 }
 
@@ -534,7 +534,7 @@ func (l *Lease) TTL() int64 {
 
 // refresh refreshes the expiry of the lease.
 func (l *Lease) refresh(extend time.Duration) {
-	l.expiry = time.Now().Add(extend + time.Second*time.Duration(l.ttl))
+	l.expiry = monotime.Now().Add(extend + time.Duration(l.ttl)*time.Second)
 }
 
 // forever sets the expiry of lease to be forever.
@@ -551,7 +551,7 @@ func (l *Lease) Keys() []string {
 
 // Remaining returns the remaining time of the lease.
 func (l *Lease) Remaining() time.Duration {
-	return l.expiry.Sub(time.Now())
+	return time.Duration(l.expiry - monotime.Now())
 }
 
 type LeaseItem struct {
