@@ -96,7 +96,8 @@ func (wbs *watchBroadcasts) add(w *watcher) {
 	wbs.bcasts[wb] = struct{}{}
 }
 
-func (wbs *watchBroadcasts) delete(w *watcher) {
+// delete removes a watcher and returns the number of remaining watchers.
+func (wbs *watchBroadcasts) delete(w *watcher) int {
 	wbs.mu.Lock()
 	defer wbs.mu.Unlock()
 
@@ -110,9 +111,8 @@ func (wbs *watchBroadcasts) delete(w *watcher) {
 		delete(wbs.bcasts, wb)
 		wb.stop()
 	}
+	return len(wbs.bcasts)
 }
-
-func (wbs *watchBroadcasts) empty() bool { return len(wbs.bcasts) == 0 }
 
 func (wbs *watchBroadcasts) stop() {
 	wbs.mu.Lock()
