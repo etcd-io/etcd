@@ -595,12 +595,13 @@ func TestV3StorageQuotaAPI(t *testing.T) {
 
 	defer clus.Terminate(t)
 	kvc := toGRPC(clus.Client(0)).KV
+	waitForRestart(t, kvc)
 
 	key := []byte("abc")
 
 	// test small put that fits in quota
 	smallbuf := make([]byte, 512)
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}, grpc.FailFast(false)); err != nil {
+	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -643,12 +644,13 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	clus.Members[0].Stop(t)
 	clus.Members[0].Restart(t)
 	clus.waitLeader(t, clus.Members)
+	waitForRestart(t, kvc0)
 
 	key := []byte("abc")
 
 	// test small put still works
 	smallbuf := make([]byte, 1024)
-	_, serr := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}, grpc.FailFast(false))
+	_, serr := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
 	if serr != nil {
 		t.Fatal(serr)
 	}
@@ -1149,4 +1151,15 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 
 func eqErrGRPC(err1 error, err2 error) bool {
 	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
+}
+
+// waitForRestart tries a range request until the client's server responds.
+// This is mainly a stop-gap function until grpcproxy's KVClient adapter
+// (and by extension, clientv3) supports grpc.CallOption pass-through so
+// FailFast=false works with Put.
+func waitForRestart(t *testing.T, kvc pb.KVClient) {
+	req := &pb.RangeRequest{Key: []byte("_"), Serializable: true}
+	if _, err := kvc.Range(context.TODO(), req, grpc.FailFast(false)); err != nil {
+		t.Fatal(err)
+	}
 }
