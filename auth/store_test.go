@@ -81,6 +81,7 @@ func TestCheckPassword(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -125,6 +126,7 @@ func TestUserDelete(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -161,6 +163,7 @@ func TestUserChangePassword(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -206,6 +209,7 @@ func TestRoleAdd(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
@@ -226,6 +230,7 @@ func TestUserGrant(t *testing.T) {
 	}()
 
 	as := NewAuthStore(b)
+	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)

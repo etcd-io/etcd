@@ -150,6 +150,9 @@ type AuthStore interface {
 
 	// CheckPassword checks a given pair of username and password is correct
 	CheckPassword(username, password string) (uint64, error)
+
+	// Close does cleanup of AuthStore
+	Close() error
 }
 
 type authStore struct {
@@ -159,13 +162,20 @@ type authStore struct {
 
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 
-	simpleTokensMu sync.RWMutex
-	simpleTokens   map[string]string // token -> username
+	simpleTokensMu    sync.RWMutex
+	simpleTokens      map[string]string // token -> username
+	simpleTokenKeeper *simpleTokenTTLKeeper
 
 	revision uint64
 }
 
 func (as *authStore) AuthEnable() error {
+	as.enabledMu.Lock()
+	defer as.enabledMu.Unlock()
+	if as.enabled {
+		plog.Noticef("Authentication already enabled")
+		return nil
+	}
 	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
@@ -185,9 +195,17 @@ func (as *authStore) AuthEnable() error {
 
 	tx.UnsafePut(authBucketName, enableFlagKey, authEnabled)
 
-	as.enabledMu.Lock()
 	as.enabled = true
-	as.enabledMu.Unlock()
+
+	tokenDeleteFunc := func(t string) {
+		as.simpleTokensMu.Lock()
+		defer as.simpleTokensMu.Unlock()
+		if username, ok := as.simpleTokens[t]; ok {
+			plog.Infof("deleting token %s for user %s", t, username)
+			delete(as.simpleTokens, t)
+		}
+	}
+	as.simpleTokenKeeper = NewSimpleTokenTTLKeeper(tokenDeleteFunc)
 
 	as.rangePermCache = make(map[string]*unifiedRangePermissions)
 
@@ -199,6 +217,11 @@ func (as *authStore) AuthEnable() error {
 }
 
 func (as *authStore) AuthDisable() {
+	as.enabledMu.Lock()
+	defer as.enabledMu.Unlock()
+	if !as.enabled {
+		return
+	}
 	b := as.be
 	tx := b.BatchTx()
 	tx.Lock()
@@ -207,15 +230,30 @@ func (as *authStore) AuthDisable() {
 	tx.Unlock()
 	b.ForceCommit()
 
-	as.enabledMu.Lock()
 	as.enabled = false
-	as.enabledMu.Unlock()
 
 	as.simpleTokensMu.Lock()
 	as.simpleTokens = make(map[string]string) // invalidate all tokens
 	as.simpleTokensMu.Unlock()
+	if as.simpleTokenKeeper != nil {
+		as.simpleTokenKeeper.stop()
+		as.simpleTokenKeeper = nil
+	}
 
 	plog.Noticef("Authentication disabled")
+}
+
+func (as *authStore) Close() error {
+	as.enabledMu.Lock()
+	defer as.enabledMu.Unlock()
+	if !as.enabled {
+		return nil
+	}
+	if as.simpleTokenKeeper != nil {
+		as.simpleTokenKeeper.stop()
+		as.simpleTokenKeeper = nil
+	}
+	return nil
 }
 
 func (as *authStore) Authenticate(ctx context.Context, username, password string) (*pb.AuthenticateResponse, error) {
@@ -608,6 +646,9 @@ func (as *authStore) AuthInfoFromToken(token string) (*AuthInfo, bool) {
 	as.simpleTokensMu.RLock()
 	defer as.simpleTokensMu.RUnlock()
 	t, ok := as.simpleTokens[token]
+	if ok {
+		as.simpleTokenKeeper.resetSimpleToken(token)
+	}
 	return &AuthInfo{Username: t, Revision: as.revision}, ok
 }
 
