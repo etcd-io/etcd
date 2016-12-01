@@ -75,7 +75,7 @@ func (tt *tester) runLoop() {
 		preModifiedKey = currentModifiedKey
 		timeout := 10 * time.Second
 		timeout += time.Duration(modifiedKey/compactQPS) * time.Second
-		plog.Printf("%s compacting %d modifications (timeout %v)", tt.logPrefix(), modifiedKey, timeout)
+		plog.Infof("%s compacting %d modifications (timeout %v)", tt.logPrefix(), modifiedKey, timeout)
 		if err := tt.compact(revToCompact, timeout); err != nil {
 			plog.Warningf("%s functional-tester compact got error (%v)", tt.logPrefix(), err)
 			if tt.cleanup() != nil {
@@ -92,7 +92,7 @@ func (tt *tester) runLoop() {
 		}
 	}
 
-	plog.Printf("%s functional-tester is finished", tt.logPrefix())
+	plog.Infof("%s functional-tester is finished", tt.logPrefix())
 }
 
 func (tt *tester) doRound(round int) error {
@@ -103,26 +103,31 @@ func (tt *tester) doRound(round int) error {
 		if err := tt.cluster.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
-		plog.Printf("%s injecting failure %q", tt.logPrefix(), f.Desc())
+		plog.Infof("%s injecting failure %q", tt.logPrefix(), f.Desc())
 		if err := f.Inject(tt.cluster, round); err != nil {
 			return fmt.Errorf("injection error: %v", err)
 		}
-		plog.Printf("%s injected failure", tt.logPrefix())
+		plog.Infof("%s injected failure", tt.logPrefix())
 
-		plog.Printf("%s recovering failure %q", tt.logPrefix(), f.Desc())
+		plog.Infof("%s recovering failure %q", tt.logPrefix(), f.Desc())
 		if err := f.Recover(tt.cluster, round); err != nil {
 			return fmt.Errorf("recovery error: %v", err)
 		}
-		plog.Printf("%s recovered failure", tt.logPrefix())
+		plog.Infof("%s recovered failure", tt.logPrefix())
 		tt.cancelStresser()
-		plog.Printf("%s wait until cluster is healthy", tt.logPrefix())
+		plog.Infof("%s wait until cluster is healthy", tt.logPrefix())
 		if err := tt.cluster.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
+		plog.Infof("%s cluster is healthy", tt.logPrefix())
+
+		plog.Infof("%s checking consistency and invariant of cluster", tt.logPrefix())
 		if err := tt.checkConsistency(); err != nil {
 			return fmt.Errorf("tt.checkConsistency error (%v)", err)
 		}
-		plog.Printf("%s succeed!", tt.logPrefix())
+		plog.Infof("%s checking consistency and invariant of cluster done", tt.logPrefix())
+
+		plog.Infof("%s succeed!", tt.logPrefix())
 	}
 	return nil
 }
@@ -134,7 +139,7 @@ func (tt *tester) updateRevision() error {
 		break // just need get one of the current revisions
 	}
 
-	plog.Printf("%s updated current revision to %d", tt.logPrefix(), tt.currentRevision)
+	plog.Infof("%s updated current revision to %d", tt.logPrefix(), tt.currentRevision)
 	return err
 }
 
@@ -150,7 +155,7 @@ func (tt *tester) checkConsistency() (err error) {
 		err = tt.startStresser()
 	}()
 	if err = tt.checker.Check(); err != nil {
-		plog.Printf("%s %v", tt.logPrefix(), err)
+		plog.Infof("%s %v", tt.logPrefix(), err)
 	}
 	return err
 }
@@ -163,24 +168,24 @@ func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
 		}
 	}()
 
-	plog.Printf("%s compacting storage (current revision %d, compact revision %d)", tt.logPrefix(), tt.currentRevision, rev)
+	plog.Infof("%s compacting storage (current revision %d, compact revision %d)", tt.logPrefix(), tt.currentRevision, rev)
 	if err = tt.cluster.compactKV(rev, timeout); err != nil {
 		return err
 	}
-	plog.Printf("%s compacted storage (compact revision %d)", tt.logPrefix(), rev)
+	plog.Infof("%s compacted storage (compact revision %d)", tt.logPrefix(), rev)
 
-	plog.Printf("%s checking compaction (compact revision %d)", tt.logPrefix(), rev)
+	plog.Infof("%s checking compaction (compact revision %d)", tt.logPrefix(), rev)
 	if err = tt.cluster.checkCompact(rev); err != nil {
 		plog.Warningf("%s checkCompact error (%v)", tt.logPrefix(), err)
 		return err
 	}
 
-	plog.Printf("%s confirmed compaction (compact revision %d)", tt.logPrefix(), rev)
+	plog.Infof("%s confirmed compaction (compact revision %d)", tt.logPrefix(), rev)
 	return nil
 }
 
 func (tt *tester) defrag() error {
-	plog.Printf("%s defragmenting...", tt.logPrefix())
+	plog.Infof("%s defragmenting...", tt.logPrefix())
 	if err := tt.cluster.defrag(); err != nil {
 		plog.Warningf("%s defrag error (%v)", tt.logPrefix(), err)
 		if cerr := tt.cleanup(); cerr != nil {
@@ -188,7 +193,7 @@ func (tt *tester) defrag() error {
 		}
 		return err
 	}
-	plog.Printf("%s defragmented...", tt.logPrefix())
+	plog.Infof("%s defragmented...", tt.logPrefix())
 	return nil
 }
 
@@ -225,15 +230,15 @@ func (tt *tester) cleanup() error {
 }
 
 func (tt *tester) cancelStresser() {
-	plog.Printf("%s canceling the stressers...", tt.logPrefix())
+	plog.Infof("%s canceling the stressers...", tt.logPrefix())
 	tt.stresser.Cancel()
-	plog.Printf("%s canceled stressers", tt.logPrefix())
+	plog.Infof("%s canceled stressers", tt.logPrefix())
 }
 
 func (tt *tester) startStresser() (err error) {
-	plog.Printf("%s starting the stressers...", tt.logPrefix())
+	plog.Infof("%s starting the stressers...", tt.logPrefix())
 	err = tt.stresser.Stress()
-	plog.Printf("%s started stressers", tt.logPrefix())
+	plog.Infof("%s started stressers", tt.logPrefix())
 	return err
 }
 

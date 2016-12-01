@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"time"
 
+	"google.golang.org/grpc"
+
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
@@ -77,20 +80,31 @@ func (hc *hashChecker) Check() error {
 	return hc.checkRevAndHashes()
 }
 
-type leaseChecker struct{ ls *leaseStresser }
+type leaseChecker struct {
+	ls          *leaseStresser
+	leaseClient pb.LeaseClient
+	kvc         pb.KVClient
+}
 
 func (lc *leaseChecker) Check() error {
-	plog.Infof("checking revoked leases %v", lc.ls.revokedLeases.leases)
+	conn, err := grpc.Dial(lc.ls.endpoint, grpc.WithInsecure(), grpc.WithBackoffMaxDelay(1))
+	if err != nil {
+		return fmt.Errorf("%v (%s)", err, lc.ls.endpoint)
+	}
+	defer func() {
+		if conn != nil {
+			conn.Close()
+		}
+	}()
+	lc.kvc = pb.NewKVClient(conn)
+	lc.leaseClient = pb.NewLeaseClient(conn)
 	if err := lc.check(true, lc.ls.revokedLeases.leases); err != nil {
 		return err
 	}
-	plog.Infof("checking alive leases %v", lc.ls.aliveLeases.leases)
 	if err := lc.check(false, lc.ls.aliveLeases.leases); err != nil {
 		return err
 	}
-	plog.Infof("checking short lived leases %v", lc.ls.shortLivedLeases.leases)
 	return lc.checkShortLivedLeases()
-
 }
 
 // checkShortLivedLeases ensures leases expire.
@@ -117,19 +131,19 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 	// retry in case of transient failure or lease is expired but not yet revoked due to the fact that etcd cluster didn't have enought time to delete it.
 	var resp *pb.LeaseTimeToLiveResponse
 	for i := 0; i < retries; i++ {
-		resp, err = lc.ls.getLeaseByID(ctx, leaseID)
+		resp, err = lc.getLeaseByID(ctx, leaseID)
 		if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
 			return nil
 		}
 		if err != nil {
-			plog.Warningf("retry %d. failed to retrieve lease %v error (%v)", i, leaseID, err)
+			plog.Debugf("retry %d. failed to retrieve lease %v error (%v)", i, leaseID, err)
 			continue
 		}
 		if resp.TTL > 0 {
-			plog.Warningf("lease %v is not expired. sleep for %d until it expires.", leaseID, resp.TTL)
+			plog.Debugf("lease %v is not expired. sleep for %d until it expires.", leaseID, resp.TTL)
 			time.Sleep(time.Duration(resp.TTL) * time.Second)
 		} else {
-			plog.Warningf("retry %d. lease %v is expired but not yet revoked", i, leaseID)
+			plog.Debugf("retry %d. lease %v is expired but not yet revoked", i, leaseID)
 			time.Sleep(time.Second)
 		}
 		if err = lc.checkLease(ctx, false, leaseID); err != nil {
@@ -141,12 +155,12 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 }
 
 func (lc *leaseChecker) checkLease(ctx context.Context, expired bool, leaseID int64) error {
-	keysExpired, err := lc.ls.hasKeysAttachedToLeaseExpired(ctx, leaseID)
+	keysExpired, err := lc.hasKeysAttachedToLeaseExpired(ctx, leaseID)
 	if err != nil {
 		plog.Errorf("hasKeysAttachedToLeaseExpired error: (%v)", err)
 		return err
 	}
-	leaseExpired, err := lc.ls.hasLeaseExpired(ctx, leaseID)
+	leaseExpired, err := lc.hasLeaseExpired(ctx, leaseID)
 	if err != nil {
 		plog.Errorf("hasLeaseExpired error: (%v)", err)
 		return err
@@ -169,6 +183,42 @@ func (lc *leaseChecker) check(expired bool, leases map[int64]time.Time) error {
 		}
 	}
 	return nil
+}
+
+func (lc *leaseChecker) getLeaseByID(ctx context.Context, leaseID int64) (*pb.LeaseTimeToLiveResponse, error) {
+	ltl := &pb.LeaseTimeToLiveRequest{ID: leaseID, Keys: true}
+	return lc.leaseClient.LeaseTimeToLive(ctx, ltl, grpc.FailFast(false))
+}
+
+func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
+	// keep retrying until lease's state is known or ctx is being canceled
+	for ctx.Err() == nil {
+		resp, err := lc.getLeaseByID(ctx, leaseID)
+		if err == nil {
+			return false, nil
+		}
+		if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
+			return true, nil
+		}
+		plog.Warningf("hasLeaseExpired %v resp %v error (%v)", leaseID, resp, err)
+	}
+	return false, ctx.Err()
+}
+
+// The keys attached to the lease has the format of "<leaseID>_<idx>" where idx is the ordering key creation
+// Since the format of keys contains about leaseID, finding keys base on "<leaseID>" prefix
+// determines whether the attached keys for a given leaseID has been deleted or not
+func (lc *leaseChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
+	resp, err := lc.kvc.Range(ctx, &pb.RangeRequest{
+		Key:      []byte(fmt.Sprintf("%d", leaseID)),
+		RangeEnd: []byte(clientv3.GetPrefixRangeEnd(fmt.Sprintf("%d", leaseID))),
+	}, grpc.FailFast(false))
+	plog.Debugf("hasKeysAttachedToLeaseExpired %v resp %v error (%v)", leaseID, resp, err)
+	if err != nil {
+		plog.Errorf("retriving keys attached to lease %v error: (%v)", leaseID, err)
+		return false, err
+	}
+	return len(resp.Kvs) == 0, nil
 }
 
 // compositeChecker implements a checker that runs a slice of Checkers concurrently.

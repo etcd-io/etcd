@@ -157,7 +157,7 @@ func (a *Agent) cleanup() error {
 	// https://github.com/torvalds/linux/blob/master/fs/drop_caches.c
 	cmd := exec.Command("/bin/sh", "-c", `echo "echo 1 > /proc/sys/vm/drop_caches" | sudo sh`)
 	if err := cmd.Run(); err != nil {
-		plog.Printf("error when cleaning page cache (%v)", err)
+		plog.Infof("error when cleaning page cache (%v)", err)
 	}
 	return nil
 }

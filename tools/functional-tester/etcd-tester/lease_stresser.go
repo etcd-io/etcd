@@ -22,7 +22,6 @@ import (
 
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
@@ -114,14 +113,6 @@ func (ls *leaseStresser) setupOnce() error {
 		panic("expect keysPerLease to be set")
 	}
 
-	conn, err := grpc.Dial(ls.endpoint, grpc.WithInsecure(), grpc.WithBackoffMaxDelay(1*time.Second))
-	if err != nil {
-		return fmt.Errorf("%v (%s)", err, ls.endpoint)
-	}
-	ls.conn = conn
-	ls.kvc = pb.NewKVClient(conn)
-	ls.lc = pb.NewLeaseClient(conn)
-
 	ls.aliveLeases = &atomicLeases{leases: make(map[int64]time.Time)}
 
 	return nil
@@ -132,6 +123,14 @@ func (ls *leaseStresser) Stress() error {
 	if err := ls.setupOnce(); err != nil {
 		return err
 	}
+
+	conn, err := grpc.Dial(ls.endpoint, grpc.WithInsecure(), grpc.WithBackoffMaxDelay(1*time.Second))
+	if err != nil {
+		return fmt.Errorf("%v (%s)", err, ls.endpoint)
+	}
+	ls.conn = conn
+	ls.kvc = pb.NewKVClient(conn)
+	ls.lc = pb.NewLeaseClient(conn)
 	ls.revokedLeases = &atomicLeases{leases: make(map[int64]time.Time)}
 	ls.shortLivedLeases = &atomicLeases{leases: make(map[int64]time.Time)}
 
@@ -255,42 +254,6 @@ func (ls *leaseStresser) randomlyDropLeases() {
 	wg.Wait()
 }
 
-func (ls *leaseStresser) getLeaseByID(ctx context.Context, leaseID int64) (*pb.LeaseTimeToLiveResponse, error) {
-	ltl := &pb.LeaseTimeToLiveRequest{ID: leaseID, Keys: true}
-	return ls.lc.LeaseTimeToLive(ctx, ltl, grpc.FailFast(false))
-}
-
-func (ls *leaseStresser) hasLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
-	// keep retrying until lease's state is known or ctx is being canceled
-	for ctx.Err() == nil {
-		resp, err := ls.getLeaseByID(ctx, leaseID)
-		if err == nil {
-			return false, nil
-		}
-		if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
-			return true, nil
-		}
-		plog.Warningf("hasLeaseExpired %v resp %v error (%v)", leaseID, resp, err)
-	}
-	return false, ctx.Err()
-}
-
-// The keys attached to the lease has the format of "<leaseID>_<idx>" where idx is the ordering key creation
-// Since the format of keys contains about leaseID, finding keys base on "<leaseID>" prefix
-// determines whether the attached keys for a given leaseID has been deleted or not
-func (ls *leaseStresser) hasKeysAttachedToLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
-	resp, err := ls.kvc.Range(ctx, &pb.RangeRequest{
-		Key:      []byte(fmt.Sprintf("%d", leaseID)),
-		RangeEnd: []byte(clientv3.GetPrefixRangeEnd(fmt.Sprintf("%d", leaseID))),
-	}, grpc.FailFast(false))
-	plog.Debugf("hasKeysAttachedToLeaseExpired %v resp %v error (%v)", leaseID, resp, err)
-	if err != nil {
-		plog.Errorf("retriving keys attached to lease %v error: (%v)", leaseID, err)
-		return false, err
-	}
-	return len(resp.Kvs) == 0, nil
-}
-
 func (ls *leaseStresser) createLease(ttl int64) (int64, error) {
 	resp, err := ls.lc.LeaseGrant(ls.ctx, &pb.LeaseGrantRequest{TTL: ttl})
 	if err != nil {
@@ -402,6 +365,7 @@ func (ls *leaseStresser) Cancel() {
 	ls.cancel()
 	ls.runWg.Wait()
 	ls.aliveWg.Wait()
+	ls.conn.Close()
 	plog.Infof("lease stresser %q is canceled", ls.endpoint)
 }
 
@@ -409,4 +373,4 @@ func (ls *leaseStresser) ModifiedKeys() int64 {
 	return atomic.LoadInt64(&ls.atomicModifiedKey)
 }
 
-func (ls *leaseStresser) Checker() Checker { return &leaseChecker{ls} }
+func (ls *leaseStresser) Checker() Checker { return &leaseChecker{ls: ls} }
