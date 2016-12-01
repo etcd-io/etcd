@@ -1128,8 +1128,12 @@ func TestV3WatchWithFilter(t *testing.T) {
 }
 
 func TestV3WatchWithPrevKV(t *testing.T) {
+	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
+
+	wctx, wcancel := context.WithCancel(context.Background())
+	defer wcancel()
 
 	tests := []struct {
 		key  string
@@ -1150,7 +1154,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		ws, werr := toGRPC(clus.RandClient()).Watch.Watch(context.TODO())
+		ws, werr := toGRPC(clus.RandClient()).Watch.Watch(wctx)
 		if werr != nil {
 			t.Fatal(werr)
 		}
