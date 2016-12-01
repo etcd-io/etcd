@@ -1,5 +1,5 @@
-hash: 93d5ee1318c98aca7c4b42e057239806a565e5aadebdd79e260f95c206098358
-updated: 2016-11-11T09:49:50.684453902-08:00
+hash: 7f6349986c1a1557cb2f4143288f539e1ded6b4bb74e1f9cbbda88127fe8790d
+updated: 2016-12-01T13:08:06.055744535+01:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -18,7 +18,7 @@ imports:
   subpackages:
   - semver
 - name: github.com/coreos/go-systemd
-  version: bfdc81d0d7e0fb19447b08571f63b774495251ce
+  version: 48702e0da86bd25e76cfef347e2adeb434a0d0a6
   subpackages:
   - daemon
   - journal
