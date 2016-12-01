@@ -11,7 +11,7 @@ import:
   subpackages:
   - semver
 - package: github.com/coreos/go-systemd
-  version: bfdc81d0d7e0fb19447b08571f63b774495251ce
+  version: 48702e0da86bd25e76cfef347e2adeb434a0d0a6
   subpackages:
   - daemon
   - journal
