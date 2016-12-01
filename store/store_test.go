@@ -127,23 +127,24 @@ func TestStoreGetSorted(t *testing.T) {
 	e, err := s.Get("/foo", true, true)
 	assert.Nil(t, err, "")
 	assert.Equal(t, e.EtcdIndex, eidx, "")
+
 	var yNodes NodeExterns
-	for _, node := range e.Node.Nodes {
-		switch node.Key {
-		case "/foo/x":
-		case "/foo/y":
+	sortedStrings := []string{"/foo/x", "/foo/y", "/foo/z"}
+	for i := range e.Node.Nodes {
+		node := e.Node.Nodes[i]
+		if node.Key != sortedStrings[i] {
+			t.Errorf("expect key = %s, got key = %s", sortedStrings[i], node.Key)
+		}
+		if node.Key == "/foo/y" {
 			yNodes = node.Nodes
-		case "/foo/z":
-		default:
-			t.Errorf("key = %s, not matched", node.Key)
 		}
 	}
-	for _, node := range yNodes {
-		switch node.Key {
-		case "/foo/y/a":
-		case "/foo/y/b":
-		default:
-			t.Errorf("key = %s, not matched", node.Key)
+
+	sortedStrings = []string{"/foo/y/a", "/foo/y/b"}
+	for i := range yNodes {
+		node := yNodes[i]
+		if node.Key != sortedStrings[i] {
+			t.Errorf("expect key = %s, got key = %s", sortedStrings[i], node.Key)
 		}
 	}
 }
