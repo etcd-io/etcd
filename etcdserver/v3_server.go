@@ -20,6 +20,7 @@ import (
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
@@ -54,7 +55,7 @@ type Lessor interface {
 
 	// LeaseRenew renews the lease with given ID. The renewed TTL is returned. Or an error
 	// is returned.
-	LeaseRenew(id lease.LeaseID) (int64, error)
+	LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error)
 }
 
 type Authenticator interface {
@@ -218,7 +219,7 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 	return result.resp.(*pb.LeaseRevokeResponse), nil
 }
 
-func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
+func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
 	ttl, err := s.lessor.Renew(id)
 	if err == nil {
 		return ttl, nil
@@ -228,15 +229,81 @@ func (s *EtcdServer) LeaseRenew(id lease.LeaseID) (int64, error) {
 	}
 
 	// renewals don't go through raft; forward to leader manually
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
+
+	// renewals don't go through raft; forward to leader manually
+	for cctx.Err() == nil && err != nil {
+		leader, lerr := s.waitLeader(cctx)
+		if lerr != nil {
+			return -1, lerr
+		}
+		for _, url := range leader.PeerURLs {
+			lurl := url + leasehttp.LeasePrefix
+			ttl, err = leasehttp.RenewHTTP(cctx, id, lurl, s.peerRt)
+			if err == nil || err == lease.ErrLeaseNotFound {
+				return ttl, err
+			}
+		}
+	}
+	return -1, ErrTimeout
+}
+
+func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
+	if s.Leader() == s.ID() {
+		// primary; timetolive directly from leader
+		le := s.lessor.Lookup(lease.LeaseID(r.ID))
+		if le == nil {
+			return nil, lease.ErrLeaseNotFound
+		}
+		// TODO: fill out ResponseHeader
+		resp := &pb.LeaseTimeToLiveResponse{Header: &pb.ResponseHeader{}, ID: r.ID, TTL: int64(le.Remaining().Seconds()), GrantedTTL: le.TTL()}
+		if r.Keys {
+			ks := le.Keys()
+			kbs := make([][]byte, len(ks))
+			for i := range ks {
+				kbs[i] = []byte(ks[i])
+			}
+			resp.Keys = kbs
+		}
+		return resp, nil
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
+	defer cancel()
+
+	// forward to leader
+	for cctx.Err() == nil {
+		leader, err := s.waitLeader(cctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, url := range leader.PeerURLs {
+			lurl := url + leasehttp.LeaseInternalPrefix
+			resp, err := leasehttp.TimeToLiveHTTP(cctx, lease.LeaseID(r.ID), r.Keys, lurl, s.peerRt)
+			if err == nil {
+				return resp.LeaseTimeToLiveResponse, nil
+			}
+			if err == lease.ErrLeaseNotFound {
+				return nil, err
+			}
+		}
+	}
+	return nil, ErrTimeout
+}
+
+func (s *EtcdServer) waitLeader(ctx context.Context) (*membership.Member, error) {
 	leader := s.cluster.Member(s.Leader())
-	for i := 0; i < 5 && leader == nil; i++ {
+	for leader == nil {
 		// wait an election
 		dur := time.Duration(s.Cfg.ElectionTicks) * time.Duration(s.Cfg.TickMs) * time.Millisecond
 		select {
 		case <-time.After(dur):
 			leader = s.cluster.Member(s.Leader())
-		case <-s.done:
-			return -1, ErrStopped
+		case <-s.stopping:
+			return nil, ErrStopped
+		case <-ctx.Done():
+			return nil, ErrNoLeader
 		}
 	}
 	if leader == nil || len(leader.PeerURLs) == 0 {
