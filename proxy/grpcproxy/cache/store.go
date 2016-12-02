@@ -34,6 +34,7 @@ type Cache interface {
 	Get(req *pb.RangeRequest) (*pb.RangeResponse, error)
 	Compact(revision int64)
 	Invalidate(key []byte, endkey []byte)
+	Size() int
 }
 
 // keyFunc returns the key of an request, which is used to look up in the cache for it's caching response.
@@ -153,4 +154,8 @@ func (c *cache) Compact(revision int64) {
 	if revision > c.compactedRev {
 		c.compactedRev = revision
 	}
+}
+
+func (c *cache) Size() int {
+	return c.lru.Len()
 }
