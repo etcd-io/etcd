@@ -29,9 +29,30 @@ var (
 		Name:      "events_coalescing_total",
 		Help:      "Total number of events coalescing",
 	})
+	cacheKeys = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "grpc_proxy",
+		Name:      "cache_keys_total",
+		Help:      "Total number of keys/ranges cached",
+	})
+	cacheHits = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "grpc_proxy",
+		Name:      "cache_hits_total",
+		Help:      "Total number of cache hits",
+	})
+	cachedMisses = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "grpc_proxy",
+		Name:      "cache_misses_total",
+		Help:      "Total number of cache misses",
+	})
 )
 
 func init() {
 	prometheus.MustRegister(watchersCoalescing)
 	prometheus.MustRegister(eventsCoalescing)
+	prometheus.MustRegister(cacheKeys)
+	prometheus.MustRegister(cacheHits)
+	prometheus.MustRegister(cachedMisses)
 }
