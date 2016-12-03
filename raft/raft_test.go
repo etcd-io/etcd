@@ -313,10 +313,9 @@ func testLeaderElection(t *testing.T, preVote bool) {
 
 		// three logs further along than 0, but in the same term so rejections
 		// are returned instead of the votes being ignored.
-		{newNetworkWithConfig(cfg, nil, ents(1), ents(1), ents(1, 1), nil), StateFollower, 1},
-
-		// logs converge
-		{newNetworkWithConfig(cfg, ents(1), nil, ents(2), ents(1), nil), StateLeader, 2},
+		{newNetworkWithConfig(cfg,
+			nil, entsWithConfig(cfg, 1), entsWithConfig(cfg, 1), entsWithConfig(cfg, 1, 1), nil),
+			StateFollower, 1},
 	}
 
 	for i, tt := range tests {
@@ -374,6 +373,82 @@ func testLeaderCycle(t *testing.T, preVote bool) {
 					"node %d had state = %v, want StateFollower",
 					preVote, campaignerID, sm.id, sm.state)
 			}
+		}
+	}
+}
+
+// TestLeaderElectionOverwriteNewerLogs tests a scenario in which a
+// newly-elected leader does *not* have the newest (i.e. highest term)
+// log entries, and must overwrite higher-term log entries with
+// lower-term ones.
+func TestLeaderElectionOverwriteNewerLogs(t *testing.T) {
+	testLeaderElectionOverwriteNewerLogs(t, false)
+}
+
+func TestLeaderElectionOverwriteNewerLogsPreVote(t *testing.T) {
+	testLeaderElectionOverwriteNewerLogs(t, true)
+}
+
+func testLeaderElectionOverwriteNewerLogs(t *testing.T, preVote bool) {
+	var cfg func(*Config)
+	if preVote {
+		cfg = preVoteConfig
+	}
+	// This network represents the results of the following sequence of
+	// events:
+	// - Node 1 won the election in term 1.
+	// - Node 1 replicated a log entry to node 2 but died before sending
+	//   it to other nodes.
+	// - Node 3 won the second election in term 2.
+	// - Node 3 wrote an entry to its logs but died without sending it
+	//   to any other nodes.
+	//
+	// At this point, nodes 1, 2, and 3 all have uncommitted entries in
+	// their logs and could win an election at term 3. The winner's log
+	// entry overwrites the losers'. (TestLeaderSyncFollowerLog tests
+	// the case where older log entries are overwritten, so this test
+	// focuses on the case where the newer entries are lost).
+	n := newNetworkWithConfig(cfg,
+		entsWithConfig(cfg, 1),     // Node 1: Won first election
+		entsWithConfig(cfg, 1),     // Node 2: Got logs from node 1
+		entsWithConfig(cfg, 2),     // Node 3: Won second election
+		votedWithConfig(cfg, 3, 2), // Node 4: Voted but didn't get logs
+		votedWithConfig(cfg, 3, 2)) // Node 5: Voted but didn't get logs
+
+	// Node 1 campaigns. The election fails because a quorum of nodes
+	// know about the election that already happened at term 2. Node 1's
+	// term is pushed ahead to 2.
+	n.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	sm1 := n.peers[1].(*raft)
+	if sm1.state != StateFollower {
+		t.Errorf("state = %s, want StateFollower", sm1.state)
+	}
+	if sm1.Term != 2 {
+		t.Errorf("term = %d, want 2", sm1.Term)
+	}
+
+	// Node 1 campaigns again with a higher term. This time it succeeds.
+	n.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+	if sm1.state != StateLeader {
+		t.Errorf("state = %s, want StateLeader", sm1.state)
+	}
+	if sm1.Term != 3 {
+		t.Errorf("term = %d, want 3", sm1.Term)
+	}
+
+	// Now all nodes agree on a log entry with term 1 at index 1 (and
+	// term 3 at index 2).
+	for i := range n.peers {
+		sm := n.peers[i].(*raft)
+		entries := sm.raftLog.allEntries()
+		if len(entries) != 2 {
+			t.Fatalf("node %d: len(entries) == %d, want 2", i, len(entries))
+		}
+		if entries[0].Term != 1 {
+			t.Errorf("node %d: term at index 1 == %d, want 1", i, entries[0].Term)
+		}
+		if entries[1].Term != 3 {
+			t.Errorf("node %d: term at index 2 == %d, want 3", i, entries[1].Term)
 		}
 	}
 }
@@ -2850,13 +2925,38 @@ func TestTransferNonMember(t *testing.T) {
 	}
 }
 
+// ents creates a raft state machine with a sequence of log entries at
+// the given terms.
 func ents(terms ...uint64) *raft {
+	return entsWithConfig(nil, terms...)
+}
+
+func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
 		storage.Append([]pb.Entry{{Index: uint64(i + 1), Term: term}})
 	}
-	sm := newTestRaft(1, []uint64{}, 5, 1, storage)
+	cfg := newTestConfig(1, []uint64{}, 5, 1, storage)
+	if configFunc != nil {
+		configFunc(cfg)
+	}
+	sm := newRaft(cfg)
 	sm.reset(terms[len(terms)-1])
+	return sm
+}
+
+// votedWithConfig creates a raft state machine with Vote and Term set
+// to the given value but no log entries (indicating that it voted in
+// the given term but has not received any logs).
+func votedWithConfig(configFunc func(*Config), vote, term uint64) *raft {
+	storage := NewMemoryStorage()
+	storage.SetHardState(pb.HardState{Vote: vote, Term: term})
+	cfg := newTestConfig(1, []uint64{}, 5, 1, storage)
+	if configFunc != nil {
+		configFunc(cfg)
+	}
+	sm := newRaft(cfg)
+	sm.reset(term)
 	return sm
 }
 
