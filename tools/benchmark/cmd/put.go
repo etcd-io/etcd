@@ -17,6 +17,7 @@ package cmd
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
@@ -42,6 +44,7 @@ var (
 	valSize int
 
 	putTotal int
+	putRate  int
 
 	keySpaceSize int
 	seqKeys      bool
@@ -54,6 +57,8 @@ func init() {
 	RootCmd.AddCommand(putCmd)
 	putCmd.Flags().IntVar(&keySize, "key-size", 8, "Key size of put request")
 	putCmd.Flags().IntVar(&valSize, "val-size", 8, "Value size of put request")
+	putCmd.Flags().IntVar(&putRate, "rate", 0, "Maximum puts per second (0 is no limit)")
+
 	putCmd.Flags().IntVar(&putTotal, "total", 10000, "Total number of put requests")
 	putCmd.Flags().IntVar(&keySpaceSize, "key-space-size", 1, "Maximum possible keys")
 	putCmd.Flags().BoolVar(&seqKeys, "sequential-keys", false, "Use sequential keys")
@@ -68,6 +73,10 @@ func putFunc(cmd *cobra.Command, args []string) {
 	}
 
 	requests := make(chan v3.Op, totalClients)
+	if putRate == 0 {
+		putRate = math.MaxInt32
+	}
+	limit := rate.NewLimiter(rate.Limit(putRate), 1)
 	clients := mustCreateClients(totalClients, totalConns)
 	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
@@ -81,6 +90,8 @@ func putFunc(cmd *cobra.Command, args []string) {
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for op := range requests {
+				limit.Wait(context.Background())
+
 				st := time.Now()
 				_, err := c.Do(context.Background(), op)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
