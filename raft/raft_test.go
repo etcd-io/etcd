@@ -236,7 +236,7 @@ func TestProgressIsPaused(t *testing.T) {
 			Paused: tt.paused,
 			ins:    newInflights(256),
 		}
-		if g := p.isPaused(); g != tt.w {
+		if g := p.IsPaused(); g != tt.w {
 			t.Errorf("#%d: paused= %t, want %t", i, g, tt.w)
 		}
 	}

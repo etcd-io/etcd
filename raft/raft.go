@@ -367,7 +367,7 @@ func (r *raft) send(m pb.Message) {
 // sendAppend sends RPC, with entries to the given peer.
 func (r *raft) sendAppend(to uint64) {
 	pr := r.prs[to]
-	if pr.isPaused() {
+	if pr.IsPaused() {
 		return
 	}
 	m := pb.Message{}
@@ -870,7 +870,7 @@ func stepLeader(r *raft, m pb.Message) {
 				r.sendAppend(m.From)
 			}
 		} else {
-			oldPaused := pr.isPaused()
+			oldPaused := pr.IsPaused()
 			if pr.maybeUpdate(m.Index) {
 				switch {
 				case pr.State == ProgressStateProbe:
