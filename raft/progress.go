@@ -155,8 +155,11 @@ func (pr *Progress) maybeDecrTo(rejected, last uint64) bool {
 func (pr *Progress) pause()  { pr.Paused = true }
 func (pr *Progress) resume() { pr.Paused = false }
 
-// isPaused returns whether progress stops sending message.
-func (pr *Progress) isPaused() bool {
+// IsPaused returns whether sending log entries to this node has been
+// paused. A node may be paused because it has rejected recent
+// MsgApps, is currently waiting for a snapshot, or has reached the
+// MaxInflightMsgs limit.
+func (pr *Progress) IsPaused() bool {
 	switch pr.State {
 	case ProgressStateProbe:
 		return pr.Paused
@@ -178,7 +181,7 @@ func (pr *Progress) needSnapshotAbort() bool {
 }
 
 func (pr *Progress) String() string {
-	return fmt.Sprintf("next = %d, match = %d, state = %s, waiting = %v, pendingSnapshot = %d", pr.Next, pr.Match, pr.State, pr.isPaused(), pr.PendingSnapshot)
+	return fmt.Sprintf("next = %d, match = %d, state = %s, waiting = %v, pendingSnapshot = %d", pr.Next, pr.Match, pr.State, pr.IsPaused(), pr.PendingSnapshot)
 }
 
 type inflights struct {
