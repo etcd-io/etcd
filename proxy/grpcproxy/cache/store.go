@@ -157,5 +157,7 @@ func (c *cache) Compact(revision int64) {
 }
 
 func (c *cache) Size() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.lru.Len()
 }
