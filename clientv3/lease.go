@@ -15,6 +15,7 @@
 package clientv3
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -68,6 +69,8 @@ const (
 	// NoLease is a lease ID for the absence of a lease.
 	NoLease LeaseID = 0
 )
+
+var ErrLeaseHalted = errors.New("etcdclient: leases halted")
 
 type Lease interface {
 	// Grant creates a new lease.
@@ -216,6 +219,14 @@ func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAl
 	ch := make(chan *LeaseKeepAliveResponse, leaseResponseChSize)
 
 	l.mu.Lock()
+	// ensure that recvKeepAliveLoop is still running
+	select {
+	case <-l.donec:
+		l.mu.Unlock()
+		close(ch)
+		return ch, ErrLeaseHalted
+	default:
+	}
 	ka, ok := l.keepAlives[id]
 	if !ok {
 		// create fresh keep alive
