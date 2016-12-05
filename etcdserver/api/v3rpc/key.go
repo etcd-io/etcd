@@ -134,6 +134,9 @@ func checkPutRequest(r *pb.PutRequest) error {
 	if len(r.Key) == 0 {
 		return rpctypes.ErrGRPCEmptyKey
 	}
+	if r.IgnoreValue && len(r.Value) != 0 {
+		return rpctypes.ErrGRPCValue
+	}
 	return nil
 }
 
