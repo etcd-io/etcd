@@ -113,6 +113,39 @@ func TestKVPut(t *testing.T) {
 	}
 }
 
+// TestKVPutWithIgnoreValue ensures that Put with WithIgnoreValue does not clobber the old value.
+func TestKVPutWithIgnoreValue(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+
+	_, err := kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue())
+	if err != rpctypes.ErrKeyNotFound {
+		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
+	}
+
+	if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue()); err != nil {
+		t.Fatal(err)
+	}
+	rr, rerr := kv.Get(context.TODO(), "foo")
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if len(rr.Kvs) != 1 {
+		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
+	}
+	if !bytes.Equal(rr.Kvs[0].Value, []byte("bar")) {
+		t.Fatalf("value expected 'bar', got %q", rr.Kvs[0].Value)
+	}
+}
+
 func TestKVPutWithRequireLeader(t *testing.T) {
 	defer testutil.AfterTest(t)
 
