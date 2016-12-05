@@ -187,7 +187,9 @@ func RangeRequestToOp(r *pb.RangeRequest) clientv3.Op {
 func PutRequestToOp(r *pb.PutRequest) clientv3.Op {
 	opts := []clientv3.OpOption{}
 	opts = append(opts, clientv3.WithLease(clientv3.LeaseID(r.Lease)))
-
+	if r.IgnoreValue {
+		opts = append(opts, clientv3.WithIgnoreValue())
+	}
 	return clientv3.OpPut(string(r.Key), string(r.Value), opts...)
 }
 
