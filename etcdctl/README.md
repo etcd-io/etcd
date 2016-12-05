@@ -29,6 +29,8 @@ RPC: Put
 
 - prev-kv -- return the previous key-value pair before modification.
 
+- ignore-value -- updates the key using its current value.
+
 #### Output
 
 `OK`
@@ -41,6 +43,8 @@ RPC: Put
 ./etcdctl get foo
 # foo
 # bar
+./etcdctl put foo --ignore-value # to detache lease
+# OK
 ```
 
 ```bash

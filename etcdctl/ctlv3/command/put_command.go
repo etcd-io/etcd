@@ -24,8 +24,9 @@ import (
 )
 
 var (
-	leaseStr  string
-	putPrevKV bool
+	leaseStr     string
+	putPrevKV    bool
+	putIgnoreVal bool
 )
 
 // NewPutCommand returns the cobra command for "put".
@@ -42,7 +43,9 @@ Insert '--' for workaround:
 $ put <key> -- <value>
 $ put -- <key> <value>
 
-If <value> isn't given as command line argument, this command tries to read the value from standard input.
+If <value> isn't given as a command line argument and '--ignore-value' is not specified,
+this command tries to read the value from standard input.
+
 For example,
 $ cat file | put <key>
 will store the content of the file to <key>.
@@ -51,6 +54,7 @@ will store the content of the file to <key>.
 	}
 	cmd.Flags().StringVar(&leaseStr, "lease", "0", "lease ID (in hexadecimal) to attach to the key")
 	cmd.Flags().BoolVar(&putPrevKV, "prev-kv", false, "return the previous key-value pair before modification")
+	cmd.Flags().BoolVar(&putIgnoreVal, "ignore-value", false, "updates the key using its current value")
 	return cmd
 }
 
@@ -73,9 +77,16 @@ func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpO
 	}
 
 	key := args[0]
-	value, err := argOrStdin(args, os.Stdin, 1)
-	if err != nil {
-		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
+	if putIgnoreVal && len(args) > 1 {
+		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs only 1 argument when 'ignore-value' is set."))
+	}
+	var value string
+	var err error
+	if !putIgnoreVal {
+		value, err = argOrStdin(args, os.Stdin, 1)
+		if err != nil {
+			ExitWithError(ExitBadArgs, fmt.Errorf("put command needs 1 argument and input from stdin or 2 arguments."))
+		}
 	}
 
 	id, err := strconv.ParseInt(leaseStr, 16, 64)
@@ -89,6 +100,9 @@ func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpO
 	}
 	if putPrevKV {
 		opts = append(opts, clientv3.WithPrevKV())
+	}
+	if putIgnoreVal {
+		opts = append(opts, clientv3.WithIgnoreValue())
 	}
 
 	return key, value, opts
