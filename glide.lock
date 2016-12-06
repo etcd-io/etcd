@@ -1,5 +1,5 @@
-hash: 7f6349986c1a1557cb2f4143288f539e1ded6b4bb74e1f9cbbda88127fe8790d
-updated: 2016-12-01T13:08:06.055744535+01:00
+hash: 18210c68d6ee307f3a92dc2c71089e8c2a63282260b7db51cb19cd5014f708b2
+updated: 2016-12-05T16:54:40.452165107+01:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -101,7 +101,7 @@ imports:
   subpackages:
   - assert
 - name: github.com/ugorji/go
-  version: f1f1a805ed361a0e078bb537e4ea78cd37dcf065
+  version: 9c7f9b7a2bc3a520f7c7b30b34b7f85f47fe27b6
   subpackages:
   - codec
 - name: github.com/urfave/cli
