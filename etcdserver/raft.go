@@ -135,6 +135,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 	r.applyc = make(chan apply)
 	r.stopped = make(chan struct{})
 	r.done = make(chan struct{})
+	internalTimeout := time.Second
 
 	go func() {
 		defer r.onStop()
@@ -167,6 +168,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				if len(rd.ReadStates) != 0 {
 					select {
 					case r.readStateC <- rd.ReadStates[len(rd.ReadStates)-1]:
+					case <-time.After(internalTimeout):
+						plog.Warningf("timed out sending read state")
 					case <-r.stopped:
 						return
 					}
