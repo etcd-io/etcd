@@ -51,12 +51,15 @@ To learn more about the concepts and internals behind etcd, read the following p
  - [Migrate applications from using API v2 to API v3][v2_migration]
  - [Updating v2.3 to v3.0][v3_upgrade]
 
-## Troubleshooting
+## Frequently Asked Questions (FAQ)
+
+Answers to [common questions] about etcd.
 
 [api_ref]: dev-guide/api_reference_v3.md
 [api_grpc_gateway]: dev-guide/api_grpc_gateway.md
 [clustering]: op-guide/clustering.md
 [conf]: op-guide/configuration.md
+[common questions]: faq.md
 [data_model]: learning/data_model.md
 [demo]: demo.md
 [download_build]: dl_build.md
