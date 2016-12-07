@@ -16,15 +16,20 @@ package e2e
 
 import "testing"
 
-func TestCtlV3Defrag(t *testing.T) { testCtl(t, defragTest) }
+func TestCtlV3Defrag(t *testing.T)         { testCtl(t, defragTest) }
+func TestCtlV3DefragWithAuth(t *testing.T) { testCtl(t, defragTestWithAuth) }
 
-func defragTest(cx ctlCtx) {
+func maintenanceInitKeys(cx ctlCtx) {
 	var kvs = []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
 	for i := range kvs {
 		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
 			cx.t.Fatal(err)
 		}
 	}
+}
+
+func defragTest(cx ctlCtx) {
+	maintenanceInitKeys(cx)
 
 	if err := ctlV3Compact(cx, 4, cx.compactPhysical); err != nil {
 		cx.t.Fatal(err)
@@ -32,6 +37,29 @@ func defragTest(cx ctlCtx) {
 
 	if err := ctlV3Defrag(cx); err != nil {
 		cx.t.Fatalf("defragTest ctlV3Defrag error (%v)", err)
+	}
+}
+
+func defragTestWithAuth(cx ctlCtx) {
+	maintenanceInitKeys(cx)
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// ordinal user cannot defrag
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3Defrag(cx); err == nil {
+		cx.t.Fatal("ordinal user should not be able to issue a defrag request")
+	}
+
+	// root can defrag
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3Defrag(cx); err != nil {
+		cx.t.Fatal(err)
 	}
 }
 
