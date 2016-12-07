@@ -41,7 +41,7 @@ func TestRenewHTTP(t *testing.T) {
 	ts := httptest.NewServer(NewHandler(le))
 	defer ts.Close()
 
-	ttl, err := RenewHTTP(l.ID, ts.URL+LeasePrefix, http.DefaultTransport, time.Second)
+	ttl, err := RenewHTTP(context.TODO(), l.ID, ts.URL+LeasePrefix, http.DefaultTransport)
 	if err != nil {
 		t.Fatal(err)
 	}
