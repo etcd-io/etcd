@@ -17,8 +17,15 @@ etcd 3.0 is our current stable branch. The roadmap below outlines new features t
   - Get only keys (ignore values)
   - Get only key count
 
-### etcd 3.2 (2017-Feb)
+### etcd 3.2 (2017-Apr)
 - Stable scalable proxy
-- JWT token based auth
+- Proxy-as-client interface passthrough
+- Lock service
+- Namespacing proxy
+- JWT token based authentication
+- Read-modify-write V3 Put
 - Improved watch performance
-- ...
+
+### etcd 3.3 (?)
+- TBD
+
