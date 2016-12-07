@@ -32,12 +32,7 @@ import (
 func TestCtlV3Snapshot(t *testing.T) { testCtl(t, snapshotTest) }
 
 func snapshotTest(cx ctlCtx) {
-	var kvs = []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
-	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatal(err)
-		}
-	}
+	maintenanceInitKeys(cx)
 
 	fpath := "test.snapshot"
 	defer os.RemoveAll(fpath)
@@ -240,5 +235,44 @@ func TestIssue6361(t *testing.T) {
 
 	if err = nepc.Stop(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCtlV3SnapshotWithAuth(t *testing.T) { testCtl(t, snapshotTestWithAuth) }
+
+func snapshotTestWithAuth(cx ctlCtx) {
+	maintenanceInitKeys(cx)
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	fpath := "test.snapshot"
+	defer os.RemoveAll(fpath)
+
+	// ordinal user cannot save a snapshot
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3SnapshotSave(cx, fpath); err == nil {
+		cx.t.Fatal("ordinal user should not be able to save a snapshot")
+	}
+
+	// root can save a snapshot
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
+		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
+	}
+
+	st, err := getSnapshotStatus(cx, fpath)
+	if err != nil {
+		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
+	}
+	if st.Revision != 4 {
+		cx.t.Fatalf("expected 4, got %d", st.Revision)
+	}
+	if st.TotalKey < 3 {
+		cx.t.Fatalf("expected at least 3, got %d", st.TotalKey)
 	}
 }
