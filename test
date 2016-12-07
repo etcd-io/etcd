@@ -125,15 +125,6 @@ function fmt_tests {
 	fi
 
 	if which gosimple >/dev/null; then
-		echo "Checking gosimple..."
-		for path in $GOSIMPLE_UNUSED_PATHS; do
-			simplResult=`gosimple $REPO_PATH/${path} || true`
-			if [ -n "${simplResult}" ]; then
-				echo -e "gosimple checking ${path} failed:\n${simplResult}"
-				exit 255
-			fi
-		done
-	else
 		echo "Skipping gosimple..."
 	fi
 	
