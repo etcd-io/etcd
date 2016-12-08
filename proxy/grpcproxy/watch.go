@@ -45,7 +45,7 @@ type watchProxy struct {
 }
 
 const (
-	lostLeaderKey  = "__lostleader" // watched to detect leader l oss
+	lostLeaderKey  = "__lostleader" // watched to detect leader loss
 	retryPerSecond = 10
 )
 
