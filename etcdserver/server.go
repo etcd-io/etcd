@@ -733,7 +733,9 @@ func (s *EtcdServer) run() {
 			plog.Infof("the data-dir used by this member must be removed.")
 			return
 		case <-getSyncC():
-			s.sync(s.Cfg.ReqTimeout())
+			if s.store.HasTTLKeys() {
+				s.sync(s.Cfg.ReqTimeout())
+			}
 		case <-s.stop:
 			return
 		}
