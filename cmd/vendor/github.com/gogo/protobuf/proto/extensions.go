@@ -587,9 +587,6 @@ func ExtensionDescs(pb Message) ([]*ExtensionDesc, error) {
 	registeredExtensions := RegisteredExtensions(pb)
 
 	emap, mu := epb.extensionsRead()
-	if emap == nil {
-		return nil, nil
-	}
 	mu.Lock()
 	defer mu.Unlock()
 	extensions := make([]*ExtensionDesc, 0, len(emap))
