@@ -113,6 +113,8 @@ GET gets the key or a range of keys [key, range_end) if `range-end` is given.
 
 - print-value-only -- print only value when used with write-out=simple
 
+- print-lease -- print out lease ID (in hex format) attached to the key (0 means no lease attached)
+
 - consistency -- Linearizable(l) or Serializable(s)
 
 - from-key -- Get keys that are greater than or equal to the given key using byte compare
@@ -123,7 +125,7 @@ GET gets the key or a range of keys [key, range_end) if `range-end` is given.
 
 ##### Simple reply
 
-- \<key\>\n\<value\>\n\<next_key\>\n\<next_value\>...
+- \<key\>\n\<value\>\n\[lease\]\n\<next_key\>\n\<next_value\>...
 
 - Error string if GET failed. Exit code is non-zero.
 

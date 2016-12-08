@@ -31,6 +31,8 @@ var (
 	getFromKey     bool
 	getRev         int64
 	getKeysOnly    bool
+	getPrintLease  bool
+
 	printValueOnly bool
 )
 
@@ -50,7 +52,9 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&getFromKey, "from-key", false, "Get keys that are greater than or equal to the given key using byte compare")
 	cmd.Flags().Int64Var(&getRev, "rev", 0, "Specify the kv revision")
 	cmd.Flags().BoolVar(&getKeysOnly, "keys-only", false, "Get only the keys")
+	cmd.Flags().BoolVar(&getPrintLease, "print-lease", false, `Print out lease ID (in hex format) attached to the key (0 means no lease attached)`)
 	cmd.Flags().BoolVar(&printValueOnly, "print-value-only", false, `Only write values when using the "simple" output format`)
+
 	return cmd
 }
 
@@ -64,8 +68,11 @@ func getCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
+	dp, simple := (display).(*simplePrinter)
+	if simple {
+		dp.lease = getPrintLease
+	}
 	if printValueOnly {
-		dp, simple := (display).(*simplePrinter)
 		if !simple {
 			ExitWithError(ExitBadArgs, fmt.Errorf("print-value-only is only for `--write-out=simple`."))
 		}
