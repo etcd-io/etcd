@@ -51,6 +51,7 @@ Suppose the etcd cluster has stored the following keys:
 ```bash
 foo = bar
 foo1 = bar1
+foo2 = bar2
 foo3 = bar3
 ```
 
@@ -77,22 +78,38 @@ $ etcdctl get foo --print-value-only
 bar
 ```
 
-Here is the command to range over the keys from `foo` to `foo9`:
+Here is the command to range over the keys from `foo` to `foo3`:
 
 ```bash
-$ etcdctl get foo foo9
+$ etcdctl get foo foo3
 foo
 bar
 foo1
 bar1
+foo2
+bar2
+```
+
+Note that `foo3` is excluded since the range is over the half-open interval `[foo, foo3)`, excluding `foo3`.
+
+Here is the command to range over all keys prefixed with `foo`:
+
+```bash
+$ etcdctl get --prefix foo
+foo
+bar
+foo1
+bar1
+foo2
+bar2
 foo3
 bar3
 ```
 
-Here is the command to range over the keys from `foo` to `foo9` limiting the number of results to 2:
+Here is the command to range over all keys prefixed with `foo`, limiting the number of results to 2:
 
 ```bash
-$ etcdctl get foo foo9 --limit 2
+$ etcdctl get --prefix --limit=2 foo
 foo
 bar
 foo1
@@ -116,29 +133,29 @@ foo1 = bar1_new   # revision = 5
 Here are an example to access the past versions of keys:
 
 ```bash
-$ etcdctl get foo foo9 # access the most recent versions of keys
+$ etcdctl get --prefix foo # access the most recent versions of keys
 foo
 bar_new
 foo1
 bar1_new
 
-$ etcdctl get --rev=4 foo foo9 # access the versions of keys at revision 4
+$ etcdctl get --prefix --rev=4 foo # access the versions of keys at revision 4
 foo
 bar_new
 foo1
 bar1
 
-$ etcdctl get --rev=3 foo foo9 # access the versions of keys at revision 3
+$ etcdctl get --prefix --rev=3 foo # access the versions of keys at revision 3
 foo
 bar
 foo1
 bar1
 
-$ etcdctl get --rev=2 foo foo9 # access the versions of keys at revision 2
+$ etcdctl get --prefix --rev=2 foo # access the versions of keys at revision 2
 foo
 bar
 
-$ etcdctl get --rev=1 foo foo9 # access the versions of keys at revision 1
+$ etcdctl get --prefix --rev=1 foo # access the versions of keys at revision 1
 ```
 
 ## Read keys which are greater than or equal to the byte value of the specified key
@@ -455,3 +472,4 @@ lease 694d5765fc71500b granted with TTL(500s), remaining(132s), attached keys([z
 # if the lease has expired or does not exist it will give the below response:
 Error:  etcdserver: requested lease not found
 ```
+
