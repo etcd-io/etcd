@@ -325,10 +325,6 @@ func ctlV3PutFailAuthDisabled(cx ctlCtx, key, val string) error {
 	return spawnWithExpect(append(cx.PrefixArgs(), "put", key, val), "authentication is not enabled")
 }
 
-func ctlV3GetFailPerm(cx ctlCtx, key string) error {
-	return spawnWithExpect(append(cx.PrefixArgs(), "get", key), "permission denied")
-}
-
 func authSetupTestUser(cx ctlCtx) {
 	if err := ctlV3User(cx, []string{"add", "test-user", "--interactive=false"}, "User test-user created", []string{"pass"}); err != nil {
 		cx.t.Fatal(err)
