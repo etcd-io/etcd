@@ -25,8 +25,6 @@ import (
 
 // watchBroadcast broadcasts a server watcher to many client watchers.
 type watchBroadcast struct {
-	// wbs is the backpointer to all broadcasts on this range
-	wbs *watchBroadcasts
 	// cancel stops the underlying etcd server watcher and closes ch.
 	cancel context.CancelFunc
 	donec  chan struct{}
