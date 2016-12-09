@@ -122,7 +122,7 @@ func TestNodePropose(t *testing.T) {
 		rd := <-n.Ready()
 		s.Append(rd.Entries)
 		// change the step function to appendStep until this raft becomes leader
-		if rd.SoftState.Lead == r.id {
+		if rd.SoftState.Lead == r.ID {
 			r.step = appendStep
 			n.Advance()
 			break
@@ -167,7 +167,7 @@ func TestNodeReadIndex(t *testing.T) {
 
 		s.Append(rd.Entries)
 
-		if rd.SoftState.Lead == r.id {
+		if rd.SoftState.Lead == r.ID {
 			n.Advance()
 			break
 		}
@@ -265,7 +265,7 @@ func TestNodeProposeConfig(t *testing.T) {
 		rd := <-n.Ready()
 		s.Append(rd.Entries)
 		// change the step function to appendStep until this raft becomes leader
-		if rd.SoftState.Lead == r.id {
+		if rd.SoftState.Lead == r.ID {
 			r.step = appendStep
 			n.Advance()
 			break

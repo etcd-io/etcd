@@ -600,10 +600,7 @@ type raftReadyHandler struct {
 }
 
 func (s *EtcdServer) run() {
-	snap, err := s.r.raftStorage.Snapshot()
-	if err != nil {
-		plog.Panicf("get snapshot from raft storage error: %v", err)
-	}
+	snap := s.r.raftStorage.Snapshot()
 
 	var (
 		smu   sync.RWMutex

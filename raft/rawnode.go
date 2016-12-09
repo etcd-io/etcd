@@ -80,10 +80,7 @@ func NewRawNode(config *Config, peers []Peer) (*RawNode, error) {
 	rn := &RawNode{
 		raft: r,
 	}
-	lastIndex, err := config.Storage.LastIndex()
-	if err != nil {
-		panic(err) // TODO(bdarnell)
-	}
+	lastIndex := config.Storage.LastIndex()
 	// If the log is empty, this is a new RawNode (like StartNode); otherwise it's
 	// restoring an existing RawNode (like RestartNode).
 	// TODO(bdarnell): rethink RawNode initialization and whether the application needs
@@ -146,7 +143,7 @@ func (rn *RawNode) Campaign() error {
 func (rn *RawNode) Propose(data []byte) error {
 	return rn.raft.Step(pb.Message{
 		Type: pb.MsgProp,
-		From: rn.raft.id,
+		From: rn.raft.ID,
 		Entries: []pb.Entry{
 			{Data: data},
 		}})

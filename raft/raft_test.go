@@ -366,13 +366,13 @@ func testLeaderCycle(t *testing.T, preVote bool) {
 
 		for _, peer := range n.peers {
 			sm := peer.(*raft)
-			if sm.id == campaignerID && sm.state != StateLeader {
+			if sm.ID == campaignerID && sm.state != StateLeader {
 				t.Errorf("preVote=%v: campaigning node %d state = %v, want StateLeader",
-					preVote, sm.id, sm.state)
-			} else if sm.id != campaignerID && sm.state != StateFollower {
+					preVote, sm.ID, sm.state)
+			} else if sm.ID != campaignerID && sm.state != StateFollower {
 				t.Errorf("preVote=%v: after campaign of node %d, "+
 					"node %d had state = %v, want StateFollower",
-					preVote, campaignerID, sm.id, sm.state)
+					preVote, campaignerID, sm.ID, sm.state)
 			}
 		}
 	}
@@ -387,7 +387,7 @@ func TestPreVoteFromAnyState(t *testing.T) {
 }
 
 func testVoteFromAnyState(t *testing.T, vt pb.MessageType) {
-	for st := StateType(0); st < numStates; st++ {
+	for _, st := range []StateType{StateFollower, StatePreCandidate, StateCandidate, StateLeader} {
 		r := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 		r.Term = 1
 
@@ -1439,12 +1439,12 @@ func TestAllServerStepdown(t *testing.T) {
 func TestLeaderStepdownWhenQuorumActive(t *testing.T) {
 	sm := newTestRaft(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
 
-	sm.checkQuorum = true
+	sm.CheckQuorum = true
 
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
-	for i := 0; i < sm.electionTimeout+1; i++ {
+	for i := 0; i < sm.ElectionTick+1; i++ {
 		sm.Step(pb.Message{From: 2, Type: pb.MsgHeartbeatResp, Term: sm.Term})
 		sm.tick()
 	}
@@ -1457,12 +1457,12 @@ func TestLeaderStepdownWhenQuorumActive(t *testing.T) {
 func TestLeaderStepdownWhenQuorumLost(t *testing.T) {
 	sm := newTestRaft(1, []uint64{1, 2, 3}, 5, 1, NewMemoryStorage())
 
-	sm.checkQuorum = true
+	sm.CheckQuorum = true
 
 	sm.becomeCandidate()
 	sm.becomeLeader()
 
-	for i := 0; i < sm.electionTimeout+1; i++ {
+	for i := 0; i < sm.ElectionTick+1; i++ {
 		sm.tick()
 	}
 
@@ -1476,14 +1476,14 @@ func TestLeaderSupersedingWithCheckQuorum(t *testing.T) {
 	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 
-	a.checkQuorum = true
-	b.checkQuorum = true
-	c.checkQuorum = true
+	a.CheckQuorum = true
+	b.CheckQuorum = true
+	c.CheckQuorum = true
 
 	nt := newNetwork(a, b, c)
-	setRandomizedElectionTimeout(b, b.electionTimeout+1)
+	setRandomizedElectionTimeout(b, b.ElectionTick+1)
 
-	for i := 0; i < b.electionTimeout; i++ {
+	for i := 0; i < b.ElectionTick; i++ {
 		b.tick()
 	}
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -1498,13 +1498,13 @@ func TestLeaderSupersedingWithCheckQuorum(t *testing.T) {
 
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
-	// Peer b rejected c's vote since its electionElapsed had not reached to electionTimeout
+	// Peer b rejected c's vote since its electionElapsed had not reached to ElectionTick
 	if c.state != StateCandidate {
 		t.Errorf("state = %s, want %s", c.state, StateCandidate)
 	}
 
-	// Letting b's electionElapsed reach to electionTimeout
-	for i := 0; i < b.electionTimeout; i++ {
+	// Letting b's electionElapsed reach to ElectionTick
+	for i := 0; i < b.ElectionTick; i++ {
 		b.tick()
 	}
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
@@ -1519,13 +1519,13 @@ func TestLeaderElectionWithCheckQuorum(t *testing.T) {
 	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 
-	a.checkQuorum = true
-	b.checkQuorum = true
-	c.checkQuorum = true
+	a.CheckQuorum = true
+	b.CheckQuorum = true
+	c.CheckQuorum = true
 
 	nt := newNetwork(a, b, c)
-	setRandomizedElectionTimeout(a, a.electionTimeout+1)
-	setRandomizedElectionTimeout(b, b.electionTimeout+2)
+	setRandomizedElectionTimeout(a, a.ElectionTick+1)
+	setRandomizedElectionTimeout(b, b.ElectionTick+2)
 
 	// Immediately after creation, votes are cast regardless of the
 	// election timeout.
@@ -1539,14 +1539,14 @@ func TestLeaderElectionWithCheckQuorum(t *testing.T) {
 		t.Errorf("state = %s, want %s", c.state, StateFollower)
 	}
 
-	// need to reset randomizedElectionTimeout larger than electionTimeout again,
-	// because the value might be reset to electionTimeout since the last state changes
-	setRandomizedElectionTimeout(a, a.electionTimeout+1)
-	setRandomizedElectionTimeout(b, b.electionTimeout+2)
-	for i := 0; i < a.electionTimeout; i++ {
+	// need to reset randomizedElectionTimeout larger than ElectionTick again,
+	// because the value might be reset to ElectionTick since the last state changes
+	setRandomizedElectionTimeout(a, a.ElectionTick+1)
+	setRandomizedElectionTimeout(b, b.ElectionTick+2)
+	for i := 0; i < a.ElectionTick; i++ {
 		a.tick()
 	}
-	for i := 0; i < b.electionTimeout; i++ {
+	for i := 0; i < b.ElectionTick; i++ {
 		b.tick()
 	}
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
@@ -1568,14 +1568,14 @@ func TestFreeStuckCandidateWithCheckQuorum(t *testing.T) {
 	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 
-	a.checkQuorum = true
-	b.checkQuorum = true
-	c.checkQuorum = true
+	a.CheckQuorum = true
+	b.CheckQuorum = true
+	c.CheckQuorum = true
 
 	nt := newNetwork(a, b, c)
-	setRandomizedElectionTimeout(b, b.electionTimeout+1)
+	setRandomizedElectionTimeout(b, b.ElectionTick+1)
 
-	for i := 0; i < b.electionTimeout; i++ {
+	for i := 0; i < b.ElectionTick; i++ {
 		b.tick()
 	}
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -1627,11 +1627,11 @@ func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
 	a := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
 	b := newTestRaft(2, []uint64{1}, 10, 1, NewMemoryStorage())
 
-	a.checkQuorum = true
-	b.checkQuorum = true
+	a.CheckQuorum = true
+	b.CheckQuorum = true
 
 	nt := newNetwork(a, b)
-	setRandomizedElectionTimeout(b, b.electionTimeout+1)
+	setRandomizedElectionTimeout(b, b.ElectionTick+1)
 	// Need to remove 2 again to make it a non-promotable node since newNetwork overwritten some internal states
 	b.delProgress(2)
 
@@ -1639,7 +1639,7 @@ func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
 		t.Fatalf("promotable = %v, want false", b.promotable())
 	}
 
-	for i := 0; i < b.electionTimeout; i++ {
+	for i := 0; i < b.ElectionTick; i++ {
 		b.tick()
 	}
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -1663,9 +1663,9 @@ func TestReadOnlyOptionSafe(t *testing.T) {
 	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
 
 	nt := newNetwork(a, b, c)
-	setRandomizedElectionTimeout(b, b.electionTimeout+1)
+	setRandomizedElectionTimeout(b, b.ElectionTick+1)
 
-	for i := 0; i < b.electionTimeout; i++ {
+	for i := 0; i < b.ElectionTick; i++ {
 		b.tick()
 	}
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -1693,7 +1693,7 @@ func TestReadOnlyOptionSafe(t *testing.T) {
 			nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 		}
 
-		nt.send(pb.Message{From: tt.sm.id, To: tt.sm.id, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: tt.wctx}}})
+		nt.send(pb.Message{From: tt.sm.ID, To: tt.sm.ID, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: tt.wctx}}})
 
 		r := tt.sm
 		if len(r.readStates) == 0 {
@@ -1718,14 +1718,14 @@ func TestReadOnlyOptionLease(t *testing.T) {
 	a.readOnly.option = ReadOnlyLeaseBased
 	b.readOnly.option = ReadOnlyLeaseBased
 	c.readOnly.option = ReadOnlyLeaseBased
-	a.checkQuorum = true
-	b.checkQuorum = true
-	c.checkQuorum = true
+	a.CheckQuorum = true
+	b.CheckQuorum = true
+	c.CheckQuorum = true
 
 	nt := newNetwork(a, b, c)
-	setRandomizedElectionTimeout(b, b.electionTimeout+1)
+	setRandomizedElectionTimeout(b, b.ElectionTick+1)
 
-	for i := 0; i < b.electionTimeout; i++ {
+	for i := 0; i < b.ElectionTick; i++ {
 		b.tick()
 	}
 	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
@@ -1753,7 +1753,7 @@ func TestReadOnlyOptionLease(t *testing.T) {
 			nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 		}
 
-		nt.send(pb.Message{From: tt.sm.id, To: tt.sm.id, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: tt.wctx}}})
+		nt.send(pb.Message{From: tt.sm.ID, To: tt.sm.ID, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: tt.wctx}}})
 
 		r := tt.sm
 		rs := r.readStates[0]
@@ -2011,7 +2011,7 @@ func TestSendAppendForProgressProbe(t *testing.T) {
 		}
 
 		// do a heartbeat
-		for j := 0; j < r.heartbeatTimeout; j++ {
+		for j := 0; j < r.HeartbeatTick; j++ {
 			r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
 		}
 		// consume the heartbeat
@@ -2574,13 +2574,13 @@ func TestLeaderTransferWithCheckQuorum(t *testing.T) {
 	nt := newNetwork(nil, nil, nil)
 	for i := 1; i < 4; i++ {
 		r := nt.peers[uint64(i)].(*raft)
-		r.checkQuorum = true
-		setRandomizedElectionTimeout(r, r.electionTimeout+i)
+		r.CheckQuorum = true
+		setRandomizedElectionTimeout(r, r.ElectionTick+i)
 	}
 
 	// Letting peer 2 electionElapsed reach to timeout so that it can vote for peer 1
 	f := nt.peers[2].(*raft)
-	for i := 0; i < f.electionTimeout; i++ {
+	for i := 0; i < f.ElectionTick; i++ {
 		f.tick()
 	}
 
@@ -2684,14 +2684,14 @@ func TestLeaderTransferTimeout(t *testing.T) {
 	if lead.leadTransferee != 3 {
 		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
 	}
-	for i := 0; i < lead.heartbeatTimeout; i++ {
+	for i := 0; i < lead.HeartbeatTick; i++ {
 		lead.tick()
 	}
 	if lead.leadTransferee != 3 {
 		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
 	}
 
-	for i := 0; i < lead.electionTimeout-lead.heartbeatTimeout; i++ {
+	for i := 0; i < lead.ElectionTick-lead.HeartbeatTick; i++ {
 		lead.tick()
 	}
 
@@ -2813,13 +2813,13 @@ func TestLeaderTransferSecondTransferToSameNode(t *testing.T) {
 		t.Fatalf("wait transferring, leadTransferee = %v, want %v", lead.leadTransferee, 3)
 	}
 
-	for i := 0; i < lead.heartbeatTimeout; i++ {
+	for i := 0; i < lead.HeartbeatTick; i++ {
 		lead.tick()
 	}
 	// Second transfer leadership request to the same node.
 	nt.send(pb.Message{From: 3, To: 1, Type: pb.MsgTransferLeader})
 
-	for i := 0; i < lead.electionTimeout-lead.heartbeatTimeout; i++ {
+	for i := 0; i < lead.ElectionTick-lead.HeartbeatTick; i++ {
 		lead.tick()
 	}
 
@@ -2896,7 +2896,7 @@ func newNetworkWithConfig(configFunc func(*Config), peers ...stateMachine) *netw
 			sm := newRaft(cfg)
 			npeers[id] = sm
 		case *raft:
-			v.id = id
+			v.ID = id
 			v.prs = make(map[uint64]*Progress)
 			for i := 0; i < size; i++ {
 				v.prs[peerAddrs[i]] = &Progress{}

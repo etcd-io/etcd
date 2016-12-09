@@ -101,20 +101,13 @@ func TestStorageLastIndex(t *testing.T) {
 	ents := []pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}}
 	s := &MemoryStorage{ents: ents}
 
-	last, err := s.LastIndex()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if last != 5 {
+	if last := s.LastIndex(); last != 5 {
 		t.Errorf("term = %d, want %d", last, 5)
 	}
 
 	s.Append([]pb.Entry{{Index: 6, Term: 5}})
-	last, err = s.LastIndex()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if last != 6 {
+
+	if last := s.LastIndex(); last != 6 {
 		t.Errorf("last = %d, want %d", last, 5)
 	}
 }
@@ -123,20 +116,13 @@ func TestStorageFirstIndex(t *testing.T) {
 	ents := []pb.Entry{{Index: 3, Term: 3}, {Index: 4, Term: 4}, {Index: 5, Term: 5}}
 	s := &MemoryStorage{ents: ents}
 
-	first, err := s.FirstIndex()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if first != 4 {
+	if first := s.FirstIndex(); first != 4 {
 		t.Errorf("first = %d, want %d", first, 4)
 	}
 
 	s.Compact(4)
-	first, err = s.FirstIndex()
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if first != 5 {
+
+	if first := s.FirstIndex(); first != 5 {
 		t.Errorf("first = %d, want %d", first, 5)
 	}
 }
