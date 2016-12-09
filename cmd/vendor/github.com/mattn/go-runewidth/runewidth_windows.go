@@ -9,6 +9,7 @@ var (
 	procGetConsoleOutputCP = kernel32.NewProc("GetConsoleOutputCP")
 )
 
+// IsEastAsian return true if the current locale is CJK
 func IsEastAsian() bool {
 	r1, _, _ := procGetConsoleOutputCP.Call()
 	if r1 == 0 {

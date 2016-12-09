@@ -234,6 +234,10 @@ func Marshal(pb Message) ([]byte, error) {
 	}
 	p := NewBuffer(nil)
 	err := p.Marshal(pb)
+	var state errorState
+	if err != nil && !state.shouldContinue(err, nil) {
+		return nil, err
+	}
 	if p.buf == nil && err == nil {
 		// Return a non-nil slice on success.
 		return []byte{}, nil
@@ -262,8 +266,11 @@ func (p *Buffer) Marshal(pb Message) error {
 	// Can the object marshal itself?
 	if m, ok := pb.(Marshaler); ok {
 		data, err := m.Marshal()
+		if err != nil {
+			return err
+		}
 		p.buf = append(p.buf, data...)
-		return err
+		return nil
 	}
 
 	t, base, err := getbase(pb)
@@ -275,7 +282,7 @@ func (p *Buffer) Marshal(pb Message) error {
 	}
 
 	if collectStats {
-		(stats).Encode++ // Parens are to work around a goimports bug.
+		stats.Encode++
 	}
 
 	if len(p.buf) > maxMarshalSize {
@@ -302,7 +309,7 @@ func Size(pb Message) (n int) {
 	}
 
 	if collectStats {
-		(stats).Size++ // Parens are to work around a goimports bug.
+		stats.Size++
 	}
 
 	return
@@ -1007,6 +1014,7 @@ func size_slice_struct_message(p *Properties, base structPointer) (n int) {
 		if p.isMarshaler {
 			m := structPointer_Interface(structp, p.stype).(Marshaler)
 			data, _ := m.Marshal()
+			n += len(p.tagcode)
 			n += sizeRawBytes(data)
 			continue
 		}

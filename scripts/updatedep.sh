@@ -44,7 +44,14 @@ popd
 
 if [ -n "$1" ]; then
 	echo "glide get on $(echo $1)"
-	glide get --strip-vendor $1
+	matches=`grep "name: $1" glide.lock`
+	if [ ! -z "$matches" ]; then
+		echo "glide update on $1"
+		glide update --strip-vendor $1
+	else
+		echo "glide get on $1"
+		glide get --strip-vendor $1
+	fi
 else
 	echo "glide update on *"
 	glide update --strip-vendor

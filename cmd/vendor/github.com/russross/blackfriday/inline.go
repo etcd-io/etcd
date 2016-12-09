@@ -240,6 +240,8 @@ func link(p *parser, out *bytes.Buffer, data []byte, offset int) int {
 		i++
 	}
 
+	brace := 0
+
 	// look for the matching closing bracket
 	for level := 1; level > 0 && i < len(data); i++ {
 		switch {
@@ -273,8 +275,8 @@ func link(p *parser, out *bytes.Buffer, data []byte, offset int) int {
 		i++
 	}
 
-	// inline style link
 	switch {
+	// inline style link
 	case i < len(data) && data[i] == '(':
 		// skip initial whitespace
 		i++
@@ -285,14 +287,27 @@ func link(p *parser, out *bytes.Buffer, data []byte, offset int) int {
 
 		linkB := i
 
-		// look for link end: ' " )
+		// look for link end: ' " ), check for new opening braces and take this
+		// into account, this may lead for overshooting and probably will require
+		// some fine-tuning.
 	findlinkend:
 		for i < len(data) {
 			switch {
 			case data[i] == '\\':
 				i += 2
 
-			case data[i] == ')' || data[i] == '\'' || data[i] == '"':
+			case data[i] == '(':
+				brace++
+				i++
+
+			case data[i] == ')':
+				if brace <= 0 {
+					break findlinkend
+				}
+				brace--
+				i++
+
+			case data[i] == '\'' || data[i] == '"':
 				break findlinkend
 
 			default:
@@ -560,7 +575,7 @@ func link(p *parser, out *bytes.Buffer, data []byte, offset int) int {
 	return i
 }
 
-func (p *parser) inlineHtmlComment(out *bytes.Buffer, data []byte) int {
+func (p *parser) inlineHTMLComment(out *bytes.Buffer, data []byte) int {
 	if len(data) < 5 {
 		return 0
 	}
@@ -584,7 +599,7 @@ func leftAngle(p *parser, out *bytes.Buffer, data []byte, offset int) int {
 	data = data[offset:]
 	altype := LINK_TYPE_NOT_AUTOLINK
 	end := tagLength(data, &altype)
-	if size := p.inlineHtmlComment(out, data); size > 0 {
+	if size := p.inlineHTMLComment(out, data); size > 0 {
 		end = size
 	}
 	if end > 2 {
@@ -923,7 +938,7 @@ func isMailtoAutoLink(data []byte) int {
 			nb++
 
 		case '-', '.', '_':
-			break
+			// Do nothing.
 
 		case '>':
 			if nb == 1 {

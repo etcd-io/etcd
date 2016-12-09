@@ -140,13 +140,6 @@ func (a *App) Setup() {
 	}
 	a.Commands = newCmds
 
-	a.categories = CommandCategories{}
-	for _, command := range a.Commands {
-		a.categories = a.categories.AddCommand(command.Category, command)
-	}
-	sort.Sort(a.categories)
-
-	// append help to commands
 	if a.Command(helpCommand.Name) == nil && !a.HideHelp {
 		a.Commands = append(a.Commands, helpCommand)
 		if (HelpFlag != BoolFlag{}) {
@@ -154,7 +147,6 @@ func (a *App) Setup() {
 		}
 	}
 
-	//append version/help flags
 	if a.EnableBashCompletion {
 		a.appendFlag(BashCompletionFlag)
 	}
@@ -162,6 +154,12 @@ func (a *App) Setup() {
 	if !a.HideVersion {
 		a.appendFlag(VersionFlag)
 	}
+
+	a.categories = CommandCategories{}
+	for _, command := range a.Commands {
+		a.categories = a.categories.AddCommand(command.Category, command)
+	}
+	sort.Sort(a.categories)
 }
 
 // Run is the entry point to the cli app. Parses the arguments slice and routes
