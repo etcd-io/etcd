@@ -117,7 +117,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		AutoCompactionRetention: cfg.AutoCompactionRetention,
 		QuotaBackendBytes:       cfg.QuotaBackendBytes,
 		StrictReconfigCheck:     cfg.StrictReconfigCheck,
-		EnablePprof:             cfg.EnablePprof,
 		ClientCertAuthEnabled:   cfg.ClientTLSInfo.ClientCertAuth,
 	}
 
@@ -230,6 +229,10 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 		plog.Warningf("ignoring client auto TLS since certs given")
 	}
 
+	if cfg.EnablePprof {
+		plog.Infof("pprof is enabled under %s", pprofPrefix)
+	}
+
 	sctxs = make(map[string]*serveCtx)
 	for _, u := range cfg.LCUrls {
 		sctx := newServeCtx()
@@ -284,6 +287,9 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 			}
 		}()
 		sctx.userHandlers = cfg.UserHandlers
+		if cfg.EnablePprof {
+			sctx.registerPprof()
+		}
 		sctxs[u.Host] = sctx
 	}
 	return sctxs, nil

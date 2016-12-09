@@ -55,8 +55,6 @@ type ServerConfig struct {
 
 	StrictReconfigCheck bool
 
-	EnablePprof bool
-
 	// ClientCertAuthEnabled is true when cert has been signed by the client CA.
 	ClientCertAuthEnabled bool
 }
