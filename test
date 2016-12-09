@@ -19,10 +19,6 @@ if [ -z "$PASSES" ]; then
 	PASSES="fmt dep compile build unit"
 fi
 
-# TODO: 'client' pkg fails with gosimple from generated files
-# TODO: 'rafttest' is failing with unused
-GOSIMPLE_UNUSED_PATHS=$(go list ./... | sed -e 's/github.com\/coreos\/etcd\///g' | grep -vE 'cmd|vendor|rafttest|github.com/coreos/etcd$|client$')
-
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
 
@@ -32,6 +28,10 @@ INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
 TEST_PKGS=`find . -name \*_test.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
 FORMATTABLE=`find . -name \*.go | while read a; do echo $(dirname $a)/"*.go"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
 TESTABLE_AND_FORMATTABLE=`echo "$TEST_PKGS" | egrep -v "$INTEGRATION_PKGS"`
+
+# TODO: 'client' pkg fails with gosimple from generated files
+# TODO: 'rafttest' is failing with unused
+GOSIMPLE_UNUSED_PATHS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | grep -v 'client'`
 
 if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
@@ -178,7 +178,7 @@ function fmt_pass {
 	if which gosimple >/dev/null; then
 		echo "Checking gosimple..."
 		for path in $GOSIMPLE_UNUSED_PATHS; do
-			simplResult=`gosimple $REPO_PATH/${path} || true`
+			simplResult=`gosimple ${path} 2>&1 || true`
 			if [ -n "${simplResult}" ]; then
 				echo -e "gosimple checking ${path} failed:\n${simplResult}"
 				exit 255
@@ -187,11 +187,11 @@ function fmt_pass {
 	else
 		echo "Skipping gosimple..."
 	fi
-	
+
 	if which unused >/dev/null; then
 		echo "Checking unused..."
 		for path in $GOSIMPLE_UNUSED_PATHS; do
-			unusedResult=`unused $REPO_PATH/${path} || true`
+			unusedResult=`unused ${path} 2>&1 || true`
 			if [ -n "${unusedResult}" ]; then
 				echo -e "unused checking ${path} failed:\n${unusedResult}"
 				exit 255
