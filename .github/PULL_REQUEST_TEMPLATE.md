@@ -2,4 +2,4 @@
 
 Please read our [contribution workflow][contributing] before submitting a pull request.
 
-[contributing]: ../CONTRIBUTING.md#contribution-flow
+[contributing]: https://github.com/coreos/etcd/blob/master/CONTRIBUTING.md#contribution-flow
