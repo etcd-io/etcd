@@ -42,7 +42,6 @@ type keyStresser struct {
 
 	rateLimiter *rate.Limiter
 
-	mu sync.Mutex
 	wg sync.WaitGroup
 
 	cancel func()

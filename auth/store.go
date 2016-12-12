@@ -459,11 +459,7 @@ func (as *authStore) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse,
 	if user == nil {
 		return nil, ErrUserNotFound
 	}
-
-	for _, role := range user.Roles {
-		resp.Roles = append(resp.Roles, role)
-	}
-
+	resp.Roles = append(resp.Roles, user.Roles...)
 	return &resp, nil
 }
 
@@ -529,11 +525,7 @@ func (as *authStore) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse,
 	if role == nil {
 		return nil, ErrRoleNotFound
 	}
-
-	for _, perm := range role.KeyPermission {
-		resp.Perm = append(resp.Perm, perm)
-	}
-
+	resp.Perm = append(resp.Perm, role.KeyPermission...)
 	return &resp, nil
 }
 

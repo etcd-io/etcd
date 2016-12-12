@@ -128,7 +128,7 @@ func TestRawNodeReadIndex(t *testing.T) {
 	rawNode.raft.readStates = wrs
 	// ensure the ReadStates can be read out
 	hasReady := rawNode.HasReady()
-	if hasReady != true {
+	if !hasReady {
 		t.Errorf("HasReady() returns %t, want %t", hasReady, true)
 	}
 	rd := rawNode.Ready()

@@ -717,7 +717,7 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 	if err := wStream.Send(wreq); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
-	if resp, err := wStream.Recv(); err != nil || resp.Created == false {
+	if resp, err := wStream.Recv(); err != nil || !resp.Created {
 		t.Fatalf("create response failed: resp=%v, err=%v", resp, err)
 	}
 

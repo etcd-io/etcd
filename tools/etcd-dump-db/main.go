@@ -49,9 +49,6 @@ var (
 var (
 	iterateBucketName  string
 	iterateBucketLimit uint64
-
-	revertCopyPath string
-	revertRevision int64
 )
 
 func init() {

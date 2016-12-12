@@ -41,7 +41,6 @@ type v2Stresser struct {
 
 	wg sync.WaitGroup
 
-	mu                sync.Mutex
 	atomicModifiedKey int64
 
 	cancel func()

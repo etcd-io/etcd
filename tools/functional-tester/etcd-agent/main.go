@@ -44,7 +44,7 @@ func main() {
 		fmt.Println("got --use-root=true but not root user")
 		os.Exit(1)
 	}
-	if *useRoot == false {
+	if !*useRoot {
 		fmt.Println("root permissions disabled, agent will not modify network")
 	}
 

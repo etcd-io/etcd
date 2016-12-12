@@ -1321,10 +1321,6 @@ func TestRecvMsgVote(t *testing.T) {
 	testRecvMsgVote(t, pb.MsgVote)
 }
 
-func testRecvMsgPreVote(t *testing.T) {
-	testRecvMsgVote(t, pb.MsgPreVote)
-}
-
 func testRecvMsgVote(t *testing.T, msgType pb.MessageType) {
 	tests := []struct {
 		state   StateType
@@ -2923,12 +2919,6 @@ func TestTransferNonMember(t *testing.T) {
 	if r.state != StateFollower {
 		t.Fatalf("state is %s, want StateFollower", r.state)
 	}
-}
-
-// ents creates a raft state machine with a sequence of log entries at
-// the given terms.
-func ents(terms ...uint64) *raft {
-	return entsWithConfig(nil, terms...)
 }
 
 func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
