@@ -50,6 +50,20 @@ etcdctl provides a `snapshot` command to create backups. See [backup] for more d
 
 Try the [benchmark] tool. Current [benchmark results][benchmark-result] are available for comparison.
 
+#### What does the etcd warning "apply entries took too long" mean?
+
+After a majority of etcd members agree to commit a request, each etcd server applies the request to its data store and persists the result to disk. Even with a slow mechanical disk or a virtualized network disk, such as Amazon’s EBS or Google’s PD, applying a request should normally take fewer than 50 milliseconds. If the average apply duration exceeds 100 milliseconds, etcd will warn that entries are taking too long to apply.
+ 
+Usually this issue is caused by a slow disk. The disk could be experiencing contention among etcd and other applications, or the disk is too simply slow (e.g., a shared virtualized disk). To rule out a slow disk from causing this warning, monitor  [backend_commit_duration_seconds](backend_commit_metrics) (p99 duration should be less than 25ms) to confirm the disk is reasonably fast. If the disk is too slow, assigning a dedicated disk to etcd or using faster disk will typically solve the problem.
+
+The second most common cause is CPU starvation. If monitoring of the machine’s CPU usage shows heavy utilization, there may not be enough compute capacity for etcd. Moving etcd to dedicated machine, increasing process resource isolation  cgroups, or renicing the etcd server process into a higher priority can usually solve the problem.
+
+Expensive user requests which access too many keys (e.g., fetching the entire keyspace) can also cause long apply latencies. Accessing fewer than a several hundred keys per request, however, should always be performant.
+
+If none of the above suggestions clear the warnings, please [open an issue](new_issue) with detailed logging, monitoring, metrics and optionally workload information.
+
+[new_issue]: https://github.com/coreos/etcd/issues/new
+[backend_commit_metrics]: https://github.com/coreos/etcd/blob/master/Documentation/metrics.md#disk
 [backup]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/recovery.md#snapshotting-the-keyspace
 [chubby]: http://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf
 [runtime reconfiguration]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/runtime-configuration.md
