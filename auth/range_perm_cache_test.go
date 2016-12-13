@@ -16,6 +16,8 @@ package auth
 
 import (
 	"bytes"
+	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -130,4 +132,48 @@ func TestGetMergedPerms(t *testing.T) {
 			t.Errorf("#%d: result=%q, want=%q", i, result, tt.want)
 		}
 	}
+}
+
+func TestRemoveSubsetRangePerms(t *testing.T) {
+	tests := []struct {
+		perms  []*rangePerm
+		expect []*rangePerm
+	}{
+		{ // subsets converge
+			[]*rangePerm{{[]byte{2}, []byte{3}}, {[]byte{2}, []byte{5}}, {[]byte{1}, []byte{4}}},
+			[]*rangePerm{{[]byte{1}, []byte{4}}, {[]byte{2}, []byte{5}}},
+		},
+		{ // subsets converge
+			[]*rangePerm{{[]byte{0}, []byte{3}}, {[]byte{0}, []byte{1}}, {[]byte{2}, []byte{4}}, {[]byte{0}, []byte{2}}},
+			[]*rangePerm{{[]byte{0}, []byte{3}}, {[]byte{2}, []byte{4}}},
+		},
+		{ // biggest range at the end
+			[]*rangePerm{{[]byte{2}, []byte{3}}, {[]byte{0}, []byte{2}}, {[]byte{1}, []byte{4}}, {[]byte{0}, []byte{5}}},
+			[]*rangePerm{{[]byte{0}, []byte{5}}},
+		},
+		{ // biggest range at the beginning
+			[]*rangePerm{{[]byte{0}, []byte{5}}, {[]byte{2}, []byte{3}}, {[]byte{0}, []byte{2}}, {[]byte{1}, []byte{4}}},
+			[]*rangePerm{{[]byte{0}, []byte{5}}},
+		},
+		{ // no overlapping ranges
+			[]*rangePerm{{[]byte{2}, []byte{3}}, {[]byte{0}, []byte{1}}, {[]byte{4}, []byte{7}}, {[]byte{8}, []byte{15}}},
+			[]*rangePerm{{[]byte{0}, []byte{1}}, {[]byte{2}, []byte{3}}, {[]byte{4}, []byte{7}}, {[]byte{8}, []byte{15}}},
+		},
+	}
+	for i, tt := range tests {
+		rs := removeSubsetRangePerms(tt.perms)
+		if !reflect.DeepEqual(rs, tt.expect) {
+			t.Fatalf("#%d: unexpected rangePerms %q, got %q", i, printPerms(rs), printPerms(tt.expect))
+		}
+	}
+}
+
+func printPerms(rs []*rangePerm) (txt string) {
+	for i, p := range rs {
+		if i != 0 {
+			txt += ","
+		}
+		txt += fmt.Sprintf("%+v", *p)
+	}
+	return
 }
