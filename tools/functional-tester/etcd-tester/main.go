@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"strings"
 
@@ -33,6 +34,8 @@ const (
 	defaultPeerPort      = 2380
 	defaultFailpointPort = 2381
 )
+
+const pprofPrefix = "/debug/pprof-tester"
 
 func main() {
 	endpointStr := flag.String("agent-endpoints", "localhost:9027", "HTTP RPC endpoints of agents. Do not specify the schema.")
@@ -51,6 +54,7 @@ func main() {
 	stresserType := flag.String("stresser", "keys,lease", "comma separated list of stressers (keys, lease, v2keys, nop).")
 	failureTypes := flag.String("failures", "default,failpoints", "specify failures (concat of \"default\" and \"failpoints\").")
 	externalFailures := flag.String("external-failures", "", "specify a path of script for enabling/disabling an external fault injector")
+	enablePprof := flag.Bool("enable-pprof", false, "true to enable pprof")
 	flag.Parse()
 
 	eps := strings.Split(*endpointStr, ",")
@@ -131,6 +135,19 @@ func main() {
 	sh := statusHandler{status: &t.status}
 	http.Handle("/status", sh)
 	http.Handle("/metrics", prometheus.Handler())
+
+	if *enablePprof {
+		http.Handle(pprofPrefix+"/", http.HandlerFunc(pprof.Index))
+		http.Handle(pprofPrefix+"/profile", http.HandlerFunc(pprof.Profile))
+		http.Handle(pprofPrefix+"/symbol", http.HandlerFunc(pprof.Symbol))
+		http.Handle(pprofPrefix+"/cmdline", http.HandlerFunc(pprof.Cmdline))
+		http.Handle(pprofPrefix+"/trace", http.HandlerFunc(pprof.Trace))
+		http.Handle(pprofPrefix+"/heap", pprof.Handler("heap"))
+		http.Handle(pprofPrefix+"/goroutine", pprof.Handler("goroutine"))
+		http.Handle(pprofPrefix+"/threadcreate", pprof.Handler("threadcreate"))
+		http.Handle(pprofPrefix+"/block", pprof.Handler("block"))
+	}
+
 	go func() { plog.Fatal(http.ListenAndServe(":9028", nil)) }()
 
 	t.runLoop()
