@@ -16,6 +16,7 @@ package store
 
 import (
 	"container/list"
+	"encoding/json"
 	"path"
 	"strings"
 	"sync"
@@ -66,7 +67,7 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeInde
 	}
 
 	w := &watcher{
-		eventChan:  make(chan *Event, 100), // use a buffered channel
+		eventChan:  make(chan []byte, 100), // use a buffered channel
 		recursive:  recursive,
 		stream:     stream,
 		sinceIndex: index,
@@ -80,7 +81,14 @@ func (wh *watcherHub) watch(key string, recursive, stream bool, index, storeInde
 	if event != nil {
 		ne := event.Clone()
 		ne.EtcdIndex = storeIndex
-		w.eventChan <- ne
+
+		eventData, err := json.Marshal(ne)
+		if err != nil {
+			// Should never be reached
+			plog.Fatalf("error marsh event: %v", err)
+		}
+
+		w.eventChan <- eventData
 		return w, nil
 	}
 
@@ -142,37 +150,42 @@ func (wh *watcherHub) notifyWatchers(e *Event, nodePath string, deleted bool) {
 	wh.mutex.Lock()
 	defer wh.mutex.Unlock()
 
+	e = TrimEventPrefix(e, StoreKeysPrefix)
+
+	eventData := e.Marsh()
+
 	l, ok := wh.watchers[nodePath]
-	if ok {
-		curr := l.Front()
-
-		for curr != nil {
-			next := curr.Next() // save reference to the next one in the list
-
-			w, _ := curr.Value.(*watcher)
-
-			originalPath := (e.Node.Key == nodePath)
-			if (originalPath || !isHidden(nodePath, e.Node.Key)) && w.notify(e, originalPath, deleted) {
-				if !w.stream { // do not remove the stream watcher
-					// if we successfully notify a watcher
-					// we need to remove the watcher from the list
-					// and decrease the counter
-					w.removed = true
-					l.Remove(curr)
-					atomic.AddInt64(&wh.count, -1)
-					reportWatcherRemoved()
-				}
-			}
-
-			curr = next // update current to the next element in the list
-		}
-
-		if l.Len() == 0 {
-			// if we have notified all watcher in the list
-			// we can delete the list
-			delete(wh.watchers, nodePath)
-		}
+	if !ok {
+		return
 	}
+
+	for curr := l.Front(); curr != nil; {
+		next := curr.Next() // save reference to the next one in the list
+
+		w, _ := curr.Value.(*watcher)
+
+		originalPath := (e.Node.Key == nodePath)
+		if (originalPath || !isHidden(nodePath, e.Node.Key)) && w.notify(e, eventData, originalPath, deleted) {
+			if !w.stream { // do not remove the stream watcher
+				// if we successfully notify a watcher
+				// we need to remove the watcher from the list
+				// and decrease the counter
+				w.removed = true
+				l.Remove(curr)
+				atomic.AddInt64(&wh.count, -1)
+				reportWatcherRemoved()
+			}
+		}
+
+		curr = next // update current to the next element in the list
+	}
+
+	if l.Len() == 0 {
+		// if we have notified all watcher in the list
+		// we can delete the list
+		delete(wh.watchers, nodePath)
+	}
+
 }
 
 // clone function clones the watcherHub and return the cloned one.

@@ -1293,7 +1293,7 @@ func TestUpdateVersion(t *testing.T) {
 	if r.Method != "PUT" {
 		t.Errorf("method = %s, want PUT", r.Method)
 	}
-	if wpath := path.Join(StoreClusterPrefix, "version"); r.Path != wpath {
+	if wpath := path.Join(store.StoreClusterPrefix, "version"); r.Path != wpath {
 		t.Errorf("path = %s, want %s", r.Path, wpath)
 	}
 	if r.Val != "2.0.0" {

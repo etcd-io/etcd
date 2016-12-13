@@ -210,7 +210,7 @@ func makeWALAndSnap(waldir, snapdir string, cl *membership.RaftCluster) {
 	}
 
 	// add members again to persist them to the store we create.
-	st := store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
+	st := store.New(store.StoreClusterPrefix, store.StoreKeysPrefix)
 	cl.SetStore(st)
 	for _, m := range cl.Members() {
 		cl.AddMember(m)

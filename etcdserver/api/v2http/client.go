@@ -168,7 +168,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
-		err = trimErrorPrefix(err, etcdserver.StoreKeysPrefix)
+		err = trimErrorPrefix(err, store.StoreKeysPrefix)
 		writeKeyError(w, err)
 		reportRequestFailed(rr, err)
 		return
@@ -467,7 +467,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 			"incorrect key prefix",
 		)
 	}
-	p := path.Join(etcdserver.StoreKeysPrefix, r.URL.Path[len(keysPrefix):])
+	p := path.Join(store.StoreKeysPrefix, r.URL.Path[len(keysPrefix):])
 
 	var pIdx, wIdx uint64
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
@@ -648,7 +648,7 @@ func writeKeyEvent(w http.ResponseWriter, ev *store.Event, noValueOnSuccess bool
 		w.WriteHeader(http.StatusCreated)
 	}
 
-	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
+	ev = store.TrimEventPrefix(ev, store.StoreKeysPrefix)
 	if noValueOnSuccess &&
 		(ev.Action == store.Set || ev.Action == store.CompareAndSwap ||
 			ev.Action == store.Create || ev.Action == store.Update) {
@@ -716,8 +716,7 @@ func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher
 				// send to the client in time. Then we simply end streaming.
 				return
 			}
-			ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
-			if err := json.NewEncoder(w).Encode(ev); err != nil {
+			if _, err := w.Write(ev); err != nil {
 				// Should never be reached
 				plog.Warningf("error writing event (%v)", err)
 				return
@@ -727,28 +726,6 @@ func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher
 			}
 			w.(http.Flusher).Flush()
 		}
-	}
-}
-
-func trimEventPrefix(ev *store.Event, prefix string) *store.Event {
-	if ev == nil {
-		return nil
-	}
-	// Since the *Event may reference one in the store history
-	// history, we must copy it before modifying
-	e := ev.Clone()
-	trimNodeExternPrefix(e.Node, prefix)
-	trimNodeExternPrefix(e.PrevNode, prefix)
-	return e
-}
-
-func trimNodeExternPrefix(n *store.NodeExtern, prefix string) {
-	if n == nil {
-		return
-	}
-	n.Key = strings.TrimPrefix(n.Key, prefix)
-	for _, nn := range n.Nodes {
-		trimNodeExternPrefix(nn, prefix)
 	}
 }
 
