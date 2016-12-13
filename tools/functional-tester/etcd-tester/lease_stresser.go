@@ -266,6 +266,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 	defer ls.aliveWg.Done()
 	ctx, cancel := context.WithCancel(ls.ctx)
 	stream, err := ls.lc.LeaseKeepAlive(ctx)
+	defer func() { cancel() }()
 	for {
 		select {
 		case <-time.After(500 * time.Millisecond):
