@@ -48,7 +48,7 @@ etcd_setup_gopath() {
 		GOPATH=":$GOPATH"
 	fi
 	export GOPATH=${etcdGOPATH}$GOPATH
-	rm -f ${etcdGOPATH}/src
+	rm -rf ${etcdGOPATH}/src
 	mkdir -p ${etcdGOPATH}
 	ln -s ${CDIR}/cmd/vendor ${etcdGOPATH}/src
 }
