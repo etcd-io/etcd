@@ -146,7 +146,7 @@ func (rn *RawNode) Campaign() error {
 func (rn *RawNode) Propose(data []byte) error {
 	return rn.raft.Step(pb.Message{
 		Type: pb.MsgProp,
-		From: rn.raft.id,
+		From: rn.raft.ID,
 		Entries: []pb.Entry{
 			{Data: data},
 		}})

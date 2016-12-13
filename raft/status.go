@@ -32,7 +32,7 @@ type Status struct {
 
 // getStatus gets a copy of the current raft status.
 func getStatus(r *raft) Status {
-	s := Status{ID: r.id}
+	s := Status{ID: r.ID}
 	s.HardState = r.hardState()
 	s.SoftState = *r.softState()
 
