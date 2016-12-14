@@ -1,5 +1,11 @@
 ## Frequently Asked Questions (FAQ)
 
+### etcd, general
+
+#### Do clients have to send requests to the etcd leader?
+
+[Raft][raft] is leader-based; the leader handles all client requests which need cluster consensus. However, the client does not need to know which node is the leader. Any request that requires consensus sent to a follower is automatically forwarded to the leader. Requests that do not require consensus (e.g., serialized reads) can be processed by any cluster member.
+
 ### Configuration
 
 #### What is the difference between advertise-urls and listen-urls?
@@ -9,6 +15,12 @@
 `advertise-urls` specifies the addresses etcd clients or other etcd members should use to contact the etcd server. The advertise addresses must be reachable from the remote machines. Do not advertise addresses like `localhost` or `0.0.0.0` for a production setup since these addresses are unreachable from remote machines.
 
 ### Deployment
+
+#### System requirements
+
+Since etcd writes data to disk, SSD is highly recommended. To prevent performance degradation or unintentionally overloading the key-value store, etcd enforces a 2GB default storage size quota, configurable up to 8GB. To avoid swapping or running out of memory, the machine should have at least as much RAM to cover the quota. At CoreOS, an etcd cluster is usually deployed on dedicated CoreOS Container Linux machines with dual-core processors, 2GB of RAM, and 80GB of SSD *at the very least*. **Note that performance is intrinsically workload dependent; please test before production deployment**. See [hardware][hardware-setup] for more recommendations.
+
+Most stable production environment is Linux operating system with amd64 architecture; see [supported platform][supported-platform] for more.
 
 #### Why an odd number of cluster members?
 
@@ -37,6 +49,12 @@ It is recommended to have an odd number of members in a cluster. An odd-size clu
 | 9 | 5 | 4 |
 
 Adding a member to bring the size of cluster up to an even number doesn't buy additional fault tolerance. Likewise, during a network partition, an odd number of members guarantees that there will always be a majority partition that can continue to operate and be the source of truth when the partition ends.
+
+#### Does etcd work in cross-region or cross data center deployments?
+
+Deploying etcd across regions improves etcd's fault tolerance since members are in separate failure domains. The cost is higher consensus request latency from crossing data center boundaries. Since etcd relies on a member quorum for consensus, the latency from crossing data centers will be somewhat pronounced because at least a majority of cluster members must respond to consensus requests. Additionally, cluster data must be replicated across all peers, so there will be bandwidth cost as well.
+
+With longer latencies, the default etcd configuration may cause frequent elections or heartbeat timeouts. See [tuning] for adjusting timeouts for high latency deployments.
 
 ### Operation
 
@@ -74,10 +92,13 @@ A slow network can also cause this issue. If network metrics among the etcd mach
 
 If none of the above suggestions clear the warnings, please [open an issue][new_issue] with detailed logging, monitoring, metrics and optionally workload information.
 
+[hardware-setup]: ./op-guide/hardware.md
+[supported-platform]: ./op-guide/supported-platform.md
 [wal_fsync_duration_seconds]: ./metrics.md#disk
 [tuning]: ./tuning.md
 [new_issue]: https://github.com/coreos/etcd/issues/new
 [backend_commit_metrics]: ./metrics.md#disk
+[raft]: https://raft.github.io/raft.pdf
 [backup]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/recovery.md#snapshotting-the-keyspace
 [chubby]: http://static.googleusercontent.com/media/research.google.com/en//archive/chubby-osdi06.pdf
 [runtime reconfiguration]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/runtime-configuration.md
