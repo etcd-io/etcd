@@ -83,7 +83,7 @@ A cluster using self-signed certificates both encrypts traffic and authenticates
 On each machine, etcd would be started with these flags:
 
 ```
-$ etcd --name infra0 --initial-advertise-peer-urls http://10.0.1.10:2380 \
+$ etcd --name infra0 --initial-advertise-peer-urls https://10.0.1.10:2380 \
   --listen-peer-urls https://10.0.1.10:2380 \
   --listen-client-urls https://10.0.1.10:2379,https://127.0.0.1:2379 \
   --advertise-client-urls https://10.0.1.10:2379 \
