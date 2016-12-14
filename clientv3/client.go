@@ -88,6 +88,7 @@ func NewFromConfigFile(path string) (*Client, error) {
 func (c *Client) Close() error {
 	c.cancel()
 	c.Watcher.Close()
+	c.Lease.Close()
 	return toErr(c.ctx, c.conn.Close())
 }
 
