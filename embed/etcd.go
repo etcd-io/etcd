@@ -286,7 +286,9 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 				plog.Info("stopping listening for client requests on ", u.Host)
 			}
 		}()
-		sctx.userHandlers = cfg.UserHandlers
+		for k := range cfg.UserHandlers {
+			sctx.userHandlers[k] = cfg.UserHandlers[k]
+		}
 		if cfg.EnablePprof {
 			sctx.registerPprof()
 		}
