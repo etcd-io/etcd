@@ -51,7 +51,7 @@ type serveCtx struct {
 
 func newServeCtx() *serveCtx {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &serveCtx{ctx: ctx, cancel: cancel}
+	return &serveCtx{ctx: ctx, cancel: cancel, userHandlers: make(map[string]http.Handler)}
 }
 
 // serve accepts incoming connections on the listener l,
