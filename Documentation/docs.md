@@ -17,6 +17,7 @@ The easiest way to get started using etcd as a distributed key-value store is to
  - [gRPC naming and discovery][grpc_naming]
  - [Embedding etcd][embed_etcd]
  - [Experimental features and APIs][experimental]
+ - [System limits][system-limit]
 
 ## Operating etcd clusters
 
@@ -60,6 +61,7 @@ Answers to [common questions] about etcd.
 [api_grpc_gateway]: dev-guide/api_grpc_gateway.md
 [clustering]: op-guide/clustering.md
 [conf]: op-guide/configuration.md
+[system-limit]: dev-guide/limit.md
 [common questions]: faq.md
 [data_model]: learning/data_model.md
 [demo]: demo.md
