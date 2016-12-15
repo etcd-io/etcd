@@ -15,7 +15,6 @@
 package clientv3
 
 import (
-	"errors"
 	"sync"
 	"time"
 
@@ -70,7 +69,20 @@ const (
 	NoLease LeaseID = 0
 )
 
-var ErrLeaseHalted = errors.New("etcdclient: leases halted")
+// ErrKeepAliveHalted is returned if client keep alive loop halts with an unexpected error.
+//
+// This usually means that automatic lease renewal via KeepAlive is broken, but KeepAliveOnce will still work as expected.
+type ErrKeepAliveHalted struct {
+	Reason error
+}
+
+func (e ErrKeepAliveHalted) Error() string {
+	s := "etcdclient: leases keep alive halted"
+	if e.Reason != nil {
+		s += ": " + e.Reason.Error()
+	}
+	return s
+}
 
 type Lease interface {
 	// Grant creates a new lease.
@@ -97,8 +109,9 @@ type Lease interface {
 type lessor struct {
 	mu sync.Mutex // guards all fields
 
-	// donec is closed when recvKeepAliveLoop stops
-	donec chan struct{}
+	// donec is closed and loopErr is set when recvKeepAliveLoop stops
+	donec   chan struct{}
+	loopErr error
 
 	remote pb.LeaseClient
 
@@ -222,9 +235,10 @@ func (l *lessor) KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAl
 	// ensure that recvKeepAliveLoop is still running
 	select {
 	case <-l.donec:
+		err := l.loopErr
 		l.mu.Unlock()
 		close(ch)
-		return ch, ErrLeaseHalted
+		return ch, ErrKeepAliveHalted{Reason: err}
 	default:
 	}
 	ka, ok := l.keepAlives[id]
@@ -338,10 +352,11 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 	return karesp, nil
 }
 
-func (l *lessor) recvKeepAliveLoop() {
+func (l *lessor) recvKeepAliveLoop() (gerr error) {
 	defer func() {
 		l.mu.Lock()
 		close(l.donec)
+		l.loopErr = gerr
 		for _, ka := range l.keepAlives {
 			ka.Close()
 		}
@@ -354,13 +369,14 @@ func (l *lessor) recvKeepAliveLoop() {
 		resp, err := stream.Recv()
 		if err != nil {
 			if isHaltErr(l.stopCtx, err) {
-				return
+				return err
 			}
 			stream, serr = l.resetRecv()
 			continue
 		}
 		l.recvKeepAlive(resp)
 	}
+	return serr
 }
 
 // resetRecv opens a new lease stream and starts sending LeaseKeepAliveRequests
