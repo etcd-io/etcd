@@ -553,3 +553,23 @@ func TestLeaseRenewLostQuorum(t *testing.T) {
 		t.Fatalf("timed out waiting for keepalive")
 	}
 }
+
+func TestLeaseKeepAliveLoopExit(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx := context.Background()
+	cli := clus.Client(0)
+
+	resp, err := cli.Grant(ctx, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cli.Lease.Close()
+
+	if _, err := cli.KeepAlive(ctx, resp.ID); err != clientv3.ErrLeaseHalted {
+		t.Fatalf("expected %v, got %v", clientv3.ErrLeaseHalted, err)
+	}
+}
