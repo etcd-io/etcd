@@ -1,5 +1,7 @@
 # Why etcd
 
+The name "etcd" originated from two ideas, the unix "/etc" folder and "d"istibuted systems. The "/etc" folder is a place to store configuration data for a single system whereas etcd stores configuration information for large scale distributed systems. Hence, a "d"istributed "/etc" is "etcd".
+
 etcd stores metadata in a consistent and fault-tolerant way. Distributed systems use etcd as a consistent key-value store for configuration management, service discovery, and coordinating distributed work. Common distributed patterns using etcd include leader election, [distributed locks][etcd-concurrency], and monitoring machine liveness.
 
 ## Use cases
