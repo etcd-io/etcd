@@ -16,9 +16,11 @@ package leasehttp
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/lease"
@@ -30,14 +32,19 @@ import (
 var (
 	LeasePrefix         = "/leases"
 	LeaseInternalPrefix = "/leases/internal"
+	applyTimeout        = time.Second
+	ErrLeaseHTTPTimeout = errors.New("waiting for node to catch up its applied index has timed out")
 )
 
 // NewHandler returns an http Handler for lease renewals
-func NewHandler(l lease.Lessor) http.Handler {
-	return &leaseHandler{l}
+func NewHandler(l lease.Lessor, waitch func() <-chan struct{}) http.Handler {
+	return &leaseHandler{l, waitch}
 }
 
-type leaseHandler struct{ l lease.Lessor }
+type leaseHandler struct {
+	l      lease.Lessor
+	waitch func() <-chan struct{}
+}
 
 func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -57,6 +64,12 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		lreq := pb.LeaseKeepAliveRequest{}
 		if err := lreq.Unmarshal(b); err != nil {
 			http.Error(w, "error unmarshalling request", http.StatusBadRequest)
+			return
+		}
+		select {
+		case <-h.waitch():
+		case <-time.After(applyTimeout):
+			http.Error(w, ErrLeaseHTTPTimeout.Error(), http.StatusRequestTimeout)
 			return
 		}
 		ttl, err := h.l.Renew(lease.LeaseID(lreq.ID))
@@ -83,7 +96,12 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "error unmarshalling request", http.StatusBadRequest)
 			return
 		}
-
+		select {
+		case <-h.waitch():
+		case <-time.After(applyTimeout):
+			http.Error(w, ErrLeaseHTTPTimeout.Error(), http.StatusRequestTimeout)
+			return
+		}
 		l := h.l.Lookup(lease.LeaseID(lreq.LeaseTimeToLiveRequest.ID))
 		if l == nil {
 			http.Error(w, lease.ErrLeaseNotFound.Error(), http.StatusNotFound)
@@ -148,6 +166,10 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 		return -1, err
 	}
 
+	if resp.StatusCode == http.StatusRequestTimeout {
+		return -1, ErrLeaseHTTPTimeout
+	}
+
 	if resp.StatusCode == http.StatusNotFound {
 		return -1, lease.ErrLeaseNotFound
 	}
@@ -194,6 +216,10 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 		b, err = readResponse(resp)
 		if err != nil {
 			errc <- err
+			return
+		}
+		if resp.StatusCode == http.StatusRequestTimeout {
+			errc <- ErrLeaseHTTPTimeout
 			return
 		}
 		if resp.StatusCode == http.StatusNotFound {
