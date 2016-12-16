@@ -84,12 +84,7 @@ func startEtcdOrProxyV2() {
 	GoMaxProcs := runtime.GOMAXPROCS(0)
 	plog.Infof("setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
 
-	// TODO: check whether fields are set instead of whether fields have default value
-	defaultHost, defaultHostErr := cfg.IsDefaultHost()
-	defaultHostOverride := defaultHost == "" || defaultHostErr == nil
-	if (defaultHostOverride || cfg.Name != embed.DefaultName) && cfg.InitialCluster == defaultInitialCluster {
-		cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
-	}
+	(&cfg.Config).UpdateDefaultClusterFromName(defaultInitialCluster)
 
 	if cfg.Dir == "" {
 		cfg.Dir = fmt.Sprintf("%v.etcd", cfg.Name)

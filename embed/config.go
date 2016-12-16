@@ -356,6 +356,24 @@ func (cfg Config) IsDefaultHost() (string, error) {
 	return "", defaultHostStatus
 }
 
+// UpdateDefaultClusterFromName updates cluster advertise URLs with default host.
+// TODO: check whether fields are set instead of whether fields have default value
+func (cfg *Config) UpdateDefaultClusterFromName(defaultInitialCluster string) {
+	defaultHost, defaultHostErr := cfg.IsDefaultHost()
+	defaultHostOverride := defaultHost == "" || defaultHostErr == nil
+	if (defaultHostOverride || cfg.Name != DefaultName) && cfg.InitialCluster == defaultInitialCluster {
+		cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
+		ip, _, _ := net.SplitHostPort(cfg.LCUrls[0].Host)
+		// if client-listen-url is 0.0.0.0, just use detected default host
+		// otherwise, rewrite advertise-client-url with localhost
+		if ip != "0.0.0.0" {
+			_, acPort, _ := net.SplitHostPort(cfg.ACUrls[0].Host)
+			cfg.ACUrls[0] = url.URL{Scheme: cfg.ACUrls[0].Scheme, Host: fmt.Sprintf("localhost:%s", acPort)}
+			cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
+		}
+	}
+}
+
 // checkBindURLs returns an error if any URL uses a domain name.
 // TODO: return error in 3.2.0
 func checkBindURLs(urls []url.URL) error {
