@@ -43,7 +43,7 @@ Note that these configurations assume these machines are totally dedicated to et
 
 A small cluster serves fewer than 100 clients, fewer than 200 of requests per second, and stores no more than 100MB of data.
 
-Example application workload: A 50-nodes Kubernetes cluster
+Example application workload: A 50-node Kubernetes cluster
 
 | Provider | Type | vCPUs | Memory (GB) | Max concurrent IOPS | Disk bandwidth (MB/s) |
 |----------|------|-------|--------|------|----------------|
@@ -55,7 +55,7 @@ Example application workload: A 50-nodes Kubernetes cluster
 
 A medium cluster serves fewer than 500 clients, fewer than 1,000 of requests per second, and stores no more than 500MB of data.
 
-Example application workload: A 250-nodes Kubernetes cluster
+Example application workload: A 250-node Kubernetes cluster
 
 | Provider | Type | vCPUs | Memory (GB) | Max concurrent IOPS | Disk bandwidth (MB/s) |
 |----------|------|-------|--------|------|----------------|
@@ -67,7 +67,7 @@ Example application workload: A 250-nodes Kubernetes cluster
 
 A large cluster serves fewer than 1,500 clients, fewer than 10,000 of requests per second, and stores no more  than 1GB of data.
 
-Example application workload: A 1,000-nodes Kubernetes cluster
+Example application workload: A 1,000-node Kubernetes cluster
 
 | Provider | Type | vCPUs | Memory (GB) | Max concurrent IOPS | Disk bandwidth (MB/s) |
 |----------|------|-------|--------|------|----------------|
@@ -79,7 +79,7 @@ Example application workload: A 1,000-nodes Kubernetes cluster
 
 An xLarge cluster serves more than 1,500 clients, more than 10,000 of requests per second, and stores more than 1GB data.
 
-Example application workload: A 3,000 nodes Kubernetes cluster
+Example application workload: A 3,000 node Kubernetes cluster
 
 | Provider | Type | vCPUs | Memory (GB) | Max concurrent IOPS | Disk bandwidth (MB/s) |
 |----------|------|-------|--------|------|----------------|
