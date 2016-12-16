@@ -177,9 +177,6 @@ func (l *lessor) Grant(ctx context.Context, ttl int64) (*LeaseGrantResponse, err
 		if isHaltErr(cctx, err) {
 			return nil, toErr(cctx, err)
 		}
-		if nerr := l.newStream(); nerr != nil {
-			return nil, nerr
-		}
 	}
 }
 
