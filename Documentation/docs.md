@@ -42,7 +42,7 @@ Administrators who need to create reliable and scalable key-value stores for the
 
 To learn more about the concepts and internals behind etcd, read the following pages:
 
- - Why etcd (TODO)
+ - [Why etcd][why] (TODO)
  - [Understand data model][data_model]
  - [Understand APIs][understand_apis]
  - [Glossary][glossary]
@@ -63,6 +63,7 @@ Answers to [common questions] about etcd.
 [conf]: op-guide/configuration.md
 [system-limit]: dev-guide/limit.md
 [common questions]: faq.md
+[why]: learning/why.md
 [data_model]: learning/data_model.md
 [demo]: demo.md
 [download_build]: dl_build.md
