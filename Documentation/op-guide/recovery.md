@@ -11,6 +11,7 @@ To recover from disastrous failure, etcd v3 provides snapshot and restore facili
 Recovering a cluster first needs a snapshot of the keyspace from an etcd member. A snapshot may either be taken from a live member with the `etcdctl snapshot save` command or by copying the `member/snap/db` file from an etcd data directory. For example, the following command snapshots the keyspace served by `$ENDPOINT` to the file `snapshot.db`:
 
 ```sh
+$ export ETCDCTL_API=3
 $ etcdctl --endpoints $ENDPOINT snapshot save snapshot.db
 ```
 
@@ -23,6 +24,7 @@ Snapshot integrity may be optionally verified at restore time. If the snapshot i
 A restore initializes a new member of a new cluster, with a fresh cluster configuration using `etcd`'s cluster configuration flags, but preserves the contents of the etcd keyspace. Continuing from the previous example, the following creates new etcd data directories (`m1.etcd`, `m2.etcd`, `m3.etcd`) for a three member cluster:
 
 ```sh
+$ export ETCDCTL_API=3
 $ etcdctl snapshot restore snapshot.db \
   --name m1 \
   --initial-cluster m1=http:/host1:2380,m2=http://host2:2380,m3=http://host3:2380 \
