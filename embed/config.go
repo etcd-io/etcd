@@ -115,6 +115,7 @@ type Config struct {
 	Debug        bool   `json:"debug"`
 	LogPkgLevels string `json:"log-package-levels"`
 	EnablePprof  bool
+	Metrics      string `json:"metrics"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -173,6 +174,7 @@ func NewConfig() *Config {
 		ClusterState:        ClusterStateFlagNew,
 		InitialClusterToken: "etcd-cluster",
 		StrictReconfigCheck: true,
+		Metrics:             "basic",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg

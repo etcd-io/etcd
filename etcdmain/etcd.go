@@ -42,6 +42,7 @@ import (
 	"github.com/coreos/go-systemd/daemon"
 	systemdutil "github.com/coreos/go-systemd/util"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 )
@@ -195,6 +196,10 @@ func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
 		} else {
 			plog.Noticef("failed to detect default host, advertise falling back to %q (%v)", defaultHost, dhErr)
 		}
+	}
+
+	if cfg.Metrics == "extensive" {
+		grpc_prometheus.EnableHandlingTimeHistogram()
 	}
 
 	e, err := embed.StartEtcd(cfg)
