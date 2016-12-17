@@ -206,7 +206,8 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 
 	cc := &http.Client{Transport: rt}
 	var b []byte
-	errc := make(chan error)
+	// buffer errc channel so that errc don't block inside the go routinue
+	errc := make(chan error, 2)
 	go func() {
 		resp, err := cc.Do(req)
 		if err != nil {
