@@ -469,7 +469,6 @@ func (r *raft) bcastHeartbeatWithCtx(ctx []byte) {
 			continue
 		}
 		r.sendHeartbeat(id, ctx)
-		r.prs[id].resume()
 	}
 }
 
@@ -898,6 +897,7 @@ func stepLeader(r *raft, m pb.Message) {
 		}
 	case pb.MsgHeartbeatResp:
 		pr.RecentActive = true
+		pr.resume()
 
 		// free one slot for the full inflights window to allow progress.
 		if pr.State == ProgressStateReplicate && pr.ins.full() {
