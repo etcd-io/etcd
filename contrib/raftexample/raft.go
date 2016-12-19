@@ -357,10 +357,8 @@ func (rc *raftNode) maybeTriggerSnapshot() {
 }
 
 func (rc *raftNode) serveChannels() {
-	snap, err := rc.raftStorage.Snapshot()
-	if err != nil {
-		panic(err)
-	}
+	snap := rc.raftStorage.Snapshot()
+
 	rc.confState = snap.Metadata.ConfState
 	rc.snapshotIndex = snap.Metadata.Index
 	rc.appliedIndex = snap.Metadata.Index

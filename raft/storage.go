@@ -45,7 +45,7 @@ var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unav
 // application is responsible for cleanup and recovery in this case.
 type Storage interface {
 	// InitialState returns the saved HardState and ConfState information.
-	InitialState() (pb.HardState, pb.ConfState, error)
+	InitialState() (pb.HardState, pb.ConfState)
 	// Entries returns a slice of log entries in the range [lo,hi).
 	// MaxSize limits the total size of the log entries returned, but
 	// Entries returns at least one entry if any.
@@ -56,17 +56,17 @@ type Storage interface {
 	// rest of that entry may not be available.
 	Term(i uint64) (uint64, error)
 	// LastIndex returns the index of the last entry in the log.
-	LastIndex() (uint64, error)
+	LastIndex() uint64
 	// FirstIndex returns the index of the first log entry that is
 	// possibly available via Entries (older entries have been incorporated
 	// into the latest Snapshot; if storage only contains the dummy entry the
 	// first log entry is not available).
-	FirstIndex() (uint64, error)
+	FirstIndex() uint64
 	// Snapshot returns the most recent snapshot.
 	// If snapshot is temporarily unavailable, it should return ErrSnapshotTemporarilyUnavailable,
 	// so raft state machine could know that Storage needs some time to prepare
 	// snapshot and call Snapshot later.
-	Snapshot() (pb.Snapshot, error)
+	Snapshot() pb.Snapshot
 }
 
 // MemoryStorage implements the Storage interface backed by an
@@ -92,14 +92,13 @@ func NewMemoryStorage() *MemoryStorage {
 }
 
 // InitialState implements the Storage interface.
-func (ms *MemoryStorage) InitialState() (pb.HardState, pb.ConfState, error) {
-	return ms.hardState, ms.snapshot.Metadata.ConfState, nil
+func (ms *MemoryStorage) InitialState() (pb.HardState, pb.ConfState) {
+	return ms.hardState, ms.snapshot.Metadata.ConfState
 }
 
 // SetHardState saves the current HardState.
-func (ms *MemoryStorage) SetHardState(st pb.HardState) error {
+func (ms *MemoryStorage) SetHardState(st pb.HardState) {
 	ms.hardState = st
-	return nil
 }
 
 // Entries implements the Storage interface.
@@ -137,10 +136,10 @@ func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 }
 
 // LastIndex implements the Storage interface.
-func (ms *MemoryStorage) LastIndex() (uint64, error) {
+func (ms *MemoryStorage) LastIndex() uint64 {
 	ms.Lock()
 	defer ms.Unlock()
-	return ms.lastIndex(), nil
+	return ms.lastIndex()
 }
 
 func (ms *MemoryStorage) lastIndex() uint64 {
@@ -148,10 +147,10 @@ func (ms *MemoryStorage) lastIndex() uint64 {
 }
 
 // FirstIndex implements the Storage interface.
-func (ms *MemoryStorage) FirstIndex() (uint64, error) {
+func (ms *MemoryStorage) FirstIndex() uint64 {
 	ms.Lock()
 	defer ms.Unlock()
-	return ms.firstIndex(), nil
+	return ms.firstIndex()
 }
 
 func (ms *MemoryStorage) firstIndex() uint64 {
@@ -159,10 +158,10 @@ func (ms *MemoryStorage) firstIndex() uint64 {
 }
 
 // Snapshot implements the Storage interface.
-func (ms *MemoryStorage) Snapshot() (pb.Snapshot, error) {
+func (ms *MemoryStorage) Snapshot() pb.Snapshot {
 	ms.Lock()
 	defer ms.Unlock()
-	return ms.snapshot, nil
+	return ms.snapshot
 }
 
 // ApplySnapshot overwrites the contents of this Storage object with

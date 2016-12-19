@@ -67,7 +67,7 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 		rd = rawNode.Ready()
 		s.Append(rd.Entries)
 		// Once we are the leader, propose a command and a ConfChange.
-		if !proposed && rd.SoftState.Lead == rawNode.raft.id {
+		if !proposed && rd.SoftState.Lead == rawNode.raft.ID {
 			rawNode.Propose([]byte("somedata"))
 
 			cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
@@ -83,10 +83,7 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 
 		// Exit when we have four entries: one ConfChange, one no-op for the election,
 		// our proposed command and proposed ConfChange.
-		lastIndex, err = s.LastIndex()
-		if err != nil {
-			t.Fatal(err)
-		}
+		lastIndex = s.LastIndex()
 		if lastIndex >= 4 {
 			break
 		}
@@ -148,7 +145,7 @@ func TestRawNodeReadIndex(t *testing.T) {
 		rd = rawNode.Ready()
 		s.Append(rd.Entries)
 
-		if rd.SoftState.Lead == rawNode.raft.id {
+		if rd.SoftState.Lead == rawNode.raft.ID {
 			rawNode.Advance(rd)
 
 			// Once we are the leader, issue a ReadIndex request
