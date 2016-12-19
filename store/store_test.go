@@ -737,7 +737,7 @@ func TestStoreWatchExpire(t *testing.T) {
 	s.clock = fc
 
 	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 	s.Create("/foofoo", false, "barbarbar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 
 	w, _ := s.Watch("/", true, false, 0)
@@ -752,6 +752,7 @@ func TestStoreWatchExpire(t *testing.T) {
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
+	assert.Equal(t, e.Node.Dir, true, "")
 	w, _ = s.Watch("/", true, false, 4)
 	eidx = 4
 	assert.Equal(t, w.StartIndex(), eidx, "")
