@@ -33,7 +33,10 @@ var (
 func mustCreateConn() *clientv3.Client {
 	endpoint := endpoints[dialTotal%len(endpoints)]
 	dialTotal++
-	cfg := clientv3.Config{Endpoints: []string{endpoint}}
+	cfg := clientv3.Config{
+		Endpoints:   []string{endpoint},
+		DialTimeout: dialTimeout,
+	}
 	if !tls.Empty() {
 		cfgtls, err := tls.ClientConfig()
 		if err != nil {
