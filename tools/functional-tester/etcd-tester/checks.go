@@ -81,6 +81,7 @@ func (hc *hashChecker) Check() error {
 }
 
 type leaseChecker struct {
+	endpoint    string
 	ls          *leaseStresser
 	leaseClient pb.LeaseClient
 	kvc         pb.KVClient
@@ -157,12 +158,12 @@ func (lc *leaseChecker) checkShortLivedLease(ctx context.Context, leaseID int64)
 func (lc *leaseChecker) checkLease(ctx context.Context, expired bool, leaseID int64) error {
 	keysExpired, err := lc.hasKeysAttachedToLeaseExpired(ctx, leaseID)
 	if err != nil {
-		plog.Errorf("hasKeysAttachedToLeaseExpired error: (%v)", err)
+		plog.Errorf("hasKeysAttachedToLeaseExpired error %v (endpoint %q)", err, lc.endpoint)
 		return err
 	}
 	leaseExpired, err := lc.hasLeaseExpired(ctx, leaseID)
 	if err != nil {
-		plog.Errorf("hasLeaseExpired error: (%v)", err)
+		plog.Errorf("hasLeaseExpired error %v (endpoint %q)", err, lc.endpoint)
 		return err
 	}
 	if leaseExpired != keysExpired {
@@ -200,7 +201,7 @@ func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (boo
 		if rpctypes.Error(err) == rpctypes.ErrLeaseNotFound {
 			return true, nil
 		}
-		plog.Warningf("hasLeaseExpired %v resp %v error (%v)", leaseID, resp, err)
+		plog.Warningf("hasLeaseExpired %v resp %v error %v (endpoint %q)", leaseID, resp, err, lc.endpoint)
 	}
 	return false, ctx.Err()
 }
@@ -213,9 +214,8 @@ func (lc *leaseChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, lease
 		Key:      []byte(fmt.Sprintf("%d", leaseID)),
 		RangeEnd: []byte(clientv3.GetPrefixRangeEnd(fmt.Sprintf("%d", leaseID))),
 	}, grpc.FailFast(false))
-	plog.Debugf("hasKeysAttachedToLeaseExpired %v resp %v error (%v)", leaseID, resp, err)
 	if err != nil {
-		plog.Errorf("retriving keys attached to lease %v error: (%v)", leaseID, err)
+		plog.Errorf("retrieving keys attached to lease %v error %v (endpoint %q)", leaseID, err, lc.endpoint)
 		return false, err
 	}
 	return len(resp.Kvs) == 0, nil
