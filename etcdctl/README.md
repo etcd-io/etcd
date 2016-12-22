@@ -468,7 +468,12 @@ Prints the member ID of the new member and the cluster ID.
 
 ```bash
 ./etcdctl member add newMember --peer-urls=https://127.0.0.1:12345
-# Member 2be1eb8f84b7f63e added to cluster ef37ad9dc622a7c4
+
+Member ced000fda4d05edf added to cluster 8c4281cc65c7b112
+
+ETCD_NAME="newMember"
+ETCD_INITIAL_CLUSTER="newMember=https://127.0.0.1:12345,default=http://10.0.0.30:2380"
+ETCD_INITIAL_CLUSTER_STATE="existing"
 ```
 
 ### MEMBER UPDATE \<memberID\> [options]
