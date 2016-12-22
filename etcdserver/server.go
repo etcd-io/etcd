@@ -598,7 +598,8 @@ type etcdProgress struct {
 // and helps decouple state machine logic from Raft algorithms.
 // TODO: add a state machine interface to apply the commit entries and do snapshot/recover
 type raftReadyHandler struct {
-	leadershipUpdate func()
+	leadershipUpdate     func()
+	updateCommittedIndex func(uint64)
 }
 
 func (s *EtcdServer) run() {
@@ -646,6 +647,12 @@ func (s *EtcdServer) run() {
 			}
 			if s.r.td != nil {
 				s.r.td.Reset()
+			}
+		},
+		updateCommittedIndex: func(ci uint64) {
+			cci := s.getCommittedIndex()
+			if ci > cci {
+				s.setCommittedIndex(ci)
 			}
 		},
 	}
@@ -701,16 +708,6 @@ func (s *EtcdServer) run() {
 	for {
 		select {
 		case ap := <-s.r.apply():
-			var ci uint64
-			if len(ap.entries) != 0 {
-				ci = ap.entries[len(ap.entries)-1].Index
-			}
-			if ap.snapshot.Metadata.Index > ci {
-				ci = ap.snapshot.Metadata.Index
-			}
-			if ci != 0 {
-				s.setCommittedIndex(ci)
-			}
 			f := func(context.Context) { s.applyAll(&ep, &ap) }
 			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
