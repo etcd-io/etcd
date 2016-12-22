@@ -374,4 +374,4 @@ func (ls *leaseStresser) ModifiedKeys() int64 {
 	return atomic.LoadInt64(&ls.atomicModifiedKey)
 }
 
-func (ls *leaseStresser) Checker() Checker { return &leaseChecker{ls: ls} }
+func (ls *leaseStresser) Checker() Checker { return &leaseChecker{endpoint: ls.endpoint, ls: ls} }
