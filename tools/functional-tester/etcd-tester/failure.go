@@ -152,7 +152,7 @@ func (f *failureUntilSnapshot) Inject(c *cluster, round int) error {
 	// Give it 3-times time to create a new snapshot.
 	retry := snapshotCount / 1000 * 3
 	for j := 0; j < retry; j++ {
-		lastRev, err = c.maxRev()
+		lastRev, _ = c.maxRev()
 		// If the number of proposals committed is bigger than snapshot count,
 		// a new snapshot should have been created.
 		if lastRev-startRev > snapshotCount {
