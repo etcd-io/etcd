@@ -510,7 +510,7 @@ func testVoteFromAnyState(t *testing.T, vt pb.MessageType) {
 		// If this was a real vote, we reset our state and term.
 		if vt == pb.MsgVote {
 			if r.state != StateFollower {
-				t.Errorf("%s,%s: state %s, want %s", vt, StateFollower, r.state, st)
+				t.Errorf("%s,%s: state %s, want %s", vt, st, r.state, StateFollower)
 			}
 			if r.Term != newTerm {
 				t.Errorf("%s,%s: term %d, want %d", vt, st, r.Term, newTerm)
@@ -1474,6 +1474,8 @@ func TestAllServerStepdown(t *testing.T) {
 		switch tt.state {
 		case StateFollower:
 			sm.becomeFollower(1, None)
+		case StatePreCandidate:
+			sm.becomePreCandidate()
 		case StateCandidate:
 			sm.becomeCandidate()
 		case StateLeader:
