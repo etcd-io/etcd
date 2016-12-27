@@ -8,6 +8,9 @@
 #
 # PKG=./wal ./test
 # PKG=snap ./test
+#
+# Run code coverage 
+# COVERDIR=coverage PASSES=cov ./test
 set -e
 
 source ./build
@@ -75,6 +78,38 @@ function integration_pass {
 	go test -timeout 10m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
 	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
+}
+
+function cov_pass {
+	echo "Running code coverage..."
+	# install gocovmerge before running code coverage from github.com/wadey/gocovmerge
+	# gocovmerge merges coverage files 
+	if ! which gocovmerge >/dev/null; then
+		echo "gocovmerge not installed"
+		exit 255
+	fi
+
+	if [ -z "$COVERDIR" ]; then
+		echo "COVERDIR undeclared"
+		exit 255
+	fi
+
+	mkdir -p "$COVERDIR"
+
+	# PKGS_DELIM contains all the core etcd pkgs delimited by ',' which will be profiled for code coverage.
+	# Integration tests will generate code coverage for those pkgs 
+	PKGS_DELIM=$(echo $TEST | sed 's/ /,/g')
+
+	# TODO create coverage to e2e test
+	PKGS=`echo "$TEST_PKGS" | egrep -v "(e2e|functional-tester)"`
+
+	for t in ${PKGS}; do
+		tf=`echo $t | tr / _`
+		#  uses -run=Test to skip examples because clientv3/ example tests will leak goroutines
+		go test -covermode=set -coverpkg $PKGS_DELIM -timeout 15m -run=Test -v -coverprofile "$COVERDIR/${tf}.coverprofile"  ${REPO_PATH}/$t
+	done
+
+	gocovmerge "$COVERDIR"/*.coverprofile >"$COVERDIR"/cover.out
 }
 
 function e2e_pass {
