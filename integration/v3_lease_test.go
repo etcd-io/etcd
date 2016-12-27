@@ -233,6 +233,91 @@ func TestV3LeaseExists(t *testing.T) {
 	}
 }
 
+// TestV3LeaseRenewStress keeps creating lease and renewing it immediately to ensure the renewal goes through.
+// it was oberserved that the immediate lease renewal after granting a lease from follower resulted lease not found.
+// related issue https://github.com/coreos/etcd/issues/6978
+func TestV3LeaseRenewStress(t *testing.T) {
+	testLeaseStress(t, stressLeaseRenew)
+}
+
+// TestV3LeaseTimeToLiveStress keeps creating lease and retriving it immediately to ensure the lease can be retrived.
+// it was oberserved that the immediate lease retrival after granting a lease from follower resulted lease not found.
+// related issue https://github.com/coreos/etcd/issues/6978
+func TestV3LeaseTimeToLiveStress(t *testing.T) {
+	testLeaseStress(t, stressLeaseTimeToLive)
+}
+
+func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient) error) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	errc := make(chan error)
+
+	for i := 0; i < 30; i++ {
+		for j := 0; j < 3; j++ {
+			go func(i int) { errc <- stresser(ctx, toGRPC(clus.Client(i)).Lease) }(j)
+		}
+	}
+
+	for i := 0; i < 90; i++ {
+		if err := <-errc; err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func stressLeaseRenew(tctx context.Context, lc pb.LeaseClient) (reterr error) {
+	defer func() {
+		if tctx.Err() != nil {
+			reterr = nil
+		}
+	}()
+	lac, err := lc.LeaseKeepAlive(tctx)
+	if err != nil {
+		return err
+	}
+	for tctx.Err() == nil {
+		resp, gerr := lc.LeaseGrant(tctx, &pb.LeaseGrantRequest{TTL: 60})
+		if gerr != nil {
+			continue
+		}
+		err = lac.Send(&pb.LeaseKeepAliveRequest{ID: resp.ID})
+		if err != nil {
+			continue
+		}
+		rresp, rxerr := lac.Recv()
+		if rxerr != nil {
+			continue
+		}
+		if rresp.TTL == 0 {
+			return fmt.Errorf("TTL shouldn't be 0 so soon")
+		}
+	}
+	return nil
+}
+
+func stressLeaseTimeToLive(tctx context.Context, lc pb.LeaseClient) (reterr error) {
+	defer func() {
+		if tctx.Err() != nil {
+			reterr = nil
+		}
+	}()
+	for tctx.Err() == nil {
+		resp, gerr := lc.LeaseGrant(tctx, &pb.LeaseGrantRequest{TTL: 60})
+		if gerr != nil {
+			continue
+		}
+		_, kerr := lc.LeaseTimeToLive(tctx, &pb.LeaseTimeToLiveRequest{ID: resp.ID})
+		if rpctypes.Error(kerr) == rpctypes.ErrLeaseNotFound {
+			return kerr
+		}
+	}
+	return nil
+}
+
 func TestV3PutOnNonExistLease(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
