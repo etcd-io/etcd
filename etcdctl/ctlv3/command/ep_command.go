@@ -21,12 +21,10 @@ import (
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/pkg/flags"
-	"github.com/spf13/cobra"
-)
 
-var (
-	healthCheckKey string
+	"github.com/spf13/cobra"
 )
 
 // NewEndpointCommand returns the cobra command for "endpoint".
@@ -48,8 +46,6 @@ func newEpHealthCommand() *cobra.Command {
 		Short: "Checks the healthiness of endpoints specified in `--endpoints` flag",
 		Run:   epHealthCommandFunc,
 	}
-
-	cmd.Flags().StringVar(&healthCheckKey, "health-check-key", "health", "The key used to perform the health check. Makes sure the user can access the key.")
 
 	return cmd
 }
@@ -101,12 +97,13 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			// get a random key. As long as we can get the response without an error, the
 			// endpoint is health.
 			ctx, cancel := commandCtx(cmd)
-			_, err = cli.Get(ctx, healthCheckKey)
+			_, err = cli.Get(ctx, "health")
 			cancel()
-			if err != nil {
-				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)
-			} else {
+			// permission denied is OK since proposal goes through consensus to get it
+			if err == nil || err == rpctypes.ErrPermissionDenied {
 				fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", ep, time.Since(st))
+			} else {
+				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)
 			}
 		}(cfg)
 	}
