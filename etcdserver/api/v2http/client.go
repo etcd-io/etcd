@@ -346,32 +346,23 @@ func serveVars(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "\n}\n")
 }
 
-// TODO: change etcdserver to raft interface when we have it.
-//       add test for healthHandler when we have the interface ready.
 func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !allowMethod(w, r.Method, "GET") {
 			return
 		}
-
 		if uint64(server.Leader()) == raft.None {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
 			return
 		}
-
-		// wait for raft's progress
-		index := server.Index()
-		for i := 0; i < 3; i++ {
-			time.Sleep(250 * time.Millisecond)
-			if server.Index() > index {
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"health": "true"}`))
-				return
-			}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		if _, err := server.Do(ctx, etcdserverpb.Request{Method: "QGET"}); err != nil {
+			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			return
 		}
-
-		http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
-		return
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"health": "true"}`))
 	}
 }
 
