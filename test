@@ -98,7 +98,7 @@ function integration_e2e_pass {
 }
 
 function grpcproxy_pass {
-	go test -timeout 10m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 $@ ${REPO_PATH}/integration
+	go test -timeout 15m -v ${RACE} -tags cluster_proxy -cpu 1,2,4 $@ ${REPO_PATH}/integration
 }
 
 function release_pass {
