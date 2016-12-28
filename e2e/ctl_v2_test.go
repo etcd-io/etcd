@@ -312,6 +312,29 @@ func TestCtlV2AuthWithCommonName(t *testing.T) {
 	}
 }
 
+func TestCtlV2ClusterHealth(t *testing.T) {
+	defer testutil.AfterTest(t)
+	epc := setupEtcdctlTest(t, &configNoTLS, true)
+	defer func() {
+		if err := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", err)
+		}
+	}()
+
+	// has quorum
+	if err := etcdctlClusterHealth(epc, "cluster is healthy"); err != nil {
+		t.Fatalf("cluster-health expected to be healthy (%v)", err)
+	}
+
+	// cut quorum
+	epc.procs[0].Stop()
+	epc.procs[1].Stop()
+	if err := etcdctlClusterHealth(epc, "cluster is unhealthy"); err != nil {
+		t.Fatalf("cluster-health expected to be unhealthy (%v)", err)
+	}
+	epc.procs[0], epc.procs[1] = nil, nil
+}
+
 func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
 	endpoints := ""
 	if proxies := clus.proxies(); len(proxies) != 0 {
@@ -328,6 +351,11 @@ func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
 		cmdArgs = append(cmdArgs, "--ca-file", caPath, "--cert-file", certPath, "--key-file", privateKeyPath)
 	}
 	return cmdArgs
+}
+
+func etcdctlClusterHealth(clus *etcdProcessCluster, val string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus), "cluster-health")
+	return spawnWithExpect(cmdArgs, val)
 }
 
 func etcdctlSet(clus *etcdProcessCluster, key, value string) error {
