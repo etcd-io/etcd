@@ -247,7 +247,7 @@ The security flags help to [build a secure etcd cluster][security].
 + env variable: ETCD_DEBUG
 
 ### --log-package-levels
-+ Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG` 
++ Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG`
 + default: none (INFO for all packages)
 + env variable: ETCD_LOG_PACKAGE_LEVELS
 
@@ -278,6 +278,10 @@ Follow the instructions when using these flags.
 ### --enable-pprof
 + Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
 + default: false
+
+### --metrics
++ Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
++ default: basic
 
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md

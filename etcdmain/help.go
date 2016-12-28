@@ -149,9 +149,11 @@ given by the consensus protocol.
 
 	--force-new-cluster 'false'
 		force to create a new one-member cluster.
-	
+
 profiling flags:
 	--enable-pprof 'false'
 		Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
+	--metrics 'basic'
+	  Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
 `
 )
