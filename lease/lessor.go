@@ -20,6 +20,7 @@ import (
 	"math"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/lease/leasepb"
@@ -502,10 +503,10 @@ func (le *lessor) initAndRecover() {
 type Lease struct {
 	ID  LeaseID
 	ttl int64 // time to live in seconds
+	// expiry is time when lease should expire; must be 64-bit aligned.
+	expiry monotime.Time
 
 	itemSet map[LeaseItem]struct{}
-	// expiry is time when lease should expire
-	expiry  monotime.Time
 	revokec chan struct{}
 }
 
@@ -534,11 +535,12 @@ func (l *Lease) TTL() int64 {
 
 // refresh refreshes the expiry of the lease.
 func (l *Lease) refresh(extend time.Duration) {
-	l.expiry = monotime.Now().Add(extend + time.Duration(l.ttl)*time.Second)
+	t := monotime.Now().Add(extend + time.Duration(l.ttl)*time.Second)
+	atomic.StoreUint64((*uint64)(&l.expiry), uint64(t))
 }
 
 // forever sets the expiry of lease to be forever.
-func (l *Lease) forever() { l.expiry = forever }
+func (l *Lease) forever() { atomic.StoreUint64((*uint64)(&l.expiry), uint64(forever)) }
 
 // Keys returns all the keys attached to the lease.
 func (l *Lease) Keys() []string {
@@ -551,7 +553,8 @@ func (l *Lease) Keys() []string {
 
 // Remaining returns the remaining time of the lease.
 func (l *Lease) Remaining() time.Duration {
-	return time.Duration(l.expiry - monotime.Now())
+	t := monotime.Time(atomic.LoadUint64((*uint64)(&l.expiry)))
+	return time.Duration(t - monotime.Now())
 }
 
 type LeaseItem struct {
