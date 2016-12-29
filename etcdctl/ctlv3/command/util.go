@@ -24,7 +24,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func printKV(isHex bool, valueOnly bool, kv *pb.KeyValue) {
+func printKV(isHex bool, valueOnly bool, lease bool, kv *pb.KeyValue) {
 	k, v := string(kv.Key), string(kv.Value)
 	if isHex {
 		k = addHexPrefix(hex.EncodeToString(kv.Key))
@@ -34,6 +34,9 @@ func printKV(isHex bool, valueOnly bool, kv *pb.KeyValue) {
 		fmt.Println(k)
 	}
 	fmt.Println(v)
+	if !valueOnly && lease {
+		fmt.Printf("%016x\n", kv.Lease)
+	}
 }
 
 func addHexPrefix(s string) string {
