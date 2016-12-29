@@ -598,7 +598,7 @@ type etcdProgress struct {
 // and helps decouple state machine logic from Raft algorithms.
 // TODO: add a state machine interface to apply the commit entries and do snapshot/recover
 type raftReadyHandler struct {
-	leadershipUpdate     func()
+	updateLeadership     func()
 	updateCommittedIndex func(uint64)
 }
 
@@ -624,7 +624,7 @@ func (s *EtcdServer) run() {
 		return
 	}
 	rh := &raftReadyHandler{
-		leadershipUpdate: func() {
+		updateLeadership: func() {
 			if !s.isLeader() {
 				if s.lessor != nil {
 					s.lessor.Demote()

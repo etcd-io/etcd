@@ -162,7 +162,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 					atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
 					islead = rd.RaftState == raft.StateLeader
-					rh.leadershipUpdate()
+					rh.updateLeadership()
 				}
 
 				if len(rd.ReadStates) != 0 {
