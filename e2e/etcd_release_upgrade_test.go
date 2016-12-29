@@ -49,6 +49,20 @@ func TestReleaseUpgrade(t *testing.T) {
 			t.Fatalf("error closing etcd processes (%v)", errC)
 		}
 	}()
+	// 3.0 boots as 2.3 then negotiates up to 3.0
+	// so there's a window at boot time where it doesn't have V3rpcCapability enabled
+	// poll /version until etcdcluster is >2.3.x before making v3 requests
+	for i := 0; i < 7; i++ {
+		if err = cURLGet(epc, cURLReq{endpoint: "/version", expected: `"etcdcluster":"3.0`}); err != nil {
+			t.Logf("#%d: v3 is not ready yet (%v)", i, err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+	if err != nil {
+		t.Fatalf("cannot pull version (%v)", err)
+	}
 
 	os.Setenv("ETCDCTL_API", "3")
 	defer os.Unsetenv("ETCDCTL_API")
