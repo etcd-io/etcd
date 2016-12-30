@@ -78,7 +78,7 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 	for i := 0; i < connPerPipeline+pipelineBufSize; i++ {
 		select {
 		case p.msgc <- raftpb.Message{}:
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(time.Second):
 			t.Errorf("failed to send out message")
 		}
 	}
