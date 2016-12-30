@@ -26,25 +26,43 @@ import (
 
 var (
 	pmu     sync.Mutex
-	proxies map[*clientv3.Client]grpcAPI = make(map[*clientv3.Client]grpcAPI)
+	proxies map[*clientv3.Client]grpcClientProxy = make(map[*clientv3.Client]grpcClientProxy)
 )
+
+type grpcClientProxy struct {
+	grpc   grpcAPI
+	wdonec <-chan struct{}
+}
 
 func toGRPC(c *clientv3.Client) grpcAPI {
 	pmu.Lock()
 	defer pmu.Unlock()
 
 	if v, ok := proxies[c]; ok {
-		return v
+		return v.grpc
 	}
-	api := grpcAPI{
+
+	wp, wpch := grpcproxy.NewWatchProxy(c)
+	grpc := grpcAPI{
 		pb.NewClusterClient(c.ActiveConnection()),
 		grpcproxy.KvServerToKvClient(grpcproxy.NewKvProxy(c)),
 		pb.NewLeaseClient(c.ActiveConnection()),
-		grpcproxy.WatchServerToWatchClient(grpcproxy.NewWatchProxy(c)),
+		grpcproxy.WatchServerToWatchClient(wp),
 		pb.NewMaintenanceClient(c.ActiveConnection()),
 	}
-	proxies[c] = api
-	return api
+	proxies[c] = grpcClientProxy{grpc: grpc, wdonec: wpch}
+	return grpc
+}
+
+type watchCloser struct {
+	clientv3.Watcher
+	wdonec <-chan struct{}
+}
+
+func (wc *watchCloser) Close() error {
+	err := wc.Watcher.Close()
+	<-wc.wdonec
+	return err
 }
 
 func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
@@ -54,6 +72,11 @@ func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
 	}
 	rpc := toGRPC(c)
 	c.KV = clientv3.NewKVFromKVClient(rpc.KV)
-	c.Watcher = clientv3.NewWatchFromWatchClient(rpc.Watch)
+	pmu.Lock()
+	c.Watcher = &watchCloser{
+		Watcher: clientv3.NewWatchFromWatchClient(rpc.Watch),
+		wdonec:  proxies[c].wdonec,
+	}
+	pmu.Unlock()
 	return c, nil
 }

@@ -49,7 +49,7 @@ const (
 	retryPerSecond = 10
 )
 
-func NewWatchProxy(c *clientv3.Client) pb.WatchServer {
+func NewWatchProxy(c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
 	wp := &watchProxy{
 		cw:           c.Watcher,
 		ctx:          clientv3.WithRequireLeader(c.Ctx()),
@@ -57,7 +57,9 @@ func NewWatchProxy(c *clientv3.Client) pb.WatchServer {
 		leaderc:      make(chan struct{}),
 	}
 	wp.ranges = newWatchRanges(wp)
+	ch := make(chan struct{})
 	go func() {
+		defer close(ch)
 		// a new streams without opening any watchers won't catch
 		// a lost leader event, so have a special watch to monitor it
 		rev := int64((uint64(1) << 63) - 2)
@@ -77,7 +79,7 @@ func NewWatchProxy(c *clientv3.Client) pb.WatchServer {
 		wp.wg.Wait()
 		wp.ranges.stop()
 	}()
-	return wp
+	return wp, ch
 }
 
 func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
