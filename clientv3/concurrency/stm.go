@@ -57,8 +57,9 @@ const (
 type stmError struct{ err error }
 
 type stmOptions struct {
-	iso Isolation
-	ctx context.Context
+	iso      Isolation
+	ctx      context.Context
+	prefetch []string
 }
 
 type stmOption func(*stmOptions)
@@ -73,11 +74,26 @@ func WithAbortContext(ctx context.Context) stmOption {
 	return func(so *stmOptions) { so.ctx = ctx }
 }
 
+// WithPrefetch is a hint to prefetch a list of keys before trying to apply.
+// If an STM transaction will unconditionally fetch a set of keys, prefetching
+// those keys will save the round-trip cost from requesting each key one by one
+// with Get().
+func WithPrefetch(keys ...string) stmOption {
+	return func(so *stmOptions) { so.prefetch = append(so.prefetch, keys...) }
+}
+
 // NewSTM initiates a new STM instance.
 func NewSTM(c *v3.Client, apply func(STM) error, so ...stmOption) (*v3.TxnResponse, error) {
 	opts := &stmOptions{ctx: c.Ctx()}
 	for _, f := range so {
 		f(opts)
+	}
+	if len(opts.prefetch) != 0 {
+		f := apply
+		apply = func(s STM) error {
+			s.Get(opts.prefetch...)
+			return f(s)
+		}
 	}
 	var s STM
 	switch opts.iso {
