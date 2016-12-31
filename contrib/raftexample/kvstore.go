@@ -77,6 +77,7 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 			if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
 				log.Panic(err)
 			}
+			continue
 		}
 
 		var dataKv kv
