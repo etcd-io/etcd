@@ -12,21 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func runLeaseRenewer(getClient getClientFunc) {
-	c := getClient()
+// NewLeaseRenewerCommand returns the cobra command for "lease-renewer runner".
+func NewLeaseRenewerCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "lease-renewer",
+		Short: "Performs lease renew operation",
+		Run:   runLeaseRenewerFunc,
+	}
+	return cmd
+}
+
+func runLeaseRenewerFunc(cmd *cobra.Command, args []string) {
+	if len(args) > 0 {
+		ExitWithError(ExitBadArgs, errors.New("lease-renewer does not take any argument"))
+	}
+
+	eps := endpointsFromFlag(cmd)
+	dialTimeout := dialTimeoutFromCmd(cmd)
+	c := newClient(eps, dialTimeout)
 	ctx := context.Background()
 
 	for {

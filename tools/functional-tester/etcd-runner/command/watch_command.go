@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -23,18 +24,34 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/stringutil"
+	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
 )
 
-func runWatcher(getClient getClientFunc, limit int) {
+// NewWatchCommand returns the cobra command for "watcher runner".
+func NewWatchCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "watcher",
+		Short: "Performs watch operation",
+		Run:   runWatcherFunc,
+	}
+	cmd.Flags().IntVar(&rounds, "rounds", 100, "number of rounds to run")
+	return cmd
+}
+
+func runWatcherFunc(cmd *cobra.Command, args []string) {
+	if len(args) > 0 {
+		ExitWithError(ExitBadArgs, errors.New("watcher does not take any argument"))
+	}
+
 	ctx := context.Background()
-	for round := 0; round < limit; round++ {
+	for round := 0; round < rounds; round++ {
 		fmt.Println("round", round)
-		performWatchOnPrefixes(ctx, getClient, round)
+		performWatchOnPrefixes(ctx, cmd, round)
 	}
 }
 
-func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round int) {
+func performWatchOnPrefixes(ctx context.Context, cmd *cobra.Command, round int) {
 	runningTime := 60 * time.Second // time for which operation should be performed
 	noOfPrefixes := 36              // total number of prefixes which will be watched upon
 	watchPerPrefix := 10            // number of watchers per prefix
@@ -46,6 +63,9 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 
 	roundPrefix := fmt.Sprintf("%16x", round)
 
+	eps := endpointsFromFlag(cmd)
+	dialTimeout := dialTimeoutFromCmd(cmd)
+
 	var (
 		revision int64
 		wg       sync.WaitGroup
@@ -53,7 +73,7 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 		err      error
 	)
 
-	client := getClient()
+	client := newClient(eps, dialTimeout)
 	defer client.Close()
 
 	gr, err = getKey(ctx, client, "non-existent")
@@ -89,7 +109,7 @@ func performWatchOnPrefixes(ctx context.Context, getClient getClientFunc, round 
 
 	for _, prefix := range prefixes {
 		for j := 0; j < watchPerPrefix; j++ {
-			rc := getClient()
+			rc := newClient(eps, dialTimeout)
 			rcs = append(rcs, rc)
 
 			watchPrefix := roundPrefix + "-" + prefix

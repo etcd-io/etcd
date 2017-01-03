@@ -12,121 +12,64 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// etcd-runner is a command line application that performs tests on etcd.
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
-	"math/rand"
-	"os"
-	"strings"
-	"sync"
 	"time"
 
-	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/tools/functional-tester/etcd-runner/command"
+	"github.com/spf13/cobra"
+)
+
+const (
+	cliName        = "etcdctl"
+	cliDescription = "A simple command line client for etcd3."
+
+	defaultDialTimeout = 2 * time.Second
+)
+
+var (
+	globalFlags = command.GlobalFlags{}
+)
+
+var (
+	rootCmd = &cobra.Command{
+		Use:        cliName,
+		Short:      cliDescription,
+		SuggestFor: []string{"etcdctl"},
+	}
 )
 
 func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
+	log.SetFlags(log.Lmicroseconds)
+	rootCmd.PersistentFlags().StringSliceVar(&globalFlags.Endpoints, "endpoints", []string{"127.0.0.1:2379"}, "gRPC endpoints")
+	rootCmd.PersistentFlags().DurationVar(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
+
+	rootCmd.AddCommand(
+		command.NewElectionCommand(),
+		command.NewLeaseRenewerCommand(),
+		command.NewLockRacerCommand(),
+		command.NewWatchCommand(),
+	)
+}
+
+func init() {
+	cobra.EnablePrefixMatching = true
+}
+
+func Start() {
+	rootCmd.SetUsageFunc(usageFunc)
+
+	// Make help just show the usage
+	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
+
+	if err := rootCmd.Execute(); err != nil {
+		command.ExitWithError(command.ExitError, err)
+	}
 }
 
 func main() {
-	log.SetFlags(log.Lmicroseconds)
-
-	endpointStr := flag.String("endpoints", "localhost:2379", "endpoints of etcd cluster")
-	mode := flag.String("mode", "watcher", "test mode (election, lock-racer, lease-renewer, watcher)")
-	round := flag.Int("rounds", 100, "number of rounds to run")
-	clientTimeout := flag.Int("client-timeout", 60, "max timeout seconds for a client to get connection")
-	flag.Parse()
-
-	eps := strings.Split(*endpointStr, ",")
-
-	getClient := func() *clientv3.Client { return newClient(eps, *clientTimeout) }
-
-	switch *mode {
-	case "election":
-		runElection(getClient, *round)
-	case "lock-racer":
-		runRacer(getClient, *round)
-	case "lease-renewer":
-		runLeaseRenewer(getClient)
-	case "watcher":
-		runWatcher(getClient, *round)
-	default:
-		fmt.Fprintf(os.Stderr, "unsupported mode %v\n", *mode)
-	}
-}
-
-type getClientFunc func() *clientv3.Client
-
-func newClient(eps []string, timeout int) *clientv3.Client {
-	c, err := clientv3.New(clientv3.Config{
-		Endpoints:   eps,
-		DialTimeout: time.Duration(timeout) * time.Second,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return c
-}
-
-type roundClient struct {
-	c        *clientv3.Client
-	progress int
-	acquire  func() error
-	validate func() error
-	release  func() error
-}
-
-func doRounds(rcs []roundClient, rounds int) {
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-
-	wg.Add(len(rcs))
-	finished := make(chan struct{}, 0)
-	for i := range rcs {
-		go func(rc *roundClient) {
-			defer wg.Done()
-			for rc.progress < rounds {
-				for rc.acquire() != nil { /* spin */
-				}
-
-				mu.Lock()
-				if err := rc.validate(); err != nil {
-					log.Fatal(err)
-				}
-				mu.Unlock()
-
-				time.Sleep(10 * time.Millisecond)
-				rc.progress++
-				finished <- struct{}{}
-
-				mu.Lock()
-				for rc.release() != nil {
-					mu.Unlock()
-					mu.Lock()
-				}
-				mu.Unlock()
-			}
-		}(&rcs[i])
-	}
-
-	start := time.Now()
-	for i := 1; i < len(rcs)*rounds+1; i++ {
-		select {
-		case <-finished:
-			if i%100 == 0 {
-				fmt.Printf("finished %d, took %v\n", i, time.Since(start))
-				start = time.Now()
-			}
-		case <-time.After(time.Minute):
-			log.Panic("no progress after 1 minute!")
-		}
-	}
-	wg.Wait()
-
-	for _, rc := range rcs {
-		rc.c.Close()
-	}
+	Start()
 }

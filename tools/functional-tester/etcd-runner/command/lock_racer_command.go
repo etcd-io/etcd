@@ -12,25 +12,49 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/coreos/etcd/clientv3/concurrency"
+	"github.com/spf13/cobra"
 )
 
-func runRacer(getClient getClientFunc, round int) {
-	rcs := make([]roundClient, 15)
+// NewLockRacerCommand returns the cobra command for "lock-racer runner".
+func NewLockRacerCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "lock-racer",
+		Short: "Performs lock race operation",
+		Run:   runRacerFunc,
+	}
+	cmd.Flags().IntVar(&rounds, "rounds", 100, "number of rounds to run")
+	cmd.Flags().IntVar(&totalClientConnections, "total-client-connections", 10, "total number of client connections")
+	return cmd
+}
+
+func runRacerFunc(cmd *cobra.Command, args []string) {
+	if len(args) > 0 {
+		ExitWithError(ExitBadArgs, errors.New("lock-racer does not take any argument"))
+	}
+
+	rcs := make([]roundClient, totalClientConnections)
 	ctx := context.Background()
 	cnt := 0
+
+	eps := endpointsFromFlag(cmd)
+	dialTimeout := dialTimeoutFromCmd(cmd)
+
 	for i := range rcs {
-		rcs[i].c = getClient()
 		var (
 			s   *concurrency.Session
 			err error
 		)
+
+		rcs[i].c = newClient(eps, dialTimeout)
+
 		for {
 			s, err = concurrency.NewSession(rcs[i].c)
 			if err == nil {
@@ -53,5 +77,5 @@ func runRacer(getClient getClientFunc, round int) {
 			return nil
 		}
 	}
-	doRounds(rcs, round)
+	doRounds(rcs, rounds)
 }
