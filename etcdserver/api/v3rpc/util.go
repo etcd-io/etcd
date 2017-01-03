@@ -35,6 +35,8 @@ func togRPCError(err error) error {
 		return rpctypes.ErrGRPCMemberExist
 	case membership.ErrPeerURLexists:
 		return rpctypes.ErrGRPCPeerURLExist
+	case etcdserver.ErrNotEnoughStartedMembers:
+		return rpctypes.ErrMemberNotEnoughStarted
 
 	case mvcc.ErrCompacted:
 		return rpctypes.ErrGRPCCompacted
