@@ -635,15 +635,15 @@ func (s *EtcdServer) run() {
 				setSyncC(nil)
 			} else {
 				setSyncC(s.SyncTicker)
+				if s.compactor != nil {
+					s.compactor.Resume()
+				}
 			}
 
 			// TODO: remove the nil checking
 			// current test utility does not provide the stats
 			if s.stats != nil {
 				s.stats.BecomeLeader()
-			}
-			if s.compactor != nil {
-				s.compactor.Resume()
 			}
 			if s.r.td != nil {
 				s.r.td.Reset()
