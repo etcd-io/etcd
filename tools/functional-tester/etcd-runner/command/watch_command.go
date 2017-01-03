@@ -36,6 +36,11 @@ func NewWatchCommand() *cobra.Command {
 		Run:   runWatcherFunc,
 	}
 	cmd.Flags().IntVar(&rounds, "rounds", 100, "number of rounds to run")
+	cmd.Flags().DurationVar(&runningTime, "running-time", 60, "number of seconds to run")
+	cmd.Flags().IntVar(&noOfPrefixes, "total-prefixes", 10, "total no of prefixes to use")
+	cmd.Flags().IntVar(&watchPerPrefix, "watch-per-prefix", 10, "number of watchers per prefix")
+	cmd.Flags().IntVar(&reqRate, "req-rate", 30, "rate at which put request will be performed")
+	cmd.Flags().IntVar(&totalKeys, "total-keys", 1000, "total number of keys to watch")
 	return cmd
 }
 
@@ -52,14 +57,9 @@ func runWatcherFunc(cmd *cobra.Command, args []string) {
 }
 
 func performWatchOnPrefixes(ctx context.Context, cmd *cobra.Command, round int) {
-	runningTime := 60 * time.Second // time for which operation should be performed
-	noOfPrefixes := 36              // total number of prefixes which will be watched upon
-	watchPerPrefix := 10            // number of watchers per prefix
-	reqRate := 30                   // put request per second
-	keyPrePrefix := 30              // max number of keyPrePrefixs for put operation
-
+	keyPerPrefix := totalKeys / noOfPrefixes
 	prefixes := stringutil.UniqueStrings(5, noOfPrefixes)
-	keys := stringutil.RandomStrings(10, keyPrePrefix)
+	keys := stringutil.RandomStrings(10, keyPerPrefix)
 
 	roundPrefix := fmt.Sprintf("%16x", round)
 
@@ -82,7 +82,7 @@ func performWatchOnPrefixes(ctx context.Context, cmd *cobra.Command, round int) 
 	}
 	revision = gr.Header.Revision
 
-	ctxt, cancel := context.WithDeadline(ctx, time.Now().Add(runningTime))
+	ctxt, cancel := context.WithDeadline(ctx, time.Now().Add(runningTime*time.Second))
 	defer cancel()
 
 	// generate and put keys in cluster

@@ -26,8 +26,13 @@ import (
 )
 
 var (
-	rounds                 int
-	totalClientConnections int
+	rounds                 int           // total number of rounds the operation needs to be performed
+	totalClientConnections int           // total number of client connections to be made with server
+	noOfPrefixes           int           // total number of prefixes which will be watched upon
+	watchPerPrefix         int           // number of watchers per prefix
+	reqRate                int           // put request per second
+	totalKeys              int           // total number of keys for operation
+	runningTime            time.Duration // time for which operation should be performed
 )
 
 // GlobalFlags are flags that defined globally

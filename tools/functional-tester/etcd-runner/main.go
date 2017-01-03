@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	cliName        = "etcdctl"
-	cliDescription = "A simple command line client for etcd3."
+	cliName        = "etcd-runner"
+	cliDescription = "Stress tests using clientv3 functionality.."
 
 	defaultDialTimeout = 2 * time.Second
 )
@@ -38,7 +38,7 @@ var (
 	rootCmd = &cobra.Command{
 		Use:        cliName,
 		Short:      cliDescription,
-		SuggestFor: []string{"etcdctl"},
+		SuggestFor: []string{"etcd-runner"},
 	}
 )
 
