@@ -422,9 +422,7 @@ func TestNodeStop(t *testing.T) {
 		close(donec)
 	}()
 
-	elapsed := r.electionElapsed
-	n.Tick()
-	testutil.WaitSchedule()
+	status := n.Status()
 	n.Stop()
 
 	select {
@@ -433,13 +431,15 @@ func TestNodeStop(t *testing.T) {
 		t.Fatalf("timed out waiting for node to stop!")
 	}
 
-	if r.electionElapsed != elapsed+1 {
-		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
+	emptyStatus := Status{}
+
+	if reflect.DeepEqual(status, emptyStatus) {
+		t.Errorf("status = %v, want not empty", status)
 	}
-	// Further ticks should have no effect, the node is stopped.
-	n.Tick()
-	if r.electionElapsed != elapsed+1 {
-		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
+	// Further status should return be empty, the node is stopped.
+	status = n.Status()
+	if !reflect.DeepEqual(status, emptyStatus) {
+		t.Errorf("status = %v, want empty", status)
 	}
 	// Subsequent Stops should have no effect.
 	n.Stop()
