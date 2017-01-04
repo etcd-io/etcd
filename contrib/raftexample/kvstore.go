@@ -39,8 +39,11 @@ type kv struct {
 
 func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
-	// replay log into key-value map
-	s.readCommits(commitC, errorC)
+
+	if err := s.recoverFromSnapshot(); err != nil {
+		log.Panic(err)
+	}
+
 	// read commits from raft into kvStore map until error
 	go s.readCommits(commitC, errorC)
 	return s
@@ -64,17 +67,7 @@ func (s *kvstore) Propose(k string, v string) {
 func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 	for data := range commitC {
 		if data == nil {
-			// done replaying log; new data incoming
-			// OR signaled to load snapshot
-			snapshot, err := s.snapshotter.Load()
-			if err == snap.ErrNoSnapshot {
-				return
-			}
-			if err != nil && err != snap.ErrNoSnapshot {
-				log.Panic(err)
-			}
-			log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-			if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+			if err := s.recoverFromSnapshot(); err != nil {
 				log.Panic(err)
 			}
 			continue
@@ -100,9 +93,20 @@ func (s *kvstore) getSnapshot() ([]byte, error) {
 	return json.Marshal(s.kvStore)
 }
 
-func (s *kvstore) recoverFromSnapshot(snapshot []byte) error {
+func (s *kvstore) recoverFromSnapshot() error {
+	snapshot, err := s.snapshotter.Load()
+	if err == snap.ErrNoSnapshot {
+		return nil
+	}
+
+	if err != nil && err != snap.ErrNoSnapshot {
+		return err
+	}
+
+	log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+
 	var store map[string]string
-	if err := json.Unmarshal(snapshot, &store); err != nil {
+	if err := json.Unmarshal(snapshot.Data, &store); err != nil {
 		return err
 	}
 	s.mu.Lock()
