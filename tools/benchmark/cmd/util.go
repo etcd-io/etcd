@@ -17,6 +17,7 @@ package cmd
 import (
 	"crypto/rand"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -58,6 +59,8 @@ func mustCreateConn() *clientv3.Client {
 	}
 
 	client, err := clientv3.New(cfg)
+	clientv3.SetLogger(log.New(os.Stderr, "grpc", 0))
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "dial error: %v\n", err)
 		os.Exit(1)
