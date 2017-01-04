@@ -25,17 +25,17 @@ A restore initializes a new member of a new cluster, with a fresh cluster config
 ```sh
 $ ETCDCTL_API=3 etcdctl snapshot restore snapshot.db \
   --name m1 \
-  --initial-cluster m1=http:/host1:2380,m2=http://host2:2380,m3=http://host3:2380 \
+  --initial-cluster m1=http://host1:2380,m2=http://host2:2380,m3=http://host3:2380 \
   --initial-cluster-token etcd-cluster-1 \
   --initial-advertise-peer-urls http://host1:2380
 $ ETCDCTL_API=3 etcdctl snapshot restore snapshot.db \
   --name m2 \
-  --initial-cluster m1=http:/host1:2380,m2=http://host2:2380,m3=http://host3:2380 \
+  --initial-cluster m1=http://host1:2380,m2=http://host2:2380,m3=http://host3:2380 \
   --initial-cluster-token etcd-cluster-1 \
   --initial-advertise-peer-urls http://host2:2380
 $ ETCDCTL_API=3 etcdctl snapshot restore snapshot.db \
   --name m3 \
-  --initial-cluster m1=http:/host1:2380,m2=http://host2:2380,m3=http://host3:2380 \
+  --initial-cluster m1=http://host1:2380,m2=http://host2:2380,m3=http://host3:2380 \
   --initial-cluster-token etcd-cluster-1 \
   --initial-advertise-peer-urls http://host3:2380
 ```
