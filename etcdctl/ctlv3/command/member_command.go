@@ -112,7 +112,7 @@ func memberAddCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Member %16x added to cluster %16x\n", resp.Member.ID, resp.Header.ClusterId)
+	display.MemberAdd(*resp)
 }
 
 // memberRemoveCommandFunc executes the "member remove" command.
@@ -132,8 +132,7 @@ func memberRemoveCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-
-	fmt.Printf("Member %16x removed from cluster %16x\n", id, resp.Header.ClusterId)
+	display.MemberRemove(id, *resp)
 }
 
 // memberUpdateCommandFunc executes the "member update" command.
@@ -160,7 +159,7 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Member %16x updated in cluster %16x\n", id, resp.Header.ClusterId)
+	display.MemberUpdate(id, *resp)
 }
 
 // memberListCommandFunc executes the "member list" command.
