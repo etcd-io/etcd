@@ -93,6 +93,8 @@ func togRPCError(err error) error {
 		return rpctypes.ErrGRPCPermissionNotGranted
 	case auth.ErrAuthNotEnabled:
 		return rpctypes.ErrGRPCAuthNotEnabled
+	case etcdserver.ErrInvalidAuthToken:
+		return rpctypes.ErrGRPCInvalidAuthToken
 	default:
 		return grpc.Errorf(codes.Unknown, err.Error())
 	}

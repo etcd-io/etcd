@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
@@ -46,11 +47,12 @@ type Client struct {
 	Auth
 	Maintenance
 
-	conn         *grpc.ClientConn
-	cfg          Config
-	creds        *credentials.TransportCredentials
-	balancer     *simpleBalancer
-	retryWrapper retryRpcFunc
+	conn             *grpc.ClientConn
+	cfg              Config
+	creds            *credentials.TransportCredentials
+	balancer         *simpleBalancer
+	retryWrapper     retryRpcFunc
+	retryAuthWrapper retryRpcFunc
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -59,6 +61,8 @@ type Client struct {
 	Username string
 	// Password is a password for authentication
 	Password string
+	// tokenCred is an instance of WithPerRPCCredentials()'s argument
+	tokenCred *authTokenCredential
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -144,7 +148,8 @@ func (c *Client) autoSync() {
 }
 
 type authTokenCredential struct {
-	token string
+	token   string
+	tokenMu *sync.RWMutex
 }
 
 func (cred authTokenCredential) RequireTransportSecurity() bool {
@@ -152,6 +157,8 @@ func (cred authTokenCredential) RequireTransportSecurity() bool {
 }
 
 func (cred authTokenCredential) GetRequestMetadata(ctx context.Context, s ...string) (map[string]string, error) {
+	cred.tokenMu.RLock()
+	defer cred.tokenMu.RUnlock()
 	return map[string]string{
 		"token": cred.token,
 	}, nil
@@ -236,22 +243,50 @@ func (c *Client) Dial(endpoint string) (*grpc.ClientConn, error) {
 	return c.dial(endpoint)
 }
 
+func (c *Client) getToken(ctx context.Context) error {
+	var err error // return last error in a case of fail
+	var auth *authenticator
+
+	for i := 0; i < len(c.cfg.Endpoints); i++ {
+		endpoint := c.cfg.Endpoints[i]
+		host := getHost(endpoint)
+		// use dial options without dopts to avoid reusing the client balancer
+		auth, err = newAuthenticator(host, c.dialSetupOpts(endpoint))
+		if err != nil {
+			continue
+		}
+		defer auth.close()
+
+		var resp *AuthenticateResponse
+		resp, err = auth.authenticate(ctx, c.Username, c.Password)
+		if err != nil {
+			continue
+		}
+
+		c.tokenCred.tokenMu.Lock()
+		c.tokenCred.token = resp.Token
+		c.tokenCred.tokenMu.Unlock()
+
+		return nil
+	}
+
+	return err
+}
+
 func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	opts := c.dialSetupOpts(endpoint, dopts...)
 	host := getHost(endpoint)
 	if c.Username != "" && c.Password != "" {
-		// use dial options without dopts to avoid reusing the client balancer
-		auth, err := newAuthenticator(host, c.dialSetupOpts(endpoint))
-		if err != nil {
-			return nil, err
+		c.tokenCred = &authTokenCredential{
+			tokenMu: &sync.RWMutex{},
 		}
-		defer auth.close()
 
-		resp, err := auth.authenticate(c.ctx, c.Username, c.Password)
+		err := c.getToken(context.TODO())
 		if err != nil {
 			return nil, err
 		}
-		opts = append(opts, grpc.WithPerRPCCredentials(authTokenCredential{token: resp.Token}))
+
+		opts = append(opts, grpc.WithPerRPCCredentials(c.tokenCred))
 	}
 
 	// add metrics options
@@ -303,6 +338,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 	client.conn = conn
 	client.retryWrapper = client.newRetryWrapper()
+	client.retryAuthWrapper = client.newAuthRetryWrapper()
 
 	// wait for a connection
 	if cfg.DialTimeout > 0 {
