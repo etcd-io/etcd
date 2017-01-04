@@ -31,10 +31,11 @@ var (
 	ErrGRPCLeaseNotFound = grpc.Errorf(codes.NotFound, "etcdserver: requested lease not found")
 	ErrGRPCLeaseExist    = grpc.Errorf(codes.FailedPrecondition, "etcdserver: lease already exists")
 
-	ErrGRPCMemberExist    = grpc.Errorf(codes.FailedPrecondition, "etcdserver: member ID already exist")
-	ErrGRPCPeerURLExist   = grpc.Errorf(codes.FailedPrecondition, "etcdserver: Peer URLs already exists")
-	ErrGRPCMemberBadURLs  = grpc.Errorf(codes.InvalidArgument, "etcdserver: given member URLs are invalid")
-	ErrGRPCMemberNotFound = grpc.Errorf(codes.NotFound, "etcdserver: member not found")
+	ErrGRPCMemberExist            = grpc.Errorf(codes.FailedPrecondition, "etcdserver: member ID already exist")
+	ErrGRPCPeerURLExist           = grpc.Errorf(codes.FailedPrecondition, "etcdserver: Peer URLs already exists")
+	ErrGRPCMemberNotEnoughStarted = grpc.Errorf(codes.FailedPrecondition, "etcdserver: re-configuration failed due to not enough started members")
+	ErrGRPCMemberBadURLs          = grpc.Errorf(codes.InvalidArgument, "etcdserver: given member URLs are invalid")
+	ErrGRPCMemberNotFound         = grpc.Errorf(codes.NotFound, "etcdserver: member not found")
 
 	ErrGRPCRequestTooLarge        = grpc.Errorf(codes.InvalidArgument, "etcdserver: request is too large")
 	ErrGRPCRequestTooManyRequests = grpc.Errorf(codes.ResourceExhausted, "etcdserver: too many requests")
@@ -71,10 +72,11 @@ var (
 		grpc.ErrorDesc(ErrGRPCLeaseNotFound): ErrGRPCLeaseNotFound,
 		grpc.ErrorDesc(ErrGRPCLeaseExist):    ErrGRPCLeaseExist,
 
-		grpc.ErrorDesc(ErrGRPCMemberExist):    ErrGRPCMemberExist,
-		grpc.ErrorDesc(ErrGRPCPeerURLExist):   ErrGRPCPeerURLExist,
-		grpc.ErrorDesc(ErrGRPCMemberBadURLs):  ErrGRPCMemberBadURLs,
-		grpc.ErrorDesc(ErrGRPCMemberNotFound): ErrGRPCMemberNotFound,
+		grpc.ErrorDesc(ErrGRPCMemberExist):            ErrGRPCMemberExist,
+		grpc.ErrorDesc(ErrGRPCPeerURLExist):           ErrGRPCPeerURLExist,
+		grpc.ErrorDesc(ErrGRPCMemberNotEnoughStarted): ErrGRPCMemberNotEnoughStarted,
+		grpc.ErrorDesc(ErrGRPCMemberBadURLs):          ErrGRPCMemberBadURLs,
+		grpc.ErrorDesc(ErrGRPCMemberNotFound):         ErrGRPCMemberNotFound,
 
 		grpc.ErrorDesc(ErrGRPCRequestTooLarge):        ErrGRPCRequestTooLarge,
 		grpc.ErrorDesc(ErrGRPCRequestTooManyRequests): ErrGRPCRequestTooManyRequests,
@@ -112,10 +114,11 @@ var (
 	ErrLeaseNotFound = Error(ErrGRPCLeaseNotFound)
 	ErrLeaseExist    = Error(ErrGRPCLeaseExist)
 
-	ErrMemberExist    = Error(ErrGRPCMemberExist)
-	ErrPeerURLExist   = Error(ErrGRPCPeerURLExist)
-	ErrMemberBadURLs  = Error(ErrGRPCMemberBadURLs)
-	ErrMemberNotFound = Error(ErrGRPCMemberNotFound)
+	ErrMemberExist            = Error(ErrGRPCMemberExist)
+	ErrPeerURLExist           = Error(ErrGRPCPeerURLExist)
+	ErrMemberNotEnoughStarted = Error(ErrGRPCMemberNotEnoughStarted)
+	ErrMemberBadURLs          = Error(ErrGRPCMemberBadURLs)
+	ErrMemberNotFound         = Error(ErrGRPCMemberNotFound)
 
 	ErrRequestTooLarge = Error(ErrGRPCRequestTooLarge)
 	ErrTooManyRequests = Error(ErrGRPCRequestTooManyRequests)
