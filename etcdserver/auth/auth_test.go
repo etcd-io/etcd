@@ -173,7 +173,7 @@ func (td *testDoer) Do(_ context.Context, req etcdserverpb.Request) (etcdserver.
 			},
 		}, nil
 	}
-	if req.Method == "GET" && td.get != nil {
+	if (req.Method == "GET" || req.Method == "QGET") && td.get != nil {
 		res := td.get[td.getindex]
 		if res.Event == nil {
 			td.getindex++
