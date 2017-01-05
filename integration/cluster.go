@@ -404,7 +404,7 @@ func (c *cluster) waitVersion() {
 }
 
 func (c *cluster) name(i int) string {
-	return fmt.Sprint("node", i)
+	return fmt.Sprint(i)
 }
 
 // isMembersEqual checks whether two members equal except ID field.
@@ -420,7 +420,8 @@ func isMembersEqual(membs []client.Member, wmembs []client.Member) bool {
 
 func newLocalListener(t *testing.T) net.Listener {
 	c := atomic.AddInt64(&localListenCount, 1)
-	addr := fmt.Sprintf("127.0.0.1:%d.%d.sock", c+basePort, os.Getpid())
+	// Go 1.8+ allows only numbers in port
+	addr := fmt.Sprintf("127.0.0.1:%05d%05d", c+basePort, os.Getpid())
 	return NewListenerWithAddr(t, addr)
 }
 
@@ -510,7 +511,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 // listenGRPC starts a grpc server over a unix domain socket on the member
 func (m *member) listenGRPC() error {
 	// prefix with localhost so cert has right domain
-	m.grpcAddr = "localhost:" + m.Name + ".sock"
+	m.grpcAddr = "localhost:" + m.Name
 	l, err := transport.NewUnixListener(m.grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen failed on grpc socket %s (%v)", m.grpcAddr, err)

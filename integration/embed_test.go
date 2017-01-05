@@ -93,7 +93,7 @@ func TestEmbedEtcd(t *testing.T) {
 
 func newEmbedURLs(n int) (urls []url.URL) {
 	for i := 0; i < n; i++ {
-		u, _ := url.Parse(fmt.Sprintf("unix://localhost:%d.%d.sock", os.Getpid(), i))
+		u, _ := url.Parse(fmt.Sprintf("unix://localhost:%d%06d", os.Getpid(), i))
 		urls = append(urls, *u)
 	}
 	return
