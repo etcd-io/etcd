@@ -12,28 +12,49 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/coreos/etcd/clientv3/concurrency"
+	"github.com/spf13/cobra"
 )
 
-func runElection(getClient getClientFunc, rounds int) {
-	rcs := make([]roundClient, 15)
+// NewElectionCommand returns the cobra command for "election runner".
+func NewElectionCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "election",
+		Short: "Performs election operation",
+		Run:   runElectionFunc,
+	}
+	cmd.Flags().IntVar(&rounds, "rounds", 100, "number of rounds to run")
+	cmd.Flags().IntVar(&totalClientConnections, "total-client-connections", 10, "total number of client connections")
+	return cmd
+}
+
+func runElectionFunc(cmd *cobra.Command, args []string) {
+	if len(args) > 0 {
+		ExitWithError(ExitBadArgs, errors.New("election does not take any argument"))
+	}
+
+	rcs := make([]roundClient, totalClientConnections)
 	validatec, releasec := make(chan struct{}, len(rcs)), make(chan struct{}, len(rcs))
 	for range rcs {
 		releasec <- struct{}{}
 	}
+
+	eps := endpointsFromFlag(cmd)
+	dialTimeout := dialTimeoutFromCmd(cmd)
 
 	for i := range rcs {
 		v := fmt.Sprintf("%d", i)
 		observedLeader := ""
 		validateWaiters := 0
 
-		rcs[i].c = getClient()
+		rcs[i].c = newClient(eps, dialTimeout)
 		var (
 			s   *concurrency.Session
 			err error
