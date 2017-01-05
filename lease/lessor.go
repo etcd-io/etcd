@@ -43,28 +43,24 @@ var (
 	ErrLeaseExists   = errors.New("lease already exists")
 )
 
-type LeaseID int64
-
-// RangeDeleter defines an interface with Txn and DeleteRange method.
-// We define this interface only for lessor to limit the number
-// of methods of mvcc.KV to what lessor actually needs.
-//
-// Having a minimum interface makes testing easy.
-type RangeDeleter interface {
-	// TxnBegin see comments on mvcc.KV
-	TxnBegin() int64
-	// TxnEnd see comments on mvcc.KV
-	TxnEnd(txnID int64) error
-	// TxnDeleteRange see comments on mvcc.KV
-	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
+// TxnDelete is a TxnWrite that only permits deletes. Defined here
+// to avoid circular dependency with mvcc.
+type TxnDelete interface {
+	DeleteRange(key, end []byte) (n, rev int64)
+	End()
 }
+
+// RangeDeleter is a TxnDelete constructor.
+type RangeDeleter func() TxnDelete
+
+type LeaseID int64
 
 // Lessor owns leases. It can grant, revoke, renew and modify leases for lessee.
 type Lessor interface {
-	// SetRangeDeleter sets the RangeDeleter to the Lessor.
-	// Lessor deletes the items in the revoked or expired lease from the
-	// the set RangeDeleter.
-	SetRangeDeleter(dr RangeDeleter)
+	// SetRangeDeleter lets the lessor create TxnDeletes to the store.
+	// Lessor deletes the items in the revoked or expired lease by creating
+	// new TxnDeletes.
+	SetRangeDeleter(rd RangeDeleter)
 
 	// Grant grants a lease that expires at least after TTL seconds.
 	Grant(id LeaseID, ttl int64) (*Lease, error)
@@ -248,17 +244,14 @@ func (le *lessor) Revoke(id LeaseID) error {
 		return nil
 	}
 
-	tid := le.rd.TxnBegin()
+	txn := le.rd()
 
 	// sort keys so deletes are in same order among all members,
 	// otherwise the backened hashes will be different
 	keys := l.Keys()
 	sort.StringSlice(keys).Sort()
 	for _, key := range keys {
-		_, _, err := le.rd.TxnDeleteRange(tid, []byte(key), nil)
-		if err != nil {
-			panic(err)
-		}
+		txn.DeleteRange([]byte(key), nil)
 	}
 
 	le.mu.Lock()
@@ -269,11 +262,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// deleting the keys if etcdserver fails in between.
 	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
 
-	err := le.rd.TxnEnd(tid)
-	if err != nil {
-		panic(err)
-	}
-
+	txn.End()
 	return nil
 }
 
