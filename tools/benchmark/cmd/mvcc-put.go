@@ -109,12 +109,9 @@ func mvccPutFunc(cmd *cobra.Command, args []string) {
 	for i := 0; i < totalNrKeys; i++ {
 		st := time.Now()
 		if txn {
-			id := s.TxnBegin()
-			if _, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease); err != nil {
-				fmt.Fprintln(os.Stderr, "txn put error:", err)
-				os.Exit(1)
-			}
-			s.TxnEnd(id)
+			tw := s.Write()
+			tw.Put(keys[i], vals[i], lease.NoLease)
+			tw.End()
 		} else {
 			s.Put(keys[i], vals[i], lease.NoLease)
 		}
