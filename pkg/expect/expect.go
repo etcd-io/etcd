@@ -17,6 +17,7 @@ package expect
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -38,6 +39,8 @@ type ExpectProcess struct {
 	count int // increment whenever new line gets added
 	err   error
 }
+
+var printDebugLines = os.Getenv("EXPECT_DEBUG") != ""
 
 // NewExpect creates a new process for expect testing.
 func NewExpect(name string, arg ...string) (ep *ExpectProcess, err error) {
@@ -65,6 +68,9 @@ func (ep *ExpectProcess) read() {
 		ep.mu.Lock()
 		ep.err = rerr
 		if l != "" {
+			if printDebugLines {
+				fmt.Printf("%s-%d: %s", ep.cmd.Path, ep.cmd.Process.Pid, l)
+			}
 			ep.lines = append(ep.lines, l)
 			ep.count++
 			if len(ep.lines) == 1 {
