@@ -28,6 +28,7 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 		pb.NewLeaseClient(c.ActiveConnection()),
 		pb.NewWatchClient(c.ActiveConnection()),
 		pb.NewMaintenanceClient(c.ActiveConnection()),
+		pb.NewAuthClient(c.ActiveConnection()),
 	}
 }
 
