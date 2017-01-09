@@ -260,7 +260,7 @@ func TestProgressResume(t *testing.T) {
 	}
 }
 
-// TestProgressResumeByHeartbeatResp ensures raft.heartbeat reset progress.paused by heartbeat.
+// TestProgressResumeByHeartbeatResp ensures raft.heartbeat reset progress.paused by heartbeat response.
 func TestProgressResumeByHeartbeatResp(t *testing.T) {
 	r := newTestRaft(1, []uint64{1, 2}, 5, 1, NewMemoryStorage())
 	r.becomeCandidate()
@@ -269,7 +269,7 @@ func TestProgressResumeByHeartbeatResp(t *testing.T) {
 
 	r.Step(pb.Message{From: 1, To: 1, Type: pb.MsgBeat})
 	if !r.prs[2].Paused {
-		t.Errorf("paused = %v, want false", r.prs[2].Paused)
+		t.Errorf("paused = %v, want true", r.prs[2].Paused)
 	}
 
 	r.prs[2].becomeReplicate()
