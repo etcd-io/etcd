@@ -706,6 +706,11 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 		return nil
 	}
 
+	// only gets rev == 0 when passed AuthInfo{}; no user given
+	if revision == 0 {
+		return ErrUserEmpty
+	}
+
 	if revision < as.revision {
 		return ErrAuthOldRevision
 	}
