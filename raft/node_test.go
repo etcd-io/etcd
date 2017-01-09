@@ -350,7 +350,7 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	<-done
 
 	if len(rdyEntries) != 4 {
-		t.Errorf("len(entry) = %d, want %d, %v\n", len(rdyEntries), 3, rdyEntries)
+		t.Errorf("len(entry) = %d, want %d, %v\n", len(rdyEntries), 4, rdyEntries)
 	}
 	if !bytes.Equal(rdyEntries[1].Data, ccdata1) {
 		t.Errorf("data = %v, want %v", rdyEntries[1].Data, ccdata1)
