@@ -49,6 +49,7 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 		pb.NewLeaseClient(c.ActiveConnection()),
 		grpcproxy.WatchServerToWatchClient(wp),
 		pb.NewMaintenanceClient(c.ActiveConnection()),
+		pb.NewAuthClient(c.ActiveConnection()),
 	}
 	proxies[c] = grpcClientProxy{grpc: grpc, wdonec: wpch}
 	return grpc

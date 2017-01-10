@@ -889,4 +889,6 @@ type grpcAPI struct {
 	Watch pb.WatchClient
 	// Maintenance is the maintenance API for the client's connection.
 	Maintenance pb.MaintenanceClient
+	// Auth is the authentication API for the client's connection.
+	Auth pb.AuthClient
 }
