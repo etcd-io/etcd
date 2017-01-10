@@ -165,15 +165,9 @@ type genRunner struct {
 //
 // Library users: *DO NOT USE IT DIRECTLY. IT WILL CHANGE CONTINOUSLY WITHOUT NOTICE.*
 func Gen(w io.Writer, buildTags, pkgName, uid string, useUnsafe bool, ti *TypeInfos, typ ...reflect.Type) {
-	// trim out all types which already implement Selfer
-	typ2 := make([]reflect.Type, 0, len(typ))
-	for _, t := range typ {
-		if reflect.PtrTo(t).Implements(selferTyp) || t.Implements(selferTyp) {
-			continue
-		}
-		typ2 = append(typ2, t)
-	}
-	typ = typ2
+	// All types passed to this method do not have a codec.Selfer method implemented directly.
+	// codecgen already checks the AST and skips any types that define the codec.Selfer methods.
+	// Consequently, there's no need to check and trim them if they implement codec.Selfer
 
 	if len(typ) == 0 {
 		return

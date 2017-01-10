@@ -347,7 +347,7 @@ func (d *simpleDecDriver) decLen() int {
 		}
 		return int(ui)
 	}
-	d.d.errorf("decLen: Cannot read length: bd%8 must be in range 0..4. Got: %d", d.bd%8)
+	d.d.errorf("decLen: Cannot read length: bd%%8 must be in range 0..4. Got: %d", d.bd%8)
 	return -1
 }
 
