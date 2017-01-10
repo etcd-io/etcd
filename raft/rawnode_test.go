@@ -110,6 +110,82 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 	}
 }
 
+// TestRawNodeProposeAddDuplicateNode ensures that two proposes to add the same node should
+// not affect the later propose to add new node.
+func TestRawNodeProposeAddDuplicateNode(t *testing.T) {
+	s := NewMemoryStorage()
+	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, s), []Peer{{ID: 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rd := rawNode.Ready()
+	s.Append(rd.Entries)
+	rawNode.Advance(rd)
+
+	rawNode.Campaign()
+	for {
+		rd = rawNode.Ready()
+		s.Append(rd.Entries)
+		if rd.SoftState.Lead == rawNode.raft.id {
+			rawNode.Advance(rd)
+			break
+		}
+		rawNode.Advance(rd)
+	}
+
+	proposeConfChangeAndApply := func(cc raftpb.ConfChange) {
+		rawNode.ProposeConfChange(cc)
+		rd = rawNode.Ready()
+		s.Append(rd.Entries)
+		for _, entry := range rd.CommittedEntries {
+			if entry.Type == raftpb.EntryConfChange {
+				var cc raftpb.ConfChange
+				cc.Unmarshal(entry.Data)
+				rawNode.ApplyConfChange(cc)
+			}
+		}
+		rawNode.Advance(rd)
+	}
+
+	cc1 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
+	ccdata1, err := cc1.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposeConfChangeAndApply(cc1)
+
+	// try to add the same node again
+	proposeConfChangeAndApply(cc1)
+
+	// the new node join should be ok
+	cc2 := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2}
+	ccdata2, err := cc2.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposeConfChangeAndApply(cc2)
+
+	lastIndex, err := s.LastIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// the last three entries should be: ConfChange cc1, cc1, cc2
+	entries, err := s.Entries(lastIndex-2, lastIndex+1, noLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("len(entries) = %d, want %d", len(entries), 3)
+	}
+	if !bytes.Equal(entries[0].Data, ccdata1) {
+		t.Errorf("entries[0].Data = %v, want %v", entries[0].Data, ccdata1)
+	}
+	if !bytes.Equal(entries[2].Data, ccdata2) {
+		t.Errorf("entries[2].Data = %v, want %v", entries[2].Data, ccdata2)
+	}
+}
+
 // TestRawNodeReadIndex ensures that Rawnode.ReadIndex sends the MsgReadIndex message
 // to the underlying raft. It also ensures that ReadState can be read out.
 func TestRawNodeReadIndex(t *testing.T) {
