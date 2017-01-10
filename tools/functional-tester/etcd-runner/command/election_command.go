@@ -15,11 +15,12 @@
 package command
 
 import (
-	"context"
 	"errors"
-	"fmt"
+	"log"
 
-	"github.com/coreos/etcd/clientv3/concurrency"
+	"context"
+
+	"github.com/coreos/etcd/tools/functional-tester/etcd-runner/runner"
 	"github.com/spf13/cobra"
 )
 
@@ -40,87 +41,17 @@ func runElectionFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, errors.New("election does not take any argument"))
 	}
 
-	rcs := make([]roundClient, totalClientConnections)
-	validatec, releasec := make(chan struct{}, len(rcs)), make(chan struct{}, len(rcs))
-	for range rcs {
-		releasec <- struct{}{}
-	}
-
 	eps := endpointsFromFlag(cmd)
 	dialTimeout := dialTimeoutFromCmd(cmd)
 
-	for i := range rcs {
-		v := fmt.Sprintf("%d", i)
-		observedLeader := ""
-		validateWaiters := 0
-
-		rcs[i].c = newClient(eps, dialTimeout)
-		var (
-			s   *concurrency.Session
-			err error
-		)
-		for {
-			s, err = concurrency.NewSession(rcs[i].c)
-			if err == nil {
-				break
-			}
-		}
-		e := concurrency.NewElection(s, "electors")
-
-		rcs[i].acquire = func() error {
-			<-releasec
-			ctx, cancel := context.WithCancel(context.Background())
-			go func() {
-				if ol, ok := <-e.Observe(ctx); ok {
-					observedLeader = string(ol.Kvs[0].Value)
-					if observedLeader != v {
-						cancel()
-					}
-				}
-			}()
-			err = e.Campaign(ctx, v)
-			if err == nil {
-				observedLeader = v
-			}
-			if observedLeader == v {
-				validateWaiters = len(rcs)
-			}
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				cancel()
-				return err
-			}
-		}
-		rcs[i].validate = func() error {
-			if l, err := e.Leader(context.TODO()); err == nil && l != observedLeader {
-				return fmt.Errorf("expected leader %q, got %q", observedLeader, l)
-			}
-			validatec <- struct{}{}
-			return nil
-		}
-		rcs[i].release = func() error {
-			for validateWaiters > 0 {
-				select {
-				case <-validatec:
-					validateWaiters--
-				default:
-					return fmt.Errorf("waiting on followers")
-				}
-			}
-			if err := e.Resign(context.TODO()); err != nil {
-				return err
-			}
-			if observedLeader == v {
-				for range rcs {
-					releasec <- struct{}{}
-				}
-			}
-			observedLeader = ""
-			return nil
-		}
+	ecf := &runner.EtcdRunnerConfig{
+		Eps:                    eps,
+		DialTimeout:            dialTimeout,
+		TotalClientConnections: totalClientConnections,
+		Rounds:                 rounds,
 	}
 
-	doRounds(rcs, rounds)
+	if err := runner.RunElection(context.Background(), ecf); err != nil {
+		log.Panicf("RunElection error (%v)", err)
+	}
 }
