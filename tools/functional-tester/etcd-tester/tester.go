@@ -103,6 +103,7 @@ func (tt *tester) doRound(round int) error {
 		if err := tt.cluster.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
 		}
+
 		plog.Infof("%s injecting failure %q", tt.logPrefix(), f.Desc())
 		if err := f.Inject(tt.cluster, round); err != nil {
 			return fmt.Errorf("injection error: %v", err)
@@ -244,11 +245,7 @@ func (tt *tester) startStresser() (err error) {
 
 func (tt *tester) resetStressCheck() error {
 	plog.Infof("%s resetting stressers and checkers...", tt.logPrefix())
-	cs := &compositeStresser{}
-	for _, m := range tt.cluster.Members {
-		s := NewStresser(tt.stresserType, &tt.scfg, m)
-		cs.stressers = append(cs.stressers, s)
-	}
+	cs := NewStresser(tt.stresserType, &tt.scfg, tt.cluster.Members)
 	tt.stresser = cs
 	if !tt.doChecks {
 		tt.checker = newNoChecker()

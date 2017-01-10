@@ -19,6 +19,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/etcd/tools/functional-tester/etcd-runner/runner"
+
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc/grpclog"
 )
@@ -111,22 +113,66 @@ type stressConfig struct {
 }
 
 // NewStresser creates stresser from a comma separated list of stresser types.
-func NewStresser(s string, sc *stressConfig, m *member) Stresser {
+func NewStresser(s string, sc *stressConfig, members []*member) Stresser {
 	types := strings.Split(s, ",")
 	if len(types) > 1 {
 		stressers := make([]Stresser, len(types))
 		for i, stype := range types {
-			stressers[i] = NewStresser(stype, sc, m)
+			stressers[i] = NewStresser(stype, sc, members)
 		}
 		return &compositeStresser{stressers}
 	}
+
+	endPts := make([]string, len(members))
+	for i, m := range members {
+		endPts[i] = m.ClientURL
+	}
+
+	rf := &runner.EtcdRunnerConfig{
+		Eps:                    endPts,
+		DialTimeout:            5,
+		TotalClientConnections: 10,
+		Rounds:                 1,
+	}
+
 	switch s {
 	case "nop":
 		return &nopStresser{start: time.Now(), qps: int(sc.rateLimiter.Limit())}
 	case "keys":
 		// TODO: Too intensive stressers can panic etcd member with
 		// 'out of memory' error. Put rate limits in server side.
-		return &keyStresser{
+		return toKeyStressers(sc, members)
+	case "v2keys":
+		return tov2Stressers(sc, members)
+	case "lease":
+		return toLeaseStressers(sc, members)
+	case "election":
+		return &electionRunnerStresser{cf: rf}
+	case "lock-racer":
+		return &lockracerRunnerStresser{cf: rf}
+	case "watcher":
+		wcf := &runner.WatchRunnerConfig{
+			EtcdRunnerConfig: *rf,
+			RunningTime:      60,
+			NumPrefixes:      10,
+			WatchesPerPrefix: 10,
+			ReqRate:          30,
+			TotalKeys:        1000,
+		}
+		return &watchRunnerStresser{
+			cf:      wcf,
+			limiter: sc.rateLimiter,
+		}
+	default:
+		plog.Panicf("unknown stresser type: %s\n", s)
+	}
+	return nil // never reach here
+}
+
+func toKeyStressers(sc *stressConfig, members []*member) Stresser {
+	stressers := make([]Stresser, len(members))
+	for i, m := range members {
+		stressers[i] = &keyStresser{
 			Endpoint:       m.grpcAddr(),
 			keyLargeSize:   sc.keyLargeSize,
 			keySize:        sc.keySize,
@@ -134,23 +180,32 @@ func NewStresser(s string, sc *stressConfig, m *member) Stresser {
 			N:              100,
 			rateLimiter:    sc.rateLimiter,
 		}
-	case "v2keys":
-		return &v2Stresser{
-			Endpoint:       m.ClientURL,
-			keySize:        sc.keySize,
-			keySuffixRange: sc.keySuffixRange,
-			N:              100,
-			rateLimiter:    sc.rateLimiter,
-		}
-	case "lease":
-		return &leaseStresser{
+	}
+	return &compositeStresser{stressers}
+}
+
+func toLeaseStressers(sc *stressConfig, members []*member) Stresser {
+	stressers := make([]Stresser, len(members))
+	for i, m := range members {
+		stressers[i] = &leaseStresser{
 			endpoint:     m.grpcAddr(),
 			numLeases:    sc.numLeases,
 			keysPerLease: sc.keysPerLease,
 			rateLimiter:  sc.rateLimiter,
 		}
-	default:
-		plog.Panicf("unknown stresser type: %s\n", s)
 	}
-	return nil // never reach here
+	return &compositeStresser{stressers}
+}
+
+func tov2Stressers(sc *stressConfig, members []*member) Stresser {
+	stressers := make([]Stresser, len(members))
+	for i, m := range members {
+		stressers[i] = &leaseStresser{
+			endpoint:     m.grpcAddr(),
+			numLeases:    sc.numLeases,
+			keysPerLease: sc.keysPerLease,
+			rateLimiter:  sc.rateLimiter,
+		}
+	}
+	return &compositeStresser{stressers}
 }

@@ -242,6 +242,32 @@ func (cchecker *compositeChecker) Check() error {
 	return errsToError(errs)
 }
 
+type checkch func() <-chan error
+
+type watchRunnerChecker struct {
+	check checkch
+}
+
+func (wrc *watchRunnerChecker) Check() error {
+	return <-wrc.check()
+}
+
+type lockRacerRunnerChecker struct {
+	check checkch
+}
+
+func (lrc *lockRacerRunnerChecker) Check() error {
+	return <-lrc.check()
+}
+
+type electionRunnerChecker struct {
+	check checkch
+}
+
+func (erc *electionRunnerChecker) Check() error {
+	return <-erc.check()
+}
+
 type noChecker struct{}
 
 func newNoChecker() Checker        { return &noChecker{} }
