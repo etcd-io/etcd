@@ -1,3 +1,36 @@
+etcd v3.1.0 (2017-01-13)
+- faster linearizable reads (implements Raft read-index)
+- automatic leadership transfer when leader steps down
+- etcd uses default route IP if advertise URL is not given
+- cluster rejects removing members if quorum will be lost
+- SRV records (e.g., infra1.example.com) must match the discovery domain
+  (i.e., example.com) if no custom certificate authority is given
+  - TLSConfig ServerName is ignored with user-provided certificates
+    for backwards compatibility; to be deprecated in 3.2
+- discovery now has upper limit for waiting on retries
+- etcd flags
+  - --strict-reconfig-check flag is set by default
+  - add --log-output flag
+  - add --metrics flag
+- v3 authentication API is now stable
+- v3 client
+  - add SetEndpoints method; update endpoints at runtime
+  - add Sync method; auto-update endpoints at runtime
+  - add Lease TimeToLive API; fetch lease information
+  - replace Config.Logger field with global logger
+  - Get API responses are sorted in ascending order by default
+- v3 etcdctl
+  - add lease timetolive command
+  - add --print-value-only flag to get command
+  - add --dest-prefix flag to make-mirror command
+  - command get responses are sorted in ascending order by default
+- recipes now conform to sessions defined in clientv3/concurrency
+- ACI has symlinks to /usr/local/bin/etcd*
+- warn on binding listeners through domain names; to be deprecated in 3.2
+- experimental gRPC proxy feature
+
+etcd v3.0.16 (2017-01-13)
+
 etcd v3.0.15 (2016-11-11)
 - fix cancel watch request with wrong range end
 
@@ -11,7 +44,7 @@ etcd v3.0.12 (2016-10-07)
 etcd v3.0.11 (2016-10-07)
 - server returns previous key-value (optional)
   - clientv3 WithPrevKV option
-  - v3 etcdctl prev-kv flag
+  - v3 etcdctl put,watch,del --prev-kv flag
 
 etcd v3.0.10 (2016-09-23)
 
@@ -28,7 +61,7 @@ etcd v3.0.6 (2016-08-19)
 
 etcd v3.0.5 (2016-08-19)
 - SRV records (e.g., infra1.example.com) must match the discovery domain
-  (i.e., example.com) when using the default certificate authority.
+  (i.e., example.com) if no custom certificate authority is given
 
 etcd v3.0.4 (2016-07-27)
 - v2 auth can now use common name from TLS certificate when --client-cert-auth is enabled
@@ -44,3 +77,5 @@ etcd v3.0.2 (2016-07-08)
 - Dockerfile uses ENTRYPOINT, instead of CMD, to run etcd without binary path specified
 
 etcd v3.0.1 (2016-07-01)
+
+etcd v3.0.0 (2016-06-30)
