@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
@@ -36,12 +38,14 @@ var rangeCmd = &cobra.Command{
 }
 
 var (
+	rangeRate        int
 	rangeTotal       int
 	rangeConsistency string
 )
 
 func init() {
 	RootCmd.AddCommand(rangeCmd)
+	rangeCmd.Flags().IntVar(&rangeRate, "rate", 0, "Maximum range requests per second (0 is no limit)")
 	rangeCmd.Flags().IntVar(&rangeTotal, "total", 10000, "Total number of range requests")
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 }
@@ -67,6 +71,11 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	if rangeRate == 0 {
+		rangeRate = math.MaxInt32
+	}
+	limit := rate.NewLimiter(rate.Limit(rangeRate), 1)
+
 	requests := make(chan v3.Op, totalClients)
 	clients := mustCreateClients(totalClients, totalConns)
 
@@ -80,6 +89,8 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		go func(c *v3.Client) {
 			defer wg.Done()
 			for op := range requests {
+				limit.Wait(context.Background())
+
 				st := time.Now()
 				_, err := c.Do(context.Background(), op)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
