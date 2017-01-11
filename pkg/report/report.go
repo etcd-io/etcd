@@ -99,7 +99,7 @@ func (r *report) String() (s string) {
 		s += fmt.Sprintf("  Stddev:\t%s.\n", r.sec2str(r.stddev))
 		s += fmt.Sprintf("  Requests/sec:\t"+r.precision+"\n", r.rps)
 		s += r.histogram()
-		s += r.latencies()
+		s += r.sprintLatencies()
 		if r.sps != nil {
 			s += fmt.Sprintf("%v\n", r.sps.getTimeSeries())
 		}
@@ -156,17 +156,25 @@ func (r *report) processResults() {
 	}
 }
 
-func (r *report) latencies() string {
-	pctls := []int{10, 25, 50, 75, 90, 95, 99}
-	data := make([]float64, len(pctls))
+var pctls = []float64{10, 25, 50, 75, 90, 95, 99, 99.9}
+
+// percentiles returns percentile distribution of float64 slice.
+func percentiles(nums []float64) (data []float64) {
+	data = make([]float64, len(pctls))
 	j := 0
-	for i := 0; i < len(r.lats) && j < len(pctls); i++ {
-		current := i * 100 / len(r.lats)
+	n := len(nums)
+	for i := 0; i < n && j < len(pctls); i++ {
+		current := float64(i) * 100.0 / float64(n)
 		if current >= pctls[j] {
-			data[j] = r.lats[i]
+			data[j] = nums[i]
 			j++
 		}
 	}
+	return
+}
+
+func (r *report) sprintLatencies() string {
+	data := percentiles(r.lats)
 	s := fmt.Sprintf("\nLatency distribution:\n")
 	for i := 0; i < len(pctls); i++ {
 		if data[i] > 0 {
