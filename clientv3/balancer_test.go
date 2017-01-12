@@ -42,14 +42,14 @@ func TestBalancerGetUnblocking(t *testing.T) {
 	if err != nil {
 		t.Errorf("Get() with up endpoints should success, got %v", err)
 	}
-	if addrFirst.Addr != endpoints[1] && addrFirst.Addr != endpoints[2] {
+	if addrFirst.Addr != endpoints[1] {
 		t.Errorf("Get() didn't return expected address, got %v", addrFirst)
 	}
 	if putFun == nil {
 		t.Errorf("Get() returned unexpected nil put function")
 	}
 	addrSecond, _, _ := sb.Get(context.Background(), unblockingOpts)
-	if addrSecond.Addr != addrSecond.Addr {
+	if addrFirst.Addr != addrSecond.Addr {
 		t.Errorf("Get() didn't return the same address as previous call, got %v and %v", addrFirst, addrSecond)
 	}
 
@@ -92,7 +92,7 @@ func TestBalancerGetBlocking(t *testing.T) {
 
 	down2 := sb.Up(grpc.Address{Addr: endpoints[2]})
 	addrSecond, _, _ := sb.Get(context.Background(), blockingOpts)
-	if addrSecond.Addr != addrSecond.Addr {
+	if addrFirst.Addr != addrSecond.Addr {
 		t.Errorf("Get() didn't return the same address as previous call, got %v and %v", addrFirst, addrSecond)
 	}
 
