@@ -23,6 +23,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"math/big"
 	"net"
 	"os"
@@ -235,6 +236,7 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 			return nil, err
 		}
 		// if given a CA, trust any host with a cert signed by the CA
+		log.Println("warning: ignoring ServerName for user-provided CA for backwards compatibility is deprecated")
 		cfg.ServerName = ""
 	}
 
