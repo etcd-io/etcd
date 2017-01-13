@@ -25,17 +25,17 @@ import (
 	"time"
 )
 
-type timeSeries struct {
-	timestamp  int64
-	avgLatency time.Duration
-	throughPut int64
+type DataPoint struct {
+	Timestamp  int64
+	AvgLatency time.Duration
+	ThroughPut int64
 }
 
-type TimeSeries []timeSeries
+type TimeSeries []DataPoint
 
 func (t TimeSeries) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
 func (t TimeSeries) Len() int           { return len(t) }
-func (t TimeSeries) Less(i, j int) bool { return t[i].timestamp < t[j].timestamp }
+func (t TimeSeries) Less(i, j int) bool { return t[i].Timestamp < t[j].Timestamp }
 
 type secondPoint struct {
 	totalLatency time.Duration
@@ -96,10 +96,10 @@ func (sp *secondPoints) getTimeSeries() TimeSeries {
 		if v.count > 0 {
 			lat = time.Duration(v.totalLatency) / time.Duration(v.count)
 		}
-		tslice[i] = timeSeries{
-			timestamp:  k,
-			avgLatency: lat,
-			throughPut: v.count,
+		tslice[i] = DataPoint{
+			Timestamp:  k,
+			AvgLatency: lat,
+			ThroughPut: v.count,
 		}
 		i++
 	}
@@ -117,9 +117,9 @@ func (ts TimeSeries) String() string {
 	rows := [][]string{}
 	for i := range ts {
 		row := []string{
-			fmt.Sprintf("%d", ts[i].timestamp),
-			fmt.Sprintf("%s", ts[i].avgLatency),
-			fmt.Sprintf("%d", ts[i].throughPut),
+			fmt.Sprintf("%d", ts[i].Timestamp),
+			fmt.Sprintf("%s", ts[i].AvgLatency),
+			fmt.Sprintf("%d", ts[i].ThroughPut),
 		}
 		rows = append(rows, row)
 	}
