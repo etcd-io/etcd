@@ -33,13 +33,14 @@ func (c *Client) newRetryWrapper() retryRpcFunc {
 				return nil
 			}
 
-			// only retry if unavailable
-			if grpc.Code(err) != codes.Unavailable {
+			eErr := rpctypes.Error(err)
+			// always stop retry on etcd errors
+			if _, ok := eErr.(rpctypes.EtcdError); ok {
 				return err
 			}
-			// always stop retry on etcd errors
-			eErr := rpctypes.Error(err)
-			if _, ok := eErr.(rpctypes.EtcdError); ok {
+
+			// only retry if unavailable
+			if grpc.Code(err) != codes.Unavailable {
 				return err
 			}
 
@@ -54,17 +55,52 @@ func (c *Client) newRetryWrapper() retryRpcFunc {
 	}
 }
 
-type retryKVClient struct {
-	pb.KVClient
-	retryf retryRpcFunc
+func (c *Client) newAuthRetryWrapper() retryRpcFunc {
+	return func(rpcCtx context.Context, f rpcFunc) error {
+		for {
+			err := f(rpcCtx)
+			if err == nil {
+				return nil
+			}
+
+			// always stop retry on etcd errors other than invalid auth token
+			if rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken {
+				gterr := c.getToken(rpcCtx)
+				if gterr != nil {
+					return err // return the original error for simplicity
+				}
+				continue
+			}
+
+			return err
+		}
+	}
 }
 
 // RetryKVClient implements a KVClient that uses the client's FailFast retry policy.
 func RetryKVClient(c *Client) pb.KVClient {
-	return &retryKVClient{pb.NewKVClient(c.conn), c.retryWrapper}
+	retryWrite := &retryWriteKVClient{pb.NewKVClient(c.conn), c.retryWrapper}
+	return &retryKVClient{&retryWriteKVClient{retryWrite, c.retryAuthWrapper}}
 }
 
-func (rkv *retryKVClient) Put(ctx context.Context, in *pb.PutRequest, opts ...grpc.CallOption) (resp *pb.PutResponse, err error) {
+type retryKVClient struct {
+	*retryWriteKVClient
+}
+
+func (rkv *retryKVClient) Range(ctx context.Context, in *pb.RangeRequest, opts ...grpc.CallOption) (resp *pb.RangeResponse, err error) {
+	err = rkv.retryf(ctx, func(rctx context.Context) error {
+		resp, err = rkv.retryWriteKVClient.Range(rctx, in, opts...)
+		return err
+	})
+	return resp, err
+}
+
+type retryWriteKVClient struct {
+	pb.KVClient
+	retryf retryRpcFunc
+}
+
+func (rkv *retryWriteKVClient) Put(ctx context.Context, in *pb.PutRequest, opts ...grpc.CallOption) (resp *pb.PutResponse, err error) {
 	err = rkv.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rkv.KVClient.Put(rctx, in, opts...)
 		return err
@@ -72,7 +108,7 @@ func (rkv *retryKVClient) Put(ctx context.Context, in *pb.PutRequest, opts ...gr
 	return resp, err
 }
 
-func (rkv *retryKVClient) DeleteRange(ctx context.Context, in *pb.DeleteRangeRequest, opts ...grpc.CallOption) (resp *pb.DeleteRangeResponse, err error) {
+func (rkv *retryWriteKVClient) DeleteRange(ctx context.Context, in *pb.DeleteRangeRequest, opts ...grpc.CallOption) (resp *pb.DeleteRangeResponse, err error) {
 	err = rkv.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rkv.KVClient.DeleteRange(rctx, in, opts...)
 		return err
@@ -80,7 +116,7 @@ func (rkv *retryKVClient) DeleteRange(ctx context.Context, in *pb.DeleteRangeReq
 	return resp, err
 }
 
-func (rkv *retryKVClient) Txn(ctx context.Context, in *pb.TxnRequest, opts ...grpc.CallOption) (resp *pb.TxnResponse, err error) {
+func (rkv *retryWriteKVClient) Txn(ctx context.Context, in *pb.TxnRequest, opts ...grpc.CallOption) (resp *pb.TxnResponse, err error) {
 	err = rkv.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rkv.KVClient.Txn(rctx, in, opts...)
 		return err
@@ -88,7 +124,7 @@ func (rkv *retryKVClient) Txn(ctx context.Context, in *pb.TxnRequest, opts ...gr
 	return resp, err
 }
 
-func (rkv *retryKVClient) Compact(ctx context.Context, in *pb.CompactionRequest, opts ...grpc.CallOption) (resp *pb.CompactionResponse, err error) {
+func (rkv *retryWriteKVClient) Compact(ctx context.Context, in *pb.CompactionRequest, opts ...grpc.CallOption) (resp *pb.CompactionResponse, err error) {
 	err = rkv.retryf(ctx, func(rctx context.Context) error {
 		resp, err = rkv.KVClient.Compact(rctx, in, opts...)
 		return err
@@ -103,7 +139,8 @@ type retryLeaseClient struct {
 
 // RetryLeaseClient implements a LeaseClient that uses the client's FailFast retry policy.
 func RetryLeaseClient(c *Client) pb.LeaseClient {
-	return &retryLeaseClient{pb.NewLeaseClient(c.conn), c.retryWrapper}
+	retry := &retryLeaseClient{pb.NewLeaseClient(c.conn), c.retryWrapper}
+	return &retryLeaseClient{retry, c.retryAuthWrapper}
 }
 
 func (rlc *retryLeaseClient) LeaseGrant(ctx context.Context, in *pb.LeaseGrantRequest, opts ...grpc.CallOption) (resp *pb.LeaseGrantResponse, err error) {
