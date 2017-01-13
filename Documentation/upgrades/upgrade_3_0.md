@@ -116,4 +116,22 @@ $ ETCDCTL_API=3 etcdctl endpoint health
 127.0.0.1:22379 is healthy: successfully committed proposal: took = 18.513301ms
 ```
 
+## Further considerations
+
+- etcdctl environment variables have been updated. If you find that
+    `ETCDCTL_API=2 etcdctl cluster-health` works properly but `ETCDCTL_API=3
+    etcdctl endpoints health` responds with `Error:  grpc: timed out when
+    dialing`, make sure you are using the [new variable
+    names](https://github.com/coreos/etcd/tree/master/etcdctl#etcdctl).
+
+## Known Issues
+
+- etcd &lt; v3.1 does not work properly if built with Go &gt; v1.7. See [Issue
+    6951](https://github.com/coreos/etcd/issues/6951) for additional
+    information.
+  - If you see an error such as `transport: http2Client.notifyError got notified
+      that the client transport was broken unexpected EOF.` showing up in your
+      logs, make sure you are using a pre-built release, or building with (etcd
+      v3.1+ &amp; go v1.7+) or (etcd &lt;v3.1 &amp; go v1.6.x).
+
 [etcd-contact]: https://groups.google.com/forum/#!forum/etcd-dev
