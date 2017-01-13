@@ -51,6 +51,7 @@ var (
 		"2.3.0": {streamTypeMsgAppV2, streamTypeMessage},
 		"3.0.0": {streamTypeMsgAppV2, streamTypeMessage},
 		"3.1.0": {streamTypeMsgAppV2, streamTypeMessage},
+		"3.2.0": {streamTypeMsgAppV2, streamTypeMessage},
 	}
 )
 
