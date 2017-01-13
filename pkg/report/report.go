@@ -55,12 +55,30 @@ type report struct {
 	sps *secondPoints
 }
 
+// Stats exposes results raw data.
+type Stats struct {
+	AvgTotal   float64
+	Fastest    float64
+	Slowest    float64
+	Average    float64
+	Stddev     float64
+	RPS        float64
+	Total      time.Duration
+	ErrorDist  map[string]int
+	Lats       []float64
+	TimeSeries TimeSeries
+}
+
 // Report processes a result stream until it is closed, then produces a
 // string with information about the consumed result data.
 type Report interface {
 	Results() chan<- Result
+
+	// Run returns results in print-friendly format.
 	Run() <-chan string
-	String() string
+
+	// Stats returns results in raw data.
+	Stats() <-chan Stats
 }
 
 func NewReport(precision string) Report {
@@ -87,6 +105,41 @@ func (r *report) Run() <-chan string {
 		donec <- r.String()
 	}()
 	return donec
+}
+
+func (r *report) Stats() <-chan Stats {
+	donec := make(chan Stats, 1)
+	go func() {
+		defer close(donec)
+		r.processResults()
+		donec <- Stats{
+			AvgTotal:   r.avgTotal,
+			Fastest:    r.fastest,
+			Slowest:    r.slowest,
+			Average:    r.average,
+			Stddev:     r.stddev,
+			RPS:        r.rps,
+			Total:      r.total,
+			ErrorDist:  copyMap(r.errorDist),
+			Lats:       copyFloats(r.lats),
+			TimeSeries: r.sps.getTimeSeries(),
+		}
+	}()
+	return donec
+}
+
+func copyMap(m map[string]int) (c map[string]int) {
+	c = make(map[string]int, len(m))
+	for k, v := range m {
+		c[k] = v
+	}
+	return
+}
+
+func copyFloats(s []float64) (c []float64) {
+	c = make([]float64, len(s))
+	copy(c, s)
+	return
 }
 
 func (r *report) String() (s string) {
@@ -158,7 +211,11 @@ func (r *report) processResults() {
 
 var pctls = []float64{10, 25, 50, 75, 90, 95, 99, 99.9}
 
-// percentiles returns percentile distribution of float64 slice.
+// Percentiles returns percentile distribution of float64 slice.
+func Percentiles(nums []float64) (pcs []float64, data []float64) {
+	return pctls, percentiles(nums)
+}
+
 func percentiles(nums []float64) (data []float64) {
 	data = make([]float64, len(pctls))
 	j := 0
