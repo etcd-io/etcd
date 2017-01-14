@@ -42,7 +42,7 @@ member flags:
 		path to the data directory.
 	--wal-dir ''
 		path to the dedicated wal directory.
-	--snapshot-count '10000'
+	--snapshot-count '100000'
 		number of committed transactions to trigger a snapshot to disk.
 	--heartbeat-interval '100'
 		time (in milliseconds) of a heartbeat interval.

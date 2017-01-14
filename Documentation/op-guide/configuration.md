@@ -28,7 +28,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --snapshot-count
 + Number of committed transactions to trigger a snapshot to disk.
-+ default: "10000"
++ default: "100000"
 + env variable: ETCD_SNAPSHOT_COUNT
 
 ### --heartbeat-interval
