@@ -34,6 +34,7 @@ var (
 	ErrInvalidAuthToken           = errors.New("etcdserver: invalid auth token")
 	ErrTooManyRequests            = errors.New("etcdserver: too many requests")
 	ErrUnhealthy                  = errors.New("etcdserver: unhealthy cluster")
+	ErrKeyNotFound                = errors.New("etcdserver: key not found")
 )
 
 type DiscoveryError struct {

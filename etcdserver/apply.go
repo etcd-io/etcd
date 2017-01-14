@@ -161,7 +161,7 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 	)
 
 	var rr *mvcc.RangeResult
-	if p.PrevKv {
+	if p.PrevKv || p.IgnoreValue {
 		if txnID != noTxn {
 			rr, err = a.s.KV().TxnRange(txnID, p.Key, nil, mvcc.RangeOptions{})
 			if err != nil {
@@ -173,6 +173,14 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 				return nil, err
 			}
 		}
+	}
+
+	if p.IgnoreValue {
+		if rr == nil || len(rr.KVs) == 0 {
+			// ignore_value flag expects previous key-value pair
+			return nil, ErrKeyNotFound
+		}
+		p.Value = rr.KVs[0].Value
 	}
 
 	if txnID != noTxn {
@@ -190,7 +198,7 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 		rev = a.s.KV().Put(p.Key, p.Value, leaseID)
 	}
 	resp.Header.Revision = rev
-	if rr != nil && len(rr.KVs) != 0 {
+	if p.PrevKv && rr != nil && len(rr.KVs) != 0 {
 		resp.PrevKv = &rr.KVs[0]
 	}
 	return resp, nil
@@ -364,7 +372,7 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 		reqs = rt.Failure
 	}
 
-	if err := a.checkRequestLeases(reqs); err != nil {
+	if err := a.checkRequestPut(reqs); err != nil {
 		return nil, err
 	}
 	if err := a.checkRequestRange(reqs); err != nil {
@@ -749,14 +757,27 @@ func (s *kvSortByValue) Less(i, j int) bool {
 	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
 }
 
-func (a *applierV3backend) checkRequestLeases(reqs []*pb.RequestOp) error {
+func (a *applierV3backend) checkRequestPut(reqs []*pb.RequestOp) error {
 	for _, requ := range reqs {
 		tv, ok := requ.Request.(*pb.RequestOp_RequestPut)
 		if !ok {
 			continue
 		}
 		preq := tv.RequestPut
-		if preq == nil || lease.LeaseID(preq.Lease) == lease.NoLease {
+		if preq == nil {
+			continue
+		}
+		if preq.IgnoreValue {
+			// expects previous key-value, error if not exist
+			rr, err := a.s.KV().Range(preq.Key, nil, mvcc.RangeOptions{})
+			if err != nil {
+				return err
+			}
+			if rr == nil || len(rr.KVs) == 0 {
+				return ErrKeyNotFound
+			}
+		}
+		if lease.LeaseID(preq.Lease) == lease.NoLease {
 			continue
 		}
 		if l := a.s.lessor.Lookup(lease.LeaseID(preq.Lease)); l == nil {

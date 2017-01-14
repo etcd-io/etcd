@@ -1033,12 +1033,12 @@
     "authpbPermission": {
       "type": "object",
       "properties": {
+        "permType": {
+          "$ref": "#/definitions/authpbPermissionType"
+        },
         "key": {
           "type": "string",
           "format": "byte"
-        },
-        "permType": {
-          "$ref": "#/definitions/authpbPermissionType"
         },
         "range_end": {
           "type": "string",
@@ -1059,14 +1059,14 @@
     "etcdserverpbAlarmMember": {
       "type": "object",
       "properties": {
-        "alarm": {
-          "$ref": "#/definitions/etcdserverpbAlarmType",
-          "description": "alarm is the type of alarm which has been raised."
-        },
         "memberID": {
           "type": "string",
           "format": "uint64",
           "description": "memberID is the ID of the member associated with the raised alarm."
+        },
+        "alarm": {
+          "$ref": "#/definitions/etcdserverpbAlarmType",
+          "description": "alarm is the type of alarm which has been raised."
         }
       }
     },
@@ -1077,29 +1077,29 @@
           "$ref": "#/definitions/AlarmRequestAlarmAction",
           "description": "action is the kind of alarm request to issue. The action\nmay GET alarm statuses, ACTIVATE an alarm, or DEACTIVATE a\nraised alarm."
         },
-        "alarm": {
-          "$ref": "#/definitions/etcdserverpbAlarmType",
-          "description": "alarm is the type of alarm to consider for this request."
-        },
         "memberID": {
           "type": "string",
           "format": "uint64",
           "description": "memberID is the ID of the member associated with the alarm. If memberID is 0, the\nalarm request covers all members."
+        },
+        "alarm": {
+          "$ref": "#/definitions/etcdserverpbAlarmType",
+          "description": "alarm is the type of alarm to consider for this request."
         }
       }
     },
     "etcdserverpbAlarmResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
         "alarms": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/etcdserverpbAlarmMember"
           },
           "description": "alarms is a list of alarms associated with the alarm request."
-        },
-        "header": {
-          "$ref": "#/definitions/etcdserverpbResponseHeader"
         }
       }
     },
@@ -1234,15 +1234,15 @@
     "etcdserverpbAuthRoleRevokePermissionRequest": {
       "type": "object",
       "properties": {
+        "role": {
+          "type": "string",
+          "format": "string"
+        },
         "key": {
           "type": "string",
           "format": "string"
         },
         "range_end": {
-          "type": "string",
-          "format": "string"
-        },
-        "role": {
           "type": "string",
           "format": "string"
         }
@@ -1345,15 +1345,15 @@
     "etcdserverpbAuthUserGrantRoleRequest": {
       "type": "object",
       "properties": {
-        "role": {
-          "type": "string",
-          "format": "string",
-          "description": "role is the name of the role to grant to the user."
-        },
         "user": {
           "type": "string",
           "format": "string",
           "description": "user is the name of the user which should be granted a given role."
+        },
+        "role": {
+          "type": "string",
+          "format": "string",
+          "description": "role is the name of the role to grant to the user."
         }
       }
     },
@@ -1433,15 +1433,15 @@
     "etcdserverpbCompactionRequest": {
       "type": "object",
       "properties": {
-        "physical": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "physical is set so the RPC will wait until the compaction is physically\napplied to the local database such that compacted entries are totally\nremoved from the backend database."
-        },
         "revision": {
           "type": "string",
           "format": "int64",
           "description": "revision is the key-value store revision for the compaction operation."
+        },
+        "physical": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "physical is set so the RPC will wait until the compaction is physically\napplied to the local database such that compacted entries are totally\nremoved from the backend database."
         }
       },
       "description": "CompactionRequest compacts the key-value store up to a given revision. All superseded keys\nwith a revision less than the compaction revision will be removed."
@@ -1457,21 +1457,6 @@
     "etcdserverpbCompare": {
       "type": "object",
       "properties": {
-        "create_revision": {
-          "type": "string",
-          "format": "int64",
-          "title": "create_revision is the creation revision of the given key"
-        },
-        "key": {
-          "type": "string",
-          "format": "byte",
-          "description": "key is the subject key for the comparison operation."
-        },
-        "mod_revision": {
-          "type": "string",
-          "format": "int64",
-          "description": "mod_revision is the last modified revision of the given key."
-        },
         "result": {
           "$ref": "#/definitions/CompareCompareResult",
           "description": "result is logical comparison operation for this comparison."
@@ -1480,15 +1465,30 @@
           "$ref": "#/definitions/CompareCompareTarget",
           "description": "target is the key-value field to inspect for the comparison."
         },
-        "value": {
+        "key": {
           "type": "string",
           "format": "byte",
-          "description": "value is the value of the given key, in bytes."
+          "description": "key is the subject key for the comparison operation."
         },
         "version": {
           "type": "string",
           "format": "int64",
           "title": "version is the version of the given key"
+        },
+        "create_revision": {
+          "type": "string",
+          "format": "int64",
+          "title": "create_revision is the creation revision of the given key"
+        },
+        "mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "mod_revision is the last modified revision of the given key."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "value is the value of the given key, in bytes."
         }
       }
     },
@@ -1511,28 +1511,28 @@
           "format": "byte",
           "description": "key is the first key to delete in the range."
         },
-        "prev_kv": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "If prev_kv is set, etcd gets the previous key-value pairs before deleting it.\nThe previous key-value pairs will be returned in the delte response."
-        },
         "range_end": {
           "type": "string",
           "format": "byte",
           "description": "range_end is the key following the last key to delete for the range [key, range_end).\nIf range_end is not given, the range is defined to contain only the key argument.\nIf range_end is one bit larger than the given key, then the range is all\nthe all keys with the prefix (the given key).\nIf range_end is '\\0', the range is all keys greater than or equal to the key argument."
+        },
+        "prev_kv": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If prev_kv is set, etcd gets the previous key-value pairs before deleting it.\nThe previous key-value pairs will be returned in the delte response."
         }
       }
     },
     "etcdserverpbDeleteRangeResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
         "deleted": {
           "type": "string",
           "format": "int64",
           "description": "deleted is the number of keys deleted by the delete range request."
-        },
-        "header": {
-          "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
         "prev_kvs": {
           "type": "array",
@@ -1549,34 +1549,37 @@
     "etcdserverpbHashResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
         "hash": {
           "type": "integer",
           "format": "int64",
           "description": "hash is the hash value computed from the responding member's key-value store."
-        },
-        "header": {
-          "$ref": "#/definitions/etcdserverpbResponseHeader"
         }
       }
     },
     "etcdserverpbLeaseGrantRequest": {
       "type": "object",
       "properties": {
-        "ID": {
-          "type": "string",
-          "format": "int64",
-          "description": "ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID."
-        },
         "TTL": {
           "type": "string",
           "format": "int64",
           "description": "TTL is the advisory time-to-live in seconds."
+        },
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID."
         }
       }
     },
     "etcdserverpbLeaseGrantResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
         "ID": {
           "type": "string",
           "format": "int64",
@@ -1590,9 +1593,6 @@
         "error": {
           "type": "string",
           "format": "string"
-        },
-        "header": {
-          "$ref": "#/definitions/etcdserverpbResponseHeader"
         }
       }
     },
@@ -1609,6 +1609,9 @@
     "etcdserverpbLeaseKeepAliveResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
         "ID": {
           "type": "string",
           "format": "int64",
@@ -1618,9 +1621,6 @@
           "type": "string",
           "format": "int64",
           "description": "TTL is the new time-to-live for the lease."
-        },
-        "header": {
-          "$ref": "#/definitions/etcdserverpbResponseHeader"
         }
       }
     },
@@ -1660,6 +1660,9 @@
     "etcdserverpbLeaseTimeToLiveResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
         "ID": {
           "type": "string",
           "format": "int64",
@@ -1674,9 +1677,6 @@
           "type": "string",
           "format": "int64",
           "description": "GrantedTTL is the initial granted time in seconds upon lease creation/renewal."
-        },
-        "header": {
-          "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
         "keys": {
           "type": "array",
@@ -1696,14 +1696,6 @@
           "format": "uint64",
           "description": "ID is the member ID for this member."
         },
-        "clientURLs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "string"
-          },
-          "description": "clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty."
-        },
         "name": {
           "type": "string",
           "format": "string",
@@ -1716,6 +1708,14 @@
             "format": "string"
           },
           "description": "peerURLs is the list of URLs the member exposes to the cluster for communication."
+        },
+        "clientURLs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "string"
+          },
+          "description": "clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty."
         }
       }
     },
@@ -1814,6 +1814,11 @@
           "format": "byte",
           "description": "key is the key, in bytes, to put into the key-value store."
         },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "value is the value, in bytes, to associate with the key in the key-value store."
+        },
         "lease": {
           "type": "string",
           "format": "int64",
@@ -1824,10 +1829,10 @@
           "format": "boolean",
           "description": "If prev_kv is set, etcd gets the previous key-value pair before changing it.\nThe previous key-value pair will be returned in the put response."
         },
-        "value": {
-          "type": "string",
-          "format": "byte",
-          "description": "value is the value, in bytes, to associate with the key in the key-value store."
+        "ignore_value": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If ignore_value is set, etcd updates the key using its current value.\nReturns an error if the key does not exist."
         }
       }
     },
@@ -1846,30 +1851,53 @@
     "etcdserverpbRangeRequest": {
       "type": "object",
       "properties": {
-        "count_only": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "count_only when set returns only the count of the keys in the range."
-        },
         "key": {
           "type": "string",
           "format": "byte",
           "description": "key is the first key for the range. If range_end is not given, the request only looks up key."
         },
-        "keys_only": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "keys_only when set returns only the keys and not the values."
+        "range_end": {
+          "type": "string",
+          "format": "byte",
+          "description": "range_end is the upper bound on the requested range [key, range_end).\nIf range_end is '\\0', the range is all keys \u003e= key.\nIf the range_end is one bit larger than the given key,\nthen the range requests get the all keys with the prefix (the given key).\nIf both key and range_end are '\\0', then range requests returns all keys."
         },
         "limit": {
           "type": "string",
           "format": "int64",
           "description": "limit is a limit on the number of keys returned for the request."
         },
-        "max_create_revision": {
+        "revision": {
           "type": "string",
           "format": "int64",
-          "description": "max_create_revision is the upper bound for returned key create revisions; all keys with\ngreater create revisions will be filtered away."
+          "description": "revision is the point-in-time of the key-value store to use for the range.\nIf revision is less or equal to zero, the range is over the newest key-value store.\nIf the revision has been compacted, ErrCompacted is returned as a response."
+        },
+        "sort_order": {
+          "$ref": "#/definitions/RangeRequestSortOrder",
+          "description": "sort_order is the order for returned sorted results."
+        },
+        "sort_target": {
+          "$ref": "#/definitions/RangeRequestSortTarget",
+          "description": "sort_target is the key-value field to use for sorting."
+        },
+        "serializable": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "serializable sets the range request to use serializable member-local reads.\nRange requests are linearizable by default; linearizable requests have higher\nlatency and lower throughput than serializable requests but reflect the current\nconsensus of the cluster. For better performance, in exchange for possible stale reads,\na serializable range request is served locally without needing to reach consensus\nwith other nodes in the cluster."
+        },
+        "keys_only": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "keys_only when set returns only the keys and not the values."
+        },
+        "count_only": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "count_only when set returns only the count of the keys in the range."
+        },
+        "min_mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "min_mod_revision is the lower bound for returned key mod revisions; all keys with\nlesser mod revisions will be filtered away."
         },
         "max_mod_revision": {
           "type": "string",
@@ -1881,44 +1909,16 @@
           "format": "int64",
           "description": "min_create_revision is the lower bound for returned key create revisions; all keys with\nlesser create trevisions will be filtered away."
         },
-        "min_mod_revision": {
+        "max_create_revision": {
           "type": "string",
           "format": "int64",
-          "description": "min_mod_revision is the lower bound for returned key mod revisions; all keys with\nlesser mod revisions will be filtered away."
-        },
-        "range_end": {
-          "type": "string",
-          "format": "byte",
-          "description": "range_end is the upper bound on the requested range [key, range_end).\nIf range_end is '\\0', the range is all keys \u003e= key.\nIf the range_end is one bit larger than the given key,\nthen the range requests get the all keys with the prefix (the given key).\nIf both key and range_end are '\\0', then range requests returns all keys."
-        },
-        "revision": {
-          "type": "string",
-          "format": "int64",
-          "description": "revision is the point-in-time of the key-value store to use for the range.\nIf revision is less or equal to zero, the range is over the newest key-value store.\nIf the revision has been compacted, ErrCompacted is returned as a response."
-        },
-        "serializable": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "serializable sets the range request to use serializable member-local reads.\nRange requests are linearizable by default; linearizable requests have higher\nlatency and lower throughput than serializable requests but reflect the current\nconsensus of the cluster. For better performance, in exchange for possible stale reads,\na serializable range request is served locally without needing to reach consensus\nwith other nodes in the cluster."
-        },
-        "sort_order": {
-          "$ref": "#/definitions/RangeRequestSortOrder",
-          "description": "sort_order is the order for returned sorted results."
-        },
-        "sort_target": {
-          "$ref": "#/definitions/RangeRequestSortTarget",
-          "description": "sort_target is the key-value field to use for sorting."
+          "description": "max_create_revision is the upper bound for returned key create revisions; all keys with\ngreater create revisions will be filtered away."
         }
       }
     },
     "etcdserverpbRangeResponse": {
       "type": "object",
       "properties": {
-        "count": {
-          "type": "string",
-          "format": "int64",
-          "description": "count is set to the number of keys within the range when requested."
-        },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
@@ -1933,20 +1933,25 @@
           "type": "boolean",
           "format": "boolean",
           "description": "more indicates if there are more keys to return in the requested range."
+        },
+        "count": {
+          "type": "string",
+          "format": "int64",
+          "description": "count is set to the number of keys within the range when requested."
         }
       }
     },
     "etcdserverpbRequestOp": {
       "type": "object",
       "properties": {
-        "request_delete_range": {
-          "$ref": "#/definitions/etcdserverpbDeleteRangeRequest"
+        "request_range": {
+          "$ref": "#/definitions/etcdserverpbRangeRequest"
         },
         "request_put": {
           "$ref": "#/definitions/etcdserverpbPutRequest"
         },
-        "request_range": {
-          "$ref": "#/definitions/etcdserverpbRangeRequest"
+        "request_delete_range": {
+          "$ref": "#/definitions/etcdserverpbDeleteRangeRequest"
         }
       }
     },
@@ -1963,29 +1968,29 @@
           "format": "uint64",
           "description": "member_id is the ID of the member which sent the response."
         },
-        "raft_term": {
-          "type": "string",
-          "format": "uint64",
-          "description": "raft_term is the raft term when the request was applied."
-        },
         "revision": {
           "type": "string",
           "format": "int64",
           "description": "revision is the key-value store revision when the request was applied."
+        },
+        "raft_term": {
+          "type": "string",
+          "format": "uint64",
+          "description": "raft_term is the raft term when the request was applied."
         }
       }
     },
     "etcdserverpbResponseOp": {
       "type": "object",
       "properties": {
-        "response_delete_range": {
-          "$ref": "#/definitions/etcdserverpbDeleteRangeResponse"
+        "response_range": {
+          "$ref": "#/definitions/etcdserverpbRangeResponse"
         },
         "response_put": {
           "$ref": "#/definitions/etcdserverpbPutResponse"
         },
-        "response_range": {
-          "$ref": "#/definitions/etcdserverpbRangeResponse"
+        "response_delete_range": {
+          "$ref": "#/definitions/etcdserverpbDeleteRangeResponse"
         }
       }
     },
@@ -1995,11 +2000,6 @@
     "etcdserverpbSnapshotResponse": {
       "type": "object",
       "properties": {
-        "blob": {
-          "type": "string",
-          "format": "byte",
-          "description": "blob contains the next chunk of the snapshot in the snapshot stream."
-        },
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader",
           "description": "header has the current key-value store information. The first header in the snapshot\nstream indicates the point in time of the snapshot."
@@ -2008,6 +2008,11 @@
           "type": "string",
           "format": "uint64",
           "title": "remaining_bytes is the number of blob bytes to be sent after this message"
+        },
+        "blob": {
+          "type": "string",
+          "format": "byte",
+          "description": "blob contains the next chunk of the snapshot in the snapshot stream."
         }
       }
     },
@@ -2017,13 +2022,18 @@
     "etcdserverpbStatusResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "version": {
+          "type": "string",
+          "format": "string",
+          "description": "version is the cluster protocol version used by the responding member."
+        },
         "dbSize": {
           "type": "string",
           "format": "int64",
           "description": "dbSize is the size of the backend database, in bytes, of the responding member."
-        },
-        "header": {
-          "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
         "leader": {
           "type": "string",
@@ -2039,11 +2049,6 @@
           "type": "string",
           "format": "uint64",
           "description": "raftTerm is the current raft term of the responding member."
-        },
-        "version": {
-          "type": "string",
-          "format": "string",
-          "description": "version is the cluster protocol version used by the responding member."
         }
       }
     },
@@ -2057,19 +2062,19 @@
           },
           "description": "compare is a list of predicates representing a conjunction of terms.\nIf the comparisons succeed, then the success requests will be processed in order,\nand the response will contain their respective responses in order.\nIf the comparisons fail, then the failure requests will be processed in order,\nand the response will contain their respective responses in order."
         },
-        "failure": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/etcdserverpbRequestOp"
-          },
-          "description": "failure is a list of requests which will be applied when compare evaluates to false."
-        },
         "success": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/etcdserverpbRequestOp"
           },
           "description": "success is a list of requests which will be applied when compare evaluates to true."
+        },
+        "failure": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/etcdserverpbRequestOp"
+          },
+          "description": "failure is a list of requests which will be applied when compare evaluates to false."
         }
       },
       "description": "From google paxosdb paper:\nOur implementation hinges around a powerful primitive which we call MultiOp. All other database\noperations except for iteration are implemented as a single call to MultiOp. A MultiOp is applied atomically\nand consists of three components:\n1. A list of tests called guard. Each test in guard checks a single entry in the database. It may check\nfor the absence or presence of a value, or compare with a given value. Two different tests in the guard\nmay apply to the same or different entries in the database. All tests in the guard are applied and\nMultiOp returns the results. If all tests are true, MultiOp executes t op (see item 2 below), otherwise\nit executes f op (see item 3 below).\n2. A list of database operations called t op. Each operation in the list is either an insert, delete, or\nlookup operation, and applies to a single database entry. Two different operations in the list may apply\nto the same or different entries in the database. These operations are executed\nif guard evaluates to\ntrue.\n3. A list of database operations called f op. Like t op, but executed if guard evaluates to false."
@@ -2080,17 +2085,17 @@
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
         },
+        "succeeded": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "succeeded is set to true if the compare evaluated to true or false otherwise."
+        },
         "responses": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/etcdserverpbResponseOp"
           },
           "description": "responses is a list of responses corresponding to the results from applying\nsuccess if succeeded is true or failure if succeeded is false."
-        },
-        "succeeded": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "succeeded is set to true if the compare evaluated to true or false otherwise."
         }
       }
     },
@@ -2107,27 +2112,10 @@
     "etcdserverpbWatchCreateRequest": {
       "type": "object",
       "properties": {
-        "filters": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/WatchCreateRequestFilterType"
-          },
-          "description": "filters filter the events at server side before it sends back to the watcher."
-        },
         "key": {
           "type": "string",
           "format": "byte",
           "description": "key is the key to register for watching."
-        },
-        "prev_kv": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "If prev_kv is set, created watcher gets the previous KV before the event happens.\nIf the previous KV is already compacted, nothing will be returned."
-        },
-        "progress_notify": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "progress_notify is set so that the etcd server will periodically send a WatchResponse with\nno events to the new watcher if there are no recent events. It is useful when clients\nwish to recover a disconnected watcher starting from a recent known revision.\nThe etcd server may decide how often it will send notifications based on current load."
         },
         "range_end": {
           "type": "string",
@@ -2138,23 +2126,53 @@
           "type": "string",
           "format": "int64",
           "description": "start_revision is an optional revision to watch from (inclusive). No start_revision is \"now\"."
+        },
+        "progress_notify": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "progress_notify is set so that the etcd server will periodically send a WatchResponse with\nno events to the new watcher if there are no recent events. It is useful when clients\nwish to recover a disconnected watcher starting from a recent known revision.\nThe etcd server may decide how often it will send notifications based on current load."
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WatchCreateRequestFilterType"
+          },
+          "description": "filters filter the events at server side before it sends back to the watcher."
+        },
+        "prev_kv": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If prev_kv is set, created watcher gets the previous KV before the event happens.\nIf the previous KV is already compacted, nothing will be returned."
         }
       }
     },
     "etcdserverpbWatchRequest": {
       "type": "object",
       "properties": {
-        "cancel_request": {
-          "$ref": "#/definitions/etcdserverpbWatchCancelRequest"
-        },
         "create_request": {
           "$ref": "#/definitions/etcdserverpbWatchCreateRequest"
+        },
+        "cancel_request": {
+          "$ref": "#/definitions/etcdserverpbWatchCancelRequest"
         }
       }
     },
     "etcdserverpbWatchResponse": {
       "type": "object",
       "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "watch_id": {
+          "type": "string",
+          "format": "int64",
+          "description": "watch_id is the ID of the watcher that corresponds to the response."
+        },
+        "created": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "created is set to true if the response is for a create watch request.\nThe client should record the watch_id and expect to receive events for\nthe created watcher from the same stream.\nAll events sent to the created watcher will attach with the same watch_id."
+        },
         "canceled": {
           "type": "boolean",
           "format": "boolean",
@@ -2165,30 +2183,21 @@
           "format": "int64",
           "description": "compact_revision is set to the minimum index if a watcher tries to watch\nat a compacted index.\n\nThis happens when creating a watcher at a compacted revision or the watcher cannot\ncatch up with the progress of the key-value store. \n\nThe client should treat the watcher as canceled and should not try to create any\nwatcher with the same start_revision again."
         },
-        "created": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "created is set to true if the response is for a create watch request.\nThe client should record the watch_id and expect to receive events for\nthe created watcher from the same stream.\nAll events sent to the created watcher will attach with the same watch_id."
-        },
         "events": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/mvccpbEvent"
           }
-        },
-        "header": {
-          "$ref": "#/definitions/etcdserverpbResponseHeader"
-        },
-        "watch_id": {
-          "type": "string",
-          "format": "int64",
-          "description": "watch_id is the ID of the watcher that corresponds to the response."
         }
       }
     },
     "mvccpbEvent": {
       "type": "object",
       "properties": {
+        "type": {
+          "$ref": "#/definitions/EventEventType",
+          "description": "type is the kind of event. If type is a PUT, it indicates\nnew data has been stored to the key. If type is a DELETE,\nit indicates the key was deleted."
+        },
         "kv": {
           "$ref": "#/definitions/mvccpbKeyValue",
           "description": "kv holds the KeyValue for the event.\nA PUT event contains current kv pair.\nA PUT event with kv.Version=1 indicates the creation of a key.\nA DELETE/EXPIRE event contains the deleted key with\nits modification revision set to the revision of deletion."
@@ -2196,45 +2205,41 @@
         "prev_kv": {
           "$ref": "#/definitions/mvccpbKeyValue",
           "description": "prev_kv holds the key-value pair before the event happens."
-        },
-        "type": {
-          "$ref": "#/definitions/EventEventType",
-          "description": "type is the kind of event. If type is a PUT, it indicates\nnew data has been stored to the key. If type is a DELETE,\nit indicates the key was deleted."
         }
       }
     },
     "mvccpbKeyValue": {
       "type": "object",
       "properties": {
-        "create_revision": {
-          "type": "string",
-          "format": "int64",
-          "description": "create_revision is the revision of last creation on this key."
-        },
         "key": {
           "type": "string",
           "format": "byte",
           "description": "key is the key in bytes. An empty key is not allowed."
         },
-        "lease": {
+        "create_revision": {
           "type": "string",
           "format": "int64",
-          "description": "lease is the ID of the lease that attached to key.\nWhen the attached lease expires, the key will be deleted.\nIf lease is 0, then no lease is attached to the key."
+          "description": "create_revision is the revision of last creation on this key."
         },
         "mod_revision": {
           "type": "string",
           "format": "int64",
           "description": "mod_revision is the revision of last modification on this key."
         },
+        "version": {
+          "type": "string",
+          "format": "int64",
+          "description": "version is the version of the key. A deletion resets\nthe version to zero and any modification of the key\nincreases its version."
+        },
         "value": {
           "type": "string",
           "format": "byte",
           "description": "value is the value held by the key, in bytes."
         },
-        "version": {
+        "lease": {
           "type": "string",
           "format": "int64",
-          "description": "version is the version of the key. A deletion resets\nthe version to zero and any modification of the key\nincreases its version."
+          "description": "lease is the ID of the lease that attached to key.\nWhen the attached lease expires, the key will be deleted.\nIf lease is 0, then no lease is attached to the key."
         }
       }
     }

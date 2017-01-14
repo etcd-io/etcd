@@ -22,6 +22,8 @@ import (
 var (
 	// server-side error
 	ErrGRPCEmptyKey     = grpc.Errorf(codes.InvalidArgument, "etcdserver: key is not provided")
+	ErrGRPCKeyNotFound  = grpc.Errorf(codes.InvalidArgument, "etcdserver: key not found")
+	ErrGRPCValue        = grpc.Errorf(codes.InvalidArgument, "etcdserver: value is provided")
 	ErrGRPCTooManyOps   = grpc.Errorf(codes.InvalidArgument, "etcdserver: too many operations in txn request")
 	ErrGRPCDuplicateKey = grpc.Errorf(codes.InvalidArgument, "etcdserver: duplicate key given in txn request")
 	ErrGRPCCompacted    = grpc.Errorf(codes.OutOfRange, "etcdserver: mvcc: required revision has been compacted")
@@ -64,6 +66,8 @@ var (
 
 	errStringToError = map[string]error{
 		grpc.ErrorDesc(ErrGRPCEmptyKey):     ErrGRPCEmptyKey,
+		grpc.ErrorDesc(ErrGRPCKeyNotFound):  ErrGRPCKeyNotFound,
+		grpc.ErrorDesc(ErrGRPCValue):        ErrGRPCValue,
 		grpc.ErrorDesc(ErrGRPCTooManyOps):   ErrGRPCTooManyOps,
 		grpc.ErrorDesc(ErrGRPCDuplicateKey): ErrGRPCDuplicateKey,
 		grpc.ErrorDesc(ErrGRPCCompacted):    ErrGRPCCompacted,
@@ -107,6 +111,8 @@ var (
 
 	// client-side error
 	ErrEmptyKey     = Error(ErrGRPCEmptyKey)
+	ErrKeyNotFound  = Error(ErrGRPCKeyNotFound)
+	ErrValue        = Error(ErrGRPCValue)
 	ErrTooManyOps   = Error(ErrGRPCTooManyOps)
 	ErrDuplicateKey = Error(ErrGRPCDuplicateKey)
 	ErrCompacted    = Error(ErrGRPCCompacted)

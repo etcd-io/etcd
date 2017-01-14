@@ -423,6 +423,10 @@ message PutRequest {
   // If prev_kv is set, etcd gets the previous key-value pair before changing it.
   // The previous key-value pair will be returned in the put response.
   bool prev_kv = 4;
+
+  // If ignore_value is set, etcd updates the key using its current value.
+  // Returns an error if the key does not exist.
+  bool ignore_value = 5;
 }
 
 message PutResponse {
