@@ -26,6 +26,14 @@ import (
 
 func init() { BcryptCost = bcrypt.MinCost }
 
+func dummyIndexWaiter(index uint64) <-chan struct{} {
+	ch := make(chan struct{})
+	go func() {
+		ch <- struct{}{}
+	}()
+	return ch
+}
+
 func TestUserAdd(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer func() {
@@ -33,7 +41,7 @@ func TestUserAdd(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, dummyIndexWaiter)
 	ua := &pb.AuthUserAddRequest{Name: "foo"}
 	_, err := as.UserAdd(ua) // add a non-existing user
 	if err != nil {
@@ -80,7 +88,7 @@ func TestCheckPassword(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, dummyIndexWaiter)
 	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
@@ -125,7 +133,7 @@ func TestUserDelete(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, dummyIndexWaiter)
 	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
@@ -162,7 +170,7 @@ func TestUserChangePassword(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, dummyIndexWaiter)
 	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
@@ -208,7 +216,7 @@ func TestRoleAdd(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, dummyIndexWaiter)
 	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
@@ -229,7 +237,7 @@ func TestUserGrant(t *testing.T) {
 		os.Remove(tPath)
 	}()
 
-	as := NewAuthStore(b)
+	as := NewAuthStore(b, dummyIndexWaiter)
 	defer as.Close()
 	err := enableAuthAndCreateRoot(as)
 	if err != nil {
