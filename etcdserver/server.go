@@ -61,7 +61,7 @@ import (
 )
 
 const (
-	DefaultSnapCount = 10000
+	DefaultSnapCount = 100000
 
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
