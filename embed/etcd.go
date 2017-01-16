@@ -319,15 +319,18 @@ func (e *Etcd) serve() (err error) {
 	}
 
 	// Start a client server goroutine for each listen address
-	ch := http.Handler(&cors.CORSHandler{
-		Handler: v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
-		Info:    e.cfg.CorsInfo,
-	})
+	var v2h http.Handler
+	if e.Config().EnableV2 {
+		v2h = http.Handler(&cors.CORSHandler{
+			Handler: v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
+			Info:    e.cfg.CorsInfo,
+		})
+	}
 	for _, sctx := range e.sctxs {
 		// read timeout does not work with http close notify
 		// TODO: https://github.com/golang/go/issues/9524
 		go func(s *serveCtx) {
-			e.errc <- s.serve(e.Server, ctlscfg, ch, e.errc)
+			e.errc <- s.serve(e.Server, ctlscfg, v2h, e.errc)
 		}(sctx)
 	}
 	return nil

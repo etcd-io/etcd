@@ -140,6 +140,12 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 0
 + env variable: ETCD_AUTO_COMPACTION_RETENTION
 
+
+### --enable-v2
++ Accept etcd V2 client requests
++ default: true
++ env variable: ETCD_ENABLE_V2
+
 ## Proxy flags
 
 `--proxy` prefix flags configures etcd to run in [proxy mode][proxy]. "proxy" supports v2 API only.
