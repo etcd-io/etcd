@@ -15,6 +15,7 @@
 package store
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -40,7 +41,7 @@ func TestWatcher(t *testing.T) {
 
 	re := <-c
 
-	if e != re {
+	if !bytes.Equal(e.Marsh(), re) {
 		t.Fatal("recv != send")
 	}
 
@@ -64,7 +65,7 @@ func TestWatcher(t *testing.T) {
 
 	re = <-c
 
-	if e != re {
+	if !bytes.Equal(e.Marsh(), re) {
 		t.Fatal("recv != send")
 	}
 
@@ -85,7 +86,7 @@ func TestWatcher(t *testing.T) {
 
 	re = <-c
 
-	if e != re {
+	if !bytes.Equal(e.Marsh(), re) {
 		t.Fatal("recv != send")
 	}
 

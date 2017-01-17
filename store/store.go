@@ -25,7 +25,15 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/pkg/capnslog"
 	"github.com/jonboulle/clockwork"
+)
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "store")
+
+const (
+	StoreClusterPrefix = "/0"
+	StoreKeysPrefix    = "/1"
 )
 
 // The default version to set when the store is first initialized.

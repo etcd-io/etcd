@@ -15,13 +15,13 @@
 package store
 
 type Watcher interface {
-	EventChan() chan *Event
+	EventChan() chan []byte
 	StartIndex() uint64 // The EtcdIndex at which the Watcher was created
 	Remove()
 }
 
 type watcher struct {
-	eventChan  chan *Event
+	eventChan  chan []byte
 	stream     bool
 	recursive  bool
 	sinceIndex uint64
@@ -31,7 +31,7 @@ type watcher struct {
 	remove     func()
 }
 
-func (w *watcher) EventChan() chan *Event {
+func (w *watcher) EventChan() chan []byte {
 	return w.eventChan
 }
 
@@ -41,7 +41,7 @@ func (w *watcher) StartIndex() uint64 {
 
 // notify function notifies the watcher. If the watcher interests in the given path,
 // the function will return true.
-func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
+func (w *watcher) notify(e *Event, eventData []byte, originalPath bool, deleted bool) bool {
 	// watcher is interested the path in three cases and under one condition
 	// the condition is that the event happens after the watcher's sinceIndex
 
@@ -63,7 +63,7 @@ func (w *watcher) notify(e *Event, originalPath bool, deleted bool) bool {
 		// notifications are higher than our send rate.
 		// If this happens, we close the channel.
 		select {
-		case w.eventChan <- e:
+		case w.eventChan <- eventData:
 		default:
 			// We have missed a notification. Remove the watcher.
 			// Removing the watcher also closes the eventChan.
@@ -90,6 +90,6 @@ func (w *watcher) Remove() {
 type nopWatcher struct{}
 
 func NewNopWatcher() Watcher                 { return &nopWatcher{} }
-func (w *nopWatcher) EventChan() chan *Event { return nil }
+func (w *nopWatcher) EventChan() chan []byte { return nil }
 func (w *nopWatcher) StartIndex() uint64     { return 0 }
 func (w *nopWatcher) Remove()                {}

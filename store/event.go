@@ -14,6 +14,12 @@
 
 package store
 
+import (
+	"bytes"
+	"encoding/json"
+	"strings"
+)
+
 const (
 	Get              = "get"
 	Create           = "create"
@@ -68,4 +74,39 @@ func (e *Event) Clone() *Event {
 
 func (e *Event) SetRefresh() {
 	e.Refresh = true
+}
+
+func (e *Event) Marsh() []byte {
+	b := new(bytes.Buffer)
+	if err := json.NewEncoder(b).Encode(e); err != nil {
+		plog.Fatalf("error marshalling event %#v: %v", e, err)
+	}
+
+	return b.Bytes()
+}
+
+func (e *Event) MustUnMarsh(eb []byte) {
+	json.Unmarshal(eb, e)
+}
+
+func TrimEventPrefix(ev *Event, prefix string) *Event {
+	if ev == nil {
+		return nil
+	}
+	// Since the *Event may reference one in the store history
+	// history, we must copy it before modifying
+	e := ev.Clone()
+	TrimNodeExternPrefix(e.Node, prefix)
+	TrimNodeExternPrefix(e.PrevNode, prefix)
+	return e
+}
+
+func TrimNodeExternPrefix(n *NodeExtern, prefix string) {
+	if n == nil {
+		return
+	}
+	n.Key = strings.TrimPrefix(n.Key, prefix)
+	for _, nn := range n.Nodes {
+		TrimNodeExternPrefix(nn, prefix)
+	}
 }

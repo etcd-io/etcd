@@ -63,9 +63,6 @@ import (
 const (
 	DefaultSnapCount = 100000
 
-	StoreClusterPrefix = "/0"
-	StoreKeysPrefix    = "/1"
-
 	// HealthInterval is the minimum time the cluster should be healthy
 	// before accepting add member requests.
 	HealthInterval = 5 * time.Second
@@ -242,7 +239,7 @@ type EtcdServer struct {
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
 func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
-	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
+	st := store.New(store.StoreClusterPrefix, store.StoreKeysPrefix)
 
 	var (
 		w  *wal.WAL

@@ -163,11 +163,11 @@ func (drt dummyRaftTimer) Index() uint64 { return uint64(100) }
 func (drt dummyRaftTimer) Term() uint64  { return uint64(5) }
 
 type dummyWatcher struct {
-	echan chan *store.Event
+	echan chan []byte
 	sidx  uint64
 }
 
-func (w *dummyWatcher) EventChan() chan *store.Event {
+func (w *dummyWatcher) EventChan() chan []byte {
 	return w.echan
 }
 func (w *dummyWatcher) StartIndex() uint64 { return w.sidx }
@@ -393,7 +393,7 @@ func TestGoodParseRequest(t *testing.T) {
 			mustNewRequest(t, "foo"),
 			etcdserverpb.Request{
 				Method: "GET",
-				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:   path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -407,7 +407,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method: "PUT",
 				Val:    "some_value",
-				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:   path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -421,7 +421,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method:    "PUT",
 				PrevIndex: 98765,
-				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:      path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -435,7 +435,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method:    "PUT",
 				Recursive: true,
-				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:      path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -449,7 +449,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method: "PUT",
 				Sorted: true,
-				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:   path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -463,7 +463,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method: "PUT",
 				Quorum: true,
-				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:   path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -473,7 +473,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method: "GET",
 				Wait:   true,
-				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:   path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -482,7 +482,7 @@ func TestGoodParseRequest(t *testing.T) {
 			mustNewRequest(t, "foo?ttl="),
 			etcdserverpb.Request{
 				Method:     "GET",
-				Path:       path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:       path.Join(store.StoreKeysPrefix, "/foo"),
 				Expiration: 0,
 			},
 			false,
@@ -492,7 +492,7 @@ func TestGoodParseRequest(t *testing.T) {
 			mustNewRequest(t, "foo?ttl=5678"),
 			etcdserverpb.Request{
 				Method:     "GET",
-				Path:       path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:       path.Join(store.StoreKeysPrefix, "/foo"),
 				Expiration: fc.Now().Add(5678 * time.Second).UnixNano(),
 			},
 			false,
@@ -502,7 +502,7 @@ func TestGoodParseRequest(t *testing.T) {
 			mustNewRequest(t, "foo?ttl=0"),
 			etcdserverpb.Request{
 				Method:     "GET",
-				Path:       path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:       path.Join(store.StoreKeysPrefix, "/foo"),
 				Expiration: fc.Now().UnixNano(),
 			},
 			false,
@@ -513,7 +513,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method: "GET",
 				Dir:    true,
-				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:   path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -523,7 +523,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method: "GET",
 				Dir:    false,
-				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:   path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -537,7 +537,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method:    "PUT",
 				PrevExist: boolp(true),
-				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:      path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -551,7 +551,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method:    "PUT",
 				PrevExist: boolp(false),
-				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:      path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -571,7 +571,7 @@ func TestGoodParseRequest(t *testing.T) {
 				PrevExist: boolp(true),
 				PrevValue: "previous value",
 				Val:       "some value",
-				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:      path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -585,7 +585,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method:    "PUT",
 				PrevValue: "woof",
-				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:      path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -601,7 +601,7 @@ func TestGoodParseRequest(t *testing.T) {
 			etcdserverpb.Request{
 				Method:    "PUT",
 				PrevValue: "miaow",
-				Path:      path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:      path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			false,
 		},
@@ -614,7 +614,7 @@ func TestGoodParseRequest(t *testing.T) {
 			),
 			etcdserverpb.Request{
 				Method: "PUT",
-				Path:   path.Join(etcdserver.StoreKeysPrefix, "/foo"),
+				Path:   path.Join(store.StoreKeysPrefix, "/foo"),
 			},
 			true,
 		},
@@ -1664,7 +1664,7 @@ func TestServeKeysEvent(t *testing.T) {
 
 func TestServeKeysWatch(t *testing.T) {
 	req := mustNewRequest(t, "/foo/bar")
-	ec := make(chan *store.Event)
+	ec := make(chan []byte)
 	dw := &dummyWatcher{
 		echan: ec,
 	}
@@ -1680,10 +1680,11 @@ func TestServeKeysWatch(t *testing.T) {
 		timer:   &dummyRaftTimer{},
 	}
 	go func() {
-		ec <- &store.Event{
+		e := &store.Event{
 			Action: store.Get,
 			Node:   &store.NodeExtern{},
 		}
+		ec <- e.Marsh()
 	}()
 	rw := httptest.NewRecorder()
 
@@ -1726,12 +1727,12 @@ func TestHandleWatch(t *testing.T) {
 		r := httptest.NewRecorder()
 		return r, r
 	}
-	noopEv := func(chan *store.Event) {}
+	noopEv := func(chan []byte) {}
 
 	tests := []struct {
 		getCtx   func() context.Context
 		getRwRr  func() (http.ResponseWriter, *httptest.ResponseRecorder)
-		doToChan func(chan *store.Event)
+		doToChan func(chan []byte)
 
 		wbody string
 	}{
@@ -1739,11 +1740,12 @@ func TestHandleWatch(t *testing.T) {
 			// Normal case: one event
 			context.Background,
 			defaultRwRr,
-			func(ch chan *store.Event) {
-				ch <- &store.Event{
+			func(ch chan []byte) {
+				e := &store.Event{
 					Action: store.Get,
 					Node:   &store.NodeExtern{},
 				}
+				ch <- e.Marsh()
 			},
 
 			mustMarshalEvent(
@@ -1758,7 +1760,7 @@ func TestHandleWatch(t *testing.T) {
 			// Channel is closed, no event
 			context.Background,
 			defaultRwRr,
-			func(ch chan *store.Event) {
+			func(ch chan []byte) {
 				close(ch)
 			},
 
@@ -1796,7 +1798,7 @@ func TestHandleWatch(t *testing.T) {
 	for i, tt := range tests {
 		rw, rr := tt.getRwRr()
 		wa := &dummyWatcher{
-			echan: make(chan *store.Event, 1),
+			echan: make(chan []byte, 1),
 			sidx:  10,
 		}
 		tt.doToChan(wa.echan)
@@ -1838,7 +1840,7 @@ func TestHandleWatchStreaming(t *testing.T) {
 		make(chan struct{}, 1),
 	}
 	wa := &dummyWatcher{
-		echan: make(chan *store.Event),
+		echan: make(chan []byte),
 	}
 
 	// Launch the streaming handler in the background with a cancellable context
@@ -1874,11 +1876,12 @@ func TestHandleWatchStreaming(t *testing.T) {
 	}
 
 	// Now send the first event
-	select {
-	case wa.echan <- &store.Event{
+	e := &store.Event{
 		Action: store.Get,
 		Node:   &store.NodeExtern{},
-	}:
+	}
+	select {
+	case wa.echan <- e.Marsh():
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for send")
 	}
@@ -1904,11 +1907,12 @@ func TestHandleWatchStreaming(t *testing.T) {
 	}
 
 	// Rinse and repeat
-	select {
-	case wa.echan <- &store.Event{
+	re := &store.Event{
 		Action: store.Get,
 		Node:   &store.NodeExtern{},
-	}:
+	}
+	select {
+	case wa.echan <- re.Marsh():
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for send")
 	}
@@ -1970,7 +1974,7 @@ func TestTrimEventPrefix(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		ev := trimEventPrefix(tt.ev, pre)
+		ev := store.TrimEventPrefix(tt.ev, pre)
 		if !reflect.DeepEqual(ev, tt.wev) {
 			t.Errorf("#%d: event = %+v, want %+v", i, ev, tt.wev)
 		}
@@ -2009,7 +2013,7 @@ func TestTrimNodeExternPrefix(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		trimNodeExternPrefix(tt.n, pre)
+		store.TrimNodeExternPrefix(tt.n, pre)
 		if !reflect.DeepEqual(tt.n, tt.wn) {
 			t.Errorf("#%d: node = %+v, want %+v", i, tt.n, tt.wn)
 		}
