@@ -759,7 +759,6 @@ func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
 
 func (s *EtcdServer) linearizableReadLoop() {
 	var rs raft.ReadState
-	internalTimeout := time.Second
 
 	for {
 		ctx := make([]byte, 8)
@@ -778,7 +777,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 		s.readNotifier = nextnr
 		s.readMu.Unlock()
 
-		cctx, cancel := context.WithTimeout(context.Background(), internalTimeout)
+		cctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
 		if err := s.r.ReadIndex(cctx, ctx); err != nil {
 			cancel()
 			if err == raft.ErrStopped {
@@ -803,7 +802,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 					// continue waiting for the response of the current requests.
 					plog.Warningf("ignored out-of-date read index response (want %v, got %v)", rs.RequestCtx, ctx)
 				}
-			case <-time.After(internalTimeout):
+			case <-time.After(s.Cfg.ReqTimeout()):
 				plog.Warningf("timed out waiting for read index response")
 				nr.notify(ErrTimeout)
 				timeout = true
