@@ -52,6 +52,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 
  - [Migrate applications from using API v2 to API v3][v2_migration]
  - [Updating v2.3 to v3.0][v3_upgrade]
+ - [Updating v3.0 to v3.1][v31_upgrade]
 
 ## Frequently Asked Questions (FAQ)
 
@@ -88,3 +89,4 @@ Answers to [common questions] about etcd.
 [supported_platform]: op-guide/supported-platform.md
 [experimental]: dev-guide/experimental_apis.md
 [v3_upgrade]: upgrades/upgrade_3_0.md
+[v31_upgrade]: upgrades/upgrade_3_1.md
