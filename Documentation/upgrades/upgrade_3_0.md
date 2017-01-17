@@ -6,27 +6,27 @@ In the general case, upgrading from etcd 2.3 to 3.0 can be a zero-downtime, roll
 
 Before [starting an upgrade](#upgrade-procedure), read through the rest of this guide to prepare.
 
-### Upgrade Checklists
+### Upgrade checklists
 
-#### Upgrade Requirements
+#### Upgrade requirements
 
 To upgrade an existing etcd deployment to 3.0, the running cluster must be 2.3 or greater. If it's before 2.3, please upgrade to [2.3](https://github.com/coreos/etcd/releases/tag/v2.3.0) before upgrading to 3.0.
 
-Also, to ensure a smooth rolling upgrade, the running cluster must be healthy. You can check the health of the cluster by using the `etcdctl cluster-health` command.
+Also, to ensure a smooth rolling upgrade, the running cluster must be healthy. Check the health of the cluster by using the `etcdctl cluster-health` command before proceeding.
 
 #### Preparation
 
 Before upgrading etcd, always test the services relying on etcd in a staging environment before deploying the upgrade to the production environment.
 
-Before beginning,  [backup the etcd data directory](../v2/admin_guide.md#backing-up-the-datastore). Should something go wrong with the upgrade, it is possible to use this backup to [downgrade](#downgrade) back to existing etcd version.
+Before beginning, [backup the etcd data directory](../v2/admin_guide.md#backing-up-the-datastore). Should something go wrong with the upgrade, it is possible to use this backup to [downgrade](#downgrade) back to existing etcd version.
 
-#### Mixed Versions
+#### Mixed versions
 
 While upgrading, an etcd cluster supports mixed versions of etcd members, and operates with the protocol of the lowest common version. The cluster is only considered upgraded once all of its members are upgraded to version 3.0. Internally, etcd members negotiate with each other to determine the overall cluster version, which controls the reported version and the supported features.
 
 #### Limitations
 
-It might take up to 2 minutes for the newly upgraded member to catch up with the existing cluster when the total data size is larger than 50MB. Check the size of a recent  snapshot to estimate  the total data size. In other words, it is safest to wait for 2 minutes between upgrading each member.
+It might take up to 2 minutes for the newly upgraded member to catch up with the existing cluster when the total data size is larger than 50MB. Check the size of a recent snapshot to estimate the total data size. In other words, it is safest to wait for 2 minutes between upgrading each member.
 
 For a much larger total data size, 100MB or more , this one-time process might take even more time. Administrators of very large etcd clusters of this magnitude can feel free to contact the [etcd team][etcd-contact] before upgrading, and we’ll be happy to provide advice on the procedure.
 
@@ -36,13 +36,13 @@ If all members have been upgraded to v3.0, the cluster will be upgraded to v3.0,
 
 Please [backup the data directory](../v2/admin_guide.md#backing-up-the-datastore) of all etcd members to make downgrading the cluster possible even after it has been completely upgraded.
 
-### Upgrade Procedure
+### Upgrade procedure
 
-This example details the  upgrade of a three-member v2.3 ectd cluster running on a local machine.
+This example details the upgrade of a three-member v2.3 ectd cluster running on a local machine.
 
 #### 1. Check upgrade requirements.
 
-Is the the cluster healthy and running v.2.3.x?
+Is the cluster healthy and running v.2.3.x?
 
 ```
 $ etcdctl cluster-health
@@ -64,7 +64,7 @@ When each etcd process is stopped, expected errors will be logged by other clust
 2016-06-27 15:21:48.624175 I | rafthttp: the connection with 8211f1d0f64f3269 became inactive
 ```
 
-It’s a good idea at this point to  [backup the etcd data directory](../v2/admin_guide.md#backing-up-the-datastore) to provide a downgrade path should any problems occur:
+It’s a good idea at this point to [backup the etcd data directory](../v2/admin_guide.md#backing-up-the-datastore) to provide a downgrade path should any problems occur:
 
 ```
 $ etcdctl backup \
@@ -102,7 +102,7 @@ Upgraded members will log warnings like the following until the entire cluster i
 
 #### 5. Finish
 
-When all members are upgraded, the cluster will report  upgrading to 3.0 successfully:
+When all members are upgraded, the cluster will report upgrading to 3.0 successfully:
 
 ```
 2016-06-27 15:22:19.873751 N | membership: updated the cluster version from 2.3 to 3.0
