@@ -112,6 +112,10 @@ func (r *report) Stats() <-chan Stats {
 	go func() {
 		defer close(donec)
 		r.processResults()
+		var ts TimeSeries
+		if r.sps != nil {
+			ts = r.sps.getTimeSeries()
+		}
 		donec <- Stats{
 			AvgTotal:   r.avgTotal,
 			Fastest:    r.fastest,
@@ -122,7 +126,7 @@ func (r *report) Stats() <-chan Stats {
 			Total:      r.total,
 			ErrorDist:  copyMap(r.errorDist),
 			Lats:       copyFloats(r.lats),
-			TimeSeries: r.sps.getTimeSeries(),
+			TimeSeries: ts,
 		}
 	}()
 	return donec
