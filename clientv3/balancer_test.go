@@ -29,6 +29,9 @@ var (
 
 func TestBalancerGetUnblocking(t *testing.T) {
 	sb := newSimpleBalancer(endpoints)
+	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
+		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
+	}
 	unblockingOpts := grpc.BalancerGetOptions{BlockingWait: false}
 
 	_, _, err := sb.Get(context.Background(), unblockingOpts)
@@ -37,6 +40,9 @@ func TestBalancerGetUnblocking(t *testing.T) {
 	}
 
 	down1 := sb.Up(grpc.Address{Addr: endpoints[1]})
+	if addrs := <-sb.Notify(); len(addrs) != 1 {
+		t.Errorf("first Up() should have triggered balancer to send the first connected address via Notify chan so that other connections can be closed")
+	}
 	down2 := sb.Up(grpc.Address{Addr: endpoints[2]})
 	addrFirst, putFun, err := sb.Get(context.Background(), unblockingOpts)
 	if err != nil {
@@ -54,6 +60,9 @@ func TestBalancerGetUnblocking(t *testing.T) {
 	}
 
 	down1(errors.New("error"))
+	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
+		t.Errorf("closing the only connection should triggered balancer to send the all endpoints via Notify chan so that we can establish a connection")
+	}
 	down2(errors.New("error"))
 	_, _, err = sb.Get(context.Background(), unblockingOpts)
 	if err != ErrNoAddrAvilable {
@@ -63,6 +72,9 @@ func TestBalancerGetUnblocking(t *testing.T) {
 
 func TestBalancerGetBlocking(t *testing.T) {
 	sb := newSimpleBalancer(endpoints)
+	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
+		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
+	}
 	blockingOpts := grpc.BalancerGetOptions{BlockingWait: true}
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*100)
@@ -77,6 +89,9 @@ func TestBalancerGetBlocking(t *testing.T) {
 		// ensure sb.Up() will be called after sb.Get() to see if Up() releases blocking Get()
 		time.Sleep(time.Millisecond * 100)
 		downC <- sb.Up(grpc.Address{Addr: endpoints[1]})
+		if addrs := <-sb.Notify(); len(addrs) != 1 {
+			t.Errorf("first Up() should have triggered balancer to send the first connected address via Notify chan so that other connections can be closed")
+		}
 	}()
 	addrFirst, putFun, err := sb.Get(context.Background(), blockingOpts)
 	if err != nil {
@@ -97,6 +112,9 @@ func TestBalancerGetBlocking(t *testing.T) {
 	}
 
 	down1(errors.New("error"))
+	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
+		t.Errorf("closing the only connection should triggered balancer to send the all endpoints via Notify chan so that we can establish a connection")
+	}
 	down2(errors.New("error"))
 	ctx, _ = context.WithTimeout(context.Background(), time.Millisecond*100)
 	_, _, err = sb.Get(ctx, blockingOpts)
