@@ -1,5 +1,5 @@
-hash: 1318c1dff08a83ee9e334c94d23c165fbef5508a96ef8782ca0529e332521538
-updated: 2017-01-11T16:34:17.552765434-08:00
+hash: ca3c895fa60c9ca9f53408202fb7643705f9960212d342967ed0da8e93606cc4
+updated: 2017-01-18T10:26:48.990115455-08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -111,12 +111,14 @@ imports:
   - bcrypt
   - blowfish
 - name: golang.org/x/net
-  version: 6acef71eb69611914f7a30939ea9f6e194c78172
+  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
   subpackages:
   - context
   - http2
   - http2/hpack
+  - idna
   - internal/timeseries
+  - lex/httplex
   - trace
 - name: golang.org/x/sys
   version: 478fcf54317e52ab69f40bb4c7a1520288d7f7ea
