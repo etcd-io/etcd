@@ -249,11 +249,10 @@ func (s *stmReadCommitted) commit() *v3.TxnResponse {
 }
 
 func isKeyCurrent(k string, r *v3.GetResponse) v3.Cmp {
-	rev := r.Header.Revision + 1
 	if len(r.Kvs) != 0 {
-		rev = r.Kvs[0].ModRevision + 1
+		return v3.Compare(v3.ModRevision(k), "=", r.Kvs[0].ModRevision)
 	}
-	return v3.Compare(v3.ModRevision(k), "<", rev)
+	return v3.Compare(v3.ModRevision(k), "=", 0)
 }
 
 func respToValue(resp *v3.GetResponse) string {
