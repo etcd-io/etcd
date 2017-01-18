@@ -42,7 +42,7 @@ etcdctl -C http://192.168.12.50:4001 member list
 Using Docker to setup a multi-node cluster is very similar to the standalone mode configuration.
 The main difference being the value used for the `-initial-cluster` flag, which must contain the peer urls for each etcd member in the cluster.
 
-**Although the following commands look the same, please note that _-name_, _-advertise-client-urls_ and _-initial-advertise-peer-urls_ differ between the cluster members!**
+**Although the following commands look very similar, note that `-name`, `-advertise-client-urls` and `-initial-advertise-peer-urls` differ for each cluster member**
 
 ### etcd0
 
