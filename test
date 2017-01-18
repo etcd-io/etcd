@@ -293,7 +293,7 @@ function build_pass {
 }
 
 for pass in $PASSES; do
-	${pass}_pass
+	${pass}_pass $@
 done
 
 echo "Success"
