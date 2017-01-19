@@ -49,8 +49,6 @@ type Txn interface {
 
 	// Commit tries to commit the transaction.
 	Commit() (*TxnResponse, error)
-
-	// TODO: add a Do for shortcut the txn without any condition?
 }
 
 type txn struct {
