@@ -736,9 +736,10 @@ func TestStoreWatchExpire(t *testing.T) {
 	fc := newFakeClock()
 	s.clock = fc
 
-	var eidx uint64 = 2
-	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
-	s.Create("/foofoo", false, "barbarbar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
+	var eidx uint64 = 3
+	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(400 * time.Millisecond)})
+	s.Create("/foofoo", false, "barbarbar", false, TTLOptionSet{ExpireTime: fc.Now().Add(450 * time.Millisecond)})
+	s.Create("/foodir", true, "", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 
 	w, _ := s.Watch("/", true, false, 0)
 	assert.Equal(t, w.StartIndex(), eidx, "")
@@ -747,18 +748,24 @@ func TestStoreWatchExpire(t *testing.T) {
 	assert.Nil(t, e, "")
 	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
-	eidx = 3
+	eidx = 4
 	e = nbselect(c)
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Node.Key, "/foo", "")
-	w, _ = s.Watch("/", true, false, 4)
-	eidx = 4
+	w, _ = s.Watch("/", true, false, 5)
+	eidx = 6
 	assert.Equal(t, w.StartIndex(), eidx, "")
 	e = nbselect(w.EventChan())
 	assert.Equal(t, e.EtcdIndex, eidx, "")
 	assert.Equal(t, e.Action, "expire", "")
 	assert.Equal(t, e.Node.Key, "/foofoo", "")
+	w, _ = s.Watch("/", true, false, 6)
+	e = nbselect(w.EventChan())
+	assert.Equal(t, e.EtcdIndex, eidx, "")
+	assert.Equal(t, e.Action, "expire", "")
+	assert.Equal(t, e.Node.Key, "/foodir", "")
+	assert.Equal(t, e.Node.Dir, true, "")
 }
 
 // Ensure that the store can watch for key expiration when refreshing.
