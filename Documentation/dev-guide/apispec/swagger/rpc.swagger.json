@@ -1859,7 +1859,7 @@
         "range_end": {
           "type": "string",
           "format": "byte",
-          "description": "range_end is the upper bound on the requested range [key, range_end).\nIf range_end is '\\0', the range is all keys \u003e= key.\nIf the range_end is one bit larger than the given key,\nthen the range requests get the all keys with the prefix (the given key).\nIf both key and range_end are '\\0', then range requests returns all keys."
+          "description": "range_end is the upper bound on the requested range [key, range_end).\nIf range_end is '\\0', the range is all keys \u003e= key.\nIf range_end is key plus one (e.g., \"aa\"+1 == \"ab\", \"a\\xff\"+1 == \"b\"),\nthen the range request gets all keys prefixed with key.\nIf both key and range_end are '\\0', then the range request returns all keys."
         },
         "limit": {
           "type": "string",
