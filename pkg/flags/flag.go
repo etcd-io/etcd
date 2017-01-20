@@ -121,7 +121,7 @@ func verifyEnv(prefix string, usedEnvKey, alreadySet map[string]bool) {
 			plog.Infof("recognized environment variable %s, but unused: shadowed by corresponding flag ", kv[0])
 			continue
 		}
-		if strings.HasPrefix(env, prefix) {
+		if strings.HasPrefix(env, prefix+"_") {
 			plog.Warningf("unrecognized environment variable %s", env)
 		}
 	}
