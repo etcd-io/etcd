@@ -31,7 +31,7 @@ func TestRenewHTTP(t *testing.T) {
 	defer os.Remove(tmpPath)
 	defer be.Close()
 
-	le := lease.NewLessor(be)
+	le := lease.NewLessor(be, 3)
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
