@@ -1,6 +1,6 @@
 # gRPC proxy
 
-*This is a pre-alpha feature, we are looking for early feedback.*
+*This is an alpha feature, we are looking for early feedback.*
 
 The gRPC proxy is a stateless etcd reverse proxy operating at the gRPC layer (L7). The proxy is designed to reduce the total processing load on the core etcd cluster. For horizontal scalability, it coalesces watch and lease API requests. To protect the cluster against abusive clients, it caches key range requests.
 
