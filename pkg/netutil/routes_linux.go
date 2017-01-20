@@ -13,9 +13,6 @@
 // limitations under the License.
 
 // +build linux
-// +build 386 amd64
-
-// TODO support native endian but without using "unsafe"
 
 package netutil
 
@@ -25,6 +22,8 @@ import (
 	"fmt"
 	"net"
 	"syscall"
+
+	"github.com/coreos/etcd/pkg/cpuutil"
 )
 
 var errNoDefaultRoute = fmt.Errorf("could not find default route")
@@ -80,7 +79,7 @@ func getDefaultRoute() (*syscall.NetlinkMessage, error) {
 			continue
 		}
 		buf := bytes.NewBuffer(m.Data[:syscall.SizeofRtMsg])
-		if rerr := binary.Read(buf, binary.LittleEndian, &rtmsg); rerr != nil {
+		if rerr := binary.Read(buf, cpuutil.ByteOrder(), &rtmsg); rerr != nil {
 			continue
 		}
 		if rtmsg.Dst_len == 0 {
@@ -109,7 +108,7 @@ func getIface(idx uint32) (*syscall.NetlinkMessage, error) {
 			continue
 		}
 		buf := bytes.NewBuffer(m.Data[:syscall.SizeofIfAddrmsg])
-		if rerr := binary.Read(buf, binary.LittleEndian, &ifaddrmsg); rerr != nil {
+		if rerr := binary.Read(buf, cpuutil.ByteOrder(), &ifaddrmsg); rerr != nil {
 			continue
 		}
 		if ifaddrmsg.Index == idx {
@@ -164,7 +163,7 @@ func parsePREFSRC(m *syscall.NetlinkMessage) (host string, oif uint32, err error
 			host = net.IP(attr.Value).String()
 		}
 		if attr.Attr.Type == syscall.RTA_OIF {
-			oif = binary.LittleEndian.Uint32(attr.Value)
+			oif = cpuutil.ByteOrder().Uint32(attr.Value)
 		}
 		if host != "" && oif != uint32(0) {
 			break
