@@ -88,6 +88,8 @@ clustering flags:
 		reject reconfiguration requests that would cause quorum loss.
 	--auto-compaction-retention '0'
 		auto compaction retention in hour. 0 means disable auto compaction.
+	--enable-v2
+		Accept etcd V2 client requests.
 
 proxy flags:
 	"proxy" supports v2 API only.

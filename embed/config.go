@@ -102,6 +102,7 @@ type Config struct {
 	InitialCluster      string `json:"initial-cluster"`
 	InitialClusterToken string `json:"initial-cluster-token"`
 	StrictReconfigCheck bool   `json:"strict-reconfig-check"`
+	EnableV2            bool   `json:"enable-v2"`
 
 	// security
 
@@ -175,6 +176,7 @@ func NewConfig() *Config {
 		InitialClusterToken: "etcd-cluster",
 		StrictReconfigCheck: true,
 		Metrics:             "basic",
+		EnableV2:            true,
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
