@@ -33,10 +33,18 @@ func snapshotTest(cx ctlCtx) {
 		}
 	}
 
+	leaseID, err := ctlV3LeaseGrant(cx, 100)
+	if err != nil {
+		cx.t.Fatalf("snapshot: ctlV3LeaseGrant error (%v)", err)
+	}
+	if err = ctlV3Put(cx, "withlease", "withlease", leaseID); err != nil {
+		cx.t.Fatalf("snapshot: ctlV3Put error (%v)", err)
+	}
+
 	fpath := "test.snapshot"
 	defer os.RemoveAll(fpath)
 
-	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
+	if err = ctlV3SnapshotSave(cx, fpath); err != nil {
 		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
 	}
 
@@ -44,11 +52,11 @@ func snapshotTest(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
 	}
-	if st.Revision != 4 {
+	if st.Revision != 5 {
 		cx.t.Fatalf("expected 4, got %d", st.Revision)
 	}
-	if st.TotalKey < 3 {
-		cx.t.Fatalf("expected at least 3, got %d", st.TotalKey)
+	if st.TotalKey < 4 {
+		cx.t.Fatalf("expected at least 4, got %d", st.TotalKey)
 	}
 }
 

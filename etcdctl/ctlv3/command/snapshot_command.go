@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"math"
 	"os"
 	"path"
 	"reflect"
@@ -30,6 +31,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -371,7 +373,10 @@ func makeDB(snapdir, dbfile string, commit int) {
 	// update consistentIndex so applies go through on etcdserver despite
 	// having a new raft instance
 	be := backend.NewDefaultBackend(dbpath)
-	s := mvcc.NewStore(be, nil, (*initIndex)(&commit))
+	// a lessor never timeouts leases
+	lessor := lease.NewLessor(be, math.MaxInt64)
+
+	s := mvcc.NewStore(be, lessor, (*initIndex)(&commit))
 	id := s.TxnBegin()
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {
