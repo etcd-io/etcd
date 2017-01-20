@@ -1,4 +1,4 @@
-etcd v3.1.0 (2017-01-13)
+etcd v3.1.0 (2017-01-20)
 - faster linearizable reads (implements Raft read-index)
 - automatic leadership transfer when leader steps down
 - etcd uses default route IP if advertise URL is not given
