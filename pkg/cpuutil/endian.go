@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !linux
-
-package netutil
+package cpuutil
 
 import (
-	"fmt"
-	"runtime"
+	"encoding/binary"
+	"unsafe"
 )
 
-// GetDefaultHost fetches the a resolvable name that corresponds
-// to the machine's default routable interface
-func GetDefaultHost() (string, error) {
-	return "", fmt.Errorf("default host not supported on %s_%s", runtime.GOOS, runtime.GOARCH)
-}
+const intWidth int = int(unsafe.Sizeof(0))
 
-// GetDefaultInterface fetches the device name of default routable interface.
-func GetDefaultInterface() (string, error) {
-	return "", fmt.Errorf("default host not supported on %s_%s", runtime.GOOS, runtime.GOARCH)
+var byteOrder binary.ByteOrder
+
+// ByteOrder returns the byte order for the CPU's native endianness.
+func ByteOrder() binary.ByteOrder { return byteOrder }
+
+func init() {
+	var i int = 0x1
+	if v := (*[intWidth]byte)(unsafe.Pointer(&i)); v[0] == 0 {
+		byteOrder = binary.BigEndian
+	} else {
+		byteOrder = binary.LittleEndian
+	}
 }
