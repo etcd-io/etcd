@@ -32,6 +32,12 @@ var (
 
        etcd --config-file
        path to the server configuration file
+
+       etcd gateway
+       run the stateless pass-through etcd TCP connection forwarding proxy
+
+       etcd grpc-proxy
+       run the stateless etcd v3 gRPC L7 reverse proxy
 	`
 	flagsline = `
 member flags:
