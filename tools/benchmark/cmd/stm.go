@@ -41,20 +41,21 @@ var stmCmd = &cobra.Command{
 type stmApply func(v3sync.STM) error
 
 var (
-	stmIsolation    string
+	stmIsolation string
+	stmIso       v3sync.Isolation
+
 	stmTotal        int
 	stmKeysPerTxn   int
 	stmKeyCount     int
 	stmValSize      int
 	stmWritePercent int
 	stmMutex        bool
-	mkSTM           func(context.Context, *v3.Client, func(v3sync.STM) error) (*v3.TxnResponse, error)
 )
 
 func init() {
 	RootCmd.AddCommand(stmCmd)
 
-	stmCmd.Flags().StringVar(&stmIsolation, "isolation", "r", "Read Committed (c), Repeatable Reads (r), or Serializable (s)")
+	stmCmd.Flags().StringVar(&stmIsolation, "isolation", "r", "Read Committed (c), Repeatable Reads (r), Serializable (s), or Snapshot (ss)")
 	stmCmd.Flags().IntVar(&stmKeyCount, "keys", 1, "Total unique keys accessible by the benchmark")
 	stmCmd.Flags().IntVar(&stmTotal, "total", 10000, "Total number of completed STM transactions")
 	stmCmd.Flags().IntVar(&stmKeysPerTxn, "keys-per-txn", 1, "Number of keys to access per transaction")
@@ -81,11 +82,13 @@ func stmFunc(cmd *cobra.Command, args []string) {
 
 	switch stmIsolation {
 	case "c":
-		mkSTM = v3sync.NewSTMReadCommitted
+		stmIso = v3sync.ReadCommitted
 	case "r":
-		mkSTM = v3sync.NewSTMRepeatable
+		stmIso = v3sync.RepeatableReads
 	case "s":
-		mkSTM = v3sync.NewSTMSerializable
+		stmIso = v3sync.Serializable
+	case "ss":
+		stmIso = v3sync.Snapshot
 	default:
 		fmt.Fprintln(os.Stderr, cmd.Usage())
 		os.Exit(1)
@@ -155,7 +158,7 @@ func doSTM(client *v3.Client, requests <-chan stmApply, results chan<- report.Re
 		if m != nil {
 			m.Lock(context.TODO())
 		}
-		_, err := mkSTM(context.TODO(), client, applyf)
+		_, err := v3sync.NewSTM(client, applyf, v3sync.WithIsolation(stmIso))
 		if m != nil {
 			m.Unlock(context.TODO())
 		}
