@@ -15,6 +15,7 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -200,6 +201,9 @@ type Client interface {
 	// HTTP requests. If the given endpoints are not valid, an error will be
 	// returned
 	SetEndpoints(eps []string) error
+
+	// GetVersion retrieves the current etcd server and cluster version
+	GetVersion(ctx context.Context) (*VersionResponse, error)
 
 	httpClient
 }
@@ -474,6 +478,46 @@ func (c *httpClusterClient) AutoSync(ctx context.Context, interval time.Duration
 			return ctx.Err()
 		case <-ticker.C:
 		}
+	}
+}
+
+type VersionResponse struct {
+	// ServerVersion represents the version of the current server
+	// that the client is running on.
+	ServerVersion string `json:"server_version"`
+
+	// ClusterVersion represents the cluster architecture version
+	// of the current cluster.
+	ClusterVersion string `json:"cluster_version"`
+}
+
+func (c *httpClusterClient) GetVersion(ctx context.Context) (*VersionResponse, error) {
+	act := &getAction{Prefix: "/version"}
+
+	resp, body, err := c.Do(ctx, act)
+	if err != nil {
+		return nil, err
+	}
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		if len(body) == 0 {
+			return nil, ErrEmptyBody
+		}
+		var m map[string]string
+		if err := json.Unmarshal(body, &m); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		return &VersionResponse{
+			ServerVersion:  m["etcdserver"],
+			ClusterVersion: m["etcdcluster"],
+		}, nil
+	default:
+		var etcdErr Error
+		if err := json.Unmarshal(body, &etcdErr); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		return nil, etcdErr
 	}
 }
 
