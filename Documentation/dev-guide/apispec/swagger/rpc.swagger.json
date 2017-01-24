@@ -1833,6 +1833,11 @@
           "type": "boolean",
           "format": "boolean",
           "description": "If ignore_value is set, etcd updates the key using its current value.\nReturns an error if the key does not exist."
+        },
+        "ignore_lease": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If ignore_lease is set, etcd updates the key using its current lease.\nReturns an error if the key does not exist."
         }
       }
     },

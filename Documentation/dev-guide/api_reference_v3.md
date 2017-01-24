@@ -617,6 +617,7 @@ Empty field.
 | lease | lease is the lease ID to associate with the key in the key-value store. A lease value of 0 indicates no lease. | int64 |
 | prev_kv | If prev_kv is set, etcd gets the previous key-value pair before changing it. The previous key-value pair will be returned in the put response. | bool |
 | ignore_value | If ignore_value is set, etcd updates the key using its current value. Returns an error if the key does not exist. | bool |
+| ignore_lease | If ignore_lease is set, etcd updates the key using its current lease. Returns an error if the key does not exist. | bool |
 
 
 

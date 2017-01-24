@@ -24,9 +24,10 @@ import (
 )
 
 var (
-	leaseStr     string
-	putPrevKV    bool
-	putIgnoreVal bool
+	leaseStr       string
+	putPrevKV      bool
+	putIgnoreVal   bool
+	putIgnoreLease bool
 )
 
 // NewPutCommand returns the cobra command for "put".
@@ -46,6 +47,9 @@ $ put -- <key> <value>
 If <value> isn't given as a command line argument and '--ignore-value' is not specified,
 this command tries to read the value from standard input.
 
+If <lease> isn't given as a command line argument and '--ignore-lease' is not specified,
+this command tries to read the value from standard input.
+
 For example,
 $ cat file | put <key>
 will store the content of the file to <key>.
@@ -55,6 +59,7 @@ will store the content of the file to <key>.
 	cmd.Flags().StringVar(&leaseStr, "lease", "0", "lease ID (in hexadecimal) to attach to the key")
 	cmd.Flags().BoolVar(&putPrevKV, "prev-kv", false, "return the previous key-value pair before modification")
 	cmd.Flags().BoolVar(&putIgnoreVal, "ignore-value", false, "updates the key using its current value")
+	cmd.Flags().BoolVar(&putIgnoreLease, "ignore-lease", false, "updates the key using its current lease")
 	return cmd
 }
 
@@ -80,6 +85,7 @@ func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpO
 	if putIgnoreVal && len(args) > 1 {
 		ExitWithError(ExitBadArgs, fmt.Errorf("put command needs only 1 argument when 'ignore-value' is set."))
 	}
+
 	var value string
 	var err error
 	if !putIgnoreVal {
@@ -103,6 +109,9 @@ func getPutOp(cmd *cobra.Command, args []string) (string, string, []clientv3.OpO
 	}
 	if putIgnoreVal {
 		opts = append(opts, clientv3.WithIgnoreValue())
+	}
+	if putIgnoreLease {
+		opts = append(opts, clientv3.WithIgnoreLease())
 	}
 
 	return key, value, opts

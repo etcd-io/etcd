@@ -29,6 +29,7 @@ func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 	testCtl(t, putTest, withCfg(configClientTLS), withFlagByEnv())
 }
 func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
+func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
 
 func TestCtlV3Get(t *testing.T)              { testCtl(t, getTest) }
 func TestCtlV3GetNoTLS(t *testing.T)         { testCtl(t, getTest, withCfg(configNoTLS)) }
@@ -75,6 +76,31 @@ func putTestIgnoreValue(cx ctlCtx) {
 	}
 	if err := ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar"}); err != nil {
 		cx.t.Fatal(err)
+	}
+}
+
+func putTestIgnoreLease(cx ctlCtx) {
+	leaseID, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		cx.t.Fatalf("putTestIgnoreLease: ctlV3LeaseGrant error (%v)", err)
+	}
+	if err := ctlV3Put(cx, "foo", "bar", leaseID); err != nil {
+		cx.t.Fatalf("putTestIgnoreLease: ctlV3Put error (%v)", err)
+	}
+	if err := ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar"}); err != nil {
+		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
+	}
+	if err := ctlV3Put(cx, "foo", "bar1", "", "--ignore-lease"); err != nil {
+		cx.t.Fatalf("putTestIgnoreLease: ctlV3Put error (%v)", err)
+	}
+	if err := ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar1"}); err != nil {
+		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
+	}
+	if err := ctlV3LeaseRevoke(cx, leaseID); err != nil {
+		cx.t.Fatalf("putTestIgnoreLease: ctlV3LeaseRevok error (%v)", err)
+	}
+	if err := ctlV3Get(cx, []string{"key"}); err != nil { // expect no output
+		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
 	}
 }
 
@@ -245,17 +271,20 @@ func delTest(cx ctlCtx) {
 
 func ctlV3Put(cx ctlCtx, key, value, leaseID string, flags ...string) error {
 	skipValue := false
+	skipLease := false
 	for _, f := range flags {
 		if f == "--ignore-value" {
 			skipValue = true
-			break
+		}
+		if f == "--ignore-lease" {
+			skipLease = true
 		}
 	}
 	cmdArgs := append(cx.PrefixArgs(), "put", key)
 	if !skipValue {
 		cmdArgs = append(cmdArgs, value)
 	}
-	if leaseID != "" {
+	if leaseID != "" && !skipLease {
 		cmdArgs = append(cmdArgs, "--lease", leaseID)
 	}
 	if len(flags) != 0 {

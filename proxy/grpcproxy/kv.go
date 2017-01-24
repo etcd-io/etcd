@@ -197,6 +197,9 @@ func PutRequestToOp(r *pb.PutRequest) clientv3.Op {
 	if r.IgnoreValue {
 		opts = append(opts, clientv3.WithIgnoreValue())
 	}
+	if r.IgnoreLease {
+		opts = append(opts, clientv3.WithIgnoreLease())
+	}
 	return clientv3.OpPut(string(r.Key), string(r.Value), opts...)
 }
 

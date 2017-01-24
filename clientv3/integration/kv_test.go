@@ -146,6 +146,47 @@ func TestKVPutWithIgnoreValue(t *testing.T) {
 	}
 }
 
+// TestKVPutWithIgnoreLease ensures that Put with WithIgnoreLease does not affect the existing lease for the key.
+func TestKVPutWithIgnoreLease(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clientv3.NewKV(clus.RandClient())
+
+	lapi := clientv3.NewLease(clus.RandClient())
+	defer lapi.Close()
+
+	resp, err := lapi.Grant(context.Background(), 10)
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+
+	if _, err := kv.Put(context.TODO(), "zoo", "bar", clientv3.WithIgnoreLease()); err != rpctypes.ErrKeyNotFound {
+		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
+	}
+
+	if _, err := kv.Put(context.TODO(), "zoo", "bar", clientv3.WithLease(resp.ID)); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := kv.Put(context.TODO(), "zoo", "bar1", clientv3.WithIgnoreLease()); err != nil {
+		t.Fatal(err)
+	}
+
+	rr, rerr := kv.Get(context.TODO(), "zoo")
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if len(rr.Kvs) != 1 {
+		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
+	}
+	if rr.Kvs[0].Lease != int64(resp.ID) {
+		t.Fatalf("lease expected %v, got %v", resp.ID, rr.Kvs[0].Lease)
+	}
+}
+
 func TestKVPutWithRequireLeader(t *testing.T) {
 	defer testutil.AfterTest(t)
 

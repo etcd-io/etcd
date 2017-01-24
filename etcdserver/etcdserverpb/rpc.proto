@@ -427,6 +427,10 @@ message PutRequest {
   // If ignore_value is set, etcd updates the key using its current value.
   // Returns an error if the key does not exist.
   bool ignore_value = 5;
+
+  // If ignore_lease is set, etcd updates the key using its current lease.
+  // Returns an error if the key does not exist.
+  bool ignore_lease = 6;
 }
 
 message PutResponse {
