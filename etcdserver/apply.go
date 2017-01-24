@@ -161,7 +161,7 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 	)
 
 	var rr *mvcc.RangeResult
-	if p.PrevKv || p.IgnoreValue {
+	if p.PrevKv || p.IgnoreValue || p.IgnoreLease {
 		if txnID != noTxn {
 			rr, err = a.s.KV().TxnRange(txnID, p.Key, nil, mvcc.RangeOptions{})
 			if err != nil {
@@ -181,6 +181,14 @@ func (a *applierV3backend) Put(txnID int64, p *pb.PutRequest) (*pb.PutResponse, 
 			return nil, ErrKeyNotFound
 		}
 		p.Value = rr.KVs[0].Value
+	}
+
+	if p.IgnoreLease {
+		if rr == nil || len(rr.KVs) == 0 {
+			// ignore_lease flag expects previous key-value pair
+			return nil, ErrKeyNotFound
+		}
+		p.Lease = rr.KVs[0].Lease
 	}
 
 	if txnID != noTxn {
@@ -767,7 +775,7 @@ func (a *applierV3backend) checkRequestPut(reqs []*pb.RequestOp) error {
 		if preq == nil {
 			continue
 		}
-		if preq.IgnoreValue {
+		if preq.IgnoreValue || preq.IgnoreLease {
 			// expects previous key-value, error if not exist
 			rr, err := a.s.KV().Range(preq.Key, nil, mvcc.RangeOptions{})
 			if err != nil {
