@@ -46,7 +46,7 @@ import:
 - package: github.com/kr/pty
   version: f7ee69f31298ecbe5d2b349c711e2547a617d398
 - package: github.com/olekukonko/tablewriter
-  version: cca8bbc0798408af109aaaa239cbd2634846b340
+  version: a0225b3f23b5ce0cbec6d7a66a968f8a59eca9c4
 - package: github.com/prometheus/client_golang
   version: v0.8.0
   subpackages:

@@ -68,7 +68,7 @@ imports:
   subpackages:
   - pbutil
 - name: github.com/olekukonko/tablewriter
-  version: cca8bbc0798408af109aaaa239cbd2634846b340
+  version: a0225b3f23b5ce0cbec6d7a66a968f8a59eca9c4
 - name: github.com/prometheus/client_golang
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
