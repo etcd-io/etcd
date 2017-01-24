@@ -289,6 +289,7 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 		for k := range cfg.UserHandlers {
 			sctx.userHandlers[k] = cfg.UserHandlers[k]
 		}
+		sctx.serviceRegister = cfg.ServiceRegister
 		if cfg.EnablePprof {
 			sctx.registerPprof()
 		}

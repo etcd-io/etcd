@@ -46,7 +46,8 @@ type serveCtx struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	userHandlers map[string]http.Handler
+	userHandlers    map[string]http.Handler
+	serviceRegister func(*grpc.Server)
 }
 
 func newServeCtx() *serveCtx {
@@ -66,6 +67,9 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 
 	if sctx.insecure {
 		gs := v3rpc.Server(s, nil)
+		if sctx.serviceRegister != nil {
+			sctx.serviceRegister(gs)
+		}
 		grpcl := m.Match(cmux.HTTP2())
 		go func() { errc <- gs.Serve(grpcl) }()
 
@@ -90,6 +94,9 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 
 	if sctx.secure {
 		gs := v3rpc.Server(s, tlscfg)
+		if sctx.serviceRegister != nil {
+			sctx.serviceRegister(gs)
+		}
 		handler = grpcHandlerFunc(gs, handler)
 
 		dtls := transport.ShallowCopyTLSConfig(tlscfg)

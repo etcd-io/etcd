@@ -28,7 +28,9 @@ import (
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
+
 	"github.com/ghodss/yaml"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -126,6 +128,14 @@ type Config struct {
 	// The map key is the route path for the handler, and
 	// you must ensure it can't be conflicted with etcd's.
 	UserHandlers map[string]http.Handler `json:"-"`
+	// ServiceRegister is for registering users' gRPC services. A simple usage example:
+	//	cfg := embed.NewConfig()
+	//	cfg.ServerRegister = func(s *grpc.Server) {
+	//		pb.RegisterFooServer(s, &fooServer{})
+	//		pb.RegisterBarServer(s, &barServer{})
+	//	}
+	//	embed.StartEtcd(cfg)
+	ServiceRegister func(*grpc.Server) `json:"-"`
 }
 
 // configYAML holds the config suitable for yaml parsing
