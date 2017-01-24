@@ -104,6 +104,10 @@
 
 - [efrecon/etcd-tcl](https://github.com/efrecon/etcd-tcl) - Supports v2, except wait.
 
+**Rust libraries**
+
+- [jimmycuadra/rust-etcd](https://github.com/jimmycuadra/rust-etcd) - Supports v2
+
 **Gradle Plugins**
 
 - [gradle-etcd-rest-plugin](https://github.com/cdancy/gradle-etcd-rest-plugin) - Supports v2
