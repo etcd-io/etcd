@@ -31,6 +31,8 @@ RPC: Put
 
 - ignore-value -- updates the key using its current value.
 
+- ignore-lease -- updates the key using its current lease.
+
 #### Output
 
 `OK`
@@ -45,6 +47,16 @@ RPC: Put
 # bar
 ./etcdctl put foo --ignore-value # to detache lease
 # OK
+```
+
+```bash
+./etcdctl put foo bar --lease=1234abcd
+# OK
+./etcdctl put foo bar1 --ignore-lease # to use existing lease 1234abcd
+# OK
+./etcdctl get foo
+# foo
+# bar1
 ```
 
 ```bash
