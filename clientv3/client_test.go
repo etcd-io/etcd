@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -24,6 +25,47 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
+
+func TestDialCancel(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	// accept first connection so client is created with dial timeout
+	ln, err := net.Listen("unix", "dialcancel:12345")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+
+	ep := "unix://dialcancel:12345"
+	cfg := Config{
+		Endpoints:   []string{ep},
+		DialTimeout: 30 * time.Second}
+	c, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// connect to ipv4 blackhole so dial blocks
+	c.SetEndpoints("http://254.0.0.1:12345")
+
+	// issue Get to force redial attempts
+	go c.Get(context.TODO(), "abc")
+
+	// wait a little bit so client close is after dial starts
+	time.Sleep(100 * time.Millisecond)
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		c.Close()
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("failed to close")
+	case <-donec:
+	}
+}
 
 func TestDialTimeout(t *testing.T) {
 	defer testutil.AfterTest(t)
