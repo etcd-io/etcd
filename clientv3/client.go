@@ -221,7 +221,8 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 			return nil, c.ctx.Err()
 		default:
 		}
-		return net.DialTimeout(proto, host, t)
+		dialer := &net.Dialer{Timeout: t}
+		return dialer.DialContext(c.ctx, proto, host)
 	}
 	opts = append(opts, grpc.WithDialer(f))
 
