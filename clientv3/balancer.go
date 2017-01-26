@@ -124,7 +124,11 @@ func (b *simpleBalancer) updateAddrs(eps []string) {
 		addrs = append(addrs, grpc.Address{Addr: getHost(eps[i])})
 	}
 	b.addrs = addrs
-	b.notifyCh <- addrs
+	// updating notifyCh can trigger new connections,
+	// but balancer only expects new connections if all connections are down
+	if b.pinAddr == "" {
+		b.notifyCh <- addrs
+	}
 }
 
 func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
@@ -220,7 +224,7 @@ func (b *simpleBalancer) Close() error {
 	close(b.notifyCh)
 	b.pinAddr = ""
 
-	// In the case of follwing scenerio:
+	// In the case of following scenario:
 	//	1. upc is not closed; no pinned address
 	// 	2. client issues an rpc, calling invoke(), which calls Get(), enters for loop, blocks
 	// 	3. clientconn.Close() calls balancer.Close(); closed = true
