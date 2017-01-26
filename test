@@ -114,13 +114,13 @@ function cov_pass {
 
 function e2e_pass {
 	echo "Running e2e tests..."
-	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e
+	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e
 }
 
 function integration_e2e_pass {
 	echo "Running integration and e2e tests..."
 
-	go test -timeout 10m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e &
+	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/e2e &
 	e2epid="$!"
 	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration &
 	intpid="$!"
