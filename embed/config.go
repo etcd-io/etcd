@@ -405,8 +405,7 @@ func checkBindURLs(urls []url.URL) error {
 			continue
 		}
 		if net.ParseIP(host) == nil {
-			err := fmt.Errorf("expected IP in URL for binding (%s)", url.String())
-			plog.Warning(err)
+			return fmt.Errorf("expected IP in URL for binding (%s)", url.String())
 		}
 	}
 	return nil
