@@ -34,32 +34,33 @@ func dummyIndexWaiter(index uint64) <-chan struct{} {
 	return ch
 }
 
-func TestUserAdd(t *testing.T) {
+func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
-	defer func() {
-		b.Close()
-		os.Remove(tPath)
-	}()
 
 	as := NewAuthStore(b, dummyIndexWaiter)
-	ua := &pb.AuthUserAddRequest{Name: "foo"}
-	_, err := as.UserAdd(ua) // add a non-existing user
+	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = as.UserAdd(ua) // add an existing user
-	if err == nil {
-		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
-	}
-	if err != ErrUserAlreadyExist {
-		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
-	}
 
-	ua = &pb.AuthUserAddRequest{Name: ""}
-	_, err = as.UserAdd(ua) // add a user with empty name
-	if err != ErrUserEmpty {
+	// adds a new role
+	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test"})
+	if err != nil {
 		t.Fatal(err)
 	}
+
+	ua := &pb.AuthUserAddRequest{Name: "foo", Password: "bar"}
+	_, err = as.UserAdd(ua) // add a non-existing user
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tearDown := func(t *testing.T) {
+		b.Close()
+		os.Remove(tPath)
+		as.Close()
+	}
+	return as, tearDown
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
@@ -81,28 +82,32 @@ func enableAuthAndCreateRoot(as *authStore) error {
 	return as.AuthEnable()
 }
 
+func TestUserAdd(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	ua := &pb.AuthUserAddRequest{Name: "foo"}
+	_, err := as.UserAdd(ua) // add an existing user
+	if err == nil {
+		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
+	}
+	if err != ErrUserAlreadyExist {
+		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
+	}
+
+	ua = &pb.AuthUserAddRequest{Name: ""}
+	_, err = as.UserAdd(ua) // add a user with empty name
+	if err != ErrUserEmpty {
+		t.Fatal(err)
+	}
+}
+
 func TestCheckPassword(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
-	defer func() {
-		b.Close()
-		os.Remove(tPath)
-	}()
-
-	as := NewAuthStore(b, dummyIndexWaiter)
-	defer as.Close()
-	err := enableAuthAndCreateRoot(as)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ua := &pb.AuthUserAddRequest{Name: "foo", Password: "bar"}
-	_, err = as.UserAdd(ua)
-	if err != nil {
-		t.Fatal(err)
-	}
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
 
 	// auth a non-existing user
-	_, err = as.CheckPassword("foo-test", "bar")
+	_, err := as.CheckPassword("foo-test", "bar")
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
@@ -127,28 +132,12 @@ func TestCheckPassword(t *testing.T) {
 }
 
 func TestUserDelete(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
-	defer func() {
-		b.Close()
-		os.Remove(tPath)
-	}()
-
-	as := NewAuthStore(b, dummyIndexWaiter)
-	defer as.Close()
-	err := enableAuthAndCreateRoot(as)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ua := &pb.AuthUserAddRequest{Name: "foo"}
-	_, err = as.UserAdd(ua)
-	if err != nil {
-		t.Fatal(err)
-	}
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
 
 	// delete an existing user
 	ud := &pb.AuthUserDeleteRequest{Name: "foo"}
-	_, err = as.UserDelete(ud)
+	_, err := as.UserDelete(ud)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,26 +153,11 @@ func TestUserDelete(t *testing.T) {
 }
 
 func TestUserChangePassword(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
-	defer func() {
-		b.Close()
-		os.Remove(tPath)
-	}()
-
-	as := NewAuthStore(b, dummyIndexWaiter)
-	defer as.Close()
-	err := enableAuthAndCreateRoot(as)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "foo"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
 
 	ctx1 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx1, "foo", "")
+	_, err := as.Authenticate(ctx1, "foo", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,53 +184,22 @@ func TestUserChangePassword(t *testing.T) {
 }
 
 func TestRoleAdd(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
-	defer func() {
-		b.Close()
-		os.Remove(tPath)
-	}()
-
-	as := NewAuthStore(b, dummyIndexWaiter)
-	defer as.Close()
-	err := enableAuthAndCreateRoot(as)
-	if err != nil {
-		t.Fatal(err)
-	}
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
 
 	// adds a new role
-	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test"})
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestUserGrant(t *testing.T) {
-	b, tPath := backend.NewDefaultTmpBackend()
-	defer func() {
-		b.Close()
-		os.Remove(tPath)
-	}()
-
-	as := NewAuthStore(b, dummyIndexWaiter)
-	defer as.Close()
-	err := enableAuthAndCreateRoot(as)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = as.UserAdd(&pb.AuthUserAddRequest{Name: "foo"})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// adds a new role
-	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
 
 	// grants a role to the user
-	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
+	_, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
 	if err != nil {
 		t.Fatal(err)
 	}
