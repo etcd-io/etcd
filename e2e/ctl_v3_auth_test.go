@@ -498,10 +498,16 @@ func authTestMemberRemove(cx ctlCtx) {
 		cx.t.Fatalf("expected %d, got %d", n1, len(resp.Members))
 	}
 
-	var (
-		memIDToRemove = fmt.Sprintf("%x", resp.Header.MemberId)
-		clusterID     = fmt.Sprintf("%x", resp.Header.ClusterId)
-	)
+	clusterID := fmt.Sprintf("%x", resp.Header.ClusterId)
+
+	// remove one member that is not the one we connected to.
+	var memIDToRemove string
+	for _, m := range resp.Members {
+		if m.ID != resp.Header.MemberId {
+			memIDToRemove = fmt.Sprintf("%x", m.ID)
+			break
+		}
+	}
 
 	// ordinal user cannot remove a member
 	cx.user, cx.pass = "test-user", "pass"
