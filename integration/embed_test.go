@@ -91,7 +91,7 @@ func TestEmbedEtcd(t *testing.T) {
 			t.Errorf("%d: expected %d peers, got %d", i, tt.wpeers, len(e.Peers))
 		}
 		if len(e.Clients) != tt.wclients {
-			t.Errorf("%d: expected %d peers, got %d", i, tt.wclients, len(e.Clients))
+			t.Errorf("%d: expected %d clients, got %d", i, tt.wclients, len(e.Clients))
 		}
 		e.Close()
 	}
