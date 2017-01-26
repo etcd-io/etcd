@@ -409,7 +409,7 @@ func setupLogging(cfg *config) {
 
 func checkSupportArch() {
 	// TODO qualify arm64
-	if runtime.GOARCH == "amd64" {
+	if runtime.GOARCH == "amd64" || runtime.GOARCH == "ppc64le" {
 		return
 	}
 	if env, ok := os.LookupEnv("ETCD_UNSUPPORTED_ARCH"); ok && env == runtime.GOARCH {
