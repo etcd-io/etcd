@@ -16,12 +16,16 @@ package auth
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
+	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/backend"
+
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/metadata"
 )
 
 func init() { BcryptCost = bcrypt.MinCost }
@@ -207,9 +211,248 @@ func TestUserGrant(t *testing.T) {
 	// grants a role to a non-existing user
 	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo-test", Role: "role-test"})
 	if err == nil {
-		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
+		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
 	if err != ErrUserNotFound {
-		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
+		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
+}
+
+func TestGetUser(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := as.UserGet(&pb.AuthUserGetRequest{Name: "foo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u == nil {
+		t.Fatal("expect user not nil, got nil")
+	}
+	expected := []string{"role-test"}
+	if !reflect.DeepEqual(expected, u.Roles) {
+		t.Errorf("expected %v, got %v", expected, u.Roles)
+	}
+}
+
+func TestListUsers(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	ua := &pb.AuthUserAddRequest{Name: "user1", Password: "pwd1"}
+	_, err := as.UserAdd(ua) // add a non-existing user
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ul, err := as.UserList(&pb.AuthUserListRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(ul.Users, "root") {
+		t.Errorf("expected %v in %v", "root", ul.Users)
+	}
+	if !contains(ul.Users, "user1") {
+		t.Errorf("expected %v in %v", "user1", ul.Users)
+	}
+}
+
+func TestRoleGrantPermission(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perm := &authpb.Permission{
+		PermType: authpb.WRITE,
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
+	}
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: perm,
+	})
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	r, err := as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(perm, r.Perm[0]) {
+		t.Errorf("expected %v, got %v", perm, r.Perm[0])
+	}
+}
+
+func TestRoleRevokePermission(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	perm := &authpb.Permission{
+		PermType: authpb.WRITE,
+		Key:      []byte("Keys"),
+		RangeEnd: []byte("RangeEnd"),
+	}
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: perm,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = as.RoleRevokePermission(&pb.AuthRoleRevokePermissionRequest{
+		Role:     "role-test-1",
+		Key:      "Keys",
+		RangeEnd: "RangeEnd",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err = as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Perm) != 0 {
+		t.Errorf("expected %v, got %v", 0, len(r.Perm))
+	}
+}
+
+func TestUserRevokePermission(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := as.UserGet(&pb.AuthUserGetRequest{Name: "foo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := []string{"role-test", "role-test-1"}
+	if !reflect.DeepEqual(expected, u.Roles) {
+		t.Fatalf("expected %v, got %v", expected, u.Roles)
+	}
+
+	_, err = as.UserRevokeRole(&pb.AuthUserRevokeRoleRequest{Name: "foo", Role: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u, err = as.UserGet(&pb.AuthUserGetRequest{Name: "foo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected = []string{"role-test"}
+	if !reflect.DeepEqual(expected, u.Roles) {
+		t.Errorf("expected %v, got %v", expected, u.Roles)
+	}
+}
+
+func TestRoleDelete(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleDelete(&pb.AuthRoleDeleteRequest{Role: "role-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rl, err := as.RoleList(&pb.AuthRoleListRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := []string{"root"}
+	if !reflect.DeepEqual(expected, rl.Roles) {
+		t.Errorf("expected %v, got %v", expected, rl.Roles)
+	}
+}
+
+func TestAuthInfoFromCtx(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	ctx := context.Background()
+	ai, err := as.AuthInfoFromCtx(ctx)
+	if err != nil && ai != nil {
+		t.Errorf("expected (nil, nil), got (%v, %v)", ai, err)
+	}
+
+	ctx = metadata.NewContext(context.Background(), metadata.New(map[string]string{"tokens": "dummy"}))
+	ai, err = as.AuthInfoFromCtx(ctx)
+	if err != nil && ai != nil {
+		t.Errorf("expected (nil, nil), got (%v, %v)", ai, err)
+	}
+
+	ctx = context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", "dummy")
+	resp, err := as.Authenticate(ctx, "foo", "bar")
+	if err != nil {
+		t.Error(err)
+	}
+
+	ctx = metadata.NewContext(context.Background(), metadata.New(map[string]string{"token": "Invalid Token"}))
+	_, err = as.AuthInfoFromCtx(ctx)
+	if err != ErrInvalidAuthToken {
+		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
+	}
+
+	ctx = metadata.NewContext(context.Background(), metadata.New(map[string]string{"token": "Invalid.Token"}))
+	_, err = as.AuthInfoFromCtx(ctx)
+	if err != ErrInvalidAuthToken {
+		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
+	}
+
+	ctx = metadata.NewContext(context.Background(), metadata.New(map[string]string{"token": resp.Token}))
+	ai, err = as.AuthInfoFromCtx(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+	if ai.Username != "foo" {
+		t.Errorf("expected %v, got %v", "foo", ai.Username)
+	}
+}
+
+func contains(array []string, str string) bool {
+	for _, s := range array {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
