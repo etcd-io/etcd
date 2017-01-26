@@ -26,7 +26,16 @@ import (
 )
 
 // TestDialSetEndpoints ensures SetEndpoints can replace unavailable endpoints with available ones.
-func TestDialSetEndpoints(t *testing.T) {
+func TestDialSetEndpointsBeforeFail(t *testing.T) {
+	testDialSetEndpoints(t, true)
+}
+
+func TestDialSetEndpointsAfterFail(t *testing.T) {
+	testDialSetEndpoints(t, false)
+}
+
+// testDialSetEndpoints ensures SetEndpoints can replace unavailable endpoints with available ones.
+func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
@@ -45,13 +54,16 @@ func TestDialSetEndpoints(t *testing.T) {
 	}
 	defer cli.Close()
 
+	if setBefore {
+		cli.SetEndpoints(eps[toKill%3], eps[(toKill+1)%3])
+	}
 	// make a dead node
 	clus.Members[toKill].Stop(t)
 	clus.WaitLeader(t)
 
-	// update client with available endpoints
-	cli.SetEndpoints(eps[(toKill+1)%3])
-
+	if !setBefore {
+		cli.SetEndpoints(eps[toKill%3], eps[(toKill+1)%3])
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	if _, err = cli.Get(ctx, "foo", clientv3.WithSerializable()); err != nil {
 		t.Fatal(err)
