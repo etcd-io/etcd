@@ -225,3 +225,50 @@ func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// TestElectionOnSessionRestart tests that a quick restart of leader (resulting
+// in a new session with the same lease id) does not result in loss of
+// leadership.
+func TestElectionOnSessionRestart(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	cli := clus.RandClient()
+
+	session, err := concurrency.NewSession(cli)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e := concurrency.NewElection(session, "test-elect")
+	if cerr := e.Campaign(context.TODO(), "abc"); cerr != nil {
+		t.Fatal(cerr)
+	}
+
+	// ensure leader is not lost to waiter on fail-over
+	waitSession, werr := concurrency.NewSession(cli)
+	if werr != nil {
+		t.Fatal(werr)
+	}
+	defer waitSession.Orphan()
+	waitCtx, waitCancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer waitCancel()
+	go concurrency.NewElection(waitSession, "test-elect").Campaign(waitCtx, "123")
+
+	// simulate restart by reusing the lease from the old session
+	newSession, nerr := concurrency.NewSession(cli, concurrency.WithLease(session.Lease()))
+	if nerr != nil {
+		t.Fatal(nerr)
+	}
+	defer newSession.Orphan()
+
+	newElection := concurrency.NewElection(newSession, "test-elect")
+	if ncerr := newElection.Campaign(context.TODO(), "def"); ncerr != nil {
+		t.Fatal(ncerr)
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	if resp := <-newElection.Observe(ctx); len(resp.Kvs) == 0 || string(resp.Kvs[0].Value) != "def" {
+		t.Errorf("expected value=%q, got response %v", "def", resp)
+	}
+}
