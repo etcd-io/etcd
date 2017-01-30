@@ -494,10 +494,6 @@ func waitReadyExpectProc(exproc *expect.ExpectProcess, isProxy bool) error {
 	return err
 }
 
-func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	return expect.NewExpect(args[0], args[1:]...)
-}
-
 func spawnWithExpect(args []string, expected string) error {
 	return spawnWithExpects(args, []string{expected}...)
 }
