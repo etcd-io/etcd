@@ -52,6 +52,9 @@ var (
 		"snapshot",
 		"v",
 		"vv",
+		// for coverage testing
+		"test.coverprofile",
+		"test.outputdir",
 	}
 )
 
