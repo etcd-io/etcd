@@ -19,10 +19,5 @@ tester:
     - /etcd-tester
     - -agent-endpoints
     - "172.20.0.2:9027,172.20.0.3:9027,172.20.0.4:9027"
-    - -limit 
-    - "1"
-    - -stress-key-count
-    - "1"
-    - -stress-key-size
-    - "1"
+ 
       

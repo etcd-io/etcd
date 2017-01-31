@@ -41,6 +41,82 @@ func RecoverPort(port int) error {
 	return err
 }
 
+// SetPacketCorruption corrupts packets at p%
+func SetPacketCorruption(p int) error {
+	if p < 0 || p > 100 {
+		return fmt.Errorf("packets corruption percentage must be between 0 and 100 but got %v", p)
+	}
+	ifce, err := GetDefaultInterface()
+	if err != nil {
+		return err
+	}
+	cmdStr1 := fmt.Sprintf("sudo tc qdisc add dev %s root handle 1:1 netem corrupt %d%%", ifce, p)
+	cmdStr2 := fmt.Sprintf("sudo tc qdisc add dev %s parent 1:1 handle 10:1 netem corrupt %d%%", ifce, p)
+	cmdStrs := []string{cmdStr1, cmdStr2}
+
+	for _, cmdStr := range cmdStrs {
+		_, err = exec.Command("/bin/sh", "-c", cmdStr).Output()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+// SetPacketReordering reorders packets. rp% of packets (with a correlation of cp%) gets send immediately. The rest will be delayed for ms millisecond
+func SetPacketReordering(rp int, cp int, ms int) error {
+	ifce, err := GetDefaultInterface()
+	if err != nil {
+		return err
+	}
+	cmdStr1 := fmt.Sprintf("sudo tc qdisc add dev %s root handle 1:1 netem delay %dms reorder %d%% %d%%", ifce, ms, rp, cp)
+	cmdStr2 := fmt.Sprintf("sudo tc qdisc add dev %s parent 1:1 handle 10:1 delay %dms reorder %d%% %d%%", ifce, ms, rp, cp)
+	cmdStrs := []string{cmdStr1, cmdStr2}
+
+	for _, cmdStr := range cmdStrs {
+		_, err = exec.Command("/bin/sh", "-c", cmdStr).Output()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+// SetPackLoss randomly drop packet at p% probability
+func SetPackLoss(p int) error {
+	ifce, err := GetDefaultInterface()
+	if err != nil {
+		return err
+	}
+	cmdStr := fmt.Sprintf("sudo tc qdisc add dev %s root netem loss %d%%", ifce, p)
+	_, err = exec.Command("/bin/sh", "-c", cmdStr).Output()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetPartitioning sets a very long delay of ms scale with random variations rv to isolate this node
+func SetPartitioning(ms int, rv int) error {
+	ifce, err := GetDefaultInterface()
+	if err != nil {
+		return err
+	}
+
+	cmdStr := fmt.Sprintf("sudo tc qdisc add dev %s root netem delay %dms %dms distribution normal", ifce, ms, rv)
+	_, err = exec.Command("/bin/sh", "-c", cmdStr).Output()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // SetLatency adds latency in millisecond scale with random variations.
 func SetLatency(ms, rv int) error {
 	ifce, err := GetDefaultInterface()
@@ -64,12 +140,12 @@ func SetLatency(ms, rv int) error {
 	return nil
 }
 
-// RemoveLatency resets latency configurations.
-func RemoveLatency() error {
+func ResetDefaultInterface() error {
 	ifce, err := GetDefaultInterface()
 	if err != nil {
 		return err
 	}
-	_, err = exec.Command("/bin/sh", "-c", fmt.Sprintf("sudo tc qdisc del dev %s root netem", ifce)).Output()
+	cmdStr := fmt.Sprintf("sudo tc qdisc del dev %s root netem", ifce)
+	_, err = exec.Command("/bin/sh", "-c", cmdStr).Output()
 	return err
 }

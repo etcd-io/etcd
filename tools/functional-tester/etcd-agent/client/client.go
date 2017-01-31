@@ -40,9 +40,25 @@ type Agent interface {
 	DropPort(port int) error
 	// RecoverPort stops dropping all network packets at the given port.
 	RecoverPort(port int) error
+	// SetPacketCorruption corrupts packets at a probability of p%
+	SetPacketCorruption(p int) error
+	// RemovePacketCorruption removes packet corruption.
+	RemovePacketCorruption() error
+	// SetPacketReordering reorders packets. rp% of packets (with a correlation of cp%) gets send immediately. The rest will be delayed for ms millisecond
+	SetPacketReordering(rp, cp, ms int) error
+	// RemovePacketReordering removes reordering of packets
+	RemovePacketReordering() error
+	// SetPackLoss randomly drop packet at a probability of p%
+	SetPacketLoss(p int) error
+	// RemovePacketLoss removes dropping of packets
+	RemovePacketLoss() error
+	// SetPartitioning sets a very long network delay of ms scale with random variations rv to isolate a node
+	SetPartitioning(ms, rv int) error
+	// SetPartitioning removes partition of a node
+	RemovePartitioning() error
 	// SetLatency slows down network by introducing latency.
 	SetLatency(ms, rv int) error
-	// RemoveLatency removes latency introduced by SetLatency.
+	// RemoveLatency removes latency.
 	RemoveLatency() error
 	// Status returns the status of etcd on the agent
 	Status() (Status, error)
@@ -97,6 +113,38 @@ func (a *agent) DropPort(port int) error {
 
 func (a *agent) RecoverPort(port int) error {
 	return a.rpcClient.Call("Agent.RPCRecoverPort", port, nil)
+}
+
+func (a *agent) SetPacketCorruption(p int) error {
+	return a.rpcClient.Call("Agent.RPCSetPacketCorruption", []int{p}, nil)
+}
+
+func (a *agent) RemovePacketCorruption() error {
+	return a.rpcClient.Call("Agent.RPCRemovePacketCorruption", struct{}{}, nil)
+}
+
+func (a *agent) SetPacketReordering(rp, cp, ms int) error {
+	return a.rpcClient.Call("Agent.RPCSetPacketReordering", []int{rp, cp, ms}, nil)
+}
+
+func (a *agent) RemovePacketReordering() error {
+	return a.rpcClient.Call("Agent.RPCRemovePacketCorruption", struct{}{}, nil)
+}
+
+func (a *agent) SetPacketLoss(p int) error {
+	return a.rpcClient.Call("Agent.RPCSetPacketLoss", []int{p}, nil)
+}
+
+func (a *agent) RemovePacketLoss() error {
+	return a.rpcClient.Call("Agent.RPCRemovePacketLoss", struct{}{}, nil)
+}
+
+func (a *agent) SetPartitioning(ms, rv int) error {
+	return a.rpcClient.Call("Agent.RPCSetPartitioning", []int{ms, rv}, nil)
+}
+
+func (a *agent) RemovePartitioning() error {
+	return a.rpcClient.Call("Agent.RPCRemovePartitioning", struct{}{}, nil)
 }
 
 func (a *agent) SetLatency(ms, rv int) error {

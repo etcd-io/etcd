@@ -191,14 +191,46 @@ func (a *Agent) recoverPort(port int) error {
 	return netutil.RecoverPort(port)
 }
 
+func (a *Agent) setPacketCorruption(cp int) error {
+	if !a.cfg.UseRoot {
+		return nil
+	}
+	return netutil.SetPacketCorruption(cp)
+}
+
+func (a *Agent) setPacketReordering(rp, cp, ms int) error {
+	if !a.cfg.UseRoot {
+		return nil
+	}
+	return netutil.SetPacketReordering(rp, cp, ms)
+}
+
+func (a *Agent) setPackLoss(p int) error {
+	if !a.cfg.UseRoot {
+		return nil
+	}
+	return netutil.SetPackLoss(p)
+}
+
+func (a *Agent) setPartitioning(ms, rv int) error {
+	if !a.cfg.UseRoot {
+		return nil
+	}
+	return netutil.SetPartitioning(ms, rv)
+}
+
 func (a *Agent) setLatency(ms, rv int) error {
 	if !a.cfg.UseRoot {
 		return nil
 	}
-	if ms == 0 {
-		return netutil.RemoveLatency()
-	}
 	return netutil.SetLatency(ms, rv)
+}
+
+func (a *Agent) resetDefaultInterface() error {
+	if !a.cfg.UseRoot {
+		return nil
+	}
+	return netutil.ResetDefaultInterface()
 }
 
 func (a *Agent) status() client.Status {

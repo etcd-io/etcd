@@ -20,6 +20,16 @@ func DropPort(port int) error { return nil }
 
 func RecoverPort(port int) error { return nil }
 
+func SetPacketCorruption(cp int) error { return nil }
+
+func SetPacketReordering(ms int, rp int, cp int) error { return nil }
+
+func SetPackLoss(p int) error { return nil }
+
+func SetPartitioning(ms int, rv int) error { return nil }
+
 func SetLatency(ms, rv int) error { return nil }
 
 func RemoveLatency() error { return nil }
+
+func ResetDefaultInterface() error { return nil }

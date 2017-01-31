@@ -104,6 +104,90 @@ func (a *Agent) RPCRecoverPort(port int, reply *struct{}) error {
 	return nil
 }
 
+func (a *Agent) RPCSetPacketCorruption(args []int, reply *struct{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("SetPacketCorruption needs 1 arg, got (%v)", args)
+	}
+	plog.Printf("set packet corruption at %d%%)", args[0])
+	err := a.setPacketCorruption(args[0])
+	if err != nil {
+		plog.Println("error setting packet corruption", err)
+	}
+	return nil
+}
+
+func (a *Agent) RPCRemovePacketCorruption(args struct{}, reply *struct{}) error {
+	plog.Println("removing packet corruption")
+	err := a.resetDefaultInterface()
+	if err != nil {
+		plog.Println("error removing packet corruption")
+	}
+	return nil
+}
+
+func (a *Agent) RPCSetPacketReordering(args []int, reply *struct{}) error {
+	if len(args) != 3 {
+		return fmt.Errorf("SetPacketReordering needs 3 args, got (%v)", args)
+	}
+	plog.Printf("SetPacketReordering reorders packets. %d%% of packets (with a correlation of %d%%) gets send immediately. The rest will be delayed for %d millisecond", args[0], args[1], args[2])
+	err := a.setPacketCorruption(args[0])
+	if err != nil {
+		plog.Println("error setting packet reordering", err)
+	}
+	return nil
+}
+
+func (a *Agent) RPCRemovePacketReordering(args struct{}, reply *struct{}) error {
+	plog.Println("removing packet reordering")
+	err := a.resetDefaultInterface()
+	if err != nil {
+		plog.Println("error removing packet reordering")
+	}
+	return nil
+}
+
+func (a *Agent) RPCSetPacketLoss(args []int, reply *struct{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("SetPacketLoss needs 1 arg, got (%v)", args)
+	}
+	plog.Printf("SetPackLoss randomly drop packet at %d probability", args[0])
+	err := a.setPackLoss(args[0])
+	if err != nil {
+		plog.Println("error setting packet loss", err)
+	}
+	return nil
+}
+
+func (a *Agent) RPCRemovePacketLoss(args struct{}, reply *struct{}) error {
+	plog.Println("removing packet loss")
+	err := a.resetDefaultInterface()
+	if err != nil {
+		plog.Println("error removing packet loss")
+	}
+	return nil
+}
+
+func (a *Agent) RPCSetPartitioning(args []int, reply *struct{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("SetPartitioning needs 2 args, got (%v)", args)
+	}
+	plog.Printf("SetPartitioning sets %dms (+/- %dms)", args[0], args[1])
+	err := a.setPartitioning(args[0], args[1])
+	if err != nil {
+		plog.Println("error setting packet loss", err)
+	}
+	return nil
+}
+
+func (a *Agent) RPCRemovePartitioning(args struct{}, reply *struct{}) error {
+	plog.Println("removing packet partitioning")
+	err := a.resetDefaultInterface()
+	if err != nil {
+		plog.Println("error removing packet partitioning")
+	}
+	return nil
+}
+
 func (a *Agent) RPCSetLatency(args []int, reply *struct{}) error {
 	if len(args) != 2 {
 		return fmt.Errorf("SetLatency needs two args, got (%v)", args)
@@ -118,7 +202,7 @@ func (a *Agent) RPCSetLatency(args []int, reply *struct{}) error {
 
 func (a *Agent) RPCRemoveLatency(args struct{}, reply *struct{}) error {
 	plog.Println("removing latency")
-	err := a.setLatency(0, 0)
+	err := a.resetDefaultInterface()
 	if err != nil {
 		plog.Println("error removing latency")
 	}
