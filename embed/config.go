@@ -66,8 +66,8 @@ func init() {
 		return
 	}
 	// found default host, advertise on it
-	DefaultInitialAdvertisePeerURLs = "http://" + ip + ":2380"
-	DefaultAdvertiseClientURLs = "http://" + ip + ":2379"
+	DefaultInitialAdvertisePeerURLs = "http://" + net.JoinHostPort(ip, "2380")
+	DefaultAdvertiseClientURLs = "http://" + net.JoinHostPort(ip, "2379")
 	defaultHostname = ip
 }
 
