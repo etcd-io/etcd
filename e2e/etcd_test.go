@@ -106,6 +106,13 @@ var (
 		isPeerTLS:    true,
 		initialToken: "new",
 	}
+	configClientTLSCertAuth = etcdProcessClusterConfig{
+		clusterSize:           1,
+		proxySize:             0,
+		clientTLS:             clientTLS,
+		initialToken:          "new",
+		clientCertAuthEnabled: true,
+	}
 )
 
 func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
