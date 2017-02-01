@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -427,14 +428,17 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 
 	setPeerURLsHeader(req, cr.tr.URLs)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	req = req.WithContext(ctx)
+
 	cr.mu.Lock()
+	cr.cancel = cancel
 	select {
 	case <-cr.stopc:
 		cr.mu.Unlock()
 		return nil, fmt.Errorf("stream reader is stopped")
 	default:
 	}
-	cr.cancel = httputil.RequestCanceler(req)
 	cr.mu.Unlock()
 
 	resp, err := cr.tr.streamRt.RoundTrip(req)
