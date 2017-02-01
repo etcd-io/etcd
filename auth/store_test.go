@@ -448,6 +448,25 @@ func TestAuthInfoFromCtx(t *testing.T) {
 	}
 }
 
+func TestAuthDisable(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	as.AuthDisable()
+	ctx := context.WithValue(context.WithValue(context.TODO(), "index", uint64(2)), "simpleToken", "dummy")
+	_, err := as.Authenticate(ctx, "foo", "bar")
+	if err != ErrAuthNotEnabled {
+		t.Errorf("expected %v, got %v", ErrAuthNotEnabled, err)
+	}
+
+	// Disabling disabled auth to make sure it can return safely if store is already disabled.
+	as.AuthDisable()
+	_, err = as.Authenticate(ctx, "foo", "bar")
+	if err != ErrAuthNotEnabled {
+		t.Errorf("expected %v, got %v", ErrAuthNotEnabled, err)
+	}
+}
+
 func contains(array []string, str string) bool {
 	for _, s := range array {
 		if s == str {
