@@ -305,6 +305,9 @@ func TestRecoverFromSnapshot(t *testing.T) {
 	as.Close()
 
 	as2 := NewAuthStore(as.be, dummyIndexWaiter)
+	defer func(a *authStore) {
+		a.Close()
+	}(as2)
 
 	if !as2.isAuthEnabled() {
 		t.Fatal("recovering authStore from existing backend failed")
