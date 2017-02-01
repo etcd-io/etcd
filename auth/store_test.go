@@ -467,6 +467,35 @@ func TestAuthDisable(t *testing.T) {
 	}
 }
 
+func TestIsAdminPermitted(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	err := as.IsAdminPermitted(&AuthInfo{Username: "root", Revision: 1})
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+
+	// invalid user
+	err = as.IsAdminPermitted(&AuthInfo{Username: "rooti", Revision: 1})
+	if err != ErrUserNotFound {
+		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
+	}
+
+	// non-admin user
+	err = as.IsAdminPermitted(&AuthInfo{Username: "foo", Revision: 1})
+	if err != ErrPermissionDenied {
+		t.Errorf("expected %v, got %v", ErrPermissionDenied, err)
+	}
+
+	// disabled auth should return nil
+	as.AuthDisable()
+	err = as.IsAdminPermitted(&AuthInfo{Username: "root", Revision: 1})
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+}
+
 func contains(array []string, str string) bool {
 	for _, s := range array {
 		if s == str {
