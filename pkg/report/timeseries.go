@@ -19,7 +19,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"log"
-	"math"
 	"sort"
 	"sync"
 	"time"
@@ -60,7 +59,7 @@ func (sp *secondPoints) Add(ts time.Time, lat time.Duration) {
 		sp.tm[tk] = secondPoint{totalLatency: lat, count: 1}
 	} else {
 		v.totalLatency += lat
-		v.count += 1
+		v.count++
 		sp.tm[tk] = v
 	}
 }
@@ -68,24 +67,6 @@ func (sp *secondPoints) Add(ts time.Time, lat time.Duration) {
 func (sp *secondPoints) getTimeSeries() TimeSeries {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-
-	var (
-		minTs int64 = math.MaxInt64
-		maxTs int64 = -1
-	)
-	for k := range sp.tm {
-		if minTs > k {
-			minTs = k
-		}
-		if maxTs < k {
-			maxTs = k
-		}
-	}
-	for ti := minTs; ti < maxTs; ti++ {
-		if _, ok := sp.tm[ti]; !ok { // fill-in empties
-			sp.tm[ti] = secondPoint{totalLatency: 0, count: 0}
-		}
-	}
 
 	var (
 		tslice = make(TimeSeries, len(sp.tm))
