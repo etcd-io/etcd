@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3
+package yaml
 
 import (
 	"io/ioutil"
@@ -25,9 +25,9 @@ import (
 )
 
 var (
-	certPath       = "../integration/fixtures/server.crt"
-	privateKeyPath = "../integration/fixtures/server.key.insecure"
-	caPath         = "../integration/fixtures/ca.crt"
+	certPath       = "../../integration/fixtures/server.crt"
+	privateKeyPath = "../../integration/fixtures/server.key.insecure"
+	caPath         = "../../integration/fixtures/ca.crt"
 )
 
 func TestConfigFromFile(t *testing.T) {
@@ -92,7 +92,7 @@ func TestConfigFromFile(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		cfg, cerr := configFromFile(tmpfile.Name())
+		cfg, cerr := NewConfig(tmpfile.Name())
 		if cerr != nil && !tt.werr {
 			t.Errorf("#%d: err = %v, want %v", i, cerr, tt.werr)
 			continue
