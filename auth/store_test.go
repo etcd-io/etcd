@@ -496,6 +496,41 @@ func TestIsAdminPermitted(t *testing.T) {
 	}
 }
 
+func TestRecoverFromSnapshot(t *testing.T) {
+	as, _ := setupAuthStore(t)
+
+	ua := &pb.AuthUserAddRequest{Name: "foo"}
+	_, err := as.UserAdd(ua) // add an existing user
+	if err == nil {
+		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
+	}
+	if err != ErrUserAlreadyExist {
+		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
+	}
+
+	ua = &pb.AuthUserAddRequest{Name: ""}
+	_, err = as.UserAdd(ua) // add a user with empty name
+	if err != ErrUserEmpty {
+		t.Fatal(err)
+	}
+
+	as.Close()
+
+	as2 := NewAuthStore(as.be, dummyIndexWaiter)
+
+	if !as2.isAuthEnabled() {
+		t.Fatal("recovering authStore from existing backend failed")
+	}
+
+	ul, err := as.UserList(&pb.AuthUserListRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(ul.Users, "root") {
+		t.Errorf("expected %v in %v", "root", ul.Users)
+	}
+}
+
 func contains(array []string, str string) bool {
 	for _, s := range array {
 		if s == str {
