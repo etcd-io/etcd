@@ -269,4 +269,61 @@ func TestUserGrant(t *testing.T) {
 	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
+
+	// non-admin user
+	err = as.IsAdminPermitted(&AuthInfo{Username: "foo", Revision: 1})
+	if err != ErrPermissionDenied {
+		t.Errorf("expected %v, got %v", ErrPermissionDenied, err)
+	}
+
+	// disabled auth should return nil
+	as.AuthDisable()
+	err = as.IsAdminPermitted(&AuthInfo{Username: "root", Revision: 1})
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+}
+
+func TestRecoverFromSnapshot(t *testing.T) {
+	as, _ := setupAuthStore(t)
+
+	ua := &pb.AuthUserAddRequest{Name: "foo"}
+	_, err := as.UserAdd(ua) // add an existing user
+	if err == nil {
+		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
+	}
+	if err != ErrUserAlreadyExist {
+		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
+	}
+
+	ua = &pb.AuthUserAddRequest{Name: ""}
+	_, err = as.UserAdd(ua) // add a user with empty name
+	if err != ErrUserEmpty {
+		t.Fatal(err)
+	}
+
+	as.Close()
+
+	as2 := NewAuthStore(as.be, dummyIndexWaiter)
+
+	if !as2.isAuthEnabled() {
+		t.Fatal("recovering authStore from existing backend failed")
+	}
+
+	ul, err := as.UserList(&pb.AuthUserListRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(ul.Users, "root") {
+		t.Errorf("expected %v in %v", "root", ul.Users)
+	}
+}
+
+func contains(array []string, str string) bool {
+	for _, s := range array {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
