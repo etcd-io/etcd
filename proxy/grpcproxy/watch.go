@@ -52,7 +52,7 @@ const (
 func NewWatchProxy(c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
 	wp := &watchProxy{
 		cw:           c.Watcher,
-		ctx:          clientv3.WithRequireLeader(c.Ctx()),
+		ctx:          c.Ctx(),
 		retryLimiter: rate.NewLimiter(rate.Limit(retryPerSecond), retryPerSecond),
 		leaderc:      make(chan struct{}),
 	}
@@ -63,8 +63,9 @@ func NewWatchProxy(c *clientv3.Client) (pb.WatchServer, <-chan struct{}) {
 		// a new streams without opening any watchers won't catch
 		// a lost leader event, so have a special watch to monitor it
 		rev := int64((uint64(1) << 63) - 2)
+		lctx := clientv3.WithRequireLeader(wp.ctx)
 		for wp.ctx.Err() == nil {
-			wch := wp.cw.Watch(wp.ctx, lostLeaderKey, clientv3.WithRev(rev))
+			wch := wp.cw.Watch(lctx, lostLeaderKey, clientv3.WithRev(rev))
 			for range wch {
 			}
 			wp.mu.Lock()
