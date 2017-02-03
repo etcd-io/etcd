@@ -79,15 +79,6 @@ func NewFromURL(url string) (*Client, error) {
 	return New(Config{Endpoints: []string{url}})
 }
 
-// NewFromConfigFile creates a new etcdv3 client from a configuration file.
-func NewFromConfigFile(path string) (*Client, error) {
-	cfg, err := configFromFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return New(*cfg)
-}
-
 // Close shuts down the client's etcd connections.
 func (c *Client) Close() error {
 	c.cancel()
