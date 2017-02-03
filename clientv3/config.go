@@ -17,6 +17,8 @@ package clientv3
 import (
 	"crypto/tls"
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 type Config struct {
@@ -38,4 +40,7 @@ type Config struct {
 
 	// Password is a password for authentication.
 	Password string `json:"password"`
+
+	// DialOptions is a list of dial options for the grpc client (e.g., for interceptors).
+	DialOptions []grpc.DialOption
 }

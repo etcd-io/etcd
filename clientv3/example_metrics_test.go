@@ -18,21 +18,51 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 
+	"github.com/coreos/etcd/clientv3"
+
+	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
-func ExampleMetrics_All() {
+func ExampleMetrics_range() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints: endpoints,
+		DialOptions: []grpc.DialOption{
+			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
+			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	// get a key so it shows up in the metrics as a range rpc
+	cli.Get(context.TODO(), "test_key")
+
 	// listen for all prometheus metrics
+	ln, err := net.Listen("tcp", ":47989")
+	if err != nil {
+		log.Fatal(err)
+	}
+	donec := make(chan struct{})
 	go func() {
-		http.Handle("/metrics", prometheus.Handler())
-		log.Fatal(http.ListenAndServe(":47989", nil))
+		defer close(donec)
+		http.Serve(ln, prometheus.Handler())
+	}()
+	defer func() {
+		ln.Close()
+		<-donec
 	}()
 
-	url := "http://localhost:47989/metrics"
-
 	// make an http request to fetch all prometheus metrics
+	url := "http://localhost:47989/metrics"
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatalf("fetch error: %v", err)
@@ -42,5 +72,13 @@ func ExampleMetrics_All() {
 	if err != nil {
 		log.Fatalf("fetch error: reading %s: %v", url, err)
 	}
-	fmt.Printf("%s", b)
+
+	// confirm range request in metrics
+	for _, l := range strings.Split(string(b), "\n") {
+		if strings.Contains(l, `grpc_client_started_total{grpc_method="Range"`) {
+			fmt.Println(l)
+			break
+		}
+	}
+	// Output: grpc_client_started_total{grpc_method="Range",grpc_service="etcdserverpb.KV",grpc_type="unary"} 1
 }
