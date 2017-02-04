@@ -27,7 +27,9 @@ import (
 
 type DataPoint struct {
 	Timestamp  int64
+	MinLatency time.Duration
 	AvgLatency time.Duration
+	MaxLatency time.Duration
 	ThroughPut int64
 }
 
@@ -38,6 +40,8 @@ func (t TimeSeries) Len() int           { return len(t) }
 func (t TimeSeries) Less(i, j int) bool { return t[i].Timestamp < t[j].Timestamp }
 
 type secondPoint struct {
+	minLatency   time.Duration
+	maxLatency   time.Duration
 	totalLatency time.Duration
 	count        int64
 }
@@ -57,10 +61,14 @@ func (sp *secondPoints) Add(ts time.Time, lat time.Duration) {
 
 	tk := ts.Unix()
 	if v, ok := sp.tm[tk]; !ok {
-		sp.tm[tk] = secondPoint{totalLatency: lat, count: 1}
+		sp.tm[tk] = secondPoint{minLatency: lat, maxLatency: lat, totalLatency: lat, count: 1}
 	} else {
+		if lat != time.Duration(0) {
+			v.minLatency = minDuration(v.minLatency, lat)
+		}
+		v.maxLatency = maxDuration(v.maxLatency, lat)
 		v.totalLatency += lat
-		v.count += 1
+		v.count++
 		sp.tm[tk] = v
 	}
 }
@@ -98,7 +106,9 @@ func (sp *secondPoints) getTimeSeries() TimeSeries {
 		}
 		tslice[i] = DataPoint{
 			Timestamp:  k,
+			MinLatency: v.minLatency,
 			AvgLatency: lat,
+			MaxLatency: v.maxLatency,
 			ThroughPut: v.count,
 		}
 		i++
@@ -111,14 +121,16 @@ func (sp *secondPoints) getTimeSeries() TimeSeries {
 func (ts TimeSeries) String() string {
 	buf := new(bytes.Buffer)
 	wr := csv.NewWriter(buf)
-	if err := wr.Write([]string{"UNIX-TS", "AVG-LATENCY-MS", "AVG-THROUGHPUT"}); err != nil {
+	if err := wr.Write([]string{"UNIX-SECOND", "MIN-LATENCY-MS", "AVG-LATENCY-MS", "MAX-LATENCY-MS", "AVG-THROUGHPUT"}); err != nil {
 		log.Fatal(err)
 	}
 	rows := [][]string{}
 	for i := range ts {
 		row := []string{
 			fmt.Sprintf("%d", ts[i].Timestamp),
+			fmt.Sprintf("%s", ts[i].MinLatency),
 			fmt.Sprintf("%s", ts[i].AvgLatency),
+			fmt.Sprintf("%s", ts[i].MaxLatency),
 			fmt.Sprintf("%d", ts[i].ThroughPut),
 		}
 		rows = append(rows, row)
@@ -131,4 +143,18 @@ func (ts TimeSeries) String() string {
 		log.Fatal(err)
 	}
 	return fmt.Sprintf("\nSample in one second (unix latency throughput):\n%s", buf.String())
+}
+
+func minDuration(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxDuration(a, b time.Duration) time.Duration {
+	if a > b {
+		return a
+	}
+	return b
 }
