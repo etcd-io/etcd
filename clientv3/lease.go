@@ -452,16 +452,6 @@ func (l *lessor) deadlineLoop() {
 // sendKeepAliveLoop sends LeaseKeepAliveRequests for the lifetime of a lease stream
 func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 	for {
-		select {
-		case <-time.After(500 * time.Millisecond):
-		case <-stream.Context().Done():
-			return
-		case <-l.donec:
-			return
-		case <-l.stopCtx.Done():
-			return
-		}
-
 		var tosend []LeaseID
 
 		now := time.Now()
@@ -479,6 +469,16 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 				// TODO do something with this error?
 				return
 			}
+		}
+
+		select {
+		case <-time.After(500 * time.Millisecond):
+		case <-stream.Context().Done():
+			return
+		case <-l.donec:
+			return
+		case <-l.stopCtx.Done():
+			return
 		}
 	}
 }
