@@ -37,7 +37,6 @@ type watcherTest func(*testing.T, *watchctx)
 type watchctx struct {
 	clus          *integration.ClusterV3
 	w             clientv3.Watcher
-	wclient       *clientv3.Client
 	kv            clientv3.KV
 	wclientMember int
 	kvMember      int
@@ -51,19 +50,16 @@ func runWatchTest(t *testing.T, f watcherTest) {
 	defer clus.Terminate(t)
 
 	wclientMember := rand.Intn(3)
-	wclient := clus.Client(wclientMember)
-	w := clientv3.NewWatcher(wclient)
-	defer w.Close()
+	w := clus.Client(wclientMember).Watcher
 	// select a different client from wclient so puts succeed if
 	// a test knocks out the watcher client
 	kvMember := rand.Intn(3)
 	for kvMember == wclientMember {
 		kvMember = rand.Intn(3)
 	}
-	kvclient := clus.Client(kvMember)
-	kv := clientv3.NewKV(kvclient)
+	kv := clus.Client(kvMember).KV
 
-	wctx := &watchctx{clus, w, wclient, kv, wclientMember, kvMember, nil}
+	wctx := &watchctx{clus, w, kv, wclientMember, kvMember, nil}
 	f(t, wctx)
 }
 
@@ -359,8 +355,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// create a waiting watcher at rev 1
-	w := clientv3.NewWatcher(clus.Client(0))
-	defer w.Close()
+	w := clus.Client(0)
 	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(1))
 	select {
 	case w := <-wch:
@@ -381,7 +376,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 
 	// put some data and compact away
 	numPuts := 5
-	kv := clientv3.NewKV(clus.Client(1))
+	kv := clus.Client(1)
 	for i := 0; i < numPuts; i++ {
 		if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
 			t.Fatal(err)
@@ -447,15 +442,14 @@ func TestWatchCompactRevision(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// set some keys
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 	for i := 0; i < 5; i++ {
 		if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	w := clientv3.NewWatcher(clus.RandClient())
-	defer w.Close()
+	w := clus.RandClient()
 
 	if _, err := kv.Compact(context.TODO(), 4); err != nil {
 		t.Fatal(err)
@@ -493,8 +487,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	wc := clientv3.NewWatcher(clus.RandClient())
-	defer wc.Close()
+	wc := clus.RandClient()
 
 	opts := []clientv3.OpOption{clientv3.WithProgressNotify()}
 	if watchOnPut {
@@ -511,7 +504,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 		t.Fatalf("watch response expected in %v, but timed out", pi)
 	}
 
-	kvc := clientv3.NewKV(clus.RandClient())
+	kvc := clus.RandClient()
 	if _, err := kvc.Put(context.TODO(), "foox", "bar"); err != nil {
 		t.Fatal(err)
 	}
@@ -614,13 +607,11 @@ func TestWatchErrConnClosed(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
-	defer cli.Close()
-	wc := clientv3.NewWatcher(cli)
 
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		ch := wc.Watch(context.TODO(), "foo")
+		ch := cli.Watch(context.TODO(), "foo")
 		if wr := <-ch; grpc.ErrorDesc(wr.Err()) != grpc.ErrClientConnClosing.Error() {
 			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, grpc.ErrorDesc(wr.Err()))
 		}
@@ -652,9 +643,8 @@ func TestWatchAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		wc := clientv3.NewWatcher(cli)
-		wc.Watch(context.TODO(), "foo")
-		if err := wc.Close(); err != nil && err != grpc.ErrClientConnClosing {
+		cli.Watch(context.TODO(), "foo")
+		if err := cli.Close(); err != nil && err != grpc.ErrClientConnClosing {
 			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 		close(donec)

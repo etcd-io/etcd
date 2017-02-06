@@ -36,10 +36,7 @@ func TestLeaseNotFoundError(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
-
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 
 	_, err := kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(500)))
 	if err != rpctypes.ErrLeaseNotFound {
@@ -53,10 +50,9 @@ func TestLeaseGrant(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
+	lapi := clus.RandClient()
 
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -75,10 +71,9 @@ func TestLeaseRevoke(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
+	lapi := clus.RandClient()
 
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -102,8 +97,7 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
+	lapi := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -127,7 +121,8 @@ func TestLeaseKeepAlive(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
+	lapi := clus.Client(0)
+	clus.TakeClient(0)
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -167,7 +162,7 @@ func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// TODO: change this line to get a cluster client
-	lapi := clientv3.NewLease(clus.RandClient())
+	lapi := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -261,12 +256,12 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
-	le := clientv3.NewLease(cli)
+	clus.TakeClient(0)
 
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		_, err := le.Grant(context.TODO(), 5)
+		_, err := cli.Grant(context.TODO(), 5)
 		if err != nil && err != grpc.ErrClientConnClosing {
 			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
@@ -275,7 +270,6 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	if err := cli.Close(); err != nil {
 		t.Fatal(err)
 	}
-	clus.TakeClient(0)
 
 	select {
 	case <-time.After(3 * time.Second):
@@ -298,8 +292,7 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		le := clientv3.NewLease(cli)
-		if _, err := le.Grant(context.TODO(), 5); err != grpc.ErrClientConnClosing {
+		if _, err := cli.Grant(context.TODO(), 5); err != grpc.ErrClientConnClosing {
 			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
@@ -318,8 +311,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
-	le := clientv3.NewLease(cli)
-	resp, err := le.Grant(context.TODO(), 5)
+	resp, err := cli.Grant(context.TODO(), 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +324,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		if _, err := le.Revoke(context.TODO(), leaseID); err != grpc.ErrClientConnClosing {
+		if _, err := cli.Revoke(context.TODO(), leaseID); err != grpc.ErrClientConnClosing {
 			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
@@ -466,15 +458,14 @@ func TestLeaseTimeToLive(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
+	lapi := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 	keys := []string{"foo1", "foo2"}
 	for i := range keys {
 		if _, err = kv.Put(context.TODO(), keys[i], "bar", clientv3.WithLease(resp.ID)); err != nil {
@@ -564,12 +555,13 @@ func TestLeaseKeepAliveLoopExit(t *testing.T) {
 
 	ctx := context.Background()
 	cli := clus.Client(0)
+	clus.TakeClient(0)
 
 	resp, err := cli.Grant(ctx, 5)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cli.Lease.Close()
+	cli.Close()
 
 	_, err = cli.KeepAlive(ctx, resp.ID)
 	if _, ok := err.(clientv3.ErrKeepAliveHalted); !ok {
