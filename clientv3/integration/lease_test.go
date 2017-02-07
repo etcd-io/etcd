@@ -405,12 +405,12 @@ func TestLeaseKeepAliveInitTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// keep client disconnected
+	clus.Members[0].Stop(t)
 	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
 	if kerr != nil {
 		t.Fatal(kerr)
 	}
-	// keep client disconnected
-	clus.Members[0].Stop(t)
 	select {
 	case ka, ok := <-rc:
 		if ok {
