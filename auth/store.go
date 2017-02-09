@@ -182,6 +182,17 @@ type authStore struct {
 	indexWaiter func(uint64) <-chan struct{}
 }
 
+func newDeleterFunc(as *authStore) func(string) {
+	return func(t string) {
+		as.simpleTokensMu.Lock()
+		defer as.simpleTokensMu.Unlock()
+		if username, ok := as.simpleTokens[t]; ok {
+			plog.Infof("deleting token %s for user %s", t, username)
+			delete(as.simpleTokens, t)
+		}
+	}
+}
+
 func (as *authStore) AuthEnable() error {
 	as.enabledMu.Lock()
 	defer as.enabledMu.Unlock()
@@ -210,15 +221,7 @@ func (as *authStore) AuthEnable() error {
 
 	as.enabled = true
 
-	tokenDeleteFunc := func(t string) {
-		as.simpleTokensMu.Lock()
-		defer as.simpleTokensMu.Unlock()
-		if username, ok := as.simpleTokens[t]; ok {
-			plog.Infof("deleting token %s for user %s", t, username)
-			delete(as.simpleTokens, t)
-		}
-	}
-	as.simpleTokenKeeper = NewSimpleTokenTTLKeeper(tokenDeleteFunc)
+	as.simpleTokenKeeper = NewSimpleTokenTTLKeeper(newDeleterFunc(as))
 
 	as.rangePermCache = make(map[string]*unifiedRangePermissions)
 
@@ -892,11 +895,25 @@ func NewAuthStore(be backend.Backend, indexWaiter func(uint64) <-chan struct{}) 
 	tx.UnsafeCreateBucket(authUsersBucketName)
 	tx.UnsafeCreateBucket(authRolesBucketName)
 
+	enabled := false
+	_, vs := tx.UnsafeRange(authBucketName, enableFlagKey, nil, 0)
+	if len(vs) == 1 {
+		if bytes.Equal(vs[0], authEnabled) {
+			enabled = true
+		}
+	}
+
 	as := &authStore{
-		be:           be,
-		simpleTokens: make(map[string]string),
-		revision:     0,
-		indexWaiter:  indexWaiter,
+		be:             be,
+		simpleTokens:   make(map[string]string),
+		revision:       getRevision(tx),
+		indexWaiter:    indexWaiter,
+		enabled:        enabled,
+		rangePermCache: make(map[string]*unifiedRangePermissions),
+	}
+
+	if enabled {
+		as.simpleTokenKeeper = NewSimpleTokenTTLKeeper(newDeleterFunc(as))
 	}
 
 	as.commitRevision(tx)
@@ -926,7 +943,8 @@ func (as *authStore) commitRevision(tx backend.BatchTx) {
 func getRevision(tx backend.BatchTx) uint64 {
 	_, vs := tx.UnsafeRange(authBucketName, []byte(revisionKey), nil, 0)
 	if len(vs) != 1 {
-		plog.Panicf("failed to get the key of auth store revision")
+		// this can happen in the initialization phase
+		return 0
 	}
 
 	return binary.BigEndian.Uint64(vs[0])
