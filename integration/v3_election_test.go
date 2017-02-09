@@ -112,7 +112,7 @@ func TestElectionFailover(t *testing.T) {
 	cctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	ss := make([]*concurrency.Session, 3, 3)
+	ss := make([]*concurrency.Session, 3)
 
 	for i := 0; i < 3; i++ {
 		var err error
