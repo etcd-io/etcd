@@ -101,7 +101,7 @@ func NewStore(b backend.Backend, le lease.Lessor, ig ConsistentIndexGetter) *sto
 		currentRev:     revision{main: 1},
 		compactMainRev: -1,
 
-		bytesBuf8: make([]byte, 8, 8),
+		bytesBuf8: make([]byte, 8),
 		fifoSched: schedule.NewFIFOScheduler(),
 
 		stopc: make(chan struct{}),

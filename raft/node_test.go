@@ -453,9 +453,9 @@ func TestReadyContainUpdates(t *testing.T) {
 		{Ready{}, false},
 		{Ready{SoftState: &SoftState{Lead: 1}}, true},
 		{Ready{HardState: raftpb.HardState{Vote: 1}}, true},
-		{Ready{Entries: make([]raftpb.Entry, 1, 1)}, true},
-		{Ready{CommittedEntries: make([]raftpb.Entry, 1, 1)}, true},
-		{Ready{Messages: make([]raftpb.Message, 1, 1)}, true},
+		{Ready{Entries: make([]raftpb.Entry, 1)}, true},
+		{Ready{CommittedEntries: make([]raftpb.Entry, 1)}, true},
+		{Ready{Messages: make([]raftpb.Message, 1)}, true},
 		{Ready{Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1}}}, true},
 	}
 
