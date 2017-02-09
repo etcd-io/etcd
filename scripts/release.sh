@@ -5,6 +5,7 @@
 #
 set -e
 
+ARCH=$(go env GOARCH)
 VERSION=$1
 if [ -z "${VERSION}" ]; then
 	echo "Usage: ${0} VERSION" >> /dev/stderr
@@ -29,5 +30,5 @@ pushd ${ETCD_ROOT} >/dev/null
 	echo Building aci image...
 	BINARYDIR=release/etcd-${VERSION}-linux-amd64 BUILDDIR=release ./scripts/build-aci ${VERSION}
 	echo Building docker image...
-	BINARYDIR=release/etcd-${VERSION}-linux-amd64 BUILDDIR=release ./scripts/build-docker ${VERSION}
+	BINARYDIR=release/etcd-${VERSION}-linux-${ARCH} BUILDDIR=release ./scripts/build-docker ${VERSION}
 popd >/dev/null
