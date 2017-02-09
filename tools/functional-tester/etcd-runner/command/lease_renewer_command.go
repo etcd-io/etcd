@@ -15,16 +15,11 @@
 package command
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"log"
-	"time"
 
-	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/tools/functional-tester/etcd-runner/runner"
+
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
 // NewLeaseRenewerCommand returns the cobra command for "lease-renewer runner".
@@ -44,43 +39,13 @@ func runLeaseRenewerFunc(cmd *cobra.Command, args []string) {
 
 	eps := endpointsFromFlag(cmd)
 	dialTimeout := dialTimeoutFromCmd(cmd)
-	c := newClient(eps, dialTimeout)
-	ctx := context.Background()
 
-	for {
-		var (
-			l   *clientv3.LeaseGrantResponse
-			lk  *clientv3.LeaseKeepAliveResponse
-			err error
-		)
-		for {
-			l, err = c.Lease.Grant(ctx, 5)
-			if err == nil {
-				break
-			}
-		}
-		expire := time.Now().Add(time.Duration(l.TTL-1) * time.Second)
-
-		for {
-			lk, err = c.Lease.KeepAliveOnce(ctx, l.ID)
-			if grpc.Code(err) == codes.NotFound {
-				if time.Since(expire) < 0 {
-					log.Printf("bad renew! exceeded: %v", time.Since(expire))
-					for {
-						lk, err = c.Lease.KeepAliveOnce(ctx, l.ID)
-						fmt.Println(lk, err)
-						time.Sleep(time.Second)
-					}
-				}
-				log.Printf("lost lease %d, expire: %v\n", l.ID, expire)
-				break
-			}
-			if err != nil {
-				continue
-			}
-			expire = time.Now().Add(time.Duration(lk.TTL-1) * time.Second)
-			log.Printf("renewed lease %d, expire: %v\n", lk.ID, expire)
-			time.Sleep(time.Duration(lk.TTL-2) * time.Second)
-		}
+	lcf := &runner.EtcdRunnerConfig{
+		Eps:                    eps,
+		DialTimeout:            dialTimeout,
+		TotalClientConnections: totalClientConnections,
+		Rounds:                 rounds,
 	}
+
+	runner.RunLeaseRenewer(lcf)
 }

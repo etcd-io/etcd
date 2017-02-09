@@ -15,11 +15,14 @@
 package command
 
 import (
-	"context"
 	"errors"
-	"fmt"
 
-	"github.com/coreos/etcd/clientv3/concurrency"
+	"github.com/coreos/etcd/tools/functional-tester/etcd-runner/runner"
+
+	"log"
+
+	"context"
+
 	"github.com/spf13/cobra"
 )
 
@@ -40,42 +43,17 @@ func runRacerFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, errors.New("lock-racer does not take any argument"))
 	}
 
-	rcs := make([]roundClient, totalClientConnections)
-	ctx := context.Background()
-	cnt := 0
-
 	eps := endpointsFromFlag(cmd)
 	dialTimeout := dialTimeoutFromCmd(cmd)
 
-	for i := range rcs {
-		var (
-			s   *concurrency.Session
-			err error
-		)
-
-		rcs[i].c = newClient(eps, dialTimeout)
-
-		for {
-			s, err = concurrency.NewSession(rcs[i].c)
-			if err == nil {
-				break
-			}
-		}
-		m := concurrency.NewMutex(s, "racers")
-		rcs[i].acquire = func() error { return m.Lock(ctx) }
-		rcs[i].validate = func() error {
-			if cnt++; cnt != 1 {
-				return fmt.Errorf("bad lock; count: %d", cnt)
-			}
-			return nil
-		}
-		rcs[i].release = func() error {
-			if err := m.Unlock(ctx); err != nil {
-				return err
-			}
-			cnt = 0
-			return nil
-		}
+	rcf := &runner.EtcdRunnerConfig{
+		Eps:                    eps,
+		DialTimeout:            dialTimeout,
+		TotalClientConnections: totalClientConnections,
+		Rounds:                 rounds,
 	}
-	doRounds(rcs, rounds)
+
+	if err := runner.RunRacer(context.Background(), rcf); err != nil {
+		log.Panicf("RunRacer error (%v)", err)
+	}
 }
