@@ -400,10 +400,9 @@ func (l *lessor) recvKeepAlive(resp *pb.LeaseKeepAliveResponse) {
 	}
 
 	if karesp.TTL <= 0 {
-		// lease expired; close all keep alive channels
+		// lease expired; send keep alive responses before close all keep alive channels
 		delete(l.keepAlives, karesp.ID)
-		ka.Close()
-		return
+		defer ka.Close()
 	}
 
 	// send update to all channels
