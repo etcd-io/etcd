@@ -108,7 +108,7 @@ ETCD_INITIAL_CLUSTER_STATE=existing
 Stop the existing proxy so we can wipe its state on disk and reload it with the new configuration:
 
 ``` bash
-px aux | grep etcd
+ps aux | grep etcd
 kill %etcd_proxy_pid%
 ```
 
