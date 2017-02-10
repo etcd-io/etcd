@@ -28,6 +28,10 @@ import:
   version: v0.3
   subpackages:
   - proto
+- package: github.com/golang/groupcache
+  version: 02826c3e79038b59d737d3b1c0a1d937f71a4433
+  subpackages:
+  - lru
 - package: github.com/golang/protobuf
   version: 4bd1920723d7b7c925de087aa32e2187708897f7
   subpackages:
@@ -101,5 +105,3 @@ import:
   version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
   subpackages:
   - assert
-- package: github.com/karlseguin/ccache
-  version: v2.0.2
