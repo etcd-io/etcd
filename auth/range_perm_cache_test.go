@@ -129,7 +129,7 @@ func TestGetMergedPerms(t *testing.T) {
 	for i, tt := range tests {
 		result := mergeRangePerms(tt.params)
 		if !isPermsEqual(result, tt.want) {
-			t.Errorf("#%d: result=%q, want=%q", i, result, tt.want)
+			t.Fatalf("#%d: result=%q, want=%q", i, result, tt.want)
 		}
 	}
 }

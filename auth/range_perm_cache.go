@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/etcd/auth/authpb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/wildcard"
 )
 
 // isSubset returns true if a is a subset of b.
@@ -32,7 +33,7 @@ func isSubset(a, b *rangePerm) bool {
 		// a, b are both keys
 		return bytes.Equal(a.begin, b.begin)
 	case len(b.end) == 0:
-		// b is a key, a is a range
+		// b is a key, a is a range (even a prefix range has infinite membership > 1)
 		return false
 	case len(a.end) == 0:
 		// a is a key, b is a range. need b1 <= a1 and a1 < b2
@@ -153,8 +154,11 @@ func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, pe
 	}
 
 	requiredPerm := &rangePerm{begin: key, end: rangeEnd}
+	wildcard.ExpandWildcardToRange(requiredPerm, true)
 
 	for _, perm := range tocheck {
+		wildcard.ExpandWildcardToRange(perm, true)
+
 		if isSubset(requiredPerm, perm) {
 			return true
 		}
@@ -218,4 +222,24 @@ func (slice RangePermSliceByBegin) Less(i, j int) bool {
 
 func (slice RangePermSliceByBegin) Swap(i, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
+}
+
+// GetBeg implements part of the BegEndRange interface.
+func (r *rangePerm) GetBeg() []byte {
+	return r.begin
+}
+
+// SetBeg implements part of the BegEndRange interface.
+func (r *rangePerm) SetBeg(beg []byte) {
+	r.begin = beg
+}
+
+// GetEnd implements part of the BegEndRange interface.
+func (r *rangePerm) GetEnd() []byte {
+	return r.end
+}
+
+// SetEnd implements part of the BegEndRange interface.
+func (r *rangePerm) SetEnd(end []byte) {
+	r.end = end
 }
