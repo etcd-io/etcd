@@ -39,8 +39,15 @@ type kv struct {
 
 func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
-	// replay log into key-value map
-	s.readCommits(commitC, errorC)
+
+	// wait for replayLog signal
+	<-commitC
+
+	// replay snapshot if any
+	if err := s.readSnapshot(); err != nil {
+		log.Panic(err)
+	}
+
 	// read commits from raft into kvStore map until error
 	go s.readCommits(commitC, errorC)
 	return s
@@ -61,20 +68,24 @@ func (s *kvstore) Propose(k string, v string) {
 	s.proposeC <- string(buf.Bytes())
 }
 
+func (s *kvstore) readSnapshot() error {
+	// replay logs from snapshot
+	snapshot, err := s.snapshotter.Load()
+	if err == snap.ErrNoSnapshot {
+		return nil
+	}
+	if err != nil && err != snap.ErrNoSnapshot {
+		return err
+	}
+	log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+	return s.recoverFromSnapshot(snapshot.Data)
+}
+
 func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 	for data := range commitC {
 		if data == nil {
-			// done replaying log; new data incoming
-			// OR signaled to load snapshot
-			snapshot, err := s.snapshotter.Load()
-			if err == snap.ErrNoSnapshot {
-				return
-			}
-			if err != nil && err != snap.ErrNoSnapshot {
-				log.Panic(err)
-			}
-			log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
-			if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
+			// signaled to load snapshot
+			if err := s.readSnapshot(); err != nil {
 				log.Panic(err)
 			}
 			continue
