@@ -334,8 +334,7 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 	}
 }
 
-// TestV3GetNonExistLease tests the case where the non exist lease is report as lease not found error using LeaseTimeToLive()
-// A bug was found when a non leader etcd server returns nil instead of lease not found error which caues the server to crash.
+// TestV3GetNonExistLease ensures client retriving nonexistent lease on a follower doesn't result node panic
 // related issue https://github.com/coreos/etcd/issues/6537
 func TestV3GetNonExistLease(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -344,16 +343,28 @@ func TestV3GetNonExistLease(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	lc := toGRPC(clus.RandClient()).Lease
+	lresp, err := lc.LeaseGrant(ctx, &pb.LeaseGrantRequest{TTL: 10})
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+	_, err = lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: lresp.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	leaseTTLr := &pb.LeaseTimeToLiveRequest{
-		ID:   123,
+		ID:   lresp.ID,
 		Keys: true,
 	}
 
 	for _, client := range clus.clients {
-		_, err := toGRPC(client).Lease.LeaseTimeToLive(ctx, leaseTTLr)
-		if !eqErrGRPC(err, rpctypes.ErrGRPCLeaseNotFound) {
-			t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCLeaseNotFound)
+		resp, err := toGRPC(client).Lease.LeaseTimeToLive(ctx, leaseTTLr)
+		if err != nil {
+			t.Fatalf("expected non nil error, but go %v", err)
+		}
+		if resp.TTL != -1 {
+			t.Fatalf("expected TTL to be -1, but got %v \n", resp.TTL)
 		}
 	}
 }
