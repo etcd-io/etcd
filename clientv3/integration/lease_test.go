@@ -504,6 +504,42 @@ func TestLeaseTimeToLive(t *testing.T) {
 	}
 }
 
+func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+	resp, err := cli.Grant(context.Background(), 10)
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+	_, err = cli.Revoke(context.Background(), resp.ID)
+	if err != nil {
+		t.Errorf("failed to Revoke lease %v", err)
+	}
+
+	lresp, err := cli.TimeToLive(context.Background(), resp.ID)
+	// TimeToLive() doesn't return LeaseNotFound error
+	// but return a response with TTL to be -1
+	if err != nil {
+		t.Fatalf("expected err to be nil")
+	}
+	if lresp == nil {
+		t.Fatalf("expected lresp not to be nil")
+	}
+	if lresp.ResponseHeader == nil {
+		t.Fatalf("expected ResponseHeader not to be nil")
+	}
+	if lresp.ID != resp.ID {
+		t.Fatalf("expected Lease ID %v, but got %v", resp.ID, lresp.ID)
+	}
+	if lresp.TTL != -1 {
+		t.Fatalf("expected TTL %v, but got %v", lresp.TTL, lresp.TTL)
+	}
+}
+
 // TestLeaseRenewLostQuorum ensures keepalives work after losing quorum
 // for a while.
 func TestLeaseRenewLostQuorum(t *testing.T) {
