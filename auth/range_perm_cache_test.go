@@ -17,7 +17,6 @@ package auth
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"testing"
 )
 
@@ -44,108 +43,13 @@ func TestGetMergedPerms(t *testing.T) {
 		params []*rangePerm
 		want   []*rangePerm
 	}{
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}},
-			[]*rangePerm{{[]byte("a"), []byte("b")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("c")}},
-			[]*rangePerm{{[]byte("a"), []byte("c")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("c")}, {[]byte("b"), []byte("d")}},
-			[]*rangePerm{{[]byte("a"), []byte("d")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("c")}, {[]byte("d"), []byte("e")}},
-			[]*rangePerm{{[]byte("a"), []byte("c")}, {[]byte("d"), []byte("e")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("e"), []byte("f")}},
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("e"), []byte("f")}},
-		},
-		{
-			[]*rangePerm{{[]byte("e"), []byte("f")}, {[]byte("c"), []byte("d")}, {[]byte("a"), []byte("b")}},
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("e"), []byte("f")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("a"), []byte("z")}},
-			[]*rangePerm{{[]byte("a"), []byte("z")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("a"), []byte("z")}, {[]byte("1"), []byte("9")}},
-			[]*rangePerm{{[]byte("1"), []byte("9")}, {[]byte("a"), []byte("z")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("a"), []byte("z")}, {[]byte("1"), []byte("a")}},
-			[]*rangePerm{{[]byte("1"), []byte("z")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("a"), []byte("z")}, {[]byte("5"), []byte("6")}, {[]byte("1"), []byte("9")}},
-			[]*rangePerm{{[]byte("1"), []byte("9")}, {[]byte("a"), []byte("z")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("c")}, {[]byte("c"), []byte("d")}, {[]byte("d"), []byte("f")}, {[]byte("1"), []byte("9")}},
-			[]*rangePerm{{[]byte("1"), []byte("9")}, {[]byte("a"), []byte("f")}},
-		},
-		// overlapping
-		{
-			[]*rangePerm{{[]byte("a"), []byte("f")}, {[]byte("b"), []byte("g")}},
-			[]*rangePerm{{[]byte("a"), []byte("g")}},
-		},
-		// keys
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("a"), []byte("c")}},
-			[]*rangePerm{{[]byte("a"), []byte("c")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("a"), []byte("c")}, {[]byte("b"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("c")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("b"), []byte("")}, {[]byte("c"), []byte("")}, {[]byte("d"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("c"), []byte("")}, {[]byte("d"), []byte("")}},
-		},
-		// duplicate ranges
-		{
-			[]*rangePerm{{[]byte("a"), []byte("f")}, {[]byte("a"), []byte("f")}},
-			[]*rangePerm{{[]byte("a"), []byte("f")}},
-		},
-		// duplicate keys
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("a"), []byte("")}, {[]byte("a"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("")}},
-		},
-	}
-
-	for i, tt := range tests {
-		result := mergeRangePerms(tt.params)
-		if !isPermsEqual(result, tt.want) {
-			t.Errorf("#%d: result=%q, want=%q", i, result, tt.want)
-		}
-	}
-}
-
-func TestRemoveSubsetRangePerms(t *testing.T) {
-	tests := []struct {
-		perms  []*rangePerm
-		expect []*rangePerm
-	}{
 		{ // subsets converge
 			[]*rangePerm{{[]byte{2}, []byte{3}}, {[]byte{2}, []byte{5}}, {[]byte{1}, []byte{4}}},
-			[]*rangePerm{{[]byte{1}, []byte{4}}, {[]byte{2}, []byte{5}}},
+			[]*rangePerm{{[]byte{1}, []byte{5}}},
 		},
 		{ // subsets converge
 			[]*rangePerm{{[]byte{0}, []byte{3}}, {[]byte{0}, []byte{1}}, {[]byte{2}, []byte{4}}, {[]byte{0}, []byte{2}}},
-			[]*rangePerm{{[]byte{0}, []byte{3}}, {[]byte{2}, []byte{4}}},
+			[]*rangePerm{{[]byte{0}, []byte{4}}},
 		},
 		{ // biggest range at the end
 			[]*rangePerm{{[]byte{2}, []byte{3}}, {[]byte{0}, []byte{2}}, {[]byte{1}, []byte{4}}, {[]byte{0}, []byte{5}}},
@@ -159,21 +63,107 @@ func TestRemoveSubsetRangePerms(t *testing.T) {
 			[]*rangePerm{{[]byte{2}, []byte{3}}, {[]byte{0}, []byte{1}}, {[]byte{4}, []byte{7}}, {[]byte{8}, []byte{15}}},
 			[]*rangePerm{{[]byte{0}, []byte{1}}, {[]byte{2}, []byte{3}}, {[]byte{4}, []byte{7}}, {[]byte{8}, []byte{15}}},
 		},
+		{
+			[]*rangePerm{makePerm("00", "03"), makePerm("18", "19"), makePerm("02", "08"), makePerm("10", "12")},
+			[]*rangePerm{makePerm("00", "08"), makePerm("10", "12"), makePerm("18", "19")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b")},
+			[]*rangePerm{makePerm("a", "b")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("b", "")},
+			[]*rangePerm{makePerm("a", "b"), makePerm("b", "")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("b", "c")},
+			[]*rangePerm{makePerm("a", "c")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "c"), makePerm("b", "d")},
+			[]*rangePerm{makePerm("a", "d")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("b", "c"), makePerm("d", "e")},
+			[]*rangePerm{makePerm("a", "c"), makePerm("d", "e")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("c", "d"), makePerm("e", "f")},
+			[]*rangePerm{makePerm("a", "b"), makePerm("c", "d"), makePerm("e", "f")},
+		},
+		{
+			[]*rangePerm{makePerm("e", "f"), makePerm("c", "d"), makePerm("a", "b")},
+			[]*rangePerm{makePerm("a", "b"), makePerm("c", "d"), makePerm("e", "f")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("c", "d"), makePerm("a", "z")},
+			[]*rangePerm{makePerm("a", "z")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("c", "d"), makePerm("a", "z"), makePerm("1", "9")},
+			[]*rangePerm{makePerm("1", "9"), makePerm("a", "z")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("c", "d"), makePerm("a", "z"), makePerm("1", "a")},
+			[]*rangePerm{makePerm("1", "z")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("a", "z"), makePerm("5", "6"), makePerm("1", "9")},
+			[]*rangePerm{makePerm("1", "9"), makePerm("a", "z")},
+		},
+		{
+			[]*rangePerm{makePerm("a", "b"), makePerm("b", "c"), makePerm("c", "d"), makePerm("b", "f"), makePerm("1", "9")},
+			[]*rangePerm{makePerm("1", "9"), makePerm("a", "f")},
+		},
+		// overlapping
+		{
+			[]*rangePerm{makePerm("a", "f"), makePerm("b", "g")},
+			[]*rangePerm{makePerm("a", "g")},
+		},
+		// keys
+		{
+			[]*rangePerm{makePerm("a", ""), makePerm("b", "")},
+			[]*rangePerm{makePerm("a", ""), makePerm("b", "")},
+		},
+		{
+			[]*rangePerm{makePerm("a", ""), makePerm("a", "c")},
+			[]*rangePerm{makePerm("a", "c")},
+		},
+		{
+			[]*rangePerm{makePerm("a", ""), makePerm("a", "c"), makePerm("b", "")},
+			[]*rangePerm{makePerm("a", "c")},
+		},
+		{
+			[]*rangePerm{makePerm("a", ""), makePerm("b", "c"), makePerm("b", ""), makePerm("c", ""), makePerm("d", "")},
+			[]*rangePerm{makePerm("a", ""), makePerm("b", "c"), makePerm("c", ""), makePerm("d", "")},
+		},
+		// duplicate ranges
+		{
+			[]*rangePerm{makePerm("a", "f"), makePerm("a", "f")},
+			[]*rangePerm{makePerm("a", "f")},
+		},
+		// duplicate keys
+		{
+			[]*rangePerm{makePerm("a", ""), makePerm("a", ""), makePerm("a", "")},
+			[]*rangePerm{makePerm("a", "")},
+		},
 	}
+
 	for i, tt := range tests {
-		rs := removeSubsetRangePerms(tt.perms)
-		if !reflect.DeepEqual(rs, tt.expect) {
-			t.Fatalf("#%d: unexpected rangePerms %q, got %q", i, printPerms(rs), printPerms(tt.expect))
+		result := mergeRangePerms(tt.params)
+		if !isPermsEqual(result, tt.want) {
+			t.Errorf("#%d: result=%q, want=%q", i, sprintPerms(result), sprintPerms(tt.want))
 		}
 	}
 }
 
-func printPerms(rs []*rangePerm) (txt string) {
-	for i, p := range rs {
-		if i != 0 {
-			txt += ","
-		}
-		txt += fmt.Sprintf("%+v", *p)
+func makePerm(a, b string) *rangePerm {
+	return &rangePerm{begin: []byte(a), end: []byte(b)}
+}
+
+func sprintPerms(rs []*rangePerm) (s string) {
+	for _, rp := range rs {
+		s += fmt.Sprintf("[%s %s] ", rp.begin, rp.end)
 	}
 	return
 }
