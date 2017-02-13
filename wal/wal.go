@@ -552,7 +552,7 @@ func (w *WAL) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 		return nil
 	}
 
-	mustSync := mustSync(st, w.state, len(ents))
+	mustSync := raft.MustSync(st, w.state, len(ents))
 
 	// TODO(xiangli): no more reference operator
 	for i := range ents {
@@ -616,15 +616,6 @@ func (w *WAL) seq() uint64 {
 		plog.Fatalf("bad wal name %s (%v)", t.Name(), err)
 	}
 	return seq
-}
-
-func mustSync(st, prevst raftpb.HardState, entsnum int) bool {
-	// Persistent state on all servers:
-	// (Updated on stable storage before responding to RPCs)
-	// currentTerm
-	// votedFor
-	// log entries[]
-	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term
 }
 
 func closeAll(rcs ...io.ReadCloser) error {
