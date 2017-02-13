@@ -375,13 +375,12 @@ func makeDB(snapdir, dbfile string, commit int) {
 	be := backend.NewDefaultBackend(dbpath)
 	// a lessor never timeouts leases
 	lessor := lease.NewLessor(be, math.MaxInt64)
-
 	s := mvcc.NewStore(be, lessor, (*initIndex)(&commit))
-	id := s.TxnBegin()
+	txn := s.Write()
 	btx := be.BatchTx()
 	del := func(k, v []byte) error {
-		_, _, err := s.TxnDeleteRange(id, k, nil)
-		return err
+		txn.DeleteRange(k, nil)
+		return nil
 	}
 
 	// delete stored members from old cluster since using new members
@@ -389,7 +388,7 @@ func makeDB(snapdir, dbfile string, commit int) {
 	// todo: add back new members when we start to deprecate old snap file.
 	btx.UnsafeForEach([]byte("members_removed"), del)
 	// trigger write-out of new consistent index
-	s.TxnEnd(id)
+	txn.End()
 	s.Commit()
 	s.Close()
 }
