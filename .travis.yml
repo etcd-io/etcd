@@ -2,14 +2,11 @@ language: go
 sudo: false
 
 go:
-  - 1.4
-  - 1.5
-  - 1.6
-  - tip
+  - 1.6.4
 
-matrix:
-  allow_failures:
-    - go: tip
+notifications:
+  on_success: never
+  on_failure: never
 
 addons:
   apt:
