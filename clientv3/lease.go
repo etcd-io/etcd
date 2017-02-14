@@ -255,7 +255,7 @@ func (l *lessor) KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAlive
 	for {
 		resp, err := l.keepAliveOnce(ctx, id)
 		if err == nil {
-			if resp.TTL == 0 {
+			if resp.TTL <= 0 {
 				err = rpctypes.ErrLeaseNotFound
 			}
 			return resp, err
