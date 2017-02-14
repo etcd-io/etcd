@@ -47,59 +47,53 @@ func isRangeEqual(a, b *rangePerm) bool {
 	return bytes.Equal(a.begin, b.begin) && bytes.Equal(a.end, b.end)
 }
 
-// removeSubsetRangePerms removes any rangePerms that are subsets of other rangePerms.
-// If there are equal ranges, removeSubsetRangePerms only keeps one of them.
-// It returns a sorted rangePerm slice.
-func removeSubsetRangePerms(perms []*rangePerm) (newp []*rangePerm) {
-	sort.Sort(RangePermSliceByBegin(perms))
-	var prev *rangePerm
-	for i := range perms {
-		if i == 0 {
-			prev = perms[i]
-			newp = append(newp, perms[i])
-			continue
-		}
-		if isRangeEqual(perms[i], prev) {
-			continue
-		}
-		if isSubset(perms[i], prev) {
-			continue
-		}
-		if isSubset(prev, perms[i]) {
-			prev = perms[i]
-			newp[len(newp)-1] = perms[i]
-			continue
-		}
-		prev = perms[i]
-		newp = append(newp, perms[i])
+// mergeRangePerms merges adjacent rangePerms.
+func mergeRangePerms(perms []*rangePerm) (rs []*rangePerm) {
+	if len(perms) < 2 {
+		return perms
 	}
-	return newp
+	sort.Sort(RangePermSliceByBegin(perms))
+
+	// initialize with first rangePerm
+	rs = append(rs, perms[0])
+
+	// merge in-place from 2nd
+	for i := 1; i < len(perms); i++ {
+		rp := rs[len(rs)-1]
+
+		// skip duplicate range
+		if isRangeEqual(rp, perms[i]) {
+			continue
+		}
+
+		// merge ["a", "") with ["a", "c")
+		if bytes.Equal(rp.begin, perms[i].begin) && len(rp.end) == 0 && len(perms[i].end) > 0 {
+			rp.end = perms[i].end
+			continue
+		}
+
+		// do not merge ["a", "b") with ["b", "")
+		if bytes.Equal(rp.end, perms[i].begin) && len(perms[i].end) == 0 {
+			rs = append(rs, perms[i])
+			continue
+		}
+
+		// rp.end < perms[i].begin; found beginning of next range
+		if bytes.Compare(rp.end, perms[i].begin) < 0 {
+			rs = append(rs, perms[i])
+			continue
+		}
+
+		rp.end = getMax(rp.end, perms[i].end)
+	}
+	return
 }
 
-// mergeRangePerms merges adjacent rangePerms.
-func mergeRangePerms(perms []*rangePerm) []*rangePerm {
-	var merged []*rangePerm
-	perms = removeSubsetRangePerms(perms)
-
-	i := 0
-	for i < len(perms) {
-		begin, next := i, i
-		for next+1 < len(perms) && bytes.Compare(perms[next].end, perms[next+1].begin) >= 0 {
-			next++
-		}
-		// don't merge ["a", "b") with ["b", ""), because perms[next+1].end is empty.
-		if next != begin && len(perms[next].end) > 0 {
-			merged = append(merged, &rangePerm{begin: perms[begin].begin, end: perms[next].end})
-		} else {
-			merged = append(merged, perms[begin])
-			if next != begin {
-				merged = append(merged, perms[next])
-			}
-		}
-		i = next + 1
+func getMax(a, b []byte) []byte {
+	if bytes.Compare(a, b) > 0 {
+		return a
 	}
-
-	return merged
+	return b
 }
 
 func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermissions {
