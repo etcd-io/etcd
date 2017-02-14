@@ -330,3 +330,32 @@ func contains(array []string, str string) bool {
 	}
 	return false
 }
+
+func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
+	b, tPath := backend.NewDefaultTmpBackend()
+
+	as := NewAuthStore(b, dummyIndexWaiter)
+	err := enableAuthAndCreateRoot(as)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// adds a new role
+	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ua := &pb.AuthUserAddRequest{Name: "foo", Password: "bar"}
+	_, err = as.UserAdd(ua) // add a non-existing user
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tearDown := func(t *testing.T) {
+		b.Close()
+		os.Remove(tPath)
+		as.Close()
+	}
+	return as, tearDown
+}
