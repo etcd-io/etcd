@@ -681,7 +681,9 @@ func TestWatchWithRequireLeader(t *testing.T) {
 
 	// wait for election timeout, then member[0] will not have a leader.
 	tickDuration := 10 * time.Millisecond
-	time.Sleep(time.Duration(3*clus.Members[0].ElectionTicks) * tickDuration)
+	// existing streams need three elections before they're torn down; wait until 5 elections cycle
+	// so proxy tests receive a leader loss event on its existing watch before creating a new watch.
+	time.Sleep(time.Duration(5*clus.Members[0].ElectionTicks) * tickDuration)
 
 	chLeader := liveClient.Watch(clientv3.WithRequireLeader(context.TODO()), "foo", clientv3.WithRev(1))
 	chNoLeader := liveClient.Watch(context.TODO(), "foo", clientv3.WithRev(1))
