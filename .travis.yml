@@ -8,15 +8,5 @@ notifications:
   on_success: never
   on_failure: never
 
-addons:
-  apt:
-    packages:
-    - libpcap-dev
-    - libaspell-dev
-    - libhunspell-dev
-
-before_install:
- - go get -v github.com/chzchzchz/goword
-
 script:
  - ./test
