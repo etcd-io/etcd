@@ -33,11 +33,7 @@ func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 		cache: cache.NewCache(cache.DefaultMaxEntries),
 	}
 	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		<-c.Ctx().Done()
-		kv.cache.Close()
-	}()
+	close(donec)
 	return kv, donec
 }
 
