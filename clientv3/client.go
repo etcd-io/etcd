@@ -272,7 +272,7 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 			tokenMu: &sync.RWMutex{},
 		}
 
-		err := c.getToken(context.TODO())
+		err := c.getToken(c.ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -307,7 +307,12 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 
 	// use a temporary skeleton client to bootstrap first connection
-	ctx, cancel := context.WithCancel(context.TODO())
+	baseCtx := context.TODO()
+	if cfg.Context != nil {
+		baseCtx = cfg.Context
+	}
+
+	ctx, cancel := context.WithCancel(baseCtx)
 	client := &Client{
 		conn:   nil,
 		cfg:    *cfg,

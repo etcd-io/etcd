@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -43,4 +44,8 @@ type Config struct {
 
 	// DialOptions is a list of dial options for the grpc client (e.g., for interceptors).
 	DialOptions []grpc.DialOption
+
+	// Context is the default client context; it can be used to cancel grpc dial out and
+	// other operations that do not have an explicit context.
+	Context context.Context
 }
