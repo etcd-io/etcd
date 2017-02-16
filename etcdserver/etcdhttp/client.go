@@ -369,7 +369,7 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 		}
 
 		if uint64(server.Leader()) == raft.None {
-			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			http.Error(w, `{"health": "false"}`, http.StatusInternalServerError)
 			return
 		}
 
