@@ -73,21 +73,21 @@ function fmt_tests {
 		exit 255
 	fi
 
-	echo "Checking govet..."
-	vetRes=$(go vet $TEST)
-	if [ -n "${vetRes}" ]; then
-		echo -e "govet checking failed:\n${vetRes}"
-		exit 255
-	fi
+	# echo "Checking govet..."
+	# vetRes=$(go vet $TEST)
+	# if [ -n "${vetRes}" ]; then
+	# 	echo -e "govet checking failed:\n${vetRes}"
+	# 	exit 255
+	# fi
 
-	echo "Checking govet -shadow..."
-	for path in $FMT; do
-		vetRes=$(go tool vet -shadow ${path})
-		if [ -n "${vetRes}" ]; then
-			echo -e "govet checking ${path} failed:\n${vetRes}"
-			exit 255
-		fi
-	done
+	# echo "Checking govet -shadow..."
+	# for path in $FMT; do
+	# 	vetRes=$(go tool vet -shadow ${path})
+	# 	if [ -n "${vetRes}" ]; then
+	# 		echo -e "govet checking ${path} failed:\n${vetRes}"
+	# 		exit 255
+	# 	fi
+	# done
 
 	echo "Checking for license header..."
 	licRes=$(for file in $(find . -type f -iname '*.go' ! -path './Godeps/*'); do
