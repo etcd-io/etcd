@@ -144,16 +144,19 @@ type keepAlive struct {
 }
 
 func NewLease(c *Client) Lease {
+	return NewLeaseFromLeaseClient(RetryLeaseClient(c), c.cfg.DialTimeout+time.Second)
+}
+
+func NewLeaseFromLeaseClient(remote pb.LeaseClient, keepAliveTimeout time.Duration) Lease {
 	l := &lessor{
 		donec:                 make(chan struct{}),
 		keepAlives:            make(map[LeaseID]*keepAlive),
-		remote:                RetryLeaseClient(c),
-		firstKeepAliveTimeout: c.cfg.DialTimeout + time.Second,
+		remote:                remote,
+		firstKeepAliveTimeout: keepAliveTimeout,
 	}
 	if l.firstKeepAliveTimeout == time.Second {
 		l.firstKeepAliveTimeout = defaultTTL
 	}
-
 	l.stopCtx, l.stopCancel = context.WithCancel(context.Background())
 	return l
 }
