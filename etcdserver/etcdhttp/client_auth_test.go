@@ -63,11 +63,12 @@ func (s *mockAuthStore) GetUser(name string) (auth.User, error) {
 	return *u, s.err
 }
 func (s *mockAuthStore) CreateOrUpdateUser(user auth.User) (out auth.User, created bool, err error) {
+	var u auth.User
 	if s.users == nil {
-		u, err := s.CreateUser(user)
+		u, err = s.CreateUser(user)
 		return u, true, err
 	}
-	u, err := s.UpdateUser(user)
+	u, err = s.UpdateUser(user)
 	return u, false, err
 }
 func (s *mockAuthStore) CreateUser(user auth.User) (auth.User, error) { return user, s.err }
