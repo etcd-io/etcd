@@ -151,3 +151,4 @@
 - [lytics/metafora](https://github.com/lytics/metafora) - Go distributed task library
 - [ryandoyle/nss-etcd](https://github.com/ryandoyle/nss-etcd) - A GNU libc NSS module for resolving names from etcd.
 - [Gru](https://github.com/dnaeon/gru) - Orchestration made easy with Go
+- [Vitess](http://vitess.io/) - Vitess is a database clustering system for horizontal scaling of MySQL.
