@@ -42,6 +42,9 @@ type Config struct {
 	// Password is a password for authentication.
 	Password string `json:"password"`
 
+	// RejectOldCluster when set will refuse to create a client against an outdated cluster.
+	RejectOldCluster bool `json:"reject-old-cluster"`
+
 	// DialOptions is a list of dial options for the grpc client (e.g., for interceptors).
 	DialOptions []grpc.DialOption
 
