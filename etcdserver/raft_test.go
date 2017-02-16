@@ -158,7 +158,12 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
 	}
-	r.start(&EtcdServer{r: r})
+	r.start(&EtcdServer{r: raftNode{
+		Node:        r.Node,
+		storage:     r.storage,
+		raftStorage: r.raftStorage,
+		transport:   r.transport,
+	}})
 	n.readyc <- raft.Ready{}
 	select {
 	case <-r.applyc:
