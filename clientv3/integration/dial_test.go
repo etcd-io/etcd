@@ -70,3 +70,21 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	}
 	cancel()
 }
+
+func TestRejectOldCluster(t *testing.T) {
+	defer testutil.AfterTest(t)
+	// 2 endpoints to test multi-endpoint Status
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	defer clus.Terminate(t)
+
+	cfg := clientv3.Config{
+		Endpoints:        []string{clus.Members[0].GRPCAddr(), clus.Members[1].GRPCAddr()},
+		DialTimeout:      5 * time.Second,
+		RejectOldCluster: true,
+	}
+	cli, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cli.Close()
+}
