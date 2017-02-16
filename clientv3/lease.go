@@ -407,7 +407,7 @@ func (l *lessor) recvKeepAlive(resp *pb.LeaseKeepAliveResponse) {
 	}
 
 	// send update to all channels
-	nextKeepAlive := time.Now().Add(time.Duration(karesp.TTL/3+1) * time.Second)
+	nextKeepAlive := time.Now().Add(time.Duration(karesp.TTL+2) / 3 * time.Second)
 	ka.deadline = time.Now().Add(time.Duration(karesp.TTL) * time.Second)
 	for _, ch := range ka.chs {
 		select {
