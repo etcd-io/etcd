@@ -511,10 +511,10 @@ func spawnWithExpects(args []string, xs ...string) error {
 	)
 	for _, txt := range xs {
 		for {
-			l, err := proc.ExpectFunc(lineFunc)
-			if err != nil {
+			l, lerr := proc.ExpectFunc(lineFunc)
+			if lerr != nil {
 				proc.Close()
-				return fmt.Errorf("%v (expected %q, got %q)", err, txt, lines)
+				return fmt.Errorf("%v (expected %q, got %q)", lerr, txt, lines)
 			}
 			lines = append(lines, l)
 			if strings.Contains(l, txt) {
@@ -523,9 +523,6 @@ func spawnWithExpects(args []string, xs ...string) error {
 		}
 	}
 	perr := proc.Close()
-	if err != nil {
-		return err
-	}
 	if len(xs) == 0 && proc.LineCount() != 0 { // expect no output
 		return fmt.Errorf("unexpected output (got lines %q, line count %d)", lines, proc.LineCount())
 	}
