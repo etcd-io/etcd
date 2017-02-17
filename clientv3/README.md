@@ -32,7 +32,7 @@ pass `context.WithTimeout` to APIs:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), timeout)
-resp, err := kvc.Put(ctx, "sample_key", "sample_value")
+resp, err := cli.Put(ctx, "sample_key", "sample_value")
 cancel()
 if err != nil {
     // handle error!
@@ -57,7 +57,7 @@ etcd client returns 2 types of errors:
 Here is the example code to handle client errors:
 
 ```go
-resp, err := kvc.Put(ctx, "", "")
+resp, err := cli.Put(ctx, "", "")
 if err != nil {
 	switch err {
 	case context.Canceled:
