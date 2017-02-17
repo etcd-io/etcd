@@ -10,7 +10,8 @@
 # PKG=snap ./test
 #
 # Run code coverage 
-# COVERDIR=coverage PASSES=cov ./test
+# COVERDIR must either be a absolute path or a relative path to the etcd root
+# COVERDIR=coverage PASSES="build_cov cov" ./test
 set -e
 
 source ./build
@@ -94,20 +95,30 @@ function cov_pass {
 		exit 255
 	fi
 
+	if [ ! -f "bin/etcd_test" ]; then
+		echo "etcd_test binary not found"
+		exit 255
+	fi
+
 	mkdir -p "$COVERDIR"
 
 	# PKGS_DELIM contains all the core etcd pkgs delimited by ',' which will be profiled for code coverage.
 	# Integration tests will generate code coverage for those pkgs 
 	PKGS_DELIM=$(echo $TEST | sed 's/ /,/g')
 
-	# TODO create coverage to e2e test
 	PKGS=`echo "$TEST_PKGS" | egrep -v "(e2e|functional-tester)"`
-
+	# run code coverage for unit and integration tests
 	for t in ${PKGS}; do
 		tf=`echo $t | tr / _`
-		#  uses -run=Test to skip examples because clientv3/ example tests will leak goroutines
+		# uses -run=Test to skip examples because clientv3/ example tests will leak goroutines
 		go test -covermode=set -coverpkg $PKGS_DELIM -timeout 15m -run=Test -v -coverprofile "$COVERDIR/${tf}.coverprofile"  ${REPO_PATH}/$t
 	done
+
+	# run code coverage for e2e tests
+	# use 30m timeout because e2e coverage takes longer 
+	# due to many tests cause etcd process to wait
+	# on leadership transfer timeout during gracefully shutdown
+	go test -tags cov -timeout 30m -v ${REPO_PATH}"/e2e"
 
 	gocovmerge "$COVERDIR"/*.coverprofile >"$COVERDIR"/cover.out
 }
@@ -281,6 +292,14 @@ function dep_pass {
 		echo -e "clientv3 has masked dependencies:\n${deps}"
 		exit 255
 	fi
+}
+
+function build_cov_pass {
+	out="bin"
+	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
+	PKGS=$TEST
+	ETCD_PKGS_DELIM=$(echo $PKGS | sed 's/ /,/g')
+	go test -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcd_test 
 }
 
 function compile_pass {
