@@ -116,17 +116,23 @@ func (s *chanStream) SendMsg(m interface{}) error {
 
 func (s *chanStream) RecvMsg(m interface{}) error {
 	v := m.(*interface{})
-	select {
-	case msg, ok := <-s.recvc:
-		if !ok {
-			return grpc.ErrClientConnClosing
+	for {
+		select {
+		case msg, ok := <-s.recvc:
+			if !ok {
+				return grpc.ErrClientConnClosing
+			}
+			if err, ok := msg.(error); ok {
+				return err
+			}
+			*v = msg
+			return nil
+		case <-s.ctx.Done():
 		}
-		if err, ok := msg.(error); ok {
-			return err
+		if len(s.recvc) == 0 {
+			// prioritize any pending recv messages over canceled context
+			break
 		}
-		*v = msg
-		return nil
-	case <-s.ctx.Done():
 	}
 	return s.ctx.Err()
 }
