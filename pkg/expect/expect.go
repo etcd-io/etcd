@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/kr/pty"
 )
@@ -38,6 +39,9 @@ type ExpectProcess struct {
 	lines []string
 	count int // increment whenever new line gets added
 	err   error
+
+	// StopSignal is the signal Stop sends to the process; defaults to SIGKILL.
+	StopSignal os.Signal
 }
 
 var printDebugLines = os.Getenv("EXPECT_DEBUG") != ""
@@ -52,7 +56,10 @@ func NewExpect(name string, arg ...string) (ep *ExpectProcess, err error) {
 func NewExpectWithEnv(name string, args []string, env []string) (ep *ExpectProcess, err error) {
 	cmd := exec.Command(name, args...)
 	cmd.Env = env
-	ep = &ExpectProcess{cmd: cmd}
+	ep = &ExpectProcess{
+		cmd:        cmd,
+		StopSignal: syscall.SIGKILL,
+	}
 	ep.cond = sync.NewCond(&ep.mu)
 	ep.cmd.Stderr = ep.cmd.Stdout
 	ep.cmd.Stdin = nil
@@ -140,7 +147,7 @@ func (ep *ExpectProcess) close(kill bool) error {
 		return ep.err
 	}
 	if kill {
-		ep.Signal(os.Interrupt)
+		ep.Signal(ep.StopSignal)
 	}
 
 	err := ep.cmd.Wait()
