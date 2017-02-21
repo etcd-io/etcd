@@ -147,16 +147,17 @@ func (tp *TCPProxy) runMonitor() {
 		select {
 		case <-time.After(tp.MonitorInterval):
 			tp.mu.Lock()
-			for _, r := range tp.remotes {
-				if !r.isActive() {
-					go func() {
-						if err := r.tryReactivate(); err != nil {
-							plog.Warningf("failed to activate endpoint [%s] due to %v (stay inactive for another %v)", r.addr, err, tp.MonitorInterval)
-						} else {
-							plog.Printf("activated %s", r.addr)
-						}
-					}()
+			for _, rem := range tp.remotes {
+				if rem.isActive() {
+					continue
 				}
+				go func(r *remote) {
+					if err := r.tryReactivate(); err != nil {
+						plog.Warningf("failed to activate endpoint [%s] due to %v (stay inactive for another %v)", r.addr, err, tp.MonitorInterval)
+					} else {
+						plog.Printf("activated %s", r.addr)
+					}
+				}(rem)
 			}
 			tp.mu.Unlock()
 		case <-tp.donec:
