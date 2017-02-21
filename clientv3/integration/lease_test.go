@@ -156,6 +156,30 @@ func TestLeaseKeepAlive(t *testing.T) {
 	}
 }
 
+func TestLeaseKeepAliveOneSecond(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+
+	resp, err := cli.Grant(context.Background(), 1)
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
+	if kerr != nil {
+		t.Errorf("failed to keepalive lease %v", kerr)
+	}
+
+	for i := 0; i < 3; i++ {
+		if _, ok := <-rc; !ok {
+			t.Errorf("chan is closed, want not closed")
+		}
+	}
+}
+
 // TODO: add a client that can connect to all the members of cluster via unix sock.
 // TODO: test handle more complicated failures.
 func TestLeaseKeepAliveHandleFailure(t *testing.T) {
