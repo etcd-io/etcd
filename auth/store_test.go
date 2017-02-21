@@ -38,6 +38,33 @@ func dummyIndexWaiter(index uint64) <-chan struct{} {
 	return ch
 }
 
+// TestNewAuthStoreRevision ensures newly auth store
+// keeps the old revision when there are no changes.
+func TestNewAuthStoreRevision(t *testing.T) {
+	b, tPath := backend.NewDefaultTmpBackend()
+	defer os.Remove(tPath)
+
+	as := NewAuthStore(b, dummyIndexWaiter)
+	err := enableAuthAndCreateRoot(as)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := as.Revision()
+	b.Close()
+	as.Close()
+
+	// no changes to commit
+	b2 := backend.NewDefaultBackend(tPath)
+	as = NewAuthStore(b2, dummyIndexWaiter)
+	new := as.Revision()
+	b2.Close()
+	as.Close()
+
+	if old != new {
+		t.Fatalf("expected revision %d, got %d", old, new)
+	}
+}
+
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 
