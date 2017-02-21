@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 	"time"
 
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -41,6 +42,13 @@ type Config struct {
 	// Password is a password for authentication.
 	Password string `json:"password"`
 
+	// RejectOldCluster when set will refuse to create a client against an outdated cluster.
+	RejectOldCluster bool `json:"reject-old-cluster"`
+
 	// DialOptions is a list of dial options for the grpc client (e.g., for interceptors).
 	DialOptions []grpc.DialOption
+
+	// Context is the default client context; it can be used to cancel grpc dial out and
+	// other operations that do not have an explicit context.
+	Context context.Context
 }
