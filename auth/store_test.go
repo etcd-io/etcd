@@ -34,31 +34,30 @@ func dummyIndexWaiter(index uint64) <-chan struct{} {
 	return ch
 }
 
-func TestUserAdd(t *testing.T) {
+// TestNewAuthStoreRevision ensures newly auth store
+// keeps the old revision when there are no changes.
+func TestNewAuthStoreRevision(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
-	defer func() {
-		b.Close()
-		os.Remove(tPath)
-	}()
+	defer os.Remove(tPath)
 
 	as := NewAuthStore(b, dummyIndexWaiter)
-	ua := &pb.AuthUserAddRequest{Name: "foo"}
-	_, err := as.UserAdd(ua) // add a non-existing user
+	err := enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = as.UserAdd(ua) // add an existing user
-	if err == nil {
-		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
-	}
-	if err != ErrUserAlreadyExist {
-		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
-	}
+	old := as.Revision()
+	b.Close()
+	as.Close()
 
-	ua = &pb.AuthUserAddRequest{Name: ""}
-	_, err = as.UserAdd(ua) // add a user with empty name
-	if err != ErrUserEmpty {
-		t.Fatal(err)
+	// no changes to commit
+	b2 := backend.NewDefaultBackend(tPath)
+	as = NewAuthStore(b2, dummyIndexWaiter)
+	new := as.Revision()
+	b2.Close()
+	as.Close()
+
+	if old != new {
+		t.Fatalf("expected revision %d, got %d", old, new)
 	}
 }
 

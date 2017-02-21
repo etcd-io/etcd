@@ -911,7 +911,9 @@ func NewAuthStore(be backend.Backend, indexWaiter func(uint64) <-chan struct{}) 
 		as.simpleTokenKeeper = NewSimpleTokenTTLKeeper(newDeleterFunc(as))
 	}
 
-	as.commitRevision(tx)
+	if as.revision == 0 {
+		as.commitRevision(tx)
+	}
 
 	tx.Unlock()
 	be.ForceCommit()
