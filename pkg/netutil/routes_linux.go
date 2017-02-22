@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"sort"
 	"syscall"
 
 	"github.com/coreos/etcd/pkg/cpuutil"
@@ -38,35 +39,56 @@ func GetDefaultHost() (string, error) {
 		return "", rerr
 	}
 
-	for family, rmsg := range rmsgs {
-		host, oif, err := parsePREFSRC(rmsg)
-		if err != nil {
-			return "", err
+	// prioritize IPv4
+	if rmsg, ok := rmsgs[syscall.AF_INET]; ok {
+		if host, err := chooseHost(syscall.AF_INET, rmsg); host != "" || err != nil {
+			return host, err
 		}
-		if host != "" {
-			return host, nil
-		}
+		delete(rmsgs, syscall.AF_INET)
+	}
 
-		// prefsrc not detected, fall back to getting address from iface
-		ifmsg, ierr := getIfaceAddr(oif, family)
-		if ierr != nil {
-			return "", ierr
-		}
+	// sort so choice is deterministic
+	var families []int
+	for family := range rmsgs {
+		families = append(families, int(family))
+	}
+	sort.Ints(families)
 
-		attrs, aerr := syscall.ParseNetlinkRouteAttr(ifmsg)
-		if aerr != nil {
-			return "", aerr
-		}
-
-		for _, attr := range attrs {
-			// search for RTA_DST because ipv6 doesn't have RTA_SRC
-			if attr.Attr.Type == syscall.RTA_DST {
-				return net.IP(attr.Value).String(), nil
-			}
+	for _, f := range families {
+		family := uint8(f)
+		if host, err := chooseHost(family, rmsgs[family]); host != "" || err != nil {
+			return host, err
 		}
 	}
 
 	return "", errNoDefaultHost
+}
+
+func chooseHost(family uint8, rmsg *syscall.NetlinkMessage) (string, error) {
+	host, oif, err := parsePREFSRC(rmsg)
+	if host != "" || err != nil {
+		return host, err
+	}
+
+	// prefsrc not detected, fall back to getting address from iface
+	ifmsg, ierr := getIfaceAddr(oif, family)
+	if ierr != nil {
+		return "", ierr
+	}
+
+	attrs, aerr := syscall.ParseNetlinkRouteAttr(ifmsg)
+	if aerr != nil {
+		return "", aerr
+	}
+
+	for _, attr := range attrs {
+		// search for RTA_DST because ipv6 doesn't have RTA_SRC
+		if attr.Attr.Type == syscall.RTA_DST {
+			return net.IP(attr.Value).String(), nil
+		}
+	}
+
+	return "", nil
 }
 
 func getDefaultRoutes() (map[uint8]*syscall.NetlinkMessage, error) {
