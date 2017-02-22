@@ -855,6 +855,37 @@ func TestV3Hash(t *testing.T) {
 	}
 }
 
+// TestV3HashRestart ensures that hash stays the same after restart.
+func TestV3HashRestart(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+	resp, err := toGRPC(cli).Maintenance.Hash(context.Background(), &pb.HashRequest{})
+	if err != nil || resp.Hash == 0 {
+		t.Fatalf("couldn't hash (%v, hash %d)", err, resp.Hash)
+	}
+	hash1 := resp.Hash
+
+	clus.Members[0].Stop(t)
+	clus.Members[0].Restart(t)
+	clus.waitLeader(t, clus.Members)
+	kvc := toGRPC(clus.Client(0)).KV
+	waitForRestart(t, kvc)
+
+	cli = clus.RandClient()
+	resp, err = toGRPC(cli).Maintenance.Hash(context.Background(), &pb.HashRequest{})
+	if err != nil || resp.Hash == 0 {
+		t.Fatalf("couldn't hash (%v, hash %d)", err, resp.Hash)
+	}
+	hash2 := resp.Hash
+
+	if hash1 != hash2 {
+		t.Fatalf("hash expected %d, got %d", hash1, hash2)
+	}
+}
+
 // TestV3StorageQuotaAPI tests the V3 server respects quotas at the API layer
 func TestV3StorageQuotaAPI(t *testing.T) {
 	defer testutil.AfterTest(t)
