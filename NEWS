@@ -1,3 +1,11 @@
+etcd v3.1.2 (2017-02-24)
+- use IPv4 default host, by default (when IPv4 amd IPv6 are available)
+- fix 'etcd gateway' with multiple endpoints
+
+etcd v3.1.1 (2017-02-17)
+
+etcd v2.3.8 (2017-02-17)
+
 etcd v3.1.0 (2017-01-20)
 - faster linearizable reads (implements Raft read-index)
 - automatic leadership transfer when leader steps down
