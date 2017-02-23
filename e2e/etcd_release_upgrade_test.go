@@ -53,7 +53,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	// so there's a window at boot time where it doesn't have V3rpcCapability enabled
 	// poll /version until etcdcluster is >2.3.x before making v3 requests
 	for i := 0; i < 7; i++ {
-		if err = cURLGet(epc, cURLReq{endpoint: "/version", expected: `"etcdcluster":"3.0`}); err != nil {
+		if err = cURLGet(epc, cURLReq{endpoint: "/version", expected: `"etcdcluster":"3.1`}); err != nil {
 			t.Logf("#%d: v3 is not ready yet (%v)", i, err)
 			time.Sleep(time.Second)
 			continue
