@@ -44,13 +44,16 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 			fmt.Sprintf("-test.coverprofile=e2e.%v.coverprofile", time.Now().UnixNano()),
 			"-test.outputdir=" + coverPath,
 		}
-		ep := expect.NewExpectWithEnv(binDir+"/etcd_test", covArgs, args2env(args[1:]))
+		ep, err := expect.NewExpectWithEnv(binDir+"/etcd_test", covArgs, args2env(args[1:]))
+		if err != nil {
+			return nil, err
+		}
 		// ep sends SIGTERM to etcd_test process on ep.close()
 		// allowing the process to exit gracefully in order to generate a coverage report.
 		// note: go runtime ignores SIGINT but not SIGTERM
 		// if e2e test is run as a background process.
 		ep.StopSignal = syscall.SIGTERM
-		return nil, ep
+		return ep, nil
 	}
 	return expect.NewExpect(args[0], args[1:]...)
 }
