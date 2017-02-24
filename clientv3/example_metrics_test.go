@@ -47,7 +47,7 @@ func ExampleMetrics_range() {
 	cli.Get(context.TODO(), "test_key")
 
 	// listen for all prometheus metrics
-	ln, err := net.Listen("tcp", ":47989")
+	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func ExampleMetrics_range() {
 	}()
 
 	// make an http request to fetch all prometheus metrics
-	url := "http://localhost:47989/metrics"
+	url := "http://" + ln.Addr().String() + "/metrics"
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatalf("fetch error: %v", err)
