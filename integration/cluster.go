@@ -175,8 +175,12 @@ func (c *cluster) URL(i int) string {
 
 // URLs returns a list of all active client URLs in the cluster
 func (c *cluster) URLs() []string {
+	return getMembersURLs(c.Members)
+}
+
+func getMembersURLs(members []*member) []string {
 	urls := make([]string, 0)
-	for _, m := range c.Members {
+	for _, m := range members {
 		select {
 		case <-m.s.StopNotify():
 			continue
@@ -342,6 +346,18 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	var lead uint64
 	for _, m := range membs {
 		possibleLead[uint64(m.s.ID())] = true
+	}
+	cc := MustNewHTTPClient(t, getMembersURLs(membs), nil)
+	kapi := client.NewKeysAPI(cc)
+
+	// ensure leader is up via linearizable get
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*tickDuration)
+		_, err := kapi.Get(ctx, "0", &client.GetOptions{Quorum: true})
+		cancel()
+		if err == nil || strings.Contains(err.Error(), "Key not found") {
+			break
+		}
 	}
 
 	for lead == 0 || !possibleLead[lead] {
