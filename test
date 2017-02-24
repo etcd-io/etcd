@@ -9,7 +9,7 @@
 # PKG=./wal ./test
 # PKG=snap ./test
 #
-# Run code coverage 
+# Run code coverage
 # COVERDIR must either be a absolute path or a relative path to the etcd root
 # COVERDIR=coverage PASSES="build_cov cov" ./test
 set -e
@@ -84,7 +84,7 @@ function integration_pass {
 function cov_pass {
 	echo "Running code coverage..."
 	# install gocovmerge before running code coverage from github.com/wadey/gocovmerge
-	# gocovmerge merges coverage files 
+	# gocovmerge merges coverage files
 	if ! which gocovmerge >/dev/null; then
 		echo "gocovmerge not installed"
 		exit 255
@@ -103,7 +103,7 @@ function cov_pass {
 	mkdir -p "$COVERDIR"
 
 	# PKGS_DELIM contains all the core etcd pkgs delimited by ',' which will be profiled for code coverage.
-	# Integration tests will generate code coverage for those pkgs 
+	# Integration tests will generate code coverage for those pkgs
 	PKGS_DELIM=$(echo $TEST | sed 's/ /,/g')
 
 	PKGS=`echo "$TEST_PKGS" | egrep -v "(e2e|functional-tester)"`
@@ -115,7 +115,7 @@ function cov_pass {
 	done
 
 	# run code coverage for e2e tests
-	# use 30m timeout because e2e coverage takes longer 
+	# use 30m timeout because e2e coverage takes longer
 	# due to many tests cause etcd process to wait
 	# on leadership transfer timeout during gracefully shutdown
 	go test -tags cov -timeout 30m -v ${REPO_PATH}"/e2e"
@@ -151,7 +151,7 @@ function grpcproxy_pass {
 function release_pass {
 	rm -f ./bin/etcd-last-release
 	# to grab latest patch release; bump this up for every minor release
-	UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.0.*" | head -1)
+	UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.1.*" | head -1)
 	if [ -n "$MANUAL_VER" ]; then
 		# in case, we need to test against different version
 		UPGRADE_VER=$MANUAL_VER
@@ -299,7 +299,7 @@ function build_cov_pass {
 	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
 	PKGS=$TEST
 	ETCD_PKGS_DELIM=$(echo $PKGS | sed 's/ /,/g')
-	go test -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcd_test 
+	go test -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcd_test
 }
 
 function compile_pass {
