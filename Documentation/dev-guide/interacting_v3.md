@@ -10,7 +10,7 @@ export ETCDCTL_API=3
 
 ## Find versions
 
-etcdctl version and Server API version can be useful in finding the appropriate commands to be used for performing various opertions on etcd.
+etcdctl version and Server API version can be useful in finding the appropriate commands to be used for performing various operations on etcd.
 
 Here is the command to find the versions:
 

@@ -13,7 +13,7 @@ Every application that accesses etcd must first have the address of an etcd clus
 etcd gateway solves this problem by serving as a stable local endpoint. A typical etcd gateway configuration has 
 each machine running a gateway listening on a local address and every etcd application connecting to its local gateway. The upshot is only the gateway needs to update its endpoints instead of updating each and every application.
 
-In summary, to automatically propagate cluster endpoint changes, the etcd gateway runs on every machine serving multiple applications accessing same etcd cluster.
+In summary, to automatically propagate cluster endpoint changes, the etcd gateway runs on every machine serving multiple applications accessing the same etcd cluster.
 
 ## When not to use etcd gateway
 
