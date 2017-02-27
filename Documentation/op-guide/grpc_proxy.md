@@ -42,7 +42,30 @@ These two limitations should not cause problems for most use cases. In the futur
 
 ## Scalable lease API
 
-TODO
+To keep its leases alive, a client must establish at least one gRPC stream to an etcd server for sending periodic heartbeats. If an etcd workload involves heavy lease activity spread over many clients, these streams may contribute to excessive CPU utilization. To reduce the total number of streams on the core cluster, the proxy supports lease stream coalescing.
+
+Assuming N clients are updating leases, a single gRPC proxy reduces the stream load on the etcd server from N to 1. Deployments may have additional gRPC proxies to further distribute streams across multiple proxies.
+
+In the following example, three clients update three independent leases (`L1`, `L2`, and `L3`). The gRPC proxy coalesces the three client lease streams (`c-streams`) into a single lease keep alive stream (`s-stream`) attached to an etcd server. The proxy forwards client-side lease heartbeats from the c-streams to the s-stream, then returns the responses to the corresponding c-streams.
+
+```
+          +-------------+
+          | etcd server |
+          +------+------+
+                 ^
+                 | heartbeat L1, L2, L3
+                 | (s-stream)
+                 v
+         +-------+-----+
+         | gRPC proxy  +<-----------+
+         +---+------+--+            | heartbeat L3
+             ^      ^               | (c-stream)
+heartbeat L1 |      | heartbeat L2  |
+(c-stream)   v      v (c-stream)    v
+      +------+-+  +-+------+  +-----+--+
+      | client |  | client |  | client |
+      +--------+  +--------+  +--------+
+```
 
 ## Abusive clients protection
 
