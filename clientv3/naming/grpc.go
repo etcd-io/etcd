@@ -16,6 +16,7 @@ package naming
 
 import (
 	"encoding/json"
+	"fmt"
 
 	etcd "github.com/coreos/etcd/clientv3"
 	"golang.org/x/net/context"
@@ -24,6 +25,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/naming"
 )
+
+var ErrWatcherClosed = fmt.Errorf("naming: watch closed")
 
 // GRPCResolver creates a grpc.Watcher for a target to track its resolution changes.
 type GRPCResolver struct {
@@ -77,7 +80,7 @@ func (gw *gRPCWatcher) Next() ([]*naming.Update, error) {
 	// process new events on target/*
 	wr, ok := <-gw.wch
 	if !ok {
-		gw.err = grpc.Errorf(codes.Unavailable, "naming: watch closed")
+		gw.err = grpc.Errorf(codes.Unavailable, "%s", ErrWatcherClosed)
 		return nil, gw.err
 	}
 	if gw.err = wr.Err(); gw.err != nil {
