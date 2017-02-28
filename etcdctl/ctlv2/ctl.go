@@ -71,7 +71,7 @@ func Start() {
 		command.NewAuthCommands(),
 	}
 
-	err := app.Run(os.Args)
+	err := runCtlV2(app)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
