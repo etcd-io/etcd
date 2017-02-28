@@ -32,6 +32,7 @@ import (
 	"github.com/cockroachdb/cmux"
 	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -199,22 +200,30 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 	return httpmux
 }
 
-func (sctx *serveCtx) registerPprof() {
-	f := func(s string, h http.Handler) {
-		if sctx.userHandlers[s] != nil {
-			plog.Warningf("path %s already registered by user handler", s)
-			return
-		}
-		sctx.userHandlers[s] = h
+func (sctx *serveCtx) registerUserHandler(s string, h http.Handler) {
+	if sctx.userHandlers[s] != nil {
+		plog.Warningf("path %s already registered by user handler", s)
+		return
 	}
-	f(pprofPrefix+"/", http.HandlerFunc(pprof.Index))
-	f(pprofPrefix+"/profile", http.HandlerFunc(pprof.Profile))
-	f(pprofPrefix+"/symbol", http.HandlerFunc(pprof.Symbol))
-	f(pprofPrefix+"/cmdline", http.HandlerFunc(pprof.Cmdline))
-	f(pprofPrefix+"/trace", http.HandlerFunc(pprof.Trace))
+	sctx.userHandlers[s] = h
+}
 
-	f(pprofPrefix+"/heap", pprof.Handler("heap"))
-	f(pprofPrefix+"/goroutine", pprof.Handler("goroutine"))
-	f(pprofPrefix+"/threadcreate", pprof.Handler("threadcreate"))
-	f(pprofPrefix+"/block", pprof.Handler("block"))
+func (sctx *serveCtx) registerPprof() {
+	sctx.registerUserHandler(pprofPrefix+"/", http.HandlerFunc(pprof.Index))
+	sctx.registerUserHandler(pprofPrefix+"/profile", http.HandlerFunc(pprof.Profile))
+	sctx.registerUserHandler(pprofPrefix+"/symbol", http.HandlerFunc(pprof.Symbol))
+	sctx.registerUserHandler(pprofPrefix+"/cmdline", http.HandlerFunc(pprof.Cmdline))
+	sctx.registerUserHandler(pprofPrefix+"/trace", http.HandlerFunc(pprof.Trace))
+
+	sctx.registerUserHandler(pprofPrefix+"/heap", pprof.Handler("heap"))
+	sctx.registerUserHandler(pprofPrefix+"/goroutine", pprof.Handler("goroutine"))
+	sctx.registerUserHandler(pprofPrefix+"/threadcreate", pprof.Handler("threadcreate"))
+	sctx.registerUserHandler(pprofPrefix+"/block", pprof.Handler("block"))
+}
+
+func (sctx *serveCtx) registerTrace() {
+	reqf := func(w http.ResponseWriter, r *http.Request) { trace.Render(w, r, true) }
+	sctx.registerUserHandler("/debug/requests", http.HandlerFunc(reqf))
+	evf := func(w http.ResponseWriter, r *http.Request) { trace.RenderEvents(w, r, true) }
+	sctx.registerUserHandler("/debug/events", http.HandlerFunc(evf))
 }
