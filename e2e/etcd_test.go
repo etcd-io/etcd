@@ -523,7 +523,7 @@ func spawnWithExpects(args []string, xs ...string) error {
 		}
 	}
 	perr := proc.Close()
-	if len(xs) == 0 && proc.LineCount() != 0 { // expect no output
+	if len(xs) == 0 && proc.LineCount() != noOutputLineCount { // expect no output
 		return fmt.Errorf("unexpected output (got lines %q, line count %d)", lines, proc.LineCount())
 	}
 	return perr
