@@ -300,6 +300,7 @@ function build_cov_pass {
 	PKGS=$TEST
 	ETCD_PKGS_DELIM=$(echo $PKGS | sed 's/ /,/g')
 	go test -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcd_test
+	go test -tags cov -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcdctl_test ${REPO_PATH}/etcdctl/
 }
 
 function compile_pass {
