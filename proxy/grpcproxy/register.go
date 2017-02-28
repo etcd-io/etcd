@@ -15,6 +15,9 @@
 package grpcproxy
 
 import (
+	"encoding/json"
+	"os"
+
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/clientv3/naming"
@@ -26,10 +29,10 @@ import (
 // allow maximum 1 retry per second
 const registerRetryRate = 1
 
-// register registers itself as a grpc-proxy server by writing prefixed-key
+// Register registers itself as a grpc-proxy server by writing prefixed-key
 // with session of specified TTL (in seconds). The returned channel is closed
 // when the client's context is canceled.
-func register(c *clientv3.Client, prefix string, addr string, ttl int) <-chan struct{} {
+func Register(c *clientv3.Client, prefix string, addr string, ttl int) <-chan struct{} {
 	rm := rate.NewLimiter(rate.Limit(registerRetryRate), registerRetryRate)
 
 	donec := make(chan struct{})
@@ -65,10 +68,27 @@ func registerSession(c *clientv3.Client, prefix string, addr string, ttl int) (*
 	}
 
 	gr := &naming.GRPCResolver{Client: c}
-	if err = gr.Update(c.Ctx(), prefix, gnaming.Update{Op: gnaming.Add, Addr: addr}, clientv3.WithLease(ss.Lease())); err != nil {
+	if err = gr.Update(c.Ctx(), prefix, gnaming.Update{Op: gnaming.Add, Addr: addr, Metadata: getMeta()}, clientv3.WithLease(ss.Lease())); err != nil {
 		return nil, err
 	}
 
 	plog.Infof("registered %q with %d-second lease", addr, ttl)
 	return ss, nil
+}
+
+// meta represents metadata of proxy register.
+type meta struct {
+	Name string `json:"name"`
+}
+
+func getMeta() string {
+	hostname, _ := os.Hostname()
+	bts, _ := json.Marshal(meta{Name: hostname})
+	return string(bts)
+}
+
+func decodeMeta(s string) (meta, error) {
+	m := meta{}
+	err := json.Unmarshal([]byte(s), &m)
+	return m, err
 }
