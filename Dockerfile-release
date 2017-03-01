@@ -1,5 +1,8 @@
 FROM alpine:latest
 
+RUN apk add --quiet --no-cache ca-certificates && \
+  rm -rf /var/cache/*
+
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
 RUN mkdir -p /var/etcd/
