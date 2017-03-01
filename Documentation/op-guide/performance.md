@@ -47,7 +47,7 @@ Linearizable read requests go through a quorum of cluster members for consensus 
 | Number of requests | Key size in bytes | Value size in bytes | Number of connections | Number of clients | Consistency | Average latency per request | Average read QPS |
 |--------------------|-------------------|---------------------|-----------------------|-------------------|-------------|-----------------------------|------------------|
 | 10,000 | 8 | 256 | 1 | 1 | Linearizable | 2ms | 560 |
-| 10,000 | 8 | 256 | 1 | 1 | Serializable | 0.4ms | 7,500 |
+| 10,000 | 8 | 256 | 1 | 1 | Serializable | 0.4ms | 2,500 |
 | 100,000 | 8 | 256 | 100 | 1000 | Linearizable | 15ms | 43,000 |
 | 100,000 | 8 | 256 | 100 | 1000 | Serializable | 9ms | 93,000 |
 
