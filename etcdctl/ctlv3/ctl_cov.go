@@ -12,14 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !cov
+// +build cov
 
-package e2e
+package ctlv3
 
-import "github.com/coreos/etcd/pkg/expect"
+import (
+	"os"
+	"strings"
 
-const noOutputLineCount = 0 // regular binaries emit no extra lines
+	"github.com/coreos/etcd/etcdctl/ctlv3/command"
+)
 
-func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	return expect.NewExpect(args[0], args[1:]...)
+func Start() {
+	// ETCDCTL_ARGS=etcdctl_test arg1 arg2...
+	// SetArgs() takes arg1 arg2...
+	rootCmd.SetArgs(strings.Split(os.Getenv("ETCDCTL_ARGS"), "\xff")[1:])
+	if err := rootCmd.Execute(); err != nil {
+		command.ExitWithError(command.ExitError, err)
+	}
 }

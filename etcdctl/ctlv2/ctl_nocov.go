@@ -14,12 +14,14 @@
 
 // +build !cov
 
-package e2e
+package ctlv2
 
-import "github.com/coreos/etcd/pkg/expect"
+import (
+	"os"
 
-const noOutputLineCount = 0 // regular binaries emit no extra lines
+	"github.com/urfave/cli"
+)
 
-func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	return expect.NewExpect(args[0], args[1:]...)
+func runCtlV2(app *cli.App) error {
+	return app.Run(os.Args)
 }

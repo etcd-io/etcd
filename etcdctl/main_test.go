@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !cov
+package main
 
-package e2e
+import (
+	"os"
+	"strings"
+	"testing"
+)
 
-import "github.com/coreos/etcd/pkg/expect"
-
-const noOutputLineCount = 0 // regular binaries emit no extra lines
-
-func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	return expect.NewExpect(args[0], args[1:]...)
+func TestMain(t *testing.T) {
+	// don't launch etcdctl when invoked via go test
+	if strings.HasSuffix(os.Args[0], "etcdctl.test") {
+		return
+	}
+	main()
 }

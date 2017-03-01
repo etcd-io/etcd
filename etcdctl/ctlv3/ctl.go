@@ -86,14 +86,3 @@ func init() {
 func init() {
 	cobra.EnablePrefixMatching = true
 }
-
-func Start() {
-	rootCmd.SetUsageFunc(usageFunc)
-
-	// Make help just show the usage
-	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
-
-	if err := rootCmd.Execute(); err != nil {
-		command.ExitWithError(command.ExitError, err)
-	}
-}
