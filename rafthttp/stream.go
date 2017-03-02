@@ -320,6 +320,7 @@ func (cr *streamReader) run() {
 			default:
 				cr.status.deactivate(failureType{source: t.String(), action: "read"}, err.Error())
 			}
+			rc.Close()
 		}
 		select {
 		// Wait 100ms to create a new stream, so it doesn't bring too much
@@ -469,11 +470,11 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("peer %s failed to find local node %s", cr.peerID, cr.tr.ID)
 	case http.StatusPreconditionFailed:
 		b, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			cr.picker.unreachable(u)
 			return nil, err
 		}
-		httputil.GracefulClose(resp)
 		cr.picker.unreachable(u)
 
 		switch strings.TrimSuffix(string(b), "\n") {

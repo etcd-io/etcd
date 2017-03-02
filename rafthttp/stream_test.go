@@ -221,15 +221,21 @@ func (t *respWaitRoundTripper) RoundTrip(req *http.Request) (*http.Response, err
 	return resp, err
 }
 
-type waitReadCloser struct{ closec chan struct{} }
+type waitReadCloser struct {
+	closec chan struct{}
+	closed bool
+}
 
-func newWaitReadCloser() *waitReadCloser { return &waitReadCloser{make(chan struct{})} }
+func newWaitReadCloser() *waitReadCloser { return &waitReadCloser{make(chan struct{}), false} }
 func (wrc *waitReadCloser) Read(p []byte) (int, error) {
 	<-wrc.closec
 	return 0, io.EOF
 }
 func (wrc *waitReadCloser) Close() error {
-	close(wrc.closec)
+	if !wrc.closed {
+		close(wrc.closec)
+		wrc.closed = true
+	}
 	return nil
 }
 

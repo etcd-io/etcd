@@ -114,6 +114,14 @@ func (p *pipeline) handle() {
 // post POSTs a data payload to a url. Returns nil if the POST succeeds,
 // error on any failure.
 func (p *pipeline) post(data []byte) (err error) {
+	p.wg.Add(1)
+	defer p.wg.Done()
+	select {
+	case <-p.stopc:
+		return context.Canceled
+	default:
+	}
+
 	u := p.picker.pick()
 	req := createPostRequest(u, RaftPrefix, bytes.NewBuffer(data), "application/protobuf", p.tr.URLs, p.tr.ID, p.tr.ClusterID)
 
@@ -124,7 +132,6 @@ func (p *pipeline) post(data []byte) (err error) {
 		select {
 		case <-done:
 		case <-p.stopc:
-			waitSchedule()
 			cancel()
 		}
 	}()
@@ -136,11 +143,11 @@ func (p *pipeline) post(data []byte) (err error) {
 		return err
 	}
 	b, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
 	if err != nil {
 		p.picker.unreachable(u)
 		return err
 	}
-	resp.Body.Close()
 
 	err = checkPostResponse(resp, b, req, p.peerID)
 	if err != nil {
@@ -155,6 +162,3 @@ func (p *pipeline) post(data []byte) (err error) {
 
 	return nil
 }
-
-// waitSchedule waits other goroutines to be scheduled for a while
-func waitSchedule() { time.Sleep(time.Millisecond) }
