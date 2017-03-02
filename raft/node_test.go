@@ -402,7 +402,11 @@ func TestNodeTick(t *testing.T) {
 	go n.run(r)
 	elapsed := r.electionElapsed
 	n.Tick()
-	testutil.WaitSchedule()
+
+	for len(n.tickc) != 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	n.Stop()
 	if r.electionElapsed != elapsed+1 {
 		t.Errorf("elapsed = %d, want %d", r.electionElapsed, elapsed+1)
