@@ -138,22 +138,20 @@ The etcd release container does not include default root certificates. To use HT
 
 ```
 rkt run \
-  --volume etcd-ssl-certs-dir,kind=host,source=/etc/ssl/certs \
-  --mount volume=etcd-ssl-certs-dir,target=/etc/ssl/certs \
+  --volume etcd-ssl-certs-bundle,kind=host,source=/etc/ssl/certs/ca-certificates.crt \
+  --mount volume=etcd-ssl-certs-bundle,target=/etc/ssl/certs/ca-certificates.crt \
   quay.io/coreos/etcd:latest -- --name my-name \
 	--initial-advertise-peer-urls http://localhost:2380 --listen-peer-urls http://localhost:2380 \
 	--advertise-client-urls http://localhost:2379 --listen-client-urls http://localhost:2379 \
-	--discovery https://discovery.etcd.io/86a9ff6c8cb8b4c4544c1a2f88f8b801 \
-	...
+	--discovery https://discovery.etcd.io/c11fbcdc16972e45253491a24fcf45e1
 ```
 
 ```
 docker run \
-    --volume=/etc/ssl/certs:/etcd-ssl-certs-dir \
+    --volume=/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
     quay.io/coreos/etcd:latest \
     /usr/local/bin/etcd --name my-name \
 	--initial-advertise-peer-urls http://localhost:2380 --listen-peer-urls http://localhost:2380 \
 	--advertise-client-urls http://localhost:2379 --listen-client-urls http://localhost:2379 \
-	--discovery https://discovery.etcd.io/86a9ff6c8cb8b4c4544c1a2f88f8b801 \
-	...
+	--discovery https://discovery.etcd.io/86a9ff6c8cb8b4c4544c1a2f88f8b801
 ```
