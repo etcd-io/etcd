@@ -73,7 +73,12 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 	select {
 	case <-wp.ctx.Done():
 		wp.mu.Unlock()
-		return
+		select {
+		case <-wp.leader.disconnectNotify():
+			return grpc.ErrClientConnClosing
+		default:
+			return wp.ctx.Err()
+		}
 	default:
 		wp.wg.Add(1)
 	}
