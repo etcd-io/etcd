@@ -21,10 +21,10 @@ sudo rkt trust --prefix coreos.com/etcd
 # gpg key fingerprint is: 18AD 5014 C99E F7E3 BA5F  6CE9 50BD D3E0 FC8A 365E
 ```
 
-Run the `v3.0.6` version of etcd or specify another release version.
+Run the `v3.1.2` version of etcd or specify another release version.
 
 ```
-sudo rkt run --net=default:IP=${NODE1} coreos.com/etcd:v3.0.6 -- -name=node1 -advertise-client-urls=http://${NODE1}:2379 -initial-advertise-peer-urls=http://${NODE1}:2380 -listen-client-urls=http://0.0.0.0:2379 -listen-peer-urls=http://${NODE1}:2380 -initial-cluster=node1=http://${NODE1}:2380
+sudo rkt run --net=default:IP=${NODE1} coreos.com/etcd:v3.1.2 -- -name=node1 -advertise-client-urls=http://${NODE1}:2379 -initial-advertise-peer-urls=http://${NODE1}:2380 -listen-client-urls=http://0.0.0.0:2379 -listen-peer-urls=http://${NODE1}:2380 -initial-cluster=node1=http://${NODE1}:2380
 ```
 
 List the cluster member.
@@ -45,13 +45,13 @@ export NODE3=172.16.28.23
 
 ```
 # node 1
-sudo rkt run --net=default:IP=${NODE1} coreos.com/etcd:v3.0.6 -- -name=node1 -advertise-client-urls=http://${NODE1}:2379 -initial-advertise-peer-urls=http://${NODE1}:2380 -listen-client-urls=http://0.0.0.0:2379 -listen-peer-urls=http://${NODE1}:2380 -initial-cluster=node1=http://${NODE1}:2380,node2=http://${NODE2}:2380,node3=http://${NODE3}:2380
+sudo rkt run --net=default:IP=${NODE1} coreos.com/etcd:v3.1.2 -- -name=node1 -advertise-client-urls=http://${NODE1}:2379 -initial-advertise-peer-urls=http://${NODE1}:2380 -listen-client-urls=http://0.0.0.0:2379 -listen-peer-urls=http://${NODE1}:2380 -initial-cluster=node1=http://${NODE1}:2380,node2=http://${NODE2}:2380,node3=http://${NODE3}:2380
 
 # node 2
-sudo rkt run --net=default:IP=${NODE2} coreos.com/etcd:v3.0.6 -- -name=node2 -advertise-client-urls=http://${NODE2}:2379 -initial-advertise-peer-urls=http://${NODE2}:2380 -listen-client-urls=http://0.0.0.0:2379 -listen-peer-urls=http://${NODE2}:2380 -initial-cluster=node1=http://${NODE1}:2380,node2=http://${NODE2}:2380,node3=http://${NODE3}:2380
+sudo rkt run --net=default:IP=${NODE2} coreos.com/etcd:v3.1.2 -- -name=node2 -advertise-client-urls=http://${NODE2}:2379 -initial-advertise-peer-urls=http://${NODE2}:2380 -listen-client-urls=http://0.0.0.0:2379 -listen-peer-urls=http://${NODE2}:2380 -initial-cluster=node1=http://${NODE1}:2380,node2=http://${NODE2}:2380,node3=http://${NODE3}:2380
 
 # node 3
-sudo rkt run --net=default:IP=${NODE3} coreos.com/etcd:v3.0.6 -- -name=node3 -advertise-client-urls=http://${NODE3}:2379 -initial-advertise-peer-urls=http://${NODE3}:2380 -listen-client-urls=http://0.0.0.0:2379 -listen-peer-urls=http://${NODE3}:2380 -initial-cluster=node1=http://${NODE1}:2380,node2=http://${NODE2}:2380,node3=http://${NODE3}:2380
+sudo rkt run --net=default:IP=${NODE3} coreos.com/etcd:v3.1.2 -- -name=node3 -advertise-client-urls=http://${NODE3}:2379 -initial-advertise-peer-urls=http://${NODE3}:2380 -listen-client-urls=http://0.0.0.0:2379 -listen-peer-urls=http://${NODE3}:2380 -initial-cluster=node1=http://${NODE1}:2380,node2=http://${NODE2}:2380,node3=http://${NODE3}:2380
 ```
 
 Verify the cluster is healthy and can be reached.
@@ -132,3 +132,28 @@ docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl put 
 
 To provision a 3 node etcd cluster on bare-metal, you might find the examples in the [baremetal repo](https://github.com/coreos/coreos-baremetal/tree/master/examples) useful.
 
+## Mounting a certificate volume
+
+The etcd release container does not include default root certificates. To use HTTPS with certificates trusted by a root authority (e.g., for discovery), mount a certificate directory into the etcd container:
+
+```
+rkt run \
+  --volume etcd-ssl-certs-dir,kind=host,source=/etc/ssl/certs \
+  --mount volume=etcd-ssl-certs-dir,target=/etc/ssl/certs \
+  quay.io/coreos/etcd:latest -- --name my-name \
+	--initial-advertise-peer-urls http://localhost:2380 --listen-peer-urls http://localhost:2380 \
+	--advertise-client-urls http://localhost:2379 --listen-client-urls http://localhost:2379 \
+	--discovery https://discovery.etcd.io/86a9ff6c8cb8b4c4544c1a2f88f8b801 \
+	...
+```
+
+```
+docker run \
+    --volume=/etc/ssl/certs:/etcd-ssl-certs-dir \
+    quay.io/coreos/etcd:latest \
+    /usr/local/bin/etcd --name my-name \
+	--initial-advertise-peer-urls http://localhost:2380 --listen-peer-urls http://localhost:2380 \
+	--advertise-client-urls http://localhost:2379 --listen-client-urls http://localhost:2379 \
+	--discovery https://discovery.etcd.io/86a9ff6c8cb8b4c4544c1a2f88f8b801 \
+	...
+```
