@@ -2,6 +2,15 @@
 
 This document tracks people and use cases for etcd in production. By creating a list of production use cases we hope to build a community of advisors that we can reach out to with experience using various etcd applications, operation environments, and cluster sizes. The etcd development team may reach out periodically to check-in on how etcd is working in the field and update this list.
 
+## All Kubernetes Users
+
+- *Application*: https://kubernetes.io/
+- *Environments*: AWS, OpenStack, Azure, Google Cloud, Bare Metal, etc
+
+**This is a meta user if you want to document your specific Kubernetes cluster, please do!**
+
+All Kubernetes clusters use etcd as their primary data store. This means etcd's users include such companies as [Niantic, Inc Pokemon Go](https://cloudplatform.googleblog.com/2016/09/bringing-Pokemon-GO-to-life-on-Google-Cloud.html), [Box](https://blog.box.com/blog/kubernetes-box-microservices-maximum-velocity/), [CoreOS](https://coreos.com/tectonic), [Ticketmaster](https://www.youtube.com/watch?v=wqXVKneP0Hg), and many many more.
+
 ## discovery.etcd.io
 
 - *Application*: https://github.com/coreos/discovery.etcd.io
