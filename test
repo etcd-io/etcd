@@ -206,6 +206,14 @@ function fmt_pass {
 		fi
 	done
 
+	echo "Checking documentation style..."
+	# eschew you
+	yous=`find . -name \*.md | xargs egrep --color "[Yy]ou[r]?[ '.,;]" | grep -v /v2/ || true`
+	if [ ! -z "$yous" ]; then
+		echo -e "found 'you' in documentation:\n${yous}"
+		exit 255
+	fi
+
 	if which goword >/dev/null; then
 		echo "Checking goword..."
 		# get all go files to process
