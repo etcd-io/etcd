@@ -85,7 +85,13 @@ func startEtcdOrProxyV2() {
 	GoMaxProcs := runtime.GOMAXPROCS(0)
 	plog.Infof("setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
 
-	(&cfg.Config).UpdateDefaultClusterFromName(defaultInitialCluster)
+	defaultHost, dhErr := (&cfg.Config).UpdateDefaultClusterFromName(defaultInitialCluster)
+	if defaultHost != "" {
+		plog.Infof("advertising using detected default host %q", defaultHost)
+	}
+	if dhErr != nil {
+		plog.Noticef("failed to detect default host (%v)", dhErr)
+	}
 
 	if cfg.Dir == "" {
 		cfg.Dir = fmt.Sprintf("%v.etcd", cfg.Name)
@@ -184,15 +190,6 @@ func startEtcdOrProxyV2() {
 
 // startEtcd runs StartEtcd in addition to hooks needed for standalone etcd.
 func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
-	defaultHost, dhErr := cfg.IsDefaultHost()
-	if defaultHost != "" {
-		if dhErr == nil {
-			plog.Infof("advertising using detected default host %q", defaultHost)
-		} else {
-			plog.Noticef("failed to detect default host, advertise falling back to %q (%v)", defaultHost, dhErr)
-		}
-	}
-
 	if cfg.Metrics == "extensive" {
 		grpc_prometheus.EnableHandlingTimeHistogram()
 	}
