@@ -106,7 +106,7 @@ Now it's time to dig into the full etcd API and other guides.
 - Explore the full gRPC [API][api].
 - Set up a [multi-machine cluster][clustering].
 - Learn the [config format, env variables and flags][configuration].
-- Find [language bindings and tools][libraries-and-tools].
+- Find [language bindings and tools][integrations].
 - Use TLS to [secure an etcd cluster][security].
 - [Tune etcd][tuning].
 
@@ -114,7 +114,7 @@ Now it's time to dig into the full etcd API and other guides.
 [api]: ./Documentation/dev-guide/api_reference_v3.md
 [clustering]: ./Documentation/op-guide/clustering.md
 [configuration]: ./Documentation/op-guide/configuration.md
-[libraries-and-tools]: ./Documentation/libraries-and-tools.md
+[integrations]: ./Documentation/integrations.md
 [security]: ./Documentation/op-guide/security.md
 [tuning]: ./Documentation/tuning.md
 
