@@ -8,7 +8,7 @@ It can be used in scripts or for administrators to explore an etcd cluster.
 
 The latest release is available as a binary at [Github][github-release] along with etcd.
 
-You can also build etcdctl from source using the build script found in the parent directory.
+etcdctl can also be built from source using the build script found in the parent directory.
 
 ## Configuration
 ### --debug
@@ -291,10 +291,7 @@ The following exit codes can be returned from etcdctl:
 
 ## Endpoint
 
-If your etcd cluster isn't available on `http://127.0.0.1:2379` you can specify
-a `--endpoint` flag or `ETCDCTL_ENDPOINT` environment variable. You can list one endpoint,
-or a comma-separated list of endpoints. This option is ignored if the `--discovery-srv`
-option is provided.
+If the etcd cluster isn't available on `http://127.0.0.1:2379`, specify a `--endpoint` flag or `ETCDCTL_ENDPOINT` environment variable. One endpoint or a comma-separated list of endpoints can be listed. This option is ignored if the `--discovery-srv` option is provided.
 
 ```sh
 ETCDCTL_ENDPOINT="http://10.0.28.1:4002" etcdctl set my-key to-a-value
@@ -305,7 +302,7 @@ etcdctl --endpoint http://10.0.28.1:4002,http://10.0.28.2:4002,http://10.0.28.3:
 
 ## Username and Password
 
-If your etcd cluster is protected by [authentication][authentication], you can specify username and password using the [`--username`][username-flag] or `ETCDCTL_USERNAME` environment variable. When `--username` flag or `ETCDCTL_USERNAME` environment variable doesn't contain password, etcdctl will prompt password in interactive mode.
+If the etcd cluster is protected by [authentication][authentication], specify username and password using the [`--username`][username-flag] or `ETCDCTL_USERNAME` environment variable. When `--username` flag or `ETCDCTL_USERNAME` environment variable doesn't contain password, etcdctl will prompt password in interactive mode.
 
 ```sh
 ETCDCTL_USERNAME="root:password" etcdctl set my-key to-a-value
@@ -313,9 +310,7 @@ ETCDCTL_USERNAME="root:password" etcdctl set my-key to-a-value
 
 ## DNS Discovery
 
-If you want to discover your etcd cluster through domain SRV records you can specify
-a `--discovery-srv` flag or `ETCDCTL_DISCOVERY_SRV` environment variable. This option takes
-precedence over the `--endpoint` flag.
+To discover the etcd cluster through domain SRV records,  specify a `--discovery-srv` flag or `ETCDCTL_DISCOVERY_SRV` environment variable. This option takes precedence over the `--endpoint` flag.
 
 ```sh
 ETCDCTL_DISCOVERY_SRV="some-domain" etcdctl set my-key to-a-value

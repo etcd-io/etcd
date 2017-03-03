@@ -34,7 +34,7 @@ Running the script requires:
 Notes:
 - Docker image is based on Alpine Linux OS running in privileged mode to allow iptables manipulation.
 - To specify testing parameters (etcd-tester arguments) modify tools/functional-tester/docker/docker-compose.yml or start etcd-tester manually
-- (OSX) make sure that etcd binary is built for linux/amd64 (eg. `rm bin/etcd;GOOS=linux GOARCH=amd64 ./tools/functional-tester/test`) otherwise you get `exec format error`
+- (OSX) make sure that etcd binary is built for linux/amd64 (eg. `rm bin/etcd;GOOS=linux GOARCH=amd64 ./tools/functional-tester/test`) otherwise it will return `exec format error`
 
 
 ## with Goreman

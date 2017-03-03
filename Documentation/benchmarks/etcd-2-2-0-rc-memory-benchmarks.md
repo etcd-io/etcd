@@ -39,7 +39,7 @@ The length of key name is always 64 bytes, which is a reasonable length of avera
 ## Data Size Threshold
 
 - When etcd reaches data size threshold, it may trigger leader election easily and drop part of proposals.
-- At most cases, etcd cluster should work smoothly if it doesn't hit the threshold. If it doesn't work well due to insufficient resources, you need to decrease its data size.
+- For most cases, the etcd cluster should work smoothly if it doesn't hit the threshold. If it doesn't work well due to insufficient resources, decrease its data size.
 
 | value bytes | key number limitation | suggested data size threshold(MB) | consumed RSS(MB) |
 |-------------|-----------------------|-----------------------------------|------------------|
