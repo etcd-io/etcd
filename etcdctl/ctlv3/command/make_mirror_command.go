@@ -125,18 +125,19 @@ func makeMirror(ctx context.Context, c *clientv3.Client, dc *clientv3.Client) er
 			return rpctypes.ErrCompacted
 		}
 
-		var rev int64
+		var lastRev int64
 		ops := []clientv3.Op{}
 
 		for _, ev := range wr.Events {
-			nrev := ev.Kv.ModRevision
-			if rev != 0 && nrev > rev {
+			nextRev := ev.Kv.ModRevision
+			if lastRev != 0 && nextRev > lastRev {
 				_, err := dc.Txn(ctx).Then(ops...).Commit()
 				if err != nil {
 					return err
 				}
 				ops = []clientv3.Op{}
 			}
+			lastRev = nextRev
 			switch ev.Type {
 			case mvccpb.PUT:
 				ops = append(ops, clientv3.OpPut(modifyPrefix(string(ev.Kv.Key)), string(ev.Kv.Value)))
