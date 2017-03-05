@@ -1214,7 +1214,7 @@ The provided transformer should read until EOF and flush the stdout before exiti
 #### Example
 
 ```
-./etcdctl --data-dir=/var/etcd --transformer=k8s-transformer
+./etcdctl migrate --data-dir=/var/etcd --transformer=k8s-transformer
 # finished transforming keys
 ```
 
