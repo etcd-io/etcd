@@ -72,80 +72,80 @@ func (m MountStatsNFS) mountStats() {}
 // by an NFS client to and from an NFS server.
 type NFSBytesStats struct {
 	// Number of bytes read using the read() syscall.
-	Read int
+	Read uint64
 	// Number of bytes written using the write() syscall.
-	Write int
+	Write uint64
 	// Number of bytes read using the read() syscall in O_DIRECT mode.
-	DirectRead int
+	DirectRead uint64
 	// Number of bytes written using the write() syscall in O_DIRECT mode.
-	DirectWrite int
+	DirectWrite uint64
 	// Number of bytes read from the NFS server, in total.
-	ReadTotal int
+	ReadTotal uint64
 	// Number of bytes written to the NFS server, in total.
-	WriteTotal int
+	WriteTotal uint64
 	// Number of pages read directly via mmap()'d files.
-	ReadPages int
+	ReadPages uint64
 	// Number of pages written directly via mmap()'d files.
-	WritePages int
+	WritePages uint64
 }
 
 // A NFSEventsStats contains statistics about NFS event occurrences.
 type NFSEventsStats struct {
 	// Number of times cached inode attributes are re-validated from the server.
-	InodeRevalidate int
+	InodeRevalidate uint64
 	// Number of times cached dentry nodes are re-validated from the server.
-	DnodeRevalidate int
+	DnodeRevalidate uint64
 	// Number of times an inode cache is cleared.
-	DataInvalidate int
+	DataInvalidate uint64
 	// Number of times cached inode attributes are invalidated.
-	AttributeInvalidate int
+	AttributeInvalidate uint64
 	// Number of times files or directories have been open()'d.
-	VFSOpen int
+	VFSOpen uint64
 	// Number of times a directory lookup has occurred.
-	VFSLookup int
+	VFSLookup uint64
 	// Number of times permissions have been checked.
-	VFSAccess int
+	VFSAccess uint64
 	// Number of updates (and potential writes) to pages.
-	VFSUpdatePage int
+	VFSUpdatePage uint64
 	// Number of pages read directly via mmap()'d files.
-	VFSReadPage int
+	VFSReadPage uint64
 	// Number of times a group of pages have been read.
-	VFSReadPages int
+	VFSReadPages uint64
 	// Number of pages written directly via mmap()'d files.
-	VFSWritePage int
+	VFSWritePage uint64
 	// Number of times a group of pages have been written.
-	VFSWritePages int
+	VFSWritePages uint64
 	// Number of times directory entries have been read with getdents().
-	VFSGetdents int
+	VFSGetdents uint64
 	// Number of times attributes have been set on inodes.
-	VFSSetattr int
+	VFSSetattr uint64
 	// Number of pending writes that have been forcefully flushed to the server.
-	VFSFlush int
+	VFSFlush uint64
 	// Number of times fsync() has been called on directories and files.
-	VFSFsync int
-	// Number of times locking has been attemped on a file.
-	VFSLock int
+	VFSFsync uint64
+	// Number of times locking has been attempted on a file.
+	VFSLock uint64
 	// Number of times files have been closed and released.
-	VFSFileRelease int
+	VFSFileRelease uint64
 	// Unknown.  Possibly unused.
-	CongestionWait int
+	CongestionWait uint64
 	// Number of times files have been truncated.
-	Truncation int
+	Truncation uint64
 	// Number of times a file has been grown due to writes beyond its existing end.
-	WriteExtension int
+	WriteExtension uint64
 	// Number of times a file was removed while still open by another process.
-	SillyRename int
+	SillyRename uint64
 	// Number of times the NFS server gave less data than expected while reading.
-	ShortRead int
+	ShortRead uint64
 	// Number of times the NFS server wrote less data than expected while writing.
-	ShortWrite int
+	ShortWrite uint64
 	// Number of times the NFS server indicated EJUKEBOX; retrieving data from
 	// offline storage.
-	JukeboxDelay int
+	JukeboxDelay uint64
 	// Number of NFS v4.1+ pNFS reads.
-	PNFSRead int
+	PNFSRead uint64
 	// Number of NFS v4.1+ pNFS writes.
-	PNFSWrite int
+	PNFSWrite uint64
 }
 
 // A NFSOperationStats contains statistics for a single operation.
@@ -153,15 +153,15 @@ type NFSOperationStats struct {
 	// The name of the operation.
 	Operation string
 	// Number of requests performed for this operation.
-	Requests int
+	Requests uint64
 	// Number of times an actual RPC request has been transmitted for this operation.
-	Transmissions int
+	Transmissions uint64
 	// Number of times a request has had a major timeout.
-	MajorTimeouts int
+	MajorTimeouts uint64
 	// Number of bytes sent for this operation, including RPC headers and payload.
-	BytesSent int
+	BytesSent uint64
 	// Number of bytes received for this operation, including RPC headers and payload.
-	BytesReceived int
+	BytesReceived uint64
 	// Duration all requests spent queued for transmission before they were sent.
 	CumulativeQueueTime time.Duration
 	// Duration it took to get a reply back after the request was transmitted.
@@ -174,41 +174,41 @@ type NFSOperationStats struct {
 // responses.
 type NFSTransportStats struct {
 	// The local port used for the NFS mount.
-	Port int
+	Port uint64
 	// Number of times the client has had to establish a connection from scratch
 	// to the NFS server.
-	Bind int
+	Bind uint64
 	// Number of times the client has made a TCP connection to the NFS server.
-	Connect int
+	Connect uint64
 	// Duration (in jiffies, a kernel internal unit of time) the NFS mount has
 	// spent waiting for connections to the server to be established.
-	ConnectIdleTime int
+	ConnectIdleTime uint64
 	// Duration since the NFS mount last saw any RPC traffic.
 	IdleTime time.Duration
 	// Number of RPC requests for this mount sent to the NFS server.
-	Sends int
+	Sends uint64
 	// Number of RPC responses for this mount received from the NFS server.
-	Receives int
+	Receives uint64
 	// Number of times the NFS server sent a response with a transaction ID
 	// unknown to this client.
-	BadTransactionIDs int
+	BadTransactionIDs uint64
 	// A running counter, incremented on each request as the current difference
 	// ebetween sends and receives.
-	CumulativeActiveRequests int
+	CumulativeActiveRequests uint64
 	// A running counter, incremented on each request by the current backlog
 	// queue size.
-	CumulativeBacklog int
+	CumulativeBacklog uint64
 
 	// Stats below only available with stat version 1.1.
 
 	// Maximum number of simultaneously active RPC requests ever used.
-	MaximumRPCSlotsUsed int
+	MaximumRPCSlotsUsed uint64
 	// A running counter, incremented on each request as the current size of the
 	// sending queue.
-	CumulativeSendingQueue int
+	CumulativeSendingQueue uint64
 	// A running counter, incremented on each request as the current size of the
 	// pending queue.
-	CumulativePendingQueue int
+	CumulativePendingQueue uint64
 }
 
 // parseMountStats parses a /proc/[pid]/mountstats file and returns a slice
@@ -356,7 +356,7 @@ func parseMountStatsNFS(s *bufio.Scanner, statVersion string) (*MountStatsNFS, e
 		}
 
 		// When encountering "per-operation statistics", we must break this
-		// loop and parse them seperately to ensure we can terminate parsing
+		// loop and parse them separately to ensure we can terminate parsing
 		// before reaching another device entry; hence why this 'if' statement
 		// is not just another switch case
 		if ss[0] == fieldPerOpStats {
@@ -386,9 +386,9 @@ func parseNFSBytesStats(ss []string) (*NFSBytesStats, error) {
 		return nil, fmt.Errorf("invalid NFS bytes stats: %v", ss)
 	}
 
-	ns := make([]int, 0, fieldBytesLen)
+	ns := make([]uint64, 0, fieldBytesLen)
 	for _, s := range ss {
-		n, err := strconv.Atoi(s)
+		n, err := strconv.ParseUint(s, 10, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -415,9 +415,9 @@ func parseNFSEventsStats(ss []string) (*NFSEventsStats, error) {
 		return nil, fmt.Errorf("invalid NFS events stats: %v", ss)
 	}
 
-	ns := make([]int, 0, fieldEventsLen)
+	ns := make([]uint64, 0, fieldEventsLen)
 	for _, s := range ss {
-		n, err := strconv.Atoi(s)
+		n, err := strconv.ParseUint(s, 10, 64)
 		if err != nil {
 			return nil, err
 		}
@@ -480,9 +480,9 @@ func parseNFSOperationStats(s *bufio.Scanner) ([]NFSOperationStats, error) {
 		}
 
 		// Skip string operation name for integers
-		ns := make([]int, 0, numFields-1)
+		ns := make([]uint64, 0, numFields-1)
 		for _, st := range ss[1:] {
-			n, err := strconv.Atoi(st)
+			n, err := strconv.ParseUint(st, 10, 64)
 			if err != nil {
 				return nil, err
 			}
@@ -524,9 +524,9 @@ func parseNFSTransportStats(ss []string, statVersion string) (*NFSTransportStats
 
 	// Allocate enough for v1.1 stats since zero value for v1.1 stats will be okay
 	// in a v1.0 response
-	ns := make([]int, 0, fieldTransport11Len)
+	ns := make([]uint64, 0, fieldTransport11Len)
 	for _, s := range ss {
-		n, err := strconv.Atoi(s)
+		n, err := strconv.ParseUint(s, 10, 64)
 		if err != nil {
 			return nil, err
 		}
