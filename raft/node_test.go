@@ -301,6 +301,7 @@ func TestNodeProposeAddDuplicateNode(t *testing.T) {
 	n.Campaign(context.TODO())
 	rdyEntries := make([]raftpb.Entry, 0)
 	ticker := time.NewTicker(time.Millisecond * 100)
+	defer ticker.Stop()
 	done := make(chan struct{})
 	stop := make(chan struct{})
 	applyConfChan := make(chan struct{})

@@ -113,7 +113,7 @@ type raftNode struct {
 	readStateC chan raft.ReadState
 
 	// utility
-	ticker <-chan time.Time
+	ticker *time.Ticker
 	// contention detectors for raft heartbeat message
 	td          *contention.TimeoutDetector
 	heartbeat   time.Duration // for logging
@@ -143,7 +143,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 		for {
 			select {
-			case <-r.ticker:
+			case <-r.ticker.C:
 				r.Tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
@@ -303,6 +303,7 @@ func (r *raftNode) stop() {
 
 func (r *raftNode) onStop() {
 	r.Stop()
+	r.ticker.Stop()
 	r.transport.Stop()
 	if err := r.storage.Close(); err != nil {
 		plog.Panicf("raft close storage error: %v", err)

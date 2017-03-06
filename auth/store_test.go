@@ -345,7 +345,7 @@ func TestRoleRevokePermission(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r, err := as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	_, err = as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,6 +359,7 @@ func TestRoleRevokePermission(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var r *pb.AuthRoleGetResponse
 	r, err = as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
 	if err != nil {
 		t.Fatal(err)

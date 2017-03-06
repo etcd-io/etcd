@@ -158,6 +158,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
+		ticker:      &time.Ticker{},
 	}}
 	srv.r.start(nil)
 	n.readyc <- raft.Ready{}

@@ -603,7 +603,7 @@ func (m *member) Launch() error {
 	if m.s, err = etcdserver.NewServer(&m.ServerConfig); err != nil {
 		return fmt.Errorf("failed to initialize the etcd server: %v", err)
 	}
-	m.s.SyncTicker = time.Tick(500 * time.Millisecond)
+	m.s.SyncTicker = time.NewTicker(500 * time.Millisecond)
 	m.s.Start()
 
 	m.raftHandler = &testutil.PauseableHandler{Next: v2http.NewPeerHandler(m.s)}
