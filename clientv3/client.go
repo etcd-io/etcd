@@ -48,7 +48,9 @@ type Client struct {
 	Auth
 	Maintenance
 
-	conn             *grpc.ClientConn
+	conn     *grpc.ClientConn
+	dialerrc chan error
+
 	cfg              Config
 	creds            *credentials.TransportCredentials
 	balancer         *simpleBalancer
@@ -214,7 +216,14 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 		default:
 		}
 		dialer := &net.Dialer{Timeout: t}
-		return dialer.DialContext(c.ctx, proto, host)
+		conn, err := dialer.DialContext(c.ctx, proto, host)
+		if err != nil {
+			select {
+			case c.dialerrc <- err:
+			default:
+			}
+		}
+		return conn, err
 	}
 	opts = append(opts, grpc.WithDialer(f))
 
@@ -316,11 +325,12 @@ func newClient(cfg *Config) (*Client, error) {
 
 	ctx, cancel := context.WithCancel(baseCtx)
 	client := &Client{
-		conn:   nil,
-		cfg:    *cfg,
-		creds:  creds,
-		ctx:    ctx,
-		cancel: cancel,
+		conn:     nil,
+		dialerrc: make(chan error, 1),
+		cfg:      *cfg,
+		creds:    creds,
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
@@ -347,9 +357,14 @@ func newClient(cfg *Config) (*Client, error) {
 		case <-waitc:
 		}
 		if !hasConn {
+			err := grpc.ErrClientConnTimeout
+			select {
+			case err = <-client.dialerrc:
+			default:
+			}
 			client.cancel()
 			conn.Close()
-			return nil, grpc.ErrClientConnTimeout
+			return nil, err
 		}
 	}
 
