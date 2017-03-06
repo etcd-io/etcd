@@ -3186,13 +3186,14 @@ func setRandomizedElectionTimeout(r *raft, v int) {
 
 func newTestConfig(id uint64, peers []uint64, election, heartbeat int, storage Storage) *Config {
 	return &Config{
-		ID:              id,
-		peers:           peers,
-		ElectionTick:    election,
-		HeartbeatTick:   heartbeat,
-		Storage:         storage,
-		MaxSizePerMsg:   noLimit,
-		MaxInflightMsgs: 256,
+		ID:                            id,
+		peers:                         peers,
+		ElectionTick:                  election,
+		RandomizedElectionCoefficient: 1.0,
+		HeartbeatTick:                 heartbeat,
+		Storage:                       storage,
+		MaxSizePerMsg:                 noLimit,
+		MaxInflightMsgs:               256,
 	}
 }
 

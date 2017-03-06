@@ -48,9 +48,10 @@ type ServerConfig struct {
 	ForceNewCluster     bool
 	PeerTLSInfo         transport.TLSInfo
 
-	TickMs           uint
-	ElectionTicks    int
-	BootstrapTimeout time.Duration
+	TickMs                        uint
+	ElectionTicks                 int
+	RandomizedElectionCoefficient float64
+	BootstrapTimeout              time.Duration
 
 	AutoCompactionRetention int
 	QuotaBackendBytes       int64

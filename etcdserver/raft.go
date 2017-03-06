@@ -368,13 +368,14 @@ func startNode(cfg *ServerConfig, cl *membership.RaftCluster, ids []types.ID) (i
 	plog.Infof("starting member %s in cluster %s", id, cl.ID())
 	s = raft.NewMemoryStorage()
 	c := &raft.Config{
-		ID:              uint64(id),
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
+		ID:                            uint64(id),
+		ElectionTick:                  cfg.ElectionTicks,
+		RandomizedElectionCoefficient: cfg.RandomizedElectionCoefficient,
+		HeartbeatTick:                 1,
+		Storage:                       s,
+		MaxSizePerMsg:                 maxSizePerMsg,
+		MaxInflightMsgs:               maxInflightMsgs,
+		CheckQuorum:                   true,
 	}
 
 	n = raft.StartNode(c, peers)
@@ -402,13 +403,14 @@ func restartNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *membe
 	s.SetHardState(st)
 	s.Append(ents)
 	c := &raft.Config{
-		ID:              uint64(id),
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
+		ID:                            uint64(id),
+		ElectionTick:                  cfg.ElectionTicks,
+		RandomizedElectionCoefficient: cfg.RandomizedElectionCoefficient,
+		HeartbeatTick:                 1,
+		Storage:                       s,
+		MaxSizePerMsg:                 maxSizePerMsg,
+		MaxInflightMsgs:               maxInflightMsgs,
+		CheckQuorum:                   true,
 	}
 
 	n := raft.RestartNode(c)
@@ -458,12 +460,13 @@ func restartAsStandaloneNode(cfg *ServerConfig, snapshot *raftpb.Snapshot) (type
 	s.SetHardState(st)
 	s.Append(ents)
 	c := &raft.Config{
-		ID:              uint64(id),
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
+		ID:                            uint64(id),
+		ElectionTick:                  cfg.ElectionTicks,
+		RandomizedElectionCoefficient: cfg.RandomizedElectionCoefficient,
+		HeartbeatTick:                 1,
+		Storage:                       s,
+		MaxSizePerMsg:                 maxSizePerMsg,
+		MaxInflightMsgs:               maxInflightMsgs,
 	}
 	n := raft.RestartNode(c)
 	raftStatus = n.Status
