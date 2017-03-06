@@ -5,7 +5,7 @@ This document tracks people and use cases for etcd in production. By creating a 
 ## All Kubernetes Users
 
 - *Application*: https://kubernetes.io/
-- *Environments*: AWS, OpenStack, Azure, Google Cloud, Bare Metal, etc
+- *Environments*: AWS, OpenStack, Azure, Google Cloud, Huawei Cloud, Bare Metal, etc
 
 **This is a meta user if you want to document your specific Kubernetes cluster, please do!**
 
@@ -59,7 +59,7 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 
 ## Vonage
 
-- *Application*: system configuration for microservices, scheduling, locks (future - service discovery) 
+- *Application*: system configuration for microservices, scheduling, locks (future - service discovery)
 - *Launched*: August 2015
 - *Cluster Size*: 2 clusters of 5 members in 2 DCs, n local proxies 1-to-1 with microservice, (ssl and SRV look up)
 - *Order of Data Size*: kilobytes
@@ -67,5 +67,16 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 - *Environment*: VMWare, AWS
 - *Backups*: Daily snapshots on VMs. Backups done for upgrades.
 
+## Canal
+
+- *Application*: system configuration for overlay network
+- *Launched*: June 2016
+- *Cluster Size*: 3 members for each cluster
+- *Order of Data Size*: kilobytes
+- *Operator*: Huawei Euler Department
+- *Environment*: [Huawei Cloud](http://www.hwclouds.com/product/cce.html)
+- *Backups*: None, all data can be recreated if necessary.
+
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
+
