@@ -130,7 +130,7 @@ docker exec etcd /bin/sh -c "export ETCDCTL_API=3 && /usr/local/bin/etcdctl put 
 
 ## Bare Metal
 
-To provision a 3 node etcd cluster on bare-metal, you might find the examples in the [baremetal repo](https://github.com/coreos/coreos-baremetal/tree/master/examples) useful.
+To provision a 3 node etcd cluster on bare-metal, the examples in the [baremetal repo](https://github.com/coreos/coreos-baremetal/tree/master/examples) may be useful.
 
 ## Mounting a certificate volume
 

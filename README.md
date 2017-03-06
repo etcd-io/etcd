@@ -39,10 +39,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, [rkt][rkt], and Docker. Instructions for using these binaries are on the [GitHub releases page][github-release].
 
-For those wanting to try the very latest version, you can [build the latest version of etcd][dl-build] from the `master` branch.
-You will first need [*Go*](https://golang.org/) installed on your machine (version 1.7+ is required).
-All development occurs on `master`, including new features and bug fixes.
-Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
+For those wanting to try the very latest version, [build the latest version of etcd][dl-build] from the `master` branch. This first needs [*Go*](https://golang.org/) installed (version 1.7+ is required). All development occurs on `master`, including new features and bug fixes. Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
 
 [rkt]: https://github.com/coreos/rkt/releases/
 [github-release]: https://github.com/coreos/etcd/releases/
@@ -96,7 +93,7 @@ Every cluster member and proxy accepts key value reads and key value writes.
 
 ### Running etcd on Kubernetes
 
-If you want to run etcd cluster on Kubernetes, try [etcd operator](https://github.com/coreos/etcd-operator).
+To run an etcd cluster on Kubernetes, try [etcd operator](https://github.com/coreos/etcd-operator).
 
 ### Next steps
 
@@ -131,7 +128,7 @@ See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the co
 
 ## Reporting bugs
 
-See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issue you may encounter.
+See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issues.
 
 ### License
 
