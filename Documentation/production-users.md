@@ -118,3 +118,15 @@ PD(Placement Driver) is the central controller in the TiDB cluster. It saves the
 - *Backups*: None
 
 [nekto0n]:https://github.com/nekto0n
+
+## Tencent Games
+
+- *Application*: Meta data and configuration data for service discovery, Kubernetes, etc.
+- *Launched*: Jan. 2015
+- *Cluster Size*: 3 members each with 10s of clusters
+- *Order of Data Size*: 10s of Megabytes
+- *Operator*: Tencent Game Operations Department
+- *Environment*: Baremetal
+- *Backups*: Periodic sync to backup server
+
+In Tencent games, we use Docker and Kubernetes to deploy and run our applications, and use etcd to save meta data for service discovery, Kubernetes, etc.
