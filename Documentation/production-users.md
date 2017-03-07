@@ -106,3 +106,15 @@ PD(Placement Driver) is the central controller in the TiDB cluster. It saves the
 [yunify]:https://github.com/yunify
 [qingcloud]:https://qingcloud.com/
 
+
+## Yandex
+
+- *Application*: system configuration for services, service discovery
+- *Launched*: March 2016
+- *Cluster Size*: 3 clusters of 5 members
+- *Order of Data Size*: several gigabytes
+- *Operator*: Yandex; [nekto0n][nekto0n]
+- *Environment*: Bare Metal
+- *Backups*: None
+
+[nekto0n]:https://github.com/nekto0n
