@@ -840,7 +840,7 @@ func mustNewTransport(t *testing.T, tlsInfo transport.TLSInfo) *http.Transport {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return tr
+	return tr.Transport
 }
 
 type SortableMemberSliceByPeerURLs []client.Member

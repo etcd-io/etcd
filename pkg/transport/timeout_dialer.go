@@ -15,6 +15,7 @@
 package transport
 
 import (
+	"context"
 	"net"
 	"time"
 )
@@ -26,7 +27,11 @@ type rwTimeoutDialer struct {
 }
 
 func (d *rwTimeoutDialer) Dial(network, address string) (net.Conn, error) {
-	conn, err := d.Dialer.Dial(network, address)
+	return d.DialContext(context.Background(), network, address)
+}
+
+func (d *rwTimeoutDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	conn, err := d.Dialer.DialContext(ctx, network, address)
 	tconn := &timeoutConn{
 		rdtimeoutd: d.rdtimeoutd,
 		wtimeoutd:  d.wtimeoutd,

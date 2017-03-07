@@ -112,8 +112,8 @@ type Transport struct {
 	// machine and thus stop the Transport.
 	ErrorC chan error
 
-	streamRt   http.RoundTripper // roundTripper used by streams
-	pipelineRt http.RoundTripper // roundTripper used by pipelines
+	streamRt   *transport.CancelableTransport // roundTripper used by streams
+	pipelineRt *transport.CancelableTransport // roundTripper used by pipelines
 
 	mu      sync.RWMutex         // protect the remote and peer map
 	remotes map[types.ID]*remote // remotes map that helps newly joined member to catch up
@@ -189,6 +189,8 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 func (t *Transport) Stop() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.streamRt.Cancel()
+	t.pipelineRt.Cancel()
 	for _, r := range t.remotes {
 		r.stop()
 	}
@@ -196,12 +198,8 @@ func (t *Transport) Stop() {
 		p.stop()
 	}
 	t.prober.RemoveAll()
-	if tr, ok := t.streamRt.(*http.Transport); ok {
-		tr.CloseIdleConnections()
-	}
-	if tr, ok := t.pipelineRt.(*http.Transport); ok {
-		tr.CloseIdleConnections()
-	}
+	t.streamRt.CloseIdleConnections()
+	t.pipelineRt.CloseIdleConnections()
 	t.peers = nil
 	t.remotes = nil
 }

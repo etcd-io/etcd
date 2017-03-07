@@ -16,7 +16,6 @@ package transport
 
 import (
 	"net"
-	"net/http"
 	"time"
 )
 
@@ -24,7 +23,7 @@ import (
 // If read/write on the created connection blocks longer than its time limit,
 // it will return timeout error.
 // If read/write timeout is set, transport will not be able to reuse connection.
-func NewTimeoutTransport(info TLSInfo, dialtimeoutd, rdtimeoutd, wtimeoutd time.Duration) (*http.Transport, error) {
+func NewTimeoutTransport(info TLSInfo, dialtimeoutd, rdtimeoutd, wtimeoutd time.Duration) (*CancelableTransport, error) {
 	tr, err := NewTransport(info, dialtimeoutd)
 	if err != nil {
 		return nil, err
@@ -39,13 +38,17 @@ func NewTimeoutTransport(info TLSInfo, dialtimeoutd, rdtimeoutd, wtimeoutd time.
 		tr.MaxIdleConnsPerHost = 1024
 	}
 
-	tr.Dial = (&rwTimeoutDialer{
+	dialer := &rwTimeoutDialer{
 		Dialer: net.Dialer{
 			Timeout:   dialtimeoutd,
 			KeepAlive: 30 * time.Second,
 		},
 		rdtimeoutd: rdtimeoutd,
 		wtimeoutd:  wtimeoutd,
-	}).Dial
+	}
+	tr.Dial = func(net, addr string) (net.Conn, error) {
+		return dialer.DialContext(tr.Ctx(), net, addr)
+	}
+
 	return tr, nil
 }

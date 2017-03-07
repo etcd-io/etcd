@@ -15,43 +15,80 @@
 package transport
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 )
 
+// CancelableTransport provides an http.Transport interface that binds
+// dials and RoundTrips to a context belonging to the transport which
+// can be canceled when the transport is torn down.
+type CancelableTransport struct {
+	*http.Transport
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+// Ctx is the context that is bound to RoundTrip requests and dials. It is
+// canceled when the transport is canceled.
+func (c *CancelableTransport) Ctx() context.Context { return c.ctx }
+
+// Cancel cancels all current and future dials and requests on the transport.
+func (c *CancelableTransport) Cancel() { c.cancel() }
+
+// RoundTrip is a RoundTrip wrapper that overrides http requests using the
+// default context to use the transport's cancelable context.
+func (c *CancelableTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Context() != context.Background() {
+		// request defaults to context.Background; override
+		return c.Transport.RoundTrip(req)
+	}
+	return c.Transport.RoundTrip(req.WithContext(c.ctx))
+}
+
 type unixTransport struct{ *http.Transport }
 
-func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, error) {
+func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*CancelableTransport, error) {
 	cfg, err := info.ClientConfig()
 	if err != nil {
 		return nil, err
 	}
 
+	ctx, cancel := context.WithCancel(context.TODO())
+
 	t := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
-			Timeout: dialtimeoutd,
-			// value taken from http.DefaultTransport
-			KeepAlive: 30 * time.Second,
-		}).Dial,
 		// value taken from http.DefaultTransport
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     cfg,
 	}
+	ct := &CancelableTransport{
+		Transport: t,
+		ctx:       ctx,
+		cancel:    cancel,
+	}
+	tdialer := &net.Dialer{
+		Timeout: dialtimeoutd,
+		// value taken from http.DefaultTransport
+		KeepAlive: 30 * time.Second,
+	}
+	tdial := func(net, addr string) (net.Conn, error) {
+		return tdialer.DialContext(ctx, net, addr)
+	}
+	t.Dial = tdial
 
 	dialer := (&net.Dialer{
 		Timeout:   dialtimeoutd,
 		KeepAlive: 30 * time.Second,
 	})
-	dial := func(net, addr string) (net.Conn, error) {
-		return dialer.Dial("unix", addr)
+	udial := func(net, addr string) (net.Conn, error) {
+		return dialer.DialContext(ctx, "unix", addr)
 	}
-
 	tu := &http.Transport{
 		Proxy:               http.ProxyFromEnvironment,
-		Dial:                dial,
+		Dial:                udial,
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     cfg,
 	}
@@ -60,7 +97,7 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 	t.RegisterProtocol("unix", ut)
 	t.RegisterProtocol("unixs", ut)
 
-	return t, nil
+	return ct, nil
 }
 
 func (urt *unixTransport) RoundTrip(req *http.Request) (*http.Response, error) {
