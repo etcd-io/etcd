@@ -142,7 +142,8 @@ func (cw *streamWriter) run() {
 		flusher    http.Flusher
 		batched    int
 	)
-	tickc := time.Tick(ConnReadTimeout / 3)
+	tickc := time.NewTicker(ConnReadTimeout / 3)
+	defer tickc.Stop()
 	unflushed := 0
 
 	plog.Infof("started streaming with peer %s (writer)", cw.peerID)
@@ -214,7 +215,7 @@ func (cw *streamWriter) run() {
 				plog.Warningf("closed an existing TCP streaming connection with peer %s (%s writer)", cw.peerID, t)
 			}
 			plog.Infof("established a TCP streaming connection with peer %s (%s writer)", cw.peerID, t)
-			heartbeatc, msgc = tickc, cw.msgc
+			heartbeatc, msgc = tickc.C, cw.msgc
 		case <-cw.stopc:
 			if cw.close() {
 				plog.Infof("closed the TCP streaming connection with peer %s (%s writer)", cw.peerID, t)

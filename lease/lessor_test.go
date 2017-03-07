@@ -55,11 +55,12 @@ func TestLessorGrant(t *testing.T) {
 		t.Errorf("term = %v, want at least %v", l.Remaining(), minLeaseTTLDuration-time.Second)
 	}
 
-	nl, err := le.Grant(1, 1)
+	_, err = le.Grant(1, 1)
 	if err == nil {
 		t.Errorf("allocated the same lease")
 	}
 
+	var nl *Lease
 	nl, err = le.Grant(2, 1)
 	if err != nil {
 		t.Errorf("could not grant lease 2 (%v)", err)

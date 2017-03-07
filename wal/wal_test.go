@@ -546,7 +546,11 @@ func TestReleaseLockTo(t *testing.T) {
 	defer os.RemoveAll(p)
 	// create WAL
 	w, err := Create(p, nil)
-	defer w.Close()
+	defer func() {
+		if err = w.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -712,7 +716,11 @@ func TestOpenOnTornWrite(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 	w, err := Create(p, nil)
-	defer w.Close()
+	defer func() {
+		if err = w.Close(); err != nil && err != os.ErrInvalid {
+			t.Fatal(err)
+		}
+	}()
 	if err != nil {
 		t.Fatal(err)
 	}

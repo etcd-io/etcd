@@ -105,7 +105,7 @@ func TestV3LeaseGrantByID(t *testing.T) {
 	}
 
 	// create duplicate fixed lease
-	lresp, err = toGRPC(clus.RandClient()).Lease.LeaseGrant(
+	_, err = toGRPC(clus.RandClient()).Lease.LeaseGrant(
 		context.TODO(),
 		&pb.LeaseGrantRequest{ID: 1, TTL: 1})
 	if !eqErrGRPC(err, rpctypes.ErrGRPCLeaseExist) {

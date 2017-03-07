@@ -45,6 +45,10 @@ func TestNewKeepAliveListener(t *testing.T) {
 	ln.Close()
 
 	ln, err = net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("unexpected Listen error: %v", err)
+	}
+
 	// tls
 	tmp, err := createTempFile([]byte("XXX"))
 	if err != nil {

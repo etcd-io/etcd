@@ -108,7 +108,6 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 		}
 	}
 	b.ResetTimer()
-	s = NewStore(be, &lease.FakeLessor{}, &i)
 }
 
 func BenchmarkStoreRestoreRevs1(b *testing.B) {

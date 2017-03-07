@@ -35,7 +35,7 @@ TESTABLE_AND_FORMATTABLE=`echo "$TEST_PKGS" | egrep -v "$INTEGRATION_PKGS"`
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
-GOSIMPLE_UNUSED_PATHS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | grep -v 'client'`
+STATIC_ANALYSIS_PATHS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | grep -v 'client'`
 
 if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
@@ -232,7 +232,7 @@ function fmt_pass {
 
 	if which gosimple >/dev/null; then
 		echo "Checking gosimple..."
-		simplResult=`gosimple ${GOSIMPLE_UNUSED_PATHS} 2>&1 || true`
+		simplResult=`gosimple ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
 		if [ -n "${simplResult}" ]; then
 			echo -e "gosimple checking failed:\n${simplResult}"
 			exit 255
@@ -243,13 +243,32 @@ function fmt_pass {
 
 	if which unused >/dev/null; then
 		echo "Checking unused..."
-		unusedResult=`unused ${GOSIMPLE_UNUSED_PATHS} 2>&1 || true`
+		unusedResult=`unused ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
 		if [ -n "${unusedResult}" ]; then
 			echo -e "unused checking failed:\n${unusedResult}"
 			exit 255
 		fi
 	else
 		echo "Skipping unused..."
+	fi
+
+	if which unused >/dev/null; then
+		echo "Checking staticcheck..."
+		staticcheckResult=`staticcheck ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
+		if [ ! -n "${staticcheckResult}" ]; then
+			continue
+		fi
+		# TODO: resolve these after go1.8 migration
+		# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
+		STATIC_CHECK_MASK="SA(1016|1019|2002)"
+		if egrep -v "$STATIC_CHECK_MASK" "${staticcheckResult}"; then
+			echo -e "staticcheck checking ${path} failed:\n${staticcheckResult}"
+			exit 255
+		else
+			echo -e "staticcheck warning:\n${staticcheckResult}"
+		fi
+	else
+		echo "Skipping staticcheck..."
 	fi
 
 	echo "Checking for license header..."
