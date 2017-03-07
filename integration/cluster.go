@@ -38,6 +38,9 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
+	"github.com/coreos/etcd/etcdserver/api/v3client"
+	"github.com/coreos/etcd/etcdserver/api/v3lock"
+	lockpb "github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -459,6 +462,9 @@ type member struct {
 	grpcServer *grpc.Server
 	grpcAddr   string
 	grpcBridge *bridge
+
+	// serverClient is a clientv3 that directly calls the etcdserver.
+	serverClient *clientv3.Client
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -652,6 +658,8 @@ func (m *member) Launch() error {
 			}
 		}
 		m.grpcServer = v3rpc.Server(m.s, tlscfg)
+		m.serverClient = v3client.New(m.s)
+		lockpb.RegisterLockServer(m.grpcServer, v3lock.NewLockServer(m.serverClient))
 		go m.grpcServer.Serve(m.grpcListener)
 	}
 
@@ -694,6 +702,10 @@ func (m *member) Close() {
 	if m.grpcBridge != nil {
 		m.grpcBridge.Close()
 		m.grpcBridge = nil
+	}
+	if m.serverClient != nil {
+		m.serverClient.Close()
+		m.serverClient = nil
 	}
 	if m.grpcServer != nil {
 		m.grpcServer.Stop()
