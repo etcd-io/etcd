@@ -81,3 +81,17 @@ PD(Placement Driver) is the central controller in the TiDB cluster. It saves the
 
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
+
+## QingCloud
+
+- *Application*: [QingCloud](qingcloud) appcenter cluster for service discovery as [metad](metad) backend.
+- *Launched*: December 2016
+- *Cluster Size*: 1 cluster of 3 members per user.
+- *Order of Data Size*: kilobytes
+- *Operator*: [yunify][yunify]
+- *Environment*: QingCloud IaaS
+- *Backups*: None, all data can be recreated if necessary.
+
+[metad]:https://github.com/yunify/metad
+[yunify]:https://github.com/yunify
+[qingcloud]:https://qingcloud.com/
