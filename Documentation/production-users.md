@@ -67,6 +67,18 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 - *Environment*: VMWare, AWS
 - *Backups*: Daily snapshots on VMs. Backups done for upgrades.
 
+## PD
+
+- *Application*: embed etcd  
+- *Launched*: Mar 2016
+- *Cluster Size*: 3 or 5 members 
+- *Order of Data Size*: megabytes
+- *Operator*: PingCAP, Inc.
+- *Environment*: Bare Metal, AWS, etc.
+- *Backups*: None.
+
+PD(Placement Driver) is the central controller in the TiDB cluster. It saves the cluster meta information, schedule the data, allocate the global unique timestamp for the distributed transaction, etc. It embeds etcd to supply high availability and auto failover. 
+
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
 
@@ -78,4 +90,19 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 - *Order of Data Size*: kilobytes
 - *Operator*: Qiniu, chenchao@qiniu.com
 - *Environment*: Baremetal
-- *Backups*: None, all data can be recreated if necessary
+- *Backups*: None, all data can be recreated if - necessary
+
+## QingCloud
+
+- *Application*: [QingCloud](qingcloud) appcenter cluster for service discovery as [metad](metad) backend.
+- *Launched*: December 2016
+- *Cluster Size*: 1 cluster of 3 members per user.
+- *Order of Data Size*: kilobytes
+- *Operator*: [yunify][yunify]
+- *Environment*: QingCloud IaaS
+- *Backups*: None, all data can be recreated if necessary.
+
+[metad]:https://github.com/yunify/metad
+[yunify]:https://github.com/yunify
+[qingcloud]:https://qingcloud.com/
+
