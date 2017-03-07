@@ -69,3 +69,13 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
+
+## Qiniu
+
+- *Application*: system configuration for microservices, distributed locks
+- *Launched*: Jan. 2016
+- *Cluster Size*: 3 members with 1 cluster
+- *Order of Data Size*: kilobytes
+- *Operator*: Qiniu, chenchao@qiniu.com
+- *Environment*: Baremetal
+- *Backups*: None, all data can be recreated if necessary
