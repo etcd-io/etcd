@@ -77,6 +77,14 @@ func New(cfg Config) (*Client, error) {
 	return newClient(&cfg)
 }
 
+// NewCtxClient creates a client with a context but no underlying grpc
+// connection. This is useful for embedded cases that override the
+// service interface implementations and do not need connection management.
+func NewCtxClient(ctx context.Context) *Client {
+	cctx, cancel := context.WithCancel(ctx)
+	return &Client{ctx: cctx, cancel: cancel}
+}
+
 // NewFromURL creates a new etcdv3 client from a URL.
 func NewFromURL(url string) (*Client, error) {
 	return New(Config{Endpoints: []string{url}})
@@ -87,7 +95,10 @@ func (c *Client) Close() error {
 	c.cancel()
 	c.Watcher.Close()
 	c.Lease.Close()
-	return toErr(c.ctx, c.conn.Close())
+	if c.conn != nil {
+		return toErr(c.ctx, c.conn.Close())
+	}
+	return c.ctx.Err()
 }
 
 // Ctx is a context for "out of band" messages (e.g., for sending
