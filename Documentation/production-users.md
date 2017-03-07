@@ -81,3 +81,13 @@ PD(Placement Driver) is the central controller in the TiDB cluster. It saves the
 
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
+
+## Qiniu
+
+- *Application*: system configuration for microservices, distributed locks
+- *Launched*: Jan. 2016
+- *Cluster Size*: 3 members with 1 cluster
+- *Order of Data Size*: kilobytes
+- *Operator*: Qiniu, chenchao@qiniu.com
+- *Environment*: Baremetal
+- *Backups*: None, all data can be recreated if necessary
