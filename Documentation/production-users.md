@@ -74,7 +74,7 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 
 - *Application*: [QingCloud](qingcloud) appcenter cluster for service discovery as [metad](metad) backend.
 - *Launched*: December 2016
-- *Cluster Size*: 1 clusters of 3 members per user.
+- *Cluster Size*: 1 cluster of 3 members per user.
 - *Order of Data Size*: kilobytes
 - *Operator*: [yunify][yunify]
 - *Environment*: QingCloud IaaS
