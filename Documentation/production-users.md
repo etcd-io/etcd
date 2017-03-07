@@ -67,5 +67,17 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 - *Environment*: VMWare, AWS
 - *Backups*: Daily snapshots on VMs. Backups done for upgrades.
 
+## PD
+
+- *Application*: embed etcd  
+- *Launched*: Mar 2016
+- *Cluster Size*: 3 or 5 members 
+- *Order of Data Size*: megabytes
+- *Operator*: PingCAP, Inc.
+- *Environment*: Bare Metal, AWS, etc.
+- *Backups*: None.
+
+PD(Placement Driver) is the central controller in the TiDB cluster. It saves the cluster meta information, schedule the data, allocate the global unique timestamp for the distributed transaction, etc. It embeds etcd to supply high availability and auto failover. 
+
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
