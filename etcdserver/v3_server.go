@@ -441,7 +441,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 			return nil, err
 		}
 
-		st, err := s.AuthStore().GenSimpleToken()
+		st, err := s.AuthStore().GenTokenPrefix()
 		if err != nil {
 			return nil, err
 		}

@@ -515,6 +515,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
 	m.QuotaBackendBytes = mcfg.quotaBackendBytes
+	m.AuthToken = "simple" // for the purpose of integration testing, simple token is enough
 	return m
 }
 

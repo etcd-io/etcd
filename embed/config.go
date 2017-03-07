@@ -128,6 +128,10 @@ type Config struct {
 	//	}
 	//	embed.StartEtcd(cfg)
 	ServiceRegister func(*grpc.Server) `json:"-"`
+
+	// auth
+
+	AuthToken string `json:"auth-token"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -179,6 +183,7 @@ func NewConfig() *Config {
 		StrictReconfigCheck: true,
 		Metrics:             "basic",
 		EnableV2:            true,
+		AuthToken:           "simple",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg

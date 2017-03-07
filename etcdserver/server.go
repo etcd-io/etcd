@@ -458,11 +458,16 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
-
-	srv.authStore = auth.NewAuthStore(srv.be,
+	tp, err := auth.NewTokenProvider(cfg.AuthToken,
 		func(index uint64) <-chan struct{} {
 			return srv.applyWait.Wait(index)
-		})
+		},
+	)
+	if err != nil {
+		plog.Errorf("failed to create token provider: %s", err)
+		return nil, err
+	}
+	srv.authStore = auth.NewAuthStore(srv.be, tp)
 	if h := cfg.AutoCompactionRetention; h != 0 {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
