@@ -130,3 +130,18 @@ PD(Placement Driver) is the central controller in the TiDB cluster. It saves the
 - *Backups*: Periodic sync to backup server
 
 In Tencent games, we use Docker and Kubernetes to deploy and run our applications, and use etcd to save meta data for service discovery, Kubernetes, etc.
+
+## Hyper.sh
+
+- *Application*: Kubernetes, distributed locks, etc.
+- *Launched*: April 2016
+- *Cluster Size*: 1 cluster of 3 members
+- *Order of Data Size*: 10s of MB
+- *Operator*: Hyper.sh
+- *Environment*: Baremetal
+- *Backups*: None, all data can be recreated if necessary.
+
+In [hyper.sh][hyper.sh], the container service is backed by [hypernetes][hypernetes], a multi-tenant kubernetes distro. Moreover, we use etcd to coordinate the multiple manage services and store global meta data.
+
+[hypernetes]:https://github.com/hyperhq/hypernetes
+[Hyper.sh]:https://www.hyper.sh
