@@ -252,10 +252,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 
 	// sort keys so deletes are in same order among all members,
 	// otherwise the backened hashes will be different
-	keys := make([]string, 0, len(l.itemSet))
-	for item := range l.itemSet {
-		keys = append(keys, item.Key)
-	}
+	keys := l.Keys()
 	sort.StringSlice(keys).Sort()
 	for _, key := range keys {
 		_, _, err := le.rd.TxnDeleteRange(tid, []byte(key), nil)
@@ -367,10 +364,12 @@ func (le *lessor) Attach(id LeaseID, items []LeaseItem) error {
 		return ErrLeaseNotFound
 	}
 
+	l.mu.Lock()
 	for _, it := range items {
 		l.itemSet[it] = struct{}{}
 		le.itemMap[it] = id
 	}
+	l.mu.Unlock()
 	return nil
 }
 
@@ -392,10 +391,12 @@ func (le *lessor) Detach(id LeaseID, items []LeaseItem) error {
 		return ErrLeaseNotFound
 	}
 
+	l.mu.Lock()
 	for _, it := range items {
 		delete(l.itemSet, it)
 		delete(le.itemMap, it)
 	}
+	l.mu.Unlock()
 	return nil
 }
 
@@ -506,6 +507,8 @@ type Lease struct {
 	// expiry is time when lease should expire; must be 64-bit aligned.
 	expiry monotime.Time
 
+	// mu protects concurrent accesses to itemSet
+	mu      sync.RWMutex
 	itemSet map[LeaseItem]struct{}
 	revokec chan struct{}
 }
@@ -544,10 +547,12 @@ func (l *Lease) forever() { atomic.StoreUint64((*uint64)(&l.expiry), uint64(fore
 
 // Keys returns all the keys attached to the lease.
 func (l *Lease) Keys() []string {
+	l.mu.RLock()
 	keys := make([]string, 0, len(l.itemSet))
 	for k := range l.itemSet {
 		keys = append(keys, k.Key)
 	}
+	l.mu.RUnlock()
 	return keys
 }
 

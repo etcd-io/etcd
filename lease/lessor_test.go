@@ -15,11 +15,13 @@
 package lease
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -74,6 +76,53 @@ func TestLessorGrant(t *testing.T) {
 		t.Errorf("len(vs) = %d, want 1", len(vs))
 	}
 	be.BatchTx().Unlock()
+}
+
+// TestLeaseConcurrentKeys ensures Lease.Keys method calls are guarded
+// from concurrent map writes on 'itemSet'.
+func TestLeaseConcurrentKeys(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	fd := &fakeDeleter{}
+
+	le := newLessor(be, minLeaseTTL)
+	le.SetRangeDeleter(fd)
+
+	// grant a lease with long term (100 seconds) to
+	// avoid early termination during the test.
+	l, err := le.Grant(1, 100)
+	if err != nil {
+		t.Fatalf("could not grant lease for 100s ttl (%v)", err)
+	}
+
+	itemn := 10
+	items := make([]LeaseItem, itemn)
+	for i := 0; i < itemn; i++ {
+		items[i] = LeaseItem{Key: fmt.Sprintf("foo%d", i)}
+	}
+	if err = le.Attach(l.ID, items); err != nil {
+		t.Fatalf("failed to attach items to the lease: %v", err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		le.Detach(l.ID, items)
+		close(donec)
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(itemn)
+	for i := 0; i < itemn; i++ {
+		go func() {
+			defer wg.Done()
+			l.Keys()
+		}()
+	}
+
+	<-donec
+	wg.Wait()
 }
 
 // TestLessorRevoke ensures Lessor can revoke a lease.
