@@ -17,6 +17,7 @@ package etcdmain
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"time"
 
@@ -77,6 +78,20 @@ func newGatewayStartCommand() *cobra.Command {
 	return &cmd
 }
 
+func stripSchema(eps []string) []string {
+	var endpoints []string
+
+	for _, ep := range eps {
+
+		if u, err := url.Parse(ep); err == nil && u.Host != "" {
+			ep = u.Host
+		}
+
+		endpoints = append(endpoints, ep)
+	}
+
+	return endpoints
+}
 func startGateway(cmd *cobra.Command, args []string) {
 	endpoints := gatewayEndpoints
 	if gatewayDNSCluster != "" {
@@ -100,6 +115,9 @@ func startGateway(cmd *cobra.Command, args []string) {
 			plog.Infof("using discovered endpoints %v", endpoints)
 		}
 	}
+
+	// Strip the schema from the endpoints because we start just a TCP proxy
+	endpoints = stripSchema(endpoints)
 
 	if len(endpoints) == 0 {
 		plog.Fatalf("no endpoints found")
