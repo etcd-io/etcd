@@ -47,6 +47,15 @@ type simpleBalancer struct {
 	// upc closes when upEps transitions from empty to non-zero or the balancer closes.
 	upc chan struct{}
 
+	// downc closes when grpc calls down() on pinAddr
+	downc chan struct{}
+
+	// stopc is closed to signal updateNotifyLoop should stop.
+	stopc chan struct{}
+
+	// donec closes when all goroutines are exited
+	donec chan struct{}
+
 	// grpc issues TLS cert checks using the string passed into dial so
 	// that string must be the host. To recover the full scheme://host URL,
 	// have a map from hosts to the original endpoint.
@@ -71,8 +80,12 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 		notifyCh: notifyCh,
 		readyc:   make(chan struct{}),
 		upc:      make(chan struct{}),
+		stopc:    make(chan struct{}),
+		downc:    make(chan struct{}),
+		donec:    make(chan struct{}),
 		host2ep:  getHost2ep(eps),
 	}
+	go sb.updateNotifyLoop()
 	return sb
 }
 
@@ -131,6 +144,50 @@ func (b *simpleBalancer) updateAddrs(eps []string) {
 	}
 }
 
+func (b *simpleBalancer) updateNotifyLoop() {
+	defer close(b.donec)
+
+	for {
+		b.mu.RLock()
+		upc := b.upc
+		b.mu.RUnlock()
+		var downc chan struct{}
+		select {
+		case <-upc:
+			var addr string
+			b.mu.RLock()
+			addr = b.pinAddr
+			// Up() sets pinAddr and downc as a pair under b.mu
+			downc = b.downc
+			b.mu.RUnlock()
+			if addr == "" {
+				break
+			}
+			// close opened connections that are not pinAddr
+			// this ensures only one connection is open per client
+			select {
+			case b.notifyCh <- []grpc.Address{{Addr: addr}}:
+			case <-b.stopc:
+				return
+			}
+		}
+		select {
+		case <-downc:
+			b.mu.RLock()
+			addrs := b.addrs
+			b.mu.RUnlock()
+			select {
+			case b.notifyCh <- addrs:
+			case <-b.stopc:
+				return
+			}
+		case <-b.stopc:
+			return
+		}
+
+	}
+}
+
 func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -145,20 +202,18 @@ func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	if b.pinAddr == "" {
 		// notify waiting Get()s and pin first connected address
 		close(b.upc)
+		b.downc = make(chan struct{})
 		b.pinAddr = addr.Addr
 		// notify client that a connection is up
 		b.readyOnce.Do(func() { close(b.readyc) })
-		// close opened connections that are not pinAddr
-		// this ensures only one connection is open per client
-		b.notifyCh <- []grpc.Address{addr}
 	}
 
 	return func(err error) {
 		b.mu.Lock()
 		if b.pinAddr == addr.Addr {
 			b.upc = make(chan struct{})
+			close(b.downc)
 			b.pinAddr = ""
-			b.notifyCh <- b.addrs
 		}
 		b.mu.Unlock()
 	}
@@ -214,14 +269,15 @@ func (b *simpleBalancer) Notify() <-chan []grpc.Address { return b.notifyCh }
 
 func (b *simpleBalancer) Close() error {
 	b.mu.Lock()
-	defer b.mu.Unlock()
 	// In case gRPC calls close twice. TODO: remove the checking
 	// when we are sure that gRPC wont call close twice.
 	if b.closed {
+		b.mu.Unlock()
+		<-b.donec
 		return nil
 	}
 	b.closed = true
-	close(b.notifyCh)
+	close(b.stopc)
 	b.pinAddr = ""
 
 	// In the case of following scenario:
@@ -236,6 +292,13 @@ func (b *simpleBalancer) Close() error {
 		// terminate all waiting Get()s
 		close(b.upc)
 	}
+
+	b.mu.Unlock()
+
+	// wait for updateNotifyLoop to finish
+	<-b.donec
+	close(b.notifyCh)
+
 	return nil
 }
 

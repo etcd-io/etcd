@@ -16,8 +16,13 @@ package clientv3
 
 import (
 	"errors"
+	"net"
+	"sync"
 	"testing"
 	"time"
+
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/testutil"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -123,4 +128,93 @@ func TestBalancerGetBlocking(t *testing.T) {
 	if err != context.DeadlineExceeded {
 		t.Errorf("Get() with no up endpoints should timeout, got %v", err)
 	}
+}
+
+// TestBalancerDoNotBlockOnClose ensures that balancer and grpc don't deadlock each other
+// due to rapid open/close conn. The deadlock causes balancer.Close() to block forever.
+// See issue: https://github.com/coreos/etcd/issues/7283 for more detail.
+func TestBalancerDoNotBlockOnClose(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	kcl := newKillConnListener(t, 3)
+	defer kcl.close()
+
+	for i := 0; i < 5; i++ {
+		sb := newSimpleBalancer(kcl.endpoints())
+		conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(sb))
+		if err != nil {
+			t.Fatal(err)
+		}
+		kvc := pb.NewKVClient(conn)
+		<-sb.readyc
+		for j := 0; j < 100; j++ {
+			go kvc.Range(context.TODO(), &pb.RangeRequest{}, grpc.FailFast(false))
+		}
+		// balancer.Close() might block
+		// if balancer and grpc deadlock each other.
+		closec := make(chan struct{})
+		go func() {
+			defer close(closec)
+			sb.Close()
+		}()
+		go conn.Close()
+		select {
+		case <-closec:
+		case <-time.After(3 * time.Second):
+			testutil.FatalStack(t, "balancer close timeout")
+		}
+	}
+}
+
+// killConnListener listens incoming conn and kills it immediately.
+type killConnListener struct {
+	wg    sync.WaitGroup
+	eps   []string
+	stopc chan struct{}
+	t     *testing.T
+}
+
+func newKillConnListener(t *testing.T, size int) *killConnListener {
+	kcl := &killConnListener{stopc: make(chan struct{}), t: t}
+
+	for i := 0; i < size; i++ {
+		ln, err := net.Listen("tcp", ":0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		kcl.eps = append(kcl.eps, ln.Addr().String())
+		kcl.wg.Add(1)
+		go kcl.listen(ln)
+	}
+	return kcl
+}
+
+func (kcl *killConnListener) endpoints() []string {
+	return kcl.eps
+}
+
+func (kcl *killConnListener) listen(l net.Listener) {
+	go func() {
+		defer kcl.wg.Done()
+		for {
+			conn, err := l.Accept()
+			select {
+			case <-kcl.stopc:
+				return
+			default:
+			}
+			if err != nil {
+				kcl.t.Fatal(err)
+			}
+			time.Sleep(1 * time.Millisecond)
+			conn.Close()
+		}
+	}()
+	<-kcl.stopc
+	l.Close()
+}
+
+func (kcl *killConnListener) close() {
+	close(kcl.stopc)
+	kcl.wg.Wait()
 }
