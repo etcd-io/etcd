@@ -2,7 +2,7 @@
 
 The guide talks about how to release a new version of etcd.
 
-The procedure includes some manual steps for sanity checking but it can probably be further scripted. Please keep this document up-to-date if making changes to the release process. 
+The procedure includes some manual steps for sanity checking, but it can probably be further scripted. Please keep this document up-to-date if making changes to the release process.
 
 ## Prepare release
 
@@ -58,7 +58,7 @@ Run release script in root directory:
 
 It generates all release binaries and images under directory ./release.
 
-## Sign binaries and images
+## Sign binaries, images, and source code
 
 etcd project key must be used to sign the generated binaries and images.`$SUBKEYID` is the key ID of etcd project Yubikey. Connect the key and run `gpg2 --card-status` to get the ID.
 
@@ -68,6 +68,15 @@ The following commands are used for public release sign:
 cd release
 for i in etcd-*{.zip,.tar.gz}; do gpg2 --default-key $SUBKEYID --armor --output ${i}.asc --detach-sign ${i}; done
 for i in etcd-*{.zip,.tar.gz}; do gpg2 --verify ${i}.asc ${i}; done
+
+# sign zipped source code files
+wget https://github.com/coreos/etcd/archive/${VERSION}.zip
+gpg2 --armor --default-key $SUBKEYID --output ${VERSION}.zip.asc --detach-sign ${VERSION}.zip
+gpg2 --verify ${VERSION}.zip.asc ${VERSION}.zip
+
+wget https://github.com/coreos/etcd/archive/${VERSION}.tar.gz
+gpg2 --armor --default-key $SUBKEYID --output ${VERSION}.tar.gz.asc --detach-sign ${VERSION}.tar.gz
+gpg2 --verify ${VERSION}.tar.gz.asc ${VERSION}.tar.gz
 ```
 
 The public key for GPG signing can be found at [CoreOS Application Signing Key](https://coreos.com/security/app-signing-key)
