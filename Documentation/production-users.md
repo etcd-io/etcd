@@ -145,3 +145,14 @@ In [hyper.sh][hyper.sh], the container service is backed by [hypernetes][hyperne
 
 [hypernetes]:https://github.com/hyperhq/hypernetes
 [Hyper.sh]:https://www.hyper.sh
+
+## Meitu
+- *Application*: system configuration for services, service discovery, kubernetes in test environment
+- *Launched*: October 2015
+- *Cluster Size*: 1 cluster of 3 members
+- *Order of Data Size*: megabytes
+- *Operator*: Meitu, hxj@meitu.com, [shafreeck][shafreeck]
+- *Environment*: Bare Metal
+- *Backups*: None, all data can be recreated if necessary.
+
+[shafreeck]:https://github.com/shafreeck
