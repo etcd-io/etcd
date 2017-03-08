@@ -29,6 +29,7 @@ var (
 
 func TestBalancerGetUnblocking(t *testing.T) {
 	sb := newSimpleBalancer(endpoints)
+	defer sb.Close()
 	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
 	}
@@ -72,6 +73,7 @@ func TestBalancerGetUnblocking(t *testing.T) {
 
 func TestBalancerGetBlocking(t *testing.T) {
 	sb := newSimpleBalancer(endpoints)
+	defer sb.Close()
 	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
 	}
