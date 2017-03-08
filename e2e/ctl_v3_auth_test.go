@@ -487,38 +487,17 @@ func authTestMemberRemove(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	n1 := cx.cfg.clusterSize
-	if n1 < 2 {
-		cx.t.Fatalf("%d-node is too small to test 'member remove'", n1)
-	}
-	resp, err := getMemberList(cx)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if n1 != len(resp.Members) {
-		cx.t.Fatalf("expected %d, got %d", n1, len(resp.Members))
-	}
-
-	clusterID := fmt.Sprintf("%x", resp.Header.ClusterId)
-
-	// remove one member that is not the one we connected to.
-	var memIDToRemove string
-	for _, m := range resp.Members {
-		if m.ID != resp.Header.MemberId {
-			memIDToRemove = fmt.Sprintf("%x", m.ID)
-			break
-		}
-	}
+	memIDToRemove, clusterID := cx.memberToRemove()
 
 	// ordinal user cannot remove a member
 	cx.user, cx.pass = "test-user", "pass"
-	if err = ctlV3MemberRemove(cx, memIDToRemove, clusterID); err == nil {
+	if err := ctlV3MemberRemove(cx, memIDToRemove, clusterID); err == nil {
 		cx.t.Fatalf("ordinal user must not be allowed to remove a member")
 	}
 
 	// root can remove a member
 	cx.user, cx.pass = "root", "root"
-	if err = ctlV3MemberRemove(cx, memIDToRemove, clusterID); err != nil {
+	if err := ctlV3MemberRemove(cx, memIDToRemove, clusterID); err != nil {
 		cx.t.Fatal(err)
 	}
 }
