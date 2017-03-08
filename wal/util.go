@@ -31,7 +31,7 @@ func Exist(dirpath string) bool {
 	if err != nil {
 		return false
 	}
-	return len(names) != 0
+	return len(checkWalNames(names, func(f string) {})) > 0
 }
 
 // searchIndex returns the last array index of names whose raft index section is
@@ -72,20 +72,21 @@ func readWalNames(dirpath string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	wnames := checkWalNames(names)
+	badf := func(f string) { plog.Warningf("ignored file %v in wal", f) }
+	wnames := checkWalNames(names, badf)
 	if len(wnames) == 0 {
 		return nil, ErrFileNotFound
 	}
 	return wnames, nil
 }
 
-func checkWalNames(names []string) []string {
+func checkWalNames(names []string, badName func(string)) []string {
 	wnames := make([]string, 0)
 	for _, name := range names {
 		if _, _, err := parseWalName(name); err != nil {
 			// don't complain about left over tmp files
 			if !strings.HasSuffix(name, ".tmp") {
-				plog.Warningf("ignored file %v in wal", name)
+				badName(name)
 			}
 			continue
 		}
