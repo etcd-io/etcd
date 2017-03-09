@@ -39,8 +39,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy/httpproxy"
 	"github.com/coreos/etcd/version"
-	"github.com/coreos/go-systemd/daemon"
-	systemdutil "github.com/coreos/go-systemd/util"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
@@ -163,20 +161,12 @@ func startEtcdOrProxyV2() {
 
 	osutil.HandleInterrupts()
 
-	if systemdutil.IsRunningSystemd() {
-		// At this point, the initialization of etcd is done.
-		// The listeners are listening on the TCP ports and ready
-		// for accepting connections. The etcd instance should be
-		// joined with the cluster and ready to serve incoming
-		// connections.
-		sent, err := daemon.SdNotify(false, "READY=1")
-		if err != nil {
-			plog.Errorf("failed to notify systemd for readiness: %v", err)
-		}
-		if !sent {
-			plog.Errorf("forgot to set Type=notify in systemd service file?")
-		}
-	}
+	// At this point, the initialization of etcd is done.
+	// The listeners are listening on the TCP ports and ready
+	// for accepting connections. The etcd instance should be
+	// joined with the cluster and ready to serve incoming
+	// connections.
+	notifySystemd()
 
 	select {
 	case lerr := <-errc:
