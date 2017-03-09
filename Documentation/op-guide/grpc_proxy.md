@@ -36,9 +36,9 @@ watch key A ^     ^ watch key A    |
 
 To effectively coalesce multiple client watchers into a single watcher, the gRPC proxy coalesces new `c-watchers` into an existing `s-watcher` when possible. This coalesced `s-watcher` may be out of sync with the etcd server due to network delays or buffered undelivered events. When the watch revision is unspecified, the gRPC proxy will not guarantee the `c-watcher` will start watching from the most recent store revision. For example, if a client watches from an etcd server with revision 1000, that watcher will begin at revision 1000. If a client watches from the gRPC proxy, may begin watching from revision 990.
 
-Similar limitations apply to cancellation. When the watcher is cancelled, the etcd server’s revision may be greater than the cancellation response revision. 
+Similar limitations apply to cancellation. When the watcher is cancelled, the etcd server’s revision may be greater than the cancellation response revision.
 
-These two limitations should not cause problems for most use cases. In the future, there may be additional options to force the watcher to bypass the gRPC proxy for more accurate revision responses. 
+These two limitations should not cause problems for most use cases. In the future, there may be additional options to force the watcher to bypass the gRPC proxy for more accurate revision responses.
 
 ## Scalable lease API
 
@@ -97,4 +97,74 @@ OK
 $ ETCDCTL_API=3 ./etcdctl --endpoints=127.0.0.1:2379 get foo
 foo
 bar
+```
+
+## Client endpoint synchronization and name resolution
+
+The proxy supports registering its endpoints for discovery by writing to a user-defined endpoint. This serves two purposes. First, it allows clients to synchronize their endpoints against a set of proxy endpoints for high availability. Second, it is an endpoint provider for etcd [gRPC naming][dev-guide/grpc_naming.md].
+
+Register proxy(s) by providing a user-defined prefix:
+
+```bash
+$ etcd grpc-proxy start --endpoints=localhost:2379 \
+  --listen-addr=127.0.0.1:23790 \
+  --advertise-client-url=127.0.0.1:23790 \
+  --resolver-prefix="___grpc_proxy_endpoint" \
+  --resolver-ttl=60
+
+$ etcd grpc-proxy start --endpoints=localhost:2379 \
+  --listen-addr=127.0.0.1:23791 \
+  --advertise-client-url=127.0.0.1:23791 \
+  --resolver-prefix="___grpc_proxy_endpoint" \
+  --resolver-ttl=60
+```
+
+The proxy will list all its members for member list:
+
+```bash
+ETCDCTL_API=3 ./bin/etcdctl --endpoints=http://localhost:23790 member list --write-out table
+
++----+---------+--------------------------------+------------+-----------------+
+| ID | STATUS  |              NAME              | PEER ADDRS |  CLIENT ADDRS   |
++----+---------+--------------------------------+------------+-----------------+
+|  0 | started | Gyu-Hos-MBP.sfo.coreos.systems |            | 127.0.0.1:23791 |
+|  0 | started | Gyu-Hos-MBP.sfo.coreos.systems |            | 127.0.0.1:23790 |
++----+---------+--------------------------------+------------+-----------------+
+```
+
+This lets clients automatically discover proxy endpoints through Sync:
+
+```go
+cli, err := clientv3.New(clientv3.Config{
+    Endpoints: []string{"http://localhost:23790"},
+})
+if err != nil {
+    log.Fatal(err)
+}
+defer cli.Close()
+
+// fetch registered grpc-proxy endpoints
+if err := cli.Sync(context.Background()); err != nil {
+    log.Fatal(err)
+}
+```
+
+Note that if a proxy is configured without a resolver prefix,
+
+```bash
+$ etcd grpc-proxy start --endpoints=localhost:2379 \
+  --listen-addr=127.0.0.1:23792 \
+  --advertise-client-url=127.0.0.1:23792
+```
+
+the member list API to the grpc-proxy returns its own `advertise-client-url`:
+
+```bash
+ETCDCTL_API=3 ./bin/etcdctl --endpoints=http://localhost:23792 member list --write-out table
+
++----+---------+--------------------------------+------------+-----------------+
+| ID | STATUS  |              NAME              | PEER ADDRS |  CLIENT ADDRS   |
++----+---------+--------------------------------+------------+-----------------+
+|  0 | started | Gyu-Hos-MBP.sfo.coreos.systems |            | 127.0.0.1:23792 |
++----+---------+--------------------------------+------------+-----------------+
 ```

@@ -26,7 +26,7 @@ import (
 	gnaming "google.golang.org/grpc/naming"
 )
 
-func Test_register(t *testing.T) {
+func TestRegister(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
@@ -44,7 +44,7 @@ func Test_register(t *testing.T) {
 		t.Fatalf("len(ups) expected 0, got %d (%v)", len(ups), ups)
 	}
 
-	donec := register(cli, testPrefix, paddr, 5)
+	donec := Register(cli, testPrefix, paddr, 5)
 
 	ups, err = wa.Next()
 	if err != nil {
