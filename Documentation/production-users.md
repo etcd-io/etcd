@@ -168,3 +168,17 @@ In [hyper.sh][hyper.sh], the container service is backed by [hypernetes][hyperne
 
 [taxitan]:https://github.com/taxitan
 [reterVision]:https://github.com/reterVision
+
+## DaoCloud.io
+
+- *Application*: container management
+- *Launched*: Sep. 2015
+- *Cluster Size*: 1000+ deployments, each deployment contains a 3 node cluster.
+- *Order of Data Size*: 100s of Megabytes
+- *Operator*: daocloud.io
+- *Environment*: Baremetal and virtual machines 
+- *Backups*: None, all data can be recreated if necessary.
+
+In [DaoCloud][DaoCloud], we use Docker and Swarm to deploy and run our applications, and we use etcd to save metadata for service discovery.
+
+[DaoCloud]:https://www.daocloud.io
