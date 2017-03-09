@@ -252,7 +252,7 @@ function fmt_pass {
 		echo "Skipping unused..."
 	fi
 
-	if which unused >/dev/null; then
+	if which staticcheck >/dev/null; then
 		echo "Checking staticcheck..."
 		staticcheckResult=`staticcheck ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
 		if [ ! -n "${staticcheckResult}" ]; then
