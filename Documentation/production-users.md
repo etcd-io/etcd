@@ -5,7 +5,7 @@ This document tracks people and use cases for etcd in production. By creating a 
 ## All Kubernetes Users
 
 - *Application*: https://kubernetes.io/
-- *Environments*: AWS, OpenStack, Azure, Google Cloud, Bare Metal, etc
+- *Environments*: AWS, OpenStack, Azure, Google Cloud, Huawei Cloud, Bare Metal, etc
 
 **This is a meta user; please feel free to document specific Kubernetes clusters!**
 
@@ -59,7 +59,7 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 
 ## Vonage
 
-- *Application*: system configuration for microservices, scheduling, locks (future - service discovery) 
+- *Application*: system configuration for microservices, scheduling, locks (future - service discovery)
 - *Launched*: August 2015
 - *Cluster Size*: 2 clusters of 5 members in 2 DCs, n local proxies 1-to-1 with microservice, (ssl and SRV look up)
 - *Order of Data Size*: kilobytes
@@ -69,15 +69,25 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 
 ## PD
 
-- *Application*: embed etcd  
+- *Application*: embed etcd
 - *Launched*: Mar 2016
-- *Cluster Size*: 3 or 5 members 
+- *Cluster Size*: 3 or 5 members
 - *Order of Data Size*: megabytes
 - *Operator*: PingCAP, Inc.
 - *Environment*: Bare Metal, AWS, etc.
 - *Backups*: None.
 
-PD(Placement Driver) is the central controller in the TiDB cluster. It saves the cluster meta information, schedule the data, allocate the global unique timestamp for the distributed transaction, etc. It embeds etcd to supply high availability and auto failover. 
+PD(Placement Driver) is the central controller in the TiDB cluster. It saves the cluster meta information, schedule the data, allocate the global unique timestamp for the distributed transaction, etc. It embeds etcd to supply high availability and auto failover.
+
+## Canal
+
+- *Application*: system configuration for overlay network
+- *Launched*: June 2016
+- *Cluster Size*: 3 members for each cluster
+- *Order of Data Size*: kilobytes
+- *Operator*: Huawei Euler Department
+- *Environment*: [Huawei Cloud](http://www.hwclouds.com/product/cce.html)
+- *Backups*: None, all data can be recreated if necessary.
 
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
