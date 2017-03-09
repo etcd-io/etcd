@@ -95,10 +95,11 @@ func TestBalancerGetBlocking(t *testing.T) {
 	go func() {
 		// ensure sb.Up() will be called after sb.Get() to see if Up() releases blocking Get()
 		time.Sleep(time.Millisecond * 100)
-		downC <- sb.Up(grpc.Address{Addr: endpoints[1]})
+		f := sb.Up(grpc.Address{Addr: endpoints[1]})
 		if addrs := <-sb.Notify(); len(addrs) != 1 {
 			t.Errorf("first Up() should have triggered balancer to send the first connected address via Notify chan so that other connections can be closed")
 		}
+		downC <- f
 	}()
 	addrFirst, putFun, err := sb.Get(context.Background(), blockingOpts)
 	if err != nil {
