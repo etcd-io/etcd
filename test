@@ -110,6 +110,8 @@ function cov_pass {
 	# run code coverage for unit and integration tests
 	for t in ${PKGS}; do
 		tf=`echo $t | tr / _`
+		# cache package compilation data for faster repeated builds
+		go test -covermode=set -coverpkg $PKGS_DELIM -i -v ${REPO_PATH}/$t
 		# uses -run=Test to skip examples because clientv3/ example tests will leak goroutines
 		go test -covermode=set -coverpkg $PKGS_DELIM -timeout 15m -run=Test -v -coverprofile "$COVERDIR/${tf}.coverprofile"  ${REPO_PATH}/$t
 	done
