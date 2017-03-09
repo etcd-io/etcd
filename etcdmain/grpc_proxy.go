@@ -144,6 +144,9 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 
 	go func() { errc <- m.Serve() }()
 
+	// grpc-proxy is initialized, ready to serve
+	notifySystemd()
+
 	fmt.Fprintln(os.Stderr, <-errc)
 	os.Exit(1)
 }
