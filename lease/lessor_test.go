@@ -86,10 +86,8 @@ func TestLeaseConcurrentKeys(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	fd := &fakeDeleter{}
-
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(fd)
+	le.SetRangeDeleter(func() TxnDelete { return &fakeDeleter{} })
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -138,7 +136,7 @@ func TestLessorRevoke(t *testing.T) {
 	fd := &fakeDeleter{}
 
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(fd)
+	le.SetRangeDeleter(func() TxnDelete { return fd })
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -215,10 +213,8 @@ func TestLessorDetach(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	fd := &fakeDeleter{}
-
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(fd)
+	le.SetRangeDeleter(func() TxnDelete { return &fakeDeleter{} })
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -382,17 +378,11 @@ type fakeDeleter struct {
 	deleted []string
 }
 
-func (fd *fakeDeleter) TxnBegin() int64 {
-	return 0
-}
+func (fd *fakeDeleter) End() {}
 
-func (fd *fakeDeleter) TxnEnd(txnID int64) error {
-	return nil
-}
-
-func (fd *fakeDeleter) TxnDeleteRange(tid int64, key, end []byte) (int64, int64, error) {
+func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
-	return 0, 0, nil
+	return 0, 0
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {

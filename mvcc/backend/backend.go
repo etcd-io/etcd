@@ -53,7 +53,9 @@ const (
 )
 
 type Backend interface {
+	ReadTx() ReadTx
 	BatchTx() BatchTx
+
 	Snapshot() Snapshot
 	Hash(ignores map[IgnoreKey]struct{}) (uint32, error)
 	// Size returns the current size of the backend.
@@ -86,7 +88,9 @@ type backend struct {
 
 	batchInterval time.Duration
 	batchLimit    int
-	batchTx       *batchTx
+	batchTx       *batchTxBuffered
+
+	readTx *readTx
 
 	stopc chan struct{}
 	donec chan struct{}
@@ -106,16 +110,22 @@ func newBackend(path string, d time.Duration, limit int) *backend {
 		plog.Panicf("cannot open database at %s (%v)", path, err)
 	}
 
+	// In future, may want to make buffering optional for low-concurrency systems
+	// or dynamically swap between buffered/non-buffered depending on workload.
 	b := &backend{
 		db: db,
 
 		batchInterval: d,
 		batchLimit:    limit,
 
+		readTx: &readTx{buf: txReadBuffer{
+			txBuffer: txBuffer{make(map[string]*bucketBuffer)}},
+		},
+
 		stopc: make(chan struct{}),
 		donec: make(chan struct{}),
 	}
-	b.batchTx = newBatchTx(b)
+	b.batchTx = newBatchTxBuffered(b)
 	go b.run()
 	return b
 }
@@ -126,6 +136,8 @@ func newBackend(path string, d time.Duration, limit int) *backend {
 func (b *backend) BatchTx() BatchTx {
 	return b.batchTx
 }
+
+func (b *backend) ReadTx() ReadTx { return b.readTx }
 
 // ForceCommit forces the current batching tx to commit.
 func (b *backend) ForceCommit() {
@@ -326,6 +338,17 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 	}
 
 	return tmptx.Commit()
+}
+
+func (b *backend) begin(write bool) *bolt.Tx {
+	b.mu.RLock()
+	tx, err := b.db.Begin(write)
+	if err != nil {
+		plog.Fatalf("cannot begin tx (%s)", err)
+	}
+	b.mu.RUnlock()
+	atomic.StoreInt64(&b.size, tx.Size())
+	return tx
 }
 
 // NewTmpBackend creates a backend implementation for testing.

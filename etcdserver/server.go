@@ -807,7 +807,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	if s.lessor != nil {
 		plog.Info("recovering lessor...")
-		s.lessor.Recover(newbe, s.kv)
+		s.lessor.Recover(newbe, func() lease.TxnDelete { return s.kv.Write() })
 		plog.Info("finished recovering lessor")
 	}
 
