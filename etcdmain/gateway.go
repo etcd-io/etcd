@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/tcpproxy"
+
 	"github.com/spf13/cobra"
 )
 
@@ -134,6 +135,9 @@ func startGateway(cmd *cobra.Command, args []string) {
 		Endpoints:       endpoints,
 		MonitorInterval: getewayRetryDelay,
 	}
+
+	// At this point, etcd gateway listener is initialized
+	notifySystemd()
 
 	tp.Run()
 }
