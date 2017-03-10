@@ -206,3 +206,13 @@ In [DaoCloud][DaoCloud], we use Docker and Swarm to deploy and run our applicati
 At Branch, we use kubernetes heavily as our core microservice platform for staging and production. 
 [Branch]:https://branch.io
 
+## Baidu Waimai
+
+- *Application*: SkyDNS, Kubernetes, UDC, CMDB and other distributed systems
+- *Launched*: April. 2016
+- *Cluster Size*: 3 clusters of 5 members
+- *Order of Data Size*: several gigabytes
+- *Operator*: Baidu Waimai Operations Department
+- *Environment*: CentOS 6.5 
+- *Backups*: backup scripts
+
