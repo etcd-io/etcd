@@ -192,3 +192,17 @@ In [hyper.sh][hyper.sh], the container service is backed by [hypernetes][hyperne
 In [DaoCloud][DaoCloud], we use Docker and Swarm to deploy and run our applications, and we use etcd to save metadata for service discovery.
 
 [DaoCloud]:https://www.daocloud.io
+
+## Branch.io
+
+- *Application*: Kubernetes
+- *Launched*: April 2016
+- *Cluster Size*: Multiple clusters, multiple sizes
+- *Order of Data Size*: 100s of Megabytes
+- *Operator*: branch.io
+- *Environment*: AWS, Kubernetes
+- *Backups*: EBS volume backups
+
+At Branch, we use kubernetes heavily as our core microservice platform for staging and production. 
+[Branch]:https://branch.io
+
