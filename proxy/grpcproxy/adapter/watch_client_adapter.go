@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpcproxy
+package adapter
 
 import (
 	"errors"
@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-var errAlreadySentHeader = errors.New("grpcproxy: already send header")
+var errAlreadySentHeader = errors.New("adapter: already sent header")
 
 type ws2wc struct{ wserv pb.WatchServer }
 
