@@ -193,7 +193,7 @@ In [DaoCloud][DaoCloud], we use Docker and Swarm to deploy and run our applicati
 
 [DaoCloud]:https://www.daocloud.io
 
-# Baidu Waimai
+## Baidu Waimai
 
 - *Application*: SkyDNS, Kubernetes, UDC, CMDB and other distributed systems
 - *Launched*: April. 2016
