@@ -744,6 +744,9 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 	if !as.isAuthEnabled() {
 		return nil
 	}
+	if authInfo == nil {
+		return ErrUserEmpty
+	}
 
 	tx := as.be.BatchTx()
 	tx.Lock()
