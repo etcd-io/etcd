@@ -74,7 +74,7 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 			shortHost := strings.TrimSuffix(srv.Target, ".")
 			urlHost := net.JoinHostPort(shortHost, port)
 			stringParts = append(stringParts, fmt.Sprintf("%s=%s://%s", n, scheme, urlHost))
-			plog.Noticef("got bootstrap from DNS for %s at %s%s", service, scheme, urlHost)
+			plog.Noticef("got bootstrap from DNS for %s at %s://%s", service, scheme, urlHost)
 			if ok && url.Scheme != scheme {
 				plog.Errorf("bootstrap at %s from DNS for %s has scheme mismatch with expected peer %s", scheme+"://"+urlHost, service, url.String())
 			}
