@@ -1,6 +1,6 @@
 # KV API guarantees
 
-etcd is a consistent and durable key value store with mini-transaction(TODO: link to txn doc when we have it) support. The key value store is exposed through the KV APIs. etcd tries to ensure the strongest consistency and durability guarantees for a distributed system. This specification enumerates the KV API guarantees made by etcd.
+etcd is a consistent and durable key value store with [mini-transaction][txn] support. The key value store is exposed through the KV APIs. etcd tries to ensure the strongest consistency and durability guarantees for a distributed system. This specification enumerates the KV API guarantees made by etcd.
 
 ### APIs to consider
 
@@ -61,3 +61,4 @@ etcd ensures linearizability for all other operations by default. Linearizabilit
 [strict_consistency]: https://en.wikipedia.org/wiki/Consistency_model#Strict_consistency
 [serializable_isolation]: https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable
 [Linearizability]: #Linearizability
+[txn]: api.md#transactions
