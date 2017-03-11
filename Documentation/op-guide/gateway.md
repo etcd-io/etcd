@@ -64,3 +64,11 @@ Start the etcd gateway to fetch the endpoints from the DNS SRV entries with the 
 $ etcd gateway --discovery-srv=example.com
 2016-08-16 11:21:18.867350 I | tcpproxy: ready to proxy client requests to [...]
 ```
+
+## Changing listener address
+
+By default, etcd gateway listens for client requests on `127.0.0.1:23790`. This can be changed using `--listen-addr`, eg:
+
+```bash
+$ etcd gateway start --endpoints=infra0.example.com --listen-addr=127.0.0.1:2222
+```
