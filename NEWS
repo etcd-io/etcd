@@ -1,3 +1,9 @@
+etcd v3.1.3 (2017-03-10)
+- use machine default host when advertise URLs are default
+  values(localhost:2379,2380) AND if listen URL is 0.0.0.0
+- fix 'etcd gateway' schema handling in DNS discovery
+- fix sd_notify behaviors in gateway, grpc-proxy
+
 etcd v3.1.2 (2017-02-24)
 - use IPv4 default host, by default (when IPv4 and IPv6 are available)
 - fix 'etcd gateway' with multiple endpoints
