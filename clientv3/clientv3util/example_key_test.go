@@ -16,7 +16,6 @@ package clientv3util_test
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/coreos/etcd/clientv3"
