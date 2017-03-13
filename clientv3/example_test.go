@@ -26,7 +26,7 @@ import (
 
 var (
 	dialTimeout    = 5 * time.Second
-	requestTimeout = 1 * time.Second
+	requestTimeout = 10 * time.Second
 	endpoints      = []string{"localhost:2379", "localhost:22379", "localhost:32379"}
 )
 

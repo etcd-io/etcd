@@ -18,6 +18,8 @@ package e2e
 
 import "github.com/coreos/etcd/pkg/expect"
 
+const noOutputLineCount = 0 // regular binaries emit no extra lines
+
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 	return expect.NewExpect(args[0], args[1:]...)
 }

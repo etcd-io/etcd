@@ -25,7 +25,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-func Start() {
+func Start(apiv string) {
 	app := cli.NewApp()
 	app.Name = "etcdctl"
 	app.Version = version.Version
@@ -34,6 +34,14 @@ func Start() {
 		fmt.Fprintln(c.App.Writer, "API version: 2")
 	}
 	app.Usage = "A simple command line client for etcd."
+
+	if apiv == "" {
+		app.Usage += "\n\n" +
+			"WARNING:\n" +
+			"   Environment variable ETCDCTL_API is not set; defaults to etcdctl v2.\n" +
+			"   Set environment variable ETCDCTL_API=3 to use v3 API or ETCDCTL_API=2 to use v2 API."
+	}
+
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{Name: "debug", Usage: "output cURL commands which can be used to reproduce the request"},
 		cli.BoolFlag{Name: "no-sync", Usage: "don't synchronize cluster information before sending request"},
@@ -71,7 +79,7 @@ func Start() {
 		command.NewAuthCommands(),
 	}
 
-	err := app.Run(os.Args)
+	err := runCtlV2(app)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

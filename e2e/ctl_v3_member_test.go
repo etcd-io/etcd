@@ -71,23 +71,8 @@ func getMemberList(cx ctlCtx) (etcdserverpb.MemberListResponse, error) {
 }
 
 func memberRemoveTest(cx ctlCtx) {
-	n1 := cx.cfg.clusterSize
-	if n1 < 2 {
-		cx.t.Fatalf("%d-node is too small to test 'member remove'", n1)
-	}
-	resp, err := getMemberList(cx)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if n1 != len(resp.Members) {
-		cx.t.Fatalf("expected %d, got %d", n1, len(resp.Members))
-	}
-
-	var (
-		memIDToRemove = fmt.Sprintf("%x", resp.Header.MemberId)
-		cluserID      = fmt.Sprintf("%x", resp.Header.ClusterId)
-	)
-	if err = ctlV3MemberRemove(cx, memIDToRemove, cluserID); err != nil {
+	memIDToRemove, clusterID := cx.memberToRemove()
+	if err := ctlV3MemberRemove(cx, memIDToRemove, clusterID); err != nil {
 		cx.t.Fatal(err)
 	}
 }

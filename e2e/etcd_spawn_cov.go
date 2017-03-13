@@ -29,20 +29,13 @@ import (
 	"github.com/coreos/etcd/pkg/flags"
 )
 
+const noOutputLineCount = 2 // cov-enabled binaries emit PASS and coverage count lines
+
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 	if args[0] == binPath {
-		coverPath := os.Getenv("COVERDIR")
-		if !filepath.IsAbs(coverPath) {
-			// COVERDIR is relative to etcd root but e2e test has its path set to be relative to the e2e folder.
-			// adding ".." in front of COVERDIR ensures that e2e saves coverage reports to the correct location.
-			coverPath = filepath.Join("..", coverPath)
-		}
-		if !fileutil.Exist(coverPath) {
-			return nil, fmt.Errorf("could not find coverage folder")
-		}
-		covArgs := []string{
-			fmt.Sprintf("-test.coverprofile=e2e.%v.coverprofile", time.Now().UnixNano()),
-			"-test.outputdir=" + coverPath,
+		covArgs, err := getCovArgs()
+		if err != nil {
+			return nil, err
 		}
 		ep, err := expect.NewExpectWithEnv(binDir+"/etcd_test", covArgs, args2env(args[1:]))
 		if err != nil {
@@ -55,7 +48,45 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 		ep.StopSignal = syscall.SIGTERM
 		return ep, nil
 	}
+
+	if args[0] == ctlBinPath {
+		covArgs, err := getCovArgs()
+		if err != nil {
+			return nil, err
+		}
+		// avoid test flag conflicts in coverage enabled etcdctl by putting flags in ETCDCTL_ARGS
+		ctl_cov_env := []string{
+			"ETCDCTL_ARGS" + "=" + strings.Join(args, "\xff"),
+		}
+		// when withFlagByEnv() is used in testCtl(), env variables for ctl is set to os.env.
+		// they must be included in ctl_cov_env.
+		ctl_cov_env = append(ctl_cov_env, os.Environ()...)
+		ep, err := expect.NewExpectWithEnv(binDir+"/etcdctl_test", covArgs, ctl_cov_env)
+		if err != nil {
+			return nil, err
+		}
+		ep.StopSignal = syscall.SIGTERM
+		return ep, nil
+	}
+
 	return expect.NewExpect(args[0], args[1:]...)
+}
+
+func getCovArgs() ([]string, error) {
+	coverPath := os.Getenv("COVERDIR")
+	if !filepath.IsAbs(coverPath) {
+		// COVERDIR is relative to etcd root but e2e test has its path set to be relative to the e2e folder.
+		// adding ".." in front of COVERDIR ensures that e2e saves coverage reports to the correct location.
+		coverPath = filepath.Join("..", coverPath)
+	}
+	if !fileutil.Exist(coverPath) {
+		return nil, fmt.Errorf("could not find coverage folder")
+	}
+	covArgs := []string{
+		fmt.Sprintf("-test.coverprofile=e2e.%v.coverprofile", time.Now().UnixNano()),
+		"-test.outputdir=" + coverPath,
+	}
+	return covArgs, nil
 }
 
 func args2env(args []string) []string {

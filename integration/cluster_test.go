@@ -447,13 +447,24 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 func clusterMustProgress(t *testing.T, membs []*member) {
 	cc := MustNewHTTPClient(t, []string{membs[0].URL()}, nil)
 	kapi := client.NewKeysAPI(cc)
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	key := fmt.Sprintf("foo%d", rand.Int())
-	resp, err := kapi.Create(ctx, "/"+key, "bar")
+	var (
+		err  error
+		resp *client.Response
+	)
+	// retry in case of leader loss induced by slow CI
+	for i := 0; i < 3; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		resp, err = kapi.Create(ctx, "/"+key, "bar")
+		cancel()
+		if err == nil {
+			break
+		}
+		t.Logf("failed to create key on %q (%v)", membs[0].URL(), err)
+	}
 	if err != nil {
 		t.Fatalf("create on %s error: %v", membs[0].URL(), err)
 	}
-	cancel()
 
 	for i, m := range membs {
 		u := m.URL()

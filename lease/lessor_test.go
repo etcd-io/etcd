@@ -15,11 +15,13 @@
 package lease
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -55,11 +57,12 @@ func TestLessorGrant(t *testing.T) {
 		t.Errorf("term = %v, want at least %v", l.Remaining(), minLeaseTTLDuration-time.Second)
 	}
 
-	nl, err := le.Grant(1, 1)
+	_, err = le.Grant(1, 1)
 	if err == nil {
 		t.Errorf("allocated the same lease")
 	}
 
+	var nl *Lease
 	nl, err = le.Grant(2, 1)
 	if err != nil {
 		t.Errorf("could not grant lease 2 (%v)", err)
@@ -76,6 +79,51 @@ func TestLessorGrant(t *testing.T) {
 	be.BatchTx().Unlock()
 }
 
+// TestLeaseConcurrentKeys ensures Lease.Keys method calls are guarded
+// from concurrent map writes on 'itemSet'.
+func TestLeaseConcurrentKeys(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(be, minLeaseTTL)
+	le.SetRangeDeleter(func() TxnDelete { return &fakeDeleter{} })
+
+	// grant a lease with long term (100 seconds) to
+	// avoid early termination during the test.
+	l, err := le.Grant(1, 100)
+	if err != nil {
+		t.Fatalf("could not grant lease for 100s ttl (%v)", err)
+	}
+
+	itemn := 10
+	items := make([]LeaseItem, itemn)
+	for i := 0; i < itemn; i++ {
+		items[i] = LeaseItem{Key: fmt.Sprintf("foo%d", i)}
+	}
+	if err = le.Attach(l.ID, items); err != nil {
+		t.Fatalf("failed to attach items to the lease: %v", err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		le.Detach(l.ID, items)
+		close(donec)
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(itemn)
+	for i := 0; i < itemn; i++ {
+		go func() {
+			defer wg.Done()
+			l.Keys()
+		}()
+	}
+
+	<-donec
+	wg.Wait()
+}
+
 // TestLessorRevoke ensures Lessor can revoke a lease.
 // The items in the revoked lease should be removed from
 // the backend.
@@ -88,7 +136,7 @@ func TestLessorRevoke(t *testing.T) {
 	fd := &fakeDeleter{}
 
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(fd)
+	le.SetRangeDeleter(func() TxnDelete { return fd })
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -165,10 +213,8 @@ func TestLessorDetach(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	fd := &fakeDeleter{}
-
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(fd)
+	le.SetRangeDeleter(func() TxnDelete { return &fakeDeleter{} })
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -332,17 +378,11 @@ type fakeDeleter struct {
 	deleted []string
 }
 
-func (fd *fakeDeleter) TxnBegin() int64 {
-	return 0
-}
+func (fd *fakeDeleter) End() {}
 
-func (fd *fakeDeleter) TxnEnd(txnID int64) error {
-	return nil
-}
-
-func (fd *fakeDeleter) TxnDeleteRange(tid int64, key, end []byte) (int64, int64, error) {
+func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
-	return 0, 0, nil
+	return 0, 0
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {

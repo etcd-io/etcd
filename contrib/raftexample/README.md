@@ -33,7 +33,7 @@ curl -L http://127.0.0.1:12380/my-key
 
 First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
 
-The [Procfile script](./Procfile) will set up a local example cluster. You can start it with:
+The [Procfile script](./Procfile) will set up a local example cluster. Start it with:
 
 ```sh
 goreman start
@@ -41,7 +41,7 @@ goreman start
 
 This will bring up three raftexample instances.
 
-You can write a key-value pair to any member of the cluster and likewise retrieve it from any member.
+Now it's possible to write a key-value pair to any member of the cluster and likewise retrieve it from any member.
 
 ### Fault Tolerance
 

@@ -78,11 +78,9 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		id := s.TxnBegin()
-		if _, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease); err != nil {
-			plog.Fatalf("txn put error: %v", err)
-		}
-		s.TxnEnd(id)
+		txn := s.Write()
+		txn.Put(keys[i], vals[i], lease.NoLease)
+		txn.End()
 	}
 }
 
@@ -100,15 +98,12 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < revsPerKey; j++ {
-			id := s.TxnBegin()
-			if _, err := s.TxnPut(id, keys[i], vals[i], lease.NoLease); err != nil {
-				plog.Fatalf("txn put error: %v", err)
-			}
-			s.TxnEnd(id)
+			txn := s.Write()
+			txn.Put(keys[i], vals[i], lease.NoLease)
+			txn.End()
 		}
 	}
 	b.ResetTimer()
-	s = NewStore(be, &lease.FakeLessor{}, &i)
 }
 
 func BenchmarkStoreRestoreRevs1(b *testing.B) {

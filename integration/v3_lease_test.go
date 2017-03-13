@@ -105,7 +105,7 @@ func TestV3LeaseGrantByID(t *testing.T) {
 	}
 
 	// create duplicate fixed lease
-	lresp, err = toGRPC(clus.RandClient()).Lease.LeaseGrant(
+	_, err = toGRPC(clus.RandClient()).Lease.LeaseGrant(
 		context.TODO(),
 		&pb.LeaseGrantRequest{ID: 1, TTL: 1})
 	if !eqErrGRPC(err, rpctypes.ErrGRPCLeaseExist) {
@@ -240,8 +240,8 @@ func TestV3LeaseRenewStress(t *testing.T) {
 	testLeaseStress(t, stressLeaseRenew)
 }
 
-// TestV3LeaseTimeToLiveStress keeps creating lease and retriving it immediately to ensure the lease can be retrived.
-// it was oberserved that the immediate lease retrival after granting a lease from follower resulted lease not found.
+// TestV3LeaseTimeToLiveStress keeps creating lease and retrieving it immediately to ensure the lease can be retrieved.
+// it was oberserved that the immediate lease retrieval after granting a lease from follower resulted lease not found.
 // related issue https://github.com/coreos/etcd/issues/6978
 func TestV3LeaseTimeToLiveStress(t *testing.T) {
 	testLeaseStress(t, stressLeaseTimeToLive)
@@ -334,7 +334,7 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 	}
 }
 
-// TestV3GetNonExistLease ensures client retriving nonexistent lease on a follower doesn't result node panic
+// TestV3GetNonExistLease ensures client retrieving nonexistent lease on a follower doesn't result node panic
 // related issue https://github.com/coreos/etcd/issues/6537
 func TestV3GetNonExistLease(t *testing.T) {
 	defer testutil.AfterTest(t)

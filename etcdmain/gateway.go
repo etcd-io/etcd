@@ -17,12 +17,14 @@ package etcdmain
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"time"
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/tcpproxy"
+
 	"github.com/spf13/cobra"
 )
 
@@ -77,6 +79,20 @@ func newGatewayStartCommand() *cobra.Command {
 	return &cmd
 }
 
+func stripSchema(eps []string) []string {
+	var endpoints []string
+
+	for _, ep := range eps {
+
+		if u, err := url.Parse(ep); err == nil && u.Host != "" {
+			ep = u.Host
+		}
+
+		endpoints = append(endpoints, ep)
+	}
+
+	return endpoints
+}
 func startGateway(cmd *cobra.Command, args []string) {
 	endpoints := gatewayEndpoints
 	if gatewayDNSCluster != "" {
@@ -101,6 +117,9 @@ func startGateway(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	// Strip the schema from the endpoints because we start just a TCP proxy
+	endpoints = stripSchema(endpoints)
+
 	if len(endpoints) == 0 {
 		plog.Fatalf("no endpoints found")
 	}
@@ -116,6 +135,9 @@ func startGateway(cmd *cobra.Command, args []string) {
 		Endpoints:       endpoints,
 		MonitorInterval: getewayRetryDelay,
 	}
+
+	// At this point, etcd gateway listener is initialized
+	notifySystemd()
 
 	tp.Run()
 }

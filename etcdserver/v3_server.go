@@ -107,7 +107,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 	chk := func(ai *auth.AuthInfo) error {
 		return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 	}
-	get := func() { resp, err = s.applyV3Base.Range(noTxn, r) }
+	get := func() { resp, err = s.applyV3Base.Range(nil, r) }
 	if serr := s.doSerialize(ctx, chk, get); serr != nil {
 		return nil, serr
 	}
@@ -122,7 +122,7 @@ func (s *EtcdServer) legacyRange(ctx context.Context, r *pb.RangeRequest) (*pb.R
 		chk := func(ai *auth.AuthInfo) error {
 			return s.authStore.IsRangePermitted(ai, r.Key, r.RangeEnd)
 		}
-		get := func() { resp, err = s.applyV3Base.Range(noTxn, r) }
+		get := func() { resp, err = s.applyV3Base.Range(nil, r) }
 		if serr := s.doSerialize(ctx, chk, get); serr != nil {
 			return nil, serr
 		}
@@ -441,7 +441,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 			return nil, err
 		}
 
-		st, err := s.AuthStore().GenSimpleToken()
+		st, err := s.AuthStore().GenTokenPrefix()
 		if err != nil {
 			return nil, err
 		}

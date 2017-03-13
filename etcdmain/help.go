@@ -163,5 +163,9 @@ profiling flags:
 		Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
 	--metrics 'basic'
 	  Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
+
+auth flags:
+	--auth-token 'simple'
+		Specify a v3 authentication token type and its options ('simple' or 'jwt').
 `
 )

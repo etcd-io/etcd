@@ -37,7 +37,6 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver"
-	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -87,11 +86,6 @@ type ClusterConfig struct {
 type cluster struct {
 	cfg     *ClusterConfig
 	Members []*member
-}
-
-func init() {
-	// manually enable v3 capability since we know the cluster members all support v3.
-	api.EnableCapability(api.V3rpcCapability)
 }
 
 func schemeFromTLSInfo(tls *transport.TLSInfo) string {
@@ -175,8 +169,12 @@ func (c *cluster) URL(i int) string {
 
 // URLs returns a list of all active client URLs in the cluster
 func (c *cluster) URLs() []string {
+	return getMembersURLs(c.Members)
+}
+
+func getMembersURLs(members []*member) []string {
 	urls := make([]string, 0)
-	for _, m := range c.Members {
+	for _, m := range members {
 		select {
 		case <-m.s.StopNotify():
 			continue
@@ -343,6 +341,18 @@ func (c *cluster) waitLeader(t *testing.T, membs []*member) int {
 	for _, m := range membs {
 		possibleLead[uint64(m.s.ID())] = true
 	}
+	cc := MustNewHTTPClient(t, getMembersURLs(membs), nil)
+	kapi := client.NewKeysAPI(cc)
+
+	// ensure leader is up via linearizable get
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*tickDuration)
+		_, err := kapi.Get(ctx, "0", &client.GetOptions{Quorum: true})
+		cancel()
+		if err == nil || strings.Contains(err.Error(), "Key not found") {
+			break
+		}
+	}
 
 	for lead == 0 || !possibleLead[lead] {
 		lead = 0
@@ -505,6 +515,7 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	m.ElectionTicks = electionTicks
 	m.TickMs = uint(tickDuration / time.Millisecond)
 	m.QuotaBackendBytes = mcfg.quotaBackendBytes
+	m.AuthToken = "simple" // for the purpose of integration testing, simple token is enough
 	return m
 }
 
@@ -593,7 +604,7 @@ func (m *member) Launch() error {
 	if m.s, err = etcdserver.NewServer(&m.ServerConfig); err != nil {
 		return fmt.Errorf("failed to initialize the etcd server: %v", err)
 	}
-	m.s.SyncTicker = time.Tick(500 * time.Millisecond)
+	m.s.SyncTicker = time.NewTicker(500 * time.Millisecond)
 	m.s.Start()
 
 	m.raftHandler = &testutil.PauseableHandler{Next: v2http.NewPeerHandler(m.s)}

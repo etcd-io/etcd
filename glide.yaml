@@ -51,10 +51,18 @@ import:
   version: f7ee69f31298ecbe5d2b349c711e2547a617d398
 - package: github.com/olekukonko/tablewriter
   version: a0225b3f23b5ce0cbec6d7a66a968f8a59eca9c4
+- package: github.com/mattn/go-runewidth
+  version: v0.0.2
+  subpackages:
+  - runewidth.go
 - package: github.com/prometheus/client_golang
   version: v0.8.0
   subpackages:
   - prometheus
+- package: github.com/prometheus/common
+  version: 49fee292b27bfff7f354ee0f64e1bc4850462edf
+- package: github.com/prometheus/procfs
+  version: a1dba9ce8baed984a2495b658c82687f8157b98f
 - package: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - package: github.com/spf13/pflag
@@ -82,6 +90,8 @@ import:
   - http2/hpack
   - internal/timeseries
   - trace
+- package: golang.org/x/sys
+  version: e48874b42435b4347fc52bdee0424a52abc974d7
 - package: golang.org/x/time
   version: a4bde12657593d5e90d0533a3e4fd95e635124cb
   subpackages:
@@ -105,3 +115,5 @@ import:
   version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
   subpackages:
   - assert
+- package: github.com/dgrijalva/jwt-go
+  version: v3.0.0

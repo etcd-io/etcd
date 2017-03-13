@@ -35,7 +35,7 @@ TESTABLE_AND_FORMATTABLE=`echo "$TEST_PKGS" | egrep -v "$INTEGRATION_PKGS"`
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
-GOSIMPLE_UNUSED_PATHS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | grep -v 'client'`
+STATIC_ANALYSIS_PATHS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | grep -v 'client'`
 
 if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
@@ -110,6 +110,8 @@ function cov_pass {
 	# run code coverage for unit and integration tests
 	for t in ${PKGS}; do
 		tf=`echo $t | tr / _`
+		# cache package compilation data for faster repeated builds
+		go test -covermode=set -coverpkg $PKGS_DELIM -i -v ${REPO_PATH}/$t
 		# uses -run=Test to skip examples because clientv3/ example tests will leak goroutines
 		go test -covermode=set -coverpkg $PKGS_DELIM -timeout 15m -run=Test -v -coverprofile "$COVERDIR/${tf}.coverprofile"  ${REPO_PATH}/$t
 	done
@@ -206,6 +208,14 @@ function fmt_pass {
 		fi
 	done
 
+	echo "Checking documentation style..."
+	# eschew you
+	yous=`find . -name \*.md | xargs egrep --color "[Yy]ou[r]?[ '.,;]" | grep -v /v2/ || true`
+	if [ ! -z "$yous" ]; then
+		echo -e "found 'you' in documentation:\n${yous}"
+		exit 255
+	fi
+
 	if which goword >/dev/null; then
 		echo "Checking goword..."
 		# get all go files to process
@@ -224,28 +234,43 @@ function fmt_pass {
 
 	if which gosimple >/dev/null; then
 		echo "Checking gosimple..."
-		for path in $GOSIMPLE_UNUSED_PATHS; do
-			simplResult=`gosimple ${path} 2>&1 || true`
-			if [ -n "${simplResult}" ]; then
-				echo -e "gosimple checking ${path} failed:\n${simplResult}"
-				exit 255
-			fi
-		done
+		simplResult=`gosimple ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
+		if [ -n "${simplResult}" ]; then
+			echo -e "gosimple checking failed:\n${simplResult}"
+			exit 255
+		fi
 	else
 		echo "Skipping gosimple..."
 	fi
 
 	if which unused >/dev/null; then
 		echo "Checking unused..."
-		for path in $GOSIMPLE_UNUSED_PATHS; do
-			unusedResult=`unused ${path} 2>&1 || true`
-			if [ -n "${unusedResult}" ]; then
-				echo -e "unused checking ${path} failed:\n${unusedResult}"
-				exit 255
-			fi
-		done
+		unusedResult=`unused ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
+		if [ -n "${unusedResult}" ]; then
+			echo -e "unused checking failed:\n${unusedResult}"
+			exit 255
+		fi
 	else
 		echo "Skipping unused..."
+	fi
+
+	if which staticcheck >/dev/null; then
+		echo "Checking staticcheck..."
+		staticcheckResult=`staticcheck ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
+		if [ ! -n "${staticcheckResult}" ]; then
+			continue
+		fi
+		# TODO: resolve these after go1.8 migration
+		# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
+		STATIC_CHECK_MASK="SA(1016|1019|2002)"
+		if egrep -v "$STATIC_CHECK_MASK" "${staticcheckResult}"; then
+			echo -e "staticcheck checking ${path} failed:\n${staticcheckResult}"
+			exit 255
+		else
+			echo -e "staticcheck warning:\n${staticcheckResult}"
+		fi
+	else
+		echo "Skipping staticcheck..."
 	fi
 
 	echo "Checking for license header..."
@@ -300,6 +325,7 @@ function build_cov_pass {
 	PKGS=$TEST
 	ETCD_PKGS_DELIM=$(echo $PKGS | sed 's/ /,/g')
 	go test -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcd_test
+	go test -tags cov -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcdctl_test ${REPO_PATH}/etcdctl/
 }
 
 function compile_pass {

@@ -44,8 +44,12 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	b, tPath := backend.NewDefaultTmpBackend()
 	defer os.Remove(tPath)
 
-	as := NewAuthStore(b, dummyIndexWaiter)
-	err := enableAuthAndCreateRoot(as)
+	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as := NewAuthStore(b, tp)
+	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +59,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 
 	// no changes to commit
 	b2 := backend.NewDefaultBackend(tPath)
-	as = NewAuthStore(b2, dummyIndexWaiter)
+	as = NewAuthStore(b2, tp)
 	new := as.Revision()
 	b2.Close()
 	as.Close()
@@ -68,8 +72,12 @@ func TestNewAuthStoreRevision(t *testing.T) {
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
 	b, tPath := backend.NewDefaultTmpBackend()
 
-	as := NewAuthStore(b, dummyIndexWaiter)
-	err := enableAuthAndCreateRoot(as)
+	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as := NewAuthStore(b, tp)
+	err = enableAuthAndCreateRoot(as)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,18 +196,18 @@ func TestUserChangePassword(t *testing.T) {
 	defer tearDown(t)
 
 	ctx1 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", "dummy")
-	_, err := as.Authenticate(ctx1, "foo", "")
+	_, err := as.Authenticate(ctx1, "foo", "bar")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", Password: "bar"})
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo", Password: "baz"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	ctx2 := context.WithValue(context.WithValue(context.TODO(), "index", uint64(2)), "simpleToken", "dummy")
-	_, err = as.Authenticate(ctx2, "foo", "bar")
+	_, err = as.Authenticate(ctx2, "foo", "baz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +353,7 @@ func TestRoleRevokePermission(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r, err := as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
+	_, err = as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,6 +367,7 @@ func TestRoleRevokePermission(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var r *pb.AuthRoleGetResponse
 	r, err = as.RoleGet(&pb.AuthRoleGetRequest{Role: "role-test-1"})
 	if err != nil {
 		t.Fatal(err)
@@ -543,7 +552,11 @@ func TestRecoverFromSnapshot(t *testing.T) {
 
 	as.Close()
 
-	as2 := NewAuthStore(as.be, dummyIndexWaiter)
+	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as2 := NewAuthStore(as.be, tp)
 	defer func(a *authStore) {
 		a.Close()
 	}(as2)

@@ -321,8 +321,8 @@ func TestWatchBatchUnsynced(t *testing.T) {
 		}
 	}
 
-	s.store.mu.Lock()
-	defer s.store.mu.Unlock()
+	s.store.revMu.Lock()
+	defer s.store.revMu.Unlock()
 	if size := s.synced.size(); size != 1 {
 		t.Errorf("synced size = %d, want 1", size)
 	}

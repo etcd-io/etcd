@@ -75,7 +75,7 @@ func (clus *cluster) Close() (err error) {
 			// drain pending commits
 		}
 		// wait for channel to close
-		if erri, _ := <-clus.errorC[i]; erri != nil {
+		if erri := <-clus.errorC[i]; erri != nil {
 			err = erri
 		}
 		// clean intermediates
@@ -111,7 +111,7 @@ func TestProposeOnCommit(t *testing.T) {
 				select {
 				case pC <- *s:
 					continue
-				case err, _ := <-eC:
+				case err := <-eC:
 					t.Fatalf("eC message (%v)", err)
 				}
 			}

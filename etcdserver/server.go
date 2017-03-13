@@ -220,7 +220,7 @@ type EtcdServer struct {
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
 
-	SyncTicker <-chan time.Time
+	SyncTicker *time.Ticker
 	// compactor is used to auto-compact the KV.
 	compactor *compactor.Periodic
 
@@ -416,7 +416,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		r: raftNode{
 			isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
 			Node:        n,
-			ticker:      time.Tick(heartbeat),
+			ticker:      time.NewTicker(heartbeat),
 			// set up contention detectors for raft heartbeat message.
 			// expect to send a heartbeat within 2 heartbeat intervals.
 			td:          contention.NewTimeoutDetector(2 * heartbeat),
@@ -431,7 +431,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		cluster:       cl,
 		stats:         sstats,
 		lstats:        lstats,
-		SyncTicker:    time.Tick(500 * time.Millisecond),
+		SyncTicker:    time.NewTicker(500 * time.Millisecond),
 		peerRt:        prt,
 		reqIDGen:      idutil.NewGenerator(uint16(id), time.Now()),
 		forceVersionC: make(chan struct{}),
@@ -458,11 +458,16 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
-
-	srv.authStore = auth.NewAuthStore(srv.be,
+	tp, err := auth.NewTokenProvider(cfg.AuthToken,
 		func(index uint64) <-chan struct{} {
 			return srv.applyWait.Wait(index)
-		})
+		},
+	)
+	if err != nil {
+		plog.Errorf("failed to create token provider: %s", err)
+		return nil, err
+	}
+	srv.authStore = auth.NewAuthStore(srv.be, tp)
 	if h := cfg.AutoCompactionRetention; h != 0 {
 		srv.compactor = compactor.NewPeriodic(h, srv.kv, srv)
 		srv.compactor.Run()
@@ -606,7 +611,7 @@ type raftReadyHandler struct {
 }
 
 func (s *EtcdServer) run() {
-	snap, err := s.r.raftStorage.Snapshot()
+	sn, err := s.r.raftStorage.Snapshot()
 	if err != nil {
 		plog.Panicf("get snapshot from raft storage error: %v", err)
 	}
@@ -637,7 +642,7 @@ func (s *EtcdServer) run() {
 				}
 				setSyncC(nil)
 			} else {
-				setSyncC(s.SyncTicker)
+				setSyncC(s.SyncTicker.C)
 				if s.compactor != nil {
 					s.compactor.Resume()
 				}
@@ -664,9 +669,9 @@ func (s *EtcdServer) run() {
 	// asynchronously accept apply packets, dispatch progress in-order
 	sched := schedule.NewFIFOScheduler()
 	ep := etcdProgress{
-		confState: snap.Metadata.ConfState,
-		snapi:     snap.Metadata.Index,
-		appliedi:  snap.Metadata.Index,
+		confState: sn.Metadata.ConfState,
+		snapi:     sn.Metadata.Index,
+		appliedi:  sn.Metadata.Index,
 	}
 
 	defer func() {
@@ -678,6 +683,8 @@ func (s *EtcdServer) run() {
 
 		// wait for gouroutines before closing raft so wal stays open
 		s.wg.Wait()
+
+		s.SyncTicker.Stop()
 
 		// must stop raft after scheduler-- etcdserver can leak rafthttp pipelines
 		// by adding a peer after raft stops the transport
@@ -800,7 +807,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
 	if s.lessor != nil {
 		plog.Info("recovering lessor...")
-		s.lessor.Recover(newbe, s.kv)
+		s.lessor.Recover(newbe, func() lease.TxnDelete { return s.kv.Write() })
 		plog.Info("finished recovering lessor")
 	}
 

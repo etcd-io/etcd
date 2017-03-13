@@ -72,9 +72,9 @@ func TestDialTimeout(t *testing.T) {
 
 	donec := make(chan error)
 	go func() {
-		// without timeout, grpc keeps redialing if connection refused
+		// without timeout, dial continues forever on ipv4 blackhole
 		cfg := Config{
-			Endpoints:   []string{"localhost:12345"},
+			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: 2 * time.Second}
 		c, err := New(cfg)
 		if c != nil || err == nil {

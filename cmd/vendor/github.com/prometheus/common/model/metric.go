@@ -44,7 +44,7 @@ func (m Metric) Before(o Metric) bool {
 
 // Clone returns a copy of the Metric.
 func (m Metric) Clone() Metric {
-	clone := Metric{}
+	clone := make(Metric, len(m))
 	for k, v := range m {
 		clone[k] = v
 	}

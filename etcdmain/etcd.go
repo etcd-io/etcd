@@ -39,8 +39,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/proxy/httpproxy"
 	"github.com/coreos/etcd/version"
-	"github.com/coreos/go-systemd/daemon"
-	systemdutil "github.com/coreos/go-systemd/util"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
@@ -85,7 +83,13 @@ func startEtcdOrProxyV2() {
 	GoMaxProcs := runtime.GOMAXPROCS(0)
 	plog.Infof("setting maximum number of CPUs to %d, total number of available CPUs is %d", GoMaxProcs, runtime.NumCPU())
 
-	(&cfg.Config).UpdateDefaultClusterFromName(defaultInitialCluster)
+	defaultHost, dhErr := (&cfg.Config).UpdateDefaultClusterFromName(defaultInitialCluster)
+	if defaultHost != "" {
+		plog.Infof("advertising using detected default host %q", defaultHost)
+	}
+	if dhErr != nil {
+		plog.Noticef("failed to detect default host (%v)", dhErr)
+	}
 
 	if cfg.Dir == "" {
 		cfg.Dir = fmt.Sprintf("%v.etcd", cfg.Name)
@@ -157,20 +161,12 @@ func startEtcdOrProxyV2() {
 
 	osutil.HandleInterrupts()
 
-	if systemdutil.IsRunningSystemd() {
-		// At this point, the initialization of etcd is done.
-		// The listeners are listening on the TCP ports and ready
-		// for accepting connections. The etcd instance should be
-		// joined with the cluster and ready to serve incoming
-		// connections.
-		sent, err := daemon.SdNotify(false, "READY=1")
-		if err != nil {
-			plog.Errorf("failed to notify systemd for readiness: %v", err)
-		}
-		if !sent {
-			plog.Errorf("forgot to set Type=notify in systemd service file?")
-		}
-	}
+	// At this point, the initialization of etcd is done.
+	// The listeners are listening on the TCP ports and ready
+	// for accepting connections. The etcd instance should be
+	// joined with the cluster and ready to serve incoming
+	// connections.
+	notifySystemd()
 
 	select {
 	case lerr := <-errc:
@@ -184,15 +180,6 @@ func startEtcdOrProxyV2() {
 
 // startEtcd runs StartEtcd in addition to hooks needed for standalone etcd.
 func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
-	defaultHost, dhErr := cfg.IsDefaultHost()
-	if defaultHost != "" {
-		if dhErr == nil {
-			plog.Infof("advertising using detected default host %q", defaultHost)
-		} else {
-			plog.Noticef("failed to detect default host, advertise falling back to %q (%v)", defaultHost, dhErr)
-		}
-	}
-
 	if cfg.Metrics == "extensive" {
 		grpc_prometheus.EnableHandlingTimeHistogram()
 	}

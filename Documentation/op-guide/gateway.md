@@ -4,7 +4,7 @@
 
 etcd gateway is a simple TCP proxy that forwards network data to the etcd cluster. The gateway is stateless and transparent; it neither inspects client requests nor interferes with cluster responses.
 
-The gateway supports multiple etcd server endpoints. When the gateway starts, it randomly picks one etcd server endpoint and forwards all requests to that endpoint. This endpoint serves all requests until the gateway detects a network failure. If the gateway detects an endpoint failure, it will switch to a different endpoint, if available, to hide failures from its clients. Other retry policies, such as weighted round-robin, may be supported in the future.
+The gateway supports multiple etcd server endpoints and works on a simple round-robin policy. It only routes to available enpoints and hides failures from its clients. Other retry policies, such as weighted round-robin, may be supported in the future.
 
 ## When to use etcd gateway
 

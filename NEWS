@@ -1,5 +1,5 @@
 etcd v3.1.2 (2017-02-24)
-- use IPv4 default host, by default (when IPv4 amd IPv6 are available)
+- use IPv4 default host, by default (when IPv4 and IPv6 are available)
 - fix 'etcd gateway' with multiple endpoints
 
 etcd v3.1.1 (2017-02-17)
