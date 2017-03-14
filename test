@@ -29,6 +29,12 @@ COVER=${COVER:-"-cover"}
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
 IGNORE_PKGS="(cmd|vendor|etcdserverpb|rafttest|gopath.proto)"
 INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
+
+# all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
+PKGS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | egrep -v "(tools/|contrib/|e2e|pb)" | sed "s|\.|${REPO_PATH}|g"`
+# pkg1,pkg2,pkg3
+PKGS_COMMA=`echo ${PKGS} | sed 's/ /,/g'`
+
 TEST_PKGS=`find . -name \*_test.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
 FORMATTABLE=`find . -name \*.go | while read a; do echo $(dirname $a)/"*.go"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
 TESTABLE_AND_FORMATTABLE=`echo "$TEST_PKGS" | egrep -v "$INTEGRATION_PKGS"`
@@ -102,18 +108,13 @@ function cov_pass {
 
 	mkdir -p "$COVERDIR"
 
-	# PKGS_DELIM contains all the core etcd pkgs delimited by ',' which will be profiled for code coverage.
-	# Integration tests will generate code coverage for those pkgs
-	PKGS_DELIM=$(echo $TEST | sed 's/ /,/g')
-
-	PKGS=`echo "$TEST_PKGS" | egrep -v "(e2e|functional-tester)"`
 	# run code coverage for unit and integration tests
-	for t in ${PKGS}; do
+	for t in `echo "${TEST_PKGS}" | egrep -v "(e2e|functional-tester)"`; do
 		tf=`echo $t | tr / _`
 		# cache package compilation data for faster repeated builds
-		go test -covermode=set -coverpkg $PKGS_DELIM -i -v ${REPO_PATH}/$t
+		go test -covermode=set -coverpkg $PKGS_COMMA -i -v ${REPO_PATH}/$t
 		# uses -run=Test to skip examples because clientv3/ example tests will leak goroutines
-		go test -covermode=set -coverpkg $PKGS_DELIM -timeout 15m -run=Test -v -coverprofile "$COVERDIR/${tf}.coverprofile"  ${REPO_PATH}/$t
+		go test -covermode=set -coverpkg $PKGS_COMMA -timeout 15m -run=Test -v -coverprofile "$COVERDIR/${tf}.coverprofile"  ${REPO_PATH}/$t
 	done
 
 	# run code coverage for e2e tests
@@ -322,10 +323,8 @@ function dep_pass {
 function build_cov_pass {
 	out="bin"
 	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
-	PKGS=$TEST
-	ETCD_PKGS_DELIM=$(echo $PKGS | sed 's/ /,/g')
-	go test -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcd_test
-	go test -tags cov -c -covermode=set -coverpkg=$ETCD_PKGS_DELIM -o ${out}/etcdctl_test ${REPO_PATH}/etcdctl/
+	go test -c -covermode=set -coverpkg=$PKGS_COMMA -o ${out}/etcd_test
+	go test -tags cov -c -covermode=set -coverpkg=$PKGS_COMMA -o ${out}/etcdctl_test ${REPO_PATH}/etcdctl
 }
 
 function compile_pass {
