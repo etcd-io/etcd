@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"golang.org/x/net/context"
 )
 
@@ -29,13 +30,14 @@ type Mutex struct {
 	pfx   string
 	myKey string
 	myRev int64
+	hdr   *pb.ResponseHeader
 }
 
 func NewMutex(s *Session, pfx string) *Mutex {
-	return &Mutex{s, pfx + "/", "", -1}
+	return &Mutex{s, pfx + "/", "", -1, nil}
 }
 
-// Lock locks the mutex with a cancellable context. If the context is cancelled
+// Lock locks the mutex with a cancelable context. If the context is canceled
 // while trying to acquire the lock, the mutex tries to clean its stale lock entry.
 func (m *Mutex) Lock(ctx context.Context) error {
 	s := m.s
@@ -57,14 +59,15 @@ func (m *Mutex) Lock(ctx context.Context) error {
 	}
 
 	// wait for deletion revisions prior to myKey
-	err = waitDeletes(ctx, client, m.pfx, m.myRev-1)
+	hdr, werr := waitDeletes(ctx, client, m.pfx, m.myRev-1)
 	// release lock key if cancelled
 	select {
 	case <-ctx.Done():
 		m.Unlock(client.Ctx())
 	default:
+		m.hdr = hdr
 	}
-	return err
+	return werr
 }
 
 func (m *Mutex) Unlock(ctx context.Context) error {
@@ -82,6 +85,9 @@ func (m *Mutex) IsOwner() v3.Cmp {
 }
 
 func (m *Mutex) Key() string { return m.myKey }
+
+// Header is the response header received from etcd on acquiring the lock.
+func (m *Mutex) Header() *pb.ResponseHeader { return m.hdr }
 
 type lockerMutex struct{ *Mutex }
 
