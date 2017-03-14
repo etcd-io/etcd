@@ -608,6 +608,7 @@ type etcdProgress struct {
 type raftReadyHandler struct {
 	updateLeadership     func()
 	updateCommittedIndex func(uint64)
+	waitForApply         func()
 }
 
 func (s *EtcdServer) run() {
@@ -615,6 +616,9 @@ func (s *EtcdServer) run() {
 	if err != nil {
 		plog.Panicf("get snapshot from raft storage error: %v", err)
 	}
+
+	// asynchronously accept apply packets, dispatch progress in-order
+	sched := schedule.NewFIFOScheduler()
 
 	var (
 		smu   sync.RWMutex
@@ -663,11 +667,12 @@ func (s *EtcdServer) run() {
 				s.setCommittedIndex(ci)
 			}
 		},
+		waitForApply: func() {
+			sched.WaitFinish(0)
+		},
 	}
 	s.r.start(rh)
 
-	// asynchronously accept apply packets, dispatch progress in-order
-	sched := schedule.NewFIFOScheduler()
 	ep := etcdProgress{
 		confState: sn.Metadata.ConfState,
 		snapi:     sn.Metadata.Index,
