@@ -15,9 +15,12 @@
 package auth
 
 import (
+	"fmt"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/auth/authpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -581,4 +584,50 @@ func contains(array []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func TestHammerSimpleAuthenticate(t *testing.T) {
+	// set TTL values low to try to trigger races
+	oldTTL, oldTTLRes := simpleTokenTTL, simpleTokenTTLResolution
+	defer func() {
+		simpleTokenTTL = oldTTL
+		simpleTokenTTLResolution = oldTTLRes
+	}()
+	simpleTokenTTL = 10 * time.Millisecond
+	simpleTokenTTLResolution = simpleTokenTTL
+	users := make(map[string]struct{})
+
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// create lots of users
+	for i := 0; i < 50; i++ {
+		u := fmt.Sprintf("user-%d", i)
+		ua := &pb.AuthUserAddRequest{Name: u, Password: "123"}
+		if _, err := as.UserAdd(ua); err != nil {
+			t.Fatal(err)
+		}
+		users[u] = struct{}{}
+	}
+
+	// hammer on authenticate with lots of users
+	for i := 0; i < 10; i++ {
+		var wg sync.WaitGroup
+		wg.Add(len(users))
+		for u := range users {
+			go func(user string) {
+				defer wg.Done()
+				token := fmt.Sprintf("%s(%d)", user, i)
+				ctx := context.WithValue(context.WithValue(context.TODO(), "index", uint64(1)), "simpleToken", token)
+				if _, err := as.Authenticate(ctx, user, "123"); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := as.AuthInfoFromCtx(ctx); err != nil {
+					t.Fatal(err)
+				}
+			}(u)
+		}
+		time.Sleep(time.Millisecond)
+		wg.Wait()
+	}
 }
