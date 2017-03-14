@@ -148,22 +148,40 @@ func TestBalancerDoNotBlockOnClose(t *testing.T) {
 		}
 		kvc := pb.NewKVClient(conn)
 		<-sb.readyc
+
+		var wg sync.WaitGroup
+		wg.Add(100)
+		cctx, cancel := context.WithCancel(context.TODO())
 		for j := 0; j < 100; j++ {
-			go kvc.Range(context.TODO(), &pb.RangeRequest{}, grpc.FailFast(false))
+			go func() {
+				defer wg.Done()
+				kvc.Range(cctx, &pb.RangeRequest{}, grpc.FailFast(false))
+			}()
 		}
 		// balancer.Close() might block
 		// if balancer and grpc deadlock each other.
-		closec := make(chan struct{})
+		bclosec, cclosec := make(chan struct{}), make(chan struct{})
 		go func() {
-			defer close(closec)
+			defer close(bclosec)
 			sb.Close()
 		}()
-		go conn.Close()
+		go func() {
+			defer close(cclosec)
+			conn.Close()
+		}()
 		select {
-		case <-closec:
+		case <-bclosec:
 		case <-time.After(3 * time.Second):
 			testutil.FatalStack(t, "balancer close timeout")
 		}
+		select {
+		case <-cclosec:
+		case <-time.After(3 * time.Second):
+			t.Fatal("grpc conn close timeout")
+		}
+
+		cancel()
+		wg.Wait()
 	}
 }
 
