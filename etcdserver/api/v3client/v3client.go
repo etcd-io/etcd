@@ -24,6 +24,9 @@ import (
 	"github.com/coreos/etcd/proxy/grpcproxy/adapter"
 )
 
+// New creates a clientv3 client that wraps an in-process EtcdServer. Instead
+// of making gRPC calls through sockets, the client makes direct function calls
+// to the etcd server through its api/v3rpc function interfaces.
 func New(s *etcdserver.EtcdServer) *clientv3.Client {
 	c := clientv3.NewCtxClient(context.Background())
 
