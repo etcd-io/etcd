@@ -34,7 +34,7 @@
 //	}
 //
 //	// wrap the EtcdServer with v3client
-//	cli := v3client.New(e)
+//	cli := v3client.New(e.Server)
 //
 //	// use like an ordinary clientv3
 //	resp, err := cli.Put(context.TODO(), "some-key", "it works!")
