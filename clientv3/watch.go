@@ -694,6 +694,10 @@ func (w *watchGrpcStream) waitCancelSubstreams(stopc <-chan struct{}) <-chan str
 		go func(ws *watcherStream) {
 			defer wg.Done()
 			if ws.closing {
+				if ws.initReq.ctx.Err() != nil && ws.outc != nil {
+					close(ws.outc)
+					ws.outc = nil
+				}
 				return
 			}
 			select {
