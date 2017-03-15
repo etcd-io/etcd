@@ -71,6 +71,27 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	cancel()
 }
 
+// TestSwitchSetEndpoints ensures SetEndpoints can switch one endpoint
+// with a new one that doesn't include original endpoint.
+func TestSwitchSetEndpoints(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// get non partitioned members endpoints
+	eps := []string{clus.Members[1].GRPCAddr(), clus.Members[2].GRPCAddr()}
+
+	cli := clus.Client(0)
+	clus.Members[0].InjectPartition(t, clus.Members[1:])
+
+	cli.SetEndpoints(eps...)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := cli.Get(ctx, "foo"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRejectOldCluster(t *testing.T) {
 	defer testutil.AfterTest(t)
 	// 2 endpoints to test multi-endpoint Status
