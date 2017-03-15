@@ -777,7 +777,11 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
 	select {
 	// snapshot requested via send()
 	case m := <-s.r.msgSnapC:
-		merged := s.createMergedSnapshotMessage(m, ep.appliedi, ep.confState)
+		snapt, snapi := apply.snapshot.Metadata.Term, apply.snapshot.Metadata.Index
+		if len(apply.entries) > 0 {
+			snapt, snapi = apply.entries[0].Term, apply.entries[0].Index
+		}
+		merged := s.createMergedSnapshotMessage(m, snapt, snapi, ep.confState)
 		s.sendMergedSnap(merged)
 	default:
 	}
