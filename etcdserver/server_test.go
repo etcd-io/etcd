@@ -613,7 +613,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 		ents = append(ents, ent)
 	}
 
-	_, shouldStop := srv.apply(ents, &raftpb.ConfState{})
+	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{})
 	if !shouldStop {
 		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
 	}
