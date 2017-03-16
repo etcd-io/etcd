@@ -21,7 +21,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/coreos/etcd/client"
@@ -103,7 +103,7 @@ func prepareBackend() backend.Backend {
 	var be backend.Backend
 
 	bch := make(chan struct{})
-	dbpath := path.Join(migrateDatadir, "member", "snap", "db")
+	dbpath := filepath.Join(migrateDatadir, "member", "snap", "db")
 	go func() {
 		defer close(bch)
 		be = backend.New(dbpath, time.Second, 10000)
@@ -130,9 +130,9 @@ func rebuildStoreV2() (store.Store, uint64) {
 
 	waldir := migrateWALdir
 	if len(waldir) == 0 {
-		waldir = path.Join(migrateDatadir, "member", "wal")
+		waldir = filepath.Join(migrateDatadir, "member", "wal")
 	}
-	snapdir := path.Join(migrateDatadir, "member", "snap")
+	snapdir := filepath.Join(migrateDatadir, "member", "snap")
 
 	ss := snap.New(snapdir)
 	snapshot, err := ss.Load()

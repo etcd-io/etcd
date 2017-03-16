@@ -17,7 +17,7 @@ package command
 import (
 	"fmt"
 	"log"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -50,19 +50,19 @@ func handleBackup(c *cli.Context) error {
 	var srcWAL string
 	var destWAL string
 
-	srcSnap := path.Join(c.String("data-dir"), "member", "snap")
-	destSnap := path.Join(c.String("backup-dir"), "member", "snap")
+	srcSnap := filepath.Join(c.String("data-dir"), "member", "snap")
+	destSnap := filepath.Join(c.String("backup-dir"), "member", "snap")
 
 	if c.String("wal-dir") != "" {
 		srcWAL = c.String("wal-dir")
 	} else {
-		srcWAL = path.Join(c.String("data-dir"), "member", "wal")
+		srcWAL = filepath.Join(c.String("data-dir"), "member", "wal")
 	}
 
 	if c.String("backup-wal-dir") != "" {
 		destWAL = c.String("backup-wal-dir")
 	} else {
-		destWAL = path.Join(c.String("backup-dir"), "member", "wal")
+		destWAL = filepath.Join(c.String("backup-dir"), "member", "wal")
 	}
 
 	if err := fileutil.CreateDirAll(destSnap); err != nil {
