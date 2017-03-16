@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sync"
 	"sync/atomic"
@@ -263,7 +264,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	}
 	ss := snap.New(cfg.SnapDir())
 
-	bepath := path.Join(cfg.SnapDir(), databaseFilename)
+	bepath := filepath.Join(cfg.SnapDir(), databaseFilename)
 	beExist := fileutil.Exist(bepath)
 
 	var be backend.Backend
@@ -803,7 +804,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		plog.Panicf("get database snapshot file path error: %v", err)
 	}
 
-	fn := path.Join(s.Cfg.SnapDir(), databaseFilename)
+	fn := filepath.Join(s.Cfg.SnapDir(), databaseFilename)
 	if err := os.Rename(snapfn, fn); err != nil {
 		plog.Panicf("rename snapshot file error: %v", err)
 	}

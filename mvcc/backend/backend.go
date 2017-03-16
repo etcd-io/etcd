@@ -20,7 +20,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -357,7 +357,7 @@ func NewTmpBackend(batchInterval time.Duration, batchLimit int) (*backend, strin
 	if err != nil {
 		plog.Fatal(err)
 	}
-	tmpPath := path.Join(dir, "database")
+	tmpPath := filepath.Join(dir, "database")
 	return newBackend(tmpPath, batchInterval, batchLimit), tmpPath
 }
 
