@@ -18,7 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -58,7 +58,7 @@ func main() {
 			ss := snap.New(snapDir(*from))
 			snapshot, err = ss.Load()
 		} else {
-			snapshot, err = snap.Read(path.Join(snapDir(*from), *snapfile))
+			snapshot, err = snap.Read(filepath.Join(snapDir(*from), *snapfile))
 		}
 
 		switch err {
@@ -132,9 +132,9 @@ func main() {
 	}
 }
 
-func walDir(dataDir string) string { return path.Join(dataDir, "member", "wal") }
+func walDir(dataDir string) string { return filepath.Join(dataDir, "member", "wal") }
 
-func snapDir(dataDir string) string { return path.Join(dataDir, "member", "snap") }
+func snapDir(dataDir string) string { return filepath.Join(dataDir, "member", "snap") }
 
 func parseWALMetadata(b []byte) (id, cid types.ID) {
 	var metadata etcdserverpb.Metadata

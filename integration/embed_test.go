@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -58,7 +58,7 @@ func TestEmbedEtcd(t *testing.T) {
 	setupEmbedCfg(&tests[5].cfg, []url.URL{urls[4]}, []url.URL{urls[5], urls[6]})
 	setupEmbedCfg(&tests[6].cfg, []url.URL{urls[7], urls[8]}, []url.URL{urls[9]})
 
-	dir := path.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
+	dir := filepath.Join(os.TempDir(), fmt.Sprintf("embed-etcd"))
 	os.RemoveAll(dir)
 	defer os.RemoveAll(dir)
 

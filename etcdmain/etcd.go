@@ -22,7 +22,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -211,14 +211,14 @@ func startProxy(cfg *config) error {
 		return err
 	}
 
-	cfg.Dir = path.Join(cfg.Dir, "proxy")
+	cfg.Dir = filepath.Join(cfg.Dir, "proxy")
 	err = os.MkdirAll(cfg.Dir, fileutil.PrivateDirMode)
 	if err != nil {
 		return err
 	}
 
 	var peerURLs []string
-	clusterfile := path.Join(cfg.Dir, "cluster")
+	clusterfile := filepath.Join(cfg.Dir, "cluster")
 
 	b, err := ioutil.ReadFile(clusterfile)
 	switch {

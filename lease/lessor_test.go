@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"sync"
@@ -400,5 +400,5 @@ func NewTestBackend(t *testing.T) (string, backend.Backend) {
 		t.Fatalf("failed to create tmpdir (%v)", err)
 	}
 
-	return tmpPath, backend.New(path.Join(tmpPath, "be"), time.Second, 10000)
+	return tmpPath, backend.New(filepath.Join(tmpPath, "be"), time.Second, 10000)
 }

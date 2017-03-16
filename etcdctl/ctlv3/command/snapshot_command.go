@@ -23,7 +23,7 @@ import (
 	"io"
 	"math"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -186,8 +186,8 @@ func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 		basedir = restoreName + ".etcd"
 	}
 
-	waldir := path.Join(basedir, "member", "wal")
-	snapdir := path.Join(basedir, "member", "snap")
+	waldir := filepath.Join(basedir, "member", "wal")
+	snapdir := filepath.Join(basedir, "member", "snap")
 
 	if _, err := os.Stat(basedir); err == nil {
 		ExitWithError(ExitInvalidInput, fmt.Errorf("data-dir %q exists", basedir))
@@ -325,7 +325,7 @@ func makeDB(snapdir, dbfile string, commit int) {
 		ExitWithError(ExitIO, err)
 	}
 
-	dbpath := path.Join(snapdir, "db")
+	dbpath := filepath.Join(snapdir, "db")
 	db, dberr := os.OpenFile(dbpath, os.O_RDWR|os.O_CREATE, 0600)
 	if dberr != nil {
 		ExitWithError(ExitIO, dberr)

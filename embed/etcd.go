@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"path"
+	"path/filepath"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
@@ -166,7 +166,7 @@ func startPeerListeners(cfg *Config) (plns []net.Listener, err error) {
 		for i, u := range cfg.LPUrls {
 			phosts[i] = u.Host
 		}
-		cfg.PeerTLSInfo, err = transport.SelfCert(path.Join(cfg.Dir, "fixtures/peer"), phosts)
+		cfg.PeerTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "peer"), phosts)
 		if err != nil {
 			plog.Fatalf("could not get certs (%v)", err)
 		}
@@ -221,7 +221,7 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 		for i, u := range cfg.LCUrls {
 			chosts[i] = u.Host
 		}
-		cfg.ClientTLSInfo, err = transport.SelfCert(path.Join(cfg.Dir, "fixtures/client"), chosts)
+		cfg.ClientTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
 		if err != nil {
 			plog.Fatalf("could not get certs (%v)", err)
 		}

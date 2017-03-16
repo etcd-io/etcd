@@ -19,7 +19,7 @@ import (
 	"hash/crc32"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -38,7 +38,7 @@ var testSnap = &raftpb.Snapshot{
 }
 
 func TestSaveAndLoad(t *testing.T) {
-	dir := path.Join(os.TempDir(), "snapshot")
+	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestBadCRC(t *testing.T) {
-	dir := path.Join(os.TempDir(), "snapshot")
+	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
 		t.Fatal(err)
@@ -76,14 +76,14 @@ func TestBadCRC(t *testing.T) {
 	// fake a crc mismatch
 	crcTable = crc32.MakeTable(crc32.Koopman)
 
-	_, err = Read(path.Join(dir, fmt.Sprintf("%016x-%016x.snap", 1, 1)))
+	_, err = Read(filepath.Join(dir, fmt.Sprintf("%016x-%016x.snap", 1, 1)))
 	if err == nil || err != ErrCRCMismatch {
 		t.Errorf("err = %v, want %v", err, ErrCRCMismatch)
 	}
 }
 
 func TestFailback(t *testing.T) {
-	dir := path.Join(os.TempDir(), "snapshot")
+	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +91,7 @@ func TestFailback(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	large := fmt.Sprintf("%016x-%016x-%016x.snap", 0xFFFF, 0xFFFF, 0xFFFF)
-	err = ioutil.WriteFile(path.Join(dir, large), []byte("bad data"), 0666)
+	err = ioutil.WriteFile(filepath.Join(dir, large), []byte("bad data"), 0666)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestFailback(t *testing.T) {
 	if !reflect.DeepEqual(g, testSnap) {
 		t.Errorf("snap = %#v, want %#v", g, testSnap)
 	}
-	if f, err := os.Open(path.Join(dir, large) + ".broken"); err != nil {
+	if f, err := os.Open(filepath.Join(dir, large) + ".broken"); err != nil {
 		t.Fatal("broken snapshot does not exist")
 	} else {
 		f.Close()
@@ -117,7 +117,7 @@ func TestFailback(t *testing.T) {
 }
 
 func TestSnapNames(t *testing.T) {
-	dir := path.Join(os.TempDir(), "snapshot")
+	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +125,7 @@ func TestSnapNames(t *testing.T) {
 	defer os.RemoveAll(dir)
 	for i := 1; i <= 5; i++ {
 		var f *os.File
-		if f, err = os.Create(path.Join(dir, fmt.Sprintf("%d.snap", i))); err != nil {
+		if f, err = os.Create(filepath.Join(dir, fmt.Sprintf("%d.snap", i))); err != nil {
 			t.Fatal(err)
 		} else {
 			f.Close()
@@ -146,7 +146,7 @@ func TestSnapNames(t *testing.T) {
 }
 
 func TestLoadNewestSnap(t *testing.T) {
-	dir := path.Join(os.TempDir(), "snapshot")
+	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +175,7 @@ func TestLoadNewestSnap(t *testing.T) {
 }
 
 func TestNoSnapshot(t *testing.T) {
-	dir := path.Join(os.TempDir(), "snapshot")
+	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
 		t.Fatal(err)
@@ -189,19 +189,19 @@ func TestNoSnapshot(t *testing.T) {
 }
 
 func TestEmptySnapshot(t *testing.T) {
-	dir := path.Join(os.TempDir(), "snapshot")
+	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
-	err = ioutil.WriteFile(path.Join(dir, "1.snap"), []byte(""), 0x700)
+	err = ioutil.WriteFile(filepath.Join(dir, "1.snap"), []byte(""), 0x700)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = Read(path.Join(dir, "1.snap"))
+	_, err = Read(filepath.Join(dir, "1.snap"))
 	if err != ErrEmptySnapshot {
 		t.Errorf("err = %v, want %v", err, ErrEmptySnapshot)
 	}
@@ -210,14 +210,14 @@ func TestEmptySnapshot(t *testing.T) {
 // TestAllSnapshotBroken ensures snapshotter returns
 // ErrNoSnapshot if all the snapshots are broken.
 func TestAllSnapshotBroken(t *testing.T) {
-	dir := path.Join(os.TempDir(), "snapshot")
+	dir := filepath.Join(os.TempDir(), "snapshot")
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 
-	err = ioutil.WriteFile(path.Join(dir, "1.snap"), []byte("bad"), 0x700)
+	err = ioutil.WriteFile(filepath.Join(dir, "1.snap"), []byte("bad"), 0x700)
 	if err != nil {
 		t.Fatal(err)
 	}

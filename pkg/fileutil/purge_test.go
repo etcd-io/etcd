@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -33,7 +33,7 @@ func TestPurgeFile(t *testing.T) {
 
 	// minimal file set
 	for i := 0; i < 3; i++ {
-		f, ferr := os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		f, ferr := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", i)))
 		if ferr != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +53,7 @@ func TestPurgeFile(t *testing.T) {
 	// rest of the files
 	for i := 4; i < 10; i++ {
 		go func(n int) {
-			f, ferr := os.Create(path.Join(dir, fmt.Sprintf("%d.test", n)))
+			f, ferr := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", n)))
 			if ferr != nil {
 				t.Fatal(err)
 			}
@@ -99,7 +99,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		var f *os.File
-		f, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		f, err = os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -107,7 +107,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	// create a purge barrier at 5
-	p := path.Join(dir, fmt.Sprintf("%d.test", 5))
+	p := filepath.Join(dir, fmt.Sprintf("%d.test", 5))
 	l, err := LockFile(p, os.O_WRONLY, PrivateFileMode)
 	if err != nil {
 		t.Fatal(err)
