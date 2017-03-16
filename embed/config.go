@@ -246,6 +246,9 @@ func (cfg *configYAML) configFromFile(path string) error {
 		cfg.ACUrls = []url.URL(u)
 	}
 
+	if (cfg.Durl != "" || cfg.DNSCluster != "") && cfg.InitialCluster == cfg.InitialClusterFromName(cfg.Name) {
+		cfg.InitialCluster = ""
+	}
 	if cfg.ClusterState == "" {
 		cfg.ClusterState = ClusterStateFlagNew
 	}
