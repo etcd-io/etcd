@@ -36,6 +36,7 @@ func TestCtlV3AuthMemberRemove(t *testing.T) {
 func TestCtlV3AuthMemberUpdate(t *testing.T)     { testCtl(t, authTestMemberUpdate) }
 func TestCtlV3AuthCertCN(t *testing.T)           { testCtl(t, authTestCertCN, withCfg(configClientTLSCertAuth)) }
 func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }
+func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -596,5 +597,19 @@ func authTestRevokeWithDelete(cx ctlCtx) {
 	// check the result
 	if err := ctlV3User(cx, []string{"get", "test-user"}, "Roles: test-role", nil); err != nil {
 		cx.t.Fatal(err)
+	}
+}
+
+func authTestInvalidMgmt(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	if err := ctlV3Role(cx, []string{"delete", "root"}, "Error:  etcdserver: invalid auth management"); err == nil {
+		cx.t.Fatal("deleting the role root must not be allowed")
+	}
+
+	if err := ctlV3User(cx, []string{"revoke-role", "root", "root"}, "Error:  etcdserver: invalid auth management", []string{}); err == nil {
+		cx.t.Fatal("revoking the role root from the user root must not be allowed")
 	}
 }
