@@ -189,7 +189,11 @@ func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
 		return nil, nil, err
 	}
 	osutil.RegisterInterruptHandler(e.Server.Stop)
-	<-e.Server.ReadyNotify() // wait for e.Server to join the cluster
+	select {
+	case <-e.Server.ReadyNotify(): // wait for e.Server to join the cluster
+	case <-e.Server.StopNotify(): // publish aborted from 'ErrStopped'
+		e.Server.HardStop()
+	}
 	return e.Server.StopNotify(), e.Err(), nil
 }
 
