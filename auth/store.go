@@ -168,13 +168,13 @@ type authStore struct {
 
 	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
 
-	simpleTokensMu    sync.RWMutex
-	simpleTokens      map[string]string // token -> username
-	simpleTokenKeeper *simpleTokenTTLKeeper
-
 	revision uint64
 
-	indexWaiter func(uint64) <-chan struct{}
+	// tokenSimple in v3.2+
+	indexWaiter       func(uint64) <-chan struct{}
+	simpleTokenKeeper *simpleTokenTTLKeeper
+	simpleTokensMu    sync.Mutex
+	simpleTokens      map[string]string // token -> username
 }
 
 func newDeleterFunc(as *authStore) func(string) {
@@ -646,13 +646,16 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 }
 
 func (as *authStore) AuthInfoFromToken(token string) (*AuthInfo, bool) {
-	as.simpleTokensMu.RLock()
-	defer as.simpleTokensMu.RUnlock()
-	t, ok := as.simpleTokens[token]
+	// same as '(t *tokenSimple) info' in v3.2+
+	as.simpleTokenKeeper.tokensMu.Lock()
+	as.simpleTokensMu.Lock()
+	username, ok := as.simpleTokens[token]
 	if ok {
 		as.simpleTokenKeeper.resetSimpleToken(token)
 	}
-	return &AuthInfo{Username: t, Revision: as.revision}, ok
+	as.simpleTokensMu.Unlock()
+	as.simpleTokenKeeper.tokensMu.Unlock()
+	return &AuthInfo{Username: username, Revision: as.revision}, ok
 }
 
 type permSlice []*authpb.Permission
