@@ -69,7 +69,9 @@ func TestBackendSnapshot(t *testing.T) {
 	f.Close()
 
 	// bootstrap new backend from the snapshot
-	nb := New(f.Name(), time.Hour, 10000)
+	bcfg := DefaultBackendConfig()
+	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = f.Name(), time.Hour, 10000
+	nb := New(bcfg)
 	defer cleanup(nb, f.Name())
 
 	newTx := b.BatchTx()
