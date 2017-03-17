@@ -94,6 +94,11 @@ func TestEmbedEtcd(t *testing.T) {
 			t.Errorf("%d: expected %d clients, got %d", i, tt.wclients, len(e.Clients))
 		}
 		e.Close()
+		select {
+		case err := <-e.Err():
+			t.Errorf("#%d: unexpected error on close (%v)", i, err)
+		default:
+		}
 	}
 }
 

@@ -62,7 +62,7 @@ func newServeCtx() *serveCtx {
 // serve accepts incoming connections on the listener l,
 // creating a new service goroutine for each. The service goroutines
 // read requests and then call handler to reply to them.
-func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handler http.Handler, errc chan<- error) error {
+func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handler http.Handler, errHandler func(error)) error {
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
 	plog.Info("ready to serve client requests")
@@ -76,7 +76,7 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 			sctx.serviceRegister(gs)
 		}
 		grpcl := m.Match(cmux.HTTP2())
-		go func() { errc <- gs.Serve(grpcl) }()
+		go func() { errHandler(gs.Serve(grpcl)) }()
 
 		opts := []grpc.DialOption{
 			grpc.WithInsecure(),
@@ -93,7 +93,7 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 			ErrorLog: logger, // do not log user error
 		}
 		httpl := m.Match(cmux.HTTP1())
-		go func() { errc <- srvhttp.Serve(httpl) }()
+		go func() { errHandler(srvhttp.Serve(httpl)) }()
 		plog.Noticef("serving insecure client requests on %s, this is strongly discouraged!", sctx.l.Addr().String())
 	}
 
@@ -124,7 +124,7 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 			TLSConfig: tlscfg,
 			ErrorLog:  logger, // do not log user error
 		}
-		go func() { errc <- srv.Serve(tlsl) }()
+		go func() { errHandler(srv.Serve(tlsl)) }()
 
 		plog.Infof("serving client requests on %s", sctx.l.Addr().String())
 	}
