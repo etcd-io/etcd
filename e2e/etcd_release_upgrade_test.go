@@ -88,7 +88,7 @@ func TestReleaseUpgrade(t *testing.T) {
 			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
 		}
 		epc.procs[i].cfg.execPath = binDir + "/etcd"
-		epc.procs[i].cfg.keepDataDir = true
+		epc.procs[i].cfg.keepDataDirStart = true
 
 		if err := epc.procs[i].Restart(); err != nil {
 			t.Fatalf("error restarting etcd process (%v)", err)
@@ -155,7 +155,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	for i := range epc.procs {
 		go func(i int) {
 			epc.procs[i].cfg.execPath = binDir + "/etcd"
-			epc.procs[i].cfg.keepDataDir = true
+			epc.procs[i].cfg.keepDataDirStart = true
 			if err := epc.procs[i].Restart(); err != nil {
 				t.Fatalf("error restarting etcd process (%v)", err)
 			}

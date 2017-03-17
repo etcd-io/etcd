@@ -21,6 +21,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/expect"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -136,8 +137,9 @@ type etcdProcessConfig struct {
 	execPath string
 	args     []string
 
-	dataDirPath string
-	keepDataDir bool
+	dataDirPath      string
+	keepDataDirStart bool // true to not remove data directory when starting
+	keepDataDirStop  bool // true to not remove when stopping cluster
 
 	name string
 
@@ -156,11 +158,13 @@ type etcdProcessConfig struct {
 }
 
 type etcdProcessClusterConfig struct {
-	execPath    string
-	dataDirPath string
-	keepDataDir bool
+	execPath         string
+	dataDirPath      string
+	keepDataDirStart bool
+	keepDataDirStop  bool
 
 	clusterSize int
+	namePrefix  string
 
 	baseScheme string
 	basePort   int
@@ -178,6 +182,9 @@ type etcdProcessClusterConfig struct {
 	initialToken          string
 	quotaBackendBytes     int64
 	noStrictReconfig      bool
+
+	existingInitialCluster string
+	existingCluster        bool
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -207,7 +214,7 @@ func newEtcdProcess(cfg *etcdProcessConfig) (*etcdProcess, error) {
 		return nil, fmt.Errorf("could not find etcd binary")
 	}
 
-	if !cfg.keepDataDir {
+	if !cfg.keepDataDirStart {
 		if err := os.RemoveAll(cfg.dataDirPath); err != nil {
 			return nil, err
 		}
@@ -249,6 +256,10 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 	if cfg.isPeerTLS {
 		peerScheme += "s"
 	}
+	prefix := "testname"
+	if cfg.namePrefix != "" {
+		prefix = cfg.namePrefix
+	}
 
 	etcdCfgs := make([]*etcdProcessConfig, cfg.clusterSize+cfg.proxySize)
 	initialCluster := make([]string, cfg.clusterSize)
@@ -269,7 +280,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		}
 
 		purl := url.URL{Scheme: peerScheme, Host: fmt.Sprintf("localhost:%d", port+1)}
-		name := fmt.Sprintf("testname%d", i)
+		name := fmt.Sprintf("%s%d", prefix, i)
 		dataDirPath := cfg.dataDirPath
 		if cfg.dataDirPath == "" {
 			var derr error
@@ -301,19 +312,26 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		if cfg.noStrictReconfig {
 			args = append(args, "--strict-reconfig-check=false")
 		}
+		if cfg.existingInitialCluster != "" {
+			initialCluster = append(initialCluster, cfg.existingInitialCluster)
+		}
+		if cfg.existingCluster {
+			args = append(args, "--initial-cluster-state", embed.ClusterStateFlagExisting)
+		}
 
 		args = append(args, cfg.tlsArgs()...)
 		etcdCfgs[i] = &etcdProcessConfig{
-			execPath:     cfg.execPath,
-			args:         args,
-			dataDirPath:  dataDirPath,
-			keepDataDir:  cfg.keepDataDir,
-			name:         name,
-			purl:         purl,
-			acurl:        curl,
-			acurltls:     curltls,
-			acurlHost:    curlHost,
-			initialToken: cfg.initialToken,
+			execPath:         cfg.execPath,
+			args:             args,
+			dataDirPath:      dataDirPath,
+			keepDataDirStart: cfg.keepDataDirStart,
+			keepDataDirStop:  cfg.keepDataDirStop,
+			name:             name,
+			purl:             purl,
+			acurl:            curl,
+			acurltls:         curltls,
+			acurlHost:        curlHost,
+			initialToken:     cfg.initialToken,
 		}
 	}
 	for i := 0; i < cfg.proxySize; i++ {
@@ -333,14 +351,15 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 		}
 		args = append(args, cfg.tlsArgs()...)
 		etcdCfgs[cfg.clusterSize+i] = &etcdProcessConfig{
-			execPath:    cfg.execPath,
-			args:        args,
-			dataDirPath: dataDirPath,
-			keepDataDir: cfg.keepDataDir,
-			name:        name,
-			acurl:       curl.String(),
-			acurlHost:   curlHost,
-			isProxy:     true,
+			execPath:         cfg.execPath,
+			args:             args,
+			dataDirPath:      dataDirPath,
+			keepDataDirStart: cfg.keepDataDirStart,
+			keepDataDirStop:  cfg.keepDataDirStop,
+			name:             name,
+			acurl:            curl.String(),
+			acurlHost:        curlHost,
+			isProxy:          true,
 		}
 	}
 
@@ -436,7 +455,9 @@ func (epc *etcdProcessCluster) Close() error {
 		if p == nil {
 			continue
 		}
-		os.RemoveAll(p.cfg.dataDirPath)
+		if !epc.cfg.keepDataDirStop {
+			os.RemoveAll(p.cfg.dataDirPath)
+		}
 	}
 	return err
 }
@@ -480,6 +501,10 @@ func waitReadyExpectProc(exproc *expect.ExpectProcess, isProxy bool) error {
 	if isProxy {
 		readyStrs = []string{"httpproxy: endpoints found"}
 	}
+	return waitExpect(exproc, readyStrs)
+}
+
+func waitExpect(exproc *expect.ExpectProcess, readyStrs []string) error {
 	c := 0
 	matchSet := func(l string) bool {
 		for _, s := range readyStrs {
