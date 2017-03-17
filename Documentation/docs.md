@@ -30,6 +30,7 @@ Administrators who need to create reliable and scalable key-value stores for the
  - [Hardware recommendations][hardware]
  - [Configuration][conf]
  - [Security][security]
+ - [Authentication][authentication]
  - [Monitoring][monitoring]
  - [Maintenance][maintenance]
  - [Understand failures][failures]
@@ -90,3 +91,4 @@ Answers to [common questions] about etcd.
 [experimental]: dev-guide/experimental_apis.md
 [v3_upgrade]: upgrades/upgrade_3_0.md
 [v31_upgrade]: upgrades/upgrade_3_1.md
+[authentication]: op-guide/authentication.md
