@@ -579,18 +579,6 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 }
 
 func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	// TODO(mitake): current scheme of role deletion allows existing users to have the deleted roles
-	//
-	// Assume a case like below:
-	// create a role r1
-	// create a user u1 and grant r1 to u1
-	// delete r1
-	//
-	// After this sequence, u1 is still granted the role r1. So if admin create a new role with the name r1,
-	// the new r1 is automatically granted u1.
-	// In some cases, it would be confusing. So we need to provide an option for deleting the grant relation
-	// from all users.
-
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -601,6 +589,28 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	}
 
 	delRole(tx, r.Role)
+
+	users := getAllUsers(tx)
+	for _, user := range users {
+		updatedUser := &authpb.User{
+			Name:     user.Name,
+			Password: user.Password,
+		}
+
+		for _, role := range user.Roles {
+			if strings.Compare(role, r.Role) != 0 {
+				updatedUser.Roles = append(updatedUser.Roles, role)
+			}
+		}
+
+		if len(updatedUser.Roles) == len(user.Roles) {
+			continue
+		}
+
+		putUser(tx, updatedUser)
+
+		as.invalidateCachedPerm(string(user.Name))
+	}
 
 	as.commitRevision(tx)
 
