@@ -128,9 +128,9 @@ func (ts TimeSeries) String() string {
 	for i := range ts {
 		row := []string{
 			fmt.Sprintf("%d", ts[i].Timestamp),
-			fmt.Sprintf("%s", ts[i].MinLatency),
-			fmt.Sprintf("%s", ts[i].AvgLatency),
-			fmt.Sprintf("%s", ts[i].MaxLatency),
+			ts[i].MinLatency.String(),
+			ts[i].AvgLatency.String(),
+			ts[i].MaxLatency.String(),
 			fmt.Sprintf("%d", ts[i].ThroughPut),
 		}
 		rows = append(rows, row)
