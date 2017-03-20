@@ -215,7 +215,7 @@ func isGRPCTimedout(err error) bool {
 	return strings.Contains(err.Error(), "grpc: timed out trying to connect")
 }
 
-func (cx *ctlCtx) memberToRemove() (memberID string, clusterID string) {
+func (cx *ctlCtx) memberToRemove() (ep string, memberID string, clusterID string) {
 	n1 := cx.cfg.clusterSize
 	if n1 < 2 {
 		cx.t.Fatalf("%d-node is too small to test 'member remove'", n1)
@@ -229,15 +229,9 @@ func (cx *ctlCtx) memberToRemove() (memberID string, clusterID string) {
 		cx.t.Fatalf("expected %d, got %d", n1, len(resp.Members))
 	}
 
+	ep = resp.Members[0].ClientURLs[0]
 	clusterID = fmt.Sprintf("%x", resp.Header.ClusterId)
+	memberID = fmt.Sprintf("%x", resp.Members[1].ID)
 
-	// remove one member that is not the one we connected to.
-	for _, m := range resp.Members {
-		if m.ID != resp.Header.MemberId {
-			memberID = fmt.Sprintf("%x", m.ID)
-			break
-		}
-	}
-
-	return memberID, clusterID
+	return ep, memberID, clusterID
 }

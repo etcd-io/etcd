@@ -487,17 +487,17 @@ func authTestMemberRemove(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	memIDToRemove, clusterID := cx.memberToRemove()
+	ep, memIDToRemove, clusterID := cx.memberToRemove()
 
 	// ordinal user cannot remove a member
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3MemberRemove(cx, memIDToRemove, clusterID); err == nil {
+	if err := ctlV3MemberRemove(cx, ep, memIDToRemove, clusterID); err == nil {
 		cx.t.Fatalf("ordinal user must not be allowed to remove a member")
 	}
 
 	// root can remove a member
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3MemberRemove(cx, memIDToRemove, clusterID); err != nil {
+	if err := ctlV3MemberRemove(cx, ep, memIDToRemove, clusterID); err != nil {
 		cx.t.Fatal(err)
 	}
 }
