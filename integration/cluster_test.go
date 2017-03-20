@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/pkg/capnslog"
 
 	"golang.org/x/net/context"
 )
@@ -438,6 +439,51 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	// accept remove member since (4,1)-(1,0) => (3,1) has quorum
 	if err = c.removeMember(t, uint64(c.Members[0].s.ID())); err != nil {
 		t.Fatalf("expected to remove member, got error %v", err)
+	}
+}
+
+// TestRestartRemoved ensures that restarting removed member must exit
+// if 'initial-cluster-state' is set 'new' and old data directory still exists
+// (see https://github.com/coreos/etcd/issues/7512 for more).
+func TestRestartRemoved(t *testing.T) {
+	defer testutil.AfterTest(t)
+	capnslog.SetGlobalLogLevel(capnslog.INFO)
+
+	// 1. start single-member cluster
+	c := NewCluster(t, 1)
+	for _, m := range c.Members {
+		m.ServerConfig.StrictReconfigCheck = true
+	}
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// 2. add a new member
+	c.AddMember(t)
+	c.WaitLeader(t)
+
+	oldm := c.Members[0]
+	oldm.keepDataDirTerminate = true
+
+	// 3. remove first member, shut down without deleting data
+	if err := c.removeMember(t, uint64(c.Members[0].s.ID())); err != nil {
+		t.Fatalf("expected to remove member, got error %v", err)
+	}
+	c.WaitLeader(t)
+
+	// 4. restart first member with 'initial-cluster-state=new'
+	// wrong config, expects exit within ReqTimeout
+	oldm.ServerConfig.NewCluster = false
+	if err := oldm.Restart(t); err != nil {
+		t.Fatalf("unexpected ForceRestart error: %v", err)
+	}
+	defer func() {
+		oldm.Close()
+		os.RemoveAll(oldm.ServerConfig.DataDir)
+	}()
+	select {
+	case <-oldm.s.StopNotify():
+	case <-time.After(time.Minute):
+		t.Fatalf("removed member didn't exit within %v", time.Minute)
 	}
 }
 

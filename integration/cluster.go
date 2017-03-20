@@ -449,6 +449,8 @@ type member struct {
 	grpcServer *grpc.Server
 	grpcAddr   string
 	grpcBridge *bridge
+
+	keepDataDirTerminate bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -746,8 +748,10 @@ func (m *member) Restart(t *testing.T) error {
 func (m *member) Terminate(t *testing.T) {
 	plog.Printf("terminating %s (%s)", m.Name, m.grpcAddr)
 	m.Close()
-	if err := os.RemoveAll(m.ServerConfig.DataDir); err != nil {
-		t.Fatal(err)
+	if !m.keepDataDirTerminate {
+		if err := os.RemoveAll(m.ServerConfig.DataDir); err != nil {
+			t.Fatal(err)
+		}
 	}
 	plog.Printf("terminated %s (%s)", m.Name, m.grpcAddr)
 }
