@@ -49,7 +49,13 @@ func TestDialCancel(t *testing.T) {
 	c.SetEndpoints("http://254.0.0.1:12345")
 
 	// issue Get to force redial attempts
-	go c.Get(context.TODO(), "abc")
+	getc := make(chan struct{})
+	go func() {
+		defer close(getc)
+		// Get may hang forever on grpc's Stream.Header() if its
+		// context is never canceled.
+		c.Get(c.Ctx(), "abc")
+	}()
 
 	// wait a little bit so client close is after dial starts
 	time.Sleep(100 * time.Millisecond)
@@ -64,6 +70,11 @@ func TestDialCancel(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("failed to close")
 	case <-donec:
+	}
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("get failed to exit")
+	case <-getc:
 	}
 }
 
