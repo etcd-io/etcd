@@ -168,3 +168,28 @@ ETCDCTL_API=3 ./bin/etcdctl --endpoints=http://localhost:23792 member list --wri
 |  0 | started | Gyu-Hos-MBP.sfo.coreos.systems |            | 127.0.0.1:23792 |
 +----+---------+--------------------------------+------------+-----------------+
 ```
+
+## Namespacing
+
+Suppose an application expects full control over the entire key space, but the etcd cluster is shared with other applications. To let all appications run without interfering with each other, the proxy can partition the etcd keyspace so clients appear to have access to the complete keyspace. When the proxy is given the flag `--namespace`, all client requests going into the proxy are translated to have a user-defined prefix on the keys. Accesses to the etcd cluster will be under the prefix and responses from the proxy will strip away the prefix; to the client, it appears as if there is no prefix at all.
+
+To namespace a proxy, start it with `--namespace`:
+
+```bash
+$ etcd grpc-proxy start --endpoints=localhost:2379 \
+  --listen-addr=127.0.0.1:23790 \
+  --namespace=my-prefix/
+```
+
+Accesses to the proxy are now transparently prefixed on the etcd cluster:
+
+```bash
+$ ETCDCTL_API=3 ./bin/etcdctl --endpoints=localhost:23790 put my-key abc
+# OK
+$ ETCDCTL_API=3 ./bin/etcdctl --endpoints=localhost:23790 get my-key
+# my-key
+# abc
+$ ETCDCTL_API=3 ./bin/etcdctl --endpoints=localhost:2379 get my-prefix/my-key
+# my-prefix/my-key
+# abc
+```
