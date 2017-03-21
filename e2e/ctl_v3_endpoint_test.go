@@ -68,7 +68,7 @@ func endpointHealthTestWithAuth(cx ctlCtx) {
 		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
 	}
 
-	// health checking with an ordinal user "succeeds" since permission denial goes through consensus
+	// health checking with an ordinary user "succeeds" since permission denial goes through consensus
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3EndpointHealth(cx); err != nil {
 		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)

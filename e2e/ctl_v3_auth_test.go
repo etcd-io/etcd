@@ -466,10 +466,10 @@ func authTestMemberAdd(cx ctlCtx) {
 	authSetupTestUser(cx)
 
 	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
-	// ordinal user cannot add a new member
+	// ordinary user cannot add a new member
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3MemberAdd(cx, peerURL); err == nil {
-		cx.t.Fatalf("ordinal user must not be allowed to add a member")
+		cx.t.Fatalf("ordinary user must not be allowed to add a member")
 	}
 
 	// root can add a new member
@@ -489,10 +489,10 @@ func authTestMemberRemove(cx ctlCtx) {
 
 	ep, memIDToRemove, clusterID := cx.memberToRemove()
 
-	// ordinal user cannot remove a member
+	// ordinary user cannot remove a member
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3MemberRemove(cx, ep, memIDToRemove, clusterID); err == nil {
-		cx.t.Fatalf("ordinal user must not be allowed to remove a member")
+		cx.t.Fatalf("ordinary user must not be allowed to remove a member")
 	}
 
 	// root can remove a member
@@ -515,12 +515,12 @@ func authTestMemberUpdate(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 
-	// ordinal user cannot update a member
+	// ordinary user cannot update a member
 	cx.user, cx.pass = "test-user", "pass"
 	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
 	memberID := fmt.Sprintf("%x", mr.Members[0].ID)
 	if err = ctlV3MemberUpdate(cx, memberID, peerURL); err == nil {
-		cx.t.Fatalf("ordinal user must not be allowed to update a member")
+		cx.t.Fatalf("ordinary user must not be allowed to update a member")
 	}
 
 	// root can update a member

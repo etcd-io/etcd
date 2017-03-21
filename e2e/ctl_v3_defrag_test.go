@@ -50,10 +50,10 @@ func defragTestWithAuth(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	// ordinal user cannot defrag
+	// ordinary user cannot defrag
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3Defrag(cx); err == nil {
-		cx.t.Fatal("ordinal user should not be able to issue a defrag request")
+		cx.t.Fatal("ordinary user should not be able to issue a defrag request")
 	}
 
 	// root can defrag

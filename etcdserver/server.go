@@ -1027,7 +1027,7 @@ func (s *EtcdServer) StoreStats() []byte { return s.store.JsonStats() }
 
 func (s *EtcdServer) checkMembershipOperationPermission(ctx context.Context) error {
 	if s.authStore == nil {
-		// In the context of ordinal etcd process, s.authStore will never be nil.
+		// In the context of ordinary etcd process, s.authStore will never be nil.
 		// This branch is for handling cases in server_test.go
 		return nil
 	}
