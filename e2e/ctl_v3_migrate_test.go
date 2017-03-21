@@ -65,7 +65,7 @@ func TestCtlV3Migrate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epc.procs[0].cfg.keepDataDir = true
+	epc.procs[0].cfg.keepDataDirStart = true
 	if err := epc.RestartAll(); err != nil {
 		t.Fatal(err)
 	}

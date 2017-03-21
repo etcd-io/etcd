@@ -138,9 +138,9 @@ func TestIssue6361(t *testing.T) {
 	defer os.Unsetenv("ETCDCTL_API")
 
 	epc, err := newEtcdProcessCluster(&etcdProcessClusterConfig{
-		clusterSize:  1,
-		initialToken: "new",
-		keepDataDir:  true,
+		clusterSize:      1,
+		initialToken:     "new",
+		keepDataDirStart: true,
 	})
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)

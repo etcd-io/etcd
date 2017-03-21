@@ -63,14 +63,25 @@ type ctlCtx struct {
 
 	dialTimeout time.Duration
 
-	quorum      bool // if true, set up 3-node cluster and linearizable read
-	interactive bool
+	quorum                 bool // if true, set up 3-node cluster and linearizable read
+	existingInitialCluster string
+	existingCluster        bool // if true, set '--initial-cluster-state=existing'
+	interactive            bool
+	namePrefix             string
+
+	keepDataDirStop bool
 
 	user string
 	pass string
 
 	// for compaction
 	compactPhysical bool
+
+	// finer workflow control
+	readyc      chan ctlCtx   // notify when cluster is ready
+	stopc       chan struct{} // testFunc blocks on close until receive
+	closedc     chan struct{} // notify when cluster process is closed
+	testTimeout time.Duration
 }
 
 type ctlOption func(*ctlCtx)
@@ -93,6 +104,18 @@ func withQuorum() ctlOption {
 	return func(cx *ctlCtx) { cx.quorum = true }
 }
 
+func withExistingInitialCluster(s string) ctlOption {
+	return func(cx *ctlCtx) { cx.existingInitialCluster = s }
+}
+
+func withExistingCluster() ctlOption {
+	return func(cx *ctlCtx) { cx.existingCluster = true }
+}
+
+func withNamePrefix(p string) ctlOption {
+	return func(cx *ctlCtx) { cx.namePrefix = p }
+}
+
 func withInteractive() ctlOption {
 	return func(cx *ctlCtx) { cx.interactive = true }
 }
@@ -111,6 +134,26 @@ func withNoStrictReconfig() ctlOption {
 
 func withFlagByEnv() ctlOption {
 	return func(cx *ctlCtx) { cx.envMap = make(map[string]struct{}) }
+}
+
+func withKeepDataDirStop() ctlOption {
+	return func(cx *ctlCtx) { cx.keepDataDirStop = true }
+}
+
+func withReadyc(c chan ctlCtx) ctlOption {
+	return func(cx *ctlCtx) { cx.readyc = c }
+}
+
+func withStopc(c chan struct{}) ctlOption {
+	return func(cx *ctlCtx) { cx.stopc = c }
+}
+
+func withClosedc(c chan struct{}) ctlOption {
+	return func(cx *ctlCtx) { cx.closedc = c }
+}
+
+func withTestTimeout(d time.Duration) ctlOption {
+	return func(cx *ctlCtx) { cx.testTimeout = d }
 }
 
 func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
@@ -132,14 +175,24 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 		ret.cfg.quotaBackendBytes = ret.quotaBackendBytes
 	}
 	ret.cfg.noStrictReconfig = ret.noStrictReconfig
+	ret.cfg.existingInitialCluster = ret.existingInitialCluster
+	ret.cfg.existingCluster = ret.existingCluster
+	ret.cfg.namePrefix = ret.namePrefix
+	ret.cfg.keepDataDirStop = ret.keepDataDirStop
 
 	epc, err := newEtcdProcessCluster(&ret.cfg)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
 	ret.epc = epc
+	if ret.readyc != nil {
+		ret.readyc <- ret
+	}
 
 	defer func() {
+		if ret.closedc != nil {
+			defer close(ret.closedc)
+		}
 		os.Unsetenv("ETCDCTL_API")
 		if ret.envMap != nil {
 			for k := range ret.envMap {
@@ -155,11 +208,17 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	go func() {
 		defer close(donec)
 		testFunc(ret)
+		if ret.stopc != nil {
+			<-ret.stopc
+		}
 	}()
 
 	timeout := 2*ret.dialTimeout + time.Second
 	if ret.dialTimeout == 0 {
 		timeout = 30 * time.Second
+	}
+	if ret.testTimeout != time.Duration(0) {
+		timeout = ret.testTimeout
 	}
 	select {
 	case <-time.After(timeout):

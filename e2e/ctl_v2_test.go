@@ -254,7 +254,7 @@ func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issue
 	// restart from the backup directory
 	cfg2 := configNoTLS
 	cfg2.dataDirPath = backupDir
-	cfg2.keepDataDir = true
+	cfg2.keepDataDirStart = true
 	cfg2.forceNewCluster = true
 	epc2 := setupEtcdctlTest(t, &cfg2, false)
 
