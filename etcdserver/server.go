@@ -654,14 +654,9 @@ func (s *EtcdServer) run() {
 				}
 			}
 
-			// TODO: remove the nil checking
 			// current test utility does not provide the stats
-			if s.stats != nil {
-				s.stats.BecomeLeader()
-			}
-			if s.r.td != nil {
-				s.r.td.Reset()
-			}
+			s.stats.BecomeLeader()
+			s.r.td.Reset()
 		},
 		updateCommittedIndex: func(ci uint64) {
 			cci := s.getCommittedIndex()
