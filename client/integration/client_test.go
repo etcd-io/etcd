@@ -34,7 +34,7 @@ import (
 func TestV2NoRetryEOF(t *testing.T) {
 	defer testutil.AfterTest(t)
 	// generate an EOF response; specify address so appears first in sorted ep list
-	lEOF := integration.NewListenerWithAddr(t, fmt.Sprintf("eof:123.%d.sock", os.Getpid()))
+	lEOF := integration.NewListenerWithAddr(t, fmt.Sprintf("127.0.0.1:%05d", os.Getpid()))
 	defer lEOF.Close()
 	tries := uint32(0)
 	go func() {
@@ -65,8 +65,7 @@ func TestV2NoRetryEOF(t *testing.T) {
 // TestV2NoRetryNoLeader tests destructive api calls won't retry if given an error code.
 func TestV2NoRetryNoLeader(t *testing.T) {
 	defer testutil.AfterTest(t)
-
-	lHttp := integration.NewListenerWithAddr(t, fmt.Sprintf("errHttp:123.%d.sock", os.Getpid()))
+	lHttp := integration.NewListenerWithAddr(t, fmt.Sprintf("127.0.0.1:%05d", os.Getpid()))
 	eh := &errHandler{errCode: http.StatusServiceUnavailable}
 	srv := httptest.NewUnstartedServer(eh)
 	defer lHttp.Close()
