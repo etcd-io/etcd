@@ -248,7 +248,6 @@ func (b *backend) defrag() error {
 	defer b.mu.Unlock()
 
 	b.batchTx.commit(true)
-	b.batchTx.tx = nil
 
 	tmpdb, err := bolt.Open(b.db.Path()+".tmp", 0600, boltOpenOptions)
 	if err != nil {
