@@ -15,86 +15,10 @@
 package auth
 
 import (
-	"bytes"
-	"sort"
-
 	"github.com/coreos/etcd/auth/authpb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/adt"
 )
-
-// isSubset returns true if a is a subset of b.
-// If a is a prefix of b, then a is a subset of b.
-// Given intervals [a1,a2) and [b1,b2), is
-// the a interval a subset of b?
-func isSubset(a, b *rangePerm) bool {
-	switch {
-	case len(a.end) == 0 && len(b.end) == 0:
-		// a, b are both keys
-		return bytes.Equal(a.begin, b.begin)
-	case len(b.end) == 0:
-		// b is a key, a is a range
-		return false
-	case len(a.end) == 0:
-		// a is a key, b is a range. need b1 <= a1 and a1 < b2
-		return bytes.Compare(b.begin, a.begin) <= 0 && bytes.Compare(a.begin, b.end) < 0
-	default:
-		// both are ranges. need b1 <= a1 and a2 <= b2
-		return bytes.Compare(b.begin, a.begin) <= 0 && bytes.Compare(a.end, b.end) <= 0
-	}
-}
-
-func isRangeEqual(a, b *rangePerm) bool {
-	return bytes.Equal(a.begin, b.begin) && bytes.Equal(a.end, b.end)
-}
-
-// mergeRangePerms merges adjacent rangePerms.
-func mergeRangePerms(perms []*rangePerm) (rs []*rangePerm) {
-	if len(perms) < 2 {
-		return perms
-	}
-	sort.Sort(RangePermSliceByBegin(perms))
-
-	// initialize with first rangePerm
-	rs = append(rs, perms[0])
-
-	// merge in-place from 2nd
-	for i := 1; i < len(perms); i++ {
-		rp := rs[len(rs)-1]
-
-		// skip duplicate range
-		if isRangeEqual(rp, perms[i]) {
-			continue
-		}
-
-		// merge ["a", "") with ["a", "c")
-		if bytes.Equal(rp.begin, perms[i].begin) && len(rp.end) == 0 && len(perms[i].end) > 0 {
-			rp.end = perms[i].end
-			continue
-		}
-
-		// do not merge ["a", "b") with ["b", "")
-		if bytes.Equal(rp.end, perms[i].begin) && len(perms[i].end) == 0 {
-			rs = append(rs, perms[i])
-			continue
-		}
-
-		// rp.end < perms[i].begin; found beginning of next range
-		if bytes.Compare(rp.end, perms[i].begin) < 0 {
-			rs = append(rs, perms[i])
-			continue
-		}
-
-		rp.end = getMax(rp.end, perms[i].end)
-	}
-	return
-}
-
-func getMax(a, b []byte) []byte {
-	if bytes.Compare(a, b) > 0 {
-		return a
-	}
-	return b
-}
 
 func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermissions {
 	user := getUser(tx, userName)
@@ -103,7 +27,8 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 		return nil
 	}
 
-	var readPerms, writePerms []*rangePerm
+	readPerms := &adt.IntervalTree{}
+	writePerms := &adt.IntervalTree{}
 
 	for _, roleName := range user.Roles {
 		role := getRole(tx, roleName)
@@ -112,30 +37,36 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 		}
 
 		for _, perm := range role.KeyPermission {
-			rp := &rangePerm{begin: perm.Key, end: perm.RangeEnd}
+			var ivl adt.Interval
+
+			if len(perm.RangeEnd) != 0 {
+				ivl = adt.NewStringInterval(string(perm.Key), string(perm.RangeEnd))
+			} else {
+				ivl = adt.NewStringPoint(string(perm.Key))
+			}
 
 			switch perm.PermType {
 			case authpb.READWRITE:
-				readPerms = append(readPerms, rp)
-				writePerms = append(writePerms, rp)
+				readPerms.Insert(ivl, struct{}{})
+				writePerms.Insert(ivl, struct{}{})
 
 			case authpb.READ:
-				readPerms = append(readPerms, rp)
+				readPerms.Insert(ivl, struct{}{})
 
 			case authpb.WRITE:
-				writePerms = append(writePerms, rp)
+				writePerms.Insert(ivl, struct{}{})
 			}
 		}
 	}
 
 	return &unifiedRangePermissions{
-		readPerms:  mergeRangePerms(readPerms),
-		writePerms: mergeRangePerms(writePerms),
+		readPerms:  readPerms,
+		writePerms: writePerms,
 	}
 }
 
-func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
-	var tocheck []*rangePerm
+func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
+	var tocheck *adt.IntervalTree
 
 	switch permtyp {
 	case authpb.READ:
@@ -146,18 +77,51 @@ func checkKeyPerm(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, pe
 		plog.Panicf("unknown auth type: %v", permtyp)
 	}
 
-	requiredPerm := &rangePerm{begin: key, end: rangeEnd}
+	ivl := adt.NewStringInterval(key, rangeEnd)
 
-	for _, perm := range tocheck {
-		if isSubset(requiredPerm, perm) {
+	isContiguous := true
+	var maxEnd, minBegin adt.Comparable
+
+	tocheck.Visit(ivl, func(n *adt.IntervalValue) bool {
+		if minBegin == nil {
+			minBegin = n.Ivl.Begin
+			maxEnd = n.Ivl.End
 			return true
 		}
-	}
 
-	return false
+		if maxEnd.Compare(n.Ivl.Begin) < 0 {
+			isContiguous = false
+			return false
+		}
+
+		if n.Ivl.End.Compare(maxEnd) > 0 {
+			maxEnd = n.Ivl.End
+		}
+
+		return true
+	})
+
+	return isContiguous && maxEnd.Compare(ivl.End) >= 0 && minBegin.Compare(ivl.Begin) <= 0
 }
 
-func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
+func checkKeyPoint(cachedPerms *unifiedRangePermissions, key string, permtyp authpb.Permission_Type) bool {
+	var tocheck *adt.IntervalTree
+
+	switch permtyp {
+	case authpb.READ:
+		tocheck = cachedPerms.readPerms
+	case authpb.WRITE:
+		tocheck = cachedPerms.writePerms
+	default:
+		plog.Panicf("unknown auth type: %v", permtyp)
+	}
+
+	pt := adt.NewStringPoint(key)
+
+	return tocheck.Contains(pt)
+}
+
+func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
 	// assumption: tx is Lock()ed
 	_, ok := as.rangePermCache[userName]
 	if !ok {
@@ -169,7 +133,11 @@ func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key
 		as.rangePermCache[userName] = perms
 	}
 
-	return checkKeyPerm(as.rangePermCache[userName], key, rangeEnd, permtyp)
+	if len(rangeEnd) == 0 {
+		return checkKeyPoint(as.rangePermCache[userName], key, permtyp)
+	}
+
+	return checkKeyInterval(as.rangePermCache[userName], key, rangeEnd, permtyp)
 }
 
 func (as *authStore) clearCachedPerm() {
@@ -181,35 +149,6 @@ func (as *authStore) invalidateCachedPerm(userName string) {
 }
 
 type unifiedRangePermissions struct {
-	// readPerms[i] and readPerms[j] (i != j) don't overlap
-	readPerms []*rangePerm
-	// writePerms[i] and writePerms[j] (i != j) don't overlap, too
-	writePerms []*rangePerm
-}
-
-type rangePerm struct {
-	begin, end []byte
-}
-
-type RangePermSliceByBegin []*rangePerm
-
-func (slice RangePermSliceByBegin) Len() int {
-	return len(slice)
-}
-
-func (slice RangePermSliceByBegin) Less(i, j int) bool {
-	switch bytes.Compare(slice[i].begin, slice[j].begin) {
-	case 0: // begin(i) == begin(j)
-		return bytes.Compare(slice[i].end, slice[j].end) == -1
-
-	case -1: // begin(i) < begin(j)
-		return true
-
-	default:
-		return false
-	}
-}
-
-func (slice RangePermSliceByBegin) Swap(i, j int) {
-	slice[i], slice[j] = slice[j], slice[i]
+	readPerms  *adt.IntervalTree
+	writePerms *adt.IntervalTree
 }
