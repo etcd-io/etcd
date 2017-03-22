@@ -222,3 +222,5 @@ The certificate needs to be signed for the member's FQDN in its Subject Name, us
 [tls-setup]: /hack/tls-setup
 [tls-guide]: https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
 [alt-name]: http://wiki.cacert.org/FAQ/subjectAltName
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/security.md?pixel)]() <!-- END ANALYTICS -->

@@ -29,3 +29,5 @@ entering dir: /foo2
 entering dir: /foo2/bar2
 copying key: /foo2/bar2/2 2
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/04_to_2_snapshot_migration.md?pixel)]() <!-- END ANALYTICS -->

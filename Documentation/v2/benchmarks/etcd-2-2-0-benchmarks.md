@@ -67,3 +67,4 @@ The performance is calulated through results of 100 benchmark rounds.
 - Write QPS to cluster leaders seems to be increased by a small margin. This is because the main loop and entry apply loops were decoupled in the etcd raft logic, eliminating several blocks between them.
 
 - Write QPS to all members seems to be increased by a significant margin, because followers now receive the latest commit index sooner, and commit proposals more quickly.
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/benchmarks/etcd-2-2-0-benchmarks.md?pixel)]() <!-- END ANALYTICS -->

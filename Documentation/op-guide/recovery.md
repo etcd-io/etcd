@@ -61,3 +61,5 @@ $ etcd \
 ```
 
 Now the restored etcd cluster should be available and serving the keyspace given by the snapshot.
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/recovery.md?pixel)]() <!-- END ANALYTICS -->

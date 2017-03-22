@@ -249,3 +249,5 @@ There should now be periodic backups going to: `s3://etcd2-backup-bucket/backups
    In the case of large data sets, it is recommended to copy the data directory produced by `etcd2-restore` on the founding member to the other nodes before running `etcd2-join` on them. This will avoid etcd transferring the entire snapshot to every node after it joins the cluster.
 
 2. It is not recommended clients be allowed to access the etcd2 cluster **until** all members have been added and finished catching up.
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/contrib/systemd/etcd2-backup-coreos/README.md?pixel)]() <!-- END ANALYTICS -->

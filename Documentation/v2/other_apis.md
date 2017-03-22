@@ -26,3 +26,5 @@ curl http://10.0.0.10:2379/health
 ```json
 {"health": "true"}
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/other_apis.md?pixel)]() <!-- END ANALYTICS -->

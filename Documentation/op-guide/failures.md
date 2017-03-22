@@ -42,3 +42,5 @@ Of course, it is possible to recover a failed bootstrapped cluster like recoveri
 
 [backup]: maintenance.md#snapshot-backup
 [unrecoverable]: recovery.md#disaster-recovery
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/failures.md?pixel)]() <!-- END ANALYTICS -->

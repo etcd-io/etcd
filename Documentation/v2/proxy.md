@@ -151,3 +151,5 @@ If an error occurs, check the [add member troubleshooting doc][runtime-configura
 [goreman]: https://github.com/mattn/goreman
 [procfile]: https://github.com/coreos/etcd/blob/master/Procfile
 [runtime-configuration]: runtime-configuration.md#error-cases-when-adding-members
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/proxy.md?pixel)]() <!-- END ANALYTICS -->

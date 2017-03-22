@@ -114,3 +114,5 @@ $ curl http://127.0.0.1:4001/version
 [auth]: auth_api.md
 [backup-datastore]: admin_guide.md#backing-up-the-datastore
 [v2.0]: https://github.com/coreos/etcd/releases/tag/v2.0.13
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/upgrade_2_1.md?pixel)]() <!-- END ANALYTICS -->

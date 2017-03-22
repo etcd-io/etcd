@@ -1285,3 +1285,5 @@ backward compatibility for `JSON` format and the format in non-interactive mode.
 [etcdrpc]: ../etcdserver/etcdserverpb/rpc.proto
 [storagerpc]: ../mvcc/mvccpb/kv.proto
 [member_list_rpc]: ../etcdserver/etcdserverpb/rpc.proto#L493-L497
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/etcdctl/README.md?pixel)]() <!-- END ANALYTICS -->

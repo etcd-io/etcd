@@ -75,3 +75,5 @@ With the benchmark result, we can calculate roughly that `c1 = 17kb`, `c2 = 18kb
 | 5k | 50 | 100 |  50M |  *OOM* |
 
 [rss]: https://en.wikipedia.org/wiki/Resident_set_size
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/benchmarks/etcd-3-watch-memory-benchmark.md?pixel)]() <!-- END ANALYTICS -->

@@ -33,3 +33,5 @@ Client is a caller of the cluster's HTTP API.
 ## Machine (deprecated)
 
 The alternative of Member in etcd before 2.0
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/glossary.md?pixel)]() <!-- END ANALYTICS -->

@@ -50,3 +50,5 @@ Bootstrap another machine and use the [boom HTTP benchmark tool][boom] to send r
 
 [boom]: https://github.com/rakyll/boom
 [hack-benchmark]: /hack/benchmark/
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/benchmarks/etcd-2-1-0-alpha-benchmarks.md?pixel)]() <!-- END ANALYTICS -->

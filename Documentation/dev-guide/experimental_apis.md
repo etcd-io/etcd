@@ -9,3 +9,5 @@ For the most part, the etcd project is stable, but we are still moving fast! We 
 
 [gateway]: ../op-guide/gateway.md
 [grpc-proxy]: ../op-guide/grpc_proxy.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/dev-guide/experimental_apis.md?pixel)]() <!-- END ANALYTICS -->

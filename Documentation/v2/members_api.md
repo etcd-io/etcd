@@ -118,3 +118,5 @@ curl http://10.0.0.10:2379/v2/members/272e204152 -XPUT \
 -H "Content-Type: application/json" -d '{"peerURLs":["http://10.0.0.10:2380"]}'
 ```
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/members_api.md?pixel)]() <!-- END ANALYTICS -->

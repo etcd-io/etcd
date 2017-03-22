@@ -163,3 +163,5 @@ Currently only the amd64 architecture is officially supported by `etcd`.
 ### License
 
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/README.md?pixel)]() <!-- END ANALYTICS -->

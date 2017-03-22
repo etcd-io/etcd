@@ -70,3 +70,5 @@ Bootstrap another machine and use the [boom HTTP benchmark tool][boom] to send r
 [c7146bd5]: https://github.com/coreos/etcd/commits/c7146bd5f2c73716091262edc638401bb8229144
 [etcd-2.1-benchmark]: etcd-2-1-0-alpha-benchmarks.md
 [hack-benchmark]: /hack/benchmark/
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/benchmarks/etcd-2-2-0-rc-benchmarks.md?pixel)]() <!-- END ANALYTICS -->

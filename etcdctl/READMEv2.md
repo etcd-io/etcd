@@ -334,3 +334,5 @@ etcdctl is under the Apache 2.0 license. See the [LICENSE][license] file for det
 [license]: https://github.com/coreos/etcdctl/blob/master/LICENSE
 [semver]: http://semver.org/
 [username-flag]: #--username--u
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/etcdctl/READMEv2.md?pixel)]() <!-- END ANALYTICS -->

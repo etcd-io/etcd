@@ -27,3 +27,5 @@ etcd uses the [capnslog][capnslog] library for logging application output catego
     * Write a log entry to disk
 
 [capnslog]: [https://github.com/coreos/pkg/tree/master/capnslog]
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/dev-internal/logging.md?pixel)]() <!-- END ANALYTICS -->

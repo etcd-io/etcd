@@ -27,3 +27,5 @@ The mirroring mechanism is unidirectional. Data under the destination cluster’
 Mirror-maker is a built-in feature of [etcdctl][etcdctl].
 
 [etcdctl]: ../README.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/etcdctl/doc/mirror_maker.md?pixel)]() <!-- END ANALYTICS -->

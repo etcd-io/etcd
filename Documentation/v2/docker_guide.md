@@ -94,3 +94,5 @@ Once the cluster has been bootstrapped etcd clients can be configured with a lis
 ```
 etcdctl -C http://192.168.12.50:2379,http://192.168.12.51:2379,http://192.168.12.52:2379 member list
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/docker_guide.md?pixel)]() <!-- END ANALYTICS -->

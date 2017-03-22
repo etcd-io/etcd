@@ -126,3 +126,5 @@ Usually this warning happens after tearing down an old cluster, then reusing som
 [runtime reconfiguration]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/runtime-configuration.md
 [benchmark]: https://github.com/coreos/etcd/tree/master/tools/benchmark
 [benchmark-result]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/performance.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/faq.md?pixel)]() <!-- END ANALYTICS -->

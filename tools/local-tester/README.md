@@ -23,3 +23,5 @@ The fault injected cluster is invoked with `goreman`:
 ```sh
 goreman -f tools/local-tester/Procfile start
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/tools/local-tester/README.md?pixel)]() <!-- END ANALYTICS -->

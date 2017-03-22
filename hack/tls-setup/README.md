@@ -29,3 +29,5 @@ Example:
 }
 ```
 3. Run `make` to generate the certs
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/hack/tls-setup/README.md?pixel)]() <!-- END ANALYTICS -->

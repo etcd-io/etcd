@@ -23,3 +23,5 @@ etcd also keeps a secondary in-memory [btree][btree] index to speed up range que
 [persistent-ds]: https://en.wikipedia.org/wiki/Persistent_data_structure
 [btree]: https://en.wikipedia.org/wiki/B-tree
 [b+tree]: https://en.wikipedia.org/wiki/B%2B_tree
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/learning/data_model.md?pixel)]() <!-- END ANALYTICS -->

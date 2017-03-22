@@ -141,3 +141,5 @@ Heavy file descriptor (`process_open_fds`) usage (i.e., near the process's file 
 [prometheus]: http://prometheus.io/
 [prometheus-getting-started]: http://prometheus.io/docs/introduction/getting_started/
 [prometheus-naming]: http://prometheus.io/docs/practices/naming/
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/metrics.md?pixel)]() <!-- END ANALYTICS -->

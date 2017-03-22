@@ -116,3 +116,5 @@ git log ...${PREV_VERSION} --pretty=format:"%an" | sort | uniq | tr '\n' ',' | s
 
 - Create new stable branch through `git push origin ${VERSION_MAJOR}.${VERSION_MINOR}` if this is a major stable release. This assumes `origin` corresponds to "https://github.com/coreos/etcd".
 - Bump [hardcoded Version in the repository](https://github.com/coreos/etcd/blob/master/version/version.go#L30) to the version `${VERSION}+git`.
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/dev-internal/release.md?pixel)]() <!-- END ANALYTICS -->

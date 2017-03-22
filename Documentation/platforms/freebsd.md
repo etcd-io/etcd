@@ -46,3 +46,5 @@ r@fbsd­10:/ #
 ## Issues
 
 If there are any issues with the build/install procedure or there's a problem that is local to FreeBSD only (for example, by not being able to reproduce it on any other platform, like OSX or Linux), please send a problem report using this page for more information: http://www.freebsd.org/send­pr.html
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/platforms/freebsd.md?pixel)]() <!-- END ANALYTICS -->

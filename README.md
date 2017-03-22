@@ -135,3 +135,5 @@ See [reporting bugs](Documentation/reporting_bugs.md) for details about reportin
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
 
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/README.md?pixel)]() <!-- END ANALYTICS -->

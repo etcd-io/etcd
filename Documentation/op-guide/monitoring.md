@@ -86,3 +86,5 @@ Sample dashboard:
 [grafana]: http://grafana.org/
 [template]: ./grafana.json
 [demo]: http://dash.etcd.io/dashboard/db/test-etcd
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/monitoring.md?pixel)]() <!-- END ANALYTICS -->

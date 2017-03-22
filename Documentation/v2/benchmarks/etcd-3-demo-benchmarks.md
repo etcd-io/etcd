@@ -40,3 +40,5 @@ The performance with empty server handler is not affected by one put. So the
 performance downgrade should be caused by storage package.
 
 [etcd-v3-benchmark]: /tools/benchmark/
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/benchmarks/etcd-3-demo-benchmarks.md?pixel)]() <!-- END ANALYTICS -->

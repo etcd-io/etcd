@@ -178,3 +178,5 @@ $ etcdctl -u user get foo
 Otherwise, all `etcdctl` commands remain the same. Users and roles can still be created and modified, but require authentication by a user with the root role.
 
 [auth-api]: auth_api.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/authentication.md?pixel)]() <!-- END ANALYTICS -->

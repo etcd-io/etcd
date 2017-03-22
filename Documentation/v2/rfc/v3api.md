@@ -209,3 +209,5 @@ WatchResponse {
 
 [api-protobuf]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
 [kv-protobuf]: https://github.com/coreos/etcd/blob/master/storage/storagepb/kv.proto
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/rfc/v3api.md?pixel)]() <!-- END ANALYTICS -->

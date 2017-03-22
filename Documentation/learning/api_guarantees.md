@@ -62,3 +62,5 @@ etcd ensures linearizability for all other operations by default. Linearizabilit
 [serializable_isolation]: https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable
 [Linearizability]: #Linearizability
 [txn]: api.md#transactions
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/learning/api_guarantees.md?pixel)]() <!-- END ANALYTICS -->

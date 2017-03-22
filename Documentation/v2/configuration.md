@@ -280,3 +280,5 @@ Follow the instructions when using these flags.
 [security]: security.md
 [systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
 [tuning]: tuning.md#time-parameters
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/configuration.md?pixel)]() <!-- END ANALYTICS -->

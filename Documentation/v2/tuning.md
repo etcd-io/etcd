@@ -73,3 +73,5 @@ $ ETCD_SNAPSHOT_COUNT=5000 etcd
 ```
 
 [ping]: https://en.wikipedia.org/wiki/Ping_(networking_utility)
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/tuning.md?pixel)]() <!-- END ANALYTICS -->

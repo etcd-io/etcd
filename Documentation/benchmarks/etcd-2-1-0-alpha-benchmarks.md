@@ -50,3 +50,5 @@ Bootstrap another machine and use the [hey HTTP benchmark tool][hey] to send req
 
 [hey]: https://github.com/rakyll/hey
 [hack-benchmark]: https://github.com/coreos/etcd/tree/master/hack/benchmark
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/benchmarks/etcd-2-1-0-alpha-benchmarks.md?pixel)]() <!-- END ANALYTICS -->

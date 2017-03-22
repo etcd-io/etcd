@@ -127,3 +127,5 @@ $ ETCDCTL_API=3 etcdctl endpoint health
 - Adding a v3 node to v2.3 cluster during upgrades is not supported and could trigger panics. See [Issue 7249](https://github.com/coreos/etcd/issues/7429) for additional information. Mixed versions of etcd members are only allowed during v3 migration. Finish upgrades before making any membership changes.
 
 [etcd-contact]: https://groups.google.com/forum/#!forum/etcd-dev
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/upgrades/upgrade_3_0.md?pixel)]() <!-- END ANALYTICS -->

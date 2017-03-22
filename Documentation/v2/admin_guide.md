@@ -310,3 +310,5 @@ When using etcd in heavy-load scenarios on machines with multiple cores it will 
 [snap-pkg]: http://godoc.org/github.com/coreos/etcd/snap
 [update-a-member]: runtime-configuration.md#update-a-member
 [wal-pkg]: http://godoc.org/github.com/coreos/etcd/wal
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/admin_guide.md?pixel)]() <!-- END ANALYTICS -->

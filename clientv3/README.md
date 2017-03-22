@@ -83,3 +83,5 @@ The [namespace](https://godoc.org/github.com/coreos/etcd/clientv3/namespace) pac
 ## Examples
 
 More code examples can be found at [GoDoc](https://godoc.org/github.com/coreos/etcd/clientv3).
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/clientv3/README.md?pixel)]() <!-- END ANALYTICS -->

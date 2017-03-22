@@ -119,3 +119,5 @@ $ curl http://127.0.0.1:4001/version
 
 [etcd-contact]: https://coreos.com/etcd/?
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/upgrade_2_3.md?pixel)]() <!-- END ANALYTICS -->

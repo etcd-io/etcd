@@ -96,3 +96,5 @@ Based on the result, we know the value size does not significantly impact the me
 [btree]: https://en.wikipedia.org/wiki/B-tree
 [pagecache]: https://en.wikipedia.org/wiki/Page_cache
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/benchmarks/etcd-storage-memory-benchmark.md?pixel)]() <!-- END ANALYTICS -->

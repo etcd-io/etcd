@@ -91,3 +91,5 @@ Example application workload: A 3,000 node Kubernetes cluster
 [fio]: https://github.com/axboe/fio
 [tuning]: ../tuning.md
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/hardware.md?pixel)]() <!-- END ANALYTICS -->

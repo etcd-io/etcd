@@ -171,3 +171,5 @@ sudo systemctl disable my-etcd-2.service
 sudo systemctl stop my-etcd-3.service
 sudo systemctl disable my-etcd-3.service
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/contrib/systemd/etcd3-multinode/README.md?pixel)]() <!-- END ANALYTICS -->

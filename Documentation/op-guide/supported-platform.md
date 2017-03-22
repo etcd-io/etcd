@@ -38,3 +38,5 @@ Currently amd64 and ppc64le architectures are officially supported by `etcd`.
 
 [go-issue]: https://github.com/golang/go/issues/599
 [go-atomic]: https://golang.org/pkg/sync/atomic/#pkg-note-BUG
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/supported-platform.md?pixel)]() <!-- END ANALYTICS -->

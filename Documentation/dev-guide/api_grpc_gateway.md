@@ -51,3 +51,5 @@ Generated [Swagger][swagger] API definitions can be found at [rpc.swagger.json][
 [swagger]: http://swagger.io/
 [swagger-doc]: apispec/swagger/rpc.swagger.json
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/dev-guide/api_grpc_gateway.md?pixel)]() <!-- END ANALYTICS -->
