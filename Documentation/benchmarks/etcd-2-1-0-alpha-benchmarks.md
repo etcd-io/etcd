@@ -49,4 +49,4 @@ Bootstrap another machine and use the [hey HTTP benchmark tool][hey] to send req
 | 256               | 256               | all servers        | 3061      | 119.3 |
 
 [hey]: https://github.com/rakyll/hey
-[hack-benchmark]: /hack/benchmark/
+[hack-benchmark]: https://github.com/coreos/etcd/tree/master/hack/benchmark
