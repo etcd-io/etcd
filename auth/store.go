@@ -177,7 +177,8 @@ type authStore struct {
 	enabled   bool
 	enabledMu sync.RWMutex
 
-	rangePermCache map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
+	rangePermCache   map[string]*unifiedRangePermissions // username -> unifiedRangePermissions
+	rangePermCacheMu sync.RWMutex
 
 	revision uint64
 
