@@ -53,25 +53,19 @@ func NewCluster(c *Client) Cluster {
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
 	r := &pb.MemberAddRequest{PeerURLs: peerAddrs}
 	resp, err := c.remote.MemberAdd(ctx, r)
-	if err == nil {
-		return (*MemberAddResponse)(resp), nil
-	}
-	if isHaltErr(ctx, err) {
+	if err != nil {
 		return nil, toErr(ctx, err)
 	}
-	return nil, toErr(ctx, err)
+	return (*MemberAddResponse)(resp), nil
 }
 
 func (c *cluster) MemberRemove(ctx context.Context, id uint64) (*MemberRemoveResponse, error) {
 	r := &pb.MemberRemoveRequest{ID: id}
 	resp, err := c.remote.MemberRemove(ctx, r)
-	if err == nil {
-		return (*MemberRemoveResponse)(resp), nil
-	}
-	if isHaltErr(ctx, err) {
+	if err != nil {
 		return nil, toErr(ctx, err)
 	}
-	return nil, toErr(ctx, err)
+	return (*MemberRemoveResponse)(resp), nil
 }
 
 func (c *cluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*MemberUpdateResponse, error) {
