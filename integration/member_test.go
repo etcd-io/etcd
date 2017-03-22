@@ -61,7 +61,7 @@ func TestRestartMember(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-
+	c.waitLeader(t, c.Members)
 	clusterMustProgress(t, c.Members)
 }
 
