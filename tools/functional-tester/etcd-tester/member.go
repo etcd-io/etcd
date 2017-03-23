@@ -79,7 +79,10 @@ func (m *member) Defrag() error {
 		return err
 	}
 	defer cli.Close()
-	if _, err = cli.Defragment(context.Background(), m.ClientURL); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	_, err = cli.Defragment(ctx, m.ClientURL)
+	cancel()
+	if err != nil {
 		return err
 	}
 	plog.Printf("defragmented %s\n", m.ClientURL)
