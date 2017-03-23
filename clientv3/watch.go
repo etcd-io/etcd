@@ -132,6 +132,8 @@ type watchGrpcStream struct {
 	errc chan error
 	// closingc gets the watcherStream of closing watchers
 	closingc chan *watcherStream
+	// wg is Done when all substream goroutines have exited
+	wg sync.WaitGroup
 
 	// resumec closes to signal that all substreams should begin resuming
 	resumec chan struct{}
@@ -406,7 +408,7 @@ func (w *watchGrpcStream) run() {
 		for range closing {
 			w.closeSubstream(<-w.closingc)
 		}
-
+		w.wg.Wait()
 		w.owner.closeStream(w)
 	}()
 
@@ -431,6 +433,7 @@ func (w *watchGrpcStream) run() {
 			}
 
 			ws.donec = make(chan struct{})
+			w.wg.Add(1)
 			go w.serveSubstream(ws, w.resumec)
 
 			// queue up for watcher creation/resume
@@ -576,6 +579,7 @@ func (w *watchGrpcStream) serveSubstream(ws *watcherStream, resumec chan struct{
 		if !resuming {
 			w.closingc <- ws
 		}
+		w.wg.Done()
 	}()
 
 	emptyWr := &WatchResponse{}
@@ -674,6 +678,7 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 			continue
 		}
 		ws.donec = make(chan struct{})
+		w.wg.Add(1)
 		go w.serveSubstream(ws, w.resumec)
 	}
 
