@@ -15,6 +15,7 @@ The easiest way to get started using etcd as a distributed key-value store is to
  - [gRPC API references][api_ref]
  - [HTTP JSON API through the gRPC gateway][api_grpc_gateway]
  - [gRPC naming and discovery][grpc_naming]
+ - [Client][namespace_client] and [proxy][namespace_proxy] namespacing
  - [Embedding etcd][embed_etcd]
  - [Experimental features and APIs][experimental]
  - [System limits][system-limit]
@@ -25,7 +26,7 @@ Administrators who need to create reliable and scalable key-value stores for the
 
  - [Setting up etcd clusters][clustering]
  - [Setting up etcd gateways][gateway]
- - [Setting up etcd gRPC proxy (pre-alpha)][grpc_proxy]
+ - [Setting up etcd gRPC proxy][grpc_proxy]
  - [Run etcd clusters inside containers][container]
  - [Hardware recommendations][hardware]
  - [Configuration][conf]
@@ -74,6 +75,8 @@ Answers to [common questions] about etcd.
 [failures]: op-guide/failures.md
 [gateway]: op-guide/gateway.md
 [glossary]: learning/glossary.md
+[namespace_client]: https://godoc.org/github.com/coreos/etcd/clientv3/namespace
+[namespace_proxy]: op-guide/grpc_proxy.md#namespacing
 [grpc_proxy]: op-guide/grpc_proxy.md
 [hardware]: op-guide/hardware.md
 [interacting]: dev-guide/interacting_v3.md

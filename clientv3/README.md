@@ -76,6 +76,10 @@ if err != nil {
 
 The etcd client optionally exposes RPC metrics through [go-grpc-prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus). See the [examples](https://github.com/coreos/etcd/blob/master/clientv3/example_metrics_test.go).
 
+## Namespacing
+
+The [namespace](https://godoc.org/github.com/coreos/etcd/clientv3/namespace) package provides `clientv3` interface wrappers to transparently isolate client requests to a user-defined prefix.
+
 ## Examples
 
 More code examples can be found at [GoDoc](https://godoc.org/github.com/coreos/etcd/clientv3).
