@@ -9,7 +9,7 @@ This document tracks people and use cases for etcd in production. By creating a 
 
 **This is a meta user; please feel free to document specific Kubernetes clusters!**
 
-All Kubernetes clusters use etcd as their primary data store. This means etcd's users include such companies as [Niantic, Inc Pokemon Go](https://cloudplatform.googleblog.com/2016/09/bringing-Pokemon-GO-to-life-on-Google-Cloud.html), [Box](https://blog.box.com/blog/kubernetes-box-microservices-maximum-velocity/), [CoreOS](https://coreos.com/tectonic), [Ticketmaster](https://www.youtube.com/watch?v=wqXVKneP0Hg), and many many more.
+All Kubernetes clusters use etcd as their primary data store. This means etcd's users include such companies as [Niantic, Inc Pokemon Go](https://cloudplatform.googleblog.com/2016/09/bringing-Pokemon-GO-to-life-on-Google-Cloud.html), [Box](https://blog.box.com/blog/kubernetes-box-microservices-maximum-velocity/), [CoreOS](https://coreos.com/tectonic), [Ticketmaster](https://www.youtube.com/watch?v=wqXVKneP0Hg), [Salesforce](https://www.salesforce.com) and many many more.
 
 ## discovery.etcd.io
 
@@ -215,4 +215,15 @@ At Branch, we use kubernetes heavily as our core microservice platform for stagi
 - *Operator*: Baidu Waimai Operations Department
 - *Environment*: CentOS 6.5 
 - *Backups*: backup scripts
+
+## Salesforce.com
+
+- *Application*: Kubernetes
+- *Launched*: Jan 2017
+- *Cluster Size*: Multiple clusters of 3 members
+- *Order of Data Size*: 100s of Megabytes
+- *Operator*: Salesforce.com (krmayankk@github)
+- *Environment*: BareMetal
+- *Backups*: None, all data can be recreated
+
 
