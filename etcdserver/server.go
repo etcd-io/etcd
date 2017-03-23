@@ -270,7 +270,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	var be backend.Backend
 	beOpened := make(chan struct{})
 	go func() {
-		be = backend.NewDefaultBackend(bepath)
+		be = newBackend(bepath, cfg.QuotaBackendBytes)
 		beOpened <- struct{}{}
 	}()
 
@@ -809,7 +809,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		plog.Panicf("rename snapshot file error: %v", err)
 	}
 
-	newbe := backend.NewDefaultBackend(fn)
+	newbe := newBackend(fn, s.Cfg.QuotaBackendBytes)
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
@@ -1652,4 +1652,14 @@ func (s *EtcdServer) goAttach(f func()) {
 		defer s.wg.Done()
 		f()
 	}()
+}
+
+func newBackend(path string, quotaBytes int64) backend.Backend {
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = path
+	if quotaBytes > 0 && quotaBytes != DefaultQuotaBytes {
+		// permit 10% excess over quota for disarm
+		bcfg.MmapSize = uint64(quotaBytes + quotaBytes/10)
+	}
+	return backend.New(bcfg)
 }

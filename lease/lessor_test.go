@@ -390,6 +390,7 @@ func NewTestBackend(t *testing.T) (string, backend.Backend) {
 	if err != nil {
 		t.Fatalf("failed to create tmpdir (%v)", err)
 	}
-
-	return tmpPath, backend.New(filepath.Join(tmpPath, "be"), time.Second, 10000)
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = filepath.Join(tmpPath, "be")
+	return tmpPath, backend.New(bcfg)
 }

@@ -106,7 +106,7 @@ func prepareBackend() backend.Backend {
 	dbpath := filepath.Join(migrateDatadir, "member", "snap", "db")
 	go func() {
 		defer close(bch)
-		be = backend.New(dbpath, time.Second, 10000)
+		be = backend.NewDefaultBackend(dbpath)
 
 	}()
 	select {
