@@ -61,6 +61,7 @@ var (
 	ErrAuthOldRevision      = errors.New("auth: revision in header is old")
 	ErrInvalidAuthToken     = errors.New("auth: invalid auth token")
 	ErrInvalidAuthOpts      = errors.New("auth: invalid auth options")
+	ErrInvalidAuthMgmt      = errors.New("auth: invalid auth management")
 
 	// BcryptCost is the algorithm cost / strength for hashing auth passwords
 	BcryptCost = bcrypt.DefaultCost
@@ -352,6 +353,11 @@ func (as *authStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse,
 }
 
 func (as *authStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
+	if as.enabled && strings.Compare(r.Name, rootUser) == 0 {
+		plog.Errorf("the user root must not be deleted")
+		return nil, ErrInvalidAuthMgmt
+	}
+
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -477,6 +483,11 @@ func (as *authStore) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListRespon
 }
 
 func (as *authStore) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
+	if as.enabled && strings.Compare(r.Name, rootUser) == 0 && strings.Compare(r.Role, rootRole) == 0 {
+		plog.Errorf("the role root must not be revoked from the user root")
+		return nil, ErrInvalidAuthMgmt
+	}
+
 	tx := as.be.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -579,17 +590,10 @@ func (as *authStore) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest)
 }
 
 func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	// TODO(mitake): current scheme of role deletion allows existing users to have the deleted roles
-	//
-	// Assume a case like below:
-	// create a role r1
-	// create a user u1 and grant r1 to u1
-	// delete r1
-	//
-	// After this sequence, u1 is still granted the role r1. So if admin create a new role with the name r1,
-	// the new r1 is automatically granted u1.
-	// In some cases, it would be confusing. So we need to provide an option for deleting the grant relation
-	// from all users.
+	if as.enabled && strings.Compare(r.Role, rootRole) == 0 {
+		plog.Errorf("the role root must not be deleted")
+		return nil, ErrInvalidAuthMgmt
+	}
 
 	tx := as.be.BatchTx()
 	tx.Lock()
@@ -601,6 +605,28 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 	}
 
 	delRole(tx, r.Role)
+
+	users := getAllUsers(tx)
+	for _, user := range users {
+		updatedUser := &authpb.User{
+			Name:     user.Name,
+			Password: user.Password,
+		}
+
+		for _, role := range user.Roles {
+			if strings.Compare(role, r.Role) != 0 {
+				updatedUser.Roles = append(updatedUser.Roles, role)
+			}
+		}
+
+		if len(updatedUser.Roles) == len(user.Roles) {
+			continue
+		}
+
+		putUser(tx, updatedUser)
+
+		as.invalidateCachedPerm(string(user.Name))
+	}
 
 	as.commitRevision(tx)
 
