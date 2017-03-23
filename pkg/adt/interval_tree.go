@@ -134,25 +134,29 @@ func (x *intervalNode) updateMax() {
 type nodeVisitor func(n *intervalNode) bool
 
 // visit will call a node visitor on each node that overlaps the given interval
-func (x *intervalNode) visit(iv *Interval, nv nodeVisitor) {
+func (x *intervalNode) visit(iv *Interval, nv nodeVisitor) bool {
 	if x == nil {
-		return
+		return true
 	}
 	v := iv.Compare(&x.iv.Ivl)
 	switch {
 	case v < 0:
-		x.left.visit(iv, nv)
+		if !x.left.visit(iv, nv) {
+			return false
+		}
 	case v > 0:
 		maxiv := Interval{x.iv.Ivl.Begin, x.max}
 		if maxiv.Compare(iv) == 0 {
-			x.left.visit(iv, nv)
-			x.right.visit(iv, nv)
+			if !x.left.visit(iv, nv) || !x.right.visit(iv, nv) {
+				return false
+			}
 		}
 	default:
-		nv(x)
-		x.left.visit(iv, nv)
-		x.right.visit(iv, nv)
+		if !x.left.visit(iv, nv) || !nv(x) || !x.right.visit(iv, nv) {
+			return false
+		}
 	}
+	return true
 }
 
 type IntervalValue struct {
@@ -406,6 +410,7 @@ func (ivt *IntervalTree) MaxHeight() int {
 type IntervalVisitor func(n *IntervalValue) bool
 
 // Visit calls a visitor function on every tree node intersecting the given interval.
+// It will visit each interval [x, y) in ascending order sorted on x.
 func (ivt *IntervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
 	ivt.root.visit(&ivl, func(n *intervalNode) bool { return ivv(&n.iv) })
 }
