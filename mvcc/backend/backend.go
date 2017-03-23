@@ -265,7 +265,11 @@ func (b *backend) defrag() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.batchTx.commit(true)
+	// block concurrent read requests while resetting tx
+	b.readTx.mu.Lock()
+	defer b.readTx.mu.Unlock()
+
+	b.batchTx.unsafeCommit(true)
 	b.batchTx.tx = nil
 
 	tmpdb, err := bolt.Open(b.db.Path()+".tmp", 0600, boltOpenOptions)
@@ -305,6 +309,10 @@ func (b *backend) defrag() error {
 	if err != nil {
 		plog.Fatalf("cannot begin tx (%s)", err)
 	}
+
+	b.readTx.buf.reset()
+	b.readTx.tx = b.unsafeBegin(false)
+	atomic.StoreInt64(&b.size, b.readTx.tx.Size())
 
 	return nil
 }
@@ -363,12 +371,17 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 
 func (b *backend) begin(write bool) *bolt.Tx {
 	b.mu.RLock()
+	tx := b.unsafeBegin(write)
+	b.mu.RUnlock()
+	atomic.StoreInt64(&b.size, tx.Size())
+	return tx
+}
+
+func (b *backend) unsafeBegin(write bool) *bolt.Tx {
 	tx, err := b.db.Begin(write)
 	if err != nil {
 		plog.Fatalf("cannot begin tx (%s)", err)
 	}
-	b.mu.RUnlock()
-	atomic.StoreInt64(&b.size, tx.Size())
 	return tx
 }
 

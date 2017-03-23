@@ -244,6 +244,10 @@ func (t *batchTxBuffered) commit(stop bool) {
 	// all read txs must be closed to acquire boltdb commit rwlock
 	t.backend.readTx.mu.Lock()
 	defer t.backend.readTx.mu.Unlock()
+	t.unsafeCommit(stop)
+}
+
+func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	if t.backend.readTx.tx != nil {
 		if err := t.backend.readTx.tx.Rollback(); err != nil {
 			plog.Fatalf("cannot rollback tx (%s)", err)
