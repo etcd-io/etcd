@@ -76,6 +76,7 @@ func CheckAfterTest(d time.Duration) error {
 		"net.(*netFD).connect(":                        "a timing out dial",
 		").noteClientGone(":                            "a closenotifier sender",
 		").readLoop(":                                  "a Transport",
+		".grpc":                                        "a gRPC resource",
 	}
 
 	var stacks string
