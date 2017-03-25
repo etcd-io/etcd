@@ -6,7 +6,7 @@ Authentication was added in etcd 2.1. The etcd v3 API slightly modified the auth
 
 ## Special users and roles
 
-There is one special user, `root`, and there are two special roles, `root` and `guest`.
+There is one special user, `root`, and one special role, `root`.
 
 ### User `root`
 
