@@ -111,7 +111,7 @@ func (c *cache) Get(req *pb.RangeRequest) (*pb.RangeResponse, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if req.Revision < c.compactedRev {
+	if req.Revision > 0 && req.Revision < c.compactedRev {
 		c.lru.Remove(key)
 		return nil, ErrCompacted
 	}

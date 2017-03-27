@@ -123,15 +123,24 @@ func TestV3CompactCurrentRev(t *testing.T) {
 			t.Fatalf("couldn't put key (%v)", err)
 		}
 	}
+	// get key to add to proxy cache, if any
+	if _, err := kvc.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")}); err != nil {
+		t.Fatal(err)
+	}
 	// compact on current revision
 	_, err := kvc.Compact(context.Background(), &pb.CompactionRequest{Revision: 4})
 	if err != nil {
 		t.Fatalf("couldn't compact kv space (%v)", err)
 	}
-	// key still exists?
+	// key still exists when linearized?
 	_, err = kvc.Range(context.Background(), &pb.RangeRequest{Key: []byte("foo")})
 	if err != nil {
 		t.Fatalf("couldn't get key after compaction (%v)", err)
+	}
+	// key still exists when serialized?
+	_, err = kvc.Range(context.Background(), &pb.RangeRequest{Key: []byte("foo"), Serializable: true})
+	if err != nil {
+		t.Fatalf("couldn't get serialized key after compaction (%v)", err)
 	}
 }
 
