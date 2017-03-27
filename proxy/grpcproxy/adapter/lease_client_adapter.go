@@ -19,7 +19,6 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 type ls2lc struct {
@@ -39,29 +38,10 @@ func (c *ls2lc) LeaseRevoke(ctx context.Context, in *pb.LeaseRevokeRequest, opts
 }
 
 func (c *ls2lc) LeaseKeepAlive(ctx context.Context, opts ...grpc.CallOption) (pb.Lease_LeaseKeepAliveClient, error) {
-	// ch1 is buffered so server can send error on close
-	ch1, ch2 := make(chan interface{}, 1), make(chan interface{})
-	headerc, trailerc := make(chan metadata.MD, 1), make(chan metadata.MD, 1)
-
-	cctx, ccancel := context.WithCancel(ctx)
-	cli := &chanStream{recvc: ch1, sendc: ch2, ctx: cctx, cancel: ccancel}
-	lclient := &ls2lcClientStream{chanClientStream{headerc, trailerc, cli}}
-
-	sctx, scancel := context.WithCancel(ctx)
-	srv := &chanStream{recvc: ch2, sendc: ch1, ctx: sctx, cancel: scancel}
-	lserver := &ls2lcServerStream{chanServerStream{headerc, trailerc, srv, nil}}
-	go func() {
-		if err := c.leaseServer.LeaseKeepAlive(lserver); err != nil {
-			select {
-			case srv.sendc <- err:
-			case <-sctx.Done():
-			case <-cctx.Done():
-			}
-		}
-		scancel()
-		ccancel()
-	}()
-	return lclient, nil
+	cs := newPipeStream(ctx, func(ss chanServerStream) error {
+		return c.leaseServer.LeaseKeepAlive(&ls2lcServerStream{ss})
+	})
+	return &ls2lcClientStream{cs}, nil
 }
 
 func (c *ls2lc) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTimeToLiveRequest, opts ...grpc.CallOption) (*pb.LeaseTimeToLiveResponse, error) {

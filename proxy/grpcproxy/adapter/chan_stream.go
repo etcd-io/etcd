@@ -136,3 +136,30 @@ func (s *chanStream) RecvMsg(m interface{}) error {
 	}
 	return s.ctx.Err()
 }
+
+func newPipeStream(ctx context.Context, ssHandler func(chanServerStream) error) chanClientStream {
+	// ch1 is buffered so server can send error on close
+	ch1, ch2 := make(chan interface{}, 1), make(chan interface{})
+	headerc, trailerc := make(chan metadata.MD, 1), make(chan metadata.MD, 1)
+
+	cctx, ccancel := context.WithCancel(ctx)
+	cli := &chanStream{recvc: ch1, sendc: ch2, ctx: cctx, cancel: ccancel}
+	cs := chanClientStream{headerc, trailerc, cli}
+
+	sctx, scancel := context.WithCancel(ctx)
+	srv := &chanStream{recvc: ch2, sendc: ch1, ctx: sctx, cancel: scancel}
+	ss := chanServerStream{headerc, trailerc, srv, nil}
+
+	go func() {
+		if err := ssHandler(ss); err != nil {
+			select {
+			case srv.sendc <- err:
+			case <-sctx.Done():
+			case <-cctx.Done():
+			}
+		}
+		scancel()
+		ccancel()
+	}()
+	return cs
+}
