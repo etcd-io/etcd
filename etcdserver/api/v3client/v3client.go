@@ -39,5 +39,8 @@ func New(s *etcdserver.EtcdServer) *clientv3.Client {
 	wc := adapter.WatchServerToWatchClient(v3rpc.NewWatchServer(s))
 	c.Watcher = clientv3.NewWatchFromWatchClient(wc)
 
+	mc := adapter.MaintenanceServerToMaintenanceClient(v3rpc.NewMaintenanceServer(s))
+	c.Maintenance = clientv3.NewMaintenanceFromMaintenanceClient(mc)
+
 	return c
 }
