@@ -48,7 +48,8 @@ To learn more about the concepts and internals behind etcd, read the following p
  - [Understand data model][data_model]
  - [Understand APIs][understand_apis]
  - [Glossary][glossary]
- - Internals (TODO)
+ - Internals
+   - [Auth subsystem][auth_design]
 
 ## Upgrading and compatibility
 
@@ -95,3 +96,4 @@ Answers to [common questions] about etcd.
 [v3_upgrade]: upgrades/upgrade_3_0.md
 [v31_upgrade]: upgrades/upgrade_3_1.md
 [authentication]: op-guide/authentication.md
+[auth_design]: learning/auth_design.md
