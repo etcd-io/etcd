@@ -18,6 +18,7 @@ import (
 	"io"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -53,12 +54,31 @@ type Maintenance interface {
 }
 
 type maintenance struct {
-	c      *Client
+	dial   func(endpoint string) (pb.MaintenanceClient, func(), error)
 	remote pb.MaintenanceClient
 }
 
 func NewMaintenance(c *Client) Maintenance {
-	return &maintenance{c: c, remote: pb.NewMaintenanceClient(c.conn)}
+	return &maintenance{
+		dial: func(endpoint string) (pb.MaintenanceClient, func(), error) {
+			conn, err := c.dial(endpoint)
+			if err != nil {
+				return nil, nil, err
+			}
+			cancel := func() { conn.Close() }
+			return pb.NewMaintenanceClient(conn), cancel, nil
+		},
+		remote: pb.NewMaintenanceClient(c.conn),
+	}
+}
+
+func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient) Maintenance {
+	return &maintenance{
+		dial: func(string) (pb.MaintenanceClient, func(), error) {
+			return remote, func() {}, nil
+		},
+		remote: remote,
+	}
 }
 
 func (m *maintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
@@ -109,12 +129,11 @@ func (m *maintenance) AlarmDisarm(ctx context.Context, am *AlarmMember) (*AlarmR
 }
 
 func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*DefragmentResponse, error) {
-	conn, err := m.c.Dial(endpoint)
+	remote, cancel, err := m.dial(endpoint)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
-	defer conn.Close()
-	remote := pb.NewMaintenanceClient(conn)
+	defer cancel()
 	resp, err := remote.Defragment(ctx, &pb.DefragmentRequest{}, grpc.FailFast(false))
 	if err != nil {
 		return nil, toErr(ctx, err)
@@ -123,12 +142,11 @@ func (m *maintenance) Defragment(ctx context.Context, endpoint string) (*Defragm
 }
 
 func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusResponse, error) {
-	conn, err := m.c.Dial(endpoint)
+	remote, cancel, err := m.dial(endpoint)
 	if err != nil {
 		return nil, toErr(ctx, err)
 	}
-	defer conn.Close()
-	remote := pb.NewMaintenanceClient(conn)
+	defer cancel()
 	resp, err := remote.Status(ctx, &pb.StatusRequest{}, grpc.FailFast(false))
 	if err != nil {
 		return nil, toErr(ctx, err)
