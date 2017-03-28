@@ -80,6 +80,7 @@ func init() {
 		command.NewAuthCommand(),
 		command.NewUserCommand(),
 		command.NewRoleCommand(),
+		command.NewCheckCommand(),
 	)
 }
 
