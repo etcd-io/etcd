@@ -320,7 +320,7 @@ func (n *node) run(r *raft) {
 		case m := <-n.recvc:
 			// filter out response message from unknown From.
 			if _, ok := r.prs[m.From]; ok || !IsResponseMsg(m.Type) {
-				r.Step(m) // raft never returns an error
+				r.Step(m)
 			}
 		case cc := <-n.confc:
 			if cc.NodeID == None {

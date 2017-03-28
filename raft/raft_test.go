@@ -37,7 +37,7 @@ func nextEnts(r *raft, s *MemoryStorage) (ents []pb.Entry) {
 }
 
 type stateMachine interface {
-	Step(m pb.Message) error
+	Step(m pb.Message)
 	readMessages() []pb.Message
 }
 
@@ -497,9 +497,7 @@ func testVoteFromAnyState(t *testing.T, vt pb.MessageType) {
 			LogTerm: newTerm,
 			Index:   42,
 		}
-		if err := r.Step(msg); err != nil {
-			t.Errorf("%s,%s: Step failed: %s", vt, st, err)
-		}
+		r.Step(msg)
 		if len(r.msgs) != 1 {
 			t.Errorf("%s,%s: %d response messages, want 1: %+v", vt, st, len(r.msgs), r.msgs)
 		} else {
@@ -3213,7 +3211,7 @@ type connem struct {
 
 type blackHole struct{}
 
-func (blackHole) Step(pb.Message) error      { return nil }
+func (blackHole) Step(pb.Message)            {}
 func (blackHole) readMessages() []pb.Message { return nil }
 
 var nopStepper = &blackHole{}

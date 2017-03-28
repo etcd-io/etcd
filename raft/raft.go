@@ -676,7 +676,7 @@ func (r *raft) poll(id uint64, t pb.MessageType, v bool) (granted int) {
 	return granted
 }
 
-func (r *raft) Step(m pb.Message) error {
+func (r *raft) Step(m pb.Message) {
 	// Handle the message term, which may result in our stepping down to a follower.
 	switch {
 	case m.Term == 0:
@@ -691,7 +691,7 @@ func (r *raft) Step(m pb.Message) error {
 				// of hearing from a current leader, it does not update its term or grant its vote
 				r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] ignored %s from %x [logterm: %d, index: %d] at term %d: lease is not expired (remaining ticks: %d)",
 					r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term, r.electionTimeout-r.electionElapsed)
-				return nil
+				return
 			}
 			lead = None
 		}
@@ -731,7 +731,7 @@ func (r *raft) Step(m pb.Message) error {
 			r.logger.Infof("%x [term: %d] ignored a %s message with lower term from %x [term: %d]",
 				r.id, r.Term, m.Type, m.From, m.Term)
 		}
-		return nil
+		return
 	}
 
 	switch m.Type {
@@ -743,7 +743,7 @@ func (r *raft) Step(m pb.Message) error {
 			}
 			if n := numOfPendingConf(ents); n != 0 && r.raftLog.committed > r.raftLog.applied {
 				r.logger.Warningf("%x cannot campaign at term %d since there are still %d pending configuration changes to apply", r.id, r.Term, n)
-				return nil
+				return
 			}
 
 			r.logger.Infof("%x is starting a new election at term %d", r.id, r.Term)
@@ -777,7 +777,6 @@ func (r *raft) Step(m pb.Message) error {
 	default:
 		r.step(r, m)
 	}
-	return nil
 }
 
 type stepFunc func(r *raft, m pb.Message)
