@@ -45,7 +45,10 @@ func TestPeriodic(t *testing.T) {
 		// advance one hour, one revision for each interval
 		for j := 0; j < n; j++ {
 			fc.Advance(checkCompactionInterval)
-			rg.Wait(1)
+			_, err := rg.Wait(1)
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 		// ready to acknowledge hour "i"
 		// block until compactor calls clock.After()
