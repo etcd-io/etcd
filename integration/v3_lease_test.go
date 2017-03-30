@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
@@ -487,6 +488,45 @@ func TestV3LeaseFailover(t *testing.T) {
 
 	if !leaseExist(t, clus, lresp.ID) {
 		t.Error("unexpected lease not exists")
+	}
+}
+
+// TestV3LeaseRequireLeader ensures that a Recv will get a leader
+// loss error if there is no leader.
+func TestV3LeaseRequireLeader(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	lc := toGRPC(clus.Client(0)).Lease
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+
+	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
+	mctx := metadata.NewContext(context.Background(), md)
+	ctx, cancel := context.WithCancel(mctx)
+	defer cancel()
+	lac, err := lc.LeaseKeepAlive(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		resp, err := lac.Recv()
+		if err == nil {
+			t.Fatalf("got response %+v, expected error", resp)
+		}
+		if grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+			t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
+		}
+	}()
+	select {
+	case <-time.After(time.Duration(5*electionTicks) * tickDuration):
+		t.Fatalf("did not receive leader loss error")
+	case <-donec:
 	}
 }
 
