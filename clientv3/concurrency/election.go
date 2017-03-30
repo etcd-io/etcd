@@ -45,6 +45,16 @@ func NewElection(s *Session, pfx string) *Election {
 	return &Election{session: s, keyPrefix: pfx + "/"}
 }
 
+// ResumeElection initializes an election with a known leader.
+func ResumeElection(s *Session, pfx string, leaderKey string, leaderRev int64) *Election {
+	return &Election{
+		session:       s,
+		leaderKey:     leaderKey,
+		leaderRev:     leaderRev,
+		leaderSession: s,
+	}
+}
+
 // Campaign puts a value as eligible for the election. It blocks until
 // it is elected, an error occurs, or the context is cancelled.
 func (e *Election) Campaign(ctx context.Context, val string) error {
