@@ -122,16 +122,16 @@ func (e *Election) Resign(ctx context.Context) (err error) {
 }
 
 // Leader returns the leader value for the current election.
-func (e *Election) Leader(ctx context.Context) (string, error) {
+func (e *Election) Leader(ctx context.Context) (*v3.GetResponse, error) {
 	client := e.session.Client()
 	resp, err := client.Get(ctx, e.keyPrefix, v3.WithFirstCreate()...)
 	if err != nil {
-		return "", err
+		return nil, err
 	} else if len(resp.Kvs) == 0 {
 		// no leader currently elected
-		return "", ErrElectionNoLeader
+		return nil, ErrElectionNoLeader
 	}
-	return string(resp.Kvs[0].Value), nil
+	return resp, nil
 }
 
 // Observe returns a channel that observes all leader proposal values as
