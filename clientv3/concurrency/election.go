@@ -115,7 +115,11 @@ func (e *Election) Resign(ctx context.Context) (err error) {
 		return nil
 	}
 	client := e.session.Client()
-	_, err = client.Delete(ctx, e.leaderKey)
+	cmp := v3.Compare(v3.CreateRevision(e.leaderKey), "=", e.leaderRev)
+	resp, err := client.Txn(ctx).If(cmp).Then(v3.OpDelete(e.leaderKey)).Commit()
+	if err == nil {
+		e.hdr = resp.Header
+	}
 	e.leaderKey = ""
 	e.leaderSession = nil
 	return err
