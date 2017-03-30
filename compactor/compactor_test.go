@@ -42,13 +42,17 @@ func TestPeriodic(t *testing.T) {
 	n := int(time.Hour / checkCompactionInterval)
 	// collect 3 hours of revisions
 	for i := 0; i < 3; i++ {
-		// advance one hour, one revision for each interval
-		for j := 0; j < n; j++ {
-			fc.Advance(checkCompactionInterval)
+		// advance one (hour - checkCompactionInterval), one revision for each interval
+		for j := 0; j < n-1; j++ {
 			_, err := rg.Wait(1)
 			if err != nil {
 				t.Fatal(err)
 			}
+			fc.Advance(checkCompactionInterval)
+		}
+		_, err := rg.Wait(1)
+		if err != nil {
+			t.Fatal(err)
 		}
 		// ready to acknowledge hour "i"
 		// block until compactor calls clock.After()
@@ -62,6 +66,12 @@ func TestPeriodic(t *testing.T) {
 		if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: int64(i*n) + 1}) {
 			t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: int64(i*n) + 1})
 		}
+	}
+
+	// unblock the rev getter, so we can stop the compactor routine.
+	_, err := rg.Wait(1)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
