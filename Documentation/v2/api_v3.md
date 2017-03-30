@@ -47,7 +47,7 @@ An etcd operation is considered complete when it is committed through consensus,
 
 #### revision
 
-An etcd operation that modifies the key value store is assigned with a single increasing revision. A transaction operation might modifies the key value store multiple times, but only one revision is assigned. The revision attribute of a key value pair that modified by the operation has the same value as the revision of the operation. The revision can be used as a logical clock for key value store. A key value pair that has a larger revision is modified after a key value pair with a smaller revision. Two key value pairs that have the same revision are modified by an operation "concurrently".
+An etcd operation that modifies the key value store is assigned with a single increasing revision. A transaction operation might modify the key value store multiple times, but only one revision is assigned. The revision attribute of a key value pair that modified by the operation has the same value as the revision of the operation. The revision can be used as a logical clock for key value store. A key value pair that has a larger revision is modified after a key value pair with a smaller revision. Two key value pairs that have the same revision are modified by an operation "concurrently".
 
 ### Guarantees Provided
 
