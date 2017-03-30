@@ -357,8 +357,8 @@ type DeleteRangeRequest struct {
 	Key []byte `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// range_end is the key following the last key to delete for the range [key, range_end).
 	// If range_end is not given, the range is defined to contain only the key argument.
-	// If range_end is one bit larger than the given key, then the range is all
-	// the all keys with the prefix (the given key).
+	// If range_end is one bit larger than the given key, then the range is all the keys
+	// with the prefix (the given key).
 	// If range_end is '\0', the range is all keys greater than or equal to the key argument.
 	RangeEnd []byte `protobuf:"bytes,2,opt,name=range_end,json=rangeEnd,proto3" json:"range_end,omitempty"`
 	// If prev_kv is set, etcd gets the previous key-value pairs before deleting it.

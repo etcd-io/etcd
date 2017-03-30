@@ -1028,7 +1028,7 @@
         "NODELETE"
       ],
       "default": "NOPUT",
-      "description": "- NOPUT: filter out put event.\n - NODELETE: filter out delete event."
+      "description": " - NOPUT: filter out put event.\n - NODELETE: filter out delete event."
     },
     "authpbPermission": {
       "type": "object",
@@ -1138,7 +1138,6 @@
       "properties": {
         "name": {
           "type": "string",
-          "format": "string",
           "description": "name is the name of the role to add to the authentication system."
         }
       }
@@ -1155,8 +1154,7 @@
       "type": "object",
       "properties": {
         "role": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         }
       }
     },
@@ -1172,8 +1170,7 @@
       "type": "object",
       "properties": {
         "role": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         }
       }
     },
@@ -1196,7 +1193,6 @@
       "properties": {
         "name": {
           "type": "string",
-          "format": "string",
           "description": "name is the name of the role which will be granted the permission."
         },
         "perm": {
@@ -1225,8 +1221,7 @@
         "roles": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "string"
+            "type": "string"
           }
         }
       }
@@ -1235,16 +1230,13 @@
       "type": "object",
       "properties": {
         "role": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         },
         "key": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         },
         "range_end": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         }
       }
     },
@@ -1260,12 +1252,10 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         },
         "password": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         }
       }
     },
@@ -1282,12 +1272,10 @@
       "properties": {
         "name": {
           "type": "string",
-          "format": "string",
           "description": "name is the name of the user whose password is being changed."
         },
         "password": {
           "type": "string",
-          "format": "string",
           "description": "password is the new password for the user."
         }
       }
@@ -1305,7 +1293,6 @@
       "properties": {
         "name": {
           "type": "string",
-          "format": "string",
           "description": "name is the name of the user to delete."
         }
       }
@@ -1322,8 +1309,7 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         }
       }
     },
@@ -1336,8 +1322,7 @@
         "roles": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "string"
+            "type": "string"
           }
         }
       }
@@ -1347,12 +1332,10 @@
       "properties": {
         "user": {
           "type": "string",
-          "format": "string",
           "description": "user is the name of the user which should be granted a given role."
         },
         "role": {
           "type": "string",
-          "format": "string",
           "description": "role is the name of the role to grant to the user."
         }
       }
@@ -1377,8 +1360,7 @@
         "users": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "string"
+            "type": "string"
           }
         }
       }
@@ -1387,12 +1369,10 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         },
         "role": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         }
       }
     },
@@ -1408,12 +1388,10 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         },
         "password": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         }
       }
     },
@@ -1425,7 +1403,6 @@
         },
         "token": {
           "type": "string",
-          "format": "string",
           "title": "token is an authorized token that can be used in succeeding RPCs"
         }
       }
@@ -1514,12 +1491,12 @@
         "range_end": {
           "type": "string",
           "format": "byte",
-          "description": "range_end is the key following the last key to delete for the range [key, range_end).\nIf range_end is not given, the range is defined to contain only the key argument.\nIf range_end is one bit larger than the given key, then the range is all\nthe all keys with the prefix (the given key).\nIf range_end is '\\0', the range is all keys greater than or equal to the key argument."
+          "description": "range_end is the key following the last key to delete for the range [key, range_end).\nIf range_end is not given, the range is defined to contain only the key argument.\nIf range_end is one bit larger than the given key, then the range is all the keys\nwith the prefix (the given key).\nIf range_end is '\\0', the range is all keys greater than or equal to the key argument."
         },
         "prev_kv": {
           "type": "boolean",
           "format": "boolean",
-          "description": "If prev_kv is set, etcd gets the previous key-value pairs before deleting it.\nThe previous key-value pairs will be returned in the delte response."
+          "description": "If prev_kv is set, etcd gets the previous key-value pairs before deleting it.\nThe previous key-value pairs will be returned in the delete response."
         }
       }
     },
@@ -1591,8 +1568,7 @@
           "description": "TTL is the server chosen lease time-to-live in seconds."
         },
         "error": {
-          "type": "string",
-          "format": "string"
+          "type": "string"
         }
       }
     },
@@ -1698,22 +1674,19 @@
         },
         "name": {
           "type": "string",
-          "format": "string",
           "description": "name is the human-readable name of the member. If the member is not started, the name will be an empty string."
         },
         "peerURLs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "string"
+            "type": "string"
           },
           "description": "peerURLs is the list of URLs the member exposes to the cluster for communication."
         },
         "clientURLs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "string"
+            "type": "string"
           },
           "description": "clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty."
         }
@@ -1725,8 +1698,7 @@
         "peerURLs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "string"
+            "type": "string"
           },
           "description": "peerURLs is the list of URLs the added member will use to communicate with the cluster."
         }
@@ -1791,8 +1763,7 @@
         "peerURLs": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "string"
+            "type": "string"
           },
           "description": "peerURLs is the new list of URLs the member will use to communicate with the cluster."
         }
@@ -1869,7 +1840,7 @@
         "limit": {
           "type": "string",
           "format": "int64",
-          "description": "limit is a limit on the number of keys returned for the request."
+          "description": "limit is a limit on the number of keys returned for the request. When limit is set to 0,\nit is treated as no limit."
         },
         "revision": {
           "type": "string",
@@ -2032,7 +2003,6 @@
         },
         "version": {
           "type": "string",
-          "format": "string",
           "description": "version is the cluster protocol version used by the responding member."
         },
         "dbSize": {
