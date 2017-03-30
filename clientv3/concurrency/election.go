@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
@@ -36,6 +37,7 @@ type Election struct {
 	leaderKey     string
 	leaderRev     int64
 	leaderSession *Session
+	hdr           *pb.ResponseHeader
 }
 
 // NewElection returns a new election on a given key prefix.
@@ -80,6 +82,7 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 		}
 		return err
 	}
+	e.hdr = resp.Header
 
 	return nil
 }
@@ -101,6 +104,8 @@ func (e *Election) Proclaim(ctx context.Context, val string) error {
 		e.leaderKey = ""
 		return ErrElectionNotLeader
 	}
+
+	e.hdr = tresp.Header
 	return nil
 }
 
@@ -201,3 +206,9 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 
 // Key returns the leader key if elected, empty string otherwise.
 func (e *Election) Key() string { return e.leaderKey }
+
+// Rev returns the leader key's creation revision, if elected.
+func (e *Election) Rev() int64 { return e.leaderRev }
+
+// Header is the response header from the last successful election proposal.
+func (m *Election) Header() *pb.ResponseHeader { return m.hdr }
