@@ -203,6 +203,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 		return err
 	}
 
+	defaultInitialCluster := cfg.InitialCluster
+
 	err = yaml.Unmarshal(b, cfg)
 	if err != nil {
 		return err
@@ -246,7 +248,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 		cfg.ACUrls = []url.URL(u)
 	}
 
-	if (cfg.Durl != "" || cfg.DNSCluster != "") && cfg.InitialCluster == cfg.InitialClusterFromName(cfg.Name) {
+	// If a discovery flag is set, clear default initial cluster set by InitialClusterFromName
+	if (cfg.Durl != "" || cfg.DNSCluster != "") && cfg.InitialCluster == defaultInitialCluster {
 		cfg.InitialCluster = ""
 	}
 	if cfg.ClusterState == "" {
