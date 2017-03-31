@@ -682,3 +682,61 @@ func TestV3LeaseFailureOverlap(t *testing.T) {
 	mkReqs(4)
 	wg.Wait()
 }
+
+// TestLeaseWithRequireLeader checks keep-alive channel close when no leader.
+func TestLeaseWithRequireLeader(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	defer clus.Terminate(t)
+
+	c := clus.Client(0)
+	lid1, err1 := c.Grant(context.TODO(), 60)
+	if err1 != nil {
+		t.Fatal(err1)
+	}
+	lid2, err2 := c.Grant(context.TODO(), 60)
+	if err2 != nil {
+		t.Fatal(err2)
+	}
+	// kaReqLeader close if the leader is lost
+	kaReqLeader, kerr1 := c.KeepAlive(clientv3.WithRequireLeader(context.TODO()), lid1.ID)
+	if kerr1 != nil {
+		t.Fatal(kerr1)
+	}
+	// kaWait will wait even if the leader is lost
+	kaWait, kerr2 := c.KeepAlive(context.TODO(), lid2.ID)
+	if kerr2 != nil {
+		t.Fatal(kerr2)
+	}
+
+	select {
+	case <-kaReqLeader:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("require leader first keep-alive timed out")
+	}
+	select {
+	case <-kaWait:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("leader not required first keep-alive timed out")
+	}
+
+	clus.Members[1].Stop(t)
+
+	select {
+	case resp, ok := <-kaReqLeader:
+		if ok {
+			t.Fatalf("expected closed require leader, got response %+v", resp)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("keepalive with require leader took too long to close")
+	}
+	select {
+	case _, ok := <-kaWait:
+		if !ok {
+			t.Fatalf("got closed channel with no require leader, expected non-closed")
+		}
+	case <-time.After(10 * time.Millisecond):
+		// wait some to detect any closes happening soon after kaReqLeader closing
+	}
+}
