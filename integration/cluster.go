@@ -313,9 +313,15 @@ func (c *cluster) removeMember(t *testing.T, id uint64) error {
 }
 
 func (c *cluster) Terminate(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(len(c.Members))
 	for _, m := range c.Members {
-		m.Terminate(t)
+		go func(mm *member) {
+			defer wg.Done()
+			mm.Terminate(t)
+		}(m)
 	}
+	wg.Wait()
 }
 
 func (c *cluster) waitMembersMatch(t *testing.T, membs []client.Member) {
