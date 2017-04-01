@@ -465,7 +465,7 @@ func (ep *etcdProcess) Stop() error {
 	<-ep.donec
 
 	if ep.cfg.purl.Scheme == "unix" || ep.cfg.purl.Scheme == "unixs" {
-		os.RemoveAll(ep.cfg.purl.Host)
+		os.Remove(ep.cfg.purl.Host + ep.cfg.purl.Path)
 	}
 	return nil
 }

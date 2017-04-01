@@ -184,6 +184,7 @@ func parseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	case "http", "https":
 	case "unix":
 		proto = "unix"
+		host = url.Host + url.Path
 	default:
 		proto, host = "", ""
 	}
