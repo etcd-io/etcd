@@ -20,23 +20,23 @@ import (
 	"time"
 )
 
-func TestIntervalTreeContains(t *testing.T) {
+func TestIntervalTreeIntersects(t *testing.T) {
 	ivt := &IntervalTree{}
 	ivt.Insert(NewStringInterval("1", "3"), 123)
 
-	if ivt.Contains(NewStringPoint("0")) {
+	if ivt.Intersects(NewStringPoint("0")) {
 		t.Errorf("contains 0")
 	}
-	if !ivt.Contains(NewStringPoint("1")) {
+	if !ivt.Intersects(NewStringPoint("1")) {
 		t.Errorf("missing 1")
 	}
-	if !ivt.Contains(NewStringPoint("11")) {
+	if !ivt.Intersects(NewStringPoint("11")) {
 		t.Errorf("missing 11")
 	}
-	if !ivt.Contains(NewStringPoint("2")) {
+	if !ivt.Intersects(NewStringPoint("2")) {
 		t.Errorf("missing 2")
 	}
-	if ivt.Contains(NewStringPoint("3")) {
+	if ivt.Intersects(NewStringPoint("3")) {
 		t.Errorf("contains 3")
 	}
 }
@@ -44,10 +44,10 @@ func TestIntervalTreeContains(t *testing.T) {
 func TestIntervalTreeStringAffine(t *testing.T) {
 	ivt := &IntervalTree{}
 	ivt.Insert(NewStringAffineInterval("8", ""), 123)
-	if !ivt.Contains(NewStringAffinePoint("9")) {
+	if !ivt.Intersects(NewStringAffinePoint("9")) {
 		t.Errorf("missing 9")
 	}
-	if ivt.Contains(NewStringAffinePoint("7")) {
+	if ivt.Intersects(NewStringAffinePoint("7")) {
 		t.Errorf("contains 7")
 	}
 }
@@ -122,7 +122,7 @@ func TestIntervalTreeRandom(t *testing.T) {
 			if slen := len(ivt.Stab(NewInt64Point(v))); slen == 0 {
 				t.Fatalf("expected %v stab non-zero for [%+v)", v, xy)
 			}
-			if !ivt.Contains(NewInt64Point(v)) {
+			if !ivt.Intersects(NewInt64Point(v)) {
 				t.Fatalf("did not get %d as expected for [%+v)", v, xy)
 			}
 		}
@@ -228,6 +228,68 @@ func TestIntervalTreeVisitExit(t *testing.T) {
 		})
 		if count != tt.wcount {
 			t.Errorf("#%d: expected count %d, got %d", i, tt.wcount, count)
+		}
+	}
+}
+
+// TestIntervalTreeContains tests that contains returns true iff the ivt maps the entire interval.
+func TestIntervalTreeContains(t *testing.T) {
+	tests := []struct {
+		ivls   []Interval
+		chkIvl Interval
+
+		wContains bool
+	}{
+		{
+			ivls:   []Interval{NewInt64Interval(1, 10)},
+			chkIvl: NewInt64Interval(0, 100),
+
+			wContains: false,
+		},
+		{
+			ivls:   []Interval{NewInt64Interval(1, 10)},
+			chkIvl: NewInt64Interval(1, 10),
+
+			wContains: true,
+		},
+		{
+			ivls:   []Interval{NewInt64Interval(1, 10)},
+			chkIvl: NewInt64Interval(2, 8),
+
+			wContains: true,
+		},
+		{
+			ivls:   []Interval{NewInt64Interval(1, 5), NewInt64Interval(6, 10)},
+			chkIvl: NewInt64Interval(1, 10),
+
+			wContains: false,
+		},
+		{
+			ivls:   []Interval{NewInt64Interval(1, 5), NewInt64Interval(3, 10)},
+			chkIvl: NewInt64Interval(1, 10),
+
+			wContains: true,
+		},
+		{
+			ivls:   []Interval{NewInt64Interval(1, 4), NewInt64Interval(4, 7), NewInt64Interval(3, 10)},
+			chkIvl: NewInt64Interval(1, 10),
+
+			wContains: true,
+		},
+		{
+			ivls:   []Interval{},
+			chkIvl: NewInt64Interval(1, 10),
+
+			wContains: false,
+		},
+	}
+	for i, tt := range tests {
+		ivt := &IntervalTree{}
+		for _, ivl := range tt.ivls {
+			ivt.Insert(ivl, struct{}{})
+		}
+		if v := ivt.Contains(tt.chkIvl); v != tt.wContains {
+			t.Errorf("#%d: ivt.Contains got %v, expected %v", i, v, tt.wContains)
 		}
 	}
 }

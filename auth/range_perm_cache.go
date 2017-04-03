@@ -66,59 +66,29 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 }
 
 func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
-	var tocheck *adt.IntervalTree
-
+	ivl := adt.NewStringInterval(key, rangeEnd)
 	switch permtyp {
 	case authpb.READ:
-		tocheck = cachedPerms.readPerms
+		return cachedPerms.readPerms.Contains(ivl)
 	case authpb.WRITE:
-		tocheck = cachedPerms.writePerms
+		return cachedPerms.writePerms.Contains(ivl)
 	default:
 		plog.Panicf("unknown auth type: %v", permtyp)
 	}
-
-	ivl := adt.NewStringInterval(key, rangeEnd)
-
-	isContiguous := true
-	var maxEnd, minBegin adt.Comparable
-
-	tocheck.Visit(ivl, func(n *adt.IntervalValue) bool {
-		if minBegin == nil {
-			minBegin = n.Ivl.Begin
-			maxEnd = n.Ivl.End
-			return true
-		}
-
-		if maxEnd.Compare(n.Ivl.Begin) < 0 {
-			isContiguous = false
-			return false
-		}
-
-		if n.Ivl.End.Compare(maxEnd) > 0 {
-			maxEnd = n.Ivl.End
-		}
-
-		return true
-	})
-
-	return isContiguous && maxEnd.Compare(ivl.End) >= 0 && minBegin.Compare(ivl.Begin) <= 0
+	return false
 }
 
 func checkKeyPoint(cachedPerms *unifiedRangePermissions, key string, permtyp authpb.Permission_Type) bool {
-	var tocheck *adt.IntervalTree
-
+	pt := adt.NewStringPoint(key)
 	switch permtyp {
 	case authpb.READ:
-		tocheck = cachedPerms.readPerms
+		return cachedPerms.readPerms.Intersects(pt)
 	case authpb.WRITE:
-		tocheck = cachedPerms.writePerms
+		return cachedPerms.writePerms.Intersects(pt)
 	default:
 		plog.Panicf("unknown auth type: %v", permtyp)
 	}
-
-	pt := adt.NewStringPoint(key)
-
-	return tocheck.Contains(pt)
+	return false
 }
 
 func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd string, permtyp authpb.Permission_Type) bool {

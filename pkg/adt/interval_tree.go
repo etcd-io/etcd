@@ -437,8 +437,8 @@ func (ivt *IntervalTree) Find(ivl Interval) (ret *IntervalValue) {
 	return &n.iv
 }
 
-// Contains returns true if there is some tree node intersecting the given interval.
-func (ivt *IntervalTree) Contains(iv Interval) bool {
+// Intersects returns true if there is some tree node intersecting the given interval.
+func (ivt *IntervalTree) Intersects(iv Interval) bool {
 	x := ivt.root
 	for x != nil && iv.Compare(&x.iv.Ivl) != 0 {
 		if x.left != nil && x.left.max.Compare(iv.Begin) > 0 {
@@ -448,6 +448,30 @@ func (ivt *IntervalTree) Contains(iv Interval) bool {
 		}
 	}
 	return x != nil
+}
+
+// Contains returns true if the interval tree's keys cover the entire given interval.
+func (ivt *IntervalTree) Contains(ivl Interval) bool {
+	var maxEnd, minBegin Comparable
+
+	isContiguous := true
+	ivt.Visit(ivl, func(n *IntervalValue) bool {
+		if minBegin == nil {
+			minBegin = n.Ivl.Begin
+			maxEnd = n.Ivl.End
+			return true
+		}
+		if maxEnd.Compare(n.Ivl.Begin) < 0 {
+			isContiguous = false
+			return false
+		}
+		if n.Ivl.End.Compare(maxEnd) > 0 {
+			maxEnd = n.Ivl.End
+		}
+		return true
+	})
+
+	return isContiguous && minBegin != nil && maxEnd.Compare(ivl.End) >= 0 && minBegin.Compare(ivl.Begin) <= 0
 }
 
 // Stab returns a slice with all elements in the tree intersecting the interval.
