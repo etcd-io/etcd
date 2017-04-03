@@ -38,11 +38,18 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 
 		for _, perm := range role.KeyPermission {
 			var ivl adt.Interval
+			var rangeEnd string
+
+			if len(perm.RangeEnd) == 1 && perm.RangeEnd[0] == 0 {
+				rangeEnd = ""
+			} else {
+				rangeEnd = string(perm.RangeEnd)
+			}
 
 			if len(perm.RangeEnd) != 0 {
-				ivl = adt.NewStringInterval(string(perm.Key), string(perm.RangeEnd))
+				ivl = adt.NewStringAffineInterval(string(perm.Key), string(rangeEnd))
 			} else {
-				ivl = adt.NewStringPoint(string(perm.Key))
+				ivl = adt.NewStringAffinePoint(string(perm.Key))
 			}
 
 			switch perm.PermType {
@@ -66,7 +73,11 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 }
 
 func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
-	ivl := adt.NewStringInterval(key, rangeEnd)
+	if len(rangeEnd) == 1 && rangeEnd[0] == '\x00' {
+		rangeEnd = ""
+	}
+
+	ivl := adt.NewStringAffineInterval(key, rangeEnd)
 	switch permtyp {
 	case authpb.READ:
 		return cachedPerms.readPerms.Contains(ivl)
@@ -79,7 +90,7 @@ func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd string
 }
 
 func checkKeyPoint(cachedPerms *unifiedRangePermissions, key string, permtyp authpb.Permission_Type) bool {
-	pt := adt.NewStringPoint(key)
+	pt := adt.NewStringAffinePoint(key)
 	switch permtyp {
 	case authpb.READ:
 		return cachedPerms.readPerms.Intersects(pt)
