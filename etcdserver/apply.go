@@ -584,7 +584,7 @@ func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
 }
 
 func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	ctx := context.WithValue(context.WithValue(context.TODO(), "index", a.s.consistIndex.ConsistentIndex()), "simpleToken", r.SimpleToken)
+	ctx := context.WithValue(context.WithValue(a.s.ctx, "index", a.s.consistIndex.ConsistentIndex()), "simpleToken", r.SimpleToken)
 	return a.s.AuthStore().Authenticate(ctx, r.Name, r.Password)
 }
 

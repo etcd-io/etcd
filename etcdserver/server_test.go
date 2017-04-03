@@ -721,9 +721,12 @@ func TestDoProposalStopped(t *testing.T) {
 // TestSync tests sync 1. is nonblocking 2. proposes SYNC request.
 func TestSync(t *testing.T) {
 	n := newNodeRecorder()
+	ctx, cancel := context.WithCancel(context.TODO())
 	srv := &EtcdServer{
 		r:        raftNode{Node: n},
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
@@ -761,9 +764,12 @@ func TestSync(t *testing.T) {
 // after timeout
 func TestSyncTimeout(t *testing.T) {
 	n := newProposalBlockerRecorder()
+	ctx, cancel := context.WithCancel(context.TODO())
 	srv := &EtcdServer{
 		r:        raftNode{Node: n},
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
 	srv.applyV2 = &applierV2store{store: srv.store, cluster: srv.cluster}
 
@@ -1185,6 +1191,7 @@ func TestPublish(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- Response{}
 	w := wait.NewWithResponse(ch)
+	ctx, cancel := context.WithCancel(context.TODO())
 	srv := &EtcdServer{
 		readych:    make(chan struct{}),
 		Cfg:        &ServerConfig{TickMs: 1},
@@ -1195,6 +1202,9 @@ func TestPublish(t *testing.T) {
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
+
+		ctx:    ctx,
+		cancel: cancel,
 	}
 	srv.publish(time.Hour)
 
@@ -1228,6 +1238,7 @@ func TestPublish(t *testing.T) {
 
 // TestPublishStopped tests that publish will be stopped if server is stopped.
 func TestPublishStopped(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.TODO())
 	srv := &EtcdServer{
 		Cfg: &ServerConfig{TickMs: 1},
 		r: raftNode{
@@ -1242,6 +1253,9 @@ func TestPublishStopped(t *testing.T) {
 		stop:       make(chan struct{}),
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
+
+		ctx:    ctx,
+		cancel: cancel,
 	}
 	close(srv.stopping)
 	srv.publish(time.Hour)
@@ -1249,6 +1263,7 @@ func TestPublishStopped(t *testing.T) {
 
 // TestPublishRetry tests that publish will keep retry until success.
 func TestPublishRetry(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.TODO())
 	n := newNodeRecorderStream()
 	srv := &EtcdServer{
 		Cfg:        &ServerConfig{TickMs: 1},
@@ -1257,6 +1272,8 @@ func TestPublishRetry(t *testing.T) {
 		stopping:   make(chan struct{}),
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 	// expect multiple proposals from retrying
 	ch := make(chan struct{})
@@ -1287,6 +1304,7 @@ func TestUpdateVersion(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- Response{}
 	w := wait.NewWithResponse(ch)
+	ctx, cancel := context.WithCancel(context.TODO())
 	srv := &EtcdServer{
 		id:         1,
 		Cfg:        &ServerConfig{TickMs: 1},
@@ -1296,6 +1314,9 @@ func TestUpdateVersion(t *testing.T) {
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
 		SyncTicker: &time.Ticker{},
+
+		ctx:    ctx,
+		cancel: cancel,
 	}
 	srv.updateClusterVersion("2.0.0")
 
