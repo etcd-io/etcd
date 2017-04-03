@@ -57,6 +57,7 @@
 - [iconara/etcd-rb](https://github.com/iconara/etcd-rb)
 - [jpfuentes2/etcd-ruby](https://github.com/jpfuentes2/etcd-ruby)
 - [ranjib/etcd-ruby](https://github.com/ranjib/etcd-ruby) - Supports v2
+- [davissp14/etcdv3-ruby](https://github.com/davissp14/etcdv3-ruby) - Supports v3
 
 **C libraries**
 
