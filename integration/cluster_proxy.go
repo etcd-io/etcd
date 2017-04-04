@@ -57,9 +57,10 @@ func toGRPC(c *clientv3.Client) grpcAPI {
 	wp, wpch := grpcproxy.NewWatchProxy(c)
 	lp, lpch := grpcproxy.NewLeaseProxy(c)
 	mp := grpcproxy.NewMaintenanceProxy(c)
+	clp, _ := grpcproxy.NewClusterProxy(c, "", "") // without registering proxy URLs
 
 	grpc := grpcAPI{
-		pb.NewClusterClient(c.ActiveConnection()),
+		adapter.ClusterServerToClusterClient(clp),
 		adapter.KvServerToKvClient(kvp),
 		adapter.LeaseServerToLeaseClient(lp),
 		adapter.WatchServerToWatchClient(wp),
