@@ -49,4 +49,4 @@ Bootstrap another machine and use the [boom HTTP benchmark tool][boom] to send r
 | 256               | 256               | all servers        | 3061      | 119.3 |
 
 [boom]: https://github.com/rakyll/boom
-[hack-benchmark]: /hack/benchmark/
+[hack-benchmark]: ../../../hack/benchmark/

@@ -188,6 +188,6 @@ Make sure that you sign your certificates with a Subject Name your member's publ
 If you need your certificate to be signed for your member's FQDN in its Subject Name then you could use Subject Alternative Names (short IP SANs) to add your IP address. The `etcd-ca` tool provides `--domain=` option for its `new-cert` command, and openssl can make [it][alt-name] too.
 
 [cfssl]: https://github.com/cloudflare/cfssl
-[tls-setup]: /hack/tls-setup
+[tls-setup]: ../../hack/tls-setup
 [tls-guide]: https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
 [alt-name]: http://wiki.cacert.org/FAQ/subjectAltName
