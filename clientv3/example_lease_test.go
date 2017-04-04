@@ -100,12 +100,13 @@ func ExampleLease_keepAlive() {
 	}
 
 	// the key 'foo' will be kept forever
-	ch, kaerr := cli.KeepAlive(context.TODO(), resp.ID)
-	if kaerr != nil {
-		log.Fatal(kaerr)
-	}
+	ch := cli.KeepAlive(context.TODO(), resp.ID)
 
 	ka := <-ch
+	if ka.Err != nil {
+		log.Fatal(ka.Err)
+	}
+
 	fmt.Println("ttl:", ka.TTL)
 	// Output: ttl: 5
 }
@@ -131,9 +132,9 @@ func ExampleLease_keepAliveOnce() {
 	}
 
 	// to renew the lease only once
-	ka, kaerr := cli.KeepAliveOnce(context.TODO(), resp.ID)
-	if kaerr != nil {
-		log.Fatal(kaerr)
+	ka := cli.KeepAliveOnce(context.TODO(), resp.ID)
+	if ka.Err != nil {
+		log.Fatal(ka.Err)
 	}
 
 	fmt.Println("ttl:", ka.TTL)
