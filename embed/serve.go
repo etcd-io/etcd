@@ -20,7 +20,6 @@ import (
 	defaultLog "log"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"strings"
 	"time"
 
@@ -30,6 +29,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/debugutil"
 	"github.com/coreos/etcd/pkg/transport"
 
 	"github.com/cockroachdb/cmux"
@@ -39,8 +39,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
-
-const pprofPrefix = "/debug/pprof"
 
 type serveCtx struct {
 	l        net.Listener
@@ -214,16 +212,9 @@ func (sctx *serveCtx) registerUserHandler(s string, h http.Handler) {
 }
 
 func (sctx *serveCtx) registerPprof() {
-	sctx.registerUserHandler(pprofPrefix+"/", http.HandlerFunc(pprof.Index))
-	sctx.registerUserHandler(pprofPrefix+"/profile", http.HandlerFunc(pprof.Profile))
-	sctx.registerUserHandler(pprofPrefix+"/symbol", http.HandlerFunc(pprof.Symbol))
-	sctx.registerUserHandler(pprofPrefix+"/cmdline", http.HandlerFunc(pprof.Cmdline))
-	sctx.registerUserHandler(pprofPrefix+"/trace", http.HandlerFunc(pprof.Trace))
-
-	sctx.registerUserHandler(pprofPrefix+"/heap", pprof.Handler("heap"))
-	sctx.registerUserHandler(pprofPrefix+"/goroutine", pprof.Handler("goroutine"))
-	sctx.registerUserHandler(pprofPrefix+"/threadcreate", pprof.Handler("threadcreate"))
-	sctx.registerUserHandler(pprofPrefix+"/block", pprof.Handler("block"))
+	for p, h := range debugutil.PProfHandlers() {
+		sctx.registerUserHandler(p, h)
+	}
 }
 
 func (sctx *serveCtx) registerTrace() {

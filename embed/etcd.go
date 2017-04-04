@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/pkg/cors"
+	"github.com/coreos/etcd/pkg/debugutil"
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -237,7 +238,7 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 	}
 
 	if cfg.EnablePprof {
-		plog.Infof("pprof is enabled under %s", pprofPrefix)
+		plog.Infof("pprof is enabled under %s", debugutil.HTTPPrefixPProf)
 	}
 
 	sctxs = make(map[string]*serveCtx)
