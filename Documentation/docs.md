@@ -97,3 +97,5 @@ Answers to [common questions] about etcd.
 [v31_upgrade]: upgrades/upgrade_3_1.md
 [authentication]: op-guide/authentication.md
 [auth_design]: learning/auth_design.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/README.md?pixel)]() <!-- END ANALYTICS -->

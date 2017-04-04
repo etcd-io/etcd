@@ -121,3 +121,5 @@ localhost:32379 is healthy: successfully committed proposal: took = 2.516902ms
 ```
 
 [etcd-contact]: https://groups.google.com/forum/#!forum/etcd-dev
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/upgrades/upgrade_3_1.md?pixel)]() <!-- END ANALYTICS -->

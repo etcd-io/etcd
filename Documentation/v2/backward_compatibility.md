@@ -69,3 +69,5 @@ A size key needs to be provided inside a [discovery token][discoverytoken].
 
 - Expiration time is in UTC instead of local time.
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/backward_compatibility.md?pixel)]() <!-- END ANALYTICS -->

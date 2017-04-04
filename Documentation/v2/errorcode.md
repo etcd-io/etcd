@@ -40,3 +40,5 @@ It's categorized into four groups:
 |-------------------------|------|--------------------------------------------------------|
 | EcodeWatcherCleared     | 400  | "watcher is cleared due to etcd recovery"              |
 | EcodeEventIndexCleared  | 401  | "The event in requested index is outdated and cleared" |
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/errorcode.md?pixel)]() <!-- END ANALYTICS -->

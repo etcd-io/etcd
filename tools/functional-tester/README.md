@@ -49,3 +49,5 @@ goreman -f tools/functional-tester/Procfile start
 Notes:
 - The etcd-agent will not run with root privileges; iptables manipulation is disabled.
 - To specify testing parameters (etcd-tester arguments) modify tools/functional-tester/Procfile or start etcd-tester manually
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/tools/functional-tester/README.md?pixel)]() <!-- END ANALYTICS -->

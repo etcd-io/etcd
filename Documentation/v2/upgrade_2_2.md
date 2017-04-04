@@ -130,3 +130,5 @@ $ curl http://127.0.0.1:4001/version
 [backup-datastore]: admin_guide.md#backing-up-the-datastore
 [downgrade]: #downgrade
 [v2.1]: https://github.com/coreos/etcd/releases/tag/v2.1.2
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/upgrade_2_2.md?pixel)]() <!-- END ANALYTICS -->

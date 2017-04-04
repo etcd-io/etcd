@@ -113,3 +113,5 @@ When the REST server submits a proposal, the raft server transmits the proposal 
 When raft reaches a consensus, the server publishes all committed updates over a commit channel.
 For raftexample, this commit channel is consumed by the key-value store.
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/contrib/raftexample/README.md?pixel)]() <!-- END ANALYTICS -->

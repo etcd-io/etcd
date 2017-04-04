@@ -19,3 +19,5 @@ TODO
 [locksmith]: https://github.com/coreos/locksmith
 [kubernetes]: http://kubernetes.io/docs/whatisk8s
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/learning/why.md?pixel)]() <!-- END ANALYTICS -->

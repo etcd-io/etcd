@@ -16,3 +16,5 @@ It records expected memory usage in different scenarios.
 [2.2]: etcd-2-2-0-rc-benchmarks.md
 [2.2-mem]: etcd-2-2-0-rc-memory-benchmarks.md
 [3.0]: etcd-3-demo-benchmarks.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/benchmarks/README.md?pixel)]() <!-- END ANALYTICS -->

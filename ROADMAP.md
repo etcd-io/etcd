@@ -21,3 +21,5 @@ etcd 3.1 is our current stable branch. The roadmap below outlines new features t
 ### etcd 3.3 (?)
 - TBD
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/ROADMAP.md?pixel)]() <!-- END ANALYTICS -->

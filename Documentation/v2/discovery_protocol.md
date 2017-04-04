@@ -112,3 +112,5 @@ The repository is located at https://github.com/coreos/discovery.etcd.io. You co
 [cluster-size]: admin_guide.md#optimal-cluster-size
 [expected-cluster-size]: #specifying-the-expected-cluster-size
 [new-discovery-token]: #creating-a-new-discovery-token
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/discovery_protocol.md?pixel)]() <!-- END ANALYTICS -->

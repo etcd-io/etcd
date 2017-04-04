@@ -155,3 +155,5 @@ docker run \
 	--advertise-client-urls http://localhost:2379 --listen-client-urls http://localhost:2379 \
 	--discovery https://discovery.etcd.io/86a9ff6c8cb8b4c4544c1a2f88f8b801
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/container.md?pixel)]() <!-- END ANALYTICS -->

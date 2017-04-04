@@ -452,3 +452,5 @@ etcdctl --endpoints=${ENDPOINTS} get foo
 etcdctl --endpoints=${ENDPOINTS} --user=root:123 get foo
 etcdctl --endpoints=${ENDPOINTS} --user=root:123 get foo1
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/demo.md?pixel)]() <!-- END ANALYTICS -->

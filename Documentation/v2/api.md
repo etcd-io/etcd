@@ -1148,3 +1148,5 @@ See the [members API][members-api] for details on the cluster management.
 [directories]: #listing-a-directory
 [members-api]: members_api.md
 [tuning]: tuning.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/api.md?pixel)]() <!-- END ANALYTICS -->

@@ -74,3 +74,5 @@ If OK is printed, then etcd is working!
 [build-script]: ../build
 [cmd-directory]: ../cmd
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/dl_build.md?pixel)]() <!-- END ANALYTICS -->

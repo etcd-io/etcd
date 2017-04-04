@@ -48,3 +48,5 @@ To have a discovery service that supports runtime reconfiguration, the best choi
 
 [add-member]: runtime-configuration.md#add-a-new-member
 [disaster-recovery]: recovery.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/runtime-reconf-design.md?pixel)]() <!-- END ANALYTICS -->

@@ -90,3 +90,5 @@ etcd ensures linearizability for all other operations by default. Linearizabilit
 [strict_consistency]: [https://en.wikipedia.org/wiki/Consistency_model#Strict_consistency]
 [serializable_isolation]: [https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable]
 [Linearizability]: [#Linearizability]
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/api_v3.md?pixel)]() <!-- END ANALYTICS -->

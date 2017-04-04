@@ -43,3 +43,5 @@ Due to an upstream systemd bug, journald may miss the last few log lines when it
 
 [etcd-issue]: https://github.com/coreos/etcd/issues/new
 [filing-good-bugs]: http://fantasai.inkedblade.net/style/talks/filing-good-bugs/
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/reporting_bugs.md?pixel)]() <!-- END ANALYTICS -->

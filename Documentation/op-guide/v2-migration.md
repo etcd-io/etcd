@@ -45,3 +45,5 @@ After finishing data migration, the background job writes `true` into the switch
 Online migration can be difficult when the application logic depends on store v2 indexes. Applications will need additional logic to convert mvcc store revisions to store v2 indexes.
 
 [migrate_command]: ../../etcdctl/README.md#migrate-options
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/v2-migration.md?pixel)]() <!-- END ANALYTICS -->

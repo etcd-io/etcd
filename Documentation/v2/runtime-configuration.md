@@ -182,3 +182,5 @@ It is recommended to enable this option. However, it is disabled by default beca
 [member migration]: admin_guide.md#member-migration
 [remove member]: #remove-a-member
 [runtime-reconf]: runtime-reconf-design.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/runtime-configuration.md?pixel)]() <!-- END ANALYTICS -->

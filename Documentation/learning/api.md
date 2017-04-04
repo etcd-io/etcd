@@ -479,3 +479,5 @@ message LeaseKeepAliveResponse {
 [locks]: https://github.com/coreos/etcd/blob/master/clientv3/concurrency/mutex.go
 [mvcc]: https://en.wikipedia.org/wiki/Multiversion_concurrency_control
 [stm]: https://github.com/coreos/etcd/blob/master/clientv3/concurrency/stm.go
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/learning/api.md?pixel)]() <!-- END ANALYTICS -->

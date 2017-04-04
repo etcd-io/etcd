@@ -63,3 +63,5 @@ rc	status
 
 Perhaps we can add the init command in a future version and deprecate if the UX
 continues to confuse people.
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/implementation-faq.md?pixel)]() <!-- END ANALYTICS -->

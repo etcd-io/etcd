@@ -82,3 +82,5 @@ Note: --peers flag is now deprecated and --endpoint should be used instead,
 as it might confuse users to give etcdctl a peerURL.
 
 [runtime-reconf-design]: runtime-reconf-design.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/faq.md?pixel)]() <!-- END ANALYTICS -->

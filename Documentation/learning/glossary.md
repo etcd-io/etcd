@@ -95,3 +95,5 @@ The number of writes to a key since it was created, starting at 1. The version o
 ## Watcher
 
 A client opens a watcher to observe updates on a given key range.
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/learning/glossary.md?pixel)]() <!-- END ANALYTICS -->

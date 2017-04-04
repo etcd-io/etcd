@@ -45,3 +45,5 @@ The length of key name is always 64 bytes, which is a reasonable length of avera
 |-------------|-----------------------|-----------------------------------|------------------|
 | 128 | 400K | 48 | 2400 |
 | 1024 | 300K | 292 | 6500 |
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/benchmarks/etcd-2-2-0-rc-memory-benchmarks.md?pixel)]() <!-- END ANALYTICS -->

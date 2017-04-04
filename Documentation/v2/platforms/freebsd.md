@@ -60,3 +60,5 @@ you've verified is local to FreeBSD version only (for example, by not
 reproduce it on any other platform, like OSX or Linux), please sent a
 problem report using this page for more
 information: http://www.freebsd.org/send­pr.html
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/platforms/freebsd.md?pixel)]() <!-- END ANALYTICS -->

@@ -171,3 +171,5 @@ It is enabled by default.
 [member migration]: ../v2/admin_guide.md#member-migration
 [remove member]: #remove-a-member
 [runtime-reconf]: runtime-reconf-design.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/runtime-configuration.md?pixel)]() <!-- END ANALYTICS -->

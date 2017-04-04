@@ -24,3 +24,5 @@ All branches with prefix `release-` are considered _stable_ branches.
 After every minor release (http://semver.org/), we will have a new stable branch for that release. We will keep fixing the backwards-compatible bugs for the latest stable release, but not previous releases. The _patch_ release, incorporating any bug fixes, will be once every two weeks, given any patches.
 
 [master]: https://github.com/coreos/etcd/tree/master
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/branch_management.md?pixel)]() <!-- END ANALYTICS -->

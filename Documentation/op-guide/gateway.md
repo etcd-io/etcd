@@ -64,3 +64,5 @@ Start the etcd gateway to fetch the endpoints from the DNS SRV entries with the 
 $ etcd gateway --discovery-srv=example.com
 2016-08-16 11:21:18.867350 I | tcpproxy: ready to proxy client requests to [...]
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/gateway.md?pixel)]() <!-- END ANALYTICS -->

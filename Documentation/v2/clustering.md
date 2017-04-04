@@ -433,3 +433,5 @@ To make understanding this feature easier, we changed the naming of some flags, 
 [rfc-srv]: http://www.ietf.org/rfc/rfc2052.txt
 [runtime-conf]: runtime-configuration.md
 [runtime-reconf-design]: runtime-reconf-design.md
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/clustering.md?pixel)]() <!-- END ANALYTICS -->

@@ -193,3 +193,5 @@ $ ETCDCTL_API=3 ./bin/etcdctl --endpoints=localhost:2379 get my-prefix/my-key
 # my-prefix/my-key
 # abc
 ```
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/grpc_proxy.md?pixel)]() <!-- END ANALYTICS -->

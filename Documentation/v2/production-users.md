@@ -49,3 +49,5 @@ CyCore Systems provides architecture and engineering for computing systems.  Thi
 Radius Intelligence uses Kubernetes running CoreOS to containerize and scale internal toolsets. Examples include running [JetBrains TeamCity][teamcity] and internal AWS security and cost reporting tools. etcd clusters back these clusters as well as provide some basic environment bootstrapping configuration keys.
 
 [teamcity]: https://www.jetbrains.com/teamcity/
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/production-users.md?pixel)]() <!-- END ANALYTICS -->

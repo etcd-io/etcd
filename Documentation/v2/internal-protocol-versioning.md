@@ -59,3 +59,5 @@ https://issues.apache.org/jira/browse/ZOOKEEPER-1633
 ## doozerd
 
 doozerd stores the version number of the peers in the datastore for other clients to check, no decisions are made off of this number currently.
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/internal-protocol-versioning.md?pixel)]() <!-- END ANALYTICS -->

@@ -509,3 +509,5 @@ PUT /v2/keys/rkt/RktData
 Reads and writes outside the prefixes granted will fail with a 401 Unauthorized.
 
 [basic-auth]: https://en.wikipedia.org/wiki/Basic_access_authentication
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/v2/auth_api.md?pixel)]() <!-- END ANALYTICS -->

@@ -162,3 +162,5 @@ Otherwise, all `etcdctl` commands remain the same. Users and roles can still be 
 ## Using TLS Common Name
 
 If an etcd server is launched with the option `--client-cert-auth=true`, the field of Common Name (CN) in the client's TLS cert will be used as an etcd user. In this case, the common name authenticates the user and the client does not need a password.
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/op-guide/authentication.md?pixel)]() <!-- END ANALYTICS -->

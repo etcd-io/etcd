@@ -8,3 +8,5 @@ etcd is designed to handle small key value pairs typical for metadata. Larger re
 
 The default storage size limit is 2GB, configurable with `--quota-backend-bytes` flag; supports up to 8GB.
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/dev-guide/limit.md?pixel)]() <!-- END ANALYTICS -->

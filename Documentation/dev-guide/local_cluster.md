@@ -88,3 +88,5 @@ To learn more about interacting with etcd, read [interacting with etcd section][
 [interacting]: ./interacting_v3.md
 [clustering]: ../op-guide/clustering.md
 
+
+<!-- BEGIN ANALYTICS --> [![Analytics](http://ga-beacon.prod.coreos.systems/UA-42684979-9/github.com/coreos/etcd/Documentation/dev-guide/local_cluster.md?pixel)]() <!-- END ANALYTICS -->
