@@ -219,6 +219,6 @@ Make sure to sign the certificates with a Subject Name the member's public IP ad
 The certificate needs to be signed for the member's FQDN in its Subject Name, use Subject Alternative Names (short IP SANs) to add the IP address. The `etcd-ca` tool provides `--domain=` option for its `new-cert` command, and openssl can make [it][alt-name] too.
 
 [cfssl]: https://github.com/cloudflare/cfssl
-[tls-setup]: /hack/tls-setup
+[tls-setup]: ../../hack/tls-setup
 [tls-guide]: https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
 [alt-name]: http://wiki.cacert.org/FAQ/subjectAltName
