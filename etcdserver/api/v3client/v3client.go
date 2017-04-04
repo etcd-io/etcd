@@ -42,5 +42,10 @@ func New(s *etcdserver.EtcdServer) *clientv3.Client {
 	mc := adapter.MaintenanceServerToMaintenanceClient(v3rpc.NewMaintenanceServer(s))
 	c.Maintenance = clientv3.NewMaintenanceFromMaintenanceClient(mc)
 
+	clc := adapter.ClusterServerToClusterClient(v3rpc.NewClusterServer(s))
+	c.Cluster = clientv3.NewClusterFromClusterClient(clc)
+
+	// TODO: implement clientv3.Auth interface?
+
 	return c
 }
