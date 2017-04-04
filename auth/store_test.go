@@ -506,6 +506,28 @@ func TestAuthDisable(t *testing.T) {
 	}
 }
 
+// TestAuthRevisionRace ensures that access to authStore.revision is thread-safe.
+func TestAuthInfoFromCtxRace(t *testing.T) {
+	b, tPath := backend.NewDefaultTmpBackend()
+	defer os.Remove(tPath)
+
+	tp, err := NewTokenProvider("simple", dummyIndexWaiter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	as := NewAuthStore(b, tp)
+	defer as.Close()
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		ctx := metadata.NewContext(context.Background(), metadata.New(map[string]string{"token": "test"}))
+		as.AuthInfoFromCtx(ctx)
+	}()
+	as.UserAdd(&pb.AuthUserAddRequest{Name: "test"})
+	<-donec
+}
+
 func TestIsAdminPermitted(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
