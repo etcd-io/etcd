@@ -114,10 +114,27 @@ type Lease interface {
 	Leases(ctx context.Context) (*LeaseLeasesResponse, error)
 
 	// KeepAlive keeps the given lease alive forever.
+	//
+	// KeepAlive keeps the given lease alive forever. If the keepalive response posted to
+	// the channel is not consumed immediately, the lease client will continue sending keep alive requests
+	// to the etcd server at least every second until latest response is consumed.
+	//
+	// The KeepAlive channel closes if the underlying keep alive stream is interrupted in some
+	// way the client cannot handle itself; the error will be posted in the last keep
+	// alive message before closing. If there is no keepalive response within the
+	// lease's time-out, the channel will close with no error. In most cases calling
+	// KeepAlive again will re-establish keepalives with the target lease if it has not
+	// expired.
 	KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error)
 
 	// KeepAliveOnce renews the lease once. In most of the cases, KeepAlive
 	// should be used instead of KeepAliveOnce.
+	//
+	// KeepAliveOnce renews the lease once. The response corresponds to the
+	// first message from calling KeepAlive. If the response has a recoverable
+	// error, KeepAliveOnce will retry the RPC with a new keep alive message.
+	//
+	// In most of the cases, Keepalive should be used instead of KeepAliveOnce.
 	KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAliveResponse, error)
 
 	// Close releases all resources Lease keeps for efficient communication
