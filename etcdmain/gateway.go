@@ -21,8 +21,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/tcpproxy"
 
 	"github.com/spf13/cobra"
@@ -95,26 +93,9 @@ func stripSchema(eps []string) []string {
 }
 func startGateway(cmd *cobra.Command, args []string) {
 	endpoints := gatewayEndpoints
-	if gatewayDNSCluster != "" {
-		eps, err := client.NewSRVDiscover().Discover(gatewayDNSCluster)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		plog.Infof("discovered the cluster %s from %s", eps, gatewayDNSCluster)
-		// confirm TLS connections are good
-		if !gatewayInsecureDiscovery {
-			tlsInfo := transport.TLSInfo{
-				TrustedCAFile: gatewayCA,
-				ServerName:    gatewayDNSCluster,
-			}
-			plog.Infof("validating discovered endpoints %v", eps)
-			endpoints, err = transport.ValidateSecureEndpoints(tlsInfo, eps)
-			if err != nil {
-				plog.Warningf("%v", err)
-			}
-			plog.Infof("using discovered endpoints %v", endpoints)
-		}
+
+	if eps := discoverEndpoints(gatewayDNSCluster, gatewayCA, gatewayInsecureDiscovery); len(eps) != 0 {
+		endpoints = eps
 	}
 
 	// Strip the schema from the endpoints because we start just a TCP proxy
