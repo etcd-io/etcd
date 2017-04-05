@@ -87,7 +87,7 @@ func TestLeaseConcurrentKeys(t *testing.T) {
 	defer be.Close()
 
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(func() TxnDelete { return &fakeDeleter{} })
+	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -133,10 +133,12 @@ func TestLessorRevoke(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	fd := &fakeDeleter{}
-
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(func() TxnDelete { return fd })
+	var fd *fakeDeleter
+	le.SetRangeDeleter(func() TxnDelete {
+		fd = newFakeDeleter(be)
+		return fd
+	})
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -214,7 +216,7 @@ func TestLessorDetach(t *testing.T) {
 	defer be.Close()
 
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(func() TxnDelete { return &fakeDeleter{} })
+	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -376,9 +378,16 @@ func TestLessorExpireAndDemote(t *testing.T) {
 
 type fakeDeleter struct {
 	deleted []string
+	tx      backend.BatchTx
 }
 
-func (fd *fakeDeleter) End() {}
+func newFakeDeleter(be backend.Backend) *fakeDeleter {
+	fd := &fakeDeleter{nil, be.BatchTx()}
+	fd.tx.Lock()
+	return fd
+}
+
+func (fd *fakeDeleter) End() { fd.tx.Unlock() }
 
 func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
