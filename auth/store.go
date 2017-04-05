@@ -749,7 +749,7 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 		return nil
 	}
 
-	if as.isRangeOpPermitted(tx, userName, string(key), string(rangeEnd), permTyp) {
+	if as.isRangeOpPermitted(tx, userName, key, rangeEnd, permTyp) {
 		return nil
 	}
 

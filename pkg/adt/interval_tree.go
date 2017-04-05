@@ -15,6 +15,7 @@
 package adt
 
 import (
+	"bytes"
 	"math"
 )
 
@@ -557,4 +558,33 @@ func (v Int64Comparable) Compare(c Comparable) int {
 		return 1
 	}
 	return 0
+}
+
+// BytesAffineComparable treats empty byte arrays as > all other byte arrays
+type BytesAffineComparable []byte
+
+func (b BytesAffineComparable) Compare(c Comparable) int {
+	bc := c.(BytesAffineComparable)
+
+	if len(b) == 0 {
+		if len(bc) == 0 {
+			return 0
+		}
+		return 1
+	}
+	if len(bc) == 0 {
+		return -1
+	}
+
+	return bytes.Compare(b, bc)
+}
+
+func NewBytesAffineInterval(begin, end []byte) Interval {
+	return Interval{BytesAffineComparable(begin), BytesAffineComparable(end)}
+}
+func NewBytesAffinePoint(b []byte) Interval {
+	be := make([]byte, len(b)+1)
+	copy(be, b)
+	be[len(b)] = 0
+	return NewBytesAffineInterval(b, be)
 }

@@ -38,18 +38,16 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 
 		for _, perm := range role.KeyPermission {
 			var ivl adt.Interval
-			var rangeEnd string
+			var rangeEnd []byte
 
-			if len(perm.RangeEnd) == 1 && perm.RangeEnd[0] == 0 {
-				rangeEnd = ""
-			} else {
-				rangeEnd = string(perm.RangeEnd)
+			if len(perm.RangeEnd) != 1 || perm.RangeEnd[0] != 0 {
+				rangeEnd = perm.RangeEnd
 			}
 
 			if len(perm.RangeEnd) != 0 {
-				ivl = adt.NewStringAffineInterval(string(perm.Key), string(rangeEnd))
+				ivl = adt.NewBytesAffineInterval(perm.Key, rangeEnd)
 			} else {
-				ivl = adt.NewStringAffinePoint(string(perm.Key))
+				ivl = adt.NewBytesAffinePoint(perm.Key)
 			}
 
 			switch perm.PermType {
@@ -72,12 +70,12 @@ func getMergedPerms(tx backend.BatchTx, userName string) *unifiedRangePermission
 	}
 }
 
-func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
-	if len(rangeEnd) == 1 && rangeEnd[0] == '\x00' {
-		rangeEnd = ""
+func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
+	if len(rangeEnd) == 1 && rangeEnd[0] == 0 {
+		rangeEnd = nil
 	}
 
-	ivl := adt.NewStringAffineInterval(key, rangeEnd)
+	ivl := adt.NewBytesAffineInterval(key, rangeEnd)
 	switch permtyp {
 	case authpb.READ:
 		return cachedPerms.readPerms.Contains(ivl)
@@ -89,8 +87,8 @@ func checkKeyInterval(cachedPerms *unifiedRangePermissions, key, rangeEnd string
 	return false
 }
 
-func checkKeyPoint(cachedPerms *unifiedRangePermissions, key string, permtyp authpb.Permission_Type) bool {
-	pt := adt.NewStringAffinePoint(key)
+func checkKeyPoint(cachedPerms *unifiedRangePermissions, key []byte, permtyp authpb.Permission_Type) bool {
+	pt := adt.NewBytesAffinePoint(key)
 	switch permtyp {
 	case authpb.READ:
 		return cachedPerms.readPerms.Intersects(pt)
@@ -102,7 +100,7 @@ func checkKeyPoint(cachedPerms *unifiedRangePermissions, key string, permtyp aut
 	return false
 }
 
-func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd string, permtyp authpb.Permission_Type) bool {
+func (as *authStore) isRangeOpPermitted(tx backend.BatchTx, userName string, key, rangeEnd []byte, permtyp authpb.Permission_Type) bool {
 	// assumption: tx is Lock()ed
 	_, ok := as.rangePermCache[userName]
 	if !ok {
