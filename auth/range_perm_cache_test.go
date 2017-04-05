@@ -24,23 +24,23 @@ import (
 func TestRangePermission(t *testing.T) {
 	tests := []struct {
 		perms []adt.Interval
-		begin string
-		end   string
+		begin []byte
+		end   []byte
 		want  bool
 	}{
 		{
-			[]adt.Interval{adt.NewStringAffineInterval("a", "c"), adt.NewStringAffineInterval("x", "z")},
-			"a", "z",
+			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("c")), adt.NewBytesAffineInterval([]byte("x"), []byte("z"))},
+			[]byte("a"), []byte("z"),
 			false,
 		},
 		{
-			[]adt.Interval{adt.NewStringAffineInterval("a", "f"), adt.NewStringAffineInterval("c", "d"), adt.NewStringAffineInterval("f", "z")},
-			"a", "z",
+			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("f")), adt.NewBytesAffineInterval([]byte("c"), []byte("d")), adt.NewBytesAffineInterval([]byte("f"), []byte("z"))},
+			[]byte("a"), []byte("z"),
 			true,
 		},
 		{
-			[]adt.Interval{adt.NewStringAffineInterval("a", "d"), adt.NewStringAffineInterval("a", "b"), adt.NewStringAffineInterval("c", "f")},
-			"a", "f",
+			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("d")), adt.NewBytesAffineInterval([]byte("a"), []byte("b")), adt.NewBytesAffineInterval([]byte("c"), []byte("f"))},
+			[]byte("a"), []byte("f"),
 			true,
 		},
 	}
