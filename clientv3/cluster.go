@@ -50,6 +50,10 @@ func NewCluster(c *Client) Cluster {
 	return &cluster{remote: RetryClusterClient(c)}
 }
 
+func NewClusterFromClusterClient(remote pb.ClusterClient) Cluster {
+	return &cluster{remote: remote}
+}
+
 func (c *cluster) MemberAdd(ctx context.Context, peerAddrs []string) (*MemberAddResponse, error) {
 	r := &pb.MemberAddRequest{PeerURLs: peerAddrs}
 	resp, err := c.remote.MemberAdd(ctx, r)
