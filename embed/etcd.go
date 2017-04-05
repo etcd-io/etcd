@@ -258,19 +258,21 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 		}
 
 		proto := "tcp"
+		addr := u.Host
 		if u.Scheme == "unix" || u.Scheme == "unixs" {
 			proto = "unix"
+			addr = u.Host + u.Path
 		}
 
 		sctx.secure = u.Scheme == "https" || u.Scheme == "unixs"
 		sctx.insecure = !sctx.secure
-		if oldctx := sctxs[u.Host]; oldctx != nil {
+		if oldctx := sctxs[addr]; oldctx != nil {
 			oldctx.secure = oldctx.secure || sctx.secure
 			oldctx.insecure = oldctx.insecure || sctx.insecure
 			continue
 		}
 
-		if sctx.l, err = net.Listen(proto, u.Host); err != nil {
+		if sctx.l, err = net.Listen(proto, addr); err != nil {
 			return nil, err
 		}
 
@@ -304,7 +306,7 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 		if cfg.Debug {
 			sctx.registerTrace()
 		}
-		sctxs[u.Host] = sctx
+		sctxs[addr] = sctx
 	}
 	return sctxs, nil
 }
