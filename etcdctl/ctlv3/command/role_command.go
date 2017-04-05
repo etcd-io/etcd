@@ -24,6 +24,7 @@ import (
 
 var (
 	grantPermissionPrefix bool
+	permFromKey           bool
 )
 
 // NewRoleCommand returns the cobra command for "role".
@@ -83,16 +84,21 @@ func newRoleGrantPermissionCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&grantPermissionPrefix, "prefix", false, "grant a prefix permission")
+	cmd.Flags().BoolVar(&permFromKey, "from-key", false, "grant a permission of keys that are greater than or equal to the given key using byte compare")
 
 	return cmd
 }
 
 func newRoleRevokePermissionCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "revoke-permission <role name> <key> [endkey]",
 		Short: "Revokes a key from a role",
 		Run:   roleRevokePermissionCommandFunc,
 	}
+
+	cmd.Flags().BoolVar(&permFromKey, "from-key", false, "grant a permission of keys that are greater than or equal to the given key using byte compare")
+
+	return cmd
 }
 
 // roleAddCommandFunc executes the "role add" command.
@@ -168,9 +174,20 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 		if grantPermissionPrefix {
 			ExitWithError(ExitBadArgs, fmt.Errorf("don't pass both of --prefix option and range end to grant permission command"))
 		}
+
+		if permFromKey {
+			ExitWithError(ExitBadArgs, fmt.Errorf("don't pass both of --from-key option and range end to grant permission command"))
+		}
+
 		rangeEnd = args[3]
 	} else if grantPermissionPrefix {
+		if permFromKey {
+			ExitWithError(ExitBadArgs, fmt.Errorf("don't pass both of --from-key option and --prefix option to grant permission command"))
+		}
+
 		rangeEnd = clientv3.GetPrefixRangeEnd(args[2])
+	} else if permFromKey {
+		rangeEnd = "\x00"
 	}
 
 	resp, err := mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], args[2], rangeEnd, perm)
@@ -190,6 +207,8 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 	rangeEnd := ""
 	if 3 <= len(args) {
 		rangeEnd = args[2]
+	} else if permFromKey {
+		rangeEnd = "\x00"
 	}
 
 	resp, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], args[1], rangeEnd)

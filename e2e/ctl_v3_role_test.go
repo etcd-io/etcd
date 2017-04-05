@@ -103,7 +103,10 @@ func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) err
 	cmdArgs := append(cx.PrefixArgs(), "role", "grant-permission")
 	if perm.prefix {
 		cmdArgs = append(cmdArgs, "--prefix")
+	} else if len(perm.rangeEnd) == 1 && perm.rangeEnd[0] == '\x00' {
+		cmdArgs = append(cmdArgs, "--from-key")
 	}
+
 	cmdArgs = append(cmdArgs, rolename)
 	cmdArgs = append(cmdArgs, grantingPermToArgs(perm)...)
 
@@ -117,12 +120,19 @@ func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) err
 	return err
 }
 
-func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string) error {
+func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string, fromKey bool) error {
 	cmdArgs := append(cx.PrefixArgs(), "role", "revoke-permission")
 	cmdArgs = append(cmdArgs, rolename)
 	cmdArgs = append(cmdArgs, key)
+	expStr := ""
 	if len(rangeEnd) != 0 {
 		cmdArgs = append(cmdArgs, rangeEnd)
+		expStr = fmt.Sprintf("Permission of range [%s, %s) is revoked from role %s", key, rangeEnd, rolename)
+	} else if fromKey {
+		cmdArgs = append(cmdArgs, "--from-key")
+		expStr = fmt.Sprintf("Permission of range [%s, <open ended> is revoked from role %s", key, rolename)
+	} else {
+		expStr = fmt.Sprintf("Permission of key %s is revoked from role %s", key, rolename)
 	}
 
 	proc, err := spawnCmd(cmdArgs)
@@ -130,7 +140,6 @@ func ctlV3RoleRevokePermission(cx ctlCtx, rolename string, key, rangeEnd string)
 		return err
 	}
 
-	expStr := fmt.Sprintf("Permission of key %s is revoked from role %s", key, rolename)
 	_, err = proc.Expect(expStr)
 	return err
 }
@@ -161,5 +170,10 @@ func grantingPermToArgs(perm grantingPerm) []string {
 	if len(perm.rangeEnd) == 0 {
 		return []string{permstr, perm.key}
 	}
+
+	if len(perm.rangeEnd) == 1 && perm.rangeEnd[0] == '\x00' {
+		return []string{permstr, perm.key}
+	}
+
 	return []string{permstr, perm.key, perm.rangeEnd}
 }

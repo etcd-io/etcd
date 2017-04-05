@@ -37,6 +37,7 @@ func TestCtlV3AuthMemberUpdate(t *testing.T)     { testCtl(t, authTestMemberUpda
 func TestCtlV3AuthCertCN(t *testing.T)           { testCtl(t, authTestCertCN, withCfg(configClientTLSCertAuth)) }
 func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }
 func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
+func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -199,7 +200,7 @@ func authRoleUpdateTest(cx ctlCtx) {
 
 	// revoke the newly granted key
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleRevokePermission(cx, "test-role", "hoo", ""); err != nil {
+	if err := ctlV3RoleRevokePermission(cx, "test-role", "hoo", "", false); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -611,5 +612,56 @@ func authTestInvalidMgmt(cx ctlCtx) {
 
 	if err := ctlV3User(cx, []string{"revoke-role", "root", "root"}, "Error:  etcdserver: invalid auth management", []string{}); err == nil {
 		cx.t.Fatal("revoking the role root from the user root must not be allowed")
+	}
+}
+
+func authTestFromKeyPerm(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// grant keys after z to test-user
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "z", "\x00", false}); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// try the granted open ended permission
+	cx.user, cx.pass = "test-user", "pass"
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("z%d", i)
+		if err := ctlV3Put(cx, key, "val", ""); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+	largeKey := ""
+	for i := 0; i < 10; i++ {
+		largeKey += "\xff"
+		if err := ctlV3Put(cx, largeKey, "val", ""); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+
+	// try a non granted key
+	if err := ctlV3PutFailPerm(cx, "x", "baz"); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// revoke the open ended permission
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleRevokePermission(cx, "test-role", "z", "", true); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// try the revoked open ended permission
+	cx.user, cx.pass = "test-user", "pass"
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("z%d", i)
+		if err := ctlV3PutFailPerm(cx, key, "val"); err != nil {
+			cx.t.Fatal(err)
+		}
 	}
 }

@@ -29,17 +29,17 @@ func TestRangePermission(t *testing.T) {
 		want  bool
 	}{
 		{
-			[]adt.Interval{adt.NewStringInterval("a", "c"), adt.NewStringInterval("x", "z")},
+			[]adt.Interval{adt.NewStringAffineInterval("a", "c"), adt.NewStringAffineInterval("x", "z")},
 			"a", "z",
 			false,
 		},
 		{
-			[]adt.Interval{adt.NewStringInterval("a", "f"), adt.NewStringInterval("c", "d"), adt.NewStringInterval("f", "z")},
+			[]adt.Interval{adt.NewStringAffineInterval("a", "f"), adt.NewStringAffineInterval("c", "d"), adt.NewStringAffineInterval("f", "z")},
 			"a", "z",
 			true,
 		},
 		{
-			[]adt.Interval{adt.NewStringInterval("a", "d"), adt.NewStringInterval("a", "b"), adt.NewStringInterval("c", "f")},
+			[]adt.Interval{adt.NewStringAffineInterval("a", "d"), adt.NewStringAffineInterval("a", "b"), adt.NewStringAffineInterval("c", "f")},
 			"a", "f",
 			true,
 		},
