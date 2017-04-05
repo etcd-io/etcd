@@ -73,7 +73,7 @@ func NewConfig(fpath string) (*clientv3.Config, error) {
 	}
 
 	tlscfg := &tls.Config{
-		MinVersion:         tls.VersionTLS10,
+		MinVersion:         tls.VersionTLS12,
 		InsecureSkipVerify: yc.InsecureSkipTLSVerify,
 		RootCAs:            cp,
 	}
