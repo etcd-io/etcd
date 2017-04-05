@@ -423,7 +423,7 @@ To make understanding this feature easier, we changed the naming of some flags, 
 |-peers      |none      |Deprecated. The --initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
 |-peers-file    |none      |Deprecated. The --initial-cluster flag provides a similar concept with different semantics. Please read this guide on cluster startup.|
 
-[client]: /client
+[client]: ../../client
 [client-discoverer]: https://godoc.org/github.com/coreos/etcd/client#Discoverer
 [conf-adv-client]: configuration.md#-advertise-client-urls
 [conf-listen-client]: configuration.md#-listen-client-urls

@@ -475,5 +475,5 @@ To setup an etcd cluster with proxies of v2 API, please read the the [clustering
 [proxy]: https://github.com/coreos/etcd/blob/release-2.3/Documentation/proxy.md
 [clustering_etcd2]: https://github.com/coreos/etcd/blob/release-2.3/Documentation/clustering.md
 [security-guide]: security.md
-[tls-setup]: /hack/tls-setup
+[tls-setup]: ../../hack/tls-setup
 [gateway]: gateway.md
