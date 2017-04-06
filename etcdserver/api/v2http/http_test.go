@@ -109,6 +109,10 @@ func TestWriteError(t *testing.T) {
 			"456",
 		},
 		{
+			err:   etcdserver.ErrRejectReconfiguration,
+			wcode: http.StatusTooManyRequests,
+		},
+		{
 			err:   errors.New("something went wrong"),
 			wcode: http.StatusInternalServerError,
 		},
