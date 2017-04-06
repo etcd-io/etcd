@@ -37,11 +37,13 @@ import (
 )
 
 var (
-	grpcProxyListenAddr string
-	grpcProxyEndpoints  []string
-	grpcProxyCert       string
-	grpcProxyKey        string
-	grpcProxyCA         string
+	grpcProxyListenAddr        string
+	grpcProxyEndpoints         []string
+	grpcProxyDNSCluster        string
+	grpcProxyInsecureDiscovery bool
+	grpcProxyCert              string
+	grpcProxyKey               string
+	grpcProxyCA                string
 
 	grpcProxyAdvertiseClientURL string
 	grpcProxyResolverPrefix     string
@@ -75,6 +77,8 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&grpcProxyListenAddr, "listen-addr", "127.0.0.1:23790", "listen address")
+	cmd.Flags().StringVar(&grpcProxyDNSCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster")
+	cmd.Flags().BoolVar(&grpcProxyInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
 	cmd.Flags().StringVar(&grpcProxyCert, "cert", "", "identify secure connections with etcd servers using this TLS certificate file")
 	cmd.Flags().StringVar(&grpcProxyKey, "key", "", "identify secure connections with etcd servers using this TLS key file")
@@ -100,6 +104,10 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	if grpcProxyResolverPrefix != "" && grpcProxyResolverTTL > 0 && grpcProxyAdvertiseClientURL == "" {
 		fmt.Fprintln(os.Stderr, fmt.Errorf("invalid advertise-client-url %q", grpcProxyAdvertiseClientURL))
 		os.Exit(1)
+	}
+
+	if eps := discoverEndpoints(grpcProxyDNSCluster, grpcProxyCA, grpcProxyInsecureDiscovery); len(eps) != 0 {
+		grpcProxyEndpoints = eps
 	}
 
 	l, err := net.Listen("tcp", grpcProxyListenAddr)
