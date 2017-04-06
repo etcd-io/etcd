@@ -132,6 +132,10 @@ type Config struct {
 	// auth
 
 	AuthToken string `json:"auth-token"`
+
+	// performance
+
+	BatchAppend string `json:"batch-append"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -184,6 +188,7 @@ func NewConfig() *Config {
 		Metrics:             "basic",
 		EnableV2:            true,
 		AuthToken:           "simple",
+		BatchAppend:         "0,0",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg

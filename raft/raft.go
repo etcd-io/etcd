@@ -176,6 +176,15 @@ type Config struct {
 	// Logger is the logger used for raft log. For multinode which can host
 	// multiple raft group, each raft group can have its own logger
 	Logger Logger
+
+	// NrBatchEntries is the maximum number of entries that will be sent via
+	// a single AppendEntries() RPC
+	NrBatchEntries int
+
+	// TriggerBatchDuration is a limit of batching entries. When the
+	// duration is passed, entries will be sent even if the number of the
+	// entries is less than NrBatchEntries
+	TriggerBatchDuration time.Duration
 }
 
 func (c *Config) validate() error {
@@ -261,6 +270,10 @@ type raft struct {
 	step stepFunc
 
 	logger Logger
+
+	prevPropose          time.Time
+	nrBatchEntries       int
+	triggerBatchDuration time.Duration
 }
 
 func newRaft(c *Config) *raft {
@@ -283,18 +296,21 @@ func newRaft(c *Config) *raft {
 		peers = cs.Nodes
 	}
 	r := &raft{
-		id:               c.ID,
-		lead:             None,
-		raftLog:          raftlog,
-		maxMsgSize:       c.MaxSizePerMsg,
-		maxInflight:      c.MaxInflightMsgs,
-		prs:              make(map[uint64]*Progress),
-		electionTimeout:  c.ElectionTick,
-		heartbeatTimeout: c.HeartbeatTick,
-		logger:           c.Logger,
-		checkQuorum:      c.CheckQuorum,
-		preVote:          c.PreVote,
-		readOnly:         newReadOnly(c.ReadOnlyOption),
+		id:                   c.ID,
+		lead:                 None,
+		raftLog:              raftlog,
+		maxMsgSize:           c.MaxSizePerMsg,
+		maxInflight:          c.MaxInflightMsgs,
+		prs:                  make(map[uint64]*Progress),
+		electionTimeout:      c.ElectionTick,
+		heartbeatTimeout:     c.HeartbeatTick,
+		logger:               c.Logger,
+		checkQuorum:          c.CheckQuorum,
+		preVote:              c.PreVote,
+		readOnly:             newReadOnly(c.ReadOnlyOption),
+		prevPropose:          time.Now(),
+		nrBatchEntries:       c.NrBatchEntries,
+		triggerBatchDuration: c.TriggerBatchDuration,
 	}
 	for _, p := range peers {
 		r.prs[p] = &Progress{Next: 1, ins: newInflights(r.maxInflight)}

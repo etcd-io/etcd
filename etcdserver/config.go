@@ -61,6 +61,8 @@ type ServerConfig struct {
 	ClientCertAuthEnabled bool
 
 	AuthToken string
+
+	BatchAppend string
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

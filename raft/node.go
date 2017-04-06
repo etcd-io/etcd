@@ -16,6 +16,7 @@ package raft
 
 import (
 	"errors"
+	"time"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 	"golang.org/x/net/context"
@@ -278,6 +279,7 @@ func (n *node) run(r *raft) {
 	var havePrevLastUnstablei bool
 	var prevSnapi uint64
 	var rd Ready
+	var batchAppendTrigger chan struct{}
 
 	lead := None
 	prevSoftSt := r.softState()
@@ -287,11 +289,20 @@ func (n *node) run(r *raft) {
 		if advancec != nil {
 			readyc = nil
 		} else {
-			rd = newReady(r, prevSoftSt, prevHardSt)
-			if rd.containsUpdates() {
-				readyc = n.readyc
+			trigger, remaining := shouldAppend(r)
+			if trigger {
+				rd = newReady(r, prevSoftSt, prevHardSt)
+				if rd.containsUpdates() {
+					readyc = n.readyc
+				} else {
+					readyc = nil
+				}
 			} else {
-				readyc = nil
+				batchAppendTrigger = make(chan struct{})
+				go func(c chan struct{}) {
+					<-time.After(remaining)
+					c <- struct{}{}
+				}(batchAppendTrigger)
 			}
 		}
 
@@ -386,6 +397,7 @@ func (n *node) run(r *raft) {
 		case <-n.stop:
 			close(n.done)
 			return
+		case <-batchAppendTrigger:
 		}
 	}
 }
@@ -522,6 +534,9 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 		rd.ReadStates = r.readStates
 	}
 	rd.MustSync = MustSync(rd.HardState, prevHardSt, len(rd.Entries))
+
+	r.prevPropose = time.Now()
+
 	return rd
 }
 
@@ -534,4 +549,10 @@ func MustSync(st, prevst pb.HardState, entsnum int) bool {
 	// votedFor
 	// log entries[]
 	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term
+}
+
+func shouldAppend(r *raft) (bool, time.Duration) {
+	remaining := time.Duration(r.triggerBatchDuration) - time.Since(r.prevPropose)
+	should := remaining < 0 || r.nrBatchEntries < len(r.msgs)
+	return should, remaining
 }

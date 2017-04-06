@@ -208,6 +208,9 @@ func newConfig() *config {
 	// auth
 	fs.StringVar(&cfg.AuthToken, "auth-token", cfg.AuthToken, "Specify auth token specific options.")
 
+	// performance
+	fs.StringVar(&cfg.BatchAppend, "batch-append", cfg.BatchAppend, "Specify parameters related to batch appending")
+
 	// ignored
 	for _, f := range cfg.ignored {
 		fs.Var(&flags.IgnoredFlag{Name: f}, f, "")
