@@ -17,6 +17,13 @@ package wal
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
+	syncGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "disk",
+		Name:      "wal_fsync_duration_current",
+		Help:      "The current WAL fsync time, if its rising, disk slowness may decrease availability",
+	})
+
 	syncDurations = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: "etcd",
 		Subsystem: "disk",
@@ -28,4 +35,5 @@ var (
 
 func init() {
 	prometheus.MustRegister(syncDurations)
+	prometheus.MustRegister(syncGauge)
 }
