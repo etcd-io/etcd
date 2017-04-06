@@ -711,7 +711,11 @@ func (w *watchGrpcStream) waitCancelSubstreams(stopc <-chan struct{}) <-chan str
 				ws.closing = true
 				close(ws.outc)
 				ws.outc = nil
-				go func() { w.closingc <- ws }()
+				w.wg.Add(1)
+				go func() {
+					defer w.wg.Done()
+					w.closingc <- ws
+				}()
 			case <-stopc:
 			}
 		}(w.resuming[i])
