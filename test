@@ -250,16 +250,15 @@ function fmt_pass {
 	if which gosimple >/dev/null; then
 		echo "Checking gosimple..."
 		gosimpleResult=`gosimple ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
-		if [ ! -n "${gosimpleResult}" ]; then
-			continue
-		fi
-		# TODO: resolve these after go1.8 migration
-		SIMPLE_CHECK_MASK="S(1024)"
-		if egrep -v "$SIMPLE_CHECK_MASK" "${gosimpleResult}"; then
-			echo -e "gosimple checking ${path} failed:\n${gosimpleResult}"
-			exit 255
-		else
-			echo -e "gosimple warning:\n${gosimpleResult}"
+		if [ -n "${gosimpleResult}" ]; then
+			# TODO: resolve these after go1.8 migration
+			SIMPLE_CHECK_MASK="S(1024)"
+			if echo "${gosimpleResult}" | egrep -v "$SIMPLE_CHECK_MASK"; then
+				echo -e "gosimple checking ${path} failed:\n${gosimpleResult}"
+				exit 255
+			else
+				echo -e "gosimple warning:\n${gosimpleResult}"
+			fi
 		fi
 	else
 		echo "Skipping gosimple..."
@@ -279,17 +278,17 @@ function fmt_pass {
 	if which staticcheck >/dev/null; then
 		echo "Checking staticcheck..."
 		staticcheckResult=`staticcheck ${STATIC_ANALYSIS_PATHS} 2>&1 || true`
-		if [ ! -n "${staticcheckResult}" ]; then
-			continue
-		fi
-		# TODO: resolve these after go1.8 migration
-		# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
-		STATIC_CHECK_MASK="SA(1016|1019|2002)"
-		if egrep -v "$STATIC_CHECK_MASK" "${staticcheckResult}"; then
-			echo -e "staticcheck checking ${path} failed:\n${staticcheckResult}"
-			exit 255
-		else
-			echo -e "staticcheck warning:\n${staticcheckResult}"
+		if [ -n "${staticcheckResult}" ]; then
+			# TODO: resolve these after go1.8 migration
+			# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
+			STATIC_CHECK_MASK="SA(1019|2002)"
+			if echo "${staticcheckResult}" | egrep -v "$STATIC_CHECK_MASK"; then
+				echo -e "staticcheck checking ${path} failed:\n${staticcheckResult}"
+				exit 255
+			else
+				suppressed=`echo "${staticcheckResult}" | sed 's/ /\n/g' | grep "(SA" | sort | uniq -c`
+				echo -e "staticcheck suppressed warnings:\n${suppressed}"
+			fi
 		fi
 	else
 		echo "Skipping staticcheck..."
