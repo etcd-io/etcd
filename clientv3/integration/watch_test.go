@@ -414,7 +414,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 			continue
 		}
 		if wresp.Err() != rpctypes.ErrCompacted {
-			t.Fatalf("wresp.Err() expected %v, but got %v %+v", rpctypes.ErrCompacted, wresp.Err())
+			t.Fatalf("wresp.Err() expected %v, got %+v", rpctypes.ErrCompacted, wresp.Err())
 		}
 		break
 	}
