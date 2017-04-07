@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -305,18 +304,7 @@ func startProxy(cfg *config) error {
 	}
 	// Start a proxy server goroutine for each listen address
 	for _, u := range cfg.LCUrls {
-		var (
-			l      net.Listener
-			tlscfg *tls.Config
-		)
-		if !cfg.ClientTLSInfo.Empty() {
-			tlscfg, err = cfg.ClientTLSInfo.ServerConfig()
-			if err != nil {
-				return err
-			}
-		}
-
-		l, err := transport.NewListener(u.Host, u.Scheme, tlscfg)
+		l, err := transport.NewListener(u.Host, u.Scheme, &cfg.ClientTLSInfo)
 		if err != nil {
 			return err
 		}
@@ -369,6 +357,11 @@ func identifyDataDirOrDie(dir string) dirType {
 }
 
 func setupLogging(cfg *config) {
+	cfg.ClientTLSInfo.HandshakeFailure = func(conn *tls.Conn, err error) {
+		plog.Infof("rejected connection from %q (%v)", conn.RemoteAddr().String(), err)
+	}
+	cfg.PeerTLSInfo.HandshakeFailure = cfg.ClientTLSInfo.HandshakeFailure
+
 	capnslog.SetGlobalLogLevel(capnslog.INFO)
 	if cfg.Debug {
 		capnslog.SetGlobalLogLevel(capnslog.DEBUG)

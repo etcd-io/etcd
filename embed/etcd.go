@@ -201,7 +201,6 @@ func startPeerListeners(cfg *Config) (plns []net.Listener, err error) {
 	}()
 
 	for i, u := range cfg.LPUrls {
-		var tlscfg *tls.Config
 		if u.Scheme == "http" {
 			if !cfg.PeerTLSInfo.Empty() {
 				plog.Warningf("The scheme of peer url %s is HTTP while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
@@ -210,12 +209,7 @@ func startPeerListeners(cfg *Config) (plns []net.Listener, err error) {
 				plog.Warningf("The scheme of peer url %s is HTTP while client cert auth (--peer-client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
 			}
 		}
-		if !cfg.PeerTLSInfo.Empty() {
-			if tlscfg, err = cfg.PeerTLSInfo.ServerConfig(); err != nil {
-				return nil, err
-			}
-		}
-		if plns[i], err = rafthttp.NewListener(u, tlscfg); err != nil {
+		if plns[i], err = rafthttp.NewListener(u, &cfg.PeerTLSInfo); err != nil {
 			return nil, err
 		}
 		plog.Info("listening for peers on ", u.String())
