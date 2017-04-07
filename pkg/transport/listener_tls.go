@@ -121,7 +121,6 @@ func (l *tlsListener) acceptLoop() {
 					}
 				}
 			}
-
 			select {
 			case l.connc <- tlsConn:
 				conn = nil
