@@ -150,7 +150,10 @@ func TestURLsEqual(t *testing.T) {
 		"second.com":  "10.0.11.2",
 	}
 	resolveTCPAddr = func(network, addr string) (*net.TCPAddr, error) {
-		host, port, err := net.SplitHostPort(addr)
+		host, port, herr := net.SplitHostPort(addr)
+		if herr != nil {
+			return nil, herr
+		}
 		if _, ok := hostm[host]; !ok {
 			return nil, errors.New("cannot resolve host.")
 		}
