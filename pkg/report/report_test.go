@@ -14,7 +14,13 @@
 
 package report
 
-import "testing"
+import (
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestPercentiles(t *testing.T) {
 	nums := make([]float64, 100)
@@ -29,5 +35,49 @@ func TestPercentiles(t *testing.T) {
 	data = percentiles(nums)
 	if data[len(pctls)-1] != 1 {
 		t.Fatalf("99.9-percentile expected 1, got %f", data[len(pctls)-1])
+	}
+}
+
+func TestReport(t *testing.T) {
+	r := NewReportSample("%f")
+	go func() {
+		start := time.Now()
+		for i := 0; i < 5; i++ {
+			end := start.Add(time.Second)
+			r.Results() <- Result{Start: start, End: end}
+			start = end
+		}
+		r.Results() <- Result{Start: start, End: start.Add(time.Second), Err: fmt.Errorf("oops")}
+		close(r.Results())
+	}()
+
+	stats := <-r.Stats()
+	stats.TimeSeries = nil // ignore timeseries since it uses wall clock
+	wStats := Stats{
+		AvgTotal:  5.0,
+		Fastest:   1.0,
+		Slowest:   1.0,
+		Average:   1.0,
+		Stddev:    0.0,
+		Total:     stats.Total,
+		RPS:       5.0 / stats.Total.Seconds(),
+		ErrorDist: map[string]int{"oops": 1},
+		Lats:      []float64{1.0, 1.0, 1.0, 1.0, 1.0},
+	}
+	if !reflect.DeepEqual(stats, wStats) {
+		t.Fatalf("got %+v, want %+v", stats, wStats)
+	}
+
+	wstrs := []string{
+		"Stddev:\t0",
+		"Average:\t1.0",
+		"Slowest:\t1.0",
+		"Fastest:\t1.0",
+	}
+	ss := <-r.Run()
+	for i, ws := range wstrs {
+		if !strings.Contains(ss, ws) {
+			t.Errorf("#%d: stats string missing %s", i, ws)
+		}
 	}
 }
