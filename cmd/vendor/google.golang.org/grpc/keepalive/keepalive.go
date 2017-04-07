@@ -1,9 +1,6 @@
-// +build go1.7
-// +build !go1.8
-
 /*
  *
- * Copyright 2016, Google Inc.
+ * Copyright 2017, Google Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,42 +31,22 @@
  *
  */
 
-package credentials
+// Package keepalive defines configurable parameters for point-to-point healthcheck.
+package keepalive
 
 import (
-	"crypto/tls"
+	"time"
 )
 
-// cloneTLSConfig returns a shallow clone of the exported
-// fields of cfg, ignoring the unexported sync.Once, which
-// contains a mutex and must not be copied.
-//
-// If cfg is nil, a new zero tls.Config is returned.
-func cloneTLSConfig(cfg *tls.Config) *tls.Config {
-	if cfg == nil {
-		return &tls.Config{}
-	}
-	return &tls.Config{
-		Rand:                        cfg.Rand,
-		Time:                        cfg.Time,
-		Certificates:                cfg.Certificates,
-		NameToCertificate:           cfg.NameToCertificate,
-		GetCertificate:              cfg.GetCertificate,
-		RootCAs:                     cfg.RootCAs,
-		NextProtos:                  cfg.NextProtos,
-		ServerName:                  cfg.ServerName,
-		ClientAuth:                  cfg.ClientAuth,
-		ClientCAs:                   cfg.ClientCAs,
-		InsecureSkipVerify:          cfg.InsecureSkipVerify,
-		CipherSuites:                cfg.CipherSuites,
-		PreferServerCipherSuites:    cfg.PreferServerCipherSuites,
-		SessionTicketsDisabled:      cfg.SessionTicketsDisabled,
-		SessionTicketKey:            cfg.SessionTicketKey,
-		ClientSessionCache:          cfg.ClientSessionCache,
-		MinVersion:                  cfg.MinVersion,
-		MaxVersion:                  cfg.MaxVersion,
-		CurvePreferences:            cfg.CurvePreferences,
-		DynamicRecordSizingDisabled: cfg.DynamicRecordSizingDisabled,
-		Renegotiation:               cfg.Renegotiation,
-	}
+// ClientParameters is used to set keepalive parameters on the client-side.
+// These configure how the client will actively probe to notice when a connection broken
+// and to cause activity so intermediaries are aware the connection is still in use.
+type ClientParameters struct {
+	// After a duration of this time if the client doesn't see any activity it pings the server to see if the transport is still alive.
+	Time time.Duration // The current default value is infinity.
+	// After having pinged for keepalive check, the client waits for a duration of Timeout and if no activity is seen even after that
+	// the connection is closed.
+	Timeout time.Duration // The current default value is 20 seconds.
+	// If true, client runs keepalive checks even with no active RPCs.
+	PermitWithoutStream bool
 }

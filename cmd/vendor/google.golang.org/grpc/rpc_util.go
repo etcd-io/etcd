@@ -42,11 +42,14 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/transport"
 )
 
@@ -138,6 +141,7 @@ type callInfo struct {
 	failFast  bool
 	headerMD  metadata.MD
 	trailerMD metadata.MD
+	peer      *peer.Peer
 	traceInfo traceInfo // in trace.go
 }
 
@@ -181,12 +185,20 @@ func Trailer(md *metadata.MD) CallOption {
 	})
 }
 
+// Peer returns a CallOption that retrieves peer information for a
+// unary RPC.
+func Peer(peer *peer.Peer) CallOption {
+	return afterCall(func(c *callInfo) {
+		*peer = *c.peer
+	})
+}
+
 // FailFast configures the action to take when an RPC is attempted on broken
 // connections or unreachable servers. If failfast is true, the RPC will fail
 // immediately. Otherwise, the RPC client will block the call until a
 // connection is available (or the call is canceled or times out) and will retry
 // the call if it fails due to a transient error. Please refer to
-// https://github.com/grpc/grpc/blob/master/doc/fail_fast.md
+// https://github.com/grpc/grpc/blob/master/doc/fail_fast.md. Note: failFast is default to true.
 func FailFast(failFast bool) CallOption {
 	return beforeCall(func(c *callInfo) error {
 		c.failFast = failFast
@@ -255,15 +267,23 @@ func (p *parser) recvMsg(maxMsgSize int) (pf payloadFormat, msg []byte, err erro
 
 // encode serializes msg and prepends the message header. If msg is nil, it
 // generates the message header of 0 message length.
-func encode(c Codec, msg interface{}, cp Compressor, cbuf *bytes.Buffer) ([]byte, error) {
-	var b []byte
-	var length uint
+func encode(c Codec, msg interface{}, cp Compressor, cbuf *bytes.Buffer, outPayload *stats.OutPayload) ([]byte, error) {
+	var (
+		b      []byte
+		length uint
+	)
 	if msg != nil {
 		var err error
 		// TODO(zhaoq): optimize to reduce memory alloc and copying.
 		b, err = c.Marshal(msg)
 		if err != nil {
 			return nil, err
+		}
+		if outPayload != nil {
+			outPayload.Payload = msg
+			// TODO truncate large payload.
+			outPayload.Data = b
+			outPayload.Length = len(b)
 		}
 		if cp != nil {
 			if err := cp.Do(cbuf, b); err != nil {
@@ -295,6 +315,10 @@ func encode(c Codec, msg interface{}, cp Compressor, cbuf *bytes.Buffer) ([]byte
 	// Copy encoded msg to buf
 	copy(buf[5:], b)
 
+	if outPayload != nil {
+		outPayload.WireLength = len(buf)
+	}
+
 	return buf, nil
 }
 
@@ -311,10 +335,13 @@ func checkRecvPayload(pf payloadFormat, recvCompress string, dc Decompressor) er
 	return nil
 }
 
-func recv(p *parser, c Codec, s *transport.Stream, dc Decompressor, m interface{}, maxMsgSize int) error {
+func recv(p *parser, c Codec, s *transport.Stream, dc Decompressor, m interface{}, maxMsgSize int, inPayload *stats.InPayload) error {
 	pf, d, err := p.recvMsg(maxMsgSize)
 	if err != nil {
 		return err
+	}
+	if inPayload != nil {
+		inPayload.WireLength = len(d)
 	}
 	if err := checkRecvPayload(pf, s.RecvCompress(), dc); err != nil {
 		return err
@@ -333,6 +360,13 @@ func recv(p *parser, c Codec, s *transport.Stream, dc Decompressor, m interface{
 	if err := c.Unmarshal(d, m); err != nil {
 		return Errorf(codes.Internal, "grpc: failed to unmarshal the received message %v", err)
 	}
+	if inPayload != nil {
+		inPayload.RecvTime = time.Now()
+		inPayload.Payload = m
+		// TODO truncate large payload.
+		inPayload.Data = d
+		inPayload.Length = len(d)
+	}
 	return nil
 }
 
@@ -343,7 +377,7 @@ type rpcError struct {
 }
 
 func (e *rpcError) Error() string {
-	return fmt.Sprintf("rpc error: code = %d desc = %s", e.code, e.desc)
+	return fmt.Sprintf("rpc error: code = %s desc = %s", e.code, e.desc)
 }
 
 // Code returns the error code for err if it was produced by the rpc system.
@@ -448,6 +482,44 @@ func convertCode(err error) codes.Code {
 	return codes.Unknown
 }
 
+// MethodConfig defines the configuration recommended by the service providers for a
+// particular method.
+// This is EXPERIMENTAL and subject to change.
+type MethodConfig struct {
+	// WaitForReady indicates whether RPCs sent to this method should wait until
+	// the connection is ready by default (!failfast). The value specified via the
+	// gRPC client API will override the value set here.
+	WaitForReady bool
+	// Timeout is the default timeout for RPCs sent to this method. The actual
+	// deadline used will be the minimum of the value specified here and the value
+	// set by the application via the gRPC client API.  If either one is not set,
+	// then the other will be used.  If neither is set, then the RPC has no deadline.
+	Timeout time.Duration
+	// MaxReqSize is the maximum allowed payload size for an individual request in a
+	// stream (client->server) in bytes. The size which is measured is the serialized
+	// payload after per-message compression (but before stream compression) in bytes.
+	// The actual value used is the minumum of the value specified here and the value set
+	// by the application via the gRPC client API. If either one is not set, then the other
+	// will be used.  If neither is set, then the built-in default is used.
+	// TODO: support this.
+	MaxReqSize uint32
+	// MaxRespSize is the maximum allowed payload size for an individual response in a
+	// stream (server->client) in bytes.
+	// TODO: support this.
+	MaxRespSize uint32
+}
+
+// ServiceConfig is provided by the service provider and contains parameters for how
+// clients that connect to the service should behave.
+// This is EXPERIMENTAL and subject to change.
+type ServiceConfig struct {
+	// LB is the load balancer the service providers recommends. The balancer specified
+	// via grpc.WithBalancer will override this.
+	LB Balancer
+	// Methods contains a map for the methods in this service.
+	Methods map[string]MethodConfig
+}
+
 // SupportPackageIsVersion4 is referenced from generated protocol buffer files
 // to assert that that code is compatible with this version of the grpc package.
 //
@@ -455,3 +527,6 @@ func convertCode(err error) codes.Code {
 // requires a synchronised update of grpc-go and protoc-gen-go. This constant
 // should not be referenced from any other code.
 const SupportPackageIsVersion4 = true
+
+// Version is the current grpc version.
+const Version = "1.2.1"

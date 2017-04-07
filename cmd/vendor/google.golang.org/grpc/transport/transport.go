@@ -45,10 +45,13 @@ import (
 	"sync"
 
 	"golang.org/x/net/context"
-	"golang.org/x/net/trace"
+	"golang.org/x/net/http2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/stats"
+	"google.golang.org/grpc/tap"
 )
 
 // recvMsg represents the received msg from the transport. All transport
@@ -167,6 +170,11 @@ type Stream struct {
 	id uint32
 	// nil for client side Stream.
 	st ServerTransport
+	// clientStatsCtx keeps the user context for stats handling.
+	// It's only valid on client side. Server side stats context is same as s.ctx.
+	// All client side stats collection should use the clientStatsCtx (instead of the stream context)
+	// so that all the generated stats for a particular RPC can be associated in the processing phase.
+	clientStatsCtx context.Context
 	// ctx is the associated context of the stream.
 	ctx context.Context
 	// cancel is always nil for client side Stream.
@@ -207,6 +215,11 @@ type Stream struct {
 	// the status received from the server.
 	statusCode codes.Code
 	statusDesc string
+	// rstStream indicates whether a RST_STREAM frame needs to be sent
+	// to the server to signify that this stream is closing.
+	rstStream bool
+	// rstError is the error that needs to be sent along with the RST_STREAM frame.
+	rstError http2.ErrCode
 }
 
 // RecvCompress returns the compression algorithm applied to the inbound
@@ -264,11 +277,6 @@ func (s *Stream) ServerTransport() ServerTransport {
 // Context returns the context of the stream.
 func (s *Stream) Context() context.Context {
 	return s.ctx
-}
-
-// TraceContext recreates the context of s with a trace.Trace.
-func (s *Stream) TraceContext(tr trace.Trace) {
-	s.ctx = trace.NewContext(s.ctx, tr)
 }
 
 // Method returns the method for the stream.
@@ -330,6 +338,12 @@ func (s *Stream) Read(p []byte) (n int, err error) {
 	return
 }
 
+// GoString is implemented by Stream so context.String() won't
+// race when printing %#v.
+func (s *Stream) GoString() string {
+	return fmt.Sprintf("<stream: %p, %v>", s, s.method)
+}
+
 // The key to save transport.Stream in the context.
 type streamKey struct{}
 
@@ -355,22 +369,39 @@ const (
 	draining
 )
 
+// ServerConfig consists of all the configurations to establish a server transport.
+type ServerConfig struct {
+	MaxStreams   uint32
+	AuthInfo     credentials.AuthInfo
+	InTapHandle  tap.ServerInHandle
+	StatsHandler stats.Handler
+}
+
 // NewServerTransport creates a ServerTransport with conn or non-nil error
 // if it fails.
-func NewServerTransport(protocol string, conn net.Conn, maxStreams uint32, authInfo credentials.AuthInfo) (ServerTransport, error) {
-	return newHTTP2Server(conn, maxStreams, authInfo)
+func NewServerTransport(protocol string, conn net.Conn, config *ServerConfig) (ServerTransport, error) {
+	return newHTTP2Server(conn, config)
 }
 
 // ConnectOptions covers all relevant options for communicating with the server.
 type ConnectOptions struct {
 	// UserAgent is the application user agent.
 	UserAgent string
+	// Authority is the :authority pseudo-header to use. This field has no effect if
+	// TransportCredentials is set.
+	Authority string
 	// Dialer specifies how to dial a network address.
 	Dialer func(context.Context, string) (net.Conn, error)
+	// FailOnNonTempDialError specifies if gRPC fails on non-temporary dial errors.
+	FailOnNonTempDialError bool
 	// PerRPCCredentials stores the PerRPCCredentials required to issue RPCs.
 	PerRPCCredentials []credentials.PerRPCCredentials
 	// TransportCredentials stores the Authenticator required to setup a client connection.
 	TransportCredentials credentials.TransportCredentials
+	// KeepaliveParams stores the keepalive parameters.
+	KeepaliveParams keepalive.ClientParameters
+	// StatsHandler stores the handler for stats.
+	StatsHandler stats.Handler
 }
 
 // TargetInfo contains the information of the target such as network address and metadata.
@@ -466,7 +497,7 @@ type ClientTransport interface {
 // Write methods for a given Stream will be called serially.
 type ServerTransport interface {
 	// HandleStreams receives incoming streams using the given handler.
-	HandleStreams(func(*Stream))
+	HandleStreams(func(*Stream), func(context.Context, string) context.Context)
 
 	// WriteHeader sends the header metadata for the given stream.
 	// WriteHeader may not be called on all streams.
@@ -552,7 +583,7 @@ type StreamError struct {
 }
 
 func (e StreamError) Error() string {
-	return fmt.Sprintf("stream error: code = %d desc = %q", e.Code, e.Desc)
+	return fmt.Sprintf("stream error: code = %s desc = %q", e.Code, e.Desc)
 }
 
 // ContextErr converts the error from context package into a StreamError.

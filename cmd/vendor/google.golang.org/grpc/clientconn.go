@@ -36,6 +36,7 @@ package grpc
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"strings"
 	"sync"
@@ -45,6 +46,8 @@ import (
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/stats"
 	"google.golang.org/grpc/transport"
 )
 
@@ -54,6 +57,8 @@ var (
 	ErrClientConnClosing = errors.New("grpc: the client connection is closing")
 	// ErrClientConnTimeout indicates that the ClientConn cannot establish the
 	// underlying connections within the specified timeout.
+	// DEPRECATED: Please use context.DeadlineExceeded instead. This error will be
+	// removed in Q1 2017.
 	ErrClientConnTimeout = errors.New("grpc: timed out when dialing")
 
 	// errNoTransportSecurity indicates that there is no transport security
@@ -83,21 +88,32 @@ var (
 // dialOptions configure a Dial call. dialOptions are set by the DialOption
 // values passed to Dial.
 type dialOptions struct {
-	unaryInt  UnaryClientInterceptor
-	streamInt StreamClientInterceptor
-	codec     Codec
-	cp        Compressor
-	dc        Decompressor
-	bs        backoffStrategy
-	balancer  Balancer
-	block     bool
-	insecure  bool
-	timeout   time.Duration
-	copts     transport.ConnectOptions
+	unaryInt   UnaryClientInterceptor
+	streamInt  StreamClientInterceptor
+	codec      Codec
+	cp         Compressor
+	dc         Decompressor
+	bs         backoffStrategy
+	balancer   Balancer
+	block      bool
+	insecure   bool
+	timeout    time.Duration
+	scChan     <-chan ServiceConfig
+	copts      transport.ConnectOptions
+	maxMsgSize int
 }
+
+const defaultClientMaxMsgSize = math.MaxInt32
 
 // DialOption configures how we set up the connection.
 type DialOption func(*dialOptions)
+
+// WithMaxMsgSize returns a DialOption which sets the maximum message size the client can receive.
+func WithMaxMsgSize(s int) DialOption {
+	return func(o *dialOptions) {
+		o.maxMsgSize = s
+	}
+}
 
 // WithCodec returns a DialOption which sets a codec for message marshaling and unmarshaling.
 func WithCodec(c Codec) DialOption {
@@ -126,6 +142,13 @@ func WithDecompressor(dc Decompressor) DialOption {
 func WithBalancer(b Balancer) DialOption {
 	return func(o *dialOptions) {
 		o.balancer = b
+	}
+}
+
+// WithServiceConfig returns a DialOption which has a channel to read the service configuration.
+func WithServiceConfig(c <-chan ServiceConfig) DialOption {
+	return func(o *dialOptions) {
+		o.scChan = c
 	}
 }
 
@@ -199,6 +222,8 @@ func WithTimeout(d time.Duration) DialOption {
 }
 
 // WithDialer returns a DialOption that specifies a function to use for dialing network addresses.
+// If FailOnNonTempDialError() is set to true, and an error is returned by f, gRPC checks the error's
+// Temporary() method to decide if it should try to reconnect to the network address.
 func WithDialer(f func(string, time.Duration) (net.Conn, error)) DialOption {
 	return func(o *dialOptions) {
 		o.copts.Dialer = func(ctx context.Context, addr string) (net.Conn, error) {
@@ -210,10 +235,36 @@ func WithDialer(f func(string, time.Duration) (net.Conn, error)) DialOption {
 	}
 }
 
+// WithStatsHandler returns a DialOption that specifies the stats handler
+// for all the RPCs and underlying network connections in this ClientConn.
+func WithStatsHandler(h stats.Handler) DialOption {
+	return func(o *dialOptions) {
+		o.copts.StatsHandler = h
+	}
+}
+
+// FailOnNonTempDialError returns a DialOption that specified if gRPC fails on non-temporary dial errors.
+// If f is true, and dialer returns a non-temporary error, gRPC will fail the connection to the network
+// address and won't try to reconnect.
+// The default value of FailOnNonTempDialError is false.
+// This is an EXPERIMENTAL API.
+func FailOnNonTempDialError(f bool) DialOption {
+	return func(o *dialOptions) {
+		o.copts.FailOnNonTempDialError = f
+	}
+}
+
 // WithUserAgent returns a DialOption that specifies a user agent string for all the RPCs.
 func WithUserAgent(s string) DialOption {
 	return func(o *dialOptions) {
 		o.copts.UserAgent = s
+	}
+}
+
+// WithKeepaliveParams returns a DialOption that specifies keepalive paramaters for the client transport.
+func WithKeepaliveParams(kp keepalive.ClientParameters) DialOption {
+	return func(o *dialOptions) {
+		o.copts.KeepaliveParams = kp
 	}
 }
 
@@ -228,6 +279,15 @@ func WithUnaryInterceptor(f UnaryClientInterceptor) DialOption {
 func WithStreamInterceptor(f StreamClientInterceptor) DialOption {
 	return func(o *dialOptions) {
 		o.streamInt = f
+	}
+}
+
+// WithAuthority returns a DialOption that specifies the value to be used as
+// the :authority pseudo-header. This value only works with WithInsecure and
+// has no effect if TransportCredentials are present.
+func WithAuthority(a string) DialOption {
+	return func(o *dialOptions) {
+		o.copts.Authority = a
 	}
 }
 
@@ -247,6 +307,24 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 		conns:  make(map[Address]*addrConn),
 	}
 	cc.ctx, cc.cancel = context.WithCancel(context.Background())
+	cc.dopts.maxMsgSize = defaultClientMaxMsgSize
+	for _, opt := range opts {
+		opt(&cc.dopts)
+	}
+
+	grpcUA := "grpc-go/" + Version
+	if cc.dopts.copts.UserAgent != "" {
+		cc.dopts.copts.UserAgent += " " + grpcUA
+	} else {
+		cc.dopts.copts.UserAgent = grpcUA
+	}
+
+	if cc.dopts.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, cc.dopts.timeout)
+		defer cancel()
+	}
+
 	defer func() {
 		select {
 		case <-ctx.Done():
@@ -259,10 +337,17 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 		}
 	}()
 
-	for _, opt := range opts {
-		opt(&cc.dopts)
+	if cc.dopts.scChan != nil {
+		// Wait for the initial service config.
+		select {
+		case sc, ok := <-cc.dopts.scChan:
+			if ok {
+				cc.sc = sc
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
-
 	// Set defaults.
 	if cc.dopts.codec == nil {
 		cc.dopts.codec = protoCodec{}
@@ -273,6 +358,8 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 	creds := cc.dopts.copts.TransportCredentials
 	if creds != nil && creds.Info().ServerName != "" {
 		cc.authority = creds.Info().ServerName
+	} else if cc.dopts.insecure && cc.dopts.copts.Authority != "" {
+		cc.authority = cc.dopts.copts.Authority
 	} else {
 		colonPos := strings.LastIndex(target, ":")
 		if colonPos == -1 {
@@ -284,6 +371,9 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 	waitC := make(chan error, 1)
 	go func() {
 		var addrs []Address
+		if cc.dopts.balancer == nil && cc.sc.LB != nil {
+			cc.dopts.balancer = cc.sc.LB
+		}
 		if cc.dopts.balancer == nil {
 			// Connect to target directly if balancer is nil.
 			addrs = append(addrs, Address{Addr: target})
@@ -319,10 +409,6 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 		}
 		close(waitC)
 	}()
-	var timeoutCh <-chan time.Time
-	if cc.dopts.timeout > 0 {
-		timeoutCh = time.After(cc.dopts.timeout)
-	}
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -330,13 +416,16 @@ func DialContext(ctx context.Context, target string, opts ...DialOption) (conn *
 		if err != nil {
 			return nil, err
 		}
-	case <-timeoutCh:
-		return nil, ErrClientConnTimeout
 	}
+
 	// If balancer is nil or balancer.Notify() is nil, ok will be false here.
 	// The lbWatcher goroutine will not be created.
 	if ok {
 		go cc.lbWatcher()
+	}
+
+	if cc.dopts.scChan != nil {
+		go cc.scWatcher()
 	}
 	return cc, nil
 }
@@ -384,6 +473,7 @@ type ClientConn struct {
 	dopts     dialOptions
 
 	mu    sync.RWMutex
+	sc    ServiceConfig
 	conns map[Address]*addrConn
 }
 
@@ -418,6 +508,24 @@ func (cc *ClientConn) lbWatcher() {
 		}
 		for _, c := range del {
 			c.tearDown(errConnDrain)
+		}
+	}
+}
+
+func (cc *ClientConn) scWatcher() {
+	for {
+		select {
+		case sc, ok := <-cc.dopts.scChan:
+			if !ok {
+				return
+			}
+			cc.mu.Lock()
+			// TODO: load balance policy runtime change is ignored.
+			// We may revist this decision in the future.
+			cc.sc = sc
+			cc.mu.Unlock()
+		case <-cc.ctx.Done():
+			return
 		}
 	}
 }
@@ -507,6 +615,14 @@ func (cc *ClientConn) resetAddrConn(addr Address, skipWait bool, tearDownErr err
 		}()
 	}
 	return nil
+}
+
+// TODO: Avoid the locking here.
+func (cc *ClientConn) getMethodConfig(method string) (m MethodConfig, ok bool) {
+	cc.mu.RLock()
+	defer cc.mu.RUnlock()
+	m, ok = cc.sc.Methods[method]
+	return
 }
 
 func (cc *ClientConn) getTransport(ctx context.Context, opts BalancerGetOptions) (transport.ClientTransport, func(), error) {
@@ -689,6 +805,8 @@ func (ac *addrConn) resetTransport(closeTransport bool) error {
 			Metadata: ac.addr.Metadata,
 		}
 		newTransport, err := transport.NewClientTransport(ctx, sinfo, ac.dopts.copts)
+		// Don't call cancel in success path due to a race in Go 1.6:
+		// https://github.com/golang/go/issues/15078.
 		if err != nil {
 			cancel()
 

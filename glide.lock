@@ -1,5 +1,5 @@
-hash: c8d757181c4950cd9c7d6f2091c50da1fa7ffbed6b66ca6c6a34495c0e5c84ab
-updated: 2017-03-06T19:45:05.355925876-08:00
+hash: d546c79ab7f1bcc7b048995624e4353713fe1b5fad5d69a50202e309fe9dd2fc
+updated: 2017-04-07T14:31:10.872688463-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -137,15 +137,18 @@ imports:
   subpackages:
   - rate
 - name: google.golang.org/grpc
-  version: 777daa17ff9b5daef1cfdf915088a2ada3332bf0
+  version: 8050b9cbc271307e5a716a9d782803d09b0d6f2d
   subpackages:
   - codes
   - credentials
   - grpclog
   - internal
+  - keepalive
   - metadata
   - naming
   - peer
+  - stats
+  - tap
   - transport
 - name: gopkg.in/cheggaaa/pb.v1
   version: 226d21d43a305fac52b3a104ef83e721b15275e0
