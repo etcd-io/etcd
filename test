@@ -281,7 +281,7 @@ function fmt_pass {
 		if [ -n "${staticcheckResult}" ]; then
 			# TODO: resolve these after go1.8 migration
 			# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
-			STATIC_CHECK_MASK="SA(1016|1019|2002)"
+			STATIC_CHECK_MASK="SA(1019|2002)"
 			if echo "${staticcheckResult}" | egrep -v "$STATIC_CHECK_MASK"; then
 				echo -e "staticcheck checking ${path} failed:\n${staticcheckResult}"
 				exit 255

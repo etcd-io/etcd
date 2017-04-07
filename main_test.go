@@ -29,7 +29,7 @@ func TestMain(t *testing.T) {
 	}
 
 	notifier := make(chan os.Signal, 1)
-	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM)
 	go main()
 	<-notifier
 }
