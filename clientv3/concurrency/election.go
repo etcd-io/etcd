@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	v3 "github.com/coreos/etcd/clientv3"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 )
@@ -36,11 +37,22 @@ type Election struct {
 	leaderKey     string
 	leaderRev     int64
 	leaderSession *Session
+	hdr           *pb.ResponseHeader
 }
 
 // NewElection returns a new election on a given key prefix.
 func NewElection(s *Session, pfx string) *Election {
 	return &Election{session: s, keyPrefix: pfx + "/"}
+}
+
+// ResumeElection initializes an election with a known leader.
+func ResumeElection(s *Session, pfx string, leaderKey string, leaderRev int64) *Election {
+	return &Election{
+		session:       s,
+		leaderKey:     leaderKey,
+		leaderRev:     leaderRev,
+		leaderSession: s,
+	}
 }
 
 // Campaign puts a value as eligible for the election. It blocks until
@@ -80,6 +92,7 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 		}
 		return err
 	}
+	e.hdr = resp.Header
 
 	return nil
 }
@@ -101,6 +114,8 @@ func (e *Election) Proclaim(ctx context.Context, val string) error {
 		e.leaderKey = ""
 		return ErrElectionNotLeader
 	}
+
+	e.hdr = tresp.Header
 	return nil
 }
 
@@ -110,23 +125,27 @@ func (e *Election) Resign(ctx context.Context) (err error) {
 		return nil
 	}
 	client := e.session.Client()
-	_, err = client.Delete(ctx, e.leaderKey)
+	cmp := v3.Compare(v3.CreateRevision(e.leaderKey), "=", e.leaderRev)
+	resp, err := client.Txn(ctx).If(cmp).Then(v3.OpDelete(e.leaderKey)).Commit()
+	if err == nil {
+		e.hdr = resp.Header
+	}
 	e.leaderKey = ""
 	e.leaderSession = nil
 	return err
 }
 
 // Leader returns the leader value for the current election.
-func (e *Election) Leader(ctx context.Context) (string, error) {
+func (e *Election) Leader(ctx context.Context) (*v3.GetResponse, error) {
 	client := e.session.Client()
 	resp, err := client.Get(ctx, e.keyPrefix, v3.WithFirstCreate()...)
 	if err != nil {
-		return "", err
+		return nil, err
 	} else if len(resp.Kvs) == 0 {
 		// no leader currently elected
-		return "", ErrElectionNoLeader
+		return nil, ErrElectionNoLeader
 	}
-	return string(resp.Kvs[0].Value), nil
+	return resp, nil
 }
 
 // Observe returns a channel that observes all leader proposal values as
@@ -142,20 +161,21 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 	client := e.session.Client()
 
 	defer close(ch)
+	lastRev := int64(0)
 	for {
-		resp, err := client.Get(ctx, e.keyPrefix, v3.WithFirstCreate()...)
+		opts := append(v3.WithFirstCreate(), v3.WithRev(lastRev))
+		resp, err := client.Get(ctx, e.keyPrefix, opts...)
 		if err != nil {
 			return
 		}
 
 		var kv *mvccpb.KeyValue
 
-		cctx, cancel := context.WithCancel(ctx)
 		if len(resp.Kvs) == 0 {
+			cctx, cancel := context.WithCancel(ctx)
 			// wait for first key put on prefix
 			opts := []v3.OpOption{v3.WithRev(resp.Header.Revision), v3.WithPrefix()}
 			wch := client.Watch(cctx, e.keyPrefix, opts...)
-
 			for kv == nil {
 				wr, ok := <-wch
 				if !ok || wr.Err() != nil {
@@ -170,10 +190,12 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 					}
 				}
 			}
+			cancel()
 		} else {
 			kv = resp.Kvs[0]
 		}
 
+		cctx, cancel := context.WithCancel(ctx)
 		wch := client.Watch(cctx, string(kv.Key), v3.WithRev(kv.ModRevision))
 		keyDeleted := false
 		for !keyDeleted {
@@ -183,6 +205,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 			}
 			for _, ev := range wr.Events {
 				if ev.Type == mvccpb.DELETE {
+					lastRev = ev.Kv.ModRevision
 					keyDeleted = true
 					break
 				}
@@ -201,3 +224,9 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 
 // Key returns the leader key if elected, empty string otherwise.
 func (e *Election) Key() string { return e.leaderKey }
+
+// Rev returns the leader key's creation revision, if elected.
+func (e *Election) Rev() int64 { return e.leaderRev }
+
+// Header is the response header from the last successful election proposal.
+func (m *Election) Header() *pb.ResponseHeader { return m.hdr }

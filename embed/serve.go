@@ -25,6 +25,8 @@ import (
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3client"
+	"github.com/coreos/etcd/etcdserver/api/v3election"
+	"github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
 	"github.com/coreos/etcd/etcdserver/api/v3lock"
 	"github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
@@ -66,10 +68,14 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 	plog.Info("ready to serve client requests")
 
 	m := cmux.New(sctx.l)
+	v3c := v3client.New(s)
+	servElection := v3election.NewElectionServer(v3c)
+	servLock := v3lock.NewLockServer(v3c)
 
 	if sctx.insecure {
 		gs := v3rpc.Server(s, nil)
-		v3lockpb.RegisterLockServer(gs, v3lock.NewLockServer(v3client.New(s)))
+		v3electionpb.RegisterElectionServer(gs, servElection)
+		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
 			sctx.serviceRegister(gs)
 		}
@@ -97,7 +103,8 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 
 	if sctx.secure {
 		gs := v3rpc.Server(s, tlscfg)
-		v3lockpb.RegisterLockServer(gs, v3lock.NewLockServer(v3client.New(s)))
+		v3electionpb.RegisterElectionServer(gs, servElection)
+		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
 			sctx.serviceRegister(gs)
 		}

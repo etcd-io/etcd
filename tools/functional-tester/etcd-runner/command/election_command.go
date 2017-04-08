@@ -94,7 +94,7 @@ func runElectionFunc(cmd *cobra.Command, args []string) {
 			}
 		}
 		rcs[i].validate = func() error {
-			if l, err := e.Leader(context.TODO()); err == nil && l != observedLeader {
+			if l, err := e.Leader(context.TODO()); err == nil && string(l.Kvs[0].Value) != observedLeader {
 				return fmt.Errorf("expected leader %q, got %q", observedLeader, l)
 			}
 			validatec <- struct{}{}
