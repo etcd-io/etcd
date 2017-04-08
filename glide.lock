@@ -1,5 +1,5 @@
-hash: d546c79ab7f1bcc7b048995624e4353713fe1b5fad5d69a50202e309fe9dd2fc
-updated: 2017-04-07T14:31:10.872688463-07:00
+hash: 96143db7f79ff5fad84bd66a435153981b793dc8df5e3ef7e55cd096959b6c73
+updated: 2017-04-07T16:28:46.088989482-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -54,7 +54,7 @@ imports:
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
   version: 6b7015e65d366bf3f19b2b2a000a831940f0f7e0
 - name: github.com/grpc-ecosystem/grpc-gateway
-  version: 84398b94e188ee336f307779b57b3aa91af7063c
+  version: 18d159699f2e83fc5bb9ef2f79465ca3f3122676
   subpackages:
   - runtime
   - runtime/internal
