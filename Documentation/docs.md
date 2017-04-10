@@ -12,7 +12,7 @@ The easiest way to get started using etcd as a distributed key-value store is to
 
  - [Setting up local clusters][local_cluster]
  - [Interacting with etcd][interacting]
- - [gRPC API references][api_ref]
+ - gRPC [etcd core][api_ref] and [etcd concurrency][api_concurrency_ref] API references
  - [HTTP JSON API through the gRPC gateway][api_grpc_gateway]
  - [gRPC naming and discovery][grpc_naming]
  - [Client][namespace_client] and [proxy][namespace_proxy] namespacing
@@ -62,6 +62,7 @@ To learn more about the concepts and internals behind etcd, read the following p
 Answers to [common questions] about etcd.
 
 [api_ref]: dev-guide/api_reference_v3.md
+[api_concurrency_ref]: dev-guide/api_concurrency_reference_v3.md
 [api_grpc_gateway]: dev-guide/api_grpc_gateway.md
 [clustering]: op-guide/clustering.md
 [conf]: op-guide/configuration.md
