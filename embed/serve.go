@@ -165,34 +165,27 @@ func servePeerHTTP(l net.Listener, handler http.Handler) error {
 	return srv.Serve(l)
 }
 
+type registerHandlerFunc func(context.Context, *gw.ServeMux, string, []grpc.DialOption) error
+
 func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, error) {
 	ctx := sctx.ctx
 	addr := sctx.l.Addr().String()
 	gwmux := gw.NewServeMux()
 
-	err := pb.RegisterKVHandlerFromEndpoint(ctx, gwmux, addr, opts)
-	if err != nil {
-		return nil, err
+	handlers := []registerHandlerFunc{
+		pb.RegisterKVHandlerFromEndpoint,
+		pb.RegisterWatchHandlerFromEndpoint,
+		pb.RegisterLeaseHandlerFromEndpoint,
+		pb.RegisterClusterHandlerFromEndpoint,
+		pb.RegisterMaintenanceHandlerFromEndpoint,
+		pb.RegisterAuthHandlerFromEndpoint,
+		v3lockpb.RegisterLockHandlerFromEndpoint,
+		v3electionpb.RegisterElectionHandlerFromEndpoint,
 	}
-	err = pb.RegisterWatchHandlerFromEndpoint(ctx, gwmux, addr, opts)
-	if err != nil {
-		return nil, err
-	}
-	err = pb.RegisterLeaseHandlerFromEndpoint(ctx, gwmux, addr, opts)
-	if err != nil {
-		return nil, err
-	}
-	err = pb.RegisterClusterHandlerFromEndpoint(ctx, gwmux, addr, opts)
-	if err != nil {
-		return nil, err
-	}
-	err = pb.RegisterMaintenanceHandlerFromEndpoint(ctx, gwmux, addr, opts)
-	if err != nil {
-		return nil, err
-	}
-	err = pb.RegisterAuthHandlerFromEndpoint(ctx, gwmux, addr, opts)
-	if err != nil {
-		return nil, err
+	for _, h := range handlers {
+		if err := h(ctx, gwmux, addr, opts); err != nil {
+			return nil, err
+		}
 	}
 	return gwmux, nil
 }
