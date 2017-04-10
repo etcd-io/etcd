@@ -16,6 +16,8 @@ package rafthttp
 
 import (
 	"bytes"
+	"encoding/binary"
+	"io"
 	"net/http"
 	"reflect"
 	"testing"
@@ -190,4 +192,29 @@ func TestCheckVersionCompatibility(t *testing.T) {
 			t.Errorf("#%d: ok = %v, want %v", i, ok, tt.wok)
 		}
 	}
+}
+
+func writeEntryTo(w io.Writer, ent *raftpb.Entry) error {
+	size := ent.Size()
+	if err := binary.Write(w, binary.BigEndian, uint64(size)); err != nil {
+		return err
+	}
+	b, err := ent.Marshal()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(b)
+	return err
+}
+
+func readEntryFrom(r io.Reader, ent *raftpb.Entry) error {
+	var l uint64
+	if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+		return err
+	}
+	buf := make([]byte, int(l))
+	if _, err := io.ReadFull(r, buf); err != nil {
+		return err
+	}
+	return ent.Unmarshal(buf)
 }
