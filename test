@@ -130,6 +130,8 @@ function cov_pass {
 	go test -tags cov -timeout 30m -v ${REPO_PATH}"/e2e" || failed="$failed e2e"
 
 	gocovmerge "$COVERDIR"/*.coverprofile >"$COVERDIR"/cover.out
+	# strip out generated files (using GNU-style sed)
+	sed --in-place '/generated.go/d' "$COVERDIR"/cover.out || true
 
 	# held failures to generate the full coverage file, now fail
 	if [ -n "$failed" ]; then
