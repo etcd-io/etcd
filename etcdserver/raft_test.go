@@ -176,7 +176,8 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	}
 }
 
-func TestCandidateBlocksByApply(t *testing.T) {
+// TestConfgChangeBlocksApply ensures apply blocks if committed entries contain config-change.
+func TestConfgChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
 	waitApplyc := make(chan struct{})
@@ -199,8 +200,10 @@ func TestCandidateBlocksByApply(t *testing.T) {
 	srv.r.start(rh)
 	defer srv.r.Stop()
 
-	// become candidate
-	n.readyc <- raft.Ready{SoftState: &raft.SoftState{RaftState: raft.StateCandidate}}
+	n.readyc <- raft.Ready{
+		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
+		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+	}
 	<-srv.r.applyc
 
 	continueC := make(chan struct{})
