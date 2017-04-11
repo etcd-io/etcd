@@ -88,7 +88,7 @@ func stmFunc(cmd *cobra.Command, args []string) {
 	case "s":
 		stmIso = v3sync.Serializable
 	case "ss":
-		stmIso = v3sync.Snapshot
+		stmIso = v3sync.SerializableSnapshot
 	default:
 		fmt.Fprintln(os.Stderr, cmd.Usage())
 		os.Exit(1)
