@@ -226,4 +226,13 @@ At Branch, we use kubernetes heavily as our core microservice platform for stagi
 - *Environment*: BareMetal
 - *Backups*: None, all data can be recreated
 
+## Hosted Graphite
+
+- *Application*: Service discovery, locking, ephemeral application data
+- *Launched*: January 2017
+- *Cluster Size*: 2 clusters of 7 members
+- *Order of Data Size*: Megabytes
+- *Operator*: Hosted Graphite (sre@hostedgraphite.com)
+- *Environment*: Bare Metal
+- *Backups*: None, all data is considered ephemeral.
 
