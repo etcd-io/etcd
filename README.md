@@ -41,7 +41,7 @@ The easiest way to get etcd is to use one of the pre-built release binaries whic
 
 For those wanting to try the very latest version, [build the latest version of etcd][dl-build] from the `master` branch. This first needs [*Go*](https://golang.org/) installed (version 1.8+ is required). All development occurs on `master`, including new features and bug fixes. Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
 
-[rkt]: https://github.com/coreos/rkt/releases/
+[rkt]: https://github.com/rkt/rkt/releases/
 [github-release]: https://github.com/coreos/etcd/releases/
 [branch-management]: ./Documentation/branch_management.md
 [dl-build]: ./Documentation/dl_build.md#build-the-latest-version

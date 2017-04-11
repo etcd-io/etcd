@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// copied from https://github.com/coreos/rkt/blob/master/rkt/help.go
+// copied from https://github.com/rkt/rkt/blob/master/rkt/help.go
 
 package ctlv3
 
