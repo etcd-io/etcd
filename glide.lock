@@ -1,5 +1,5 @@
-hash: 96143db7f79ff5fad84bd66a435153981b793dc8df5e3ef7e55cd096959b6c73
-updated: 2017-04-07T16:28:46.088989482-07:00
+hash: 731f35aa7008dd526f126f5bd8f74bcd7d8639aeafccc4db8f472cb67029f88d
+updated: 2017-04-11T08:41:43.277154365-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -119,7 +119,7 @@ imports:
   - bcrypt
   - blowfish
 - name: golang.org/x/net
-  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
+  version: d1e1b351919c6738fdeb9893d5c998b161464f0c
   subpackages:
   - context
   - http2
@@ -132,6 +132,13 @@ imports:
   version: e48874b42435b4347fc52bdee0424a52abc974d7
   subpackages:
   - unix
+- name: golang.org/x/text
+  version: f4b4367115ec2de254587813edaa901bc1c723a8
+  subpackages:
+  - secure/bidirule
+  - transform
+  - unicode/bidi
+  - unicode/norm
 - name: golang.org/x/time
   version: a4bde12657593d5e90d0533a3e4fd95e635124cb
   subpackages:
