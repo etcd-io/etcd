@@ -1713,6 +1713,13 @@
         "member": {
           "$ref": "#/definitions/etcdserverpbMember",
           "description": "member is the member information for the added member."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is a list of all members after adding the new member."
         }
       }
     },
@@ -1749,6 +1756,13 @@
       "properties": {
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is a list of all members after removing the member."
         }
       }
     },
@@ -1774,6 +1788,13 @@
       "properties": {
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is a list of all members after updating the member."
         }
       }
     },

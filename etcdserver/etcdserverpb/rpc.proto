@@ -734,6 +734,8 @@ message MemberAddResponse {
   ResponseHeader header = 1;
   // member is the member information for the added member.
   Member member = 2;
+  // members is a list of all members after adding the new member.
+  repeated Member members = 3;
 }
 
 message MemberRemoveRequest {
@@ -743,6 +745,8 @@ message MemberRemoveRequest {
 
 message MemberRemoveResponse {
   ResponseHeader header = 1;
+  // members is a list of all members after removing the member.
+  repeated Member members = 2;
 }
 
 message MemberUpdateRequest {
@@ -754,6 +758,8 @@ message MemberUpdateRequest {
 
 message MemberUpdateResponse{
   ResponseHeader header = 1;
+  // members is a list of all members after updating the member.
+  repeated Member members = 2;
 }
 
 message MemberListRequest {
