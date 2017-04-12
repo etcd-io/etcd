@@ -22,10 +22,11 @@ import (
 
 type AuthServer struct {
 	authenticator etcdserver.Authenticator
+	hdr           header
 }
 
 func NewAuthServer(s *etcdserver.EtcdServer) *AuthServer {
-	return &AuthServer{authenticator: s}
+	return &AuthServer{authenticator: s, hdr: newHeader(s)}
 }
 
 func (as *AuthServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (*pb.AuthEnableResponse, error) {
@@ -33,6 +34,8 @@ func (as *AuthServer) AuthEnable(ctx context.Context, r *pb.AuthEnableRequest) (
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -41,6 +44,8 @@ func (as *AuthServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -49,6 +54,8 @@ func (as *AuthServer) Authenticate(ctx context.Context, r *pb.AuthenticateReques
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -57,6 +64,8 @@ func (as *AuthServer) RoleAdd(ctx context.Context, r *pb.AuthRoleAddRequest) (*p
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -65,6 +74,8 @@ func (as *AuthServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteReques
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -73,6 +84,8 @@ func (as *AuthServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*p
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -81,6 +94,8 @@ func (as *AuthServer) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -89,6 +104,8 @@ func (as *AuthServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRe
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -97,6 +114,8 @@ func (as *AuthServer) RoleGrantPermission(ctx context.Context, r *pb.AuthRoleGra
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -105,6 +124,8 @@ func (as *AuthServer) UserAdd(ctx context.Context, r *pb.AuthUserAddRequest) (*p
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -113,6 +134,8 @@ func (as *AuthServer) UserDelete(ctx context.Context, r *pb.AuthUserDeleteReques
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -121,6 +144,8 @@ func (as *AuthServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*p
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -129,6 +154,8 @@ func (as *AuthServer) UserList(ctx context.Context, r *pb.AuthUserListRequest) (
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -137,6 +164,8 @@ func (as *AuthServer) UserGrantRole(ctx context.Context, r *pb.AuthUserGrantRole
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -145,6 +174,8 @@ func (as *AuthServer) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRo
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
 
@@ -153,5 +184,7 @@ func (as *AuthServer) UserChangePassword(ctx context.Context, r *pb.AuthUserChan
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	resp.Header = &pb.ResponseHeader{}
+	as.hdr.fill(resp.Header)
 	return resp, nil
 }
