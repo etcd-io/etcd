@@ -458,7 +458,7 @@ $ etcd --name infra2 \
 
 ### Gateway
 
-etcd gateway is a simple TCP proxy that forwards network data to the etcd cluster. Please read [gateway guide] for more information.
+etcd gateway is a simple TCP proxy that forwards network data to the etcd cluster. Please read [gateway guide][gateway] for more information.
 
 ### Proxy
 
