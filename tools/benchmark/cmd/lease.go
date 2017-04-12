@@ -59,7 +59,7 @@ func leaseKeepaliveFunc(cmd *cobra.Command, args []string) {
 			if err != nil {
 				panic(err)
 			}
-			for _ = range requests {
+			for range requests {
 				st := time.Now()
 				_, err := c.KeepAliveOnce(context.TODO(), resp.ID)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
