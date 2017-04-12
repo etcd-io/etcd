@@ -215,8 +215,7 @@ func (as *authStore) AuthEnable() error {
 	tx.UnsafePut(authBucketName, enableFlagKey, authEnabled)
 
 	as.enabled = true
-
-	as.simpleTokenKeeper = NewSimpleTokenTTLKeeper(newDeleterFunc(as))
+	as.enable()
 
 	as.rangePermCache = make(map[string]*unifiedRangePermissions)
 
@@ -647,14 +646,12 @@ func (as *authStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse,
 
 func (as *authStore) AuthInfoFromToken(token string) (*AuthInfo, bool) {
 	// same as '(t *tokenSimple) info' in v3.2+
-	as.simpleTokenKeeper.tokensMu.Lock()
 	as.simpleTokensMu.Lock()
 	username, ok := as.simpleTokens[token]
-	if ok {
+	if ok && as.simpleTokenKeeper != nil {
 		as.simpleTokenKeeper.resetSimpleToken(token)
 	}
 	as.simpleTokensMu.Unlock()
-	as.simpleTokenKeeper.tokensMu.Unlock()
 	return &AuthInfo{Username: username, Revision: as.revision}, ok
 }
 
@@ -914,7 +911,7 @@ func NewAuthStore(be backend.Backend, indexWaiter func(uint64) <-chan struct{}) 
 	}
 
 	if enabled {
-		as.simpleTokenKeeper = NewSimpleTokenTTLKeeper(newDeleterFunc(as))
+		as.enable()
 	}
 
 	if as.revision == 0 {
