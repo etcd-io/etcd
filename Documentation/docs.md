@@ -27,7 +27,6 @@ Administrators who need to create reliable and scalable key-value stores for the
  - [Setting up etcd clusters][clustering]
  - [Setting up etcd gateways][gateway]
  - [Setting up etcd gRPC proxy][grpc_proxy]
- - [Run etcd clusters inside containers][container]
  - [Hardware recommendations][hardware]
  - [Configuration][conf]
  - [Security][security]
@@ -38,7 +37,20 @@ Administrators who need to create reliable and scalable key-value stores for the
  - [Disaster recovery][recovery]
  - [Performance][performance]
  - [Versioning][versioning]
- - [Supported platform][supported_platform]
+
+### Platform guides
+
+ - [Supported systems][supported_platforms]
+ - [Docker container][container_docker]
+ - [rkt container][container_rkt]
+ - [Amazon Web Services][aws_platform]
+ - [FreeBSD][freebsd_platform]
+
+### Upgrading and compatibility
+
+ - [Migrate applications from using API v2 to API v3][v2_migration]
+ - [Upgrading a v2.3 cluster to v3.0][v3_upgrade]
+ - [Upgrading a v3.0 cluster to v3.1][v31_upgrade]
 
 ## Learning
 
@@ -50,12 +62,6 @@ To learn more about the concepts and internals behind etcd, read the following p
  - [Glossary][glossary]
  - Internals
    - [Auth subsystem][auth_design]
-
-## Upgrading and compatibility
-
- - [Migrate applications from using API v2 to API v3][v2_migration]
- - [Updating v2.3 to v3.0][v3_upgrade]
- - [Updating v3.0 to v3.1][v31_upgrade]
 
 ## Frequently Asked Questions (FAQ)
 
@@ -89,10 +95,13 @@ Answers to [common questions] about etcd.
 [security]: op-guide/security.md
 [monitoring]: op-guide/monitoring.md
 [v2_migration]: op-guide/v2-migration.md
-[container]: op-guide/container.md
+[container_rkt]: op-guide/container.md#rkt
+[container_docker]: op-guide/container.md#docker
 [understand_apis]: learning/api.md
 [versioning]: op-guide/versioning.md
-[supported_platform]: op-guide/supported-platform.md
+[supported_platforms]: op-guide/supported-platform.md
+[freebsd_platform]: platforms/freebsd.md
+[aws_platform]: platforms/aws.md
 [experimental]: dev-guide/experimental_apis.md
 [v3_upgrade]: upgrades/upgrade_3_0.md
 [v31_upgrade]: upgrades/upgrade_3_1.md
