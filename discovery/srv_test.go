@@ -110,12 +110,9 @@ func TestSRVGetCluster(t *testing.T) {
 			return "", nil, errors.New("Unknown service in mock")
 		}
 		urls := testutil.MustNewURLs(t, tt.urls)
-		str, token, err := SRVGetCluster(name, "example.com", "token", urls)
+		str, err := SRVGetCluster(name, "example.com", urls)
 		if err != nil {
 			t.Fatalf("%d: err: %#v", i, err)
-		}
-		if token != "token" {
-			t.Errorf("%d: token: %s", i, token)
 		}
 		if str != tt.expected {
 			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.expected)

@@ -31,9 +31,8 @@ var (
 
 // SRVGetCluster gets the cluster information via DNS discovery.
 // TODO(barakmich): Currently ignores priority and weight (as they don't make as much sense for a bootstrap)
-// Also doesn't do any lookups for the token (though it could)
 // Also sees each entry as a separate instance.
-func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (string, string, error) {
+func SRVGetCluster(name, dns string, apurls types.URLs) (string, error) {
 	tempName := int(0)
 	tcp2ap := make(map[string]url.URL)
 
@@ -42,7 +41,7 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 		tcpAddr, err := resolveTCPAddr("tcp", url.Host)
 		if err != nil {
 			plog.Errorf("couldn't resolve host %s during SRV discovery", url.Host)
-			return "", "", err
+			return "", err
 		}
 		tcp2ap[tcpAddr.String()] = url
 	}
@@ -98,7 +97,7 @@ func SRVGetCluster(name, dns string, defaultToken string, apurls types.URLs) (st
 		plog.Warningf(srvErr[0])
 		plog.Warningf(srvErr[1])
 		plog.Errorf("SRV discovery failed: too many errors querying DNS SRV records")
-		return "", "", err
+		return "", err
 	}
-	return strings.Join(stringParts, ","), defaultToken, nil
+	return strings.Join(stringParts, ","), nil
 }
