@@ -53,8 +53,11 @@
 - [shafreeck/cetcd](https://github.com/shafreeck/cetcd) - Supports v2
 
 **C++ libraries**
+
 - [edwardcapriolo/etcdcpp](https://github.com/edwardcapriolo/etcdcpp) - Supports v2
 - [suryanathan/etcdcpp](https://github.com/suryanathan/etcdcpp) - Supports v2 (with waits)
+- [nokia/etcd-cpp-api](https://github.com/nokia/etcd-cpp-api) - Supports v2
+- [nokia/etcd-cpp-apiv3](https://github.com/nokia/etcd-cpp-apiv3)
 
 **Clojure libraries**
 
