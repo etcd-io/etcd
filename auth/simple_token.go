@@ -41,20 +41,10 @@ var (
 )
 
 type simpleTokenTTLKeeper struct {
-	tokensMu        sync.Mutex
 	tokens          map[string]time.Time
 	stopCh          chan chan struct{}
 	deleteTokenFunc func(string)
-}
-
-func NewSimpleTokenTTLKeeper(deletefunc func(string)) *simpleTokenTTLKeeper {
-	stk := &simpleTokenTTLKeeper{
-		tokens:          make(map[string]time.Time),
-		stopCh:          make(chan chan struct{}),
-		deleteTokenFunc: deletefunc,
-	}
-	go stk.run()
-	return stk
+	mu              *sync.Mutex
 }
 
 func (tm *simpleTokenTTLKeeper) stop() {
@@ -85,14 +75,14 @@ func (tm *simpleTokenTTLKeeper) run() {
 		select {
 		case <-tokenTicker.C:
 			nowtime := time.Now()
-			tm.tokensMu.Lock()
+			tm.mu.Lock()
 			for t, tokenendtime := range tm.tokens {
 				if nowtime.After(tokenendtime) {
 					tm.deleteTokenFunc(t)
 					delete(tm.tokens, t)
 				}
 			}
-			tm.tokensMu.Unlock()
+			tm.mu.Unlock()
 		case waitCh := <-tm.stopCh:
 			tm.tokens = make(map[string]time.Time)
 			waitCh <- struct{}{}
@@ -124,9 +114,7 @@ func (t *tokenSimple) genTokenPrefix() (string, error) {
 }
 
 func (t *tokenSimple) assignSimpleTokenToUser(username, token string) {
-	t.simpleTokenKeeper.tokensMu.Lock()
 	t.simpleTokensMu.Lock()
-
 	_, ok := t.simpleTokens[token]
 	if ok {
 		plog.Panicf("token %s is alredy used", token)
@@ -135,14 +123,12 @@ func (t *tokenSimple) assignSimpleTokenToUser(username, token string) {
 	t.simpleTokens[token] = username
 	t.simpleTokenKeeper.addSimpleToken(token)
 	t.simpleTokensMu.Unlock()
-	t.simpleTokenKeeper.tokensMu.Unlock()
 }
 
 func (t *tokenSimple) invalidateUser(username string) {
 	if t.simpleTokenKeeper == nil {
 		return
 	}
-	t.simpleTokenKeeper.tokensMu.Lock()
 	t.simpleTokensMu.Lock()
 	for token, name := range t.simpleTokens {
 		if strings.Compare(name, username) == 0 {
@@ -151,22 +137,22 @@ func (t *tokenSimple) invalidateUser(username string) {
 		}
 	}
 	t.simpleTokensMu.Unlock()
-	t.simpleTokenKeeper.tokensMu.Unlock()
 }
 
-func newDeleterFunc(t *tokenSimple) func(string) {
-	return func(tk string) {
-		t.simpleTokensMu.Lock()
-		defer t.simpleTokensMu.Unlock()
+func (t *tokenSimple) enable() {
+	delf := func(tk string) {
 		if username, ok := t.simpleTokens[tk]; ok {
 			plog.Infof("deleting token %s for user %s", tk, username)
 			delete(t.simpleTokens, tk)
 		}
 	}
-}
-
-func (t *tokenSimple) enable() {
-	t.simpleTokenKeeper = NewSimpleTokenTTLKeeper(newDeleterFunc(t))
+	t.simpleTokenKeeper = &simpleTokenTTLKeeper{
+		tokens:          make(map[string]time.Time),
+		stopCh:          make(chan chan struct{}),
+		deleteTokenFunc: delf,
+		mu:              &t.simpleTokensMu,
+	}
+	go t.simpleTokenKeeper.run()
 }
 
 func (t *tokenSimple) disable() {
@@ -183,14 +169,12 @@ func (t *tokenSimple) info(ctx context.Context, token string, revision uint64) (
 	if !t.isValidSimpleToken(ctx, token) {
 		return nil, false
 	}
-	t.simpleTokenKeeper.tokensMu.Lock()
 	t.simpleTokensMu.Lock()
 	username, ok := t.simpleTokens[token]
-	if ok {
+	if ok && t.simpleTokenKeeper != nil {
 		t.simpleTokenKeeper.resetSimpleToken(token)
 	}
 	t.simpleTokensMu.Unlock()
-	t.simpleTokenKeeper.tokensMu.Unlock()
 	return &AuthInfo{Username: username, Revision: revision}, ok
 }
 

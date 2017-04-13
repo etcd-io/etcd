@@ -20,6 +20,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -35,23 +36,59 @@ func TestV3AuthEmptyUserGet(t *testing.T) {
 	defer cancel()
 
 	api := toGRPC(clus.Client(0))
-	auth := api.Auth
-
-	if _, err := auth.UserAdd(ctx, &pb.AuthUserAddRequest{Name: "root", Password: "123"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := auth.RoleAdd(ctx, &pb.AuthRoleAddRequest{Name: "root"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := auth.UserGrantRole(ctx, &pb.AuthUserGrantRoleRequest{User: "root", Role: "root"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := auth.AuthEnable(ctx, &pb.AuthEnableRequest{}); err != nil {
-		t.Fatal(err)
-	}
+	authSetupRoot(t, api.Auth)
 
 	_, err := api.KV.Range(ctx, &pb.RangeRequest{Key: []byte("abc")})
 	if !eqErrGRPC(err, rpctypes.ErrUserEmpty) {
 		t.Fatalf("got %v, expected %v", err, rpctypes.ErrUserEmpty)
+	}
+}
+
+// TestV3AuthTokenWithDisable tests that auth won't crash if
+// given a valid token when authentication is disabled
+func TestV3AuthTokenWithDisable(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	c, cerr := clientv3.New(clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
+	if cerr != nil {
+		t.Fatal(cerr)
+	}
+	defer c.Close()
+
+	rctx, cancel := context.WithCancel(context.TODO())
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		for rctx.Err() == nil {
+			c.Put(rctx, "abc", "def")
+		}
+	}()
+
+	time.Sleep(10 * time.Millisecond)
+	if _, err := c.AuthDisable(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	cancel()
+	<-donec
+}
+
+func authSetupRoot(t *testing.T, auth pb.AuthClient) {
+	if _, err := auth.UserAdd(context.TODO(), &pb.AuthUserAddRequest{Name: "root", Password: "123"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.RoleAdd(context.TODO(), &pb.AuthRoleAddRequest{Name: "root"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.UserGrantRole(context.TODO(), &pb.AuthUserGrantRoleRequest{User: "root", Role: "root"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.AuthEnable(context.TODO(), &pb.AuthEnableRequest{}); err != nil {
+		t.Fatal(err)
 	}
 }
