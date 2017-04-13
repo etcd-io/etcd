@@ -71,11 +71,11 @@ func TestDialTimeout(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	testCfgs := []Config{
-		Config{
+		{
 			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: 2 * time.Second,
 		},
-		Config{
+		{
 			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: time.Second,
 			Username:    "abc",
