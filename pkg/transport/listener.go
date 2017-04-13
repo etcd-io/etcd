@@ -33,11 +33,11 @@ import (
 	"github.com/coreos/etcd/pkg/tlsutil"
 )
 
-func NewListener(addr, scheme string, tlscfg *tls.Config) (l net.Listener, err error) {
+func NewListener(addr, scheme string, tlsinfo *TLSInfo) (l net.Listener, err error) {
 	if l, err = newListener(addr, scheme); err != nil {
 		return nil, err
 	}
-	return wrapTLS(addr, scheme, tlscfg, l)
+	return wrapTLS(addr, scheme, tlsinfo, l)
 }
 
 func newListener(addr string, scheme string) (net.Listener, error) {
@@ -48,15 +48,11 @@ func newListener(addr string, scheme string) (net.Listener, error) {
 	return net.Listen("tcp", addr)
 }
 
-func wrapTLS(addr, scheme string, tlscfg *tls.Config, l net.Listener) (net.Listener, error) {
+func wrapTLS(addr, scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, error) {
 	if scheme != "https" && scheme != "unixs" {
 		return l, nil
 	}
-	if tlscfg == nil {
-		l.Close()
-		return nil, fmt.Errorf("cannot listen on TLS for %s: KeyFile and CertFile are not presented", scheme+"://"+addr)
-	}
-	return tls.NewListener(l, tlscfg), nil
+	return newTLSListener(l, tlsinfo)
 }
 
 type TLSInfo struct {
@@ -68,6 +64,10 @@ type TLSInfo struct {
 
 	// ServerName ensures the cert matches the given host in case of discovery / virtual hosting
 	ServerName string
+
+	// HandshakeFailure is optinally called when a connection fails to handshake. The
+	// connection will be closed immediately afterwards.
+	HandshakeFailure func(*tls.Conn, error)
 
 	selfCert bool
 

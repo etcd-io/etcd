@@ -15,7 +15,6 @@
 package rafthttp
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -37,8 +36,8 @@ var (
 
 // NewListener returns a listener for raft message transfer between peers.
 // It uses timeout listener to identify broken streams promptly.
-func NewListener(u url.URL, tlscfg *tls.Config) (net.Listener, error) {
-	return transport.NewTimeoutListener(u.Host, u.Scheme, tlscfg, ConnReadTimeout, ConnWriteTimeout)
+func NewListener(u url.URL, tlsinfo *transport.TLSInfo) (net.Listener, error) {
+	return transport.NewTimeoutListener(u.Host, u.Scheme, tlsinfo, ConnReadTimeout, ConnWriteTimeout)
 }
 
 // NewRoundTripper returns a roundTripper used to send requests
