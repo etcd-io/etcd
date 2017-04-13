@@ -61,6 +61,8 @@ func togRPCError(err error) error {
 		return rpctypes.ErrGRPCTimeoutDueToLeaderFail
 	case etcdserver.ErrTimeoutDueToConnectionLost:
 		return rpctypes.ErrGRPCTimeoutDueToConnectionLost
+	case etcdserver.ErrRejectReconfiguration:
+		return rpctypes.ErrGRPCRejectReconfiguration
 	case etcdserver.ErrUnhealthy:
 		return rpctypes.ErrGRPCUnhealthy
 	case etcdserver.ErrKeyNotFound:

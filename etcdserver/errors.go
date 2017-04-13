@@ -33,6 +33,7 @@ var (
 	ErrNoSpace                    = errors.New("etcdserver: no space")
 	ErrTooManyRequests            = errors.New("etcdserver: too many requests")
 	ErrUnhealthy                  = errors.New("etcdserver: unhealthy cluster")
+	ErrRejectReconfiguration      = errors.New("etcdserver: re-configuration rejected, cluster not healhthy")
 	ErrKeyNotFound                = errors.New("etcdserver: key not found")
 )
 

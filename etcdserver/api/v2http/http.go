@@ -59,13 +59,16 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
 		}
 	default:
+		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		switch err {
+		case etcdserver.ErrRejectReconfiguration:
+			mlog.MergeError(err)
+			herr = httptypes.NewHTTPError(http.StatusTooManyRequests, "Too Many Requests")
 		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost, etcdserver.ErrNotEnoughStartedMembers, etcdserver.ErrUnhealthy:
 			mlog.MergeError(err)
 		default:
 			mlog.MergeErrorf("got unexpected response error (%v)", err)
 		}
-		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		if et := herr.WriteTo(w); et != nil {
 			plog.Debugf("error writing HTTPError (%v) to %s", et, r.RemoteAddr)
 		}

@@ -64,6 +64,7 @@ var (
 	ErrGRPCTimeout                    = grpc.Errorf(codes.Unavailable, "etcdserver: request timed out")
 	ErrGRPCTimeoutDueToLeaderFail     = grpc.Errorf(codes.Unavailable, "etcdserver: request timed out, possibly due to previous leader failure")
 	ErrGRPCTimeoutDueToConnectionLost = grpc.Errorf(codes.Unavailable, "etcdserver: request timed out, possibly due to connection lost")
+	ErrGRPCRejectReconfiguration      = grpc.Errorf(codes.Unavailable, "etcdserver: re-configuration rejected, cluster not healhthy")
 	ErrGRPCUnhealthy                  = grpc.Errorf(codes.Unavailable, "etcdserver: unhealthy cluster")
 
 	errStringToError = map[string]error{
@@ -111,6 +112,7 @@ var (
 		grpc.ErrorDesc(ErrGRPCTimeout):                    ErrGRPCTimeout,
 		grpc.ErrorDesc(ErrGRPCTimeoutDueToLeaderFail):     ErrGRPCTimeoutDueToLeaderFail,
 		grpc.ErrorDesc(ErrGRPCTimeoutDueToConnectionLost): ErrGRPCTimeoutDueToConnectionLost,
+		grpc.ErrorDesc(ErrGRPCRejectReconfiguration):      ErrGRPCRejectReconfiguration,
 		grpc.ErrorDesc(ErrGRPCUnhealthy):                  ErrGRPCUnhealthy,
 	}
 
@@ -158,6 +160,7 @@ var (
 	ErrTimeout                    = Error(ErrGRPCTimeout)
 	ErrTimeoutDueToLeaderFail     = Error(ErrGRPCTimeoutDueToLeaderFail)
 	ErrTimeoutDueToConnectionLost = Error(ErrGRPCTimeoutDueToConnectionLost)
+	ErrRejectReconfiguration      = Error(ErrGRPCRejectReconfiguration)
 	ErrUnhealthy                  = Error(ErrGRPCUnhealthy)
 )
 

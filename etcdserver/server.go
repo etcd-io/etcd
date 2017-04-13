@@ -1066,7 +1066,7 @@ func (s *EtcdServer) AddMember(ctx context.Context, memb membership.Member) erro
 		}
 		if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), s.cluster.Members()) {
 			plog.Warningf("not healthy for reconfigure, rejecting member add %+v", memb)
-			return ErrUnhealthy
+			return ErrRejectReconfiguration
 		}
 	}
 
@@ -1120,7 +1120,7 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	active := numConnectedSince(s.r.transport, time.Now().Add(-HealthInterval), s.ID(), m)
 	if (active - 1) < 1+((len(m)-1)/2) {
 		plog.Warningf("reconfigure breaks active quorum, rejecting remove member %s", id)
-		return ErrUnhealthy
+		return ErrRejectReconfiguration
 	}
 
 	return nil
