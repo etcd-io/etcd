@@ -341,8 +341,6 @@ func (e *Etcd) serve() (err error) {
 		})
 	}
 	for _, sctx := range e.sctxs {
-		// read timeout does not work with http close notify
-		// TODO: https://github.com/golang/go/issues/9524
 		go func(s *serveCtx) {
 			e.errHandler(s.serve(e.Server, ctlscfg, v2h, e.errHandler))
 		}(sctx)
