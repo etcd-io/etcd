@@ -9,7 +9,7 @@
 # PKG=./wal ./test
 # PKG=snap ./test
 #
-# Run code coverage 
+# Run code coverage
 # COVERDIR=coverage PASSES=cov ./test
 set -e
 
@@ -31,10 +31,6 @@ INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
 TEST_PKGS=`find . -name \*_test.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
 FORMATTABLE=`find . -name \*.go | while read a; do echo $(dirname $a)/"*.go"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
 TESTABLE_AND_FORMATTABLE=`echo "$TEST_PKGS" | egrep -v "$INTEGRATION_PKGS"`
-
-# TODO: 'client' pkg fails with gosimple from generated files
-# TODO: 'rafttest' is failing with unused
-GOSIMPLE_UNUSED_PATHS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | grep -v 'client'`
 
 if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
@@ -193,48 +189,6 @@ function fmt_pass {
 			exit 255
 		fi
 	done
-
-	if which goword >/dev/null; then
-		echo "Checking goword..."
-		# get all go files to process
-		gofiles=`find $FMT -iname '*.go' 2>/dev/null`
-		# ignore tests and protobuf files
-		gofiles=`echo ${gofiles} | sort | uniq | sed "s/ /\n/g" | egrep -v "(\\_test.go|\\.pb\\.go)"`
-		# only check for broken exported godocs
-		gowordRes=`goword -use-spell=false ${gofiles} | grep godoc-export | sort`
-		if [ ! -z "$gowordRes" ]; then
-			echo -e "goword checking failed:\n${gowordRes}"
-			exit 255
-		fi
-	else
-		echo "Skipping goword..."
-	fi
-
-	if which gosimple >/dev/null; then
-		echo "Checking gosimple..."
-		for path in $GOSIMPLE_UNUSED_PATHS; do
-			simplResult=`gosimple ${path} 2>&1 || true`
-			if [ -n "${simplResult}" ]; then
-				echo -e "gosimple checking ${path} failed:\n${simplResult}"
-				exit 255
-			fi
-		done
-	else
-		echo "Skipping gosimple..."
-	fi
-
-	if which unused >/dev/null; then
-		echo "Checking unused..."
-		for path in $GOSIMPLE_UNUSED_PATHS; do
-			unusedResult=`unused ${path} 2>&1 || true`
-			if [ -n "${unusedResult}" ]; then
-				echo -e "unused checking ${path} failed:\n${unusedResult}"
-				exit 255
-			fi
-		done
-	else
-		echo "Skipping unused..."
-	fi
 
 	echo "Checking for license header..."
 	licRes=$(for file in $(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*'); do

@@ -32,18 +32,6 @@ matrix:
   - go: tip
     env: TARGET=ppc64le
 
-addons:
-  apt:
-    packages:
-    - libpcap-dev
-    - libaspell-dev
-    - libhunspell-dev
-
-before_install:
- - go get -v github.com/chzchzchz/goword
- - go get -v honnef.co/go/simple/cmd/gosimple
- - go get -v honnef.co/go/unused/cmd/unused
-
 # disable godep restore override
 install:
  - pushd cmd/etcd && go get -t -v ./... && popd
