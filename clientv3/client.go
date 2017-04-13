@@ -219,6 +219,11 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 
 	f := func(host string, t time.Duration) (net.Conn, error) {
 		proto, host, _ := parseEndpoint(c.balancer.getEndpoint(host))
+		if host == "" && endpoint != "" {
+			// dialing an endpoint not in the balancer; use
+			// endpoint passed into dial
+			proto, host, _ = parseEndpoint(endpoint)
+		}
 		if proto == "" {
 			return nil, fmt.Errorf("unknown scheme for %q", host)
 		}
@@ -358,7 +363,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 
 	client.balancer = newSimpleBalancer(cfg.Endpoints)
-	conn, err := client.dial(cfg.Endpoints[0], grpc.WithBalancer(client.balancer))
+	conn, err := client.dial("", grpc.WithBalancer(client.balancer))
 	if err != nil {
 		client.cancel()
 		client.balancer.Close()
