@@ -274,3 +274,15 @@ func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 	}
 	testNewListenerTLSInfoAccept(t, tlsinfo)
 }
+
+func TestIsClosedConnError(t *testing.T) {
+	l, err := NewListener("testsocket", "unix", nil)
+	if err != nil {
+		t.Errorf("error listening on unix socket (%v)", err)
+	}
+	l.Close()
+	_, err = l.Accept()
+	if !IsClosedConnError(err) {
+		t.Fatalf("expect true, got false (%v)", err)
+	}
+}

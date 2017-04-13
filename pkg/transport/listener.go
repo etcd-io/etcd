@@ -27,6 +27,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/coreos/etcd/pkg/tlsutil"
@@ -268,4 +269,13 @@ func ShallowCopyTLSConfig(cfg *tls.Config) *tls.Config {
 		CurvePreferences:         cfg.CurvePreferences,
 	}
 	return &ncfg
+}
+
+// IsClosedConnError returns true if the error is from closing listener, cmux.
+// copied from golang.org/x/net/http2/http2.go
+func IsClosedConnError(err error) bool {
+	// 'use of closed network connection' (Go <=1.8)
+	// 'use of closed file or network connection' (Go >1.8, internal/poll.ErrClosing)
+	// 'mux: listener closed' (cmux.ErrListenerClosed)
+	return err != nil && strings.Contains(err.Error(), "closed")
 }
