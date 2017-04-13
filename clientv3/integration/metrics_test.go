@@ -58,7 +58,7 @@ func TestV3ClientMetrics(t *testing.T) {
 		}
 
 		err = srv.Serve(ln)
-		if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+		if err != nil && !transport.IsClosedConnError(err) {
 			t.Fatalf("Err serving http requests: %v", err)
 		}
 	}()
