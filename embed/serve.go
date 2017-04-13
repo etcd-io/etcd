@@ -32,7 +32,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/debugutil"
-	"github.com/coreos/etcd/pkg/transport"
 
 	"github.com/cockroachdb/cmux"
 	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -117,7 +116,7 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 		}
 		handler = grpcHandlerFunc(gs, handler)
 
-		dtls := transport.ShallowCopyTLSConfig(tlscfg)
+		dtls := tlscfg.Clone()
 		// trust local server
 		dtls.InsecureSkipVerify = true
 		creds := credentials.NewTLS(dtls)
