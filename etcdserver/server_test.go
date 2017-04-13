@@ -1085,7 +1085,7 @@ func TestAddMember(t *testing.T) {
 	}
 	s.start()
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
-	err := s.AddMember(context.TODO(), m)
+	_, err := s.AddMember(context.TODO(), m)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1126,7 +1126,7 @@ func TestRemoveMember(t *testing.T) {
 		SyncTicker: &time.Ticker{},
 	}
 	s.start()
-	err := s.RemoveMember(context.TODO(), 1234)
+	_, err := s.RemoveMember(context.TODO(), 1234)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1167,7 +1167,7 @@ func TestUpdateMember(t *testing.T) {
 	}
 	s.start()
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
-	err := s.UpdateMember(context.TODO(), wm)
+	_, err := s.UpdateMember(context.TODO(), wm)
 	gaction := n.Action()
 	s.Stop()
 

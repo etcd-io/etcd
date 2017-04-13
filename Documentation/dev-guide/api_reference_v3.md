@@ -557,6 +557,7 @@ Empty field.
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
 | member | member is the member information for the added member. | Member |
+| members | members is a list of all members after adding the new member. | (slice of) Member |
 
 
 
@@ -588,6 +589,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+| members | members is a list of all members after removing the member. | (slice of) Member |
 
 
 
@@ -605,6 +607,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
+| members | members is a list of all members after updating the member. | (slice of) Member |
 
 
 

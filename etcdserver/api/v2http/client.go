@@ -234,7 +234,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		now := h.clock.Now()
 		m := membership.NewMember("", req.PeerURLs, "", &now)
-		err := h.server.AddMember(ctx, *m)
+		_, err := h.server.AddMember(ctx, *m)
 		switch {
 		case err == membership.ErrIDExists || err == membership.ErrPeerURLexists:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
@@ -255,7 +255,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
-		err := h.server.RemoveMember(ctx, uint64(id))
+		_, err := h.server.RemoveMember(ctx, uint64(id))
 		switch {
 		case err == membership.ErrIDRemoved:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusGone, fmt.Sprintf("Member permanently removed: %s", id)))
@@ -280,7 +280,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ID:             id,
 			RaftAttributes: membership.RaftAttributes{PeerURLs: req.PeerURLs.StringSlice()},
 		}
-		err := h.server.UpdateMember(ctx, m)
+		_, err := h.server.UpdateMember(ctx, m)
 		switch {
 		case err == membership.ErrPeerURLexists:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusConflict, err.Error()))

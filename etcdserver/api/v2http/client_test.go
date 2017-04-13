@@ -104,18 +104,18 @@ func (s *serverRecorder) Process(_ context.Context, m raftpb.Message) error {
 	s.actions = append(s.actions, action{name: "Process", params: []interface{}{m}})
 	return nil
 }
-func (s *serverRecorder) AddMember(_ context.Context, m membership.Member) error {
+func (s *serverRecorder) AddMember(_ context.Context, m membership.Member) ([]*membership.Member, error) {
 	s.actions = append(s.actions, action{name: "AddMember", params: []interface{}{m}})
-	return nil
+	return nil, nil
 }
-func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) error {
+func (s *serverRecorder) RemoveMember(_ context.Context, id uint64) ([]*membership.Member, error) {
 	s.actions = append(s.actions, action{name: "RemoveMember", params: []interface{}{id}})
-	return nil
+	return nil, nil
 }
 
-func (s *serverRecorder) UpdateMember(_ context.Context, m membership.Member) error {
+func (s *serverRecorder) UpdateMember(_ context.Context, m membership.Member) ([]*membership.Member, error) {
 	s.actions = append(s.actions, action{name: "UpdateMember", params: []interface{}{m}})
-	return nil
+	return nil, nil
 }
 
 func (s *serverRecorder) ClusterVersion() *semver.Version { return nil }
@@ -149,11 +149,17 @@ func (rs *resServer) Leader() types.ID { return types.ID(1) }
 func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.Response, error) {
 	return rs.res, nil
 }
-func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error         { return nil }
-func (rs *resServer) AddMember(_ context.Context, _ membership.Member) error    { return nil }
-func (rs *resServer) RemoveMember(_ context.Context, _ uint64) error            { return nil }
-func (rs *resServer) UpdateMember(_ context.Context, _ membership.Member) error { return nil }
-func (rs *resServer) ClusterVersion() *semver.Version                           { return nil }
+func (rs *resServer) Process(_ context.Context, _ raftpb.Message) error { return nil }
+func (rs *resServer) AddMember(_ context.Context, _ membership.Member) ([]*membership.Member, error) {
+	return nil, nil
+}
+func (rs *resServer) RemoveMember(_ context.Context, _ uint64) ([]*membership.Member, error) {
+	return nil, nil
+}
+func (rs *resServer) UpdateMember(_ context.Context, _ membership.Member) ([]*membership.Member, error) {
+	return nil, nil
+}
+func (rs *resServer) ClusterVersion() *semver.Version { return nil }
 
 func boolp(b bool) *bool { return &b }
 
