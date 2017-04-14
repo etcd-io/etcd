@@ -243,11 +243,12 @@ func (as *authStore) AuthDisable() {
 	as.enabled = false
 
 	as.simpleTokensMu.Lock()
+	tk := as.simpleTokenKeeper
+	as.simpleTokenKeeper = nil
 	as.simpleTokens = make(map[string]string) // invalidate all tokens
 	as.simpleTokensMu.Unlock()
-	if as.simpleTokenKeeper != nil {
-		as.simpleTokenKeeper.stop()
-		as.simpleTokenKeeper = nil
+	if tk != nil {
+		tk.stop()
 	}
 
 	plog.Noticef("Authentication disabled")

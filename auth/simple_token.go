@@ -38,16 +38,18 @@ var (
 
 type simpleTokenTTLKeeper struct {
 	tokens          map[string]time.Time
-	stopCh          chan chan struct{}
+	donec           chan struct{}
+	stopc           chan struct{}
 	deleteTokenFunc func(string)
 	mu              *sync.Mutex
 }
 
 func (tm *simpleTokenTTLKeeper) stop() {
-	waitCh := make(chan struct{})
-	tm.stopCh <- waitCh
-	<-waitCh
-	close(tm.stopCh)
+	select {
+	case tm.stopc <- struct{}{}:
+	case <-tm.donec:
+	}
+	<-tm.donec
 }
 
 func (tm *simpleTokenTTLKeeper) addSimpleToken(token string) {
@@ -66,7 +68,10 @@ func (tm *simpleTokenTTLKeeper) deleteSimpleToken(token string) {
 
 func (tm *simpleTokenTTLKeeper) run() {
 	tokenTicker := time.NewTicker(simpleTokenTTLResolution)
-	defer tokenTicker.Stop()
+	defer func() {
+		tokenTicker.Stop()
+		close(tm.donec)
+	}()
 	for {
 		select {
 		case <-tokenTicker.C:
@@ -79,9 +84,7 @@ func (tm *simpleTokenTTLKeeper) run() {
 				}
 			}
 			tm.mu.Unlock()
-		case waitCh := <-tm.stopCh:
-			tm.tokens = make(map[string]time.Time)
-			waitCh <- struct{}{}
+		case <-tm.stopc:
 			return
 		}
 	}
@@ -96,7 +99,8 @@ func (as *authStore) enable() {
 	}
 	as.simpleTokenKeeper = &simpleTokenTTLKeeper{
 		tokens:          make(map[string]time.Time),
-		stopCh:          make(chan chan struct{}),
+		donec:           make(chan struct{}),
+		stopc:           make(chan struct{}),
 		deleteTokenFunc: delf,
 		mu:              &as.simpleTokensMu,
 	}
