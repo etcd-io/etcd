@@ -148,6 +148,14 @@ func (e *Etcd) Config() Config {
 func (e *Etcd) Close() {
 	e.closeOnce.Do(func() { close(e.stopc) })
 
+	// (gRPC server) stops accepting new connections,
+	// RPCs, and blocks until all pending RPCs are finished
+	for _, sctx := range e.sctxs {
+		for gs := range sctx.grpcServerC {
+			gs.GracefulStop()
+		}
+	}
+
 	for _, sctx := range e.sctxs {
 		sctx.cancel()
 	}
