@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
@@ -108,4 +109,27 @@ func TestRejectOldCluster(t *testing.T) {
 		t.Fatal(err)
 	}
 	cli.Close()
+}
+
+// TestDialForeignEndpoint checks an endpoint that is not registered
+// with the balancer can be dialed.
+func TestDialForeignEndpoint(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	defer clus.Terminate(t)
+
+	conn, err := clus.Client(0).Dial(clus.Client(1).Endpoints()[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	// grpc can return a lazy connection that's not connected yet; confirm
+	// that it can communicate with the cluster.
+	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn))
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	if _, gerr := kvc.Get(ctx, "abc"); gerr != nil {
+		t.Fatal(err)
+	}
 }
