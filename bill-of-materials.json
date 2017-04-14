@@ -1,0 +1,211 @@
+[
+	{
+		"project": "github.com/beorn7/perks/quantile",
+		"license": "MIT License",
+		"confidence": 0.989
+	},
+	{
+		"project": "github.com/boltdb/bolt",
+		"license": "MIT License",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/cockroachdb/cmux",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/coreos/etcd",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/coreos/go-semver/semver",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/coreos/go-systemd",
+		"license": "Apache License 2.0",
+		"confidence": 0.997
+	},
+	{
+		"project": "github.com/coreos/pkg",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/cpuguy83/go-md2man/md2man",
+		"license": "MIT License",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/dgrijalva/jwt-go",
+		"license": "MIT License",
+		"confidence": 0.989
+	},
+	{
+		"project": "github.com/dustin/go-humanize",
+		"license": "MIT License",
+		"confidence": 0.969
+	},
+	{
+		"project": "github.com/ghodss/yaml",
+		"license": "MIT License and BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/gogo/protobuf/proto",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.909
+	},
+	{
+		"project": "github.com/golang/groupcache/lru",
+		"license": "Apache License 2.0",
+		"confidence": 0.997
+	},
+	{
+		"project": "github.com/golang/protobuf",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.92
+	},
+	{
+		"project": "github.com/google/btree",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/grpc-ecosystem/go-grpc-prometheus",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/grpc-ecosystem/grpc-gateway",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.979
+	},
+	{
+		"project": "github.com/inconshreveable/mousetrap",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/jonboulle/clockwork",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/mattn/go-runewidth",
+		"license": "MIT License",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/matttproud/golang_protobuf_extensions/pbutil",
+		"license": "Apache License 2.0",
+		"confidence": 0.999
+	},
+	{
+		"project": "github.com/olekukonko/tablewriter",
+		"license": "MIT License",
+		"confidence": 0.989
+	},
+	{
+		"project": "github.com/prometheus/client_golang/prometheus",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/prometheus/client_model/go",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/prometheus/common",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/prometheus/procfs",
+		"license": "Apache License 2.0",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/russross/blackfriday",
+		"license": "BSD 2-clause \"Simplified\" License",
+		"confidence": 0.963
+	},
+	{
+		"project": "github.com/shurcooL/sanitized_anchor_name",
+		"license": "MIT License",
+		"confidence": 0.989
+	},
+	{
+		"project": "github.com/spf13/cobra",
+		"license": "Apache License 2.0",
+		"confidence": 0.957
+	},
+	{
+		"project": "github.com/spf13/pflag",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.966
+	},
+	{
+		"project": "github.com/ugorji/go/codec",
+		"license": "MIT License",
+		"confidence": 0.995
+	},
+	{
+		"project": "github.com/urfave/cli",
+		"license": "MIT License",
+		"confidence": 0.995
+	},
+	{
+		"project": "github.com/xiang90/probing",
+		"license": "MIT License",
+		"confidence": 1
+	},
+	{
+		"project": "golang.org/x/crypto",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.966
+	},
+	{
+		"project": "golang.org/x/net",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.966
+	},
+	{
+		"project": "golang.org/x/text",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.966
+	},
+	{
+		"project": "golang.org/x/time/rate",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.966
+	},
+	{
+		"project": "google.golang.org/grpc",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.979
+	},
+	{
+		"project": "gopkg.in/cheggaaa/pb.v1",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 0.992
+	},
+	{
+		"project": "gopkg.in/yaml.v2",
+		"license": "Apache License 2.0 and MIT License",
+		"confidence": 1
+	},
+	{
+		"project": "bitbucket.org/ww/goautoneg",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 1
+	},
+	{
+		"project": "github.com/bgentry/speakeasy",
+		"error": "No license detected"
+	}
+]
