@@ -719,7 +719,7 @@ func (m *member) Close() {
 		m.serverClient = nil
 	}
 	if m.grpcServer != nil {
-		m.grpcServer.Stop()
+		m.grpcServer.GracefulStop()
 		m.grpcServer = nil
 	}
 	m.s.HardStop()
