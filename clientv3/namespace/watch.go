@@ -40,7 +40,7 @@ func NewWatcher(w clientv3.Watcher, prefix string) clientv3.Watcher {
 
 func (w *watcherPrefix) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
 	// since OpOption is opaque, determine range for prefixing through an OpGet
-	op := clientv3.OpGet("abc", opts...)
+	op := clientv3.OpGet(key, opts...)
 	end := op.RangeBytes()
 	pfxBegin, pfxEnd := prefixInterval(w.pfx, []byte(key), end)
 	if pfxEnd != nil {
