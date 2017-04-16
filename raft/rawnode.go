@@ -57,7 +57,13 @@ func (rn *RawNode) commitReady(rd Ready) {
 		// incorporated into the snapshot, even if rd.CommittedEntries is
 		// empty). Therefore we mark all committed entries as applied
 		// whether they were included in rd.HardState or not.
-		rn.raft.raftLog.appliedTo(rn.prevHardSt.Commit)
+		var appliedTo uint64
+		if len(rd.CommittedEntries) > 0 {
+			appliedTo = rd.CommittedEntries[len(rd.CommittedEntries)-1].Index
+		} else {
+			appliedTo = rn.prevHardSt.Commit
+		}
+		rn.raft.raftLog.appliedTo(appliedTo)
 	}
 	if len(rd.Entries) > 0 {
 		e := rd.Entries[len(rd.Entries)-1]

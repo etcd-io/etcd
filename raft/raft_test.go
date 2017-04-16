@@ -720,9 +720,10 @@ func TestDuelingCandidates(t *testing.T) {
 	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
 
 	wlog := &raftLog{
-		storage:   &MemoryStorage{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}}},
-		committed: 1,
-		unstable:  unstable{offset: 2},
+		storage:     &MemoryStorage{ents: []pb.Entry{{}, {Data: nil, Term: 1, Index: 1}}},
+		committed:   1,
+		unstable:    unstable{offset: 2},
+		maxEntsSize: noLimit,
 	}
 	tests := []struct {
 		sm      *raft
@@ -732,7 +733,7 @@ func TestDuelingCandidates(t *testing.T) {
 	}{
 		{a, StateFollower, 2, wlog},
 		{b, StateFollower, 2, wlog},
-		{c, StateFollower, 2, newLog(NewMemoryStorage(), raftLogger)},
+		{c, StateFollower, 2, newLog(NewMemoryStorage(), raftLogger, noLimit)},
 	}
 
 	for i, tt := range tests {
@@ -802,7 +803,7 @@ func TestDuelingPreCandidates(t *testing.T) {
 	}{
 		{a, StateLeader, 1, wlog},
 		{b, StateFollower, 1, wlog},
-		{c, StateFollower, 1, newLog(NewMemoryStorage(), raftLogger)},
+		{c, StateFollower, 1, newLog(NewMemoryStorage(), raftLogger, noLimit)},
 	}
 
 	for i, tt := range tests {
@@ -958,7 +959,7 @@ func TestProposal(t *testing.T) {
 		send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
 		send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{Data: data}}})
 
-		wantLog := newLog(NewMemoryStorage(), raftLogger)
+		wantLog := newLog(NewMemoryStorage(), raftLogger, noLimit)
 		if tt.success {
 			wantLog = &raftLog{
 				storage: &MemoryStorage{
@@ -2523,12 +2524,15 @@ func TestRecoverPendingConfig(t *testing.T) {
 		{pb.EntryConfChange, true},
 	}
 	for i, tt := range tests {
-		r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
-		r.appendEntry(pb.Entry{Type: tt.entType})
-		r.becomeCandidate()
-		r.becomeLeader()
-		if r.pendingConf != tt.wpending {
-			t.Errorf("#%d: pendingConf = %v, want %v", i, r.pendingConf, tt.wpending)
+		for _, size := range []uint64{noLimit, 1} {
+			r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+			r.maxEntsSize = size
+			r.appendEntry(pb.Entry{Type: tt.entType})
+			r.becomeCandidate()
+			r.becomeLeader()
+			if r.pendingConf != tt.wpending {
+				t.Errorf("#%d: pendingConf = %v, want %v", i, r.pendingConf, tt.wpending)
+			}
 		}
 	}
 }
@@ -2542,11 +2546,14 @@ func TestRecoverDoublePendingConfig(t *testing.T) {
 				t.Errorf("expect panic, but nothing happens")
 			}
 		}()
-		r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
-		r.appendEntry(pb.Entry{Type: pb.EntryConfChange})
-		r.appendEntry(pb.Entry{Type: pb.EntryConfChange})
-		r.becomeCandidate()
-		r.becomeLeader()
+		for _, size := range []uint64{noLimit, 1} {
+			r := newTestRaft(1, []uint64{1, 2}, 10, 1, NewMemoryStorage())
+			r.maxEntsSize = size
+			r.appendEntry(pb.Entry{Type: pb.EntryConfChange})
+			r.appendEntry(pb.Entry{Type: pb.EntryConfChange})
+			r.becomeCandidate()
+			r.becomeLeader()
+		}
 	}()
 }
 
@@ -3277,6 +3284,7 @@ func newTestConfig(id uint64, peers []uint64, election, heartbeat int, storage S
 		Storage:         storage,
 		MaxSizePerMsg:   noLimit,
 		MaxInflightMsgs: 256,
+		MaxEntsSize:     noLimit,
 	}
 }
 

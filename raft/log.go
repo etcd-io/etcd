@@ -37,18 +37,21 @@ type raftLog struct {
 	// Invariant: applied <= committed
 	applied uint64
 
-	logger Logger
+	// maxEntsSize is the maxmium entries size that can be fetched once.
+	maxEntsSize uint64
+	logger      Logger
 }
 
 // newLog returns log using the given storage. It recovers the log to the state
 // that it just commits and applies the latest snapshot.
-func newLog(storage Storage, logger Logger) *raftLog {
+func newLog(storage Storage, logger Logger, maxEntsSize uint64) *raftLog {
 	if storage == nil {
 		log.Panic("storage must not be nil")
 	}
 	log := &raftLog{
-		storage: storage,
-		logger:  logger,
+		storage:     storage,
+		logger:      logger,
+		maxEntsSize: maxEntsSize,
 	}
 	firstIndex, err := storage.FirstIndex()
 	if err != nil {
@@ -148,8 +151,23 @@ func (l *raftLog) nextEnts() (ents []pb.Entry) {
 	return nil
 }
 
+// nextEntsLimited returns the available entries for execution with size limited
+// by raftLog.maxEntsSize. It is a limited size version of raftLog.nextEnts.
+func (l *raftLog) nextEntsLimited() (ents []pb.Entry) {
+	off := max(l.applied+1, l.firstIndex())
+	if l.committed+1 > off {
+		ents, err := l.slice(off, l.committed+1, l.maxEntsSize)
+		if err != nil {
+			l.logger.Panicf("unexpected error when getting unapplied entries (%v)", err)
+		}
+		return ents
+	}
+	return nil
+}
+
 // hasNextEnts returns if there is any available entries for execution. This
-// is a fast check without heavy raftLog.slice() in raftLog.nextEnts().
+// is a fast check without heavy raftLog.slice() in raftLog.nextEnts()
+// or raftLog.nextEntsLimited().
 func (l *raftLog) hasNextEnts() bool {
 	off := max(l.applied+1, l.firstIndex())
 	return l.committed+1 > off

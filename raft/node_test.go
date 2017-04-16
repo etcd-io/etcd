@@ -728,3 +728,136 @@ func TestIsHardStateEqual(t *testing.T) {
 		}
 	}
 }
+
+// TestNodeLimitEnts ensures that a node can be started correctly with either maxEntsSize
+// is noLimit or 1. The node should start with correct configuration change entries,
+// and can accept and commit proposals.
+func TestNodeLimitEnts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1}
+	ccdata, err := cc.Marshal()
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	// noLimit raft config : wants[0], wants[1], wants[2]
+	// Limit raft config   : wants[3], wants[4], wants[5], wants[6]
+	wants := []Ready{
+		{ //wants[0]
+			HardState: raftpb.HardState{Term: 1, Commit: 1, Vote: 0},
+			Entries: []raftpb.Entry{
+				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
+			},
+			MustSync: true,
+		},
+		{ //wants[1]
+			HardState:        raftpb.HardState{Term: 2, Commit: 4, Vote: 1},
+			Entries:          []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}, {Term: 2, Index: 4, Data: []byte("bar")}},
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}, {Term: 2, Index: 4, Data: []byte("bar")}},
+			MustSync:         true,
+		},
+		{ //wants[2]
+			HardState:        raftpb.HardState{Term: 2, Commit: 5, Vote: 1},
+			Entries:          []raftpb.Entry{{Term: 2, Index: 5, Data: []byte("jar")}},
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 5, Data: []byte("jar")}},
+			MustSync:         true,
+		},
+		{ //wants[3]
+			HardState: raftpb.HardState{Term: 1, Commit: 1, Vote: 0},
+			Entries: []raftpb.Entry{
+				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
+			},
+			CommittedEntries: []raftpb.Entry{
+				{Type: raftpb.EntryConfChange, Term: 1, Index: 1, Data: ccdata},
+			},
+			MustSync: true,
+		},
+		{ //wants[4]
+			HardState:        raftpb.HardState{Term: 2, Commit: 4, Vote: 1},
+			Entries:          []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}, {Term: 2, Index: 4, Data: []byte("bar")}},
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 3, Data: []byte("foo")}},
+			MustSync:         true,
+		},
+		{ //wants[5]
+			HardState:        raftpb.HardState{Term: 0, Commit: 0, Vote: 0}, // empty hard state
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 4, Data: []byte("bar")}},
+			MustSync:         true,
+		},
+		{ //wants[6]
+			HardState:        raftpb.HardState{Term: 2, Commit: 5, Vote: 1},
+			Entries:          []raftpb.Entry{{Term: 2, Index: 5, Data: []byte("jar")}},
+			CommittedEntries: []raftpb.Entry{{Term: 2, Index: 5, Data: []byte("jar")}},
+			MustSync:         true,
+		},
+	}
+	index := -1
+	for _, size := range []uint64{noLimit, 1} {
+		storage := NewMemoryStorage()
+		c := &Config{
+			ID:              1,
+			ElectionTick:    10,
+			HeartbeatTick:   1,
+			Storage:         storage,
+			MaxSizePerMsg:   noLimit,
+			MaxInflightMsgs: 256,
+			MaxEntsSize:     size,
+		}
+		n := StartNode(c, []Peer{{ID: 1}})
+		g := <-n.Ready()
+		index++
+		if !reflect.DeepEqual(g, wants[index]) {
+			t.Fatalf("#%d: g = %+v,\n             w   %+v", index, g, wants[index])
+		} else {
+			storage.Append(g.Entries)
+			n.Advance()
+		}
+
+		n.Campaign(ctx)
+		rd := <-n.Ready()
+		storage.Append(rd.Entries)
+
+		// Propose two proposal at same time.
+		n.Propose(ctx, []byte("foo"))
+		n.Propose(ctx, []byte("bar"))
+
+		n.Advance()
+		index++
+		if g2 := <-n.Ready(); !reflect.DeepEqual(g2, wants[index]) {
+			t.Errorf("#%d: g = %+v,\n             w   %+v", index, g2, wants[index])
+		} else {
+			storage.Append(g2.Entries)
+			n.Advance()
+		}
+
+		// if maxEntsSize is 1, CommittedEntries will be emitted one by one.
+		if size == 1 {
+			index++
+			if g3 := <-n.Ready(); !reflect.DeepEqual(g3, wants[index]) {
+				t.Errorf("#%d: g = %+v,\n             w   %+v", index, g3, wants[index])
+			} else {
+				storage.Append(g3.Entries)
+				n.Advance()
+			}
+		}
+
+		n.Propose(ctx, []byte("jar"))
+		index++
+		if g4 := <-n.Ready(); !reflect.DeepEqual(g4, wants[index]) {
+			t.Errorf("#%d: g = %+v,\n             w   %+v", index, g4, wants[index])
+		} else {
+			storage.Append(g4.Entries)
+			n.Advance()
+		}
+
+		select {
+		case rd := <-n.Ready():
+			t.Errorf("unexpected Ready: %+v", rd)
+		case <-time.After(time.Millisecond):
+		}
+		n.Stop()
+	}
+}

@@ -277,6 +277,7 @@ func (n *node) run(r *raft) {
 	var prevLastUnstablei, prevLastUnstablet uint64
 	var havePrevLastUnstablei bool
 	var prevSnapi uint64
+	var prevCommitEntryi uint64
 	var rd Ready
 
 	lead := None
@@ -361,6 +362,11 @@ func (n *node) run(r *raft) {
 				prevLastUnstablet = rd.Entries[len(rd.Entries)-1].Term
 				havePrevLastUnstablei = true
 			}
+			if len(rd.CommittedEntries) > 0 {
+				prevCommitEntryi = rd.CommittedEntries[len(rd.CommittedEntries)-1].Index
+			} else {
+				prevCommitEntryi = 0
+			}
 			if !IsEmptyHardState(rd.HardState) {
 				prevHardSt = rd.HardState
 			}
@@ -373,7 +379,13 @@ func (n *node) run(r *raft) {
 			advancec = n.advancec
 		case <-advancec:
 			if prevHardSt.Commit != 0 {
-				r.raftLog.appliedTo(prevHardSt.Commit)
+				var appliedTo uint64
+				if prevCommitEntryi != 0 {
+					appliedTo = prevCommitEntryi
+				} else {
+					appliedTo = prevHardSt.Commit
+				}
+				r.raftLog.appliedTo(appliedTo)
 			}
 			if havePrevLastUnstablei {
 				r.raftLog.stableTo(prevLastUnstablei, prevLastUnstablet)
@@ -506,7 +518,7 @@ func (n *node) ReadIndex(ctx context.Context, rctx []byte) error {
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	rd := Ready{
 		Entries:          r.raftLog.unstableEntries(),
-		CommittedEntries: r.raftLog.nextEnts(),
+		CommittedEntries: r.raftLog.nextEntsLimited(),
 		Messages:         r.msgs,
 	}
 	if softSt := r.softState(); !softSt.equal(prevSoftSt) {

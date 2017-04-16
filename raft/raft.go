@@ -152,6 +152,11 @@ type Config struct {
 	// limit the proposal rate?
 	MaxInflightMsgs int
 
+	// MaxEntsSize limits the max size of each log.slice(). Its main purpose is
+	// to limit the memory occupied by each read from raft log.
+	// Note: math.MaxUint64 for unlimited.
+	MaxEntsSize uint64
+
 	// CheckQuorum specifies if the leader should check quorum activity. Leader
 	// steps down when quorum is not active for an electionTimeout.
 	CheckQuorum bool
@@ -213,6 +218,10 @@ func (c *Config) validate() error {
 		c.Logger = raftLogger
 	}
 
+	if c.MaxEntsSize == 0 {
+		c.MaxEntsSize = noLimit
+	}
+
 	return nil
 }
 
@@ -229,6 +238,7 @@ type raft struct {
 
 	maxInflight int
 	maxMsgSize  uint64
+	maxEntsSize uint64
 	prs         map[uint64]*Progress
 
 	state StateType
@@ -278,7 +288,7 @@ func newRaft(c *Config) *raft {
 	if err := c.validate(); err != nil {
 		panic(err.Error())
 	}
-	raftlog := newLog(c.Storage, c.Logger)
+	raftlog := newLog(c.Storage, c.Logger, c.MaxEntsSize)
 	hs, cs, err := c.Storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
@@ -307,6 +317,7 @@ func newRaft(c *Config) *raft {
 		preVote:                   c.PreVote,
 		readOnly:                  newReadOnly(c.ReadOnlyOption),
 		disableProposalForwarding: c.DisableProposalForwarding,
+		maxEntsSize:               c.MaxEntsSize,
 	}
 	for _, p := range peers {
 		r.prs[p] = &Progress{Next: 1, ins: newInflights(r.maxInflight)}
@@ -616,12 +627,8 @@ func (r *raft) becomeLeader() {
 	r.tick = r.tickHeartbeat
 	r.lead = r.id
 	r.state = StateLeader
-	ents, err := r.raftLog.entries(r.raftLog.committed+1, noLimit)
-	if err != nil {
-		r.logger.Panicf("unexpected error getting uncommitted entries (%v)", err)
-	}
 
-	nconf := numOfPendingConf(ents)
+	nconf := r.getNumOfPendingConf(r.raftLog.committed+1, r.raftLog.lastIndex())
 	if nconf > 1 {
 		panic("unexpected multiple uncommitted config entry")
 	}
@@ -631,6 +638,27 @@ func (r *raft) becomeLeader() {
 
 	r.appendEntry(pb.Entry{Data: nil})
 	r.logger.Infof("%x became leader at term %d", r.id, r.Term)
+}
+
+// find number of pending configuration in range [startIndex, endIndex].
+func (r *raft) getNumOfPendingConf(startIndex uint64, endIndex uint64) int {
+	var ents []pb.Entry
+	var err error
+	var numOfEnt int
+
+	nextIndex := startIndex
+	for nextIndex <= endIndex {
+		ents, err = r.raftLog.slice(nextIndex, endIndex+1, r.maxEntsSize)
+		if err != nil {
+			r.logger.Panicf("unexpected error getting entries (%v)", err)
+		}
+
+		if entsLen := len(ents); entsLen != 0 {
+			nextIndex = ents[entsLen-1].Index + 1
+			numOfEnt += numOfPendingConf(ents)
+		}
+	}
+	return numOfEnt
 }
 
 func (r *raft) campaign(t CampaignType) {
@@ -749,11 +777,8 @@ func (r *raft) Step(m pb.Message) error {
 	switch m.Type {
 	case pb.MsgHup:
 		if r.state != StateLeader {
-			ents, err := r.raftLog.slice(r.raftLog.applied+1, r.raftLog.committed+1, noLimit)
-			if err != nil {
-				r.logger.Panicf("unexpected error getting unapplied entries (%v)", err)
-			}
-			if n := numOfPendingConf(ents); n != 0 && r.raftLog.committed > r.raftLog.applied {
+			n := r.getNumOfPendingConf(r.raftLog.applied+1, r.raftLog.committed)
+			if n != 0 && r.raftLog.committed > r.raftLog.applied {
 				r.logger.Warningf("%x cannot campaign at term %d since there are still %d pending configuration changes to apply", r.id, r.Term, n)
 				return nil
 			}
