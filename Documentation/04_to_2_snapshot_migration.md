@@ -1,6 +1,6 @@
 ## Snapshot Migration
 
-You can migrate a snapshot of your data from a v0.4.9+ cluster into a new etcd 2.2 cluster using a snapshot migration. After snapshot migration, the etcd indexes of your data will change. Many etcd applications rely on these indexes to behave correctly. This operation should only be done while all etcd applications are stopped.
+You can migrate a snapshot of your data from a v0.4.9+ cluster into a new etcd 2.2 cluster using a snapshot migration. After snapshot migration, the etcd indexes of your data will change. Many client etcd applications rely on these indexes to behave correctly. This operation should only be done while all etcd client applications are stopped.
 
 To get started get the newest data snapshot from the 0.4.9+ cluster:
 
