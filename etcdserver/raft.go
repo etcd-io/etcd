@@ -94,14 +94,7 @@ type raftNode struct {
 	term  uint64
 	lead  uint64
 
-	mu sync.Mutex
-	// last lead elected time
-	lt time.Time
-
-	// to check if msg receiver is removed from cluster
-	isIDRemoved func(id uint64) bool
-
-	raft.Node
+	raftNodeConfig
 
 	// a chan to send/receive snapshot
 	msgSnapC chan raftpb.Message
@@ -115,26 +108,49 @@ type raftNode struct {
 	// utility
 	ticker *time.Ticker
 	// contention detectors for raft heartbeat message
-	td          *contention.TimeoutDetector
-	heartbeat   time.Duration // for logging
-	raftStorage *raft.MemoryStorage
-	storage     Storage
-	// transport specifies the transport to send and receive msgs to members.
-	// Sending messages MUST NOT block. It is okay to drop messages, since
-	// clients should timeout and reissue their messages.
-	// If transport is nil, server will panic.
-	transport rafthttp.Transporter
+	td *contention.TimeoutDetector
 
 	stopped chan struct{}
 	done    chan struct{}
 }
 
+type raftNodeConfig struct {
+	// to check if msg receiver is removed from cluster
+	isIDRemoved func(id uint64) bool
+	raft.Node
+	raftStorage *raft.MemoryStorage
+	storage     Storage
+	heartbeat   time.Duration // for logging
+	// transport specifies the transport to send and receive msgs to members.
+	// Sending messages MUST NOT block. It is okay to drop messages, since
+	// clients should timeout and reissue their messages.
+	// If transport is nil, server will panic.
+	transport rafthttp.Transporter
+}
+
+func newRaftNode(cfg raftNodeConfig) *raftNode {
+	r := &raftNode{
+		raftNodeConfig: cfg,
+		// set up contention detectors for raft heartbeat message.
+		// expect to send a heartbeat within 2 heartbeat intervals.
+		td:         contention.NewTimeoutDetector(2 * cfg.heartbeat),
+		readStateC: make(chan raft.ReadState, 1),
+		msgSnapC:   make(chan raftpb.Message, maxInFlightMsgSnap),
+		applyc:     make(chan apply),
+		stopped:    make(chan struct{}),
+		done:       make(chan struct{}),
+	}
+	if r.heartbeat == 0 {
+		r.ticker = &time.Ticker{}
+	} else {
+		r.ticker = time.NewTicker(r.heartbeat)
+	}
+	return r
+}
+
 // start prepares and starts raftNode in a new goroutine. It is no longer safe
 // to modify the fields after it has been started.
 func (r *raftNode) start(rh *raftReadyHandler) {
-	r.applyc = make(chan apply)
-	r.stopped = make(chan struct{})
-	r.done = make(chan struct{})
 	internalTimeout := time.Second
 
 	go func() {
@@ -147,10 +163,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				r.Tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
-					if lead := atomic.LoadUint64(&r.lead); rd.SoftState.Lead != raft.None && lead != rd.SoftState.Lead {
-						r.mu.Lock()
-						r.lt = time.Now()
-						r.mu.Unlock()
+					newLeader := rd.SoftState.Lead != raft.None && atomic.LoadUint64(&r.lead) != rd.SoftState.Lead
+					if newLeader {
 						leaderChanges.Inc()
 					}
 
@@ -162,7 +176,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 					atomic.StoreUint64(&r.lead, rd.SoftState.Lead)
 					islead = rd.RaftState == raft.StateLeader
-					rh.updateLeadership()
+					rh.updateLeadership(newLeader)
+					r.td.Reset()
 				}
 
 				if len(rd.ReadStates) != 0 {
@@ -314,12 +329,6 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 
 func (r *raftNode) apply() chan apply {
 	return r.applyc
-}
-
-func (r *raftNode) leadElectedTime() time.Time {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.lt
 }
 
 func (r *raftNode) stop() {

@@ -153,13 +153,13 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 
 func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	n := newNopReadyNode()
-	srv := &EtcdServer{r: raftNode{
+	r := newRaftNode(raftNodeConfig{
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
-		ticker:      &time.Ticker{},
-	}}
+	})
+	srv := &EtcdServer{r: *r}
 	srv.r.start(nil)
 	n.readyc <- raft.Ready{}
 	select {
@@ -182,16 +182,16 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 
 	waitApplyc := make(chan struct{})
 
-	srv := &EtcdServer{r: raftNode{
+	r := newRaftNode(raftNodeConfig{
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
-		ticker:      &time.Ticker{},
-	}}
+	})
+	srv := &EtcdServer{r: *r}
 
 	rh := &raftReadyHandler{
-		updateLeadership: func() {},
+		updateLeadership: func(bool) {},
 		waitForApply: func() {
 			<-waitApplyc
 		},
