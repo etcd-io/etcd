@@ -61,8 +61,8 @@ func leaseKeepaliveFunc(cmd *cobra.Command, args []string) {
 			}
 			for range requests {
 				st := time.Now()
-				_, err := c.KeepAliveOnce(context.TODO(), resp.ID)
-				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+				ka := c.KeepAliveOnce(context.TODO(), resp.ID)
+				r.Results() <- report.Result{Err: ka.Err, Start: st, End: time.Now()}
 				bar.Increment()
 			}
 		}(clients[i])
