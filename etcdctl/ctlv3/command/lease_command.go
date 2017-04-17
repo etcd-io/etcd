@@ -148,13 +148,12 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	id := leaseFromArgs(args[0])
-	respc, kerr := mustClientFromCmd(cmd).KeepAlive(context.TODO(), id)
-	if kerr != nil {
-		ExitWithError(ExitBadConnection, kerr)
-	}
-
+	respc := mustClientFromCmd(cmd).KeepAlive(context.TODO(), id)
 	for resp := range respc {
-		display.KeepAlive(*resp)
+		if resp.Err != nil {
+			ExitWithError(ExitError, resp.Err)
+		}
+		display.KeepAlive(resp)
 	}
 
 	if _, ok := (display).(*simplePrinter); ok {
