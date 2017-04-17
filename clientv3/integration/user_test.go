@@ -17,6 +17,7 @@ package integration
 import (
 	"testing"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -49,5 +50,57 @@ func TestUserError(t *testing.T) {
 	_, err = authapi.UserGrantRole(context.TODO(), "foo", "test-role-does-not-exist")
 	if err != rpctypes.ErrRoleNotFound {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleNotFound, err)
+	}
+}
+
+func TestUserErrorAuth(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	authapi := clus.RandClient()
+	authSetupRoot(t, authapi.Auth)
+
+	// un-authenticated client
+	if _, err := authapi.UserAdd(context.TODO(), "foo", "bar"); err != rpctypes.ErrUserNotFound {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrUserNotFound, err)
+	}
+
+	// wrong id or password
+	cfg := clientv3.Config{Endpoints: authapi.Endpoints()}
+	cfg.Username, cfg.Password = "wrong-id", "123"
+	if _, err := clientv3.New(cfg); err != rpctypes.ErrAuthFailed {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
+	}
+	cfg.Username, cfg.Password = "root", "wrong-pass"
+	if _, err := clientv3.New(cfg); err != rpctypes.ErrAuthFailed {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
+	}
+
+	cfg.Username, cfg.Password = "root", "123"
+	authed, err := clientv3.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer authed.Close()
+
+	if _, err := authed.UserList(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func authSetupRoot(t *testing.T, auth clientv3.Auth) {
+	if _, err := auth.UserAdd(context.TODO(), "root", "123"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.RoleAdd(context.TODO(), "root"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.UserGrantRole(context.TODO(), "root", "root"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.AuthEnable(context.TODO()); err != nil {
+		t.Fatal(err)
 	}
 }
