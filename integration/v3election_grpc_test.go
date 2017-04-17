@@ -96,7 +96,7 @@ func TestV3ElectionObserve(t *testing.T) {
 
 	lc := epb.NewElectionClient(clus.Client(0).ActiveConnection())
 
-	// observe 10 leadership events
+	// observe leadership events
 	observec := make(chan struct{})
 	go func() {
 		defer close(observec)
@@ -110,9 +110,13 @@ func TestV3ElectionObserve(t *testing.T) {
 			if rerr != nil {
 				t.Fatal(rerr)
 			}
-			if string(resp.Kv.Value) != fmt.Sprintf("%d", i) {
-				t.Fatalf(`got observe value %q, expected "%d"`, string(resp.Kv.Value), i)
+			respV := 0
+			fmt.Sscanf(string(resp.Kv.Value), "%d", &respV)
+			// leader transitions should not go backwards
+			if respV < i {
+				t.Fatalf(`got observe value %q, expected >= "%d"`, string(resp.Kv.Value), i)
 			}
+			i = respV
 		}
 	}()
 
