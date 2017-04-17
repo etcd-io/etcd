@@ -78,6 +78,32 @@ func TestV3AuthTokenWithDisable(t *testing.T) {
 	<-donec
 }
 
+func TestV3AuthRevision(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	api := toGRPC(clus.Client(0))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	presp, perr := api.KV.Put(ctx, &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	cancel()
+	if perr != nil {
+		t.Fatal(perr)
+	}
+	rev := presp.Header.Revision
+
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	aresp, aerr := api.Auth.UserAdd(ctx, &pb.AuthUserAddRequest{Name: "root", Password: "123"})
+	cancel()
+	if aerr != nil {
+		t.Fatal(aerr)
+	}
+	if aresp.Header.Revision != rev {
+		t.Fatalf("revision expected %d, got %d", rev, aresp.Header.Revision)
+	}
+}
+
 func authSetupRoot(t *testing.T, auth pb.AuthClient) {
 	if _, err := auth.UserAdd(context.TODO(), &pb.AuthUserAddRequest{Name: "root", Password: "123"}); err != nil {
 		t.Fatal(err)
