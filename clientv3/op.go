@@ -282,6 +282,10 @@ func getPrefix(key []byte) []byte {
 // can return 'foo1', 'foo2', and so on.
 func WithPrefix() OpOption {
 	return func(op *Op) {
+		if len(op.key) == 0 {
+			op.key, op.end = []byte{0}, []byte{0}
+			return
+		}
 		op.end = getPrefix(op.key)
 	}
 }
