@@ -1,5 +1,5 @@
-hash: 731f35aa7008dd526f126f5bd8f74bcd7d8639aeafccc4db8f472cb67029f88d
-updated: 2017-04-11T08:41:43.277154365-07:00
+hash: b9e05532b0948a89c8f63c21c3ef85b22d1d06755554942056e004849aae1739
+updated: 2017-04-17T14:32:27.313252456-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -94,7 +94,7 @@ imports:
   subpackages:
   - xfs
 - name: github.com/russross/blackfriday
-  version: 5f33e7b7878355cd2b7e6b8eefc48a5472c69f70
+  version: b253417e1cb644d645a0a3bb1fa5034c8030127c
 - name: github.com/shurcooL/sanitized_anchor_name
   version: 1dba4b3954bc059efc3991ec364f9f9a35f597d2
 - name: github.com/spf13/cobra
@@ -160,7 +160,7 @@ imports:
 - name: gopkg.in/cheggaaa/pb.v1
   version: 226d21d43a305fac52b3a104ef83e721b15275e0
 - name: gopkg.in/yaml.v2
-  version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9

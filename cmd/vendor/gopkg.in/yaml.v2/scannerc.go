@@ -9,7 +9,7 @@ import (
 // ************
 //
 // The following notes assume that you are familiar with the YAML specification
-// (http://yaml.org/spec/cvs/current.html).  We mostly follow it, although in
+// (http://yaml.org/spec/1.2/spec.html).  We mostly follow it, although in
 // some cases we are less restrictive that it requires.
 //
 // The process of transforming a YAML stream into a sequence of events is
@@ -1546,7 +1546,7 @@ func yaml_parser_scan_directive(parser *yaml_parser_t, token *yaml_token_t) bool
 		// Unknown directive.
 	} else {
 		yaml_parser_set_scanner_error(parser, "while scanning a directive",
-			start_mark, "found uknown directive name")
+			start_mark, "found unknown directive name")
 		return false
 	}
 

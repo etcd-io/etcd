@@ -170,6 +170,10 @@ func lineBreak(p *parser, out *bytes.Buffer, data []byte, offset int) int {
 	precededByBackslash := offset >= 1 && data[offset-1] == '\\' // see http://spec.commonmark.org/0.18/#example-527
 	precededByBackslash = precededByBackslash && p.flags&EXTENSION_BACKSLASH_LINE_BREAK != 0
 
+	if p.flags&EXTENSION_JOIN_LINES != 0 {
+		return 1
+	}
+
 	// should there be a hard line break here?
 	if p.flags&EXTENSION_HARD_LINE_BREAK == 0 && !precededByTwoSpaces && !precededByBackslash {
 		return 0
