@@ -484,7 +484,7 @@ func TestV3LeaseFailover(t *testing.T) {
 	clus.waitLeader(t, clus.Members)
 
 	// lease should not expire at the last received expire deadline.
-	time.Sleep(expectedExp.Sub(time.Now()) - 500*time.Millisecond)
+	time.Sleep(time.Until(expectedExp) - 500*time.Millisecond)
 
 	if !leaseExist(t, clus, lresp.ID) {
 		t.Error("unexpected lease not exists")
