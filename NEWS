@@ -1,3 +1,7 @@
+etcd v3.1.6 (2017-04-19)
+- remove auth check in Status API
+- fill in Auth API response header
+
 etcd v3.1.5 (2017-03-27)
 - add '/etc/nsswitch.conf' file to alpine-based Docker image
 - fix raft memory leak issue
