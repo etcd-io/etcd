@@ -41,7 +41,6 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/contention"
 	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/pbutil"
@@ -243,6 +242,9 @@ type EtcdServer struct {
 	// on etcd server shutdown.
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	leadTimeMu      sync.RWMutex
+	leadElectedTime time.Time
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -419,19 +421,15 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		snapCount: cfg.SnapCount,
 		errorc:    make(chan error, 1),
 		store:     st,
-		r: raftNode{
-			isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
-			Node:        n,
-			ticker:      time.NewTicker(heartbeat),
-			// set up contention detectors for raft heartbeat message.
-			// expect to send a heartbeat within 2 heartbeat intervals.
-			td:          contention.NewTimeoutDetector(2 * heartbeat),
-			heartbeat:   heartbeat,
-			raftStorage: s,
-			storage:     NewStorage(w, ss),
-			msgSnapC:    make(chan raftpb.Message, maxInFlightMsgSnap),
-			readStateC:  make(chan raft.ReadState, 1),
-		},
+		r: *newRaftNode(
+			raftNodeConfig{
+				isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+				Node:        n,
+				heartbeat:   heartbeat,
+				raftStorage: s,
+				storage:     NewStorage(w, ss),
+			},
+		),
 		id:            id,
 		attributes:    membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:       cl,
@@ -614,7 +612,7 @@ type etcdProgress struct {
 // and helps decouple state machine logic from Raft algorithms.
 // TODO: add a state machine interface to apply the commit entries and do snapshot/recover
 type raftReadyHandler struct {
-	updateLeadership     func()
+	updateLeadership     func(newLeader bool)
 	updateCommittedIndex func(uint64)
 	waitForApply         func()
 }
@@ -644,7 +642,7 @@ func (s *EtcdServer) run() {
 		return
 	}
 	rh := &raftReadyHandler{
-		updateLeadership: func() {
+		updateLeadership: func(newLeader bool) {
 			if !s.isLeader() {
 				if s.lessor != nil {
 					s.lessor.Demote()
@@ -654,6 +652,12 @@ func (s *EtcdServer) run() {
 				}
 				setSyncC(nil)
 			} else {
+				if newLeader {
+					t := time.Now()
+					s.leadTimeMu.Lock()
+					s.leadElectedTime = t
+					s.leadTimeMu.Unlock()
+				}
 				setSyncC(s.SyncTicker.C)
 				if s.compactor != nil {
 					s.compactor.Resume()
@@ -664,9 +668,6 @@ func (s *EtcdServer) run() {
 			// current test utility does not provide the stats
 			if s.stats != nil {
 				s.stats.BecomeLeader()
-			}
-			if s.r.td != nil {
-				s.r.td.Reset()
 			}
 		},
 		updateCommittedIndex: func(ci uint64) {
@@ -1580,7 +1581,9 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 	case context.Canceled:
 		return ErrCanceled
 	case context.DeadlineExceeded:
-		curLeadElected := s.r.leadElectedTime()
+		s.leadTimeMu.RLock()
+		curLeadElected := s.leadElectedTime
+		s.leadTimeMu.RUnlock()
 		prevLeadLost := curLeadElected.Add(-2 * time.Duration(s.Cfg.ElectionTicks) * time.Duration(s.Cfg.TickMs) * time.Millisecond)
 		if start.After(prevLeadLost) && start.Before(curLeadElected) {
 			return ErrTimeoutDueToLeaderFail
