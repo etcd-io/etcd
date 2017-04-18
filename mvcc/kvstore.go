@@ -146,13 +146,6 @@ func (s *store) compactBarrier(ctx context.Context, ch chan struct{}) {
 }
 
 func (s *store) Hash() (hash uint32, revision int64, err error) {
-	// TODO: nothing should be able to call into backend when closed
-	select {
-	case <-s.stopc:
-		return 0, 0, ErrClosed
-	default:
-	}
-
 	s.b.ForceCommit()
 	h, err := s.b.Hash(DefaultIgnores)
 	return h, s.currentRev, err
