@@ -17,7 +17,6 @@ package embed
 import (
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/url"
 	"os"
 	"testing"
@@ -74,7 +73,7 @@ func TestUpdateDefaultClusterFromName(t *testing.T) {
 	origadvc := cfg.ACUrls[0].String()
 
 	cfg.Name = "abc"
-	_, lpport, _ := net.SplitHostPort(cfg.LPUrls[0].Host)
+	lpport := cfg.LPUrls[0].Port()
 
 	// in case of 'etcd --name=abc'
 	exp := fmt.Sprintf("%s=%s://localhost:%s", cfg.Name, oldscheme, lpport)
@@ -105,13 +104,13 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 	origadvc := cfg.ACUrls[0].String()
 
 	cfg.Name = "abc"
-	_, lpport, _ := net.SplitHostPort(cfg.LPUrls[0].Host)
+	lpport := cfg.LPUrls[0].Port()
 	cfg.LPUrls[0] = url.URL{Scheme: cfg.LPUrls[0].Scheme, Host: fmt.Sprintf("0.0.0.0:%s", lpport)}
 	dhost, _ := cfg.UpdateDefaultClusterFromName(defaultInitialCluster)
 	if dhost != defaultHostname {
 		t.Fatalf("expected default host %q, got %q", defaultHostname, dhost)
 	}
-	aphost, apport, _ := net.SplitHostPort(cfg.APUrls[0].Host)
+	aphost, apport := cfg.APUrls[0].Hostname(), cfg.APUrls[0].Port()
 	if apport != lpport {
 		t.Fatalf("advertise peer url got different port %s, expected %s", apport, lpport)
 	}
