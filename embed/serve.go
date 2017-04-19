@@ -74,8 +74,6 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
-	defer close(sctx.grpcServerC)
-
 	if sctx.insecure {
 		gs := v3rpc.Server(s, nil)
 		sctx.grpcServerC <- gs
@@ -140,6 +138,7 @@ func (sctx *serveCtx) serve(s *etcdserver.EtcdServer, tlscfg *tls.Config, handle
 		plog.Infof("serving client requests on %s", sctx.l.Addr().String())
 	}
 
+	close(sctx.grpcServerC)
 	return m.Serve()
 }
 
