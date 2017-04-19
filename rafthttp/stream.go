@@ -408,7 +408,7 @@ func (cr *streamReader) stop() {
 	}
 	cr.close()
 	cr.mu.Unlock()
-	<-cr.done
+	// TODO: wait for cr.done when it can always cancel in-flight connection
 }
 
 func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
