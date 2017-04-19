@@ -19,10 +19,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/coreos/etcd/clientv3"
 	"github.com/spf13/cobra"
 )
 
-var memberPeerURLs string
+var (
+	memberPeerURLs        string
+	memberlistConsistency string
+)
 
 // NewMemberCommand returns the cobra command for "member".
 func NewMemberCommand() *cobra.Command {
@@ -90,6 +94,8 @@ The items in the lists are ID, Status, Name, Peer Addrs, Client Addrs.
 
 		Run: memberListCommandFunc,
 	}
+
+	cc.Flags().StringVar(&memberlistConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 
 	return cc
 }
@@ -206,7 +212,16 @@ func memberUpdateCommandFunc(cmd *cobra.Command, args []string) {
 // memberListCommandFunc executes the "member list" command.
 func memberListCommandFunc(cmd *cobra.Command, args []string) {
 	ctx, cancel := commandCtx(cmd)
-	resp, err := mustClientFromCmd(cmd).MemberList(ctx)
+	opts := []clientv3.MemberListOption{}
+	switch memberlistConsistency {
+	case "s":
+		opts = append(opts, clientv3.WithMemberListSerializable())
+	case "l":
+	default:
+		ExitWithError(ExitBadFeature, fmt.Errorf("unknown consistency flag %q", getConsistency))
+	}
+
+	resp, err := mustClientFromCmd(cmd).MemberList(ctx, opts...)
 	cancel()
 	if err != nil {
 		ExitWithError(ExitError, err)
