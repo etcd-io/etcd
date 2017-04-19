@@ -30,7 +30,7 @@ func (p *fieldsPrinter) kv(pfx string, kv *spb.KeyValue) {
 	fmt.Printf("\"%sModRevision\" : %d\n", pfx, kv.ModRevision)
 	fmt.Printf("\"%sVersion\" : %d\n", pfx, kv.Version)
 	fmt.Printf("\"%sValue\" : %q\n", pfx, string(kv.Value))
-	fmt.Printf("\"%sLease\" : %d\n", pfx, string(kv.Lease))
+	fmt.Printf("\"%sLease\" : %d\n", pfx, kv.Lease)
 }
 
 func (p *fieldsPrinter) hdr(h *pb.ResponseHeader) {
