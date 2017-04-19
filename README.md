@@ -59,7 +59,7 @@ This will bring up etcd listening on port 2379 for client communication and on p
 Next, let's set a single key, and then retrieve it:
 
 ```
-ETCDCTL_API=3 etcdctl put mykey "this is awesome"
+ETCDCTL_API=3 etcdctl set mykey "this is awesome"
 ETCDCTL_API=3 etcdctl get mykey
 ```
 
