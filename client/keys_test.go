@@ -655,6 +655,7 @@ func assertRequest(got http.Request, wantMethod string, wantURL *url.URL, wantHe
 		if wantBody == nil {
 			return fmt.Errorf("want.Body=%v got.Body=%s", wantBody, got.Body)
 		}
+
 		gotBytes, err := ioutil.ReadAll(got.Body)
 		if err != nil {
 			return err
