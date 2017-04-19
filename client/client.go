@@ -552,11 +552,18 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 	reqcancel := requestCanceler(c.transport, req)
 
 	rtchan := make(chan roundTripResponse, 1)
-	go func() {
-		resp, err := c.transport.RoundTrip(req)
-		rtchan <- roundTripResponse{resp: resp, err: err}
+
+	select {
+	case <-ctx.Done():
+		rtchan <- roundTripResponse{err: ctx.Err()}
 		close(rtchan)
-	}()
+	default:
+		go func() {
+			resp, err := c.transport.RoundTrip(req)
+			rtchan <- roundTripResponse{resp: resp, err: err}
+			close(rtchan)
+		}()
+	}
 
 	var resp *http.Response
 	var err error
