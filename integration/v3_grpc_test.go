@@ -95,7 +95,7 @@ func TestV3PutRestart(t *testing.T) {
 	clus.clients[stopIdx].Close()
 	clus.Members[stopIdx].Stop(t)
 	clus.Members[stopIdx].Restart(t)
-	c, cerr := NewClientV3(clus.Members[stopIdx])
+	c, cerr := NewClientV3(clus.Members[stopIdx], "", "")
 	if cerr != nil {
 		t.Fatalf("cannot create client: %v", cerr)
 	}
@@ -1312,7 +1312,7 @@ func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 
 	// nil out TLS field so client will use an insecure connection
 	clus.Members[0].ClientTLSInfo = nil
-	client, err := NewClientV3(clus.Members[0])
+	client, err := NewClientV3(clus.Members[0], "", "")
 	if err != nil && err != grpc.ErrClientConnTimeout {
 		t.Fatalf("unexpected error (%v)", err)
 	} else if client == nil {
@@ -1346,7 +1346,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	defer clus.Terminate(t)
 
 	clus.Members[0].ClientTLSInfo = &testTLSInfo
-	client, err := NewClientV3(clus.Members[0])
+	client, err := NewClientV3(clus.Members[0], "", "")
 	if client != nil || err == nil {
 		t.Fatalf("expected no client")
 	} else if err != grpc.ErrClientConnTimeout {
@@ -1362,7 +1362,7 @@ func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 
-	client, err := NewClientV3(clus.Members[0])
+	client, err := NewClientV3(clus.Members[0], "", "")
 	if err != nil {
 		t.Fatalf("expected tls client (%v)", err)
 	}
@@ -1384,7 +1384,7 @@ func TestGRPCRequireLeader(t *testing.T) {
 	clus.Members[1].Stop(t)
 	clus.Members[2].Stop(t)
 
-	client, err := NewClientV3(clus.Members[0])
+	client, err := NewClientV3(clus.Members[0], "", "")
 	if err != nil {
 		t.Fatalf("cannot create client: %v", err)
 	}
@@ -1408,7 +1408,7 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 
-	client, err := NewClientV3(clus.Members[0])
+	client, err := NewClientV3(clus.Members[0], "", "")
 	if err != nil {
 		t.Fatalf("failed to create client (%v)", err)
 	}

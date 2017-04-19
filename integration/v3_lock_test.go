@@ -291,7 +291,7 @@ func makeClients(t *testing.T, clients *[]*clientv3.Client, choose func() *membe
 	var mu sync.Mutex
 	*clients = nil
 	return func() *clientv3.Client {
-		cli, err := NewClientV3(choose())
+		cli, err := NewClientV3(choose(), "", "")
 		if err != nil {
 			t.Fatalf("cannot create client: %v", err)
 		}
