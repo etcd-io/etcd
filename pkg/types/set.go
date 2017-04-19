@@ -66,6 +66,9 @@ func (us *unsafeSet) Contains(value string) (exists bool) {
 
 // ContainsAll returns whether the set contains all given values
 func (us *unsafeSet) ContainsAll(values []string) bool {
+	if len(values) > len(us.d) {
+		return false
+	}
 	for _, s := range values {
 		if !us.Contains(s) {
 			return false
