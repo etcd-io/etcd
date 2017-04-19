@@ -23,6 +23,10 @@ COVERPKG=${COVERPKG/#\//}
 COVERPKG=${COVERPKG/%\//}
 COVERPKG=${COVERPKG//\//_}
 
+if ! [ -f "${COVEROUT}/${COVERPKG}.out" ]; then
+	touch "${COVEROUT}/${COVERPKG}.out"
+fi
+
 # generate arg for "go test"
 export COVER="-coverprofile ${COVEROUT}/${COVERPKG}.out"
 
