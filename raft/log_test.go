@@ -577,7 +577,7 @@ func TestCompaction(t *testing.T) {
 	}
 }
 
-func TestLogRestore(t *testing.T) {
+func TestLogNew(t *testing.T) {
 	index := uint64(1000)
 	term := uint64(1000)
 	snap := pb.SnapshotMetadata{Index: index, Term: term}
@@ -599,6 +599,36 @@ func TestLogRestore(t *testing.T) {
 	}
 	if mustTerm(raftLog.term(index)) != term {
 		t.Errorf("term = %d, want %d", mustTerm(raftLog.term(index)), term)
+	}
+}
+
+func TestLogRestore(t *testing.T) {
+	index := uint64(1000)
+	term := uint64(1000)
+	snap := pb.Snapshot{
+		Metadata: pb.SnapshotMetadata{Index: index, Term: term},
+	}
+	storage := NewMemoryStorage()
+	raftLog := newLog(storage)
+	raftLog.restore(snap)
+
+	if len(raftLog.allEntries()) != 0 {
+		t.Errorf("len = %d, want 0", len(raftLog.allEntries()))
+	}
+	if raftLog.firstIndex() != index+1 {
+		t.Errorf("firstIndex = %d, want %d", raftLog.firstIndex(), index+1)
+	}
+	if raftLog.lastIndex() != index {
+		t.Errorf("lastIndex = %d, want %d", raftLog.lastIndex(), index)
+	}
+	if raftLog.committed != index {
+		t.Errorf("comitted = %d, want %d", raftLog.committed, index)
+	}
+	if raftLog.unstable.offset != index+1 {
+		t.Errorf("unstable = %d, want %d", raftLog.unstable, index+1)
+	}
+	if raftLog.term(index) != term {
+		t.Errorf("term = %d, want %d", raftLog.term(index), term)
 	}
 }
 
