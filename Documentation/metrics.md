@@ -27,7 +27,7 @@ All these metrics are prefixed with `etcd_server_`
 | proposals_committed_total | The total number of consensus proposals committed.       | Gauge   |
 | proposals_applied_total   | The total number of consensus proposals applied.         | Gauge   |
 | proposals_pending         | The current number of pending proposals.                 | Gauge   |
-| proposals_failed_total    | The total number of failed proposals seen.               | Counter |
+| proposals_failed_total    | The total number of failed proposals seen.               | Gauge   |
 
 `has_leader` indicates whether the member has a leader. If a member does not have a leader, it is
 totally unavailable. If all the members in the cluster do not have any leader, the entire cluster
