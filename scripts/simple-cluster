@@ -1,0 +1,15 @@
+#!/bin/sh
+
+die() {
+	echo 1>&2 "usage: etcd-simple <member #> <discovery url>"
+	exit 1
+}
+
+set -e
+
+n=$1
+durl=$2
+
+(test -z "$n" || test -z "$durl") && die
+
+./bin/etcd -peer-addr 127.0.0.1:700$n -addr 127.0.0.1:400$n -discovery=$durl -data-dir machines/machine$n -name machine$n
