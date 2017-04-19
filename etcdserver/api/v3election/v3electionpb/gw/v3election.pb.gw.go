@@ -7,9 +7,10 @@ Package v3electionpb is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package v3electionpb
+package gw
 
 import (
+	"github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
 	"io"
 	"net/http"
 
@@ -27,8 +28,8 @@ var _ io.Reader
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
-func request_Election_Campaign_0(ctx context.Context, marshaler runtime.Marshaler, client ElectionClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq CampaignRequest
+func request_Election_Campaign_0(ctx context.Context, marshaler runtime.Marshaler, client v3electionpb.ElectionClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq v3electionpb.CampaignRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
@@ -40,8 +41,8 @@ func request_Election_Campaign_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func request_Election_Proclaim_0(ctx context.Context, marshaler runtime.Marshaler, client ElectionClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ProclaimRequest
+func request_Election_Proclaim_0(ctx context.Context, marshaler runtime.Marshaler, client v3electionpb.ElectionClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq v3electionpb.ProclaimRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
@@ -53,8 +54,8 @@ func request_Election_Proclaim_0(ctx context.Context, marshaler runtime.Marshale
 
 }
 
-func request_Election_Leader_0(ctx context.Context, marshaler runtime.Marshaler, client ElectionClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq LeaderRequest
+func request_Election_Leader_0(ctx context.Context, marshaler runtime.Marshaler, client v3electionpb.ElectionClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq v3electionpb.LeaderRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
@@ -66,8 +67,8 @@ func request_Election_Leader_0(ctx context.Context, marshaler runtime.Marshaler,
 
 }
 
-func request_Election_Observe_0(ctx context.Context, marshaler runtime.Marshaler, client ElectionClient, req *http.Request, pathParams map[string]string) (Election_ObserveClient, runtime.ServerMetadata, error) {
-	var protoReq LeaderRequest
+func request_Election_Observe_0(ctx context.Context, marshaler runtime.Marshaler, client v3electionpb.ElectionClient, req *http.Request, pathParams map[string]string) (v3electionpb.Election_ObserveClient, runtime.ServerMetadata, error) {
+	var protoReq v3electionpb.LeaderRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
@@ -87,8 +88,8 @@ func request_Election_Observe_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-func request_Election_Resign_0(ctx context.Context, marshaler runtime.Marshaler, client ElectionClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ResignRequest
+func request_Election_Resign_0(ctx context.Context, marshaler runtime.Marshaler, client v3electionpb.ElectionClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq v3electionpb.ResignRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
@@ -128,7 +129,7 @@ func RegisterElectionHandlerFromEndpoint(ctx context.Context, mux *runtime.Serve
 // RegisterElectionHandler registers the http handlers for service Election to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
 func RegisterElectionHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	client := NewElectionClient(conn)
+	client := v3electionpb.NewElectionClient(conn)
 
 	mux.Handle("POST", pattern_Election_Campaign_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)

@@ -7,9 +7,10 @@ Package v3lockpb is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package v3lockpb
+package gw
 
 import (
+	"github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
 	"io"
 	"net/http"
 
@@ -27,8 +28,8 @@ var _ io.Reader
 var _ = runtime.String
 var _ = utilities.NewDoubleArray
 
-func request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, client LockClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq LockRequest
+func request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, client v3lockpb.LockClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq v3lockpb.LockRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
@@ -40,8 +41,8 @@ func request_Lock_Lock_0(ctx context.Context, marshaler runtime.Marshaler, clien
 
 }
 
-func request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, client LockClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UnlockRequest
+func request_Lock_Unlock_0(ctx context.Context, marshaler runtime.Marshaler, client v3lockpb.LockClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq v3lockpb.UnlockRequest
 	var metadata runtime.ServerMetadata
 
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
@@ -81,7 +82,7 @@ func RegisterLockHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux,
 // RegisterLockHandler registers the http handlers for service Lock to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
 func RegisterLockHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	client := NewLockClient(conn)
+	client := v3lockpb.NewLockClient(conn)
 
 	mux.Handle("POST", pattern_Lock_Lock_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(ctx)

@@ -27,10 +27,12 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3client"
 	"github.com/coreos/etcd/etcdserver/api/v3election"
 	"github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
+	v3electiongw "github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb/gw"
 	"github.com/coreos/etcd/etcdserver/api/v3lock"
 	"github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
+	v3lockgw "github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb/gw"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	etcdservergw "github.com/coreos/etcd/etcdserver/etcdserverpb/gw"
 	"github.com/coreos/etcd/pkg/debugutil"
 
 	"github.com/cockroachdb/cmux"
@@ -178,14 +180,14 @@ func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, err
 	gwmux := gw.NewServeMux()
 
 	handlers := []registerHandlerFunc{
-		pb.RegisterKVHandlerFromEndpoint,
-		pb.RegisterWatchHandlerFromEndpoint,
-		pb.RegisterLeaseHandlerFromEndpoint,
-		pb.RegisterClusterHandlerFromEndpoint,
-		pb.RegisterMaintenanceHandlerFromEndpoint,
-		pb.RegisterAuthHandlerFromEndpoint,
-		v3lockpb.RegisterLockHandlerFromEndpoint,
-		v3electionpb.RegisterElectionHandlerFromEndpoint,
+		etcdservergw.RegisterKVHandlerFromEndpoint,
+		etcdservergw.RegisterWatchHandlerFromEndpoint,
+		etcdservergw.RegisterLeaseHandlerFromEndpoint,
+		etcdservergw.RegisterClusterHandlerFromEndpoint,
+		etcdservergw.RegisterMaintenanceHandlerFromEndpoint,
+		etcdservergw.RegisterAuthHandlerFromEndpoint,
+		v3lockgw.RegisterLockHandlerFromEndpoint,
+		v3electiongw.RegisterElectionHandlerFromEndpoint,
 	}
 	for _, h := range handlers {
 		if err := h(ctx, gwmux, addr, opts); err != nil {
