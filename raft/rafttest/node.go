@@ -78,9 +78,22 @@ func (n *node) start() {
 				}
 				n.storage.Append(rd.Entries)
 				time.Sleep(time.Millisecond)
-				// TODO: make send async, more like real world...
-				for _, m := range rd.Messages {
-					n.iface.send(m)
+				// make send async, more like real world...
+				if len(rd.Messages) > 0 {
+					done := make(chan struct{})
+					for _, m := range rd.Messages {
+						go func(m raftpb.Message) {
+							n.iface.send(m)
+							done <- struct{}{}
+						}(m)
+					}
+					doneCnt := 0
+					for range done {
+						doneCnt++
+						if doneCnt == len(rd.Messages) {
+							close(done)
+						}
+					}
 				}
 				n.Advance()
 			case m := <-n.iface.recv():
