@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -49,7 +50,7 @@ func BenchmarkStoreDelete(b *testing.B) {
 	b.StopTimer()
 
 	s := newStore()
-	kvs, _ := generateNRandomKV(b.N, 128)
+	kvs, _ := generateNKV(b.N, 128)
 
 	memStats := new(runtime.MemStats)
 	runtime.GC()
@@ -99,7 +100,7 @@ func BenchmarkStoreDelete(b *testing.B) {
 func BenchmarkWatch(b *testing.B) {
 	b.StopTimer()
 	s := newStore()
-	kvs, _ := generateNRandomKV(b.N, 128)
+	kvs, _ := generateNKV(b.N, 128)
 	b.StartTimer()
 
 	memStats := new(runtime.MemStats)
@@ -126,7 +127,7 @@ func BenchmarkWatch(b *testing.B) {
 func BenchmarkWatchWithSet(b *testing.B) {
 	b.StopTimer()
 	s := newStore()
-	kvs, _ := generateNRandomKV(b.N, 128)
+	kvs, _ := generateNKV(b.N, 128)
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -140,7 +141,7 @@ func BenchmarkWatchWithSet(b *testing.B) {
 func BenchmarkWatchWithSetBatch(b *testing.B) {
 	b.StopTimer()
 	s := newStore()
-	kvs, _ := generateNRandomKV(b.N, 128)
+	kvs, _ := generateNKV(b.N, 128)
 	b.StartTimer()
 
 	watchers := make([]Watcher, b.N)
@@ -156,7 +157,6 @@ func BenchmarkWatchWithSetBatch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		<-watchers[i].EventChan()
 	}
-
 }
 
 func BenchmarkWatchOneKey(b *testing.B) {
@@ -174,10 +174,126 @@ func BenchmarkWatchOneKey(b *testing.B) {
 	}
 }
 
+// Benchmark store.Save() with 100 KVs
+func BenchmarkSaveLight(b *testing.B) {
+	s := newStoreWithKV(100, 128, 1024, 3, 10)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := s.Save(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Save() with 1000 KVs
+func BenchmarkSaveMedium(b *testing.B) {
+	s := newStoreWithKV(1000, 128, 1024, 3, 10)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := s.Save(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Save() with 10000 KVs
+func BenchmarkSaveHeavy(b *testing.B) {
+	s := newStoreWithKV(10000, 128, 1024, 3, 10)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := s.Save(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Save() with 100000 KVs
+func BenchmarkSaveUltraHeavy(b *testing.B) {
+	s := newStoreWithKV(100000, 128, 1024, 3, 10)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := s.Save(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Recovery() with 100 KVs
+func BenchmarkRecoveryLight(b *testing.B) {
+	s := newStoreWithKV(100, 128, 1024, 3, 10)
+	bs, err := s.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := s.Recovery(bs); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Recovery() with 1000 KVs
+func BenchmarkRecoveryMedium(b *testing.B) {
+	s := newStoreWithKV(1000, 128, 1024, 3, 10)
+	bs, err := s.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := s.Recovery(bs); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Recovery() with 10000 KVs
+func BenchmarkRecoveryHeavy(b *testing.B) {
+	s := newStoreWithKV(10000, 128, 1024, 3, 10)
+	bs, err := s.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := s.Recovery(bs); err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Benchmark store.Recovery() with 100000 KVs
+func BenchmarkRecoveryUltraHeavy(b *testing.B) {
+	s := newStoreWithKV(100000, 128, 1024, 3, 10)
+	bs, err := s.Save()
+	if err != nil {
+		panic(err)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := s.Recovery(bs); err != nil {
+			panic(err)
+		}
+	}
+}
+
 func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byte, error)) {
 	s := newStore()
 	b.StopTimer()
-	kvs, size := generateNRandomKV(b.N, valueSize)
+	kvs, size := generateNKV(b.N, valueSize)
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -203,17 +319,50 @@ func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byt
 		memStats.Alloc/1000, size/1000, b.N, memStats.Alloc/size)
 }
 
-func generateNRandomKV(n int, valueSize int) ([][]string, uint64) {
+func generateNKV(n int, valueSize int) ([][]string, uint64) {
+	return generateNKVWithDepth(n, valueSize, 3)
+}
+
+// generateNKVWithDepth generates n KV pairs with value's size == valueSize, key's depth == depth
+func generateNKVWithDepth(n, valueSize, depth int) ([][]string, uint64) {
 	var size uint64
 	kvs := make([][]string, n)
 	bytes := make([]byte, valueSize)
 
 	for i := 0; i < n; i++ {
 		kvs[i] = make([]string, 2)
-		kvs[i][0] = fmt.Sprintf("/%010d/%010d/%010d", n, n, n)
+		kvs[i][0] = strings.Repeat(fmt.Sprintf("/%010d", i), depth)
 		kvs[i][1] = string(bytes)
 		size = size + uint64(len(kvs[i][0])) + uint64(len(kvs[i][1]))
 	}
-
 	return kvs, size
+}
+
+// newStoreWithKV creates a new store instance with n KV pairs of 3 types:
+//
+// short depth - short values.
+// medium depth - medium values.
+// long depth - long values.
+//
+// And they have uniform distribution.
+func newStoreWithKV(n, minValueSize, maxValueSize, minDepth, maxDepth int) *store {
+	minDepth, maxDepth = minDepth-1, maxDepth-1
+	s := newStore()
+
+	kvGroup := make([][][]string, 3)
+	// create three types of KV pairs
+	kvGroup[0], _ = generateNKVWithDepth(n/3, maxValueSize, maxDepth)
+	kvGroup[1], _ = generateNKVWithDepth(n/3, (minValueSize+maxValueSize+1)/2, (minDepth+maxDepth+1)/2+1)
+	kvGroup[2], _ = generateNKVWithDepth(n/3, minValueSize, minDepth)
+
+	// set KV pairs
+	for _, kvs := range kvGroup {
+		for _, kv := range kvs {
+			_, err := s.Set(kv[0]+"/foo", false, kv[1], Permanent)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	return s
 }
