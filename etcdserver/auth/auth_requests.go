@@ -117,6 +117,7 @@ func (s *store) requestResource(res string, dir, quorum bool) (etcdserver.Respon
 		Method: method,
 		Path:   p,
 		Dir:    dir,
+		Quorum: true,
 	}
 	return s.server.Do(ctx, rr)
 }
