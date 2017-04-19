@@ -586,16 +586,23 @@ func TestLeaseRenewLostQuorum(t *testing.T) {
 	}
 	// consume first keepalive so next message sends when cluster is down
 	<-ka
+	lastKa := time.Now()
 
 	// force keepalive stream message to timeout
 	clus.Members[1].Stop(t)
 	clus.Members[2].Stop(t)
-	// Use TTL-1 since the client closes the keepalive channel if no
-	// keepalive arrives before the lease deadline.
-	// The cluster has 1 second to recover and reply to the keepalive.
-	time.Sleep(time.Duration(r.TTL-1) * time.Second)
+	// Use TTL-2 since the client closes the keepalive channel if no
+	// keepalive arrives before the lease deadline; the client will
+	// try to resend a keepalive after TTL/3 seconds, so for a TTL of 4,
+	// sleeping for 2s should be sufficient time for issuing a retry.
+	// The cluster has two seconds to recover and reply to the keepalive.
+	time.Sleep(time.Duration(r.TTL-2) * time.Second)
 	clus.Members[1].Restart(t)
 	clus.Members[2].Restart(t)
+
+	if time.Since(lastKa) > time.Duration(r.TTL)*time.Second {
+		t.Skip("waited too long for server stop and restart")
+	}
 
 	select {
 	case _, ok := <-ka:
