@@ -1,0 +1,18 @@
+[
+	{
+		"project": "bitbucket.org/ww/goautoneg",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License"
+	},
+	{
+		"project": "github.com/ghodss/yaml",
+		"license": "MIT License and BSD 3-clause \"New\" or \"Revised\" License"
+	},
+	{
+		"project": "github.com/inconshreveable/mousetrap",
+		"license": "Apache License 2.0"
+	},
+	{
+		"project": "gopkg.in/yaml.v2",
+		"license": "Apache License 2.0 and MIT License"
+	}
+]
