@@ -39,7 +39,7 @@ type ServerStats struct {
 		StartTime time.Time `json:"startTime"`
 	} `json:"leaderInfo"`
 
-	RecvAppendRequestCnt uint64  `json:"recvAppendRequestCnt,"`
+	RecvAppendRequestCnt uint64  `json:"recvAppendRequestCnt"`
 	RecvingPkgRate       float64 `json:"recvPkgRate,omitempty"`
 	RecvingBandwidthRate float64 `json:"recvBandwidthRate,omitempty"`
 
