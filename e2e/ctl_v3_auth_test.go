@@ -88,9 +88,9 @@ func authDisableTest(cx ctlCtx) {
 		cx.t.Fatalf("authDisableTest ctlV3AuthDisable error (%v)", err)
 	}
 
-	// now auth fails unconditionally, note that failed RPC is Authenticate(), not Put()
+	// now ErrAuthNotEnabled of Authenticate() is simply ignored
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3PutFailAuthDisabled(cx, "hoo", "bar"); err != nil {
+	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -328,10 +328,6 @@ func ctlV3PutFailAuth(cx ctlCtx, key, val string) error {
 
 func ctlV3PutFailPerm(cx ctlCtx, key, val string) error {
 	return spawnWithExpect(append(cx.PrefixArgs(), "put", key, val), "permission denied")
-}
-
-func ctlV3PutFailAuthDisabled(cx ctlCtx, key, val string) error {
-	return spawnWithExpect(append(cx.PrefixArgs(), "put", key, val), "authentication is not enabled")
 }
 
 func authSetupTestUser(cx ctlCtx) {

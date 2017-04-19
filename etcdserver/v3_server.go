@@ -374,7 +374,9 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 	for {
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
 		if err != nil {
-			plog.Errorf("invalid authentication request to user %s was issued", r.Name)
+			if err != auth.ErrAuthNotEnabled {
+				plog.Errorf("invalid authentication request to user %s was issued", r.Name)
+			}
 			return nil, err
 		}
 
