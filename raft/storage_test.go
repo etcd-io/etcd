@@ -265,7 +265,7 @@ func TestStorageApplySnapshot(t *testing.T) {
 		{Data: data, Metadata: pb.SnapshotMetadata{Index: 3, Term: 3, ConfState: *cs}},
 	}
 
-	s := NewMemoryStorage()
+	s := NewMemoryStorage(0)
 
 	//Apply Snapshot successful
 	i := 0

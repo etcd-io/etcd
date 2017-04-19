@@ -39,7 +39,7 @@ type node struct {
 }
 
 func startNode(id uint64, peers []raft.Peer, iface iface) *node {
-	st := raft.NewMemoryStorage()
+	st := raft.NewMemoryStorage(0)
 	c := &raft.Config{
 		ID:              id,
 		ElectionTick:    10,

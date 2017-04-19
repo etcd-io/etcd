@@ -81,13 +81,28 @@ type MemoryStorage struct {
 	snapshot  pb.Snapshot
 	// ents[i] has raft log position i+snapshot.Metadata.Index
 	ents []pb.Entry
+	// entsSize has a total size of Data of ents
+	entsSize uint64
+
+	// snapSize holds a number of bytes that should be a limit of ents
+	// Note that the limit can be violated in some extreme cases e.g.
+	// a single entry can be larger than snapSize, so we cannot have
+	// an invariant that is always true like this: size of ents <= limit
+	snapSize uint64
+
+	// snapSizeCompactIdx is an upper bound index that should be compacted
+	// based on snapSize. If it is -1, size based compaction shouldn't be
+	// triggered.
+	snapSizeCompactIdx int64
 }
 
 // NewMemoryStorage creates an empty MemoryStorage.
-func NewMemoryStorage() *MemoryStorage {
+func NewMemoryStorage(snapSize uint64) *MemoryStorage {
 	return &MemoryStorage{
 		// When starting from scratch populate the list with a dummy entry at term zero.
-		ents: make([]pb.Entry, 1),
+		ents:               make([]pb.Entry, 1),
+		snapSize:           snapSize,
+		snapSizeCompactIdx: -1,
 	}
 }
 
@@ -182,6 +197,8 @@ func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
 
 	ms.snapshot = snap
 	ms.ents = []pb.Entry{{Term: snap.Metadata.Term, Index: snap.Metadata.Index}}
+	ms.entsSize = 0
+	ms.snapSizeCompactIdx = -1
 	return nil
 }
 
@@ -230,6 +247,12 @@ func (ms *MemoryStorage) Compact(compactIndex uint64) error {
 	ents[0].Term = ms.ents[i].Term
 	ents = append(ents, ms.ents[i+1:]...)
 	ms.ents = ents
+	ms.entsSize = sizeOfEntries(ms.ents)
+	if ms.snapSize < ms.entsSize {
+		ms.snapSizeCompactIdx = int64(ms.ents[len(ms.ents)-1].Index)
+	} else {
+		ms.snapSizeCompactIdx = -1
+	}
 	return nil
 }
 
@@ -261,11 +284,41 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) error {
 	case uint64(len(ms.ents)) > offset:
 		ms.ents = append([]pb.Entry{}, ms.ents[:offset]...)
 		ms.ents = append(ms.ents, entries...)
+		ms.entsSize = sizeOfEntries(ms.ents)
 	case uint64(len(ms.ents)) == offset:
 		ms.ents = append(ms.ents, entries...)
+		ms.entsSize += sizeOfEntries(entries)
 	default:
 		raftLogger.Panicf("missing log entry [last: %d, append at: %d]",
 			ms.lastIndex(), entries[0].Index)
 	}
+
+	if ms.snapSizeCompactIdx == -1 && ms.snapSize < ms.entsSize {
+		// this calculation of snapSizeCompactIdx isn't accurate but
+		// calculating the exact minimum index that satisfies the
+		// below condition would be expensive
+		ms.snapSizeCompactIdx = int64(ms.ents[len(ms.ents)-1].Index)
+	}
+
 	return nil
+}
+
+func sizeOfEntries(entries []pb.Entry) (size uint64) {
+	for _, e := range entries {
+		size += uint64(len(e.Data))
+	}
+	return size
+}
+
+func (ms *MemoryStorage) ShouldCompactBySize() bool {
+	ms.Lock()
+	defer ms.Unlock()
+	return ms.snapSize != 0 && ms.snapSizeCompactIdx != -1
+}
+
+func (ms *MemoryStorage) SizeBasedCompactIndex() uint64 {
+	ms.Lock()
+	defer ms.Unlock()
+	// when ms.snapSizeCompactIdx == -1, this function must not be called
+	return uint64(ms.snapSizeCompactIdx)
 }

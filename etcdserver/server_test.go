@@ -172,7 +172,7 @@ func TestApplyRepeat(t *testing.T) {
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: raft.NewMemoryStorage(0),
 		storage:     mockstorage.NewStorageRecorder(""),
 		transport:   rafthttp.NewNopTransporter(),
 	})
@@ -679,7 +679,7 @@ func TestDoProposal(t *testing.T) {
 		r := newRaftNode(raftNodeConfig{
 			Node:        newNodeCommitter(),
 			storage:     mockstorage.NewStorageRecorder(""),
-			raftStorage: raft.NewMemoryStorage(),
+			raftStorage: raft.NewMemoryStorage(0),
 			transport:   rafthttp.NewNopTransporter(),
 		})
 		srv := &EtcdServer{
@@ -847,7 +847,7 @@ func TestSyncTrigger(t *testing.T) {
 	tk := &time.Ticker{C: st}
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: raft.NewMemoryStorage(0),
 		transport:   rafthttp.NewNopTransporter(),
 		storage:     mockstorage.NewStorageRecorder(""),
 	})
@@ -901,7 +901,7 @@ func TestSnapshot(t *testing.T) {
 		os.RemoveAll(tmpPath)
 	}()
 
-	s := raft.NewMemoryStorage()
+	s := raft.NewMemoryStorage(0)
 	s.Append([]raftpb.Entry{{Index: 1}})
 	st := mockstore.NewRecorderStream()
 	p := mockstorage.NewStorageRecorderStream("")
@@ -970,7 +970,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		t.Fatalf("couldn't make snap dir (%v)", err)
 	}
 
-	rs := raft.NewMemoryStorage()
+	rs := raft.NewMemoryStorage(0)
 	p := mockstorage.NewStorageRecorderStream(testdir)
 	tr, snapDoneC := rafthttp.NewSnapTransporter(snapdir)
 	r := newRaftNode(raftNodeConfig{
@@ -1037,7 +1037,7 @@ func TestTriggerSnap(t *testing.T) {
 	p := mockstorage.NewStorageRecorderStream("")
 	r := newRaftNode(raftNodeConfig{
 		Node:        newNodeCommitter(),
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: raft.NewMemoryStorage(0),
 		storage:     p,
 		transport:   rafthttp.NewNopTransporter(),
 	})
@@ -1096,7 +1096,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		t.Fatalf("Couldn't make snap dir (%v)", err)
 	}
 
-	rs := raft.NewMemoryStorage()
+	rs := raft.NewMemoryStorage(0)
 	tr, snapDoneC := rafthttp.NewSnapTransporter(testdir)
 	r := newRaftNode(raftNodeConfig{
 		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
@@ -1185,7 +1185,7 @@ func TestAddMember(t *testing.T) {
 	cl.SetStore(st)
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: raft.NewMemoryStorage(0),
 		storage:     mockstorage.NewStorageRecorder(""),
 		transport:   rafthttp.NewNopTransporter(),
 	})
@@ -1226,7 +1226,7 @@ func TestRemoveMember(t *testing.T) {
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: raft.NewMemoryStorage(0),
 		storage:     mockstorage.NewStorageRecorder(""),
 		transport:   rafthttp.NewNopTransporter(),
 	})
@@ -1266,7 +1266,7 @@ func TestUpdateMember(t *testing.T) {
 	cl.AddMember(&membership.Member{ID: 1234})
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: raft.NewMemoryStorage(0),
 		storage:     mockstorage.NewStorageRecorder(""),
 		transport:   rafthttp.NewNopTransporter(),
 	})

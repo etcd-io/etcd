@@ -231,7 +231,7 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 	if err != nil {
 		log.Fatalf("raftexample: failed to read WAL (%v)", err)
 	}
-	rc.raftStorage = raft.NewMemoryStorage()
+	rc.raftStorage = raft.NewMemoryStorage(0)
 	if snapshot != nil {
 		rc.raftStorage.ApplySnapshot(*snapshot)
 	}

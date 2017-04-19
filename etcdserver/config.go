@@ -40,6 +40,7 @@ type ServerConfig struct {
 	// rather than the dataDir/member/wal.
 	DedicatedWALDir     string
 	SnapCount           uint64
+	SnapSize            uint64
 	MaxSnapFiles        uint
 	MaxWALFiles         uint
 	InitialPeerURLsMap  types.URLsMap
@@ -202,6 +203,7 @@ func (c *ServerConfig) print(initial bool) {
 	plog.Infof("heartbeat = %dms", c.TickMs)
 	plog.Infof("election = %dms", c.ElectionTicks*int(c.TickMs))
 	plog.Infof("snapshot count = %d", c.SnapCount)
+	plog.Infof("snapshot size = %d", c.SnapSize)
 	if len(c.DiscoveryURL) != 0 {
 		plog.Infof("discovery URL= %s", c.DiscoveryURL)
 		if len(c.DiscoveryProxy) != 0 {

@@ -25,7 +25,7 @@ import (
 // TestRawNodeStep ensures that RawNode.Step ignore local message.
 func TestRawNodeStep(t *testing.T) {
 	for i, msgn := range raftpb.MessageType_name {
-		s := NewMemoryStorage()
+		s := NewMemoryStorage(0)
 		rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, s), []Peer{{ID: 1}})
 		if err != nil {
 			t.Fatal(err)
@@ -47,7 +47,7 @@ func TestRawNodeStep(t *testing.T) {
 // TestRawNodeProposeAndConfChange ensures that RawNode.Propose and RawNode.ProposeConfChange
 // send the given proposal and ConfChange to the underlying raft.
 func TestRawNodeProposeAndConfChange(t *testing.T) {
-	s := NewMemoryStorage()
+	s := NewMemoryStorage(0)
 	var err error
 	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, s), []Peer{{ID: 1}})
 	if err != nil {
@@ -113,7 +113,7 @@ func TestRawNodeProposeAndConfChange(t *testing.T) {
 // TestRawNodeProposeAddDuplicateNode ensures that two proposes to add the same node should
 // not affect the later propose to add new node.
 func TestRawNodeProposeAddDuplicateNode(t *testing.T) {
-	s := NewMemoryStorage()
+	s := NewMemoryStorage(0)
 	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, s), []Peer{{ID: 1}})
 	if err != nil {
 		t.Fatal(err)
@@ -195,7 +195,7 @@ func TestRawNodeReadIndex(t *testing.T) {
 	}
 	wrs := []ReadState{{Index: uint64(1), RequestCtx: []byte("somedata")}}
 
-	s := NewMemoryStorage()
+	s := NewMemoryStorage(0)
 	c := newTestConfig(1, nil, 10, 1, s)
 	rawNode, err := NewRawNode(c, []Peer{{ID: 1}})
 	if err != nil {
@@ -283,7 +283,7 @@ func TestRawNodeStart(t *testing.T) {
 		},
 	}
 
-	storage := NewMemoryStorage()
+	storage := NewMemoryStorage(0)
 	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, storage), []Peer{{ID: 1}})
 	if err != nil {
 		t.Fatal(err)
@@ -331,7 +331,7 @@ func TestRawNodeRestart(t *testing.T) {
 		MustSync:         true,
 	}
 
-	storage := NewMemoryStorage()
+	storage := NewMemoryStorage(0)
 	storage.SetHardState(st)
 	storage.Append(entries)
 	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, storage), nil)
@@ -368,7 +368,7 @@ func TestRawNodeRestartFromSnapshot(t *testing.T) {
 		MustSync:         true,
 	}
 
-	s := NewMemoryStorage()
+	s := NewMemoryStorage(0)
 	s.SetHardState(st)
 	s.ApplySnapshot(snap)
 	s.Append(entries)
@@ -390,7 +390,7 @@ func TestRawNodeRestartFromSnapshot(t *testing.T) {
 // no dependency check between Ready() and Advance()
 
 func TestRawNodeStatus(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemoryStorage(0)
 	rawNode, err := NewRawNode(newTestConfig(1, nil, 10, 1, storage), []Peer{{ID: 1}})
 	if err != nil {
 		t.Fatal(err)

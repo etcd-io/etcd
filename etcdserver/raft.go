@@ -400,7 +400,7 @@ func startNode(cfg ServerConfig, cl *membership.RaftCluster, ids []types.ID) (id
 	}
 	id = member.ID
 	plog.Infof("starting member %s in cluster %s", id, cl.ID())
-	s = raft.NewMemoryStorage()
+	s = raft.NewMemoryStorage(cfg.SnapSize)
 	c := &raft.Config{
 		ID:              uint64(id),
 		ElectionTick:    cfg.ElectionTicks,
@@ -429,7 +429,7 @@ func restartNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types.ID, *member
 	plog.Infof("restarting member %s in cluster %s at commit index %d", id, cid, st.Commit)
 	cl := membership.NewCluster("")
 	cl.SetID(cid)
-	s := raft.NewMemoryStorage()
+	s := raft.NewMemoryStorage(cfg.SnapSize)
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
 	}
@@ -485,7 +485,7 @@ func restartAsStandaloneNode(cfg ServerConfig, snapshot *raftpb.Snapshot) (types
 	plog.Printf("forcing restart of member %s in cluster %s at commit index %d", id, cid, st.Commit)
 	cl := membership.NewCluster("")
 	cl.SetID(cid)
-	s := raft.NewMemoryStorage()
+	s := raft.NewMemoryStorage(cfg.SnapSize)
 	if snapshot != nil {
 		s.ApplySnapshot(*snapshot)
 	}

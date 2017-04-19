@@ -31,7 +31,7 @@ var (
 )
 
 func TestSendingSnapshotSetPendingSnapshot(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemoryStorage(0)
 	sm := newTestRaft(1, []uint64{1}, 10, 1, storage)
 	sm.restore(testingSnap)
 
@@ -49,7 +49,7 @@ func TestSendingSnapshotSetPendingSnapshot(t *testing.T) {
 }
 
 func TestPendingSnapshotPauseReplication(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemoryStorage(0)
 	sm := newTestRaft(1, []uint64{1, 2}, 10, 1, storage)
 	sm.restore(testingSnap)
 
@@ -66,7 +66,7 @@ func TestPendingSnapshotPauseReplication(t *testing.T) {
 }
 
 func TestSnapshotFailure(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemoryStorage(0)
 	sm := newTestRaft(1, []uint64{1, 2}, 10, 1, storage)
 	sm.restore(testingSnap)
 
@@ -89,7 +89,7 @@ func TestSnapshotFailure(t *testing.T) {
 }
 
 func TestSnapshotSucceed(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemoryStorage(0)
 	sm := newTestRaft(1, []uint64{1, 2}, 10, 1, storage)
 	sm.restore(testingSnap)
 
@@ -112,7 +112,7 @@ func TestSnapshotSucceed(t *testing.T) {
 }
 
 func TestSnapshotAbort(t *testing.T) {
-	storage := NewMemoryStorage()
+	storage := NewMemoryStorage(0)
 	sm := newTestRaft(1, []uint64{1, 2}, 10, 1, storage)
 	sm.restore(testingSnap)
 
