@@ -296,5 +296,7 @@ stale log entries:
 	indicating 'MsgApp' is lost. When follower's progress state is replicate,
 	the leader sets it back to probe.
 
+	'MsgCheckQuorum` triggers leader to check whether the quorum is active or not.
+	If not, the leader steps down to follower.
 */
 package raft
