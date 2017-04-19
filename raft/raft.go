@@ -679,8 +679,12 @@ func (r *raft) poll(id uint64, t pb.MessageType, v bool) (granted int) {
 func (r *raft) Step(m pb.Message) error {
 	// Handle the message term, which may result in our stepping down to a follower.
 	switch {
-	case m.Term == 0:
-		// local message
+	case m.Term == 0 || m.Type == msgProp:
+		// local message or proposal
+		// NOTE: the msgProp above is critical as otherwise msgProp that take place
+		// across leadership changes will get lost as their term is old, but
+		// proposals are simply a way to forward to the leader, they're outside of
+		// raft so their term is meaningless.
 	case m.Term > r.Term:
 		lead := m.From
 		if m.Type == pb.MsgVote || m.Type == pb.MsgPreVote {
