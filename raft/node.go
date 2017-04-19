@@ -42,6 +42,12 @@ type SoftState struct {
 	RaftState StateType
 }
 
+type HardState struct {
+	Lead      uint64
+	RaftState StateType
+}
+
+
 func (a *SoftState) equal(b *SoftState) bool {
 	return a.Lead == b.Lead && a.RaftState == b.RaftState
 }
