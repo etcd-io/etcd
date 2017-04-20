@@ -79,6 +79,18 @@ func (s *simplePrinter) Watch(resp v3.WatchResponse) {
 	}
 }
 
+func (s *simplePrinter) Grant(resp v3.LeaseGrantResponse) {
+	fmt.Printf("lease %016x granted with TTL(%ds)\n", resp.ID, resp.TTL)
+}
+
+func (p *simplePrinter) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse) {
+	fmt.Printf("lease %016x revoked\n", id)
+}
+
+func (p *simplePrinter) KeepAlive(resp v3.LeaseKeepAliveResponse) {
+	fmt.Printf("lease %016x keepalived with TTL(%d)\n", resp.ID, resp.TTL)
+}
+
 func (s *simplePrinter) TimeToLive(resp v3.LeaseTimeToLiveResponse, keys bool) {
 	txt := fmt.Sprintf("lease %016x granted with TTL(%ds), remaining(%ds)", resp.ID, resp.GrantedTTL, resp.TTL)
 	if keys {

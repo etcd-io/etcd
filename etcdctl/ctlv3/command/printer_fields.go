@@ -92,6 +92,22 @@ func (p *fieldsPrinter) Watch(resp v3.WatchResponse) {
 	}
 }
 
+func (p *fieldsPrinter) Grant(r v3.LeaseGrantResponse) {
+	p.hdr(r.ResponseHeader)
+	fmt.Println(`"ID" :`, r.ID)
+	fmt.Println(`"TTL" :`, r.TTL)
+}
+
+func (p *fieldsPrinter) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse) {
+	p.hdr(r.Header)
+}
+
+func (p *fieldsPrinter) KeepAlive(r v3.LeaseKeepAliveResponse) {
+	p.hdr(r.ResponseHeader)
+	fmt.Println(`"ID" :`, r.ID)
+	fmt.Println(`"TTL" :`, r.TTL)
+}
+
 func (p *fieldsPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
 	p.hdr(r.ResponseHeader)
 	fmt.Println(`"ID" :`, r.ID)
