@@ -32,6 +32,9 @@ type printer interface {
 	Txn(v3.TxnResponse)
 	Watch(v3.WatchResponse)
 
+	Grant(r v3.LeaseGrantResponse)
+	Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse)
+	KeepAlive(r v3.LeaseKeepAliveResponse)
 	TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool)
 
 	MemberAdd(v3.MemberAddResponse)
@@ -81,13 +84,18 @@ type printerRPC struct {
 	p func(interface{})
 }
 
-func (p *printerRPC) Del(r v3.DeleteResponse)                            { p.p((*pb.DeleteRangeResponse)(&r)) }
-func (p *printerRPC) Get(r v3.GetResponse)                               { p.p((*pb.RangeResponse)(&r)) }
-func (p *printerRPC) Put(r v3.PutResponse)                               { p.p((*pb.PutResponse)(&r)) }
-func (p *printerRPC) Txn(r v3.TxnResponse)                               { p.p((*pb.TxnResponse)(&r)) }
-func (p *printerRPC) Watch(r v3.WatchResponse)                           { p.p(&r) }
+func (p *printerRPC) Del(r v3.DeleteResponse)  { p.p((*pb.DeleteRangeResponse)(&r)) }
+func (p *printerRPC) Get(r v3.GetResponse)     { p.p((*pb.RangeResponse)(&r)) }
+func (p *printerRPC) Put(r v3.PutResponse)     { p.p((*pb.PutResponse)(&r)) }
+func (p *printerRPC) Txn(r v3.TxnResponse)     { p.p((*pb.TxnResponse)(&r)) }
+func (p *printerRPC) Watch(r v3.WatchResponse) { p.p(&r) }
+
+func (p *printerRPC) Grant(r v3.LeaseGrantResponse)                      { p.p(r) }
+func (p *printerRPC) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse)     { p.p(r) }
+func (p *printerRPC) KeepAlive(r v3.LeaseKeepAliveResponse)              { p.p(r) }
 func (p *printerRPC) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) { p.p(&r) }
-func (p *printerRPC) MemberAdd(r v3.MemberAddResponse)                   { p.p((*pb.MemberAddResponse)(&r)) }
+
+func (p *printerRPC) MemberAdd(r v3.MemberAddResponse) { p.p((*pb.MemberAddResponse)(&r)) }
 func (p *printerRPC) MemberRemove(id uint64, r v3.MemberRemoveResponse) {
 	p.p((*pb.MemberRemoveResponse)(&r))
 }
