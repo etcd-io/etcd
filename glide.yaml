@@ -93,7 +93,7 @@ import:
 - package: golang.org/x/sys
   version: e48874b42435b4347fc52bdee0424a52abc974d7
 - package: golang.org/x/time
-  version: a4bde12657593d5e90d0533a3e4fd95e635124cb
+  version: c06e80d9300e4443158a03817b8a8cb37d230320
   subpackages:
   - rate
 - package: google.golang.org/grpc
