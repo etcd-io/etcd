@@ -162,16 +162,26 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		return nil, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
 	}
 
-	tlsCert, err := tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
-	if err != nil {
-		return nil, err
+	cfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		ServerName: info.ServerName,
 	}
 
-	cfg := &tls.Config{
-		Certificates: []tls.Certificate{*tlsCert},
-		MinVersion:   tls.VersionTLS12,
-		ServerName:   info.ServerName,
+	cfg.GetCertificate = func(clientHello *tls.ClientHelloInfo) (
+		*tls.Certificate, error) {
+
+		// Load the certificate from disk every time so when it is replaced we
+		// will be using the latest version
+		return tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 	}
+	cfg.GetClientCertificate = func(unused *tls.CertificateRequestInfo) (
+		*tls.Certificate, error) {
+
+		// Load the certificate from disk every time so when it is replaced we
+		// will be using the latest version
+		return tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+	}
+
 	return cfg, nil
 }
 
