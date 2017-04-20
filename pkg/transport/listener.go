@@ -172,6 +172,14 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		MinVersion:   tls.VersionTLS12,
 		ServerName:   info.ServerName,
 	}
+	// this only reloads certs when there's a client request
+	// TODO: support server-side refresh (e.g. inotify, SIGHUP), caching
+	cfg.GetCertificate = func(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		return tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+	}
+	cfg.GetClientCertificate = func(unused *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		return tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+	}
 	return cfg, nil
 }
 
