@@ -64,6 +64,7 @@ package trace // import "golang.org/x/net/trace"
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io"
@@ -77,7 +78,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/net/context"
 	"golang.org/x/net/internal/timeseries"
 )
 
