@@ -62,6 +62,7 @@ function main {
 		TARGET_ARCHS=("amd64")
 
 		if [ ${GOOS} == "linux" ]; then
+			TARGET_ARCHS+=("arm64")
 			TARGET_ARCHS+=("ppc64le")
 		fi
 
