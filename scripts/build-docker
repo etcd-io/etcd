@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
+set -e
+
 if [ "$#" -ne 1 ]; then
 	echo "Usage: $0 VERSION" >&2
 	exit 1
 fi
 
+VERSION=${1}
 ARCH=$(go env GOARCH)
 DOCKERFILE="Dockerfile-release"
-TAG="quay.io/coreos/etcd"
+: ${TAG:="quay.io/coreos/etcd"}
 
 if [ -z ${BINARYDIR} ]; then
 	RELEASE="etcd-${1}"-`go env GOOS`-`go env GOARCH`
@@ -24,7 +27,7 @@ fi
 
 if [ ${ARCH} != "amd64" ]; then
 	DOCKERFILE+=".${ARCH}"
-	TAG+="-${ARCH}"
+	VERSION+="-${ARCH}"
 fi
 
 BINARYDIR=${BINARYDIR:-.}
@@ -32,9 +35,10 @@ BUILDDIR=${BUILDDIR:-.}
 
 IMAGEDIR=${BUILDDIR}/image-docker
 
-mkdir -p ${IMAGEDIR}
+mkdir -p ${IMAGEDIR}/var/etcd
+mkdir -p ${IMAGEDIR}/var/lib/etcd
 cp ${BINARYDIR}/etcd ${BINARYDIR}/etcdctl ${IMAGEDIR}
 
 cat ./${DOCKERFILE} > ${IMAGEDIR}/Dockerfile
 
-docker build -t ${TAG}:${1} ${IMAGEDIR}
+docker build -t ${TAG}:${VERSION} ${IMAGEDIR}
