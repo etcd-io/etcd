@@ -426,11 +426,9 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, s.CurrentIndex)
 	}
 
-	// update etcd index
-	s.CurrentIndex++
-
-	e := newEvent(CompareAndDelete, nodePath, s.CurrentIndex, n.CreatedIndex)
-	e.EtcdIndex = s.CurrentIndex
+	nextIndex := s.CurrentIndex + 1
+	e := newEvent(CompareAndDelete, nodePath, nextIndex, n.CreatedIndex)
+	e.EtcdIndex = nextIndex
 	e.PrevNode = n.Repr(false, false, s.clock)
 
 	callback := func(path string) { // notify function
@@ -442,6 +440,9 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	if err != nil {
 		return nil, err
 	}
+
+	// update etcd index
+	s.CurrentIndex++
 
 	s.WatcherHub.notify(e)
 
