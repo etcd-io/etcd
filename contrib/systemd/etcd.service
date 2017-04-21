@@ -5,9 +5,11 @@ After=network.target
 
 [Service]
 User=etcd
+PermissionsStartOnly=true
 Type=notify
 Environment=ETCD_DATA_DIR=/var/lib/etcd
 Environment=ETCD_NAME=%m
+ExecStartPre=/usr/bin/chown etcd:etcd ${ETCD_DATA_DIR}
 ExecStart=/usr/bin/etcd
 Restart=always
 RestartSec=10s
