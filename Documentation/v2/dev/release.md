@@ -70,7 +70,7 @@ cd release
 # personal GPG is okay for now
 for i in etcd-*{.zip,.tar.gz}; do gpg --sign ${i}; done
 # use `CoreOS ACI Builder <release@coreos.com>` secret key
-gpg -u 88182190 -a --output etcd-${VERSION}-linux-amd64.aci.asc --detach-sig etcd-${VERSION}-linux-amd64.aci
+for aci in etcd-${VERSION}.*.aci; do gpg -u 88182190 -a --output ${aci}.asc --detach-sig ${aci}; done
 ```
 
 ## Publish Release Page in GitHub
@@ -88,6 +88,7 @@ gpg -u 88182190 -a --output etcd-${VERSION}-linux-amd64.aci.asc --detach-sig etc
 ```
 docker login quay.io
 docker push quay.io/coreos/etcd:${VERSION}
+docker push quay.io/coreos/etcd:${VERSION}-${arch}
 ```
 
 - Add `latest` tag to the new image on [quay.io](https://quay.io/repository/coreos/etcd?tag=latest&tab=tags) if this is a stable release.
