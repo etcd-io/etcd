@@ -1049,7 +1049,11 @@ func (sc *serverConn) wroteFrame(res frameWriteResult) {
 			// stateClosed after the RST_STREAM frame is
 			// written.
 			st.state = stateHalfClosedLocal
-			sc.resetStream(streamError(st.id, ErrCodeCancel))
+			// Section 8.1: a server MAY request that the client abort
+			// transmission of a request without error by sending a
+			// RST_STREAM with an error code of NO_ERROR after sending
+			// a complete response.
+			sc.resetStream(streamError(st.id, ErrCodeNo))
 		case stateHalfClosedRemote:
 			sc.closeStream(st, errHandlerComplete)
 		}
