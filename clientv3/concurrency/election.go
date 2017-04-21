@@ -148,9 +148,13 @@ func (e *Election) Leader(ctx context.Context) (*v3.GetResponse, error) {
 	return resp, nil
 }
 
-// Observe returns a channel that observes all leader proposal values as
-// GetResponse values on the current leader key. The channel closes when
-// the context is cancelled or the underlying watcher is otherwise disrupted.
+// Observe returns a channel that reliably observes ordered leader proposals
+// as GetResponse values on every current elected leader key. It will not
+// necessarily fetch all historical leader updates, but will always post the
+// most recent leader value.
+//
+// The channel closes when the context is canceled or the underlying watcher
+// is otherwise disrupted.
 func (e *Election) Observe(ctx context.Context) <-chan v3.GetResponse {
 	retc := make(chan v3.GetResponse)
 	go e.observe(ctx, retc)
