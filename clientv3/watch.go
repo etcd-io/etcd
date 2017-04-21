@@ -615,11 +615,20 @@ func (w *watchGrpcStream) serveSubstream(ws *watcherStream, resumec chan struct{
 					// send first creation event only if requested
 					if ws.initReq.createdNotify {
 						ws.outc <- *wr
+						if ws.initReq.rev == 0 {
+							// current revision of store; returning the
+							// create response binds the current revision to
+							// this revision, so restart with it if there's a
+							// disconnect before receiving any events.
+							nextRev = wr.Header.Revision
+						}
 					}
 				}
+			} else {
+				// current progress of watch; <= store revision
+				nextRev = wr.Header.Revision
 			}
 
-			nextRev = wr.Header.Revision
 			if len(wr.Events) > 0 {
 				nextRev = wr.Events[len(wr.Events)-1].Kv.ModRevision + 1
 			}
