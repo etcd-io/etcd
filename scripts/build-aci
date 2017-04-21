@@ -11,6 +11,13 @@ ACBUILD=${ACBUILD:-acbuild}
 
 VERSION=$1
 
+go2aci() {
+	case "${1}" in
+		"arm64") echo "aarch64";;
+		*) echo "${1}";;
+	esac
+}
+
 if ! command -v $ACBUILD >/dev/null; then
     echo "acbuild ($ACBUILD) is not executable"
     exit 1
@@ -63,6 +70,8 @@ acbuild --debug port add peer tcp 2380
 
 acbuild --debug copy "$TMPHOSTS" /etc/hosts
 
+acbuild --debug label add arch $(go2aci ${GOARCH})
+
 # mkdir default data-dir
 mkdir -p .acbuild/currentaci/rootfs/var/lib/etcd
 
@@ -70,4 +79,4 @@ mkdir -p .acbuild/currentaci/rootfs/var/lib/etcd
 ln -s ./usr/local/bin/etcd .acbuild/currentaci/rootfs/etcd
 ln -s ./usr/local/bin/etcdctl .acbuild/currentaci/rootfs/etcdctl
 
-acbuild --debug write --overwrite $BUILDDIR/etcd-${1}-linux-amd64.aci
+acbuild --debug write --overwrite $BUILDDIR/etcd-${1}-linux-${GOARCH}.aci
