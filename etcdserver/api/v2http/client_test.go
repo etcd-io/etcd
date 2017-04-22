@@ -1220,56 +1220,6 @@ func TestWriteEvent(t *testing.T) {
 	}
 }
 
-func TestV2DeprecatedMachinesEndpoint(t *testing.T) {
-	tests := []struct {
-		method string
-		wcode  int
-	}{
-		{"GET", http.StatusOK},
-		{"HEAD", http.StatusOK},
-		{"POST", http.StatusMethodNotAllowed},
-	}
-
-	m := &deprecatedMachinesHandler{cluster: &fakeCluster{}}
-	s := httptest.NewServer(m)
-	defer s.Close()
-
-	for _, tt := range tests {
-		req, err := http.NewRequest(tt.method, s.URL+deprecatedMachinesPrefix, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if resp.StatusCode != tt.wcode {
-			t.Errorf("StatusCode = %d, expected %d", resp.StatusCode, tt.wcode)
-		}
-	}
-}
-
-func TestServeMachines(t *testing.T) {
-	cluster := &fakeCluster{
-		clientURLs: []string{"http://localhost:8080", "http://localhost:8081", "http://localhost:8082"},
-	}
-	writer := httptest.NewRecorder()
-	req, err := http.NewRequest("GET", "", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	h := &deprecatedMachinesHandler{cluster: cluster}
-	h.ServeHTTP(writer, req)
-	w := "http://localhost:8080, http://localhost:8081, http://localhost:8082"
-	if g := writer.Body.String(); g != w {
-		t.Errorf("body = %s, want %s", g, w)
-	}
-	if writer.Code != http.StatusOK {
-		t.Errorf("code = %d, want %d", writer.Code, http.StatusOK)
-	}
-}
-
 func TestGetID(t *testing.T) {
 	tests := []struct {
 		path string
