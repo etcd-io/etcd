@@ -57,17 +57,8 @@ else
 	glide update --strip-vendor
 fi;
 
-# TODO: workaround to keep 'github.com/stretchr/testify/assert' in v2 tests
-# TODO: remove this after dropping v2
-echo "copying github.com/stretchr/testify/assert"
-cp -rf vendor/github.com/stretchr/testify/assert ./temp-assert
-
 echo "removing test files"
 glide vc --only-code --no-tests
-
-# TODO: remove this after dropping v2
-mkdir -p vendor/github.com/stretchr/testify
-mv ./temp-assert vendor/github.com/stretchr/testify/assert
 
 mv vendor cmd/
 
