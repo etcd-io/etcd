@@ -1,5 +1,5 @@
-hash: b2eaa5916c4ace220242794b77f42b82956cff5cd1bf9887fe53f054bbcb5c8a
-updated: 2017-04-20T17:28:41.548354957-07:00
+hash: 60bceef84b41089b86b05a4e3ddbf2ccf9b94e2e3ca9332a9d463cd837bee26e
+updated: 2017-04-22T18:32:32.564649649-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -101,10 +101,6 @@ imports:
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
   version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
-- name: github.com/stretchr/testify
-  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
-  subpackages:
-  - assert
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -133,7 +129,7 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 19e3104b43db45fca0303f489a9536087b184802
+  version: a9a820217f98f7c8a207ec1e45a874e1fe12c478
   subpackages:
   - secure/bidirule
   - transform
@@ -161,12 +157,4 @@ imports:
   version: 226d21d43a305fac52b3a104ef83e721b15275e0
 - name: gopkg.in/yaml.v2
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
-testImports:
-- name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
-  subpackages:
-  - spew
-- name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
-  subpackages:
-  - difflib
+testImports: []
