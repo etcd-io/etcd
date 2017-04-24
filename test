@@ -20,7 +20,7 @@ source ./build
 etcd_setup_gopath
 
 if [ -z "$PASSES" ]; then
-	PASSES="fmt dep compile build unit"
+	PASSES="fmt bom dep compile build unit"
 fi
 
 # Invoke ./cover for HTML output
@@ -327,6 +327,21 @@ function fmt_pass {
 			exit 255
 		fi
 	done
+}
+
+function bom_pass {
+	if ! which license-bill-of-materials >/dev/null; then
+		return
+	fi
+	echo "Checking bill of materials..."
+	license-bill-of-materials \
+		--override-file bill-of-materials.override.json \
+		github.com/coreos/etcd github.com/coreos/etcd/etcdctl >bom-now.json || true
+	if ! diff bill-of-materials.json bom-now.json; then
+		echo vendored licenses do not match given bill of materials
+		exit 255
+	fi
+	rm bom-now.json
 }
 
 function dep_pass {
