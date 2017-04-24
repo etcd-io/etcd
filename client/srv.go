@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 )
 
 var (
@@ -44,7 +45,7 @@ func (d *srvDiscover) Discover(domain string) ([]string, error) {
 		for _, srv := range addrs {
 			urls = append(urls, &url.URL{
 				Scheme: scheme,
-				Host:   net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port)),
+				Host:   net.JoinHostPort(strings.TrimSuffix(srv.Target, "."), fmt.Sprintf("%d", srv.Port)),
 			})
 		}
 		return nil
