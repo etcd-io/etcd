@@ -654,6 +654,9 @@ message WatchResponse {
   // watcher with the same start_revision again.
   int64 compact_revision  = 5;
 
+  // cancel_reason indicates the reason for canceling the watcher.
+  string cancel_reason = 6;
+
   repeated mvccpb.Event events = 11;
 }
 

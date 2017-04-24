@@ -129,6 +129,9 @@ func getWatchChan(c *clientv3.Client, args []string) (clientv3.WatchChan, error)
 
 func printWatchCh(ch clientv3.WatchChan) {
 	for resp := range ch {
+		if resp.Canceled {
+			fmt.Fprintf(os.Stderr, "watch was canceled (%v)\n", resp.Err())
+		}
 		display.Watch(resp)
 	}
 }

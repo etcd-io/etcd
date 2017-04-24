@@ -24,6 +24,7 @@ import (
 	mvccpb "github.com/coreos/etcd/mvcc/mvccpb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 const (
@@ -65,6 +66,9 @@ type WatchResponse struct {
 	Created bool
 
 	closeErr error
+
+	// cancelReason is a reason of canceling watch
+	cancelReason string
 }
 
 // IsCreate returns true if the event tells that the key is newly created.
@@ -85,6 +89,9 @@ func (wr *WatchResponse) Err() error {
 	case wr.CompactRevision != 0:
 		return v3rpc.ErrCompacted
 	case wr.Canceled:
+		if len(wr.cancelReason) != 0 {
+			return v3rpc.Error(grpc.Errorf(codes.FailedPrecondition, "%s", wr.cancelReason))
+		}
 		return v3rpc.ErrFutureRev
 	}
 	return nil
@@ -520,10 +527,6 @@ func (w *watchGrpcStream) nextResume() *watcherStream {
 
 // dispatchEvent sends a WatchResponse to the appropriate watcher stream
 func (w *watchGrpcStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
-	ws, ok := w.substreams[pbresp.WatchId]
-	if !ok {
-		return false
-	}
 	events := make([]*Event, len(pbresp.Events))
 	for i, ev := range pbresp.Events {
 		events[i] = (*Event)(ev)
@@ -534,6 +537,11 @@ func (w *watchGrpcStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
 		CompactRevision: pbresp.CompactRevision,
 		Created:         pbresp.Created,
 		Canceled:        pbresp.Canceled,
+		cancelReason:    pbresp.CancelReason,
+	}
+	ws, ok := w.substreams[pbresp.WatchId]
+	if !ok {
+		return false
 	}
 	select {
 	case ws.recvc <- wr:
