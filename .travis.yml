@@ -42,6 +42,7 @@ addons:
 
 before_install:
  - go get -v -u github.com/chzchzchz/goword
+ - go get -v -u github.com/coreos/license-bill-of-materials
  - go get -v -u honnef.co/go/tools/cmd/gosimple
  - go get -v -u honnef.co/go/tools/cmd/unused
  - go get -v -u honnef.co/go/tools/cmd/staticcheck
