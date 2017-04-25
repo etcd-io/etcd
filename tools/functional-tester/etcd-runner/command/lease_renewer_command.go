@@ -22,9 +22,14 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+)
+
+var (
+	leaseTTL int64
 )
 
 // NewLeaseRenewerCommand returns the cobra command for "lease-renewer runner".
@@ -34,6 +39,7 @@ func NewLeaseRenewerCommand() *cobra.Command {
 		Short: "Performs lease renew operation",
 		Run:   runLeaseRenewerFunc,
 	}
+	cmd.Flags().Int64Var(&leaseTTL, "ttl", 5, "lease's ttl")
 	return cmd
 }
 
@@ -54,7 +60,7 @@ func runLeaseRenewerFunc(cmd *cobra.Command, args []string) {
 			err error
 		)
 		for {
-			l, err = c.Lease.Grant(ctx, 5)
+			l, err = c.Lease.Grant(ctx, leaseTTL)
 			if err == nil {
 				break
 			}
@@ -65,14 +71,14 @@ func runLeaseRenewerFunc(cmd *cobra.Command, args []string) {
 			lk, err = c.Lease.KeepAliveOnce(ctx, l.ID)
 			if grpc.Code(err) == codes.NotFound {
 				if time.Since(expire) < 0 {
-					log.Printf("bad renew! exceeded: %v", time.Since(expire))
+					log.Fatalf("bad renew! exceeded: %v", time.Since(expire))
 					for {
 						lk, err = c.Lease.KeepAliveOnce(ctx, l.ID)
 						fmt.Println(lk, err)
 						time.Sleep(time.Second)
 					}
 				}
-				log.Printf("lost lease %d, expire: %v\n", l.ID, expire)
+				log.Fatalf("lost lease %d, expire: %v\n", l.ID, expire)
 				break
 			}
 			if err != nil {
