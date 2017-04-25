@@ -245,6 +245,19 @@ func (cchecker *compositeChecker) Check() error {
 	return errsToError(errs)
 }
 
+type runnerChecker struct {
+	errc chan error
+}
+
+func (rc *runnerChecker) Check() error {
+	select {
+	case err := <-rc.errc:
+		return err
+	default:
+		return nil
+	}
+}
+
 type noChecker struct{}
 
 func newNoChecker() Checker        { return &noChecker{} }
