@@ -7,4 +7,5 @@ fi
 
 CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s" -o bin/etcd-agent ./cmd/tools/functional-tester/etcd-agent
 CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s" -o bin/etcd-tester ./cmd/tools/functional-tester/etcd-tester
+CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s" -o bin/etcd-runner ./cmd/tools/functional-tester/etcd-runner
 

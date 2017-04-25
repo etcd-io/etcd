@@ -114,7 +114,7 @@ func (tt *tester) doRound(round int) error {
 			return fmt.Errorf("recovery error: %v", err)
 		}
 		plog.Infof("%s recovered failure", tt.logPrefix())
-		tt.cancelStresser()
+		tt.pauseStresser()
 		plog.Infof("%s wait until cluster is healthy", tt.logPrefix())
 		if err := tt.cluster.WaitHealth(); err != nil {
 			return fmt.Errorf("wait full health error: %v", err)
@@ -161,7 +161,7 @@ func (tt *tester) checkConsistency() (err error) {
 }
 
 func (tt *tester) compact(rev int64, timeout time.Duration) (err error) {
-	tt.cancelStresser()
+	tt.pauseStresser()
 	defer func() {
 		if err == nil {
 			err = tt.startStresser()
@@ -217,7 +217,7 @@ func (tt *tester) cleanup() error {
 	}
 	caseFailedTotalCounter.WithLabelValues(desc).Inc()
 
-	tt.cancelStresser()
+	tt.closeStresser()
 	if err := tt.cluster.Cleanup(); err != nil {
 		plog.Warningf("%s cleanup error: %v", tt.logPrefix(), err)
 		return err
@@ -229,10 +229,10 @@ func (tt *tester) cleanup() error {
 	return tt.resetStressCheck()
 }
 
-func (tt *tester) cancelStresser() {
-	plog.Infof("%s canceling the stressers...", tt.logPrefix())
-	tt.stresser.Cancel()
-	plog.Infof("%s canceled stressers", tt.logPrefix())
+func (tt *tester) pauseStresser() {
+	plog.Infof("%s pausing the stressers...", tt.logPrefix())
+	tt.stresser.Pause()
+	plog.Infof("%s paused stressers", tt.logPrefix())
 }
 
 func (tt *tester) startStresser() (err error) {
@@ -240,6 +240,12 @@ func (tt *tester) startStresser() (err error) {
 	err = tt.stresser.Stress()
 	plog.Infof("%s started stressers", tt.logPrefix())
 	return err
+}
+
+func (tt *tester) closeStresser() {
+	plog.Infof("%s closing the stressers...", tt.logPrefix())
+	tt.stresser.Close()
+	plog.Infof("%s closed stressers", tt.logPrefix())
 }
 
 func (tt *tester) resetStressCheck() error {

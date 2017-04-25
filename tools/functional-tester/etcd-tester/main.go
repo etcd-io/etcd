@@ -51,7 +51,8 @@ func main() {
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
 	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
-	stresserType := flag.String("stresser", "keys,lease", "comma separated list of stressers (keys, lease, v2keys, nop).")
+	stresserType := flag.String("stresser", "keys,lease", "comma separated list of stressers (keys, lease, v2keys, nop, election-runner, watch-runner, lock-racer-runner, lease-runner).")
+	etcdRunnerPath := flag.String("etcd-runner", "", "specify a path of etcd runner binary")
 	failureTypes := flag.String("failures", "default,failpoints", "specify failures (concat of \"default\" and \"failpoints\").")
 	externalFailures := flag.String("external-failures", "", "specify a path of script for enabling/disabling an external fault injector")
 	enablePprof := flag.Bool("enable-pprof", false, "true to enable pprof")
@@ -120,6 +121,8 @@ func main() {
 		keySuffixRange: int(*stressKeySuffixRange),
 		numLeases:      10,
 		keysPerLease:   10,
+
+		etcdRunnerPath: *etcdRunnerPath,
 	}
 
 	t := &tester{
