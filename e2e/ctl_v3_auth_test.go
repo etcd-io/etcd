@@ -38,6 +38,7 @@ func TestCtlV3AuthCertCN(t *testing.T)           { testCtl(t, authTestCertCN, wi
 func TestCtlV3AuthRevokeWithDelete(t *testing.T) { testCtl(t, authTestRevokeWithDelete) }
 func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgmt) }
 func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
+func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -660,4 +661,81 @@ func authTestFromKeyPerm(cx ctlCtx) {
 			cx.t.Fatal(err)
 		}
 	}
+}
+
+func authTestWatch(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// grant a key range
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "key", "key4", false}); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	tests := []struct {
+		puts []kv
+		args []string
+
+		wkv  []kv
+		want bool
+	}{
+		{ // watch 1 key, should be successful
+			[]kv{{"key", "value"}},
+			[]string{"key", "--rev", "1"},
+			[]kv{{"key", "value"}},
+			true,
+		},
+		{ // watch 3 keys by range, should be successful
+			[]kv{{"key1", "val1"}, {"key3", "val3"}, {"key2", "val2"}},
+			[]string{"key", "key3", "--rev", "1"},
+			[]kv{{"key1", "val1"}, {"key2", "val2"}},
+			true,
+		},
+
+		{ // watch 1 key, should not be successful
+			[]kv{},
+			[]string{"key5", "--rev", "1"},
+			[]kv{},
+			false,
+		},
+		{ // watch 3 keys by range, should not be successful
+			[]kv{},
+			[]string{"key", "key6", "--rev", "1"},
+			[]kv{},
+			false,
+		},
+	}
+
+	cx.user, cx.pass = "test-user", "pass"
+	for i, tt := range tests {
+		donec := make(chan struct{})
+		go func(i int, puts []kv) {
+			defer close(donec)
+			for j := range puts {
+				if err := ctlV3Put(cx, puts[j].key, puts[j].val, ""); err != nil {
+					cx.t.Fatalf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
+				}
+			}
+		}(i, tt.puts)
+
+		var err error
+		if tt.want {
+			err = ctlV3Watch(cx, tt.args, tt.wkv...)
+		} else {
+			err = ctlV3WatchFailPerm(cx, tt.args)
+		}
+
+		if err != nil {
+			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {
+				cx.t.Errorf("watchTest #%d: ctlV3Watch error (%v)", i, err)
+			}
+		}
+
+		<-donec
+	}
+
 }

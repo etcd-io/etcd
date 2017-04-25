@@ -86,13 +86,19 @@ func watchTest(cx ctlCtx) {
 	}
 }
 
-func ctlV3Watch(cx ctlCtx, args []string, kvs ...kv) error {
+func setupWatchArgs(cx ctlCtx, args []string) []string {
 	cmdArgs := append(cx.PrefixArgs(), "watch")
 	if cx.interactive {
 		cmdArgs = append(cmdArgs, "--interactive")
 	} else {
 		cmdArgs = append(cmdArgs, args...)
 	}
+
+	return cmdArgs
+}
+
+func ctlV3Watch(cx ctlCtx, args []string, kvs ...kv) error {
+	cmdArgs := setupWatchArgs(cx, args)
 
 	proc, err := spawnCmd(cmdArgs)
 	if err != nil {
@@ -115,4 +121,29 @@ func ctlV3Watch(cx ctlCtx, args []string, kvs ...kv) error {
 		}
 	}
 	return proc.Stop()
+}
+
+func ctlV3WatchFailPerm(cx ctlCtx, args []string) error {
+	cmdArgs := setupWatchArgs(cx, args)
+
+	proc, err := spawnCmd(cmdArgs)
+	if err != nil {
+		return err
+	}
+
+	if cx.interactive {
+		wl := strings.Join(append([]string{"watch"}, args...), " ") + "\r"
+		if err = proc.Send(wl); err != nil {
+			return err
+		}
+	}
+
+	// TODO(mitake): after printing accurate error message that includes
+	// "permission denied", the above string argument of proc.Expect()
+	// should be updated.
+	_, err = proc.Expect("watch is canceled by the server")
+	if err != nil {
+		return err
+	}
+	return proc.Close()
 }
