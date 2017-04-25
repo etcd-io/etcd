@@ -257,7 +257,10 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						}
 					}
 					if waitApply {
-						rh.waitForApply()
+						// blocks until 'applyAll' calls 'applyWait.Trigger'
+						// to be in sync with scheduled config-change job
+						// (assume raftDone has cap of 1)
+						raftDone <- struct{}{}
 					}
 
 					// gofail: var raftBeforeFollowerSend struct{}

@@ -614,7 +614,6 @@ type etcdProgress struct {
 type raftReadyHandler struct {
 	updateLeadership     func(newLeader bool)
 	updateCommittedIndex func(uint64)
-	waitForApply         func()
 }
 
 func (s *EtcdServer) run() {
@@ -675,9 +674,6 @@ func (s *EtcdServer) run() {
 			if ci > cci {
 				s.setCommittedIndex(ci)
 			}
-		},
-		waitForApply: func() {
-			sched.WaitFinish(0)
 		},
 	}
 	s.r.start(rh)

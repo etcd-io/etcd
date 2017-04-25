@@ -180,8 +180,6 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 func TestConfgChangeBlocksApply(t *testing.T) {
 	n := newNopReadyNode()
 
-	waitApplyc := make(chan struct{})
-
 	r := newRaftNode(raftNodeConfig{
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
@@ -190,21 +188,14 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 	})
 	srv := &EtcdServer{r: *r}
 
-	rh := &raftReadyHandler{
-		updateLeadership: func(bool) {},
-		waitForApply: func() {
-			<-waitApplyc
-		},
-	}
-
-	srv.r.start(rh)
+	srv.r.start(&raftReadyHandler{updateLeadership: func(bool) {}})
 	defer srv.r.Stop()
 
 	n.readyc <- raft.Ready{
 		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
 		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
 	}
-	<-srv.r.applyc
+	ap := <-srv.r.applyc
 
 	continueC := make(chan struct{})
 	go func() {
@@ -220,7 +211,7 @@ func TestConfgChangeBlocksApply(t *testing.T) {
 	}
 
 	// finish apply, unblock raft routine
-	close(waitApplyc)
+	<-ap.raftDone
 
 	select {
 	case <-continueC:
