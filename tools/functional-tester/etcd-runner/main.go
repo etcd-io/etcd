@@ -15,61 +15,8 @@
 // etcd-runner is a command line application that performs tests on etcd.
 package main
 
-import (
-	"log"
-	"time"
-
-	"github.com/coreos/etcd/tools/functional-tester/etcd-runner/command"
-	"github.com/spf13/cobra"
-)
-
-const (
-	cliName        = "etcd-runner"
-	cliDescription = "Stress tests using clientv3 functionality.."
-
-	defaultDialTimeout = 2 * time.Second
-)
-
-var (
-	globalFlags = command.GlobalFlags{}
-)
-
-var (
-	rootCmd = &cobra.Command{
-		Use:        cliName,
-		Short:      cliDescription,
-		SuggestFor: []string{"etcd-runner"},
-	}
-)
-
-func init() {
-	log.SetFlags(log.Lmicroseconds)
-	rootCmd.PersistentFlags().StringSliceVar(&globalFlags.Endpoints, "endpoints", []string{"127.0.0.1:2379"}, "gRPC endpoints")
-	rootCmd.PersistentFlags().DurationVar(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
-
-	rootCmd.AddCommand(
-		command.NewElectionCommand(),
-		command.NewLeaseRenewerCommand(),
-		command.NewLockRacerCommand(),
-		command.NewWatchCommand(),
-	)
-}
-
-func init() {
-	cobra.EnablePrefixMatching = true
-}
-
-func Start() {
-	rootCmd.SetUsageFunc(usageFunc)
-
-	// Make help just show the usage
-	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
-
-	if err := rootCmd.Execute(); err != nil {
-		command.ExitWithError(command.ExitError, err)
-	}
-}
+import "github.com/coreos/etcd/tools/functional-tester/etcd-runner/command"
 
 func main() {
-	Start()
+	command.Start()
 }
