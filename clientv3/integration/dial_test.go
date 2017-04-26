@@ -23,8 +23,48 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/pkg/transport"
+
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
+
+var (
+	testTLSInfo = transport.TLSInfo{
+		KeyFile:        "../../integration/fixtures/server.key.insecure",
+		CertFile:       "../../integration/fixtures/server.crt",
+		TrustedCAFile:  "../../integration/fixtures/ca.crt",
+		ClientCertAuth: true,
+	}
+
+	testTLSInfoExpired = transport.TLSInfo{
+		KeyFile:        "../../integration/fixtures-expired/server-key.pem",
+		CertFile:       "../../integration/fixtures-expired/server.pem",
+		TrustedCAFile:  "../../integration/fixtures-expired/etcd-root-ca.pem",
+		ClientCertAuth: true,
+	}
+)
+
+// TestDialTLSExpired tests client with expired certs fails to dial.
+func TestDialTLSExpired(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, PeerTLS: &testTLSInfo, ClientTLS: &testTLSInfo})
+	defer clus.Terminate(t)
+
+	tls, err := testTLSInfoExpired.ClientConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// expect remote errors 'tls: bad certificate'
+	_, err = clientv3.New(clientv3.Config{
+		Endpoints:   []string{clus.Members[0].GRPCAddr()},
+		DialTimeout: 3 * time.Second,
+		TLS:         tls,
+	})
+	if err != grpc.ErrClientConnTimeout {
+		t.Fatalf("expected %v, got %v", grpc.ErrClientConnTimeout, err)
+	}
+}
 
 // TestDialSetEndpoints ensures SetEndpoints can replace unavailable endpoints with available ones.
 func TestDialSetEndpointsBeforeFail(t *testing.T) {
