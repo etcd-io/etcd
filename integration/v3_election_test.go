@@ -272,3 +272,39 @@ func TestElectionOnSessionRestart(t *testing.T) {
 		t.Errorf("expected value=%q, got response %v", "def", resp)
 	}
 }
+
+// TestElectionObserveCompacted checks that observe can tolerate
+// a leader key with a modrev less than the compaction revision.
+func TestElectionObserveCompacted(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+
+	session, err := concurrency.NewSession(cli)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Orphan()
+
+	e := concurrency.NewElection(session, "test-elect")
+	if cerr := e.Campaign(context.TODO(), "abc"); cerr != nil {
+		t.Fatal(cerr)
+	}
+
+	presp, perr := cli.Put(context.TODO(), "foo", "bar")
+	if perr != nil {
+		t.Fatal(perr)
+	}
+	if _, cerr := cli.Compact(context.TODO(), presp.Header.Revision); cerr != nil {
+		t.Fatal(cerr)
+	}
+
+	v, ok := <-e.Observe(context.TODO())
+	if !ok {
+		t.Fatal("failed to observe on compacted revision")
+	}
+	if string(v.Kvs[0].Value) != "abc" {
+		t.Fatalf(`expected leader value "abc", got %q`, string(v.Kvs[0].Value))
+	}
+}
