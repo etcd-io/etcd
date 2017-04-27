@@ -76,6 +76,13 @@ var (
 		ClientCertAuth: true,
 	}
 
+	testTLSInfoExpired = transport.TLSInfo{
+		KeyFile:        "./fixtures-expired/server-key.pem",
+		CertFile:       "./fixtures-expired/server.pem",
+		TrustedCAFile:  "./fixtures-expired/etcd-root-ca.pem",
+		ClientCertAuth: true,
+	}
+
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "integration")
 )
 
