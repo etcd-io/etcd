@@ -50,13 +50,13 @@ type ServerStats struct {
 	sendRateQueue *statsQueue
 	recvRateQueue *statsQueue
 
-	sync.Mutex
+	mu sync.Mutex
 }
 
 func (ss *ServerStats) JSON() []byte {
-	ss.Lock()
+	ss.mu.Lock()
 	stats := *ss
-	ss.Unlock()
+	ss.mu.Unlock()
 	stats.LeaderInfo.Uptime = time.Since(stats.LeaderInfo.StartTime).String()
 	stats.SendingPkgRate, stats.SendingBandwidthRate = stats.SendRates()
 	stats.RecvingPkgRate, stats.RecvingBandwidthRate = stats.RecvRates()
@@ -97,8 +97,8 @@ func (ss *ServerStats) SendRates() (float64, float64) {
 // RecvAppendReq updates the ServerStats in response to an AppendRequest
 // from the given leader being received
 func (ss *ServerStats) RecvAppendReq(leader string, reqSize int) {
-	ss.Lock()
-	defer ss.Unlock()
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
 
 	now := time.Now()
 
@@ -120,8 +120,8 @@ func (ss *ServerStats) RecvAppendReq(leader string, reqSize int) {
 // SendAppendReq updates the ServerStats in response to an AppendRequest
 // being sent by this server
 func (ss *ServerStats) SendAppendReq(reqSize int) {
-	ss.Lock()
-	defer ss.Unlock()
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
 
 	ss.becomeLeader()
 
@@ -136,8 +136,8 @@ func (ss *ServerStats) SendAppendReq(reqSize int) {
 }
 
 func (ss *ServerStats) BecomeLeader() {
-	ss.Lock()
-	defer ss.Unlock()
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
 	ss.becomeLeader()
 }
 

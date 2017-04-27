@@ -75,7 +75,7 @@ type MemoryStorage struct {
 	// Protects access to all fields. Most methods of MemoryStorage are
 	// run on the raft goroutine, but Append() is run on an application
 	// goroutine.
-	sync.Mutex
+	mu sync.Mutex
 
 	hardState pb.HardState
 	snapshot  pb.Snapshot
@@ -98,16 +98,16 @@ func (ms *MemoryStorage) InitialState() (pb.HardState, pb.ConfState, error) {
 
 // SetHardState saves the current HardState.
 func (ms *MemoryStorage) SetHardState(st pb.HardState) error {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	ms.hardState = st
 	return nil
 }
 
 // Entries implements the Storage interface.
 func (ms *MemoryStorage) Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	offset := ms.ents[0].Index
 	if lo <= offset {
 		return nil, ErrCompacted
@@ -126,8 +126,8 @@ func (ms *MemoryStorage) Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) {
 
 // Term implements the Storage interface.
 func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	offset := ms.ents[0].Index
 	if i < offset {
 		return 0, ErrCompacted
@@ -140,8 +140,8 @@ func (ms *MemoryStorage) Term(i uint64) (uint64, error) {
 
 // LastIndex implements the Storage interface.
 func (ms *MemoryStorage) LastIndex() (uint64, error) {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	return ms.lastIndex(), nil
 }
 
@@ -151,8 +151,8 @@ func (ms *MemoryStorage) lastIndex() uint64 {
 
 // FirstIndex implements the Storage interface.
 func (ms *MemoryStorage) FirstIndex() (uint64, error) {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	return ms.firstIndex(), nil
 }
 
@@ -162,16 +162,16 @@ func (ms *MemoryStorage) firstIndex() uint64 {
 
 // Snapshot implements the Storage interface.
 func (ms *MemoryStorage) Snapshot() (pb.Snapshot, error) {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	return ms.snapshot, nil
 }
 
 // ApplySnapshot overwrites the contents of this Storage object with
 // those of the given snapshot.
 func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 
 	//handle check for old snapshot being applied
 	msIndex := ms.snapshot.Metadata.Index
@@ -190,8 +190,8 @@ func (ms *MemoryStorage) ApplySnapshot(snap pb.Snapshot) error {
 // If any configuration changes have been made since the last compaction,
 // the result of the last ApplyConfChange must be passed in.
 func (ms *MemoryStorage) CreateSnapshot(i uint64, cs *pb.ConfState, data []byte) (pb.Snapshot, error) {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	if i <= ms.snapshot.Metadata.Index {
 		return pb.Snapshot{}, ErrSnapOutOfDate
 	}
@@ -214,8 +214,8 @@ func (ms *MemoryStorage) CreateSnapshot(i uint64, cs *pb.ConfState, data []byte)
 // It is the application's responsibility to not attempt to compact an index
 // greater than raftLog.applied.
 func (ms *MemoryStorage) Compact(compactIndex uint64) error {
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	offset := ms.ents[0].Index
 	if compactIndex <= offset {
 		return ErrCompacted
@@ -241,8 +241,8 @@ func (ms *MemoryStorage) Append(entries []pb.Entry) error {
 		return nil
 	}
 
-	ms.Lock()
-	defer ms.Unlock()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 
 	first := ms.firstIndex()
 	last := entries[0].Index + uint64(len(entries)) - 1

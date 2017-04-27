@@ -46,9 +46,9 @@ type RaftCluster struct {
 	store store.Store
 	be    backend.Backend
 
-	sync.Mutex // guards the fields below
-	version    *semver.Version
-	members    map[types.ID]*Member
+	mu      sync.Mutex // guards the fields below
+	version *semver.Version
+	members map[types.ID]*Member
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
 	removed map[types.ID]bool
@@ -90,8 +90,8 @@ func NewCluster(token string) *RaftCluster {
 func (c *RaftCluster) ID() types.ID { return c.id }
 
 func (c *RaftCluster) Members() []*Member {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	var ms MembersByID
 	for _, m := range c.members {
 		ms = append(ms, m.Clone())
@@ -101,16 +101,16 @@ func (c *RaftCluster) Members() []*Member {
 }
 
 func (c *RaftCluster) Member(id types.ID) *Member {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.members[id].Clone()
 }
 
 // MemberByName returns a Member with the given name if exists.
 // If more than one member has the given name, it will panic.
 func (c *RaftCluster) MemberByName(name string) *Member {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	var memb *Member
 	for _, m := range c.members {
 		if m.Name == name {
@@ -124,8 +124,8 @@ func (c *RaftCluster) MemberByName(name string) *Member {
 }
 
 func (c *RaftCluster) MemberIDs() []types.ID {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	var ids []types.ID
 	for _, m := range c.members {
 		ids = append(ids, m.ID)
@@ -135,16 +135,16 @@ func (c *RaftCluster) MemberIDs() []types.ID {
 }
 
 func (c *RaftCluster) IsIDRemoved(id types.ID) bool {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.removed[id]
 }
 
 // PeerURLs returns a list of all peer addresses.
 // The returned list is sorted in ascending lexicographical order.
 func (c *RaftCluster) PeerURLs() []string {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	urls := make([]string, 0)
 	for _, p := range c.members {
 		urls = append(urls, p.PeerURLs...)
@@ -156,8 +156,8 @@ func (c *RaftCluster) PeerURLs() []string {
 // ClientURLs returns a list of all client addresses.
 // The returned list is sorted in ascending lexicographical order.
 func (c *RaftCluster) ClientURLs() []string {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	urls := make([]string, 0)
 	for _, p := range c.members {
 		urls = append(urls, p.ClientURLs...)
@@ -167,8 +167,8 @@ func (c *RaftCluster) ClientURLs() []string {
 }
 
 func (c *RaftCluster) String() string {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	b := &bytes.Buffer{}
 	fmt.Fprintf(b, "{ClusterID:%s ", c.id)
 	var ms []string
@@ -204,8 +204,8 @@ func (c *RaftCluster) SetBackend(be backend.Backend) {
 }
 
 func (c *RaftCluster) Recover(onSet func(*semver.Version)) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.members, c.removed = membersFromStore(c.store)
 	c.version = clusterVersionFromStore(c.store)
@@ -284,8 +284,8 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 // raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
 func (c *RaftCluster) AddMember(m *Member) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.store != nil {
 		mustSaveMemberToStore(c.store, m)
 	}
@@ -301,8 +301,8 @@ func (c *RaftCluster) AddMember(m *Member) {
 // RemoveMember removes a member from the store.
 // The given id MUST exist, or the function panics.
 func (c *RaftCluster) RemoveMember(id types.ID) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.store != nil {
 		mustDeleteMemberFromStore(c.store, id)
 	}
@@ -317,8 +317,8 @@ func (c *RaftCluster) RemoveMember(id types.ID) {
 }
 
 func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if m, ok := c.members[id]; ok {
 		m.Attributes = attr
 		if c.store != nil {
@@ -337,8 +337,8 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes) {
 }
 
 func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.members[id].RaftAttributes = raftAttr
 	if c.store != nil {
@@ -352,8 +352,8 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes)
 }
 
 func (c *RaftCluster) Version() *semver.Version {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.version == nil {
 		return nil
 	}
@@ -361,8 +361,8 @@ func (c *RaftCluster) Version() *semver.Version {
 }
 
 func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*semver.Version)) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.version != nil {
 		plog.Noticef("updated the cluster version from %v to %v", version.Cluster(c.version.String()), version.Cluster(ver.String()))
 	} else {

@@ -29,7 +29,7 @@ type LeaderStats struct {
 	Leader    string                    `json:"leader"`
 	Followers map[string]*FollowerStats `json:"followers"`
 
-	sync.Mutex
+	mu sync.Mutex
 }
 
 // NewLeaderStats generates a new LeaderStats with the given id as leader
@@ -41,9 +41,9 @@ func NewLeaderStats(id string) *LeaderStats {
 }
 
 func (ls *LeaderStats) JSON() []byte {
-	ls.Lock()
+	ls.mu.Lock()
 	stats := *ls
-	ls.Unlock()
+	ls.mu.Unlock()
 	b, err := json.Marshal(stats)
 	// TODO(jonboulle): appropriate error handling?
 	if err != nil {
@@ -53,8 +53,8 @@ func (ls *LeaderStats) JSON() []byte {
 }
 
 func (ls *LeaderStats) Follower(name string) *FollowerStats {
-	ls.Lock()
-	defer ls.Unlock()
+	ls.mu.Lock()
+	defer ls.mu.Unlock()
 	fs, ok := ls.Followers[name]
 	if !ok {
 		fs = &FollowerStats{}
@@ -69,7 +69,7 @@ type FollowerStats struct {
 	Latency LatencyStats `json:"latency"`
 	Counts  CountsStats  `json:"counts"`
 
-	sync.Mutex
+	mu sync.Mutex
 }
 
 // LatencyStats encapsulates latency statistics.
@@ -90,8 +90,8 @@ type CountsStats struct {
 
 // Succ updates the FollowerStats with a successful send
 func (fs *FollowerStats) Succ(d time.Duration) {
-	fs.Lock()
-	defer fs.Unlock()
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
 
 	total := float64(fs.Counts.Success) * fs.Latency.Average
 	totalSquare := float64(fs.Counts.Success) * fs.Latency.averageSquare
@@ -117,7 +117,7 @@ func (fs *FollowerStats) Succ(d time.Duration) {
 
 // Fail updates the FollowerStats with an unsuccessful send
 func (fs *FollowerStats) Fail() {
-	fs.Lock()
-	defer fs.Unlock()
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
 	fs.Counts.Fail++
 }

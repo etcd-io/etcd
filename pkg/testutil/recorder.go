@@ -40,20 +40,20 @@ type Recorder interface {
 
 // RecorderBuffered appends all Actions to a slice
 type RecorderBuffered struct {
-	sync.Mutex
+	mu      sync.Mutex
 	actions []Action
 }
 
 func (r *RecorderBuffered) Record(a Action) {
-	r.Lock()
+	r.mu.Lock()
 	r.actions = append(r.actions, a)
-	r.Unlock()
+	r.mu.Unlock()
 }
 func (r *RecorderBuffered) Action() []Action {
-	r.Lock()
+	r.mu.Lock()
 	cpy := make([]Action, len(r.actions))
 	copy(cpy, r.actions)
-	r.Unlock()
+	r.mu.Unlock()
 	return cpy
 }
 func (r *RecorderBuffered) Wait(n int) (acts []Action, err error) {
