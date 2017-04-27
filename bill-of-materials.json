@@ -5,6 +5,11 @@
 		"confidence": 0.989
 	},
 	{
+		"project": "github.com/bgentry/speakeasy",
+		"license": "MIT License",
+		"confidence": 0.944
+	},
+	{
 		"project": "github.com/boltdb/bolt",
 		"license": "MIT License",
 		"confidence": 1
@@ -102,7 +107,7 @@
 	{
 		"project": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 		"license": "Apache License 2.0",
-		"confidence": 0.999
+		"confidence": 1
 	},
 	{
 		"project": "github.com/olekukonko/tablewriter",
@@ -137,7 +142,7 @@
 	{
 		"project": "github.com/shurcooL/sanitized_anchor_name",
 		"license": "MIT License",
-		"confidence": 0.989
+		"confidence": 1
 	},
 	{
 		"project": "github.com/spf13/cobra",
@@ -157,7 +162,7 @@
 	{
 		"project": "github.com/urfave/cli",
 		"license": "MIT License",
-		"confidence": 0.995
+		"confidence": 1
 	},
 	{
 		"project": "github.com/xiang90/probing",
@@ -203,9 +208,5 @@
 		"project": "bitbucket.org/ww/goautoneg",
 		"license": "BSD 3-clause \"New\" or \"Revised\" License",
 		"confidence": 1
-	},
-	{
-		"project": "github.com/bgentry/speakeasy",
-		"error": "No license detected"
 	}
 ]

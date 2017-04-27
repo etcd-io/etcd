@@ -1,6 +1,9 @@
 MIT License
 
-Copyright (c) 2015 Dmitri Shuralyov
+Copyright (c) 2017 Blake Gentry
+
+This license applies to the non-Windows portions of this library. The Windows
+portion maintains its own Apache 2.0 license.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

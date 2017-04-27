@@ -1,12 +1,12 @@
-hash: 60bceef84b41089b86b05a4e3ddbf2ccf9b94e2e3ca9332a9d463cd837bee26e
-updated: 2017-04-22T18:32:32.564649649-07:00
+hash: 4248f4a610b399df10cab942b0b3ef8a6d7db9c942bafd115f25d05293571658
+updated: 2017-04-24T16:15:17.066493631-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
 - name: github.com/bgentry/speakeasy
-  version: 36e9cfdd690967f4f690c6edcc9ffacd006014a0
+  version: 4aabc24848ce5fd31929f7d1e4ea74d3709c14cd
 - name: github.com/boltdb/bolt
   version: 583e8937c61f1af6513608ccc75c97b6abdf4ff9
 - name: github.com/cockroachdb/cmux
@@ -96,7 +96,7 @@ imports:
 - name: github.com/russross/blackfriday
   version: b253417e1cb644d645a0a3bb1fa5034c8030127c
 - name: github.com/shurcooL/sanitized_anchor_name
-  version: 1dba4b3954bc059efc3991ec364f9f9a35f597d2
+  version: 79c90efaf01eddc01945af5bc1797859189b830b
 - name: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
