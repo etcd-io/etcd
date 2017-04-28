@@ -2,8 +2,8 @@ syntax = "proto3";
 package etcdserverpb;
 
 import "gogoproto/gogo.proto";
-import "etcdserver.proto";
-import "rpc.proto";
+import "etcd/etcdserver/etcdserverpb/etcdserver.proto";
+import "etcd/etcdserver/etcdserverpb/authpb/rpc.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
