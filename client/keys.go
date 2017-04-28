@@ -213,6 +213,12 @@ type GetOptions struct {
 	// has been applied in quorum of members, which ensures external
 	// consistency (or linearizability).
 	Quorum bool
+
+	// Wait specifies whether to wait for a change to the key.
+	Wait bool
+
+	// WaitIndex, if set, determines the event index to wait for.
+	WaitIndex uint64
 }
 
 type DeleteOptions struct {
@@ -417,6 +423,8 @@ func (k *httpKeysAPI) Get(ctx context.Context, key string, opts *GetOptions) (*R
 		act.Recursive = opts.Recursive
 		act.Sorted = opts.Sort
 		act.Quorum = opts.Quorum
+		act.Wait = opts.Wait
+		act.WaitIndex = opts.WaitIndex
 	}
 
 	resp, body, err := k.client.Do(ctx, act)
@@ -496,6 +504,8 @@ type getAction struct {
 	Recursive bool
 	Sorted    bool
 	Quorum    bool
+	Wait      bool
+	WaitIndex uint64
 }
 
 func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
@@ -505,6 +515,8 @@ func (g *getAction) HTTPRequest(ep url.URL) *http.Request {
 	params.Set("recursive", strconv.FormatBool(g.Recursive))
 	params.Set("sorted", strconv.FormatBool(g.Sorted))
 	params.Set("quorum", strconv.FormatBool(g.Quorum))
+	params.Set("wait", strconv.FormatBool(g.Wait))
+	params.Set("waitIndex", strconv.FormatUint(g.WaitIndex, 10))
 	u.RawQuery = params.Encode()
 
 	req, _ := http.NewRequest("GET", u.String(), nil)
