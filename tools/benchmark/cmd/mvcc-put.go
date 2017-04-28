@@ -36,19 +36,21 @@ var mvccPutCmd = &cobra.Command{
 }
 
 var (
-	totalNrKeys    int
-	storageKeySize int
-	valueSize      int
-	txn            bool
+	mvccTotalRequests int
+	storageKeySize    int
+	valueSize         int
+	txn               bool
+	nrTxnOps          int
 )
 
 func init() {
 	mvccCmd.AddCommand(mvccPutCmd)
 
-	mvccPutCmd.Flags().IntVar(&totalNrKeys, "total", 100, "a total number of keys to put")
+	mvccPutCmd.Flags().IntVar(&mvccTotalRequests, "total", 100, "a total number of keys to put")
 	mvccPutCmd.Flags().IntVar(&storageKeySize, "key-size", 64, "a size of key (Byte)")
 	mvccPutCmd.Flags().IntVar(&valueSize, "value-size", 64, "a size of value (Byte)")
 	mvccPutCmd.Flags().BoolVar(&txn, "txn", false, "put a key in transaction or not")
+	mvccPutCmd.Flags().IntVar(&nrTxnOps, "txn-ops", 1, "a number of keys to put per transaction")
 
 	// TODO: after the PR https://github.com/spf13/cobra/pull/220 is merged, the below pprof related flags should be moved to RootCmd
 	mvccPutCmd.Flags().StringVar(&cpuProfPath, "cpuprofile", "", "the path of file for storing cpu profile result")
@@ -99,23 +101,33 @@ func mvccPutFunc(cmd *cobra.Command, args []string) {
 		}()
 	}
 
-	keys := createBytesSlice(storageKeySize, totalNrKeys)
-	vals := createBytesSlice(valueSize, totalNrKeys)
+	keys := createBytesSlice(storageKeySize, mvccTotalRequests*nrTxnOps)
+	vals := createBytesSlice(valueSize, mvccTotalRequests*nrTxnOps)
 
-	r := newReport()
+	weight := float64(nrTxnOps)
+	r := newWeightedReport()
 	rrc := r.Results()
 
 	rc := r.Run()
-	for i := 0; i < totalNrKeys; i++ {
-		st := time.Now()
-		if txn {
+
+	if txn {
+		for i := 0; i < mvccTotalRequests; i++ {
+			st := time.Now()
+
 			tw := s.Write()
-			tw.Put(keys[i], vals[i], lease.NoLease)
+			for j := i; j < i+nrTxnOps; j++ {
+				tw.Put(keys[j], vals[j], lease.NoLease)
+			}
 			tw.End()
-		} else {
-			s.Put(keys[i], vals[i], lease.NoLease)
+
+			rrc <- report.Result{Start: st, End: time.Now(), Weight: weight}
 		}
-		rrc <- report.Result{Start: st, End: time.Now()}
+	} else {
+		for i := 0; i < mvccTotalRequests; i++ {
+			st := time.Now()
+			s.Put(keys[i], vals[i], lease.NoLease)
+			rrc <- report.Result{Start: st, End: time.Now()}
+		}
 	}
 
 	close(r.Results())
