@@ -51,6 +51,7 @@ Administrators who need to create reliable and scalable key-value stores for the
  - [Migrate applications from using API v2 to API v3][v2_migration]
  - [Upgrading a v2.3 cluster to v3.0][v3_upgrade]
  - [Upgrading a v3.0 cluster to v3.1][v31_upgrade]
+ - [Upgrading a v3.1 cluster to v3.2][v32_upgrade]
 
 ## Learning
 
@@ -105,5 +106,6 @@ Answers to [common questions] about etcd.
 [experimental]: dev-guide/experimental_apis.md
 [v3_upgrade]: upgrades/upgrade_3_0.md
 [v31_upgrade]: upgrades/upgrade_3_1.md
+[v32_upgrade]: upgrades/upgrade_3_2.md
 [authentication]: op-guide/authentication.md
 [auth_design]: learning/auth_design.md
