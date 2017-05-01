@@ -70,13 +70,21 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if err = inCfg.Validate(); err != nil {
 		return nil, err
 	}
+	serving := false
 	e = &Etcd{cfg: *inCfg, stopc: make(chan struct{})}
 	cfg := &e.cfg
 	defer func() {
-		if e != nil && err != nil {
-			e.Close()
-			e = nil
+		if e == nil || err == nil {
+			return
 		}
+		if !serving {
+			// errored before starting gRPC server for serveCtx.grpcServerC
+			for _, sctx := range e.sctxs {
+				close(sctx.grpcServerC)
+			}
+		}
+		e.Close()
+		e = nil
 	}()
 
 	if e.Peers, err = startPeerListeners(cfg); err != nil {
@@ -137,6 +145,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if err = e.serve(); err != nil {
 		return
 	}
+	serving = true
 	return
 }
 
