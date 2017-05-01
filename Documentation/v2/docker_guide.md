@@ -16,7 +16,7 @@ This will run the latest release version of etcd. You can specify version if nee
 
 ```
 docker run -d -v /usr/share/ca-certificates/:/etc/ssl/certs -p 4001:4001 -p 2380:2380 -p 2379:2379 \
- --name etcd quay.io/coreos/etcd \
+ --name etcd quay.io/coreos/etcd:v2.3.8 \
  -name etcd0 \
  -advertise-client-urls http://${HostIP}:2379,http://${HostIP}:4001 \
  -listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001 \
@@ -48,7 +48,7 @@ The main difference being the value used for the `-initial-cluster` flag, which 
 
 ```
 docker run -d -v /usr/share/ca-certificates/:/etc/ssl/certs -p 4001:4001 -p 2380:2380 -p 2379:2379 \
- --name etcd quay.io/coreos/etcd \
+ --name etcd quay.io/coreos/etcd:v2.3.8 \
  -name etcd0 \
  -advertise-client-urls http://192.168.12.50:2379,http://192.168.12.50:4001 \
  -listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001 \
@@ -63,7 +63,7 @@ docker run -d -v /usr/share/ca-certificates/:/etc/ssl/certs -p 4001:4001 -p 2380
 
 ```
 docker run -d -v /usr/share/ca-certificates/:/etc/ssl/certs -p 4001:4001 -p 2380:2380 -p 2379:2379 \
- --name etcd quay.io/coreos/etcd \
+ --name etcd quay.io/coreos/etcd:v2.3.8 \
  -name etcd1 \
  -advertise-client-urls http://192.168.12.51:2379,http://192.168.12.51:4001 \
  -listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001 \
@@ -78,7 +78,7 @@ docker run -d -v /usr/share/ca-certificates/:/etc/ssl/certs -p 4001:4001 -p 2380
 
 ```
 docker run -d -v /usr/share/ca-certificates/:/etc/ssl/certs -p 4001:4001 -p 2380:2380 -p 2379:2379 \
- --name etcd quay.io/coreos/etcd \
+ --name etcd quay.io/coreos/etcd:v2.3.8 \
  -name etcd2 \
  -advertise-client-urls http://192.168.12.52:2379,http://192.168.12.52:4001 \
  -listen-client-urls http://0.0.0.0:2379,http://0.0.0.0:4001 \
