@@ -49,6 +49,7 @@ cat <<DF > $TMPHOSTS
 DF
 
 acbuild --debug set-name coreos.com/etcd
+acbuild --debug annotation add appc.io/executor/supports-systemd-notify true
 
 acbuild --debug copy $BINARYDIR/etcd /usr/local/bin/etcd
 acbuild --debug copy $BINARYDIR/etcdctl /usr/local/bin/etcdctl
