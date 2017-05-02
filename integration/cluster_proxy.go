@@ -75,7 +75,6 @@ type proxyCloser struct {
 	clientv3.Watcher
 	wdonec  <-chan struct{}
 	kvdonec <-chan struct{}
-	lclose  func()
 	lpdonec <-chan struct{}
 }
 
@@ -84,7 +83,6 @@ func (pc *proxyCloser) Close() error {
 	<-pc.kvdonec
 	err := pc.Watcher.Close()
 	<-pc.wdonec
-	pc.lclose()
 	<-pc.lpdonec
 	return err
 }
@@ -97,13 +95,11 @@ func newClientV3(cfg clientv3.Config) (*clientv3.Client, error) {
 	rpc := toGRPC(c)
 	c.KV = clientv3.NewKVFromKVClient(rpc.KV)
 	pmu.Lock()
-	lc := c.Lease
 	c.Lease = clientv3.NewLeaseFromLeaseClient(rpc.Lease, cfg.DialTimeout)
 	c.Watcher = &proxyCloser{
 		Watcher: clientv3.NewWatchFromWatchClient(rpc.Watch),
 		wdonec:  proxies[c].wdonec,
 		kvdonec: proxies[c].kvdonec,
-		lclose:  func() { lc.Close() },
 		lpdonec: proxies[c].lpdonec,
 	}
 	pmu.Unlock()
