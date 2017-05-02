@@ -49,6 +49,7 @@ This raft implementation also includes a few optional enhancements:
 - [etcd](https://github.com/coreos/etcd) A distributed reliable key-value store
 - [tikv](https://github.com/pingcap/tikv) A Distributed transactional key value database powered by Rust and Raft
 - [swarmkit](https://github.com/docker/swarmkit) A toolkit for orchestrating distributed systems at any scale.
+- [chain core](https://github.com/chain/chain) Software for operating permissioned, multi-asset blockchain networks
 
 ## Usage
 
