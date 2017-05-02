@@ -585,6 +585,49 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	}
 }
 
+// TestApplyConfigChangeUpdatesConsistIndex ensures a config change also updates the consistIndex
+// where consistIndex equals to applied index.
+func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
+	cl := membership.NewCluster("")
+	cl.SetStore(store.New())
+	cl.AddMember(&membership.Member{ID: types.ID(1)})
+	r := newRaftNode(raftNodeConfig{
+		Node:      newNodeNop(),
+		transport: rafthttp.NewNopTransporter(),
+	})
+	srv := &EtcdServer{
+		id:      1,
+		r:       *r,
+		cluster: cl,
+		w:       wait.New(),
+	}
+
+	// create EntryConfChange entry
+	now := time.Now()
+	urls, err := types.NewURLs([]string{"http://whatever:123"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := membership.NewMember("", urls, "", &now)
+	m.ID = types.ID(2)
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2, Context: b}
+	ents := []raftpb.Entry{{
+		Index: 2,
+		Type:  raftpb.EntryConfChange,
+		Data:  pbutil.MustMarshal(cc),
+	}}
+
+	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{})
+	consistIndex := srv.consistIndex.ConsistentIndex()
+	if consistIndex != appliedi {
+		t.Fatalf("consistIndex = %v, want %v", consistIndex, appliedi)
+	}
+}
+
 // TestApplyMultiConfChangeShouldStop ensures that apply will return shouldStop
 // if the local member is removed along with other conf updates.
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
