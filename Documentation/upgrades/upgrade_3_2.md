@@ -30,32 +30,6 @@ resp.TTL == -1
 err == nil
 ```
 
-Previously, `clientv3.Lease.KeepAlive` interface does not return error (see [#7488](https://github.com/coreos/etcd/issues/7488) and [#7732](https://github.com/coreos/etcd/pull/7732)).
-
-Before
-
-```go
-// clientv3
-type Lease interface {
-    KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error)
-    KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAliveResponse, error)
-}
-```
-
-After
-
-```go
-// clientv3
-type Lease interface {
-    KeepAlive(ctx context.Context, id LeaseID) LeaseKeepAliveChan
-    KeepAliveOnce(ctx context.Context, id LeaseID) LeaseKeepAliveResponse
-}
-
-// check error
-for ka := range <-LeaseKeepAliveChan { ka.Err }
-LeaseKeepAliveResponse.Err
-```
-
 ### Server upgrade checklists
 
 #### Upgrade requirements
