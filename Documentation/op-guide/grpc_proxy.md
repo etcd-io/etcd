@@ -101,7 +101,7 @@ bar
 
 ## Client endpoint synchronization and name resolution
 
-The proxy supports registering its endpoints for discovery by writing to a user-defined endpoint. This serves two purposes. First, it allows clients to synchronize their endpoints against a set of proxy endpoints for high availability. Second, it is an endpoint provider for etcd [gRPC naming][dev-guide/grpc_naming.md].
+The proxy supports registering its endpoints for discovery by writing to a user-defined endpoint. This serves two purposes. First, it allows clients to synchronize their endpoints against a set of proxy endpoints for high availability. Second, it is an endpoint provider for etcd [gRPC naming](../dev-guide/grpc_naming.md).
 
 Register proxy(s) by providing a user-defined prefix:
 

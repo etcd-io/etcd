@@ -67,13 +67,13 @@ You have successfully started an etcd and written a key to the store.
 
 The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication. To maintain compatibility, some etcd configuration and documentation continues to refer to the legacy ports 4001 and 7001, but all new etcd use and discussion should adopt the IANA-assigned ports. The legacy ports 4001 and 7001 will be fully deprecated, and support for their use removed, in future etcd releases.
 
-[iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
+[iana-ports]: http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
 
 ### Running local etcd cluster
 
 First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
 
-Our [Procfile script](./Procfile) will set up a local example cluster. You can start it with:
+Our [Procfile script](../../V2Procfile) will set up a local example cluster. You can start it with:
 
 ```sh
 goreman start
@@ -162,4 +162,4 @@ Currently only the amd64 architecture is officially supported by `etcd`.
 
 ### License
 
-etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+etcd is under the Apache 2.0 license. See the [LICENSE](../../LICENSE) file for details.

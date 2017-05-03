@@ -104,7 +104,7 @@ PD(Placement Driver) is the central controller in the TiDB cluster. It saves the
 
 ## QingCloud
 
-- *Application*: [QingCloud](qingcloud) appcenter cluster for service discovery as [metad](metad) backend.
+- *Application*: [QingCloud][qingcloud] appcenter cluster for service discovery as [metad][metad] backend.
 - *Launched*: December 2016
 - *Cluster Size*: 1 cluster of 3 members per user.
 - *Order of Data Size*: kilobytes
@@ -186,7 +186,7 @@ In [hyper.sh][hyper.sh], the container service is backed by [hypernetes][hyperne
 - *Cluster Size*: 1000+ deployments, each deployment contains a 3 node cluster.
 - *Order of Data Size*: 100s of Megabytes
 - *Operator*: daocloud.io
-- *Environment*: Baremetal and virtual machines 
+- *Environment*: Baremetal and virtual machines
 - *Backups*: None, all data can be recreated if necessary.
 
 In [DaoCloud][DaoCloud], we use Docker and Swarm to deploy and run our applications, and we use etcd to save metadata for service discovery.
@@ -203,8 +203,9 @@ In [DaoCloud][DaoCloud], we use Docker and Swarm to deploy and run our applicati
 - *Environment*: AWS, Kubernetes
 - *Backups*: EBS volume backups
 
-At Branch, we use kubernetes heavily as our core microservice platform for staging and production. 
-[Branch]:https://branch.io
+At [Branch][branch], we use kubernetes heavily as our core microservice platform for staging and production.
+
+[branch]: https://branch.io
 
 ## Baidu Waimai
 
@@ -213,7 +214,7 @@ At Branch, we use kubernetes heavily as our core microservice platform for stagi
 - *Cluster Size*: 3 clusters of 5 members
 - *Order of Data Size*: several gigabytes
 - *Operator*: Baidu Waimai Operations Department
-- *Environment*: CentOS 6.5 
+- *Environment*: CentOS 6.5
 - *Backups*: backup scripts
 
 ## Salesforce.com

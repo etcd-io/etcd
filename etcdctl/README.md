@@ -965,7 +965,7 @@ RPC: RoleGrantPermission
 
 #### Ouptut
 
-`Role <role name> updated`. 
+`Role <role name> updated`.
 
 #### Examples
 
