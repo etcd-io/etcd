@@ -45,6 +45,24 @@ func BenchmarkStorePut(b *testing.B) {
 	}
 }
 
+func BenchmarkConsistentIndex(b *testing.B) {
+	fci := fakeConsistentIndex(10)
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(be, &lease.FakeLessor{}, &fci)
+	defer cleanup(s, be, tmpPath)
+
+	tx := s.b.BatchTx()
+	tx.Lock()
+	s.saveIndex(tx)
+	tx.Unlock()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.ConsistentIndex()
+	}
+}
+
 // BenchmarkStoreTxnPutUpdate is same as above, but instead updates single key
 func BenchmarkStorePutUpdate(b *testing.B) {
 	var i fakeConsistentIndex
