@@ -46,6 +46,7 @@ before_install:
  - go get -v -u honnef.co/go/tools/cmd/gosimple
  - go get -v -u honnef.co/go/tools/cmd/unused
  - go get -v -u honnef.co/go/tools/cmd/staticcheck
+ - ./scripts/install-marker.sh amd64
 
 # disable godep restore override
 install:
