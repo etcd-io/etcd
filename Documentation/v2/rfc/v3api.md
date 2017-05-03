@@ -7,25 +7,25 @@ To prove out the design of the v3 API the team has also built [a number of examp
 # Design
 
 1. Flatten binary key-value space
-    
+
 2. Keep the event history until compaction
     - access to old version of keys
     - user controlled history compaction
-    
+
 3. Support range query
     - Pagination support with limit argument
     - Support consistency guarantee across multiple range queries
-    
+
 4. Replace TTL key with Lease
     - more efficient/ low cost keep alive
     - a logical group of TTL keys
-    
+
 5. Replace CAS/CAD with multi-object Txn
     - MUCH MORE powerful and flexible
-    
+
 6. Support efficient watching with multiple ranges
 
-7. RPC API supports the completed set of APIs. 
+7. RPC API supports the completed set of APIs.
     - more efficient than JSON/HTTP
     - additional txn/lease support
 
@@ -56,7 +56,7 @@ the size in the future a little bit or make it configurable.
 // A put is always successful
 Put( PutRequest { key = foo, value = bar } )
 
-PutResponse { 
+PutResponse {
     cluster_id = 0x1000,
     member_id = 0x1,
     revision = 1,
@@ -119,7 +119,7 @@ RangeResponse {
 Txn(TxnRequest {
     // mod_revision of foo0 is equal to 1, mod_revision of foo1 is greater than 1
     compare = {
-        {compareType = equal, key = foo0, mod_revision = 1}, 
+        {compareType = equal, key = foo0, mod_revision = 1},
         {compareType = greater, key = foo1, mod_revision = 1}}
     },
     // if the comparison succeeds, put foo2 = bar2
@@ -156,7 +156,7 @@ Watch( WatchRequest{
            end_revision = 10000,
            // server decided notification frequency
            progress_notification = true,
-       } 
+       }
        … // this can be a watch request stream
       )
 
@@ -176,7 +176,7 @@ WatchResponse {
           },
     }
     …
-    
+
     // a notification at 2000
     WatchResponse {
         cluster_id = 0x1000,
@@ -185,9 +185,9 @@ WatchResponse {
         raft_term = 0x1,
         // nil event as notification
     }
-    
-    … 
-    
+
+    …
+
     // put (foo0=bar3000) event at 3000
     WatchResponse {
         cluster_id = 0x1000,
@@ -204,8 +204,8 @@ WatchResponse {
           },
     }
     …
-    
+
 ```
 
-[api-protobuf]: https://github.com/coreos/etcd/blob/master/etcdserver/etcdserverpb/rpc.proto
-[kv-protobuf]: https://github.com/coreos/etcd/blob/master/storage/storagepb/kv.proto
+[api-protobuf]: https://github.com/coreos/etcd/blob/release-2.3/etcdserver/etcdserverpb/rpc.proto
+[kv-protobuf]: https://github.com/coreos/etcd/blob/release-2.3/storage/storagepb/kv.proto
