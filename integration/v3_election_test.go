@@ -251,8 +251,15 @@ func TestElectionOnSessionRestart(t *testing.T) {
 	}
 	defer waitSession.Orphan()
 	waitCtx, waitCancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	defer waitCancel()
-	go concurrency.NewElection(waitSession, "test-elect").Campaign(waitCtx, "123")
+	waitc := make(chan struct{})
+	defer func() {
+		waitCancel()
+		<-waitc
+	}()
+	go func() {
+		defer close(waitc)
+		concurrency.NewElection(waitSession, "test-elect").Campaign(waitCtx, "123")
+	}()
 
 	// simulate restart by reusing the lease from the old session
 	newSession, nerr := concurrency.NewSession(cli, concurrency.WithLease(session.Lease()))
