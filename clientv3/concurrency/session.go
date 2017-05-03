@@ -51,9 +51,12 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 	}
 
 	ctx, cancel := context.WithCancel(ops.ctx)
-	keepAlive := client.KeepAlive(ctx, id)
-	donec := make(chan struct{})
+	keepAlive, err := client.KeepAlive(ctx, id)
+	if err != nil || keepAlive == nil {
+		return nil, err
+	}
 
+	donec := make(chan struct{})
 	s := &Session{client: client, opts: ops, id: id, cancel: cancel, donec: donec}
 
 	// keep the lease alive until client error or cancelled context
