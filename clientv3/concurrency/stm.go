@@ -369,3 +369,18 @@ func respToValue(resp *v3.GetResponse) string {
 	}
 	return string(resp.Kvs[0].Value)
 }
+
+// NewSTMRepeatable is deprecated.
+func NewSTMRepeatable(ctx context.Context, c *v3.Client, apply func(STM) error) (*v3.TxnResponse, error) {
+	return NewSTM(c, apply, WithAbortContext(ctx), WithIsolation(RepeatableReads))
+}
+
+// NewSTMSerializable is deprecated.
+func NewSTMSerializable(ctx context.Context, c *v3.Client, apply func(STM) error) (*v3.TxnResponse, error) {
+	return NewSTM(c, apply, WithAbortContext(ctx), WithIsolation(Serializable))
+}
+
+// NewSTMReadCommitted is deprecated.
+func NewSTMReadCommitted(ctx context.Context, c *v3.Client, apply func(STM) error) (*v3.TxnResponse, error) {
+	return NewSTM(c, apply, WithAbortContext(ctx), WithIsolation(ReadCommitted))
+}
