@@ -18,7 +18,7 @@ A key’s lifetime spans a generation. Each key may have one or multiple generat
 
 ### Physical View
 
-etcd stores the physical data as key-value pairs in a persistent [b+tree][b+tree]. Each revision of the store’s state only contains the delta from its previous revision to be efficient. A single revision may correspond to multiple keys in the tree. 
+etcd stores the physical data as key-value pairs in a persistent [b+tree][b+tree]. Each revision of the store’s state only contains the delta from its previous revision to be efficient. A single revision may correspond to multiple keys in the tree.
 
 The key of key-value pair is a 3-tuple (major, sub, type). Major is the store revision holding the key. Sub differentiates among  keys within the same revision. Type is an optional suffix for special value (e.g., `t` if the value contains a tombstone). The value of the key-value pair contains the modification from previous revision, thus one delta from previous revision. The b+tree is ordered by key in lexical byte-order. Ranged lookups over revision deltas are fast; this enables quickly finding modifications from one specific revision to another. Compaction removes out-of-date keys-value pairs.
 
@@ -73,7 +73,7 @@ Any completed operations are durable. All accessible data is also durable data. 
 
 #### Linearizability
 
-Linearizability (also known as Atomic Consistency or External Consistency) is a consistency level between strict consistency and sequential consistency. 
+Linearizability (also known as Atomic Consistency or External Consistency) is a consistency level between strict consistency and sequential consistency.
 
 For linearizability, suppose each operation receives a timestamp from a loosely synchronized global clock. Operations are linearized if and only if they always complete as though they were executed in a sequential order and each operation appears to complete in the order specified by the program. Likewise, if an operation’s timestamp precedes another, that operation must also precede the other operation in the sequence.
 
@@ -83,10 +83,10 @@ etcd does not ensure linearizability for watch operations. Users are expected to
 
 etcd ensures linearizability for all other operations by default. Linearizability comes with a cost, however, because linearized requests must go through the Raft consensus process. To obtain lower latencies and higher throughput for read requests, clients can configure a request’s consistency mode to `serializable`, which may access stale data with respect to quorum, but removes the performance penalty of linearized accesses' reliance on live consensus.
 
-[persistent-ds]: [https://en.wikipedia.org/wiki/Persistent_data_structure]
-[btree]: [https://en.wikipedia.org/wiki/B-tree]
-[b+tree]: [https://en.wikipedia.org/wiki/B%2B_tree]
-[seq_consistency]: [https://en.wikipedia.org/wiki/Consistency_model#Sequential_consistency]
-[strict_consistency]: [https://en.wikipedia.org/wiki/Consistency_model#Strict_consistency]
-[serializable_isolation]: [https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable]
-[Linearizability]: [#Linearizability]
+[persistent-ds]: https://en.wikipedia.org/wiki/Persistent_data_structure
+[btree]: https://en.wikipedia.org/wiki/B-tree
+[b+tree]: https://en.wikipedia.org/wiki/B%2B_tree
+[seq_consistency]: https://en.wikipedia.org/wiki/Consistency_model#Sequential_consistency
+[strict_consistency]: https://en.wikipedia.org/wiki/Consistency_model#Strict_consistency
+[serializable_isolation]: https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable
+[Linearizability]: #linearizability
