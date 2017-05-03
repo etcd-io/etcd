@@ -50,7 +50,7 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 
 ## Vonage
 
-- *Application*: system configuration for microservices, scheduling, locks (future - service discovery) 
+- *Application*: system configuration for microservices, scheduling, locks (future - service discovery)
 - *Launched*: August 2015
 - *Cluster Size*: 2 clusters of 5 members in 2 DCs, n local proxies 1-to-1 with microservice, (ssl and SRV look up)
 - *Order of Data Size*: kilobytes
@@ -60,3 +60,148 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 
 [teamcity]: https://www.jetbrains.com/teamcity/
 [raoofm]:https://github.com/raoofm
+
+## Qiniu Cloud
+
+- *Application*: system configuration for microservices, distributed locks
+- *Launched*: Jan. 2016
+- *Cluster Size*: 3 members each with several clusters
+- *Order of Data Size*: kilobytes
+- *Operator*: Pandora, chenchao@qiniu.com
+- *Environment*: Baremetal
+- *Backups*: None, all data can be recreated if necessary
+
+## QingCloud
+
+- *Application*: [QingCloud][qingcloud] appcenter cluster for service discovery as [metad][metad] backend.
+- *Launched*: December 2016
+- *Cluster Size*: 1 cluster of 3 members per user.
+- *Order of Data Size*: kilobytes
+- *Operator*: [yunify][yunify]
+- *Environment*: QingCloud IaaS
+- *Backups*: None, all data can be recreated if necessary.
+
+[metad]:https://github.com/yunify/metad
+[yunify]:https://github.com/yunify
+[qingcloud]:https://qingcloud.com/
+
+
+## Yandex
+
+- *Application*: system configuration for services, service discovery
+- *Launched*: March 2016
+- *Cluster Size*: 3 clusters of 5 members
+- *Order of Data Size*: several gigabytes
+- *Operator*: Yandex; [nekto0n][nekto0n]
+- *Environment*: Bare Metal
+- *Backups*: None
+
+[nekto0n]:https://github.com/nekto0n
+
+## Tencent Games
+
+- *Application*: Meta data and configuration data for service discovery, Kubernetes, etc.
+- *Launched*: Jan. 2015
+- *Cluster Size*: 3 members each with 10s of clusters
+- *Order of Data Size*: 10s of Megabytes
+- *Operator*: Tencent Game Operations Department
+- *Environment*: Baremetal
+- *Backups*: Periodic sync to backup server
+
+In Tencent games, we use Docker and Kubernetes to deploy and run our applications, and use etcd to save meta data for service discovery, Kubernetes, etc.
+
+## Hyper.sh
+
+- *Application*: Kubernetes, distributed locks, etc.
+- *Launched*: April 2016
+- *Cluster Size*: 1 cluster of 3 members
+- *Order of Data Size*: 10s of MB
+- *Operator*: Hyper.sh
+- *Environment*: Baremetal
+- *Backups*: None, all data can be recreated if necessary.
+
+In [hyper.sh][hyper.sh], the container service is backed by [hypernetes][hypernetes], a multi-tenant kubernetes distro. Moreover, we use etcd to coordinate the multiple manage services and store global meta data.
+
+[hypernetes]:https://github.com/hyperhq/hypernetes
+[Hyper.sh]:https://www.hyper.sh
+
+## Meitu
+- *Application*: system configuration for services, service discovery, kubernetes in test environment
+- *Launched*: October 2015
+- *Cluster Size*: 1 cluster of 3 members
+- *Order of Data Size*: megabytes
+- *Operator*: Meitu, hxj@meitu.com, [shafreeck][shafreeck]
+- *Environment*: Bare Metal
+- *Backups*: None, all data can be recreated if necessary.
+
+[shafreeck]:https://github.com/shafreeck
+
+## Grab
+- *Application*: system configuration for services, service discovery
+- *Launched*: June 2016
+- *Cluster Size*: 1 cluster of 7 members
+- *Order of Data Size*: megabytes
+- *Operator*: Grab, [taxitan][taxitan], [reterVision][reterVision]
+- *Environment*: AWS
+- *Backups*: None, all data can be recreated if necessary.
+
+[taxitan]:https://github.com/taxitan
+[reterVision]:https://github.com/reterVision
+
+## DaoCloud.io
+
+- *Application*: container management
+- *Launched*: Sep. 2015
+- *Cluster Size*: 1000+ deployments, each deployment contains a 3 node cluster.
+- *Order of Data Size*: 100s of Megabytes
+- *Operator*: daocloud.io
+- *Environment*: Baremetal and virtual machines
+- *Backups*: None, all data can be recreated if necessary.
+
+In [DaoCloud][DaoCloud], we use Docker and Swarm to deploy and run our applications, and we use etcd to save metadata for service discovery.
+
+[DaoCloud]:https://www.daocloud.io
+
+## Branch.io
+
+- *Application*: Kubernetes
+- *Launched*: April 2016
+- *Cluster Size*: Multiple clusters, multiple sizes
+- *Order of Data Size*: 100s of Megabytes
+- *Operator*: branch.io
+- *Environment*: AWS, Kubernetes
+- *Backups*: EBS volume backups
+
+At [Branch][branch], we use kubernetes heavily as our core microservice platform for staging and production.
+
+[branch]: https://branch.io
+
+## Baidu Waimai
+
+- *Application*: SkyDNS, Kubernetes, UDC, CMDB and other distributed systems
+- *Launched*: April. 2016
+- *Cluster Size*: 3 clusters of 5 members
+- *Order of Data Size*: several gigabytes
+- *Operator*: Baidu Waimai Operations Department
+- *Environment*: CentOS 6.5
+- *Backups*: backup scripts
+
+## Salesforce.com
+
+- *Application*: Kubernetes
+- *Launched*: Jan 2017
+- *Cluster Size*: Multiple clusters of 3 members
+- *Order of Data Size*: 100s of Megabytes
+- *Operator*: Salesforce.com (krmayankk@github)
+- *Environment*: BareMetal
+- *Backups*: None, all data can be recreated
+
+## Hosted Graphite
+
+- *Application*: Service discovery, locking, ephemeral application data
+- *Launched*: January 2017
+- *Cluster Size*: 2 clusters of 7 members
+- *Order of Data Size*: Megabytes
+- *Operator*: Hosted Graphite (sre@hostedgraphite.com)
+- *Environment*: Bare Metal
+- *Backups*: None, all data is considered ephemeral.

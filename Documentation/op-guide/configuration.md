@@ -286,7 +286,7 @@ Follow the instructions when using these flags.
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
 [discovery]: clustering.md#discovery
-[iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
+[iana-ports]: http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
 [proxy]: ../v2/proxy.md
 [restore]: ../v2/admin_guide.md#restoring-a-backup
 [security]: security.md

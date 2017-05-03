@@ -3,7 +3,7 @@
 etcd uses the [capnslog][capnslog] library for logging application output categorized into *levels*. A log message's level is determined according to these conventions:
 
 * Error: Data has been lost, a request has failed for a bad reason, or a required resource has been lost
-  * Examples: 
+  * Examples:
     * A failure to allocate disk space for WAL
 
 * Warning: (Hopefully) Temporary conditions that may cause errors, but may work fine. A replica disappearing (that may reconnect) is a warning.
@@ -26,4 +26,4 @@ etcd uses the [capnslog][capnslog] library for logging application output catego
     * Send a normal message to a remote peer
     * Write a log entry to disk
 
-[capnslog]: [https://github.com/coreos/pkg/tree/master/capnslog]
+[capnslog]: https://github.com/coreos/pkg/tree/master/capnslog
