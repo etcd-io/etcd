@@ -78,7 +78,7 @@ That's it! etcd is now running and serving client requests. For more
 
 The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication. 
 
-[iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
+[iana-ports]: http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
 
 ### Running a local etcd cluster
 
@@ -136,5 +136,3 @@ See [reporting bugs](Documentation/reporting_bugs.md) for details about reportin
 ### License
 
 etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
-
-
