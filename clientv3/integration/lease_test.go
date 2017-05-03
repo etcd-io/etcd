@@ -729,6 +729,12 @@ func TestLeaseWithRequireLeader(t *testing.T) {
 	}
 
 	clus.Members[1].Stop(t)
+	// kaReqLeader may issue multiple requests while waiting for the first
+	// response from proxy server; drain any stray keepalive responses
+	time.Sleep(100 * time.Millisecond)
+	for len(kaReqLeader) > 0 {
+		<-kaReqLeader
+	}
 
 	select {
 	case resp, ok := <-kaReqLeader:
