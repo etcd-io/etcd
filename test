@@ -233,6 +233,18 @@ function fmt_pass {
 		exit 255
 	fi
 
+	# TODO: check other markdown files when marker handles headers with '[]'
+	if which marker >/dev/null; then
+		echo "Checking marker to find broken links..."
+		markerResult=`marker --skip-http --root ./Documentation 2>&1 || true`
+		if [ -n "${markerResult}" ]; then
+			echo -e "marker checking failed:\n${markerResult}"
+			exit 255
+		fi
+	else
+		echo "Skipping marker..."
+	fi
+
 	if which goword >/dev/null; then
 		echo "Checking goword..."
 		# get all go files to process
