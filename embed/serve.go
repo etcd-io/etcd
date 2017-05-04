@@ -21,7 +21,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3client"
@@ -159,17 +158,6 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 			otherHandler.ServeHTTP(w, r)
 		}
 	})
-}
-
-func servePeerHTTP(l net.Listener, handler http.Handler) error {
-	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
-	// TODO: add debug flag; enable logging when debug flag is set
-	srv := &http.Server{
-		Handler:     handler,
-		ReadTimeout: 5 * time.Minute,
-		ErrorLog:    logger, // do not log user error
-	}
-	return srv.Serve(l)
 }
 
 type registerHandlerFunc func(context.Context, *gw.ServeMux, string, []grpc.DialOption) error
