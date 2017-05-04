@@ -15,6 +15,7 @@
 package snap
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,6 +24,8 @@ import (
 
 	"github.com/coreos/etcd/pkg/fileutil"
 )
+
+var ErrNoDBSnapshot = errors.New("snap: snapshot file doesn't exist")
 
 // SaveDBFrom saves snapshot of the database from the given reader. It
 // guarantees the save operation is atomic.
@@ -60,15 +63,19 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 // DBFilePath returns the file path for the snapshot of the database with
 // given id. If the snapshot does not exist, it returns error.
 func (s *Snapshotter) DBFilePath(id uint64) (string, error) {
-	fns, err := fileutil.ReadDir(s.dir)
+	return DBFilePathFromID(s.dir, id)
+}
+
+func DBFilePathFromID(dbPath string, id uint64) (string, error) {
+	fns, err := fileutil.ReadDir(dbPath)
 	if err != nil {
 		return "", err
 	}
 	wfn := fmt.Sprintf("%016x.snap.db", id)
 	for _, fn := range fns {
 		if fn == wfn {
-			return filepath.Join(s.dir, fn), nil
+			return filepath.Join(dbPath, fn), nil
 		}
 	}
-	return "", fmt.Errorf("snap: snapshot file doesn't exist")
+	return "", ErrNoDBSnapshot
 }
