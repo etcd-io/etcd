@@ -176,7 +176,10 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 The security flags help to [build a secure etcd cluster][security].
 
-### --ca-file [DEPRECATED]
+### --ca-file
+
+**DEPRECATED**
+
 + Path to the client server TLS CA file. `--ca-file ca.crt` could be replaced by `--trusted-ca-file ca.crt --client-cert-auth` and etcd will perform the same.
 + default: none
 + env variable: ETCD_CA_FILE
@@ -201,7 +204,10 @@ The security flags help to [build a secure etcd cluster][security].
 + default: none
 + env variable: ETCD_TRUSTED_CA_FILE
 
-### --peer-ca-file [DEPRECATED]
+### --peer-ca-file
+
+**DEPRECATED**
+
 + Path to the peer server TLS CA file. `--peer-ca-file ca.crt` could be replaced by `--peer-trusted-ca-file ca.crt --peer-client-cert-auth` and etcd will perform the same.
 + default: none
 + env variable: ETCD_PEER_CA_FILE
