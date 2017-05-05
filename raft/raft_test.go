@@ -2565,6 +2565,41 @@ func TestAddNode(t *testing.T) {
 	}
 }
 
+// TestAddNodeCheckQuorum tests that addNode does not trigger a leader election
+// immediately when checkQuorum is set.
+func TestAddNodeCheckQuorum(t *testing.T) {
+	r := newTestRaft(1, []uint64{1}, 10, 1, NewMemoryStorage())
+	r.pendingConf = true
+	r.checkQuorum = true
+
+	r.becomeCandidate()
+	r.becomeLeader()
+
+	for i := 0; i < r.electionTimeout-1; i++ {
+		r.tick()
+	}
+
+	r.addNode(2)
+
+	// This tick will reach electionTimeout, which triggers a quorum check.
+	r.tick()
+
+	// Node 1 should still be the leader after a single tick.
+	if r.state != StateLeader {
+		t.Errorf("state = %v, want %v", r.state, StateLeader)
+	}
+
+	// After another electionTimeout ticks without hearing from node 2,
+	// node 1 should step down.
+	for i := 0; i < r.electionTimeout; i++ {
+		r.tick()
+	}
+
+	if r.state != StateFollower {
+		t.Errorf("state = %v, want %v", r.state, StateFollower)
+	}
+}
+
 // TestRemoveNode tests that removeNode could update pendingConf, nodes and
 // and removed list correctly.
 func TestRemoveNode(t *testing.T) {
