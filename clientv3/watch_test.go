@@ -25,6 +25,7 @@ func TestEvent(t *testing.T) {
 		ev       *Event
 		isCreate bool
 		isModify bool
+		isDelete bool
 	}{{
 		ev: &Event{
 			Type: EventTypePut,
@@ -43,6 +44,15 @@ func TestEvent(t *testing.T) {
 			},
 		},
 		isModify: false,
+	}, {
+		ev: &Event{
+			Type: EventTypeDelete,
+			Kv: &mvccpb.KeyValue{
+				CreateRevision: 5,
+				ModRevision:    5,
+			},
+		},
+		isDelete: true,
 	}}
 	for i, tt := range tests {
 		if tt.isCreate && !tt.ev.IsCreate() {
@@ -50,6 +60,9 @@ func TestEvent(t *testing.T) {
 		}
 		if tt.isModify && !tt.ev.IsModify() {
 			t.Errorf("#%d: event should be Modify event", i)
+		}
+		if tt.isDelete && !tt.ev.IsDelete() {
+			t.Errorf("#%d: event should be Delete event", i)
 		}
 	}
 }
