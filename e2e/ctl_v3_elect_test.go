@@ -23,9 +23,19 @@ import (
 	"github.com/coreos/etcd/pkg/expect"
 )
 
-func TestCtlV3Elect(t *testing.T) { testCtl(t, testElect) }
+func TestCtlV3Elect(t *testing.T) {
+	oldenv := os.Getenv("EXPECT_DEBUG")
+	defer os.Setenv("EXPECT_DEBUG", oldenv)
+	os.Setenv("EXPECT_DEBUG", "1")
+
+	testCtl(t, testElect)
+}
 
 func testElect(cx ctlCtx) {
+	// debugging for #6934
+	sig := cx.epc.withStopSignal(debugLockSignal)
+	defer cx.epc.withStopSignal(sig)
+
 	name := "a"
 
 	holder, ch, err := ctlV3Elect(cx, name, "p1")
@@ -102,6 +112,7 @@ func ctlV3Elect(cx ctlCtx, name, proposal string) (*expect.ExpectProcess, <-chan
 		close(outc)
 		return proc, outc, err
 	}
+	proc.StopSignal = debugLockSignal
 	go func() {
 		s, xerr := proc.ExpectFunc(func(string) bool { return true })
 		if xerr != nil {
