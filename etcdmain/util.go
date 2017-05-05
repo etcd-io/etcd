@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/etcd/client"
+	"github.com/coreos/etcd/pkg/srv"
 	"github.com/coreos/etcd/pkg/transport"
 )
 
@@ -26,11 +26,12 @@ func discoverEndpoints(dns string, ca string, insecure bool) (endpoints []string
 	if dns == "" {
 		return nil
 	}
-	endpoints, err := client.NewSRVDiscover().Discover(dns)
+	srvs, err := srv.GetClient("etcd-client", dns)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	endpoints = srvs.Endpoints
 	plog.Infof("discovered the cluster %s from %s", endpoints, dns)
 	if insecure {
 		return endpoints

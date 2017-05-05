@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package discovery
+package srv
 
 import (
 	"errors"
 	"net"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -110,12 +111,90 @@ func TestSRVGetCluster(t *testing.T) {
 			return "", nil, errors.New("Unknown service in mock")
 		}
 		urls := testutil.MustNewURLs(t, tt.urls)
-		str, err := SRVGetCluster(name, "example.com", urls)
+		str, err := GetCluster("etcd-server", name, "example.com", urls)
 		if err != nil {
 			t.Fatalf("%d: err: %#v", i, err)
 		}
-		if str != tt.expected {
+		if strings.Join(str, ",") != tt.expected {
 			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.expected)
 		}
+	}
+}
+
+func TestSRVDiscover(t *testing.T) {
+	defer func() { lookupSRV = net.LookupSRV }()
+
+	tests := []struct {
+		withSSL    []*net.SRV
+		withoutSSL []*net.SRV
+		expected   []string
+	}{
+		{
+			[]*net.SRV{},
+			[]*net.SRV{},
+			[]string{},
+		},
+		{
+			[]*net.SRV{
+				{Target: "10.0.0.1", Port: 2480},
+				{Target: "10.0.0.2", Port: 2480},
+				{Target: "10.0.0.3", Port: 2480},
+			},
+			[]*net.SRV{},
+			[]string{"https://10.0.0.1:2480", "https://10.0.0.2:2480", "https://10.0.0.3:2480"},
+		},
+		{
+			[]*net.SRV{
+				{Target: "10.0.0.1", Port: 2480},
+				{Target: "10.0.0.2", Port: 2480},
+				{Target: "10.0.0.3", Port: 2480},
+			},
+			[]*net.SRV{
+				{Target: "10.0.0.1", Port: 7001},
+			},
+			[]string{"https://10.0.0.1:2480", "https://10.0.0.2:2480", "https://10.0.0.3:2480", "http://10.0.0.1:7001"},
+		},
+		{
+			[]*net.SRV{
+				{Target: "10.0.0.1", Port: 2480},
+				{Target: "10.0.0.2", Port: 2480},
+				{Target: "10.0.0.3", Port: 2480},
+			},
+			[]*net.SRV{
+				{Target: "10.0.0.1", Port: 7001},
+			},
+			[]string{"https://10.0.0.1:2480", "https://10.0.0.2:2480", "https://10.0.0.3:2480", "http://10.0.0.1:7001"},
+		},
+		{
+			[]*net.SRV{
+				{Target: "a.example.com", Port: 2480},
+				{Target: "b.example.com", Port: 2480},
+				{Target: "c.example.com", Port: 2480},
+			},
+			[]*net.SRV{},
+			[]string{"https://a.example.com:2480", "https://b.example.com:2480", "https://c.example.com:2480"},
+		},
+	}
+
+	for i, tt := range tests {
+		lookupSRV = func(service string, proto string, domain string) (string, []*net.SRV, error) {
+			if service == "etcd-client-ssl" {
+				return "", tt.withSSL, nil
+			}
+			if service == "etcd-client" {
+				return "", tt.withoutSSL, nil
+			}
+			return "", nil, errors.New("Unknown service in mock")
+		}
+
+		srvs, err := GetClient("etcd-client", "example.com")
+		if err != nil {
+			t.Fatalf("%d: err: %#v", i, err)
+		}
+
+		if !reflect.DeepEqual(srvs.Endpoints, tt.expected) {
+			t.Errorf("#%d: endpoints = %v, want %v", i, srvs.Endpoints, tt.expected)
+		}
+
 	}
 }
