@@ -951,6 +951,89 @@ func TestSnapshot(t *testing.T) {
 	<-ch
 }
 
+// TestSnapshotOrdering ensures raft persists snapshot onto disk before
+// snapshot db is applied.
+func TestSnapshotOrdering(t *testing.T) {
+	n := newNopReadyNode()
+	st := store.New()
+	cl := membership.NewCluster("abc")
+	cl.SetStore(st)
+
+	testdir, err := ioutil.TempDir(os.TempDir(), "testsnapdir")
+	if err != nil {
+		t.Fatalf("couldn't open tempdir (%v)", err)
+	}
+	defer os.RemoveAll(testdir)
+	if err := os.MkdirAll(testdir+"/member/snap", 0755); err != nil {
+		t.Fatalf("couldn't make snap dir (%v)", err)
+	}
+
+	rs := raft.NewMemoryStorage()
+	p := mockstorage.NewStorageRecorderStream(testdir)
+	tr, snapDoneC := rafthttp.NewSnapTransporter(testdir)
+	r := newRaftNode(raftNodeConfig{
+		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+		Node:        n,
+		transport:   tr,
+		storage:     p,
+		raftStorage: rs,
+	})
+	s := &EtcdServer{
+		Cfg: &ServerConfig{
+			DataDir: testdir,
+		},
+		r:          *r,
+		store:      st,
+		cluster:    cl,
+		SyncTicker: &time.Ticker{},
+	}
+	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
+
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	defer os.RemoveAll(tmpPath)
+	s.kv = mvcc.New(be, &lease.FakeLessor{}, &s.consistIndex)
+	s.be = be
+
+	s.start()
+	defer s.Stop()
+
+	actionc := p.Chan()
+	n.readyc <- raft.Ready{Messages: []raftpb.Message{{Type: raftpb.MsgSnap}}}
+	if ac := <-actionc; ac.Name != "Save" {
+		// MsgSnap triggers raftNode to call Save()
+		t.Fatalf("expect save() is called, but got %v", ac.Name)
+	}
+
+	// get the snapshot sent by the transport
+	snapMsg := <-snapDoneC
+
+	// Snapshot first triggers raftnode to persists the snapshot onto disk
+	// before renaming db snapshot file to db
+	snapMsg.Snapshot.Metadata.Index = 1
+	n.readyc <- raft.Ready{Snapshot: snapMsg.Snapshot}
+	var seenSaveSnap bool
+	timer := time.After(5 * time.Second)
+	for {
+		select {
+		case ac := <-actionc:
+			switch ac.Name {
+			// DBFilePath() is called immediately before snapshot renaming.
+			case "DBFilePath":
+				if !seenSaveSnap {
+					t.Fatalf("DBFilePath called before SaveSnap")
+				}
+				return
+			case "SaveSnap":
+				seenSaveSnap = true
+			default:
+				continue
+			}
+		case <-timer:
+			t.Fatalf("timeout waiting on actions")
+		}
+	}
+}
+
 // Applied > SnapCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
 	be, tmpPath := backend.NewDefaultTmpBackend()
