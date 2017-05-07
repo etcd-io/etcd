@@ -37,7 +37,9 @@ addons:
   apt:
     packages:
     - libpcap-dev
+    - aspell
     - libaspell-dev
+    - hunspell
     - libhunspell-dev
 
 before_install:
