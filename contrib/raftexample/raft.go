@@ -239,9 +239,8 @@ func (rc *raftNode) replayWAL() *wal.WAL {
 	// send nil once lastIndex is published so client knows commit channel is current
 	if len(ents) > 0 {
 		rc.lastIndex = ents[len(ents)-1].Index
-	} else {
-		rc.commitC <- nil
 	}
+
 	return w
 }
 
