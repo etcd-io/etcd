@@ -90,7 +90,7 @@ func TestParse(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		m := parse(tt.s)
+		m, _ := parse(tt.s)
 		if !reflect.DeepEqual(m, tt.wm) {
 			t.Errorf("#%d: m = %+v, want %+v", i, m, tt.wm)
 		}

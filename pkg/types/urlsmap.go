@@ -25,9 +25,12 @@ type URLsMap map[string]URLs
 
 // NewURLsMap returns a URLsMap instantiated from the given string,
 // which consists of discovery-formatted names-to-URLs, like:
-// mach0=http://1.1.1.1:2380,mach0=http://2.2.2.2::2380,mach1=http://3.3.3.3:2380,mach2=http://4.4.4.4:2380
+// mach0=http://1.1.1.1:2380,mach1=http://2.2.2.2::2380,mach2=http://3.3.3.3:2380,mach3=http://4.4.4.4:2380
 func NewURLsMap(s string) (URLsMap, error) {
-	m := parse(s)
+	m, err := parse(s)
+	if err != nil {
+		return nil, err
+	}
 
 	cl := URLsMap{}
 	for name, urls := range m {
@@ -85,23 +88,19 @@ func (c URLsMap) Len() int {
 }
 
 // parse parses the given string and returns a map listing the values specified for each key.
-func parse(s string) map[string][]string {
+func parse(s string) (map[string][]string, error) {
 	m := make(map[string][]string)
-	for s != "" {
-		key := s
-		if i := strings.IndexAny(key, ","); i >= 0 {
-			key, s = key[:i], key[i+1:]
-		} else {
-			s = ""
+	if s == "" {
+		return m, nil
+	}
+	pairs := strings.Split(s, ",")
+	for _, pair := range pairs {
+		kv := strings.Split(pair, "=")
+		if len(kv) < 2 {
+			return nil, fmt.Errorf("no name or url specified")
 		}
-		if key == "" {
-			continue
-		}
-		value := ""
-		if i := strings.Index(key, "="); i >= 0 {
-			key, value = key[:i], key[i+1:]
-		}
+		key, value := kv[0], kv[1]
 		m[key] = append(m[key], value)
 	}
-	return m
+	return m, nil
 }

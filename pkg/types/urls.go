@@ -26,10 +26,11 @@ import (
 type URLs []url.URL
 
 func NewURLs(strs []string) (URLs, error) {
-	all := make([]url.URL, len(strs))
-	if len(all) == 0 {
+	if len(strs) == 0 {
 		return nil, errors.New("no valid URLs given")
 	}
+
+	all := make([]url.URL, len(strs))
 	for i, in := range strs {
 		in = strings.TrimSpace(in)
 		u, err := url.Parse(in)
