@@ -696,3 +696,25 @@ func TestIsHardStateEqual(t *testing.T) {
 		}
 	}
 }
+
+func TestMustSync(t *testing.T) {
+	tests := []struct {
+		st       raftpb.HardState
+		prevst   raftpb.HardState
+		entsnum  int
+		expected bool
+	}{
+		{emptyState, emptyState, 0, false},
+		{emptyState, emptyState, 1, true},
+		{raftpb.HardState{Commit: 1}, emptyState, 0, true},
+		{raftpb.HardState{Vote: 1}, emptyState, 0, true},
+		{raftpb.HardState{Term: 1}, emptyState, 0, true},
+	}
+
+	for i, tt := range tests {
+		result := MustSync(tt.st, tt.prevst, tt.entsnum)
+		if result != tt.expected {
+			t.Errorf("#%d, MustSync = %v, want %v", i, result, tt.expected)
+		}
+	}
+}
