@@ -11,7 +11,7 @@
 
 ![etcd Logo](logos/etcd-horizontal-color.png)
 
-etcd is a distributed, consistent key-value store for shared configuration and service discovery, with a focus on being:
+etcd is a distributed reliable key-value store for the most critical data of a distributed system, with a focus on being:
 
 * *Simple*: well-defined, user-facing API (gRPC)
 * *Secure*: automatic TLS with optional client cert authentication
