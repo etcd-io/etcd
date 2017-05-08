@@ -176,6 +176,7 @@ func (b *backend) Snapshot() Snapshot {
 			case <-ticker.C:
 				plog.Warningf("snapshotting is taking more than %v seconds to finish [started at %v]", time.Since(start).Seconds(), start)
 			case <-stopc:
+				snapshotDurations.Observe(time.Since(start).Seconds())
 				return
 			}
 		}
