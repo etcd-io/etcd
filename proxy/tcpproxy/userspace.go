@@ -15,7 +15,9 @@
 package tcpproxy
 
 import (
+	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -29,6 +31,7 @@ var (
 
 type remote struct {
 	mu       sync.Mutex
+	srv      *net.SRV
 	addr     string
 	inactive bool
 }
@@ -59,14 +62,14 @@ func (r *remote) isActive() bool {
 
 type TCPProxy struct {
 	Listener        net.Listener
-	Endpoints       []string
+	Endpoints       []*net.SRV
 	MonitorInterval time.Duration
 
 	donec chan struct{}
 
-	mu         sync.Mutex // guards the following fields
-	remotes    []*remote
-	nextRemote int
+	mu        sync.Mutex // guards the following fields
+	remotes   []*remote
+	pickCount int // for round robin
 }
 
 func (tp *TCPProxy) Run() error {
@@ -74,11 +77,12 @@ func (tp *TCPProxy) Run() error {
 	if tp.MonitorInterval == 0 {
 		tp.MonitorInterval = 5 * time.Minute
 	}
-	for _, ep := range tp.Endpoints {
-		tp.remotes = append(tp.remotes, &remote{addr: ep})
+	for _, srv := range tp.Endpoints {
+		addr := fmt.Sprintf("%s:%d", srv.Target, srv.Port)
+		tp.remotes = append(tp.remotes, &remote{srv: srv, addr: addr})
 	}
 
-	plog.Printf("ready to proxy client requests to %v", tp.Endpoints)
+	plog.Printf("ready to proxy client requests to %+v", tp.Endpoints)
 	go tp.runMonitor()
 	for {
 		in, err := tp.Listener.Accept()
@@ -90,10 +94,61 @@ func (tp *TCPProxy) Run() error {
 	}
 }
 
-func (tp *TCPProxy) numRemotes() int {
-	tp.mu.Lock()
-	defer tp.mu.Unlock()
-	return len(tp.remotes)
+func (tp *TCPProxy) pick() *remote {
+	var weighted []*remote
+	var unweighted []*remote
+
+	bestPr := uint16(65535)
+	w := 0
+	// find best priority class
+	for _, r := range tp.remotes {
+		switch {
+		case !r.isActive():
+		case r.srv.Priority < bestPr:
+			bestPr = r.srv.Priority
+			w = 0
+			weighted, unweighted = nil, nil
+			unweighted = []*remote{r}
+			fallthrough
+		case r.srv.Priority == bestPr:
+			if r.srv.Weight > 0 {
+				weighted = append(weighted, r)
+				w += int(r.srv.Weight)
+			} else {
+				unweighted = append(unweighted, r)
+			}
+		}
+	}
+	if weighted != nil {
+		if len(unweighted) > 0 && rand.Intn(100) == 1 {
+			// In the presence of records containing weights greater
+			// than 0, records with weight 0 should have a very small
+			// chance of being selected.
+			r := unweighted[tp.pickCount%len(unweighted)]
+			tp.pickCount++
+			return r
+		}
+		// choose a uniform random number between 0 and the sum computed
+		// (inclusive), and select the RR whose running sum value is the
+		// first in the selected order
+		choose := rand.Intn(w)
+		for i := 0; i < len(weighted); i++ {
+			choose -= int(weighted[i].srv.Weight)
+			if choose <= 0 {
+				return weighted[i]
+			}
+		}
+	}
+	if unweighted != nil {
+		for i := 0; i < len(tp.remotes); i++ {
+			picked := tp.remotes[tp.pickCount%len(tp.remotes)]
+			tp.pickCount++
+			if picked.isActive() {
+				return picked
+			}
+		}
+	}
+	return nil
 }
 
 func (tp *TCPProxy) serve(in net.Conn) {
@@ -102,10 +157,12 @@ func (tp *TCPProxy) serve(in net.Conn) {
 		out net.Conn
 	)
 
-	for i := 0; i < tp.numRemotes(); i++ {
+	for {
+		tp.mu.Lock()
 		remote := tp.pick()
-		if !remote.isActive() {
-			continue
+		tp.mu.Unlock()
+		if remote == nil {
+			break
 		}
 		// TODO: add timeout
 		out, err = net.Dial("tcp", remote.addr)
@@ -130,16 +187,6 @@ func (tp *TCPProxy) serve(in net.Conn) {
 	io.Copy(out, in)
 	out.Close()
 	in.Close()
-}
-
-// pick picks a remote in round-robin fashion
-func (tp *TCPProxy) pick() *remote {
-	tp.mu.Lock()
-	defer tp.mu.Unlock()
-
-	picked := tp.remotes[tp.nextRemote]
-	tp.nextRemote = (tp.nextRemote + 1) % len(tp.remotes)
-	return picked
 }
 
 func (tp *TCPProxy) runMonitor() {

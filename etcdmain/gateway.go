@@ -91,17 +91,28 @@ func stripSchema(eps []string) []string {
 
 	return endpoints
 }
-func startGateway(cmd *cobra.Command, args []string) {
-	endpoints := gatewayEndpoints
 
-	if eps := discoverEndpoints(gatewayDNSCluster, gatewayCA, gatewayInsecureDiscovery); len(eps) != 0 {
-		endpoints = eps
+func startGateway(cmd *cobra.Command, args []string) {
+	srvs := discoverEndpoints(gatewayDNSCluster, gatewayCA, gatewayInsecureDiscovery)
+	if len(srvs.Endpoints) == 0 {
+		// no endpoints discovered, fall back to provided endpoints
+		srvs.Endpoints = gatewayEndpoints
+	}
+	// Strip the schema from the endpoints because we start just a TCP proxy
+	srvs.Endpoints = stripSchema(srvs.Endpoints)
+	if len(srvs.SRVs) == 0 {
+		for _, ep := range srvs.Endpoints {
+			h, p, err := net.SplitHostPort(ep)
+			if err != nil {
+				plog.Fatalf("error parsing endpoint %q", ep)
+			}
+			var port uint16
+			fmt.Sscanf(p, "%d", &port)
+			srvs.SRVs = append(srvs.SRVs, &net.SRV{Target: h, Port: port})
+		}
 	}
 
-	// Strip the schema from the endpoints because we start just a TCP proxy
-	endpoints = stripSchema(endpoints)
-
-	if len(endpoints) == 0 {
+	if len(srvs.Endpoints) == 0 {
 		plog.Fatalf("no endpoints found")
 	}
 
@@ -113,7 +124,7 @@ func startGateway(cmd *cobra.Command, args []string) {
 
 	tp := tcpproxy.TCPProxy{
 		Listener:        l,
-		Endpoints:       endpoints,
+		Endpoints:       srvs.SRVs,
 		MonitorInterval: getewayRetryDelay,
 	}
 
