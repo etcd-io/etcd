@@ -1,5 +1,10 @@
 [
 	{
+		"project": "bitbucket.org/ww/goautoneg",
+		"license": "BSD 3-clause \"New\" or \"Revised\" License",
+		"confidence": 1
+	},
+	{
 		"project": "github.com/beorn7/perks/quantile",
 		"license": "MIT License",
 		"confidence": 0.989
@@ -202,11 +207,6 @@
 	{
 		"project": "gopkg.in/yaml.v2",
 		"license": "Apache License 2.0 and MIT License",
-		"confidence": 1
-	},
-	{
-		"project": "bitbucket.org/ww/goautoneg",
-		"license": "BSD 3-clause \"New\" or \"Revised\" License",
 		"confidence": 1
 	}
 ]
