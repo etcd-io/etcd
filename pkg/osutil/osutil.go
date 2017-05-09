@@ -24,6 +24,9 @@ import (
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "pkg/osutil")
+
+	// support to override setting SIG_DFL so tests don't terminate early
+	setDflSignal = dflSignal
 )
 
 func Unsetenv(key string) error {
