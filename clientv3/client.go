@@ -503,3 +503,11 @@ func toErr(ctx context.Context, err error) error {
 	}
 	return err
 }
+
+func canceledByCaller(stopCtx context.Context, err error) bool {
+	if stopCtx.Err() == nil || err == nil {
+		return false
+	}
+
+	return err == context.Canceled || err == context.DeadlineExceeded
+}
