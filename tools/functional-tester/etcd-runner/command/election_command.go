@@ -89,14 +89,14 @@ func runElectionFunc(cmd *cobra.Command, args []string) {
 				}
 			}()
 			err = e.Campaign(ctx, v)
+			cancel()
+			<-donec
 			if err == nil {
 				observedLeader = v
 			}
 			if observedLeader == v {
 				validateWaiters = len(rcs)
 			}
-			cancel()
-			<-donec
 			select {
 			case <-ctx.Done():
 				return nil
