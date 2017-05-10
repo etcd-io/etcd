@@ -56,7 +56,6 @@ func newClient(eps []string, timeout time.Duration) *clientv3.Client {
 }
 
 func doRounds(rcs []roundClient, rounds int, requests int) {
-	var mu sync.Mutex
 	var wg sync.WaitGroup
 
 	wg.Add(len(rcs))
@@ -73,22 +72,16 @@ func doRounds(rcs []roundClient, rounds int, requests int) {
 				for rc.acquire() != nil { /* spin */
 				}
 
-				mu.Lock()
 				if err := rc.validate(); err != nil {
 					log.Fatal(err)
 				}
-				mu.Unlock()
 
 				time.Sleep(10 * time.Millisecond)
 				rc.progress++
 				finished <- struct{}{}
 
-				mu.Lock()
 				for rc.release() != nil { /* spin */
-					mu.Unlock()
-					mu.Lock()
 				}
-				mu.Unlock()
 			}
 		}(&rcs[i])
 	}

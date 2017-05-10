@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/coreos/etcd/clientv3/concurrency"
 
@@ -47,6 +48,8 @@ func runRacerFunc(cmd *cobra.Command, args []string) {
 
 	rcs := make([]roundClient, totalClientConnections)
 	ctx := context.Background()
+	// mu ensures validate and release funcs are atomic.
+	var mu sync.Mutex
 	cnt := 0
 
 	eps := endpointsFromFlag(cmd)
@@ -69,12 +72,16 @@ func runRacerFunc(cmd *cobra.Command, args []string) {
 		m := concurrency.NewMutex(s, racers)
 		rcs[i].acquire = func() error { return m.Lock(ctx) }
 		rcs[i].validate = func() error {
+			mu.Lock()
+			defer mu.Unlock()
 			if cnt++; cnt != 1 {
 				return fmt.Errorf("bad lock; count: %d", cnt)
 			}
 			return nil
 		}
 		rcs[i].release = func() error {
+			mu.Lock()
+			defer mu.Unlock()
 			if err := m.Unlock(ctx); err != nil {
 				return err
 			}
