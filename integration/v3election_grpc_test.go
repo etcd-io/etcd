@@ -41,7 +41,7 @@ func TestV3ElectionCampaign(t *testing.T) {
 		t.Fatal(err2)
 	}
 
-	lc := epb.NewElectionClient(clus.Client(0).ActiveConnection())
+	lc := toGRPC(clus.Client(0)).Election
 	req1 := &epb.CampaignRequest{Name: []byte("foo"), Lease: lease1.ID, Value: []byte("abc")}
 	l1, lerr1 := lc.Campaign(context.TODO(), req1)
 	if lerr1 != nil {
@@ -94,7 +94,7 @@ func TestV3ElectionObserve(t *testing.T) {
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	lc := epb.NewElectionClient(clus.Client(0).ActiveConnection())
+	lc := toGRPC(clus.Client(0)).Election
 
 	// observe leadership events
 	observec := make(chan struct{})
