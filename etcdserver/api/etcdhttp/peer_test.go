@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v2http
+package etcdhttp
 
 import (
 	"encoding/json"
@@ -20,12 +20,35 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path"
+	"sort"
 	"testing"
 
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/go-semver/semver"
 )
+
+type fakeCluster struct {
+	id         uint64
+	clientURLs []string
+	members    map[uint64]*membership.Member
+}
+
+func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
+func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
+func (c *fakeCluster) Members() []*membership.Member {
+	var ms membership.MembersByID
+	for _, m := range c.members {
+		ms = append(ms, m)
+	}
+	sort.Sort(ms)
+	return []*membership.Member(ms)
+}
+func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[uint64(id)] }
+func (c *fakeCluster) IsIDRemoved(id types.ID) bool          { return false }
+func (c *fakeCluster) Version() *semver.Version              { return nil }
 
 // TestNewPeerHandlerOnRaftPrefix tests that NewPeerHandler returns a handler that
 // handles raft-prefix requests well.

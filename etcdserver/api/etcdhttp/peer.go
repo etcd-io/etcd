@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package v2http
+package etcdhttp
 
 import (
 	"encoding/json"
@@ -61,7 +61,7 @@ type peerMembersHandler struct {
 }
 
 func (h *peerMembersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !allowMethod(w, r.Method, "GET") {
+	if !allowMethod(w, r, "GET") {
 		return
 	}
 	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
