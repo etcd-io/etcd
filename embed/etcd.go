@@ -119,7 +119,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 	}
 
-	srvcfg := &etcdserver.ServerConfig{
+	srvcfg := etcdserver.ServerConfig{
 		Name:                    cfg.Name,
 		ClientURLs:              cfg.ACUrls,
 		PeerURLs:                cfg.APUrls,
