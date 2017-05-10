@@ -129,8 +129,10 @@ func runElectionFunc(cmd *cobra.Command, args []string) {
 				return err
 			}
 			if observedLeader == v {
-				close(nextc)
+				oldNextc := nextc
 				nextc = make(chan struct{})
+				close(oldNextc)
+
 			}
 			<-rcNextc
 			observedLeader = ""
