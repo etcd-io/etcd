@@ -935,4 +935,8 @@ type grpcAPI struct {
 	Maintenance pb.MaintenanceClient
 	// Auth is the authentication API for the client's connection.
 	Auth pb.AuthClient
+	// Lock is the lock API for the client's connection.
+	Lock lockpb.LockClient
+	// Election is the election API for the client's connection.
+	Election epb.ElectionClient
 }

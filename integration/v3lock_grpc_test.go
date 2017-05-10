@@ -40,7 +40,7 @@ func TestV3LockLockWaiter(t *testing.T) {
 		t.Fatal(err2)
 	}
 
-	lc := lockpb.NewLockClient(clus.Client(0).ActiveConnection())
+	lc := toGRPC(clus.Client(0)).Lock
 	l1, lerr1 := lc.Lock(context.TODO(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease1.ID})
 	if lerr1 != nil {
 		t.Fatal(lerr1)
