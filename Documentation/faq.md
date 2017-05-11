@@ -118,6 +118,11 @@ Every new etcd cluster generates a new cluster ID based on the initial cluster c
 
 Usually this warning happens after tearing down an old cluster, then reusing some of the peer addresses for the new cluster. If any etcd process from the old cluster is still running it will try to contact the new cluster. The new cluster will recognize a cluster ID mismatch, then ignore the request and emit this warning. This warning is often cleared by ensuring peer addresses among distinct clusters are disjoint.
 
+#### What does the etcd warning "snapshotting is taking more than x seconds to finish ..." mean?
+
+etcd sends a snapshot of its complete key-value store to refresh slow followers and for [backups][backup]. Slow snapshot transfer times increase MTTR; if the cluster is ingesting data with high throughput, slow followers may livelock by needing a new snapshot before finishing receiving a snapshot. To catch slow snapshot performance, etcd warns when sending a snapshot takes more than thirty seconds and exceeds the expected transfer time for a 1Gbps connection.
+
+
 [hardware-setup]: ./op-guide/hardware.md
 [supported-platform]: ./op-guide/supported-platform.md
 [wal_fsync_duration_seconds]: ./metrics.md#disk
