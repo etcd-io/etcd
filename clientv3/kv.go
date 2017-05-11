@@ -52,11 +52,6 @@ type KV interface {
 	Compact(ctx context.Context, rev int64, opts ...CompactOption) (*CompactResponse, error)
 
 	// Do applies a single Op on KV without a transaction.
-	// Do is useful when declaring operations to be issued at a later time
-	// whereas Get/Put/Delete are for better suited for when the operation
-	// should be immediately issued at time of declaration.
-
-	// Do applies a single Op on KV without a transaction.
 	// Do is useful when creating arbitrary operations to be issued at a
 	// later time; the user can range over the operations, calling Do to
 	// execute them. Get/Put/Delete, on the other hand, are best suited
