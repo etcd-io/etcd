@@ -447,7 +447,9 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 // (see https://github.com/coreos/etcd/issues/7512 for more).
 func TestRestartRemoved(t *testing.T) {
 	defer testutil.AfterTest(t)
+
 	capnslog.SetGlobalLogLevel(capnslog.INFO)
+	defer capnslog.SetGlobalLogLevel(defaultLogLevel)
 
 	// 1. start single-member cluster
 	c := NewCluster(t, 1)
