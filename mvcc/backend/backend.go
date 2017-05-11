@@ -42,7 +42,8 @@ var (
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "mvcc/backend")
 
-	snapshotWarningTimeout = 30 * time.Second
+	// minSnapshotWarningTimeout is the minimum threshold to trigger a long running snapshot warning.
+	minSnapshotWarningTimeout = time.Duration(30 * time.Second)
 )
 
 type Backend interface {
@@ -165,23 +166,6 @@ func (b *backend) ForceCommit() {
 }
 
 func (b *backend) Snapshot() Snapshot {
-	stopc, donec := make(chan struct{}), make(chan struct{})
-	go func() {
-		defer close(donec)
-		start := time.Now()
-		ticker := time.NewTicker(snapshotWarningTimeout)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				plog.Warningf("snapshotting is taking more than %v seconds to finish [started at %v]", time.Since(start).Seconds(), start)
-			case <-stopc:
-				snapshotDurations.Observe(time.Since(start).Seconds())
-				return
-			}
-		}
-	}()
-
 	b.batchTx.Commit()
 
 	b.mu.RLock()
@@ -190,6 +174,32 @@ func (b *backend) Snapshot() Snapshot {
 	if err != nil {
 		plog.Fatalf("cannot begin tx (%s)", err)
 	}
+
+	stopc, donec := make(chan struct{}), make(chan struct{})
+	dbBytes := tx.Size()
+	go func() {
+		defer close(donec)
+		// sendRateBytes is based on transferring snapshot data over a 1 gigabit/s connection
+		// assuming a min tcp throughput of 100MB/s.
+		var sendRateBytes int64 = 100 * 1024 * 1014
+		warningTimeout := time.Duration(int64((float64(dbBytes) / float64(sendRateBytes)) * float64(time.Second)))
+		if warningTimeout < minSnapshotWarningTimeout {
+			warningTimeout = minSnapshotWarningTimeout
+		}
+		start := time.Now()
+		ticker := time.NewTicker(warningTimeout)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				plog.Warningf("snapshotting is taking more than %v seconds to finish transferring %v MB [started at %v]", time.Since(start).Seconds(), float64(dbBytes)/float64(1024*1014), start)
+			case <-stopc:
+				snapshotDurations.Observe(time.Since(start).Seconds())
+				return
+			}
+		}
+	}()
+
 	return &snapshot{tx, stopc, donec}
 }
 
