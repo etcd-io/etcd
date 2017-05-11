@@ -206,12 +206,13 @@ func (a *Agent) status() client.Status {
 }
 
 func (a *Agent) dataDir() string {
-	datadir := filepath.Join(a.cmd.Path, "*.etcd")
+	datadir := filepath.Join(a.cfg.LogDir, "*.etcd")
 	args := a.cmd.Args
 	// only parse the simple case like "--data-dir /var/lib/etcd"
 	for i, arg := range args {
 		if arg == "--data-dir" {
-			datadir = args[i+1]
+			// just take the directory name from request
+			datadir = filepath.Join(a.cfg.LogDir, filepath.Base(args[i+1]))
 			break
 		}
 	}
@@ -231,14 +232,14 @@ func existDir(fpath string) bool {
 }
 
 func archiveLogAndDataDir(logDir string, datadir string) error {
-	dir := filepath.Join("failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
+	dir := filepath.Join(logDir, "failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
 	if existDir(dir) {
-		dir = filepath.Join("failure_archive", fmt.Sprint(time.Now().Add(time.Second).Format(time.RFC3339)))
+		dir = filepath.Join(logDir, "failure_archive", fmt.Sprint(time.Now().Add(time.Second).Format(time.RFC3339)))
 	}
 	if err := fileutil.TouchDirAll(dir); err != nil {
 		return err
 	}
-	if err := os.Rename(logDir, filepath.Join(dir, filepath.Base(logDir))); err != nil {
+	if err := os.Rename(filepath.Join(logDir, "etcd.log"), filepath.Join(dir, "etcd.log")); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
