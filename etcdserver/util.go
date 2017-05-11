@@ -15,18 +15,11 @@
 package etcdserver
 
 import (
-	"fmt"
-	"os"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/membership"
-	"github.com/coreos/etcd/lease"
-	"github.com/coreos/etcd/mvcc"
-	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/types"
-	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/coreos/etcd/snap"
 )
 
 // isConnectedToQuorumSince checks whether the local member is connected to the
@@ -101,56 +94,4 @@ func newNotifier() *notifier {
 func (nc *notifier) notify(err error) {
 	nc.err = err
 	close(nc.c)
-}
-
-// checkAndRecoverDB attempts to recover db in the scenario when
-// etcd server crashes before updating its in-state db
-// and after persisting snapshot to disk from syncing with leader,
-// snapshot can be newer than db where
-// (snapshot.Metadata.Index > db.consistentIndex ).
-//
-// when that happen:
-// 1. find xxx.snap.db that matches snap index.
-// 2. rename xxx.snap.db to db.
-// 3. open the new db as the backend.
-func checkAndRecoverDB(snapshot *raftpb.Snapshot, oldbe backend.Backend, quotaBackendBytes int64, snapdir string) (be backend.Backend, err error) {
-	var cIndex consistentIndex
-	kv := mvcc.New(oldbe, &lease.FakeLessor{}, &cIndex)
-	defer kv.Close()
-	kvindex := kv.ConsistentIndex()
-	if snapshot.Metadata.Index <= kvindex {
-		return oldbe, nil
-	}
-
-	id := snapshot.Metadata.Index
-	snapfn, err := snap.DBFilePathFromID(snapdir, id)
-	if err != nil {
-		return nil, fmt.Errorf("finding %v error: %v", snapdir+fmt.Sprintf("%016x.snap.db", id), err)
-	}
-
-	bepath := snapdir + databaseFilename
-	if err := os.Rename(snapfn, bepath); err != nil {
-		return nil, fmt.Errorf("rename snapshot file error: %v", err)
-	}
-
-	oldbe.Close()
-	be = openBackend(bepath, quotaBackendBytes)
-	return be, nil
-}
-
-func openBackend(bepath string, quotaBackendBytes int64) (be backend.Backend) {
-	beOpened := make(chan struct{})
-	go func() {
-		be = newBackend(bepath, quotaBackendBytes)
-		beOpened <- struct{}{}
-	}()
-
-	select {
-	case <-beOpened:
-	case <-time.After(time.Second):
-		plog.Warningf("another etcd process is running with the same data dir and holding the file lock.")
-		plog.Warningf("waiting for it to exit before starting...")
-		<-beOpened
-	}
-	return be
 }
