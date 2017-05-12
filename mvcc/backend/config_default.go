@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !linux
+// +build !linux,!windows
 
 package backend
 
 import "github.com/boltdb/bolt"
 
 var boltOpenOptions *bolt.Options = nil
+
+func (bcfg *BackendConfig) mmapSize() int { return int(bcfg.MmapSize) }

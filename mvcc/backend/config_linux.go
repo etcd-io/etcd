@@ -29,3 +29,5 @@ import (
 var boltOpenOptions = &bolt.Options{
 	MmapFlags: syscall.MAP_POPULATE,
 }
+
+func (bcfg *BackendConfig) mmapSize() int { return int(bcfg.MmapSize) }
