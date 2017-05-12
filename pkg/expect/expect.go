@@ -44,8 +44,6 @@ type ExpectProcess struct {
 	StopSignal os.Signal
 }
 
-var printDebugLines = os.Getenv("EXPECT_DEBUG") != ""
-
 // NewExpect creates a new process for expect testing.
 func NewExpect(name string, arg ...string) (ep *ExpectProcess, err error) {
 	// if env[] is nil, use current system env
@@ -75,6 +73,7 @@ func NewExpectWithEnv(name string, args []string, env []string) (ep *ExpectProce
 
 func (ep *ExpectProcess) read() {
 	defer ep.wg.Done()
+	printDebugLines := os.Getenv("EXPECT_DEBUG") != ""
 	r := bufio.NewReader(ep.fpty)
 	for ep.err == nil {
 		ep.ptyMu.Lock()

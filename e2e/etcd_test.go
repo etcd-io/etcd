@@ -553,3 +553,11 @@ func (epc *etcdProcessCluster) grpcEndpoints() []string {
 	}
 	return eps
 }
+
+func (epc *etcdProcessCluster) withStopSignal(sig os.Signal) os.Signal {
+	ret := epc.procs[0].proc.StopSignal
+	for _, p := range epc.procs {
+		p.proc.StopSignal = sig
+	}
+	return ret
+}
