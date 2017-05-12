@@ -20,7 +20,18 @@ const (
 	chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 )
 
-// UniqueStrings retruns a slice of randomly generated unique strings.
+var random *rand.Rand
+
+func init() {
+	random = rand.New(rand.NewSource(1))
+}
+
+// SetSeed sets the seed of stringutil's private rand
+func SetSeed(seed int64) {
+	random.Seed(seed)
+}
+
+// UniqueStrings retruns a slice of randomly generated unique strings
 func UniqueStrings(maxlen uint, n int) []string {
 	exist := make(map[string]bool)
 	ss := make([]string, 0)
@@ -48,7 +59,7 @@ func RandomStrings(maxlen uint, n int) []string {
 func randomString(l uint) string {
 	s := make([]byte, l)
 	for i := 0; i < int(l); i++ {
-		s[i] = chars[rand.Intn(len(chars))]
+		s[i] = chars[random.Intn(len(chars))]
 	}
 	return string(s)
 }
