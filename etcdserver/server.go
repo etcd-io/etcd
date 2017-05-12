@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sync"
 	"sync/atomic"
@@ -76,7 +75,6 @@ const (
 	// (since it will timeout).
 	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
-	databaseFilename = "db"
 	// max number of in-flight snapshot messages etcdserver allows to have
 	// This number is more than enough for most clusters with 5 machines.
 	maxInFlightMsgSnap = 16
@@ -200,7 +198,8 @@ type EtcdServer struct {
 
 	cluster *membership.RaftCluster
 
-	store store.Store
+	store       store.Store
+	snapshotter *snap.Snapshotter
 
 	applyV2 ApplierV2
 
@@ -271,10 +270,9 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	}
 	ss := snap.New(cfg.SnapDir())
 
-	bepath := filepath.Join(cfg.SnapDir(), databaseFilename)
+	bepath := cfg.backendPath()
 	beExist := fileutil.Exist(bepath)
-
-	be := openBackend(bepath, cfg.QuotaBackendBytes)
+	be := openBackend(cfg)
 
 	defer func() {
 		if err != nil {
@@ -372,9 +370,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 				plog.Panicf("recovered store from snapshot error: %v", err)
 			}
 			plog.Infof("recovered store from snapshot at index %d", snapshot.Metadata.Index)
-
-			be, err = checkAndRecoverDB(snapshot, be, cfg.QuotaBackendBytes, cfg.SnapDir())
-			if err != nil {
+			if be, err = recoverSnapshotBackend(cfg, be, *snapshot); err != nil {
 				plog.Panicf("recovering backend from snapshot error: %v", err)
 			}
 		}
@@ -408,11 +404,12 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
-		readych:   make(chan struct{}),
-		Cfg:       cfg,
-		snapCount: cfg.SnapCount,
-		errorc:    make(chan error, 1),
-		store:     st,
+		readych:     make(chan struct{}),
+		Cfg:         cfg,
+		snapCount:   cfg.SnapCount,
+		errorc:      make(chan error, 1),
+		store:       st,
+		snapshotter: ss,
 		r: *newRaftNode(
 			raftNodeConfig{
 				isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
@@ -795,20 +792,13 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 			apply.snapshot.Metadata.Index, ep.appliedi)
 	}
 
-	// wait for raftNode to persist snashot onto the disk
+	// wait for raftNode to persist snapshot onto the disk
 	<-apply.notifyc
 
-	snapfn, err := s.r.storage.DBFilePath(apply.snapshot.Metadata.Index)
+	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot)
 	if err != nil {
-		plog.Panicf("get database snapshot file path error: %v", err)
+		plog.Panic(err)
 	}
-
-	fn := filepath.Join(s.Cfg.SnapDir(), databaseFilename)
-	if err := os.Rename(snapfn, fn); err != nil {
-		plog.Panicf("rename snapshot file error: %v", err)
-	}
-
-	newbe := newBackend(fn, s.Cfg.QuotaBackendBytes)
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
@@ -1661,14 +1651,4 @@ func (s *EtcdServer) goAttach(f func()) {
 		defer s.wg.Done()
 		f()
 	}()
-}
-
-func newBackend(path string, quotaBytes int64) backend.Backend {
-	bcfg := backend.DefaultBackendConfig()
-	bcfg.Path = path
-	if quotaBytes > 0 && quotaBytes != DefaultQuotaBytes {
-		// permit 10% excess over quota for disarm
-		bcfg.MmapSize = uint64(quotaBytes + quotaBytes/10)
-	}
-	return backend.New(bcfg)
 }

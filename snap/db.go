@@ -44,7 +44,7 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 		os.Remove(f.Name())
 		return n, err
 	}
-	fn := filepath.Join(s.dir, fmt.Sprintf("%016x.snap.db", id))
+	fn := s.dbFilePath(id)
 	if fileutil.Exist(fn) {
 		os.Remove(f.Name())
 		return n, nil
@@ -63,19 +63,15 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 // DBFilePath returns the file path for the snapshot of the database with
 // given id. If the snapshot does not exist, it returns error.
 func (s *Snapshotter) DBFilePath(id uint64) (string, error) {
-	return DBFilePathFromID(s.dir, id)
-}
-
-func DBFilePathFromID(dbPath string, id uint64) (string, error) {
-	fns, err := fileutil.ReadDir(dbPath)
-	if err != nil {
+	if _, err := fileutil.ReadDir(s.dir); err != nil {
 		return "", err
 	}
-	wfn := fmt.Sprintf("%016x.snap.db", id)
-	for _, fn := range fns {
-		if fn == wfn {
-			return filepath.Join(dbPath, fn), nil
-		}
+	if fn := s.dbFilePath(id); fileutil.Exist(fn) {
+		return fn, nil
 	}
 	return "", ErrNoDBSnapshot
+}
+
+func (s *Snapshotter) dbFilePath(id uint64) string {
+	return filepath.Join(s.dir, fmt.Sprintf("%016x.snap.db", id))
 }

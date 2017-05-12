@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/fileutil"
 	"github.com/coreos/etcd/pkg/idutil"
 	"github.com/coreos/etcd/pkg/mock/mockstorage"
 	"github.com/coreos/etcd/pkg/mock/mockstore"
@@ -40,6 +42,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
 	"golang.org/x/net/context"
 )
@@ -964,13 +967,15 @@ func TestSnapshotOrdering(t *testing.T) {
 		t.Fatalf("couldn't open tempdir (%v)", err)
 	}
 	defer os.RemoveAll(testdir)
-	if err := os.MkdirAll(testdir+"/member/snap", 0755); err != nil {
+
+	snapdir := filepath.Join(testdir, "member", "snap")
+	if err := os.MkdirAll(snapdir, 0755); err != nil {
 		t.Fatalf("couldn't make snap dir (%v)", err)
 	}
 
 	rs := raft.NewMemoryStorage()
 	p := mockstorage.NewStorageRecorderStream(testdir)
-	tr, snapDoneC := rafthttp.NewSnapTransporter(testdir)
+	tr, snapDoneC := rafthttp.NewSnapTransporter(snapdir)
 	r := newRaftNode(raftNodeConfig{
 		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
 		Node:        n,
@@ -982,10 +987,11 @@ func TestSnapshotOrdering(t *testing.T) {
 		Cfg: &ServerConfig{
 			DataDir: testdir,
 		},
-		r:          *r,
-		store:      st,
-		cluster:    cl,
-		SyncTicker: &time.Ticker{},
+		r:           *r,
+		store:       st,
+		snapshotter: snap.New(snapdir),
+		cluster:     cl,
+		SyncTicker:  &time.Ticker{},
 	}
 	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
 
@@ -997,40 +1003,30 @@ func TestSnapshotOrdering(t *testing.T) {
 	s.start()
 	defer s.Stop()
 
-	actionc := p.Chan()
 	n.readyc <- raft.Ready{Messages: []raftpb.Message{{Type: raftpb.MsgSnap}}}
-	if ac := <-actionc; ac.Name != "Save" {
-		// MsgSnap triggers raftNode to call Save()
-		t.Fatalf("expect save() is called, but got %v", ac.Name)
+	go func() {
+		// get the snapshot sent by the transport
+		snapMsg := <-snapDoneC
+		// Snapshot first triggers raftnode to persists the snapshot onto disk
+		// before renaming db snapshot file to db
+		snapMsg.Snapshot.Metadata.Index = 1
+		n.readyc <- raft.Ready{Snapshot: snapMsg.Snapshot}
+	}()
+
+	if ac := <-p.Chan(); ac.Name != "Save" {
+		t.Fatalf("expected Save, got %+v", ac)
 	}
-
-	// get the snapshot sent by the transport
-	snapMsg := <-snapDoneC
-
-	// Snapshot first triggers raftnode to persists the snapshot onto disk
-	// before renaming db snapshot file to db
-	snapMsg.Snapshot.Metadata.Index = 1
-	n.readyc <- raft.Ready{Snapshot: snapMsg.Snapshot}
-	var seenSaveSnap bool
-	timer := time.After(5 * time.Second)
-	for {
-		select {
-		case ac := <-actionc:
-			switch ac.Name {
-			// DBFilePath() is called immediately before snapshot renaming.
-			case "DBFilePath":
-				if !seenSaveSnap {
-					t.Fatalf("DBFilePath called before SaveSnap")
-				}
-				return
-			case "SaveSnap":
-				seenSaveSnap = true
-			default:
-				continue
-			}
-		case <-timer:
-			t.Fatalf("timeout waiting on actions")
-		}
+	if ac := <-p.Chan(); ac.Name != "Save" {
+		t.Fatalf("expected Save, got %+v", ac)
+	}
+	// confirm snapshot file still present before calling SaveSnap
+	snapPath := filepath.Join(snapdir, fmt.Sprintf("%016x.snap.db", 1))
+	if !fileutil.Exist(snapPath) {
+		t.Fatalf("expected file %q, got missing", snapPath)
+	}
+	// unblock SaveSnapshot, etcdserver now permitted to move snapshot file
+	if ac := <-p.Chan(); ac.Name != "SaveSnap" {
+		t.Fatalf("expected SaveSnap, got %+v", ac)
 	}
 }
 
@@ -1119,10 +1115,11 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		Cfg: &ServerConfig{
 			DataDir: testdir,
 		},
-		r:          *r,
-		store:      st,
-		cluster:    cl,
-		SyncTicker: &time.Ticker{},
+		r:           *r,
+		store:       st,
+		snapshotter: snap.New(testdir),
+		cluster:     cl,
+		SyncTicker:  &time.Ticker{},
 	}
 	s.applyV2 = &applierV2store{store: s.store, cluster: s.cluster}
 
