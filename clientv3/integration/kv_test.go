@@ -661,8 +661,8 @@ func TestKVCompact(t *testing.T) {
 	}
 }
 
-// TestKVGetRetry ensures get will retry on disconnect.
-func TestKVGetRetry(t *testing.T) {
+// TestKVGetBlock ensures get block on disconnect, then resume.
+func TestKVGetBlock(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	clusterSize := 3
@@ -684,7 +684,7 @@ func TestKVGetRetry(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		// Get will fail, but reconnect will trigger
+		// Get will block until reconnect
 		gresp, gerr := kv.Get(ctx, "foo")
 		if gerr != nil {
 			t.Fatal(gerr)
@@ -714,8 +714,8 @@ func TestKVGetRetry(t *testing.T) {
 	}
 }
 
-// TestKVPutFailGetRetry ensures a get will retry following a failed put.
-func TestKVPutFailGetRetry(t *testing.T) {
+// TestKVPutFailGetBlock ensures a get block following a failed put, then resume on reconnect.
+func TestKVPutFailGetBlock(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
@@ -733,7 +733,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		// Get will fail, but reconnect will trigger
+		// Get will block until reconnect
 		gresp, gerr := kv.Get(context.TODO(), "foo")
 		if gerr != nil {
 			t.Fatal(gerr)

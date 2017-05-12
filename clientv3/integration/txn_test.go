@@ -99,7 +99,9 @@ func TestTxnWriteFail(t *testing.T) {
 	clus.Members[0].Restart(t)
 }
 
-func TestTxnReadRetry(t *testing.T) {
+// TestTxnReadBlock ensures failfast=false request block on balancer Get
+// until there is address ready for transmission.
+func TestTxnReadBlock(t *testing.T) {
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
