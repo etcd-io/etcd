@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
@@ -171,10 +172,12 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		limiter := rate.NewLimiter(rate.Limit(watchPutRate), watchPutRate)
 		for i := 0; i < watchPutTotal; i++ {
 			putreqc <- v3.OpPut(watched[i%(len(watched))], "data")
-			// TODO: use a real rate-limiter instead of sleep.
-			time.Sleep(time.Second / time.Duration(watchPutRate))
+			if err := limiter.Wait(context.TODO()); err != nil {
+				panic(err)
+			}
 		}
 		close(putreqc)
 	}()
