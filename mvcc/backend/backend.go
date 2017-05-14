@@ -124,7 +124,7 @@ func newBackend(bcfg BackendConfig) *backend {
 	if boltOpenOptions != nil {
 		*bopts = *boltOpenOptions
 	}
-	bopts.InitialMmapSize = int(bcfg.MmapSize)
+	bopts.InitialMmapSize = bcfg.mmapSize()
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {
