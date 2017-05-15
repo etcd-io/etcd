@@ -17,6 +17,7 @@ package cmd
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
@@ -51,6 +53,7 @@ var (
 	stmValSize      int
 	stmWritePercent int
 	stmLocker       string
+	stmRate         int
 )
 
 func init() {
@@ -63,6 +66,7 @@ func init() {
 	stmCmd.Flags().IntVar(&stmWritePercent, "txn-wr-percent", 50, "Percentage of keys to overwrite per transaction")
 	stmCmd.Flags().StringVar(&stmLocker, "stm-locker", "stm", "Wrap STM transaction with a custom locking mechanism (stm, lock-client, lock-rpc)")
 	stmCmd.Flags().IntVar(&stmValSize, "val-size", 8, "Value size of each STM put request")
+	stmCmd.Flags().IntVar(&stmRate, "rate", 0, "Maximum STM transactions per second (0 is no limit)")
 }
 
 func stmFunc(cmd *cobra.Command, args []string) {
@@ -95,6 +99,11 @@ func stmFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	if stmRate == 0 {
+		stmRate = math.MaxInt32
+	}
+	limit := rate.NewLimiter(rate.Limit(stmRate), 1)
+
 	requests := make(chan stmApply, totalClients)
 	clients := mustCreateClients(totalClients, totalConns)
 
@@ -119,6 +128,7 @@ func stmFunc(cmd *cobra.Command, args []string) {
 			}
 
 			applyf := func(s v3sync.STM) error {
+				limit.Wait(context.Background())
 				wrs := int(float32(len(kset)*stmWritePercent) / 100.0)
 				for k := range kset {
 					s.Get(k)
