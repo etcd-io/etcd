@@ -16,4 +16,6 @@
 
 package osutil
 
+import "syscall"
+
 func dflSignal(sig syscall.Signal) { /* nop */ }
