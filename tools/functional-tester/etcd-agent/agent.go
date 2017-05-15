@@ -15,7 +15,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -232,9 +231,9 @@ func existDir(fpath string) bool {
 }
 
 func archiveLogAndDataDir(logDir string, datadir string) error {
-	dir := filepath.Join(logDir, "failure_archive", fmt.Sprint(time.Now().Format(time.RFC3339)))
+	dir := filepath.Join(logDir, "failure_archive", time.Now().Format(time.RFC3339))
 	if existDir(dir) {
-		dir = filepath.Join(logDir, "failure_archive", fmt.Sprint(time.Now().Add(time.Second).Format(time.RFC3339)))
+		dir = filepath.Join(logDir, "failure_archive", time.Now().Add(time.Second).Format(time.RFC3339))
 	}
 	if err := fileutil.TouchDirAll(dir); err != nil {
 		return err

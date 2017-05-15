@@ -167,10 +167,10 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index"}
 	for _, status := range statusList {
 		rows = append(rows, []string{
-			fmt.Sprint(status.Ep),
+			status.Ep,
 			fmt.Sprintf("%x", status.Resp.Header.MemberId),
-			fmt.Sprint(status.Resp.Version),
-			fmt.Sprint(humanize.Bytes(uint64(status.Resp.DbSize))),
+			status.Resp.Version,
+			humanize.Bytes(uint64(status.Resp.DbSize)),
 			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
 			fmt.Sprint(status.Resp.RaftTerm),
 			fmt.Sprint(status.Resp.RaftIndex),
