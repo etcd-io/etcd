@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/expect"
@@ -560,4 +561,18 @@ func (epc *etcdProcessCluster) withStopSignal(sig os.Signal) os.Signal {
 		p.proc.StopSignal = sig
 	}
 	return ret
+}
+
+func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
+	errc := make(chan error, 1)
+	go func() { errc <- p.Close() }()
+	select {
+	case err := <-errc:
+		return err
+	case <-time.After(d):
+		p.Stop()
+		// retry close after stopping to collect SIGQUIT data, if any
+		closeWithTimeout(p, time.Second)
+	}
+	return fmt.Errorf("took longer than %v to Close process %+v", d, p)
 }

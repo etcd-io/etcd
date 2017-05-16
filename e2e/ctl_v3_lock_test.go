@@ -103,7 +103,7 @@ func testLock(cx ctlCtx) {
 	if err = blocked.Signal(os.Interrupt); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err = blocked.Close(); err != nil {
+	if err = closeWithTimeout(blocked, time.Second); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -111,7 +111,7 @@ func testLock(cx ctlCtx) {
 	if err = holder.Signal(os.Interrupt); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err = holder.Close(); err != nil {
+	if err = closeWithTimeout(holder, time.Second); err != nil {
 		cx.t.Fatal(err)
 	}
 
