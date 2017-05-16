@@ -74,6 +74,7 @@ func newAgent(cfg AgentConfig) (*Agent, error) {
 
 // start starts a new etcd process with the given args.
 func (a *Agent) start(args ...string) error {
+	args = append(args, "--data-dir", a.dataDir())
 	a.cmd = exec.Command(a.cmd.Path, args...)
 	a.cmd.Env = []string{"GOFAIL_HTTP=" + a.cfg.FailpointAddr}
 	a.cmd.Stdout = a.logfile
@@ -205,17 +206,7 @@ func (a *Agent) status() client.Status {
 }
 
 func (a *Agent) dataDir() string {
-	datadir := filepath.Join(a.cfg.LogDir, "*.etcd")
-	args := a.cmd.Args
-	// only parse the simple case like "--data-dir /var/lib/etcd"
-	for i, arg := range args {
-		if arg == "--data-dir" {
-			// just take the directory name from request
-			datadir = filepath.Join(a.cfg.LogDir, filepath.Base(args[i+1]))
-			break
-		}
-	}
-	return datadir
+	return filepath.Join(a.cfg.LogDir, "etcd.data")
 }
 
 func existDir(fpath string) bool {

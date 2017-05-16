@@ -43,7 +43,6 @@ func main() {
 	peerPorts := flag.String("peer-ports", "", "etcd peer port for each agent endpoint")
 	failpointPorts := flag.String("failpoint-ports", "", "etcd failpoint port for each agent endpoint")
 
-	datadir := flag.String("data-dir", "agent.etcd", "etcd data directory location on agent machine.")
 	stressKeyLargeSize := flag.Uint("stress-key-large-size", 32*1024+1, "the size of each large key written into etcd.")
 	stressKeySize := flag.Uint("stress-key-size", 100, "the size of each small key written into etcd.")
 	stressKeySuffixRange := flag.Uint("stress-key-count", 250000, "the count of key range written into etcd.")
@@ -69,7 +68,6 @@ func main() {
 		agents[i].clientPort = cports[i]
 		agents[i].peerPort = pports[i]
 		agents[i].failpointPort = fports[i]
-		agents[i].datadir = *datadir
 	}
 
 	c := &cluster{agents: agents}
