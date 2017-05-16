@@ -685,16 +685,19 @@ func (w *watchGrpcStream) newWatchClient() (pb.Watch_WatchClient, error) {
 	close(stopc)
 	<-donec
 
+	var newResuming []*watcherStream
 	// serve all non-closing streams, even if there's a client error
 	// so that the teardown path can shutdown the streams as expected.
 	for _, ws := range w.resuming {
 		if ws.closing {
 			continue
 		}
+		newResuming = append(newResuming, ws)
 		ws.donec = make(chan struct{})
 		w.wg.Add(1)
 		go w.serveSubstream(ws, w.resumec)
 	}
+	w.resuming = newResuming
 
 	if err != nil {
 		return nil, v3rpc.Error(err)
