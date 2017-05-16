@@ -57,6 +57,11 @@ func bridge(b *bridgeConn) {
 	b.d.Copy(b.in, makeFetch(b.out))
 }
 
+func delayBridge(b *bridgeConn, txDelay, rxDelay time.Duration) {
+	go b.d.Copy(b.out, makeFetchDelay(makeFetch(b.in), txDelay))
+	b.d.Copy(b.in, makeFetchDelay(makeFetch(b.out), rxDelay))
+}
+
 func timeBridge(b *bridgeConn) {
 	go func() {
 		t := time.Duration(rand.Intn(5)+1) * time.Second
@@ -135,6 +140,17 @@ func makeFetchRand(f func() ([]byte, error)) fetchFunc {
 	}
 }
 
+func makeFetchDelay(f fetchFunc, delay time.Duration) fetchFunc {
+	return func() ([]byte, error) {
+		b, err := f()
+		if err != nil {
+			return nil, err
+		}
+		time.Sleep(delay)
+		return b, nil
+	}
+}
+
 func randomBlackhole(b *bridgeConn) {
 	log.Println("random blackhole: connection", b.String())
 
@@ -166,6 +182,9 @@ type config struct {
 	corruptSend     bool
 	corruptReceive  bool
 	reorder         bool
+
+	txDelay string
+	rxDelay string
 }
 
 type acceptFaultFunc func()
@@ -187,6 +206,10 @@ func main() {
 	flag.BoolVar(&cfg.corruptReceive, "corrupt-receive", true, "corrupt packets received from destination")
 	flag.BoolVar(&cfg.corruptSend, "corrupt-send", true, "corrupt packets sent to destination")
 	flag.BoolVar(&cfg.reorder, "reorder", true, "reorder packet delivery")
+
+	flag.StringVar(&cfg.txDelay, "tx-delay", "0", "duration to delay client transmission to server")
+	flag.StringVar(&cfg.rxDelay, "rx-delay", "0", "duration to delay client receive from server")
+
 	flag.Parse()
 
 	lAddr := flag.Args()[0]
@@ -249,6 +272,19 @@ func main() {
 	}
 	if cfg.corruptReceive {
 		connFaults = append(connFaults, corruptReceive)
+	}
+
+	txd, txdErr := time.ParseDuration(cfg.txDelay)
+	if txdErr != nil {
+		log.Fatal(txdErr)
+	}
+	rxd, rxdErr := time.ParseDuration(cfg.rxDelay)
+	if rxdErr != nil {
+		log.Fatal(rxdErr)
+	}
+	if txd != 0 || rxd != 0 {
+		f := func(b *bridgeConn) { delayBridge(b, txd, rxd) }
+		connFaults = append(connFaults, f)
 	}
 
 	var disp dispatcher
