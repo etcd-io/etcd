@@ -14,6 +14,8 @@ notifications:
 env:
   matrix:
    - TARGET=amd64
+   - TARGET=darwin-amd64
+   - TARGET=windows-amd64
    - TARGET=arm64
    - TARGET=arm
    - TARGET=386
@@ -24,6 +26,10 @@ matrix:
   allow_failures:
     - go: tip
   exclude:
+  - go: tip
+    env: TARGET=darwin-amd64
+  - go: tip
+    env: TARGET=windows-amd64
   - go: tip
     env: TARGET=arm
   - go: tip
@@ -57,6 +63,12 @@ script:
     case "${TARGET}" in
       amd64)
         GOARCH=amd64 ./test
+        ;;
+      darwin-amd64)
+        GO_BUILD_FLAGS="-a -v"  GOPATH="" GOOS=darwin GOARCH=amd64 ./build
+        ;;
+      windows-amd64)
+        GO_BUILD_FLAGS="-a -v"  GOPATH="" GOOS=windows GOARCH=amd64 ./build
         ;;
       386)
         GOARCH=386 PASSES="build unit" ./test
