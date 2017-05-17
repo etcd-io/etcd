@@ -81,3 +81,34 @@ func TestReport(t *testing.T) {
 		}
 	}
 }
+
+func TestWeightedReport(t *testing.T) {
+	r := NewWeightedReport(NewReport("%f"), "%f")
+	go func() {
+		start := time.Now()
+		for i := 0; i < 5; i++ {
+			end := start.Add(time.Second)
+			r.Results() <- Result{Start: start, End: end, Weight: 2.0}
+			start = end
+		}
+		r.Results() <- Result{Start: start, End: start.Add(time.Second), Err: fmt.Errorf("oops")}
+		close(r.Results())
+	}()
+
+	stats := <-r.Stats()
+	stats.TimeSeries = nil // ignore timeseries since it uses wall clock
+	wStats := Stats{
+		AvgTotal:  10.0,
+		Fastest:   0.5,
+		Slowest:   0.5,
+		Average:   0.5,
+		Stddev:    0.0,
+		Total:     stats.Total,
+		RPS:       10.0 / stats.Total.Seconds(),
+		ErrorDist: map[string]int{"oops": 1},
+		Lats:      []float64{0.5, 0.5, 0.5, 0.5, 0.5},
+	}
+	if !reflect.DeepEqual(stats, wStats) {
+		t.Fatalf("got %+v, want %+v", stats, wStats)
+	}
+}

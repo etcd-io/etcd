@@ -30,9 +30,10 @@ const (
 
 // Result describes the timings for an operation.
 type Result struct {
-	Start time.Time
-	End   time.Time
-	Err   error
+	Start  time.Time
+	End    time.Time
+	Err    error
+	Weight float64
 }
 
 func (res *Result) Duration() time.Duration { return res.End.Sub(res.Start) }
@@ -41,18 +42,8 @@ type report struct {
 	results   chan Result
 	precision string
 
-	avgTotal float64
-	fastest  float64
-	slowest  float64
-	average  float64
-	stddev   float64
-	rps      float64
-	total    time.Duration
-
-	errorDist map[string]int
-	lats      []float64
-
-	sps *secondPoints
+	stats Stats
+	sps   *secondPoints
 }
 
 // Stats exposes results raw data.
@@ -69,6 +60,13 @@ type Stats struct {
 	TimeSeries TimeSeries
 }
 
+func (s *Stats) copy() Stats {
+	ss := *s
+	ss.ErrorDist = copyMap(ss.ErrorDist)
+	ss.Lats = copyFloats(ss.Lats)
+	return ss
+}
+
 // Report processes a result stream until it is closed, then produces a
 // string with information about the consumed result data.
 type Report interface {
@@ -81,12 +79,15 @@ type Report interface {
 	Stats() <-chan Stats
 }
 
-func NewReport(precision string) Report {
-	return &report{
+func NewReport(precision string) Report { return newReport(precision) }
+
+func newReport(precision string) *report {
+	r := &report{
 		results:   make(chan Result, 16),
 		precision: precision,
-		errorDist: make(map[string]int),
 	}
+	r.stats.ErrorDist = make(map[string]int)
+	return r
 }
 
 func NewReportSample(precision string) Report {
@@ -112,22 +113,11 @@ func (r *report) Stats() <-chan Stats {
 	go func() {
 		defer close(donec)
 		r.processResults()
-		var ts TimeSeries
+		s := r.stats.copy()
 		if r.sps != nil {
-			ts = r.sps.getTimeSeries()
+			s.TimeSeries = r.sps.getTimeSeries()
 		}
-		donec <- Stats{
-			AvgTotal:   r.avgTotal,
-			Fastest:    r.fastest,
-			Slowest:    r.slowest,
-			Average:    r.average,
-			Stddev:     r.stddev,
-			RPS:        r.rps,
-			Total:      r.total,
-			ErrorDist:  copyMap(r.errorDist),
-			Lats:       copyFloats(r.lats),
-			TimeSeries: ts,
-		}
+		donec <- s
 	}()
 	return donec
 }
@@ -147,21 +137,21 @@ func copyFloats(s []float64) (c []float64) {
 }
 
 func (r *report) String() (s string) {
-	if len(r.lats) > 0 {
+	if len(r.stats.Lats) > 0 {
 		s += fmt.Sprintf("\nSummary:\n")
-		s += fmt.Sprintf("  Total:\t%s.\n", r.sec2str(r.total.Seconds()))
-		s += fmt.Sprintf("  Slowest:\t%s.\n", r.sec2str(r.slowest))
-		s += fmt.Sprintf("  Fastest:\t%s.\n", r.sec2str(r.fastest))
-		s += fmt.Sprintf("  Average:\t%s.\n", r.sec2str(r.average))
-		s += fmt.Sprintf("  Stddev:\t%s.\n", r.sec2str(r.stddev))
-		s += fmt.Sprintf("  Requests/sec:\t"+r.precision+"\n", r.rps)
+		s += fmt.Sprintf("  Total:\t%s.\n", r.sec2str(r.stats.Total.Seconds()))
+		s += fmt.Sprintf("  Slowest:\t%s.\n", r.sec2str(r.stats.Slowest))
+		s += fmt.Sprintf("  Fastest:\t%s.\n", r.sec2str(r.stats.Fastest))
+		s += fmt.Sprintf("  Average:\t%s.\n", r.sec2str(r.stats.Average))
+		s += fmt.Sprintf("  Stddev:\t%s.\n", r.sec2str(r.stats.Stddev))
+		s += fmt.Sprintf("  Requests/sec:\t"+r.precision+"\n", r.stats.RPS)
 		s += r.histogram()
 		s += r.sprintLatencies()
 		if r.sps != nil {
 			s += fmt.Sprintf("%v\n", r.sps.getTimeSeries())
 		}
 	}
-	if len(r.errorDist) > 0 {
+	if len(r.stats.ErrorDist) > 0 {
 		s += r.errors()
 	}
 	return s
@@ -176,17 +166,17 @@ func NewReportRate(precision string) Report {
 }
 
 func (r *reportRate) String() string {
-	return fmt.Sprintf(" Requests/sec:\t"+r.precision+"\n", r.rps)
+	return fmt.Sprintf(" Requests/sec:\t"+r.precision+"\n", r.stats.RPS)
 }
 
 func (r *report) processResult(res *Result) {
 	if res.Err != nil {
-		r.errorDist[res.Err.Error()]++
+		r.stats.ErrorDist[res.Err.Error()]++
 		return
 	}
 	dur := res.Duration()
-	r.lats = append(r.lats, dur.Seconds())
-	r.avgTotal += dur.Seconds()
+	r.stats.Lats = append(r.stats.Lats, dur.Seconds())
+	r.stats.AvgTotal += dur.Seconds()
 	if r.sps != nil {
 		r.sps.Add(res.Start, dur)
 	}
@@ -197,19 +187,19 @@ func (r *report) processResults() {
 	for res := range r.results {
 		r.processResult(&res)
 	}
-	r.total = time.Since(st)
+	r.stats.Total = time.Since(st)
 
-	r.rps = float64(len(r.lats)) / r.total.Seconds()
-	r.average = r.avgTotal / float64(len(r.lats))
-	for i := range r.lats {
-		dev := r.lats[i] - r.average
-		r.stddev += dev * dev
+	r.stats.RPS = float64(len(r.stats.Lats)) / r.stats.Total.Seconds()
+	r.stats.Average = r.stats.AvgTotal / float64(len(r.stats.Lats))
+	for i := range r.stats.Lats {
+		dev := r.stats.Lats[i] - r.stats.Average
+		r.stats.Stddev += dev * dev
 	}
-	r.stddev = math.Sqrt(r.stddev / float64(len(r.lats)))
-	sort.Float64s(r.lats)
-	if len(r.lats) > 0 {
-		r.fastest = r.lats[0]
-		r.slowest = r.lats[len(r.lats)-1]
+	r.stats.Stddev = math.Sqrt(r.stats.Stddev / float64(len(r.stats.Lats)))
+	sort.Float64s(r.stats.Lats)
+	if len(r.stats.Lats) > 0 {
+		r.stats.Fastest = r.stats.Lats[0]
+		r.stats.Slowest = r.stats.Lats[len(r.stats.Lats)-1]
 	}
 }
 
@@ -235,7 +225,7 @@ func percentiles(nums []float64) (data []float64) {
 }
 
 func (r *report) sprintLatencies() string {
-	data := percentiles(r.lats)
+	data := percentiles(r.stats.Lats)
 	s := fmt.Sprintf("\nLatency distribution:\n")
 	for i := 0; i < len(pctls); i++ {
 		if data[i] > 0 {
@@ -249,15 +239,15 @@ func (r *report) histogram() string {
 	bc := 10
 	buckets := make([]float64, bc+1)
 	counts := make([]int, bc+1)
-	bs := (r.slowest - r.fastest) / float64(bc)
+	bs := (r.stats.Slowest - r.stats.Fastest) / float64(bc)
 	for i := 0; i < bc; i++ {
-		buckets[i] = r.fastest + bs*float64(i)
+		buckets[i] = r.stats.Fastest + bs*float64(i)
 	}
-	buckets[bc] = r.slowest
+	buckets[bc] = r.stats.Slowest
 	var bi int
 	var max int
-	for i := 0; i < len(r.lats); {
-		if r.lats[i] <= buckets[bi] {
+	for i := 0; i < len(r.stats.Lats); {
+		if r.stats.Lats[i] <= buckets[bi] {
 			i++
 			counts[bi]++
 			if max < counts[bi] {
@@ -281,7 +271,7 @@ func (r *report) histogram() string {
 
 func (r *report) errors() string {
 	s := fmt.Sprintf("\nError distribution:\n")
-	for err, num := range r.errorDist {
+	for err, num := range r.stats.ErrorDist {
 		s += fmt.Sprintf("  [%d]\t%s\n", num, err)
 	}
 	return s
