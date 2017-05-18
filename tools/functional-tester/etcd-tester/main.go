@@ -18,9 +18,10 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"net/http/pprof"
 	"os"
 	"strings"
+
+	"github.com/coreos/etcd/pkg/debugutil"
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/prometheus/client_golang/prometheus"
@@ -138,15 +139,9 @@ func main() {
 	http.Handle("/metrics", prometheus.Handler())
 
 	if *enablePprof {
-		http.Handle(pprofPrefix+"/", http.HandlerFunc(pprof.Index))
-		http.Handle(pprofPrefix+"/profile", http.HandlerFunc(pprof.Profile))
-		http.Handle(pprofPrefix+"/symbol", http.HandlerFunc(pprof.Symbol))
-		http.Handle(pprofPrefix+"/cmdline", http.HandlerFunc(pprof.Cmdline))
-		http.Handle(pprofPrefix+"/trace", http.HandlerFunc(pprof.Trace))
-		http.Handle(pprofPrefix+"/heap", pprof.Handler("heap"))
-		http.Handle(pprofPrefix+"/goroutine", pprof.Handler("goroutine"))
-		http.Handle(pprofPrefix+"/threadcreate", pprof.Handler("threadcreate"))
-		http.Handle(pprofPrefix+"/block", pprof.Handler("block"))
+		for p, h := range debugutil.PProfHandlers() {
+			http.Handle(p, h)
+		}
 	}
 
 	go func() { plog.Fatal(http.ListenAndServe(":9028", nil)) }()
