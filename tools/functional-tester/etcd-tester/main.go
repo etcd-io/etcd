@@ -54,6 +54,7 @@ func main() {
 	stresserType := flag.String("stresser", "keys,lease", "comma separated list of stressers (keys, lease, v2keys, nop, election-runner, watch-runner, lock-racer-runner, lease-runner).")
 	etcdRunnerPath := flag.String("etcd-runner", "", "specify a path of etcd runner binary")
 	failureTypes := flag.String("failures", "default,failpoints", "specify failures (concat of \"default\" and \"failpoints\").")
+	failpoints := flag.String("failpoints", `panic("etcd-tester")`, `comma separated list of failpoint terms to inject (e.g. 'panic("etcd-tester"),1*sleep(1000)')`)
 	externalFailures := flag.String("external-failures", "", "specify a path of script for enabling/disabling an external fault injector")
 	enablePprof := flag.Bool("enable-pprof", false, "true to enable pprof")
 	flag.Parse()
@@ -83,7 +84,8 @@ func main() {
 	var failures []failure
 
 	if failureTypes != nil && *failureTypes != "" {
-		failures = makeFailures(*failureTypes, c)
+		types, failpoints := strings.Split(*failureTypes, ","), strings.Split(*failpoints, ",")
+		failures = makeFailures(types, failpoints, c)
 	}
 
 	if externalFailures != nil && *externalFailures != "" {
@@ -172,12 +174,10 @@ func portsFromArg(arg string, n, defaultPort int) []int {
 	return ret
 }
 
-func makeFailures(types string, c *cluster) []failure {
+func makeFailures(types, failpoints []string, c *cluster) []failure {
 	var failures []failure
-
-	fails := strings.Split(types, ",")
-	for i := range fails {
-		switch fails[i] {
+	for i := range types {
+		switch types[i] {
 		case "default":
 			defaultFailures := []failure{
 				newFailureKillAll(),
@@ -195,14 +195,14 @@ func makeFailures(types string, c *cluster) []failure {
 			failures = append(failures, defaultFailures...)
 
 		case "failpoints":
-			fpFailures, fperr := failpointFailures(c)
+			fpFailures, fperr := failpointFailures(c, failpoints)
 			if len(fpFailures) == 0 {
 				plog.Infof("no failpoints found (%v)", fperr)
 			}
 			failures = append(failures, fpFailures...)
 
 		default:
-			plog.Errorf("unknown failure: %s\n", fails[i])
+			plog.Errorf("unknown failure: %s\n", types[i])
 			os.Exit(1)
 		}
 	}
