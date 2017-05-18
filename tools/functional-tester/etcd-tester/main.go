@@ -36,8 +36,6 @@ const (
 	defaultFailpointPort = 2381
 )
 
-const pprofPrefix = "/debug/pprof-tester"
-
 func main() {
 	endpointStr := flag.String("agent-endpoints", "localhost:9027", "HTTP RPC endpoints of agents. Do not specify the schema.")
 	clientPorts := flag.String("client-ports", "", "etcd client port for each agent endpoint")

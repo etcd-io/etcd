@@ -65,7 +65,7 @@ type TLSInfo struct {
 	// ServerName ensures the cert matches the given host in case of discovery / virtual hosting
 	ServerName string
 
-	// HandshakeFailure is optinally called when a connection fails to handshake. The
+	// HandshakeFailure is optionally called when a connection fails to handshake. The
 	// connection will be closed immediately afterwards.
 	HandshakeFailure func(*tls.Conn, error)
 
