@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package clientv3util contains utility functions derived from clientv3.
 package clientv3util
 
 import (

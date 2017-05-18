@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package command implements individual etcd-runner commands for the etcd-runner utility.
 package command
 
 import (
