@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package cache exports functionality for efficiently caching and mapping
+// `RangeRequest`s to corresponding `RangeResponse`s.
 package cache
 
 import (

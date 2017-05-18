@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package stringutil exports string utility functions.
 package stringutil
 
 import "math/rand"
@@ -20,7 +21,7 @@ const (
 	chars = "abcdefghijklmnopqrstuvwxyz0123456789"
 )
 
-// UniqueStrings retruns a slice of randomly generated unique strings.
+// UniqueStrings returns a slice of randomly generated unique strings.
 func UniqueStrings(maxlen uint, n int) []string {
 	exist := make(map[string]bool)
 	ss := make([]string, 0)
@@ -36,7 +37,7 @@ func UniqueStrings(maxlen uint, n int) []string {
 	return ss
 }
 
-// RandomStrings retruns a slice of randomly generated strings.
+// RandomStrings returns a slice of randomly generated strings.
 func RandomStrings(maxlen uint, n int) []string {
 	ss := make([]string, 0)
 	for i := 0; i < n; i++ {

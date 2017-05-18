@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package yaml handles yaml-formatted clientv3 configuration data.
 package yaml
 
 import (
