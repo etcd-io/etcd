@@ -528,8 +528,8 @@ func TestV3LeaseRequireLeader(t *testing.T) {
 		}
 	}()
 	select {
-	case <-time.After(time.Duration(5*electionTicks) * tickDuration):
-		t.Fatalf("did not receive leader loss error")
+	case <-time.After(5 * time.Second):
+		t.Fatal("did not receive leader loss error (in 5-sec)")
 	case <-donec:
 	}
 }
