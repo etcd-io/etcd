@@ -793,3 +793,31 @@ func TestOpenOnTornWrite(t *testing.T) {
 		t.Fatalf("expected len(ents) = %d, got %d", wEntries, len(ents))
 	}
 }
+
+func TestWalExist(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	if Exist(p) {
+		t.Fatalf("empty directory treated as existing wal directory")
+	}
+
+	if err := os.Mkdir(path.Join(p, "lost+found"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if Exist(p) {
+		t.Fatalf("directory with only non-wal data treated as existing wal directory")
+	}
+
+	f, ferr := os.Create(path.Join(p, "0000000000000001-0000000000000001.wal"))
+	if ferr != nil {
+		t.Fatal(ferr)
+	}
+	f.Close()
+	if !Exist(p) {
+		t.Fatalf("directory with wal file treated as non-existing wal")
+	}
+}
