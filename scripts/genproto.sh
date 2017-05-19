@@ -107,7 +107,7 @@ rm -rf Documentation/dev-guide/apispec/swagger/etcdserver/
 if [ "$1" = "-g" ]; then
 	echo "protodoc is auto-generating grpc API reference documentation..."
 	go get -v -u github.com/coreos/protodoc
-	SHA_PROTODOC="f4164b1cce80b5eba4c835d08483f552dc568b7c"
+	SHA_PROTODOC="e901a6d4fa64c815acf117864521a8dadb11390f"
 	PROTODOC_PATH="${GOPATH}/src/github.com/coreos/protodoc"
 	pushd "${PROTODOC_PATH}"
 		git reset --hard "${SHA_PROTODOC}"

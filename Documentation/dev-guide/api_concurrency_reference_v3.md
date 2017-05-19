@@ -6,7 +6,7 @@ This is a generated documentation. Please read the proto files for more.
 
 ##### service `Lock` (etcdserver/api/v3lock/v3lockpb/v3lock.proto)
 
-for grpc-gateway The lock service exposes client-side locking facilities as a gRPC interface.
+The lock service exposes client-side locking facilities as a gRPC interface.
 
 | Method | Request Type | Response Type | Description |
 | ------ | ------------ | ------------- | ----------- |
@@ -51,7 +51,7 @@ for grpc-gateway The lock service exposes client-side locking facilities as a gR
 
 ##### service `Election` (etcdserver/api/v3election/v3electionpb/v3election.proto)
 
-for grpc-gateway The election service exposes client-side election facilities as a gRPC interface.
+The election service exposes client-side election facilities as a gRPC interface.
 
 | Method | Request Type | Response Type | Description |
 | ------ | ------------ | ------------- | ----------- |
