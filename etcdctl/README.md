@@ -961,16 +961,27 @@ RPC: RoleGrantPermission
 
 #### Options
 
+- from-key -- grant a permission of keys that are greater than or equal to the given key using byte compare
+
 - prefix -- grant a prefix permission
 
-#### Ouptut
+#### Output
 
 `Role <role name> updated`.
 
 #### Examples
 
+Grant read and write permission on the key `foo` to role `myrole`:
+
 ```bash
 ./etcdctl --user=root:123 role grant-permission myrole readwrite foo
+# Role myrole updated
+```
+
+Grant read permission on the wildcard key pattern `foo/*` to role `myrole`:
+
+```bash
+./etcdctl --user=root:123 role grant-permission --prefix myrole readwrite foo/
 # Role myrole updated
 ```
 
@@ -979,6 +990,12 @@ RPC: RoleGrantPermission
 `role revoke-permission` revokes a key from a role.
 
 RPC: RoleRevokePermission
+
+#### Options
+
+- from-key -- revoke a permission of keys that are greater than or equal to the given key using byte compare
+
+- prefix -- revoke a prefix permission
 
 #### Output
 
