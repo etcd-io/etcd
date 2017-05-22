@@ -56,6 +56,9 @@ type ServerConfig struct {
 	QuotaBackendBytes       int64
 	MaxTxnOps               uint
 
+	// MaxRequestBytes is the maximum request size to send over raft.
+	MaxRequestBytes uint
+
 	StrictReconfigCheck bool
 
 	// ClientCertAuthEnabled is true when cert has been signed by the client CA.

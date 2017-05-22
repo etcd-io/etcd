@@ -1625,6 +1625,35 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 	}
 }
 
+// TestV3PutLargeRequests ensures that configurable MaxRequestBytes works as intended.
+func TestV3PutLargeRequests(t *testing.T) {
+	defer testutil.AfterTest(t)
+	tests := []struct {
+		key             string
+		maxRequestBytes uint
+		valueSize       int
+		expectError     error
+	}{
+		// don't set to 0. use 0 as the default.
+		{"foo", 1, 1024, rpctypes.ErrGRPCRequestTooLarge},
+		{"foo", 10 * 1024 * 1024, 9 * 1024 * 1024, nil},
+		{"foo", 10 * 1024 * 1024, 10 * 1024 * 1024, rpctypes.ErrGRPCRequestTooLarge},
+		{"foo", 10 * 1024 * 1024, 10*1024*1024 + 5, rpctypes.ErrGRPCRequestTooLarge},
+	}
+	for i, test := range tests {
+		clus := NewClusterV3(t, &ClusterConfig{Size: 1, MaxRequestBytes: test.maxRequestBytes})
+		kvcli := toGRPC(clus.Client(0)).KV
+		reqput := &pb.PutRequest{Key: []byte(test.key), Value: make([]byte, test.valueSize)}
+		_, err := kvcli.Put(context.TODO(), reqput)
+
+		if !eqErrGRPC(err, test.expectError) {
+			t.Errorf("#%d: expected error %v, got %v", i, test.expectError, err)
+		}
+
+		clus.Terminate(t)
+	}
+}
+
 func eqErrGRPC(err1 error, err2 error) bool {
 	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
 }

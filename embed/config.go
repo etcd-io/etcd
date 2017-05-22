@@ -37,10 +37,11 @@ const (
 	ClusterStateFlagNew      = "new"
 	ClusterStateFlagExisting = "existing"
 
-	DefaultName         = "default"
-	DefaultMaxSnapshots = 5
-	DefaultMaxWALs      = 5
-	DefaultMaxTxnOps    = uint(128)
+	DefaultName            = "default"
+	DefaultMaxSnapshots    = 5
+	DefaultMaxWALs         = 5
+	DefaultMaxTxnOps       = uint(128)
+	DefaultMaxRequestBytes = 1.5 * 1024 * 1024
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
@@ -87,6 +88,7 @@ type Config struct {
 	ElectionMs        uint  `json:"election-timeout"`
 	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
 	MaxTxnOps         uint  `json:"max-txn-ops"`
+	MaxRequestBytes   uint  `json:"max-request-bytes"`
 
 	// clustering
 
@@ -175,6 +177,7 @@ func NewConfig() *Config {
 		Name:                DefaultName,
 		SnapCount:           etcdserver.DefaultSnapCount,
 		MaxTxnOps:           DefaultMaxTxnOps,
+		MaxRequestBytes:     DefaultMaxRequestBytes,
 		TickMs:              100,
 		ElectionMs:          1000,
 		LPUrls:              []url.URL{*lpurl},
