@@ -450,6 +450,15 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 			plog.Warningf("consistent index never saved (snapshot index=%d)", snapshot.Metadata.Index)
 		}
 	}
+	newSrv := srv // since srv == nil in defer if srv is returned as nil
+	defer func() {
+		// closing backend without first closing kv can cause
+		// resumed compactions to fail with closed tx errors
+		if err != nil {
+			newSrv.kv.Close()
+		}
+	}()
+
 	srv.consistIndex.setConsistentIndex(srv.kv.ConsistentIndex())
 	tp, err := auth.NewTokenProvider(cfg.AuthToken,
 		func(index uint64) <-chan struct{} {
