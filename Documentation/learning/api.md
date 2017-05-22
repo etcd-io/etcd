@@ -348,7 +348,7 @@ message Event {
 Watches are long-running requests and use gRPC streams to stream event data. A watch stream is bi-directional; the client writes to the stream to establish watches and reads to receive watch event. A single watch stream can multiplex many distinct watches by tagging events with per-watch identifiers. This multiplexing helps reducing the memory footprint and connection overhead on the core etcd cluster.
 
 Watches make three guarantees about events:
-* Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already already been posted.
+* Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted.
 * Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b.
 * Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events.
 
