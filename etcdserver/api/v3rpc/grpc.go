@@ -24,6 +24,8 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
+const grpcOverheadBytes = 512 * 1024
+
 func init() {
 	grpclog.SetLogger(plog)
 }
@@ -36,8 +38,9 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config) *grpc.Server {
 	}
 	opts = append(opts, grpc.UnaryInterceptor(newUnaryInterceptor(s)))
 	opts = append(opts, grpc.StreamInterceptor(newStreamInterceptor(s)))
-
+	opts = append(opts, grpc.MaxMsgSize(int(s.Cfg.MaxRequestBytes+grpcOverheadBytes)))
 	grpcServer := grpc.NewServer(opts...)
+
 	pb.RegisterKVServer(grpcServer, NewQuotaKVServer(s))
 	pb.RegisterWatchServer(grpcServer, NewWatchServer(s))
 	pb.RegisterLeaseServer(grpcServer, NewQuotaLeaseServer(s))

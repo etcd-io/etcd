@@ -61,8 +61,6 @@ const (
 	basePort     = 21000
 	UrlScheme    = "unix"
 	UrlSchemeTLS = "unixs"
-
-	defaultMaxRequestSize
 )
 
 var (
