@@ -89,6 +89,45 @@ func (op *Op) WithKeyBytes(key []byte) { op.key = key }
 // RangeBytes returns the byte slice holding with the Op's range end, if any.
 func (op Op) RangeBytes() []byte { return op.end }
 
+// Rev returns the requested revision, if any.
+func (op Op) Rev() int64 { return op.rev }
+
+// IsPut returns true iff the operation is a Put.
+func (op Op) IsPut() bool { return op.t == tPut }
+
+// IsGet returns true iff the operation is a Get.
+func (op Op) IsGet() bool { return op.t == tRange }
+
+// IsDelete returns true iff the operation is a Delete.
+func (op Op) IsDelete() bool { return op.t == tDeleteRange }
+
+// IsSerializable returns true if the serializable field is true.
+func (op Op) IsSerializable() bool { return op.serializable == true }
+
+// IsKeysOnly returns true if the keysonly field is true.
+func (op Op) IsKeysOnly() bool { return op.keysOnly == true }
+
+// IsCountOnly returns true if the countonly field is true.
+func (op Op) IsCountOnly() bool { return op.countOnly == true }
+
+// MinModRev returns if field is populated.
+func (op Op) MinModRev() int64 { return op.minModRev }
+
+// MaxModRev returns if field is populated.
+func (op Op) MaxModRev() int64 { return op.maxModRev }
+
+// MinCreateRev returns if field is populated.
+func (op Op) MinCreateRev() int64 { return op.minCreateRev }
+
+// MaxCreateRev returns if field is populated.
+func (op Op) MaxCreateRev() int64 { return op.maxCreateRev }
+
+// Limit returns if field is populated.
+func (op Op) retLimit() int64 { return op.limit }
+
+// Sort returns if field is populated.
+func (op Op) retSort() bool { return op.sort != nil }
+
 // WithRangeBytes sets the byte slice for the Op's range end.
 func (op *Op) WithRangeBytes(end []byte) { op.end = end }
 
