@@ -42,6 +42,7 @@ Administrators who need to create reliable and scalable key-value stores for the
 
  - [Supported systems][supported_platforms]
  - [Docker container][container_docker]
+ - [Container Linux, systemd][container_linux_platform]
  - [rkt container][container_rkt]
  - [Amazon Web Services][aws_platform]
  - [FreeBSD][freebsd_platform]
@@ -101,6 +102,7 @@ Answers to [common questions] about etcd.
 [understand_apis]: learning/api.md
 [versioning]: op-guide/versioning.md
 [supported_platforms]: op-guide/supported-platform.md
+[container_linux_platform]: platforms/container-linux-systemd.md
 [freebsd_platform]: platforms/freebsd.md
 [aws_platform]: platforms/aws.md
 [experimental]: dev-guide/experimental_apis.md
