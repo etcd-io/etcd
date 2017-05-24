@@ -67,7 +67,7 @@ member flags:
 	--quota-backend-bytes '0'
 		raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
 	--max-txn-ops '128' 
-		maximum operations per txn that etcd server allows; defaults to 128.
+		maximum number of operations permitted in a transaction.
 
 clustering flags:
 

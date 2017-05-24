@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -150,7 +149,8 @@ func TestV3CompactCurrentRev(t *testing.T) {
 
 func TestV3TxnTooManyOps(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	maxTxnOps := uint(128)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3, MaxTxnOps: maxTxnOps})
 	defer clus.Terminate(t)
 
 	kvc := toGRPC(clus.RandClient()).KV
@@ -201,7 +201,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 
 	for i, tt := range tests {
 		txn := &pb.TxnRequest{}
-		for j := 0; j < v3rpc.MaxTxnOps+1; j++ {
+		for j := 0; j < int(maxTxnOps+1); j++ {
 			tt(txn)
 		}
 
