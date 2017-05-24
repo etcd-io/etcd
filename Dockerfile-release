@@ -11,7 +11,18 @@ RUN mkdir -p /var/lib/etcd/
 # To fix this we just create /etc/nsswitch.conf and add the following line:
 RUN echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' >> /etc/nsswitch.conf
 
+ENV USER 2379
+
+RUN addgroup -S $USER
+RUN adduser -G $USER -u $USER -S -D -k /var/etcd -h /var/etcd $USER-etcd
+
+CMD chown --recursive $USER-etcd:$USER-etcd /var/etcd
+CMD chmod --recursive 755 /var/etcd
+
+USER $USER
+
 EXPOSE 2379 2380
 
 # Define default command.
 CMD ["/usr/local/bin/etcd"]
+
