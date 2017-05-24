@@ -13,5 +13,5 @@ RUN echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' >> /etc/nsswit
 
 EXPOSE 2379 2380
 
-# Define default command.
-CMD ["/usr/local/bin/etcd"]
+# Define default entrypoint.
+ENTRYPOINT ["/usr/local/bin/etcd"]
