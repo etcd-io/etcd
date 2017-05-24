@@ -59,7 +59,7 @@ Radius Intelligence uses Kubernetes running CoreOS to containerize and scale int
 
 ## Vonage
 
-- *Application*: system configuration for microservices, scheduling, locks (future - service discovery)
+- *Application*: kubernetes, vault backend, system configuration for microservices, scheduling, locks (future - service discovery)
 - *Launched*: August 2015
 - *Cluster Size*: 2 clusters of 5 members in 2 DCs, n local proxies 1-to-1 with microservice, (ssl and SRV look up)
 - *Order of Data Size*: kilobytes
