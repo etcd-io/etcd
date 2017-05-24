@@ -201,7 +201,7 @@ func TestV3TxnTooManyOps(t *testing.T) {
 
 	for i, tt := range tests {
 		txn := &pb.TxnRequest{}
-		for j := 0; j < v3rpc.MaxOpsPerTxn+1; j++ {
+		for j := 0; j < v3rpc.MaxTxnOps+1; j++ {
 			tt(txn)
 		}
 

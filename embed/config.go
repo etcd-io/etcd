@@ -40,6 +40,7 @@ const (
 	DefaultName         = "default"
 	DefaultMaxSnapshots = 5
 	DefaultMaxWALs      = 5
+	DefaultMaxTxnOps    = uint(128)
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
@@ -85,6 +86,7 @@ type Config struct {
 	TickMs            uint  `json:"heartbeat-interval"`
 	ElectionMs        uint  `json:"election-timeout"`
 	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
+	MaxTxnOps         uint  `json:"max-txn-ops"`
 
 	// clustering
 
@@ -172,6 +174,7 @@ func NewConfig() *Config {
 		MaxWalFiles:         DefaultMaxWALs,
 		Name:                DefaultName,
 		SnapCount:           etcdserver.DefaultSnapCount,
+		MaxTxnOps:           DefaultMaxTxnOps,
 		TickMs:              100,
 		ElectionMs:          1000,
 		LPUrls:              []url.URL{*lpurl},

@@ -41,7 +41,7 @@ func TestTxnError(t *testing.T) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrDuplicateKey, err)
 	}
 
-	ops := make([]clientv3.Op, v3rpc.MaxOpsPerTxn+10)
+	ops := make([]clientv3.Op, v3rpc.MaxTxnOps+10)
 	for i := range ops {
 		ops[i] = clientv3.OpPut(fmt.Sprintf("foo%d", i), "")
 	}

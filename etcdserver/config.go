@@ -54,6 +54,7 @@ type ServerConfig struct {
 
 	AutoCompactionRetention int
 	QuotaBackendBytes       int64
+	MaxTxnOps               uint
 
 	StrictReconfigCheck bool
 
