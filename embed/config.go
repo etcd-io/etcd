@@ -82,9 +82,10 @@ type Config struct {
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
 	// make ticks a cluster wide configuration.
-	TickMs            uint  `json:"heartbeat-interval"`
-	ElectionMs        uint  `json:"election-timeout"`
-	QuotaBackendBytes int64 `json:"quota-backend-bytes"`
+	TickMs                        uint    `json:"heartbeat-interval"`
+	ElectionMs                    uint    `json:"election-timeout"`
+	QuotaBackendBytes             int64   `json:"quota-backend-bytes"`
+	RandomizedElectionCoefficient float64 `json:"randomized-election-coefficient"`
 
 	// clustering
 
@@ -167,13 +168,14 @@ func NewConfig() *Config {
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
 	cfg := &Config{
-		CorsInfo:            &cors.CORSInfo{},
-		MaxSnapFiles:        DefaultMaxSnapshots,
-		MaxWalFiles:         DefaultMaxWALs,
-		Name:                DefaultName,
-		SnapCount:           etcdserver.DefaultSnapCount,
-		TickMs:              100,
-		ElectionMs:          1000,
+		CorsInfo:                      &cors.CORSInfo{},
+		MaxSnapFiles:                  DefaultMaxSnapshots,
+		MaxWalFiles:                   DefaultMaxWALs,
+		Name:                          DefaultName,
+		SnapCount:                     etcdserver.DefaultSnapCount,
+		TickMs:                        100,
+		ElectionMs:                    1000,
+		RandomizedElectionCoefficient: 1.0,
 		LPUrls:              []url.URL{*lpurl},
 		LCUrls:              []url.URL{*lcurl},
 		APUrls:              []url.URL{*apurl},

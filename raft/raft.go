@@ -123,6 +123,9 @@ type Config struct {
 	// HeartbeatTick. We suggest ElectionTick = 10 * HeartbeatTick to avoid
 	// unnecessary leader switching.
 	ElectionTick int
+	// RandomizedElectionCoefficient is a coefficient that can be used for increase
+	// or decrease the election timeout calculated in resetRandomizedElectionTimeout()
+	RandomizedElectionCoefficient float64
 	// HeartbeatTick is the number of Node.Tick invocations that must pass between
 	// heartbeats. That is, a leader sends heartbeat messages to maintain its
 	// leadership every HeartbeatTick ticks.
@@ -250,8 +253,9 @@ type raft struct {
 	checkQuorum bool
 	preVote     bool
 
-	heartbeatTimeout int
-	electionTimeout  int
+	heartbeatTimeout              int
+	electionTimeout               int
+	randomizedElectionCoefficient float64
 	// randomizedElectionTimeout is a random number between
 	// [electiontimeout, 2 * electiontimeout - 1]. It gets reset
 	// when raft changes its state to follower or candidate.
@@ -283,18 +287,19 @@ func newRaft(c *Config) *raft {
 		peers = cs.Nodes
 	}
 	r := &raft{
-		id:               c.ID,
-		lead:             None,
-		raftLog:          raftlog,
-		maxMsgSize:       c.MaxSizePerMsg,
-		maxInflight:      c.MaxInflightMsgs,
-		prs:              make(map[uint64]*Progress),
-		electionTimeout:  c.ElectionTick,
-		heartbeatTimeout: c.HeartbeatTick,
-		logger:           c.Logger,
-		checkQuorum:      c.CheckQuorum,
-		preVote:          c.PreVote,
-		readOnly:         newReadOnly(c.ReadOnlyOption),
+		id:                            c.ID,
+		lead:                          None,
+		raftLog:                       raftlog,
+		maxMsgSize:                    c.MaxSizePerMsg,
+		maxInflight:                   c.MaxInflightMsgs,
+		prs:                           make(map[uint64]*Progress),
+		electionTimeout:               c.ElectionTick,
+		randomizedElectionCoefficient: c.RandomizedElectionCoefficient,
+		heartbeatTimeout:              c.HeartbeatTick,
+		logger:                        c.Logger,
+		checkQuorum:                   c.CheckQuorum,
+		preVote:                       c.PreVote,
+		readOnly:                      newReadOnly(c.ReadOnlyOption),
 	}
 	for _, p := range peers {
 		r.prs[p] = &Progress{Next: 1, ins: newInflights(r.maxInflight)}
@@ -1212,7 +1217,7 @@ func (r *raft) pastElectionTimeout() bool {
 }
 
 func (r *raft) resetRandomizedElectionTimeout() {
-	r.randomizedElectionTimeout = r.electionTimeout + globalRand.Intn(r.electionTimeout)
+	r.randomizedElectionTimeout = r.electionTimeout + int(r.randomizedElectionCoefficient*float64(globalRand.Intn(r.electionTimeout)))
 }
 
 // checkQuorumActive returns true if the quorum is active from
