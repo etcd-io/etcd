@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -41,7 +41,7 @@ func TestTxnError(t *testing.T) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrDuplicateKey, err)
 	}
 
-	ops := make([]clientv3.Op, v3rpc.MaxOpsPerTxn+10)
+	ops := make([]clientv3.Op, int(embed.DefaultMaxTxnOps+10))
 	for i := range ops {
 		ops[i] = clientv3.OpPut(fmt.Sprintf("foo%d", i), "")
 	}
