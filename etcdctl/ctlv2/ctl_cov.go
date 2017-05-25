@@ -24,5 +24,5 @@ import (
 )
 
 func runCtlV2(app *cli.App) error {
-	return app.Run(strings.Split(os.Getenv("ETCDCTL_ARGS"), "\xff"))
+	return app.Run(strings.Split(os.Getenv("ETCDCTL_ARGS"), "\xe7\xcd"))
 }
