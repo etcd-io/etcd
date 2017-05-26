@@ -1,5 +1,5 @@
-hash: 4248f4a610b399df10cab942b0b3ef8a6d7db9c942bafd115f25d05293571658
-updated: 2017-04-24T16:15:17.066493631-07:00
+hash: 65a42af5f01e04374d1596c91179563d6f00dbb9a29c8f37291575ea086ceec7
+updated: 2017-05-26T16:06:30.855409-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -12,7 +12,7 @@ imports:
 - name: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - name: github.com/coreos/go-semver
-  version: 568e959cd89871e61434c1143528d9162da89ef2
+  version: 8ab6407b697782a06568d4b7f1db25550ec2e4c6
   subpackages:
   - semver
 - name: github.com/coreos/go-systemd
@@ -27,7 +27,7 @@ imports:
   - capnslog
   - dlopen
 - name: github.com/cpuguy83/go-md2man
-  version: a65d4d2de4d5f7c74868dfa9b202a3c8be315aaa
+  version: bcc0a711c5e6bbe72c7cb13d81c7109b45267fd2
   subpackages:
   - md2man
 - name: github.com/dgrijalva/jwt-go
@@ -94,9 +94,7 @@ imports:
   subpackages:
   - xfs
 - name: github.com/russross/blackfriday
-  version: b253417e1cb644d645a0a3bb1fa5034c8030127c
-- name: github.com/shurcooL/sanitized_anchor_name
-  version: 79c90efaf01eddc01945af5bc1797859189b830b
+  version: 0ba0f2b6ed7c475a92e4df8641825cb7a11d1fa3
 - name: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
@@ -129,7 +127,7 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: a9a820217f98f7c8a207ec1e45a874e1fe12c478
+  version: 19e51611da83d6be54ddafce4a4af510cb3e9ea4
   subpackages:
   - secure/bidirule
   - transform
