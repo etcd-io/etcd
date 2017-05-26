@@ -63,10 +63,8 @@ func (rt *readTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]
 	if int64(len(keys)) == limit {
 		return keys, vals
 	}
-	rt.txmu.Lock()
 	// ignore error since bucket may have been created in this batch
-	k2, v2, _ := unsafeRange(rt.tx, bucketName, key, endKey, limit-int64(len(keys)))
-	rt.txmu.Unlock()
+	k2, v2, _ := unsafeRange(rt.tx, bucketName, key, endKey, limit-int64(len(keys)), &rt.txmu)
 	return append(k2, keys...), append(v2, vals...)
 }
 
