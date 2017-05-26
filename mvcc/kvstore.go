@@ -19,6 +19,7 @@ import (
 	"errors"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/lease"
@@ -66,6 +67,10 @@ type ConsistentIndexGetter interface {
 type store struct {
 	ReadView
 	WriteView
+
+	// consistentIndex caches the "consistent_index" key's value. Accessed
+	// through atomics so must be 64-bit aligned.
+	consistentIndex uint64
 
 	// mu read locks for txns and write locks for non-txn store changes.
 	mu sync.RWMutex
@@ -234,6 +239,7 @@ func (s *store) Restore(b backend.Backend) error {
 	close(s.stopc)
 	s.fifoSched.Stop()
 
+	atomic.StoreUint64(&s.consistentIndex, 0)
 	s.b = b
 	s.kvindex = newTreeIndex()
 	s.currentRev = 1
@@ -380,14 +386,18 @@ func (s *store) saveIndex(tx backend.BatchTx) {
 		return
 	}
 	bs := s.bytesBuf8
-	binary.BigEndian.PutUint64(bs, s.ig.ConsistentIndex())
+	ci := s.ig.ConsistentIndex()
+	binary.BigEndian.PutUint64(bs, ci)
 	// put the index into the underlying backend
 	// tx has been locked in TxnBegin, so there is no need to lock it again
 	tx.UnsafePut(metaBucketName, consistentIndexKeyName, bs)
+	atomic.StoreUint64(&s.consistentIndex, ci)
 }
 
 func (s *store) ConsistentIndex() uint64 {
-	// TODO: cache index in a uint64 field?
+	if ci := atomic.LoadUint64(&s.consistentIndex); ci > 0 {
+		return ci
+	}
 	tx := s.b.BatchTx()
 	tx.Lock()
 	defer tx.Unlock()
@@ -395,7 +405,9 @@ func (s *store) ConsistentIndex() uint64 {
 	if len(vs) == 0 {
 		return 0
 	}
-	return binary.BigEndian.Uint64(vs[0])
+	v := binary.BigEndian.Uint64(vs[0])
+	atomic.StoreUint64(&s.consistentIndex, v)
+	return v
 }
 
 // appendMarkTombstone appends tombstone mark to normal revision bytes.
