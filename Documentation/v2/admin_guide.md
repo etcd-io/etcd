@@ -165,13 +165,16 @@ $ ssh 10.0.1.11
 ```
 
 ```sh
-$ kill `pgrep etcd`
+$ systemctl stop etcd2
 ```
 
 #### Copy the data directory of the now-idle member to the new machine
 
+`%data_dir%` is usually `/var/lib/etcd2`.
+
 ```
-$ tar -cvzf infra1.etcd.tar.gz %data_dir%
+$ cd %data_dir%
+$ tar -cvzf infra1.etcd.tar.gz *
 ```
 
 ```sh
@@ -202,10 +205,7 @@ $ tar -xzvf infra1.etcd.tar.gz -C %data_dir%
 ```
 
 ```
-etcd -name infra1 \
--listen-peer-urls http://10.0.1.13:2380 \
--listen-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379 \
--advertise-client-urls http://10.0.1.13:2379,http://127.0.0.1:2379
+systemctl start etcd2
 ```
 
 ### Disaster Recovery
