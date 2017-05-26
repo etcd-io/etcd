@@ -89,7 +89,8 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 	var i fakeConsistentIndex
 	be, tmpPath := backend.NewDefaultTmpBackend()
 	s := NewStore(be, &lease.FakeLessor{}, &i)
-	defer cleanup(s, be, tmpPath)
+	// use closure to capture 's' to pick up the reassignment
+	defer func() { cleanup(s, be, tmpPath) }()
 
 	// arbitrary number of bytes
 	bytesN := 64
@@ -103,7 +104,11 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 			txn.End()
 		}
 	}
+	s.Close()
+
+	b.ReportAllocs()
 	b.ResetTimer()
+	s = NewStore(be, &lease.FakeLessor{}, &i)
 }
 
 func BenchmarkStoreRestoreRevs1(b *testing.B) {
