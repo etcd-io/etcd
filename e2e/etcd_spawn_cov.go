@@ -56,7 +56,8 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 		}
 		// avoid test flag conflicts in coverage enabled etcdctl by putting flags in ETCDCTL_ARGS
 		ctl_cov_env := []string{
-			"ETCDCTL_ARGS" + "=" + strings.Join(args, "\xff"),
+			// was \xff, but that's used for testing boundary conditions; 0xe7cd should be safe
+			"ETCDCTL_ARGS=" + strings.Join(args, "\xe7\xcd"),
 		}
 		// when withFlagByEnv() is used in testCtl(), env variables for ctl is set to os.env.
 		// they must be included in ctl_cov_env.
