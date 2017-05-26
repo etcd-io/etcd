@@ -78,9 +78,25 @@ On the other hand, if the downed member is removed from cluster membership first
 
 etcd sets `strict-reconfig-check` in order to reject reconfiguration requests that would cause quorum loss. Abandoning quorum is really risky (especially when the cluster is already unhealthy). Although it may be tempting to disable quorum checking if there's quorum loss to add a new member, this could lead to full fledged cluster inconsistency. For many applications, this will make the problem even worse ("disk geometry corruption" being a candidate for most terrifying).
 
-### Why does etcd lose its leader from disk latency spikes?
+#### Why does etcd lose its leader from disk latency spikes?
 
 This is intentional; disk latency is part of leader liveness. Suppose the cluster leader takes a minute to fsync a raft log update to disk, but the etcd cluster has a one second election timeout. Even though the leader can process network messages within the election interval (e.g., send heartbeats), it's effectively unavailable because it can't commit any new proposals; it's waiting on the slow disk. If the cluster frequently loses its leader due to disk latencies, try [tuning][tuning] the disk settings or etcd time parameters.
+
+#### What does the etcd warning "request ignored (cluster ID mismatch)" mean?
+
+Every new etcd cluster generates a new cluster ID based on the initial cluster configuration and a user-provided unique `initial-cluster-token` value. By having unique cluster ID's, etcd is protected from cross-cluster interaction which could corrupt the cluster.
+
+Usually this warning happens after tearing down an old cluster, then reusing some of the peer addresses for the new cluster. If any etcd process from the old cluster is still running it will try to contact the new cluster. The new cluster will recognize a cluster ID mismatch, then ignore the request and emit this warning. This warning is often cleared by ensuring peer addresses among distinct clusters are disjoint.
+
+#### What does "mvcc: database space exceeded" mean and how do I fix it?
+
+The [multi-version concurrency control][api-mvcc] data model in etcd keeps an exact history of the keyspace. Without periodically compacting this history (e.g., by setting `--auto-compaction`), etcd will eventually exhaust its storage space. If etcd runs low on storage space, it raises a space quota alarm to protect the cluster from further writes. So long as the alarm is raised, etcd responds to write requests with the error `mvcc: database space exceeded`.
+
+To recover from the low space quota alarm:
+
+1. [Compact][maintenance-compact] etcd's history.
+2. [Defragment][maintenance-defragment] every etcd endpoint.
+3. [Disarm][maintenance-disarm] the alarm.
 
 ### Performance
 
@@ -112,12 +128,6 @@ A slow network can also cause this issue. If network metrics among the etcd mach
 
 If none of the above suggestions clear the warnings, please [open an issue][new_issue] with detailed logging, monitoring, metrics and optionally workload information.
 
-#### What does the etcd warning "request ignored (cluster ID mismatch)" mean?
-
-Every new etcd cluster generates a new cluster ID based on the initial cluster configuration and a user-provided unique `initial-cluster-token` value. By having unique cluster ID's, etcd is protected from cross-cluster interaction which could corrupt the cluster.
-
-Usually this warning happens after tearing down an old cluster, then reusing some of the peer addresses for the new cluster. If any etcd process from the old cluster is still running it will try to contact the new cluster. The new cluster will recognize a cluster ID mismatch, then ignore the request and emit this warning. This warning is often cleared by ensuring peer addresses among distinct clusters are disjoint.
-
 #### What does the etcd warning "snapshotting is taking more than x seconds to finish ..." mean?
 
 etcd sends a snapshot of its complete key-value store to refresh slow followers and for [backups][backup]. Slow snapshot transfer times increase MTTR; if the cluster is ingesting data with high throughput, slow followers may livelock by needing a new snapshot before finishing receiving a snapshot. To catch slow snapshot performance, etcd warns when sending a snapshot takes more than thirty seconds and exceeds the expected transfer time for a 1Gbps connection.
@@ -135,3 +145,7 @@ etcd sends a snapshot of its complete key-value store to refresh slow followers 
 [runtime reconfiguration]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/runtime-configuration.md
 [benchmark]: https://github.com/coreos/etcd/tree/master/tools/benchmark
 [benchmark-result]: https://github.com/coreos/etcd/blob/master/Documentation/op-guide/performance.md
+[api-mvcc]: learning/api.md#revisions
+[maintenance-compact]:  op-guide/maintenance.md#history-compaction
+[maintenance-defragment]: op-guide/maintenance.md#defragmentation
+[maintenance-disarm]: ../etcdctl/README.md#alarm-disarm
