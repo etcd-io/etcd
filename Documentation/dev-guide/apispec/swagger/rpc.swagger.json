@@ -1449,6 +1449,11 @@
           "type": "string",
           "format": "int64"
         },
+        "range_end": {
+          "description": "range_end compares the given target to all keys in the range [key, range_end).\nSee RangeRequest for more details on key ranges.",
+          "type": "string",
+          "format": "byte"
+        },
         "result": {
           "description": "result is logical comparison operation for this comparison.",
           "$ref": "#/definitions/CompareCompareResult"
