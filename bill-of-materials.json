@@ -145,11 +145,6 @@
 		"confidence": 0.963
 	},
 	{
-		"project": "github.com/shurcooL/sanitized_anchor_name",
-		"license": "MIT License",
-		"confidence": 1
-	},
-	{
 		"project": "github.com/spf13/cobra",
 		"license": "Apache License 2.0",
 		"confidence": 0.957
