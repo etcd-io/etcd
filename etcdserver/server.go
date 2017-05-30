@@ -557,18 +557,21 @@ func (s *EtcdServer) start() {
 }
 
 func (s *EtcdServer) purgeFile() {
-	var serrc, werrc <-chan error
+	var dberrc, serrc, werrc <-chan error
 	if s.Cfg.MaxSnapFiles > 0 {
+		dberrc = fileutil.PurgeFile(s.Cfg.SnapDir(), "snap.db", s.Cfg.MaxSnapFiles, purgeFileInterval, s.done)
 		serrc = fileutil.PurgeFile(s.Cfg.SnapDir(), "snap", s.Cfg.MaxSnapFiles, purgeFileInterval, s.done)
 	}
 	if s.Cfg.MaxWALFiles > 0 {
 		werrc = fileutil.PurgeFile(s.Cfg.WALDir(), "wal", s.Cfg.MaxWALFiles, purgeFileInterval, s.done)
 	}
 	select {
-	case e := <-werrc:
-		plog.Fatalf("failed to purge wal file %v", e)
+	case e := <-dberrc:
+		plog.Fatalf("failed to purge snap db file %v", e)
 	case e := <-serrc:
 		plog.Fatalf("failed to purge snap file %v", e)
+	case e := <-werrc:
+		plog.Fatalf("failed to purge wal file %v", e)
 	case <-s.stopping:
 		return
 	}
