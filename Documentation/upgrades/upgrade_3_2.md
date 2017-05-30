@@ -30,6 +30,22 @@ resp.TTL == -1
 err == nil
 ```
 
+`clientv3.NewFromConfigFile` is moved to `yaml.NewConfig`.
+
+Before
+
+```go
+import "github.com/coreos/etcd/clientv3"
+clientv3.NewFromConfigFile
+```
+
+After
+
+```go
+import clientv3yaml "github.com/coreos/etcd/clientv3/yaml"
+clientv3yaml.NewConfig
+```
+
 ### Server upgrade checklists
 
 #### Upgrade requirements
