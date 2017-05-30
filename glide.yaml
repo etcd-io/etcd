@@ -23,7 +23,7 @@ import:
 - package: github.com/dustin/go-humanize
   version: 8929fe90cee4b2cb9deb468b51fb34eba64d1bf0
 - package: github.com/ghodss/yaml
-  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+  version: v1.0.0
 - package: github.com/gogo/protobuf
   version: v0.3
   subpackages:
