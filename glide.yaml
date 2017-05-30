@@ -23,7 +23,7 @@ import:
 - package: github.com/dustin/go-humanize
   version: 8929fe90cee4b2cb9deb468b51fb34eba64d1bf0
 - package: github.com/ghodss/yaml
-  version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+  version: v1.0.0
 - package: github.com/gogo/protobuf
   version: v0.3
   subpackages:
@@ -48,7 +48,7 @@ import:
 - package: github.com/jonboulle/clockwork
   version: v0.1.0
 - package: github.com/kr/pty
-  version: f7ee69f31298ecbe5d2b349c711e2547a617d398
+  version: v1.0.0
 - package: github.com/olekukonko/tablewriter
   version: a0225b3f23b5ce0cbec6d7a66a968f8a59eca9c4
 - package: github.com/mattn/go-runewidth
