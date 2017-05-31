@@ -15,13 +15,13 @@
 package command
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
 	"github.com/coreos/etcd/clientv3/concurrency"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/net/context"
 )
 
 // NewElectionCommand returns the cobra command for "election runner".
