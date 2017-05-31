@@ -20,6 +20,8 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
 func TestV3CurlPutGetNoTLS(t *testing.T)     { testCurlPutGetGRPCGateway(t, &configNoTLS) }
@@ -109,5 +111,54 @@ func TestV3CurlWatch(t *testing.T) {
 	// expects "bar", timeout after 2 seconds since stream waits forever
 	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/watch", value: wstr, expected: `"YmFy"`, timeout: 2}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestV3CurlTxn(t *testing.T) {
+	defer testutil.AfterTest(t)
+	epc, err := newEtcdProcessCluster(&configNoTLS)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	defer func() {
+		if cerr := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", cerr)
+		}
+	}()
+
+	txn := &pb.TxnRequest{
+		Compare: []*pb.Compare{
+			{
+				Key:         []byte("foo"),
+				Result:      pb.Compare_EQUAL,
+				Target:      pb.Compare_CREATE,
+				TargetUnion: &pb.Compare_CreateRevision{0},
+			},
+		},
+		Success: []*pb.RequestOp{
+			{
+				Request: &pb.RequestOp_RequestPut{
+					RequestPut: &pb.PutRequest{
+						Key:   []byte("foo"),
+						Value: []byte("bar"),
+					},
+				},
+			},
+		},
+	}
+	m := &runtime.JSONPb{}
+	jsonDat, jerr := m.Marshal(txn)
+	if jerr != nil {
+		t.Fatal(jerr)
+	}
+	expected := `"succeeded":true,"responses":[{"response_put":{"header":{"revision":"2"}}}]`
+	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/kv/txn", value: string(jsonDat), expected: expected}); err != nil {
+		t.Fatalf("failed txn with curl (%v)", err)
+	}
+
+	// was crashing etcd server
+	malformed := `{"compare":[{"result":0,"target":1,"key":"Zm9v","TargetUnion":null}],"success":[{"Request":{"RequestPut":{"key":"Zm9v","value":"YmFy"}}}]}`
+	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/kv/txn", value: malformed, expected: "error"}); err != nil {
+		t.Fatalf("failed put with curl (%v)", err)
 	}
 }
