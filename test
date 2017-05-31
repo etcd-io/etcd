@@ -129,7 +129,16 @@ function cov_pass {
 	# on leadership transfer timeout during gracefully shutdown
 	go test -tags cov -timeout 30m -v ${REPO_PATH}"/e2e" || failed="$failed e2e"
 
-	gocovmerge "$COVERDIR"/*.coverprofile >"$COVERDIR"/cover.out
+	# incrementally merge to get coverage data even if some coverage files are corrupted
+	# optimistically assume etcdserver package's coverage file is OK since gocovmerge
+	# expects to start with a non-empty file
+	cp "$COVERDIR"/etcdserver.coverprofile "$COVERDIR"/cover.out
+	for f in "$COVERDIR"/*.coverprofile; do
+		gocovmerge $f "$COVERDIR"/cover.out  >"$COVERDIR"/cover.tmp || failed="$failed $f"
+		if [ -s "$COVERDIR"/cover.tmp ]; then
+			mv "$COVERDIR"/cover.tmp "$COVERDIR"/cover.out
+		fi
+	done
 	# strip out generated files (using GNU-style sed)
 	sed --in-place '/generated.go/d' "$COVERDIR"/cover.out || true
 
