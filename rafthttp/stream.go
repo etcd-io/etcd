@@ -299,14 +299,6 @@ func (cr *streamReader) start() {
 	if cr.errorc == nil {
 		cr.errorc = cr.tr.ErrorC
 	}
-
-	if cr.rl == nil {
-		// If client didn't provide rate limiter, use the default which will
-		// wait 100ms to create a new stream, so it doesn't bring too much
-		// overhead when retry.
-		cr.rl = rate.NewLimiter(rate.Every(100*time.Millisecond), 1)
-	}
-
 	go cr.run()
 }
 

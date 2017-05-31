@@ -317,6 +317,7 @@ func TestStream(t *testing.T) {
 			status: newPeerStatus(types.ID(2)),
 			recvc:  recvc,
 			propc:  propc,
+			rl:     rate.NewLimiter(rate.Every(100*time.Millisecond), 1),
 		}
 		sr.start()
 
