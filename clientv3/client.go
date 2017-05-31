@@ -182,7 +182,7 @@ func parseEndpoint(endpoint string) (proto string, host string, scheme string) {
 	host = url.Host
 	switch url.Scheme {
 	case "http", "https":
-	case "unix":
+	case "unix", "unixs":
 		proto = "unix"
 		host = url.Host + url.Path
 	default:
@@ -197,7 +197,7 @@ func (c *Client) processCreds(scheme string) (creds *credentials.TransportCreden
 	case "unix":
 	case "http":
 		creds = nil
-	case "https":
+	case "https", "unixs":
 		if creds != nil {
 			break
 		}
