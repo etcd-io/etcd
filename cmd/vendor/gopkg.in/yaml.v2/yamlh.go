@@ -691,7 +691,7 @@ type yaml_emitter_t struct {
 	scalar_data struct {
 		value                 []byte              // The scalar value.
 		multiline             bool                // Does the scalar contain line breaks?
-		flow_plain_allowed    bool                // Can the scalar be expessed in the flow plain style?
+		flow_plain_allowed    bool                // Can the scalar be expressed in the flow plain style?
 		block_plain_allowed   bool                // Can the scalar be expressed in the block plain style?
 		single_quoted_allowed bool                // Can the scalar be expressed in the single quoted style?
 		block_allowed         bool                // Can the scalar be expressed in the literal or folded styles?

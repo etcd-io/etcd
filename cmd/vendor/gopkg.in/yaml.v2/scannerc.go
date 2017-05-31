@@ -75,7 +75,7 @@ import (
 //      %TAG    !yaml!  tag:yaml.org,2002:
 //      ---
 //
-// The correspoding sequence of tokens:
+// The corresponding sequence of tokens:
 //
 //      STREAM-START(utf-8)
 //      VERSION-DIRECTIVE(1,1)
