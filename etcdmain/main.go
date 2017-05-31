@@ -43,7 +43,7 @@ func notifySystemd() {
 	if !systemdutil.IsRunningSystemd() {
 		return
 	}
-	sent, err := daemon.SdNotify(false, "READY=1")
+	sent, err := daemon.SdNotify("READY=1")
 	if err != nil {
 		plog.Errorf("failed to notify systemd for readiness: %v", err)
 	}
