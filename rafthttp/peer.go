@@ -24,6 +24,7 @@ import (
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -198,6 +199,13 @@ func startPeer(transport *Transport, urls types.URLs, peerID types.ID, fs *stats
 		recvc:  p.recvc,
 		propc:  p.propc,
 	}
+
+	if transport.DialRetryTimeout != 0 {
+		limit := rate.Every(transport.DialRetryTimeout)
+		p.msgAppV2Reader.rl = rate.NewLimiter(limit, 1)
+		p.msgAppReader.rl = rate.NewLimiter(limit, 1)
+	}
+
 	p.msgAppV2Reader.start()
 	p.msgAppReader.start()
 

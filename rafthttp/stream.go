@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/time/rate"
+
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/etcd/pkg/transport"
@@ -278,6 +280,8 @@ type streamReader struct {
 	recvc  chan<- raftpb.Message
 	propc  chan<- raftpb.Message
 
+	rl *rate.Limiter // alters the frequency of dial retrial attempts
+
 	errorc chan<- error
 
 	mu     sync.Mutex
@@ -289,14 +293,21 @@ type streamReader struct {
 	done  chan struct{}
 }
 
-func (r *streamReader) start() {
-	r.stopc = make(chan struct{})
-	r.done = make(chan struct{})
-	if r.errorc == nil {
-		r.errorc = r.tr.ErrorC
+func (cr *streamReader) start() {
+	cr.stopc = make(chan struct{})
+	cr.done = make(chan struct{})
+	if cr.errorc == nil {
+		cr.errorc = cr.tr.ErrorC
 	}
 
-	go r.run()
+	if cr.rl == nil {
+		// If client didn't provide rate limiter, use the default which will
+		// wait 100ms to create a new stream, so it doesn't bring too much
+		// overhead when retry.
+		cr.rl = rate.NewLimiter(rate.Every(100*time.Millisecond), 1)
+	}
+
+	go cr.run()
 }
 
 func (cr *streamReader) run() {
@@ -323,13 +334,15 @@ func (cr *streamReader) run() {
 			}
 		}
 		select {
-		// Wait 100ms to create a new stream, so it doesn't bring too much
-		// overhead when retry.
-		case <-time.After(100 * time.Millisecond):
 		case <-cr.stopc:
 			plog.Infof("stopped streaming with peer %s (%s reader)", cr.peerID, t)
 			close(cr.done)
 			return
+		default:
+			// wait for a while before new dial attempt
+			if err := cr.rl.Wait(context.TODO()); err != nil {
+				plog.Errorf("streaming with peer %s (%s reader) rate limiter error: %v", cr.peerID, t, err)
+			}
 		}
 	}
 }

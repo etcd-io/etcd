@@ -94,8 +94,10 @@ type Transporter interface {
 // User needs to call Start before calling other functions, and call
 // Stop when the Transport is no longer used.
 type Transport struct {
-	DialTimeout time.Duration     // maximum duration before timing out dial of the request
-	TLSInfo     transport.TLSInfo // TLS information used when creating connection
+	DialTimeout      time.Duration // maximum duration before timing out dial of the request
+	DialRetryTimeout time.Duration // alters the frequency of streamReader dial retrial attempts
+
+	TLSInfo transport.TLSInfo // TLS information used when creating connection
 
 	ID          types.ID   // local member ID
 	URLs        types.URLs // local peer URLs
