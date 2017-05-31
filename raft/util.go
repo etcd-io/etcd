@@ -22,7 +22,7 @@ import (
 )
 
 func (st StateType) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("%q", st.String())), nil
+	return []byte(fmt.Sprintf("%q", string(st))), nil
 }
 
 // uint64Slice implements sort interface

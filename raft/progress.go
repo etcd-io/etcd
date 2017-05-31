@@ -35,6 +35,12 @@ func (st ProgressStateType) String() string { return prstmap[uint64(st)] }
 // Progress represents a follower’s progress in the view of the leader. Leader maintains
 // progresses of all followers, and sends entries to the follower based on its progress.
 type Progress struct {
+	// Match is the index of the highest known matched entry.
+	// If leader knows nothing about follower’s replication status,
+	// Match is set to zero.
+	//
+	// Next is the index of the first entry that will be replicated to the follower.
+	// Leader puts entries from next to its latest one in next replication message
 	Match, Next uint64
 	// State defines how the leader should interact with the follower.
 	//
@@ -91,12 +97,12 @@ func (pr *Progress) becomeProbe() {
 	// probes from pendingSnapshot + 1.
 	if pr.State == ProgressStateSnapshot {
 		pendingSnapshot := pr.PendingSnapshot
-		pr.resetState(ProgressStateProbe)
 		pr.Next = max(pr.Match+1, pendingSnapshot+1)
 	} else {
-		pr.resetState(ProgressStateProbe)
 		pr.Next = pr.Match + 1
 	}
+
+	pr.resetState(ProgressStateProbe)
 }
 
 func (pr *Progress) becomeReplicate() {

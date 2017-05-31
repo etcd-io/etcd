@@ -298,13 +298,13 @@ func (n *node) run(r *raft) {
 		if lead != r.lead {
 			if r.hasLeader() {
 				if lead == None {
-					r.logger.Infof("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
+					r.Logger.Infof("raft.node: %x elected leader %x at term %d", r.ID, r.lead, r.Term)
 				} else {
-					r.logger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
+					r.Logger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.ID, lead, r.lead, r.Term)
 				}
 				propc = n.propc
 			} else {
-				r.logger.Infof("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
+				r.Logger.Infof("raft.node: %x lost leader %x at term %d", r.ID, lead, r.Term)
 				propc = nil
 			}
 			lead = r.lead
@@ -315,7 +315,7 @@ func (n *node) run(r *raft) {
 		// described in raft dissertation)
 		// Currently it is dropped in Step silently.
 		case m := <-propc:
-			m.From = r.id
+			m.From = r.ID
 			r.Step(m)
 		case m := <-n.recvc:
 			// filter out response message from unknown From.
@@ -337,7 +337,7 @@ func (n *node) run(r *raft) {
 			case pb.ConfChangeRemoveNode:
 				// block incoming proposal when local node is
 				// removed
-				if cc.NodeID == r.id {
+				if cc.NodeID == r.ID {
 					propc = nil
 				}
 				r.removeNode(cc.NodeID)
