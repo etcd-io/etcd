@@ -142,3 +142,14 @@ func newReport() report.Report {
 	}
 	return report.NewReport(p)
 }
+
+func newWeightedReport() report.Report {
+	p := "%4.4f"
+	if precise {
+		p = "%g"
+	}
+	if sample {
+		return report.NewReportSample(p)
+	}
+	return report.NewWeightedReport(report.NewReport(p), p)
+}
