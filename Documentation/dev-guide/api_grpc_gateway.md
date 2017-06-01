@@ -38,6 +38,15 @@ curl -L http://localhost:2379/v3alpha/kv/put \
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"2"},"events":[{"kv":{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}}]}}
 ```
 
+Use `curl` to issue a transaction:
+
+```bash
+curl -L http://localhost:2379/v3alpha/kv/txn \
+	-X POST \
+	-d '{"compare":[{"target":"CREATE","key":"Zm9v","createRevision":"2"}],"success":[{"requestPut":{"key":"Zm9v","value":"YmFy"}}]}'
+# {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"3","raft_term":"2"},"succeeded":true,"responses":[{"response_put":{"header":{"revision":"3"}}}]}
+```
+
 ## Swagger
 
 Generated [Swagger][swagger] API definitions can be found at [rpc.swagger.json][swagger-doc].
