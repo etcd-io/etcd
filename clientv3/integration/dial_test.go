@@ -66,6 +66,22 @@ func TestDialTLSExpired(t *testing.T) {
 	}
 }
 
+// TestDialTLSNoConfig ensures the client fails to dial / times out
+// when TLS endpoints (https, unixs) are given but no tls config.
+func TestDialTLSNoConfig(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientTLS: &testTLSInfo})
+	defer clus.Terminate(t)
+	// expect 'signed by unknown authority'
+	_, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{clus.Members[0].GRPCAddr()},
+		DialTimeout: time.Second,
+	})
+	if err != grpc.ErrClientConnTimeout {
+		t.Fatalf("expected %v, got %v", grpc.ErrClientConnTimeout, err)
+	}
+}
+
 // TestDialSetEndpoints ensures SetEndpoints can replace unavailable endpoints with available ones.
 func TestDialSetEndpointsBeforeFail(t *testing.T) {
 	testDialSetEndpoints(t, true)

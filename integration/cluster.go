@@ -569,7 +569,7 @@ func (m *member) listenGRPC() error {
 		l.Close()
 		return err
 	}
-	m.grpcAddr = m.grpcBridge.URL()
+	m.grpcAddr = schemeFromTLSInfo(m.ClientTLSInfo) + "://" + m.grpcBridge.inaddr
 	m.grpcListener = l
 	return nil
 }
