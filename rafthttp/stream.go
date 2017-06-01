@@ -246,7 +246,7 @@ func (cw *streamWriter) closeUnlocked() bool {
 		return false
 	}
 	if err := cw.closer.Close(); err != nil {
-		plog.Errorf("Peer %s (writer) connection close error: %v", cw.peerID, err)
+		plog.Errorf("peer %s (writer) connection close error: %v", cw.peerID, err)
 	}
 	if len(cw.msgc) > 0 {
 		cw.r.ReportUnreachable(uint64(cw.peerID))
@@ -501,7 +501,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 func (cr *streamReader) close() {
 	if cr.closer != nil {
 		if err := cr.closer.Close(); err != nil {
-			plog.Errorf("Peer %s (reader) connection close error: %v", cr.peerID, err)
+			plog.Errorf("peer %s (reader) connection close error: %v", cr.peerID, err)
 		}
 	}
 	cr.closer = nil
