@@ -25,8 +25,8 @@ func TestGetTimeseries(t *testing.T) {
 	sp.Add(now, time.Second)
 	sp.Add(now.Add(5*time.Second), time.Second)
 	n := sp.getTimeSeries().Len()
-	if n < 3 {
-		t.Fatalf("expected at 6 points of time series, got %s", sp.getTimeSeries())
+	if n != 2 {
+		t.Fatalf("expected 2 points of time series, got %s", sp.getTimeSeries())
 	}
 
 	// add a point with duplicate timestamp
