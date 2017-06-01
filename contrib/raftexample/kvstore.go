@@ -40,9 +40,9 @@ type kv struct {
 func newKVStore(snapshotter *snap.Snapshotter, proposeC chan<- string, commitC <-chan *string, errorC <-chan error) *kvstore {
 	s := &kvstore{proposeC: proposeC, kvStore: make(map[string]string), snapshotter: snapshotter}
 	// replay log into key-value map
-	s.readCommits(commitC, errorC)
+	s.readCommits(commitC, errorC, true)
 	// read commits from raft into kvStore map until error
-	go s.readCommits(commitC, errorC)
+	go s.readCommits(commitC, errorC, false)
 	return s
 }
 
@@ -61,7 +61,8 @@ func (s *kvstore) Propose(k string, v string) {
 	s.proposeC <- string(buf.Bytes())
 }
 
-func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
+// 'restart' is true, if kvstore is created with existing snapshot on disk.
+func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error, restart bool) {
 	for data := range commitC {
 		if data == nil {
 			// done replaying log; new data incoming
@@ -76,6 +77,9 @@ func (s *kvstore) readCommits(commitC <-chan *string, errorC <-chan error) {
 			log.Printf("loading snapshot at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
 			if err := s.recoverFromSnapshot(snapshot.Data); err != nil {
 				log.Panic(err)
+			}
+			if restart {
+				return
 			}
 			continue
 		}
