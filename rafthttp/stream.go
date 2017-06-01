@@ -245,7 +245,9 @@ func (cw *streamWriter) closeUnlocked() bool {
 	if !cw.working {
 		return false
 	}
-	cw.closer.Close()
+	if err := cw.closer.Close(); err != nil {
+		plog.Errorf("Peer %s (writer) connection close error: %v", cw.peerID, err)
+	}
 	if len(cw.msgc) > 0 {
 		cw.r.ReportUnreachable(uint64(cw.peerID))
 	}
@@ -286,18 +288,20 @@ type streamReader struct {
 
 	mu     sync.Mutex
 	paused bool
-	cancel func()
 	closer io.Closer
 
-	stopc chan struct{}
-	done  chan struct{}
+	ctx    context.Context
+	cancel context.CancelFunc
+	done   chan struct{}
 }
 
 func (cr *streamReader) start() {
-	cr.stopc = make(chan struct{})
 	cr.done = make(chan struct{})
 	if cr.errorc == nil {
 		cr.errorc = cr.tr.ErrorC
+	}
+	if cr.ctx == nil {
+		cr.ctx, cr.cancel = context.WithCancel(context.Background())
 	}
 	go cr.run()
 }
@@ -314,7 +318,7 @@ func (cr *streamReader) run() {
 		} else {
 			cr.status.activate()
 			plog.Infof("established a TCP streaming connection with peer %s (%s reader)", cr.peerID, cr.typ)
-			err := cr.decodeLoop(rc, t)
+			err = cr.decodeLoop(rc, t)
 			plog.Warningf("lost the TCP streaming connection with peer %s (%s reader)", cr.peerID, cr.typ)
 			switch {
 			// all data is read out
@@ -325,16 +329,15 @@ func (cr *streamReader) run() {
 				cr.status.deactivate(failureType{source: t.String(), action: "read"}, err.Error())
 			}
 		}
-		select {
-		case <-cr.stopc:
+		// Wait for a while before new dial attempt
+		err = cr.rl.Wait(cr.ctx)
+		if cr.ctx.Err() != nil {
 			plog.Infof("stopped streaming with peer %s (%s reader)", cr.peerID, t)
 			close(cr.done)
 			return
-		default:
-			// wait for a while before new dial attempt
-			if err := cr.rl.Wait(context.TODO()); err != nil {
-				plog.Errorf("streaming with peer %s (%s reader) rate limiter error: %v", cr.peerID, t, err)
-			}
+		}
+		if err != nil {
+			plog.Errorf("streaming with peer %s (%s reader) rate limiter error: %v", cr.peerID, t, err)
 		}
 	}
 }
@@ -351,7 +354,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 		plog.Panicf("unhandled stream type %s", t)
 	}
 	select {
-	case <-cr.stopc:
+	case <-cr.ctx.Done():
 		cr.mu.Unlock()
 		if err := rc.Close(); err != nil {
 			return err
@@ -406,11 +409,8 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 }
 
 func (cr *streamReader) stop() {
-	close(cr.stopc)
 	cr.mu.Lock()
-	if cr.cancel != nil {
-		cr.cancel()
-	}
+	cr.cancel()
 	cr.close()
 	cr.mu.Unlock()
 	<-cr.done
@@ -434,13 +434,11 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 
 	setPeerURLsHeader(req, cr.tr.URLs)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	req = req.WithContext(ctx)
+	req = req.WithContext(cr.ctx)
 
 	cr.mu.Lock()
-	cr.cancel = cancel
 	select {
-	case <-cr.stopc:
+	case <-cr.ctx.Done():
 		cr.mu.Unlock()
 		return nil, fmt.Errorf("stream reader is stopped")
 	default:
@@ -502,7 +500,9 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 
 func (cr *streamReader) close() {
 	if cr.closer != nil {
-		cr.closer.Close()
+		if err := cr.closer.Close(); err != nil {
+			plog.Errorf("Peer %s (reader) connection close error: %v", cr.peerID, err)
+		}
 	}
 	cr.closer = nil
 }
