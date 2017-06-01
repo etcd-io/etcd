@@ -163,7 +163,7 @@ func TestCtlV2GetRoleUserWithProxy(t *testing.T) { testCtlV2GetRoleUser(t, &conf
 func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
 	defer testutil.AfterTest(t)
 
-	epc := setupEtcdctlTest(t, cfg, true)
+	epc := setupEtcdctlTest(t, cfg, false)
 	defer func() {
 		if err := epc.Close(); err != nil {
 			t.Fatalf("error closing etcd processes (%v)", err)
