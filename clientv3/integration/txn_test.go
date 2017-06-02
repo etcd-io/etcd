@@ -152,3 +152,30 @@ func TestTxnSuccess(t *testing.T) {
 		t.Fatalf("unexpected Get response %v", resp)
 	}
 }
+
+func TestTxnCompareRange(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clus.Client(0)
+	fooResp, err := kv.Put(context.TODO(), "foo/", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = kv.Put(context.TODO(), "foo/a", "baz"); err != nil {
+		t.Fatal(err)
+	}
+	tresp, terr := kv.Txn(context.TODO()).If(
+		clientv3.Compare(
+			clientv3.CreateRevision("foo/"), "=", fooResp.Header.Revision).
+			WithPrefix(),
+	).Commit()
+	if terr != nil {
+		t.Fatal(terr)
+	}
+	if tresp.Succeeded {
+		t.Fatal("expected prefix compare to false, got compares as true")
+	}
+}
