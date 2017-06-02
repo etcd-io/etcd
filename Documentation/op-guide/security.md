@@ -16,7 +16,7 @@ etcd takes several certificate related configuration options, either through com
 
 `--key-file=<path>`: Key for the certificate. Must be unencrypted.
 
-`--client-cert-auth`: When this is set etcd will check all incoming HTTPS requests for a client certificate signed by the trusted CA, requests that don't supply a valid client certificate will fail.
+`--client-cert-auth`: When this is set etcd will check all incoming HTTPS requests for a client certificate signed by the trusted CA, requests that don't supply a valid client certificate will fail. If [authentication][auth] is enabled, the certificate provides credentials for the user name given by the Common Name field.
 
 `--trusted-ca-file=<path>`: Trusted certificate authority.
 
@@ -222,3 +222,4 @@ The certificate needs to be signed for the member's FQDN in its Subject Name, us
 [tls-setup]: ../../hack/tls-setup
 [tls-guide]: https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
 [alt-name]: http://wiki.cacert.org/FAQ/subjectAltName
+[auth]: authentication.md
