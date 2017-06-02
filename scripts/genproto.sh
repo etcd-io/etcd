@@ -68,6 +68,8 @@ for dir in ${DIRS}; do
 	popd
 done
 
+# remove old swagger files so it's obvious whether the files fail to generate
+rm -rf Documentation/dev-guide/apispec/swagger/*json
 for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionpb/v3election; do
 	protobase="etcdserver/${pb}"
 	protoc -I. \
@@ -93,8 +95,9 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 	go fmt ${gwfile}
 	mv ${gwfile} ${pkgpath}/gw/
 	rm -f ./etcdserver/${pb}*.bak
+	swaggerName=`basename ${pb}`
 	mv	Documentation/dev-guide/apispec/swagger/etcdserver/${pb}.swagger.json \
-		Documentation/dev-guide/apispec/swagger/${name}.swagger.json
+		Documentation/dev-guide/apispec/swagger/${swaggerName}.swagger.json
 done
 rm -rf Documentation/dev-guide/apispec/swagger/etcdserver/
 
