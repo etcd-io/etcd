@@ -669,6 +669,7 @@ Empty field.
 | request_range |  | RangeRequest |
 | request_put |  | PutRequest |
 | request_delete_range |  | DeleteRangeRequest |
+| request_txn |  | TxnRequest |
 
 
 
@@ -691,6 +692,7 @@ Empty field.
 | response_range |  | RangeResponse |
 | response_put |  | PutResponse |
 | response_delete_range |  | DeleteRangeResponse |
+| response_txn |  | TxnResponse |
 
 
 

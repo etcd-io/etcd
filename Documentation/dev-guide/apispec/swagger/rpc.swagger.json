@@ -1954,6 +1954,9 @@
         },
         "request_range": {
           "$ref": "#/definitions/etcdserverpbRangeRequest"
+        },
+        "request_txn": {
+          "$ref": "#/definitions/etcdserverpbTxnRequest"
         }
       }
     },
@@ -1993,6 +1996,9 @@
         },
         "response_range": {
           "$ref": "#/definitions/etcdserverpbRangeResponse"
+        },
+        "response_txn": {
+          "$ref": "#/definitions/etcdserverpbTxnResponse"
         }
       }
     },
