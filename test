@@ -230,6 +230,22 @@ function fmt_pass {
 		exit 255
 	fi
 
+	if which shellcheck >/dev/null; then
+		echo "Checking shellcheck..."
+		shellcheckResult=$(shellcheck -fgcc build test scripts/* 2>&1 || true)
+		if [ -n "${shellcheckResult}" ]; then
+			# mask the most common ones; fix later
+			SHELLCHECK_MASK="SC(2086|2006|2068|2196|2035|2162|2046|2076)"
+			errs=$(echo "${shellcheckResult}" | egrep -v "${SHELLCHECK_MASK}" || true)
+			if [ -n "${errs}" ]; then
+				echo -e "shellcheck checking failed:\n${shellcheckResult}\n===\nFailed:\n${errs}"
+				exit 255
+			fi
+			suppressed=$(echo "${shellcheckResult}" | cut -f4- -d':' | sort | uniq -c | sort -n)
+			echo -e "shellcheck suppressed warnings:\n${suppressed}"
+		fi
+	fi
+
 	echo "Checking documentation style..."
 	# eschew you
 	yous=`find . -name \*.md | xargs egrep --color "[Yy]ou[r]?[ '.,;]" | grep -v /v2/ || true`
