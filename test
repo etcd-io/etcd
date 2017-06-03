@@ -23,6 +23,8 @@ if [ -z "$PASSES" ]; then
 	PASSES="fmt bom dep compile build unit"
 fi
 
+USERPKG=${PKG:-}
+
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
 
@@ -31,13 +33,30 @@ IGNORE_PKGS="(cmd/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
 INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
 
 # all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
-PKGS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | egrep -v "(tools/|contrib/|e2e|pb)" | sed "s|\.|${REPO_PATH}|g"`
+PKGS=`find . -name \*.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | egrep -v "(tools/|contrib/|e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo`
 # pkg1,pkg2,pkg3
-PKGS_COMMA=`echo ${PKGS} | sed 's/ /,/g'`
+PKGS_COMMA=${PKGS// /,}
 
 TEST_PKGS=`find . -name \*_test.go | while read a; do dirname $a; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
-FORMATTABLE=`find . -name \*.go | while read a; do echo $(dirname $a)/"*.go"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
+FORMATTABLE=`find . -name \*.go | while read a; do echo "$(dirname $a)/*.go"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g"`
 TESTABLE_AND_FORMATTABLE=`echo "$TEST_PKGS" | egrep -v "$INTEGRATION_PKGS"`
+
+# check if user provided PKG override
+if [ -z "${USERPKG}" ]; then
+	TEST=$TESTABLE_AND_FORMATTABLE
+	FMT=$FORMATTABLE
+else
+	# strip out leading dotslashes and trailing slashes from PKG=./foo/
+	TEST=${USERPKG/#./}
+	TEST=${TEST/#\//}
+	TEST=${TEST/%\//}
+	# only run gofmt on packages provided by user
+	FMT="$TEST"
+fi
+
+# split TEST into an array and prepend REPO_PATH to each local package
+split=(${TEST// / })
+TEST=${split/#/${REPO_PATH}/}
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
@@ -47,25 +66,6 @@ if [ -z "$GOARCH" ]; then
 	GOARCH=$(go env GOARCH);
 fi
 
-# user has not provided PKG override
-if [ -z "$PKG" ]; then
-	TEST=$TESTABLE_AND_FORMATTABLE
-	FMT=$FORMATTABLE
-
-# user has provided PKG override
-else
-	# strip out leading dotslashes and trailing slashes from PKG=./foo/
-	TEST=${PKG/#./}
-	TEST=${TEST/#\//}
-	TEST=${TEST/%\//}
-
-	# only run gofmt on packages provided by user
-	FMT="$TEST"
-fi
-
-# split TEST into an array and prepend REPO_PATH to each local package
-split=(${TEST// / })
-TEST=${split[@]/#/${REPO_PATH}/}
 
 # determine whether target supports race detection
 if [ "$GOARCH" == "amd64" ]; then
@@ -235,7 +235,7 @@ function fmt_pass {
 		shellcheckResult=$(shellcheck -fgcc build test scripts/* 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
 			# mask the most common ones; fix later
-			SHELLCHECK_MASK="SC(2086|2006|2068|2196|2035|2162|2046|2076)"
+			SHELLCHECK_MASK="SC(2086|2006|2068|2196|2035|2162|2076)"
 			errs=$(echo "${shellcheckResult}" | egrep -v "${SHELLCHECK_MASK}" || true)
 			if [ -n "${errs}" ]; then
 				echo -e "shellcheck checking failed:\n${shellcheckResult}\n===\nFailed:\n${errs}"
@@ -248,7 +248,7 @@ function fmt_pass {
 
 	echo "Checking documentation style..."
 	# eschew you
-	yous=`find . -name \*.md | xargs egrep --color "[Yy]ou[r]?[ '.,;]" | grep -v /v2/ || true`
+	yous=`find . -name \*.md -exec egrep --color "[Yy]ou[r]?[ '.,;]" {} + | grep -v /v2/ || true`
 	if [ ! -z "$yous" ]; then
 		echo -e "found 'you' in documentation:\n${yous}"
 		exit 255
@@ -289,7 +289,7 @@ function fmt_pass {
 			# TODO: resolve these after go1.8 migration
 			SIMPLE_CHECK_MASK="S(1024)"
 			if echo "${gosimpleResult}" | egrep -v "$SIMPLE_CHECK_MASK"; then
-				echo -e "gosimple checking ${path} failed:\n${gosimpleResult}"
+				echo -e "gosimple checking failed:\n${gosimpleResult}"
 				exit 255
 			else
 				echo -e "gosimple warning:\n${gosimpleResult}"
@@ -318,7 +318,7 @@ function fmt_pass {
 			# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
 			STATIC_CHECK_MASK="SA(1019|2002)"
 			if echo "${staticcheckResult}" | egrep -v "$STATIC_CHECK_MASK"; then
-				echo -e "staticcheck checking ${path} failed:\n${staticcheckResult}"
+				echo -e "staticcheck checking failed:\n${staticcheckResult}"
 				exit 255
 			else
 				suppressed=`echo "${staticcheckResult}" | sed 's/ /\n/g' | grep "(SA" | sort | uniq -c`
@@ -330,16 +330,20 @@ function fmt_pass {
 	fi
 
 	echo "Checking for license header..."
-	licRes=$(for file in $(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*'); do
-			head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" || echo -e "  ${file}"
-		done;)
+	licRes=""
+	files=$(find . -type f -iname '*.go' ! -path './cmd/*' ! -path './gopath.proto/*')
+	for file in $files; do
+		if ! head -n3 "${file}" | grep -Eq "(Copyright|generated|GENERATED)" ; then
+			licRes="${licRes}"$(echo -e "  ${file}")
+		fi
+	done
 	if [ -n "${licRes}" ]; then
 		echo -e "license header checking failed:\n${licRes}"
 		exit 255
 	fi
 
 	echo "Checking commit titles..."
-	git log --oneline `git merge-base HEAD master`...HEAD | while read l; do
+	git log --oneline "$(git merge-base HEAD master)"...HEAD | while read l; do
 		commitMsg=`echo "$l" | cut -f2- -d' '`
 		if [[ "$commitMsg" == Merge* ]]; then
 			# ignore "Merge pull" commits
@@ -371,7 +375,7 @@ function bom_pass {
 		--override-file bill-of-materials.override.json \
 		github.com/coreos/etcd github.com/coreos/etcd/etcdctl >bom-now.json || true
 	if ! diff bill-of-materials.json bom-now.json; then
-		echo vendored licenses do not match given bill of materials
+		echo "vendored licenses do not match given bill of materials"
 		exit 255
 	fi
 	rm bom-now.json

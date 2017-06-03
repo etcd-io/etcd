@@ -71,7 +71,7 @@ acbuild --debug port add peer tcp 2380
 
 acbuild --debug copy "$TMPHOSTS" /etc/hosts
 
-acbuild --debug label add arch $(go2aci ${GOARCH})
+acbuild --debug label add arch "$(go2aci ${GOARCH})"
 
 # mkdir default data-dir
 mkdir -p .acbuild/currentaci/rootfs/var/lib/etcd
