@@ -41,10 +41,13 @@ matrix:
 
 addons:
   apt:
+    sources:
+    - debian-sid
     packages:
     - libpcap-dev
     - libaspell-dev
     - libhunspell-dev
+    - shellcheck
 
 before_install:
  - go get -v -u github.com/chzchzchz/goword
