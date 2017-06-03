@@ -17,8 +17,7 @@ if [ -z ${BINARYDIR} ]; then
 	BINARYDIR="${RELEASE}"
 	TARFILE="${RELEASE}.tar.gz"
 	TARURL="https://github.com/coreos/etcd/releases/download/${1}/${TARFILE}"
-	curl -f -L -o ${TARFILE} ${TARURL}
-	if [ $? != 0 ]; then
+	if ! curl -f -L -o ${TARFILE} ${TARURL} ; then
 		echo "Failed to download ${TARURL}."
 		exit 1
 	fi

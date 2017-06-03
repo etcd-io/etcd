@@ -21,7 +21,7 @@ if ! command -v docker >/dev/null; then
     exit 1
 fi
 
-ETCD_ROOT=$(dirname "${BASH_SOURCE}")/..
+ETCD_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 pushd ${ETCD_ROOT} >/dev/null
 	echo Building etcd binary...
