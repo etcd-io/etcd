@@ -112,11 +112,3 @@ func endpointsFromFlag(cmd *cobra.Command) []string {
 	}
 	return endpoints
 }
-
-func dialTimeoutFromCmd(cmd *cobra.Command) time.Duration {
-	dialTimeout, err := cmd.Flags().GetDuration("dial-timeout")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
-	return dialTimeout
-}

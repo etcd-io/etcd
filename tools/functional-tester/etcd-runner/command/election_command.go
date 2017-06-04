@@ -49,7 +49,6 @@ func runElectionFunc(cmd *cobra.Command, args []string) {
 	// nextc closes when election is ready for next round.
 	nextc := make(chan struct{})
 	eps := endpointsFromFlag(cmd)
-	dialTimeout := dialTimeoutFromCmd(cmd)
 
 	for i := range rcs {
 		v := fmt.Sprintf("%d", i)

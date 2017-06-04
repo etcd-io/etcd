@@ -30,12 +30,10 @@ import (
 // TestTransportSend tests that transport can send messages using correct
 // underlying peer, and drop local or unknown-target messages.
 func TestTransportSend(t *testing.T) {
-	ss := &stats.ServerStats{}
-	ss.Initialize()
 	peer1 := newFakePeer()
 	peer2 := newFakePeer()
 	tr := &Transport{
-		ServerStats: ss,
+		ServerStats: stats.NewServerStats("", ""),
 		peers:       map[types.ID]Peer{types.ID(1): peer1, types.ID(2): peer2},
 	}
 	wmsgsIgnored := []raftpb.Message{
@@ -67,12 +65,10 @@ func TestTransportSend(t *testing.T) {
 }
 
 func TestTransportCutMend(t *testing.T) {
-	ss := &stats.ServerStats{}
-	ss.Initialize()
 	peer1 := newFakePeer()
 	peer2 := newFakePeer()
 	tr := &Transport{
-		ServerStats: ss,
+		ServerStats: stats.NewServerStats("", ""),
 		peers:       map[types.ID]Peer{types.ID(1): peer1, types.ID(2): peer2},
 	}
 

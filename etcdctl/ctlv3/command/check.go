@@ -150,8 +150,8 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	}
 
 	go func() {
-		cctx, _ := context.WithTimeout(context.Background(), time.Duration(cfg.duration)*time.Second)
-
+		cctx, ccancel := context.WithTimeout(context.Background(), time.Duration(cfg.duration)*time.Second)
+		defer ccancel()
 		for limit.Wait(cctx) == nil {
 			binary.PutVarint(k, int64(rand.Int63n(math.MaxInt64)))
 			requests <- v3.OpPut(checkPerfPrefix+string(k), v)

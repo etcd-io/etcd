@@ -30,7 +30,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func ExampleMetrics_range() {
+func ExampleClient_metrics() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints: endpoints,
 		DialOptions: []grpc.DialOption{

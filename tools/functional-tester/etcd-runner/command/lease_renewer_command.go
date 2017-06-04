@@ -49,7 +49,6 @@ func runLeaseRenewerFunc(cmd *cobra.Command, args []string) {
 	}
 
 	eps := endpointsFromFlag(cmd)
-	dialTimeout := dialTimeoutFromCmd(cmd)
 	c := newClient(eps, dialTimeout)
 	ctx := context.Background()
 
