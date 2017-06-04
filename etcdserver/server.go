@@ -395,11 +395,7 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 		return nil, fmt.Errorf("cannot access member directory: %v", terr)
 	}
 
-	sstats := &stats.ServerStats{
-		Name: cfg.Name,
-		ID:   id.String(),
-	}
-	sstats.Initialize()
+	sstats := stats.NewServerStats(cfg.Name, id.String())
 	lstats := stats.NewLeaderStats(id.String())
 
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond

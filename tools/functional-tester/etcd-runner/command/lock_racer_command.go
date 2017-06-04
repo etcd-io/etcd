@@ -53,7 +53,6 @@ func runRacerFunc(cmd *cobra.Command, args []string) {
 	cnt := 0
 
 	eps := endpointsFromFlag(cmd)
-	dialTimeout := dialTimeoutFromCmd(cmd)
 
 	for i := range rcs {
 		var (

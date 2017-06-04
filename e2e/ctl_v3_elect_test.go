@@ -80,7 +80,7 @@ func testElect(cx ctlCtx) {
 	if err = blocked.Signal(os.Interrupt); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err := closeWithTimeout(blocked, time.Second); err != nil {
+	if err = closeWithTimeout(blocked, time.Second); err != nil {
 		cx.t.Fatal(err)
 	}
 

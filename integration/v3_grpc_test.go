@@ -1402,9 +1402,9 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 	defer os.RemoveAll(certsDirExp)
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, err := copyTLSFiles(testTLSInfo, certsDir)
-		if err != nil {
-			t.Fatal(err)
+		tlsInfo, terr := copyTLSFiles(testTLSInfo, certsDir)
+		if terr != nil {
+			t.Fatal(terr)
 		}
 		if _, err = copyTLSFiles(testTLSInfoExpired, certsDirExp); err != nil {
 			t.Fatal(err)
@@ -1448,9 +1448,9 @@ func TestTLSReloadCopy(t *testing.T) {
 	defer os.RemoveAll(certsDir)
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, err := copyTLSFiles(testTLSInfo, certsDir)
-		if err != nil {
-			t.Fatal(err)
+		tlsInfo, terr := copyTLSFiles(testTLSInfo, certsDir)
+		if terr != nil {
+			t.Fatal(terr)
 		}
 		return tlsInfo
 	}

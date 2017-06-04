@@ -73,7 +73,6 @@ func performWatchOnPrefixes(ctx context.Context, cmd *cobra.Command, round int) 
 	roundPrefix := fmt.Sprintf("%16x", round)
 
 	eps := endpointsFromFlag(cmd)
-	dialTimeout := dialTimeoutFromCmd(cmd)
 
 	var (
 		revision int64
