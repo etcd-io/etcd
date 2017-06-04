@@ -44,9 +44,8 @@ func mustFindLeaderEndpoints(c *clientv3.Client) {
 
 	leaderId := uint64(0)
 	for _, ep := range c.Endpoints() {
-		resp, serr := c.Status(context.TODO(), ep)
-		if serr == nil {
-			leaderId = resp.Leader
+		if sresp, serr := c.Status(context.TODO(), ep); serr == nil {
+			leaderId = sresp.Leader
 			break
 		}
 	}

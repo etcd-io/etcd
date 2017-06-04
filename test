@@ -222,17 +222,13 @@ function fmt_pass {
 		exit 255
 	fi
 
-	echo "Checking 'go tool vet -shadow'..."
-	for path in $FMT; do
-		if [ "${path##*.}" != "go" ]; then
-			path="${path}/*.go"
-		fi
-		vetRes=$(go tool vet -shadow ${path})
-		if [ -n "${vetRes}" ]; then
-			echo -e "govet -shadow checking ${path} failed:\n${vetRes}"
-			exit 255
-		fi
-	done
+	echo "Checking 'go tool vet -all -shadow'..."
+	fmtpkgs=$(echo $FMT | xargs dirname | sort | uniq | sed '/\./d')
+	vetRes=$(go tool vet -all -shadow ${fmtpkgs} 2>&1 | grep -v '/gw/' || true)
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet -all -shadow checking failed:\n${vetRes}"
+		exit 255
+	fi
 
 	echo "Checking documentation style..."
 	# eschew you
