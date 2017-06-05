@@ -115,7 +115,7 @@
                     "stack": false,
                     "steppedLine": false,
                     "targets": [{
-                            "expr": "sum(rate({grpc_type=\"unary\",grpc_code!=\"OK\"} [1m]))",
+                            "expr": "sum(rate({grpc_type=\"unary\",grpc_code=\"OK\"} [1m]))",
                             "intervalFactor": 2,
                             "legendFormat": "{{instance}} RPC Rate",
                             "metric": "grpc_server_started_total",
@@ -197,7 +197,7 @@
                     "stack": true,
                     "steppedLine": false,
                     "targets": [{
-                            "expr": "sum(grpc_server_started_total {grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",grpc_code!=\"OK\"}) - sum(grpc_server_handled_total {grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"})",
+                            "expr": "sum(grpc_server_started_total {grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\",grpc_code=\"OK\"}) - sum(grpc_server_handled_total {grpc_service=\"etcdserverpb.Watch\",grpc_type=\"bidi_stream\"})",
                             "intervalFactor": 2,
                             "legendFormat": "Watch Streams",
                             "metric": "grpc_server_handled_total",
