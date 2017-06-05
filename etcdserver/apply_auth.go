@@ -19,12 +19,14 @@ import (
 
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 )
 
 type authApplierV3 struct {
 	applierV3
-	as auth.AuthStore
+	as     auth.AuthStore
+	lessor lease.Lessor
 
 	// mu serializes Apply so that user isn't corrupted and so that
 	// serialized requests don't leak data from TOCTOU errors
@@ -33,8 +35,8 @@ type authApplierV3 struct {
 	authInfo auth.AuthInfo
 }
 
-func newAuthApplierV3(as auth.AuthStore, base applierV3) *authApplierV3 {
-	return &authApplierV3{applierV3: base, as: as}
+func newAuthApplierV3(as auth.AuthStore, base applierV3, lessor lease.Lessor) *authApplierV3 {
+	return &authApplierV3{applierV3: base, as: as, lessor: lessor}
 }
 
 func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest) *applyResult {
@@ -63,6 +65,15 @@ func (aa *authApplierV3) Put(txn mvcc.TxnWrite, r *pb.PutRequest) (*pb.PutRespon
 	if err := aa.as.IsPutPermitted(&aa.authInfo, r.Key); err != nil {
 		return nil, err
 	}
+
+	if err := aa.checkLeasePuts(lease.LeaseID(r.Lease)); err != nil {
+		// The specified lease is already attached with a key that cannot
+		// be written by this user. It means the user cannot revoke the
+		// lease so attaching the lease to the newly written key should
+		// be forbidden.
+		return nil, err
+	}
+
 	if r.PrevKv {
 		err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, nil)
 		if err != nil {
@@ -156,6 +167,26 @@ func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 		return nil, err
 	}
 	return aa.applierV3.Txn(rt)
+}
+
+func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	if err := aa.checkLeasePuts(lease.LeaseID(lc.ID)); err != nil {
+		return nil, err
+	}
+	return aa.applierV3.LeaseRevoke(lc)
+}
+
+func (aa *authApplierV3) checkLeasePuts(leaseID lease.LeaseID) error {
+	lease := aa.lessor.Lookup(leaseID)
+	if lease != nil {
+		for _, key := range lease.Keys() {
+			if err := aa.as.IsPutPermitted(&aa.authInfo, []byte(key)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func needAdminPermission(r *pb.InternalRaftRequest) bool {
