@@ -105,8 +105,11 @@ func (txn *txnPrefix) If(cs ...clientv3.Cmp) clientv3.Txn {
 	newCmps := make([]clientv3.Cmp, len(cs))
 	for i := range cs {
 		newCmps[i] = cs[i]
-		pfxKey, _ := txn.kv.prefixInterval(cs[i].KeyBytes(), nil)
+		pfxKey, endKey := txn.kv.prefixInterval(cs[i].KeyBytes(), cs[i].RangeEnd)
 		newCmps[i].WithKeyBytes(pfxKey)
+		if len(cs[i].RangeEnd) != 0 {
+			newCmps[i].RangeEnd = endKey
+		}
 	}
 	txn.Txn = txn.Txn.If(newCmps...)
 	return txn
