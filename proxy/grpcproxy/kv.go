@@ -123,7 +123,7 @@ func (p *kvProxy) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, e
 	}
 	// txn may claim an outdated key is updated; be safe and invalidate
 	for _, cmp := range r.Compare {
-		p.cache.Invalidate(cmp.Key, nil)
+		p.cache.Invalidate(cmp.Key, cmp.RangeEnd)
 	}
 	// update any fetched keys
 	if resp.Succeeded {
