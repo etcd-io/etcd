@@ -13,3 +13,4 @@
 tools/functional-tester/docker/bin
 hack/tls-setup/certs
 .idea
+vendor/
