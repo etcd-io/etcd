@@ -76,14 +76,30 @@ type applierV3 interface {
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
 }
 
+type checkReqFunc func(mvcc.ReadView, *pb.RequestOp) error
+
 type applierV3backend struct {
 	s *EtcdServer
+
+	checkPut   checkReqFunc
+	checkRange checkReqFunc
+}
+
+func (s *EtcdServer) newApplierV3Backend() applierV3 {
+	base := &applierV3backend{s: s}
+	base.checkPut = func(rv mvcc.ReadView, req *pb.RequestOp) error {
+		return base.checkRequestPut(rv, req)
+	}
+	base.checkRange = func(rv mvcc.ReadView, req *pb.RequestOp) error {
+		return base.checkRequestRange(rv, req)
+	}
+	return base
 }
 
 func (s *EtcdServer) newApplierV3() applierV3 {
 	return newAuthApplierV3(
 		s.AuthStore(),
-		newQuotaApplierV3(s, &applierV3backend{s}),
+		newQuotaApplierV3(s, s.newApplierV3Backend()),
 		s.lessor,
 	)
 }
@@ -315,24 +331,19 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	isWrite := !isTxnReadonly(rt)
 	txn := mvcc.NewReadOnlyTxnWrite(a.s.KV().Read())
 
-	reqs, ok := a.compareToOps(txn, rt)
+	txnPath := compareToPath(txn, rt)
 	if isWrite {
-		if err := a.checkRequestPut(txn, reqs); err != nil {
+		if _, err := checkRequests(txn, rt, txnPath, a.checkPut); err != nil {
 			txn.End()
 			return nil, err
 		}
 	}
-	if err := checkRequestRange(txn, reqs); err != nil {
+	if _, err := checkRequests(txn, rt, txnPath, a.checkRange); err != nil {
 		txn.End()
 		return nil, err
 	}
 
-	resps := make([]*pb.ResponseOp, len(reqs))
-	txnResp := &pb.TxnResponse{
-		Responses: resps,
-		Succeeded: ok,
-		Header:    &pb.ResponseHeader{},
-	}
+	txnResp, _ := newTxnResp(rt, txnPath)
 
 	// When executing mutable txn ops, etcd must hold the txn lock so
 	// readers do not see any intermediate results. Since writes are
@@ -342,9 +353,7 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 		txn.End()
 		txn = a.s.KV().Write()
 	}
-	for i := range reqs {
-		resps[i] = a.applyUnion(txn, reqs[i])
-	}
+	a.applyTxn(txn, rt, txnPath, txnResp)
 	rev := txn.Rev()
 	if len(txn.Changes()) != 0 {
 		rev++
@@ -355,13 +364,60 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	return txnResp, nil
 }
 
-func (a *applierV3backend) compareToOps(rv mvcc.ReadView, rt *pb.TxnRequest) ([]*pb.RequestOp, bool) {
-	for _, c := range rt.Compare {
-		if !applyCompare(rv, c) {
-			return rt.Failure, false
+// newTxnResp allocates a txn response for a txn request given a path.
+func newTxnResp(rt *pb.TxnRequest, txnPath []bool) (txnResp *pb.TxnResponse, txnCount int) {
+	reqs := rt.Success
+	if !txnPath[0] {
+		reqs = rt.Failure
+	}
+	resps := make([]*pb.ResponseOp, len(reqs))
+	txnResp = &pb.TxnResponse{
+		Responses: resps,
+		Succeeded: txnPath[0],
+		Header:    &pb.ResponseHeader{},
+	}
+	for i, req := range reqs {
+		switch tv := req.Request.(type) {
+		case *pb.RequestOp_RequestRange:
+			resps[i] = &pb.ResponseOp{Response: &pb.ResponseOp_ResponseRange{}}
+		case *pb.RequestOp_RequestPut:
+			resps[i] = &pb.ResponseOp{Response: &pb.ResponseOp_ResponsePut{}}
+		case *pb.RequestOp_RequestDeleteRange:
+			resps[i] = &pb.ResponseOp{Response: &pb.ResponseOp_ResponseDeleteRange{}}
+		case *pb.RequestOp_RequestTxn:
+			resp, txns := newTxnResp(tv.RequestTxn, txnPath[1:])
+			resps[i] = &pb.ResponseOp{Response: &pb.ResponseOp_ResponseTxn{ResponseTxn: resp}}
+			txnPath = txnPath[1+txns:]
+			txnCount += txns + 1
+		default:
 		}
 	}
-	return rt.Success, true
+	return txnResp, txnCount
+}
+
+func compareToPath(rv mvcc.ReadView, rt *pb.TxnRequest) []bool {
+	txnPath := make([]bool, 1)
+	ops := rt.Success
+	if txnPath[0] = applyCompares(rv, rt.Compare); !txnPath[0] {
+		ops = rt.Failure
+	}
+	for _, op := range ops {
+		tv, ok := op.Request.(*pb.RequestOp_RequestTxn)
+		if !ok || tv.RequestTxn == nil {
+			continue
+		}
+		txnPath = append(txnPath, compareToPath(rv, tv.RequestTxn)...)
+	}
+	return txnPath
+}
+
+func applyCompares(rv mvcc.ReadView, cmps []*pb.Compare) bool {
+	for _, c := range cmps {
+		if !applyCompare(rv, c) {
+			return false
+		}
+	}
+	return true
 }
 
 // applyCompare applies the compare request.
@@ -431,38 +487,42 @@ func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 	return true
 }
 
-func (a *applierV3backend) applyUnion(txn mvcc.TxnWrite, union *pb.RequestOp) *pb.ResponseOp {
-	switch tv := union.Request.(type) {
-	case *pb.RequestOp_RequestRange:
-		if tv.RequestRange != nil {
+func (a *applierV3backend) applyTxn(txn mvcc.TxnWrite, rt *pb.TxnRequest, txnPath []bool, tresp *pb.TxnResponse) (txns int) {
+	reqs := rt.Success
+	if !txnPath[0] {
+		reqs = rt.Failure
+	}
+	for i, req := range reqs {
+		respi := tresp.Responses[i].Response
+		switch tv := req.Request.(type) {
+		case *pb.RequestOp_RequestRange:
 			resp, err := a.Range(txn, tv.RequestRange)
 			if err != nil {
 				plog.Panicf("unexpected error during txn: %v", err)
 			}
-			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponseRange{ResponseRange: resp}}
-		}
-	case *pb.RequestOp_RequestPut:
-		if tv.RequestPut != nil {
+			respi.(*pb.ResponseOp_ResponseRange).ResponseRange = resp
+		case *pb.RequestOp_RequestPut:
 			resp, err := a.Put(txn, tv.RequestPut)
 			if err != nil {
 				plog.Panicf("unexpected error during txn: %v", err)
 			}
-			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponsePut{ResponsePut: resp}}
-		}
-	case *pb.RequestOp_RequestDeleteRange:
-		if tv.RequestDeleteRange != nil {
+			respi.(*pb.ResponseOp_ResponsePut).ResponsePut = resp
+		case *pb.RequestOp_RequestDeleteRange:
 			resp, err := a.DeleteRange(txn, tv.RequestDeleteRange)
 			if err != nil {
 				plog.Panicf("unexpected error during txn: %v", err)
 			}
-			return &pb.ResponseOp{Response: &pb.ResponseOp_ResponseDeleteRange{ResponseDeleteRange: resp}}
+			respi.(*pb.ResponseOp_ResponseDeleteRange).ResponseDeleteRange = resp
+		case *pb.RequestOp_RequestTxn:
+			resp := respi.(*pb.ResponseOp_ResponseTxn).ResponseTxn
+			applyTxns := a.applyTxn(txn, tv.RequestTxn, txnPath[1:], resp)
+			txns += applyTxns + 1
+			txnPath = txnPath[applyTxns+1:]
+		default:
+			// empty union
 		}
-	default:
-		// empty union
-		return nil
 	}
-	return nil
-
+	return txns
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error) {
@@ -768,53 +828,66 @@ func (s *kvSortByValue) Less(i, j int) bool {
 	return bytes.Compare(s.kvs[i].Value, s.kvs[j].Value) < 0
 }
 
-func (a *applierV3backend) checkRequestPut(rv mvcc.ReadView, reqs []*pb.RequestOp) error {
-	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestOp_RequestPut)
-		if !ok {
-			continue
-		}
-		preq := tv.RequestPut
-		if preq == nil {
-			continue
-		}
-		if preq.IgnoreValue || preq.IgnoreLease {
-			// expects previous key-value, error if not exist
-			rr, err := rv.Range(preq.Key, nil, mvcc.RangeOptions{})
+func checkRequests(rv mvcc.ReadView, rt *pb.TxnRequest, txnPath []bool, f checkReqFunc) (int, error) {
+	txnCount := 0
+	reqs := rt.Success
+	if !txnPath[0] {
+		reqs = rt.Failure
+	}
+	for _, req := range reqs {
+		if tv, ok := req.Request.(*pb.RequestOp_RequestTxn); ok && tv.RequestTxn != nil {
+			txns, err := checkRequests(rv, tv.RequestTxn, txnPath[1:], f)
 			if err != nil {
-				return err
+				return 0, err
 			}
-			if rr == nil || len(rr.KVs) == 0 {
-				return ErrKeyNotFound
-			}
-		}
-		if lease.LeaseID(preq.Lease) == lease.NoLease {
+			txnCount += txns + 1
+			txnPath = txnPath[txns+1:]
 			continue
 		}
-		if l := a.s.lessor.Lookup(lease.LeaseID(preq.Lease)); l == nil {
+		if err := f(rv, req); err != nil {
+			return 0, err
+		}
+	}
+	return txnCount, nil
+}
+
+func (a *applierV3backend) checkRequestPut(rv mvcc.ReadView, reqOp *pb.RequestOp) error {
+	tv, ok := reqOp.Request.(*pb.RequestOp_RequestPut)
+	if !ok || tv.RequestPut == nil {
+		return nil
+	}
+	req := tv.RequestPut
+	if req.IgnoreValue || req.IgnoreLease {
+		// expects previous key-value, error if not exist
+		rr, err := rv.Range(req.Key, nil, mvcc.RangeOptions{})
+		if err != nil {
+			return err
+		}
+		if rr == nil || len(rr.KVs) == 0 {
+			return ErrKeyNotFound
+		}
+	}
+	if lease.LeaseID(req.Lease) != lease.NoLease {
+		if l := a.s.lessor.Lookup(lease.LeaseID(req.Lease)); l == nil {
 			return lease.ErrLeaseNotFound
 		}
 	}
 	return nil
 }
 
-func checkRequestRange(rv mvcc.ReadView, reqs []*pb.RequestOp) error {
-	for _, requ := range reqs {
-		tv, ok := requ.Request.(*pb.RequestOp_RequestRange)
-		if !ok {
-			continue
-		}
-		greq := tv.RequestRange
-		if greq == nil || greq.Revision == 0 {
-			continue
-		}
-
-		if greq.Revision > rv.Rev() {
-			return mvcc.ErrFutureRev
-		}
-		if greq.Revision < rv.FirstRev() {
-			return mvcc.ErrCompacted
-		}
+func (a *applierV3backend) checkRequestRange(rv mvcc.ReadView, reqOp *pb.RequestOp) error {
+	tv, ok := reqOp.Request.(*pb.RequestOp_RequestRange)
+	if !ok || tv.RequestRange == nil {
+		return nil
+	}
+	req := tv.RequestRange
+	switch {
+	case req.Revision == 0:
+		return nil
+	case req.Revision > rv.Rev():
+		return mvcc.ErrFutureRev
+	case req.Revision < rv.FirstRev():
+		return mvcc.ErrCompacted
 	}
 	return nil
 }
