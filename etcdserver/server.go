@@ -1312,7 +1312,30 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		// promote lessor when the local member is leader and finished
 		// applying all entries from the last term.
 		if s.isLeader() {
-			s.lessor.Promote(s.Cfg.electionTimeout())
+			s.goAttach(func() {
+				// wait for an election timeout before promote itself
+				// to accept lease requests.
+				//
+				// Without the wait, client A might renew a revoked lease successfully
+				// from the previous partitioned leader. So we have to wait until it is certain
+				// that the previous leader has step-down.
+				//
+				// Bad sequence:
+				// 1. SA (Leader), SB (Follower), SC (Follower)
+				// 2. SA is partitioned
+				// 3. SB becomes the new leader
+				// 4. Client CA revokes lease LA from SB
+				// 5. Client CA renews lease from SB (renew wont go through consensus)
+				//
+				// Waiting here makes sure when 4 happens SB cannot be at leader state. So
+				// 5 will not succeed.
+				select {
+				case <-time.After(s.Cfg.electionTimeout()):
+				case <-s.done:
+					return
+				}
+				s.lessor.Promote(s.Cfg.electionTimeout())
+			})
 		}
 		return
 	}
