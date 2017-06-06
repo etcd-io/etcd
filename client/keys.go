@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/pkg/pathutil"
-	"github.com/ugorji/go/codec"
 	"golang.org/x/net/context"
 )
 
@@ -659,7 +658,7 @@ func unmarshalHTTPResponse(code int, header http.Header, body []byte) (res *Resp
 
 func unmarshalSuccessfulKeysResponse(header http.Header, body []byte) (*Response, error) {
 	var res Response
-	err := codec.NewDecoderBytes(body, new(codec.JsonHandle)).Decode(&res)
+	err := json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, ErrInvalidJSON
 	}
