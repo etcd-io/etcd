@@ -17,6 +17,7 @@ package client_test
 import (
 	"fmt"
 	"log"
+	"sort"
 
 	"github.com/coreos/etcd/client"
 	"golang.org/x/net/context"
@@ -55,6 +56,7 @@ func ExampleKeysAPI_directory() {
 		log.Fatal(err)
 	}
 	// print directory keys
+	sort.Sort(resp.Node.Nodes)
 	for _, n := range resp.Node.Nodes {
 		fmt.Printf("Key: %q, Value: %q\n", n.Key, n.Value)
 	}
