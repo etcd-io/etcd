@@ -377,7 +377,7 @@ function dep_pass {
 function build_cov_pass {
 	out="bin"
 	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
-	go test -c -covermode=set -coverpkg=$PKGS_COMMA -o ${out}/etcd_test
+	go test -tags cov -c -covermode=set -coverpkg=$PKGS_COMMA -o ${out}/etcd_test
 	go test -tags cov -c -covermode=set -coverpkg=$PKGS_COMMA -o ${out}/etcdctl_test ${REPO_PATH}/etcdctl
 }
 
