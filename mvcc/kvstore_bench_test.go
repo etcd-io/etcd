@@ -95,6 +95,7 @@ func BenchmarkStoreTxnPut(b *testing.B) {
 	vals := createBytesSlice(bytesN, b.N)
 
 	b.ResetTimer()
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		txn := s.Write()
 		txn.Put(keys[i], vals[i], lease.NoLease)
