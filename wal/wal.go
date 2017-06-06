@@ -447,6 +447,8 @@ func (w *WAL) sync() error {
 	if duration > warnSyncDuration {
 		plog.Warningf("sync duration of %v, expected less than %v", duration, warnSyncDuration)
 	}
+	// Instantaneous value of the gauge for debugging disk slowness.
+	syncGauge.Set(duration.Seconds())
 	syncDurations.Observe(duration.Seconds())
 
 	return err
