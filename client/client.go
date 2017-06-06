@@ -573,7 +573,7 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 		case ctx.Err() != nil:
 			err = ctx.Err()
 		case hctx.Err() != nil:
-			err = fmt.Errorf("client: endpoint %s exceeded header timeout", c.endpoint.String())
+			err = hctx.Err()
 		default:
 			panic("failed to get error from context")
 		}
