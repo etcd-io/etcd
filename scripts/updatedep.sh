@@ -43,7 +43,7 @@ pushd "${GLIDE_VC_ROOT}"
 popd
 
 if [ -n "$1" ]; then
-	echo "glide get on $(echo $1)"
+	echo "glide get on $1"
 	matches=`grep "name: $1" glide.lock`
 	if [ ! -z "$matches" ]; then
 		echo "glide update on $1"
