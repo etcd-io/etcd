@@ -78,6 +78,7 @@ func TestTxnWriteFail(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatalf("timed out waiting for txn fail")
 		case <-txnc:
+			clus.WaitLeader(t) // in case leader was stopped
 		}
 		// and ensure the put didn't take
 		gresp, gerr := clus.Client(1).Get(context.TODO(), "foo")
