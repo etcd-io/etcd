@@ -54,9 +54,10 @@ else
 	FMT="$TEST"
 fi
 
-# split TEST into an array and prepend REPO_PATH to each local package
-split=(${TEST// / })
-TEST=${split/#/${REPO_PATH}/}
+# prepend REPO_PATH to each local package
+split=$TEST
+TEST=""
+for a in $split; do TEST="$TEST ${REPO_PATH}/${a}"; done
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
