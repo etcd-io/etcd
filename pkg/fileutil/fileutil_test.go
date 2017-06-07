@@ -127,6 +127,11 @@ func TestZeroToEnd(t *testing.T) {
 	}
 	defer f.Close()
 
+	// Ensure 0 size is a nop so zero-to-end on an empty file won't give EINVAL.
+	if err = ZeroToEnd(f); err != nil {
+		t.Fatal(err)
+	}
+
 	b := make([]byte, 1024)
 	for i := range b {
 		b[i] = 12

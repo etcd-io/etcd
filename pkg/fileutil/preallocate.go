@@ -25,6 +25,10 @@ import (
 // If the operation is unsupported, no error will be returned.
 // Otherwise, the error encountered will be returned.
 func Preallocate(f *os.File, sizeInBytes int64, extendFile bool) error {
+	if sizeInBytes == 0 {
+		// fallocate will return EINVAL if length is 0; skip
+		return nil
+	}
 	if extendFile {
 		return preallocExtend(f, sizeInBytes)
 	}
