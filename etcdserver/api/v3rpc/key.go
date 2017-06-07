@@ -53,9 +53,6 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 		return nil, togRPCError(err)
 	}
 
-	if resp.Header == nil {
-		plog.Panic("unexpected nil resp.Header")
-	}
 	s.hdr.fill(resp.Header)
 	return resp, nil
 }
@@ -70,9 +67,6 @@ func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, 
 		return nil, togRPCError(err)
 	}
 
-	if resp.Header == nil {
-		plog.Panic("unexpected nil resp.Header")
-	}
 	s.hdr.fill(resp.Header)
 	return resp, nil
 }
@@ -87,9 +81,6 @@ func (s *kvServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*
 		return nil, togRPCError(err)
 	}
 
-	if resp.Header == nil {
-		plog.Panic("unexpected nil resp.Header")
-	}
 	s.hdr.fill(resp.Header)
 	return resp, nil
 }
@@ -104,9 +95,6 @@ func (s *kvServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, 
 		return nil, togRPCError(err)
 	}
 
-	if resp.Header == nil {
-		plog.Panic("unexpected nil resp.Header")
-	}
 	s.hdr.fill(resp.Header)
 	return resp, nil
 }
@@ -117,9 +105,6 @@ func (s *kvServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.Co
 		return nil, togRPCError(err)
 	}
 
-	if resp.Header == nil {
-		plog.Panic("unexpected nil resp.Header")
-	}
 	s.hdr.fill(resp.Header)
 	return resp, nil
 }
