@@ -23,7 +23,8 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 )
 
-const (
+// non-const so modifiable by tests
+var (
 	// chanBufLen is the length of the buffered chan
 	// for sending out watched events.
 	// TODO: find a good buf value. 1024 is just a random one that
