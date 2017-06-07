@@ -371,16 +371,6 @@ func (s *store) Close() error {
 	return nil
 }
 
-func (a *store) Equal(b *store) bool {
-	if a.currentRev != b.currentRev {
-		return false
-	}
-	if a.compactMainRev != b.compactMainRev {
-		return false
-	}
-	return a.kvindex.Equal(b.kvindex)
-}
-
 func (s *store) saveIndex(tx backend.BatchTx) {
 	if s.ig == nil {
 		return
