@@ -40,6 +40,9 @@ func TestCtlV3AuthInvalidMgmt(t *testing.T)      { testCtl(t, authTestInvalidMgm
 func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPerm) }
 func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
 
+func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
+func TestCtlV3AuthRoleList(t *testing.T) { testCtl(t, authTestRoleList) }
+
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
 		cx.t.Fatal(err)
@@ -738,4 +741,32 @@ func authTestWatch(cx ctlCtx) {
 		<-donec
 	}
 
+}
+
+func authTestRoleGet(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	expected := []string{
+		"Role test-role",
+		"KV Read:", "foo",
+		"KV Write:", "foo",
+	}
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), expected...); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestRoleList(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+	if err := spawnWithExpect(append(cx.PrefixArgs(), "role", "list"), "test-role"); err != nil {
+		cx.t.Fatal(err)
+	}
 }
