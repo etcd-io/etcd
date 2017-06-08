@@ -46,15 +46,16 @@ import (
 )
 
 const (
-	authPrefix    = "/v2/auth"
-	keysPrefix    = "/v2/keys"
-	membersPrefix = "/v2/members"
-	statsPrefix   = "/v2/stats"
-	varsPath      = "/debug/vars"
-	metricsPath   = "/metrics"
-	healthPath    = "/health"
-	versionPath   = "/version"
-	configPath    = "/config"
+	authPrefix     = "/v2/auth"
+	keysPrefix     = "/v2/keys"
+	machinesPrefix = "/v2/machines"
+	membersPrefix  = "/v2/members"
+	statsPrefix    = "/v2/stats"
+	varsPath       = "/debug/vars"
+	metricsPath    = "/metrics"
+	healthPath     = "/health"
+	versionPath    = "/version"
+	configPath     = "/config"
 )
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
@@ -83,6 +84,8 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
 	}
 
+	mah := &machinesHandler{cluster: server.Cluster()}
+
 	sech := &authHandler{
 		sec:                   sec,
 		cluster:               server.Cluster(),
@@ -103,6 +106,7 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 	mux.Handle(metricsPath, prometheus.Handler())
 	mux.Handle(membersPrefix, mh)
 	mux.Handle(membersPrefix+"/", mh)
+	mux.Handle(machinesPrefix, mah)
 	handleAuth(mux, sech)
 
 	return requestLogger(mux)
@@ -162,6 +166,18 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeKeyError(w, errors.New("received response with no Event/Watcher!"))
 	}
+}
+
+type machinesHandler struct {
+	cluster api.Cluster
+}
+
+func (h *machinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "GET", "HEAD") {
+		return
+	}
+	endpoints := h.cluster.ClientURLs()
+	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
 type membersHandler struct {
