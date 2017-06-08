@@ -317,14 +317,14 @@ func (w *watcher) Close() (err error) {
 	w.streams = nil
 	w.mu.Unlock()
 	for _, wgs := range streams {
-		if werr := wgs.Close(); werr != nil {
+		if werr := wgs.close(); werr != nil {
 			err = werr
 		}
 	}
 	return err
 }
 
-func (w *watchGrpcStream) Close() (err error) {
+func (w *watchGrpcStream) close() (err error) {
 	w.cancel()
 	<-w.donec
 	select {
