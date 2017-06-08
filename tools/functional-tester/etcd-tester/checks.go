@@ -213,15 +213,16 @@ func (lc *leaseChecker) hasLeaseExpired(ctx context.Context, leaseID int64) (boo
 // Since the format of keys contains about leaseID, finding keys base on "<leaseID>" prefix
 // determines whether the attached keys for a given leaseID has been deleted or not
 func (lc *leaseChecker) hasKeysAttachedToLeaseExpired(ctx context.Context, leaseID int64) (bool, error) {
-	resp, err := lc.kvc.Range(ctx, &pb.RangeRequest{
-		Key:      []byte(fmt.Sprintf("%d", leaseID)),
-		RangeEnd: []byte(clientv3.GetPrefixRangeEnd(fmt.Sprintf("%d", leaseID))),
-	}, grpc.FailFast(false))
-	if err != nil {
-		plog.Errorf("retrieving keys attached to lease %v error %v (endpoint %q)", leaseID, err, lc.endpoint)
-		return false, err
+	for ctx.Err() == nil {
+		resp, err := lc.kvc.Range(ctx, &pb.RangeRequest{
+			Key:      []byte(fmt.Sprintf("%d", leaseID)),
+			RangeEnd: []byte(clientv3.GetPrefixRangeEnd(fmt.Sprintf("%d", leaseID))),
+		})
+		if err == nil {
+			return len(resp.Kvs) == 0, nil
+		}
 	}
-	return len(resp.Kvs) == 0, nil
+	return false, ctx.Err()
 }
 
 // compositeChecker implements a checker that runs a slice of Checkers concurrently.
