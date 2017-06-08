@@ -532,6 +532,7 @@ func MustSync(st, prevst pb.HardState, entsnum int) bool {
 	// (Updated on stable storage before responding to RPCs)
 	// currentTerm
 	// votedFor
+	// commit index
 	// log entries[]
-	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term
+	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term || st.Commit != prevst.Commit
 }
