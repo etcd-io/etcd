@@ -749,6 +749,7 @@ func (s *EtcdServer) run() {
 					s.goAttach(func() {
 						ctx := s.authStore.WithRoot(s.ctx)
 						s.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: int64(lid)})
+						leaseExpired.Inc()
 						<-c
 					})
 				}
