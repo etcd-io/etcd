@@ -19,6 +19,8 @@ go get github.com/coreos/etcd/client
 
 ## Usage
 
+### Setting and getting keys
+
 ```go
 package main
 
@@ -37,11 +39,13 @@ func main() {
 		// set timeout per request to fail fast when the target endpoint is unavailable
 		HeaderTimeoutPerRequest: time.Second,
 	}
+
 	c, err := client.New(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 	kapi := client.NewKeysAPI(c)
+
 	// set "/foo" key with "bar" value
 	log.Print("Setting '/foo' key with 'bar' value")
 	resp, err := kapi.Set(context.Background(), "/foo", "bar", nil)
@@ -51,6 +55,7 @@ func main() {
 		// print common key info
 		log.Printf("Set is done. Metadata is %q\n", resp)
 	}
+
 	// get "/foo" key's value
 	log.Print("Getting '/foo' key value")
 	resp, err = kapi.Get(context.Background(), "/foo", nil)
@@ -61,6 +66,79 @@ func main() {
 		log.Printf("Get is done. Metadata is %q\n", resp)
 		// print value
 		log.Printf("%q key has %q value\n", resp.Node.Key, resp.Node.Value)
+	}
+}
+```
+
+### Setting directory and getting keys within it
+
+```go
+package main
+
+import (
+	"log"
+	"time"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
+)
+
+func main() {
+	cfg := client.Config{
+		Endpoints: 								[]string{"http://192.168.1.35:2379"},
+		Transport: 								client.DefaultTransport,
+		// set timeout per request to fail fast when the target endpoint is unavailable
+		HeaderTimeoutPerRequest: 	time.Second,
+	}
+
+	c, err := client.New(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	kapi := client.NewKeysAPI(c)
+
+	// create a directory myNodes that will hold many keys
+	log.Print("Setting '/myNodes' to create a directory")
+	o := client.SetOptions{Dir: true}
+	resp, err := kapi.Set(context.Background(), "/myNodes", "", &o)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		// print common key info
+		log.Printf("Set is done. Metadata is %q\n", resp)
+	}
+
+	//Setting a coupe of values in previous directory
+	log.Print("Setting '/myNodes/key1' with value 'value1'")
+	resp, err = kapi.Set(context.Background(), "/myNodes/key1", "value1", nil)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		// print common key info
+		log.Printf("Set is done. Metadata is %q\n", resp)
+	}
+
+	log.Print("Setting '/myNodes/key2' with value 'value2'")
+	resp, err = kapi.Set(context.Background(), "/myNodes/key2", "value2", nil)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		// print common key info
+		log.Printf("Set is done. Metadata is %q\n", resp)
+	}
+
+	// Getting directory contents for '/myNodes' (key1, key2)
+	log.Print("Getting directory contents for '/myNodes' (key1, key2)")
+	resp, err = kapi.Get(context.Background(), "/myNodes", nil)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		// print common key info
+		log.Printf("Set is done. Metadata is %q\n", resp)
+		// print directory keys
+		for _, n := range resp.Node.Nodes {
+			log.Printf("Key: %q, Value: %q", n.Key, n.Value)
+		}
 	}
 }
 ```
