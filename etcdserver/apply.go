@@ -84,6 +84,7 @@ func (s *EtcdServer) newApplierV3() applierV3 {
 	return newAuthApplierV3(
 		s.AuthStore(),
 		newQuotaApplierV3(s, &applierV3backend{s}),
+		s.lessor,
 	)
 }
 

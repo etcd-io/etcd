@@ -162,6 +162,9 @@ type AuthStore interface {
 
 	// AuthInfoFromTLS gets AuthInfo from TLS info of gRPC's context
 	AuthInfoFromTLS(ctx context.Context) *AuthInfo
+
+	// WithRoot generates and installs a token that can be used as a root credential
+	WithRoot(ctx context.Context) context.Context
 }
 
 type TokenProvider interface {
@@ -1056,4 +1059,36 @@ func NewTokenProvider(tokenOpts string, indexWaiter func(uint64) <-chan struct{}
 		plog.Errorf("unknown token type: %s", tokenType)
 		return nil, ErrInvalidAuthOpts
 	}
+}
+
+func (as *authStore) WithRoot(ctx context.Context) context.Context {
+	if !as.isAuthEnabled() {
+		return ctx
+	}
+
+	var ctxForAssign context.Context
+	if ts := as.tokenProvider.(*tokenSimple); ts != nil {
+		ctx1 := context.WithValue(ctx, "index", uint64(0))
+		prefix, err := ts.genTokenPrefix()
+		if err != nil {
+			plog.Errorf("failed to generate prefix of internally used token")
+			return ctx
+		}
+		ctxForAssign = context.WithValue(ctx1, "simpleToken", prefix)
+	} else {
+		ctxForAssign = ctx
+	}
+
+	token, err := as.tokenProvider.assign(ctxForAssign, "root", as.Revision())
+	if err != nil {
+		// this must not happen
+		plog.Errorf("failed to assign token for lease revoking: %s", err)
+		return ctx
+	}
+
+	mdMap := map[string]string{
+		"token": token,
+	}
+	tokenMD := metadata.New(mdMap)
+	return metadata.NewContext(ctx, tokenMD)
 }
