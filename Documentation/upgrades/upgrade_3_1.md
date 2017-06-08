@@ -58,6 +58,12 @@ $ curl http://localhost:2379/version
 
 #### 2. Stop the existing etcd process
 
+If running etcd with systemd, stop each running etcd process with `systemctl`:
+
+```sh
+sudo systemctl stop etcd3
+```
+
 When each etcd process is stopped, expected errors will be logged by other cluster members. This is normal since a cluster member connection has been (temporarily) broken:
 
 ```
