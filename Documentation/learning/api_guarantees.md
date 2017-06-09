@@ -31,11 +31,11 @@ All API requests are atomic; an operation either completes entirely or not at al
 
 #### Consistency
 
-All API calls ensure [sequential consistency][seq_consistency], the strongest consistency guarantee available from distributed systems. No matter which etcd member server a client makes requests to, a client reads the same events in the same order. If two members complete the same number of operations, the state of the two members is consistent.
+All API calls ensure [sequential consistency][seq_consistency], which is a weaker consistency model than [strict consistency][strict_consistency]. No matter which etcd member server a client makes requests to, a client reads the same events in the same order. If two members complete the same number of operations, the state of the two members is consistent.
 
 For watch operations, etcd guarantees to return the same value for the same key across all members for the same revision. For range operations, etcd has a similar guarantee for [linearized][Linearizability] access; serialized access may be behind the quorum state, so that the later revision is not yet available.
 
-As with all distributed systems, it is impossible for etcd to ensure [strict consistency][strict_consistency]. etcd does not guarantee that it will return to a read the “most recent” value (as measured by a wall clock when a request is completed) available on any cluster member.
+As with all distributed systems, it is impossible for etcd to ensure strict consistency. etcd does not guarantee that it will return to a read the “most recent” value (as measured by a wall clock when a request is completed) available on any cluster member.
 
 #### Isolation
 
