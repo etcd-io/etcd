@@ -328,6 +328,58 @@ func TestV3TxnRevision(t *testing.T) {
 	}
 }
 
+// Testv3TxnCmpHeaderRev tests that the txn header revision is set as expected
+// when compared to the Succeeded field in the txn response.
+func TestV3TxnCmpHeaderRev(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := toGRPC(clus.RandClient()).KV
+
+	for i := 0; i < 10; i++ {
+		// Concurrently put a key with a txn comparing on it.
+		revc := make(chan int64, 1)
+		go func() {
+			defer close(revc)
+			pr := &pb.PutRequest{Key: []byte("k"), Value: []byte("v")}
+			presp, err := kvc.Put(context.TODO(), pr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			revc <- presp.Header.Revision
+		}()
+
+		// The read-only txn uses the optimized readindex server path.
+		txnget := &pb.RequestOp{Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{Key: []byte("k")}}}
+		txn := &pb.TxnRequest{Success: []*pb.RequestOp{txnget}}
+		// i = 0 /\ Succeeded => put followed txn
+		cmp := &pb.Compare{
+			Result:      pb.Compare_EQUAL,
+			Target:      pb.Compare_VERSION,
+			Key:         []byte("k"),
+			TargetUnion: &pb.Compare_Version{Version: int64(i)},
+		}
+		txn.Compare = append(txn.Compare, cmp)
+
+		tresp, err := kvc.Txn(context.TODO(), txn)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		prev := <-revc
+		// put followed txn; should eval to false
+		if prev > tresp.Header.Revision && !tresp.Succeeded {
+			t.Errorf("#%d: got else but put rev %d followed txn rev (%+v)", i, prev, tresp)
+		}
+		// txn follows put; should eval to true
+		if tresp.Header.Revision >= prev && tresp.Succeeded {
+			t.Errorf("#%d: got then but put rev %d preceded txn (%+v)", i, prev, tresp)
+		}
+	}
+}
+
 // TestV3PutIgnoreValue ensures that writes with ignore_value overwrites with previous key-value pair.
 func TestV3PutIgnoreValue(t *testing.T) {
 	defer testutil.AfterTest(t)
