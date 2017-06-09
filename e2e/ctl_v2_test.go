@@ -321,17 +321,31 @@ func TestCtlV2ClusterHealth(t *testing.T) {
 		}
 	}()
 
-	// has quorum
+	// all members available
 	if err := etcdctlClusterHealth(epc, "cluster is healthy"); err != nil {
 		t.Fatalf("cluster-health expected to be healthy (%v)", err)
 	}
 
-	// cut quorum
+	// missing members, has quorum
 	epc.procs[0].Stop()
-	epc.procs[1].Stop()
-	if err := etcdctlClusterHealth(epc, "cluster is unhealthy"); err != nil {
-		t.Fatalf("cluster-health expected to be unhealthy (%v)", err)
+
+	for i := 0; i < 3; i++ {
+		err := etcdctlClusterHealth(epc, "cluster is degraded")
+		if err == nil {
+			break
+		} else if i == 2 {
+			t.Fatalf("cluster-health expected to be degraded (%v)", err)
+		}
+		// possibly no leader yet; retry
+		time.Sleep(time.Second)
 	}
+
+	// no quorum
+	epc.procs[1].Stop()
+	if err := etcdctlClusterHealth(epc, "cluster is unavailable"); err != nil {
+		t.Fatalf("cluster-health expected to be unavailable (%v)", err)
+	}
+
 	epc.procs[0], epc.procs[1] = nil, nil
 }
 
