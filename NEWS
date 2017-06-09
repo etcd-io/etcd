@@ -1,3 +1,60 @@
+etcd v3.2.0 (2017-06-09)
+- improved backend read concurrency
+- embedded etcd
+  - Etcd.Peers field is now []*peerListener
+- RPCs
+  - add Election, Lock service
+- native client etcdserver/api/v3client
+  - client "embedded" in the server
+- v3 client
+  - LeaseTimeToLive returns TTL=-1 resp on lease not found
+  - clientv3.NewFromConfigFile is moved to clientv3/yaml.NewConfig
+  - STM prefetching
+  - add namespace feature
+  - concurrency package's elections updated to match RPC interfaces
+  - let client dial endpoints not in the balancer
+  - add ErrOldCluster with server version checking
+  - translate WithPrefix() into WithFromKey() for empty key
+- v3 etcdctl
+  - add check perf command
+  - add --from-key flag to role grant-permission command
+  - lock command takes an optional command to execute
+- etcd flags
+  - add --enable-v2 flag to configure v2 backend (enabled by default)
+  - add --auth-token flag
+- gRPC proxy
+  - proxy endpoint discovery
+  - namespaces
+  - coalesce lease requests
+- gateway
+  - support DNS SRV priority
+- auth
+  - support Watch API
+  - JWT tokens
+- logging, monitoring
+  - server warns large snapshot operations
+  - add 'etcd_debugging_server_lease_expired_total' metrics
+- security
+  - deny incoming peer certs with wrong IP SAN
+  - resolve TLS DNSNames when SAN checking
+  - reload TLS certificates on every client connection
+- release
+  - annotate acbuild with supports-systemd-notify
+  - add nsswitch.conf to Docker container image
+  - add ppc64le, arm64(experimental) builds
+  - Go 1.8.3
+  - gRPC v1.2.1
+  - grpc-gateway to v1.2.0
+- v2
+  - allow snapshot over 512MB
+
+etcd v3.1.9 (2017-06-09)
+- allow v2 snapshot over 512MB
+
+etcd v3.1.8 (2017-05-19)
+
+etcd v3.1.7 (2017-04-28)
+
 etcd v3.1.6 (2017-04-19)
 - remove auth check in Status API
 - fill in Auth API response header
