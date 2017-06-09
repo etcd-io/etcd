@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
+	"golang.org/x/time/rate"
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
@@ -120,10 +121,15 @@ func watchFunc(cmd *cobra.Command, args []string) {
 
 	r := report.NewReportRate("%4.4f")
 	for i := range streams {
-		go doWatch(streams[i], requests, r.Results())
+		wg.Add(1)
+		go func(idx int) {
+			wg.Done()
+			doWatch(streams[idx], requests, r.Results())
+		}(i)
 	}
-
+	wg.Add(1)
 	go func() {
+		wg.Done()
 		for i := 0; i < watchTotal; i++ {
 			key := watched[i%len(watched)]
 			requests <- key
@@ -131,9 +137,9 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		}
 		close(requests)
 	}()
-
 	rc := r.Run()
 	<-watchCompletedNotifier
+
 	bar.Finish()
 	close(r.Results())
 	fmt.Printf("Watch creation summary:\n%s", <-rc)
@@ -163,12 +169,15 @@ func watchFunc(cmd *cobra.Command, args []string) {
 			}
 		}(clients[i%len(clients)])
 	}
-
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		limiter := rate.NewLimiter(rate.Limit(watchPutRate), watchPutRate)
 		for i := 0; i < watchPutTotal; i++ {
 			putreqc <- v3.OpPut(watched[i%(len(watched))], "data")
-			// TODO: use a real rate-limiter instead of sleep.
-			time.Sleep(time.Second / time.Duration(watchPutRate))
+			if err := limiter.Wait(context.TODO()); err != nil {
+				panic(err)
+			}
 		}
 		close(putreqc)
 	}()
@@ -178,6 +187,7 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	bar.Finish()
 	close(r.Results())
 	fmt.Printf("Watch events received summary:\n%s", <-rc)
+	wg.Wait()
 }
 
 func doWatch(stream v3.Watcher, requests <-chan string, results chan<- report.Result) {
@@ -186,7 +196,11 @@ func doWatch(stream v3.Watcher, requests <-chan string, results chan<- report.Re
 		wch := stream.Watch(context.TODO(), r)
 		results <- report.Result{Start: st, End: time.Now()}
 		bar.Increment()
-		go recvWatchChan(wch, results)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			recvWatchChan(wch, results)
+		}()
 	}
 	atomic.AddInt32(&nrWatchCompleted, 1)
 	if atomic.LoadInt32(&nrWatchCompleted) == int32(watchTotalStreams) {
