@@ -118,9 +118,12 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	atomic.StoreInt32(&nrWatchCompleted, int32(0))
 	watchCompletedNotifier = make(chan struct{})
 
-	r := report.NewReportRate("%4.4f")
+	// watch creation report
+	wcr := report.NewReportRate("%4.4f")
+	// event (watch) received report
+	er := report.NewReportRate("%4.4f")
 	for i := range streams {
-		go doWatch(streams[i], requests, r.Results())
+		go doWatch(streams[i], requests, wcr.Results(), er.Results())
 	}
 
 	go func() {
@@ -132,10 +135,10 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		close(requests)
 	}()
 
-	rc := r.Run()
+	rc := wcr.Run()
 	<-watchCompletedNotifier
 	bar.Finish()
-	close(r.Results())
+	close(wcr.Results())
 	fmt.Printf("Watch creation summary:\n%s", <-rc)
 
 	// put phase
@@ -152,7 +155,6 @@ func watchFunc(cmd *cobra.Command, args []string) {
 	recvCompletedNotifier = make(chan struct{})
 	putreqc := make(chan v3.Op)
 
-	r = report.NewReportRate("%4.4f")
 	for i := 0; i < watchPutTotal; i++ {
 		go func(c *v3.Client) {
 			for op := range putreqc {
@@ -173,20 +175,20 @@ func watchFunc(cmd *cobra.Command, args []string) {
 		close(putreqc)
 	}()
 
-	rc = r.Run()
+	rc = er.Run()
 	<-recvCompletedNotifier
 	bar.Finish()
-	close(r.Results())
+	close(er.Results())
 	fmt.Printf("Watch events received summary:\n%s", <-rc)
 }
 
-func doWatch(stream v3.Watcher, requests <-chan string, results chan<- report.Result) {
+func doWatch(stream v3.Watcher, requests <-chan string, watchRes, eventRes chan<- report.Result) {
 	for r := range requests {
 		st := time.Now()
 		wch := stream.Watch(context.TODO(), r)
-		results <- report.Result{Start: st, End: time.Now()}
+		watchRes <- report.Result{Start: st, End: time.Now()}
 		bar.Increment()
-		go recvWatchChan(wch, results)
+		go recvWatchChan(wch, eventRes)
 	}
 	atomic.AddInt32(&nrWatchCompleted, 1)
 	if atomic.LoadInt32(&nrWatchCompleted) == int32(watchTotalStreams) {
