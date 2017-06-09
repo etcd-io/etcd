@@ -10,7 +10,7 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 #### Upgrade requirements
 
-To upgrade an existing etcd deployment to 3.1, the running cluster must be 3.0 or greater. If it's before 3.0, please upgrade to [3.0](https://github.com/coreos/etcd/releases/tag/v3.0.16) before upgrading to 3.1.
+To upgrade an existing etcd deployment to 3.1, the running cluster must be 3.0 or greater. If it's before 3.0, please [upgrade to 3.0](upgrade_3_0.md) before upgrading to 3.1.
 
 Also, to ensure a smooth rolling upgrade, the running cluster must be healthy. Check the health of the cluster by using the `etcdctl endpoint health` command before proceeding.
 
