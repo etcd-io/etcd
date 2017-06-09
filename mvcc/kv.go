@@ -93,7 +93,9 @@ func (trw *txnReadWrite) DeleteRange(key, end []byte) (n, rev int64) { panic("un
 func (trw *txnReadWrite) Put(key, value []byte, lease lease.LeaseID) (rev int64) {
 	panic("unexpected Put")
 }
-func (trw *txnReadWrite) Changes() []mvccpb.KeyValue { panic("unexpected Changes") }
+func (trw *txnReadWrite) Changes() []mvccpb.KeyValue { return nil }
+
+func NewReadOnlyTxnWrite(txn TxnRead) TxnWrite { return &txnReadWrite{txn} }
 
 type KV interface {
 	ReadView
