@@ -162,3 +162,87 @@ func TestV3CurlTxn(t *testing.T) {
 		t.Fatalf("failed put with curl (%v)", err)
 	}
 }
+
+func TestV3CurlAuth(t *testing.T) {
+	defer testutil.AfterTest(t)
+	epc, err := newEtcdProcessCluster(&configNoTLS)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	defer func() {
+		if cerr := epc.Close(); err != nil {
+			t.Fatalf("error closing etcd processes (%v)", cerr)
+		}
+	}()
+
+	// create root user
+	userreq, err := json.Marshal(&pb.AuthUserAddRequest{Name: string("root"), Password: string("toor")})
+	testutil.AssertNil(t, err)
+
+	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/auth/user/add", value: string(userreq), expected: "revision"}); err != nil {
+		t.Fatalf("failed add user with curl (%v)", err)
+	}
+
+	// create root role
+	rolereq, err := json.Marshal(&pb.AuthRoleAddRequest{Name: string("root")})
+	testutil.AssertNil(t, err)
+
+	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/auth/role/add", value: string(rolereq), expected: "revision"}); err != nil {
+		t.Fatalf("failed create role with curl (%v)", err)
+	}
+
+	// grant root role
+	grantrolereq, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: string("root"), Role: string("root")})
+	testutil.AssertNil(t, err)
+
+	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/auth/user/grant", value: string(grantrolereq), expected: "revision"}); err != nil {
+		t.Fatalf("failed grant role with curl (%v)", err)
+	}
+
+	// enable auth
+	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/auth/enable", value: string("{}"), expected: "revision"}); err != nil {
+		t.Fatalf("failed enable auth with curl (%v)", err)
+	}
+
+	// put "bar" into "foo"
+	putreq, err := json.Marshal(&pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	testutil.AssertNil(t, err)
+
+	// fail put no auth
+	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/kv/put", value: string(putreq), expected: "error"}); err != nil {
+		t.Fatalf("failed no auth put with curl (%v)", err)
+	}
+
+	// auth request
+	authreq, err := json.Marshal(&pb.AuthenticateRequest{Name: string("root"), Password: string("toor")})
+	testutil.AssertNil(t, err)
+
+	var (
+		authHeader string
+		cmdArgs    []string
+		lineFunc   = func(txt string) bool { return true }
+	)
+
+	cmdArgs = cURLPrefixArgs(epc, "POST", cURLReq{endpoint: "/v3alpha/auth/authenticate", value: string(authreq)})
+	proc, err := spawnCmd(cmdArgs)
+	testutil.AssertNil(t, err)
+
+	cURLRes, err := proc.ExpectFunc(lineFunc)
+	testutil.AssertNil(t, err)
+
+	authRes := make(map[string]interface{})
+	testutil.AssertNil(t, json.Unmarshal([]byte(cURLRes), &authRes))
+
+	token, ok := authRes["token"].(string)
+	if !ok {
+		t.Fatalf("failed invalid token in authenticate response with curl")
+	}
+
+	authHeader = "Authorization : " + token
+
+	// put with auth
+	if err = cURLPost(epc, cURLReq{endpoint: "/v3alpha/kv/put", value: string(putreq), header: authHeader, expected: "revision"}); err != nil {
+		t.Fatalf("failed auth put with curl (%v)", err)
+	}
+
+}
