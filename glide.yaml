@@ -25,7 +25,7 @@ import:
 - package: github.com/ghodss/yaml
   version: v1.0.0
 - package: github.com/gogo/protobuf
-  version: v0.3
+  version: v0.4
   subpackages:
   - proto
 - package: github.com/golang/groupcache
@@ -33,7 +33,7 @@ import:
   subpackages:
   - lru
 - package: github.com/golang/protobuf
-  version: 4bd1920723d7b7c925de087aa32e2187708897f7
+  version: 5a0f697c9ed9d68fef0116532c6e05cfeae00e55
   subpackages:
   - jsonpb
   - proto

@@ -1,6 +1,6 @@
 // Protocol Buffers for Go with Gadgets
 //
-// Copyright (c) 2013, The GoGo Authors. All rights reserved.
+// Copyright (c) 2016, The GoGo Authors. All rights reserved.
 // http://github.com/gogo/protobuf
 //
 // Redistribution and use in source and binary forms, with or without
@@ -26,32 +26,60 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// +build appengine js
+
 package proto
 
 import (
-	"fmt"
 	"reflect"
 )
 
-func (tm *TextMarshaler) writeEnum(w *textWriter, v reflect.Value, props *Properties) error {
-	m, ok := enumStringMaps[props.Enum]
-	if !ok {
-		if err := tm.writeAny(w, v, props); err != nil {
-			return err
-		}
-	}
-	key := int32(0)
-	if v.Kind() == reflect.Ptr {
-		key = int32(v.Elem().Int())
-	} else {
-		key = int32(v.Int())
-	}
-	s, ok := m[key]
-	if !ok {
-		if err := tm.writeAny(w, v, props); err != nil {
-			return err
-		}
-	}
-	_, err := fmt.Fprint(w, s)
-	return err
+func structPointer_FieldPointer(p structPointer, f field) structPointer {
+	panic("not implemented")
+}
+
+func appendStructPointer(base structPointer, f field, typ reflect.Type) structPointer {
+	panic("not implemented")
+}
+
+func structPointer_InterfaceAt(p structPointer, f field, t reflect.Type) interface{} {
+	panic("not implemented")
+}
+
+func structPointer_InterfaceRef(p structPointer, f field, t reflect.Type) interface{} {
+	panic("not implemented")
+}
+
+func structPointer_GetRefStructPointer(p structPointer, f field) structPointer {
+	panic("not implemented")
+}
+
+func structPointer_Add(p structPointer, size field) structPointer {
+	panic("not implemented")
+}
+
+func structPointer_Len(p structPointer, f field) int {
+	panic("not implemented")
+}
+
+func structPointer_GetSliceHeader(p structPointer, f field) *reflect.SliceHeader {
+	panic("not implemented")
+}
+
+func structPointer_Copy(oldptr structPointer, newptr structPointer, size int) {
+	panic("not implemented")
+}
+
+func structPointer_StructRefSlice(p structPointer, f field, size uintptr) *structRefSlice {
+	panic("not implemented")
+}
+
+type structRefSlice struct{}
+
+func (v *structRefSlice) Len() int {
+	panic("not implemented")
+}
+
+func (v *structRefSlice) Index(i int) structPointer {
+	panic("not implemented")
 }
