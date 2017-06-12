@@ -109,6 +109,14 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 		},
 		{
 			// Advertised peer URLs must match those in cluster-state
+			"node1=http://localhost:12345",
+			[]string{"http://localhost:2380", "http://localhost:12345"},
+			true,
+
+			true,
+		},
+		{
+			// Advertised peer URLs must match those in cluster-state
 			"node1=http://localhost:2380",
 			[]string{},
 			true,
