@@ -1,5 +1,5 @@
-hash: cee1f2629857e9c2384ad89ff6014db09498c9af53771e5144ad3a4b510ff00e
-updated: 2017-05-30T10:29:08.22609283-07:00
+hash: 936853fc7427741a35ce6114725318c5642f604214520d0e7d119c8f3ee9ab0a
+updated: 2017-06-12T14:15:04.520854967-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -27,7 +27,7 @@ imports:
   - capnslog
   - dlopen
 - name: github.com/cpuguy83/go-md2man
-  version: bcc0a711c5e6bbe72c7cb13d81c7109b45267fd2
+  version: 23709d0847197db6021a51fdb193e66e9222d4e7
   subpackages:
   - md2man
 - name: github.com/dgrijalva/jwt-go
@@ -37,7 +37,7 @@ imports:
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/gogo/protobuf
-  version: 909568be09de550ed094403c2bf8a261b5bb730a
+  version: 100ba4e885062801d56799d78530b73b178a78f3
   subpackages:
   - proto
 - name: github.com/golang/groupcache
@@ -45,10 +45,11 @@ imports:
   subpackages:
   - lru
 - name: github.com/golang/protobuf
-  version: 4bd1920723d7b7c925de087aa32e2187708897f7
+  version: 5a0f697c9ed9d68fef0116532c6e05cfeae00e55
   subpackages:
   - jsonpb
   - proto
+  - ptypes/struct
 - name: github.com/google/btree
   version: 925471ac9e2131377a91e1595defec898166fe49
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
@@ -94,7 +95,7 @@ imports:
   subpackages:
   - xfs
 - name: github.com/russross/blackfriday
-  version: 0ba0f2b6ed7c475a92e4df8641825cb7a11d1fa3
+  version: 067529f716f4c3f5e37c8c95ddd59df1007290ae
 - name: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
@@ -127,7 +128,7 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 4ee4af566555f5fbe026368b75596286a312663a
+  version: 210eee5cf7323015d097341bcf7166130d001cd8
   subpackages:
   - secure/bidirule
   - transform
