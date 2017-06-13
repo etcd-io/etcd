@@ -62,7 +62,7 @@ ALERT HTTPRequestsSlow
   }
   ANNOTATIONS {
     summary = "slow HTTP requests",
-    description = "on etcd instance {{ $labels.instance }} HTTP requests to {{ $label.method }} are slow",
+    description = "on etcd instance {{ $labels.instance }} HTTP requests to {{ $labels.method }} are slow",
   }
 
 ### File descriptor alerts ###
