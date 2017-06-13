@@ -449,7 +449,7 @@ message LeaseRevokeRequest {
 
 ### Keep alives
 
-Leases are refreshed using a bi-directional stream created with the `LeaseKeepAlive` API call. When the client wishes to refresh a lease, it sends a `LeaseGrantRequest` over the stream:
+Leases are refreshed using a bi-directional stream created with the `LeaseKeepAlive` API call. When the client wishes to refresh a lease, it sends a `LeaseKeepAliveRequest` over the stream:
 
 ```protobuf
 message LeaseKeepAliveRequest {
