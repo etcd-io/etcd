@@ -210,6 +210,58 @@ func TestLessorRenew(t *testing.T) {
 	}
 }
 
+// TestLessorRenewExtendPileup ensures Lessor extends leases on promotion if too many
+// expire at the same time.
+func TestLessorRenewExtendPileup(t *testing.T) {
+	oldRevokeRate := leaseRevokeRate
+	defer func() { leaseRevokeRate = oldRevokeRate }()
+	leaseRevokeRate = 10
+
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+
+	le := newLessor(be, minLeaseTTL)
+	ttl := int64(10)
+	for i := 1; i <= leaseRevokeRate*10; i++ {
+		if _, err := le.Grant(LeaseID(2*i), ttl); err != nil {
+			t.Fatal(err)
+		}
+		// ttls that overlap spillover for ttl=10
+		if _, err := le.Grant(LeaseID(2*i+1), ttl+1); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// simulate stop and recovery
+	le.Stop()
+	be.Close()
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = filepath.Join(dir, "be")
+	be = backend.New(bcfg)
+	defer be.Close()
+	le = newLessor(be, minLeaseTTL)
+
+	// extend after recovery should extend expiration on lease pile-up
+	le.Promote(0)
+
+	windowCounts := make(map[int64]int)
+	for _, l := range le.leaseMap {
+		// round up slightly for baseline ttl
+		s := int64(l.Remaining().Seconds() + 0.1)
+		windowCounts[s]++
+	}
+
+	for i := ttl; i < ttl+20; i++ {
+		c := windowCounts[i]
+		if c > leaseRevokeRate {
+			t.Errorf("expected at most %d expiring at %ds, got %d", leaseRevokeRate, i, c)
+		}
+		if c < leaseRevokeRate/2 {
+			t.Errorf("expected at least %d expiring at %ds, got %d", leaseRevokeRate/2, i, c)
+		}
+	}
+}
+
 func TestLessorDetach(t *testing.T) {
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
