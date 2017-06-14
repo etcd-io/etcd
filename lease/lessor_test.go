@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/monotime"
 )
 
 const (
@@ -207,6 +208,41 @@ func TestLessorRenew(t *testing.T) {
 	l = le.Lookup(l.ID)
 	if l.Remaining() < 9*time.Second {
 		t.Errorf("failed to renew the lease")
+	}
+}
+
+// TestLessorRenewRandomize ensures Lessor renews with randomized expiry.
+func TestLessorRenewRandomize(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+
+	le := newLessor(be, minLeaseTTL)
+	for i := LeaseID(1); i <= 10; i++ {
+		if _, err := le.Grant(i, 3600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// simulate stop and recovery
+	le.Stop()
+	be.Close()
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = filepath.Join(dir, "be")
+	be = backend.New(bcfg)
+	defer be.Close()
+	le = newLessor(be, minLeaseTTL)
+
+	now := monotime.Now()
+
+	// extend after recovery should randomize expiries
+	le.Promote(0)
+
+	for _, l := range le.leaseMap {
+		leftSeconds := uint64(float64(l.expiry-now) * float64(1e-9))
+		pc := (float64(leftSeconds-3600) / float64(3600)) * 100
+		if pc > 10.0 || pc < -10.0 || pc == 0 { // should be within 士10%
+			t.Fatalf("expected randomized expiry, got %d seconds (ttl: 3600)", leftSeconds)
+		}
 	}
 }
 
