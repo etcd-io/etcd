@@ -31,6 +31,10 @@ import (
 const (
 	// NoLease is a special LeaseID representing the absence of a lease.
 	NoLease = LeaseID(0)
+
+	// maximum number of leases to revoke per iteration
+	// TODO: make this configurable?
+	leaseRevokeRate = 1000
 )
 
 var (
@@ -422,6 +426,10 @@ func (le *lessor) runLoop() {
 		le.mu.Unlock()
 
 		if len(ls) != 0 {
+			// rate limit
+			if len(ls) > leaseRevokeRate/2 {
+				ls = ls[:leaseRevokeRate/2]
+			}
 			select {
 			case <-le.stopC:
 				return
