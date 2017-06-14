@@ -114,18 +114,21 @@
                     "span": 5,
                     "stack": false,
                     "steppedLine": false,
-                    "targets": [{
-                            "expr": "sum(rate(grpc_server_started_total{grpc_type=\"unary\"} [1m]))",
+                    "targets": [
+                        {
+                            "expr": "sum(rate(grpc_server_started_total{grpc_type=\"unary\"}[5m]))",
+                            "format": "time_series",
                             "intervalFactor": 2,
-                            "legendFormat": "{{instance}} RPC Rate",
+                            "legendFormat": "RPC Rate",
                             "metric": "grpc_server_started_total",
                             "refId": "A",
                             "step": 2
                         },
                         {
-                            "expr": "sum(rate(grpc_server_started_total{grpc_type=\"unary\"} [1m])) - sum(rate(grpc_server_handled_total{grpc_type=\"unary\",grpc_code!=\"OK\"} [1m]))",
+                            "expr": "sum(rate(grpc_server_handled_total{grpc_type=\"unary\",grpc_code!=\"OK\"}[5m]))",
+                            "format": "time_series",
                             "intervalFactor": 2,
-                            "legendFormat": "{{instance}} RPC Failed Rate",
+                            "legendFormat": "RPC Failed Rate",
                             "metric": "grpc_server_handled_total",
                             "refId": "B",
                             "step": 2
@@ -361,7 +364,7 @@
                     "stack": false,
                     "steppedLine": true,
                     "targets": [{
-                            "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket [5m])) by (instance, le))",
+                            "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) by (instance, le))",
                             "hide": false,
                             "intervalFactor": 2,
                             "legendFormat": "{{instance}} WAL fsync",
@@ -370,7 +373,7 @@
                             "step": 4
                         },
                         {
-                            "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket [5m])) by (instance, le))",
+                            "expr": "histogram_quantile(0.99, sum(rate(etcd_disk_backend_commit_duration_seconds_bucket[5m])) by (instance, le))",
                             "intervalFactor": 2,
                             "legendFormat": "{{instance}} DB fsync",
                             "metric": "etcd_disk_backend_commit_duration_seconds_bucket",
@@ -522,7 +525,7 @@
                     "stack": true,
                     "steppedLine": false,
                     "targets": [{
-                        "expr": "rate(etcd_network_client_grpc_received_bytes_total [1m])",
+                        "expr": "rate(etcd_network_client_grpc_received_bytes_total[5m])",
                         "intervalFactor": 2,
                         "legendFormat": "{{instance}} Client Traffic In",
                         "metric": "etcd_network_client_grpc_received_bytes_total",
@@ -595,7 +598,7 @@
                     "stack": true,
                     "steppedLine": false,
                     "targets": [{
-                        "expr": "rate(etcd_network_client_grpc_sent_bytes_total [1m])",
+                        "expr": "rate(etcd_network_client_grpc_sent_bytes_total[5m])",
                         "intervalFactor": 2,
                         "legendFormat": "{{instance}} Client Traffic Out",
                         "metric": "etcd_network_client_grpc_sent_bytes_total",
@@ -668,7 +671,7 @@
                     "stack": false,
                     "steppedLine": false,
                     "targets": [{
-                        "expr": "sum(rate(etcd_network_peer_received_bytes_total [1m])) by (instance)",
+                        "expr": "sum(rate(etcd_network_peer_received_bytes_total[5m])) by (instance)",
                         "intervalFactor": 2,
                         "legendFormat": "{{instance}} Peer Traffic In",
                         "metric": "etcd_network_peer_received_bytes_total",
@@ -742,7 +745,7 @@
                     "stack": false,
                     "steppedLine": false,
                     "targets": [{
-                        "expr": "sum(rate(etcd_network_peer_sent_bytes_total [1m])) by (instance)",
+                        "expr": "sum(rate(etcd_network_peer_sent_bytes_total[5m])) by (instance)",
                         "hide": false,
                         "interval": "",
                         "intervalFactor": 2,
@@ -822,7 +825,7 @@
                     "stack": false,
                     "steppedLine": false,
                     "targets": [{
-                            "expr": "sum(rate(etcd_server_proposals_failed_total [1m]))",
+                            "expr": "sum(rate(etcd_server_proposals_failed_total[5m]))",
                             "intervalFactor": 2,
                             "legendFormat": "Proposal Failure Rate",
                             "metric": "etcd_server_proposals_failed_total",
@@ -838,7 +841,7 @@
                             "step": 2
                         },
                         {
-                            "expr": "sum(rate(etcd_server_proposals_committed_total [1m]))",
+                            "expr": "sum(rate(etcd_server_proposals_committed_total[5m]))",
                             "intervalFactor": 2,
                             "legendFormat": "Proposal Commit Rate",
                             "metric": "etcd_server_proposals_committed_total",
@@ -846,7 +849,7 @@
                             "step": 2
                         },
                         {
-                            "expr": "sum(rate(etcd_server_proposals_applied_total [1m]))",
+                            "expr": "sum(rate(etcd_server_proposals_applied_total[5m]))",
                             "intervalFactor": 2,
                             "legendFormat": "Proposal Apply Rate",
                             "refId": "D",
@@ -922,9 +925,9 @@
                     "stack": false,
                     "steppedLine": false,
                     "targets": [{
-                        "expr": "etcd_server_leader_changes_seen_total",
+                        "expr": "changes(etcd_server_leader_changes_seen_total[1d])",
                         "intervalFactor": 2,
-                        "legendFormat": "{{instance}} Leader Change Seen",
+                        "legendFormat": "{{instance}} Total Leader Elections Per Day",
                         "metric": "etcd_server_leader_changes_seen_total",
                         "refId": "A",
                         "step": 2
@@ -932,7 +935,7 @@
                     "thresholds": [],
                     "timeFrom": null,
                     "timeShift": null,
-                    "title": "Rate Leader Elections",
+                    "title": "Total Leader Elections Per Day",
                     "tooltip": {
                         "msResolution": false,
                         "shared": true,
