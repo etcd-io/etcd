@@ -5,7 +5,7 @@ ALERT InsufficientMembers
 IF count(up{job="etcd"} == 0) > (count(up{job="etcd"}) / 2 - 1)
 FOR 3m
 LABELS {
-  severity = "critical"
+  severity = "page"
 }
 ANNOTATIONS {
   summary = "etcd cluster insufficient members",
@@ -20,7 +20,7 @@ ALERT NoLeader
 IF etcd_server_has_leader{job="etcd"} == 0
 FOR 1m
 LABELS {
-  severity = "critical"
+  severity = "page"
 }
 ANNOTATIONS {
   summary = "etcd member has no leader",
@@ -31,7 +31,7 @@ ANNOTATIONS {
 ALERT HighNumberOfLeaderChanges
 IF increase(etcd_server_leader_changes_seen_total{job="etcd"}[1h]) > 3
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "a high number of leader changes within the etcd cluster are happening",
@@ -47,7 +47,7 @@ IF sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m]))
   / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m])) > 0.01
 FOR 10m
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "a high number of gRPC requests are failing",
@@ -60,7 +60,7 @@ IF sum by(grpc_method) (rate(etcd_grpc_requests_failed_total{job="etcd"}[5m]))
   / sum by(grpc_method) (rate(etcd_grpc_total{job="etcd"}[5m])) > 0.05
 FOR 5m
 LABELS {
-  severity = "critical"
+  severity = "page"
 }
 ANNOTATIONS {
   summary = "a high number of gRPC requests are failing",
@@ -72,7 +72,7 @@ ALERT GRPCRequestsSlow
 IF histogram_quantile(0.99, rate(etcd_grpc_unary_requests_duration_seconds_bucket[5m])) > 0.15
 FOR 10m
 LABELS {
-  severity = "critical"
+  severity = "page"
 }
 ANNOTATIONS {
   summary = "slow gRPC requests",
@@ -88,7 +88,7 @@ IF sum by(method) (rate(etcd_http_failed_total{job="etcd"}[5m]))
   / sum by(method) (rate(etcd_http_received_total{job="etcd"}[5m])) > 0.01
 FOR 10m
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "a high number of HTTP requests are failing",
@@ -101,7 +101,7 @@ IF sum by(method) (rate(etcd_http_failed_total{job="etcd"}[5m]))
   / sum by(method) (rate(etcd_http_received_total{job="etcd"}[5m])) > 0.05
 FOR 5m
 LABELS {
-  severity = "critical"
+  severity = "page"
 }
 ANNOTATIONS {
   summary = "a high number of HTTP requests are failing",
@@ -113,7 +113,7 @@ ALERT HTTPRequestsSlow
 IF histogram_quantile(0.99, rate(etcd_http_successful_duration_seconds_bucket[5m])) > 0.15
 FOR 10m
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "slow HTTP requests",
@@ -130,7 +130,7 @@ ALERT FdExhaustionClose
 IF predict_linear(instance:fd_utilization[1h], 3600 * 4) > 1
 FOR 10m
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "file descriptors soon exhausted",
@@ -142,7 +142,7 @@ ALERT FdExhaustionClose
 IF predict_linear(instance:fd_utilization[10m], 3600) > 1
 FOR 10m
 LABELS {
-  severity = "critical"
+  severity = "page"
 }
 ANNOTATIONS {
   summary = "file descriptors soon exhausted",
@@ -157,7 +157,7 @@ ALERT EtcdMemberCommunicationSlow
 IF histogram_quantile(0.99, rate(etcd_network_member_round_trip_time_seconds_bucket[5m])) > 0.15
 FOR 10m
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "etcd member communication is slow",
@@ -171,7 +171,7 @@ ANNOTATIONS {
 ALERT HighNumberOfFailedProposals
 IF increase(etcd_server_proposals_failed_total{job="etcd"}[1h]) > 5
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "a high number of proposals within the etcd cluster are failing",
@@ -186,7 +186,7 @@ ALERT HighFsyncDurations
 IF histogram_quantile(0.99, rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m])) > 0.5
 FOR 10m
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "high fsync durations",
@@ -198,7 +198,7 @@ ALERT HighCommitDurations
 IF histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket[5m])) > 0.25
 FOR 10m
 LABELS {
-  severity = "warning"
+  severity = "ticket"
 }
 ANNOTATIONS {
   summary = "high commit durations",
