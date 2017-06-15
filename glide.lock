@@ -1,5 +1,5 @@
-hash: 936853fc7427741a35ce6114725318c5642f604214520d0e7d119c8f3ee9ab0a
-updated: 2017-06-12T14:15:04.520854967-07:00
+hash: 343802a8dab44445fc72edc47cf65dd27d9efb658302d46f55773e9121809a11
+updated: 2017-06-15T14:22:00.862427209-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -128,7 +128,7 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 210eee5cf7323015d097341bcf7166130d001cd8
+  version: 9e2f80a6ba7ed4ba13e0cd4b1f094bf916875735
   subpackages:
   - secure/bidirule
   - transform

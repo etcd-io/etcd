@@ -74,7 +74,7 @@ import:
 - package: github.com/urfave/cli
   version: v1.18.0
 - package: github.com/xiang90/probing
-  version: 07dd2e8dfe18522e9c447ba95f2fe95262f63bb2
+  version: 0.0.1
 - package: github.com/grpc-ecosystem/go-grpc-prometheus
   version: v1.1
 - package: golang.org/x/crypto
@@ -113,3 +113,5 @@ import:
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 - package: github.com/dgrijalva/jwt-go
   version: v3.0.0
+ignore:
+  - google.golang.org/appengine
