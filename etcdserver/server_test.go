@@ -1577,7 +1577,7 @@ type nodeProposalBlockerRecorder struct {
 }
 
 func newProposalBlockerRecorder() *nodeProposalBlockerRecorder {
-	return &nodeProposalBlockerRecorder{*newNodeRecorder()}
+	return &nodeProposalBlockerRecorder{*newNodeRecorderStream()}
 }
 
 func (n *nodeProposalBlockerRecorder) Propose(ctx context.Context, data []byte) error {
