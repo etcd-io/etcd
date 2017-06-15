@@ -5,7 +5,7 @@ ALERT InsufficientMembers
   IF count(up{job="etcd"} == 0) > (count(up{job="etcd"}) / 2 - 1)
   FOR 3m
   LABELS {
-    severity = "critical"
+    severity = "page"
   }
   ANNOTATIONS {
     summary = "etcd cluster insufficient members",
@@ -20,7 +20,7 @@ ALERT HighNumberOfFailedHTTPRequests
     / sum by(method) (rate(etcd_http_received_total{job="etcd"}[5m])) > 0.01
   FOR 10m
   LABELS {
-    severity = "warning"
+    severity = "ticket"
   }
   ANNOTATIONS {
     summary = "a high number of HTTP requests are failing",
@@ -33,7 +33,7 @@ ALERT HighNumberOfFailedHTTPRequests
     / sum by(method) (rate(etcd_http_received_total{job="etcd"}[5m])) > 0.05
   FOR 5m
   LABELS {
-    severity = "critical"
+    severity = "page"
   }
   ANNOTATIONS {
     summary = "a high number of HTTP requests are failing",
@@ -46,7 +46,7 @@ ALERT HighNumberOfFailedHTTPRequests
     / sum by(method) (rate(etcd_http_received_total{job="etcd"}[5m])) > 0.5
   FOR 10m
   LABELS {
-    severity = "critical"
+    severity = "page"
   }
   ANNOTATIONS {
     summary = "a high number of HTTP requests are failing",
@@ -58,7 +58,7 @@ ALERT HTTPRequestsSlow
   IF histogram_quantile(0.99, rate(etcd_http_successful_duration_second_bucket[5m])) > 0.15
   FOR 10m
   LABELS {
-    severity = "warning"
+    severity = "ticket"
   }
   ANNOTATIONS {
     summary = "slow HTTP requests",
@@ -74,7 +74,7 @@ ALERT FdExhaustionClose
   IF predict_linear(instance:fd_utilization[1h], 3600 * 4) > 1
   FOR 10m
   LABELS {
-    severity = "warning"
+    severity = "ticket"
   }
   ANNOTATIONS {
     summary = "file descriptors soon exhausted",
@@ -86,7 +86,7 @@ ALERT FdExhaustionClose
   IF predict_linear(instance:fd_utilization[10m], 3600) > 1
   FOR 10m
   LABELS {
-    severity = "critical"
+    severity = "page"
   }
   ANNOTATIONS {
     summary = "file descriptors soon exhausted",
@@ -99,7 +99,7 @@ ALERT FdExhaustionClose
 ALERT HighNumberOfFailedProposals
   IF increase(etcd_server_proposal_failed_total{job="etcd"}[1h]) > 5
   LABELS {
-    severity = "warning"
+    severity = "ticket"
   }
   ANNOTATIONS {
     summary = "a high number of proposals within the etcd cluster are failing",
@@ -113,7 +113,7 @@ ALERT HighFsyncDurations
   IF histogram_quantile(0.99, rate(etcd_wal_fsync_durations_seconds_bucket[5m])) > 0.5
   FOR 10m
   LABELS {
-    severity = "warning"
+    severity = "ticket"
   }
   ANNOTATIONS {
     summary = "high fsync durations",
