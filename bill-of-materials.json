@@ -346,6 +346,15 @@
 		]
 	},
 	{
+		"project": "google.golang.org/genproto/googleapis/rpc/status",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "google.golang.org/grpc",
 		"licenses": [
 			{
