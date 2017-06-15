@@ -1,5 +1,5 @@
-hash: b001848c59d9603ce7c1a5387d4906eb2c906e2c46e3ec5e9f64b8f47757c598
-updated: 2017-06-15T16:07:48.488474021-07:00
+hash: 63e5d04362c6e514a571bb9ea848ebd3c9703a964150443e4b26318fb0cdb720
+updated: 2017-06-15T16:39:00.785038305-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -49,13 +49,14 @@ imports:
   subpackages:
   - jsonpb
   - proto
+  - ptypes/any
   - ptypes/struct
 - name: github.com/google/btree
   version: 925471ac9e2131377a91e1595defec898166fe49
 - name: github.com/grpc-ecosystem/go-grpc-prometheus
   version: 6b7015e65d366bf3f19b2b2a000a831940f0f7e0
 - name: github.com/grpc-ecosystem/grpc-gateway
-  version: 18d159699f2e83fc5bb9ef2f79465ca3f3122676
+  version: 589b126116b5fc961939b3e156c29e4d9d58222f
   subpackages:
   - runtime
   - runtime/internal
@@ -138,11 +139,16 @@ imports:
   version: c06e80d9300e4443158a03817b8a8cb37d230320
   subpackages:
   - rate
+- name: google.golang.org/genproto
+  version: aa2eb687b4d3e17154372564ad8d6bf11c3cf21f
+  subpackages:
+  - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 8050b9cbc271307e5a716a9d782803d09b0d6f2d
+  version: 42c095b6c9bdd80d4435b064508c398afdb0ec99
   subpackages:
   - codes
   - credentials
+  - grpclb/grpc_lb_v1
   - grpclog
   - internal
   - keepalive
@@ -150,6 +156,7 @@ imports:
   - naming
   - peer
   - stats
+  - status
   - tap
   - transport
 - name: gopkg.in/cheggaaa/pb.v1

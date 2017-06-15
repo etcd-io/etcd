@@ -333,7 +333,7 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 // when the cluster has a leader.
 func WithRequireLeader(ctx context.Context) context.Context {
 	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	return metadata.NewContext(ctx, md)
+	return metadata.NewOutgoingContext(ctx, md)
 }
 
 func newClient(cfg *Config) (*Client, error) {

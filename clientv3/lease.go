@@ -323,7 +323,7 @@ func (l *lessor) closeRequireLeader() {
 		reqIdxs := 0
 		// find all required leader channels, close, mark as nil
 		for i, ctx := range ka.ctxs {
-			md, ok := metadata.FromContext(ctx)
+			md, ok := metadata.FromOutgoingContext(ctx)
 			if !ok {
 				continue
 			}

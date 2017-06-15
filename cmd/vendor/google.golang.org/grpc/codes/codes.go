@@ -44,7 +44,7 @@ const (
 	// OK is returned on success.
 	OK Code = 0
 
-	// Canceled indicates the operation was cancelled (typically by the caller).
+	// Canceled indicates the operation was canceled (typically by the caller).
 	Canceled Code = 1
 
 	// Unknown error.  An example of where this error may be returned is

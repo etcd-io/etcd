@@ -45,6 +45,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/stats"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/transport"
 )
 
@@ -112,17 +113,24 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 		cancel context.CancelFunc
 	)
 	c := defaultCallInfo
-	if mc, ok := cc.getMethodConfig(method); ok {
-		c.failFast = !mc.WaitForReady
-		if mc.Timeout > 0 {
-			ctx, cancel = context.WithTimeout(ctx, mc.Timeout)
-		}
+	mc := cc.GetMethodConfig(method)
+	if mc.WaitForReady != nil {
+		c.failFast = !*mc.WaitForReady
 	}
+
+	if mc.Timeout != nil {
+		ctx, cancel = context.WithTimeout(ctx, *mc.Timeout)
+	}
+
+	opts = append(cc.dopts.callOptions, opts...)
 	for _, o := range opts {
 		if err := o.before(&c); err != nil {
 			return nil, toRPCErr(err)
 		}
 	}
+	c.maxSendMessageSize = getMaxSize(mc.MaxReqSize, c.maxSendMessageSize, defaultClientMaxSendMessageSize)
+	c.maxReceiveMessageSize = getMaxSize(mc.MaxRespSize, c.maxReceiveMessageSize, defaultClientMaxReceiveMessageSize)
+
 	callHdr := &transport.CallHdr{
 		Host:   cc.authority,
 		Method: method,
@@ -130,6 +138,9 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 	}
 	if cc.dopts.cp != nil {
 		callHdr.SendCompress = cc.dopts.cp.Type()
+	}
+	if c.creds != nil {
+		callHdr.Creds = c.creds
 	}
 	var trInfo traceInfo
 	if EnableTracing {
@@ -150,26 +161,27 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 			}
 		}()
 	}
+	ctx = newContextWithRPCInfo(ctx)
 	sh := cc.dopts.copts.StatsHandler
 	if sh != nil {
-		ctx = sh.TagRPC(ctx, &stats.RPCTagInfo{FullMethodName: method})
+		ctx = sh.TagRPC(ctx, &stats.RPCTagInfo{FullMethodName: method, FailFast: c.failFast})
 		begin := &stats.Begin{
 			Client:    true,
 			BeginTime: time.Now(),
 			FailFast:  c.failFast,
 		}
 		sh.HandleRPC(ctx, begin)
-	}
-	defer func() {
-		if err != nil && sh != nil {
-			// Only handle end stats if err != nil.
-			end := &stats.End{
-				Client: true,
-				Error:  err,
+		defer func() {
+			if err != nil {
+				// Only handle end stats if err != nil.
+				end := &stats.End{
+					Client: true,
+					Error:  err,
+				}
+				sh.HandleRPC(ctx, end)
 			}
-			sh.HandleRPC(ctx, end)
-		}
-	}()
+		}()
+	}
 	gopts := BalancerGetOptions{
 		BlockingWait: !c.failFast,
 	}
@@ -177,7 +189,7 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 		t, put, err = cc.getTransport(ctx, gopts)
 		if err != nil {
 			// TODO(zhaoq): Probably revisit the error handling.
-			if _, ok := err.(*rpcError); ok {
+			if _, ok := status.FromError(err); ok {
 				return nil, err
 			}
 			if err == errConnClosing || err == errConnUnavailable {
@@ -192,14 +204,17 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 
 		s, err = t.NewStream(ctx, callHdr)
 		if err != nil {
+			if _, ok := err.(transport.ConnectionError); ok && put != nil {
+				// If error is connection error, transport was sending data on wire,
+				// and we are not sure if anything has been sent on wire.
+				// If error is not connection error, we are sure nothing has been sent.
+				updateRPCInfoInContext(ctx, rpcInfo{bytesSent: true, bytesReceived: false})
+			}
 			if put != nil {
 				put()
 				put = nil
 			}
-			if _, ok := err.(transport.ConnectionError); ok || err == transport.ErrStreamDrain {
-				if c.failFast {
-					return nil, toRPCErr(err)
-				}
+			if _, ok := err.(transport.ConnectionError); (ok || err == transport.ErrStreamDrain) && !c.failFast {
 				continue
 			}
 			return nil, toRPCErr(err)
@@ -207,14 +222,13 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 		break
 	}
 	cs := &clientStream{
-		opts:       opts,
-		c:          c,
-		desc:       desc,
-		codec:      cc.dopts.codec,
-		cp:         cc.dopts.cp,
-		dc:         cc.dopts.dc,
-		maxMsgSize: cc.dopts.maxMsgSize,
-		cancel:     cancel,
+		opts:   opts,
+		c:      c,
+		desc:   desc,
+		codec:  cc.dopts.codec,
+		cp:     cc.dopts.cp,
+		dc:     cc.dopts.dc,
+		cancel: cancel,
 
 		put: put,
 		t:   t,
@@ -236,14 +250,13 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 		select {
 		case <-t.Error():
 			// Incur transport error, simply exit.
+		case <-cc.ctx.Done():
+			cs.finish(ErrClientConnClosing)
+			cs.closeTransportStream(ErrClientConnClosing)
 		case <-s.Done():
 			// TODO: The trace of the RPC is terminated here when there is no pending
 			// I/O, which is probably not the optimal solution.
-			if s.StatusCode() == codes.OK {
-				cs.finish(nil)
-			} else {
-				cs.finish(Errorf(s.StatusCode(), "%s", s.StatusDesc()))
-			}
+			cs.finish(s.Status().Err())
 			cs.closeTransportStream(nil)
 		case <-s.GoAway():
 			cs.finish(errConnDrain)
@@ -259,24 +272,24 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 
 // clientStream implements a client side Stream.
 type clientStream struct {
-	opts       []CallOption
-	c          callInfo
-	t          transport.ClientTransport
-	s          *transport.Stream
-	p          *parser
-	desc       *StreamDesc
-	codec      Codec
-	cp         Compressor
-	cbuf       *bytes.Buffer
-	dc         Decompressor
-	maxMsgSize int
-	cancel     context.CancelFunc
+	opts   []CallOption
+	c      callInfo
+	t      transport.ClientTransport
+	s      *transport.Stream
+	p      *parser
+	desc   *StreamDesc
+	codec  Codec
+	cp     Compressor
+	cbuf   *bytes.Buffer
+	dc     Decompressor
+	cancel context.CancelFunc
 
 	tracing bool // set to EnableTracing when the clientStream is created.
 
-	mu     sync.Mutex
-	put    func()
-	closed bool
+	mu       sync.Mutex
+	put      func()
+	closed   bool
+	finished bool
 	// trInfo.tr is set when the clientStream is created (if EnableTracing is true),
 	// and is set to nil when the clientStream's finish method is called.
 	trInfo traceInfo
@@ -351,7 +364,13 @@ func (cs *clientStream) SendMsg(m interface{}) (err error) {
 		}
 	}()
 	if err != nil {
-		return Errorf(codes.Internal, "grpc: %v", err)
+		return err
+	}
+	if cs.c.maxSendMessageSize == nil {
+		return Errorf(codes.Internal, "callInfo maxSendMessageSize field uninitialized(nil)")
+	}
+	if len(out) > *cs.c.maxSendMessageSize {
+		return Errorf(codes.ResourceExhausted, "trying to send message larger than max (%d vs. %d)", len(out), *cs.c.maxSendMessageSize)
 	}
 	err = cs.t.Write(cs.s, out, &transport.Options{Last: false})
 	if err == nil && outPayload != nil {
@@ -362,28 +381,16 @@ func (cs *clientStream) SendMsg(m interface{}) (err error) {
 }
 
 func (cs *clientStream) RecvMsg(m interface{}) (err error) {
-	defer func() {
-		if err != nil && cs.statsHandler != nil {
-			// Only generate End if err != nil.
-			// If err == nil, it's not the last RecvMsg.
-			// The last RecvMsg gets either an RPC error or io.EOF.
-			end := &stats.End{
-				Client:  true,
-				EndTime: time.Now(),
-			}
-			if err != io.EOF {
-				end.Error = toRPCErr(err)
-			}
-			cs.statsHandler.HandleRPC(cs.statsCtx, end)
-		}
-	}()
 	var inPayload *stats.InPayload
 	if cs.statsHandler != nil {
 		inPayload = &stats.InPayload{
 			Client: true,
 		}
 	}
-	err = recv(cs.p, cs.codec, cs.s, cs.dc, m, cs.maxMsgSize, inPayload)
+	if cs.c.maxReceiveMessageSize == nil {
+		return Errorf(codes.Internal, "callInfo maxReceiveMessageSize field uninitialized(nil)")
+	}
+	err = recv(cs.p, cs.codec, cs.s, cs.dc, m, *cs.c.maxReceiveMessageSize, inPayload)
 	defer func() {
 		// err != nil indicates the termination of the stream.
 		if err != nil {
@@ -406,17 +413,20 @@ func (cs *clientStream) RecvMsg(m interface{}) (err error) {
 		}
 		// Special handling for client streaming rpc.
 		// This recv expects EOF or errors, so we don't collect inPayload.
-		err = recv(cs.p, cs.codec, cs.s, cs.dc, m, cs.maxMsgSize, nil)
+		if cs.c.maxReceiveMessageSize == nil {
+			return Errorf(codes.Internal, "callInfo maxReceiveMessageSize field uninitialized(nil)")
+		}
+		err = recv(cs.p, cs.codec, cs.s, cs.dc, m, *cs.c.maxReceiveMessageSize, nil)
 		cs.closeTransportStream(err)
 		if err == nil {
 			return toRPCErr(errors.New("grpc: client streaming protocol violation: get <nil>, want <EOF>"))
 		}
 		if err == io.EOF {
-			if cs.s.StatusCode() == codes.OK {
-				cs.finish(err)
-				return nil
+			if se := cs.s.Status().Err(); se != nil {
+				return se
 			}
-			return Errorf(cs.s.StatusCode(), "%s", cs.s.StatusDesc())
+			cs.finish(err)
+			return nil
 		}
 		return toRPCErr(err)
 	}
@@ -424,11 +434,11 @@ func (cs *clientStream) RecvMsg(m interface{}) (err error) {
 		cs.closeTransportStream(err)
 	}
 	if err == io.EOF {
-		if cs.s.StatusCode() == codes.OK {
-			// Returns io.EOF to indicate the end of the stream.
-			return
+		if statusErr := cs.s.Status().Err(); statusErr != nil {
+			return statusErr
 		}
-		return Errorf(cs.s.StatusCode(), "%s", cs.s.StatusDesc())
+		// Returns io.EOF to indicate the end of the stream.
+		return
 	}
 	return toRPCErr(err)
 }
@@ -462,19 +472,38 @@ func (cs *clientStream) closeTransportStream(err error) {
 }
 
 func (cs *clientStream) finish(err error) {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	if cs.finished {
+		return
+	}
+	cs.finished = true
 	defer func() {
 		if cs.cancel != nil {
 			cs.cancel()
 		}
 	}()
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
 	for _, o := range cs.opts {
 		o.after(&cs.c)
 	}
 	if cs.put != nil {
+		updateRPCInfoInContext(cs.s.Context(), rpcInfo{
+			bytesSent:     cs.s.BytesSent(),
+			bytesReceived: cs.s.BytesReceived(),
+		})
 		cs.put()
 		cs.put = nil
+	}
+	if cs.statsHandler != nil {
+		end := &stats.End{
+			Client:  true,
+			EndTime: time.Now(),
+		}
+		if err != io.EOF {
+			// end.Error is nil if the RPC finished successfully.
+			end.Error = toRPCErr(err)
+		}
+		cs.statsHandler.HandleRPC(cs.statsCtx, end)
 	}
 	if !cs.tracing {
 		return
@@ -512,17 +541,16 @@ type ServerStream interface {
 
 // serverStream implements a server side Stream.
 type serverStream struct {
-	t          transport.ServerTransport
-	s          *transport.Stream
-	p          *parser
-	codec      Codec
-	cp         Compressor
-	dc         Decompressor
-	cbuf       *bytes.Buffer
-	maxMsgSize int
-	statusCode codes.Code
-	statusDesc string
-	trInfo     *traceInfo
+	t                     transport.ServerTransport
+	s                     *transport.Stream
+	p                     *parser
+	codec                 Codec
+	cp                    Compressor
+	dc                    Decompressor
+	cbuf                  *bytes.Buffer
+	maxReceiveMessageSize int
+	maxSendMessageSize    int
+	trInfo                *traceInfo
 
 	statsHandler stats.Handler
 
@@ -578,8 +606,10 @@ func (ss *serverStream) SendMsg(m interface{}) (err error) {
 		}
 	}()
 	if err != nil {
-		err = Errorf(codes.Internal, "grpc: %v", err)
 		return err
+	}
+	if len(out) > ss.maxSendMessageSize {
+		return Errorf(codes.ResourceExhausted, "trying to send message larger than max (%d vs. %d)", len(out), ss.maxSendMessageSize)
 	}
 	if err := ss.t.Write(ss.s, out, &transport.Options{Last: false}); err != nil {
 		return toRPCErr(err)
@@ -610,7 +640,7 @@ func (ss *serverStream) RecvMsg(m interface{}) (err error) {
 	if ss.statsHandler != nil {
 		inPayload = &stats.InPayload{}
 	}
-	if err := recv(ss.p, ss.codec, ss.s, ss.dc, m, ss.maxMsgSize, inPayload); err != nil {
+	if err := recv(ss.p, ss.codec, ss.s, ss.dc, m, ss.maxReceiveMessageSize, inPayload); err != nil {
 		if err == io.EOF {
 			return err
 		}

@@ -49,7 +49,7 @@ type RPCStats interface {
 }
 
 // Begin contains stats when an RPC begins.
-// FailFast are only valid if Client is true.
+// FailFast is only valid if this Begin is from client side.
 type Begin struct {
 	// Client is true if this Begin is from client side.
 	Client bool
@@ -59,7 +59,7 @@ type Begin struct {
 	FailFast bool
 }
 
-// IsClient indicates if this is from client side.
+// IsClient indicates if the stats information is from client side.
 func (s *Begin) IsClient() bool { return s.Client }
 
 func (s *Begin) isRPCStats() {}
@@ -80,19 +80,19 @@ type InPayload struct {
 	RecvTime time.Time
 }
 
-// IsClient indicates if this is from client side.
+// IsClient indicates if the stats information is from client side.
 func (s *InPayload) IsClient() bool { return s.Client }
 
 func (s *InPayload) isRPCStats() {}
 
 // InHeader contains stats when a header is received.
-// FullMethod, addresses and Compression are only valid if Client is false.
 type InHeader struct {
 	// Client is true if this InHeader is from client side.
 	Client bool
 	// WireLength is the wire length of header.
 	WireLength int
 
+	// The following fields are valid only if Client is false.
 	// FullMethod is the full RPC method string, i.e., /package.service/method.
 	FullMethod string
 	// RemoteAddr is the remote address of the corresponding connection.
@@ -103,7 +103,7 @@ type InHeader struct {
 	Compression string
 }
 
-// IsClient indicates if this is from client side.
+// IsClient indicates if the stats information is from client side.
 func (s *InHeader) IsClient() bool { return s.Client }
 
 func (s *InHeader) isRPCStats() {}
@@ -116,7 +116,7 @@ type InTrailer struct {
 	WireLength int
 }
 
-// IsClient indicates if this is from client side.
+// IsClient indicates if the stats information is from client side.
 func (s *InTrailer) IsClient() bool { return s.Client }
 
 func (s *InTrailer) isRPCStats() {}
@@ -137,19 +137,19 @@ type OutPayload struct {
 	SentTime time.Time
 }
 
-// IsClient indicates if this is from client side.
+// IsClient indicates if this stats information is from client side.
 func (s *OutPayload) IsClient() bool { return s.Client }
 
 func (s *OutPayload) isRPCStats() {}
 
 // OutHeader contains stats when a header is sent.
-// FullMethod, addresses and Compression are only valid if Client is true.
 type OutHeader struct {
 	// Client is true if this OutHeader is from client side.
 	Client bool
 	// WireLength is the wire length of header.
 	WireLength int
 
+	// The following fields are valid only if Client is true.
 	// FullMethod is the full RPC method string, i.e., /package.service/method.
 	FullMethod string
 	// RemoteAddr is the remote address of the corresponding connection.
@@ -160,7 +160,7 @@ type OutHeader struct {
 	Compression string
 }
 
-// IsClient indicates if this is from client side.
+// IsClient indicates if this stats information is from client side.
 func (s *OutHeader) IsClient() bool { return s.Client }
 
 func (s *OutHeader) isRPCStats() {}
@@ -173,7 +173,7 @@ type OutTrailer struct {
 	WireLength int
 }
 
-// IsClient indicates if this is from client side.
+// IsClient indicates if this stats information is from client side.
 func (s *OutTrailer) IsClient() bool { return s.Client }
 
 func (s *OutTrailer) isRPCStats() {}
@@ -184,7 +184,7 @@ type End struct {
 	Client bool
 	// EndTime is the time when the RPC ends.
 	EndTime time.Time
-	// Error is the error just happened. Its type is gRPC error.
+	// Error is the error just happened.  It implements status.Status if non-nil.
 	Error error
 }
 

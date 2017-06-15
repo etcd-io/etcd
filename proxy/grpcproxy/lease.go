@@ -137,7 +137,7 @@ func (lp *leaseProxy) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) error
 	errc := make(chan error, 2)
 
 	var lostLeaderC <-chan struct{}
-	if md, ok := metadata.FromContext(stream.Context()); ok {
+	if md, ok := metadata.FromOutgoingContext(stream.Context()); ok {
 		v := md[rpctypes.MetadataRequireLeaderKey]
 		if len(v) > 0 && v[0] == rpctypes.MetadataHasLeader {
 			lostLeaderC = lp.leader.lostNotify()

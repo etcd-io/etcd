@@ -46,12 +46,20 @@ const (
 	// The default value of flow control window size in HTTP2 spec.
 	defaultWindowSize = 65535
 	// The initial window size for flow control.
-	initialWindowSize       = defaultWindowSize      // for an RPC
-	initialConnWindowSize   = defaultWindowSize * 16 // for a connection
-	infinity                = time.Duration(math.MaxInt64)
-	defaultKeepaliveTime    = infinity
-	defaultKeepaliveTimeout = time.Duration(20 * time.Second)
-	defaultMaxStreamsClient = 100
+	initialWindowSize             = defaultWindowSize      // for an RPC
+	initialConnWindowSize         = defaultWindowSize * 16 // for a connection
+	infinity                      = time.Duration(math.MaxInt64)
+	defaultClientKeepaliveTime    = infinity
+	defaultClientKeepaliveTimeout = time.Duration(20 * time.Second)
+	defaultMaxStreamsClient       = 100
+	defaultMaxConnectionIdle      = infinity
+	defaultMaxConnectionAge       = infinity
+	defaultMaxConnectionAgeGrace  = infinity
+	defaultServerKeepaliveTime    = time.Duration(2 * time.Hour)
+	defaultServerKeepaliveTimeout = time.Duration(20 * time.Second)
+	defaultKeepalivePolicyMinTime = time.Duration(5 * time.Minute)
+	// max window limit set by HTTP2 Specs.
+	maxWindowSize = math.MaxInt32
 )
 
 // The following defines various control items which could flow through
@@ -60,6 +68,7 @@ const (
 type windowUpdate struct {
 	streamID  uint32
 	increment uint32
+	flush     bool
 }
 
 func (*windowUpdate) item() {}
@@ -79,6 +88,8 @@ type resetStream struct {
 func (*resetStream) item() {}
 
 type goAway struct {
+	code      http2.ErrCode
+	debugData []byte
 }
 
 func (*goAway) item() {}
@@ -159,6 +170,40 @@ type inFlow struct {
 	// The amount of data the application has consumed but grpc has not sent
 	// window update for them. Used to reduce window update frequency.
 	pendingUpdate uint32
+	// delta is the extra window update given by receiver when an application
+	// is reading data bigger in size than the inFlow limit.
+	delta uint32
+}
+
+func (f *inFlow) maybeAdjust(n uint32) uint32 {
+	if n > uint32(math.MaxInt32) {
+		n = uint32(math.MaxInt32)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	// estSenderQuota is the receiver's view of the maximum number of bytes the sender
+	// can send without a window update.
+	estSenderQuota := int32(f.limit - (f.pendingData + f.pendingUpdate))
+	// estUntransmittedData is the maximum number of bytes the sends might not have put
+	// on the wire yet. A value of 0 or less means that we have already received all or
+	// more bytes than the application is requesting to read.
+	estUntransmittedData := int32(n - f.pendingData) // Casting into int32 since it could be negative.
+	// This implies that unless we send a window update, the sender won't be able to send all the bytes
+	// for this message. Therefore we must send an update over the limit since there's an active read
+	// request from the application.
+	if estUntransmittedData > estSenderQuota {
+		// Sender's window shouldn't go more than 2^31 - 1 as speecified in the HTTP spec.
+		if f.limit+n > maxWindowSize {
+			f.delta = maxWindowSize - f.limit
+		} else {
+			// Send a window update for the whole message and not just the difference between
+			// estUntransmittedData and estSenderQuota. This will be helpful in case the message
+			// is padded; We will fallback on the current available window(at least a 1/4th of the limit).
+			f.delta = n
+		}
+		return f.delta
+	}
+	return 0
 }
 
 // onData is invoked when some data frame is received. It updates pendingData.
@@ -166,7 +211,7 @@ func (f *inFlow) onData(n uint32) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.pendingData += n
-	if f.pendingData+f.pendingUpdate > f.limit {
+	if f.pendingData+f.pendingUpdate > f.limit+f.delta {
 		return fmt.Errorf("received %d-bytes data exceeding the limit %d bytes", f.pendingData+f.pendingUpdate, f.limit)
 	}
 	return nil
@@ -181,6 +226,13 @@ func (f *inFlow) onRead(n uint32) uint32 {
 		return 0
 	}
 	f.pendingData -= n
+	if n > f.delta {
+		n -= f.delta
+		f.delta = 0
+	} else {
+		f.delta -= n
+		n = 0
+	}
 	f.pendingUpdate += n
 	if f.pendingUpdate >= f.limit/4 {
 		wu := f.pendingUpdate
@@ -190,10 +242,10 @@ func (f *inFlow) onRead(n uint32) uint32 {
 	return 0
 }
 
-func (f *inFlow) resetPendingData() uint32 {
+func (f *inFlow) resetPendingUpdate() uint32 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	n := f.pendingData
-	f.pendingData = 0
+	n := f.pendingUpdate
+	f.pendingUpdate = 0
 	return n
 }

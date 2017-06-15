@@ -51,6 +51,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/stats"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/tap"
 )
 
@@ -104,6 +105,7 @@ func (b *recvBuffer) load() {
 	if len(b.backlog) > 0 {
 		select {
 		case b.c <- b.backlog[0]:
+			b.backlog[0] = nil
 			b.backlog = b.backlog[1:]
 		default:
 		}
@@ -170,11 +172,6 @@ type Stream struct {
 	id uint32
 	// nil for client side Stream.
 	st ServerTransport
-	// clientStatsCtx keeps the user context for stats handling.
-	// It's only valid on client side. Server side stats context is same as s.ctx.
-	// All client side stats collection should use the clientStatsCtx (instead of the stream context)
-	// so that all the generated stats for a particular RPC can be associated in the processing phase.
-	clientStatsCtx context.Context
 	// ctx is the associated context of the stream.
 	ctx context.Context
 	// cancel is always nil for client side Stream.
@@ -188,14 +185,17 @@ type Stream struct {
 	recvCompress string
 	sendCompress string
 	buf          *recvBuffer
-	dec          io.Reader
+	trReader     io.Reader
 	fc           *inFlow
 	recvQuota    uint32
+
+	// TODO: Remote this unused variable.
 	// The accumulated inbound quota pending for window update.
 	updateQuota uint32
-	// The handler to control the window update procedure for both this
-	// particular stream and the associated transport.
-	windowHandler func(int)
+
+	// Callback to state application's intentions to read data. This
+	// is used to adjust flow control, if need be.
+	requestRead func(int)
 
 	sendQuotaPool *quotaPool
 	// Close headerChan to indicate the end of reception of header metadata.
@@ -212,14 +212,17 @@ type Stream struct {
 	// true iff headerChan is closed. Used to avoid closing headerChan
 	// multiple times.
 	headerDone bool
-	// the status received from the server.
-	statusCode codes.Code
-	statusDesc string
+	// the status error received from the server.
+	status *status.Status
 	// rstStream indicates whether a RST_STREAM frame needs to be sent
 	// to the server to signify that this stream is closing.
 	rstStream bool
 	// rstError is the error that needs to be sent along with the RST_STREAM frame.
 	rstError http2.ErrCode
+	// bytesSent and bytesReceived indicates whether any bytes have been sent or
+	// received on this stream.
+	bytesSent     bool
+	bytesReceived bool
 }
 
 // RecvCompress returns the compression algorithm applied to the inbound
@@ -247,7 +250,7 @@ func (s *Stream) GoAway() <-chan struct{} {
 
 // Header acquires the key-value pairs of header metadata once it
 // is available. It blocks until i) the metadata is ready or ii) there is no
-// header metadata or iii) the stream is cancelled/expired.
+// header metadata or iii) the stream is canceled/expired.
 func (s *Stream) Header() (metadata.MD, error) {
 	select {
 	case <-s.ctx.Done():
@@ -284,14 +287,9 @@ func (s *Stream) Method() string {
 	return s.method
 }
 
-// StatusCode returns statusCode received from the server.
-func (s *Stream) StatusCode() codes.Code {
-	return s.statusCode
-}
-
-// StatusDesc returns statusDesc received from the server.
-func (s *Stream) StatusDesc() string {
-	return s.statusDesc
+// Status returns the status received from the server.
+func (s *Stream) Status() *status.Status {
+	return s.status
 }
 
 // SetHeader sets the header metadata. This can be called multiple times.
@@ -325,17 +323,58 @@ func (s *Stream) write(m recvMsg) {
 	s.buf.put(&m)
 }
 
-// Read reads all the data available for this Stream from the transport and
+// Read reads all p bytes from the wire for this stream.
+func (s *Stream) Read(p []byte) (n int, err error) {
+	// Don't request a read if there was an error earlier
+	if er := s.trReader.(*transportReader).er; er != nil {
+		return 0, er
+	}
+	s.requestRead(len(p))
+	return io.ReadFull(s.trReader, p)
+}
+
+// tranportReader reads all the data available for this Stream from the transport and
 // passes them into the decoder, which converts them into a gRPC message stream.
 // The error is io.EOF when the stream is done or another non-nil error if
 // the stream broke.
-func (s *Stream) Read(p []byte) (n int, err error) {
-	n, err = s.dec.Read(p)
+type transportReader struct {
+	reader io.Reader
+	// The handler to control the window update procedure for both this
+	// particular stream and the associated transport.
+	windowHandler func(int)
+	er            error
+}
+
+func (t *transportReader) Read(p []byte) (n int, err error) {
+	n, err = t.reader.Read(p)
 	if err != nil {
+		t.er = err
 		return
 	}
-	s.windowHandler(n)
+	t.windowHandler(n)
 	return
+}
+
+// finish sets the stream's state and status, and closes the done channel.
+// s.mu must be held by the caller.  st must always be non-nil.
+func (s *Stream) finish(st *status.Status) {
+	s.status = st
+	s.state = streamDone
+	close(s.done)
+}
+
+// BytesSent indicates whether any bytes have been sent on this stream.
+func (s *Stream) BytesSent() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.bytesSent
+}
+
+// BytesReceived indicates whether any bytes have been received on this stream.
+func (s *Stream) BytesReceived() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.bytesReceived
 }
 
 // GoString is implemented by Stream so context.String() won't
@@ -371,10 +410,14 @@ const (
 
 // ServerConfig consists of all the configurations to establish a server transport.
 type ServerConfig struct {
-	MaxStreams   uint32
-	AuthInfo     credentials.AuthInfo
-	InTapHandle  tap.ServerInHandle
-	StatsHandler stats.Handler
+	MaxStreams            uint32
+	AuthInfo              credentials.AuthInfo
+	InTapHandle           tap.ServerInHandle
+	StatsHandler          stats.Handler
+	KeepaliveParams       keepalive.ServerParameters
+	KeepalivePolicy       keepalive.EnforcementPolicy
+	InitialWindowSize     int32
+	InitialConnWindowSize int32
 }
 
 // NewServerTransport creates a ServerTransport with conn or non-nil error
@@ -402,6 +445,10 @@ type ConnectOptions struct {
 	KeepaliveParams keepalive.ClientParameters
 	// StatsHandler stores the handler for stats.
 	StatsHandler stats.Handler
+	// InitialWindowSize sets the intial window size for a stream.
+	InitialWindowSize int32
+	// InitialConnWindowSize sets the intial window size for a connection.
+	InitialConnWindowSize int32
 }
 
 // TargetInfo contains the information of the target such as network address and metadata.
@@ -445,6 +492,9 @@ type CallHdr struct {
 	// outbound message.
 	SendCompress string
 
+	// Creds specifies credentials.PerRPCCredentials for a call.
+	Creds credentials.PerRPCCredentials
+
 	// Flush indicates whether a new stream command should be sent
 	// to the peer without waiting for the first data. This is
 	// only a hint. The transport may modify the flush decision
@@ -484,10 +534,13 @@ type ClientTransport interface {
 	// once the transport is initiated.
 	Error() <-chan struct{}
 
-	// GoAway returns a channel that is closed when ClientTranspor
+	// GoAway returns a channel that is closed when ClientTransport
 	// receives the draining signal from the server (e.g., GOAWAY frame in
 	// HTTP/2).
 	GoAway() <-chan struct{}
+
+	// GetGoAwayReason returns the reason why GoAway frame was received.
+	GetGoAwayReason() GoAwayReason
 }
 
 // ServerTransport is the common interface for all gRPC server-side transport
@@ -507,10 +560,9 @@ type ServerTransport interface {
 	// Write may not be called on all streams.
 	Write(s *Stream, data []byte, opts *Options) error
 
-	// WriteStatus sends the status of a stream to the client.
-	// WriteStatus is the final call made on a stream and always
-	// occurs.
-	WriteStatus(s *Stream, statusCode codes.Code, statusDesc string) error
+	// WriteStatus sends the status of a stream to the client.  WriteStatus is
+	// the final call made on a stream and always occurs.
+	WriteStatus(s *Stream, st *status.Status) error
 
 	// Close tears down the transport. Once it is called, the transport
 	// should not be accessed any more. All the pending streams and their
@@ -576,6 +628,8 @@ var (
 	ErrStreamDrain = streamErrorf(codes.Unavailable, "the server stops accepting new RPCs")
 )
 
+// TODO: See if we can replace StreamError with status package errors.
+
 // StreamError is an error that only affects one stream within a connection.
 type StreamError struct {
 	Code codes.Code
@@ -584,17 +638,6 @@ type StreamError struct {
 
 func (e StreamError) Error() string {
 	return fmt.Sprintf("stream error: code = %s desc = %q", e.Code, e.Desc)
-}
-
-// ContextErr converts the error from context package into a StreamError.
-func ContextErr(err error) StreamError {
-	switch err {
-	case context.DeadlineExceeded:
-		return streamErrorf(codes.DeadlineExceeded, "%v", err)
-	case context.Canceled:
-		return streamErrorf(codes.Canceled, "%v", err)
-	}
-	panic(fmt.Sprintf("Unexpected error from context packet: %v", err))
 }
 
 // wait blocks until it can receive from ctx.Done, closing, or proceed.
@@ -624,3 +667,16 @@ func wait(ctx context.Context, done, goAway, closing <-chan struct{}, proceed <-
 		return i, nil
 	}
 }
+
+// GoAwayReason contains the reason for the GoAway frame received.
+type GoAwayReason uint8
+
+const (
+	// Invalid indicates that no GoAway frame is received.
+	Invalid GoAwayReason = 0
+	// NoReason is the default value when GoAway frame is received.
+	NoReason GoAwayReason = 1
+	// TooManyPings indicates that a GoAway frame with ErrCodeEnhanceYourCalm
+	// was recieved and that the debug data said "too_many_pings".
+	TooManyPings GoAwayReason = 2
+)

@@ -454,7 +454,7 @@ func TestV3LeaseFailover(t *testing.T) {
 	lreq := &pb.LeaseKeepAliveRequest{ID: lresp.ID}
 
 	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	mctx := metadata.NewContext(context.Background(), md)
+	mctx := metadata.NewOutgoingContext(context.Background(), md)
 	ctx, cancel := context.WithCancel(mctx)
 	defer cancel()
 	lac, err := lc.LeaseKeepAlive(ctx)
@@ -502,7 +502,7 @@ func TestV3LeaseRequireLeader(t *testing.T) {
 	clus.Members[2].Stop(t)
 
 	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	mctx := metadata.NewContext(context.Background(), md)
+	mctx := metadata.NewOutgoingContext(context.Background(), md)
 	ctx, cancel := context.WithCancel(mctx)
 	defer cancel()
 	lac, err := lc.LeaseKeepAlive(ctx)
