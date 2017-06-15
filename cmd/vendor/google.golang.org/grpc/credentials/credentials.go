@@ -102,6 +102,10 @@ type TransportCredentials interface {
 	// authentication protocol on rawConn for clients. It returns the authenticated
 	// connection and the corresponding auth information about the connection.
 	// Implementations must use the provided context to implement timely cancellation.
+	// gRPC will try to reconnect if the error returned is a temporary error
+	// (io.EOF, context.DeadlineExceeded or err.Temporary() == true).
+	// If the returned error is a wrapper error, implementations should make sure that
+	// the error implements Temporary() to have the correct retry behaviors.
 	ClientHandshake(context.Context, string, net.Conn) (net.Conn, AuthInfo, error)
 	// ServerHandshake does the authentication handshake for servers. It returns
 	// the authenticated connection and the corresponding auth information about
@@ -192,14 +196,14 @@ func NewTLS(c *tls.Config) TransportCredentials {
 	return tc
 }
 
-// NewClientTLSFromCert constructs a TLS from the input certificate for client.
+// NewClientTLSFromCert constructs TLS credentials from the input certificate for client.
 // serverNameOverride is for testing only. If set to a non empty string,
 // it will override the virtual host name of authority (e.g. :authority header field) in requests.
 func NewClientTLSFromCert(cp *x509.CertPool, serverNameOverride string) TransportCredentials {
 	return NewTLS(&tls.Config{ServerName: serverNameOverride, RootCAs: cp})
 }
 
-// NewClientTLSFromFile constructs a TLS from the input certificate file for client.
+// NewClientTLSFromFile constructs TLS credentials from the input certificate file for client.
 // serverNameOverride is for testing only. If set to a non empty string,
 // it will override the virtual host name of authority (e.g. :authority header field) in requests.
 func NewClientTLSFromFile(certFile, serverNameOverride string) (TransportCredentials, error) {
@@ -214,12 +218,12 @@ func NewClientTLSFromFile(certFile, serverNameOverride string) (TransportCredent
 	return NewTLS(&tls.Config{ServerName: serverNameOverride, RootCAs: cp}), nil
 }
 
-// NewServerTLSFromCert constructs a TLS from the input certificate for server.
+// NewServerTLSFromCert constructs TLS credentials from the input certificate for server.
 func NewServerTLSFromCert(cert *tls.Certificate) TransportCredentials {
 	return NewTLS(&tls.Config{Certificates: []tls.Certificate{*cert}})
 }
 
-// NewServerTLSFromFile constructs a TLS from the input certificate file and key
+// NewServerTLSFromFile constructs TLS credentials from the input certificate file and key
 // file for server.
 func NewServerTLSFromFile(certFile, keyFile string) (TransportCredentials, error) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
