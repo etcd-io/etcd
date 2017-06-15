@@ -59,7 +59,7 @@ Use a custom context to set timeouts on your operations:
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// set a new key, ignoring it's previous state
+	// set a new key, ignoring its previous state
 	_, err := kAPI.Set(ctx, "/ping", "pong", nil)
 	if err != nil {
 		if err == context.DeadlineExceeded {
