@@ -44,7 +44,7 @@ type Member struct {
 	PeerURLs []string `json:"peerURLs"`
 
 	// ClientURLs represents the HTTP(S) endpoints on which this Member
-	// serves it's client-facing APIs.
+	// serves its client-facing APIs.
 	ClientURLs []string `json:"clientURLs"`
 }
 
