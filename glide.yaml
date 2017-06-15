@@ -1,7 +1,7 @@
 package: github.com/coreos/etcd
 import:
 - package: github.com/bgentry/speakeasy
-  version: 4aabc24848ce5fd31929f7d1e4ea74d3709c14cd
+  version: v0.1.0
 - package: github.com/boltdb/bolt
   version: v1.3.0
 - package: github.com/cockroachdb/cmux
