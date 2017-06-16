@@ -107,6 +107,8 @@ import:
   - naming
   - peer
   - transport
+  - health
+  - health/grpc_health_v1
 - package: gopkg.in/cheggaaa/pb.v1
   version: v1.0.2
 - package: gopkg.in/yaml.v2

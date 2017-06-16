@@ -1,5 +1,5 @@
-hash: 63e5d04362c6e514a571bb9ea848ebd3c9703a964150443e4b26318fb0cdb720
-updated: 2017-06-15T16:39:00.785038305-07:00
+hash: 7c7ebb812829e2942acb8481e4e9412576b4290a53edea7f30e7e14ac86033a8
+updated: 2017-06-16T11:43:37.376823012-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -150,6 +150,8 @@ imports:
   - credentials
   - grpclb/grpc_lb_v1
   - grpclog
+  - health
+  - health/grpc_health_v1
   - internal
   - keepalive
   - metadata
