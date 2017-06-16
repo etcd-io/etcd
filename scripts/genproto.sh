@@ -18,9 +18,10 @@ fi
 # directories containing protos to be built
 DIRS="./wal/walpb ./etcdserver/etcdserverpb ./snap/snappb ./raft/raftpb ./mvcc/mvccpb ./lease/leasepb ./auth/authpb ./etcdserver/api/v3lock/v3lockpb ./etcdserver/api/v3election/v3electionpb"
 
-# exact version of protoc-gen-gogo to build
+# exact version of packages to build
 GOGO_PROTO_SHA="100ba4e885062801d56799d78530b73b178a78f3"
 GRPC_GATEWAY_SHA="18d159699f2e83fc5bb9ef2f79465ca3f3122676"
+SCHWAG_SHA="b7d0fc9aadaaae3d61aaadfc12e4a2f945514912"
 
 # set up self-contained GOPATH for building
 export GOPATH=${PWD}/gopath.proto
@@ -30,6 +31,7 @@ export PATH="${GOBIN}:${PATH}"
 COREOS_ROOT="${GOPATH}/src/github.com/coreos"
 ETCD_ROOT="${COREOS_ROOT}/etcd"
 GOGOPROTO_ROOT="${GOPATH}/src/github.com/gogo/protobuf"
+SCHWAG_ROOT="${GOPATH}/src/github.com/hexfusion/schwag"
 GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 GRPC_GATEWAY_ROOT="${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway"
 
@@ -100,6 +102,14 @@ for pb in etcdserverpb/rpc api/v3lock/v3lockpb/v3lock api/v3election/v3electionp
 		Documentation/dev-guide/apispec/swagger/${swaggerName}.swagger.json
 done
 rm -rf Documentation/dev-guide/apispec/swagger/etcdserver/
+
+# append security to swagger spec
+go get -u "github.com/hexfusion/schwag"
+pushd "${SCHWAG_ROOT}"
+	git reset --hard "${SCHWAG_SHA}"
+	go install .
+popd
+schwag -input=Documentation/dev-guide/apispec/swagger/rpc.swagger.json
 
 # install protodoc
 # go get -v -u github.com/coreos/protodoc
