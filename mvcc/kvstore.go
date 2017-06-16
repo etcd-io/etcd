@@ -260,6 +260,9 @@ func (s *store) restore() error {
 	// restore index
 	tx := s.b.BatchTx()
 	tx.Lock()
+
+	dbTotalSize.Set(float64(s.b.Size()))
+
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		s.compactMainRev = bytesToRev(finishedCompactBytes[0]).main
