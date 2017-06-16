@@ -178,7 +178,6 @@ func TestApplyRepeat(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		Cfg:        &ServerConfig{},
 		store:      st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
@@ -530,7 +529,6 @@ func TestApplyConfChangeError(t *testing.T) {
 		srv := &EtcdServer{
 			r:       *newRaftNode(raftNodeConfig{Node: n}),
 			cluster: cl,
-			Cfg:     &ServerConfig{},
 		}
 		_, err := srv.applyConfChange(tt.cc, nil)
 		if err != tt.werr {
@@ -685,7 +683,7 @@ func TestDoProposal(t *testing.T) {
 			transport:   rafthttp.NewNopTransporter(),
 		})
 		srv := &EtcdServer{
-			Cfg:        &ServerConfig{TickMs: 1},
+			Cfg:        ServerConfig{TickMs: 1},
 			r:          *r,
 			store:      st,
 			reqIDGen:   idutil.NewGenerator(0, time.Time{}),
@@ -713,7 +711,7 @@ func TestDoProposal(t *testing.T) {
 func TestDoProposalCancelled(t *testing.T) {
 	wt := mockwait.NewRecorder()
 	srv := &EtcdServer{
-		Cfg:      &ServerConfig{TickMs: 1},
+		Cfg:      ServerConfig{TickMs: 1},
 		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
 		w:        wt,
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -735,7 +733,7 @@ func TestDoProposalCancelled(t *testing.T) {
 
 func TestDoProposalTimeout(t *testing.T) {
 	srv := &EtcdServer{
-		Cfg:      &ServerConfig{TickMs: 1},
+		Cfg:      ServerConfig{TickMs: 1},
 		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -751,7 +749,7 @@ func TestDoProposalTimeout(t *testing.T) {
 
 func TestDoProposalStopped(t *testing.T) {
 	srv := &EtcdServer{
-		Cfg:      &ServerConfig{TickMs: 1},
+		Cfg:      ServerConfig{TickMs: 1},
 		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
 		w:        mockwait.NewNop(),
 		reqIDGen: idutil.NewGenerator(0, time.Time{}),
@@ -855,7 +853,7 @@ func TestSyncTrigger(t *testing.T) {
 	})
 
 	srv := &EtcdServer{
-		Cfg:        &ServerConfig{TickMs: 1},
+		Cfg:        ServerConfig{TickMs: 1},
 		r:          *r,
 		store:      mockstore.NewNop(),
 		SyncTicker: tk,
@@ -913,7 +911,6 @@ func TestSnapshot(t *testing.T) {
 		storage:     p,
 	})
 	srv := &EtcdServer{
-		Cfg:   &ServerConfig{},
 		r:     *r,
 		store: st,
 	}
@@ -984,9 +981,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		raftStorage: rs,
 	})
 	s := &EtcdServer{
-		Cfg: &ServerConfig{
-			DataDir: testdir,
-		},
+		Cfg:         ServerConfig{DataDir: testdir},
 		r:           *r,
 		store:       st,
 		snapshotter: snap.New(snapdir),
@@ -1047,8 +1042,7 @@ func TestTriggerSnap(t *testing.T) {
 		transport:   rafthttp.NewNopTransporter(),
 	})
 	srv := &EtcdServer{
-		Cfg:        &ServerConfig{TickMs: 1},
-		snapCount:  uint64(snapc),
+		Cfg:        ServerConfig{TickMs: 1, SnapCount: uint64(snapc)},
 		r:          *r,
 		store:      st,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
@@ -1112,9 +1106,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		raftStorage: rs,
 	})
 	s := &EtcdServer{
-		Cfg: &ServerConfig{
-			DataDir: testdir,
-		},
+		Cfg:         ServerConfig{DataDir: testdir},
 		r:           *r,
 		store:       st,
 		snapshotter: snap.New(testdir),
@@ -1199,7 +1191,6 @@ func TestAddMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		Cfg:        &ServerConfig{},
 		store:      st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
@@ -1241,7 +1232,6 @@ func TestRemoveMember(t *testing.T) {
 	})
 	s := &EtcdServer{
 		r:          *r,
-		Cfg:        &ServerConfig{},
 		store:      st,
 		cluster:    cl,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
@@ -1316,7 +1306,7 @@ func TestPublish(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	srv := &EtcdServer{
 		readych:    make(chan struct{}),
-		Cfg:        &ServerConfig{TickMs: 1},
+		Cfg:        ServerConfig{TickMs: 1},
 		id:         1,
 		r:          *newRaftNode(raftNodeConfig{Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
@@ -1366,7 +1356,7 @@ func TestPublishStopped(t *testing.T) {
 		transport: rafthttp.NewNopTransporter(),
 	})
 	srv := &EtcdServer{
-		Cfg:        &ServerConfig{TickMs: 1},
+		Cfg:        ServerConfig{TickMs: 1},
 		r:          *r,
 		cluster:    &membership.RaftCluster{},
 		w:          mockwait.NewNop(),
@@ -1388,7 +1378,7 @@ func TestPublishRetry(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	n := newNodeRecorderStream()
 	srv := &EtcdServer{
-		Cfg:        &ServerConfig{TickMs: 1},
+		Cfg:        ServerConfig{TickMs: 1},
 		r:          *newRaftNode(raftNodeConfig{Node: n}),
 		w:          mockwait.NewNop(),
 		stopping:   make(chan struct{}),
@@ -1429,7 +1419,7 @@ func TestUpdateVersion(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	srv := &EtcdServer{
 		id:         1,
-		Cfg:        &ServerConfig{TickMs: 1},
+		Cfg:        ServerConfig{TickMs: 1},
 		r:          *newRaftNode(raftNodeConfig{Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
 		cluster:    &membership.RaftCluster{},

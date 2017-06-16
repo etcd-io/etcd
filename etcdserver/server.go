@@ -170,12 +170,10 @@ type EtcdServer struct {
 	// consistIndex used to hold the offset of current executing entry
 	// It is initialized to 0 before executing any entry.
 	consistIndex consistentIndex // must use atomic operations to access; keep 64-bit aligned.
-	Cfg          *ServerConfig
+	r            raftNode        // uses 64-bit atomics; keep 64-bit aligned.
 
 	readych chan struct{}
-	r       raftNode
-
-	snapCount uint64
+	Cfg     ServerConfig
 
 	w wait.Wait
 
@@ -250,7 +248,7 @@ type EtcdServer struct {
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
 // configuration is considered static for the lifetime of the EtcdServer.
-func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
+func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	st := store.New(StoreClusterPrefix, StoreKeysPrefix)
 
 	var (
@@ -408,7 +406,6 @@ func NewServer(cfg *ServerConfig) (srv *EtcdServer, err error) {
 	srv = &EtcdServer{
 		readych:     make(chan struct{}),
 		Cfg:         cfg,
-		snapCount:   cfg.SnapCount,
 		errorc:      make(chan error, 1),
 		store:       st,
 		snapshotter: ss,
@@ -530,9 +527,9 @@ func (s *EtcdServer) Start() {
 // modify a server's fields after it has been sent to Start.
 // This function is just used for testing.
 func (s *EtcdServer) start() {
-	if s.snapCount == 0 {
+	if s.Cfg.SnapCount == 0 {
 		plog.Infof("set snapshot count to default %d", DefaultSnapCount)
-		s.snapCount = DefaultSnapCount
+		s.Cfg.SnapCount = DefaultSnapCount
 	}
 	s.w = wait.New()
 	s.applyWait = wait.NewTimeList()
@@ -915,7 +912,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *apply) {
 }
 
 func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
-	if ep.appliedi-ep.snapi <= s.snapCount {
+	if ep.appliedi-ep.snapi <= s.Cfg.SnapCount {
 		return
 	}
 
