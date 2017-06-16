@@ -53,6 +53,7 @@ type ServerConfig struct {
 	BootstrapTimeout time.Duration
 
 	AutoCompactionRetention int
+	AutoCompactionMode      string
 	QuotaBackendBytes       int64
 	MaxTxnOps               uint
 
