@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: etcdctl
+spec:
+  containers:
+  - command:
+    # this is just to create a running container that we can use to exec /etcdctl
+    - /etcd
+    image: quay.io/coreos/etcd:latest
+    name: etcdctl
+    volumeMounts:
+    - mountPath: /etc/etcd/client-ca/
+      name: client-ca
+      readOnly: True
+    - mountPath: /etc/etcd/client-key/
+      name: client-key
+      readOnly: True
+  restartPolicy: Never
+  volumes:
+  - secret:
+      secretName: etcd-client-ca
+    name: client-ca
+  - secret:
+      secretName: etcd-client-key
+    name: client-key
