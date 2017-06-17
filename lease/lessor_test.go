@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/monotime"
 )
 
 const (
@@ -211,14 +210,24 @@ func TestLessorRenew(t *testing.T) {
 	}
 }
 
-// TestLessorRenewRandomize ensures Lessor renews with randomized expiry.
-func TestLessorRenewRandomize(t *testing.T) {
+// TestLessorRenewExtendPileup ensures Lessor extends leases on promotion if too many
+// expire at the same time.
+func TestLessorRenewExtendPileup(t *testing.T) {
+	oldRevokeRate := leaseRevokeRate
+	defer func() { leaseRevokeRate = oldRevokeRate }()
+	leaseRevokeRate = 10
+
 	dir, be := NewTestBackend(t)
 	defer os.RemoveAll(dir)
 
 	le := newLessor(be, minLeaseTTL)
-	for i := LeaseID(1); i <= 10; i++ {
-		if _, err := le.Grant(i, 3600); err != nil {
+	ttl := int64(10)
+	for i := 1; i <= leaseRevokeRate*10; i++ {
+		if _, err := le.Grant(LeaseID(2*i), ttl); err != nil {
+			t.Fatal(err)
+		}
+		// ttls that overlap spillover for ttl=10
+		if _, err := le.Grant(LeaseID(2*i+1), ttl+1); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -232,16 +241,23 @@ func TestLessorRenewRandomize(t *testing.T) {
 	defer be.Close()
 	le = newLessor(be, minLeaseTTL)
 
-	now := monotime.Now()
-
-	// extend after recovery should randomize expiries
+	// extend after recovery should extend expiration on lease pile-up
 	le.Promote(0)
 
+	windowCounts := make(map[int64]int)
 	for _, l := range le.leaseMap {
-		leftSeconds := uint64(float64(l.expiry-now) * float64(1e-9))
-		pc := (float64(leftSeconds-3600) / float64(3600)) * 100
-		if pc > 10.0 || pc < -10.0 || pc == 0 { // should be within 士10%
-			t.Fatalf("expected randomized expiry, got %d seconds (ttl: 3600)", leftSeconds)
+		// round up slightly for baseline ttl
+		s := int64(l.Remaining().Seconds() + 0.1)
+		windowCounts[s]++
+	}
+
+	for i := ttl; i < ttl+20; i++ {
+		c := windowCounts[i]
+		if c > leaseRevokeRate {
+			t.Errorf("expected at most %d expiring at %ds, got %d", leaseRevokeRate, i, c)
+		}
+		if c < leaseRevokeRate/2 {
+			t.Errorf("expected at least %d expiring at %ds, got %d", leaseRevokeRate/2, i, c)
 		}
 	}
 }
