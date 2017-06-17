@@ -16,7 +16,6 @@ package embed
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	defaultLog "log"
@@ -365,12 +364,8 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 }
 
 func (e *Etcd) serve() (err error) {
-	var ctlscfg *tls.Config
 	if !e.cfg.ClientTLSInfo.Empty() {
 		plog.Infof("ClientTLS: %s", e.cfg.ClientTLSInfo)
-		if ctlscfg, err = e.cfg.ClientTLSInfo.ServerConfig(); err != nil {
-			return err
-		}
 	}
 
 	if e.cfg.CorsInfo.String() != "" {
@@ -394,7 +389,7 @@ func (e *Etcd) serve() (err error) {
 	}
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, ctlscfg, v2h, e.errHandler))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, v2h, e.errHandler))
 		}(sctx)
 	}
 	return nil
