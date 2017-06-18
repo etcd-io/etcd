@@ -403,6 +403,7 @@ func TestStoreRestore(t *testing.T) {
 	}
 	ki := &keyIndex{key: []byte("foo"), modified: revision{5, 0}, generations: gens}
 	wact = []testutil.Action{
+		{"keyIndex", []interface{}{ki}},
 		{"insert", []interface{}{ki}},
 	}
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
@@ -696,6 +697,11 @@ func (i *fakeIndex) Equal(b index) bool { return false }
 
 func (i *fakeIndex) Insert(ki *keyIndex) {
 	i.Recorder.Record(testutil.Action{Name: "insert", Params: []interface{}{ki}})
+}
+
+func (i *fakeIndex) KeyIndex(ki *keyIndex) *keyIndex {
+	i.Recorder.Record(testutil.Action{Name: "keyIndex", Params: []interface{}{ki}})
+	return nil
 }
 
 func createBytesSlice(bytesN, sliceN int) [][]byte {
