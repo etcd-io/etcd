@@ -149,7 +149,7 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 
 func checkTxnAuth(as auth.AuthStore, ai *auth.AuthInfo, rt *pb.TxnRequest) error {
 	for _, c := range rt.Compare {
-		if err := as.IsRangePermitted(ai, c.Key, nil); err != nil {
+		if err := as.IsRangePermitted(ai, c.Key, c.RangeEnd); err != nil {
 			return err
 		}
 	}

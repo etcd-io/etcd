@@ -194,18 +194,15 @@ func (a *applierV3backend) Put(txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.Pu
 func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	resp := &pb.DeleteRangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
+	end := mkGteRange(dr.RangeEnd)
 
 	if txn == nil {
 		txn = a.s.kv.Write()
 		defer txn.End()
 	}
 
-	if isGteRange(dr.RangeEnd) {
-		dr.RangeEnd = []byte{}
-	}
-
 	if dr.PrevKv {
-		rr, err := txn.Range(dr.Key, dr.RangeEnd, mvcc.RangeOptions{})
+		rr, err := txn.Range(dr.Key, end, mvcc.RangeOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +213,7 @@ func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequ
 		}
 	}
 
-	resp.Deleted, resp.Header.Revision = txn.DeleteRange(dr.Key, dr.RangeEnd)
+	resp.Deleted, resp.Header.Revision = txn.DeleteRange(dr.Key, end)
 	return resp, nil
 }
 
@@ -227,10 +224,6 @@ func (a *applierV3backend) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.Rang
 	if txn == nil {
 		txn = a.s.kv.Read()
 		defer txn.End()
-	}
-
-	if isGteRange(r.RangeEnd) {
-		r.RangeEnd = []byte{}
 	}
 
 	limit := r.Limit
@@ -251,7 +244,7 @@ func (a *applierV3backend) Range(txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.Rang
 		Count: r.CountOnly,
 	}
 
-	rr, err := txn.Range(r.Key, r.RangeEnd, ro)
+	rr, err := txn.Range(r.Key, mkGteRange(r.RangeEnd), ro)
 	if err != nil {
 		return nil, err
 	}
@@ -374,50 +367,57 @@ func (a *applierV3backend) compareToOps(rv mvcc.ReadView, rt *pb.TxnRequest) ([]
 // applyCompare applies the compare request.
 // If the comparison succeeds, it returns true. Otherwise, returns false.
 func applyCompare(rv mvcc.ReadView, c *pb.Compare) bool {
-	rr, err := rv.Range(c.Key, nil, mvcc.RangeOptions{})
+	// TOOD: possible optimizations
+	// * chunk reads for large ranges to conserve memory
+	// * rewrite rules for common patterns:
+	//	ex. "[a, b) createrev > 0" => "limit 1 /\ kvs > 0"
+	// * caching
+	rr, err := rv.Range(c.Key, mkGteRange(c.RangeEnd), mvcc.RangeOptions{})
 	if err != nil {
 		return false
 	}
-	var ckv mvccpb.KeyValue
-	if len(rr.KVs) != 0 {
-		ckv = rr.KVs[0]
-	} else {
-		// Use the zero value of ckv normally. However...
+	if len(rr.KVs) == 0 {
 		if c.Target == pb.Compare_VALUE {
-			// Always fail if we're comparing a value on a key that doesn't exist.
-			// We can treat non-existence as the empty set explicitly, such that
-			// even a key with a value of length 0 bytes is still a real key
-			// that was written that way
+			// Always fail if comparing a value on a key/keys that doesn't exist;
+			// nil == empty string in grpc; no way to represent missing value
+			return false
+		}
+		return compareKV(c, mvccpb.KeyValue{})
+	}
+	for _, kv := range rr.KVs {
+		if !compareKV(c, kv) {
 			return false
 		}
 	}
+	return true
+}
 
-	// -1 is less, 0 is equal, 1 is greater
+func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 	var result int
+	rev := int64(0)
 	switch c.Target {
 	case pb.Compare_VALUE:
-		tv, _ := c.TargetUnion.(*pb.Compare_Value)
-		if tv != nil {
-			result = bytes.Compare(ckv.Value, tv.Value)
+		v := []byte{}
+		if tv, _ := c.TargetUnion.(*pb.Compare_Value); tv != nil {
+			v = tv.Value
 		}
+		result = bytes.Compare(ckv.Value, v)
 	case pb.Compare_CREATE:
-		tv, _ := c.TargetUnion.(*pb.Compare_CreateRevision)
-		if tv != nil {
-			result = compareInt64(ckv.CreateRevision, tv.CreateRevision)
+		if tv, _ := c.TargetUnion.(*pb.Compare_CreateRevision); tv != nil {
+			rev = tv.CreateRevision
 		}
-
+		result = compareInt64(ckv.CreateRevision, rev)
 	case pb.Compare_MOD:
-		tv, _ := c.TargetUnion.(*pb.Compare_ModRevision)
-		if tv != nil {
-			result = compareInt64(ckv.ModRevision, tv.ModRevision)
+		if tv, _ := c.TargetUnion.(*pb.Compare_ModRevision); tv != nil {
+			rev = tv.ModRevision
 		}
+		result = compareInt64(ckv.ModRevision, rev)
 	case pb.Compare_VERSION:
-		tv, _ := c.TargetUnion.(*pb.Compare_Version)
-		if tv != nil {
-			result = compareInt64(ckv.Version, tv.Version)
+		if tv, _ := c.TargetUnion.(*pb.Compare_Version); tv != nil {
+			rev = tv.Version
 		}
+		result = compareInt64(ckv.Version, rev)
 	}
-
 	switch c.Result {
 	case pb.Compare_EQUAL:
 		return result == 0
@@ -830,10 +830,15 @@ func compareInt64(a, b int64) int {
 	}
 }
 
-// isGteRange determines if the range end is a >= range. This works around grpc
+// mkGteRange determines if the range end is a >= range. This works around grpc
 // sending empty byte strings as nil; >= is encoded in the range end as '\0'.
-func isGteRange(rangeEnd []byte) bool {
-	return len(rangeEnd) == 1 && rangeEnd[0] == 0
+// If it is a GTE range, then []byte{} is returned to indicate the empty byte
+// string (vs nil being no byte string).
+func mkGteRange(rangeEnd []byte) []byte {
+	if len(rangeEnd) == 1 && rangeEnd[0] == 0 {
+		return []byte{}
+	}
+	return rangeEnd
 }
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {

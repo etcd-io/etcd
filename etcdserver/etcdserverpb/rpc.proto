@@ -510,6 +510,10 @@ message Compare {
     // value is the value of the given key, in bytes.
     bytes value = 7;
   }
+  // range_end compares the given target to all keys in the range [key, range_end).
+  // See RangeRequest for more details on key ranges.
+  bytes range_end = 8;
+  // TODO: fill out with most of the rest of RangeRequest fields when needed.
 }
 
 // From google paxosdb paper:
