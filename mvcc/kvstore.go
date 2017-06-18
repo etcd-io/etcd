@@ -52,9 +52,9 @@ const (
 	markedRevBytesLen      = revBytesLen + 1
 	markBytePosition       = markedRevBytesLen - 1
 	markTombstone     byte = 't'
-
-	restoreChunkKeys = 10000
 )
+
+var restoreChunkKeys = 10000 // non-const for testing
 
 // ConsistentIndexGetter is an interface that wraps the Get method.
 // Consistent index is the offset of an entry in a consistent replicated log.
@@ -280,7 +280,7 @@ func (s *store) restore() error {
 		}
 	}()
 	for {
-		keys, vals := tx.UnsafeRange(keyBucketName, min, max, restoreChunkKeys)
+		keys, vals := tx.UnsafeRange(keyBucketName, min, max, int64(restoreChunkKeys))
 		if len(keys) == 0 {
 			break
 		}
