@@ -17,7 +17,9 @@ package mvcc
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"math"
+	mrand "math/rand"
 	"os"
 	"reflect"
 	"testing"
@@ -405,6 +407,56 @@ func TestStoreRestore(t *testing.T) {
 	}
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
+	}
+}
+
+func TestRestoreDelete(t *testing.T) {
+	oldChunk := restoreChunkKeys
+	restoreChunkKeys = mrand.Intn(3) + 2
+	defer func() { restoreChunkKeys = oldChunk }()
+
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(b, &lease.FakeLessor{}, nil)
+	defer os.Remove(tmpPath)
+
+	keys := make(map[string]struct{})
+	for i := 0; i < 20; i++ {
+		ks := fmt.Sprintf("foo-%d", i)
+		k := []byte(ks)
+		s.Put(k, []byte("bar"), lease.NoLease)
+		keys[ks] = struct{}{}
+		switch mrand.Intn(3) {
+		case 0:
+			// put random key from past via random range on map
+			ks = fmt.Sprintf("foo-%d", mrand.Intn(i+1))
+			s.Put([]byte(ks), []byte("baz"), lease.NoLease)
+			keys[ks] = struct{}{}
+		case 1:
+			// delete random key via random range on map
+			for k := range keys {
+				s.DeleteRange([]byte(k), nil)
+				delete(keys, k)
+				break
+			}
+		}
+	}
+	s.Close()
+
+	s = NewStore(b, &lease.FakeLessor{}, nil)
+	defer s.Close()
+	for i := 0; i < 20; i++ {
+		ks := fmt.Sprintf("foo-%d", i)
+		r, err := s.Range([]byte(ks), nil, RangeOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := keys[ks]; ok {
+			if len(r.KVs) == 0 {
+				t.Errorf("#%d: expected %q, got deleted", i, ks)
+			}
+		} else if len(r.KVs) != 0 {
+			t.Errorf("#%d: expected deleted, got %q", i, ks)
+		}
 	}
 }
 
