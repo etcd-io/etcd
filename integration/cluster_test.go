@@ -27,6 +27,7 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/testutil"
+	"github.com/coreos/pkg/capnslog"
 
 	"golang.org/x/net/context"
 )
@@ -318,6 +319,10 @@ func TestIssue3699(t *testing.T) {
 	for leaderID != 3 {
 		c.Members[leaderID].Stop(t)
 		<-c.Members[leaderID].s.StopNotify()
+		// do not restart the killed member immediately.
+		// the member will advance its election timeout after restart,
+		// so it will have a better chance to become the leader again.
+		time.Sleep(time.Duration(electionTicks * int(tickDuration)))
 		c.Members[leaderID].Restart(t)
 		leaderID = c.waitLeader(t, c.Members)
 	}
@@ -437,19 +442,77 @@ func TestRejectUnhealthyRemove(t *testing.T) {
 	}
 }
 
+// TestRestartRemoved ensures that restarting removed member must exit
+// if 'initial-cluster-state' is set 'new' and old data directory still exists
+// (see https://github.com/coreos/etcd/issues/7512 for more).
+func TestRestartRemoved(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	capnslog.SetGlobalLogLevel(capnslog.INFO)
+	defer capnslog.SetGlobalLogLevel(defaultLogLevel)
+
+	// 1. start single-member cluster
+	c := NewCluster(t, 1)
+	for _, m := range c.Members {
+		m.ServerConfig.StrictReconfigCheck = true
+	}
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// 2. add a new member
+	c.AddMember(t)
+	c.WaitLeader(t)
+
+	oldm := c.Members[0]
+	oldm.keepDataDirTerminate = true
+
+	// 3. remove first member, shut down without deleting data
+	if err := c.removeMember(t, uint64(c.Members[0].s.ID())); err != nil {
+		t.Fatalf("expected to remove member, got error %v", err)
+	}
+	c.WaitLeader(t)
+
+	// 4. restart first member with 'initial-cluster-state=new'
+	// wrong config, expects exit within ReqTimeout
+	oldm.ServerConfig.NewCluster = false
+	if err := oldm.Restart(t); err != nil {
+		t.Fatalf("unexpected ForceRestart error: %v", err)
+	}
+	defer func() {
+		oldm.Close()
+		os.RemoveAll(oldm.ServerConfig.DataDir)
+	}()
+	select {
+	case <-oldm.s.StopNotify():
+	case <-time.After(time.Minute):
+		t.Fatalf("removed member didn't exit within %v", time.Minute)
+	}
+}
+
 // clusterMustProgress ensures that cluster can make progress. It creates
 // a random key first, and check the new key could be got from all client urls
 // of the cluster.
 func clusterMustProgress(t *testing.T, membs []*member) {
 	cc := MustNewHTTPClient(t, []string{membs[0].URL()}, nil)
 	kapi := client.NewKeysAPI(cc)
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	key := fmt.Sprintf("foo%d", rand.Int())
-	resp, err := kapi.Create(ctx, "/"+key, "bar")
+	var (
+		err  error
+		resp *client.Response
+	)
+	// retry in case of leader loss induced by slow CI
+	for i := 0; i < 3; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		resp, err = kapi.Create(ctx, "/"+key, "bar")
+		cancel()
+		if err == nil {
+			break
+		}
+		t.Logf("failed to create key on %q (%v)", membs[0].URL(), err)
+	}
 	if err != nil {
 		t.Fatalf("create on %s error: %v", membs[0].URL(), err)
 	}
-	cancel()
 
 	for i, m := range membs {
 		u := m.URL()
@@ -505,5 +568,25 @@ func TestTransferLeader(t *testing.T) {
 	// new leader must be different than the old leader
 	if oldLeadID == newLeadIDs[0] {
 		t.Fatalf("expected old leader %d != new leader %d", oldLeadID, newLeadIDs[0])
+	}
+}
+
+func TestSpeedyTerminate(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	// Stop/Restart so requests will time out on lost leaders
+	for i := 0; i < 3; i++ {
+		clus.Members[i].Stop(t)
+		clus.Members[i].Restart(t)
+	}
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		clus.Terminate(t)
+	}()
+	select {
+	case <-time.After(10 * time.Second):
+		t.Fatalf("cluster took too long to terminate")
+	case <-donec:
 	}
 }

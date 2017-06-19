@@ -16,13 +16,13 @@ package rafthttp
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/ioutil"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/stats"
-	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
@@ -93,6 +93,7 @@ func (p *pipeline) handle() {
 				if isMsgSnap(m) {
 					p.raft.ReportSnapshot(m.To, raft.SnapshotFailure)
 				}
+				sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
 				continue
 			}
 
@@ -117,7 +118,8 @@ func (p *pipeline) post(data []byte) (err error) {
 	req := createPostRequest(u, RaftPrefix, bytes.NewBuffer(data), "application/protobuf", p.tr.URLs, p.tr.ID, p.tr.ClusterID)
 
 	done := make(chan struct{}, 1)
-	cancel := httputil.RequestCanceler(req)
+	ctx, cancel := context.WithCancel(context.Background())
+	req = req.WithContext(ctx)
 	go func() {
 		select {
 		case <-done:

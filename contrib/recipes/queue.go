@@ -33,7 +33,7 @@ func NewQueue(client *v3.Client, keyPrefix string) *Queue {
 }
 
 func (q *Queue) Enqueue(val string) error {
-	_, err := NewUniqueKV(q.client, q.keyPrefix, val, 0)
+	_, err := newUniqueKV(q.client, q.keyPrefix, val)
 	return err
 }
 

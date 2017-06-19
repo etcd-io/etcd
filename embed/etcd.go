@@ -15,15 +15,21 @@
 package embed
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
+	defaultLog "log"
 	"net"
 	"net/http"
-	"path"
+	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v2http"
 	"github.com/coreos/etcd/pkg/cors"
+	"github.com/coreos/etcd/pkg/debugutil"
 	runtimeutil "github.com/coreos/etcd/pkg/runtime"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
@@ -49,27 +55,46 @@ const (
 
 // Etcd contains a running etcd server and its listeners.
 type Etcd struct {
-	Peers   []net.Listener
+	Peers   []*peerListener
 	Clients []net.Listener
 	Server  *etcdserver.EtcdServer
 
 	cfg   Config
+	stopc chan struct{}
 	errc  chan error
 	sctxs map[string]*serveCtx
+
+	closeOnce sync.Once
+}
+
+type peerListener struct {
+	net.Listener
+	serve func() error
+	close func(context.Context) error
 }
 
 // StartEtcd launches the etcd server and HTTP handlers for client/server communication.
+// The returned Etcd.Server is not guaranteed to have joined the cluster. Wait
+// on the Etcd.Server.ReadyNotify() channel to know when it completes and is ready for use.
 func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if err = inCfg.Validate(); err != nil {
 		return nil, err
 	}
-	e = &Etcd{cfg: *inCfg}
+	serving := false
+	e = &Etcd{cfg: *inCfg, stopc: make(chan struct{})}
 	cfg := &e.cfg
 	defer func() {
-		if e != nil && err != nil {
-			e.Close()
-			e = nil
+		if e == nil || err == nil {
+			return
 		}
+		if !serving {
+			// errored before starting gRPC server for serveCtx.grpcServerC
+			for _, sctx := range e.sctxs {
+				close(sctx.grpcServerC)
+			}
+		}
+		e.Close()
+		e = nil
 	}()
 
 	if e.Peers, err = startPeerListeners(cfg); err != nil {
@@ -94,7 +119,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		}
 	}
 
-	srvcfg := &etcdserver.ServerConfig{
+	srvcfg := etcdserver.ServerConfig{
 		Name:                    cfg.Name,
 		ClientURLs:              cfg.ACUrls,
 		PeerURLs:                cfg.APUrls,
@@ -114,13 +139,34 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ElectionTicks:           cfg.ElectionTicks(),
 		AutoCompactionRetention: cfg.AutoCompactionRetention,
 		QuotaBackendBytes:       cfg.QuotaBackendBytes,
+		MaxTxnOps:               cfg.MaxTxnOps,
+		MaxRequestBytes:         cfg.MaxRequestBytes,
 		StrictReconfigCheck:     cfg.StrictReconfigCheck,
-		EnablePprof:             cfg.EnablePprof,
 		ClientCertAuthEnabled:   cfg.ClientTLSInfo.ClientCertAuth,
+		AuthToken:               cfg.AuthToken,
 	}
 
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {
 		return
+	}
+
+	// configure peer handlers after rafthttp.Transport started
+	ph := v2http.NewPeerHandler(e.Server)
+	for i := range e.Peers {
+		srv := &http.Server{
+			Handler:     ph,
+			ReadTimeout: 5 * time.Minute,
+			ErrorLog:    defaultLog.New(ioutil.Discard, "", 0), // do not log user error
+		}
+		e.Peers[i].serve = func() error {
+			return srv.Serve(e.Peers[i].Listener)
+		}
+		e.Peers[i].close = func(ctx context.Context) error {
+			// gracefully shutdown http.Server
+			// close open listeners, idle connections
+			// until context cancel or time-out
+			return srv.Shutdown(ctx)
+		}
 	}
 
 	// buffer channel so goroutines on closed connections won't wait forever
@@ -130,38 +176,59 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	if err = e.serve(); err != nil {
 		return
 	}
-	<-e.Server.ReadyNotify()
+	serving = true
 	return
 }
 
+// Config returns the current configuration.
+func (e *Etcd) Config() Config {
+	return e.cfg
+}
+
 func (e *Etcd) Close() {
+	e.closeOnce.Do(func() { close(e.stopc) })
+
+	// (gRPC server) stops accepting new connections,
+	// RPCs, and blocks until all pending RPCs are finished
+	for _, sctx := range e.sctxs {
+		for gs := range sctx.grpcServerC {
+			gs.GracefulStop()
+		}
+	}
+
 	for _, sctx := range e.sctxs {
 		sctx.cancel()
-	}
-	for i := range e.Peers {
-		if e.Peers[i] != nil {
-			e.Peers[i].Close()
-		}
 	}
 	for i := range e.Clients {
 		if e.Clients[i] != nil {
 			e.Clients[i].Close()
 		}
 	}
+
+	// close rafthttp transports
 	if e.Server != nil {
 		e.Server.Stop()
+	}
+
+	// close all idle connections in peer handler (wait up to 1-second)
+	for i := range e.Peers {
+		if e.Peers[i] != nil && e.Peers[i].close != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			e.Peers[i].close(ctx)
+			cancel()
+		}
 	}
 }
 
 func (e *Etcd) Err() <-chan error { return e.errc }
 
-func startPeerListeners(cfg *Config) (plns []net.Listener, err error) {
+func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 	if cfg.PeerAutoTLS && cfg.PeerTLSInfo.Empty() {
 		phosts := make([]string, len(cfg.LPUrls))
 		for i, u := range cfg.LPUrls {
 			phosts[i] = u.Host
 		}
-		cfg.PeerTLSInfo, err = transport.SelfCert(path.Join(cfg.Dir, "fixtures/peer"), phosts)
+		cfg.PeerTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "peer"), phosts)
 		if err != nil {
 			plog.Fatalf("could not get certs (%v)", err)
 		}
@@ -173,22 +240,20 @@ func startPeerListeners(cfg *Config) (plns []net.Listener, err error) {
 		plog.Infof("peerTLS: %s", cfg.PeerTLSInfo)
 	}
 
-	plns = make([]net.Listener, len(cfg.LPUrls))
+	peers = make([]*peerListener, len(cfg.LPUrls))
 	defer func() {
 		if err == nil {
 			return
 		}
-		for i := range plns {
-			if plns[i] == nil {
-				continue
+		for i := range peers {
+			if peers[i] != nil && peers[i].close != nil {
+				plog.Info("stopping listening for peers on ", cfg.LPUrls[i].String())
+				peers[i].close(context.Background())
 			}
-			plns[i].Close()
-			plog.Info("stopping listening for peers on ", cfg.LPUrls[i].String())
 		}
 	}()
 
 	for i, u := range cfg.LPUrls {
-		var tlscfg *tls.Config
 		if u.Scheme == "http" {
 			if !cfg.PeerTLSInfo.Empty() {
 				plog.Warningf("The scheme of peer url %s is HTTP while peer key/cert files are presented. Ignored peer key/cert files.", u.String())
@@ -197,17 +262,18 @@ func startPeerListeners(cfg *Config) (plns []net.Listener, err error) {
 				plog.Warningf("The scheme of peer url %s is HTTP while client cert auth (--peer-client-cert-auth) is enabled. Ignored client cert auth for this url.", u.String())
 			}
 		}
-		if !cfg.PeerTLSInfo.Empty() {
-			if tlscfg, err = cfg.PeerTLSInfo.ServerConfig(); err != nil {
-				return nil, err
-			}
-		}
-		if plns[i], err = rafthttp.NewListener(u, tlscfg); err != nil {
+		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
+		peers[i].Listener, err = rafthttp.NewListener(u, &cfg.PeerTLSInfo)
+		if err != nil {
 			return nil, err
+		}
+		// once serve, overwrite with 'http.Server.Shutdown'
+		peers[i].close = func(context.Context) error {
+			return peers[i].Listener.Close()
 		}
 		plog.Info("listening for peers on ", u.String())
 	}
-	return plns, nil
+	return peers, nil
 }
 
 func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
@@ -216,12 +282,16 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 		for i, u := range cfg.LCUrls {
 			chosts[i] = u.Host
 		}
-		cfg.ClientTLSInfo, err = transport.SelfCert(path.Join(cfg.Dir, "fixtures/client"), chosts)
+		cfg.ClientTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
 		if err != nil {
 			plog.Fatalf("could not get certs (%v)", err)
 		}
 	} else if cfg.ClientAutoTLS {
 		plog.Warningf("ignoring client auto TLS since certs given")
+	}
+
+	if cfg.EnablePprof {
+		plog.Infof("pprof is enabled under %s", debugutil.HTTPPrefixPProf)
 	}
 
 	sctxs = make(map[string]*serveCtx)
@@ -241,19 +311,21 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 		}
 
 		proto := "tcp"
+		addr := u.Host
 		if u.Scheme == "unix" || u.Scheme == "unixs" {
 			proto = "unix"
+			addr = u.Host + u.Path
 		}
 
 		sctx.secure = u.Scheme == "https" || u.Scheme == "unixs"
 		sctx.insecure = !sctx.secure
-		if oldctx := sctxs[u.Host]; oldctx != nil {
+		if oldctx := sctxs[addr]; oldctx != nil {
 			oldctx.secure = oldctx.secure || sctx.secure
 			oldctx.insecure = oldctx.insecure || sctx.insecure
 			continue
 		}
 
-		if sctx.l, err = net.Listen(proto, u.Host); err != nil {
+		if sctx.l, err = net.Listen(proto, addr); err != nil {
 			return nil, err
 		}
 
@@ -277,8 +349,17 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 				plog.Info("stopping listening for client requests on ", u.Host)
 			}
 		}()
-		sctx.userHandlers = cfg.UserHandlers
-		sctxs[u.Host] = sctx
+		for k := range cfg.UserHandlers {
+			sctx.userHandlers[k] = cfg.UserHandlers[k]
+		}
+		sctx.serviceRegister = cfg.ServiceRegister
+		if cfg.EnablePprof || cfg.Debug {
+			sctx.registerPprof()
+		}
+		if cfg.Debug {
+			sctx.registerTrace()
+		}
+		sctxs[addr] = sctx
 	}
 	return sctxs, nil
 }
@@ -297,24 +378,36 @@ func (e *Etcd) serve() (err error) {
 	}
 
 	// Start the peer server in a goroutine
-	ph := v2http.NewPeerHandler(e.Server)
-	for _, l := range e.Peers {
-		go func(l net.Listener) {
-			e.errc <- servePeerHTTP(l, ph)
-		}(l)
+	for _, pl := range e.Peers {
+		go func(l *peerListener) {
+			e.errHandler(l.serve())
+		}(pl)
 	}
 
 	// Start a client server goroutine for each listen address
-	ch := http.Handler(&cors.CORSHandler{
-		Handler: v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
-		Info:    e.cfg.CorsInfo,
-	})
+	var v2h http.Handler
+	if e.Config().EnableV2 {
+		v2h = http.Handler(&cors.CORSHandler{
+			Handler: v2http.NewClientHandler(e.Server, e.Server.Cfg.ReqTimeout()),
+			Info:    e.cfg.CorsInfo,
+		})
+	}
 	for _, sctx := range e.sctxs {
-		// read timeout does not work with http close notify
-		// TODO: https://github.com/golang/go/issues/9524
 		go func(s *serveCtx) {
-			e.errc <- s.serve(e.Server, ctlscfg, ch, e.errc)
+			e.errHandler(s.serve(e.Server, ctlscfg, v2h, e.errHandler))
 		}(sctx)
 	}
 	return nil
+}
+
+func (e *Etcd) errHandler(err error) {
+	select {
+	case <-e.stopc:
+		return
+	default:
+	}
+	select {
+	case <-e.stopc:
+	case e.errc <- err:
+	}
 }

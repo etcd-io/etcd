@@ -11,6 +11,8 @@ import (
 
 type roffRenderer struct{}
 
+var listCounter int
+
 func RoffRenderer(flags int) blackfriday.Renderer {
 	return &roffRenderer{}
 }
@@ -33,8 +35,12 @@ func (r *roffRenderer) TitleBlock(out *bytes.Buffer, text []byte) {
 		line = append(line, []byte("\" ")...)
 		out.Write(line)
 	}
+	out.WriteString("\n")
 
-	out.WriteString(" \"\"\n")
+	// disable hyphenation
+	out.WriteString(".nh\n")
+	// disable justification (adjust text to left margin only)
+	out.WriteString(".ad l\n")
 }
 
 func (r *roffRenderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
@@ -80,23 +86,24 @@ func (r *roffRenderer) HRule(out *bytes.Buffer) {
 
 func (r *roffRenderer) List(out *bytes.Buffer, text func() bool, flags int) {
 	marker := out.Len()
-	out.WriteString(".IP ")
 	if flags&blackfriday.LIST_TYPE_ORDERED != 0 {
-		out.WriteString("\\(bu 2")
-	} else {
-		out.WriteString("\\n+[step" + string(flags) + "]")
+		listCounter = 1
 	}
-	out.WriteString("\n")
 	if !text() {
 		out.Truncate(marker)
 		return
 	}
-
 }
 
 func (r *roffRenderer) ListItem(out *bytes.Buffer, text []byte, flags int) {
-	out.WriteString("\n\\item ")
+	if flags&blackfriday.LIST_TYPE_ORDERED != 0 {
+		out.WriteString(fmt.Sprintf(".IP \"%3d.\" 5\n", listCounter))
+		listCounter += 1
+	} else {
+		out.WriteString(".IP \\(bu 2\n")
+	}
 	out.Write(text)
+	out.WriteString("\n")
 }
 
 func (r *roffRenderer) Paragraph(out *bytes.Buffer, text func() bool) {
@@ -111,11 +118,24 @@ func (r *roffRenderer) Paragraph(out *bytes.Buffer, text func() bool) {
 	}
 }
 
-// TODO: This might now work
 func (r *roffRenderer) Table(out *bytes.Buffer, header []byte, body []byte, columnData []int) {
-	out.WriteString(".TS\nallbox;\n")
+	out.WriteString("\n.TS\nallbox;\n")
 
+	max_delims := 0
+	lines := strings.Split(strings.TrimRight(string(header), "\n")+"\n"+strings.TrimRight(string(body), "\n"), "\n")
+	for _, w := range lines {
+		cur_delims := strings.Count(w, "\t")
+		if cur_delims > max_delims {
+			max_delims = cur_delims
+		}
+	}
+	out.Write([]byte(strings.Repeat("l ", max_delims+1) + "\n"))
+	out.Write([]byte(strings.Repeat("l ", max_delims+1) + ".\n"))
 	out.Write(header)
+	if len(header) > 0 {
+		out.Write([]byte("\n"))
+	}
+
 	out.Write(body)
 	out.WriteString("\n.TE\n")
 }
@@ -125,24 +145,30 @@ func (r *roffRenderer) TableRow(out *bytes.Buffer, text []byte) {
 		out.WriteString("\n")
 	}
 	out.Write(text)
-	out.WriteString("\n")
 }
 
 func (r *roffRenderer) TableHeaderCell(out *bytes.Buffer, text []byte, align int) {
 	if out.Len() > 0 {
-		out.WriteString(" ")
+		out.WriteString("\t")
 	}
-	out.Write(text)
-	out.WriteString(" ")
+	if len(text) == 0 {
+		text = []byte{' '}
+	}
+	out.Write([]byte("\\fB\\fC" + string(text) + "\\fR"))
 }
 
-// TODO: This is probably broken
 func (r *roffRenderer) TableCell(out *bytes.Buffer, text []byte, align int) {
 	if out.Len() > 0 {
 		out.WriteString("\t")
 	}
+	if len(text) > 30 {
+		text = append([]byte("T{\n"), text...)
+		text = append(text, []byte("\nT}")...)
+	}
+	if len(text) == 0 {
+		text = []byte{' '}
+	}
 	out.Write(text)
-	out.WriteString("\t")
 }
 
 func (r *roffRenderer) Footnotes(out *bytes.Buffer, text func() bool) {
@@ -185,6 +211,7 @@ func (r *roffRenderer) LineBreak(out *bytes.Buffer) {
 }
 
 func (r *roffRenderer) Link(out *bytes.Buffer, link []byte, title []byte, content []byte) {
+	out.Write(content)
 	r.AutoLink(out, link, 0)
 }
 
@@ -249,6 +276,11 @@ func needsBackslash(c byte) bool {
 
 func escapeSpecialChars(out *bytes.Buffer, text []byte) {
 	for i := 0; i < len(text); i++ {
+		// escape initial apostrophe or period
+		if len(text) >= 1 && (text[0] == '\'' || text[0] == '.') {
+			out.WriteString("\\&")
+		}
+
 		// directly copy normal characters
 		org := i
 

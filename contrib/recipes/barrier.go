@@ -35,7 +35,7 @@ func NewBarrier(client *v3.Client, key string) *Barrier {
 
 // Hold creates the barrier key causing processes to block on Wait.
 func (b *Barrier) Hold() error {
-	_, err := NewKey(b.client, b.key, 0)
+	_, err := newKey(b.client, b.key, 0)
 	return err
 }
 

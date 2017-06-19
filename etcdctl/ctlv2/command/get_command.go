@@ -43,7 +43,7 @@ func NewGetCommand() cli.Command {
 // getCommandFunc executes the "get" command.
 func getCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		handleError(ExitBadArgs, errors.New("key required"))
+		handleError(c, ExitBadArgs, errors.New("key required"))
 	}
 
 	key := c.Args()[0]
@@ -54,7 +54,7 @@ func getCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	resp, err := ki.Get(ctx, key, &client.GetOptions{Sort: sorted, Quorum: quorum})
 	cancel()
 	if err != nil {
-		handleError(ExitServerError, err)
+		handleError(c, ExitServerError, err)
 	}
 
 	if resp.Node.Dir {

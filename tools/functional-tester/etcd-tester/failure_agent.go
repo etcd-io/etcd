@@ -78,8 +78,8 @@ func newFailureKillLeaderForLongTime() failure {
 	return &failureUntilSnapshot{newFailureKillLeader()}
 }
 
-func injectDropPort(m *member) error  { return m.Agent.DropPort(peerURLPort) }
-func recoverDropPort(m *member) error { return m.Agent.RecoverPort(peerURLPort) }
+func injectDropPort(m *member) error  { return m.Agent.DropPort(m.peerPort()) }
+func recoverDropPort(m *member) error { return m.Agent.RecoverPort(m.peerPort()) }
 
 func newFailureIsolate() failure {
 	return &failureOne{
@@ -137,5 +137,18 @@ func newFailureSlowNetworkAll() failure {
 		description:   "slow down all members' network",
 		injectMember:  injectLatency,
 		recoverMember: recoverLatency,
+	}
+}
+
+func newFailureNop() failure {
+	return &failureNop{
+		description: "no failure",
+	}
+}
+
+func newFailureExternal(scriptPath string) failure {
+	return &failureExternal{
+		description: fmt.Sprintf("external fault injector (script: %s)", scriptPath),
+		scriptPath:  scriptPath,
 	}
 }

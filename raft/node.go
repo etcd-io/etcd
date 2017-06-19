@@ -60,11 +60,11 @@ type Ready struct {
 	// HardState will be equal to empty state if there is no update.
 	pb.HardState
 
-	// ReadState can be used for node to serve linearizable read requests locally
+	// ReadStates can be used for node to serve linearizable read requests locally
 	// when its applied index is greater than the index in ReadState.
 	// Note that the readState will be returned when raft receives msgReadIndex.
 	// The returned is only valid for the request that requested to read.
-	ReadState
+	ReadStates []ReadState
 
 	// Entries specifies entries to be saved to stable storage BEFORE
 	// Messages are sent.
@@ -83,6 +83,10 @@ type Ready struct {
 	// If it contains a MsgSnap message, the application MUST report back to raft
 	// when the snapshot has been received or has failed by calling ReportSnapshot.
 	Messages []pb.Message
+
+	// MustSync indicates whether the HardState and Entries must be synchronously
+	// written to disk or if an asynchronous write is permissible.
+	MustSync bool
 }
 
 func isHardStateEqual(a, b pb.HardState) bool {
@@ -102,7 +106,7 @@ func IsEmptySnap(sp pb.Snapshot) bool {
 func (rd Ready) containsUpdates() bool {
 	return rd.SoftState != nil || !IsEmptyHardState(rd.HardState) ||
 		!IsEmptySnap(rd.Snapshot) || len(rd.Entries) > 0 ||
-		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0 || rd.Index != None
+		len(rd.CommittedEntries) > 0 || len(rd.Messages) > 0 || len(rd.ReadStates) != 0
 }
 
 // Node represents a node in a raft cluster.
@@ -151,11 +155,6 @@ type Node interface {
 	// Read state has a read index. Once the application advances further than the read
 	// index, any linearizable read requests issued before the read request can be
 	// processed safely. The read state will have the same rctx attached.
-	//
-	// Note: the current implementation depends on the leader lease. If the clock drift is unbounded,
-	// leader might keep the lease longer than it should (clock can move backward/pause without any bound).
-	// ReadIndex is not safe in that case.
-	// TODO: add clock drift bound into raft configuration.
 	ReadIndex(ctx context.Context, rctx []byte) error
 
 	// Status returns the current status of the raft state machine.
@@ -370,8 +369,7 @@ func (n *node) run(r *raft) {
 			}
 
 			r.msgs = nil
-			r.readState.Index = None
-			r.readState.RequestCtx = nil
+			r.readStates = nil
 			advancec = n.advancec
 		case <-advancec:
 			if prevHardSt.Commit != 0 {
@@ -468,8 +466,12 @@ func (n *node) ApplyConfChange(cc pb.ConfChange) *pb.ConfState {
 
 func (n *node) Status() Status {
 	c := make(chan Status)
-	n.status <- c
-	return <-c
+	select {
+	case n.status <- c:
+		return <-c
+	case <-n.done:
+		return Status{}
+	}
 }
 
 func (n *node) ReportUnreachable(id uint64) {
@@ -516,12 +518,20 @@ func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
 	if r.raftLog.unstable.snapshot != nil {
 		rd.Snapshot = *r.raftLog.unstable.snapshot
 	}
-	if r.readState.Index != None {
-		c := make([]byte, len(r.readState.RequestCtx))
-		copy(c, r.readState.RequestCtx)
-
-		rd.Index = r.readState.Index
-		rd.RequestCtx = c
+	if len(r.readStates) != 0 {
+		rd.ReadStates = r.readStates
 	}
+	rd.MustSync = MustSync(rd.HardState, prevHardSt, len(rd.Entries))
 	return rd
+}
+
+// MustSync returns true if the hard state and count of Raft entries indicate
+// that a synchronous write to persistent storage is required.
+func MustSync(st, prevst pb.HardState, entsnum int) bool {
+	// Persistent state on all servers:
+	// (Updated on stable storage before responding to RPCs)
+	// currentTerm
+	// votedFor
+	// log entries[]
+	return entsnum != 0 || st.Vote != prevst.Vote || st.Term != prevst.Term
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !linux !386,!amd64
+// +build !linux
 
 package netutil
 
@@ -25,4 +25,9 @@ import (
 // to the machine's default routable interface
 func GetDefaultHost() (string, error) {
 	return "", fmt.Errorf("default host not supported on %s_%s", runtime.GOOS, runtime.GOARCH)
+}
+
+// GetDefaultInterfaces fetches the device name of default routable interface.
+func GetDefaultInterfaces() (map[string]uint8, error) {
+	return nil, fmt.Errorf("default host not supported on %s_%s", runtime.GOOS, runtime.GOARCH)
 }

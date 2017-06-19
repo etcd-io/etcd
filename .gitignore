@@ -1,5 +1,6 @@
 /coverage
 /gopath
+/gopath.proto
 /go-bindata
 /machine*
 /bin
@@ -11,3 +12,4 @@
 *.test
 tools/functional-tester/docker/bin
 hack/tls-setup/certs
+.idea

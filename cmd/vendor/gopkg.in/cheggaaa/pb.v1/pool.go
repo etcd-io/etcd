@@ -1,9 +1,8 @@
-// +build linux darwin freebsd netbsd openbsd solaris dragonfly
+// +build linux darwin freebsd netbsd openbsd solaris dragonfly windows
 
 package pb
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -62,23 +61,6 @@ func (p *Pool) writer(finish chan int) {
 			return
 		}
 	}
-}
-
-func (p *Pool) print(first bool) bool {
-	var out string
-	if !first {
-		out = fmt.Sprintf("\033[%dA", len(p.bars))
-	}
-	isFinished := true
-	for _, bar := range p.bars {
-		if !bar.isFinish {
-			isFinished = false
-		}
-		bar.Update()
-		out += fmt.Sprintf("\r%s\n", bar.String())
-	}
-	fmt.Print(out)
-	return isFinished
 }
 
 // Restore terminal state and close pool

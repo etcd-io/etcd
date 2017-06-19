@@ -20,10 +20,20 @@ import (
 	"testing"
 )
 
-func TestPreallocateExtend(t *testing.T) { runPreallocTest(t, testPreallocateExtend) }
-func testPreallocateExtend(t *testing.T, f *os.File) {
+func TestPreallocateExtend(t *testing.T) {
+	pf := func(f *os.File, sz int64) error { return Preallocate(f, sz, true) }
+	tf := func(t *testing.T, f *os.File) { testPreallocateExtend(t, f, pf) }
+	runPreallocTest(t, tf)
+}
+
+func TestPreallocateExtendTrunc(t *testing.T) {
+	tf := func(t *testing.T, f *os.File) { testPreallocateExtend(t, f, preallocExtendTrunc) }
+	runPreallocTest(t, tf)
+}
+
+func testPreallocateExtend(t *testing.T, f *os.File, pf func(*os.File, int64) error) {
 	size := int64(64 * 1000)
-	if err := Preallocate(f, size, true); err != nil {
+	if err := pf(f, size); err != nil {
 		t.Fatal(err)
 	}
 

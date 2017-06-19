@@ -15,18 +15,24 @@
 package lease
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/monotime"
 )
 
-const minLeaseTTL = int64(5)
+const (
+	minLeaseTTL         = int64(5)
+	minLeaseTTLDuration = time.Duration(minLeaseTTL) * time.Second
+)
 
 // TestLessorGrant ensures Lessor can grant wanted lease.
 // The granted lease should have a unique ID with a term
@@ -43,20 +49,21 @@ func TestLessorGrant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not grant lease 1 (%v)", err)
 	}
-	gl := le.get(l.ID)
+	gl := le.Lookup(l.ID)
 
 	if !reflect.DeepEqual(gl, l) {
 		t.Errorf("lease = %v, want %v", gl, l)
 	}
-	if l.expiry.Sub(time.Now()) < time.Duration(minLeaseTTL)*time.Second-time.Second {
-		t.Errorf("term = %v, want at least %v", l.expiry.Sub(time.Now()), time.Duration(minLeaseTTL)*time.Second-time.Second)
+	if l.Remaining() < minLeaseTTLDuration-time.Second {
+		t.Errorf("term = %v, want at least %v", l.Remaining(), minLeaseTTLDuration-time.Second)
 	}
 
-	nl, err := le.Grant(1, 1)
+	_, err = le.Grant(1, 1)
 	if err == nil {
 		t.Errorf("allocated the same lease")
 	}
 
+	var nl *Lease
 	nl, err = le.Grant(2, 1)
 	if err != nil {
 		t.Errorf("could not grant lease 2 (%v)", err)
@@ -73,6 +80,51 @@ func TestLessorGrant(t *testing.T) {
 	be.BatchTx().Unlock()
 }
 
+// TestLeaseConcurrentKeys ensures Lease.Keys method calls are guarded
+// from concurrent map writes on 'itemSet'.
+func TestLeaseConcurrentKeys(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(be, minLeaseTTL)
+	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
+
+	// grant a lease with long term (100 seconds) to
+	// avoid early termination during the test.
+	l, err := le.Grant(1, 100)
+	if err != nil {
+		t.Fatalf("could not grant lease for 100s ttl (%v)", err)
+	}
+
+	itemn := 10
+	items := make([]LeaseItem, itemn)
+	for i := 0; i < itemn; i++ {
+		items[i] = LeaseItem{Key: fmt.Sprintf("foo%d", i)}
+	}
+	if err = le.Attach(l.ID, items); err != nil {
+		t.Fatalf("failed to attach items to the lease: %v", err)
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		le.Detach(l.ID, items)
+		close(donec)
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(itemn)
+	for i := 0; i < itemn; i++ {
+		go func() {
+			defer wg.Done()
+			l.Keys()
+		}()
+	}
+
+	<-donec
+	wg.Wait()
+}
+
 // TestLessorRevoke ensures Lessor can revoke a lease.
 // The items in the revoked lease should be removed from
 // the backend.
@@ -82,10 +134,12 @@ func TestLessorRevoke(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	fd := &fakeDeleter{}
-
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(fd)
+	var fd *fakeDeleter
+	le.SetRangeDeleter(func() TxnDelete {
+		fd = newFakeDeleter(be)
+		return fd
+	})
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -107,7 +161,7 @@ func TestLessorRevoke(t *testing.T) {
 		t.Fatal("failed to revoke lease:", err)
 	}
 
-	if le.get(l.ID) != nil {
+	if le.Lookup(l.ID) != nil {
 		t.Errorf("got revoked lease %x", l.ID)
 	}
 
@@ -140,18 +194,55 @@ func TestLessorRenew(t *testing.T) {
 	}
 
 	// manually change the ttl field
-	l.TTL = 10
+	le.mu.Lock()
+	l.ttl = 10
+	le.mu.Unlock()
 	ttl, err := le.Renew(l.ID)
 	if err != nil {
 		t.Fatalf("failed to renew lease (%v)", err)
 	}
-	if ttl != l.TTL {
-		t.Errorf("ttl = %d, want %d", ttl, l.TTL)
+	if ttl != l.ttl {
+		t.Errorf("ttl = %d, want %d", ttl, l.ttl)
 	}
 
-	l = le.get(l.ID)
-	if l.expiry.Sub(time.Now()) < 9*time.Second {
+	l = le.Lookup(l.ID)
+	if l.Remaining() < 9*time.Second {
 		t.Errorf("failed to renew the lease")
+	}
+}
+
+// TestLessorRenewRandomize ensures Lessor renews with randomized expiry.
+func TestLessorRenewRandomize(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+
+	le := newLessor(be, minLeaseTTL)
+	for i := LeaseID(1); i <= 10; i++ {
+		if _, err := le.Grant(i, 3600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// simulate stop and recovery
+	le.Stop()
+	be.Close()
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = filepath.Join(dir, "be")
+	be = backend.New(bcfg)
+	defer be.Close()
+	le = newLessor(be, minLeaseTTL)
+
+	now := monotime.Now()
+
+	// extend after recovery should randomize expiries
+	le.Promote(0)
+
+	for _, l := range le.leaseMap {
+		leftSeconds := uint64(float64(l.expiry-now) * float64(1e-9))
+		pc := (float64(leftSeconds-3600) / float64(3600)) * 100
+		if pc > 10.0 || pc < -10.0 || pc == 0 { // should be within 士10%
+			t.Fatalf("expected randomized expiry, got %d seconds (ttl: 3600)", leftSeconds)
+		}
 	}
 }
 
@@ -160,10 +251,8 @@ func TestLessorDetach(t *testing.T) {
 	defer os.RemoveAll(dir)
 	defer be.Close()
 
-	fd := &fakeDeleter{}
-
 	le := newLessor(be, minLeaseTTL)
-	le.SetRangeDeleter(fd)
+	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
 
 	// grant a lease with long term (100 seconds) to
 	// avoid early termination during the test.
@@ -210,32 +299,135 @@ func TestLessorRecover(t *testing.T) {
 
 	// Create a new lessor with the same backend
 	nle := newLessor(be, minLeaseTTL)
-	nl1 := nle.get(l1.ID)
-	if nl1 == nil || nl1.TTL != l1.TTL {
-		t.Errorf("nl1 = %v, want nl1.TTL= %d", nl1.TTL, l1.TTL)
+	nl1 := nle.Lookup(l1.ID)
+	if nl1 == nil || nl1.ttl != l1.ttl {
+		t.Errorf("nl1 = %v, want nl1.ttl= %d", nl1.ttl, l1.ttl)
 	}
 
-	nl2 := nle.get(l2.ID)
-	if nl2 == nil || nl2.TTL != l2.TTL {
-		t.Errorf("nl2 = %v, want nl2.TTL= %d", nl2.TTL, l2.TTL)
+	nl2 := nle.Lookup(l2.ID)
+	if nl2 == nil || nl2.ttl != l2.ttl {
+		t.Errorf("nl2 = %v, want nl2.ttl= %d", nl2.ttl, l2.ttl)
+	}
+}
+
+func TestLessorExpire(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	testMinTTL := int64(1)
+
+	le := newLessor(be, testMinTTL)
+	defer le.Stop()
+
+	le.Promote(1 * time.Second)
+	l, err := le.Grant(1, testMinTTL)
+	if err != nil {
+		t.Fatalf("failed to create lease: %v", err)
+	}
+
+	select {
+	case el := <-le.ExpiredLeasesC():
+		if el[0].ID != l.ID {
+			t.Fatalf("expired id = %x, want %x", el[0].ID, l.ID)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("failed to receive expired lease")
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		// expired lease cannot be renewed
+		if _, err := le.Renew(l.ID); err != ErrLeaseNotFound {
+			t.Fatalf("unexpected renew")
+		}
+		donec <- struct{}{}
+	}()
+
+	select {
+	case <-donec:
+		t.Fatalf("renew finished before lease revocation")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	// expired lease can be revoked
+	if err := le.Revoke(l.ID); err != nil {
+		t.Fatalf("failed to revoke expired lease: %v", err)
+	}
+
+	select {
+	case <-donec:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("renew has not returned after lease revocation")
+	}
+}
+
+func TestLessorExpireAndDemote(t *testing.T) {
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	testMinTTL := int64(1)
+
+	le := newLessor(be, testMinTTL)
+	defer le.Stop()
+
+	le.Promote(1 * time.Second)
+	l, err := le.Grant(1, testMinTTL)
+	if err != nil {
+		t.Fatalf("failed to create lease: %v", err)
+	}
+
+	select {
+	case el := <-le.ExpiredLeasesC():
+		if el[0].ID != l.ID {
+			t.Fatalf("expired id = %x, want %x", el[0].ID, l.ID)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatalf("failed to receive expired lease")
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		// expired lease cannot be renewed
+		if _, err := le.Renew(l.ID); err != ErrNotPrimary {
+			t.Fatalf("unexpected renew: %v", err)
+		}
+		donec <- struct{}{}
+	}()
+
+	select {
+	case <-donec:
+		t.Fatalf("renew finished before demotion")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	// demote will cause the renew request to fail with ErrNotPrimary
+	le.Demote()
+
+	select {
+	case <-donec:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("renew has not returned after lessor demotion")
 	}
 }
 
 type fakeDeleter struct {
 	deleted []string
+	tx      backend.BatchTx
 }
 
-func (fd *fakeDeleter) TxnBegin() int64 {
-	return 0
+func newFakeDeleter(be backend.Backend) *fakeDeleter {
+	fd := &fakeDeleter{nil, be.BatchTx()}
+	fd.tx.Lock()
+	return fd
 }
 
-func (fd *fakeDeleter) TxnEnd(txnID int64) error {
-	return nil
-}
+func (fd *fakeDeleter) End() { fd.tx.Unlock() }
 
-func (fd *fakeDeleter) TxnDeleteRange(tid int64, key, end []byte) (int64, int64, error) {
+func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 	fd.deleted = append(fd.deleted, string(key)+"_"+string(end))
-	return 0, 0, nil
+	return 0, 0
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
@@ -243,6 +435,7 @@ func NewTestBackend(t *testing.T) (string, backend.Backend) {
 	if err != nil {
 		t.Fatalf("failed to create tmpdir (%v)", err)
 	}
-
-	return tmpPath, backend.New(path.Join(tmpPath, "be"), time.Second, 10000)
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path = filepath.Join(tmpPath, "be")
+	return tmpPath, backend.New(bcfg)
 }

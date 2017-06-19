@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -91,6 +92,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 		// machine knows about it, it would pause a while and retry sending
 		// new snapshot message.
 		s.r.ReportSnapshot(m.To, raft.SnapshotFailure)
+		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
 		return
 	}
 	s.status.activate()
@@ -103,7 +105,9 @@ func (s *snapshotSender) send(merged snap.Message) {
 // post posts the given request.
 // It returns nil when request is sent out and processed successfully.
 func (s *snapshotSender) post(req *http.Request) (err error) {
-	cancel := httputil.RequestCanceler(req)
+	ctx, cancel := context.WithCancel(context.Background())
+	req = req.WithContext(ctx)
+	defer cancel()
 
 	type responseAndError struct {
 		resp *http.Response
@@ -129,7 +133,6 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 
 	select {
 	case <-s.stopc:
-		cancel()
 		return errStopped
 	case r := <-result:
 		if r.err != nil {

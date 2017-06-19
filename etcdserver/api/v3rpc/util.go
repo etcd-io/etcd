@@ -18,51 +18,57 @@ import (
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )
 
-func togRPCError(err error) error {
-	switch err {
-	case mvcc.ErrCompacted:
-		return rpctypes.ErrGRPCCompacted
-	case mvcc.ErrFutureRev:
-		return rpctypes.ErrGRPCFutureRev
-	case lease.ErrLeaseNotFound:
-		return rpctypes.ErrGRPCLeaseNotFound
-	// TODO: handle error from raft and timeout
-	case etcdserver.ErrRequestTooLarge:
-		return rpctypes.ErrGRPCRequestTooLarge
-	case etcdserver.ErrNoSpace:
-		return rpctypes.ErrGRPCNoSpace
-	case etcdserver.ErrTooManyRequests:
-		return rpctypes.ErrTooManyRequests
+var toGRPCErrorMap = map[error]error{
+	membership.ErrIDRemoved:               rpctypes.ErrGRPCMemberNotFound,
+	membership.ErrIDNotFound:              rpctypes.ErrGRPCMemberNotFound,
+	membership.ErrIDExists:                rpctypes.ErrGRPCMemberExist,
+	membership.ErrPeerURLexists:           rpctypes.ErrGRPCPeerURLExist,
+	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
 
-	case auth.ErrRootUserNotExist:
-		return rpctypes.ErrGRPCRootUserNotExist
-	case auth.ErrRootRoleNotExist:
-		return rpctypes.ErrGRPCRootRoleNotExist
-	case auth.ErrUserAlreadyExist:
-		return rpctypes.ErrGRPCUserAlreadyExist
-	case auth.ErrUserNotFound:
-		return rpctypes.ErrGRPCUserNotFound
-	case auth.ErrRoleAlreadyExist:
-		return rpctypes.ErrGRPCRoleAlreadyExist
-	case auth.ErrRoleNotFound:
-		return rpctypes.ErrGRPCRoleNotFound
-	case auth.ErrAuthFailed:
-		return rpctypes.ErrGRPCAuthFailed
-	case auth.ErrPermissionDenied:
-		return rpctypes.ErrGRPCPermissionDenied
-	case auth.ErrRoleNotGranted:
-		return rpctypes.ErrGRPCRoleNotGranted
-	case auth.ErrPermissionNotGranted:
-		return rpctypes.ErrGRPCPermissionNotGranted
-	case auth.ErrAuthNotEnabled:
-		return rpctypes.ErrGRPCAuthNotEnabled
-	default:
-		return grpc.Errorf(codes.Internal, err.Error())
+	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,
+	mvcc.ErrFutureRev:             rpctypes.ErrGRPCFutureRev,
+	etcdserver.ErrRequestTooLarge: rpctypes.ErrGRPCRequestTooLarge,
+	etcdserver.ErrNoSpace:         rpctypes.ErrGRPCNoSpace,
+	etcdserver.ErrTooManyRequests: rpctypes.ErrTooManyRequests,
+
+	etcdserver.ErrNoLeader:                   rpctypes.ErrGRPCNoLeader,
+	etcdserver.ErrStopped:                    rpctypes.ErrGRPCStopped,
+	etcdserver.ErrTimeout:                    rpctypes.ErrGRPCTimeout,
+	etcdserver.ErrTimeoutDueToLeaderFail:     rpctypes.ErrGRPCTimeoutDueToLeaderFail,
+	etcdserver.ErrTimeoutDueToConnectionLost: rpctypes.ErrGRPCTimeoutDueToConnectionLost,
+	etcdserver.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
+	etcdserver.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
+
+	lease.ErrLeaseNotFound: rpctypes.ErrGRPCLeaseNotFound,
+	lease.ErrLeaseExists:   rpctypes.ErrGRPCLeaseExist,
+
+	auth.ErrRootUserNotExist:     rpctypes.ErrGRPCRootUserNotExist,
+	auth.ErrRootRoleNotExist:     rpctypes.ErrGRPCRootRoleNotExist,
+	auth.ErrUserAlreadyExist:     rpctypes.ErrGRPCUserAlreadyExist,
+	auth.ErrUserEmpty:            rpctypes.ErrGRPCUserEmpty,
+	auth.ErrUserNotFound:         rpctypes.ErrGRPCUserNotFound,
+	auth.ErrRoleAlreadyExist:     rpctypes.ErrGRPCRoleAlreadyExist,
+	auth.ErrRoleNotFound:         rpctypes.ErrGRPCRoleNotFound,
+	auth.ErrAuthFailed:           rpctypes.ErrGRPCAuthFailed,
+	auth.ErrPermissionDenied:     rpctypes.ErrGRPCPermissionDenied,
+	auth.ErrRoleNotGranted:       rpctypes.ErrGRPCRoleNotGranted,
+	auth.ErrPermissionNotGranted: rpctypes.ErrGRPCPermissionNotGranted,
+	auth.ErrAuthNotEnabled:       rpctypes.ErrGRPCAuthNotEnabled,
+	auth.ErrInvalidAuthToken:     rpctypes.ErrGRPCInvalidAuthToken,
+	auth.ErrInvalidAuthMgmt:      rpctypes.ErrGRPCInvalidAuthMgmt,
+}
+
+func togRPCError(err error) error {
+	grpcErr, ok := toGRPCErrorMap[err]
+	if !ok {
+		return grpc.Errorf(codes.Unknown, err.Error())
 	}
+	return grpcErr
 }

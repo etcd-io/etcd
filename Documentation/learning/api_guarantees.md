@@ -1,6 +1,6 @@
 # KV API guarantees
 
-etcd is a consistent and durable key value store with mini-transaction(TODO: link to txn doc when we have it) support. The key value store is exposed through the KV APIs. etcd tries to ensure the strongest consistency and durability guarantees for a distributed system. This specification enumerates the KV API guarantees made by etcd.
+etcd is a consistent and durable key value store with [mini-transaction][txn] support. The key value store is exposed through the KV APIs. etcd tries to ensure the strongest consistency and durability guarantees for a distributed system. This specification enumerates the KV API guarantees made by etcd.
 
 ### APIs to consider
 
@@ -21,7 +21,7 @@ An etcd operation is considered complete when it is committed through consensus,
 
 #### Revision
 
-An etcd operation that modifies the key value store is assigned with a single increasing revision. A transaction operation might modifies the key value store multiple times, but only one revision is assigned. The revision attribute of a key value pair that modified by the operation has the same value as the revision of the operation. The revision can be used as a logical clock for key value store. A key value pair that has a larger revision is modified after a key value pair with a smaller revision. Two key value pairs that have the same revision are modified by an operation "concurrently".
+An etcd operation that modifies the key value store is assigned a single increasing revision. A transaction operation might modify the key value store multiple times, but only one revision is assigned. The revision attribute of a key value pair that was modified by the operation has the same value as the revision of the operation. The revision can be used as a logical clock for key value store. A key value pair that has a larger revision is modified after a key value pair with a smaller revision. Two key value pairs that have the same revision are modified by an operation "concurrently".
 
 ### Guarantees provided
 
@@ -61,3 +61,4 @@ etcd ensures linearizability for all other operations by default. Linearizabilit
 [strict_consistency]: https://en.wikipedia.org/wiki/Consistency_model#Strict_consistency
 [serializable_isolation]: https://en.wikipedia.org/wiki/Isolation_(database_systems)#Serializable
 [Linearizability]: #Linearizability
+[txn]: api.md#transactions

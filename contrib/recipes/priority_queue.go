@@ -37,7 +37,7 @@ func NewPriorityQueue(client *v3.Client, key string) *PriorityQueue {
 // Enqueue puts a value into a queue with a given priority.
 func (q *PriorityQueue) Enqueue(val string, pr uint16) error {
 	prefix := fmt.Sprintf("%s%05d", q.key, pr)
-	_, err := NewSequentialKV(q.client, prefix, val)
+	_, err := newSequentialKV(q.client, prefix, val)
 	return err
 }
 

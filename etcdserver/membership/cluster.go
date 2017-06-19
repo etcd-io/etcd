@@ -24,6 +24,9 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/netutil"
@@ -175,7 +178,7 @@ func (c *RaftCluster) String() string {
 	fmt.Fprintf(b, "Members:[%s] ", strings.Join(ms, " "))
 	var ids []string
 	for id := range c.removed {
-		ids = append(ids, fmt.Sprintf("%s", id))
+		ids = append(ids, id.String())
 	}
 	fmt.Fprintf(b, "RemovedMemberIDs:[%s]}", strings.Join(ids, " "))
 	return b.String()
@@ -484,8 +487,10 @@ func ValidateClusterAndAssignIDs(local *RaftCluster, existing *RaftCluster) erro
 	sort.Sort(MembersByPeerURLs(ems))
 	sort.Sort(MembersByPeerURLs(lms))
 
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
 	for i := range ems {
-		if !netutil.URLStringsEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
+		if !netutil.URLStringsEqual(ctx, ems[i].PeerURLs, lms[i].PeerURLs) {
 			return fmt.Errorf("unmatched member while checking PeerURLs")
 		}
 		lms[i].ID = ems[i].ID

@@ -28,7 +28,7 @@ bar
 
 ## Local multi-member cluster
 
-A Procfile is provided to easily set up a local multi-member cluster. Start a multi-member cluster with a few commands:
+A `Procfile` at the base of this git repo is provided to easily set up a local multi-member cluster. To start a multi-member cluster go to the root of an etcd source tree and run:
 
 ```
 # install goreman program to control Profile-based applications.
@@ -37,7 +37,7 @@ $ goreman -f Procfile start
 ...
 ```
 
-The started members listen on `localhost:12379`, `localhost:22379`, and `localhost:32379` for client requests respectively.
+The started members listen on `localhost:2379`, `localhost:22379`, and `localhost:32379` for client requests respectively.
 
 To interact with the started cluster by using etcdctl:
 
@@ -45,16 +45,16 @@ To interact with the started cluster by using etcdctl:
 # use API version 3
 $ export ETCDCTL_API=3
 
-$ etcdctl --write-out=table --endpoints=localhost:12379 member list
+$ etcdctl --write-out=table --endpoints=localhost:2379 member list
 +------------------+---------+--------+------------------------+------------------------+
 |        ID        | STATUS  |  NAME  |       PEER ADDRS       |      CLIENT ADDRS      |
 +------------------+---------+--------+------------------------+------------------------+
-| 8211f1d0f64f3269 | started | infra1 | http://127.0.0.1:12380 | http://127.0.0.1:12379 |
+| 8211f1d0f64f3269 | started | infra1 | http://127.0.0.1:2380  | http://127.0.0.1:2379  |
 | 91bc3c398fb3c146 | started | infra2 | http://127.0.0.1:22380 | http://127.0.0.1:22379 |
 | fd422379fda50e48 | started | infra3 | http://127.0.0.1:32380 | http://127.0.0.1:32379 |
 +------------------+---------+--------+------------------------+------------------------+
 
-$ etcdctl --endpoints=localhost:12379 put foo bar
+$ etcdctl put foo bar
 OK
 ```
 
@@ -64,10 +64,10 @@ To exercise etcd's fault tolerance, kill a member:
 # kill etcd2
 $ goreman run stop etcd2
 
-$ etcdctl --endpoints=localhost:12379 put key hello
+$ etcdctl put key hello
 OK
 
-$ etcdctl --endpoints=localhost:12379 get key
+$ etcdctl get key
 hello
 
 # try to get key from the killed member

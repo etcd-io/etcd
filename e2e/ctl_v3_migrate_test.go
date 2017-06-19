@@ -89,8 +89,8 @@ func TestCtlV3Migrate(t *testing.T) {
 	if len(resp.Kvs) != 1 {
 		t.Fatalf("len(resp.Kvs) expected 1, got %+v", resp.Kvs)
 	}
-	if resp.Kvs[0].CreateRevision != 4 {
-		t.Fatalf("resp.Kvs[0].CreateRevision expected 4, got %d", resp.Kvs[0].CreateRevision)
+	if resp.Kvs[0].CreateRevision != 7 {
+		t.Fatalf("resp.Kvs[0].CreateRevision expected 7, got %d", resp.Kvs[0].CreateRevision)
 	}
 }
 

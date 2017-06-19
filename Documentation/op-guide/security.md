@@ -16,7 +16,7 @@ etcd takes several certificate related configuration options, either through com
 
 `--key-file=<path>`: Key for the certificate. Must be unencrypted.
 
-`--client-cert-auth`: When this is set etcd will check all incoming HTTPS requests for a client certificate signed by the trusted CA, requests that don't supply a valid client certificate will fail.
+`--client-cert-auth`: When this is set etcd will check all incoming HTTPS requests for a client certificate signed by the trusted CA, requests that don't supply a valid client certificate will fail. If [authentication][auth] is enabled, the certificate provides credentials for the user name given by the Common Name field.
 
 `--trusted-ca-file=<path>`: Trusted certificate authority.
 
@@ -219,6 +219,7 @@ Make sure to sign the certificates with a Subject Name the member's public IP ad
 The certificate needs to be signed for the member's FQDN in its Subject Name, use Subject Alternative Names (short IP SANs) to add the IP address. The `etcd-ca` tool provides `--domain=` option for its `new-cert` command, and openssl can make [it][alt-name] too.
 
 [cfssl]: https://github.com/cloudflare/cfssl
-[tls-setup]: /hack/tls-setup
+[tls-setup]: ../../hack/tls-setup
 [tls-guide]: https://github.com/coreos/docs/blob/master/os/generate-self-signed-certificates.md
 [alt-name]: http://wiki.cacert.org/FAQ/subjectAltName
+[auth]: authentication.md

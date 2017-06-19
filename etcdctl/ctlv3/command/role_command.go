@@ -22,6 +22,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+var (
+	rolePermPrefix  bool
+	rolePermFromKey bool
+)
+
 // NewRoleCommand returns the cobra command for "role".
 func NewRoleCommand() *cobra.Command {
 	ac := &cobra.Command{
@@ -72,19 +77,29 @@ func newRoleListCommand() *cobra.Command {
 }
 
 func newRoleGrantPermissionCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "grant-permission <role name> <permission type> <key> [endkey]",
+	cmd := &cobra.Command{
+		Use:   "grant-permission [options] <role name> <permission type> <key> [endkey]",
 		Short: "Grants a key to a role",
 		Run:   roleGrantPermissionCommandFunc,
 	}
+
+	cmd.Flags().BoolVar(&rolePermPrefix, "prefix", false, "grant a prefix permission")
+	cmd.Flags().BoolVar(&rolePermFromKey, "from-key", false, "grant a permission of keys that are greater than or equal to the given key using byte compare")
+
+	return cmd
 }
 
 func newRoleRevokePermissionCommand() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "revoke-permission <role name> <key> [endkey]",
 		Short: "Revokes a key from a role",
 		Run:   roleRevokePermissionCommandFunc,
 	}
+
+	cmd.Flags().BoolVar(&rolePermPrefix, "prefix", false, "revoke a prefix permission")
+	cmd.Flags().BoolVar(&rolePermFromKey, "from-key", false, "revoke a permission of keys that are greater than or equal to the given key using byte compare")
+
+	return cmd
 }
 
 // roleAddCommandFunc executes the "role add" command.
@@ -93,12 +108,12 @@ func roleAddCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("role add command requires role name as its argument."))
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.RoleAdd(context.TODO(), args[0])
+	resp, err := mustClientFromCmd(cmd).Auth.RoleAdd(context.TODO(), args[0])
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Role %s created\n", args[0])
+	display.RoleAdd(args[0], *resp)
 }
 
 // roleDeleteCommandFunc executes the "role delete" command.
@@ -107,36 +122,12 @@ func roleDeleteCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("role delete command requires role name as its argument."))
 	}
 
-	_, err := mustClientFromCmd(cmd).Auth.RoleDelete(context.TODO(), args[0])
+	resp, err := mustClientFromCmd(cmd).Auth.RoleDelete(context.TODO(), args[0])
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Role %s deleted\n", args[0])
-}
-
-func printRolePermissions(name string, resp *clientv3.AuthRoleGetResponse) {
-	fmt.Printf("Role %s\n", name)
-	fmt.Println("KV Read:")
-	for _, perm := range resp.Perm {
-		if perm.PermType == clientv3.PermRead || perm.PermType == clientv3.PermReadWrite {
-			if len(perm.RangeEnd) == 0 {
-				fmt.Printf("\t%s\n", string(perm.Key))
-			} else {
-				fmt.Printf("\t[%s, %s)\n", string(perm.Key), string(perm.RangeEnd))
-			}
-		}
-	}
-	fmt.Println("KV Write:")
-	for _, perm := range resp.Perm {
-		if perm.PermType == clientv3.PermWrite || perm.PermType == clientv3.PermReadWrite {
-			if len(perm.RangeEnd) == 0 {
-				fmt.Printf("\t%s\n", string(perm.Key))
-			} else {
-				fmt.Printf("\t[%s, %s)\n", string(perm.Key), string(perm.RangeEnd))
-			}
-		}
-	}
+	display.RoleDelete(args[0], *resp)
 }
 
 // roleGetCommandFunc executes the "role get" command.
@@ -151,7 +142,7 @@ func roleGetCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	printRolePermissions(name, resp)
+	display.RoleGet(name, *resp)
 }
 
 // roleListCommandFunc executes the "role list" command.
@@ -165,9 +156,7 @@ func roleListCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitError, err)
 	}
 
-	for _, role := range resp.Roles {
-		fmt.Printf("%s\n", role)
-	}
+	display.RoleList(*resp)
 }
 
 // roleGrantPermissionCommandFunc executes the "role grant-permission" command.
@@ -181,17 +170,16 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, err)
 	}
 
-	rangeEnd := ""
-	if 4 <= len(args) {
-		rangeEnd = args[3]
+	rangeEnd, rerr := rangeEndFromPermFlags(args[2:])
+	if rerr != nil {
+		ExitWithError(ExitBadArgs, rerr)
 	}
-
-	_, err = mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], args[2], rangeEnd, perm)
+	resp, err := mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], args[2], rangeEnd, perm)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 
-	fmt.Printf("Role %s updated\n", args[0])
+	display.RoleGrantPermission(args[0], *resp)
 }
 
 // roleRevokePermissionCommandFunc executes the "role revoke-permission" command.
@@ -200,19 +188,36 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key [endkey] as its argument."))
 	}
 
-	rangeEnd := ""
-	if 3 <= len(args) {
-		rangeEnd = args[2]
+	rangeEnd, rerr := rangeEndFromPermFlags(args[1:])
+	if rerr != nil {
+		ExitWithError(ExitBadArgs, rerr)
 	}
-
-	_, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], args[1], rangeEnd)
+	resp, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], args[1], rangeEnd)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
+	display.RoleRevokePermission(args[0], args[1], rangeEnd, *resp)
+}
 
-	if len(rangeEnd) == 0 {
-		fmt.Printf("Permission of key %s is revoked from role %s\n", args[1], args[0])
-	} else {
-		fmt.Printf("Permission of range [%s, %s) is revoked from role %s\n", args[1], rangeEnd, args[0])
+func rangeEndFromPermFlags(args []string) (string, error) {
+	if len(args) == 1 {
+		if rolePermPrefix {
+			if rolePermFromKey {
+				return "", fmt.Errorf("--from-key and --prefix flags are mutually exclusive")
+			}
+			return clientv3.GetPrefixRangeEnd(args[0]), nil
+		}
+		if rolePermFromKey {
+			return "\x00", nil
+		}
+		// single key case
+		return "", nil
 	}
+	if rolePermPrefix {
+		return "", fmt.Errorf("unexpected endkey argument with --prefix flag")
+	}
+	if rolePermFromKey {
+		return "", fmt.Errorf("unexpected endkey argument with --from-key flag")
+	}
+	return args[1], nil
 }

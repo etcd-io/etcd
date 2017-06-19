@@ -32,7 +32,7 @@ The consistent flag for read operations is removed in etcd 2.0.0. The normal rea
 
 The read consistency guarantees are:
 
-The consistent read guarantees the sequential consistency within one client that talks to one etcd server. Read/Write from one client to one etcd member should be observed in order. If one client write a value to an etcd server successfully, it should be able to get the value out of the server immediately. 
+The consistent read guarantees the sequential consistency within one client that talks to one etcd server. Read/Write from one client to one etcd member should be observed in order. If one client write a value to an etcd server successfully, it should be able to get the value out of the server immediately.
 
 Each etcd member will proxy the request to leader and only return the result to user after the result is applied on the local member. Thus after the write succeed, the user is guaranteed to see the value on the member it sent the request to.
 
@@ -56,6 +56,7 @@ Proxy mode in 2.0 will provide similar functionality, and with improved control 
 ## Discovery Service
 
 A size key needs to be provided inside a [discovery token][discoverytoken].
+
 [discoverytoken]: clustering.md#custom-etcd-discovery-service
 
 ## HTTP Admin API

@@ -76,7 +76,7 @@ func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
 		t.Fatal(err)
 	}
 
-	kvp := NewKvProxy(client)
+	kvp, _ := NewKvProxy(client)
 
 	kvts := &kvproxyTestServer{
 		kp: kvp,

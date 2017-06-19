@@ -44,7 +44,7 @@ func NewDoubleBarrier(s *concurrency.Session, key string, count int) *DoubleBarr
 // Enter waits for "count" processes to enter the barrier then returns
 func (b *DoubleBarrier) Enter() error {
 	client := b.s.Client()
-	ek, err := NewUniqueEphemeralKey(b.s, b.key+"/waiters")
+	ek, err := newUniqueEphemeralKey(b.s, b.key+"/waiters")
 	if err != nil {
 		return err
 	}

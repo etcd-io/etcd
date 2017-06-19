@@ -109,6 +109,14 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 		},
 		{
 			// Advertised peer URLs must match those in cluster-state
+			"node1=http://localhost:12345",
+			[]string{"http://localhost:2380", "http://localhost:12345"},
+			true,
+
+			true,
+		},
+		{
+			// Advertised peer URLs must match those in cluster-state
 			"node1=http://localhost:2380",
 			[]string{},
 			true,
@@ -137,7 +145,9 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 		if tt.apurls != nil {
 			cfg.PeerURLs = mustNewURLs(t, tt.apurls)
 		}
-		err = cfg.verifyLocalMember(tt.strict)
+		if err = cfg.hasLocalMember(); err == nil && tt.strict {
+			err = cfg.advertiseMatchesCluster()
+		}
 		if (err == nil) && tt.shouldError {
 			t.Errorf("#%d: Got no error where one was expected", i)
 		}

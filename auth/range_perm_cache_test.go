@@ -15,115 +15,45 @@
 package auth
 
 import (
-	"bytes"
 	"testing"
+
+	"github.com/coreos/etcd/auth/authpb"
+	"github.com/coreos/etcd/pkg/adt"
 )
 
-func isPermsEqual(a, b []*rangePerm) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i := range a {
-		if len(b) <= i {
-			return false
-		}
-
-		if !bytes.Equal(a[i].begin, b[i].begin) || !bytes.Equal(a[i].end, b[i].end) {
-			return false
-		}
-	}
-
-	return true
-}
-
-func TestGetMergedPerms(t *testing.T) {
+func TestRangePermission(t *testing.T) {
 	tests := []struct {
-		params []*rangePerm
-		want   []*rangePerm
+		perms []adt.Interval
+		begin []byte
+		end   []byte
+		want  bool
 	}{
 		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}},
-			[]*rangePerm{{[]byte("a"), []byte("b")}},
+			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("c")), adt.NewBytesAffineInterval([]byte("x"), []byte("z"))},
+			[]byte("a"), []byte("z"),
+			false,
 		},
 		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("c")}},
-			[]*rangePerm{{[]byte("a"), []byte("c")}},
+			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("f")), adt.NewBytesAffineInterval([]byte("c"), []byte("d")), adt.NewBytesAffineInterval([]byte("f"), []byte("z"))},
+			[]byte("a"), []byte("z"),
+			true,
 		},
 		{
-			[]*rangePerm{{[]byte("a"), []byte("c")}, {[]byte("b"), []byte("d")}},
-			[]*rangePerm{{[]byte("a"), []byte("d")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("c")}, {[]byte("d"), []byte("e")}},
-			[]*rangePerm{{[]byte("a"), []byte("c")}, {[]byte("d"), []byte("e")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("e"), []byte("f")}},
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("e"), []byte("f")}},
-		},
-		{
-			[]*rangePerm{{[]byte("e"), []byte("f")}, {[]byte("c"), []byte("d")}, {[]byte("a"), []byte("b")}},
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("e"), []byte("f")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("a"), []byte("z")}},
-			[]*rangePerm{{[]byte("a"), []byte("z")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("a"), []byte("z")}, {[]byte("1"), []byte("9")}},
-			[]*rangePerm{{[]byte("1"), []byte("9")}, {[]byte("a"), []byte("z")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("c"), []byte("d")}, {[]byte("a"), []byte("z")}, {[]byte("1"), []byte("a")}},
-			[]*rangePerm{{[]byte("1"), []byte("z")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("a"), []byte("z")}, {[]byte("5"), []byte("6")}, {[]byte("1"), []byte("9")}},
-			[]*rangePerm{{[]byte("1"), []byte("9")}, {[]byte("a"), []byte("z")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("b")}, {[]byte("b"), []byte("c")}, {[]byte("c"), []byte("d")}, {[]byte("d"), []byte("f")}, {[]byte("1"), []byte("9")}},
-			[]*rangePerm{{[]byte("1"), []byte("9")}, {[]byte("a"), []byte("f")}},
-		},
-		// overlapping
-		{
-			[]*rangePerm{{[]byte("a"), []byte("f")}, {[]byte("b"), []byte("g")}},
-			[]*rangePerm{{[]byte("a"), []byte("g")}},
-		},
-		// keys
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("a"), []byte("c")}},
-			[]*rangePerm{{[]byte("a"), []byte("c")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("a"), []byte("c")}, {[]byte("b"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("c")}},
-		},
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("b"), []byte("")}, {[]byte("c"), []byte("")}, {[]byte("d"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("b"), []byte("c")}, {[]byte("d"), []byte("")}},
-		},
-		// duplicate ranges
-		{
-			[]*rangePerm{{[]byte("a"), []byte("f")}, {[]byte("a"), []byte("f")}},
-			[]*rangePerm{{[]byte("a"), []byte("f")}},
-		},
-		// duplicate keys
-		{
-			[]*rangePerm{{[]byte("a"), []byte("")}, {[]byte("a"), []byte("")}, {[]byte("a"), []byte("")}},
-			[]*rangePerm{{[]byte("a"), []byte("")}},
+			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("d")), adt.NewBytesAffineInterval([]byte("a"), []byte("b")), adt.NewBytesAffineInterval([]byte("c"), []byte("f"))},
+			[]byte("a"), []byte("f"),
+			true,
 		},
 	}
 
 	for i, tt := range tests {
-		result := mergeRangePerms(tt.params)
-		if !isPermsEqual(result, tt.want) {
-			t.Errorf("#%d: result=%q, want=%q", i, result, tt.want)
+		readPerms := &adt.IntervalTree{}
+		for _, p := range tt.perms {
+			readPerms.Insert(p, struct{}{})
+		}
+
+		result := checkKeyInterval(&unifiedRangePermissions{readPerms: readPerms}, tt.begin, tt.end, authpb.READ)
+		if result != tt.want {
+			t.Errorf("#%d: result=%t, want=%t", i, result, tt.want)
 		}
 	}
 }

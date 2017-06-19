@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -68,7 +69,9 @@ func TestBackendSnapshot(t *testing.T) {
 	f.Close()
 
 	// bootstrap new backend from the snapshot
-	nb := New(f.Name(), time.Hour, 10000)
+	bcfg := DefaultBackendConfig()
+	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = f.Name(), time.Hour, 10000
+	nb := New(bcfg)
 	defer cleanup(nb, f.Name())
 
 	newTx := b.BatchTx()
@@ -171,6 +174,80 @@ func TestBackendDefrag(t *testing.T) {
 	tx.UnsafePut([]byte("test"), []byte("more"), []byte("bar"))
 	tx.Unlock()
 	b.ForceCommit()
+}
+
+// TestBackendWriteback ensures writes are stored to the read txn on write txn unlock.
+func TestBackendWriteback(t *testing.T) {
+	b, tmpPath := NewDefaultTmpBackend()
+	defer cleanup(b, tmpPath)
+
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket([]byte("key"))
+	tx.UnsafePut([]byte("key"), []byte("abc"), []byte("bar"))
+	tx.UnsafePut([]byte("key"), []byte("def"), []byte("baz"))
+	tx.UnsafePut([]byte("key"), []byte("overwrite"), []byte("1"))
+	tx.Unlock()
+
+	// overwrites should be propagated too
+	tx.Lock()
+	tx.UnsafePut([]byte("key"), []byte("overwrite"), []byte("2"))
+	tx.Unlock()
+
+	keys := []struct {
+		key   []byte
+		end   []byte
+		limit int64
+
+		wkey [][]byte
+		wval [][]byte
+	}{
+		{
+			key: []byte("abc"),
+			end: nil,
+
+			wkey: [][]byte{[]byte("abc")},
+			wval: [][]byte{[]byte("bar")},
+		},
+		{
+			key: []byte("abc"),
+			end: []byte("def"),
+
+			wkey: [][]byte{[]byte("abc")},
+			wval: [][]byte{[]byte("bar")},
+		},
+		{
+			key: []byte("abc"),
+			end: []byte("deg"),
+
+			wkey: [][]byte{[]byte("abc"), []byte("def")},
+			wval: [][]byte{[]byte("bar"), []byte("baz")},
+		},
+		{
+			key:   []byte("abc"),
+			end:   []byte("\xff"),
+			limit: 1,
+
+			wkey: [][]byte{[]byte("abc")},
+			wval: [][]byte{[]byte("bar")},
+		},
+		{
+			key: []byte("abc"),
+			end: []byte("\xff"),
+
+			wkey: [][]byte{[]byte("abc"), []byte("def"), []byte("overwrite")},
+			wval: [][]byte{[]byte("bar"), []byte("baz"), []byte("2")},
+		},
+	}
+	rtx := b.ReadTx()
+	for i, tt := range keys {
+		rtx.Lock()
+		k, v := rtx.UnsafeRange([]byte("key"), tt.key, tt.end, tt.limit)
+		rtx.Unlock()
+		if !reflect.DeepEqual(tt.wkey, k) || !reflect.DeepEqual(tt.wval, v) {
+			t.Errorf("#%d: want k=%+v, v=%+v; got k=%+v, v=%+v", i, tt.wkey, tt.wval, k, v)
+		}
+	}
 }
 
 func cleanup(b Backend, path string) {

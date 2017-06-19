@@ -11,6 +11,13 @@ ACBUILD=${ACBUILD:-acbuild}
 
 VERSION=$1
 
+go2aci() {
+	case "${1}" in
+		"arm64") echo "aarch64";;
+		*) echo "${1}";;
+	esac
+}
+
 if ! command -v $ACBUILD >/dev/null; then
     echo "acbuild ($ACBUILD) is not executable"
     exit 1
@@ -29,6 +36,7 @@ fi
 acbuild --debug begin
 
 TMPHOSTS="$(mktemp)"
+ACI_ARCH="$(go2aci ${GOARCH})"
 
 acbuildEnd() {
     rm "$TMPHOSTS"
@@ -42,24 +50,35 @@ cat <<DF > $TMPHOSTS
 DF
 
 acbuild --debug set-name coreos.com/etcd
+acbuild --debug annotation add appc.io/executor/supports-systemd-notify true
 
-acbuild --debug copy --to-dir $BINARYDIR/etcd $BINARYDIR/etcdctl /
-acbuild --debug copy README.md /README.md
-acbuild --debug copy etcdctl/README.md /README-etcdctl.md
-acbuild --debug copy etcdctl/READMEv2.md /READMEv2-etcdctl.md
-acbuild --debug copy --to-dir Documentation /
+acbuild --debug copy $BINARYDIR/etcd /usr/local/bin/etcd
+acbuild --debug copy $BINARYDIR/etcdctl /usr/local/bin/etcdctl
 
-acbuild --debug environment add ETCD_DATA_DIR /data-dir
+acbuild --debug copy README.md README.md
+acbuild --debug copy etcdctl/README.md README-etcdctl.md
+acbuild --debug copy etcdctl/READMEv2.md READMEv2-etcdctl.md
+acbuild --debug copy-to-dir Documentation .
+
+acbuild --debug environment add ETCD_DATA_DIR /var/lib/etcd
+acbuild --debug mount add data-dir /var/lib/etcd
 
 acbuild --debug label add version "$VERSION"
 
-acbuild --debug set-exec -- /etcd
-
-acbuild --debug mount add data-dir /data-dir
+acbuild --debug set-exec -- /usr/local/bin/etcd
 
 acbuild --debug port add client tcp 2379
 acbuild --debug port add peer tcp 2380
 
 acbuild --debug copy "$TMPHOSTS" /etc/hosts
 
-acbuild --debug write --overwrite $BUILDDIR/etcd-${1}-linux-amd64.aci
+acbuild --debug label add arch "${ACI_ARCH}"
+
+# mkdir default data-dir
+mkdir -p .acbuild/currentaci/rootfs/var/lib/etcd
+
+# symlinks for backward-compatibility
+ln -s ./usr/local/bin/etcd .acbuild/currentaci/rootfs/etcd
+ln -s ./usr/local/bin/etcdctl .acbuild/currentaci/rootfs/etcdctl
+
+acbuild --debug write --overwrite $BUILDDIR/etcd-${1}-linux-${ACI_ARCH}.aci

@@ -4,17 +4,22 @@ go_import_path: github.com/coreos/etcd
 sudo: false
 
 go:
-  - 1.6
+  - 1.8.3
   - tip
 
+notifications:
+  on_success: never
+  on_failure: never
+
 env:
-  global:
-   - GO15VENDOREXPERIMENT=1
   matrix:
    - TARGET=amd64
+   - TARGET=darwin-amd64
+   - TARGET=windows-amd64
    - TARGET=arm64
    - TARGET=arm
    - TARGET=386
+   - TARGET=ppc64le
 
 matrix:
   fast_finish: true
@@ -22,23 +27,35 @@ matrix:
     - go: tip
   exclude:
   - go: tip
+    env: TARGET=darwin-amd64
+  - go: tip
+    env: TARGET=windows-amd64
+  - go: tip
     env: TARGET=arm
   - go: tip
     env: TARGET=arm64
   - go: tip
     env: TARGET=386
+  - go: tip
+    env: TARGET=ppc64le
 
 addons:
   apt:
+    sources:
+    - debian-sid
     packages:
     - libpcap-dev
     - libaspell-dev
     - libhunspell-dev
+    - shellcheck
 
 before_install:
- - go get -v github.com/chzchzchz/goword
- - go get -v honnef.co/go/simple/cmd/gosimple
- - go get -v honnef.co/go/unused/cmd/unused
+ - go get -v -u github.com/chzchzchz/goword
+ - go get -v -u github.com/coreos/license-bill-of-materials
+ - go get -v -u honnef.co/go/tools/cmd/gosimple
+ - go get -v -u honnef.co/go/tools/cmd/unused
+ - go get -v -u honnef.co/go/tools/cmd/staticcheck
+ - ./scripts/install-marker.sh amd64
 
 # disable godep restore override
 install:
@@ -50,11 +67,17 @@ script:
       amd64)
         GOARCH=amd64 ./test
         ;;
+      darwin-amd64)
+        GO_BUILD_FLAGS="-a -v"  GOPATH="" GOOS=darwin GOARCH=amd64 ./build
+        ;;
+      windows-amd64)
+        GO_BUILD_FLAGS="-a -v"  GOPATH="" GOOS=windows GOARCH=amd64 ./build
+        ;;
       386)
         GOARCH=386 PASSES="build unit" ./test
         ;;
       *)
         # test building out of gopath
-        GO_BUILD_FLAGS="-a -v" GOPATH=/bad-go-path GOARCH="${TARGET}" ./build
+        GO_BUILD_FLAGS="-a -v" GOPATH="" GOARCH="${TARGET}" ./build
         ;;
     esac

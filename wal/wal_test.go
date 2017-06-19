@@ -19,7 +19,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -40,18 +40,18 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	if g := path.Base(w.tail().Name()); g != walName(0, 0) {
+	if g := filepath.Base(w.tail().Name()); g != walName(0, 0) {
 		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
 	}
 	defer w.Close()
 
 	// file is preallocated to segment size; only read data written by wal
-	off, err := w.tail().Seek(0, os.SEEK_CUR)
+	off, err := w.tail().Seek(0, io.SeekCurrent)
 	if err != nil {
 		t.Fatal(err)
 	}
 	gd := make([]byte, off)
-	f, err := os.Open(path.Join(p, path.Base(w.tail().Name())))
+	f, err := os.Open(filepath.Join(p, filepath.Base(w.tail().Name())))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestNew(t *testing.T) {
 	}
 
 	var wb bytes.Buffer
-	e := newEncoder(&wb, 0)
+	e := newEncoder(&wb, 0, 0)
 	err = e.encode(&walpb.Record{Type: crcType, Crc: 0})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
@@ -90,7 +90,7 @@ func TestNewForInitedDir(t *testing.T) {
 	}
 	defer os.RemoveAll(p)
 
-	os.Create(path.Join(p, walName(0, 0)))
+	os.Create(filepath.Join(p, walName(0, 0)))
 	if _, err = Create(p, nil); err == nil || err != os.ErrExist {
 		t.Errorf("err = %v, want %v", err, os.ErrExist)
 	}
@@ -103,7 +103,7 @@ func TestOpenAtIndex(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	f, err := os.Create(path.Join(dir, walName(0, 0)))
+	f, err := os.Create(filepath.Join(dir, walName(0, 0)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestOpenAtIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	if g := path.Base(w.tail().Name()); g != walName(0, 0) {
+	if g := filepath.Base(w.tail().Name()); g != walName(0, 0) {
 		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
 	}
 	if w.seq() != 0 {
@@ -122,7 +122,7 @@ func TestOpenAtIndex(t *testing.T) {
 	w.Close()
 
 	wname := walName(2, 10)
-	f, err = os.Create(path.Join(dir, wname))
+	f, err = os.Create(filepath.Join(dir, wname))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestOpenAtIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	if g := path.Base(w.tail().Name()); g != wname {
+	if g := filepath.Base(w.tail().Name()); g != wname {
 		t.Errorf("name = %+v, want %+v", g, wname)
 	}
 	if w.seq() != 2 {
@@ -172,7 +172,7 @@ func TestCut(t *testing.T) {
 		t.Fatal(err)
 	}
 	wname := walName(1, 1)
-	if g := path.Base(w.tail().Name()); g != wname {
+	if g := filepath.Base(w.tail().Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
 
@@ -188,14 +188,14 @@ func TestCut(t *testing.T) {
 		t.Fatal(err)
 	}
 	wname = walName(2, 2)
-	if g := path.Base(w.tail().Name()); g != wname {
+	if g := filepath.Base(w.tail().Name()); g != wname {
 		t.Errorf("name = %s, want %s", g, wname)
 	}
 
 	// check the state in the last WAL
 	// We do check before closing the WAL to ensure that Cut syncs the data
 	// into the disk.
-	f, err := os.Open(path.Join(p, wname))
+	f, err := os.Open(filepath.Join(p, wname))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,6 +210,69 @@ func TestCut(t *testing.T) {
 	}
 	if !reflect.DeepEqual(gst, state) {
 		t.Errorf("state = %+v, want %+v", gst, state)
+	}
+}
+
+func TestSaveWithCut(t *testing.T) {
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+
+	w, err := Create(p, []byte("metadata"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	state := raftpb.HardState{Term: 1}
+	if err = w.Save(state, nil); err != nil {
+		t.Fatal(err)
+	}
+	bigData := make([]byte, 500)
+	strdata := "Hello World!!"
+	copy(bigData, strdata)
+	// set a lower value for SegmentSizeBytes, else the test takes too long to complete
+	restoreLater := SegmentSizeBytes
+	const EntrySize int = 500
+	SegmentSizeBytes = 2 * 1024
+	defer func() { SegmentSizeBytes = restoreLater }()
+	var index uint64 = 0
+	for totalSize := 0; totalSize < int(SegmentSizeBytes); totalSize += EntrySize {
+		ents := []raftpb.Entry{{Index: index, Term: 1, Data: bigData}}
+		if err = w.Save(state, ents); err != nil {
+			t.Fatal(err)
+		}
+		index++
+	}
+
+	w.Close()
+
+	neww, err := Open(p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	defer neww.Close()
+	wname := walName(1, index)
+	if g := filepath.Base(neww.tail().Name()); g != wname {
+		t.Errorf("name = %s, want %s", g, wname)
+	}
+
+	_, newhardstate, entries, err := neww.ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(newhardstate, state) {
+		t.Errorf("Hard State = %+v, want %+v", newhardstate, state)
+	}
+	if len(entries) != int(SegmentSizeBytes/int64(EntrySize)) {
+		t.Errorf("Number of entries = %d, expected = %d", len(entries), int(SegmentSizeBytes/int64(EntrySize)))
+	}
+	for _, oneent := range entries {
+		if !bytes.Equal(oneent.Data, bigData) {
+			t.Errorf("the saved data does not match at Index %d : found: %s , want :%s", oneent.Index, oneent.Data, bigData)
+		}
 	}
 }
 
@@ -353,7 +416,7 @@ func TestRecoverAfterCut(t *testing.T) {
 	}
 	md.Close()
 
-	if err := os.Remove(path.Join(p, walName(4, 4))); err != nil {
+	if err := os.Remove(filepath.Join(p, walName(4, 4))); err != nil {
 		t.Fatal(err)
 	}
 
@@ -465,7 +528,7 @@ func TestSaveEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	var est raftpb.HardState
 	w := WAL{
-		encoder: newEncoder(&buf, 0),
+		encoder: newEncoder(&buf, 0, 0),
 	}
 	if err := w.saveState(&est); err != nil {
 		t.Errorf("err = %v, want nil", err)
@@ -483,7 +546,11 @@ func TestReleaseLockTo(t *testing.T) {
 	defer os.RemoveAll(p)
 	// create WAL
 	w, err := Create(p, nil)
-	defer w.Close()
+	defer func() {
+		if err = w.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,7 +574,7 @@ func TestReleaseLockTo(t *testing.T) {
 	}
 	for i, l := range w.locks {
 		var lockIndex uint64
-		_, lockIndex, err = parseWalName(path.Base(l.Name()))
+		_, lockIndex, err = parseWalName(filepath.Base(l.Name()))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -525,7 +592,7 @@ func TestReleaseLockTo(t *testing.T) {
 	if len(w.locks) != 1 {
 		t.Errorf("len(w.locks) = %d, want %d", len(w.locks), 1)
 	}
-	_, lockIndex, err := parseWalName(path.Base(w.locks[0].Name()))
+	_, lockIndex, err := parseWalName(filepath.Base(w.locks[0].Name()))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -556,7 +623,7 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 		}
 	}
 	// get rid of slack space by truncating file
-	off, serr := w.tail().Seek(0, os.SEEK_CUR)
+	off, serr := w.tail().Seek(0, io.SeekCurrent)
 	if serr != nil {
 		t.Fatal(serr)
 	}
@@ -610,11 +677,11 @@ func TestRestartCreateWal(t *testing.T) {
 	defer os.RemoveAll(p)
 
 	// make temporary directory so it looks like initialization is interrupted
-	tmpdir := path.Clean(p) + ".tmp"
+	tmpdir := filepath.Clean(p) + ".tmp"
 	if err = os.Mkdir(tmpdir, fileutil.PrivateDirMode); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = os.OpenFile(path.Join(tmpdir, "test"), os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode); err != nil {
+	if _, err = os.OpenFile(filepath.Join(tmpdir, "test"), os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode); err != nil {
 		t.Fatal(err)
 	}
 
@@ -634,5 +701,95 @@ func TestRestartCreateWal(t *testing.T) {
 
 	if meta, _, _, rerr := w.ReadAll(); rerr != nil || string(meta) != "abc" {
 		t.Fatalf("got error %v and meta %q, expected nil and %q", rerr, meta, "abc")
+	}
+}
+
+// TestOpenOnTornWrite ensures that entries past the torn write are truncated.
+func TestOpenOnTornWrite(t *testing.T) {
+	maxEntries := 40
+	clobberIdx := 20
+	overwriteEntries := 5
+
+	p, err := ioutil.TempDir(os.TempDir(), "waltest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
+	w, err := Create(p, nil)
+	defer func() {
+		if err = w.Close(); err != nil && err != os.ErrInvalid {
+			t.Fatal(err)
+		}
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get offset of end of each saved entry
+	offsets := make([]int64, maxEntries)
+	for i := range offsets {
+		es := []raftpb.Entry{{Index: uint64(i)}}
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
+			t.Fatal(err)
+		}
+		if offsets[i], err = w.tail().Seek(0, io.SeekCurrent); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	fn := filepath.Join(p, filepath.Base(w.tail().Name()))
+	w.Close()
+
+	// clobber some entry with 0's to simulate a torn write
+	f, ferr := os.OpenFile(fn, os.O_WRONLY, fileutil.PrivateFileMode)
+	if ferr != nil {
+		t.Fatal(ferr)
+	}
+	defer f.Close()
+	_, err = f.Seek(offsets[clobberIdx], io.SeekStart)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zeros := make([]byte, offsets[clobberIdx+1]-offsets[clobberIdx])
+	_, err = f.Write(zeros)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	w, err = Open(p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// seek up to clobbered entry
+	_, _, _, err = w.ReadAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// write a few entries past the clobbered entry
+	for i := 0; i < overwriteEntries; i++ {
+		// Index is different from old, truncated entries
+		es := []raftpb.Entry{{Index: uint64(i + clobberIdx), Data: []byte("new")}}
+		if err = w.Save(raftpb.HardState{}, es); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w.Close()
+
+	// read back the entries, confirm number of entries matches expectation
+	w, err = OpenForRead(p, walpb.Snapshot{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, ents, rerr := w.ReadAll()
+	if rerr != nil {
+		// CRC error? the old entries were likely never truncated away
+		t.Fatal(rerr)
+	}
+	wEntries := (clobberIdx - 1) + overwriteEntries
+	if len(ents) != wEntries {
+		t.Fatalf("expected len(ents) = %d, got %d", wEntries, len(ents))
 	}
 }

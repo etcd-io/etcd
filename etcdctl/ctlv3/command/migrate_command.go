@@ -21,17 +21,20 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/coreos/etcd/client"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/pbutil"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
 	"github.com/coreos/etcd/store"
@@ -42,9 +45,10 @@ import (
 )
 
 var (
-	migrateDatadir     string
-	migrateWALdir      string
-	migrateTransformer string
+	migrateExcludeTTLKey bool
+	migrateDatadir       string
+	migrateWALdir        string
+	migrateTransformer   string
 )
 
 // NewMigrateCommand returns the cobra command for "migrate".
@@ -55,6 +59,7 @@ func NewMigrateCommand() *cobra.Command {
 		Run:   migrateCommandFunc,
 	}
 
+	mc.Flags().BoolVar(&migrateExcludeTTLKey, "no-ttl", false, "Do not convert TTL keys")
 	mc.Flags().StringVar(&migrateDatadir, "data-dir", "", "Path to the data directory")
 	mc.Flags().StringVar(&migrateWALdir, "wal-dir", "", "Path to the WAL directory")
 	mc.Flags().StringVar(&migrateTransformer, "transformer", "", "Path to the user-provided transformer program")
@@ -74,18 +79,17 @@ func migrateCommandFunc(cmd *cobra.Command, args []string) {
 		writer, reader, errc = defaultTransformer()
 	}
 
-	st := rebuildStoreV2()
+	st, index := rebuildStoreV2()
 	be := prepareBackend()
 	defer be.Close()
 
-	maxIndexc := make(chan uint64, 1)
 	go func() {
-		maxIndexc <- writeStore(writer, st)
+		writeStore(writer, st)
 		writer.Close()
 	}()
 
 	readKeys(reader, be)
-	mvcc.UpdateConsistentIndex(be, <-maxIndexc)
+	mvcc.UpdateConsistentIndex(be, index)
 	err := <-errc
 	if err != nil {
 		fmt.Println("failed to transform keys")
@@ -96,8 +100,22 @@ func migrateCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func prepareBackend() backend.Backend {
-	dbpath := path.Join(migrateDatadir, "member", "snap", "db")
-	be := backend.New(dbpath, time.Second, 10000)
+	var be backend.Backend
+
+	bch := make(chan struct{})
+	dbpath := filepath.Join(migrateDatadir, "member", "snap", "db")
+	go func() {
+		defer close(bch)
+		be = backend.NewDefaultBackend(dbpath)
+
+	}()
+	select {
+	case <-bch:
+	case <-time.After(time.Second):
+		fmt.Fprintf(os.Stderr, "waiting for etcd to close and release its lock on %q\n", dbpath)
+		<-bch
+	}
+
 	tx := be.BatchTx()
 	tx.Lock()
 	tx.UnsafeCreateBucket([]byte("key"))
@@ -106,12 +124,15 @@ func prepareBackend() backend.Backend {
 	return be
 }
 
-func rebuildStoreV2() store.Store {
+func rebuildStoreV2() (store.Store, uint64) {
+	var index uint64
+	cl := membership.NewCluster("")
+
 	waldir := migrateWALdir
 	if len(waldir) == 0 {
-		waldir = path.Join(migrateDatadir, "member", "wal")
+		waldir = filepath.Join(migrateDatadir, "member", "wal")
 	}
-	snapdir := path.Join(migrateDatadir, "member", "snap")
+	snapdir := filepath.Join(migrateDatadir, "member", "snap")
 
 	ss := snap.New(snapdir)
 	snapshot, err := ss.Load()
@@ -122,6 +143,7 @@ func rebuildStoreV2() store.Store {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
 		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+		index = snapshot.Metadata.Index
 	}
 
 	w, err := wal.OpenForRead(waldir, walsnap)
@@ -143,9 +165,15 @@ func rebuildStoreV2() store.Store {
 		}
 	}
 
-	applier := etcdserver.NewApplierV2(st, nil)
+	cl.SetStore(st)
+	cl.Recover(api.UpdateCapability)
+
+	applier := etcdserver.NewApplierV2(st, cl)
 	for _, ent := range ents {
-		if ent.Type != raftpb.EntryNormal {
+		if ent.Type == raftpb.EntryConfChange {
+			var cc raftpb.ConfChange
+			pbutil.MustUnmarshal(&cc, ent.Data)
+			applyConf(cc, cl)
 			continue
 		}
 
@@ -160,9 +188,34 @@ func rebuildStoreV2() store.Store {
 				applyRequest(req, applier)
 			}
 		}
+		if ent.Index > index {
+			index = ent.Index
+		}
 	}
 
-	return st
+	return st, index
+}
+
+func applyConf(cc raftpb.ConfChange, cl *membership.RaftCluster) {
+	if err := cl.ValidateConfigurationChange(cc); err != nil {
+		return
+	}
+	switch cc.Type {
+	case raftpb.ConfChangeAddNode:
+		m := new(membership.Member)
+		if err := json.Unmarshal(cc.Context, m); err != nil {
+			panic(err)
+		}
+		cl.AddMember(m)
+	case raftpb.ConfChangeRemoveNode:
+		cl.RemoveMember(types.ID(cc.NodeID))
+	case raftpb.ConfChangeUpdateNode:
+		m := new(membership.Member)
+		if err := json.Unmarshal(cc.Context, m); err != nil {
+			panic(err)
+		}
+		cl.UpdateRaftAttributes(m.ID, m.RaftAttributes)
+	}
 }
 
 func applyRequest(r *pb.Request, applyV2 etcdserver.ApplierV2) {
@@ -216,11 +269,13 @@ func writeKeys(w io.Writer, n *store.NodeExtern) uint64 {
 	if n.Dir {
 		n.Nodes = nil
 	}
-	b, err := json.Marshal(n)
-	if err != nil {
-		ExitWithError(ExitError, err)
+	if !migrateExcludeTTLKey || n.TTL == 0 {
+		b, err := json.Marshal(n)
+		if err != nil {
+			ExitWithError(ExitError, err)
+		}
+		fmt.Fprint(w, string(b))
 	}
-	fmt.Fprintf(w, string(b))
 	for _, nn := range nodes {
 		max := writeKeys(w, nn)
 		if max > maxIndex {

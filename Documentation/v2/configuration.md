@@ -176,7 +176,10 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 The security flags help to [build a secure etcd cluster][security].
 
-### --ca-file [DEPRECATED]
+### --ca-file
+
+**DEPRECATED**
+
 + Path to the client server TLS CA file. `--ca-file ca.crt` could be replaced by `--trusted-ca-file ca.crt --client-cert-auth` and etcd will perform the same.
 + default: none
 + env variable: ETCD_CA_FILE
@@ -201,7 +204,10 @@ The security flags help to [build a secure etcd cluster][security].
 + default: none
 + env variable: ETCD_TRUSTED_CA_FILE
 
-### --peer-ca-file [DEPRECATED]
+### --peer-ca-file
+
+**DEPRECATED**
+
 + Path to the peer server TLS CA file. `--peer-ca-file ca.crt` could be replaced by `--peer-trusted-ca-file ca.crt --peer-client-cert-auth` and etcd will perform the same.
 + default: none
 + env variable: ETCD_PEER_CA_FILE
@@ -234,7 +240,7 @@ The security flags help to [build a secure etcd cluster][security].
 + env variable: ETCD_DEBUG
 
 ### --log-package-levels
-+ Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG` 
++ Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG`
 + default: none (INFO for all packages)
 + env variable: ETCD_LOG_PACKAGE_LEVELS
 
@@ -272,7 +278,7 @@ Follow the instructions when using these flags.
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
 [discovery]: clustering.md#discovery
-[iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
+[iana-ports]: http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
 [proxy]: proxy.md
 [reconfig]: runtime-configuration.md
 [restore]: admin_guide.md#restoring-a-backup

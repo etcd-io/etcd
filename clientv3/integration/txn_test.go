@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/etcdserver/api/v3rpc"
+	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -33,7 +33,7 @@ func TestTxnError(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 	ctx := context.TODO()
 
 	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar1"), clientv3.OpPut("foo", "bar2")).Commit()
@@ -41,7 +41,7 @@ func TestTxnError(t *testing.T) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrDuplicateKey, err)
 	}
 
-	ops := make([]clientv3.Op, v3rpc.MaxOpsPerTxn+10)
+	ops := make([]clientv3.Op, int(embed.DefaultMaxTxnOps+10))
 	for i := range ops {
 		ops[i] = clientv3.OpPut(fmt.Sprintf("foo%d", i), "")
 	}
@@ -57,7 +57,7 @@ func TestTxnWriteFail(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	kv := clientv3.NewKV(clus.Client(0))
+	kv := clus.Client(0)
 
 	clus.Members[0].Stop(t)
 
@@ -73,6 +73,7 @@ func TestTxnWriteFail(t *testing.T) {
 	}()
 
 	go func() {
+		defer close(getc)
 		select {
 		case <-time.After(5 * time.Second):
 			t.Fatalf("timed out waiting for txn fail")
@@ -86,11 +87,10 @@ func TestTxnWriteFail(t *testing.T) {
 		if len(gresp.Kvs) != 0 {
 			t.Fatalf("expected no keys, got %v", gresp.Kvs)
 		}
-		close(getc)
 	}()
 
 	select {
-	case <-time.After(5 * time.Second):
+	case <-time.After(2 * clus.Members[1].ServerConfig.ReqTimeout()):
 		t.Fatalf("timed out waiting for get")
 	case <-getc:
 	}
@@ -105,7 +105,7 @@ func TestTxnReadRetry(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	kv := clientv3.NewKV(clus.Client(0))
+	kv := clus.Client(0)
 	clus.Members[0].Stop(t)
 	<-clus.Members[0].StopNotify()
 
@@ -125,7 +125,7 @@ func TestTxnReadRetry(t *testing.T) {
 	clus.Members[0].Restart(t)
 	select {
 	case <-donec:
-	case <-time.After(5 * time.Second):
+	case <-time.After(2 * clus.Members[1].ServerConfig.ReqTimeout()):
 		t.Fatalf("waited too long")
 	}
 }
@@ -136,7 +136,7 @@ func TestTxnSuccess(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	kv := clientv3.NewKV(clus.Client(0))
+	kv := clus.Client(0)
 	ctx := context.TODO()
 
 	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
@@ -150,5 +150,32 @@ func TestTxnSuccess(t *testing.T) {
 	}
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" {
 		t.Fatalf("unexpected Get response %v", resp)
+	}
+}
+
+func TestTxnCompareRange(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kv := clus.Client(0)
+	fooResp, err := kv.Put(context.TODO(), "foo/", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = kv.Put(context.TODO(), "foo/a", "baz"); err != nil {
+		t.Fatal(err)
+	}
+	tresp, terr := kv.Txn(context.TODO()).If(
+		clientv3.Compare(
+			clientv3.CreateRevision("foo/"), "=", fooResp.Header.Revision).
+			WithPrefix(),
+	).Commit()
+	if terr != nil {
+		t.Fatal(terr)
+	}
+	if tresp.Succeeded {
+		t.Fatal("expected prefix compare to false, got compares as true")
 	}
 }

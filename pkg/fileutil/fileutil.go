@@ -17,9 +17,10 @@ package fileutil
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"sort"
 
 	"github.com/coreos/pkg/capnslog"
@@ -33,13 +34,13 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/pkg", "fileutil")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "pkg/fileutil")
 )
 
 // IsDirWriteable checks if dir is writable by writing and removing a file
 // to dir. It returns nil if dir is writable.
 func IsDirWriteable(dir string) error {
-	f := path.Join(dir, ".touch")
+	f := filepath.Join(dir, ".touch")
 	if err := ioutil.WriteFile(f, []byte(""), PrivateFileMode); err != nil {
 		return err
 	}
@@ -95,4 +96,27 @@ func CreateDirAll(dir string) error {
 func Exist(name string) bool {
 	_, err := os.Stat(name)
 	return err == nil
+}
+
+// ZeroToEnd zeros a file starting from SEEK_CUR to its SEEK_END. May temporarily
+// shorten the length of the file.
+func ZeroToEnd(f *os.File) error {
+	// TODO: support FALLOC_FL_ZERO_RANGE
+	off, err := f.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return err
+	}
+	lenf, lerr := f.Seek(0, io.SeekEnd)
+	if lerr != nil {
+		return lerr
+	}
+	if err = f.Truncate(off); err != nil {
+		return err
+	}
+	// make sure blocks remain allocated
+	if err = Preallocate(f, lenf, true); err != nil {
+		return err
+	}
+	_, err = f.Seek(off, io.SeekStart)
+	return err
 }

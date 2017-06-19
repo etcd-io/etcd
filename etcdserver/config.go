@@ -16,10 +16,12 @@ package etcdserver
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/transport"
@@ -52,19 +54,26 @@ type ServerConfig struct {
 
 	AutoCompactionRetention int
 	QuotaBackendBytes       int64
+	MaxTxnOps               uint
+
+	// MaxRequestBytes is the maximum request size to send over raft.
+	MaxRequestBytes uint
 
 	StrictReconfigCheck bool
 
-	EnablePprof bool
-
 	// ClientCertAuthEnabled is true when cert has been signed by the client CA.
 	ClientCertAuthEnabled bool
+
+	AuthToken string
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
 // and returns an error for things that should never happen.
 func (c *ServerConfig) VerifyBootstrap() error {
-	if err := c.verifyLocalMember(true); err != nil {
+	if err := c.hasLocalMember(); err != nil {
+		return err
+	}
+	if err := c.advertiseMatchesCluster(); err != nil {
 		return err
 	}
 	if checkDuplicateURL(c.InitialPeerURLsMap) {
@@ -79,10 +88,9 @@ func (c *ServerConfig) VerifyBootstrap() error {
 // VerifyJoinExisting sanity-checks the initial config for join existing cluster
 // case and returns an error for things that should never happen.
 func (c *ServerConfig) VerifyJoinExisting() error {
-	// no need for strict checking since the member have announced its
-	// peer urls to the cluster before starting and do not have to set
-	// it in the configuration again.
-	if err := c.verifyLocalMember(false); err != nil {
+	// The member has announced its peer urls to the cluster before starting; no need to
+	// set the configuration again.
+	if err := c.hasLocalMember(); err != nil {
 		return err
 	}
 	if checkDuplicateURL(c.InitialPeerURLsMap) {
@@ -94,39 +102,68 @@ func (c *ServerConfig) VerifyJoinExisting() error {
 	return nil
 }
 
-// verifyLocalMember verifies the configured member is in configured
-// cluster. If strict is set, it also verifies the configured member
-// has the same peer urls as configured advertised peer urls.
-func (c *ServerConfig) verifyLocalMember(strict bool) error {
-	urls := c.InitialPeerURLsMap[c.Name]
-	// Make sure the cluster at least contains the local server.
-	if urls == nil {
+// hasLocalMember checks that the cluster at least contains the local server.
+func (c *ServerConfig) hasLocalMember() error {
+	if urls := c.InitialPeerURLsMap[c.Name]; urls == nil {
 		return fmt.Errorf("couldn't find local name %q in the initial cluster configuration", c.Name)
-	}
-
-	if strict {
-		// Advertised peer URLs must match those in the cluster peer list
-		apurls := c.PeerURLs.StringSlice()
-		sort.Strings(apurls)
-		urls.Sort()
-		if !netutil.URLStringsEqual(apurls, urls.StringSlice()) {
-			umap := map[string]types.URLs{c.Name: c.PeerURLs}
-			return fmt.Errorf("--initial-cluster must include %s given --initial-advertise-peer-urls=%s", types.URLsMap(umap).String(), strings.Join(apurls, ","))
-		}
 	}
 	return nil
 }
 
-func (c *ServerConfig) MemberDir() string { return path.Join(c.DataDir, "member") }
+// advertiseMatchesCluster confirms peer URLs match those in the cluster peer list.
+func (c *ServerConfig) advertiseMatchesCluster() error {
+	urls, apurls := c.InitialPeerURLsMap[c.Name], c.PeerURLs.StringSlice()
+	urls.Sort()
+	sort.Strings(apurls)
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+	if netutil.URLStringsEqual(ctx, apurls, urls.StringSlice()) {
+		return nil
+	}
+
+	initMap, apMap := make(map[string]struct{}), make(map[string]struct{})
+	for _, url := range c.PeerURLs {
+		apMap[url.String()] = struct{}{}
+	}
+	for _, url := range c.InitialPeerURLsMap[c.Name] {
+		initMap[url.String()] = struct{}{}
+	}
+
+	missing := []string{}
+	for url := range initMap {
+		if _, ok := apMap[url]; !ok {
+			missing = append(missing, url)
+		}
+	}
+	if len(missing) > 0 {
+		for i := range missing {
+			missing[i] = c.Name + "=" + missing[i]
+		}
+		mstr := strings.Join(missing, ",")
+		apStr := strings.Join(apurls, ",")
+		return fmt.Errorf("--initial-cluster has %s but missing from --initial-advertise-peer-urls=%s ", mstr, apStr)
+	}
+
+	for url := range apMap {
+		if _, ok := initMap[url]; !ok {
+			missing = append(missing, url)
+		}
+	}
+	mstr := strings.Join(missing, ",")
+	umap := types.URLsMap(map[string]types.URLs{c.Name: c.PeerURLs})
+	return fmt.Errorf("--initial-advertise-peer-urls has %s but missing from --initial-cluster=%s", mstr, umap.String())
+}
+
+func (c *ServerConfig) MemberDir() string { return filepath.Join(c.DataDir, "member") }
 
 func (c *ServerConfig) WALDir() string {
 	if c.DedicatedWALDir != "" {
 		return c.DedicatedWALDir
 	}
-	return path.Join(c.MemberDir(), "wal")
+	return filepath.Join(c.MemberDir(), "wal")
 }
 
-func (c *ServerConfig) SnapDir() string { return path.Join(c.MemberDir(), "snap") }
+func (c *ServerConfig) SnapDir() string { return filepath.Join(c.MemberDir(), "snap") }
 
 func (c *ServerConfig) ShouldDiscover() bool { return c.DiscoveryURL != "" }
 
@@ -197,3 +234,5 @@ func (c *ServerConfig) bootstrapTimeout() time.Duration {
 	}
 	return time.Second
 }
+
+func (c *ServerConfig) backendPath() string { return filepath.Join(c.SnapDir(), "db") }

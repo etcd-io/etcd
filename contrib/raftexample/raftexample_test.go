@@ -47,9 +47,10 @@ func newCluster(n int) *cluster {
 
 	for i := range clus.peers {
 		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
+		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", i+1))
 		clus.proposeC[i] = make(chan string, 1)
 		clus.confChangeC[i] = make(chan raftpb.ConfChange, 1)
-		clus.commitC[i], clus.errorC[i] = newRaftNode(i+1, clus.peers, false, clus.proposeC[i], clus.confChangeC[i])
+		clus.commitC[i], clus.errorC[i], _ = newRaftNode(i+1, clus.peers, false, nil, clus.proposeC[i], clus.confChangeC[i])
 	}
 
 	return clus
@@ -74,11 +75,12 @@ func (clus *cluster) Close() (err error) {
 			// drain pending commits
 		}
 		// wait for channel to close
-		if erri, _ := <-clus.errorC[i]; erri != nil {
+		if erri := <-clus.errorC[i]; erri != nil {
 			err = erri
 		}
 		// clean intermediates
 		os.RemoveAll(fmt.Sprintf("raftexample-%d", i+1))
+		os.RemoveAll(fmt.Sprintf("raftexample-%d-snap", i+1))
 	}
 	return err
 }
@@ -109,7 +111,7 @@ func TestProposeOnCommit(t *testing.T) {
 				select {
 				case pC <- *s:
 					continue
-				case err, _ := <-eC:
+				case err := <-eC:
 					t.Fatalf("eC message (%v)", err)
 				}
 			}

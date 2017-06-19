@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/expect"
@@ -106,6 +107,13 @@ var (
 		isPeerTLS:    true,
 		initialToken: "new",
 	}
+	configClientTLSCertAuth = etcdProcessClusterConfig{
+		clusterSize:           1,
+		proxySize:             0,
+		clientTLS:             clientTLS,
+		initialToken:          "new",
+		clientCertAuthEnabled: true,
+	}
 )
 
 func configStandalone(cfg etcdProcessClusterConfig) *etcdProcessClusterConfig {
@@ -132,6 +140,8 @@ type etcdProcessConfig struct {
 	dataDirPath string
 	keepDataDir bool
 
+	name string
+
 	purl url.URL
 
 	acurl string
@@ -139,6 +149,9 @@ type etcdProcessConfig struct {
 	// serves both http and https
 	acurltls  string
 	acurlHost string
+
+	initialToken   string
+	initialCluster string
 
 	isProxy bool
 }
@@ -292,14 +305,16 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 
 		args = append(args, cfg.tlsArgs()...)
 		etcdCfgs[i] = &etcdProcessConfig{
-			execPath:    cfg.execPath,
-			args:        args,
-			dataDirPath: dataDirPath,
-			keepDataDir: cfg.keepDataDir,
-			purl:        purl,
-			acurl:       curl,
-			acurltls:    curltls,
-			acurlHost:   curlHost,
+			execPath:     cfg.execPath,
+			args:         args,
+			dataDirPath:  dataDirPath,
+			keepDataDir:  cfg.keepDataDir,
+			name:         name,
+			purl:         purl,
+			acurl:        curl,
+			acurltls:     curltls,
+			acurlHost:    curlHost,
+			initialToken: cfg.initialToken,
 		}
 	}
 	for i := 0; i < cfg.proxySize; i++ {
@@ -323,6 +338,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 			args:        args,
 			dataDirPath: dataDirPath,
 			keepDataDir: cfg.keepDataDir,
+			name:        name,
 			acurl:       curl.String(),
 			acurlHost:   curlHost,
 			isProxy:     true,
@@ -331,6 +347,7 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 
 	initialClusterArgs := []string{"--initial-cluster", strings.Join(initialCluster, ",")}
 	for i := range etcdCfgs {
+		etcdCfgs[i].initialCluster = strings.Join(initialCluster, ",")
 		etcdCfgs[i].args = append(etcdCfgs[i].args, initialClusterArgs...)
 	}
 
@@ -415,6 +432,11 @@ func (epc *etcdProcessCluster) StopAll() (err error) {
 func (epc *etcdProcessCluster) Close() error {
 	err := epc.StopAll()
 	for _, p := range epc.procs {
+		// p is nil when newEtcdProcess fails in the middle
+		// Close still gets called to clean up test data
+		if p == nil {
+			continue
+		}
 		os.RemoveAll(p.cfg.dataDirPath)
 	}
 	return err
@@ -444,7 +466,7 @@ func (ep *etcdProcess) Stop() error {
 	<-ep.donec
 
 	if ep.cfg.purl.Scheme == "unix" || ep.cfg.purl.Scheme == "unixs" {
-		os.RemoveAll(ep.cfg.purl.Host)
+		os.Remove(ep.cfg.purl.Host + ep.cfg.purl.Path)
 	}
 	return nil
 }
@@ -473,10 +495,6 @@ func waitReadyExpectProc(exproc *expect.ExpectProcess, isProxy bool) error {
 	return err
 }
 
-func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	return expect.NewExpect(args[0], args[1:]...)
-}
-
 func spawnWithExpect(args []string, expected string) error {
 	return spawnWithExpects(args, []string{expected}...)
 }
@@ -494,9 +512,10 @@ func spawnWithExpects(args []string, xs ...string) error {
 	)
 	for _, txt := range xs {
 		for {
-			l, err := proc.ExpectFunc(lineFunc)
-			if err != nil {
-				return fmt.Errorf("%v (expected %q, got %q)", err, txt, lines)
+			l, lerr := proc.ExpectFunc(lineFunc)
+			if lerr != nil {
+				proc.Close()
+				return fmt.Errorf("%v (expected %q, got %q)", lerr, txt, lines)
 			}
 			lines = append(lines, l)
 			if strings.Contains(l, txt) {
@@ -505,10 +524,7 @@ func spawnWithExpects(args []string, xs ...string) error {
 		}
 	}
 	perr := proc.Close()
-	if err != nil {
-		return err
-	}
-	if len(xs) == 0 && proc.LineCount() != 0 { // expect no output
+	if len(xs) == 0 && proc.LineCount() != noOutputLineCount { // expect no output
 		return fmt.Errorf("unexpected output (got lines %q, line count %d)", lines, proc.LineCount())
 	}
 	return perr
@@ -519,13 +535,13 @@ func (epc *etcdProcessCluster) proxies() []*etcdProcess {
 	return epc.procs[epc.cfg.clusterSize:]
 }
 
-func (epc *etcdProcessCluster) backends() []*etcdProcess {
+func (epc *etcdProcessCluster) processes() []*etcdProcess {
 	return epc.procs[:epc.cfg.clusterSize]
 }
 
 func (epc *etcdProcessCluster) endpoints() []string {
 	eps := make([]string, epc.cfg.clusterSize)
-	for i, ep := range epc.backends() {
+	for i, ep := range epc.processes() {
 		eps[i] = ep.cfg.acurl
 	}
 	return eps
@@ -533,8 +549,30 @@ func (epc *etcdProcessCluster) endpoints() []string {
 
 func (epc *etcdProcessCluster) grpcEndpoints() []string {
 	eps := make([]string, epc.cfg.clusterSize)
-	for i, ep := range epc.backends() {
+	for i, ep := range epc.processes() {
 		eps[i] = ep.cfg.acurlHost
 	}
 	return eps
+}
+
+func (epc *etcdProcessCluster) withStopSignal(sig os.Signal) os.Signal {
+	ret := epc.procs[0].proc.StopSignal
+	for _, p := range epc.procs {
+		p.proc.StopSignal = sig
+	}
+	return ret
+}
+
+func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
+	errc := make(chan error, 1)
+	go func() { errc <- p.Close() }()
+	select {
+	case err := <-errc:
+		return err
+	case <-time.After(d):
+		p.Stop()
+		// retry close after stopping to collect SIGQUIT data, if any
+		closeWithTimeout(p, time.Second)
+	}
+	return fmt.Errorf("took longer than %v to Close process %+v", d, p)
 }

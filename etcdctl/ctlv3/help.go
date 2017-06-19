@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// copied from https://github.com/coreos/rkt/blob/master/rkt/help.go
+// copied from https://github.com/rkt/rkt/blob/master/rkt/help.go
 
 package ctlv3
 
@@ -67,6 +67,12 @@ VERSION:
 {{printf "\t%s" .Version}}
 {{end}}\
 {{if .Cmd.HasSubCommands}}\
+
+API VERSION:
+{{printf "\t%s" .APIVersion}}
+{{end}}\
+{{if .Cmd.HasSubCommands}}\
+
 
 COMMANDS:
 {{range .SubCommands}}\
@@ -148,12 +154,14 @@ func usageFunc(cmd *cobra.Command) error {
 		GlobalFlags string
 		SubCommands []*cobra.Command
 		Version     string
+		APIVersion  string
 	}{
 		cmd,
 		etcdFlagUsages(cmd.LocalFlags()),
 		etcdFlagUsages(cmd.InheritedFlags()),
 		subCommands,
 		version.Version,
+		version.APIVersion,
 	})
 	tabOut.Flush()
 	return nil

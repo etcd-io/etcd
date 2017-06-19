@@ -15,11 +15,14 @@
 package embed
 
 import (
+	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"testing"
 
 	"github.com/coreos/etcd/pkg/transport"
+
 	"github.com/ghodss/yaml"
 )
 
@@ -58,6 +61,70 @@ func TestConfigFileOtherFields(t *testing.T) {
 	}
 	if !ptls.equals(&cfg.PeerTLSInfo) {
 		t.Errorf("PeerTLS = %v, want %v", cfg.PeerTLSInfo, ptls)
+	}
+}
+
+// TestUpdateDefaultClusterFromName ensures that etcd can start with 'etcd --name=abc'.
+func TestUpdateDefaultClusterFromName(t *testing.T) {
+	cfg := NewConfig()
+	defaultInitialCluster := cfg.InitialCluster
+	oldscheme := cfg.APUrls[0].Scheme
+	origpeer := cfg.APUrls[0].String()
+	origadvc := cfg.ACUrls[0].String()
+
+	cfg.Name = "abc"
+	lpport := cfg.LPUrls[0].Port()
+
+	// in case of 'etcd --name=abc'
+	exp := fmt.Sprintf("%s=%s://localhost:%s", cfg.Name, oldscheme, lpport)
+	cfg.UpdateDefaultClusterFromName(defaultInitialCluster)
+	if exp != cfg.InitialCluster {
+		t.Fatalf("initial-cluster expected %q, got %q", exp, cfg.InitialCluster)
+	}
+	// advertise peer URL should not be affected
+	if origpeer != cfg.APUrls[0].String() {
+		t.Fatalf("advertise peer url expected %q, got %q", origadvc, cfg.APUrls[0].String())
+	}
+	// advertise client URL should not be affected
+	if origadvc != cfg.ACUrls[0].String() {
+		t.Fatalf("advertise client url expected %q, got %q", origadvc, cfg.ACUrls[0].String())
+	}
+}
+
+// TestUpdateDefaultClusterFromNameOverwrite ensures that machine's default host is only used
+// if advertise URLs are default values(localhost:2379,2380) AND if listen URL is 0.0.0.0.
+func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
+	if defaultHostname == "" {
+		t.Skip("machine's default host not found")
+	}
+
+	cfg := NewConfig()
+	defaultInitialCluster := cfg.InitialCluster
+	oldscheme := cfg.APUrls[0].Scheme
+	origadvc := cfg.ACUrls[0].String()
+
+	cfg.Name = "abc"
+	lpport := cfg.LPUrls[0].Port()
+	cfg.LPUrls[0] = url.URL{Scheme: cfg.LPUrls[0].Scheme, Host: fmt.Sprintf("0.0.0.0:%s", lpport)}
+	dhost, _ := cfg.UpdateDefaultClusterFromName(defaultInitialCluster)
+	if dhost != defaultHostname {
+		t.Fatalf("expected default host %q, got %q", defaultHostname, dhost)
+	}
+	aphost, apport := cfg.APUrls[0].Hostname(), cfg.APUrls[0].Port()
+	if apport != lpport {
+		t.Fatalf("advertise peer url got different port %s, expected %s", apport, lpport)
+	}
+	if aphost != defaultHostname {
+		t.Fatalf("advertise peer url expected machine default host %q, got %q", defaultHostname, aphost)
+	}
+	expected := fmt.Sprintf("%s=%s://%s:%s", cfg.Name, oldscheme, defaultHostname, lpport)
+	if expected != cfg.InitialCluster {
+		t.Fatalf("initial-cluster expected %q, got %q", expected, cfg.InitialCluster)
+	}
+
+	// advertise client URL should not be affected
+	if origadvc != cfg.ACUrls[0].String() {
+		t.Fatalf("advertise-client-url expected %q, got %q", origadvc, cfg.ACUrls[0].String())
 	}
 }
 

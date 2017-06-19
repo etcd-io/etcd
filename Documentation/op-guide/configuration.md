@@ -28,7 +28,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 ### --snapshot-count
 + Number of committed transactions to trigger a snapshot to disk.
-+ default: "10000"
++ default: "100000"
 + env variable: ETCD_SNAPSHOT_COUNT
 
 ### --heartbeat-interval
@@ -140,6 +140,12 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + default: 0
 + env variable: ETCD_AUTO_COMPACTION_RETENTION
 
+
+### --enable-v2
++ Accept etcd V2 client requests
++ default: true
++ env variable: ETCD_ENABLE_V2
+
 ## Proxy flags
 
 `--proxy` prefix flags configures etcd to run in [proxy mode][proxy]. "proxy" supports v2 API only.
@@ -179,7 +185,10 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 
 The security flags help to [build a secure etcd cluster][security].
 
-### --ca-file [DEPRECATED]
+### --ca-file 
+
+**DEPRECATED**
+
 + Path to the client server TLS CA file. `--ca-file ca.crt` could be replaced by `--trusted-ca-file ca.crt --client-cert-auth` and etcd will perform the same.
 + default: none
 + env variable: ETCD_CA_FILE
@@ -209,7 +218,10 @@ The security flags help to [build a secure etcd cluster][security].
 + default: false
 + env variable: ETCD_AUTO_TLS
 
-### --peer-ca-file [DEPRECATED]
+### --peer-ca-file 
+
+**DEPRECATED**
+
 + Path to the peer server TLS CA file. `--peer-ca-file ca.crt` could be replaced by `--peer-trusted-ca-file ca.crt --peer-client-cert-auth` and etcd will perform the same.
 + default: none
 + env variable: ETCD_PEER_CA_FILE
@@ -247,7 +259,7 @@ The security flags help to [build a secure etcd cluster][security].
 + env variable: ETCD_DEBUG
 
 ### --log-package-levels
-+ Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG` 
++ Set individual etcd subpackages to specific log levels. An example being `etcdserver=WARNING,security=DEBUG`
 + default: none (INFO for all packages)
 + env variable: ETCD_LOG_PACKAGE_LEVELS
 
@@ -279,10 +291,21 @@ Follow the instructions when using these flags.
 + Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
 + default: false
 
+### --metrics
++ Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
++ default: basic
+
+## Auth flags
+
+### --auth-token
++ Specify a token type and token specific options, especially for JWT. Its format is "type,var1=val1,var2=val2,...". Possible type is 'simple' or 'jwt'. Possible variables are 'sign-method' for specifying a sign method of jwt (its possible values are 'ES256', 'ES384', 'ES512', 'HS256', 'HS384', 'HS512', 'RS256', 'RS384', 'RS512', 'PS256', 'PS384', or 'PS512'), 'pub-key' for specifying a path to a public key for verifying jwt, and 'priv-key' for specifying a path to a private key for signing jwt.
++ Example option of JWT: '--auth-token jwt,pub-key=app.rsa.pub,priv-key=app.rsa,sign-method=RS512'
++ default: "simple"
+
 [build-cluster]: clustering.md#static
 [reconfig]: runtime-configuration.md
 [discovery]: clustering.md#discovery
-[iana-ports]: https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?search=etcd
+[iana-ports]: http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
 [proxy]: ../v2/proxy.md
 [restore]: ../v2/admin_guide.md#restoring-a-backup
 [security]: security.md

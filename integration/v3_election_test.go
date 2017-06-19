@@ -112,7 +112,7 @@ func TestElectionFailover(t *testing.T) {
 	cctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	ss := make([]*concurrency.Session, 3, 3)
+	ss := make([]*concurrency.Session, 3)
 
 	for i := 0; i < 3; i++ {
 		var err error
@@ -195,5 +195,116 @@ func TestElectionSessionRecampaign(t *testing.T) {
 	defer cancel()
 	if resp := <-e.Observe(ctx); len(resp.Kvs) == 0 || string(resp.Kvs[0].Value) != "def" {
 		t.Fatalf("expected value=%q, got response %v", "def", resp)
+	}
+}
+
+// TestElectionOnPrefixOfExistingKey checks that a single
+// candidate can be elected on a new key that is a prefix
+// of an existing key. To wit, check for regression
+// of bug #6278. https://github.com/coreos/etcd/issues/6278
+//
+func TestElectionOnPrefixOfExistingKey(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+	if _, err := cli.Put(context.TODO(), "testa", "value"); err != nil {
+		t.Fatal(err)
+	}
+	s, serr := concurrency.NewSession(cli)
+	if serr != nil {
+		t.Fatal(serr)
+	}
+	e := concurrency.NewElection(s, "test")
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	err := e.Campaign(ctx, "abc")
+	cancel()
+	if err != nil {
+		// after 5 seconds, deadlock results in
+		// 'context deadline exceeded' here.
+		t.Fatal(err)
+	}
+}
+
+// TestElectionOnSessionRestart tests that a quick restart of leader (resulting
+// in a new session with the same lease id) does not result in loss of
+// leadership.
+func TestElectionOnSessionRestart(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	cli := clus.RandClient()
+
+	session, err := concurrency.NewSession(cli)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e := concurrency.NewElection(session, "test-elect")
+	if cerr := e.Campaign(context.TODO(), "abc"); cerr != nil {
+		t.Fatal(cerr)
+	}
+
+	// ensure leader is not lost to waiter on fail-over
+	waitSession, werr := concurrency.NewSession(cli)
+	if werr != nil {
+		t.Fatal(werr)
+	}
+	defer waitSession.Orphan()
+	waitCtx, waitCancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer waitCancel()
+	go concurrency.NewElection(waitSession, "test-elect").Campaign(waitCtx, "123")
+
+	// simulate restart by reusing the lease from the old session
+	newSession, nerr := concurrency.NewSession(cli, concurrency.WithLease(session.Lease()))
+	if nerr != nil {
+		t.Fatal(nerr)
+	}
+	defer newSession.Orphan()
+
+	newElection := concurrency.NewElection(newSession, "test-elect")
+	if ncerr := newElection.Campaign(context.TODO(), "def"); ncerr != nil {
+		t.Fatal(ncerr)
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	if resp := <-newElection.Observe(ctx); len(resp.Kvs) == 0 || string(resp.Kvs[0].Value) != "def" {
+		t.Errorf("expected value=%q, got response %v", "def", resp)
+	}
+}
+
+// TestElectionObserveCompacted checks that observe can tolerate
+// a leader key with a modrev less than the compaction revision.
+func TestElectionObserveCompacted(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+
+	session, err := concurrency.NewSession(cli)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer session.Orphan()
+
+	e := concurrency.NewElection(session, "test-elect")
+	if cerr := e.Campaign(context.TODO(), "abc"); cerr != nil {
+		t.Fatal(cerr)
+	}
+
+	presp, perr := cli.Put(context.TODO(), "foo", "bar")
+	if perr != nil {
+		t.Fatal(perr)
+	}
+	if _, cerr := cli.Compact(context.TODO(), presp.Header.Revision); cerr != nil {
+		t.Fatal(cerr)
+	}
+
+	v, ok := <-e.Observe(context.TODO())
+	if !ok {
+		t.Fatal("failed to observe on compacted revision")
+	}
+	if string(v.Kvs[0].Value) != "abc" {
+		t.Fatalf(`expected leader value "abc", got %q`, string(v.Kvs[0].Value))
 	}
 }

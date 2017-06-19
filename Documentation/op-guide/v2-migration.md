@@ -22,6 +22,12 @@ There are some notable differences between API v2 and API v3:
 
 Application data can be migrated either offline or online. Offline migration is much simpler than online migration and is recommended.
 
+Sometimes an etcd cluster will possibly have v3 data which should not be overwritten. In this case, the migration process may want to confirm no v3 data is committed before proceeding. One way to check the cluster has no v3 keys is to issue the following `etcdctl` command, which scans the entire v3 keyspace for any key, expecting `0` as output:
+
+```sh
+ETCDCTL_API=3 etcdctl get "" --from-key --keys-only --limit 1 | wc -l
+```
+
 ### Offline migration
 
 Offline migration is very simple but requires etcd downtime. If an etcd downtime window spanning from seconds to minutes is acceptable, offline migration is a good choice and is easy to automate.

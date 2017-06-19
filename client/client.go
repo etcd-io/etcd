@@ -15,6 +15,7 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -22,11 +23,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"reflect"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/coreos/etcd/version"
 
 	"golang.org/x/net/context"
 )
@@ -202,6 +204,9 @@ type Client interface {
 	// returned
 	SetEndpoints(eps []string) error
 
+	// GetVersion retrieves the current etcd server and cluster version
+	GetVersion(ctx context.Context) (*version.Versions, error)
+
 	httpClient
 }
 
@@ -261,52 +266,66 @@ type httpClusterClient struct {
 	selectionMode EndpointSelectionMode
 }
 
-func (c *httpClusterClient) getLeaderEndpoint() (string, error) {
-	mAPI := NewMembersAPI(c)
-	leader, err := mAPI.Leader(context.Background())
+func (c *httpClusterClient) getLeaderEndpoint(ctx context.Context, eps []url.URL) (string, error) {
+	ceps := make([]url.URL, len(eps))
+	copy(ceps, eps)
+
+	// To perform a lookup on the new endpoint list without using the current
+	// client, we'll copy it
+	clientCopy := &httpClusterClient{
+		clientFactory: c.clientFactory,
+		credentials:   c.credentials,
+		rand:          c.rand,
+
+		pinned:    0,
+		endpoints: ceps,
+	}
+
+	mAPI := NewMembersAPI(clientCopy)
+	leader, err := mAPI.Leader(ctx)
 	if err != nil {
 		return "", err
+	}
+	if len(leader.ClientURLs) == 0 {
+		return "", ErrNoLeaderEndpoint
 	}
 
 	return leader.ClientURLs[0], nil // TODO: how to handle multiple client URLs?
 }
 
-func (c *httpClusterClient) SetEndpoints(eps []string) error {
+func (c *httpClusterClient) parseEndpoints(eps []string) ([]url.URL, error) {
 	if len(eps) == 0 {
-		return ErrNoEndpoints
+		return []url.URL{}, ErrNoEndpoints
 	}
 
 	neps := make([]url.URL, len(eps))
 	for i, ep := range eps {
 		u, err := url.Parse(ep)
 		if err != nil {
-			return err
+			return []url.URL{}, err
 		}
 		neps[i] = *u
 	}
+	return neps, nil
+}
 
-	switch c.selectionMode {
-	case EndpointSelectionRandom:
-		c.endpoints = shuffleEndpoints(c.rand, neps)
-		c.pinned = 0
-	case EndpointSelectionPrioritizeLeader:
-		c.endpoints = neps
-		lep, err := c.getLeaderEndpoint()
-		if err != nil {
-			return ErrNoLeaderEndpoint
-		}
-
-		for i := range c.endpoints {
-			if c.endpoints[i].String() == lep {
-				c.pinned = i
-				break
-			}
-		}
-		// If endpoints doesn't have the lu, just keep c.pinned = 0.
-		// Forwarding between follower and leader would be required but it works.
-	default:
-		return fmt.Errorf("invalid endpoint selection mode: %d", c.selectionMode)
+func (c *httpClusterClient) SetEndpoints(eps []string) error {
+	neps, err := c.parseEndpoints(eps)
+	if err != nil {
+		return err
 	}
+
+	c.Lock()
+	defer c.Unlock()
+
+	c.endpoints = shuffleEndpoints(c.rand, neps)
+	// We're not doing anything for PrioritizeLeader here. This is
+	// due to not having a context meaning we can't call getLeaderEndpoint
+	// However, if you're using PrioritizeLeader, you've already been told
+	// to regularly call sync, where we do have a ctx, and can figure the
+	// leader. PrioritizeLeader is also quite a loose guarantee, so deal
+	// with it
+	c.pinned = 0
 
 	return nil
 }
@@ -401,27 +420,51 @@ func (c *httpClusterClient) Sync(ctx context.Context) error {
 		return err
 	}
 
-	c.Lock()
-	defer c.Unlock()
-
 	var eps []string
 	for _, m := range ms {
 		eps = append(eps, m.ClientURLs...)
 	}
-	sort.Sort(sort.StringSlice(eps))
 
-	ceps := make([]string, len(c.endpoints))
-	for i, cep := range c.endpoints {
-		ceps[i] = cep.String()
-	}
-	sort.Sort(sort.StringSlice(ceps))
-	// fast path if no change happens
-	// this helps client to pin the endpoint when no cluster change
-	if reflect.DeepEqual(eps, ceps) {
-		return nil
+	neps, err := c.parseEndpoints(eps)
+	if err != nil {
+		return err
 	}
 
-	return c.SetEndpoints(eps)
+	npin := 0
+
+	switch c.selectionMode {
+	case EndpointSelectionRandom:
+		c.RLock()
+		eq := endpointsEqual(c.endpoints, neps)
+		c.RUnlock()
+
+		if eq {
+			return nil
+		}
+		// When items in the endpoint list changes, we choose a new pin
+		neps = shuffleEndpoints(c.rand, neps)
+	case EndpointSelectionPrioritizeLeader:
+		nle, err := c.getLeaderEndpoint(ctx, neps)
+		if err != nil {
+			return ErrNoLeaderEndpoint
+		}
+
+		for i, n := range neps {
+			if n.String() == nle {
+				npin = i
+				break
+			}
+		}
+	default:
+		return fmt.Errorf("invalid endpoint selection mode: %d", c.selectionMode)
+	}
+
+	c.Lock()
+	defer c.Unlock()
+	c.endpoints = neps
+	c.pinned = npin
+
+	return nil
 }
 
 func (c *httpClusterClient) AutoSync(ctx context.Context, interval time.Duration) error {
@@ -437,6 +480,33 @@ func (c *httpClusterClient) AutoSync(ctx context.Context, interval time.Duration
 			return ctx.Err()
 		case <-ticker.C:
 		}
+	}
+}
+
+func (c *httpClusterClient) GetVersion(ctx context.Context) (*version.Versions, error) {
+	act := &getAction{Prefix: "/version"}
+
+	resp, body, err := c.Do(ctx, act)
+	if err != nil {
+		return nil, err
+	}
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		if len(body) == 0 {
+			return nil, ErrEmptyBody
+		}
+		var vresp version.Versions
+		if err := json.Unmarshal(body, &vresp); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		return &vresp, nil
+	default:
+		var etcdErr Error
+		if err := json.Unmarshal(body, &etcdErr); err != nil {
+			return nil, ErrInvalidJSON
+		}
+		return nil, etcdErr
 	}
 }
 
@@ -606,4 +676,28 @@ func shuffleEndpoints(r *rand.Rand, eps []url.URL) []url.URL {
 		neps[i] = eps[k]
 	}
 	return neps
+}
+
+func endpointsEqual(left, right []url.URL) bool {
+	if len(left) != len(right) {
+		return false
+	}
+
+	sLeft := make([]string, len(left))
+	sRight := make([]string, len(right))
+	for i, l := range left {
+		sLeft[i] = l.String()
+	}
+	for i, r := range right {
+		sRight[i] = r.String()
+	}
+
+	sort.Strings(sLeft)
+	sort.Strings(sRight)
+	for i := range sLeft {
+		if sLeft[i] != sRight[i] {
+			return false
+		}
+	}
+	return true
 }

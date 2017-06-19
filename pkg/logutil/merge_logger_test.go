@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	testLogger = capnslog.NewPackageLogger("github.com/coreos/etcd/pkg", "logutil")
+	testLogger = capnslog.NewPackageLogger("github.com/coreos/etcd", "pkg/logutil")
 )
 
 func TestMergeLogger(t *testing.T) {

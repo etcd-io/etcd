@@ -17,12 +17,12 @@ package etcdmain
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"time"
 
-	"github.com/coreos/etcd/client"
-	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/tcpproxy"
+
 	"github.com/spf13/cobra"
 )
 
@@ -77,31 +77,42 @@ func newGatewayStartCommand() *cobra.Command {
 	return &cmd
 }
 
-func startGateway(cmd *cobra.Command, args []string) {
-	endpoints := gatewayEndpoints
-	if gatewayDNSCluster != "" {
-		eps, err := client.NewSRVDiscover().Discover(gatewayDNSCluster)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+func stripSchema(eps []string) []string {
+	var endpoints []string
+
+	for _, ep := range eps {
+
+		if u, err := url.Parse(ep); err == nil && u.Host != "" {
+			ep = u.Host
 		}
-		plog.Infof("discovered the cluster %s from %s", eps, gatewayDNSCluster)
-		// confirm TLS connections are good
-		if !gatewayInsecureDiscovery {
-			tlsInfo := transport.TLSInfo{
-				TrustedCAFile: gatewayCA,
-				ServerName:    gatewayDNSCluster,
-			}
-			plog.Infof("validating discovered endpoints %v", eps)
-			endpoints, err = transport.ValidateSecureEndpoints(tlsInfo, eps)
+
+		endpoints = append(endpoints, ep)
+	}
+
+	return endpoints
+}
+
+func startGateway(cmd *cobra.Command, args []string) {
+	srvs := discoverEndpoints(gatewayDNSCluster, gatewayCA, gatewayInsecureDiscovery)
+	if len(srvs.Endpoints) == 0 {
+		// no endpoints discovered, fall back to provided endpoints
+		srvs.Endpoints = gatewayEndpoints
+	}
+	// Strip the schema from the endpoints because we start just a TCP proxy
+	srvs.Endpoints = stripSchema(srvs.Endpoints)
+	if len(srvs.SRVs) == 0 {
+		for _, ep := range srvs.Endpoints {
+			h, p, err := net.SplitHostPort(ep)
 			if err != nil {
-				plog.Warningf("%v", err)
+				plog.Fatalf("error parsing endpoint %q", ep)
 			}
-			plog.Infof("using discovered endpoints %v", endpoints)
+			var port uint16
+			fmt.Sscanf(p, "%d", &port)
+			srvs.SRVs = append(srvs.SRVs, &net.SRV{Target: h, Port: port})
 		}
 	}
 
-	if len(endpoints) == 0 {
+	if len(srvs.Endpoints) == 0 {
 		plog.Fatalf("no endpoints found")
 	}
 
@@ -113,9 +124,12 @@ func startGateway(cmd *cobra.Command, args []string) {
 
 	tp := tcpproxy.TCPProxy{
 		Listener:        l,
-		Endpoints:       endpoints,
+		Endpoints:       srvs.SRVs,
 		MonitorInterval: getewayRetryDelay,
 	}
+
+	// At this point, etcd gateway listener is initialized
+	notifySystemd()
 
 	tp.Run()
 }

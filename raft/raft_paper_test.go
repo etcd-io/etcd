@@ -757,7 +757,9 @@ func TestLeaderSyncFollowerLog(t *testing.T) {
 		// first node needs the vote from the third node to become the leader.
 		n := newNetwork(lead, follower, nopStepper)
 		n.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
-		n.send(pb.Message{From: 3, To: 1, Type: pb.MsgVoteResp, Term: 1})
+		// The election occurs in the term after the one we loaded with
+		// lead.loadState above.
+		n.send(pb.Message{From: 3, To: 1, Type: pb.MsgVoteResp, Term: term + 1})
 
 		n.send(pb.Message{From: 1, To: 1, Type: pb.MsgProp, Entries: []pb.Entry{{}}})
 

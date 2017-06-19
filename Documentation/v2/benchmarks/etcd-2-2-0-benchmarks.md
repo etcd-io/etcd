@@ -24,7 +24,7 @@ Go OS/Arch: linux/amd64
 
 ## Testing
 
-Bootstrap another machine, outside of the etcd cluster, and run the [`boom` HTTP benchmark tool](https://github.com/rakyll/boom) with a connection reuse patch to send requests to each etcd cluster member. See the [benchmark instructions](../../hack/benchmark/) for the patch and the steps to reproduce our procedures.
+Bootstrap another machine, outside of the etcd cluster, and run the [`boom` HTTP benchmark tool][boom] with a connection reuse patch to send requests to each etcd cluster member. See the [benchmark instructions][hack] for the patch and the steps to reproduce our procedures.
 
 The performance is calulated through results of 100 benchmark rounds.
 
@@ -67,3 +67,6 @@ The performance is calulated through results of 100 benchmark rounds.
 - Write QPS to cluster leaders seems to be increased by a small margin. This is because the main loop and entry apply loops were decoupled in the etcd raft logic, eliminating several blocks between them.
 
 - Write QPS to all members seems to be increased by a significant margin, because followers now receive the latest commit index sooner, and commit proposals more quickly.
+
+[boom]: https://github.com/rakyll/boom
+[hack]: ../../../hack/benchmark/

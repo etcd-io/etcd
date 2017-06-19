@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/pprof"
 	"net/url"
 	"path"
 	"strconv"
@@ -47,17 +46,16 @@ import (
 )
 
 const (
-	authPrefix               = "/v2/auth"
-	keysPrefix               = "/v2/keys"
-	deprecatedMachinesPrefix = "/v2/machines"
-	membersPrefix            = "/v2/members"
-	statsPrefix              = "/v2/stats"
-	varsPath                 = "/debug/vars"
-	metricsPath              = "/metrics"
-	healthPath               = "/health"
-	versionPath              = "/version"
-	configPath               = "/config"
-	pprofPrefix              = "/debug/pprof"
+	authPrefix     = "/v2/auth"
+	keysPrefix     = "/v2/keys"
+	machinesPrefix = "/v2/machines"
+	membersPrefix  = "/v2/members"
+	statsPrefix    = "/v2/stats"
+	varsPath       = "/debug/vars"
+	metricsPath    = "/metrics"
+	healthPath     = "/health"
+	versionPath    = "/version"
+	configPath     = "/config"
 )
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
@@ -86,9 +84,7 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
 	}
 
-	dmh := &deprecatedMachinesHandler{
-		cluster: server.Cluster(),
-	}
+	mah := &machinesHandler{cluster: server.Cluster()}
 
 	sech := &authHandler{
 		sec:                   sec,
@@ -110,25 +106,8 @@ func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http
 	mux.Handle(metricsPath, prometheus.Handler())
 	mux.Handle(membersPrefix, mh)
 	mux.Handle(membersPrefix+"/", mh)
-	mux.Handle(deprecatedMachinesPrefix, dmh)
+	mux.Handle(machinesPrefix, mah)
 	handleAuth(mux, sech)
-
-	if server.IsPprofEnabled() {
-		plog.Infof("pprof is enabled under %s", pprofPrefix)
-
-		mux.HandleFunc(pprofPrefix+"/", pprof.Index)
-		mux.HandleFunc(pprofPrefix+"/profile", pprof.Profile)
-		mux.HandleFunc(pprofPrefix+"/symbol", pprof.Symbol)
-		mux.HandleFunc(pprofPrefix+"/cmdline", pprof.Cmdline)
-		// TODO: currently, we don't create an entry for pprof.Trace,
-		// because go 1.4 doesn't provide it. After support of go 1.4 is dropped,
-		// we should add the entry.
-
-		mux.Handle(pprofPrefix+"/heap", pprof.Handler("heap"))
-		mux.Handle(pprofPrefix+"/goroutine", pprof.Handler("goroutine"))
-		mux.Handle(pprofPrefix+"/threadcreate", pprof.Handler("threadcreate"))
-		mux.Handle(pprofPrefix+"/block", pprof.Handler("block"))
-	}
 
 	return requestLogger(mux)
 }
@@ -153,7 +132,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	clock := clockwork.NewRealClock()
 	startTime := clock.Now()
-	rr, err := parseKeyRequest(r, clock)
+	rr, noValueOnSuccess, err := parseKeyRequest(r, clock)
 	if err != nil {
 		writeKeyError(w, err)
 		return
@@ -175,7 +154,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case resp.Event != nil:
-		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
+		if err := writeKeyEvent(w, resp.Event, noValueOnSuccess, h.timer); err != nil {
 			// Should never be reached
 			plog.Errorf("error writing event (%v)", err)
 		}
@@ -189,11 +168,11 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type deprecatedMachinesHandler struct {
+type machinesHandler struct {
 	cluster api.Cluster
 }
 
-func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *machinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
@@ -253,7 +232,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		now := h.clock.Now()
 		m := membership.NewMember("", req.PeerURLs, "", &now)
-		err := h.server.AddMember(ctx, *m)
+		_, err := h.server.AddMember(ctx, *m)
 		switch {
 		case err == membership.ErrIDExists || err == membership.ErrPeerURLexists:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
@@ -274,7 +253,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return
 		}
-		err := h.server.RemoveMember(ctx, uint64(id))
+		_, err := h.server.RemoveMember(ctx, uint64(id))
 		switch {
 		case err == membership.ErrIDRemoved:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusGone, fmt.Sprintf("Member permanently removed: %s", id)))
@@ -299,7 +278,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ID:             id,
 			RaftAttributes: membership.RaftAttributes{PeerURLs: req.PeerURLs.StringSlice()},
 		}
-		err := h.server.UpdateMember(ctx, m)
+		_, err := h.server.UpdateMember(ctx, m)
 		switch {
 		case err == membership.ErrPeerURLexists:
 			writeError(w, r, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
@@ -365,32 +344,23 @@ func serveVars(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "\n}\n")
 }
 
-// TODO: change etcdserver to raft interface when we have it.
-//       add test for healthHandler when we have the interface ready.
 func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !allowMethod(w, r.Method, "GET") {
 			return
 		}
-
 		if uint64(server.Leader()) == raft.None {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
 			return
 		}
-
-		// wait for raft's progress
-		index := server.Index()
-		for i := 0; i < 3; i++ {
-			time.Sleep(250 * time.Millisecond)
-			if server.Index() > index {
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"health": "true"}`))
-				return
-			}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		if _, err := server.Do(ctx, etcdserverpb.Request{Method: "QGET"}); err != nil {
+			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
+			return
 		}
-
-		http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
-		return
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"health": "true"}`))
 	}
 }
 
@@ -449,19 +419,20 @@ func logHandleFunc(w http.ResponseWriter, r *http.Request) {
 // parseKeyRequest converts a received http.Request on keysPrefix to
 // a server Request, performing validation of supplied fields as appropriate.
 // If any validation fails, an empty Request and non-nil error is returned.
-func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Request, error) {
+func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Request, bool, error) {
+	noValueOnSuccess := false
 	emptyReq := etcdserverpb.Request{}
 
 	err := r.ParseForm()
 	if err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidForm,
 			err.Error(),
 		)
 	}
 
 	if !strings.HasPrefix(r.URL.Path, keysPrefix) {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidForm,
 			"incorrect key prefix",
 		)
@@ -470,13 +441,13 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 
 	var pIdx, wIdx uint64
 	if pIdx, err = getUint64(r.Form, "prevIndex"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeIndexNaN,
 			`invalid value for "prevIndex"`,
 		)
 	}
 	if wIdx, err = getUint64(r.Form, "waitIndex"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeIndexNaN,
 			`invalid value for "waitIndex"`,
 		)
@@ -484,45 +455,45 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 
 	var rec, sort, wait, dir, quorum, stream bool
 	if rec, err = getBool(r.Form, "recursive"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "recursive"`,
 		)
 	}
 	if sort, err = getBool(r.Form, "sorted"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "sorted"`,
 		)
 	}
 	if wait, err = getBool(r.Form, "wait"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "wait"`,
 		)
 	}
 	// TODO(jonboulle): define what parameters dir is/isn't compatible with?
 	if dir, err = getBool(r.Form, "dir"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "dir"`,
 		)
 	}
 	if quorum, err = getBool(r.Form, "quorum"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "quorum"`,
 		)
 	}
 	if stream, err = getBool(r.Form, "stream"); err != nil {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`invalid value for "stream"`,
 		)
 	}
 
 	if wait && r.Method != "GET" {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodeInvalidField,
 			`"wait" can only be used with GET requests`,
 		)
@@ -530,9 +501,16 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 
 	pV := r.FormValue("prevValue")
 	if _, ok := r.Form["prevValue"]; ok && pV == "" {
-		return emptyReq, etcdErr.NewRequestError(
+		return emptyReq, false, etcdErr.NewRequestError(
 			etcdErr.EcodePrevValueRequired,
 			`"prevValue" cannot be empty`,
+		)
+	}
+
+	if noValueOnSuccess, err = getBool(r.Form, "noValueOnSuccess"); err != nil {
+		return emptyReq, false, etcdErr.NewRequestError(
+			etcdErr.EcodeInvalidField,
+			`invalid value for "noValueOnSuccess"`,
 		)
 	}
 
@@ -542,7 +520,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if len(r.FormValue("ttl")) > 0 {
 		i, err := getUint64(r.Form, "ttl")
 		if err != nil {
-			return emptyReq, etcdErr.NewRequestError(
+			return emptyReq, false, etcdErr.NewRequestError(
 				etcdErr.EcodeTTLNaN,
 				`invalid value for "ttl"`,
 			)
@@ -555,7 +533,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if _, ok := r.Form["prevExist"]; ok {
 		bv, err := getBool(r.Form, "prevExist")
 		if err != nil {
-			return emptyReq, etcdErr.NewRequestError(
+			return emptyReq, false, etcdErr.NewRequestError(
 				etcdErr.EcodeInvalidField,
 				"invalid value for prevExist",
 			)
@@ -568,7 +546,7 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 	if _, ok := r.Form["refresh"]; ok {
 		bv, err := getBool(r.Form, "refresh")
 		if err != nil {
-			return emptyReq, etcdErr.NewRequestError(
+			return emptyReq, false, etcdErr.NewRequestError(
 				etcdErr.EcodeInvalidField,
 				"invalid value for refresh",
 			)
@@ -577,13 +555,13 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 		if refresh != nil && *refresh {
 			val := r.FormValue("value")
 			if _, ok := r.Form["value"]; ok && val != "" {
-				return emptyReq, etcdErr.NewRequestError(
+				return emptyReq, false, etcdErr.NewRequestError(
 					etcdErr.EcodeRefreshValue,
 					`A value was provided on a refresh`,
 				)
 			}
 			if ttl == nil {
-				return emptyReq, etcdErr.NewRequestError(
+				return emptyReq, false, etcdErr.NewRequestError(
 					etcdErr.EcodeRefreshTTLRequired,
 					`No TTL value set`,
 				)
@@ -621,13 +599,13 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 		rr.Expiration = clock.Now().Add(expr).UnixNano()
 	}
 
-	return rr, nil
+	return rr, noValueOnSuccess, nil
 }
 
 // writeKeyEvent trims the prefix of key path in a single Event under
 // StoreKeysPrefix, serializes it and writes the resulting JSON to the given
 // ResponseWriter, along with the appropriate headers.
-func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTimer) error {
+func writeKeyEvent(w http.ResponseWriter, ev *store.Event, noValueOnSuccess bool, rt etcdserver.RaftTimer) error {
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
@@ -641,6 +619,12 @@ func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTim
 	}
 
 	ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
+	if noValueOnSuccess &&
+		(ev.Action == store.Set || ev.Action == store.CompareAndSwap ||
+			ev.Action == store.Create || ev.Action == store.Update) {
+		ev.Node = nil
+		ev.PrevNode = nil
+	}
 	return json.NewEncoder(w).Encode(ev)
 }
 
@@ -747,6 +731,10 @@ func trimErrorPrefix(err error, prefix string) error {
 
 func unmarshalRequest(r *http.Request, req json.Unmarshaler, w http.ResponseWriter) bool {
 	ctype := r.Header.Get("Content-Type")
+	semicolonPosition := strings.Index(ctype, ";")
+	if semicolonPosition != -1 {
+		ctype = strings.TrimSpace(strings.ToLower(ctype[0:semicolonPosition]))
+	}
 	if ctype != "application/json" {
 		writeError(w, r, httptypes.NewHTTPError(http.StatusUnsupportedMediaType, fmt.Sprintf("Bad Content-Type %s, accept application/json", ctype)))
 		return false

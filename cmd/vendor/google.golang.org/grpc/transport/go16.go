@@ -37,10 +37,23 @@ package transport
 import (
 	"net"
 
+	"google.golang.org/grpc/codes"
+
 	"golang.org/x/net/context"
 )
 
 // dialContext connects to the address on the named network.
 func dialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	return (&net.Dialer{Cancel: ctx.Done()}).Dial(network, address)
+}
+
+// ContextErr converts the error from context package into a StreamError.
+func ContextErr(err error) StreamError {
+	switch err {
+	case context.DeadlineExceeded:
+		return streamErrorf(codes.DeadlineExceeded, "%v", err)
+	case context.Canceled:
+		return streamErrorf(codes.Canceled, "%v", err)
+	}
+	return streamErrorf(codes.Internal, "Unexpected error from context packet: %v", err)
 }

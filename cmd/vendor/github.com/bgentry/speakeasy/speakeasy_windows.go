@@ -3,7 +3,6 @@
 package speakeasy
 
 import (
-	"os"
 	"syscall"
 )
 
@@ -12,18 +11,17 @@ import (
 const ENABLE_ECHO_INPUT = 0x0004
 
 func getPassword() (password string, err error) {
-	hStdin := syscall.Handle(os.Stdin.Fd())
 	var oldMode uint32
 
-	err = syscall.GetConsoleMode(hStdin, &oldMode)
+	err = syscall.GetConsoleMode(syscall.Stdin, &oldMode)
 	if err != nil {
 		return
 	}
 
 	var newMode uint32 = (oldMode &^ ENABLE_ECHO_INPUT)
 
-	err = setConsoleMode(hStdin, newMode)
-	defer setConsoleMode(hStdin, oldMode)
+	err = setConsoleMode(syscall.Stdin, newMode)
+	defer setConsoleMode(syscall.Stdin, oldMode)
 	if err != nil {
 		return
 	}

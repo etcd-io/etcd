@@ -18,51 +18,54 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
+	"math/rand"
+	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/lease/leasepb"
 	"github.com/coreos/etcd/mvcc/backend"
+	"github.com/coreos/etcd/pkg/monotime"
 )
 
 const (
 	// NoLease is a special LeaseID representing the absence of a lease.
 	NoLease = LeaseID(0)
+
+	// maximum number of leases to revoke per iteration
+	// TODO: make this configurable?
+	leaseRevokeRate = 1000
 )
 
 var (
 	leaseBucketName = []byte("lease")
-	// do not use maxInt64 since it can overflow time which will add
-	// the offset of unix time (1970yr to seconds).
-	forever = time.Unix(math.MaxInt64>>1, 0)
+
+	forever = monotime.Time(math.MaxInt64)
 
 	ErrNotPrimary    = errors.New("not a primary lessor")
 	ErrLeaseNotFound = errors.New("lease not found")
 	ErrLeaseExists   = errors.New("lease already exists")
 )
 
-type LeaseID int64
-
-// RangeDeleter defines an interface with Txn and DeleteRange method.
-// We define this interface only for lessor to limit the number
-// of methods of mvcc.KV to what lessor actually needs.
-//
-// Having a minimum interface makes testing easy.
-type RangeDeleter interface {
-	// TxnBegin see comments on mvcc.KV
-	TxnBegin() int64
-	// TxnEnd see comments on mvcc.KV
-	TxnEnd(txnID int64) error
-	// TxnDeleteRange see comments on mvcc.KV
-	TxnDeleteRange(txnID int64, key, end []byte) (n, rev int64, err error)
+// TxnDelete is a TxnWrite that only permits deletes. Defined here
+// to avoid circular dependency with mvcc.
+type TxnDelete interface {
+	DeleteRange(key, end []byte) (n, rev int64)
+	End()
 }
+
+// RangeDeleter is a TxnDelete constructor.
+type RangeDeleter func() TxnDelete
+
+type LeaseID int64
 
 // Lessor owns leases. It can grant, revoke, renew and modify leases for lessee.
 type Lessor interface {
-	// SetRangeDeleter sets the RangeDeleter to the Lessor.
-	// Lessor deletes the items in the revoked or expired lease from the
-	// the set RangeDeleter.
-	SetRangeDeleter(dr RangeDeleter)
+	// SetRangeDeleter lets the lessor create TxnDeletes to the store.
+	// Lessor deletes the items in the revoked or expired lease by creating
+	// new TxnDeletes.
+	SetRangeDeleter(rd RangeDeleter)
 
 	// Grant grants a lease that expires at least after TTL seconds.
 	Grant(id LeaseID, ttl int64) (*Lease, error)
@@ -74,6 +77,10 @@ type Lessor interface {
 	// Attach attaches given leaseItem to the lease with given LeaseID.
 	// If the lease does not exist, an error will be returned.
 	Attach(id LeaseID, items []LeaseItem) error
+
+	// GetLease returns LeaseID for given item.
+	// If no lease found, NoLease value will be returned.
+	GetLease(item LeaseItem) LeaseID
 
 	// Detach detaches given leaseItem from the lease with given LeaseID.
 	// If the lease does not exist, an error will be returned.
@@ -110,20 +117,9 @@ type Lessor interface {
 type lessor struct {
 	mu sync.Mutex
 
-	// primary indicates if this lessor is the primary lessor. The primary
-	// lessor manages lease expiration and renew.
-	//
-	// in etcd, raft leader is the primary. Thus there might be two primary
-	// leaders at the same time (raft allows concurrent leader but with different term)
-	// for at most a leader election timeout.
-	// The old primary leader cannot affect the correctness since its proposal has a
-	// smaller term and will not be committed.
-	//
-	// TODO: raft follower do not forward lease management proposals. There might be a
-	// very small window (within second normally which depends on go scheduling) that
-	// a raft follow is the primary between the raft leader demotion and lessor demotion.
-	// Usually this should not be a problem. Lease should not be that sensitive to timing.
-	primary bool
+	// demotec is set when the lessor is the primary.
+	// demotec will be closed if the lessor is demoted.
+	demotec chan struct{}
 
 	// TODO: probably this should be a heap with a secondary
 	// id index.
@@ -132,6 +128,8 @@ type lessor struct {
 	// Renew O(1).
 	// findExpiredLeases and Renew should be the most frequent operations.
 	leaseMap map[LeaseID]*Lease
+
+	itemMap map[LeaseItem]LeaseID
 
 	// When a lease expires, the lessor will delete the
 	// leased range (or key) by the RangeDeleter.
@@ -159,6 +157,7 @@ func NewLessor(b backend.Backend, minLeaseTTL int64) Lessor {
 func newLessor(b backend.Backend, minLeaseTTL int64) *lessor {
 	l := &lessor{
 		leaseMap:    make(map[LeaseID]*Lease),
+		itemMap:     make(map[LeaseItem]LeaseID),
 		b:           b,
 		minLeaseTTL: minLeaseTTL,
 		// expiredC is a small buffered chan to avoid unnecessary blocking.
@@ -171,6 +170,23 @@ func newLessor(b backend.Backend, minLeaseTTL int64) *lessor {
 	go l.runLoop()
 
 	return l
+}
+
+// isPrimary indicates if this lessor is the primary lessor. The primary
+// lessor manages lease expiration and renew.
+//
+// in etcd, raft leader is the primary. Thus there might be two primary
+// leaders at the same time (raft allows concurrent leader but with different term)
+// for at most a leader election timeout.
+// The old primary leader cannot affect the correctness since its proposal has a
+// smaller term and will not be committed.
+//
+// TODO: raft follower do not forward lease management proposals. There might be a
+// very small window (within second normally which depends on go scheduling) that
+// a raft follow is the primary between the raft leader demotion and lessor demotion.
+// Usually this should not be a problem. Lease should not be that sensitive to timing.
+func (le *lessor) isPrimary() bool {
+	return le.demotec != nil
 }
 
 func (le *lessor) SetRangeDeleter(rd RangeDeleter) {
@@ -187,7 +203,12 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 
 	// TODO: when lessor is under high load, it should give out lease
 	// with longer TTL to reduce renew load.
-	l := &Lease{ID: id, TTL: ttl, itemSet: make(map[LeaseItem]struct{})}
+	l := &Lease{
+		ID:      id,
+		ttl:     ttl,
+		itemSet: make(map[LeaseItem]struct{}),
+		revokec: make(chan struct{}),
+	}
 
 	le.mu.Lock()
 	defer le.mu.Unlock()
@@ -196,11 +217,11 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 		return nil, ErrLeaseExists
 	}
 
-	if l.TTL < le.minLeaseTTL {
-		l.TTL = le.minLeaseTTL
+	if l.ttl < le.minLeaseTTL {
+		l.ttl = le.minLeaseTTL
 	}
 
-	if le.primary {
+	if le.isPrimary() {
 		l.refresh(0)
 	} else {
 		l.forever()
@@ -220,6 +241,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 		le.mu.Unlock()
 		return ErrLeaseNotFound
 	}
+	defer close(l.revokec)
 	// unlock before doing external work
 	le.mu.Unlock()
 
@@ -227,12 +249,14 @@ func (le *lessor) Revoke(id LeaseID) error {
 		return nil
 	}
 
-	tid := le.rd.TxnBegin()
-	for item := range l.itemSet {
-		_, _, err := le.rd.TxnDeleteRange(tid, []byte(item.Key), nil)
-		if err != nil {
-			panic(err)
-		}
+	txn := le.rd()
+
+	// sort keys so deletes are in same order among all members,
+	// otherwise the backened hashes will be different
+	keys := l.Keys()
+	sort.StringSlice(keys).Sort()
+	for _, key := range keys {
+		txn.DeleteRange([]byte(key), nil)
 	}
 
 	le.mu.Lock()
@@ -243,11 +267,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 	// deleting the keys if etcdserver fails in between.
 	le.b.BatchTx().UnsafeDelete(leaseBucketName, int64ToBytes(int64(l.ID)))
 
-	err := le.rd.TxnEnd(tid)
-	if err != nil {
-		panic(err)
-	}
-
+	txn.End()
 	return nil
 }
 
@@ -255,41 +275,72 @@ func (le *lessor) Revoke(id LeaseID) error {
 // has expired, an error will be returned.
 func (le *lessor) Renew(id LeaseID) (int64, error) {
 	le.mu.Lock()
-	defer le.mu.Unlock()
 
-	if !le.primary {
+	unlock := func() { le.mu.Unlock() }
+	defer func() { unlock() }()
+
+	if !le.isPrimary() {
 		// forward renew request to primary instead of returning error.
 		return -1, ErrNotPrimary
 	}
+
+	demotec := le.demotec
 
 	l := le.leaseMap[id]
 	if l == nil {
 		return -1, ErrLeaseNotFound
 	}
 
+	if l.expired() {
+		le.mu.Unlock()
+		unlock = func() {}
+		select {
+		// A expired lease might be pending for revoking or going through
+		// quorum to be revoked. To be accurate, renew request must wait for the
+		// deletion to complete.
+		case <-l.revokec:
+			return -1, ErrLeaseNotFound
+		// The expired lease might fail to be revoked if the primary changes.
+		// The caller will retry on ErrNotPrimary.
+		case <-demotec:
+			return -1, ErrNotPrimary
+		case <-le.stopC:
+			return -1, ErrNotPrimary
+		}
+	}
+
 	l.refresh(0)
-	return l.TTL, nil
+	return l.ttl, nil
 }
 
 func (le *lessor) Lookup(id LeaseID) *Lease {
 	le.mu.Lock()
 	defer le.mu.Unlock()
-	if l, ok := le.leaseMap[id]; ok {
-		return l
-	}
-	return nil
+	return le.leaseMap[id]
 }
 
 func (le *lessor) Promote(extend time.Duration) {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
-	le.primary = true
+	le.demotec = make(chan struct{})
 
 	// refresh the expiries of all leases.
 	for _, l := range le.leaseMap {
-		l.refresh(extend)
+		// randomize expiry with 士10%, otherwise leases of same TTL
+		// will expire all at the same time,
+		l.refresh(extend + computeRandomDelta(l.ttl))
 	}
+}
+
+func computeRandomDelta(seconds int64) time.Duration {
+	var delta int64
+	if seconds > 10 {
+		delta = int64(float64(seconds) * 0.1 * rand.Float64())
+	} else {
+		delta = rand.Int63n(10)
+	}
+	return time.Duration(delta) * time.Second
 }
 
 func (le *lessor) Demote() {
@@ -301,7 +352,10 @@ func (le *lessor) Demote() {
 		l.forever()
 	}
 
-	le.primary = false
+	if le.demotec != nil {
+		close(le.demotec)
+		le.demotec = nil
+	}
 }
 
 // Attach attaches items to the lease with given ID. When the lease
@@ -316,10 +370,20 @@ func (le *lessor) Attach(id LeaseID, items []LeaseItem) error {
 		return ErrLeaseNotFound
 	}
 
+	l.mu.Lock()
 	for _, it := range items {
 		l.itemSet[it] = struct{}{}
+		le.itemMap[it] = id
 	}
+	l.mu.Unlock()
 	return nil
+}
+
+func (le *lessor) GetLease(item LeaseItem) LeaseID {
+	le.mu.Lock()
+	id := le.itemMap[item]
+	le.mu.Unlock()
+	return id
 }
 
 // Detach detaches items from the lease with given ID.
@@ -333,9 +397,12 @@ func (le *lessor) Detach(id LeaseID, items []LeaseItem) error {
 		return ErrLeaseNotFound
 	}
 
+	l.mu.Lock()
 	for _, it := range items {
 		delete(l.itemSet, it)
+		delete(le.itemMap, it)
 	}
+	l.mu.Unlock()
 	return nil
 }
 
@@ -346,7 +413,7 @@ func (le *lessor) Recover(b backend.Backend, rd RangeDeleter) {
 	le.b = b
 	le.rd = rd
 	le.leaseMap = make(map[LeaseID]*Lease)
-
+	le.itemMap = make(map[LeaseItem]LeaseID)
 	le.initAndRecover()
 }
 
@@ -366,12 +433,16 @@ func (le *lessor) runLoop() {
 		var ls []*Lease
 
 		le.mu.Lock()
-		if le.primary {
+		if le.isPrimary() {
 			ls = le.findExpiredLeases()
 		}
 		le.mu.Unlock()
 
 		if len(ls) != 0 {
+			// rate limit
+			if len(ls) > leaseRevokeRate/2 {
+				ls = ls[:leaseRevokeRate/2]
+			}
 			select {
 			case <-le.stopC:
 				return
@@ -395,26 +466,16 @@ func (le *lessor) runLoop() {
 // leases that needed to be revoked.
 func (le *lessor) findExpiredLeases() []*Lease {
 	leases := make([]*Lease, 0, 16)
-	now := time.Now()
 
 	for _, l := range le.leaseMap {
 		// TODO: probably should change to <= 100-500 millisecond to
 		// make up committing latency.
-		if l.expiry.Sub(now) <= 0 {
+		if l.expired() {
 			leases = append(leases, l)
 		}
 	}
 
 	return leases
-}
-
-// get gets the lease with given id.
-// get is a helper function for testing, at least for now.
-func (le *lessor) get(id LeaseID) *Lease {
-	le.mu.Lock()
-	defer le.mu.Unlock()
-
-	return le.leaseMap[id]
 }
 
 func (le *lessor) initAndRecover() {
@@ -437,11 +498,12 @@ func (le *lessor) initAndRecover() {
 		}
 		le.leaseMap[ID] = &Lease{
 			ID:  ID,
-			TTL: lpb.TTL,
+			ttl: lpb.TTL,
 			// itemSet will be filled in when recover key-value pairs
 			// set expiry to forever, refresh when promoted
 			itemSet: make(map[LeaseItem]struct{}),
 			expiry:  forever,
+			revokec: make(chan struct{}),
 		}
 	}
 	tx.Unlock()
@@ -451,17 +513,24 @@ func (le *lessor) initAndRecover() {
 
 type Lease struct {
 	ID  LeaseID
-	TTL int64 // time to live in seconds
+	ttl int64 // time to live in seconds
+	// expiry is time when lease should expire; must be 64-bit aligned.
+	expiry monotime.Time
 
+	// mu protects concurrent accesses to itemSet
+	mu      sync.RWMutex
 	itemSet map[LeaseItem]struct{}
-	// expiry time in unixnano
-	expiry time.Time
+	revokec chan struct{}
 }
 
-func (l Lease) persistTo(b backend.Backend) {
+func (l *Lease) expired() bool {
+	return l.Remaining() <= 0
+}
+
+func (l *Lease) persistTo(b backend.Backend) {
 	key := int64ToBytes(int64(l.ID))
 
-	lpb := leasepb.Lease{ID: int64(l.ID), TTL: int64(l.TTL)}
+	lpb := leasepb.Lease{ID: int64(l.ID), TTL: int64(l.ttl)}
 	val, err := lpb.Marshal()
 	if err != nil {
 		panic("failed to marshal lease proto item")
@@ -472,13 +541,36 @@ func (l Lease) persistTo(b backend.Backend) {
 	b.BatchTx().Unlock()
 }
 
+// TTL returns the TTL of the Lease.
+func (l *Lease) TTL() int64 {
+	return l.ttl
+}
+
 // refresh refreshes the expiry of the lease.
 func (l *Lease) refresh(extend time.Duration) {
-	l.expiry = time.Now().Add(extend + time.Second*time.Duration(l.TTL))
+	t := monotime.Now().Add(extend + time.Duration(l.ttl)*time.Second)
+	atomic.StoreUint64((*uint64)(&l.expiry), uint64(t))
 }
 
 // forever sets the expiry of lease to be forever.
-func (l *Lease) forever() { l.expiry = forever }
+func (l *Lease) forever() { atomic.StoreUint64((*uint64)(&l.expiry), uint64(forever)) }
+
+// Keys returns all the keys attached to the lease.
+func (l *Lease) Keys() []string {
+	l.mu.RLock()
+	keys := make([]string, 0, len(l.itemSet))
+	for k := range l.itemSet {
+		keys = append(keys, k.Key)
+	}
+	l.mu.RUnlock()
+	return keys
+}
+
+// Remaining returns the remaining time of the lease.
+func (l *Lease) Remaining() time.Duration {
+	t := monotime.Time(atomic.LoadUint64((*uint64)(&l.expiry)))
+	return time.Duration(t - monotime.Now())
+}
 
 type LeaseItem struct {
 	Key string
@@ -502,6 +594,7 @@ func (fl *FakeLessor) Revoke(id LeaseID) error { return nil }
 
 func (fl *FakeLessor) Attach(id LeaseID, items []LeaseItem) error { return nil }
 
+func (fl *FakeLessor) GetLease(item LeaseItem) LeaseID            { return 0 }
 func (fl *FakeLessor) Detach(id LeaseID, items []LeaseItem) error { return nil }
 
 func (fl *FakeLessor) Promote(extend time.Duration) {}

@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -56,6 +57,20 @@ func TestNetworkPartition5MembersLeaderInMinority(t *testing.T) {
 }
 
 func TestNetworkPartition5MembersLeaderInMajority(t *testing.T) {
+	// retry up to 3 times, in case of leader election on majority partition due to slow hardware
+	var err error
+	for i := 0; i < 3; i++ {
+		if err = testNetworkPartition5MembersLeaderInMajority(t); err == nil {
+			break
+		}
+		t.Logf("[%d] got %v", i, err)
+	}
+	if err != nil {
+		t.Fatalf("failed after 3 tries (%v)", err)
+	}
+}
+
+func testNetworkPartition5MembersLeaderInMajority(t *testing.T) error {
 	defer testutil.AfterTest(t)
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 5})
@@ -83,7 +98,7 @@ func TestNetworkPartition5MembersLeaderInMajority(t *testing.T) {
 	leadIndex2 := clus.waitLeader(t, majorityMembers)
 	leadID, leadID2 := clus.Members[leadIndex].s.ID(), majorityMembers[leadIndex2].s.ID()
 	if leadID != leadID2 {
-		t.Fatalf("unexpected leader change from %s, got %s", leadID, leadID2)
+		return fmt.Errorf("unexpected leader change from %s, got %s", leadID, leadID2)
 	}
 
 	// recover network partition (bi-directional)
@@ -91,6 +106,7 @@ func TestNetworkPartition5MembersLeaderInMajority(t *testing.T) {
 
 	// write to majority first
 	clusterMustProgress(t, append(majorityMembers, minorityMembers...))
+	return nil
 }
 
 func TestNetworkPartition4Members(t *testing.T) {

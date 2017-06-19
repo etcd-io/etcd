@@ -16,8 +16,11 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"syscall"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
@@ -28,7 +31,7 @@ import (
 // NewLockCommand returns the cobra command for "lock".
 func NewLockCommand() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "lock <lockname>",
+		Use:   "lock <lockname> [exec-command arg1 arg2 ...]",
 		Short: "Acquires a named lock",
 		Run:   lockCommandFunc,
 	}
@@ -36,16 +39,16 @@ func NewLockCommand() *cobra.Command {
 }
 
 func lockCommandFunc(cmd *cobra.Command, args []string) {
-	if len(args) != 1 {
-		ExitWithError(ExitBadArgs, errors.New("lock takes one lock name argument."))
+	if len(args) == 0 {
+		ExitWithError(ExitBadArgs, errors.New("lock takes a lock name argument and an optional command to execute."))
 	}
 	c := mustClientFromCmd(cmd)
-	if err := lockUntilSignal(c, args[0]); err != nil {
+	if err := lockUntilSignal(c, args[0], args[1:]); err != nil {
 		ExitWithError(ExitError, err)
 	}
 }
 
-func lockUntilSignal(c *clientv3.Client, lockname string) error {
+func lockUntilSignal(c *clientv3.Client, lockname string, cmdArgs []string) error {
 	s, err := concurrency.NewSession(c)
 	if err != nil {
 		return err
@@ -57,20 +60,27 @@ func lockUntilSignal(c *clientv3.Client, lockname string) error {
 	// unlock in case of ordinary shutdown
 	donec := make(chan struct{})
 	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, os.Interrupt, os.Kill)
+	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigc
 		cancel()
 		close(donec)
 	}()
 
-	s, serr := concurrency.NewSession(c)
-	if serr != nil {
-		return serr
-	}
-
 	if err := m.Lock(ctx); err != nil {
 		return err
+	}
+
+	if len(cmdArgs) > 0 {
+		cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+		cmd.Env = append(environLockResponse(m), os.Environ()...)
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		err := cmd.Run()
+		unlockErr := m.Unlock(context.TODO())
+		if err != nil {
+			return err
+		}
+		return unlockErr
 	}
 
 	k, kerr := c.Get(ctx, m.Key())
@@ -80,7 +90,6 @@ func lockUntilSignal(c *clientv3.Client, lockname string) error {
 	if len(k.Kvs) == 0 {
 		return errors.New("lock lost on init")
 	}
-
 	display.Get(*k)
 
 	select {
@@ -90,4 +99,11 @@ func lockUntilSignal(c *clientv3.Client, lockname string) error {
 	}
 
 	return errors.New("session expired")
+}
+
+func environLockResponse(m *concurrency.Mutex) []string {
+	return []string{
+		"ETCD_LOCK_KEY=" + m.Key(),
+		fmt.Sprintf("ETCD_LOCK_REV=%d", m.Header().Revision),
+	}
 }

@@ -15,10 +15,12 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/coreos/etcd/client"
+	"github.com/urfave/cli"
 )
 
 const (
@@ -30,7 +32,18 @@ const (
 	ExitClusterNotHealthy
 )
 
-func handleError(code int, err error) {
+func handleError(c *cli.Context, code int, err error) {
+	if c.GlobalString("output") == "json" {
+		if err, ok := err.(*client.Error); ok {
+			b, err := json.Marshal(err)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Fprintln(os.Stderr, string(b))
+			os.Exit(code)
+		}
+	}
+
 	fmt.Fprintln(os.Stderr, "Error: ", err)
 	if cerr, ok := err.(*client.ClusterError); ok {
 		fmt.Fprintln(os.Stderr, cerr.Detail())

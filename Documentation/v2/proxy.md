@@ -105,10 +105,10 @@ ETCD_INITIAL_CLUSTER_STATE=existing
 
 ### Stop the proxy process
 
-Stop the existing proxy so we can wipe it's state on disk and reload it with the new configuration:
+Stop the existing proxy so we can wipe its state on disk and reload it with the new configuration:
 
 ``` bash
-px aux | grep etcd
+ps aux | grep etcd
 kill %etcd_proxy_pid%
 ```
 
@@ -149,5 +149,5 @@ If an error occurs, check the [add member troubleshooting doc][runtime-configura
 
 [discovery-service]: clustering.md#discovery
 [goreman]: https://github.com/mattn/goreman
-[procfile]: /Procfile
+[procfile]: https://github.com/coreos/etcd/blob/master/Procfile
 [runtime-configuration]: runtime-configuration.md#error-cases-when-adding-members

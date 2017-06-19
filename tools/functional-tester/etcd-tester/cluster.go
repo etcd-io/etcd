@@ -25,27 +25,20 @@ import (
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
-	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
 
-const (
-	peerURLPort   = 2380
-	failpointPort = 2381
-)
+// agentConfig holds information needed to interact/configure an agent and its etcd process
+type agentConfig struct {
+	endpoint      string
+	clientPort    int
+	peerPort      int
+	failpointPort int
+}
 
 type cluster struct {
-	v2Only bool // to be deprecated
-
-	datadir              string
-	stressQPS            int
-	stressKeyLargeSize   int
-	stressKeySize        int
-	stressKeySuffixRange int
-
-	Size      int
-	Stressers []Stresser
-
+	agents  []agentConfig
+	Size    int
 	Members []*member
 }
 
@@ -53,27 +46,27 @@ type ClusterStatus struct {
 	AgentStatuses map[string]client.Status
 }
 
-func (c *cluster) bootstrap(agentEndpoints []string) error {
-	size := len(agentEndpoints)
+func (c *cluster) bootstrap() error {
+	size := len(c.agents)
 
 	members := make([]*member, size)
 	memberNameURLs := make([]string, size)
-	for i, u := range agentEndpoints {
-		agent, err := client.NewAgent(u)
+	for i, a := range c.agents {
+		agent, err := client.NewAgent(a.endpoint)
 		if err != nil {
 			return err
 		}
-		host, _, err := net.SplitHostPort(u)
+		host, _, err := net.SplitHostPort(a.endpoint)
 		if err != nil {
 			return err
 		}
 		members[i] = &member{
 			Agent:        agent,
-			Endpoint:     u,
+			Endpoint:     a.endpoint,
 			Name:         fmt.Sprintf("etcd-%d", i),
-			ClientURL:    fmt.Sprintf("http://%s:2379", host),
-			PeerURL:      fmt.Sprintf("http://%s:%d", host, peerURLPort),
-			FailpointURL: fmt.Sprintf("http://%s:%d", host, failpointPort),
+			ClientURL:    fmt.Sprintf("http://%s:%d", host, a.clientPort),
+			PeerURL:      fmt.Sprintf("http://%s:%d", host, a.peerPort),
+			FailpointURL: fmt.Sprintf("http://%s:%d", host, a.failpointPort),
 		}
 		memberNameURLs[i] = members[i].ClusterEntry()
 	}
@@ -83,9 +76,9 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 	for i, m := range members {
 		flags := append(
 			m.Flags(),
-			"--data-dir", c.datadir,
 			"--initial-cluster-token", token,
-			"--initial-cluster", clusterStr)
+			"--initial-cluster", clusterStr,
+			"--snapshot-count", "10000")
 
 		if _, err := m.Agent.Start(flags...); err != nil {
 			// cleanup
@@ -96,44 +89,12 @@ func (c *cluster) bootstrap(agentEndpoints []string) error {
 		}
 	}
 
-	// TODO: Too intensive stressers can panic etcd member with
-	// 'out of memory' error. Put rate limits in server side.
-	stressN := 100
-	c.Stressers = make([]Stresser, len(members))
-	limiter := rate.NewLimiter(rate.Limit(c.stressQPS), c.stressQPS)
-	for i, m := range members {
-		if c.v2Only {
-			c.Stressers[i] = &stresserV2{
-				Endpoint:       m.ClientURL,
-				keySize:        c.stressKeySize,
-				keySuffixRange: c.stressKeySuffixRange,
-				N:              stressN,
-			}
-		} else {
-			c.Stressers[i] = &stresser{
-				Endpoint:       m.grpcAddr(),
-				keyLargeSize:   c.stressKeyLargeSize,
-				keySize:        c.stressKeySize,
-				keySuffixRange: c.stressKeySuffixRange,
-				N:              stressN,
-				rateLimiter:    limiter,
-			}
-		}
-		go c.Stressers[i].Stress()
-	}
-
 	c.Size = size
 	c.Members = members
 	return nil
 }
 
-func (c *cluster) Reset() error {
-	eps := make([]string, len(c.Members))
-	for i, m := range c.Members {
-		eps[i] = m.Endpoint
-	}
-	return c.bootstrap(eps)
-}
+func (c *cluster) Reset() error { return c.bootstrap() }
 
 func (c *cluster) WaitHealth() error {
 	var err error
@@ -141,13 +102,9 @@ func (c *cluster) WaitHealth() error {
 	// TODO: set it to a reasonable value. It is set that high because
 	// follower may use long time to catch up the leader when reboot under
 	// reasonable workload (https://github.com/coreos/etcd/issues/2698)
-	healthFunc := func(m *member) error { return m.SetHealthKeyV3() }
-	if c.v2Only {
-		healthFunc = func(m *member) error { return m.SetHealthKeyV2() }
-	}
 	for i := 0; i < 60; i++ {
 		for _, m := range c.Members {
-			if err = healthFunc(m); err != nil {
+			if err = m.SetHealthKeyV3(); err != nil {
 				break
 			}
 		}
@@ -162,9 +119,6 @@ func (c *cluster) WaitHealth() error {
 
 // GetLeader returns the index of leader and error if any.
 func (c *cluster) GetLeader() (int, error) {
-	if c.v2Only {
-		return 0, nil
-	}
 	for i, m := range c.Members {
 		isLeader, err := m.IsLeader()
 		if isLeader || err != nil {
@@ -174,15 +128,6 @@ func (c *cluster) GetLeader() (int, error) {
 	return 0, fmt.Errorf("no leader found")
 }
 
-func (c *cluster) Report() (success, failure int) {
-	for _, stress := range c.Stressers {
-		s, f := stress.Report()
-		success += s
-		failure += f
-	}
-	return
-}
-
 func (c *cluster) Cleanup() error {
 	var lasterr error
 	for _, m := range c.Members {
@@ -190,18 +135,12 @@ func (c *cluster) Cleanup() error {
 			lasterr = err
 		}
 	}
-	for _, s := range c.Stressers {
-		s.Cancel()
-	}
 	return lasterr
 }
 
 func (c *cluster) Terminate() {
 	for _, m := range c.Members {
 		m.Agent.Terminate()
-	}
-	for _, s := range c.Stressers {
-		s.Cancel()
 	}
 }
 
@@ -221,6 +160,29 @@ func (c *cluster) Status() ClusterStatus {
 		cs.AgentStatuses[desc] = s
 	}
 	return cs
+}
+
+// maxRev returns the maximum revision found on the cluster.
+func (c *cluster) maxRev() (rev int64, err error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
+	revc, errc := make(chan int64, len(c.Members)), make(chan error, len(c.Members))
+	for i := range c.Members {
+		go func(m *member) {
+			mrev, merr := m.Rev(ctx)
+			revc <- mrev
+			errc <- merr
+		}(c.Members[i])
+	}
+	for i := 0; i < len(c.Members); i++ {
+		if merr := <-errc; merr != nil {
+			err = merr
+		}
+		if mrev := <-revc; mrev > rev {
+			rev = mrev
+		}
+	}
+	return rev, err
 }
 
 func (c *cluster) getRevisionHash() (map[string]int64, map[string]int64, error) {

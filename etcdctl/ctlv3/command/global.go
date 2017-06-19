@@ -19,6 +19,8 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -44,6 +46,8 @@ type GlobalFlags struct {
 	IsHex        bool
 
 	User string
+
+	Debug bool
 }
 
 type secureCfg struct {
@@ -78,6 +82,14 @@ func initDisplayFromCmd(cmd *cobra.Command) {
 
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
+
+	debug, derr := cmd.Flags().GetBool("debug")
+	if derr != nil {
+		ExitWithError(ExitError, derr)
+	}
+	if debug {
+		clientv3.SetLogger(log.New(os.Stderr, "grpc: ", 0))
+	}
 
 	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
 	if err != nil {
@@ -243,7 +255,7 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 	var cfg authCfg
 
 	splitted := strings.SplitN(userFlag, ":", 2)
-	if len(splitted) == 0 {
+	if len(splitted) < 2 {
 		cfg.username = userFlag
 		cfg.password, err = speakeasy.Ask("Password: ")
 		if err != nil {

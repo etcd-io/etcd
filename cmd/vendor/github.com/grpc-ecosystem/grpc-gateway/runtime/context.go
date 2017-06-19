@@ -15,8 +15,17 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-const metadataHeaderPrefix = "Grpc-Metadata-"
-const metadataTrailerPrefix = "Grpc-Trailer-"
+// MetadataHeaderPrefix is the http prefix that represents custom metadata
+// parameters to or from a gRPC call.
+const MetadataHeaderPrefix = "Grpc-Metadata-"
+
+// MetadataPrefix is the prefix for grpc-gateway supplied custom metadata fields.
+const MetadataPrefix = "grpcgateway-"
+
+// MetadataTrailerPrefix is prepended to gRPC metadata as it is converted to
+// HTTP headers in a response handled by grpc-gateway
+const MetadataTrailerPrefix = "Grpc-Trailer-"
+
 const metadataGrpcTimeout = "Grpc-Timeout"
 
 const xForwardedFor = "X-Forwarded-For"
@@ -48,12 +57,16 @@ func AnnotateContext(ctx context.Context, req *http.Request) (context.Context, e
 
 	for key, vals := range req.Header {
 		for _, val := range vals {
-			if key == "Authorization" {
+			// For backwards-compatibility, pass through 'authorization' header with no prefix.
+			if strings.ToLower(key) == "authorization" {
 				pairs = append(pairs, "authorization", val)
+			}
+			if isPermanentHTTPHeader(key) {
+				pairs = append(pairs, strings.ToLower(fmt.Sprintf("%s%s", MetadataPrefix, key)), val)
 				continue
 			}
-			if strings.HasPrefix(key, metadataHeaderPrefix) {
-				pairs = append(pairs, key[len(metadataHeaderPrefix):], val)
+			if strings.HasPrefix(key, MetadataHeaderPrefix) {
+				pairs = append(pairs, key[len(MetadataHeaderPrefix):], val)
 			}
 		}
 	}
@@ -81,7 +94,7 @@ func AnnotateContext(ctx context.Context, req *http.Request) (context.Context, e
 	if len(pairs) == 0 {
 		return ctx, nil
 	}
-	return metadata.NewContext(ctx, metadata.Pairs(pairs...)), nil
+	return metadata.NewOutgoingContext(ctx, metadata.Pairs(pairs...)), nil
 }
 
 // ServerMetadata consists of metadata sent from gRPC server.
@@ -136,4 +149,39 @@ func timeoutUnitToDuration(u uint8) (d time.Duration, ok bool) {
 	default:
 	}
 	return
+}
+
+// isPermanentHTTPHeader checks whether hdr belongs to the list of
+// permenant request headers maintained by IANA.
+// http://www.iana.org/assignments/message-headers/message-headers.xml
+func isPermanentHTTPHeader(hdr string) bool {
+	switch hdr {
+	case
+		"Accept",
+		"Accept-Charset",
+		"Accept-Language",
+		"Accept-Ranges",
+		"Authorization",
+		"Cache-Control",
+		"Content-Type",
+		"Cookie",
+		"Date",
+		"Expect",
+		"From",
+		"Host",
+		"If-Match",
+		"If-Modified-Since",
+		"If-None-Match",
+		"If-Schedule-Tag-Match",
+		"If-Unmodified-Since",
+		"Max-Forwards",
+		"Origin",
+		"Pragma",
+		"Referer",
+		"User-Agent",
+		"Via",
+		"Warning":
+		return true
+	}
+	return false
 }

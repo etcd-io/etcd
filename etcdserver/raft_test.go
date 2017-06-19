@@ -153,13 +153,14 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 
 func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	n := newNopReadyNode()
-	srv := &EtcdServer{r: raftNode{
+	r := newRaftNode(raftNodeConfig{
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
 		raftStorage: raft.NewMemoryStorage(),
 		transport:   rafthttp.NewNopTransporter(),
-	}}
-	srv.r.start(srv)
+	})
+	srv := &EtcdServer{r: *r}
+	srv.r.start(nil)
 	n.readyc <- raft.Ready{}
 	select {
 	case <-srv.r.applyc:
@@ -172,5 +173,49 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 	case <-srv.r.done:
 	case <-time.After(time.Second):
 		t.Fatalf("failed to stop raft loop")
+	}
+}
+
+// TestConfgChangeBlocksApply ensures apply blocks if committed entries contain config-change.
+func TestConfgChangeBlocksApply(t *testing.T) {
+	n := newNopReadyNode()
+
+	r := newRaftNode(raftNodeConfig{
+		Node:        n,
+		storage:     mockstorage.NewStorageRecorder(""),
+		raftStorage: raft.NewMemoryStorage(),
+		transport:   rafthttp.NewNopTransporter(),
+	})
+	srv := &EtcdServer{r: *r}
+
+	srv.r.start(&raftReadyHandler{updateLeadership: func(bool) {}})
+	defer srv.r.Stop()
+
+	n.readyc <- raft.Ready{
+		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
+		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+	}
+	ap := <-srv.r.applyc
+
+	continueC := make(chan struct{})
+	go func() {
+		n.readyc <- raft.Ready{}
+		<-srv.r.applyc
+		close(continueC)
+	}()
+
+	select {
+	case <-continueC:
+		t.Fatalf("unexpected execution: raft routine should block waiting for apply")
+	case <-time.After(time.Second):
+	}
+
+	// finish apply, unblock raft routine
+	<-ap.notifyc
+
+	select {
+	case <-continueC:
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected blocking on execution")
 	}
 }

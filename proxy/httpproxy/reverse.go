@@ -16,6 +16,7 @@ package httpproxy
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,16 +25,14 @@ import (
 	"net/url"
 	"strings"
 	"sync/atomic"
-
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
-	"github.com/coreos/etcd/pkg/httputil"
 	"github.com/coreos/pkg/capnslog"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/etcd/proxy", "httpproxy")
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "proxy/httpproxy")
 
 	// Hop-by-hop headers. These are removed when sent to the backend.
 	// http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
@@ -110,7 +109,9 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	var requestClosed int32
 	completeCh := make(chan bool, 1)
 	closeNotifier, ok := rw.(http.CloseNotifier)
-	cancel := httputil.RequestCanceler(proxyreq)
+	ctx, cancel := context.WithCancel(context.Background())
+	proxyreq = proxyreq.WithContext(ctx)
+	defer cancel()
 	if ok {
 		closeCh := closeNotifier.CloseNotify()
 		go func() {
@@ -118,7 +119,6 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 			case <-closeCh:
 				atomic.StoreInt32(&requestClosed, 1)
 				plog.Printf("client %v closed request prematurely", clientreq.RemoteAddr)
-				cancel()
 			case <-completeCh:
 			}
 		}()

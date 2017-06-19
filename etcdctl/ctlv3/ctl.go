@@ -44,8 +44,9 @@ var (
 
 func init() {
 	rootCmd.PersistentFlags().StringSliceVar(&globalFlags.Endpoints, "endpoints", []string{"127.0.0.1:2379"}, "gRPC endpoints")
+	rootCmd.PersistentFlags().BoolVar(&globalFlags.Debug, "debug", false, "enable client-side debug logging")
 
-	rootCmd.PersistentFlags().StringVarP(&globalFlags.OutputFormat, "write-out", "w", "simple", "set the output format (simple, json, etc..)")
+	rootCmd.PersistentFlags().StringVarP(&globalFlags.OutputFormat, "write-out", "w", "simple", "set the output format (fields, json, protobuf, simple, table)")
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.IsHex, "hex", false, "print byte strings as hex encoded strings")
 
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
@@ -80,20 +81,10 @@ func init() {
 		command.NewAuthCommand(),
 		command.NewUserCommand(),
 		command.NewRoleCommand(),
+		command.NewCheckCommand(),
 	)
 }
 
 func init() {
 	cobra.EnablePrefixMatching = true
-}
-
-func Start() {
-	rootCmd.SetUsageFunc(usageFunc)
-
-	// Make help just show the usage
-	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
-
-	if err := rootCmd.Execute(); err != nil {
-		command.ExitWithError(command.ExitError, err)
-	}
 }

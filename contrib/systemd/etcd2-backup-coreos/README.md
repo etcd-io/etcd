@@ -10,7 +10,7 @@ Remote backup and multi-node restore services for etcd2 clusters on CoreOS Linux
 
 ## Configuration
 
-Before installing etcd2-backup, you need to configure `30-etcd2-backup-restore.conf`.
+Before installing etcd2-backup, configure `30-etcd2-backup-restore.conf`:
 
 ```
 [Service]
@@ -18,7 +18,7 @@ Environment="ETCD_RESTORE_MASTER_ADV_PEER_URLS=<http://host:port>"
 Environment="RCLONE_ENDPOINT=remote-name:path/to/backups"
 ```
 
-Assuming you're deploying to CoreOS with etcd2, you should only need to change
+Assuming a deployment to CoreOS with etcd2, only change:
 
 * `ETCD_RESTORE_MASTER_ADV_PEER_URLS`
    This is the new advertised peer url of the new etcd2 node that will be the founding member of the new restored cluster. We will call this node the **founding member**.
@@ -31,13 +31,13 @@ Assuming you're deploying to CoreOS with etcd2, you should only need to change
 *  `./rclone.conf`
     The rclone configuration file which will be installed. Must list a `[section]` which matches `RCLONE_ENDPOINT`'s remote-name component.
 
-    An easy way to generate this config file is to [install rclone](http://rclone.org/install/) on your local machine. Then follow the [configuration instructions](http://rclone.org/docs/) to generate an `rclone.conf` file.
+    An easy way to generate this config file is to [install rclone](http://rclone.org/install/) on a local machine. Then follow the [configuration instructions](http://rclone.org/docs/) to generate an `rclone.conf` file.
 
-If you want to adjust backup frequency, edit `./etcd2-backup.timer`
+To adjust backup frequency, edit `./etcd2-backup.timer`
 
 ## Installation
 
-Once you've got those things configured, you can run `./build`.
+Once those things are configured, run `./build`.
 
 The `build` script generates a tarball for copying to CoreOS instances. The tarball contains the `etcd2-backup-install` script.
 
@@ -54,7 +54,7 @@ After extracting the contents of the tar file and running the install script, th
 
 ## Recovery
 
-This assumes that your cluster has lost quorum, and is not recoverable. Otherwise you should probably try to heal your cluster first.
+This assumes that the cluster has lost quorum and is not recoverable. Otherwise try to heal the cluster first.
 
 ### Backup Freshness
 
@@ -76,7 +76,7 @@ max-missed-seconds= (10000 transactions / (1000 transactions / second)) + 30 sec
 
 3. Restore the rest of the cluster **one at a time**. Start `etcd2-join.service`, and then, if successful, `etcd2.service`. Please verify with `etcdctl cluster-health` that the expected set of nodes is present and healthy after each node joins.
 
-4. Verify that your data is sane (enough). If so, kick off `etcd2-backup.timer` on all nodes and, hopefully, go back to bed.
+4. Verify that the data is sane (enough). If so, kick off `etcd2-backup.timer` on all nodes and, hopefully, go back to bed.
 
 ## Retroactively change the founding member
 
@@ -138,13 +138,13 @@ e1 $ exit
 
 Now `e1`'s etcd data will be backed up to `s3://etcd2-backup-bucket/backups/<e1-machine-id>/` according to the schedule described in `etcd2-backup.timer`.
 
-You should repeat the process for `e2` and `e3`. If you do not want a node to generate backups, omit enabling and starting `etcd2-backup.timer`.
+Repeat the process for `e2` and `e3`. To stop a node from generating backups, omit enabling and starting `etcd2-backup.timer`.
 
 ## Restore the cluster
 
-Let's assume that a mischievous friend decided it would be a good idea to corrupt the etcd2 data-dir on ALL of your nodes (`e1`,`e2`,`e3`). You simply want to restore the cluster from `e1`'s backup.
+Let's assume that a mischievous friend decided it would be a good idea to corrupt the etcd2 data-dir on ALL of the nodes (`e1`,`e2`,`e3`). Simply restore the cluster from `e1`'s backup.
 
-Here's how you would recover:
+Here's how to recover:
 
 ```sh
 # First, ENSURE etcd2 and etcd2-backup are not running on any nodes
@@ -160,15 +160,15 @@ for node in e{2..3};do
 done
 ```
 
-After e2 and e3 finish catching up, your cluster should be back to normal.
+After e2 and e3 finish catching up, the cluster should be back to normal.
 
 ## Migrate the cluster
 
-The same friend who corrupted your etcd2 data-dirs decided that you have not had enough fun. This time, your friend dumps coffee on the machines hosting `e1`, `e2` and `e3`. There is a horrible smell, and the machines are dead.
+The same friend who corrupted the etcd2 data-dirs decided that to have more fun. This time, the friend dumps coffee on the machines hosting `e1`, `e2` and `e3`. There is a horrible smell, and the machines are dead.
 
-Luckily, you have a new 3-node etcd2 cluster ready to go, along with the S3 backup for `e1` from your old cluster.
+Luckily, there's a new 3-node etcd2 cluster ready to go, along with the S3 backup for `e1` from the old cluster.
 
-The new cluster configuration looks like this. Assume that etcd2-backup is not installed. (If it is, you NEED to make sure it's not running on any nodes)
+The new cluster configuration looks like this. Assume that etcd2-backup is not installed. (If it is, make sure it's not running on any nodes)
 
 | ETCD_NAME  | ETCD_ADVERTISED_PEER_URL |
 | ------------- |:-------------:|
@@ -176,11 +176,11 @@ The new cluster configuration looks like this. Assume that etcd2-backup is not i
 | q2   | http://172.17.8.202:2379 |
 | q3   | http://172.17.8.203:2379 |
 
-We will assume `q1` is the chosen founding member, though you can pick any node you like.
+We will assume `q1` is the chosen founding member, though picking any node is fine.
 
 ## Migrate the remote backup
 
-First, you need to copy your backup from `e1`'s backup folder to `q1`'s backup folder. I will show the S3 example.
+First, copy the backup from `e1`'s backup folder to `q1`'s backup folder. I will show the S3 example.
 
 ```sh
 # Make sure to remove q1's backup directory, if it exists already
@@ -196,7 +196,7 @@ Environment="ETCD_RESTORE_MASTER_ADV_PEER_URLS=http://172.17.8.201:2379"
 Environment="RCLONE_ENDPOINT=s3-testing-conf:s3://etcd2-backup-bucket/backups"
 ```
 
-Since this is a new cluster, each new node will have new `machine-id` and will not clobber your backups from the old cluster, even though `RCLONE_ENDPOINT` is the same for both the old `e` cluster and the new `q` cluster.
+Since this is a new cluster, each new node will have a new `machine-id` and will not clobber the backups from the old cluster, even though `RCLONE_ENDPOINT` is the same for both the old `e` cluster and the new `q` cluster.
 
 ## Installation
 
@@ -234,18 +234,18 @@ for node in q{2..3};do
 done
 ```
 
-Once you've verifed the cluster has migrated properly, start and enable `etcd2-backup.timer` on at least one node.
+After confirming the cluster has migrated properly, start and enable `etcd2-backup.timer` on at least one node.
 
 ```sh
 ssh core@q1 "sudo systemctl enable etcd2-backup.service && sudo systemctl start etcd2-backup.service"
 ```
 
-You should now have periodic backups going to: `s3://etcd2-backup-bucket/backups/<q1-machine-id>`
+There should now be periodic backups going to: `s3://etcd2-backup-bucket/backups/<q1-machine-id>`
 
 ## Words of caution
 
-1. Notice the `sleep 10` commands that follow starting `etcd2-join.service` and then `etcd2.service`. This sleep is there to allow the member that joined to cluster time to catch up on the cluster state before we attempt to add the next member. This involves sending the entire snapshot over the network. If you're dataset is large, or the network between nodes is slow, or your disks are already bogged down, etc- you may need to turn the sleep time up.
+1. Notice the `sleep 10` commands that follow starting `etcd2-join.service` and then `etcd2.service`. This sleep is there to allow the member that joined to cluster time to catch up on the cluster state before we attempt to add the next member. This involves sending the entire snapshot over the network. If the dataset is large, the network between nodes is slow, disks are already bogged down, or the system is otherwise overutilized, try increasing the sleep.
 
-   In the case of large data sets, it is recommended that you copy the data directory produced by `etcd2-restore` on the founding member to the other nodes before running `etcd2-join` on them. This will avoid etcd transferring the entire snapshot to every node after it joins the cluster.
+   In the case of large data sets, it is recommended to copy the data directory produced by `etcd2-restore` on the founding member to the other nodes before running `etcd2-join` on them. This will avoid etcd transferring the entire snapshot to every node after it joins the cluster.
 
 2. It is not recommended clients be allowed to access the etcd2 cluster **until** all members have been added and finished catching up.

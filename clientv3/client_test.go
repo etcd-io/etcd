@@ -16,45 +16,110 @@ package clientv3
 
 import (
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
-func TestDialTimeout(t *testing.T) {
+func TestDialCancel(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	donec := make(chan error)
+	// accept first connection so client is created with dial timeout
+	ln, err := net.Listen("unix", "dialcancel:12345")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+
+	ep := "unix://dialcancel:12345"
+	cfg := Config{
+		Endpoints:   []string{ep},
+		DialTimeout: 30 * time.Second}
+	c, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// connect to ipv4 blackhole so dial blocks
+	c.SetEndpoints("http://254.0.0.1:12345")
+
+	// issue Get to force redial attempts
+	getc := make(chan struct{})
 	go func() {
-		// without timeout, grpc keeps redialing if connection refused
-		cfg := Config{
-			Endpoints:   []string{"localhost:12345"},
-			DialTimeout: 2 * time.Second}
-		c, err := New(cfg)
-		if c != nil || err == nil {
-			t.Errorf("new client should fail")
-		}
-		donec <- err
+		defer close(getc)
+		// Get may hang forever on grpc's Stream.Header() if its
+		// context is never canceled.
+		c.Get(c.Ctx(), "abc")
 	}()
 
-	time.Sleep(10 * time.Millisecond)
+	// wait a little bit so client close is after dial starts
+	time.Sleep(100 * time.Millisecond)
 
-	select {
-	case err := <-donec:
-		t.Errorf("dial didn't wait (%v)", err)
-	default:
-	}
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		c.Close()
+	}()
 
 	select {
 	case <-time.After(5 * time.Second):
-		t.Errorf("failed to timeout dial on time")
-	case err := <-donec:
-		if err != grpc.ErrClientConnTimeout {
-			t.Errorf("unexpected error %v, want %v", err, grpc.ErrClientConnTimeout)
+		t.Fatalf("failed to close")
+	case <-donec:
+	}
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatalf("get failed to exit")
+	case <-getc:
+	}
+}
+
+func TestDialTimeout(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	testCfgs := []Config{
+		{
+			Endpoints:   []string{"http://254.0.0.1:12345"},
+			DialTimeout: 2 * time.Second,
+		},
+		{
+			Endpoints:   []string{"http://254.0.0.1:12345"},
+			DialTimeout: time.Second,
+			Username:    "abc",
+			Password:    "def",
+		},
+	}
+
+	for i, cfg := range testCfgs {
+		donec := make(chan error)
+		go func() {
+			// without timeout, dial continues forever on ipv4 blackhole
+			c, err := New(cfg)
+			if c != nil || err == nil {
+				t.Errorf("#%d: new client should fail", i)
+			}
+			donec <- err
+		}()
+
+		time.Sleep(10 * time.Millisecond)
+
+		select {
+		case err := <-donec:
+			t.Errorf("#%d: dial didn't wait (%v)", i, err)
+		default:
+		}
+
+		select {
+		case <-time.After(5 * time.Second):
+			t.Errorf("#%d: failed to timeout dial on time", i)
+		case err := <-donec:
+			if err != grpc.ErrClientConnTimeout {
+				t.Errorf("#%d: unexpected error %v, want %v", i, err, grpc.ErrClientConnTimeout)
+			}
 		}
 	}
 }
@@ -72,11 +137,11 @@ func TestIsHaltErr(t *testing.T) {
 	if !isHaltErr(nil, fmt.Errorf("etcdserver: some etcdserver error")) {
 		t.Errorf(`error prefixed with "etcdserver: " should be Halted by default`)
 	}
-	if isHaltErr(nil, etcdserver.ErrStopped) {
-		t.Errorf("error %v should not halt", etcdserver.ErrStopped)
+	if isHaltErr(nil, rpctypes.ErrGRPCStopped) {
+		t.Errorf("error %v should not halt", rpctypes.ErrGRPCStopped)
 	}
-	if isHaltErr(nil, etcdserver.ErrNoLeader) {
-		t.Errorf("error %v should not halt", etcdserver.ErrNoLeader)
+	if isHaltErr(nil, rpctypes.ErrGRPCNoLeader) {
+		t.Errorf("error %v should not halt", rpctypes.ErrGRPCNoLeader)
 	}
 	ctx, cancel := context.WithCancel(context.TODO())
 	if isHaltErr(ctx, nil) {

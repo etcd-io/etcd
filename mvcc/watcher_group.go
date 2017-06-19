@@ -78,6 +78,10 @@ func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
 // newWatcherBatch maps watchers to their matched events. It enables quick
 // events look up by watcher.
 func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
+	if len(wg.watchers) == 0 {
+		return nil
+	}
+
 	wb := make(watcherBatch)
 	for _, ev := range evs {
 		for w := range wg.watcherSetByKey(string(ev.Kv.Key)) {
@@ -179,7 +183,7 @@ func (wg *watcherGroup) add(wa *watcher) {
 // contains is whether the given key has a watcher in the group.
 func (wg *watcherGroup) contains(key string) bool {
 	_, ok := wg.keyWatchers[key]
-	return ok || wg.ranges.Contains(adt.NewStringAffinePoint(key))
+	return ok || wg.ranges.Intersects(adt.NewStringAffinePoint(key))
 }
 
 // size gives the number of unique watchers in the group.

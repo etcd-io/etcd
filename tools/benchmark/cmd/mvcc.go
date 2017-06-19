@@ -32,7 +32,9 @@ var (
 )
 
 func initMVCC() {
-	be := backend.New("mvcc-bench", time.Duration(batchInterval), batchLimit)
+	bcfg := backend.DefaultBackendConfig()
+	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = "mvcc-bench", time.Duration(batchInterval)*time.Millisecond, batchLimit
+	be := backend.New(bcfg)
 	s = mvcc.NewStore(be, &lease.FakeLessor{}, nil)
 	os.Remove("mvcc-bench") // boltDB has an opened fd, so removing the file is ok
 }

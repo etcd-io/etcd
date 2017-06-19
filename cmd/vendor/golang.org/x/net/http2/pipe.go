@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-// pipe is a goroutine-safe io.Reader/io.Writer pair.  It's like
+// pipe is a goroutine-safe io.Reader/io.Writer pair. It's like
 // io.Pipe except there are no PipeReader/PipeWriter halves, and the
 // underlying buffer is an interface. (io.Pipe is always unbuffered)
 type pipe struct {
@@ -27,6 +27,12 @@ type pipeBuffer interface {
 	Len() int
 	io.Writer
 	io.Reader
+}
+
+func (p *pipe) Len() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.b.Len()
 }
 
 // Read waits until data is available and copies bytes

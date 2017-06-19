@@ -15,17 +15,14 @@
 package command
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	v3 "github.com/coreos/etcd/clientv3"
-	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	spb "github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/dustin/go-humanize"
-	"github.com/olekukonko/tablewriter"
+
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 )
 
 type printer interface {
@@ -35,27 +32,118 @@ type printer interface {
 	Txn(v3.TxnResponse)
 	Watch(v3.WatchResponse)
 
+	Grant(r v3.LeaseGrantResponse)
+	Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse)
+	KeepAlive(r v3.LeaseKeepAliveResponse)
+	TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool)
+
+	MemberAdd(v3.MemberAddResponse)
+	MemberRemove(id uint64, r v3.MemberRemoveResponse)
+	MemberUpdate(id uint64, r v3.MemberUpdateResponse)
 	MemberList(v3.MemberListResponse)
 
 	EndpointStatus([]epStatus)
 
 	Alarm(v3.AlarmResponse)
 	DBStatus(dbstatus)
+
+	RoleAdd(role string, r v3.AuthRoleAddResponse)
+	RoleGet(role string, r v3.AuthRoleGetResponse)
+	RoleDelete(role string, r v3.AuthRoleDeleteResponse)
+	RoleList(v3.AuthRoleListResponse)
+	RoleGrantPermission(role string, r v3.AuthRoleGrantPermissionResponse)
+	RoleRevokePermission(role string, key string, end string, r v3.AuthRoleRevokePermissionResponse)
+
+	UserAdd(user string, r v3.AuthUserAddResponse)
+	UserGet(user string, r v3.AuthUserGetResponse)
+	UserList(r v3.AuthUserListResponse)
+	UserChangePassword(v3.AuthUserChangePasswordResponse)
+	UserGrantRole(user string, role string, r v3.AuthUserGrantRoleResponse)
+	UserRevokeRole(user string, role string, r v3.AuthUserRevokeRoleResponse)
+	UserDelete(user string, r v3.AuthUserDeleteResponse)
 }
 
 func NewPrinter(printerType string, isHex bool) printer {
 	switch printerType {
 	case "simple":
 		return &simplePrinter{isHex: isHex}
+	case "fields":
+		return &fieldsPrinter{newPrinterUnsupported("fields")}
 	case "json":
-		return &jsonPrinter{}
+		return newJSONPrinter()
 	case "protobuf":
-		return &pbPrinter{}
+		return newPBPrinter()
 	case "table":
-		return &tablePrinter{}
+		return &tablePrinter{newPrinterUnsupported("table")}
 	}
 	return nil
 }
+
+type printerRPC struct {
+	printer
+	p func(interface{})
+}
+
+func (p *printerRPC) Del(r v3.DeleteResponse)  { p.p((*pb.DeleteRangeResponse)(&r)) }
+func (p *printerRPC) Get(r v3.GetResponse)     { p.p((*pb.RangeResponse)(&r)) }
+func (p *printerRPC) Put(r v3.PutResponse)     { p.p((*pb.PutResponse)(&r)) }
+func (p *printerRPC) Txn(r v3.TxnResponse)     { p.p((*pb.TxnResponse)(&r)) }
+func (p *printerRPC) Watch(r v3.WatchResponse) { p.p(&r) }
+
+func (p *printerRPC) Grant(r v3.LeaseGrantResponse)                      { p.p(r) }
+func (p *printerRPC) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse)     { p.p(r) }
+func (p *printerRPC) KeepAlive(r v3.LeaseKeepAliveResponse)              { p.p(r) }
+func (p *printerRPC) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) { p.p(&r) }
+
+func (p *printerRPC) MemberAdd(r v3.MemberAddResponse) { p.p((*pb.MemberAddResponse)(&r)) }
+func (p *printerRPC) MemberRemove(id uint64, r v3.MemberRemoveResponse) {
+	p.p((*pb.MemberRemoveResponse)(&r))
+}
+func (p *printerRPC) MemberUpdate(id uint64, r v3.MemberUpdateResponse) {
+	p.p((*pb.MemberUpdateResponse)(&r))
+}
+func (p *printerRPC) MemberList(r v3.MemberListResponse) { p.p((*pb.MemberListResponse)(&r)) }
+func (p *printerRPC) Alarm(r v3.AlarmResponse)           { p.p((*pb.AlarmResponse)(&r)) }
+
+func (p *printerRPC) RoleAdd(_ string, r v3.AuthRoleAddResponse) { p.p((*pb.AuthRoleAddResponse)(&r)) }
+func (p *printerRPC) RoleGet(_ string, r v3.AuthRoleGetResponse) { p.p((*pb.AuthRoleGetResponse)(&r)) }
+func (p *printerRPC) RoleDelete(_ string, r v3.AuthRoleDeleteResponse) {
+	p.p((*pb.AuthRoleDeleteResponse)(&r))
+}
+func (p *printerRPC) RoleList(r v3.AuthRoleListResponse) { p.p((*pb.AuthRoleListResponse)(&r)) }
+func (p *printerRPC) RoleGrantPermission(_ string, r v3.AuthRoleGrantPermissionResponse) {
+	p.p((*pb.AuthRoleGrantPermissionResponse)(&r))
+}
+func (p *printerRPC) RoleRevokePermission(_ string, _ string, _ string, r v3.AuthRoleRevokePermissionResponse) {
+	p.p((*pb.AuthRoleRevokePermissionResponse)(&r))
+}
+func (p *printerRPC) UserAdd(_ string, r v3.AuthUserAddResponse) { p.p((*pb.AuthUserAddResponse)(&r)) }
+func (p *printerRPC) UserGet(_ string, r v3.AuthUserGetResponse) { p.p((*pb.AuthUserGetResponse)(&r)) }
+func (p *printerRPC) UserList(r v3.AuthUserListResponse)         { p.p((*pb.AuthUserListResponse)(&r)) }
+func (p *printerRPC) UserChangePassword(r v3.AuthUserChangePasswordResponse) {
+	p.p((*pb.AuthUserChangePasswordResponse)(&r))
+}
+func (p *printerRPC) UserGrantRole(_ string, _ string, r v3.AuthUserGrantRoleResponse) {
+	p.p((*pb.AuthUserGrantRoleResponse)(&r))
+}
+func (p *printerRPC) UserRevokeRole(_ string, _ string, r v3.AuthUserRevokeRoleResponse) {
+	p.p((*pb.AuthUserRevokeRoleResponse)(&r))
+}
+func (p *printerRPC) UserDelete(_ string, r v3.AuthUserDeleteResponse) {
+	p.p((*pb.AuthUserDeleteResponse)(&r))
+}
+
+type printerUnsupported struct{ printerRPC }
+
+func newPrinterUnsupported(n string) printer {
+	f := func(interface{}) {
+		ExitWithError(ExitBadFeature, errors.New(n+" not supported as output format"))
+	}
+	return &printerUnsupported{printerRPC{nil, f}}
+}
+
+func (p *printerUnsupported) EndpointStatus([]epStatus) { p.p(nil) }
+func (p *printerUnsupported) DBStatus(dbstatus)         { p.p(nil) }
 
 func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string) {
 	hdr = []string{"ID", "Status", "Name", "Peer Addrs", "Client Addrs"}
@@ -79,10 +167,10 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 	hdr = []string{"endpoint", "ID", "version", "db size", "is leader", "raft term", "raft index"}
 	for _, status := range statusList {
 		rows = append(rows, []string{
-			fmt.Sprint(status.Ep),
+			status.Ep,
 			fmt.Sprintf("%x", status.Resp.Header.MemberId),
-			fmt.Sprint(status.Resp.Version),
-			fmt.Sprint(humanize.Bytes(uint64(status.Resp.DbSize))),
+			status.Resp.Version,
+			humanize.Bytes(uint64(status.Resp.DbSize)),
 			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
 			fmt.Sprint(status.Resp.RaftTerm),
 			fmt.Sprint(status.Resp.RaftIndex),
@@ -100,209 +188,4 @@ func makeDBStatusTable(ds dbstatus) (hdr []string, rows [][]string) {
 		humanize.Bytes(uint64(ds.TotalSize)),
 	})
 	return
-}
-
-type simplePrinter struct {
-	isHex bool
-}
-
-func (s *simplePrinter) Del(resp v3.DeleteResponse) {
-	fmt.Println(resp.Deleted)
-	for _, kv := range resp.PrevKvs {
-		printKV(s.isHex, kv)
-	}
-}
-
-func (s *simplePrinter) Get(resp v3.GetResponse) {
-	for _, kv := range resp.Kvs {
-		printKV(s.isHex, kv)
-	}
-}
-
-func (s *simplePrinter) Put(r v3.PutResponse) {
-	fmt.Println("OK")
-	if r.PrevKv != nil {
-		printKV(s.isHex, r.PrevKv)
-	}
-}
-
-func (s *simplePrinter) Txn(resp v3.TxnResponse) {
-	if resp.Succeeded {
-		fmt.Println("SUCCESS")
-	} else {
-		fmt.Println("FAILURE")
-	}
-
-	for _, r := range resp.Responses {
-		fmt.Println("")
-		switch v := r.Response.(type) {
-		case *pb.ResponseOp_ResponseDeleteRange:
-			s.Del((v3.DeleteResponse)(*v.ResponseDeleteRange))
-		case *pb.ResponseOp_ResponsePut:
-			s.Put((v3.PutResponse)(*v.ResponsePut))
-		case *pb.ResponseOp_ResponseRange:
-			s.Get(((v3.GetResponse)(*v.ResponseRange)))
-		default:
-			fmt.Printf("unexpected response %+v\n", r)
-		}
-	}
-}
-
-func (s *simplePrinter) Watch(resp v3.WatchResponse) {
-	for _, e := range resp.Events {
-		fmt.Println(e.Type)
-		if e.PrevKv != nil {
-			printKV(s.isHex, e.PrevKv)
-		}
-		printKV(s.isHex, e.Kv)
-	}
-}
-
-func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
-	for _, e := range resp.Alarms {
-		fmt.Printf("%+v\n", e)
-	}
-}
-
-func (s *simplePrinter) MemberList(resp v3.MemberListResponse) {
-	_, rows := makeMemberListTable(resp)
-	for _, row := range rows {
-		fmt.Println(strings.Join(row, ", "))
-	}
-}
-
-func (s *simplePrinter) EndpointStatus(statusList []epStatus) {
-	_, rows := makeEndpointStatusTable(statusList)
-	for _, row := range rows {
-		fmt.Println(strings.Join(row, ", "))
-	}
-}
-
-func (s *simplePrinter) DBStatus(ds dbstatus) {
-	_, rows := makeDBStatusTable(ds)
-	for _, row := range rows {
-		fmt.Println(strings.Join(row, ", "))
-	}
-}
-
-type tablePrinter struct{}
-
-func (tp *tablePrinter) Del(r v3.DeleteResponse) {
-	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
-}
-func (tp *tablePrinter) Get(r v3.GetResponse) {
-	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
-}
-func (tp *tablePrinter) Put(r v3.PutResponse) {
-	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
-}
-func (tp *tablePrinter) Txn(r v3.TxnResponse) {
-	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
-}
-func (tp *tablePrinter) Watch(r v3.WatchResponse) {
-	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
-}
-func (tp *tablePrinter) Alarm(r v3.AlarmResponse) {
-	ExitWithError(ExitBadFeature, errors.New("table is not supported as output format"))
-}
-func (tp *tablePrinter) MemberList(r v3.MemberListResponse) {
-	hdr, rows := makeMemberListTable(r)
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(hdr)
-	for _, row := range rows {
-		table.Append(row)
-	}
-	table.Render()
-}
-func (tp *tablePrinter) EndpointStatus(r []epStatus) {
-	hdr, rows := makeEndpointStatusTable(r)
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(hdr)
-	for _, row := range rows {
-		table.Append(row)
-	}
-	table.Render()
-}
-func (tp *tablePrinter) DBStatus(r dbstatus) {
-	hdr, rows := makeDBStatusTable(r)
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(hdr)
-	for _, row := range rows {
-		table.Append(row)
-	}
-	table.Render()
-}
-
-type jsonPrinter struct{}
-
-func (p *jsonPrinter) Del(r v3.DeleteResponse)            { printJSON(r) }
-func (p *jsonPrinter) Get(r v3.GetResponse)               { printJSON(r) }
-func (p *jsonPrinter) Put(r v3.PutResponse)               { printJSON(r) }
-func (p *jsonPrinter) Txn(r v3.TxnResponse)               { printJSON(r) }
-func (p *jsonPrinter) Watch(r v3.WatchResponse)           { printJSON(r) }
-func (p *jsonPrinter) Alarm(r v3.AlarmResponse)           { printJSON(r) }
-func (p *jsonPrinter) MemberList(r v3.MemberListResponse) { printJSON(r) }
-func (p *jsonPrinter) EndpointStatus(r []epStatus)        { printJSON(r) }
-func (p *jsonPrinter) DBStatus(r dbstatus)                { printJSON(r) }
-
-func printJSON(v interface{}) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return
-	}
-	fmt.Println(string(b))
-}
-
-type pbPrinter struct{}
-
-type pbMarshal interface {
-	Marshal() ([]byte, error)
-}
-
-func (p *pbPrinter) Del(r v3.DeleteResponse) {
-	printPB((*pb.DeleteRangeResponse)(&r))
-}
-
-func (p *pbPrinter) Get(r v3.GetResponse) {
-	printPB((*pb.RangeResponse)(&r))
-}
-
-func (p *pbPrinter) Put(r v3.PutResponse) {
-	printPB((*pb.PutResponse)(&r))
-}
-
-func (p *pbPrinter) Txn(r v3.TxnResponse) {
-	printPB((*pb.TxnResponse)(&r))
-}
-
-func (p *pbPrinter) Watch(r v3.WatchResponse) {
-	for _, ev := range r.Events {
-		printPB((*spb.Event)(ev))
-	}
-}
-
-func (p *pbPrinter) Alarm(r v3.AlarmResponse) {
-	printPB((*pb.AlarmResponse)(&r))
-}
-
-func (p *pbPrinter) MemberList(r v3.MemberListResponse) {
-	printPB((*pb.MemberListResponse)(&r))
-}
-
-func (p *pbPrinter) EndpointStatus(statusList []epStatus) {
-	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
-}
-
-func (p *pbPrinter) DBStatus(r dbstatus) {
-	ExitWithError(ExitBadFeature, errors.New("only support simple or json as output format"))
-}
-
-func printPB(m pbMarshal) {
-	b, err := m.Marshal()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return
-	}
-	fmt.Printf(string(b))
 }

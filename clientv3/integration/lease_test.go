@@ -15,10 +15,14 @@
 package integration
 
 import (
+	"reflect"
+	"sort"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -32,10 +36,7 @@ func TestLeaseNotFoundError(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
-
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 
 	_, err := kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(500)))
 	if err != rpctypes.ErrLeaseNotFound {
@@ -49,10 +50,9 @@ func TestLeaseGrant(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
+	lapi := clus.RandClient()
 
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -71,10 +71,9 @@ func TestLeaseRevoke(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
+	lapi := clus.RandClient()
 
-	kv := clientv3.NewKV(clus.RandClient())
+	kv := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -98,8 +97,7 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
-	defer lapi.Close()
+	lapi := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -123,7 +121,8 @@ func TestLeaseKeepAlive(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clientv3.NewLease(clus.RandClient())
+	lapi := clus.Client(0)
+	clus.TakeClient(0)
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -152,6 +151,30 @@ func TestLeaseKeepAlive(t *testing.T) {
 	}
 }
 
+func TestLeaseKeepAliveOneSecond(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+
+	resp, err := cli.Grant(context.Background(), 1)
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
+	if kerr != nil {
+		t.Errorf("failed to keepalive lease %v", kerr)
+	}
+
+	for i := 0; i < 3; i++ {
+		if _, ok := <-rc; !ok {
+			t.Errorf("chan is closed, want not closed")
+		}
+	}
+}
+
 // TODO: add a client that can connect to all the members of cluster via unix sock.
 // TODO: test handle more complicated failures.
 func TestLeaseKeepAliveHandleFailure(t *testing.T) {
@@ -163,7 +186,7 @@ func TestLeaseKeepAliveHandleFailure(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// TODO: change this line to get a cluster client
-	lapi := clientv3.NewLease(clus.RandClient())
+	lapi := clus.RandClient()
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -257,12 +280,12 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
-	le := clientv3.NewLease(cli)
+	clus.TakeClient(0)
 
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		_, err := le.Grant(context.TODO(), 5)
+		_, err := cli.Grant(context.TODO(), 5)
 		if err != nil && err != grpc.ErrClientConnClosing {
 			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
@@ -271,7 +294,6 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	if err := cli.Close(); err != nil {
 		t.Fatal(err)
 	}
-	clus.TakeClient(0)
 
 	select {
 	case <-time.After(3 * time.Second):
@@ -294,8 +316,7 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		le := clientv3.NewLease(cli)
-		if _, err := le.Grant(context.TODO(), 5); err != grpc.ErrClientConnClosing {
+		if _, err := cli.Grant(context.TODO(), 5); err != grpc.ErrClientConnClosing {
 			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
@@ -314,8 +335,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
-	le := clientv3.NewLease(cli)
-	resp, err := le.Grant(context.TODO(), 5)
+	resp, err := cli.Grant(context.TODO(), 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +348,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		if _, err := le.Revoke(context.TODO(), leaseID); err != grpc.ErrClientConnClosing {
+		if _, err := cli.Revoke(context.TODO(), leaseID); err != grpc.ErrClientConnClosing {
 			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
 		}
 		close(donec)
@@ -401,12 +421,12 @@ func TestLeaseKeepAliveInitTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// keep client disconnected
+	clus.Members[0].Stop(t)
 	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
 	if kerr != nil {
 		t.Fatal(kerr)
 	}
-	// keep client disconnected
-	clus.Members[0].Stop(t)
 	select {
 	case ka, ok := <-rc:
 		if ok {
@@ -454,4 +474,282 @@ func TestLeaseKeepAliveTTLTimeout(t *testing.T) {
 	}
 
 	clus.Members[0].Restart(t)
+}
+
+func TestLeaseTimeToLive(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	lapi := clus.RandClient()
+
+	resp, err := lapi.Grant(context.Background(), 10)
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+
+	kv := clus.RandClient()
+	keys := []string{"foo1", "foo2"}
+	for i := range keys {
+		if _, err = kv.Put(context.TODO(), keys[i], "bar", clientv3.WithLease(resp.ID)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	lresp, lerr := lapi.TimeToLive(context.Background(), resp.ID, clientv3.WithAttachedKeys())
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	if lresp.ID != resp.ID {
+		t.Fatalf("leaseID expected %d, got %d", resp.ID, lresp.ID)
+	}
+	if lresp.GrantedTTL != int64(10) {
+		t.Fatalf("GrantedTTL expected %d, got %d", 10, lresp.GrantedTTL)
+	}
+	if lresp.TTL == 0 || lresp.TTL > lresp.GrantedTTL {
+		t.Fatalf("unexpected TTL %d (granted %d)", lresp.TTL, lresp.GrantedTTL)
+	}
+	ks := make([]string, len(lresp.Keys))
+	for i := range lresp.Keys {
+		ks[i] = string(lresp.Keys[i])
+	}
+	sort.Strings(ks)
+	if !reflect.DeepEqual(ks, keys) {
+		t.Fatalf("keys expected %v, got %v", keys, ks)
+	}
+
+	lresp, lerr = lapi.TimeToLive(context.Background(), resp.ID)
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	if len(lresp.Keys) != 0 {
+		t.Fatalf("unexpected keys %+v", lresp.Keys)
+	}
+}
+
+func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+	resp, err := cli.Grant(context.Background(), 10)
+	if err != nil {
+		t.Errorf("failed to create lease %v", err)
+	}
+	_, err = cli.Revoke(context.Background(), resp.ID)
+	if err != nil {
+		t.Errorf("failed to Revoke lease %v", err)
+	}
+
+	lresp, err := cli.TimeToLive(context.Background(), resp.ID)
+	// TimeToLive() doesn't return LeaseNotFound error
+	// but return a response with TTL to be -1
+	if err != nil {
+		t.Fatalf("expected err to be nil")
+	}
+	if lresp == nil {
+		t.Fatalf("expected lresp not to be nil")
+	}
+	if lresp.ResponseHeader == nil {
+		t.Fatalf("expected ResponseHeader not to be nil")
+	}
+	if lresp.ID != resp.ID {
+		t.Fatalf("expected Lease ID %v, but got %v", resp.ID, lresp.ID)
+	}
+	if lresp.TTL != -1 {
+		t.Fatalf("expected TTL %v, but got %v", lresp.TTL, lresp.TTL)
+	}
+}
+
+// TestLeaseRenewLostQuorum ensures keepalives work after losing quorum
+// for a while.
+func TestLeaseRenewLostQuorum(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	r, err := cli.Grant(context.TODO(), 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	kctx, kcancel := context.WithCancel(context.Background())
+	defer kcancel()
+	ka, err := cli.KeepAlive(kctx, r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// consume first keepalive so next message sends when cluster is down
+	<-ka
+	lastKa := time.Now()
+
+	// force keepalive stream message to timeout
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+	// Use TTL-2 since the client closes the keepalive channel if no
+	// keepalive arrives before the lease deadline; the client will
+	// try to resend a keepalive after TTL/3 seconds, so for a TTL of 4,
+	// sleeping for 2s should be sufficient time for issuing a retry.
+	// The cluster has two seconds to recover and reply to the keepalive.
+	time.Sleep(time.Duration(r.TTL-2) * time.Second)
+	clus.Members[1].Restart(t)
+	clus.Members[2].Restart(t)
+
+	if time.Since(lastKa) > time.Duration(r.TTL)*time.Second {
+		t.Skip("waited too long for server stop and restart")
+	}
+
+	select {
+	case _, ok := <-ka:
+		if !ok {
+			t.Fatalf("keepalive closed")
+		}
+	case <-time.After(time.Duration(r.TTL) * time.Second):
+		t.Fatalf("timed out waiting for keepalive")
+	}
+}
+
+func TestLeaseKeepAliveLoopExit(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx := context.Background()
+	cli := clus.Client(0)
+	clus.TakeClient(0)
+
+	resp, err := cli.Grant(ctx, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cli.Close()
+
+	_, err = cli.KeepAlive(ctx, resp.ID)
+	if _, ok := err.(clientv3.ErrKeepAliveHalted); !ok {
+		t.Fatalf("expected %T, got %v(%T)", clientv3.ErrKeepAliveHalted{}, err, err)
+	}
+}
+
+// TestV3LeaseFailureOverlap issues Grant and Keepalive requests to a cluster
+// before, during, and after quorum loss to confirm Grant/Keepalive tolerates
+// transient cluster failure.
+func TestV3LeaseFailureOverlap(t *testing.T) {
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	defer clus.Terminate(t)
+
+	numReqs := 5
+	cli := clus.Client(0)
+
+	// bring up a session, tear it down
+	updown := func(i int) error {
+		sess, err := concurrency.NewSession(cli)
+		if err != nil {
+			return err
+		}
+		ch := make(chan struct{})
+		go func() {
+			defer close(ch)
+			sess.Close()
+		}()
+		select {
+		case <-ch:
+		case <-time.After(time.Minute / 4):
+			t.Fatalf("timeout %d", i)
+		}
+		return nil
+	}
+
+	var wg sync.WaitGroup
+	mkReqs := func(n int) {
+		wg.Add(numReqs)
+		for i := 0; i < numReqs; i++ {
+			go func() {
+				defer wg.Done()
+				err := updown(n)
+				if err == nil || err == rpctypes.ErrTimeoutDueToConnectionLost {
+					return
+				}
+				t.Fatal(err)
+			}()
+		}
+	}
+
+	mkReqs(1)
+	clus.Members[1].Stop(t)
+	mkReqs(2)
+	time.Sleep(time.Second)
+	mkReqs(3)
+	clus.Members[1].Restart(t)
+	mkReqs(4)
+	wg.Wait()
+}
+
+// TestLeaseWithRequireLeader checks keep-alive channel close when no leader.
+func TestLeaseWithRequireLeader(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	defer clus.Terminate(t)
+
+	c := clus.Client(0)
+	lid1, err1 := c.Grant(context.TODO(), 60)
+	if err1 != nil {
+		t.Fatal(err1)
+	}
+	lid2, err2 := c.Grant(context.TODO(), 60)
+	if err2 != nil {
+		t.Fatal(err2)
+	}
+	// kaReqLeader close if the leader is lost
+	kaReqLeader, kerr1 := c.KeepAlive(clientv3.WithRequireLeader(context.TODO()), lid1.ID)
+	if kerr1 != nil {
+		t.Fatal(kerr1)
+	}
+	// kaWait will wait even if the leader is lost
+	kaWait, kerr2 := c.KeepAlive(context.TODO(), lid2.ID)
+	if kerr2 != nil {
+		t.Fatal(kerr2)
+	}
+
+	select {
+	case <-kaReqLeader:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("require leader first keep-alive timed out")
+	}
+	select {
+	case <-kaWait:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("leader not required first keep-alive timed out")
+	}
+
+	clus.Members[1].Stop(t)
+	// kaReqLeader may issue multiple requests while waiting for the first
+	// response from proxy server; drain any stray keepalive responses
+	time.Sleep(100 * time.Millisecond)
+	for len(kaReqLeader) > 0 {
+		<-kaReqLeader
+	}
+
+	select {
+	case resp, ok := <-kaReqLeader:
+		if ok {
+			t.Fatalf("expected closed require leader, got response %+v", resp)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("keepalive with require leader took too long to close")
+	}
+	select {
+	case _, ok := <-kaWait:
+		if !ok {
+			t.Fatalf("got closed channel with no require leader, expected non-closed")
+		}
+	case <-time.After(10 * time.Millisecond):
+		// wait some to detect any closes happening soon after kaReqLeader closing
+	}
 }

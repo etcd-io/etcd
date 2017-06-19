@@ -15,26 +15,45 @@
 package etcdmain
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/namespace"
+	"github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
+	"github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+	"github.com/coreos/etcd/pkg/debugutil"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/proxy/grpcproxy"
 
+	"github.com/cockroachdb/cmux"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
 
 var (
-	grpcProxyListenAddr string
-	grpcProxyEndpoints  []string
-	grpcProxyCert       string
-	grpcProxyKey        string
-	grpcProxyCA         string
+	grpcProxyListenAddr        string
+	grpcProxyEndpoints         []string
+	grpcProxyDNSCluster        string
+	grpcProxyInsecureDiscovery bool
+	grpcProxyCert              string
+	grpcProxyKey               string
+	grpcProxyCA                string
+
+	grpcProxyAdvertiseClientURL string
+	grpcProxyResolverPrefix     string
+	grpcProxyResolverTTL        int
+
+	grpcProxyNamespace string
+
+	grpcProxyEnablePprof bool
 )
 
 func init() {
@@ -60,20 +79,55 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&grpcProxyListenAddr, "listen-addr", "127.0.0.1:23790", "listen address")
+	cmd.Flags().StringVar(&grpcProxyDNSCluster, "discovery-srv", "", "DNS domain used to bootstrap initial cluster")
+	cmd.Flags().BoolVar(&grpcProxyInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
 	cmd.Flags().StringVar(&grpcProxyCert, "cert", "", "identify secure connections with etcd servers using this TLS certificate file")
 	cmd.Flags().StringVar(&grpcProxyKey, "key", "", "identify secure connections with etcd servers using this TLS key file")
 	cmd.Flags().StringVar(&grpcProxyCA, "cacert", "", "verify certificates of TLS-enabled secure etcd servers using this CA bundle")
+	cmd.Flags().StringVar(&grpcProxyAdvertiseClientURL, "advertise-client-url", "127.0.0.1:23790", "advertise address to register (must be reachable by client)")
+	cmd.Flags().StringVar(&grpcProxyResolverPrefix, "resolver-prefix", "", "prefix to use for registering proxy (must be shared with other grpc-proxy members)")
+	cmd.Flags().IntVar(&grpcProxyResolverTTL, "resolver-ttl", 0, "specify TTL, in seconds, when registering proxy endpoints")
+	cmd.Flags().StringVar(&grpcProxyNamespace, "namespace", "", "string to prefix to all keys for namespacing requests")
+	cmd.Flags().BoolVar(&grpcProxyEnablePprof, "enable-pprof", false, `Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"`)
 
 	return &cmd
 }
 
 func startGRPCProxy(cmd *cobra.Command, args []string) {
+	if grpcProxyResolverPrefix != "" && grpcProxyResolverTTL < 1 {
+		fmt.Fprintln(os.Stderr, fmt.Errorf("invalid resolver-ttl %d", grpcProxyResolverTTL))
+		os.Exit(1)
+	}
+	if grpcProxyResolverPrefix == "" && grpcProxyResolverTTL > 0 {
+		fmt.Fprintln(os.Stderr, fmt.Errorf("invalid resolver-prefix %q", grpcProxyResolverPrefix))
+		os.Exit(1)
+	}
+	if grpcProxyResolverPrefix != "" && grpcProxyResolverTTL > 0 && grpcProxyAdvertiseClientURL == "" {
+		fmt.Fprintln(os.Stderr, fmt.Errorf("invalid advertise-client-url %q", grpcProxyAdvertiseClientURL))
+		os.Exit(1)
+	}
+
+	srvs := discoverEndpoints(grpcProxyDNSCluster, grpcProxyCA, grpcProxyInsecureDiscovery)
+	if len(srvs.Endpoints) != 0 {
+		grpcProxyEndpoints = srvs.Endpoints
+	}
+
 	l, err := net.Listen("tcp", grpcProxyListenAddr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if l, err = transport.NewKeepAliveListener(l, "tcp", nil); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	plog.Infof("listening for grpc-proxy client requests on %s", grpcProxyListenAddr)
+	defer func() {
+		l.Close()
+		plog.Infof("stopping listening for grpc-proxy client requests on %s", grpcProxyListenAddr)
+	}()
+	m := cmux.New(l)
 
 	cfg, err := newClientCfg()
 	if err != nil {
@@ -87,22 +141,72 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	kvp := grpcproxy.NewKvProxy(client)
-	watchp := grpcproxy.NewWatchProxy(client)
-	clusterp := grpcproxy.NewClusterProxy(client)
-	leasep := grpcproxy.NewLeaseProxy(client)
+	if len(grpcProxyNamespace) > 0 {
+		client.KV = namespace.NewKV(client.KV, grpcProxyNamespace)
+		client.Watcher = namespace.NewWatcher(client.Watcher, grpcProxyNamespace)
+		client.Lease = namespace.NewLease(client.Lease, grpcProxyNamespace)
+	}
+
+	kvp, _ := grpcproxy.NewKvProxy(client)
+	watchp, _ := grpcproxy.NewWatchProxy(client)
+	if grpcProxyResolverPrefix != "" {
+		grpcproxy.Register(client, grpcProxyResolverPrefix, grpcProxyAdvertiseClientURL, grpcProxyResolverTTL)
+	}
+	clusterp, _ := grpcproxy.NewClusterProxy(client, grpcProxyAdvertiseClientURL, grpcProxyResolverPrefix)
+	leasep, _ := grpcproxy.NewLeaseProxy(client)
 	mainp := grpcproxy.NewMaintenanceProxy(client)
 	authp := grpcproxy.NewAuthProxy(client)
+	electionp := grpcproxy.NewElectionProxy(client)
+	lockp := grpcproxy.NewLockProxy(client)
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(
+		grpc.StreamInterceptor(grpc_prometheus.StreamServerInterceptor),
+		grpc.UnaryInterceptor(grpc_prometheus.UnaryServerInterceptor),
+	)
 	pb.RegisterKVServer(server, kvp)
 	pb.RegisterWatchServer(server, watchp)
 	pb.RegisterClusterServer(server, clusterp)
 	pb.RegisterLeaseServer(server, leasep)
 	pb.RegisterMaintenanceServer(server, mainp)
 	pb.RegisterAuthServer(server, authp)
+	v3electionpb.RegisterElectionServer(server, electionp)
+	v3lockpb.RegisterLockServer(server, lockp)
 
-	server.Serve(l)
+	errc := make(chan error)
+
+	grpcl := m.Match(cmux.HTTP2())
+	go func() { errc <- server.Serve(grpcl) }()
+
+	httpmux := http.NewServeMux()
+	httpmux.HandleFunc("/", http.NotFound)
+	httpmux.Handle("/metrics", prometheus.Handler())
+	if grpcProxyEnablePprof {
+		for p, h := range debugutil.PProfHandlers() {
+			httpmux.Handle(p, h)
+		}
+		plog.Infof("pprof is enabled under %s", debugutil.HTTPPrefixPProf)
+	}
+
+	srvhttp := &http.Server{
+		Handler: httpmux,
+	}
+
+	var httpl net.Listener
+	if cfg.TLS != nil {
+		srvhttp.TLSConfig = cfg.TLS
+		httpl = tls.NewListener(m.Match(cmux.Any()), cfg.TLS)
+	} else {
+		httpl = m.Match(cmux.HTTP1())
+	}
+	go func() { errc <- srvhttp.Serve(httpl) }()
+
+	go func() { errc <- m.Serve() }()
+
+	// grpc-proxy is initialized, ready to serve
+	notifySystemd()
+
+	fmt.Fprintln(os.Stderr, <-errc)
+	os.Exit(1)
 }
 
 func newClientCfg() (*clientv3.Config, error) {

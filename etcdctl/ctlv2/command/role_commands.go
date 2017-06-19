@@ -117,13 +117,13 @@ func actionRoleAdd(c *cli.Context) error {
 	api, role := mustRoleAPIAndName(c)
 	ctx, cancel := contextWithTotalTimeout(c)
 	defer cancel()
-	currentRole, err := api.GetRole(ctx, role)
+	currentRole, _ := api.GetRole(ctx, role)
 	if currentRole != nil {
 		fmt.Fprintf(os.Stderr, "Role %s already exists\n", role)
 		os.Exit(1)
 	}
 
-	err = api.AddRole(ctx, role)
+	err := api.AddRole(ctx, role)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)

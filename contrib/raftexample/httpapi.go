@@ -18,7 +18,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/coreos/etcd/raft/raftpb"
@@ -102,25 +101,22 @@ func (h *httpKVAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveHttpKVAPI starts a key-value server with a GET/PUT API and listens.
-func serveHttpKVAPI(port int, proposeC chan<- string, confChangeC chan<- raftpb.ConfChange,
-	commitC <-chan *string, errorC <-chan error) {
-
-	// exit when raft goes down
-	go func() {
-		if err, ok := <-errorC; ok {
-			log.Fatal(err)
-		}
-		os.Exit(0)
-	}()
-
+func serveHttpKVAPI(kv *kvstore, port int, confChangeC chan<- raftpb.ConfChange, errorC <-chan error) {
 	srv := http.Server{
 		Addr: ":" + strconv.Itoa(port),
 		Handler: &httpKVAPI{
-			store:       newKVStore(proposeC, commitC, errorC),
+			store:       kv,
 			confChangeC: confChangeC,
 		},
 	}
-	if err := srv.ListenAndServe(); err != nil {
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	// exit when raft goes down
+	if err, ok := <-errorC; ok {
 		log.Fatal(err)
 	}
 }

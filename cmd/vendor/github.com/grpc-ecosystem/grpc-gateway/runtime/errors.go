@@ -63,8 +63,8 @@ var (
 )
 
 type errorBody struct {
-	Error string `json:"error"`
-	Code  int    `json:"code"`
+	Error string `protobuf:"bytes,1,name=error" json:"error"`
+	Code  int32  `protobuf:"varint,2,name=code" json:"code"`
 }
 
 //Make this also conform to proto.Message for builtin JSONPb Marshaler
@@ -85,7 +85,7 @@ func DefaultHTTPError(ctx context.Context, marshaler Marshaler, w http.ResponseW
 	w.Header().Set("Content-Type", marshaler.ContentType())
 	body := &errorBody{
 		Error: grpc.ErrorDesc(err),
-		Code:  int(grpc.Code(err)),
+		Code:  int32(grpc.Code(err)),
 	}
 
 	buf, merr := marshaler.Marshal(body)

@@ -16,8 +16,10 @@ package cmd
 
 import (
 	"sync"
+	"time"
 
 	"github.com/coreos/etcd/pkg/transport"
+
 	"github.com/spf13/cobra"
 	"gopkg.in/cheggaaa/pb.v1"
 )
@@ -36,11 +38,11 @@ var (
 	endpoints    []string
 	totalConns   uint
 	totalClients uint
+	precise      bool
 	sample       bool
 
-	bar     *pb.ProgressBar
-	results chan result
-	wg      sync.WaitGroup
+	bar *pb.ProgressBar
+	wg  sync.WaitGroup
 
 	tls transport.TLSInfo
 
@@ -48,6 +50,10 @@ var (
 	memProfPath string
 
 	user string
+
+	dialTimeout time.Duration
+
+	targetLeader bool
 )
 
 func init() {
@@ -55,10 +61,14 @@ func init() {
 	RootCmd.PersistentFlags().UintVar(&totalConns, "conns", 1, "Total number of gRPC connections")
 	RootCmd.PersistentFlags().UintVar(&totalClients, "clients", 1, "Total number of gRPC clients")
 
+	RootCmd.PersistentFlags().BoolVar(&precise, "precise", false, "use full floating point precision")
 	RootCmd.PersistentFlags().BoolVar(&sample, "sample", false, "'true' to sample requests for every second")
 	RootCmd.PersistentFlags().StringVar(&tls.CertFile, "cert", "", "identify HTTPS client using this SSL certificate file")
 	RootCmd.PersistentFlags().StringVar(&tls.KeyFile, "key", "", "identify HTTPS client using this SSL key file")
 	RootCmd.PersistentFlags().StringVar(&tls.CAFile, "cacert", "", "verify certificates of HTTPS-enabled servers using this CA bundle")
 
 	RootCmd.PersistentFlags().StringVar(&user, "user", "", "specify username and password in username:password format")
+	RootCmd.PersistentFlags().DurationVar(&dialTimeout, "dial-timeout", 0, "dial timeout for client connections")
+
+	RootCmd.PersistentFlags().BoolVar(&targetLeader, "target-leader", false, "connect only to the leader node")
 }

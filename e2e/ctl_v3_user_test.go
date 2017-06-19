@@ -39,6 +39,18 @@ func userAddTest(cx ctlCtx) {
 			expectedStr: "User username created",
 			stdIn:       []string{"password"},
 		},
+		// Adds a user name using the usertest:password syntax.
+		{
+			args:        []string{"add", "usertest:password"},
+			expectedStr: "User usertest created",
+			stdIn:       []string{},
+		},
+		// Tries to add a user with empty username.
+		{
+			args:        []string{"add", ":password"},
+			expectedStr: "empty user name is not allowed.",
+			stdIn:       []string{},
+		},
 		// Tries to add a user name that already exists.
 		{
 			args:        []string{"add", "username", "--interactive=false"},

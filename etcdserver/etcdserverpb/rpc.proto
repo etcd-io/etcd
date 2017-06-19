@@ -104,8 +104,15 @@ service Lease {
     };
   }
 
+  // LeaseTimeToLive retrieves lease information.
+  rpc LeaseTimeToLive(LeaseTimeToLiveRequest) returns (LeaseTimeToLiveResponse) {
+      option (google.api.http) = {
+        post: "/v3alpha/kv/lease/timetolive"
+        body: "*"
+    };
+  }
+
   // TODO(xiangli) List all existing Leases?
-  // TODO(xiangli) Get details information (expirations, leased keys, etc.) of a lease?
 }
 
 service Cluster {
@@ -345,11 +352,12 @@ message RangeRequest {
   bytes key = 1;
   // range_end is the upper bound on the requested range [key, range_end).
   // If range_end is '\0', the range is all keys >= key.
-  // If the range_end is one bit larger than the given key,
-  // then the range requests get the all keys with the prefix (the given key).
-  // If both key and range_end are '\0', then range requests returns all keys.
+  // If range_end is key plus one (e.g., "aa"+1 == "ab", "a\xff"+1 == "b"),
+  // then the range request gets all keys prefixed with key.
+  // If both key and range_end are '\0', then the range request returns all keys.
   bytes range_end = 2;
-  // limit is a limit on the number of keys returned for the request.
+  // limit is a limit on the number of keys returned for the request. When limit is set to 0,
+  // it is treated as no limit.
   int64 limit = 3;
   // revision is the point-in-time of the key-value store to use for the range.
   // If revision is less or equal to zero, the range is over the newest key-value store.
@@ -375,6 +383,22 @@ message RangeRequest {
  
   // count_only when set returns only the count of the keys in the range.
   bool count_only = 9;
+
+  // min_mod_revision is the lower bound for returned key mod revisions; all keys with
+  // lesser mod revisions will be filtered away.
+  int64 min_mod_revision = 10;
+
+  // max_mod_revision is the upper bound for returned key mod revisions; all keys with
+  // greater mod revisions will be filtered away.
+  int64 max_mod_revision = 11;
+
+  // min_create_revision is the lower bound for returned key create revisions; all keys with
+  // lesser create trevisions will be filtered away.
+  int64 min_create_revision = 12;
+
+  // max_create_revision is the upper bound for returned key create revisions; all keys with
+  // greater create revisions will be filtered away.
+  int64 max_create_revision = 13;
 }
 
 message RangeResponse {
@@ -400,6 +424,14 @@ message PutRequest {
   // If prev_kv is set, etcd gets the previous key-value pair before changing it.
   // The previous key-value pair will be returned in the put response.
   bool prev_kv = 4;
+
+  // If ignore_value is set, etcd updates the key using its current value.
+  // Returns an error if the key does not exist.
+  bool ignore_value = 5;
+
+  // If ignore_lease is set, etcd updates the key using its current lease.
+  // Returns an error if the key does not exist.
+  bool ignore_lease = 6;
 }
 
 message PutResponse {
@@ -413,11 +445,13 @@ message DeleteRangeRequest {
   bytes key = 1;
   // range_end is the key following the last key to delete for the range [key, range_end).
   // If range_end is not given, the range is defined to contain only the key argument.
+  // If range_end is one bit larger than the given key, then the range is all the keys
+  // with the prefix (the given key).
   // If range_end is '\0', the range is all keys greater than or equal to the key argument.
   bytes range_end = 2;
 
   // If prev_kv is set, etcd gets the previous key-value pairs before deleting it.
-  // The previous key-value pairs will be returned in the delte response.
+  // The previous key-value pairs will be returned in the delete response.
   bool prev_kv = 3;
 }
 
@@ -452,6 +486,7 @@ message Compare {
     EQUAL = 0;
     GREATER = 1;
     LESS = 2;
+    NOT_EQUAL = 3;
   }
   enum CompareTarget {
     VERSION = 0;
@@ -475,6 +510,10 @@ message Compare {
     // value is the value of the given key, in bytes.
     bytes value = 7;
   }
+  // range_end compares the given target to all keys in the range [key, range_end).
+  // See RangeRequest for more details on key ranges.
+  bytes range_end = 8;
+  // TODO: fill out with most of the rest of RangeRequest fields when needed.
 }
 
 // From google paxosdb paper:
@@ -567,6 +606,8 @@ message WatchCreateRequest {
   // range_end is the end of the range [key, range_end) to watch. If range_end is not given,
   // only the key argument is watched. If range_end is equal to '\0', all keys greater than
   // or equal to the key argument are watched.
+  // If the range_end is one bit larger than the given key,
+  // then all keys with the prefix (the given key) will be watched.
   bytes range_end = 2;
   // start_revision is an optional revision to watch from (inclusive). No start_revision is "now".
   int64 start_revision = 3;
@@ -617,6 +658,9 @@ message WatchResponse {
   // watcher with the same start_revision again.
   int64 compact_revision  = 5;
 
+  // cancel_reason indicates the reason for canceling the watcher.
+  string cancel_reason = 6;
+
   repeated mvccpb.Event events = 11;
 }
 
@@ -658,6 +702,25 @@ message LeaseKeepAliveResponse {
   int64 TTL = 3;
 }
 
+message LeaseTimeToLiveRequest {
+  // ID is the lease ID for the lease.
+  int64 ID = 1;
+  // keys is true to query all the keys attached to this lease.
+  bool keys = 2;
+}
+
+message LeaseTimeToLiveResponse {
+  ResponseHeader header = 1;
+  // ID is the lease ID from the keep alive request.
+  int64 ID = 2;
+  // TTL is the remaining TTL in seconds for the lease; the lease will expire in under TTL+1 seconds.
+  int64 TTL = 3;
+  // GrantedTTL is the initial granted time in seconds upon lease creation/renewal.
+  int64 grantedTTL = 4;
+  // Keys is the list of keys attached to this lease.
+  repeated bytes keys = 5;
+}
+
 message Member {
   // ID is the member ID for this member.
   uint64 ID = 1;
@@ -678,6 +741,8 @@ message MemberAddResponse {
   ResponseHeader header = 1;
   // member is the member information for the added member.
   Member member = 2;
+  // members is a list of all members after adding the new member.
+  repeated Member members = 3;
 }
 
 message MemberRemoveRequest {
@@ -687,6 +752,8 @@ message MemberRemoveRequest {
 
 message MemberRemoveResponse {
   ResponseHeader header = 1;
+  // members is a list of all members after removing the member.
+  repeated Member members = 2;
 }
 
 message MemberUpdateRequest {
@@ -698,6 +765,8 @@ message MemberUpdateRequest {
 
 message MemberUpdateResponse{
   ResponseHeader header = 1;
+  // members is a list of all members after updating the member.
+  repeated Member members = 2;
 }
 
 message MemberListRequest {

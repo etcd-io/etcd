@@ -35,26 +35,57 @@ func NewLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {
 
 func (ls *LeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
 	resp, err := ls.le.LeaseGrant(ctx, cr)
-	if err == lease.ErrLeaseExists {
-		return nil, rpctypes.ErrGRPCLeaseExist
-	}
-	if err != nil {
-		return nil, err
-	}
-	ls.hdr.fill(resp.Header)
-	return resp, err
-}
 
-func (ls *LeaseServer) LeaseRevoke(ctx context.Context, rr *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	resp, err := ls.le.LeaseRevoke(ctx, rr)
 	if err != nil {
-		return nil, rpctypes.ErrGRPCLeaseNotFound
+		return nil, togRPCError(err)
 	}
 	ls.hdr.fill(resp.Header)
 	return resp, nil
 }
 
-func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) error {
+func (ls *LeaseServer) LeaseRevoke(ctx context.Context, rr *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	resp, err := ls.le.LeaseRevoke(ctx, rr)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	ls.hdr.fill(resp.Header)
+	return resp, nil
+}
+
+func (ls *LeaseServer) LeaseTimeToLive(ctx context.Context, rr *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
+	resp, err := ls.le.LeaseTimeToLive(ctx, rr)
+	if err != nil && err != lease.ErrLeaseNotFound {
+		return nil, togRPCError(err)
+	}
+	if err == lease.ErrLeaseNotFound {
+		resp = &pb.LeaseTimeToLiveResponse{
+			Header: &pb.ResponseHeader{},
+			ID:     rr.ID,
+			TTL:    -1,
+		}
+	}
+	ls.hdr.fill(resp.Header)
+	return resp, nil
+}
+
+func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) (err error) {
+	errc := make(chan error, 1)
+	go func() {
+		errc <- ls.leaseKeepAlive(stream)
+	}()
+	select {
+	case err = <-errc:
+	case <-stream.Context().Done():
+		// the only server-side cancellation is noleader for now.
+		err = stream.Context().Err()
+		if err == context.Canceled {
+			err = rpctypes.ErrGRPCNoLeader
+		}
+	}
+	return err
+}
+
+func (ls *LeaseServer) leaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) error {
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -73,14 +104,14 @@ func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) erro
 		resp := &pb.LeaseKeepAliveResponse{ID: req.ID, Header: &pb.ResponseHeader{}}
 		ls.hdr.fill(resp.Header)
 
-		ttl, err := ls.le.LeaseRenew(lease.LeaseID(req.ID))
+		ttl, err := ls.le.LeaseRenew(stream.Context(), lease.LeaseID(req.ID))
 		if err == lease.ErrLeaseNotFound {
 			err = nil
 			ttl = 0
 		}
 
 		if err != nil {
-			return err
+			return togRPCError(err)
 		}
 
 		resp.TTL = ttl

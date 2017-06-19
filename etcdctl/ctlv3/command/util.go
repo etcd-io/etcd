@@ -24,13 +24,15 @@ import (
 	"golang.org/x/net/context"
 )
 
-func printKV(isHex bool, kv *pb.KeyValue) {
+func printKV(isHex bool, valueOnly bool, kv *pb.KeyValue) {
 	k, v := string(kv.Key), string(kv.Value)
 	if isHex {
 		k = addHexPrefix(hex.EncodeToString(kv.Key))
 		v = addHexPrefix(hex.EncodeToString(kv.Value))
 	}
-	fmt.Println(k)
+	if !valueOnly {
+		fmt.Println(k)
+	}
 	fmt.Println(v)
 }
 
@@ -46,8 +48,23 @@ func addHexPrefix(s string) string {
 }
 
 func argify(s string) []string {
-	r := regexp.MustCompile("'.+'|\".+\"|\\S+")
-	return r.FindAllString(s, -1)
+	r := regexp.MustCompile(`"(?:[^"\\]|\\.)*"|'[^']*'|[^'"\s]\S*[^'"\s]?`)
+	args := r.FindAllString(s, -1)
+	for i := range args {
+		if len(args[i]) == 0 {
+			continue
+		}
+		if args[i][0] == '\'' {
+			// 'single-quoted string'
+			args[i] = args[i][1 : len(args)-1]
+		} else if args[i][0] == '"' {
+			// "double quoted string"
+			if _, err := fmt.Sscanf(args[i], "%q", &args[i]); err != nil {
+				ExitWithError(ExitInvalidInput, err)
+			}
+		}
+	}
+	return args
 }
 
 func commandCtx(cmd *cobra.Command) (context.Context, context.CancelFunc) {
