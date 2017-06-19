@@ -53,9 +53,9 @@ const (
 	markedRevBytesLen      = revBytesLen + 1
 	markBytePosition       = markedRevBytesLen - 1
 	markTombstone     byte = 't'
-
-	restoreChunkKeys = 10000
 )
+
+var restoreChunkKeys = 10000 // non-const for testing
 
 // ConsistentIndexGetter is an interface that wraps the Get method.
 // Consistent index is the offset of an entry in a consistent replicated log.
@@ -275,23 +275,15 @@ func (s *store) restore() error {
 	}
 
 	// index keys concurrently as they're loaded in from tx
-	unorderedc, donec := make(chan map[string]*keyIndex), make(chan struct{})
-	go func() {
-		defer close(donec)
-		for unordered := range unorderedc {
-			// restore the tree index from the unordered index.
-			for _, v := range unordered {
-				s.kvindex.Insert(v)
-			}
-		}
-	}()
+	rkvc, revc := restoreIntoIndex(s.kvindex)
 	for {
-		keys, vals := tx.UnsafeRange(keyBucketName, min, max, restoreChunkKeys)
+		keys, vals := tx.UnsafeRange(keyBucketName, min, max, int64(restoreChunkKeys))
 		if len(keys) == 0 {
 			break
 		}
-		// unbuffered so keys don't pile up in memory
-		unorderedc <- s.restoreChunk(keys, vals, keyToLease)
+		// rkvc blocks if the total pending keys exceeds the restore
+		// chunk size to keep keys from consuming too much memory.
+		restoreChunk(rkvc, keys, vals, keyToLease)
 		if len(keys) < restoreChunkKeys {
 			// partial set implies final set
 			break
@@ -301,8 +293,8 @@ func (s *store) restore() error {
 		newMin.sub++
 		revToBytes(newMin, min)
 	}
-	close(unorderedc)
-	<-donec
+	close(rkvc)
+	s.currentRev = <-revc
 
 	// keys in the range [compacted revision -N, compaction] might all be deleted due to compaction.
 	// the correct revision should be set to compaction revision in the case, not the largest revision
@@ -334,38 +326,73 @@ func (s *store) restore() error {
 	return nil
 }
 
-func (s *store) restoreChunk(keys, vals [][]byte, keyToLease map[string]lease.LeaseID) map[string]*keyIndex {
-	// assume half of keys are overwrites
-	unordered := make(map[string]*keyIndex, len(keys)/2)
+type revKeyValue struct {
+	key  []byte
+	kv   mvccpb.KeyValue
+	kstr string
+}
+
+func restoreIntoIndex(idx index) (chan<- revKeyValue, <-chan int64) {
+	rkvc, revc := make(chan revKeyValue, restoreChunkKeys), make(chan int64, 1)
+	go func() {
+		currentRev := int64(1)
+		defer func() { revc <- currentRev }()
+		// restore the tree index from streaming the unordered index.
+		kiCache := make(map[string]*keyIndex, restoreChunkKeys)
+		for rkv := range rkvc {
+			ki, ok := kiCache[rkv.kstr]
+			// purge kiCache if many keys but still missing in the cache
+			if !ok && len(kiCache) >= restoreChunkKeys {
+				i := 10
+				for k := range kiCache {
+					delete(kiCache, k)
+					if i--; i == 0 {
+						break
+					}
+				}
+			}
+			// cache miss, fetch from tree index if there
+			if !ok {
+				ki = &keyIndex{key: rkv.kv.Key}
+				if idxKey := idx.KeyIndex(ki); idxKey != nil {
+					kiCache[rkv.kstr], ki = idxKey, idxKey
+					ok = true
+				}
+			}
+			rev := bytesToRev(rkv.key)
+			currentRev = rev.main
+			if ok {
+				if isTombstone(rkv.key) {
+					ki.tombstone(rev.main, rev.sub)
+					continue
+				}
+				ki.put(rev.main, rev.sub)
+			} else if !isTombstone(rkv.key) {
+				ki.restore(revision{rkv.kv.CreateRevision, 0}, rev, rkv.kv.Version)
+				idx.Insert(ki)
+				kiCache[rkv.kstr] = ki
+			}
+		}
+	}()
+	return rkvc, revc
+}
+
+func restoreChunk(kvc chan<- revKeyValue, keys, vals [][]byte, keyToLease map[string]lease.LeaseID) {
 	for i, key := range keys {
-		var kv mvccpb.KeyValue
-		if err := kv.Unmarshal(vals[i]); err != nil {
+		rkv := revKeyValue{key: key}
+		if err := rkv.kv.Unmarshal(vals[i]); err != nil {
 			plog.Fatalf("cannot unmarshal event: %v", err)
 		}
-		rev := bytesToRev(key[:revBytesLen])
-		s.currentRev = rev.main
-		kstr := string(kv.Key)
+		rkv.kstr = string(rkv.kv.Key)
 		if isTombstone(key) {
-			if ki, ok := unordered[kstr]; ok {
-				ki.tombstone(rev.main, rev.sub)
-			}
-			delete(keyToLease, kstr)
-			continue
-		}
-		if ki, ok := unordered[kstr]; ok {
-			ki.put(rev.main, rev.sub)
+			delete(keyToLease, rkv.kstr)
+		} else if lid := lease.LeaseID(rkv.kv.Lease); lid != lease.NoLease {
+			keyToLease[rkv.kstr] = lid
 		} else {
-			ki = &keyIndex{key: kv.Key}
-			ki.restore(revision{kv.CreateRevision, 0}, rev, kv.Version)
-			unordered[kstr] = ki
+			delete(keyToLease, rkv.kstr)
 		}
-		if lid := lease.LeaseID(kv.Lease); lid != lease.NoLease {
-			keyToLease[kstr] = lid
-		} else {
-			delete(keyToLease, kstr)
-		}
+		kvc <- rkv
 	}
-	return unordered
 }
 
 func (s *store) Close() error {
