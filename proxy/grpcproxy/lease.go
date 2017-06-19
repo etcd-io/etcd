@@ -73,7 +73,7 @@ func NewLeaseProxy(c *clientv3.Client) (pb.LeaseServer, <-chan struct{}) {
 }
 
 func (lp *leaseProxy) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	rp, err := lp.leaseClient.LeaseGrant(ctx, cr)
+	rp, err := lp.leaseClient.LeaseGrant(ctx, cr, grpc.FailFast(false))
 	if err != nil {
 		return nil, err
 	}
