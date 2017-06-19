@@ -185,6 +185,10 @@ function release_pass {
 		# in case, we need to test against different version
 		UPGRADE_VER=$MANUAL_VER
 	fi
+	if [[ -z ${UPGRADE_VER} ]]; then
+		UPGRADE_VER="v3.2.0"
+		echo "fallback to" ${UPGRADE_VER}
+	fi
 
 	local file="etcd-$UPGRADE_VER-linux-$GOARCH.tar.gz"
 	echo "Downloading $file"
@@ -195,9 +199,8 @@ function release_pass {
 	set -e
 	case $result in
 		0)	;;
-		22)	return 0
-			;;
-		*)	exit $result
+		*)	echo "FAIL with" ${result}
+			exit $result
 			;;
 	esac
 
