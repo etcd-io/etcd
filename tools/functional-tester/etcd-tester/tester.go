@@ -16,12 +16,14 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 )
 
 type tester struct {
-	cluster *cluster
-	limit   int
+	cluster       *cluster
+	limit         int
+	exitOnFailure bool
 
 	failures        []failure
 	status          Status
@@ -49,6 +51,7 @@ func (tt *tester) runLoop() {
 
 	if err := tt.resetStressCheck(); err != nil {
 		plog.Errorf("%s failed to start stresser (%v)", tt.logPrefix(), err)
+		tt.failed()
 		return
 	}
 
@@ -87,6 +90,7 @@ func (tt *tester) runLoop() {
 		if round > 0 && round%500 == 0 { // every 500 rounds
 			if err := tt.defrag(); err != nil {
 				plog.Warningf("%s functional-tester returning with error (%v)", tt.logPrefix(), err)
+				tt.failed()
 				return
 			}
 		}
@@ -209,7 +213,18 @@ func (tt *tester) logPrefix() string {
 	return prefix
 }
 
+func (tt *tester) failed() {
+	if !tt.exitOnFailure {
+		return
+	}
+	plog.Warningf("%s exiting on failure", tt.logPrefix())
+	tt.cluster.Terminate()
+	os.Exit(2)
+}
+
 func (tt *tester) cleanup() error {
+	defer tt.failed()
+
 	roundFailedTotalCounter.Inc()
 	desc := "compact/defrag"
 	if tt.status.Case != -1 {
