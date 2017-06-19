@@ -16,6 +16,11 @@ set -e
 
 source ./build
 
+# build before setting up test GOPATH
+if [[ "${PASSES}" == *"functional"* ]]; then
+	./tools/functional-tester/build
+fi
+
 # build tests with vendored dependencies
 etcd_setup_gopath
 
@@ -85,6 +90,35 @@ function integration_pass {
 	go test -timeout 10m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
 	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
+}
+
+function functional_pass {
+	for a in 1 2 3; do
+		mkdir -p ./agent-$a
+		./bin/etcd-agent -etcd-path ./bin/etcd -etcd-log-dir "./agent-$a" -port ":${a}9027" -use-root=false &
+		pid="$!"
+		agent_pids="${agent_pids} $pid"
+	done
+
+	./bin/etcd-tester \
+		-agent-endpoints "127.0.0.1:19027,127.0.0.1:29027,127.0.0.1:39027" \
+		-client-ports 12379,22379,32379 \
+		-peer-ports 12380,22380,32380 \
+		-limit 1 \
+		-schedule-cases "0 1 2 3 4 5" \
+		-exit-on-failure
+	ETCD_TESTER_EXIT_CODE=$?
+	echo "ETCD_TESTER_EXIT_CODE:" ${ETCD_TESTER_EXIT_CODE}
+
+	echo "Waiting for processes to exit"
+	kill -s TERM ${agent_pids}
+	for a in ${agent_pids}; do wait $a || true; done
+	rm -rf ./agent-*
+
+	if [[ "${ETCD_TESTER_EXIT_CODE}" -ne "0" ]]; then
+		echo "FAIL with exit code" ${ETCD_TESTER_EXIT_CODE}
+		exit ${ETCD_TESTER_EXIT_CODE}
+	fi
 }
 
 function cov_pass {
