@@ -46,6 +46,7 @@ func main() {
 	stressKeySize := flag.Uint("stress-key-size", 100, "the size of each small key written into etcd.")
 	stressKeySuffixRange := flag.Uint("stress-key-count", 250000, "the count of key range written into etcd.")
 	limit := flag.Int("limit", -1, "the limit of rounds to run failure set (-1 to run without limits).")
+	exitOnFailure := flag.Bool("exit-on-failure", false, "exit tester on first failure")
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
 	schedCases := flag.String("schedule-cases", "", "test case schedule")
 	consistencyCheck := flag.Bool("consistency-check", true, "true to check consistency (revision, hash)")
@@ -125,9 +126,10 @@ func main() {
 	}
 
 	t := &tester{
-		failures: schedule,
-		cluster:  c,
-		limit:    *limit,
+		failures:      schedule,
+		cluster:       c,
+		limit:         *limit,
+		exitOnFailure: *exitOnFailure,
 
 		scfg:         scfg,
 		stresserType: *stresserType,
