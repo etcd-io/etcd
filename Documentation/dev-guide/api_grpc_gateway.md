@@ -6,9 +6,11 @@ etcd v3 uses [gRPC][grpc] for its messaging protocol. The etcd project includes 
 
 ## Using grpc-gateway
 
-The gateway accepts a [JSON mapping][json-mapping] for etcd's [protocol buffer][api-ref] message definitions. Note that `key` and `value` fields are defined as byte arrays and therefore must be base64 encoded in JSON.
+The gateway accepts a [JSON mapping][json-mapping] for etcd's [protocol buffer][api-ref] message definitions. Note that `key` and `value` fields are defined as byte arrays and therefore must be base64 encoded in JSON. The following examples use `curl`, but any HTTP/JSON client should work all the same.
 
-Use `curl` to put and get a key:
+### Put and get keys
+
+Use the `v3alpha/kv/range` and `v3alpha/kv/put` services to read and write keys:
 
 ```bash
 <<COMMENT
@@ -26,7 +28,9 @@ curl -L http://localhost:2379/v3alpha/kv/range \
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}],"count":"1"}
 ```
 
-Use `curl` to watch a key:
+### Watch keys
+
+Use the `v3alpha/watch` service to watch keys:
 
 ```bash
 curl http://localhost:2379/v3alpha/watch \
@@ -38,13 +42,58 @@ curl -L http://localhost:2379/v3alpha/kv/put \
 # {"result":{"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"2"},"events":[{"kv":{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}}]}}
 ```
 
-Use `curl` to issue a transaction:
+### Transactions
+
+Issue a transaction with `v3alpha/kv/txn`:
 
 ```bash
 curl -L http://localhost:2379/v3alpha/kv/txn \
 	-X POST \
 	-d '{"compare":[{"target":"CREATE","key":"Zm9v","createRevision":"2"}],"success":[{"requestPut":{"key":"Zm9v","value":"YmFy"}}]}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"3","raft_term":"2"},"succeeded":true,"responses":[{"response_put":{"header":{"revision":"3"}}}]}
+```
+
+### Authentication
+
+Set up authentication with the `v3alpha/auth` service:
+
+```bash
+# create root user
+curl -L http://localhost:2379/v3alpha/auth/user/add \
+	-X POST -d '{"name": "root", "password": "pass"}'
+# {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
+
+# create root role
+curl -L http://localhost:2379/v3alpha/auth/role/add \
+	-X POST -d '{"name": "root"}'
+# {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
+
+# grant root role
+curl -L http://localhost:2379/v3alpha/auth/user/grant \
+	-X POST -d '{"user": "root", "role": "root"}'
+# {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
+
+# enable auth
+curl -L http://localhost:2379/v3alpha/auth/enable -X POST -d '{}'
+# {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"}}
+```
+
+Authenticate with etcd for an authentication token using `v3alpha/auth/authenticate`:
+
+```bash
+# get the auth token for the root user
+curl -L http://localhost:2379/v3alpha/auth/authenticate \
+	-X POST -d '{"name": "root", "password": "pass"}'
+# {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"1","raft_term":"2"},"token":"sssvIpwfnLAcWAQH.9"}
+```
+
+Set the `Authorization` header to the authentication token to fetch a key using authentication credentials:
+
+```bash
+curl -L http://localhost:2379/v3alpha/kv/put \
+	-H 'Authorization : sssvIpwfnLAcWAQH.9' \
+	-X POST -d '{"key": "Zm9v", "value": "YmFy"}'
+# {"header":{"cluster_id":"14841639068965178418","member_id":"10276657743932975437","revision":"2","raft_term":"2"}}
 ```
 
 ## Swagger
