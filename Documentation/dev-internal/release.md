@@ -66,8 +66,8 @@ The following commands are used for public release sign:
 
 ```
 cd release
-for i in etcd-*{.zip,.tar.gz}; do gpg2 --default-key $SUBKEYID --armor --output ${i}.asc --detach-sign ${i}; done
-for i in etcd-*{.zip,.tar.gz}; do gpg2 --verify ${i}.asc ${i}; done
+for i in etcd-*{.zip,.tar.gz,.aci}; do gpg2 --default-key $SUBKEYID --armor --output ${i}.asc --detach-sign ${i}; done
+for i in etcd-*{.zip,.tar.gz,.aci}; do gpg2 --verify ${i}.asc ${i}; done
 
 # sign zipped source code files
 wget https://github.com/coreos/etcd/archive/${VERSION}.zip
