@@ -128,6 +128,8 @@ security flags:
 		path to the client server TLS key file.
 	--client-cert-auth 'false'
 		enable client cert authentication.
+	--client-crl-file ''
+		path to the client certificate revocation list file.
 	--trusted-ca-file ''
 		path to the client server TLS trusted CA key file.
 	--auto-tls 'false'
@@ -144,6 +146,8 @@ security flags:
 		path to the peer server TLS trusted CA file.
 	--peer-auto-tls 'false'
 		peer TLS using self-generated certificates if --peer-key-file and --peer-cert-file are not provided.
+	--peer-crl-file ''
+		path to the peer certificate revocation list file.
 
 logging flags
 

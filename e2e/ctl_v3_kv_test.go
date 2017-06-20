@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -48,6 +49,29 @@ func TestCtlV3DelNoTLS(t *testing.T)     { testCtl(t, delTest, withCfg(configNoT
 func TestCtlV3DelClientTLS(t *testing.T) { testCtl(t, delTest, withCfg(configClientTLS)) }
 func TestCtlV3DelPeerTLS(t *testing.T)   { testCtl(t, delTest, withCfg(configPeerTLS)) }
 func TestCtlV3DelTimeout(t *testing.T)   { testCtl(t, delTest, withDialTimeout(0)) }
+
+func TestCtlV3GetRevokedCRL(t *testing.T) {
+	cfg := etcdProcessClusterConfig{
+		clusterSize:           1,
+		initialToken:          "new",
+		clientTLS:             clientTLS,
+		isClientCRL:           true,
+		clientCertAuthEnabled: true,
+	}
+	testCtl(t, testGetRevokedCRL, withCfg(cfg))
+}
+
+func testGetRevokedCRL(cx ctlCtx) {
+	// test reject
+	if err := ctlV3Put(cx, "k", "v", ""); err == nil || !strings.Contains(err.Error(), "code = Internal") {
+		cx.t.Fatalf("expected reset connection, got %v", err)
+	}
+	// test accept
+	cx.epc.cfg.isClientCRL = false
+	if err := ctlV3Put(cx, "k", "v", ""); err != nil {
+		cx.t.Fatal(err)
+	}
+}
 
 func putTest(cx ctlCtx) {
 	key, value := "foo", "bar"

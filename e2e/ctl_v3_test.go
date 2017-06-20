@@ -180,6 +180,10 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 		if cx.epc.cfg.isClientAutoTLS {
 			fmap["insecure-transport"] = "false"
 			fmap["insecure-skip-tls-verify"] = "true"
+		} else if cx.epc.cfg.isClientCRL {
+			fmap["cacert"] = caPath
+			fmap["cert"] = revokedCertPath
+			fmap["key"] = revokedPrivateKeyPath
 		} else {
 			fmap["cacert"] = caPath
 			fmap["cert"] = certPath

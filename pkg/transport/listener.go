@@ -52,7 +52,7 @@ func wrapTLS(addr, scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listene
 	if scheme != "https" && scheme != "unixs" {
 		return l, nil
 	}
-	return newTLSListener(l, tlsinfo)
+	return newTLSListener(l, tlsinfo, checkSAN)
 }
 
 type TLSInfo struct {
@@ -61,6 +61,7 @@ type TLSInfo struct {
 	CAFile         string
 	TrustedCAFile  string
 	ClientCertAuth bool
+	CRLFile        string
 
 	// ServerName ensures the cert matches the given host in case of discovery / virtual hosting
 	ServerName string
@@ -77,7 +78,7 @@ type TLSInfo struct {
 }
 
 func (info TLSInfo) String() string {
-	return fmt.Sprintf("cert = %s, key = %s, ca = %s, trusted-ca = %s, client-cert-auth = %v", info.CertFile, info.KeyFile, info.CAFile, info.TrustedCAFile, info.ClientCertAuth)
+	return fmt.Sprintf("cert = %s, key = %s, ca = %s, trusted-ca = %s, client-cert-auth = %v, crl-file = %s", info.CertFile, info.KeyFile, info.CAFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile)
 }
 
 func (info TLSInfo) Empty() bool {

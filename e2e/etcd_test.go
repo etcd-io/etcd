@@ -35,6 +35,10 @@ var (
 	certPath       string
 	privateKeyPath string
 	caPath         string
+
+	crlPath               string
+	revokedCertPath       string
+	revokedPrivateKeyPath string
 )
 
 type clientConnType int
@@ -175,10 +179,12 @@ type etcdProcessClusterConfig struct {
 	isPeerTLS             bool
 	isPeerAutoTLS         bool
 	isClientAutoTLS       bool
-	forceNewCluster       bool
-	initialToken          string
-	quotaBackendBytes     int64
-	noStrictReconfig      bool
+	isClientCRL           bool
+
+	forceNewCluster   bool
+	initialToken      string
+	quotaBackendBytes int64
+	noStrictReconfig  bool
 }
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -227,6 +233,10 @@ func (cfg *etcdProcessClusterConfig) etcdProcessConfigs() []*etcdProcessConfig {
 	certPath = certDir + "/server.crt"
 	privateKeyPath = certDir + "/server.key.insecure"
 	caPath = certDir + "/ca.crt"
+
+	revokedCertPath = certDir + "/server-revoked.crt"
+	revokedPrivateKeyPath = certDir + "/server-revoked.key.insecure"
+	crlPath = certDir + "/revoke.crl"
 
 	if cfg.basePort == 0 {
 		cfg.basePort = etcdProcessBasePort
@@ -384,6 +394,11 @@ func (cfg *etcdProcessClusterConfig) tlsArgs() (args []string) {
 			args = append(args, tlsPeerArgs...)
 		}
 	}
+
+	if cfg.isClientCRL {
+		args = append(args, "--client-crl-file", crlPath, "--client-cert-auth")
+	}
+
 	return args
 }
 
