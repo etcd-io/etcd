@@ -27,6 +27,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var epClusterEndpoints bool
+
 // NewEndpointCommand returns the cobra command for "endpoint".
 func NewEndpointCommand() *cobra.Command {
 	ec := &cobra.Command{
@@ -34,6 +36,7 @@ func NewEndpointCommand() *cobra.Command {
 		Short: "Endpoint related commands",
 	}
 
+	ec.PersistentFlags().BoolVar(&epClusterEndpoints, "cluster", false, "use all endpoints from the cluster member list")
 	ec.AddCommand(newEpHealthCommand())
 	ec.AddCommand(newEpStatusCommand())
 
@@ -64,16 +67,12 @@ The items in the lists are endpoint, ID, version, db size, is leader, raft term,
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
-	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
-	if err != nil {
-		ExitWithError(ExitError, err)
-	}
 
 	sec := secureCfgFromCmd(cmd)
 	dt := dialTimeoutFromCmd(cmd)
 	auth := authCfgFromCmd(cmd)
 	cfgs := []*v3.Config{}
-	for _, ep := range endpoints {
+	for _, ep := range endpointsFromCluster(cmd) {
 		cfg, err := newClientCfg([]string{ep}, dt, sec, auth)
 		if err != nil {
 			ExitWithError(ExitBadArgs, err)
@@ -121,7 +120,7 @@ func epStatusCommandFunc(cmd *cobra.Command, args []string) {
 
 	statusList := []epStatus{}
 	var err error
-	for _, ep := range c.Endpoints() {
+	for _, ep := range endpointsFromCluster(cmd) {
 		ctx, cancel := commandCtx(cmd)
 		resp, serr := c.Status(ctx, ep)
 		cancel()
@@ -138,4 +137,31 @@ func epStatusCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		os.Exit(ExitError)
 	}
+}
+
+func endpointsFromCluster(cmd *cobra.Command) []string {
+	if !epClusterEndpoints {
+		endpoints, err := cmd.Flags().GetStringSlice("endpoints")
+		if err != nil {
+			ExitWithError(ExitError, err)
+		}
+		return endpoints
+	}
+	c := mustClientFromCmd(cmd)
+	ctx, cancel := commandCtx(cmd)
+	defer func() {
+		c.Close()
+		cancel()
+	}()
+	membs, err := c.MemberList(ctx)
+	if err != nil {
+		err = fmt.Errorf("failed to fetch endpoints from etcd cluster member list: %v", err)
+		ExitWithError(ExitError, err)
+	}
+
+	ret := []string{}
+	for _, m := range membs.Members {
+		ret = append(ret, m.ClientURLs...)
+	}
+	return ret
 }
