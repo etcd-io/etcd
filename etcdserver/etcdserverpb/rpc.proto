@@ -191,6 +191,14 @@ service Maintenance {
         body: "*"
     };
   }
+
+  // MoveLeader requests current leader node to transfer its leadership to transferee.
+  rpc MoveLeader(MoveLeaderRequest) returns (MoveLeaderResponse) {
+      option (google.api.http) = {
+        post: "/v3alpha/maintenance/transfer-leadership"
+        body: "*"
+    };
+  }
 }
 
 service Auth {
@@ -380,7 +388,7 @@ message RangeRequest {
 
   // keys_only when set returns only the keys and not the values.
   bool keys_only = 8;
- 
+
   // count_only when set returns only the count of the keys in the range.
   bool count_only = 9;
 
@@ -558,7 +566,7 @@ message TxnResponse {
 // CompactionRequest compacts the key-value store up to a given revision. All superseded keys
 // with a revision less than the compaction revision will be removed.
 message CompactionRequest {
-  // revision is the key-value store revision for the compaction operation. 
+  // revision is the key-value store revision for the compaction operation.
   int64 revision = 1;
   // physical is set so the RPC will wait until the compaction is physically
   // applied to the local database such that compacted entries are totally
@@ -654,7 +662,7 @@ message WatchResponse {
   // at a compacted index.
   //
   // This happens when creating a watcher at a compacted revision or the watcher cannot
-  // catch up with the progress of the key-value store. 
+  // catch up with the progress of the key-value store.
   //
   // The client should treat the watcher as canceled and should not try to create any
   // watcher with the same start_revision again.
@@ -784,6 +792,15 @@ message DefragmentRequest {
 }
 
 message DefragmentResponse {
+  ResponseHeader header = 1;
+}
+
+message MoveLeaderRequest {
+  // targetID is the node ID for the new leader.
+  uint64 targetID = 1;
+}
+
+message MoveLeaderResponse {
   ResponseHeader header = 1;
 }
 
