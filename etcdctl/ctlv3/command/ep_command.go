@@ -22,8 +22,6 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"github.com/coreos/etcd/pkg/flags"
-
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +41,7 @@ func NewEndpointCommand() *cobra.Command {
 func newEpHealthCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "health",
-		Short: "Checks the healthiness of endpoints specified in `--endpoints` flag",
+		Short: "Checks the healthiness of endpoints",
 		Run:   epHealthCommandFunc,
 	}
 
@@ -53,7 +51,7 @@ func newEpHealthCommand() *cobra.Command {
 func newEpStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "Prints out the status of endpoints specified in `--endpoints` flag",
+		Short: "Prints out the status of endpoints",
 		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
 The items in the lists are endpoint, ID, version, db size, is leader, raft term, raft index.
 `,
@@ -63,51 +61,42 @@ The items in the lists are endpoint, ID, version, db size, is leader, raft term,
 
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
-	flags.SetPflagsFromEnv("ETCDCTL", cmd.InheritedFlags())
-	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
+	c := mustClientFromCmd(cmd)
+
+	// collect all endpoints
+	endpoints := []string{}
+	ctx, cancel := commandCtx(cmd)
+	memberListResp, err := c.MemberList(ctx)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
-
-	sec := secureCfgFromCmd(cmd)
-	dt := dialTimeoutFromCmd(cmd)
-	auth := authCfgFromCmd(cmd)
-	cfgs := []*v3.Config{}
-	for _, ep := range endpoints {
-		cfg, err := newClientCfg([]string{ep}, dt, sec, auth)
-		if err != nil {
-			ExitWithError(ExitBadArgs, err)
+	cancel()
+	for _, member := range memberListResp.Members {
+		for _, endpoint := range member.ClientURLs {
+			endpoints = append(endpoints, endpoint)
 		}
-		cfgs = append(cfgs, cfg)
 	}
 
-	var wg sync.WaitGroup
-
-	for _, cfg := range cfgs {
-		wg.Add(1)
-		go func(cfg *v3.Config) {
+	wg := sync.WaitGroup{}
+	wg.Add(len(endpoints))
+	for _, ep := range endpoints {
+		go func(endpoint string) {
 			defer wg.Done()
-			ep := cfg.Endpoints[0]
-			cli, err := v3.New(*cfg)
-			if err != nil {
-				fmt.Printf("%s is unhealthy: failed to connect: %v\n", ep, err)
-				return
-			}
-			st := time.Now()
-			// get a random key. As long as we can get the response without an error, the
-			// endpoint is health.
 			ctx, cancel := commandCtx(cmd)
-			_, err = cli.Get(ctx, "health")
+			// regenerate new client and reset endpoint to include the only client for health check
+			clientHealth := mustClientFromCmd(cmd)
+			clientHealth.SetEndpoints(endpoint)
+			_, err := clientHealth.Get(ctx, "health")
 			cancel()
+			st := time.Now()
 			// permission denied is OK since proposal goes through consensus to get it
 			if err == nil || err == rpctypes.ErrPermissionDenied {
-				fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", ep, time.Since(st))
+				fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", endpoint, time.Since(st))
 			} else {
-				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)
+				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", endpoint, err)
 			}
-		}(cfg)
+		}(ep)
 	}
-
 	wg.Wait()
 }
 
@@ -119,23 +108,51 @@ type epStatus struct {
 func epStatusCommandFunc(cmd *cobra.Command, args []string) {
 	c := mustClientFromCmd(cmd)
 
-	statusList := []epStatus{}
-	var err error
-	for _, ep := range c.Endpoints() {
-		ctx, cancel := commandCtx(cmd)
-		resp, serr := c.Status(ctx, ep)
-		cancel()
-		if serr != nil {
-			err = serr
-			fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", ep, serr)
-			continue
-		}
-		statusList = append(statusList, epStatus{Ep: ep, Resp: resp})
+	// collect all endpoints
+	ctx, cancel := commandCtx(cmd)
+	memberListResp, err := c.MemberList(ctx)
+	if err != nil {
+		ExitWithError(ExitError, err)
 	}
+	cancel()
+	for _, member := range memberListResp.Members {
+		for _, endpoint := range member.ClientURLs {
+			mutateEndpoints(c, endpoint)
+		}
+	}
+
+	statusList := []epStatus{}
+	wg := sync.WaitGroup{}
+	wg.Add(len(c.Endpoints()))
+	for _, ep := range c.Endpoints() {
+		go func(endpoint string) {
+			defer wg.Done()
+			ctx, cancel := commandCtx(cmd)
+			resp, serr := c.Status(ctx, endpoint)
+			cancel()
+			if serr != nil {
+				err = serr
+				fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", endpoint, serr)
+			}
+			statusList = append(statusList, epStatus{Ep: endpoint, Resp: resp})
+		}(ep)
+	}
+	wg.Wait()
 
 	display.EndpointStatus(statusList)
 
 	if err != nil {
 		os.Exit(ExitError)
 	}
+}
+
+func mutateEndpoints(client *v3.Client, endpoint string) {
+	endpoints := client.Endpoints()
+	for _, ep := range endpoints {
+		if ep == endpoint {
+			return
+		}
+	}
+	endpoints = append(endpoints, endpoint)
+	client.SetEndpoints(endpoints...)
 }
