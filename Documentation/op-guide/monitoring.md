@@ -5,14 +5,14 @@ Each etcd server exports metrics under the `/metrics` path on its client port.
 The metrics can be fetched with `curl`:
 
 ```sh
-$ curl -L http://localhost:2379/metrics
+$ curl -L http://localhost:2379/metrics | grep -v debugging # ignore unstable debugging metrics
 
-# HELP etcd_debugging_mvcc_keys_total Total number of keys.
-# TYPE etcd_debugging_mvcc_keys_total gauge
-etcd_debugging_mvcc_keys_total 0
-# HELP etcd_debugging_mvcc_pending_events_total Total number of pending events to be sent.
-# TYPE etcd_debugging_mvcc_pending_events_total gauge
-etcd_debugging_mvcc_pending_events_total 0
+# HELP etcd_disk_backend_commit_duration_seconds The latency distributions of commit called by backend.
+# TYPE etcd_disk_backend_commit_duration_seconds histogram
+etcd_disk_backend_commit_duration_seconds_bucket{le="0.002"} 72756
+etcd_disk_backend_commit_duration_seconds_bucket{le="0.004"} 401587
+etcd_disk_backend_commit_duration_seconds_bucket{le="0.008"} 405979
+etcd_disk_backend_commit_duration_seconds_bucket{le="0.016"} 406464
 ...
 ```
 
@@ -24,7 +24,7 @@ Running a [Prometheus][prometheus] monitoring service is the easiest way to inge
 First, install Prometheus:
 
 ```sh
-PROMETHEUS_VERSION="1.3.1"
+PROMETHEUS_VERSION="2.0.0"
 wget https://github.com/prometheus/prometheus/releases/download/v$PROMETHEUS_VERSION/prometheus-$PROMETHEUS_VERSION.linux-amd64.tar.gz -O /tmp/prometheus-$PROMETHEUS_VERSION.linux-amd64.tar.gz
 tar -xvzf /tmp/prometheus-$PROMETHEUS_VERSION.linux-amd64.tar.gz --directory /tmp/ --strip-components=1
 /tmp/prometheus -version
