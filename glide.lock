@@ -1,5 +1,5 @@
-hash: 7c7ebb812829e2942acb8481e4e9412576b4290a53edea7f30e7e14ac86033a8
-updated: 2017-06-16T11:43:37.376823012-07:00
+hash: 1c01233ff3c05df62210db3ec7bd51114f9b22401187e8e749a3ee5ea99f8594
+updated: 2017-06-22T14:26:04.148865868-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -144,7 +144,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 42c095b6c9bdd80d4435b064508c398afdb0ec99
+  version: b15215fb911b24a5d61d57feec4233d610530464
   subpackages:
   - codes
   - credentials
