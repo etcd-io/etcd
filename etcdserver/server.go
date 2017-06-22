@@ -474,7 +474,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		srv.compactor.Run()
 	}
 
-	srv.applyV3Base = &applierV3backend{srv}
+	srv.applyV3Base = srv.newApplierV3Backend()
 	if err = srv.restoreAlarms(); err != nil {
 		return nil, err
 	}

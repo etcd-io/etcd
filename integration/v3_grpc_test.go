@@ -192,11 +192,22 @@ func TestV3TxnTooManyOps(t *testing.T) {
 				},
 			})
 	}
+	addTxnOps := func(txn *pb.TxnRequest) {
+		newTxn := &pb.TxnRequest{}
+		addSuccessOps(newTxn)
+		txn.Success = append(txn.Success,
+			&pb.RequestOp{Request: &pb.RequestOp_RequestTxn{
+				RequestTxn: newTxn,
+			},
+			},
+		)
+	}
 
 	tests := []func(txn *pb.TxnRequest){
 		addCompareOps,
 		addSuccessOps,
 		addFailureOps,
+		addTxnOps,
 	}
 
 	for i, tt := range tests {
@@ -236,6 +247,27 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 		},
 	},
 	}
+	txnDelReq := &pb.RequestOp{Request: &pb.RequestOp_RequestTxn{
+		RequestTxn: &pb.TxnRequest{Success: []*pb.RequestOp{delInRangeReq}},
+	},
+	}
+	txnDelReqTwoSide := &pb.RequestOp{Request: &pb.RequestOp_RequestTxn{
+		RequestTxn: &pb.TxnRequest{
+			Success: []*pb.RequestOp{delInRangeReq},
+			Failure: []*pb.RequestOp{delInRangeReq}},
+	},
+	}
+
+	txnPutReq := &pb.RequestOp{Request: &pb.RequestOp_RequestTxn{
+		RequestTxn: &pb.TxnRequest{Success: []*pb.RequestOp{putreq}},
+	},
+	}
+	txnPutReqTwoSide := &pb.RequestOp{Request: &pb.RequestOp_RequestTxn{
+		RequestTxn: &pb.TxnRequest{
+			Success: []*pb.RequestOp{putreq},
+			Failure: []*pb.RequestOp{putreq}},
+	},
+	}
 
 	kvc := toGRPC(clus.RandClient()).KV
 	tests := []struct {
@@ -257,6 +289,36 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 			txnSuccess: []*pb.RequestOp{putreq, delInRangeReq},
 
 			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		// Then(Put(a), Then(Del(a)))
+		{
+			txnSuccess: []*pb.RequestOp{putreq, txnDelReq},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		// Then(Del(a), Then(Put(a)))
+		{
+			txnSuccess: []*pb.RequestOp{delInRangeReq, txnPutReq},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		// Then((Then(Put(a)), Else(Put(a))), (Then(Put(a)), Else(Put(a)))
+		{
+			txnSuccess: []*pb.RequestOp{txnPutReqTwoSide, txnPutReqTwoSide},
+
+			werr: rpctypes.ErrGRPCDuplicateKey,
+		},
+		// Then(Del(x), (Then(Put(a)), Else(Put(a))))
+		{
+			txnSuccess: []*pb.RequestOp{delOutOfRangeReq, txnPutReqTwoSide},
+
+			werr: nil,
+		},
+		// Then(Then(Del(a)), (Then(Del(a)), Else(Del(a))))
+		{
+			txnSuccess: []*pb.RequestOp{txnDelReq, txnDelReqTwoSide},
+
+			werr: nil,
 		},
 		{
 			txnSuccess: []*pb.RequestOp{delKeyReq, delInRangeReq, delKeyReq, delInRangeReq},
@@ -466,6 +528,59 @@ func TestV3TxnRangeCompare(t *testing.T) {
 		if tt.wSuccess != tresp.Succeeded {
 			t.Errorf("#%d: expected %v, got %v", i, tt.wSuccess, tresp.Succeeded)
 		}
+	}
+}
+
+// TestV3TxnNested tests nested txns follow paths as expected.
+func TestV3TxnNestedPath(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := toGRPC(clus.RandClient()).KV
+
+	cmpTrue := &pb.Compare{
+		Result:      pb.Compare_EQUAL,
+		Target:      pb.Compare_VERSION,
+		Key:         []byte("k"),
+		TargetUnion: &pb.Compare_Version{Version: int64(0)},
+	}
+	cmpFalse := &pb.Compare{
+		Result:      pb.Compare_EQUAL,
+		Target:      pb.Compare_VERSION,
+		Key:         []byte("k"),
+		TargetUnion: &pb.Compare_Version{Version: int64(1)},
+	}
+
+	// generate random path to eval txns
+	topTxn := &pb.TxnRequest{}
+	txn := topTxn
+	txnPath := make([]bool, 10)
+	for i := range txnPath {
+		nextTxn := &pb.TxnRequest{}
+		op := &pb.RequestOp{Request: &pb.RequestOp_RequestTxn{RequestTxn: nextTxn}}
+		txnPath[i] = rand.Intn(2) == 0
+		if txnPath[i] {
+			txn.Compare = append(txn.Compare, cmpTrue)
+			txn.Success = append(txn.Success, op)
+		} else {
+			txn.Compare = append(txn.Compare, cmpFalse)
+			txn.Failure = append(txn.Failure, op)
+		}
+		txn = nextTxn
+	}
+
+	tresp, err := kvc.Txn(context.TODO(), topTxn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	curTxnResp := tresp
+	for i := range txnPath {
+		if curTxnResp.Succeeded != txnPath[i] {
+			t.Fatalf("expected path %+v, got response %+v", txnPath, *tresp)
+		}
+		curTxnResp = curTxnResp.Responses[0].Response.(*pb.ResponseOp_ResponseTxn).ResponseTxn
 	}
 }
 

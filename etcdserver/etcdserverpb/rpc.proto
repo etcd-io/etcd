@@ -469,6 +469,7 @@ message RequestOp {
     RangeRequest request_range = 1;
     PutRequest request_put = 2;
     DeleteRangeRequest request_delete_range = 3;
+    TxnRequest request_txn = 4;
   }
 }
 
@@ -478,6 +479,7 @@ message ResponseOp {
     RangeResponse response_range = 1;
     PutResponse response_put = 2;
     DeleteRangeResponse response_delete_range = 3;
+    TxnResponse response_txn = 4;
   }
 }
 
