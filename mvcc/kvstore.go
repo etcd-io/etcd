@@ -251,6 +251,11 @@ func (s *store) Restore(b backend.Backend) error {
 }
 
 func (s *store) restore() error {
+	reportDbTotalSizeInBytesMu.Lock()
+	b := s.b
+	reportDbTotalSizeInBytes = func() float64 { return float64(b.Size()) }
+	reportDbTotalSizeInBytesMu.Unlock()
+
 	min, max := newRevBytes(), newRevBytes()
 	revToBytes(revision{main: 1}, min)
 	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, max)
@@ -260,8 +265,6 @@ func (s *store) restore() error {
 	// restore index
 	tx := s.b.BatchTx()
 	tx.Lock()
-
-	dbTotalSize.Set(float64(s.b.Size()))
 
 	_, finishedCompactBytes := tx.UnsafeRange(metaBucketName, finishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
