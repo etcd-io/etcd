@@ -97,7 +97,9 @@ clustering flags:
 	--strict-reconfig-check
 		reject reconfiguration requests that would cause quorum loss.
 	--auto-compaction-retention '0'
-		auto compaction retention in hour. 0 means disable auto compaction.
+		auto compaction retention length. 0 means disable auto compaction.
+	--auto-compaction-mode 'periodic'
+		'periodic' means hours, 'revision' means revision numbers to retain by auto compaction
 	--enable-v2
 		Accept etcd V2 client requests.
 
