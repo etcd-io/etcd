@@ -105,7 +105,6 @@ func (tw *storeTxnWrite) End() {
 	if len(tw.changes) != 0 {
 		tw.s.revMu.Unlock()
 	}
-	dbTotalSize.Set(float64(tw.s.b.Size()))
 	tw.s.mu.RUnlock()
 }
 
