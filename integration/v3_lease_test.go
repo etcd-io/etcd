@@ -66,9 +66,15 @@ func TestV3LeasePrmote(t *testing.T) {
 	// it was going to expire anyway.
 	time.Sleep(3 * time.Second)
 
-	// expiring lease should be renewed with randomized delta
 	if !leaseExist(t, clus, lresp.ID) {
 		t.Error("unexpected lease not exists")
+	}
+
+	// let lease expires. total lease = 5 seconds and we already
+	// waits for 3 seconds, so 3 seconds more is enough.
+	time.Sleep(3 * time.Second)
+	if leaseExist(t, clus, lresp.ID) {
+		t.Error("unexpected lease exists")
 	}
 }
 
