@@ -63,8 +63,8 @@ func TestCtlV3GetRevokedCRL(t *testing.T) {
 
 func testGetRevokedCRL(cx ctlCtx) {
 	// test reject
-	if err := ctlV3Put(cx, "k", "v", ""); err == nil || !strings.Contains(err.Error(), "code = Internal") {
-		cx.t.Fatalf("expected reset connection, got %v", err)
+	if err := ctlV3Put(cx, "k", "v", ""); err == nil || !strings.Contains(err.Error(), "Error:") {
+		cx.t.Fatalf("expected reset connection on put, got %v", err)
 	}
 	// test accept
 	cx.epc.cfg.isClientCRL = false
