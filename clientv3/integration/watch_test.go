@@ -856,6 +856,20 @@ func TestWatchCancelOnServer(t *testing.T) {
 	client := cluster.RandClient()
 	numWatches := 10
 
+	// grpcproxy starts watches to detect leadership after the proxy server
+	// returns as started; to avoid racing on the proxy's internal watches, wait
+	// until require leader watches get create responses to ensure the leadership
+	// watches have started.
+	for {
+		ctx, cancel := context.WithCancel(clientv3.WithRequireLeader(context.TODO()))
+		ww := client.Watch(ctx, "a", clientv3.WithCreatedNotify())
+		wresp := <-ww
+		cancel()
+		if wresp.Err() == nil {
+			break
+		}
+	}
+
 	cancels := make([]context.CancelFunc, numWatches)
 	for i := 0; i < numWatches; i++ {
 		// use WithTimeout to force separate streams in client
@@ -885,7 +899,7 @@ func TestWatchCancelOnServer(t *testing.T) {
 		t.Fatalf("expected n=2 and err=nil, got n=%d and err=%v", n, serr)
 	}
 
-	if maxWatchV-minWatchV != numWatches {
+	if maxWatchV-minWatchV < numWatches {
 		t.Fatalf("expected %d canceled watchers, got %d", numWatches, maxWatchV-minWatchV)
 	}
 }
