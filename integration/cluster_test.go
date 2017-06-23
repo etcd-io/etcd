@@ -526,51 +526,6 @@ func clusterMustProgress(t *testing.T, membs []*member) {
 	}
 }
 
-func TestTransferLeader(t *testing.T) {
-	defer testutil.AfterTest(t)
-
-	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
-	defer clus.Terminate(t)
-
-	oldLeadIdx := clus.WaitLeader(t)
-	oldLeadID := uint64(clus.Members[oldLeadIdx].s.ID())
-
-	// ensure followers go through leader transition while learship transfer
-	idc := make(chan uint64)
-	for i := range clus.Members {
-		if oldLeadIdx != i {
-			go func(m *member) {
-				idc <- checkLeaderTransition(t, m, oldLeadID)
-			}(clus.Members[i])
-		}
-	}
-
-	err := clus.Members[oldLeadIdx].s.TransferLeadership()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// wait until leader transitions have happened
-	var newLeadIDs [2]uint64
-	for i := range newLeadIDs {
-		select {
-		case newLeadIDs[i] = <-idc:
-		case <-time.After(time.Second):
-			t.Fatal("timed out waiting for leader transition")
-		}
-	}
-
-	// remaining members must agree on the same leader
-	if newLeadIDs[0] != newLeadIDs[1] {
-		t.Fatalf("expected same new leader %d == %d", newLeadIDs[0], newLeadIDs[1])
-	}
-
-	// new leader must be different than the old leader
-	if oldLeadID == newLeadIDs[0] {
-		t.Fatalf("expected old leader %d != new leader %d", oldLeadID, newLeadIDs[0])
-	}
-}
-
 func TestSpeedyTerminate(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
