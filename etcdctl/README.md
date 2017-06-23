@@ -805,6 +805,29 @@ Prints a line of JSON encoding the database hash, revision, total keys, and size
 +----------+----------+------------+------------+
 ```
 
+### MOVE-LEADER \<hexadecimal-transferee-id\>
+
+MOVE-LEADER transfers leadership from the leader to another member in the cluster.
+
+#### Example
+
+```bash
+# to choose transferee
+transferee_id=$(./etcdctl \
+  --endpoints localhost:12379,localhost:22379,localhost:32379 \
+  endpoint status | grep -m 1 "false" | awk -F', ' '{print $2}')
+echo ${transferee_id}
+# c89feb932daef420
+
+# endpoints should include leader node
+./etcdctl --endpoints ${transferee_ep} move-leader ${transferee_id}
+# Error:  no leader endpoint given at [localhost:22379 localhost:32379]
+
+# request to leader with target node ID
+./etcdctl --endpoints ${leader_ep} move-leader ${transferee_id}
+# Leadership transferred from 45ddc0e800e20b93 to c89feb932daef420
+```
+
 ## Concurrency commands
 
 ### LOCK \<lockname\> [command arg1 arg2 ...]
