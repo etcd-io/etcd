@@ -43,6 +43,10 @@ func (s *mts2mtc) Hash(ctx context.Context, r *pb.HashRequest, opts ...grpc.Call
 	return s.mts.Hash(ctx, r)
 }
 
+func (s *mts2mtc) MoveLeader(ctx context.Context, r *pb.MoveLeaderRequest, opts ...grpc.CallOption) (*pb.MoveLeaderResponse, error) {
+	return s.mts.MoveLeader(ctx, r)
+}
+
 func (s *mts2mtc) Snapshot(ctx context.Context, in *pb.SnapshotRequest, opts ...grpc.CallOption) (pb.Maintenance_SnapshotClient, error) {
 	cs := newPipeStream(ctx, func(ss chanServerStream) error {
 		return s.mts.Snapshot(in, &ss2scServerStream{ss})
