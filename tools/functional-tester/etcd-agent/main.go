@@ -16,7 +16,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -31,7 +30,17 @@ func main() {
 	port := flag.String("port", ":9027", "port to serve agent server")
 	useRoot := flag.Bool("use-root", true, "use root permissions")
 	failpointAddr := flag.String("failpoint-addr", ":2381", "interface for gofail's HTTP server")
+	logFilePath := flag.String("log-file", "", "log file path (leave empty to log to stderr)")
 	flag.Parse()
+
+	if *logFilePath != "" {
+		f, err := os.OpenFile(*logFilePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
+		if err != nil {
+			plog.Fatal(err)
+		}
+		defer f.Close()
+		capnslog.SetFormatter(capnslog.NewDefaultFormatter(f))
+	}
 
 	cfg := AgentConfig{
 		EtcdPath:      *etcdPath,
@@ -41,11 +50,11 @@ func main() {
 	}
 
 	if *useRoot && os.Getuid() != 0 {
-		fmt.Println("got --use-root=true but not root user")
+		plog.Println("got --use-root=true but not root user")
 		os.Exit(1)
 	}
 	if !*useRoot {
-		fmt.Println("root permissions disabled, agent will not modify network")
+		plog.Println("root permissions disabled, agent will not modify network")
 	}
 
 	a, err := newAgent(cfg)

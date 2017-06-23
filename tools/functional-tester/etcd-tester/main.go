@@ -56,7 +56,17 @@ func main() {
 	failpoints := flag.String("failpoints", `panic("etcd-tester")`, `comma separated list of failpoint terms to inject (e.g. 'panic("etcd-tester"),1*sleep(1000)')`)
 	externalFailures := flag.String("external-failures", "", "specify a path of script for enabling/disabling an external fault injector")
 	enablePprof := flag.Bool("enable-pprof", false, "true to enable pprof")
+	logFilePath := flag.String("log-file", "", "log file path (leave empty to log to stderr)")
 	flag.Parse()
+
+	if *logFilePath != "" {
+		f, err := os.OpenFile(*logFilePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0600)
+		if err != nil {
+			plog.Fatal(err)
+		}
+		defer f.Close()
+		capnslog.SetFormatter(capnslog.NewDefaultFormatter(f))
+	}
 
 	eps := strings.Split(*endpointStr, ",")
 	cports := portsFromArg(*clientPorts, len(eps), defaultClientPort)
