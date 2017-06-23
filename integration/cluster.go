@@ -578,6 +578,8 @@ func (m *member) electionTimeout() time.Duration {
 	return time.Duration(m.s.Cfg.ElectionTicks) * time.Millisecond
 }
 
+func (m *member) ID() types.ID { return m.s.ID() }
+
 func (m *member) DropConnections()    { m.grpcBridge.Reset() }
 func (m *member) PauseConnections()   { m.grpcBridge.Pause() }
 func (m *member) UnpauseConnections() { m.grpcBridge.Unpause() }
