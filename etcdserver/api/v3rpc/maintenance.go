@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
@@ -40,9 +41,14 @@ type Alarmer interface {
 	Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 }
 
+type LeaderTransferrer interface {
+	MoveLeader(ctx context.Context, lead, target uint64) error
+}
+
 type RaftStatusGetter interface {
 	Index() uint64
 	Term() uint64
+	ID() types.ID
 	Leader() types.ID
 }
 
@@ -56,11 +62,12 @@ type maintenanceServer struct {
 	kg  KVGetter
 	bg  BackendGetter
 	a   Alarmer
+	lt  LeaderTransferrer
 	hdr header
 }
 
 func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	srv := &maintenanceServer{rg: s, kg: s, bg: s, a: s, hdr: newHeader(s)}
+	srv := &maintenanceServer{rg: s, kg: s, bg: s, a: s, lt: s, hdr: newHeader(s)}
 	return &authMaintenanceServer{srv, s}
 }
 
@@ -147,6 +154,17 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 	return resp, nil
 }
 
+func (ms *maintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
+	if ms.rg.ID() != ms.rg.Leader() {
+		return nil, rpctypes.ErrGRPCNotLeader
+	}
+
+	if err := ms.lt.MoveLeader(ctx, uint64(ms.rg.Leader()), tr.TargetID); err != nil {
+		return nil, togRPCError(err)
+	}
+	return &pb.MoveLeaderResponse{}, nil
+}
+
 type authMaintenanceServer struct {
 	*maintenanceServer
 	ag AuthGetter
@@ -187,4 +205,8 @@ func (ams *authMaintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (
 
 func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {
 	return ams.maintenanceServer.Status(ctx, ar)
+}
+
+func (ams *authMaintenanceServer) MoveLeader(ctx context.Context, tr *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
+	return ams.maintenanceServer.MoveLeader(ctx, tr)
 }
