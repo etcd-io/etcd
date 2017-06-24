@@ -270,3 +270,25 @@ func authSetupRoot(t *testing.T, auth pb.AuthClient) {
 		t.Fatal(err)
 	}
 }
+
+func TestV3AuthNonAuthorizedRPCs(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	nonAuthedKV := clus.Client(0).KV
+
+	key := "foo"
+	val := "bar"
+	_, err := nonAuthedKV.Put(context.TODO(), key, val)
+	if err != nil {
+		t.Fatalf("couldn't put key (%v)", err)
+	}
+
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	respput, err := nonAuthedKV.Put(context.TODO(), key, val)
+	if !eqErrGRPC(err, rpctypes.ErrGRPCUserEmpty) {
+		t.Fatalf("could put key (%v), it should cause an error of permission denied", respput)
+	}
+}
