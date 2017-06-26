@@ -85,7 +85,7 @@ func WithPrefetch(keys ...string) stmOption {
 	return func(so *stmOptions) { so.prefetch = append(so.prefetch, keys...) }
 }
 
-// NewSTM initiates a new STM instance, using snapshot isolation by default.
+// NewSTM initiates a new STM instance, using serializable snapshot isolation by default.
 func NewSTM(c *v3.Client, apply func(STM) error, so ...stmOption) (*v3.TxnResponse, error) {
 	opts := &stmOptions{ctx: c.Ctx()}
 	for _, f := range so {
