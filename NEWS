@@ -1,3 +1,8 @@
+etcd v3.2.1 (2017-06-23)
+- fix backend database index corruption issue on restore
+- fix gRPC gateway Txn marshaling issue
+- fix backend database size debugging metrics
+
 etcd v3.2.0 (2017-06-09)
 - improved backend read concurrency
 - embedded etcd
