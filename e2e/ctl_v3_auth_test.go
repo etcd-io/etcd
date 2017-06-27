@@ -41,6 +41,7 @@ func TestCtlV3AuthFromKeyPerm(t *testing.T)      { testCtl(t, authTestFromKeyPer
 func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
 
 func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
+func TestCtlV3AuthUserGet(t *testing.T)  { testCtl(t, authTestUserGet) }
 func TestCtlV3AuthRoleList(t *testing.T) { testCtl(t, authTestRoleList) }
 
 func authEnableTest(cx ctlCtx) {
@@ -756,6 +757,51 @@ func authTestRoleGet(cx ctlCtx) {
 		"KV Write:", "foo",
 	}
 	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), expected...); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// test-user can get the information of test-role because it belongs to the role
+	cx.user, cx.pass = "test-user", "pass"
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "test-role"), expected...); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// test-user cannot get the information of root because it doesn't belong to the role
+	expected = []string{
+		"Error:  etcdserver: permission denied",
+	}
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "root"), expected...); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestUserGet(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	expected := []string{
+		"User: test-user",
+		"Roles: test-role",
+	}
+
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "test-user"), expected...); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// test-user can get the information of test-user itself
+	cx.user, cx.pass = "test-user", "pass"
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "test-user"), expected...); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// test-user cannot get the information of root
+	expected = []string{
+		"Error:  etcdserver: permission denied",
+	}
+	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "root"), expected...); err != nil {
 		cx.t.Fatal(err)
 	}
 }
