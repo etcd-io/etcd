@@ -42,7 +42,7 @@ func TestRevision(t *testing.T) {
 	rg.Wait(1)
 	// nothing happens
 
-	rg.rev = 99 // will be 100
+	rg.SetRev(99) // will be 100
 	expectedRevision := int64(90)
 	fc.Advance(checkCompactionInterval)
 	rg.Wait(1)
@@ -55,12 +55,12 @@ func TestRevision(t *testing.T) {
 	}
 
 	// skip the same revision
-	rg.rev = 99 // will be 100
+	rg.SetRev(99) // will be 100
 	expectedRevision = int64(90)
 	rg.Wait(1)
 	// nothing happens
 
-	rg.rev = 199 // will be 200
+	rg.SetRev(199) // will be 200
 	expectedRevision = int64(190)
 	fc.Advance(checkCompactionInterval)
 	rg.Wait(1)
