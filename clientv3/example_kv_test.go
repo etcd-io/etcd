@@ -161,6 +161,40 @@ func ExampleKV_getSortedPrefix() {
 	// key_0 : value
 }
 
+func ExampleKV_getAscendingSortedPrefix() {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   endpoints,
+		DialTimeout: dialTimeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	for i := range make([]int, 3) {
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		_, err = cli.Put(ctx, fmt.Sprintf("key_%d", i), "value")
+		cancel()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	resp, err := cli.Get(ctx, "key", clientv3.WithRange(clientv3.GetPrefixRangeEnd("key")), clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend))
+	cancel()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, ev := range resp.Kvs {
+		fmt.Printf("%s : %s\n", ev.Key, ev.Value)
+	}
+	// Output:
+	// key_0 : value
+	// key_1 : value
+	// key_2 : value
+}
+
 func ExampleKV_delete() {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
