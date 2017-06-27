@@ -15,6 +15,8 @@
 package compactor
 
 import (
+	"sync/atomic"
+
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
@@ -36,6 +38,10 @@ type fakeRevGetter struct {
 
 func (fr *fakeRevGetter) Rev() int64 {
 	fr.Record(testutil.Action{Name: "g"})
-	fr.rev++
-	return fr.rev
+	rev := atomic.AddInt64(&fr.rev, 1)
+	return rev
+}
+
+func (fr *fakeRevGetter) SetRev(rev int64) {
+	atomic.StoreInt64(&fr.rev, rev)
 }
