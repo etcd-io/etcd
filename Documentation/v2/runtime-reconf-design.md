@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # Design of Runtime Reconfiguration
 
 Runtime reconfiguration is one of the hardest and most error prone features in a distributed system, especially in a consensus based system like etcd.
@@ -26,21 +31,21 @@ We think runtime reconfiguration should be a low frequent operation. We made the
 
 If a cluster permanently loses a majority of its members, a new cluster will need to be started from an old data directory to recover the previous state.
 
-It is entirely possible to force removing the failed members from the existing cluster to recover. However, we decided not to support this method since it bypasses the normal consensus committing phase, which is unsafe. If the member to remove is not actually dead or you force to remove different members through different members in the same cluster, you will end up with diverged cluster with same clusterID. This is very dangerous and hard to debug/fix afterwards. 
+It is entirely possible to force removing the failed members from the existing cluster to recover. However, we decided not to support this method since it bypasses the normal consensus committing phase, which is unsafe. If the member to remove is not actually dead or you force to remove different members through different members in the same cluster, you will end up with diverged cluster with same clusterID. This is very dangerous and hard to debug/fix afterwards.
 
 If you have a correct deployment, the possibility of permanent majority lose is very low. But it is a severe enough problem that worth special care. We strongly suggest you to read the [disaster recovery documentation][disaster-recovery] and prepare for permanent majority lose before you put etcd into production.
 
 ## Do Not Use Public Discovery Service For Runtime Reconfiguration
 
-The public discovery service should only be used for bootstrapping a cluster. To join member into an existing cluster, you should use runtime reconfiguration API. 
+The public discovery service should only be used for bootstrapping a cluster. To join member into an existing cluster, you should use runtime reconfiguration API.
 
 Discovery service is designed for bootstrapping an etcd cluster in the cloud environment, when you do not know the IP addresses of all the members beforehand. After you successfully bootstrap a cluster, the IP addresses of all the members are known. Technically, you should not need the discovery service any more.
 
-It seems that using public discovery service is a convenient way to do runtime reconfiguration, after all discovery service already has all the cluster configuration information. However relying on public discovery service brings troubles: 
+It seems that using public discovery service is a convenient way to do runtime reconfiguration, after all discovery service already has all the cluster configuration information. However relying on public discovery service brings troubles:
 
 1. it introduces external dependencies for the entire life-cycle of your cluster, not just bootstrap time. If there is a network issue between your cluster and public discovery service, your cluster will suffer from it.
- 
-2. public discovery service must reflect correct runtime configuration of your cluster during it life-cycle. It has to provide security mechanism to avoid bad actions, and it is hard. 
+
+2. public discovery service must reflect correct runtime configuration of your cluster during it life-cycle. It has to provide security mechanism to avoid bad actions, and it is hard.
 
 3. public discovery service has to keep tens of thousands of cluster configurations. Our public discovery service backend is not ready for that workload.
 

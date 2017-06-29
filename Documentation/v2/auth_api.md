@@ -1,13 +1,18 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # v2 Auth and Security
 
-## etcd Resources 
+## etcd Resources
 There are three types of resources in etcd
 
 1. permission resources: users and roles in the user store
 2. key-value resources: key-value pairs in the key-value store
 3. settings resources: security settings, auth settings, and dynamic etcd cluster settings (election/heartbeat)
 
-### Permission Resources 
+### Permission Resources
 
 #### Users
 A user is an identity to be authenticated. Each user can have multiple roles. The user has a capability (such as reading or writing) on the resource if one of the roles has that capability.
@@ -15,7 +20,7 @@ A user is an identity to be authenticated. Each user can have multiple roles. Th
 A user named `root` is required before authentication can be enabled, and it always has the ROOT role. The ROOT role can be granted to multiple users, but `root` is required for recovery purposes.
 
 #### Roles
-Each role has exact one associated Permission List. An permission list exists for each permission on key-value resources. 
+Each role has exact one associated Permission List. An permission list exists for each permission on key-value resources.
 
 The special static ROOT (named `root`) role has a full permissions on all key-value resources, the permission to manage user resources and settings resources. Only the ROOT role has the permission to manage user resources and modify settings resources. The ROOT role is built-in and does not need to be created.
 
@@ -30,8 +35,8 @@ A Permission List is a list of allowed patterns for that particular permission (
 ### Key-Value Resources
 A key-value resource is a key-value pairs in the store. Given a list of matching patterns, permission for any given key in a request is granted if any of the patterns in the list match.
 
-Only prefixes or exact keys are supported. A prefix permission string ends in `*`. 
-A permission on `/foo` is for that exact key or directory, not its children or recursively. `/foo*` is a prefix that matches `/foo` recursively, and all keys thereunder, and keys with that prefix (eg. `/foobar`. Contrast to the prefix `/foo/*`). `*` alone is permission on the full keyspace. 
+Only prefixes or exact keys are supported. A prefix permission string ends in `*`.
+A permission on `/foo` is for that exact key or directory, not its children or recursively. `/foo*` is a prefix that matches `/foo` recursively, and all keys thereunder, and keys with that prefix (eg. `/foobar`. Contrast to the prefix `/foo/*`). `*` alone is permission on the full keyspace.
 
 ### Settings Resources
 
@@ -66,7 +71,7 @@ An Error JSON corresponds to:
 }
 
 #### Enable and Disable Authentication
-        
+
 **Get auth status**
 
 GET  /v2/auth/enable
@@ -215,8 +220,8 @@ PUT  /v2/auth/users/charlie
     Sent Headers:
         Authorization: Basic <BasicAuthString>
     Put Body:
-        JSON struct, above, matching the appropriate name 
-          * Starting password and roles when creating. 
+        JSON struct, above, matching the appropriate name
+          * Starting password and roles when creating.
           * Grant/Revoke/Password filled in when updating (to grant roles, revoke roles, or change the password).
     Possible Status Codes:
         200 OK
@@ -345,7 +350,7 @@ PUT  /v2/auth/roles/rkt
         401 Unauthorized
         404 Not Found (update non-existent roles)
         409 Conflict (when granting duplicated permission or revoking non-existent permission)
-    200 Body: 
+    200 Body:
         JSON state of the role
 
 **Remove A Role**

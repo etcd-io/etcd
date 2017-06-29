@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # Upgrade etcd to 2.1
 
 In the general case, upgrading from etcd 2.0 to 2.1 can be a zero-downtime, rolling upgrade:
@@ -12,11 +17,11 @@ Before [starting an upgrade](#upgrade-procedure), read through the rest of this 
 
 To upgrade an existing etcd deployment to 2.1, you must be running 2.0. If you’re running a version of etcd before 2.0, you must upgrade to [2.0][v2.0] before upgrading to 2.1.
 
-Also, to ensure a smooth rolling upgrade, your running cluster must be healthy. You can check the health of the cluster by using `etcdctl cluster-health` command. 
+Also, to ensure a smooth rolling upgrade, your running cluster must be healthy. You can check the health of the cluster by using `etcdctl cluster-health` command.
 
-### Preparedness 
+### Preparedness
 
-Before upgrading etcd, always test the services relying on etcd in a staging environment before deploying the upgrade to the production environment. 
+Before upgrading etcd, always test the services relying on etcd in a staging environment before deploying the upgrade to the production environment.
 
 You might also want to [backup your data directory][backup-datastore] for a potential [downgrade](#downgrade).
 
@@ -38,7 +43,7 @@ If you have even more data, this might take more time. If you have a data size l
 
 ### Downgrade
 
-If all members have been upgraded to v2.1, the cluster will be upgraded to v2.1, and downgrade is **not possible**. If any member is still v2.0, the cluster will remain in v2.0, and you can go back to use v2.0 binary. 
+If all members have been upgraded to v2.1, the cluster will be upgraded to v2.1, and downgrade is **not possible**. If any member is still v2.0, the cluster will remain in v2.0, and you can go back to use v2.0 binary.
 
 Please [backup your data directory][backup-datastore] of all etcd members if you want to downgrade the cluster, even if it is upgraded.
 
@@ -96,7 +101,7 @@ member 924e2e83e93f2560 is healthy
 member a8266ecf031671f3 is healthy
 ```
 
-#### 4. Repeat step 2 to step 3 for all other members 
+#### 4. Repeat step 2 to step 3 for all other members
 
 #### 5. Finish
 

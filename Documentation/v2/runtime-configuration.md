@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # Runtime Reconfiguration
 
 etcd comes with support for incremental runtime reconfiguration, which allows users to update the membership of the cluster at run time.
@@ -61,9 +66,9 @@ A wrongly updated client URL will not affect the health of the etcd cluster.
 
 #### Update advertise peer URLs
 
-If you would like to update the advertise peer URLs of a member, you have to first update 
+If you would like to update the advertise peer URLs of a member, you have to first update
 it explicitly via member command and then restart the member. The additional action is required
-since updating peer URLs changes the cluster wide configuration and can affect the health of the etcd cluster. 
+since updating peer URLs changes the cluster wide configuration and can affect the health of the etcd cluster.
 
 To update the peer URLs, first, we need to find the target member's ID. You can list all members with `etcdctl`:
 

@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # Metrics
 
 etcd uses [Prometheus][prometheus] for metrics reporting. The metrics can be used for real-time monitoring and debugging. etcd does not persist its metrics; if a member restarts, the metrics will be reset.
@@ -14,9 +19,9 @@ The metrics under the `etcd` prefix are for monitoring and alerting. They are st
 
 ### http requests
 
-These metrics describe the serving of requests (non-watch events) served by etcd members in non-proxy mode: total 
+These metrics describe the serving of requests (non-watch events) served by etcd members in non-proxy mode: total
 incoming requests, request failures and processing latency (inc. raft rounds for storage). They are useful for tracking
- user-generated traffic hitting the etcd cluster . 
+ user-generated traffic hitting the etcd cluster .
 
 All these metrics are prefixed with `etcd_http_`
 
@@ -28,20 +33,20 @@ All these metrics are prefixed with `etcd_http_`
 
 
 Example Prometheus queries that may be useful from these metrics (across all etcd members):
- 
- * `sum(rate(etcd_http_failed_total{job="etcd"}[1m]) by (method) / sum(rate(etcd_http_events_received_total{job="etcd"})[1m]) by (method)` 
-    
+
+ * `sum(rate(etcd_http_failed_total{job="etcd"}[1m]) by (method) / sum(rate(etcd_http_events_received_total{job="etcd"})[1m]) by (method)`
+
     Shows the fraction of events that failed by HTTP method across all members, across a time window of `1m`.
- 
+
  * `sum(rate(etcd_http_received_total{job="etcd",method="GET})[1m]) by (method)`
    `sum(rate(etcd_http_received_total{job="etcd",method~="GET})[1m]) by (method)`
-    
+
     Shows the rate of successful readonly/write queries across all servers, across a time window of `1m`.
-    
+
  * `histogram_quantile(0.9, sum(rate(etcd_http_successful_duration_seconds{job="etcd",method="GET"}[5m]) ) by (le))`
    `histogram_quantile(0.9, sum(rate(etcd_http_successful_duration_seconds{job="etcd",method!="GET"}[5m]) ) by (le))`
-    
-    Show the 0.90-tile latency (in seconds) of read/write (respectively) event handling across all members, with a window of `5m`.      
+
+    Show the 0.90-tile latency (in seconds) of read/write (respectively) event handling across all members, with a window of `5m`.
 
 ### proxy
 
@@ -56,21 +61,21 @@ All these metrics are prefixed with `etcd_proxy_`
 | requests_total            | Total number of requests by this proxy instance.                                | Counter(method)        |
 | handled_total             | Total number of fully handled requests, with responses from etcd members.           | Counter(method)        |
 | dropped_total             | Total number of dropped requests due to forwarding errors to etcd members.          | Counter(method,error)  |
-| handling_duration_seconds | Bucketed handling times by HTTP method, including round trip to member instances.   | Histogram(method)      |  
+| handling_duration_seconds | Bucketed handling times by HTTP method, including round trip to member instances.   | Histogram(method)      |
 
 Example Prometheus queries that may be useful from these metrics (across all etcd servers):
 
  *  `sum(rate(etcd_proxy_handled_total{job="etcd"}[1m])) by (method)`
-    
-    Rate of requests (by HTTP method) handled by all proxies, across a window of `1m`. 
+
+    Rate of requests (by HTTP method) handled by all proxies, across a window of `1m`.
 
  * `histogram_quantile(0.9, sum(rate(handling_duration_seconds{job="etcd",method="GET"}[5m])) by (le))`
    `histogram_quantile(0.9, sum(rate(handling_duration_seconds{job="etcd",method!="GET"}[5m])) by (le))`
-    
-    Show the 0.90-tile latency (in seconds) of handling of user requests across all proxy machines, with a window of `5m`.  
-    
+
+    Show the 0.90-tile latency (in seconds) of handling of user requests across all proxy machines, with a window of `5m`.
+
  * `sum(rate(etcd_proxy_dropped_total{job="etcd"}[1m])) by (proxying_error)`
-    
+
     Number of failed request on the proxy. This should be 0, spikes here indicate connectivity issues to the etcd cluster.
 
 ## etcd_debugging namespace metrics

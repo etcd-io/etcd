@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # Snapshot Migration
 
 You can migrate a snapshot of your data from a v0.4.9+ cluster into a new etcd 2.2 cluster using a snapshot migration. After snapshot migration, the etcd indexes of your data will change. Many etcd applications rely on these indexes to behave correctly. This operation should only be done while all etcd applications are stopped.
