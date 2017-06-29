@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # etcd API
 
 ## Running a Single Machine Cluster
@@ -318,7 +323,7 @@ The first terminal should get the notification and return with the same response
 
 However, the watch command can do more than this.
 Using the index, we can watch for commands that have happened in the past.
-This is useful for ensuring you don't miss events between watch commands. 
+This is useful for ensuring you don't miss events between watch commands.
 Typically, we watch again from the `modifiedIndex` + 1 of the node we got.
 
 Let's try to watch for the set command of index 7 again:
@@ -338,13 +343,13 @@ curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=8'
 Then even if etcd is on index 9 or 800, the first event to occur to the `/foo`
 key between 8 and the current index will be returned.
 
-**Note**: etcd only keeps the responses of the most recent 1000 events across all etcd keys. 
+**Note**: etcd only keeps the responses of the most recent 1000 events across all etcd keys.
 It is recommended to send the response to another thread to process immediately
-instead of blocking the watch while processing the result. 
+instead of blocking the watch while processing the result.
 
 #### Watch from cleared event index
 
-If we miss all the 1000 events, we need to recover the current state of the 
+If we miss all the 1000 events, we need to recover the current state of the
 watching key space through a get and then start to watch from the
 `X-Etcd-Index` + 1.
 
@@ -366,7 +371,7 @@ To start watch, first we need to fetch the current state of key `/foo`:
 curl 'http://127.0.0.1:2379/v2/keys/foo' -vv
 ```
 
-``` 
+```
 < HTTP/1.1 200 OK
 < Content-Type: application/json
 < X-Etcd-Cluster-Id: 7e27652122e8b2ae
@@ -375,7 +380,7 @@ curl 'http://127.0.0.1:2379/v2/keys/foo' -vv
 < X-Raft-Term: 2
 < Date: Mon, 05 Jan 2015 18:54:43 GMT
 < Transfer-Encoding: chunked
-< 
+<
 {"action":"get","node":{"key":"/foo","value":"bar","modifiedIndex":7,"createdIndex":7}}
 ```
 

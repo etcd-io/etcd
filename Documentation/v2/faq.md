@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # FAQ
 
 ## 1) Why can an etcd client read an old version of data when a majority of the etcd cluster members are down?
