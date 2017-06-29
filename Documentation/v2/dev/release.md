@@ -1,8 +1,13 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../../docs.md#documentation
+
+
 # etcd release guide
 
 The guide talks about how to release a new version of etcd.
 
-The procedure includes some manual steps for sanity checking but it can probably be further scripted. Please keep this document up-to-date if you want to make changes to the release process. 
+The procedure includes some manual steps for sanity checking but it can probably be further scripted. Please keep this document up-to-date if you want to make changes to the release process.
 
 ## Prepare Release
 

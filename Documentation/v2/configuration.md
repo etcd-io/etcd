@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # Configuration Flags
 
 etcd is configurable through command-line flags and environment variables. Options set on the command line take precedence over those from the environment.

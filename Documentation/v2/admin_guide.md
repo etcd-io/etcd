@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # Administration
 
 ## Data Directory
@@ -8,7 +13,7 @@ When first started, etcd stores its configuration into a data directory specifie
 Configuration is stored in the write ahead log and includes: the local member ID, cluster ID, and initial cluster configuration.
 The write ahead log and snapshot files are used during member operation and to recover after a restart.
 
-Having a dedicated disk to store wal files can improve the throughput and stabilize the cluster. 
+Having a dedicated disk to store wal files can improve the throughput and stabilize the cluster.
 It is highly recommended to dedicate a wal disk and set `--wal-dir` to point to a directory on that device for a production cluster deployment.
 
 If a member’s data directory is ever lost or corrupted then the user should [remove][remove-a-member] the etcd member from the cluster using `etcdctl` tool.
@@ -51,7 +56,7 @@ $ curl -L http://127.0.0.1:2379/health
 You can also use etcdctl to check the cluster-wide health information. It will contact all the members of the cluster and collect the health information for you.
 
 ```
-$./etcdctl cluster-health 
+$./etcdctl cluster-health
 member 8211f1d0f64f3269 is healthy: got healthy result from http://127.0.0.1:12379
 member 91bc3c398fb3c146 is healthy: got healthy result from http://127.0.0.1:22379
 member fd422379fda50e48 is healthy: got healthy result from http://127.0.0.1:32379

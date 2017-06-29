@@ -1,3 +1,8 @@
+**This is the documentation for etcd2 releases. Read [etcd3 doc][v3-docs] for etcd3 releases.**
+
+[v3-docs]: ../docs.md#documentation
+
+
 # Authentication Guide
 
 ## Overview
@@ -14,7 +19,7 @@ There is one special user, `root`, and there are two special roles, `root` and `
 
 ### User `root`
 
-User `root` must be created before security can be activated. It has the `root` role and allows for the changing of anything inside etcd. The idea behind the `root` user is for recovery purposes -- a password is generated and stored somewhere -- and the root role is granted to the administrator accounts on the system. In the future, for troubleshooting and recovery, we will need to assume some access to the system, and future documentation will assume this root user (though anyone with the role will suffice). 
+User `root` must be created before security can be activated. It has the `root` role and allows for the changing of anything inside etcd. The idea behind the `root` user is for recovery purposes -- a password is generated and stored somewhere -- and the root role is granted to the administrator accounts on the system. In the future, for troubleshooting and recovery, we will need to assume some access to the system, and future documentation will assume this root user (though anyone with the role will suffice).
 
 ### Role `root`
 
@@ -104,7 +109,7 @@ $ etcdctl role grant myrolename -path '/foo/bar' -write
 $ etcdctl role grant myrolename -path '/pub/*' -readwrite
 ```
 
-Beware that 
+Beware that
 
 ```
 # Give full access to keys under /pub??
@@ -133,12 +138,12 @@ $ etcdctl role remove myrolename
 
 ## Enabling authentication
 
-The minimal steps to enabling auth are as follows. The administrator can set up users and roles before or after enabling authentication, as a matter of preference. 
+The minimal steps to enabling auth are as follows. The administrator can set up users and roles before or after enabling authentication, as a matter of preference.
 
 Make sure the root user is created:
 
 ```
-$ etcdctl user add root 
+$ etcdctl user add root
 New password:
 ```
 
