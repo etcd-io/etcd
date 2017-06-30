@@ -1,5 +1,5 @@
 etcd v3.2.1 (2017-06-23)
-- fix backend database index corruption issue on restore
+- fix backend database in-memory index corruption issue on restore (only 3.2.0 is affected)
 - fix gRPC gateway Txn marshaling issue
 - fix backend database size debugging metrics
 
