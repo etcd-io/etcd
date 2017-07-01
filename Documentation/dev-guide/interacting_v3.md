@@ -215,7 +215,7 @@ $ etcdctl del foo foo9
 Here is the command to delete key `zoo` with the deleted key value pair returned:
 
 ```bash
-$ etcdctl del --prev-kv zoo 
+$ etcdctl del --prev-kv zoo
 1   # one key is deleted
 zoo # deleted key
 val # the value of the deleted key
@@ -224,7 +224,7 @@ val # the value of the deleted key
 Here is the command to delete keys having prefix as `zoo`:
 
 ```bash
-$ etcdctl del --prefix zoo 
+$ etcdctl del --prefix zoo
 2 # two keys are deleted
 ```
 
@@ -290,7 +290,7 @@ barz1
 Here is the command to watch on multiple keys `foo` and `zoo`:
 
 ```bash
-$ etcdctl watch -i 
+$ etcdctl watch -i
 $ watch foo
 $ watch zoo
 # in another terminal: etcdctl put foo bar
@@ -430,9 +430,9 @@ Here is the command to keep the same lease alive:
 
 ```bash
 $ etcdctl lease keep-alive 32695410dcc0ca06
-lease 32695410dcc0ca06 keepalived with TTL(100)
-lease 32695410dcc0ca06 keepalived with TTL(100)
-lease 32695410dcc0ca06 keepalived with TTL(100)
+lease 32695410dcc0ca06 keepalived with TTL(10)
+lease 32695410dcc0ca06 keepalived with TTL(10)
+lease 32695410dcc0ca06 keepalived with TTL(10)
 ...
 ```
 
@@ -472,4 +472,3 @@ lease 694d5765fc71500b granted with TTL(500s), remaining(132s), attached keys([z
 # if the lease has expired or does not exist it will give the below response:
 Error:  etcdserver: requested lease not found
 ```
-

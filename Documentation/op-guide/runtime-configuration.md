@@ -2,7 +2,7 @@
 
 etcd comes with support for incremental runtime reconfiguration, which allows users to update the membership of the cluster at run time.
 
-Reconfiguration requests can only be processed when a majority of cluster members are functioning. It is **highly recommended** to always have a cluster size greater than two in production. It is unsafe to remove a member from a two member cluster. The majority of a two member cluster is also two. If there is a failure during the removal process, the cluster might not able to make progress and need to [restart from majority failure][majority failure].
+Reconfiguration requests can only be processed when a majority of cluster members are functioning. It is **highly recommended** to always have a cluster size greater than two in production. It is unsafe to remove a member from a two member cluster. The majority of a two member cluster is also two. If there is a failure during the removal process, the cluster might not be able to make progress and need to [restart from majority failure][majority failure].
 
 To better understand the design behind runtime reconfiguration, please read [the runtime reconfiguration document][runtime-reconf].
 
@@ -41,7 +41,7 @@ Before making any change, a simple majority (quorum) of etcd members must be ava
 All changes to the cluster must be done sequentially:
 
 * To update a single member peerURLs, issue an update operation
-* To replace a healthy single member, add a new member then remove the old member
+* To replace a healthy single member, remove the old member then add a new member
 * To increase from 3 to 5 members, issue two add operations
 * To decrease from 5 to 3, issue two remove operations
 
@@ -55,9 +55,9 @@ To update the advertise client URLs of a member, simply restart that member with
 
 #### Update advertise peer URLs
 
-To update the advertise peer URLs of a member, first update it explicitly via member command and then restart the member. The additional action is required since updating peer URLs changes the cluster wide configuration and can affect the health of the etcd cluster. 
+To update the advertise peer URLs of a member, first update it explicitly via member command and then restart the member. The additional action is required since updating peer URLs changes the cluster wide configuration and can affect the health of the etcd cluster.
 
-To update the peer URLs, first find the target member's ID. To list all members with `etcdctl`:
+To update the advertise peer URLs, first find the target member's ID. To list all members with `etcdctl`:
 
 ```sh
 $ etcdctl member list
@@ -69,7 +69,7 @@ a8266ecf031671f3: name=node1 peerURLs=http://localhost:23801 clientURLs=http://1
 This example will `update` a8266ecf031671f3 member ID and change its peerURLs value to `http://10.0.1.10:2380`:
 
 ```sh
-$ etcdctl member update a8266ecf031671f3 http://10.0.1.10:2380
+$ etcdctl member update a8266ecf031671f3 --peer-urls=http://10.0.1.10:2380
 Updated member with ID a8266ecf031671f3 in cluster
 ```
 
