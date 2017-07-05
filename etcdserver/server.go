@@ -468,7 +468,21 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 		plog.Errorf("failed to create token provider: %s", err)
 		return nil, err
 	}
-	srv.authStore = auth.NewAuthStore(srv.be, tp)
+
+	switch cfg.AuthBackend {
+	case "default":
+		plog.Infof("auth backend = %s", cfg.AuthBackend)
+		srv.authStore = auth.NewAuthStore(srv.be, tp)
+	case "casbin":
+		plog.Infof("auth backend = %s", cfg.AuthBackend)
+		srv.authStore = auth.NewCasbinAuthStore(srv.be, tp)
+	case "":
+		plog.Infof(`auth backend not specified, use "default"`)
+		srv.authStore = auth.NewAuthStore(srv.be, tp)
+	default:
+		plog.Panicf(`unknown auth backend %s (only supports "default", "casbin")`, cfg.AuthBackend)
+	}
+
 	if num := cfg.AutoCompactionRetention; num != 0 {
 		srv.compactor, err = compactor.New(cfg.AutoCompactionMode, num, srv.kv, srv)
 		if err != nil {

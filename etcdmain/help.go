@@ -175,6 +175,8 @@ profiling flags:
 	  Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
 
 auth flags:
+	--auth-backend 'default'
+		Specify a v3 authorization backend ('default' or 'casbin').
 	--auth-token 'simple'
 		Specify a v3 authentication token type and its options ('simple' or 'jwt').
 `

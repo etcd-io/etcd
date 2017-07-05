@@ -136,7 +136,8 @@ type Config struct {
 
 	// auth
 
-	AuthToken string `json:"auth-token"`
+	AuthBackend string `json:"auth-backend"`
+	AuthToken   string `json:"auth-token"`
 }
 
 // configYAML holds the config suitable for yaml parsing

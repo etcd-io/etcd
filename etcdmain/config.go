@@ -211,6 +211,7 @@ func newConfig() *config {
 	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include histogram metrics")
 
 	// auth
+	fs.StringVar(&cfg.AuthBackend, "auth-backend", cfg.AuthBackend, "Specify auth backend ('default' or 'casbin').")
 	fs.StringVar(&cfg.AuthToken, "auth-token", cfg.AuthToken, "Specify auth token specific options.")
 
 	// ignored

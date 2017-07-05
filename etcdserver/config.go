@@ -65,7 +65,8 @@ type ServerConfig struct {
 	// ClientCertAuthEnabled is true when cert has been signed by the client CA.
 	ClientCertAuthEnabled bool
 
-	AuthToken string
+	AuthBackend string
+	AuthToken   string
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
