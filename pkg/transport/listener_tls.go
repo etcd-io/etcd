@@ -197,7 +197,11 @@ func checkCertSAN(ctx context.Context, cert *x509.Certificate, remoteAddr string
 		return herr
 	}
 	if len(cert.IPAddresses) > 0 {
-		if cerr := cert.VerifyHostname(h); cerr != nil && len(cert.DNSNames) == 0 {
+		cerr := cert.VerifyHostname(h)
+		if cerr == nil {
+			return nil
+		}
+		if len(cert.DNSNames) == 0 {
 			return cerr
 		}
 	}
