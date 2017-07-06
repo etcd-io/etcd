@@ -101,7 +101,7 @@ func (as *casbinAuthStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddRes
 
 func (as *casbinAuthStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
 	response, err := as.s.UserDelete(r)
-	if err != nil {
+	if err == nil {
 		as.enforcer.DeleteUser(r.Name)
 	}
 	return response, err
@@ -121,7 +121,7 @@ func (as *casbinAuthStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddRes
 
 func (as *casbinAuthStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
 	response, err := as.s.RoleDelete(r)
-	if err != nil {
+	if err == nil {
 		as.enforcer.DeleteRole(r.Role)
 	}
 	return response, err
@@ -337,7 +337,6 @@ func (as *casbinAuthStore) IsAdminPermitted(authInfo *AuthInfo) error {
 func NewCasbinAuthStore(be backend.Backend, tp TokenProvider) *casbinAuthStore {
 	tx := be.BatchTx()
 	tx.Lock()
-
 	tx.UnsafeCreateBucket(casbinAuthBucketName)
 
 	m := casbin.NewModel()
