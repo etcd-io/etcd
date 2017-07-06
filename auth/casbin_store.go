@@ -70,8 +70,11 @@ func (as *casbinAuthStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddRes
 }
 
 func (as *casbinAuthStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
-	as.enforcer.DeleteUser(r.Name)
-	return as.s.UserDelete(r)
+	response, err := as.s.UserDelete(r)
+	if err != nil {
+		as.enforcer.DeleteUser(r.Name)
+	}
+	return response, err
 }
 
 func (as *casbinAuthStore) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
@@ -112,6 +115,20 @@ func (as *casbinAuthStore) AuthInfoFromTLS(ctx context.Context) *AuthInfo {
 
 func (as *casbinAuthStore) WithRoot(ctx context.Context) context.Context {
 	return as.s.WithRoot(ctx)
+}
+
+func (as *casbinAuthStore) HasRole(user, role string) bool {
+	tx := as.s.be.BatchTx()
+	tx.Lock()
+	defer tx.Unlock()
+
+	u := getUser(tx, user)
+	if u == nil {
+		plog.Warningf("tried to check user %s has role %s, but user %s doesn't exist", user, role, user)
+		return false
+	}
+
+	return as.enforcer.HasRoleForUser(user, role)
 }
 
 func (as *casbinAuthStore) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error) {
