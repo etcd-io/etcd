@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -60,6 +61,11 @@ type DB struct {
 	//
 	// THIS IS UNSAFE. PLEASE USE WITH CAUTION.
 	NoSync bool
+
+	// When true, skips syncing freelist to disk. This improves the database
+	// write performance under normal operation, but requires a full database
+	// re-sync during recovery.
+	NoFreelistSync bool
 
 	// When true, skips the truncate call when growing the database.
 	// Setting this to true is only safe on non-ext3/ext4 systems.
@@ -156,6 +162,7 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 	}
 	db.NoGrowSync = options.NoGrowSync
 	db.MmapFlags = options.MmapFlags
+	db.NoFreelistSync = options.NoFreelistSync
 
 	// Set default values for later DB operations.
 	db.MaxBatchSize = DefaultMaxBatchSize
@@ -232,9 +239,14 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 		return nil, err
 	}
 
-	// Read in the freelist.
-	db.freelist = newFreelist()
-	db.freelist.read(db.page(db.meta().freelist))
+	if db.NoFreelistSync {
+		db.freelist = newFreelist()
+		db.freelist.readIDs(db.freepages())
+	} else {
+		// Read in the freelist.
+		db.freelist = newFreelist()
+		db.freelist.read(db.page(db.meta().freelist))
+	}
 
 	// Mark the database as opened and return.
 	return db, nil
@@ -526,20 +538,35 @@ func (db *DB) beginRWTx() (*Tx, error) {
 	t := &Tx{writable: true}
 	t.init(db)
 	db.rwtx = t
+	db.freePages()
+	return t, nil
+}
 
-	// Free any pages associated with closed read-only transactions.
-	var minid txid = 0xFFFFFFFFFFFFFFFF
-	for _, t := range db.txs {
-		if t.meta.txid < minid {
-			minid = t.meta.txid
-		}
+// freePages releases any pages associated with closed read-only transactions.
+func (db *DB) freePages() {
+	// Free all pending pages prior to earliest open transaction.
+	sort.Sort(txsById(db.txs))
+	minid := txid(0xFFFFFFFFFFFFFFFF)
+	if len(db.txs) > 0 {
+		minid = db.txs[0].meta.txid
 	}
 	if minid > 0 {
 		db.freelist.release(minid - 1)
 	}
-
-	return t, nil
+	// Release unused txid extents.
+	for _, t := range db.txs {
+		db.freelist.releaseRange(minid, t.meta.txid-1)
+		minid = t.meta.txid + 1
+	}
+	db.freelist.releaseRange(minid, txid(0xFFFFFFFFFFFFFFFF))
+	// Any page both allocated and freed in an extent is safe to release.
 }
+
+type txsById []*Tx
+
+func (t txsById) Len() int           { return len(t) }
+func (t txsById) Swap(i, j int)      { t[i], t[j] = t[j], t[i] }
+func (t txsById) Less(i, j int) bool { return t[i].meta.txid < t[j].meta.txid }
 
 // removeTx removes a transaction from the database.
 func (db *DB) removeTx(tx *Tx) {
@@ -552,7 +579,10 @@ func (db *DB) removeTx(tx *Tx) {
 	// Remove the transaction.
 	for i, t := range db.txs {
 		if t == tx {
-			db.txs = append(db.txs[:i], db.txs[i+1:]...)
+			last := len(db.txs) - 1
+			db.txs[i] = db.txs[last]
+			db.txs[last] = nil
+			db.txs = db.txs[:last]
 			break
 		}
 	}
@@ -823,7 +853,7 @@ func (db *DB) meta() *meta {
 }
 
 // allocate returns a contiguous block of memory starting at a given page.
-func (db *DB) allocate(count int) (*page, error) {
+func (db *DB) allocate(txid txid, count int) (*page, error) {
 	// Allocate a temporary buffer for the page.
 	var buf []byte
 	if count == 1 {
@@ -835,7 +865,7 @@ func (db *DB) allocate(count int) (*page, error) {
 	p.overflow = uint32(count - 1)
 
 	// Use pages from the freelist if they are available.
-	if p.id = db.freelist.allocate(count); p.id != 0 {
+	if p.id = db.freelist.allocate(txid, count); p.id != 0 {
 		return p, nil
 	}
 
@@ -890,6 +920,38 @@ func (db *DB) IsReadOnly() bool {
 	return db.readOnly
 }
 
+func (db *DB) freepages() []pgid {
+	tx, err := db.beginTx()
+	defer func() {
+		err = tx.Rollback()
+		if err != nil {
+			panic("freepages: failed to rollback tx")
+		}
+	}()
+	if err != nil {
+		panic("freepages: failed to open read only tx")
+	}
+
+	reachable := make(map[pgid]*page)
+	nofreed := make(map[pgid]bool)
+	ech := make(chan error)
+	go func() {
+		for e := range ech {
+			panic(fmt.Sprintf("freepages: failed to get all reachable pages (%v)", e))
+		}
+	}()
+	tx.checkBucket(&tx.root, reachable, nofreed, ech)
+	close(ech)
+
+	var fids []pgid
+	for i := pgid(2); i < db.meta().pgid; i++ {
+		if _, ok := reachable[i]; !ok {
+			fids = append(fids, i)
+		}
+	}
+	return fids
+}
+
 // Options represents the options that can be set when opening a database.
 type Options struct {
 	// Timeout is the amount of time to wait to obtain a file lock.
@@ -899,6 +961,10 @@ type Options struct {
 
 	// Sets the DB.NoGrowSync flag before memory mapping the file.
 	NoGrowSync bool
+
+	// Do not sync freelist to disk. This improves the database write performance
+	// under normal operation, but requires a full database re-sync during recovery.
+	NoFreelistSync bool
 
 	// Open database in read-only mode. Uses flock(..., LOCK_SH |LOCK_NB) to
 	// grab a shared lock (UNIX).
@@ -952,7 +1018,7 @@ func (s *Stats) Sub(other *Stats) Stats {
 	diff.PendingPageN = s.PendingPageN
 	diff.FreeAlloc = s.FreeAlloc
 	diff.FreelistInuse = s.FreelistInuse
-	diff.TxN = other.TxN - s.TxN
+	diff.TxN = s.TxN - other.TxN
 	diff.TxStats = s.TxStats.Sub(&other.TxStats)
 	return diff
 }

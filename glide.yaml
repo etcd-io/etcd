@@ -2,8 +2,8 @@ package: github.com/coreos/etcd
 import:
 - package: github.com/bgentry/speakeasy
   version: v0.1.0
-- package: github.com/boltdb/bolt
-  version: v1.3.0
+- package: github.com/coreos/bbolt
+  version: ad39960eb40bb33c9bda31bed2eaf4fdda15efe6
 - package: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - package: github.com/coreos/go-semver

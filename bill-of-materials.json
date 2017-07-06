@@ -27,19 +27,19 @@
 		]
 	},
 	{
-		"project": "github.com/boltdb/bolt",
+		"project": "github.com/cockroachdb/cmux",
 		"licenses": [
 			{
-				"type": "MIT License",
+				"type": "Apache License 2.0",
 				"confidence": 1
 			}
 		]
 	},
 	{
-		"project": "github.com/cockroachdb/cmux",
+		"project": "github.com/coreos/bbolt",
 		"licenses": [
 			{
-				"type": "Apache License 2.0",
+				"type": "MIT License",
 				"confidence": 1
 			}
 		]
