@@ -70,6 +70,7 @@ func (as *casbinAuthStore) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddRes
 }
 
 func (as *casbinAuthStore) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
+	as.enforcer.DeleteUser(r.Name)
 	return as.s.UserDelete(r)
 }
 
@@ -86,7 +87,11 @@ func (as *casbinAuthStore) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddRes
 }
 
 func (as *casbinAuthStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	return as.s.RoleDelete(r)
+	response, err := as.s.RoleDelete(r)
+	if err != nil {
+		as.enforcer.DeleteRole(r.Role)
+	}
+	return response, err
 }
 
 func (as *casbinAuthStore) GenTokenPrefix() (string, error) {
