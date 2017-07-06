@@ -315,13 +315,12 @@ func NewCasbinAuthStore(be backend.Backend, tp TokenProvider) *casbinAuthStore {
 	m.AddDef("p", "p", "user, key, rangeEnd, permType")
 	m.AddDef("g", "g", "_, _")
 	m.AddDef("e", "e", "some(where (p.eft == allow))")
-	m.AddDef("m", "m", "g(r.user, p.user) && keyMatch(r.key, p.key) && (r.permType == p.permType || p.permType == \"*\")")
+	m.AddDef("m", "m", "g(r.user, \"root\") || (g(r.user, p.user) && keyMatch(r.key, p.key) && (r.permType == p.permType || p.permType == \"*\"))")
 
 	a := NewCasbinBackend(casbinAuthBucketName, tx)
 
 	e := casbin.NewEnforcer(m, a, false)
 
-	e.AddPermissionForUser("root", "*", "*", "*")
 	e.SavePolicy()
 
 	tx.Unlock()

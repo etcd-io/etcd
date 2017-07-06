@@ -97,7 +97,6 @@ func initPermissions(as *casbinAuthStore) {
 
 	e.AddPermissionForUser("dataset1_admin", "/dataset1/*", "*", "*")
 	e.AddPermissionForUser("dataset2_admin", "/dataset2/*", "*", "*")
-	e.AddPermissionForUser("root", "/*", "*", "*")
 
 	e.AddRoleForUser("dataset_admin", "dataset1_admin")
 	e.AddRoleForUser("dataset_admin", "dataset2_admin")
