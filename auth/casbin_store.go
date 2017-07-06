@@ -38,7 +38,37 @@ type casbinAuthStore struct {
 }
 
 func (as *casbinAuthStore) AuthEnable() error {
-	return as.s.AuthEnable()
+	as.s.enabledMu.Lock()
+	defer as.s.enabledMu.Unlock()
+	if as.s.enabled {
+		plog.Noticef("Authentication already enabled")
+		return nil
+	}
+	b := as.s.be
+	tx := b.BatchTx()
+	tx.Lock()
+	defer func() {
+		tx.Unlock()
+		b.ForceCommit()
+	}()
+
+	u := getUser(tx, rootUser)
+	if u == nil {
+		return ErrRootUserNotExist
+	}
+
+	tx.UnsafePut(authBucketName, enableFlagKey, authEnabled)
+
+	as.s.enabled = true
+	as.s.tokenProvider.enable()
+
+	as.s.rangePermCache = make(map[string]*unifiedRangePermissions)
+
+	as.s.setRevision(getRevision(tx))
+
+	plog.Noticef("Authentication enabled")
+
+	return nil
 }
 
 func (as *casbinAuthStore) AuthDisable() {
