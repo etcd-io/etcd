@@ -288,7 +288,7 @@ func (as *casbinAuthStore) isOpPermitted(userName string, revision uint64, key, 
 	user := getUser(tx, userName)
 	if user == nil {
 		plog.Errorf("invalid user name %s for permission checking", userName)
-		return ErrPermissionDenied
+		return ErrUserNotFound
 	}
 
 	if as.enforcer.Enforce(userName, string(key), string(rangeEnd), authpb.Permission_Type_name[int32(permTyp)]) {
@@ -366,5 +366,5 @@ func NewCasbinAuthStore(be backend.Backend, tp TokenProvider) *casbinAuthStore {
 }
 
 func (as *casbinAuthStore) hasRootRole(u *authpb.User) bool {
-	return as.enforcer.HasRoleForUser(string(u.Name), "root")
+	return string(u.Name) == "root" || as.enforcer.HasRoleForUser(string(u.Name), "root")
 }

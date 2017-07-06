@@ -47,21 +47,6 @@ func setupCasbinAuthStore(t *testing.T) (store *casbinAuthStore, teardownfunc fu
 
 func initRoot(as *casbinAuthStore) error {
 	_, err := as.s.UserAdd(&pb.AuthUserAddRequest{Name: "root", Password: "root"})
-	if err != nil {
-		return err
-	}
-
-	_, err = as.s.RoleAdd(&pb.AuthRoleAddRequest{Name: "root"})
-	if err != nil {
-		return err
-	}
-
-	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"})
-	if err != nil {
-		return err
-	}
-
-	_, err = as.s.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "root", Role: "root"})
 	return err
 }
 
@@ -125,7 +110,7 @@ func enableCasbinAuthAndCreateUsers(as *casbinAuthStore) error {
 
 	initPermissions(as)
 
-	return as.s.AuthEnable()
+	return as.AuthEnable()
 }
 
 func testEnforce(t *testing.T, as *casbinAuthStore, user string, key string, rangeEnd string, permType string, res bool) {
@@ -215,4 +200,13 @@ func TestRoot(t *testing.T) {
 	testEnforce(t, as, "david", "/dataset2/item", "", "WRITE", true)
 	testEnforce(t, as, "david", "/dataset3/item", "", "READ", true)
 	testEnforce(t, as, "david", "/dataset3/item", "", "WRITE", true)
+
+	// Test the root user.
+
+	testEnforce(t, as, "root", "/dataset1/item", "", "READ", true)
+	testEnforce(t, as, "root", "/dataset1/item", "", "WRITE", true)
+	testEnforce(t, as, "root", "/dataset2/item", "", "READ", true)
+	testEnforce(t, as, "root", "/dataset2/item", "", "WRITE", true)
+	testEnforce(t, as, "root", "/dataset3/item", "", "READ", true)
+	testEnforce(t, as, "root", "/dataset3/item", "", "WRITE", true)
 }
