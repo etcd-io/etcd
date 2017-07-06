@@ -72,3 +72,8 @@ func (mp *maintenanceProxy) Status(ctx context.Context, r *pb.StatusRequest) (*p
 	conn := mp.client.ActiveConnection()
 	return pb.NewMaintenanceClient(conn).Status(ctx, r)
 }
+
+func (mp *maintenanceProxy) MoveLeader(ctx context.Context, r *pb.MoveLeaderRequest) (*pb.MoveLeaderResponse, error) {
+	conn := mp.client.ActiveConnection()
+	return pb.NewMaintenanceClient(conn).MoveLeader(ctx, r)
+}

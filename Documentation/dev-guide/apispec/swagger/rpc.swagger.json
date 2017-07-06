@@ -934,6 +934,33 @@
         }
       }
     },
+    "/v3alpha/maintenance/transfer-leadership": {
+      "post": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "MoveLeader requests current leader node to transfer its leadership to transferee.",
+        "operationId": "MoveLeader",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMoveLeaderRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "(empty)",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMoveLeaderResponse"
+            }
+          }
+        }
+      }
+    },
     "/v3alpha/watch": {
       "post": {
         "tags": [
@@ -1803,6 +1830,24 @@
         }
       }
     },
+    "etcdserverpbMoveLeaderRequest": {
+      "type": "object",
+      "properties": {
+        "targetID": {
+          "description": "targetID is the node ID for the new leader.",
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "etcdserverpbMoveLeaderResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
     "etcdserverpbPutRequest": {
       "type": "object",
       "properties": {
@@ -2177,7 +2222,7 @@
           "format": "boolean"
         },
         "compact_revision": {
-          "description": "compact_revision is set to the minimum index if a watcher tries to watch\nat a compacted index.\n\nThis happens when creating a watcher at a compacted revision or the watcher cannot\ncatch up with the progress of the key-value store. \n\nThe client should treat the watcher as canceled and should not try to create any\nwatcher with the same start_revision again.",
+          "description": "compact_revision is set to the minimum index if a watcher tries to watch\nat a compacted index.\n\nThis happens when creating a watcher at a compacted revision or the watcher cannot\ncatch up with the progress of the key-value store.\n\nThe client should treat the watcher as canceled and should not try to create any\nwatcher with the same start_revision again.",
           "type": "string",
           "format": "int64"
         },
