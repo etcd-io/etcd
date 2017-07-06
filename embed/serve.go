@@ -44,6 +44,7 @@ import (
 
 type serveCtx struct {
 	l        net.Listener
+	addr     string
 	secure   bool
 	insecure bool
 
@@ -164,7 +165,7 @@ type registerHandlerFunc func(context.Context, *gw.ServeMux, *grpc.ClientConn) e
 
 func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, error) {
 	ctx := sctx.ctx
-	conn, err := grpc.DialContext(ctx, sctx.l.Addr().String(), opts...)
+	conn, err := grpc.DialContext(ctx, sctx.addr, opts...)
 	if err != nil {
 		return nil, err
 	}

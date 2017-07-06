@@ -326,6 +326,9 @@ func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
 		if sctx.l, err = net.Listen(proto, addr); err != nil {
 			return nil, err
 		}
+		// net.Listener will rewrite ipv4 0.0.0.0 to ipv6 [::], breaking
+		// hosts that disable ipv6. So, use the address given by the user.
+		sctx.addr = addr
 
 		if fdLimit, fderr := runtimeutil.FDLimit(); fderr == nil {
 			if fdLimit <= reservedInternalFDNum {
