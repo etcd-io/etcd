@@ -128,21 +128,21 @@ func (tr *storeTxnRead) rangeKeys(key, end []byte, curRev int64, ro RangeOptions
 		return &RangeResult{KVs: nil, Count: len(revpairs), Rev: curRev}, nil
 	}
 
-	var kvs []mvccpb.KeyValue
-	for _, revpair := range revpairs {
-		start, end := revBytesRange(revpair)
-		_, vs := tr.tx.UnsafeRange(keyBucketName, start, end, 0)
+	limit := int(ro.Limit)
+	if limit <= 0 || limit > len(revpairs) {
+		limit = len(revpairs)
+	}
+
+	kvs := make([]mvccpb.KeyValue, limit)
+	revBytes := newRevBytes()
+	for i, revpair := range revpairs[:len(kvs)] {
+		revToBytes(revpair, revBytes)
+		_, vs := tr.tx.UnsafeRange(keyBucketName, revBytes, nil, 0)
 		if len(vs) != 1 {
 			plog.Fatalf("range cannot find rev (%d,%d)", revpair.main, revpair.sub)
 		}
-
-		var kv mvccpb.KeyValue
-		if err := kv.Unmarshal(vs[0]); err != nil {
+		if err := kvs[i].Unmarshal(vs[0]); err != nil {
 			plog.Fatalf("cannot unmarshal event: %v", err)
-		}
-		kvs = append(kvs, kv)
-		if ro.Limit > 0 && len(kvs) >= int(ro.Limit) {
-			break
 		}
 	}
 	return &RangeResult{KVs: kvs, Count: len(revpairs), Rev: curRev}, nil
