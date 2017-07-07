@@ -445,16 +445,3 @@ func appendMarkTombstone(b []byte) []byte {
 func isTombstone(b []byte) bool {
 	return len(b) == markedRevBytesLen && b[markBytePosition] == markTombstone
 }
-
-// revBytesRange returns the range of revision bytes at
-// the given revision.
-func revBytesRange(rev revision) (start, end []byte) {
-	start = newRevBytes()
-	revToBytes(rev, start)
-
-	end = newRevBytes()
-	endRev := revision{main: rev.main, sub: rev.sub + 1}
-	revToBytes(endRev, end)
-
-	return start, end
-}

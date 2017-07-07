@@ -217,9 +217,10 @@ func TestStoreRange(t *testing.T) {
 			t.Errorf("#%d: rev = %d, want %d", i, ret.Rev, wrev)
 		}
 
-		wstart, wend := revBytesRange(tt.idxr.revs[0])
+		wstart := newRevBytes()
+		revToBytes(tt.idxr.revs[0], wstart)
 		wact := []testutil.Action{
-			{"range", []interface{}{keyBucketName, wstart, wend, int64(0)}},
+			{"range", []interface{}{keyBucketName, wstart, []byte(nil), int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
