@@ -157,3 +157,4 @@
 - [ryandoyle/nss-etcd](https://github.com/ryandoyle/nss-etcd) - A GNU libc NSS module for resolving names from etcd.
 - [Gru](https://github.com/dnaeon/gru) - Orchestration made easy with Go
 - [Vitess](http://vitess.io/) - Vitess is a database clustering system for horizontal scaling of MySQL.
+- [openstack/networking-vpp](https://github.com/openstack/networking-vpp) - A networking driver that programs the [FD.io VPP dataplane](https://wiki.fd.io/view/VPP) to provide [OpenStack](https://www.openstack.org/) cloud virtual networking
