@@ -1,3 +1,13 @@
+etcd v3.2.2 (2017-07-07)
+- rate-limit lease revoke on expiration
+- extend leases on promote to avoid queueing effect on lease expiration
+- use user-provided listen address to connect to gRPC gateway
+  - net.Listener rewrites IPv4 0.0.0.0 to IPv6 [::], breaking IPv6 disabled hosts
+  - only v3.2.0, v3.2.1 are affected
+- accept connection with matched IP SAN but no DNS match
+  - don't check DNS entries in certs if there's a matching IP
+- fix 'tools/benchmark' watch command
+
 etcd v3.2.1 (2017-06-23)
 - fix backend database in-memory index corruption issue on restore (only 3.2.0 is affected)
 - fix gRPC gateway Txn marshaling issue
