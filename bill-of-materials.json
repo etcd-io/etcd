@@ -9,6 +9,15 @@
 		]
 	},
 	{
+		"project": "github.com/Knetic/govaluate",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/beorn7/perks/quantile",
 		"licenses": [
 			{
@@ -23,6 +32,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.9441624365482234
+			}
+		]
+	},
+	{
+		"project": "github.com/casbin/casbin",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},

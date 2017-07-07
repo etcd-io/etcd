@@ -115,5 +115,7 @@ import:
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 - package: github.com/dgrijalva/jwt-go
   version: v3.0.0
+- package: github.com/casbin/casbin
+  version: v0.8.0
 ignore:
   - google.golang.org/appengine
