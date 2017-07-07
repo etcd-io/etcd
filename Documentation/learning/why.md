@@ -107,7 +107,7 @@ For distributed coordination, choosing etcd can help prevent operational headach
 [etcd-rbac]: ../op-guide/authentication.md#working-with-roles
 [zk-acl]: https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#sc_ZooKeeperAccessControl
 [consul-acl]: https://www.consul.io/docs/internals/acl.html
-[cockroach-grant]: https://www.cockroachlabs.com/docs/grant.html
+[cockroach-grant]: https://www.cockroachlabs.com/docs/stable/grant.html
 [spanner-roles]: https://cloud.google.com/spanner/docs/iam#roles
 [zk-bindings]: https://zookeeper.apache.org/doc/r3.1.2/zookeeperProgrammers.html#ch_bindings
 [container-linux]: https://coreos.com/why
