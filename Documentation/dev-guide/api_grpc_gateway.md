@@ -24,6 +24,11 @@ curl -L http://localhost:2379/v3alpha/kv/put \
 curl -L http://localhost:2379/v3alpha/kv/range \
 	-X POST -d '{"key": "Zm9v"}'
 # {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}],"count":"1"}
+
+# get all keys prefixed with "foo"
+curl -L http://localhost:2379/v3alpha/kv/range \
+	-X POST -d '{"key": "Zm9v", "range_end": "Zm9w"}'
+# {"header":{"cluster_id":"12585971608760269493","member_id":"13847567121247652255","revision":"2","raft_term":"3"},"kvs":[{"key":"Zm9v","create_revision":"2","mod_revision":"2","version":"1","value":"YmFy"}],"count":"1"}
 ```
 
 Use `curl` to watch a key:
