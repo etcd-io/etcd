@@ -37,7 +37,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
-	"github.com/coreos/etcd/version"
 	"github.com/coreos/go-semver/semver"
 	"github.com/jonboulle/clockwork"
 	"golang.org/x/net/context"
@@ -1407,48 +1406,6 @@ func TestServeStoreStats(t *testing.T) {
 		t.Errorf("body = %s, want %s", g, w)
 	}
 
-}
-
-func TestServeVersion(t *testing.T) {
-	req, err := http.NewRequest("GET", "", nil)
-	if err != nil {
-		t.Fatalf("error creating request: %v", err)
-	}
-	rw := httptest.NewRecorder()
-	serveVersion(rw, req, "2.1.0")
-	if rw.Code != http.StatusOK {
-		t.Errorf("code=%d, want %d", rw.Code, http.StatusOK)
-	}
-	vs := version.Versions{
-		Server:  version.Version,
-		Cluster: "2.1.0",
-	}
-	w, err := json.Marshal(&vs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if g := rw.Body.String(); g != string(w) {
-		t.Fatalf("body = %q, want %q", g, string(w))
-	}
-	if ct := rw.HeaderMap.Get("Content-Type"); ct != "application/json" {
-		t.Errorf("contet-type header = %s, want %s", ct, "application/json")
-	}
-}
-
-func TestServeVersionFails(t *testing.T) {
-	for _, m := range []string{
-		"CONNECT", "TRACE", "PUT", "POST", "HEAD",
-	} {
-		req, err := http.NewRequest(m, "", nil)
-		if err != nil {
-			t.Fatalf("error creating request: %v", err)
-		}
-		rw := httptest.NewRecorder()
-		serveVersion(rw, req, "2.1.0")
-		if rw.Code != http.StatusMethodNotAllowed {
-			t.Errorf("method %s: code=%d, want %d", m, rw.Code, http.StatusMethodNotAllowed)
-		}
-	}
 }
 
 func TestBadServeKeys(t *testing.T) {
