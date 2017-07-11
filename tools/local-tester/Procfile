@@ -1,14 +1,14 @@
 # Use goreman to run `go get github.com/mattn/goreman`
 
 # peer bridges
-pbridge1: tools/local-tester/bridge/bridge 127.0.0.1:11111 127.0.0.1:12380
-pbridge2: tools/local-tester/bridge/bridge 127.0.0.1:22222 127.0.0.1:22380
-pbridge3: tools/local-tester/bridge/bridge 127.0.0.1:33333 127.0.0.1:32380
+pbridge1: tools/local-tester/bridge.sh 127.0.0.1:11111 127.0.0.1:12380
+pbridge2: tools/local-tester/bridge.sh 127.0.0.1:22222 127.0.0.1:22380
+pbridge3: tools/local-tester/bridge.sh 127.0.0.1:33333 127.0.0.1:32380
 
 # client bridges
-cbridge1: tools/local-tester/bridge/bridge 127.0.0.1:2379 127.0.0.1:11119
-cbridge2: tools/local-tester/bridge/bridge 127.0.0.1:22379 127.0.0.1:22229
-cbridge3: tools/local-tester/bridge/bridge 127.0.0.1:32379 127.0.0.1:33339
+cbridge1: tools/local-tester/bridge.sh 127.0.0.1:2379 127.0.0.1:11119
+cbridge2: tools/local-tester/bridge.sh 127.0.0.1:22379 127.0.0.1:22229
+cbridge3: tools/local-tester/bridge.sh 127.0.0.1:32379 127.0.0.1:33339
 
 faults: tools/local-tester/faults.sh
 
