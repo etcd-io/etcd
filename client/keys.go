@@ -463,6 +463,9 @@ func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
 			if err == ErrEmptyBody {
 				continue
 			}
+			if er, ok := err.(Error); ok && er.Code == ErrorCodeEventIndexCleared {
+				hw.nextWait.WaitIndex = er.Index + 1
+			}
 			return nil, err
 		}
 
