@@ -1,4 +1,4 @@
-# Security model
+# Transport security model
 
 etcd supports automatic TLS as well as authentication through client certificates for both clients to server as well as peer (server to server / cluster) communication.
 

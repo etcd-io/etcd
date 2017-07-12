@@ -1,8 +1,8 @@
-# Authentication Guide
+# Role-based access control
 
 ## Overview
 
-Authentication was added in etcd 2.1. The etcd v3 API slightly modified the authentication feature's API and user interface to better fit the new data model. This guide is intended to help users set up basic authentication in etcd v3.
+Authentication was added in etcd 2.1. The etcd v3 API slightly modified the authentication feature's API and user interface to better fit the new data model. This guide is intended to help users set up basic authentication and role-based access control in etcd v3.
 
 ## Special users and roles
 
