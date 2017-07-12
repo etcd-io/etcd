@@ -22,6 +22,7 @@ import (
 	defaultLog "log"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -40,6 +41,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "embed")
@@ -64,6 +66,7 @@ type Etcd struct {
 	Clients []net.Listener
 	// a map of contexts for the servers that serves client requests.
 	sctxs map[string]*serveCtx
+	metricsListeners []net.Listener
 
 	Server *etcdserver.EtcdServer
 
@@ -206,6 +209,9 @@ func (e *Etcd) Close() {
 		if e.Clients[i] != nil {
 			e.Clients[i].Close()
 		}
+	}
+	for i := range e.metricsListeners {
+		e.metricsListeners[i].Close()
 	}
 
 	// close rafthttp transports
@@ -481,6 +487,25 @@ func (e *Etcd) serveClients() (err error) {
 			e.errHandler(s.serve(e.Server, ctlscfg, h, e.errHandler, gopts...))
 		}(sctx)
 	}
+
+	if len(e.cfg.ListenMetricsUrls) > 0 {
+		// TODO: maybe etcdhttp.MetricsPath or get the path from the user-provided URL
+		metricsMux := http.NewServeMux()
+		metricsMux.Handle("/metrics", prometheus.Handler())
+
+		for _, murl := range e.cfg.ListenMetricsUrls {
+			ml, err := transport.NewListener(murl.Host, murl.Scheme, &e.cfg.ClientTLSInfo)
+			if err != nil {
+				return err
+			}
+			e.metricsListeners = append(e.metricsListeners, ml)
+			go func(u url.URL, ln net.Listener) {
+				plog.Info("listening for metrics on ", u.String())
+				e.errHandler(http.Serve(ln, metricsMux))
+			}(murl, ml)
+		}
+	}
+
 	return nil
 }
 
