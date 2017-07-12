@@ -20,12 +20,14 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
 
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/version"
 	"github.com/ghodss/yaml"
 )
@@ -131,6 +133,7 @@ func newConfig() *config {
 	fs.StringVar(&cfg.WalDir, "wal-dir", cfg.WalDir, "Path to the dedicated wal directory.")
 	fs.Var(flags.NewURLsValue(embed.DefaultListenPeerURLs), "listen-peer-urls", "List of URLs to listen on for peer traffic.")
 	fs.Var(flags.NewURLsValue(embed.DefaultListenClientURLs), "listen-client-urls", "List of URLs to listen on for client traffic.")
+	fs.StringVar(&cfg.ListenMetricsUrlsJSON, "listen-metrics-urls", "", "List of URLs to listen on for metrics.")
 	fs.UintVar(&cfg.MaxSnapFiles, "max-snapshots", cfg.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited).")
 	fs.UintVar(&cfg.MaxWalFiles, "max-wals", cfg.MaxWalFiles, "Maximum number of wal files to retain (0 is unlimited).")
 	fs.StringVar(&cfg.Name, "name", cfg.Name, "Human-readable name for this member.")
@@ -262,6 +265,15 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.APUrls = flags.URLsFromFlag(cfg.FlagSet, "initial-advertise-peer-urls")
 	cfg.LCUrls = flags.URLsFromFlag(cfg.FlagSet, "listen-client-urls")
 	cfg.ACUrls = flags.URLsFromFlag(cfg.FlagSet, "advertise-client-urls")
+
+	if len(cfg.ListenMetricsUrlsJSON) > 0 {
+		u, err := types.NewURLs(strings.Split(cfg.ListenMetricsUrlsJSON, ","))
+		if err != nil {
+			plog.Fatalf("unexpected error setting up listen-metrics-urls: %v", err)
+		}
+		cfg.ListenMetricsUrls = []url.URL(u)
+	}
+
 	cfg.ClusterState = cfg.clusterState.String()
 	cfg.Fallback = cfg.fallback.String()
 	cfg.Proxy = cfg.proxy.String()

@@ -66,7 +66,7 @@ member flags:
 		comma-separated whitelist of origins for CORS (cross-origin resource sharing).
 	--quota-backend-bytes '0'
 		raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
-	--max-txn-ops '128' 
+	--max-txn-ops '128'
 		maximum number of operations permitted in a transaction.
 	--max-request-bytes '1572864'
 		maximum client request size in bytes the server will accept.
@@ -172,7 +172,9 @@ profiling flags:
 	--enable-pprof 'false'
 		Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"
 	--metrics 'basic'
-	  Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
+		Set level of detail for exported metrics, specify 'extensive' to include histogram metrics.
+	--listen-metrics-urls ''
+		List of URLs to listen on for metrics.
 
 auth flags:
 	--auth-token 'simple'
