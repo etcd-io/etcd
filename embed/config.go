@@ -134,10 +134,12 @@ type Config struct {
 
 	// debug
 
-	Debug        bool   `json:"debug"`
-	LogPkgLevels string `json:"log-package-levels"`
-	EnablePprof  bool
-	Metrics      string `json:"metrics"`
+	Debug                 bool   `json:"debug"`
+	LogPkgLevels          string `json:"log-package-levels"`
+	EnablePprof           bool
+	Metrics               string `json:"metrics"`
+	ListenMetricsUrls     []url.URL
+	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -260,6 +262,14 @@ func (cfg *configYAML) configFromFile(path string) error {
 		cfg.ACUrls = []url.URL(u)
 	}
 
+	if cfg.ListenMetricsUrlsJSON != "" {
+		u, err := types.NewURLs(strings.Split(cfg.ListenMetricsUrlsJSON, ","))
+		if err != nil {
+			plog.Fatalf("unexpected error setting up listen-metrics-urls: %v", err)
+		}
+		cfg.ListenMetricsUrls = []url.URL(u)
+	}
+
 	if (cfg.Durl != "" || cfg.DNSCluster != "") && cfg.InitialCluster == cfg.InitialClusterFromName(cfg.Name) {
 		cfg.InitialCluster = ""
 	}
@@ -287,6 +297,9 @@ func (cfg *Config) Validate() error {
 		return err
 	}
 	if err := checkBindURLs(cfg.LCUrls); err != nil {
+		return err
+	}
+	if err := checkBindURLs(cfg.ListenMetricsUrls); err != nil {
 		return err
 	}
 
