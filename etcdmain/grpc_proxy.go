@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -37,6 +38,7 @@ import (
 
 var (
 	grpcProxyListenAddr string
+	grpcProxyMetricsListenAddr string
 	grpcProxyEndpoints  []string
 	grpcProxyCert       string
 	grpcProxyKey        string
@@ -66,6 +68,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&grpcProxyListenAddr, "listen-addr", "127.0.0.1:23790", "listen address")
+	cmd.Flags().StringVar(&grpcProxyMetricsListenAddr, "metrics-addr", "", "listen for /metrics requests on an additional interface")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
 	cmd.Flags().StringVar(&grpcProxyCert, "cert", "", "identify secure connections with etcd servers using this TLS certificate file")
 	cmd.Flags().StringVar(&grpcProxyKey, "key", "", "identify secure connections with etcd servers using this TLS key file")
@@ -91,7 +94,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}()
 	m := cmux.New(l)
 
-	cfg, err := newClientCfg()
+	cfg, cfgtls, err := newClientCfg()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -144,6 +147,27 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 
 	go func() { errc <- m.Serve() }()
 
+	if len(grpcProxyMetricsListenAddr) > 0 {
+		murl, err := url.Parse(grpcProxyMetricsListenAddr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cannot parse %q", grpcProxyMetricsListenAddr)
+			os.Exit(1)
+		}
+		ml, err := transport.NewListener(murl.Host, murl.Scheme, cfgtls)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", prometheus.Handler())
+
+		go func() {
+			plog.Info("grpc-proxy: listening for metrics on ", murl.String())
+			plog.Fatal(http.Serve(ml, mux))
+		}()
+	}
+
 	// grpc-proxy is initialized, ready to serve
 	notifySystemd()
 
@@ -151,7 +175,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	os.Exit(1)
 }
 
-func newClientCfg() (*clientv3.Config, error) {
+func newClientCfg() (*clientv3.Config, *transport.TLSInfo, error) {
 	// set tls if any one tls option set
 	var cfgtls *transport.TLSInfo
 	tlsinfo := transport.TLSInfo{}
@@ -177,12 +201,12 @@ func newClientCfg() (*clientv3.Config, error) {
 	if cfgtls != nil {
 		clientTLS, err := cfgtls.ClientConfig()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		cfg.TLS = clientTLS
 	}
 
 	// TODO: support insecure tls
 
-	return &cfg, nil
+	return &cfg, cfgtls, nil
 }
