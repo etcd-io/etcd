@@ -37,6 +37,8 @@ type index interface {
 type treeIndex struct {
 	sync.RWMutex
 	tree *btree.BTree
+	// used to avoid allocation while searching tree under lock
+	keyPtr keyIndex
 }
 
 func newTreeIndex() index {
@@ -46,14 +48,14 @@ func newTreeIndex() index {
 }
 
 func (ti *treeIndex) Put(key []byte, rev revision) {
-	keyi := &keyIndex{key: key}
-
 	ti.Lock()
 	defer ti.Unlock()
-	item := ti.tree.Get(keyi)
+
+	ti.keyPtr = keyIndex{key: key}
+	item := ti.tree.Get(&ti.keyPtr)
 	if item == nil {
-		keyi.put(rev.main, rev.sub)
-		ti.tree.ReplaceOrInsert(keyi)
+		ti.keyPtr.put(rev.main, rev.sub)
+		ti.tree.ReplaceOrInsert(&ti.keyPtr)
 		return
 	}
 	okeyi := item.(*keyIndex)
@@ -116,11 +118,11 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 }
 
 func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
-	keyi := &keyIndex{key: key}
-
 	ti.Lock()
 	defer ti.Unlock()
-	item := ti.tree.Get(keyi)
+
+	ti.keyPtr = keyIndex{key: key}
+	item := ti.tree.Get(&ti.keyPtr)
 	if item == nil {
 		return ErrRevisionNotFound
 	}
