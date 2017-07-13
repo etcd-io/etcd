@@ -36,6 +36,59 @@ func Creat(path string, mode uint32) (fd int, err error) {
 	return Open(path, O_CREAT|O_WRONLY|O_TRUNC, mode)
 }
 
+//sys	fchmodat(dirfd int, path string, mode uint32) (err error)
+
+func Fchmodat(dirfd int, path string, mode uint32, flags int) (err error) {
+	// Linux fchmodat doesn't support the flags parameter. Mimick glibc's behavior
+	// and check the flags. Otherwise the mode would be applied to the symlink
+	// destination which is not what the user expects.
+	if flags&^AT_SYMLINK_NOFOLLOW != 0 {
+		return EINVAL
+	} else if flags&AT_SYMLINK_NOFOLLOW != 0 {
+		return EOPNOTSUPP
+	}
+	return fchmodat(dirfd, path, mode)
+}
+
+//sys	ioctl(fd int, req uint, arg uintptr) (err error)
+
+// ioctl itself should not be exposed directly, but additional get/set
+// functions for specific types are permissible.
+
+// IoctlSetInt performs an ioctl operation which sets an integer value
+// on fd, using the specified request number.
+func IoctlSetInt(fd int, req uint, value int) error {
+	return ioctl(fd, req, uintptr(value))
+}
+
+func IoctlSetWinsize(fd int, req uint, value *Winsize) error {
+	return ioctl(fd, req, uintptr(unsafe.Pointer(value)))
+}
+
+func IoctlSetTermios(fd int, req uint, value *Termios) error {
+	return ioctl(fd, req, uintptr(unsafe.Pointer(value)))
+}
+
+// IoctlGetInt performs an ioctl operation which gets an integer value
+// from fd, using the specified request number.
+func IoctlGetInt(fd int, req uint) (int, error) {
+	var value int
+	err := ioctl(fd, req, uintptr(unsafe.Pointer(&value)))
+	return value, err
+}
+
+func IoctlGetWinsize(fd int, req uint) (*Winsize, error) {
+	var value Winsize
+	err := ioctl(fd, req, uintptr(unsafe.Pointer(&value)))
+	return &value, err
+}
+
+func IoctlGetTermios(fd int, req uint) (*Termios, error) {
+	var value Termios
+	err := ioctl(fd, req, uintptr(unsafe.Pointer(&value)))
+	return &value, err
+}
+
 //sys	Linkat(olddirfd int, oldpath string, newdirfd int, newpath string, flags int) (err error)
 
 func Link(oldpath string, newpath string) (err error) {
@@ -299,8 +352,12 @@ func Wait4(pid int, wstatus *WaitStatus, options int, rusage *Rusage) (wpid int,
 	return
 }
 
-func Mkfifo(path string, mode uint32) (err error) {
+func Mkfifo(path string, mode uint32) error {
 	return Mknod(path, mode|S_IFIFO, 0)
+}
+
+func Mkfifoat(dirfd int, path string, mode uint32) error {
+	return Mknodat(dirfd, path, mode|S_IFIFO, 0)
 }
 
 func (sa *SockaddrInet4) sockaddr() (unsafe.Pointer, _Socklen, error) {
@@ -551,6 +608,28 @@ func (sa *SockaddrALG) sockaddr() (unsafe.Pointer, _Socklen, error) {
 	return unsafe.Pointer(&sa.raw), SizeofSockaddrALG, nil
 }
 
+// SockaddrVM implements the Sockaddr interface for AF_VSOCK type sockets.
+// SockaddrVM provides access to Linux VM sockets: a mechanism that enables
+// bidirectional communication between a hypervisor and its guest virtual
+// machines.
+type SockaddrVM struct {
+	// CID and Port specify a context ID and port address for a VM socket.
+	// Guests have a unique CID, and hosts may have a well-known CID of:
+	//  - VMADDR_CID_HYPERVISOR: refers to the hypervisor process.
+	//  - VMADDR_CID_HOST: refers to other processes on the host.
+	CID  uint32
+	Port uint32
+	raw  RawSockaddrVM
+}
+
+func (sa *SockaddrVM) sockaddr() (unsafe.Pointer, _Socklen, error) {
+	sa.raw.Family = AF_VSOCK
+	sa.raw.Port = sa.Port
+	sa.raw.Cid = sa.CID
+
+	return unsafe.Pointer(&sa.raw), SizeofSockaddrVM, nil
+}
+
 func anyToSockaddr(rsa *RawSockaddrAny) (Sockaddr, error) {
 	switch rsa.Addr.Family {
 	case AF_NETLINK:
@@ -618,6 +697,14 @@ func anyToSockaddr(rsa *RawSockaddrAny) (Sockaddr, error) {
 		sa.ZoneId = pp.Scope_id
 		for i := 0; i < len(sa.Addr); i++ {
 			sa.Addr[i] = pp.Addr[i]
+		}
+		return sa, nil
+
+	case AF_VSOCK:
+		pp := (*RawSockaddrVM)(unsafe.Pointer(rsa))
+		sa := &SockaddrVM{
+			CID:  pp.Cid,
+			Port: pp.Port,
 		}
 		return sa, nil
 	}
@@ -714,8 +801,122 @@ func GetsockoptUcred(fd, level, opt int) (*Ucred, error) {
 	return &value, err
 }
 
+func GetsockoptTCPInfo(fd, level, opt int) (*TCPInfo, error) {
+	var value TCPInfo
+	vallen := _Socklen(SizeofTCPInfo)
+	err := getsockopt(fd, level, opt, unsafe.Pointer(&value), &vallen)
+	return &value, err
+}
+
 func SetsockoptIPMreqn(fd, level, opt int, mreq *IPMreqn) (err error) {
 	return setsockopt(fd, level, opt, unsafe.Pointer(mreq), unsafe.Sizeof(*mreq))
+}
+
+// Keyctl Commands (http://man7.org/linux/man-pages/man2/keyctl.2.html)
+
+// KeyctlInt calls keyctl commands in which each argument is an int.
+// These commands are KEYCTL_REVOKE, KEYCTL_CHOWN, KEYCTL_CLEAR, KEYCTL_LINK,
+// KEYCTL_UNLINK, KEYCTL_NEGATE, KEYCTL_SET_REQKEY_KEYRING, KEYCTL_SET_TIMEOUT,
+// KEYCTL_ASSUME_AUTHORITY, KEYCTL_SESSION_TO_PARENT, KEYCTL_REJECT,
+// KEYCTL_INVALIDATE, and KEYCTL_GET_PERSISTENT.
+//sys	KeyctlInt(cmd int, arg2 int, arg3 int, arg4 int, arg5 int) (ret int, err error) = SYS_KEYCTL
+
+// KeyctlBuffer calls keyctl commands in which the third and fourth
+// arguments are a buffer and its length, respectively.
+// These commands are KEYCTL_UPDATE, KEYCTL_READ, and KEYCTL_INSTANTIATE.
+//sys	KeyctlBuffer(cmd int, arg2 int, buf []byte, arg5 int) (ret int, err error) = SYS_KEYCTL
+
+// KeyctlString calls keyctl commands which return a string.
+// These commands are KEYCTL_DESCRIBE and KEYCTL_GET_SECURITY.
+func KeyctlString(cmd int, id int) (string, error) {
+	// We must loop as the string data may change in between the syscalls.
+	// We could allocate a large buffer here to reduce the chance that the
+	// syscall needs to be called twice; however, this is unnecessary as
+	// the performance loss is negligible.
+	var buffer []byte
+	for {
+		// Try to fill the buffer with data
+		length, err := KeyctlBuffer(cmd, id, buffer, 0)
+		if err != nil {
+			return "", err
+		}
+
+		// Check if the data was written
+		if length <= len(buffer) {
+			// Exclude the null terminator
+			return string(buffer[:length-1]), nil
+		}
+
+		// Make a bigger buffer if needed
+		buffer = make([]byte, length)
+	}
+}
+
+// Keyctl commands with special signatures.
+
+// KeyctlGetKeyringID implements the KEYCTL_GET_KEYRING_ID command.
+// See the full documentation at:
+// http://man7.org/linux/man-pages/man3/keyctl_get_keyring_ID.3.html
+func KeyctlGetKeyringID(id int, create bool) (ringid int, err error) {
+	createInt := 0
+	if create {
+		createInt = 1
+	}
+	return KeyctlInt(KEYCTL_GET_KEYRING_ID, id, createInt, 0, 0)
+}
+
+// KeyctlSetperm implements the KEYCTL_SETPERM command. The perm value is the
+// key handle permission mask as described in the "keyctl setperm" section of
+// http://man7.org/linux/man-pages/man1/keyctl.1.html.
+// See the full documentation at:
+// http://man7.org/linux/man-pages/man3/keyctl_setperm.3.html
+func KeyctlSetperm(id int, perm uint32) error {
+	_, err := KeyctlInt(KEYCTL_SETPERM, id, int(perm), 0, 0)
+	return err
+}
+
+//sys	keyctlJoin(cmd int, arg2 string) (ret int, err error) = SYS_KEYCTL
+
+// KeyctlJoinSessionKeyring implements the KEYCTL_JOIN_SESSION_KEYRING command.
+// See the full documentation at:
+// http://man7.org/linux/man-pages/man3/keyctl_join_session_keyring.3.html
+func KeyctlJoinSessionKeyring(name string) (ringid int, err error) {
+	return keyctlJoin(KEYCTL_JOIN_SESSION_KEYRING, name)
+}
+
+//sys	keyctlSearch(cmd int, arg2 int, arg3 string, arg4 string, arg5 int) (ret int, err error) = SYS_KEYCTL
+
+// KeyctlSearch implements the KEYCTL_SEARCH command.
+// See the full documentation at:
+// http://man7.org/linux/man-pages/man3/keyctl_search.3.html
+func KeyctlSearch(ringid int, keyType, description string, destRingid int) (id int, err error) {
+	return keyctlSearch(KEYCTL_SEARCH, ringid, keyType, description, destRingid)
+}
+
+//sys	keyctlIOV(cmd int, arg2 int, payload []Iovec, arg5 int) (err error) = SYS_KEYCTL
+
+// KeyctlInstantiateIOV implements the KEYCTL_INSTANTIATE_IOV command. This
+// command is similar to KEYCTL_INSTANTIATE, except that the payload is a slice
+// of Iovec (each of which represents a buffer) instead of a single buffer.
+// See the full documentation at:
+// http://man7.org/linux/man-pages/man3/keyctl_instantiate_iov.3.html
+func KeyctlInstantiateIOV(id int, payload []Iovec, ringid int) error {
+	return keyctlIOV(KEYCTL_INSTANTIATE_IOV, id, payload, ringid)
+}
+
+//sys	keyctlDH(cmd int, arg2 *KeyctlDHParams, buf []byte) (ret int, err error) = SYS_KEYCTL
+
+// KeyctlDHCompute implements the KEYCTL_DH_COMPUTE command. This command
+// computes a Diffie-Hellman shared secret based on the provide params. The
+// secret is written to the provided buffer and the returned size is the number
+// of bytes written (returning an error if there is insufficient space in the
+// buffer). If a nil buffer is passed in, this function returns the minimum
+// buffer length needed to store the appropriate data. Note that this differs
+// from KEYCTL_READ's behavior which always returns the requested payload size.
+// See the full documentation at:
+// http://man7.org/linux/man-pages/man3/keyctl_dh_compute.3.html
+func KeyctlDHCompute(params *KeyctlDHParams, buffer []byte) (size int, err error) {
+	return keyctlDH(KEYCTL_DH_COMPUTE, params, buffer)
 }
 
 func Recvmsg(fd int, p, oob []byte, flags int) (n, oobn int, recvflags int, from Sockaddr, err error) {
@@ -730,8 +931,13 @@ func Recvmsg(fd int, p, oob []byte, flags int) (n, oobn int, recvflags int, from
 	}
 	var dummy byte
 	if len(oob) > 0 {
+		var sockType int
+		sockType, err = GetsockoptInt(fd, SOL_SOCKET, SO_TYPE)
+		if err != nil {
+			return
+		}
 		// receive at least one normal byte
-		if len(p) == 0 {
+		if sockType != SOCK_DGRAM && len(p) == 0 {
 			iov.Base = &dummy
 			iov.SetLen(1)
 		}
@@ -777,8 +983,13 @@ func SendmsgN(fd int, p, oob []byte, to Sockaddr, flags int) (n int, err error) 
 	}
 	var dummy byte
 	if len(oob) > 0 {
+		var sockType int
+		sockType, err = GetsockoptInt(fd, SOL_SOCKET, SO_TYPE)
+		if err != nil {
+			return 0, err
+		}
 		// send at least one normal byte
-		if len(p) == 0 {
+		if sockType != SOCK_DGRAM && len(p) == 0 {
 			iov.Base = &dummy
 			iov.SetLen(1)
 		}
@@ -849,6 +1060,10 @@ func PtracePeekText(pid int, addr uintptr, out []byte) (count int, err error) {
 
 func PtracePeekData(pid int, addr uintptr, out []byte) (count int, err error) {
 	return ptracePeek(PTRACE_PEEKDATA, pid, addr, out)
+}
+
+func PtracePeekUser(pid int, addr uintptr, out []byte) (count int, err error) {
+	return ptracePeek(PTRACE_PEEKUSR, pid, addr, out)
 }
 
 func ptracePoke(pokeReq int, peekReq int, pid int, addr uintptr, data []byte) (count int, err error) {
@@ -949,38 +1164,24 @@ func Reboot(cmd int) (err error) {
 	return reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, cmd, "")
 }
 
-func clen(n []byte) int {
-	for i := 0; i < len(n); i++ {
-		if n[i] == 0 {
-			return i
-		}
-	}
-	return len(n)
-}
-
 func ReadDirent(fd int, buf []byte) (n int, err error) {
 	return Getdents(fd, buf)
 }
 
-func ParseDirent(buf []byte, max int, names []string) (consumed int, count int, newnames []string) {
-	origlen := len(buf)
-	count = 0
-	for max != 0 && len(buf) > 0 {
-		dirent := (*Dirent)(unsafe.Pointer(&buf[0]))
-		buf = buf[dirent.Reclen:]
-		if dirent.Ino == 0 { // File absent in directory.
-			continue
-		}
-		bytes := (*[10000]byte)(unsafe.Pointer(&dirent.Name[0]))
-		var name = string(bytes[0:clen(bytes[:])])
-		if name == "." || name == ".." { // Useless names
-			continue
-		}
-		max--
-		count++
-		names = append(names, name)
+func direntIno(buf []byte) (uint64, bool) {
+	return readInt(buf, unsafe.Offsetof(Dirent{}.Ino), unsafe.Sizeof(Dirent{}.Ino))
+}
+
+func direntReclen(buf []byte) (uint64, bool) {
+	return readInt(buf, unsafe.Offsetof(Dirent{}.Reclen), unsafe.Sizeof(Dirent{}.Reclen))
+}
+
+func direntNamlen(buf []byte) (uint64, bool) {
+	reclen, ok := direntReclen(buf)
+	if !ok {
+		return 0, false
 	}
-	return origlen - len(buf), count, names
+	return reclen - uint64(unsafe.Offsetof(Dirent{}.Name)), true
 }
 
 //sys	mount(source string, target string, fstype string, flags uintptr, data *byte) (err error)
@@ -1006,22 +1207,24 @@ func Mount(source string, target string, fstype string, flags uintptr, data stri
  * Direct access
  */
 //sys	Acct(path string) (err error)
+//sys	AddKey(keyType string, description string, payload []byte, ringid int) (id int, err error)
 //sys	Adjtimex(buf *Timex) (state int, err error)
 //sys	Chdir(path string) (err error)
 //sys	Chroot(path string) (err error)
 //sys	ClockGettime(clockid int32, time *Timespec) (err error)
 //sys	Close(fd int) (err error)
+//sys	CopyFileRange(rfd int, roff *int64, wfd int, woff *int64, len int, flags int) (n int, err error)
 //sys	Dup(oldfd int) (fd int, err error)
 //sys	Dup3(oldfd int, newfd int, flags int) (err error)
 //sysnb	EpollCreate(size int) (fd int, err error)
 //sysnb	EpollCreate1(flag int) (fd int, err error)
 //sysnb	EpollCtl(epfd int, op int, fd int, event *EpollEvent) (err error)
+//sys	Eventfd(initval uint, flags int) (fd int, err error) = SYS_EVENTFD2
 //sys	Exit(code int) = SYS_EXIT_GROUP
 //sys	Faccessat(dirfd int, path string, mode uint32, flags int) (err error)
 //sys	Fallocate(fd int, mode uint32, off int64, len int64) (err error)
 //sys	Fchdir(fd int) (err error)
 //sys	Fchmod(fd int, mode uint32) (err error)
-//sys	Fchmodat(dirfd int, path string, mode uint32, flags int) (err error)
 //sys	Fchownat(dirfd int, path string, uid int, gid int, flags int) (err error)
 //sys	fcntl(fd int, cmd int, arg int) (val int, err error)
 //sys	Fdatasync(fd int) (err error)
@@ -1048,7 +1251,11 @@ func Getpgrp() (pid int) {
 //sysnb	InotifyRmWatch(fd int, watchdesc uint32) (success int, err error)
 //sysnb	Kill(pid int, sig syscall.Signal) (err error)
 //sys	Klogctl(typ int, buf []byte) (n int, err error) = SYS_SYSLOG
+//sys	Lgetxattr(path string, attr string, dest []byte) (sz int, err error)
 //sys	Listxattr(path string, dest []byte) (sz int, err error)
+//sys	Llistxattr(path string, dest []byte) (sz int, err error)
+//sys	Lremovexattr(path string, attr string) (err error)
+//sys	Lsetxattr(path string, attr string, data []byte, flags int) (err error)
 //sys	Mkdirat(dirfd int, path string, mode uint32) (err error)
 //sys	Mknodat(dirfd int, path string, mode uint32, dev int) (err error)
 //sys	Nanosleep(time *Timespec, leftover *Timespec) (err error)
@@ -1058,6 +1265,7 @@ func Getpgrp() (pid int) {
 //sys	read(fd int, p []byte) (n int, err error)
 //sys	Removexattr(path string, attr string) (err error)
 //sys	Renameat(olddirfd int, oldpath string, newdirfd int, newpath string) (err error)
+//sys	RequestKey(keyType string, description string, callback string, destRingid int) (id int, err error)
 //sys	Setdomainname(p []byte) (err error)
 //sys	Sethostname(p []byte) (err error)
 //sysnb	Setpgid(pid int, pgid int) (err error)
@@ -1081,6 +1289,7 @@ func Setgid(uid int) (err error) {
 //sys	Setpriority(which int, who int, prio int) (err error)
 //sys	Setxattr(path string, attr string, data []byte, flags int) (err error)
 //sys	Sync()
+//sys	Syncfs(fd int) (err error)
 //sysnb	Sysinfo(info *Sysinfo_t) (err error)
 //sys	Tee(rfd int, wfd int, len int, flags int) (n int64, err error)
 //sysnb	Tgkill(tgid int, tid int, sig syscall.Signal) (err error)
@@ -1115,8 +1324,9 @@ func Munmap(b []byte) (err error) {
 //sys	Madvise(b []byte, advice int) (err error)
 //sys	Mprotect(b []byte, prot int) (err error)
 //sys	Mlock(b []byte) (err error)
-//sys	Munlock(b []byte) (err error)
 //sys	Mlockall(flags int) (err error)
+//sys	Msync(b []byte, flags int) (err error)
+//sys	Munlock(b []byte) (err error)
 //sys	Munlockall() (err error)
 
 // Vmsplice splices user pages from a slice of Iovecs into a pipe specified by fd,
@@ -1141,7 +1351,6 @@ func Vmsplice(fd int, iovs []Iovec, flags int) (int, error) {
 /*
  * Unimplemented
  */
-// AddKey
 // AfsSyscall
 // Alarm
 // ArchPrctl
@@ -1157,7 +1366,6 @@ func Vmsplice(fd int, iovs []Iovec, flags int) (int, error) {
 // EpollCtlOld
 // EpollPwait
 // EpollWaitOld
-// Eventfd
 // Execve
 // Fgetxattr
 // Flistxattr
@@ -1176,23 +1384,16 @@ func Vmsplice(fd int, iovs []Iovec, flags int) (int, error) {
 // IoGetevents
 // IoSetup
 // IoSubmit
-// Ioctl
 // IoprioGet
 // IoprioSet
 // KexecLoad
-// Keyctl
-// Lgetxattr
-// Llistxattr
 // LookupDcookie
-// Lremovexattr
-// Lsetxattr
 // Mbind
 // MigratePages
 // Mincore
 // ModifyLdt
 // Mount
 // MovePages
-// Mprotect
 // MqGetsetattr
 // MqNotify
 // MqOpen
@@ -1204,7 +1405,6 @@ func Vmsplice(fd int, iovs []Iovec, flags int) (int, error) {
 // Msgget
 // Msgrcv
 // Msgsnd
-// Msync
 // Newfstatat
 // Nfsservctl
 // Personality
@@ -1216,7 +1416,6 @@ func Vmsplice(fd int, iovs []Iovec, flags int) (int, error) {
 // Readahead
 // Readv
 // RemapFilePages
-// RequestKey
 // RestartSyscall
 // RtSigaction
 // RtSigpending
