@@ -482,7 +482,8 @@ func TestLeaseTimeToLive(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	lapi := clus.RandClient()
+	c := clus.RandClient()
+	lapi := c
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -495,6 +496,11 @@ func TestLeaseTimeToLive(t *testing.T) {
 		if _, err = kv.Put(context.TODO(), keys[i], "bar", clientv3.WithLease(resp.ID)); err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	// linearized read to ensure Puts propagated to server backing lapi
+	if _, err := c.Get(context.TODO(), "abc"); err != nil {
+		t.Fatal(err)
 	}
 
 	lresp, lerr := lapi.TimeToLive(context.Background(), resp.ID, clientv3.WithAttachedKeys())
