@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Skip proxy tests for now since auth is broken on grpcproxy.
+// +build !cluster_proxy
+
 package e2e
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/coreos/etcd/clientv3"
@@ -43,6 +47,12 @@ func TestCtlV3AuthAndWatch(t *testing.T)         { testCtl(t, authTestWatch) }
 func TestCtlV3AuthRoleGet(t *testing.T)  { testCtl(t, authTestRoleGet) }
 func TestCtlV3AuthUserGet(t *testing.T)  { testCtl(t, authTestUserGet) }
 func TestCtlV3AuthRoleList(t *testing.T) { testCtl(t, authTestRoleList) }
+
+func TestCtlV3AuthDefrag(t *testing.T) { testCtl(t, authTestDefrag) }
+func TestCtlV3AuthEndpointHealth(t *testing.T) {
+	testCtl(t, authTestEndpointHealth, withQuorum())
+}
+func TestCtlV3AuthSnapshot(t *testing.T) { testCtl(t, authTestSnapshot) }
 
 func authEnableTest(cx ctlCtx) {
 	if err := authEnable(cx); err != nil {
@@ -814,5 +824,94 @@ func authTestRoleList(cx ctlCtx) {
 	authSetupTestUser(cx)
 	if err := spawnWithExpect(append(cx.PrefixArgs(), "role", "list"), "test-role"); err != nil {
 		cx.t.Fatal(err)
+	}
+}
+
+func authTestDefrag(cx ctlCtx) {
+	maintenanceInitKeys(cx)
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	// ordinary user cannot defrag
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3Defrag(cx); err == nil {
+		cx.t.Fatal("ordinary user should not be able to issue a defrag request")
+	}
+
+	// root can defrag
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3Defrag(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func authTestSnapshot(cx ctlCtx) {
+	maintenanceInitKeys(cx)
+
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	fpath := "test.snapshot"
+	defer os.RemoveAll(fpath)
+
+	// ordinary user cannot save a snapshot
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3SnapshotSave(cx, fpath); err == nil {
+		cx.t.Fatal("ordinary user should not be able to save a snapshot")
+	}
+
+	// root can save a snapshot
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
+		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
+	}
+
+	st, err := getSnapshotStatus(cx, fpath)
+	if err != nil {
+		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
+	}
+	if st.Revision != 4 {
+		cx.t.Fatalf("expected 4, got %d", st.Revision)
+	}
+	if st.TotalKey < 3 {
+		cx.t.Fatalf("expected at least 3, got %d", st.TotalKey)
+	}
+}
+
+func authTestEndpointHealth(cx ctlCtx) {
+	if err := authEnable(cx); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cx.user, cx.pass = "root", "root"
+	authSetupTestUser(cx)
+
+	if err := ctlV3EndpointHealth(cx); err != nil {
+		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
+	}
+
+	// health checking with an ordinary user "succeeds" since permission denial goes through consensus
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3EndpointHealth(cx); err != nil {
+		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
+	}
+
+	// succeed if permissions granted for ordinary user
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "health", "", false}); err != nil {
+		cx.t.Fatal(err)
+	}
+	cx.user, cx.pass = "test-user", "pass"
+	if err := ctlV3EndpointHealth(cx); err != nil {
+		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build !cluster_proxy
+
 package e2e
 
-import (
-	"testing"
-)
-
-const exampleConfigFile = "../etcd.conf.yml.sample"
-
-func TestEtcdExampleConfig(t *testing.T) {
-	proc, err := spawnCmd([]string{binDir + "/etcd", "--config-file", exampleConfigFile})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = waitReadyExpectProc(proc, etcdServerReadyLines); err != nil {
-		t.Fatal(err)
-	}
-	if err = proc.Stop(); err != nil {
-		t.Fatal(err)
-	}
+func newEtcdProcess(cfg *etcdServerProcessConfig) (etcdProcess, error) {
+	return newEtcdServerProcess(cfg)
 }

@@ -13,8 +13,20 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
-var binDir string
-var certDir string
+var (
+	binDir  string
+	certDir string
+
+	binPath        string
+	ctlBinPath     string
+	certPath       string
+	privateKeyPath string
+	caPath         string
+
+	crlPath               string
+	revokedCertPath       string
+	revokedPrivateKeyPath string
+)
 
 func TestMain(m *testing.M) {
 	os.Setenv("ETCD_UNSUPPORTED_ARCH", runtime.GOARCH)
@@ -23,6 +35,15 @@ func TestMain(m *testing.M) {
 	flag.StringVar(&binDir, "bin-dir", "../bin", "The directory for store etcd and etcdctl binaries.")
 	flag.StringVar(&certDir, "cert-dir", "../integration/fixtures", "The directory for store certificate files.")
 	flag.Parse()
+
+	binPath = binDir + "/etcd"
+	ctlBinPath = binDir + "/etcdctl"
+	certPath = certDir + "/server.crt"
+	privateKeyPath = certDir + "/server.key.insecure"
+	caPath = certDir + "/ca.crt"
+	revokedCertPath = certDir + "/server-revoked.crt"
+	revokedPrivateKeyPath = certDir + "/server-revoked.key.insecure"
+	crlPath = certDir + "/revoke.crl"
 
 	v := m.Run()
 	if v == 0 && testutil.CheckLeakedGoroutine() {

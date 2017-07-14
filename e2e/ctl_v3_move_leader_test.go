@@ -39,7 +39,7 @@ func TestCtlV3MoveLeader(t *testing.T) {
 	var leadIdx int
 	var leaderID uint64
 	var transferee uint64
-	for i, ep := range epc.grpcEndpoints() {
+	for i, ep := range epc.EndpointsV3() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   []string{ep},
 			DialTimeout: 3 * time.Second,
@@ -75,11 +75,11 @@ func TestCtlV3MoveLeader(t *testing.T) {
 		expect   string
 	}{
 		{ // request to non-leader
-			cx.prefixArgs([]string{cx.epc.grpcEndpoints()[(leadIdx+1)%3]}),
+			cx.prefixArgs([]string{cx.epc.EndpointsV3()[(leadIdx+1)%3]}),
 			"no leader endpoint given at ",
 		},
 		{ // request to leader
-			cx.prefixArgs([]string{cx.epc.grpcEndpoints()[leadIdx]}),
+			cx.prefixArgs([]string{cx.epc.EndpointsV3()[leadIdx]}),
 			fmt.Sprintf("Leadership transferred from %s to %s", types.ID(leaderID), types.ID(transferee)),
 		},
 	}
