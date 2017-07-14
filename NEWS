@@ -1,3 +1,13 @@
+etcd v3.2.3 (2017-07-14)
+- let clients establish unlimited streams
+- add docker tags for minor versions
+  e.g. docker pull quay.io/coreos/etcd:v3.2 to fetch latest v3.2 versions
+
+etcd v3.1.10 (2017-07-14)
+- use Go 1.8.3 to fix panic on net/http.CloseNotify
+- add docker tags for minor versions
+  e.g. docker pull quay.io/coreos/etcd:v3.1 to fetch latest v3.1 versions
+
 etcd v3.2.2 (2017-07-07)
 - rate-limit lease revoke on expiration
 - extend leases on promote to avoid queueing effect on lease expiration
