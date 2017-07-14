@@ -5,7 +5,7 @@ etcd is Apache 2.0 licensed and accepts contributions via GitHub pull requests. 
 # Email and chat
 
 - Email: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
-- IRC: #[coreos](irc://irc.freenode.org:6667/#coreos) IRC channel on freenode.org
+- IRC: #[etcd](irc://irc.freenode.org:6667/#etcd) IRC channel on freenode.org
 
 ## Getting started
 
