@@ -403,7 +403,7 @@ func authTestTxn(cx ctlCtx) {
 		compare:  []string{`version("c1") = "1"`},
 		ifSucess: []string{"get s2"},
 		ifFail:   []string{"get f2"},
-		results:  []string{"Error:  etcdserver: permission denied"},
+		results:  []string{"Error: etcdserver: permission denied"},
 	}
 	if err := ctlV3Txn(cx, rqs); err != nil {
 		cx.t.Fatal(err)
@@ -414,7 +414,7 @@ func authTestTxn(cx ctlCtx) {
 		compare:  []string{`version("c2") = "1"`},
 		ifSucess: []string{"get s1"},
 		ifFail:   []string{"get f2"},
-		results:  []string{"Error:  etcdserver: permission denied"},
+		results:  []string{"Error: etcdserver: permission denied"},
 	}
 	if err := ctlV3Txn(cx, rqs); err != nil {
 		cx.t.Fatal(err)
@@ -425,7 +425,7 @@ func authTestTxn(cx ctlCtx) {
 		compare:  []string{`version("c2") = "1"`},
 		ifSucess: []string{"get s2"},
 		ifFail:   []string{"get f1"},
-		results:  []string{"Error:  etcdserver: permission denied"},
+		results:  []string{"Error: etcdserver: permission denied"},
 	}
 	if err := ctlV3Txn(cx, rqs); err != nil {
 		cx.t.Fatal(err)
@@ -607,11 +607,11 @@ func authTestInvalidMgmt(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 
-	if err := ctlV3Role(cx, []string{"delete", "root"}, "Error:  etcdserver: invalid auth management"); err == nil {
+	if err := ctlV3Role(cx, []string{"delete", "root"}, "Error: etcdserver: invalid auth management"); err == nil {
 		cx.t.Fatal("deleting the role root must not be allowed")
 	}
 
-	if err := ctlV3User(cx, []string{"revoke-role", "root", "root"}, "Error:  etcdserver: invalid auth management", []string{}); err == nil {
+	if err := ctlV3User(cx, []string{"revoke-role", "root", "root"}, "Error: etcdserver: invalid auth management", []string{}); err == nil {
 		cx.t.Fatal("revoking the role root from the user root must not be allowed")
 	}
 }
@@ -768,7 +768,7 @@ func authTestRoleGet(cx ctlCtx) {
 
 	// test-user cannot get the information of root because it doesn't belong to the role
 	expected = []string{
-		"Error:  etcdserver: permission denied",
+		"Error: etcdserver: permission denied",
 	}
 	if err := spawnWithExpects(append(cx.PrefixArgs(), "role", "get", "root"), expected...); err != nil {
 		cx.t.Fatal(err)
@@ -799,7 +799,7 @@ func authTestUserGet(cx ctlCtx) {
 
 	// test-user cannot get the information of root
 	expected = []string{
-		"Error:  etcdserver: permission denied",
+		"Error: etcdserver: permission denied",
 	}
 	if err := spawnWithExpects(append(cx.PrefixArgs(), "user", "get", "root"), expected...); err != nil {
 		cx.t.Fatal(err)
