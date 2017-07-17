@@ -199,7 +199,14 @@ func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
 func startProxy(cfg *config) error {
 	plog.Notice("proxy: this proxy supports v2 API only!")
 
-	pt, err := transport.NewTimeoutTransport(cfg.PeerTLSInfo, time.Duration(cfg.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyWriteTimeoutMs)*time.Millisecond)
+	clientTLSInfo := cfg.ClientTLSInfo
+	if clientTLSInfo.Empty() {
+		// Support old proxy behavior of defaulting to PeerTLSInfo
+		// for both client and peer connections.
+		clientTLSInfo = cfg.PeerTLSInfo
+	}
+
+	pt, err := transport.NewTimeoutTransport(clientTLSInfo, time.Duration(cfg.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
 		return err
 	}
