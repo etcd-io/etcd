@@ -205,6 +205,8 @@ func startProxy(cfg *config) error {
 		// for both client and peer connections.
 		clientTLSInfo = cfg.PeerTLSInfo
 	}
+	clientTLSInfo.InsecureSkipVerify = cfg.ClientAutoTLS
+	cfg.PeerTLSInfo.InsecureSkipVerify = cfg.PeerAutoTLS
 
 	pt, err := transport.NewTimeoutTransport(clientTLSInfo, time.Duration(cfg.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
@@ -212,6 +214,9 @@ func startProxy(cfg *config) error {
 	}
 	pt.MaxIdleConnsPerHost = httpproxy.DefaultMaxIdleConnsPerHost
 
+	if err = cfg.PeerSelfCert(); err != nil {
+		plog.Fatalf("could not get certs (%v)", err)
+	}
 	tr, err := transport.NewTimeoutTransport(cfg.PeerTLSInfo, time.Duration(cfg.ProxyDialTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyReadTimeoutMs)*time.Millisecond, time.Duration(cfg.ProxyWriteTimeoutMs)*time.Millisecond)
 	if err != nil {
 		return err
