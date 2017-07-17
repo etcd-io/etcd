@@ -1667,3 +1667,7 @@ func (s *EtcdServer) goAttach(f func()) {
 		f()
 	}()
 }
+
+func (s *EtcdServer) Alarms() []*pb.AlarmMember {
+	return s.alarmStore.Get(pb.AlarmType_NONE)
+}
