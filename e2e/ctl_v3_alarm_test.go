@@ -52,6 +52,11 @@ func alarmTest(cx ctlCtx) {
 		cx.t.Fatal(err)
 	}
 
+	// '/health' handler should return 'false'
+	if err := cURLGet(cx.epc, cURLReq{endpoint: "/health", expected: `{"health": "false"}`}); err != nil {
+		cx.t.Fatalf("failed get with curl (%v)", err)
+	}
+
 	// check that Put is rejected when alarm is on
 	if err := ctlV3Put(cx, "3rd_test", smallbuf, ""); err != nil {
 		if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
