@@ -67,6 +67,10 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
 			return
 		}
+		if len(server.Alarms()) > 0 {
+			w.Write([]byte(`{"health": "false"}`))
+			return
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
 		if _, err := server.Do(ctx, etcdserverpb.Request{Method: "QGET"}); err != nil {
