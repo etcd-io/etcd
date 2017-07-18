@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
@@ -46,18 +47,21 @@ var (
 	grpcProxyEndpoints         []string
 	grpcProxyDNSCluster        string
 	grpcProxyInsecureDiscovery bool
+	grpcProxyDataDir           string
 
 	// tls for connecting to etcd
 
-	grpcProxyCA   string
-	grpcProxyCert string
-	grpcProxyKey  string
+	grpcProxyCA                    string
+	grpcProxyCert                  string
+	grpcProxyKey                   string
+	grpcProxyInsecureSkipTLSVerify bool
 
 	// tls for clients connecting to proxy
 
-	grpcProxyListenCA   string
-	grpcProxyListenCert string
-	grpcProxyListenKey  string
+	grpcProxyListenCA      string
+	grpcProxyListenCert    string
+	grpcProxyListenKey     string
+	grpcProxyListenAutoTLS bool
 
 	grpcProxyAdvertiseClientURL string
 	grpcProxyResolverPrefix     string
@@ -100,16 +104,19 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().IntVar(&grpcProxyResolverTTL, "resolver-ttl", 0, "specify TTL, in seconds, when registering proxy endpoints")
 	cmd.Flags().StringVar(&grpcProxyNamespace, "namespace", "", "string to prefix to all keys for namespacing requests")
 	cmd.Flags().BoolVar(&grpcProxyEnablePprof, "enable-pprof", false, `Enable runtime profiling data via HTTP server. Address is at client URL + "/debug/pprof/"`)
+	cmd.Flags().StringVar(&grpcProxyDataDir, "data-dir", "default.proxy", "Data directory for persistent data")
 
 	// client TLS for connecting to server
 	cmd.Flags().StringVar(&grpcProxyCert, "cert", "", "identify secure connections with etcd servers using this TLS certificate file")
 	cmd.Flags().StringVar(&grpcProxyKey, "key", "", "identify secure connections with etcd servers using this TLS key file")
 	cmd.Flags().StringVar(&grpcProxyCA, "cacert", "", "verify certificates of TLS-enabled secure etcd servers using this CA bundle")
+	cmd.Flags().BoolVar(&grpcProxyInsecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip authentication of etcd server TLS certificates")
 
 	// client TLS for connecting to proxy
 	cmd.Flags().StringVar(&grpcProxyListenCert, "cert-file", "", "identify secure connections to the proxy using this TLS certificate file")
 	cmd.Flags().StringVar(&grpcProxyListenKey, "key-file", "", "identify secure connections to the proxy using this TLS key file")
 	cmd.Flags().StringVar(&grpcProxyListenCA, "trusted-ca-file", "", "verify certificates of TLS-enabled secure proxy using this CA bundle")
+	cmd.Flags().BoolVar(&grpcProxyListenAutoTLS, "auto-tls", false, "proxy TLS using generated certificates")
 
 	return &cmd
 }
@@ -118,6 +125,15 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	checkArgs()
 
 	tlsinfo := newTLS(grpcProxyListenCA, grpcProxyListenCert, grpcProxyListenKey)
+	if tlsinfo == nil && grpcProxyListenAutoTLS {
+		host := []string{"https://" + grpcProxyListenAddr}
+		dir := filepath.Join(grpcProxyDataDir, "fixtures", "proxy")
+		autoTLS, err := transport.SelfCert(dir, host)
+		if err != nil {
+			plog.Fatal(err)
+		}
+		tlsinfo = &autoTLS
+	}
 	if tlsinfo != nil {
 		plog.Infof("ServerTLS: %s", tlsinfo)
 	}
@@ -192,15 +208,19 @@ func newClientCfg(eps []string) (*clientv3.Config, error) {
 		Endpoints:   eps,
 		DialTimeout: 5 * time.Second,
 	}
-	if tls := newTLS(grpcProxyCA, grpcProxyCert, grpcProxyKey); tls != nil {
+	tls := newTLS(grpcProxyCA, grpcProxyCert, grpcProxyKey)
+	if tls == nil && grpcProxyInsecureSkipTLSVerify {
+		tls = &transport.TLSInfo{}
+	}
+	if tls != nil {
 		clientTLS, err := tls.ClientConfig()
 		if err != nil {
 			return nil, err
 		}
+		clientTLS.InsecureSkipVerify = grpcProxyInsecureSkipTLSVerify
 		cfg.TLS = clientTLS
 		plog.Infof("ClientTLS: %s", tls)
 	}
-	// TODO: support insecure tls
 	return &cfg, nil
 }
 
