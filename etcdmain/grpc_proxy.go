@@ -15,7 +15,6 @@
 package etcdmain
 
 import (
-	"crypto/tls"
 	"fmt"
 	"math"
 	"net"
@@ -62,6 +61,7 @@ var (
 	grpcProxyListenCert    string
 	grpcProxyListenKey     string
 	grpcProxyListenAutoTLS bool
+	grpcProxyListenCRL     string
 
 	grpcProxyAdvertiseClientURL string
 	grpcProxyResolverPrefix     string
@@ -117,6 +117,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyListenKey, "key-file", "", "identify secure connections to the proxy using this TLS key file")
 	cmd.Flags().StringVar(&grpcProxyListenCA, "trusted-ca-file", "", "verify certificates of TLS-enabled secure proxy using this CA bundle")
 	cmd.Flags().BoolVar(&grpcProxyListenAutoTLS, "auto-tls", false, "proxy TLS using generated certificates")
+	cmd.Flags().StringVar(&grpcProxyListenCRL, "client-crl-file", "", "proxy client certificate revocation list file.")
 
 	return &cmd
 }
@@ -238,18 +239,17 @@ func mustListenCMux(tlsinfo *transport.TLSInfo) cmux.CMux {
 		os.Exit(1)
 	}
 
-	var tlscfg *tls.Config
-	scheme := "http"
-	if tlsinfo != nil {
-		if tlscfg, err = tlsinfo.ServerConfig(); err != nil {
-			plog.Fatal(err)
-		}
-		scheme = "https"
-	}
-	if l, err = transport.NewKeepAliveListener(l, scheme, tlscfg); err != nil {
+	if l, err = transport.NewKeepAliveListener(l, "tcp", nil); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if tlsinfo != nil {
+		tlsinfo.CRLFile = grpcProxyListenCRL
+		if l, err = transport.NewTLSListener(l, tlsinfo); err != nil {
+			plog.Fatal(err)
+		}
+	}
+
 	plog.Infof("listening for grpc-proxy client requests on %s", grpcProxyListenAddr)
 	return cmux.New(l)
 }
