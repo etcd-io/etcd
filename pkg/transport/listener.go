@@ -56,12 +56,13 @@ func wrapTLS(addr, scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listene
 }
 
 type TLSInfo struct {
-	CertFile       string
-	KeyFile        string
-	CAFile         string
-	TrustedCAFile  string
-	ClientCertAuth bool
-	CRLFile        string
+	CertFile           string
+	KeyFile            string
+	CAFile             string
+	TrustedCAFile      string
+	ClientCertAuth     bool
+	CRLFile            string
+	InsecureSkipVerify bool
 
 	// ServerName ensures the cert matches the given host in case of discovery / virtual hosting
 	ServerName string
@@ -236,6 +237,7 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 	} else {
 		cfg = &tls.Config{ServerName: info.ServerName}
 	}
+	cfg.InsecureSkipVerify = info.InsecureSkipVerify
 
 	CAFiles := info.cafiles()
 	if len(CAFiles) > 0 {
