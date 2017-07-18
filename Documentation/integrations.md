@@ -132,7 +132,7 @@
 - [cloudfoundry/cf-release](https://github.com/cloudfoundry/cf-release/tree/master/jobs/etcd)
 
 **Projects using etcd**
-
+- [etcd Raft users](../raft/README.md#notable-users) - projects using etcd's raft library implementation.
 - [apache/celix](https://github.com/apache/celix) - an implementation of the OSGi specification adapted to C and C++
 - [binocarlos/yoda](https://github.com/binocarlos/yoda) - etcd + ZeroMQ
 - [blox/blox](https://github.com/blox/blox) - a collection of open source projects for container management and orchestration with AWS ECS
@@ -158,3 +158,4 @@
 - [Gru](https://github.com/dnaeon/gru) - Orchestration made easy with Go
 - [Vitess](http://vitess.io/) - Vitess is a database clustering system for horizontal scaling of MySQL.
 - [lclarkmichalek/etcdhcp](https://github.com/lclarkmichalek/etcdhcp) - DHCP server that uses etcd for persistence and coordination.
+- [openstack/networking-vpp](https://github.com/openstack/networking-vpp) - A networking driver that programs the [FD.io VPP dataplane](https://wiki.fd.io/view/VPP) to provide [OpenStack](https://www.openstack.org/) cloud virtual networking
