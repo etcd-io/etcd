@@ -514,6 +514,9 @@ func TestWatchCompactRevision(t *testing.T) {
 	if wresp.Err() != rpctypes.ErrCompacted {
 		t.Fatalf("wresp.Err() expected %v, but got %v", rpctypes.ErrCompacted, wresp.Err())
 	}
+	if !wresp.Canceled {
+		t.Fatalf("wresp.Canceled expected true, got %+v", wresp)
+	}
 
 	// ensure the channel is closed
 	if wresp, ok = <-wch; ok {
