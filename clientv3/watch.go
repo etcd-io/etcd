@@ -461,7 +461,7 @@ func (w *watchGrpcStream) run() {
 				if ws := w.nextResume(); ws != nil {
 					wc.Send(ws.initReq.toPB())
 				}
-			case pbresp.Canceled:
+			case pbresp.Canceled && pbresp.CompactRevision == 0:
 				delete(cancelSet, pbresp.WatchId)
 				if ws, ok := w.substreams[pbresp.WatchId]; ok {
 					// signal to stream goroutine to update closingc
