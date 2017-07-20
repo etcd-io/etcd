@@ -17,6 +17,7 @@ package etcdmain
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/coreos/go-systemd/daemon"
 	systemdutil "github.com/coreos/go-systemd/util"
@@ -26,7 +27,13 @@ func Main() {
 	checkSupportArch()
 
 	if len(os.Args) > 1 {
-		switch os.Args[1] {
+		cmd := os.Args[1]
+		if covArgs := os.Getenv("ETCDCOV_ARGS"); len(covArgs) > 0 {
+			args := strings.Split(os.Getenv("ETCDCOV_ARGS"), "\xe7\xcd")[1:]
+			rootCmd.SetArgs(args)
+			cmd = "grpc-proxy"
+		}
+		switch cmd {
 		case "gateway", "grpc-proxy":
 			if err := rootCmd.Execute(); err != nil {
 				fmt.Fprint(os.Stderr, err)
