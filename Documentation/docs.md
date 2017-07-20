@@ -47,12 +47,19 @@ Administrators who need to create reliable and scalable key-value stores for the
  - [Amazon Web Services][aws_platform]
  - [FreeBSD][freebsd_platform]
 
-### Upgrading and compatibility
+### Security
 
- - [Migrate applications from using API v2 to API v3][v2_migration]
- - [Upgrading a v2.3 cluster to v3.0][v3_upgrade]
- - [Upgrading a v3.0 cluster to v3.1][v31_upgrade]
- - [Upgrading a v3.1 cluster to v3.2][v32_upgrade]
+ - [TLS][security]
+ - [Role-based access control][authentication]
+
+### Maintenance and troubleshooting
+
+ - [Frequently asked questions][faq]
+ - [Monitoring][monitoring]
+ - [Maintenance][maintenance]
+ - [Failure modes][failures]
+ - [Disaster recovery][recovery]
+ - [Upgrading][upgrading]
 
 ## Learning
 
@@ -106,8 +113,6 @@ Answers to [common questions] about etcd.
 [freebsd_platform]: platforms/freebsd.md
 [aws_platform]: platforms/aws.md
 [experimental]: dev-guide/experimental_apis.md
-[v3_upgrade]: upgrades/upgrade_3_0.md
-[v31_upgrade]: upgrades/upgrade_3_1.md
-[v32_upgrade]: upgrades/upgrade_3_2.md
 [authentication]: op-guide/authentication.md
 [auth_design]: learning/auth_design.md
+[upgrading]: upgrades/upgrading-etcd.md
