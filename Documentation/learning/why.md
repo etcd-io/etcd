@@ -84,7 +84,7 @@ For distributed coordination, choosing etcd can help prevent operational headach
 [tidb]: https://github.com/pingcap/tidb
 [etcd-v3lock]: https://godoc.org/github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb
 [etcd-v3election]: https://godoc.org/github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb
-[etcd-etcdctl-lock]: ../../etcdctl/README.md#lock-lockname
+[etcd-etcdctl-lock]: ../../etcdctl/README.md#lock-lockname-command-arg1-arg2-
 [etcd-etcdctl-elect]: ../../etcdctl/README.md#elect-options-election-name-proposal
 [etcd-mvcc]: data_model.md
 [etcd-recipe]: https://godoc.org/github.com/coreos/etcd/contrib/recipes
