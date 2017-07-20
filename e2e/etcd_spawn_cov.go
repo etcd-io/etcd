@@ -105,7 +105,7 @@ func getCovArgs() ([]string, error) {
 
 func args2env(args []string) []string {
 	var covEnvs []string
-	for i := range args[1:] {
+	for i := range args {
 		if !strings.HasPrefix(args[i], "--") {
 			continue
 		}
