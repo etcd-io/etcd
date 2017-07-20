@@ -25,6 +25,9 @@ func (w *WAL) renameWal(tmpdirpath string) (*WAL, error) {
 	// windows; close the WAL to release the locks so the directory
 	// can be renamed
 	w.Close()
+	if err := os.RemoveAll(w.dir); err != nil {
+		return nil, err
+	}
 	if err := os.Rename(tmpdirpath, w.dir); err != nil {
 		return nil, err
 	}
