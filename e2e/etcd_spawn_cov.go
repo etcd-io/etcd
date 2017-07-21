@@ -33,20 +33,7 @@ const noOutputLineCount = 2 // cov-enabled binaries emit PASS and coverage count
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 	if args[0] == binPath {
-		covArgs, err := getCovArgs()
-		if err != nil {
-			return nil, err
-		}
-		ep, err := expect.NewExpectWithEnv(binDir+"/etcd_test", covArgs, args2env(args[1:]))
-		if err != nil {
-			return nil, err
-		}
-		// ep sends SIGTERM to etcd_test process on ep.close()
-		// allowing the process to exit gracefully in order to generate a coverage report.
-		// note: go runtime ignores SIGINT but not SIGTERM
-		// if e2e test is run as a background process.
-		ep.StopSignal = syscall.SIGTERM
-		return ep, nil
+		return spawnEtcd(args)
 	}
 
 	if args[0] == ctlBinPath {
@@ -73,6 +60,32 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 	return expect.NewExpect(args[0], args[1:]...)
 }
 
+func spawnEtcd(args []string) (*expect.ExpectProcess, error) {
+	covArgs, err := getCovArgs()
+	if err != nil {
+		return nil, err
+	}
+
+	env := []string{}
+	if args[1] == "grpc-proxy" {
+		// avoid test flag conflicts in coverage enabled etcd by putting flags in ETCDCOV_ARGS
+		env = append(os.Environ(), "ETCDCOV_ARGS="+strings.Join(args, "\xe7\xcd"))
+	} else {
+		env = args2env(args[1:])
+	}
+
+	ep, err := expect.NewExpectWithEnv(binDir+"/etcd_test", covArgs, env)
+	if err != nil {
+		return nil, err
+	}
+	// ep sends SIGTERM to etcd_test process on ep.close()
+	// allowing the process to exit gracefully in order to generate a coverage report.
+	// note: go runtime ignores SIGINT but not SIGTERM
+	// if e2e test is run as a background process.
+	ep.StopSignal = syscall.SIGTERM
+	return ep, nil
+}
+
 func getCovArgs() ([]string, error) {
 	coverPath := os.Getenv("COVERDIR")
 	if !filepath.IsAbs(coverPath) {
@@ -92,7 +105,7 @@ func getCovArgs() ([]string, error) {
 
 func args2env(args []string) []string {
 	var covEnvs []string
-	for i := range args[1:] {
+	for i := range args {
 		if !strings.HasPrefix(args[i], "--") {
 			continue
 		}

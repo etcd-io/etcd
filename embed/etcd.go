@@ -22,7 +22,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -248,19 +247,9 @@ func (e *Etcd) Close() {
 func (e *Etcd) Err() <-chan error { return e.errc }
 
 func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
-	if cfg.PeerAutoTLS && cfg.PeerTLSInfo.Empty() {
-		phosts := make([]string, len(cfg.LPUrls))
-		for i, u := range cfg.LPUrls {
-			phosts[i] = u.Host
-		}
-		cfg.PeerTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "peer"), phosts)
-		if err != nil {
-			plog.Fatalf("could not get certs (%v)", err)
-		}
-	} else if cfg.PeerAutoTLS {
-		plog.Warningf("ignoring peer auto TLS since certs given")
+	if err = cfg.PeerSelfCert(); err != nil {
+		plog.Fatalf("could not get certs (%v)", err)
 	}
-
 	if !cfg.PeerTLSInfo.Empty() {
 		plog.Infof("peerTLS: %s", cfg.PeerTLSInfo)
 	}
@@ -302,19 +291,9 @@ func startPeerListeners(cfg *Config) (peers []*peerListener, err error) {
 }
 
 func startClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
-	if cfg.ClientAutoTLS && cfg.ClientTLSInfo.Empty() {
-		chosts := make([]string, len(cfg.LCUrls))
-		for i, u := range cfg.LCUrls {
-			chosts[i] = u.Host
-		}
-		cfg.ClientTLSInfo, err = transport.SelfCert(filepath.Join(cfg.Dir, "fixtures", "client"), chosts)
-		if err != nil {
-			plog.Fatalf("could not get certs (%v)", err)
-		}
-	} else if cfg.ClientAutoTLS {
-		plog.Warningf("ignoring client auto TLS since certs given")
+	if err = cfg.ClientSelfCert(); err != nil {
+		plog.Fatalf("could not get certs (%v)", err)
 	}
-
 	if cfg.EnablePprof {
 		plog.Infof("pprof is enabled under %s", debugutil.HTTPPrefixPProf)
 	}

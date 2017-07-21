@@ -48,8 +48,8 @@ func TestCtlV3Migrate(t *testing.T) {
 		}
 	}
 
-	dataDir := epc.procs[0].cfg.dataDirPath
-	if err := epc.StopAll(); err != nil {
+	dataDir := epc.procs[0].Config().dataDirPath
+	if err := epc.Stop(); err != nil {
 		t.Fatalf("error closing etcd processes (%v)", err)
 	}
 
@@ -65,8 +65,8 @@ func TestCtlV3Migrate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	epc.procs[0].cfg.keepDataDir = true
-	if err := epc.RestartAll(); err != nil {
+	epc.procs[0].Config().keepDataDir = true
+	if err := epc.Restart(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -75,7 +75,7 @@ func TestCtlV3Migrate(t *testing.T) {
 		t.Fatal(err)
 	}
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   epc.grpcEndpoints(),
+		Endpoints:   epc.EndpointsV3(),
 		DialTimeout: 3 * time.Second,
 	})
 	if err != nil {

@@ -152,7 +152,7 @@ func TestIssue6361(t *testing.T) {
 	}()
 
 	dialTimeout := 7 * time.Second
-	prefixArgs := []string{ctlBinPath, "--endpoints", strings.Join(epc.grpcEndpoints(), ","), "--dial-timeout", dialTimeout.String()}
+	prefixArgs := []string{ctlBinPath, "--endpoints", strings.Join(epc.EndpointsV3(), ","), "--dial-timeout", dialTimeout.String()}
 
 	// write some keys
 	kvs := []kv{{"foo1", "val1"}, {"foo2", "val2"}, {"foo3", "val3"}}
@@ -170,7 +170,7 @@ func TestIssue6361(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = epc.processes()[0].Stop(); err != nil {
+	if err = epc.procs[0].Stop(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -178,19 +178,19 @@ func TestIssue6361(t *testing.T) {
 	defer os.RemoveAll(newDataDir)
 
 	// etcdctl restore the snapshot
-	err = spawnWithExpect([]string{ctlBinPath, "snapshot", "restore", fpath, "--name", epc.procs[0].cfg.name, "--initial-cluster", epc.procs[0].cfg.initialCluster, "--initial-cluster-token", epc.procs[0].cfg.initialToken, "--initial-advertise-peer-urls", epc.procs[0].cfg.purl.String(), "--data-dir", newDataDir}, "membership: added member")
+	err = spawnWithExpect([]string{ctlBinPath, "snapshot", "restore", fpath, "--name", epc.procs[0].Config().name, "--initial-cluster", epc.procs[0].Config().initialCluster, "--initial-cluster-token", epc.procs[0].Config().initialToken, "--initial-advertise-peer-urls", epc.procs[0].Config().purl.String(), "--data-dir", newDataDir}, "membership: added member")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// start the etcd member using the restored snapshot
-	epc.procs[0].cfg.dataDirPath = newDataDir
-	for i := range epc.procs[0].cfg.args {
-		if epc.procs[0].cfg.args[i] == "--data-dir" {
-			epc.procs[0].cfg.args[i+1] = newDataDir
+	epc.procs[0].Config().dataDirPath = newDataDir
+	for i := range epc.procs[0].Config().args {
+		if epc.procs[0].Config().args[i] == "--data-dir" {
+			epc.procs[0].Config().args[i+1] = newDataDir
 		}
 	}
-	if err = epc.processes()[0].Restart(); err != nil {
+	if err = epc.procs[0].Restart(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -217,11 +217,11 @@ func TestIssue6361(t *testing.T) {
 	defer os.RemoveAll(newDataDir2)
 
 	name2 := "infra2"
-	initialCluster2 := epc.procs[0].cfg.initialCluster + fmt.Sprintf(",%s=%s", name2, peerURL)
+	initialCluster2 := epc.procs[0].Config().initialCluster + fmt.Sprintf(",%s=%s", name2, peerURL)
 
 	// start the new member
 	var nepc *expect.ExpectProcess
-	nepc, err = spawnCmd([]string{epc.procs[0].cfg.execPath, "--name", name2,
+	nepc, err = spawnCmd([]string{epc.procs[0].Config().execPath, "--name", name2,
 		"--listen-client-urls", clientURL, "--advertise-client-urls", clientURL,
 		"--listen-peer-urls", peerURL, "--initial-advertise-peer-urls", peerURL,
 		"--initial-cluster", initialCluster2, "--initial-cluster-state", "existing", "--data-dir", newDataDir2})
@@ -243,44 +243,5 @@ func TestIssue6361(t *testing.T) {
 
 	if err = nepc.Stop(); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestCtlV3SnapshotWithAuth(t *testing.T) { testCtl(t, snapshotTestWithAuth) }
-
-func snapshotTestWithAuth(cx ctlCtx) {
-	maintenanceInitKeys(cx)
-
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	cx.user, cx.pass = "root", "root"
-	authSetupTestUser(cx)
-
-	fpath := "test.snapshot"
-	defer os.RemoveAll(fpath)
-
-	// ordinary user cannot save a snapshot
-	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3SnapshotSave(cx, fpath); err == nil {
-		cx.t.Fatal("ordinary user should not be able to save a snapshot")
-	}
-
-	// root can save a snapshot
-	cx.user, cx.pass = "root", "root"
-	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
-		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
-	}
-
-	st, err := getSnapshotStatus(cx, fpath)
-	if err != nil {
-		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
-	}
-	if st.Revision != 4 {
-		cx.t.Fatalf("expected 4, got %d", st.Revision)
-	}
-	if st.TotalKey < 3 {
-		cx.t.Fatalf("expected at least 3, got %d", st.TotalKey)
 	}
 }

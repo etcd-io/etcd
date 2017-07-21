@@ -64,7 +64,7 @@ func alarmTest(cx ctlCtx) {
 		}
 	}
 
-	eps := cx.epc.grpcEndpoints()
+	eps := cx.epc.EndpointsV3()
 
 	// get latest revision to compact
 	cli, err := clientv3.New(clientv3.Config{

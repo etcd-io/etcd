@@ -45,7 +45,7 @@ func TestCtlV3DialWithHTTPScheme(t *testing.T) {
 }
 
 func dialWithSchemeTest(cx ctlCtx) {
-	cmdArgs := append(cx.prefixArgs(cx.epc.endpoints()), "put", "foo", "bar")
+	cmdArgs := append(cx.prefixArgs(cx.epc.EndpointsV3()), "put", "foo", "bar")
 	if err := spawnWithExpect(cmdArgs, "OK"); err != nil {
 		cx.t.Fatal(err)
 	}
@@ -169,10 +169,6 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 }
 
 func (cx *ctlCtx) prefixArgs(eps []string) []string {
-	if len(cx.epc.proxies()) > 0 { // TODO: add proxy check as in v2
-		panic("v3 proxy not implemented")
-	}
-
 	fmap := make(map[string]string)
 	fmap["endpoints"] = strings.Join(eps, ",")
 	fmap["dial-timeout"] = cx.dialTimeout.String()
@@ -212,7 +208,7 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 // PrefixArgs prefixes etcdctl command.
 // Make sure to unset environment variables after tests.
 func (cx *ctlCtx) PrefixArgs() []string {
-	return cx.prefixArgs(cx.epc.grpcEndpoints())
+	return cx.prefixArgs(cx.epc.EndpointsV3())
 }
 
 func isGRPCTimedout(err error) bool {

@@ -56,8 +56,8 @@ func TestCtlV3Lock(t *testing.T) {
 
 func testLock(cx ctlCtx) {
 	// debugging for #6464
-	sig := cx.epc.withStopSignal(debugLockSignal)
-	defer cx.epc.withStopSignal(sig)
+	sig := cx.epc.WithStopSignal(debugLockSignal)
+	defer cx.epc.WithStopSignal(sig)
 
 	name := "a"
 

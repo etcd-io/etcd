@@ -33,8 +33,8 @@ func TestCtlV3Elect(t *testing.T) {
 
 func testElect(cx ctlCtx) {
 	// debugging for #6934
-	sig := cx.epc.withStopSignal(debugLockSignal)
-	defer cx.epc.withStopSignal(sig)
+	sig := cx.epc.WithStopSignal(debugLockSignal)
+	defer cx.epc.WithStopSignal(sig)
 
 	name := "a"
 

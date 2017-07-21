@@ -128,10 +128,9 @@ func testCtlV2Ls(t *testing.T, cfg *etcdProcessClusterConfig, quorum bool) {
 	}
 }
 
-func TestCtlV2Watch(t *testing.T)                { testCtlV2Watch(t, &configNoTLS, false) }
-func TestCtlV2WatchTLS(t *testing.T)             { testCtlV2Watch(t, &configTLS, false) }
-func TestCtlV2WatchWithProxy(t *testing.T)       { testCtlV2Watch(t, &configWithProxy, false) }
-func TestCtlV2WatchWithProxyNoSync(t *testing.T) { testCtlV2Watch(t, &configWithProxy, true) }
+func TestCtlV2Watch(t *testing.T)    { testCtlV2Watch(t, &configNoTLS, false) }
+func TestCtlV2WatchTLS(t *testing.T) { testCtlV2Watch(t, &configTLS, false) }
+
 func testCtlV2Watch(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	defer testutil.AfterTest(t)
 
@@ -158,12 +157,10 @@ func testCtlV2Watch(t *testing.T, cfg *etcdProcessClusterConfig, noSync bool) {
 	}
 }
 
-func TestCtlV2GetRoleUser(t *testing.T)          { testCtlV2GetRoleUser(t, &configNoTLS) }
-func TestCtlV2GetRoleUserWithProxy(t *testing.T) { testCtlV2GetRoleUser(t, &configWithProxy) }
-func testCtlV2GetRoleUser(t *testing.T, cfg *etcdProcessClusterConfig) {
+func TestCtlV2GetRoleUser(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	epc := setupEtcdctlTest(t, cfg, false)
+	epc := setupEtcdctlTest(t, &configNoTLS, false)
 	defer func() {
 		if err := epc.Close(); err != nil {
 			t.Fatalf("error closing etcd processes (%v)", err)
@@ -196,7 +193,7 @@ func TestCtlV2UserListRoot(t *testing.T)     { testCtlV2UserList(t, "root") }
 func testCtlV2UserList(t *testing.T, username string) {
 	defer testutil.AfterTest(t)
 
-	epc := setupEtcdctlTest(t, &configWithProxy, false)
+	epc := setupEtcdctlTest(t, &configNoTLS, false)
 	defer func() {
 		if err := epc.Close(); err != nil {
 			t.Fatalf("error closing etcd processes (%v)", err)
@@ -214,7 +211,7 @@ func testCtlV2UserList(t *testing.T, username string) {
 func TestCtlV2RoleList(t *testing.T) {
 	defer testutil.AfterTest(t)
 
-	epc := setupEtcdctlTest(t, &configWithProxy, false)
+	epc := setupEtcdctlTest(t, &configNoTLS, false)
 	defer func() {
 		if err := epc.Close(); err != nil {
 			t.Fatalf("error closing etcd processes (%v)", err)
@@ -243,7 +240,7 @@ func TestCtlV2Backup(t *testing.T) { // For https://github.com/coreos/etcd/issue
 		t.Fatal(err)
 	}
 
-	if err := etcdctlBackup(epc1, epc1.procs[0].cfg.dataDirPath, backupDir); err != nil {
+	if err := etcdctlBackup(epc1, epc1.procs[0].Config().dataDirPath, backupDir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -350,16 +347,7 @@ func TestCtlV2ClusterHealth(t *testing.T) {
 }
 
 func etcdctlPrefixArgs(clus *etcdProcessCluster) []string {
-	endpoints := ""
-	if proxies := clus.proxies(); len(proxies) != 0 {
-		endpoints = proxies[0].cfg.acurl
-	} else if processes := clus.processes(); len(processes) != 0 {
-		es := []string{}
-		for _, b := range processes {
-			es = append(es, b.cfg.acurl)
-		}
-		endpoints = strings.Join(es, ",")
-	}
+	endpoints := strings.Join(clus.EndpointsV2(), ",")
 	cmdArgs := []string{ctlBinPath, "--endpoints", endpoints}
 	if clus.cfg.clientTLS == clientTLS {
 		cmdArgs = append(cmdArgs, "--ca-file", caPath, "--cert-file", certPath, "--key-file", privateKeyPath)
