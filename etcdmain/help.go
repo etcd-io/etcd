@@ -54,6 +54,12 @@ member flags:
 		time (in milliseconds) of a heartbeat interval.
 	--election-timeout '1000'
 		time (in milliseconds) for an election to timeout. See tuning documentation for details.
+	--grpc-keepalive-min-time '5s'
+		minimum duration interval that a client should wait before pinging server.
+	--grpc-keepalive-interval '0s'
+		frequency duration of server-to-client ping to check if a connection is alive.
+	--grpc-keepalive-timeout '0s'
+		additional duration of wait before closing a non-responsive connection.
 	--listen-peer-urls 'http://localhost:2380'
 		list of URLs to listen on for peer traffic.
 	--listen-client-urls 'http://localhost:2379'
