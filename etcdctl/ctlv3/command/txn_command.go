@@ -52,9 +52,9 @@ func txnCommandFunc(cmd *cobra.Command, args []string) {
 	txn := mustClientFromCmd(cmd).Txn(context.Background())
 	promptInteractive("compares:")
 	txn.If(readCompares(reader)...)
-	promptInteractive("success requests (get, put, delete):")
+	promptInteractive("success requests (get, put, del):")
 	txn.Then(readOps(reader)...)
-	promptInteractive("failure requests (get, put, delete):")
+	promptInteractive("failure requests (get, put, del):")
 	txn.Else(readOps(reader)...)
 
 	resp, err := txn.Commit()
