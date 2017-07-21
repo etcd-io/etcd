@@ -147,6 +147,55 @@ func TestV3CompactCurrentRev(t *testing.T) {
 	}
 }
 
+// TestV3HashKV ensures that multiple calls of HashKV on same node return same hash and compact rev.
+func TestV3HashKV(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	kvc := toGRPC(clus.RandClient()).KV
+	mvc := toGRPC(clus.RandClient()).Maintenance
+
+	for i := 0; i < 10; i++ {
+		resp, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte(fmt.Sprintf("bar%d", i))})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rev := resp.Header.Revision
+		hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{0})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rev != hresp.Header.Revision {
+			t.Fatalf("Put rev %v != HashKV rev %v", rev, hresp.Header.Revision)
+		}
+
+		prevHash := hresp.Hash
+		prevCompactRev := hresp.CompactRevision
+		for i := 0; i < 10; i++ {
+			hresp, err := mvc.HashKV(context.Background(), &pb.HashKVRequest{0})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rev != hresp.Header.Revision {
+				t.Fatalf("Put rev %v != HashKV rev %v", rev, hresp.Header.Revision)
+			}
+
+			if prevHash != hresp.Hash {
+				t.Fatalf("prevHash %v != Hash %v", prevHash, hresp.Hash)
+			}
+
+			if prevCompactRev != hresp.CompactRevision {
+				t.Fatalf("prevCompactRev %v != CompactRevision %v", prevHash, hresp.Hash)
+			}
+
+			prevHash = hresp.Hash
+			prevCompactRev = hresp.CompactRevision
+		}
+	}
+}
+
 func TestV3TxnTooManyOps(t *testing.T) {
 	defer testutil.AfterTest(t)
 	maxTxnOps := uint(128)
