@@ -26,6 +26,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/namespace"
+	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
 	"github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -35,7 +36,6 @@ import (
 
 	"github.com/cockroachdb/cmux"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 )
@@ -157,7 +157,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		mhttpl := mustMetricsListener(tlsinfo)
 		go func() {
 			mux := http.NewServeMux()
-			mux.Handle("/metrics", prometheus.Handler())
+			etcdhttp.HandlePrometheus(mux)
 			plog.Fatal(http.Serve(mhttpl, mux))
 		}()
 	}
@@ -293,7 +293,7 @@ func newGRPCProxyServer(client *clientv3.Client) *grpc.Server {
 func mustHTTPListener(m cmux.CMux, tlsinfo *transport.TLSInfo) (*http.Server, net.Listener) {
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
-	httpmux.Handle("/metrics", prometheus.Handler())
+	etcdhttp.HandlePrometheus(httpmux)
 	if grpcProxyEnablePprof {
 		for p, h := range debugutil.PProfHandlers() {
 			httpmux.Handle(p, h)

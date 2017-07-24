@@ -35,7 +35,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/pkg/capnslog"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "embed")
@@ -405,12 +404,15 @@ func (e *Etcd) serve() (err error) {
 	}
 
 	if len(e.cfg.ListenMetricsUrls) > 0 {
-		// TODO: maybe etcdhttp.MetricsPath or get the path from the user-provided URL
 		metricsMux := http.NewServeMux()
-		metricsMux.Handle("/metrics", prometheus.Handler())
+		etcdhttp.HandleMetricsHealth(metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
-			ml, err := transport.NewListener(murl.Host, murl.Scheme, &e.cfg.ClientTLSInfo)
+			tlsInfo := &e.cfg.ClientTLSInfo
+			if murl.Scheme == "http" {
+				tlsInfo = nil
+			}
+			ml, err := transport.NewListener(murl.Host, murl.Scheme, tlsInfo)
 			if err != nil {
 				return err
 			}

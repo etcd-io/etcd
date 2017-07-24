@@ -20,19 +20,14 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
-	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/logutil"
-	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/pkg/capnslog"
-	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/net/context"
 )
 
 var (
@@ -42,8 +37,6 @@ var (
 
 const (
 	configPath  = "/config"
-	metricsPath = "/metrics"
-	healthPath  = "/health"
 	varsPath    = "/debug/vars"
 	versionPath = "/version"
 )
@@ -53,33 +46,8 @@ const (
 func HandleBasic(mux *http.ServeMux, server *etcdserver.EtcdServer) {
 	mux.HandleFunc(varsPath, serveVars)
 	mux.HandleFunc(configPath+"/local/log", logHandleFunc)
-	mux.Handle(metricsPath, prometheus.Handler())
-	mux.Handle(healthPath, healthHandler(server))
+	HandleMetricsHealth(mux, server)
 	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
-}
-
-func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !allowMethod(w, r, "GET") {
-			return
-		}
-		if uint64(server.Leader()) == raft.None {
-			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
-			return
-		}
-		if len(server.Alarms()) > 0 {
-			w.Write([]byte(`{"health": "false"}`))
-			return
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		if _, err := server.Do(ctx, etcdserverpb.Request{Method: "QGET"}); err != nil {
-			http.Error(w, `{"health": "false"}`, http.StatusServiceUnavailable)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"health": "true"}`))
-	}
 }
 
 func versionHandler(c api.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
