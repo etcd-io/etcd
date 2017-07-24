@@ -314,9 +314,28 @@ func startProxy(cfg *config) error {
 	if cfg.isReadonlyProxy() {
 		ph = httpproxy.NewReadonlyHandler(ph)
 	}
+
+	// setup self signed certs when serving https
+	cHosts, cTLS := []string{}, false
+	for _, u := range cfg.LCUrls {
+		cHosts = append(cHosts, u.Host)
+		cTLS = cTLS || u.Scheme == "https"
+	}
+	for _, u := range cfg.ACUrls {
+		cHosts = append(cHosts, u.Host)
+		cTLS = cTLS || u.Scheme == "https"
+	}
+	listenerTLS := cfg.ClientTLSInfo
+	if cfg.ClientAutoTLS && cTLS {
+		listenerTLS, err = transport.SelfCert(filepath.Join(cfg.Dir, "clientCerts"), cHosts)
+		if err != nil {
+			plog.Fatalf("proxy: could not initialize self-signed client certs (%v)", err)
+		}
+	}
+
 	// Start a proxy server goroutine for each listen address
 	for _, u := range cfg.LCUrls {
-		l, err := transport.NewListener(u.Host, u.Scheme, &cfg.ClientTLSInfo)
+		l, err := transport.NewListener(u.Host, u.Scheme, &listenerTLS)
 		if err != nil {
 			return err
 		}
