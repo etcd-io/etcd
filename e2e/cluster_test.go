@@ -101,6 +101,8 @@ type etcdProcessClusterConfig struct {
 	baseScheme string
 	basePort   int
 
+	metricsURLScheme string
+
 	snapCount int // default is 10000
 
 	clientTLS             clientConnType
@@ -175,7 +177,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 	for i := 0; i < cfg.clusterSize; i++ {
 		var curls []string
 		var curl, curltls string
-		port := cfg.basePort + 4*i
+		port := cfg.basePort + 5*i
 		curlHost := fmt.Sprintf("localhost:%d", port)
 
 		switch cfg.clientTLS {
@@ -221,6 +223,14 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		if cfg.noStrictReconfig {
 			args = append(args, "--strict-reconfig-check=false")
 		}
+		var murl string
+		if cfg.metricsURLScheme != "" {
+			murl = (&url.URL{
+				Scheme: cfg.metricsURLScheme,
+				Host:   fmt.Sprintf("localhost:%d", port+2),
+			}).String()
+			args = append(args, "--listen-metrics-urls", murl)
+		}
 
 		args = append(args, cfg.tlsArgs()...)
 		etcdCfgs[i] = &etcdServerProcessConfig{
@@ -232,6 +242,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 			name:         name,
 			purl:         purl,
 			acurl:        curl,
+			murl:         murl,
 			initialToken: cfg.initialToken,
 		}
 	}

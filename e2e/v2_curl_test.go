@@ -125,6 +125,8 @@ type cURLReq struct {
 	value    string
 	expected string
 	header   string
+
+	metricsURLScheme string
 }
 
 // cURLPrefixArgs builds the beginning of a curl command for a given key
@@ -134,14 +136,19 @@ func cURLPrefixArgs(clus *etcdProcessCluster, method string, req cURLReq) []stri
 		cmdArgs = []string{"curl"}
 		acurl   = clus.procs[rand.Intn(clus.cfg.clusterSize)].Config().acurl
 	)
-	if req.isTLS {
-		if clus.cfg.clientTLS != clientTLSAndNonTLS {
-			panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
+	if req.metricsURLScheme != "https" {
+		if req.isTLS {
+			if clus.cfg.clientTLS != clientTLSAndNonTLS {
+				panic("should not use cURLPrefixArgsUseTLS when serving only TLS or non-TLS")
+			}
+			cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+			acurl = toTLS(clus.procs[rand.Intn(clus.cfg.clusterSize)].Config().acurl)
+		} else if clus.cfg.clientTLS == clientTLS {
+			cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
 		}
-		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
-		acurl = toTLS(clus.procs[rand.Intn(clus.cfg.clusterSize)].Config().acurl)
-	} else if clus.cfg.clientTLS == clientTLS {
-		cmdArgs = append(cmdArgs, "--cacert", caPath, "--cert", certPath, "--key", privateKeyPath)
+	}
+	if req.metricsURLScheme != "" {
+		acurl = clus.procs[rand.Intn(clus.cfg.clusterSize)].EndpointsMetrics()[0]
 	}
 	ep := acurl + req.endpoint
 

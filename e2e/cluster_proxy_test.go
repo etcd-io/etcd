@@ -54,6 +54,9 @@ func (p *proxyEtcdProcess) Config() *etcdServerProcessConfig { return p.etcdProc
 
 func (p *proxyEtcdProcess) EndpointsV2() []string { return p.proxyV2.endpoints() }
 func (p *proxyEtcdProcess) EndpointsV3() []string { return p.proxyV3.endpoints() }
+func (p *proxyEtcdProcess) EndpointsMetrics() []string {
+	panic("not implemented; proxy doesn't provide health information")
+}
 
 func (p *proxyEtcdProcess) Start() error {
 	if err := p.etcdProc.Start(); err != nil {
@@ -113,6 +116,7 @@ type proxyProc struct {
 	execPath string
 	args     []string
 	ep       string
+	murl     string
 	donec    chan struct{}
 
 	proc *expect.ExpectProcess
@@ -232,6 +236,11 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 		// pass-through member RPCs
 		"--advertise-client-url", "",
 	}
+	murl := ""
+	if cfg.murl != "" {
+		murl = proxyListenURL(cfg, 4)
+		args = append(args, "--metrics-addr", murl)
+	}
 	tlsArgs := []string{}
 	for i := 0; i < len(cfg.tlsArgs); i++ {
 		switch cfg.tlsArgs[i] {
@@ -258,6 +267,7 @@ func newProxyV3Proc(cfg *etcdServerProcessConfig) *proxyV3Proc {
 			execPath: cfg.execPath,
 			args:     append(args, tlsArgs...),
 			ep:       listenAddr,
+			murl:     murl,
 			donec:    make(chan struct{}),
 		},
 	}
