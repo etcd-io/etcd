@@ -119,7 +119,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 		return err
 	}
 
-	_, err = proc.Expect("success requests (get, put, delete):")
+	_, err = proc.Expect("success requests (get, put, del):")
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 		return err
 	}
 
-	_, err = proc.Expect("failure requests (get, put, delete):")
+	_, err = proc.Expect("failure requests (get, put, del):")
 	if err != nil {
 		return err
 	}
