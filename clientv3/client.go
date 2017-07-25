@@ -321,7 +321,7 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 		err := c.getToken(ctx)
 		if err != nil {
 			if toErr(ctx, err) != rpctypes.ErrAuthNotEnabled {
-				if err == ctx.Err() && ctx.Err() != c.ctx.Err() {
+				if err == ctx.Err() && ctx.Err() != c.ctx.Err() || (grpc.Code(err) == codes.DeadlineExceeded) {
 					err = grpc.ErrClientConnTimeout
 				}
 				return nil, err
@@ -503,8 +503,6 @@ func toErr(ctx context.Context, err error) error {
 	}
 	code := grpc.Code(err)
 	switch code {
-	case codes.DeadlineExceeded:
-		fallthrough
 	case codes.Canceled:
 		if ctx.Err() != nil {
 			err = ctx.Err()
