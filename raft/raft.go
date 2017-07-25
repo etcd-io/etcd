@@ -355,10 +355,20 @@ func (r *raft) nodes() []uint64 {
 // send persists state to stable storage and then sends to its mailbox.
 func (r *raft) send(m pb.Message) {
 	m.From = r.id
-	if m.Type == pb.MsgVote || m.Type == pb.MsgPreVote {
+	if m.Type == pb.MsgVote || m.Type == pb.MsgVoteResp || m.Type == pb.MsgPreVote || m.Type == pb.MsgPreVoteResp {
 		if m.Term == 0 {
-			// PreVote RPCs are sent at a term other than our actual term, so the code
-			// that sends these messages is responsible for setting the term.
+			// All {pre-,}campaign messages need to have the term set when
+			// sending.
+			// - MsgVote: m.Term is the term the node is campaigning for,
+			//   non-zero as we increment the term when campaigning.
+			// - MsgVoteResp: m.Term is the new r.Term if the MsgVote was
+			//   granted, non-zero for the same reason MsgVote is
+			// - MsgPreVote: m.Term is the term the node will campaign,
+			//   non-zero as we use m.Term to indicate the next term we'll be
+			//   campaigning for
+			// - MsgPreVoteResp: m.Term is the term received in the original
+			//   MsgPreVote if the pre-vote was granted, non-zero for the
+			//   same reasons MsgPreVote is
 			panic(fmt.Sprintf("term should be set when sending %s", m.Type))
 		}
 	} else {
@@ -774,7 +784,16 @@ func (r *raft) Step(m pb.Message) error {
 		if (r.Vote == None || m.Term > r.Term || r.Vote == m.From) && r.raftLog.isUpToDate(m.Index, m.LogTerm) {
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] cast %s for %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
-			r.send(pb.Message{To: m.From, Type: voteRespMsgType(m.Type)})
+			// When responding to Msg{Pre,}Vote messages we include the term
+			// from the message, not the local term. To see why consider the
+			// case where a single node was previously partitioned away and
+			// it's local term is now of date. If we include the local term
+			// (recall that for pre-votes we don't update the local term), the
+			// (pre-)campaigning node on the other end will proceed to ignore
+			// the message (it ignores all out of date messages).
+			// The term in the original message and current local term are the
+			// same in the case of regular votes, but different for pre-votes.
+			r.send(pb.Message{To: m.From, Term: m.Term, Type: voteRespMsgType(m.Type)})
 			if m.Type == pb.MsgVote {
 				// Only record real votes.
 				r.electionElapsed = 0
@@ -783,7 +802,7 @@ func (r *raft) Step(m pb.Message) error {
 		} else {
 			r.logger.Infof("%x [logterm: %d, index: %d, vote: %x] rejected %s from %x [logterm: %d, index: %d] at term %d",
 				r.id, r.raftLog.lastTerm(), r.raftLog.lastIndex(), r.Vote, m.Type, m.From, m.LogTerm, m.Index, r.Term)
-			r.send(pb.Message{To: m.From, Type: voteRespMsgType(m.Type), Reject: true})
+			r.send(pb.Message{To: m.From, Term: r.Term, Type: voteRespMsgType(m.Type), Reject: true})
 		}
 
 	default:
