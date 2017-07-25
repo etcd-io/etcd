@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"io/ioutil"
+	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 )
@@ -26,6 +27,7 @@ type tokenJWT struct {
 	signMethod string
 	signKey    *rsa.PrivateKey
 	verifyKey  *rsa.PublicKey
+	ttl        time.Duration
 }
 
 func (t *tokenJWT) enable()                         {}
@@ -70,6 +72,7 @@ func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64)
 		jwt.MapClaims{
 			"username": username,
 			"revision": revision,
+			"exp":      time.Now().Add(t.ttl).Unix(),
 		})
 
 	token, err := tk.SignedString(t.signKey)
@@ -83,7 +86,7 @@ func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64)
 	return token, err
 }
 
-func prepareOpts(opts map[string]string) (jwtSignMethod, jwtPubKeyPath, jwtPrivKeyPath string, err error) {
+func prepareOpts(opts map[string]string) (jwtSignMethod, jwtPubKeyPath, jwtPrivKeyPath string, ttl time.Duration, err error) {
 	for k, v := range opts {
 		switch k {
 		case "sign-method":
@@ -92,24 +95,36 @@ func prepareOpts(opts map[string]string) (jwtSignMethod, jwtPubKeyPath, jwtPrivK
 			jwtPubKeyPath = v
 		case "priv-key":
 			jwtPrivKeyPath = v
+		case "ttl":
+			ttl, err = time.ParseDuration(v)
+			if err != nil {
+				plog.Errorf("failed to parse ttl option (%s)", err)
+				return "", "", "", 0, ErrInvalidAuthOpts
+			}
 		default:
 			plog.Errorf("unknown token specific option: %s", k)
-			return "", "", "", ErrInvalidAuthOpts
+			return "", "", "", 0, ErrInvalidAuthOpts
 		}
 	}
 	if len(jwtSignMethod) == 0 {
-		return "", "", "", ErrInvalidAuthOpts
+		return "", "", "", 0, ErrInvalidAuthOpts
 	}
-	return jwtSignMethod, jwtPubKeyPath, jwtPrivKeyPath, nil
+	return jwtSignMethod, jwtPubKeyPath, jwtPrivKeyPath, ttl, nil
 }
 
 func newTokenProviderJWT(opts map[string]string) (*tokenJWT, error) {
-	jwtSignMethod, jwtPubKeyPath, jwtPrivKeyPath, err := prepareOpts(opts)
+	jwtSignMethod, jwtPubKeyPath, jwtPrivKeyPath, ttl, err := prepareOpts(opts)
 	if err != nil {
 		return nil, ErrInvalidAuthOpts
 	}
 
-	t := &tokenJWT{}
+	if ttl == 0 {
+		ttl = 5 * time.Minute
+	}
+
+	t := &tokenJWT{
+		ttl: ttl,
+	}
 
 	t.signMethod = jwtSignMethod
 
