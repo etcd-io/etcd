@@ -3649,8 +3649,8 @@ func (c *clusterClient) MemberList(ctx context.Context, in *MemberListRequest, o
 }
 
 // Server API for Cluster service
-
-type ClusterServer interface {
+aa
+type ClusteraaaServer interface {
 	// MemberAdd adds a member into the cluster.
 	MemberAdd(context.Context, *MemberAddRequest) (*MemberAddResponse, error)
 	// MemberRemove removes an existing member from the cluster.
