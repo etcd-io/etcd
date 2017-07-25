@@ -48,8 +48,9 @@ func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRespo
 			cacheHits.Inc()
 			return nil, err
 		}
+
+		cachedMisses.Inc()
 	}
-	cachedMisses.Inc()
 
 	resp, err := p.kv.Do(ctx, RangeRequestToOp(r))
 	if err != nil {
