@@ -1,33 +1,18 @@
 /*
  *
- * Copyright 2014, Google Inc.
- * All rights reserved.
+ * Copyright 2014 gRPC authors.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *     * Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- * copyright notice, this list of conditions and the following disclaimer
- * in the documentation and/or other materials provided with the
- * distribution.
- *     * Neither the name of Google Inc. nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  */
 
@@ -46,8 +31,7 @@ const (
 	// The default value of flow control window size in HTTP2 spec.
 	defaultWindowSize = 65535
 	// The initial window size for flow control.
-	initialWindowSize             = defaultWindowSize      // for an RPC
-	initialConnWindowSize         = defaultWindowSize * 16 // for a connection
+	initialWindowSize             = defaultWindowSize // for an RPC
 	infinity                      = time.Duration(math.MaxInt64)
 	defaultClientKeepaliveTime    = infinity
 	defaultClientKeepaliveTimeout = time.Duration(20 * time.Second)
@@ -160,10 +144,9 @@ func (qb *quotaPool) acquire() <-chan int {
 
 // inFlow deals with inbound flow control
 type inFlow struct {
+	mu sync.Mutex
 	// The inbound flow control limit for pending data.
 	limit uint32
-
-	mu sync.Mutex
 	// pendingData is the overall data which have been received but not been
 	// consumed by applications.
 	pendingData uint32
@@ -173,6 +156,16 @@ type inFlow struct {
 	// delta is the extra window update given by receiver when an application
 	// is reading data bigger in size than the inFlow limit.
 	delta uint32
+}
+
+// newLimit updates the inflow window to a new value n.
+// It assumes that n is always greater than the old limit.
+func (f *inFlow) newLimit(n uint32) uint32 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	d := n - f.limit
+	f.limit = n
+	return d
 }
 
 func (f *inFlow) maybeAdjust(n uint32) uint32 {
