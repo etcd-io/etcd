@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/etcd/discovery"
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/pkg/cors"
 	"github.com/coreos/etcd/pkg/fileutil"
 	pkgioutil "github.com/coreos/etcd/pkg/ioutil"
@@ -40,7 +41,6 @@ import (
 	"github.com/coreos/etcd/version"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 )
 
@@ -344,7 +344,7 @@ func startProxy(cfg *config) error {
 		go func() {
 			plog.Info("proxy: listening for client requests on ", host)
 			mux := http.NewServeMux()
-			mux.Handle("/metrics", prometheus.Handler()) // v2 proxy just uses the same port
+			etcdhttp.HandlePrometheus(mux) // v2 proxy just uses the same port
 			mux.Handle("/", ph)
 			plog.Fatal(http.Serve(l, mux))
 		}()
