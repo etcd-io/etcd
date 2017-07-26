@@ -177,6 +177,8 @@ profiling flags:
 		List of URLs to listen on for metrics.
 
 auth flags:
+	--auth-backend 'default'
+		Specify a v3 authorization backend ('default' or 'casbin').
 	--auth-token 'simple'
 		Specify a v3 authentication token type and its options ('simple' or 'jwt').
 `

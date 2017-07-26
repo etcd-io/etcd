@@ -145,6 +145,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		MaxRequestBytes:         cfg.MaxRequestBytes,
 		StrictReconfigCheck:     cfg.StrictReconfigCheck,
 		ClientCertAuthEnabled:   cfg.ClientTLSInfo.ClientCertAuth,
+		AuthBackend:             cfg.AuthBackend,
 		AuthToken:               cfg.AuthToken,
 	}
 

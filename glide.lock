@@ -1,5 +1,5 @@
-hash: 4151c7de891aaf3c611392ecd302c88fd7b6ea01f494bdb0900eb2b2009c2072
-updated: 2017-07-05T14:33:35.042371004-07:00
+hash: 2dacf47d7aa4ac74f479c9f351638a6ed358eccb47d94c2a62d498f656259dd8
+updated: 2017-07-07T09:21:30.977575636+08:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -7,6 +7,14 @@ imports:
   - quantile
 - name: github.com/bgentry/speakeasy
   version: 4aabc24848ce5fd31929f7d1e4ea74d3709c14cd
+- name: github.com/casbin/casbin
+  version: 27a24f1712c2b786be8b3fc996e0c513d35bae67
+  subpackages:
+  - config
+  - model
+  - persist
+  - rbac
+  - util
 - name: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - name: github.com/coreos/bbolt
@@ -65,6 +73,8 @@ imports:
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jonboulle/clockwork
   version: 2eee05ed794112d45db504eb05aa693efd2b8b09
+- name: github.com/Knetic/govaluate
+  version: 91facc4ae520fef82c9aee6b6ae720d9ae789131
 - name: github.com/kr/pty
   version: 2c10821df3c3cf905230d078702dfbe9404c9b23
 - name: github.com/mattn/go-runewidth
