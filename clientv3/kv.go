@@ -74,16 +74,16 @@ func (op OpResponse) Get() *GetResponse    { return op.get }
 func (op OpResponse) Del() *DeleteResponse { return op.del }
 func (op OpResponse) Txn() *TxnResponse    { return op.txn }
 
-func (resp *PutResponse) ToOpResponse() OpResponse {
+func (resp *PutResponse) OpResponse() OpResponse {
 	return OpResponse{put: resp}
 }
-func (resp *GetResponse) ToOpResponse() OpResponse {
+func (resp *GetResponse) OpResponse() OpResponse {
 	return OpResponse{get: resp}
 }
-func (resp *DeleteResponse) ToOpResponse() OpResponse {
+func (resp *DeleteResponse) OpResponse() OpResponse {
 	return OpResponse{del: resp}
 }
-func (resp *TxnResponse) ToOpResponse() OpResponse {
+func (resp *TxnResponse) OpResponse() OpResponse {
 	return OpResponse{txn: resp}
 }
 
