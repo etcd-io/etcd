@@ -70,7 +70,8 @@ type Ready struct {
 	// Messages are sent.
 	Entries []pb.Entry
 
-	// Snapshot specifies the snapshot to be saved to stable storage.
+	// Snapshot specifies the snapshot to be saved to stable storage BEFORE
+	// Messages are sent.
 	Snapshot pb.Snapshot
 
 	// CommittedEntries specifies entries to be committed to a
@@ -78,8 +79,8 @@ type Ready struct {
 	// store.
 	CommittedEntries []pb.Entry
 
-	// Messages specifies outbound messages to be sent AFTER Entries are
-	// committed to stable storage.
+	// Messages specifies outbound messages to be sent AFTER Entries, HardState
+	// and Snapshot (if non-empty) are committed to stable storage.
 	// If it contains a MsgSnap message, the application MUST report back to raft
 	// when the snapshot has been received or has failed by calling ReportSnapshot.
 	Messages []pb.Message
