@@ -522,7 +522,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 	s := NewStore(b, &lease.FakeLessor{}, nil)
 	defer os.Remove(tmpPath)
 
-	rev := 1000
+	rev := 10000
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
 	}
@@ -558,7 +558,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 				revHash[r.compactRev] = r.hash
 			}
 			if r.hash != revHash[r.compactRev] {
-				t.Fatalf("Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
+				t.Fatalf("hashes differ (current %v) != (saved %v) at %v", r.hash, revHash[r.compactRev], r.compactRev)
 			}
 		}
 	}()
