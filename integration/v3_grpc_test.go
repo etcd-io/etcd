@@ -1783,7 +1783,7 @@ func testTLSReload(t *testing.T, cloneFunc func() transport.TLSInfo, replaceFunc
 	}
 	cl, cerr := clientv3.New(clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
-		DialTimeout: time.Second,
+		DialTimeout: 5 * time.Second,
 		TLS:         tls,
 	})
 	if cerr != nil {
