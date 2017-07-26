@@ -89,8 +89,8 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			ep := cfg.Endpoints[0]
 			cli, err := v3.New(*cfg)
 			if err != nil {
-				fmt.Printf("%s is unhealthy: failed to connect: %v\n", ep, err)
-				return
+				err = fmt.Errorf("%s is unhealthy: failed to connect: %v\n", ep, err)
+				ExitWithError(ExitError, err)
 			}
 			st := time.Now()
 			// get a random key. As long as we can get the response without an error, the
@@ -102,7 +102,8 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			if err == nil || err == rpctypes.ErrPermissionDenied {
 				fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", ep, time.Since(st))
 			} else {
-				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)
+				err = fmt.Errorf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)
+				ExitWithError(ExitError, err)
 			}
 		}(cfg)
 	}
