@@ -858,15 +858,15 @@
         "tags": [
           "Maintenance"
         ],
-        "summary": "Hash returns the hash of the local KV state for consistency checking purpose.\nThis is designed for testing; do not use this in production when there\nare ongoing transactions.",
-        "operationId": "Hash",
+        "summary": "HashKV computes the hash of all MVCC keys up to a given revision.",
+        "operationId": "HashKV",
         "parameters": [
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/etcdserverpbHashRequest"
+              "$ref": "#/definitions/etcdserverpbHashKVRequest"
             }
           }
         ],
@@ -874,7 +874,7 @@
           "200": {
             "description": "(empty)",
             "schema": {
-              "$ref": "#/definitions/etcdserverpbHashResponse"
+              "$ref": "#/definitions/etcdserverpbHashKVResponse"
             }
           }
         }
@@ -1552,6 +1552,34 @@
         }
       }
     },
+    "etcdserverpbHashKVRequest": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "description": "revision is the key-value store revision for the hash operation.",
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "etcdserverpbHashKVResponse": {
+      "type": "object",
+      "properties": {
+        "compact_revision": {
+          "description": "compact_revision is the compacted revision of key-value store when hash begins.",
+          "type": "string",
+          "format": "int64"
+        },
+        "hash": {
+          "description": "hash is the hash value computed from the responding member's MVCC keys up to a given revision.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
     "etcdserverpbHashRequest": {
       "type": "object"
     },
@@ -1559,7 +1587,7 @@
       "type": "object",
       "properties": {
         "hash": {
-          "description": "hash is the hash value computed from the responding member's key-value store.",
+          "description": "hash is the hash value computed from the responding member's KV's backend.",
           "type": "integer",
           "format": "int64"
         },

@@ -32,6 +32,8 @@
 		CompactionRequest
 		CompactionResponse
 		HashRequest
+		HashKVRequest
+		HashKVResponse
 		HashResponse
 		SnapshotRequest
 		SnapshotResponse

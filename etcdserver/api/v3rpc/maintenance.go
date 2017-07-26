@@ -137,6 +137,17 @@ func (ms *maintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (*pb.H
 	return resp, nil
 }
 
+func (ms *maintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*pb.HashKVResponse, error) {
+	h, rev, compactRev, err := ms.kg.KV().HashByRev(r.Revision)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+
+	resp := &pb.HashKVResponse{Header: &pb.ResponseHeader{Revision: rev}, Hash: h, CompactRevision: compactRev}
+	ms.hdr.fill(resp.Header)
+	return resp, nil
+}
+
 func (ms *maintenanceServer) Alarm(ctx context.Context, ar *pb.AlarmRequest) (*pb.AlarmResponse, error) {
 	return ms.a.Alarm(ctx, ar)
 }
@@ -201,6 +212,13 @@ func (ams *authMaintenanceServer) Hash(ctx context.Context, r *pb.HashRequest) (
 	}
 
 	return ams.maintenanceServer.Hash(ctx, r)
+}
+
+func (ams *authMaintenanceServer) HashKV(ctx context.Context, r *pb.HashKVRequest) (*pb.HashKVResponse, error) {
+	if err := ams.isAuthenticated(ctx); err != nil {
+		return nil, err
+	}
+	return ams.maintenanceServer.HashKV(ctx, r)
 }
 
 func (ams *authMaintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (*pb.StatusResponse, error) {

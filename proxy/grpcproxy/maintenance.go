@@ -68,6 +68,11 @@ func (mp *maintenanceProxy) Hash(ctx context.Context, r *pb.HashRequest) (*pb.Ha
 	return pb.NewMaintenanceClient(conn).Hash(ctx, r)
 }
 
+func (mp *maintenanceProxy) HashKV(ctx context.Context, r *pb.HashKVRequest) (*pb.HashKVResponse, error) {
+	conn := mp.client.ActiveConnection()
+	return pb.NewMaintenanceClient(conn).HashKV(ctx, r)
+}
+
 func (mp *maintenanceProxy) Alarm(ctx context.Context, r *pb.AlarmRequest) (*pb.AlarmResponse, error) {
 	conn := mp.client.ActiveConnection()
 	return pb.NewMaintenanceClient(conn).Alarm(ctx, r)

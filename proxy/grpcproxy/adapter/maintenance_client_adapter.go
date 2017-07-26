@@ -43,6 +43,10 @@ func (s *mts2mtc) Hash(ctx context.Context, r *pb.HashRequest, opts ...grpc.Call
 	return s.mts.Hash(ctx, r)
 }
 
+func (s *mts2mtc) HashKV(ctx context.Context, r *pb.HashKVRequest, opts ...grpc.CallOption) (*pb.HashKVResponse, error) {
+	return s.mts.HashKV(ctx, r)
+}
+
 func (s *mts2mtc) MoveLeader(ctx context.Context, r *pb.MoveLeaderRequest, opts ...grpc.CallOption) (*pb.MoveLeaderResponse, error) {
 	return s.mts.MoveLeader(ctx, r)
 }
