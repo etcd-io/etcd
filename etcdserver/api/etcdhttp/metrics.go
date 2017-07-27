@@ -16,7 +16,7 @@ package etcdhttp
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -57,7 +57,7 @@ func newHealthHandler(srv *etcdserver.EtcdServer) http.HandlerFunc {
 			return
 		}
 		h := checkHealth(srv)
-		d := []byte(fmt.Sprintf(`{"health": "%v"}`, h.Health))
+		d, _ := json.Marshal(h)
 		if !h.Health {
 			http.Error(w, string(d), http.StatusServiceUnavailable)
 			return
@@ -67,24 +67,34 @@ func newHealthHandler(srv *etcdserver.EtcdServer) http.HandlerFunc {
 	}
 }
 
+// TODO: remove manual parsing in etcdctl cluster-health
 type health struct {
-	Health bool `json:"health"`
+	Health bool     `json:"health"`
+	Errors []string `json:"errors,omitempty"`
 }
 
 func checkHealth(srv *etcdserver.EtcdServer) health {
 	h := health{Health: false}
-	if len(srv.Alarms()) > 0 {
-		// TODO: provide alarm lists
+
+	as := srv.Alarms()
+	if len(as) > 0 {
+		for _, v := range as {
+			h.Errors = append(h.Errors, v.Alarm.String())
+		}
 		return h
 	}
 
 	if uint64(srv.Leader()) == raft.None {
+		h.Errors = append(h.Errors, etcdserver.ErrNoLeader.Error())
 		return h
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
 	cancel()
+	if err != nil {
+		h.Errors = append(h.Errors, err.Error())
+	}
 
 	h.Health = err == nil
 	return h
