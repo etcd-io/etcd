@@ -2,7 +2,7 @@
 
 etcd is a distributed key-value store designed to reliably and quickly preserve and provide access to critical data. It enables reliable distributed coordination through distributed locking, leader elections, and write barriers. An etcd cluster is intended for high availability and permanent data storage and retrieval.
 
-This is the etcd v2 documentation set. For more recent versions, please see the [etcd v3 guides][../docs.md].
+This is the etcd v2 documentation set. For more recent versions, please see the [etcd v3 guides][etcd-v3].
 
 ## Communicating with etcd v2
 
@@ -58,6 +58,7 @@ Configuration values are distributed within the cluster for your applications to
  - [Backward Compatibility][backward_compatibility]
 
 
+[etcd-v3]: ../docs.md
 [api]: api.md
 [libraries]: libraries-and-tools.md
 [admin-api]: other_apis.md
