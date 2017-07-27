@@ -1,33 +1,18 @@
 /*
  *
- * Copyright 2014, Google Inc.
- * All rights reserved.
+ * Copyright 2014 gRPC authors.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *     * Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- * copyright notice, this list of conditions and the following disclaimer
- * in the documentation and/or other materials provided with the
- * distribution.
- *     * Neither the name of Google Inc. nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  */
 
@@ -48,7 +33,6 @@ import (
 	"golang.org/x/net/http2/hpack"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -91,7 +75,7 @@ type http2Client struct {
 
 	// controlBuf delivers all the control related tasks (e.g., window
 	// updates, reset streams, and various settings) to the controller.
-	controlBuf *recvBuffer
+	controlBuf *controlBuffer
 	fc         *inFlow
 	// sendQuotaPool provides flow control to outbound message.
 	sendQuotaPool *quotaPool
@@ -113,6 +97,8 @@ type http2Client struct {
 	statsHandler stats.Handler
 
 	initialWindowSize int32
+
+	bdpEst *bdpEstimator
 
 	mu            sync.Mutex     // guard the following variables
 	state         transportState // the state of underlying connection
@@ -206,9 +192,11 @@ func newHTTP2Client(ctx context.Context, addr TargetInfo, opts ConnectOptions) (
 	if kp.Timeout == 0 {
 		kp.Timeout = defaultClientKeepaliveTimeout
 	}
-	icwz := int32(initialConnWindowSize)
+	dynamicWindow := true
+	icwz := int32(initialWindowSize)
 	if opts.InitialConnWindowSize >= defaultWindowSize {
 		icwz = opts.InitialConnWindowSize
+		dynamicWindow = false
 	}
 	var buf bytes.Buffer
 	t := &http2Client{
@@ -230,7 +218,7 @@ func newHTTP2Client(ctx context.Context, addr TargetInfo, opts ConnectOptions) (
 		framer:            newFramer(conn),
 		hBuf:              &buf,
 		hEnc:              hpack.NewEncoder(&buf),
-		controlBuf:        newRecvBuffer(),
+		controlBuf:        newControlBuffer(),
 		fc:                &inFlow{limit: uint32(icwz)},
 		sendQuotaPool:     newQuotaPool(defaultWindowSize),
 		scheme:            scheme,
@@ -247,6 +235,13 @@ func newHTTP2Client(ctx context.Context, addr TargetInfo, opts ConnectOptions) (
 	}
 	if opts.InitialWindowSize >= defaultWindowSize {
 		t.initialWindowSize = opts.InitialWindowSize
+		dynamicWindow = false
+	}
+	if dynamicWindow {
+		t.bdpEst = &bdpEstimator{
+			bdp:               initialWindowSize,
+			updateFlowControl: t.updateFlowControl,
+		}
 	}
 	// Make sure awakenKeepalive can't be written upon.
 	// keepalive routine will make it writable, if need be.
@@ -480,11 +475,9 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 		t.hEnc.WriteField(hpack.HeaderField{Name: k, Value: encodeMetadataHeader(k, v)})
 	}
 	var (
-		hasMD      bool
 		endHeaders bool
 	)
 	if md, ok := metadata.FromOutgoingContext(ctx); ok {
-		hasMD = true
 		for k, vv := range md {
 			// HTTP doesn't allow you to set pseudoheaders after non pseudoheaders were set.
 			if isReservedHeader(k) {
@@ -516,7 +509,7 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 			endHeaders = true
 		}
 		var flush bool
-		if endHeaders && (hasMD || callHdr.Flush) {
+		if callHdr.Flush && endHeaders {
 			flush = true
 		}
 		if first {
@@ -844,11 +837,33 @@ func (t *http2Client) updateWindow(s *Stream, n uint32) {
 	}
 }
 
+// updateFlowControl updates the incoming flow control windows
+// for the transport and the stream based on the current bdp
+// estimation.
+func (t *http2Client) updateFlowControl(n uint32) {
+	t.mu.Lock()
+	for _, s := range t.activeStreams {
+		s.fc.newLimit(n)
+	}
+	t.initialWindowSize = int32(n)
+	t.mu.Unlock()
+	t.controlBuf.put(&windowUpdate{0, t.fc.newLimit(n), false})
+	t.controlBuf.put(&settings{
+		ack: false,
+		ss: []http2.Setting{
+			{
+				ID:  http2.SettingInitialWindowSize,
+				Val: uint32(n),
+			},
+		},
+	})
+}
+
 func (t *http2Client) handleData(f *http2.DataFrame) {
 	size := f.Header().Length
-	if err := t.fc.onData(uint32(size)); err != nil {
-		t.notifyError(connectionErrorf(true, err, "%v", err))
-		return
+	var sendBDPPing bool
+	if t.bdpEst != nil {
+		sendBDPPing = t.bdpEst.add(uint32(size))
 	}
 	// Decouple connection's flow control from application's read.
 	// An update on connection's flow control should not depend on
@@ -858,8 +873,20 @@ func (t *http2Client) handleData(f *http2.DataFrame) {
 	// Decoupling the connection flow control will prevent other
 	// active(fast) streams from starving in presence of slow or
 	// inactive streams.
-	if w := t.fc.onRead(uint32(size)); w > 0 {
-		t.controlBuf.put(&windowUpdate{0, w, true})
+	//
+	// Furthermore, if a bdpPing is being sent out we can piggyback
+	// connection's window update for the bytes we just received.
+	if sendBDPPing {
+		t.controlBuf.put(&windowUpdate{0, uint32(size), false})
+		t.controlBuf.put(bdpPing)
+	} else {
+		if err := t.fc.onData(uint32(size)); err != nil {
+			t.notifyError(connectionErrorf(true, err, "%v", err))
+			return
+		}
+		if w := t.fc.onRead(uint32(size)); w > 0 {
+			t.controlBuf.put(&windowUpdate{0, w, true})
+		}
 	}
 	// Select the right stream to dispatch.
 	s, ok := t.getStream(f)
@@ -925,7 +952,7 @@ func (t *http2Client) handleRSTStream(f *http2.RSTStreamFrame) {
 	}
 	statusCode, ok := http2ErrConvTab[http2.ErrCode(f.ErrCode)]
 	if !ok {
-		grpclog.Println("transport: http2Client.handleRSTStream found no mapped gRPC status for the received http2 error ", f.ErrCode)
+		warningf("transport: http2Client.handleRSTStream found no mapped gRPC status for the received http2 error %v", f.ErrCode)
 		statusCode = codes.Unknown
 	}
 	s.finish(status.Newf(statusCode, "stream terminated by RST_STREAM with error code: %d", f.ErrCode))
@@ -947,7 +974,11 @@ func (t *http2Client) handleSettings(f *http2.SettingsFrame) {
 }
 
 func (t *http2Client) handlePing(f *http2.PingFrame) {
-	if f.IsAck() { // Do nothing.
+	if f.IsAck() {
+		// Maybe it's a BDP ping.
+		if t.bdpEst != nil {
+			t.bdpEst.calculate(f.Data)
+		}
 		return
 	}
 	pingAck := &ping{ack: true}
@@ -957,7 +988,7 @@ func (t *http2Client) handlePing(f *http2.PingFrame) {
 
 func (t *http2Client) handleGoAway(f *http2.GoAwayFrame) {
 	if f.ErrCode == http2.ErrCodeEnhanceYourCalm {
-		grpclog.Printf("Client received GoAway with http2.ErrCodeEnhanceYourCalm.")
+		infof("Client received GoAway with http2.ErrCodeEnhanceYourCalm.")
 	}
 	t.mu.Lock()
 	if t.state == reachable || t.state == draining {
@@ -1157,7 +1188,7 @@ func (t *http2Client) reader() {
 		case *http2.WindowUpdateFrame:
 			t.handleWindowUpdate(frame)
 		default:
-			grpclog.Printf("transport: http2Client.reader got unhandled frame type %v.", frame)
+			errorf("transport: http2Client.reader got unhandled frame type %v.", frame)
 		}
 	}
 }
@@ -1219,9 +1250,12 @@ func (t *http2Client) controller() {
 				case *flushIO:
 					t.framer.flushWrite()
 				case *ping:
+					if !i.ack {
+						t.bdpEst.timesnap(i.data)
+					}
 					t.framer.writePing(true, i.ack, i.data)
 				default:
-					grpclog.Printf("transport: http2Client.controller got unexpected item type %v\n", i)
+					errorf("transport: http2Client.controller got unexpected item type %v\n", i)
 				}
 				t.writableChan <- 0
 				continue
@@ -1308,7 +1342,7 @@ func (t *http2Client) notifyError(err error) {
 	if t.state == reachable {
 		t.state = unreachable
 		close(t.errorChan)
-		grpclog.Printf("transport: http2Client.notifyError got notified that the client transport was broken %v.", err)
+		infof("transport: http2Client.notifyError got notified that the client transport was broken %v.", err)
 	}
 	t.mu.Unlock()
 }

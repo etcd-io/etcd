@@ -107,15 +107,20 @@ func newClusterProxyServer(endpoints []string, t *testing.T) *clusterproxyTestSe
 	}
 	var opts []grpc.ServerOption
 	cts.server = grpc.NewServer(opts...)
-	go cts.server.Serve(cts.l)
-
-	// wait some time for free port 0 to be resolved
-	time.Sleep(500 * time.Millisecond)
+	servec := make(chan struct{})
+	go func() {
+		<-servec
+		cts.server.Serve(cts.l)
+	}()
 
 	Register(client, "test-prefix", cts.l.Addr().String(), 7)
 	cts.cp, cts.donec = NewClusterProxy(client, cts.l.Addr().String(), "test-prefix")
 	cts.caddr = cts.l.Addr().String()
 	pb.RegisterClusterServer(cts.server, cts.cp)
+	close(servec)
+
+	// wait some time for free port 0 to be resolved
+	time.Sleep(500 * time.Millisecond)
 
 	return cts
 }

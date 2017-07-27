@@ -1,44 +1,26 @@
 /*
  *
- * Copyright 2014, Google Inc.
- * All rights reserved.
+ * Copyright 2014 gRPC authors.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *     * Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
- *     * Redistributions in binary form must reproduce the above
- * copyright notice, this list of conditions and the following disclaimer
- * in the documentation and/or other materials provided with the
- * distribution.
- *     * Neither the name of Google Inc. nor the names of its
- * contributors may be used to endorse or promote products derived from
- * this software without specific prior written permission.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  *
  */
 
-/*
-Package transport defines and implements message oriented communication channel
-to complete various transactions (e.g., an RPC).
-*/
+// Package transport defines and implements message oriented communication
+// channel to complete various transactions (e.g., an RPC).
 package transport // import "google.golang.org/grpc/transport"
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -65,28 +47,25 @@ type recvMsg struct {
 	err error
 }
 
-func (*recvMsg) item() {}
-
-// All items in an out of a recvBuffer should be the same type.
-type item interface {
-	item()
-}
-
-// recvBuffer is an unbounded channel of item.
+// recvBuffer is an unbounded channel of recvMsg structs.
+// Note recvBuffer differs from controlBuffer only in that recvBuffer
+// holds a channel of only recvMsg structs instead of objects implementing "item" interface.
+// recvBuffer is written to much more often than
+// controlBuffer and using strict recvMsg structs helps avoid allocation in "recvBuffer.put"
 type recvBuffer struct {
-	c       chan item
+	c       chan recvMsg
 	mu      sync.Mutex
-	backlog []item
+	backlog []recvMsg
 }
 
 func newRecvBuffer() *recvBuffer {
 	b := &recvBuffer{
-		c: make(chan item, 1),
+		c: make(chan recvMsg, 1),
 	}
 	return b
 }
 
-func (b *recvBuffer) put(r item) {
+func (b *recvBuffer) put(r recvMsg) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if len(b.backlog) == 0 {
@@ -105,18 +84,18 @@ func (b *recvBuffer) load() {
 	if len(b.backlog) > 0 {
 		select {
 		case b.c <- b.backlog[0]:
-			b.backlog[0] = nil
+			b.backlog[0] = recvMsg{}
 			b.backlog = b.backlog[1:]
 		default:
 		}
 	}
 }
 
-// get returns the channel that receives an item in the buffer.
+// get returns the channel that receives a recvMsg in the buffer.
 //
-// Upon receipt of an item, the caller should call load to send another
-// item onto the channel if there is any.
-func (b *recvBuffer) get() <-chan item {
+// Upon receipt of a recvMsg, the caller should call load to send another
+// recvMsg onto the channel if there is any.
+func (b *recvBuffer) get() <-chan recvMsg {
 	return b.c
 }
 
@@ -126,7 +105,7 @@ type recvBufferReader struct {
 	ctx    context.Context
 	goAway chan struct{}
 	recv   *recvBuffer
-	last   *bytes.Reader // Stores the remaining data in the previous calls.
+	last   []byte // Stores the remaining data in the previous calls.
 	err    error
 }
 
@@ -138,24 +117,79 @@ func (r *recvBufferReader) Read(p []byte) (n int, err error) {
 		return 0, r.err
 	}
 	defer func() { r.err = err }()
-	if r.last != nil && r.last.Len() > 0 {
+	if r.last != nil && len(r.last) > 0 {
 		// Read remaining data left in last call.
-		return r.last.Read(p)
+		copied := copy(p, r.last)
+		r.last = r.last[copied:]
+		return copied, nil
 	}
 	select {
 	case <-r.ctx.Done():
 		return 0, ContextErr(r.ctx.Err())
 	case <-r.goAway:
 		return 0, ErrStreamDrain
-	case i := <-r.recv.get():
+	case m := <-r.recv.get():
 		r.recv.load()
-		m := i.(*recvMsg)
 		if m.err != nil {
 			return 0, m.err
 		}
-		r.last = bytes.NewReader(m.data)
-		return r.last.Read(p)
+		copied := copy(p, m.data)
+		r.last = m.data[copied:]
+		return copied, nil
 	}
+}
+
+// All items in an out of a controlBuffer should be the same type.
+type item interface {
+	item()
+}
+
+// controlBuffer is an unbounded channel of item.
+type controlBuffer struct {
+	c       chan item
+	mu      sync.Mutex
+	backlog []item
+}
+
+func newControlBuffer() *controlBuffer {
+	b := &controlBuffer{
+		c: make(chan item, 1),
+	}
+	return b
+}
+
+func (b *controlBuffer) put(r item) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.backlog) == 0 {
+		select {
+		case b.c <- r:
+			return
+		default:
+		}
+	}
+	b.backlog = append(b.backlog, r)
+}
+
+func (b *controlBuffer) load() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if len(b.backlog) > 0 {
+		select {
+		case b.c <- b.backlog[0]:
+			b.backlog[0] = nil
+			b.backlog = b.backlog[1:]
+		default:
+		}
+	}
+}
+
+// get returns the channel that receives an item in the buffer.
+//
+// Upon receipt of an item, the caller should call load to send another
+// item onto the channel if there is any.
+func (b *controlBuffer) get() <-chan item {
+	return b.c
 }
 
 type streamState uint8
@@ -252,14 +286,22 @@ func (s *Stream) GoAway() <-chan struct{} {
 // is available. It blocks until i) the metadata is ready or ii) there is no
 // header metadata or iii) the stream is canceled/expired.
 func (s *Stream) Header() (metadata.MD, error) {
+	var err error
 	select {
 	case <-s.ctx.Done():
-		return nil, ContextErr(s.ctx.Err())
+		err = ContextErr(s.ctx.Err())
 	case <-s.goAway:
-		return nil, ErrStreamDrain
+		err = ErrStreamDrain
 	case <-s.headerChan:
 		return s.header.Copy(), nil
 	}
+	// Even if the stream is closed, header is returned if available.
+	select {
+	case <-s.headerChan:
+		return s.header.Copy(), nil
+	default:
+	}
+	return nil, err
 }
 
 // Trailer returns the cached trailer metedata. Note that if it is not called
@@ -320,7 +362,7 @@ func (s *Stream) SetTrailer(md metadata.MD) error {
 }
 
 func (s *Stream) write(m recvMsg) {
-	s.buf.put(&m)
+	s.buf.put(m)
 }
 
 // Read reads all p bytes from the wire for this stream.
@@ -497,8 +539,10 @@ type CallHdr struct {
 
 	// Flush indicates whether a new stream command should be sent
 	// to the peer without waiting for the first data. This is
-	// only a hint. The transport may modify the flush decision
+	// only a hint.
+	// If it's true, the transport may modify the flush decision
 	// for performance purposes.
+	// If it's false, new stream will never be flushed.
 	Flush bool
 }
 
