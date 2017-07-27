@@ -82,7 +82,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	var wg sync.WaitGroup
-
+	errc := make(chan error, len(cfgs))
 	for _, cfg := range cfgs {
 		wg.Add(1)
 		go func(cfg *v3.Config) {
@@ -90,7 +90,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			ep := cfg.Endpoints[0]
 			cli, err := v3.New(*cfg)
 			if err != nil {
-				fmt.Printf("%s is unhealthy: failed to connect: %v\n", ep, err)
+				errc <- fmt.Errorf("%s is unhealthy: failed to connect: %v", ep, err)
 				return
 			}
 			st := time.Now()
@@ -103,12 +103,24 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			if err == nil || err == rpctypes.ErrPermissionDenied {
 				fmt.Printf("%s is healthy: successfully committed proposal: took = %v\n", ep, time.Since(st))
 			} else {
-				fmt.Printf("%s is unhealthy: failed to commit proposal: %v\n", ep, err)
+				errc <- fmt.Errorf("%s is unhealthy: failed to commit proposal: %v", ep, err)
 			}
 		}(cfg)
 	}
 
 	wg.Wait()
+	close(errc)
+
+	errs := false
+	for err := range errc {
+		if err != nil {
+			errs = true
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}
+	if errs {
+		ExitWithError(ExitError, fmt.Errorf("unhealthy cluster"))
+	}
 }
 
 type epStatus struct {
