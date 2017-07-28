@@ -70,21 +70,24 @@ func (rt *readTx) UnsafeRange(bucketName, key, endKey []byte, limit int64) ([][]
 
 func (rt *readTx) UnsafeForEach(bucketName []byte, visitor func(k, v []byte) error) error {
 	dups := make(map[string]struct{})
-	f1 := func(k, v []byte) error {
+	getDups := func(k, v []byte) error {
 		dups[string(k)] = struct{}{}
-		return visitor(k, v)
+		return nil
 	}
-	f2 := func(k, v []byte) error {
+	visitNoDup := func(k, v []byte) error {
 		if _, ok := dups[string(k)]; ok {
 			return nil
 		}
 		return visitor(k, v)
 	}
-	if err := rt.buf.ForEach(bucketName, f1); err != nil {
+	if err := rt.buf.ForEach(bucketName, getDups); err != nil {
 		return err
 	}
 	rt.txmu.Lock()
-	err := unsafeForEach(rt.tx, bucketName, f2)
+	err := unsafeForEach(rt.tx, bucketName, visitNoDup)
 	rt.txmu.Unlock()
-	return err
+	if err != nil {
+		return err
+	}
+	return rt.buf.ForEach(bucketName, visitor)
 }
