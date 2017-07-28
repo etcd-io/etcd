@@ -54,3 +54,12 @@ func AuthUnaryClientInterceptor(ctx context.Context, method string, req, reply i
 	}
 	return invoker(ctx, method, req, reply, cc, opts...)
 }
+
+func AuthStreamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+	tokenif := ctx.Value("token")
+	if tokenif != nil {
+		tokenCred := &proxyTokenCredential{tokenif.(string)}
+		opts = append(opts, grpc.PerRPCCredentials(tokenCred))
+	}
+	return streamer(ctx, desc, cc, method, opts...)
+}

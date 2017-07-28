@@ -206,6 +206,8 @@ func mustNewClient() *clientv3.Client {
 	}
 	cfg.DialOptions = append(cfg.DialOptions,
 		grpc.WithUnaryInterceptor(grpcproxy.AuthUnaryClientInterceptor))
+	cfg.DialOptions = append(cfg.DialOptions,
+		grpc.WithStreamInterceptor(grpcproxy.AuthStreamClientInterceptor))
 	client, err := clientv3.New(*cfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
