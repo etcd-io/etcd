@@ -473,6 +473,11 @@ func compareKV(c *pb.Compare, ckv mvccpb.KeyValue) bool {
 			rev = tv.Version
 		}
 		result = compareInt64(ckv.Version, rev)
+	case pb.Compare_LEASE:
+		if tv, _ := c.TargetUnion.(*pb.Compare_Lease); tv != nil {
+			rev = tv.Lease
+		}
+		result = compareInt64(ckv.Lease, rev)
 	}
 	switch c.Result {
 	case pb.Compare_EQUAL:
