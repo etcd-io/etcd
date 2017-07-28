@@ -258,7 +258,16 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 
 	keep := s.kvindex.Compact(rev)
 	s.keepMu.Lock()
-	s.keep = keep
+	// merge keep from the previous ongoing compaction
+	// allows HashKV to include revisions from previous keep.
+	if len(s.keep) > 0 {
+		for k, v := range keep {
+			s.keep[k] = v
+		}
+	} else {
+		s.keep = keep
+	}
+
 	s.keepMu.Unlock()
 	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
@@ -271,9 +280,16 @@ func (s *store) Compact(rev int64) (<-chan struct{}, error) {
 			return
 		}
 		close(ch)
-		s.keepMu.Lock()
-		s.keep = nil
-		s.keepMu.Unlock()
+		s.revMu.RLock()
+		// set the keep to nil if this is the last compaction
+		// to indicate there aren't any ongoing compactions.
+		// correctness of HashKV bases on state of keep.
+		if rev == s.compactMainRev {
+			s.keepMu.Lock()
+			s.keep = nil
+			s.keepMu.Unlock()
+		}
+		s.revMu.RUnlock()
 	}
 
 	s.fifoSched.Schedule(j)
