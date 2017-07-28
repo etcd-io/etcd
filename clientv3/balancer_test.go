@@ -24,6 +24,7 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
+	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -236,4 +237,83 @@ func (kcl *killConnListener) listen(l net.Listener) {
 func (kcl *killConnListener) close() {
 	close(kcl.stopc)
 	kcl.wg.Wait()
+}
+
+func TestBalancerTrySwitch(t *testing.T) {
+
+	endpoints := []string{"localhost:2379", "localhost:22379", "localhost:32379"}
+	sb := newSimpleBalancer(endpoints)
+	defer sb.Close()
+
+	prevAddrs := map[string]func(error){}
+	simuGrpc := func(n int) {
+		for i := 0; ; i++ {
+			nowAddrs := map[string]func(error){}
+			addrs := []grpc.Address{}
+			ok := true
+			select {
+			case addrs, ok = <-sb.Notify():
+				if !ok {
+					return
+				}
+			case <-time.After(time.Second):
+				fmt.Println("-----")
+				return
+			}
+			fmt.Println("get from notify addr: ", addrs)
+
+			for _, addr := range addrs {
+				nowAddrs[addr.Addr] = nil
+			}
+			for addr, fc := range prevAddrs {
+				if _, ok := nowAddrs[addr]; !ok && fc != nil {
+					fc(errors.New("stop"))
+				}
+			}
+			for addr := range nowAddrs {
+				if _, ok := prevAddrs[addr]; !ok {
+					fc := sb.Up(grpc.Address{Addr: addr})
+					nowAddrs[addr] = fc
+				} else {
+					nowAddrs[addr] = prevAddrs[addr]
+				}
+			}
+			prevAddrs = nowAddrs
+
+		}
+	}
+
+	simuGrpc(2)
+
+	blockingOpts := grpc.BalancerGetOptions{BlockingWait: true}
+	ctx := context.Background()
+	switchHappened := false
+
+	// test at least one time switch do works
+	for i := 0; i < 10; i++ {
+		addr1, _, err := sb.Get(ctx, blockingOpts)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		doSwitch := sb.trySwitchEndpoint()
+		if !doSwitch {
+			continue
+		}
+
+		simuGrpc(2)
+
+		addr2, _, err := sb.Get(ctx, blockingOpts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if addr2.Addr != addr1.Addr {
+			switchHappened = true
+			break
+		}
+	}
+	if !switchHappened {
+		t.Errorf("addr switch never happened")
+	}
+
 }

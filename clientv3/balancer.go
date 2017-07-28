@@ -68,6 +68,12 @@ type simpleBalancer struct {
 	// intialization and shutdown.
 	pinAddr string
 
+	// pinAddrcond is a bell rings when pinAddr change
+	pinAddrCond *sync.Cond
+
+	// last pinAddr, avoid switch too frequently
+	lastPinAddr string
+
 	closed bool
 }
 
@@ -88,12 +94,15 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 		updateAddrsC: make(chan struct{}, 1),
 		host2ep:      getHost2ep(eps),
 	}
+	sb.pinAddrCond = sync.NewCond(&sb.mu)
 	close(sb.downc)
 	go sb.updateNotifyLoop()
 	return sb
 }
 
-func (b *simpleBalancer) Start(target string, config grpc.BalancerConfig) error { return nil }
+func (b *simpleBalancer) Start(target string, config grpc.BalancerConfig) error {
+	return nil
+}
 
 func (b *simpleBalancer) ConnectNotify() <-chan struct{} {
 	b.mu.Lock()
@@ -251,8 +260,11 @@ func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	close(b.upc)
 	b.downc = make(chan struct{})
 	b.pinAddr = addr.Addr
+	b.pinAddrCond.Broadcast()
 	// notify client that a connection is up
-	b.readyOnce.Do(func() { close(b.readyc) })
+	b.readyOnce.Do(func() {
+		close(b.readyc)
+	})
 	return func(err error) {
 		b.mu.Lock()
 		b.upc = make(chan struct{})
@@ -298,6 +310,7 @@ func (b *simpleBalancer) Get(ctx context.Context, opts grpc.BalancerGetOptions) 
 		b.mu.RLock()
 		closed = b.closed
 		addr = b.pinAddr
+		b.pinAddrCond.Broadcast()
 		b.mu.RUnlock()
 		// Close() which sets b.closed = true can be called before Get(), Get() must exit if balancer is closed.
 		if closed {
@@ -310,7 +323,9 @@ func (b *simpleBalancer) Get(ctx context.Context, opts grpc.BalancerGetOptions) 
 	return grpc.Address{Addr: addr}, func() {}, nil
 }
 
-func (b *simpleBalancer) Notify() <-chan []grpc.Address { return b.notifyCh }
+func (b *simpleBalancer) Notify() <-chan []grpc.Address {
+	return b.notifyCh
+}
 
 func (b *simpleBalancer) Close() error {
 	b.mu.Lock()
@@ -353,4 +368,67 @@ func getHost(ep string) string {
 		return ep
 	}
 	return url.Host
+}
+
+func (b *simpleBalancer) trySwitchEndpoint() (doSwitch bool) {
+	var prevPinAddr string
+	var prevEp string
+	doSwitch = true
+
+	func() {
+		b.mu.Lock()
+		defer b.mu.Unlock()
+
+		if len(b.host2ep) <= 1 {
+			doSwitch = false
+			return
+		}
+
+		// in another switching
+		if b.lastPinAddr == b.pinAddr {
+			doSwitch = false
+			return
+		}
+		b.lastPinAddr = b.pinAddr
+		prevPinAddr = b.pinAddr
+		prevEp = b.host2ep[b.pinAddr]
+		delete(b.host2ep, prevPinAddr)
+
+		addrs := make([]grpc.Address, 0, len(b.addrs))
+
+		for _, addr := range b.addrs {
+			if prevPinAddr != addr.Addr {
+				addrs = append(addrs, addr)
+			}
+		}
+		b.addrs = addrs
+
+		select {
+		case b.updateAddrsC <- struct{}{}:
+		case <-b.stopc:
+		}
+	}()
+
+	if !doSwitch {
+		return
+	}
+
+	go func() {
+		b.mu.Lock()
+		for prevPinAddr == b.pinAddr || b.pinAddr == "" {
+			b.pinAddrCond.Wait()
+		}
+
+		b.host2ep[prevPinAddr] = prevEp
+		b.addrs = append(b.addrs, grpc.Address{Addr: prevPinAddr})
+
+		b.mu.Unlock()
+
+		select {
+		case b.updateAddrsC <- struct{}{}:
+		case <-b.stopc:
+		}
+	}()
+
+	return
 }

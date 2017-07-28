@@ -45,6 +45,9 @@ func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRpcFunc {
 	return func(rpcCtx context.Context, f rpcFunc) error {
 		for {
 			if err := f(rpcCtx); err == nil || isStop(err) {
+				if grpc.Code(err) == codes.Unavailable {
+					c.TrySwitchEndpoint()
+				}
 				return err
 			}
 			select {

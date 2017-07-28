@@ -119,6 +119,13 @@ func (c *Client) SetEndpoints(eps ...string) {
 	c.balancer.updateAddrs(eps)
 }
 
+// TrySwitchEndpoint try to make balancer change it's fix endpoint.
+// It may do nothing while their is only one endpoint, or switch has just happened
+// It is called when the endpoint now is not available, like network partition happens
+func (c *Client) TrySwitchEndpoint() {
+	c.balancer.trySwitchEndpoint()
+}
+
 // Sync synchronizes client's endpoints with the known endpoints from the etcd membership.
 func (c *Client) Sync(ctx context.Context) error {
 	mresp, err := c.MemberList(ctx)
