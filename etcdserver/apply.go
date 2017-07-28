@@ -915,7 +915,10 @@ func mkGteRange(rangeEnd []byte) []byte {
 }
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {
-	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil
+	// Technically Authenticate has a side effect if etcd is using simple token.
+	// But the tokens don't need to be shared with every node so the effect isn't required
+	// by the nodes that aren't handling the request directly.
+	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.Authenticate != nil
 }
 
 func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
