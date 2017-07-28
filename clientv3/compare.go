@@ -60,6 +60,8 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 		cmp.TargetUnion = &pb.Compare_CreateRevision{CreateRevision: mustInt64(v)}
 	case pb.Compare_MOD:
 		cmp.TargetUnion = &pb.Compare_ModRevision{ModRevision: mustInt64(v)}
+	case pb.Compare_LEASE:
+		cmp.TargetUnion = &pb.Compare_Lease{Lease: mustInt64(v)}
 	default:
 		panic("Unknown compare type")
 	}
