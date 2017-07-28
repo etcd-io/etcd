@@ -189,7 +189,7 @@ func (ki *keyIndex) compact(atRev int64, available map[revision]struct{}) {
 
 	genIdx, revIndex := ki.doCompact(atRev, available)
 
-	g := ki.generations[genIdx]
+	g := &ki.generations[genIdx]
 	if !g.isEmpty() {
 		// remove the previous contents.
 		if revIndex != -1 {
@@ -213,7 +213,7 @@ func (ki *keyIndex) keep(atRev int64, available map[revision]struct{}) {
 	}
 
 	genIdx, revIndex := ki.doCompact(atRev, available)
-	g := ki.generations[genIdx]
+	g := &ki.generations[genIdx]
 	if !g.isEmpty() {
 		// remove any tombstone
 		if revIndex == len(g.revs)-1 && genIdx != len(ki.generations)-1 {
