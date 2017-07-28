@@ -250,6 +250,56 @@ func TestBackendWriteback(t *testing.T) {
 	}
 }
 
+// TestBackendWritebackForEach checks that partially written / buffered
+// data is visited in the same order as fully committed data.
+func TestBackendWritebackForEach(t *testing.T) {
+	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	defer cleanup(b, tmpPath)
+
+	tx := b.BatchTx()
+	tx.Lock()
+	tx.UnsafeCreateBucket([]byte("key"))
+	for i := 0; i < 5; i++ {
+		k := []byte(fmt.Sprintf("%04d", i))
+		tx.UnsafePut([]byte("key"), k, []byte("bar"))
+	}
+	tx.Unlock()
+
+	// writeback
+	b.ForceCommit()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket([]byte("key"))
+	for i := 5; i < 20; i++ {
+		k := []byte(fmt.Sprintf("%04d", i))
+		tx.UnsafePut([]byte("key"), k, []byte("bar"))
+	}
+	tx.Unlock()
+
+	seq := ""
+	getSeq := func(k, v []byte) error {
+		seq += string(k)
+		return nil
+	}
+	rtx := b.ReadTx()
+	rtx.Lock()
+	rtx.UnsafeForEach([]byte("key"), getSeq)
+	rtx.Unlock()
+
+	partialSeq := seq
+
+	seq = ""
+	b.ForceCommit()
+
+	tx.Lock()
+	tx.UnsafeForEach([]byte("key"), getSeq)
+	tx.Unlock()
+
+	if seq != partialSeq {
+		t.Fatalf("expected %q, got %q", seq, partialSeq)
+	}
+}
+
 func cleanup(b Backend, path string) {
 	b.Close()
 	os.Remove(path)
