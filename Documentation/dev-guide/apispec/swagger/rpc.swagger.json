@@ -1017,7 +1017,8 @@
         "VERSION",
         "CREATE",
         "MOD",
-        "VALUE"
+        "VALUE",
+        "LEASE"
       ]
     },
     "EventEventType": {
@@ -1470,6 +1471,11 @@
           "description": "key is the subject key for the comparison operation.",
           "type": "string",
           "format": "byte"
+        },
+        "lease": {
+          "description": "lease is the lease id of the given key.",
+          "type": "string",
+          "format": "int64"
         },
         "mod_revision": {
           "description": "mod_revision is the last modified revision of the given key.",
