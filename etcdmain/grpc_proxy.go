@@ -154,7 +154,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 
 	client := mustNewClient()
 
-	srvhttp, httpl := mustHTTPListener(m, tlsinfo)
+	srvhttp, httpl := mustHTTPListener(m, tlsinfo, client)
 	errc := make(chan error)
 	go func() { errc <- newGRPCProxyServer(client).Serve(grpcl) }()
 	go func() { errc <- srvhttp.Serve(httpl) }()
@@ -164,6 +164,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		go func() {
 			mux := http.NewServeMux()
 			etcdhttp.HandlePrometheus(mux)
+			grpcproxy.HandleHealth(mux, client)
 			plog.Fatal(http.Serve(mhttpl, mux))
 		}()
 	}
@@ -310,10 +311,11 @@ func newGRPCProxyServer(client *clientv3.Client) *grpc.Server {
 	return server
 }
 
-func mustHTTPListener(m cmux.CMux, tlsinfo *transport.TLSInfo) (*http.Server, net.Listener) {
+func mustHTTPListener(m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client) (*http.Server, net.Listener) {
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
 	etcdhttp.HandlePrometheus(httpmux)
+	grpcproxy.HandleHealth(httpmux, c)
 	if grpcProxyEnablePprof {
 		for p, h := range debugutil.PProfHandlers() {
 			httpmux.Handle(p, h)
