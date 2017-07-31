@@ -29,13 +29,13 @@ import (
 
 const (
 	pathMetrics = "/metrics"
-	pathHealth  = "/health"
+	PathHealth  = "/health"
 )
 
 // HandleMetricsHealth registers metrics and health handlers.
 func HandleMetricsHealth(mux *http.ServeMux, srv *etcdserver.EtcdServer) {
 	mux.Handle(pathMetrics, prometheus.Handler())
-	mux.Handle(pathHealth, newHealthHandler(srv))
+	mux.Handle(PathHealth, NewHealthHandler(func() Health { return checkHealth(srv) }))
 }
 
 // HandlePrometheus registers prometheus handler on '/metrics'.
@@ -45,18 +45,18 @@ func HandlePrometheus(mux *http.ServeMux) {
 
 // HandleHealth registers health handler on '/health'.
 func HandleHealth(mux *http.ServeMux, srv *etcdserver.EtcdServer) {
-	mux.Handle(pathHealth, newHealthHandler(srv))
+	mux.Handle(PathHealth, NewHealthHandler(func() Health { return checkHealth(srv) }))
 }
 
-// newHealthHandler handles '/health' requests.
-func newHealthHandler(srv *etcdserver.EtcdServer) http.HandlerFunc {
+// NewHealthHandler handles '/health' requests.
+func NewHealthHandler(hfunc func() Health) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		h := checkHealth(srv)
+		h := hfunc()
 		d, _ := json.Marshal(h)
 		if !h.Health {
 			http.Error(w, string(d), http.StatusServiceUnavailable)
@@ -67,14 +67,15 @@ func newHealthHandler(srv *etcdserver.EtcdServer) http.HandlerFunc {
 	}
 }
 
+// Health defines etcd server health status.
 // TODO: remove manual parsing in etcdctl cluster-health
-type health struct {
+type Health struct {
 	Health bool     `json:"health"`
 	Errors []string `json:"errors,omitempty"`
 }
 
-func checkHealth(srv *etcdserver.EtcdServer) health {
-	h := health{Health: false}
+func checkHealth(srv *etcdserver.EtcdServer) Health {
+	h := Health{Health: false}
 
 	as := srv.Alarms()
 	if len(as) > 0 {
