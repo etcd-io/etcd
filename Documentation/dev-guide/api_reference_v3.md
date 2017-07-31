@@ -68,7 +68,8 @@ This is a generated documentation. Please read the proto files for more.
 | Alarm | AlarmRequest | AlarmResponse | Alarm activates, deactivates, and queries alarms regarding cluster health. |
 | Status | StatusRequest | StatusResponse | Status gets the status of the member. |
 | Defragment | DefragmentRequest | DefragmentResponse | Defragment defragments a member's backend database to recover storage space. |
-| Hash | HashRequest | HashResponse | Hash returns the hash of the local KV state for consistency checking purpose. This is designed for testing; do not use this in production when there are ongoing transactions. |
+| Hash | HashRequest | HashResponse | Hash computes the hash of the KV's backend. This is designed for testing; do not use this in production when there are ongoing transactions. |
+| HashKV | HashKVRequest | HashKVResponse | HashKV computes the hash of all MVCC keys up to a given revision. |
 | Snapshot | SnapshotRequest | SnapshotResponse | Snapshot sends a snapshot of the entire backend from a member over a stream to a client. |
 | MoveLeader | MoveLeaderRequest | MoveLeaderResponse | MoveLeader requests current leader node to transfer its leadership to transferee. |
 
@@ -402,6 +403,7 @@ CompactionRequest compacts the key-value store up to a given revision. All super
 | create_revision | create_revision is the creation revision of the given key | int64 |
 | mod_revision | mod_revision is the last modified revision of the given key. | int64 |
 | value | value is the value of the given key, in bytes. | bytes |
+| lease | lease is the lease id of the given key. | int64 |
 | range_end | range_end compares the given target to all keys in the range [key, range_end). See RangeRequest for more details on key ranges. | bytes |
 
 
@@ -440,6 +442,24 @@ Empty field.
 
 
 
+##### message `HashKVRequest` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| revision | revision is the key-value store revision for the hash operation. | int64 |
+
+
+
+##### message `HashKVResponse` (etcdserver/etcdserverpb/rpc.proto)
+
+| Field | Description | Type |
+| ----- | ----------- | ---- |
+| header |  | ResponseHeader |
+| hash | hash is the hash value computed from the responding member's MVCC keys up to a given revision. | uint32 |
+| compact_revision | compact_revision is the compacted revision of key-value store when hash begins. | int64 |
+
+
+
 ##### message `HashRequest` (etcdserver/etcdserverpb/rpc.proto)
 
 Empty field.
@@ -451,7 +471,7 @@ Empty field.
 | Field | Description | Type |
 | ----- | ----------- | ---- |
 | header |  | ResponseHeader |
-| hash | hash is the hash value computed from the responding member's key-value store. | uint32 |
+| hash | hash is the hash value computed from the responding member's KV's backend. | uint32 |
 
 
 

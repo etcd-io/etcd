@@ -564,6 +564,28 @@ func TestV3TxnRangeCompare(t *testing.T) {
 			},
 			false,
 		},
+		{
+			// all keys are leased
+			pb.Compare{
+				Key:         []byte("/a/"),
+				RangeEnd:    []byte("/a0"),
+				Target:      pb.Compare_LEASE,
+				Result:      pb.Compare_GREATER,
+				TargetUnion: &pb.Compare_Lease{0},
+			},
+			false,
+		},
+		{
+			// no keys are leased
+			pb.Compare{
+				Key:         []byte("/a/"),
+				RangeEnd:    []byte("/a0"),
+				Target:      pb.Compare_LEASE,
+				Result:      pb.Compare_EQUAL,
+				TargetUnion: &pb.Compare_Lease{0},
+			},
+			true,
+		},
 	}
 
 	kvc := toGRPC(clus.Client(0)).KV

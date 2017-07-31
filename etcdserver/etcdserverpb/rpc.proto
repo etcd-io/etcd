@@ -511,6 +511,7 @@ message Compare {
     CREATE = 1;
     MOD = 2;
     VALUE= 3;
+    LEASE = 4;
   }
   // result is logical comparison operation for this comparison.
   CompareResult result = 1;
@@ -527,10 +528,14 @@ message Compare {
     int64 mod_revision = 6;
     // value is the value of the given key, in bytes.
     bytes value = 7;
+    // lease is the lease id of the given key.
+    int64 lease = 8;
+    // leave room for more target_union field tags, jump to 64
   }
+
   // range_end compares the given target to all keys in the range [key, range_end).
   // See RangeRequest for more details on key ranges.
-  bytes range_end = 8;
+  bytes range_end = 64;
   // TODO: fill out with most of the rest of RangeRequest fields when needed.
 }
 
