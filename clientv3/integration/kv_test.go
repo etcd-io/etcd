@@ -895,3 +895,40 @@ func TestKVGetResetLoneEndpoint(t *testing.T) {
 	case <-donec:
 	}
 }
+
+// TestKVPutAtMostOnce ensures that a Put will only occur at most once
+// in the presence of network errors.
+func TestKVPutAtMostOnce(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	if _, err := clus.Client(0).Put(context.TODO(), "k", "1"); err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < 10; i++ {
+		clus.Members[0].DropConnections()
+		donec := make(chan struct{})
+		go func() {
+			defer close(donec)
+			for i := 0; i < 10; i++ {
+				clus.Members[0].DropConnections()
+				time.Sleep(5 * time.Millisecond)
+			}
+		}()
+		_, err := clus.Client(0).Put(context.TODO(), "k", "v")
+		<-donec
+		if err != nil {
+			break
+		}
+	}
+
+	resp, err := clus.Client(0).Get(context.TODO(), "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.Kvs[0].Version > 11 {
+		t.Fatalf("expected version <= 10, got %+v", resp.Kvs[0])
+	}
+}
