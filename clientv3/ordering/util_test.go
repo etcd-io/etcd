@@ -28,26 +28,21 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-	cfg := clientv3.Config{
-		Endpoints: []string{
-			clus.Members[0].GRPCAddr(),
-			clus.Members[1].GRPCAddr(),
-			clus.Members[2].GRPCAddr(),
-		},
+	eps := []string{
+		clus.Members[0].GRPCAddr(),
+		clus.Members[1].GRPCAddr(),
+		clus.Members[2].GRPCAddr(),
 	}
+	cfg := clientv3.Config{Endpoints: []string{clus.Members[0].GRPCAddr()}}
 	cli, err := clientv3.New(cfg)
-	eps := cli.Endpoints()
+
 	ctx := context.TODO()
 
-	cli.SetEndpoints(clus.Members[0].GRPCAddr())
-	_, err = cli.Put(ctx, "foo", "bar")
-	if err != nil {
+	if _, err = clus.Client(0).Put(ctx, "foo", "bar"); err != nil {
 		t.Fatal(err)
 	}
 	// ensure that the second member has current revision for key "foo"
-	cli.SetEndpoints(clus.Members[1].GRPCAddr())
-	_, err = cli.Get(ctx, "foo")
-	if err != nil {
+	if _, err = clus.Client(1).Get(ctx, "foo"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -58,8 +53,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	time.Sleep(1 * time.Second) // give enough time for the operation
 
 	// update to "foo" will not be replicated to the third member due to the partition
-	_, err = cli.Put(ctx, "foo", "buzz")
-	if err != nil {
+	if _, err = clus.Client(1).Put(ctx, "foo", "buzz"); err != nil {
 		t.Fatal(err)
 	}
 
