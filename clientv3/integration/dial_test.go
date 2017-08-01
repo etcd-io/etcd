@@ -16,6 +16,7 @@ package integration
 
 import (
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -186,6 +187,20 @@ func TestDialForeignEndpoint(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
 	if _, gerr := kvc.Get(ctx, "abc"); gerr != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestSetEndpointAndPut checks that a Put following a SetEndpoint
+// to a working endpoint will always succeed.
+func TestSetEndpointAndPut(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
+	defer clus.Terminate(t)
+
+	clus.Client(1).SetEndpoints(clus.Members[0].GRPCAddr())
+	_, err := clus.Client(1).Put(context.TODO(), "foo", "bar")
+	if err != nil && !strings.Contains(err.Error(), "closing") {
 		t.Fatal(err)
 	}
 }
