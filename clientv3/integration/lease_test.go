@@ -286,8 +286,12 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 	go func() {
 		defer close(donec)
 		_, err := cli.Grant(context.TODO(), 5)
-		if err != nil && err != grpc.ErrClientConnClosing {
-			t.Fatalf("expected %v, got %v", grpc.ErrClientConnClosing, err)
+		if err != nil && err != grpc.ErrClientConnClosing && err != context.Canceled {
+			// grpc.ErrClientConnClosing if grpc-go balancer calls 'Get' after client.Close.
+			// context.Canceled if grpc-go balancer calls 'Get' with inflight client.Close,
+			// soon transportMonitor selects on ClientTransport.Error() and resetTransport(false)
+			// that cancels the context and closes the transport.
+			t.Fatalf("expected %v or %v, got %v", grpc.ErrClientConnClosing, context.Canceled, err)
 		}
 	}()
 
