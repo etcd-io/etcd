@@ -23,6 +23,39 @@ import (
 	"github.com/coreos/etcd/pkg/testutil"
 )
 
+func TestMaintenanceHashKV(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	for i := 0; i < 3; i++ {
+		if _, err := clus.RandClient().Put(context.Background(), "foo", "bar"); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var hv uint32
+	for i := 0; i < 3; i++ {
+		cli := clus.Client(i)
+		// ensure writes are replicated
+		if _, err := cli.Get(context.TODO(), "foo"); err != nil {
+			t.Fatal(err)
+		}
+		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCAddr(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if hv == 0 {
+			hv = hresp.Hash
+			continue
+		}
+		if hv != hresp.Hash {
+			t.Fatalf("#%d: hash expected %d, got %d", i, hv, hresp.Hash)
+		}
+	}
+}
+
 func TestMaintenanceMoveLeader(t *testing.T) {
 	defer testutil.AfterTest(t)
 
