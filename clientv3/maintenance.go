@@ -28,6 +28,7 @@ type (
 	AlarmResponse      pb.AlarmResponse
 	AlarmMember        pb.AlarmMember
 	StatusResponse     pb.StatusResponse
+	HashKVResponse     pb.HashKVResponse
 	MoveLeaderResponse pb.MoveLeaderResponse
 )
 
@@ -49,6 +50,11 @@ type Maintenance interface {
 
 	// Status gets the status of the endpoint.
 	Status(ctx context.Context, endpoint string) (*StatusResponse, error)
+
+	// HashKV returns a hash of the KV state at the time of the RPC.
+	// If revision is zero, the hash is computed on all keys. If the revision
+	// is non-zero, the hash is computed on all keys at or below the given revision.
+	HashKV(ctx context.Context, endpoint string, rev int64) (*HashKVResponse, error)
 
 	// Snapshot provides a reader for a snapshot of a backend.
 	Snapshot(ctx context.Context) (io.ReadCloser, error)
@@ -157,6 +163,19 @@ func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusRespo
 		return nil, toErr(ctx, err)
 	}
 	return (*StatusResponse)(resp), nil
+}
+
+func (m *maintenance) HashKV(ctx context.Context, endpoint string, rev int64) (*HashKVResponse, error) {
+	remote, cancel, err := m.dial(endpoint)
+	if err != nil {
+		return nil, toErr(ctx, err)
+	}
+	defer cancel()
+	resp, err := remote.HashKV(ctx, &pb.HashKVRequest{Revision: rev}, grpc.FailFast(false))
+	if err != nil {
+		return nil, toErr(ctx, err)
+	}
+	return (*HashKVResponse)(resp), nil
 }
 
 func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
