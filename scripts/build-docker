@@ -10,7 +10,7 @@ fi
 VERSION=${1}
 ARCH=$(go env GOARCH)
 DOCKERFILE="Dockerfile-release"
-: ${TAG:="quay.io/coreos/etcd"}
+: ${TAG:="gcr.io/etcd-development/etcd"}
 
 if [ -z ${BINARYDIR} ]; then
 	RELEASE="etcd-${1}"-`go env GOOS`-`go env GOARCH`
