@@ -6,7 +6,7 @@ Migrating an application from the API v2 to the API v3 involves two steps: 1) mi
 
 ## Migrate client library
 
-API v3 is different from API v2, thus application developers need to use a new client library to send requests to etcd API v3. The documentation of the client v3 is available at https://godoc.org/github.com/coreos/etcd/clientv3. 
+API v3 is different from API v2, thus application developers need to use a new client library to send requests to etcd API v3. The documentation of the client v3 is available at https://godoc.org/github.com/coreos/etcd/clientv3.
 
 There are some notable differences between API v2 and API v3:
 
@@ -38,13 +38,17 @@ Second, migrate the v2 keys into v3 with the [migrate][migrate_command] (`ETCDCT
 
 Restart the etcd members and everything should just work.
 
+For etcd v3.3+, run `ETCDCTL_API=3 etcdctl endpoint hashkv --cluster` to ensure key-value stores are consistent post migration.
+
+**Warn**: When v2 store has expiring TTL keys and migrate command intends to preserve TTLs, migration may be inconsistent with the last committed v2 state when run on any member with a raft index less than the last leader's raft index.
+
 ### Online migration
 
 If the application cannot tolerate any downtime, then it must migrate online. The implementation of online migration will vary from application to application but the overall idea is the same.
 
 First, write application code using the v3 API. The application must support two modes: a migration mode and a normal mode. The application starts in migration mode. When running in migration mode, the application reads keys using the v3 API first, and, if it cannot find the key, it retries with the API v2. In normal mode, the application only reads keys using the v3 API. The application writes keys over the API v3 in both modes. To acknowledge a switch from migration mode to normal mode, the application watches on a switch mode key. When switch key’s value turns to `true`, the application switches over from migration mode to normal mode.
 
-Second, start a background job to migrate data from the store v2 to the mvcc store by reading keys from the API v2 and writing keys to the API v3. 
+Second, start a background job to migrate data from the store v2 to the mvcc store by reading keys from the API v2 and writing keys to the API v3.
 
 After finishing data migration, the background job writes `true` into the switch mode key to notify the application that it may switch modes.
 
