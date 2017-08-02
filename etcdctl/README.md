@@ -641,6 +641,49 @@ Get the status for all endpoints in the cluster associated with the default endp
 +------------------------+------------------+----------------+---------+-----------+-----------+------------+
 ```
 
+### ENDPOINT HASHKV
+
+ENDPOINT HASHKV fetches the hash of the key-value store of an endpoint.
+
+#### Output
+
+##### Simple format
+
+Prints a humanized table of each endpoint URL and KV history hash.
+
+##### JSON format
+
+Prints a line of JSON encoding each endpoint URL and KV history hash.
+
+#### Examples
+
+Get the hash for the default endpoint:
+
+```bash
+./etcdctl endpoint hashkv
+# 127.0.0.1:2379, 1084519789
+```
+
+Get the status for the default endpoint as JSON:
+
+```bash
+./etcdctl -w json endpoint hashkv
+# [{"Endpoint":"127.0.0.1:2379","Hash":{"header":{"cluster_id":14841639068965178418,"member_id":10276657743932975437,"revision":1,"raft_term":3},"hash":1084519789,"compact_revision":-1}}]
+```
+
+Get the status for all endpoints in the cluster associated with the default endpoint:
+
+```bash
+./etcdctl -w table endpoint --cluster hashkv
++------------------------+------------+
+|        ENDPOINT        |    HASH    |
++------------------------+------------+
+| http://127.0.0.1:12379 | 1084519789 |
+| http://127.0.0.1:22379 | 1084519789 |
+| http://127.0.0.1:32379 | 1084519789 |
++------------------------+------------+
+```
+
 ### ALARM \<subcommand\>
 
 Provides alarm related commands

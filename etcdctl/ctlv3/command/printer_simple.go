@@ -136,6 +136,13 @@ func (s *simplePrinter) EndpointStatus(statusList []epStatus) {
 	}
 }
 
+func (s *simplePrinter) EndpointHashKV(hashList []epHashKV) {
+	_, rows := makeEndpointHashKVTable(hashList)
+	for _, row := range rows {
+		fmt.Println(strings.Join(row, ", "))
+	}
+}
+
 func (s *simplePrinter) DBStatus(ds dbstatus) {
 	_, rows := makeDBStatusTable(ds)
 	for _, row := range rows {
