@@ -31,7 +31,7 @@ cfssl gencert --ca ./ca.crt \
 mv server-revoked.pem server-revoked.crt
 mv server-revoked-key.pem server-revoked.key.insecure
 grep serial revoked.stderr | awk ' { print $9 } ' >revoke.txt
-cfssl gencrl revoke.txt ca.crt ca-key.pem | base64 -d >revoke.crl
+cfssl gencrl revoke.txt ca.crt ca-key.pem | base64 --decode >revoke.crl
 
 # generate wildcard certificates DNS: *.etcd.local
 cfssl gencert \
