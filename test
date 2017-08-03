@@ -273,7 +273,7 @@ function fmt_pass {
 	fi
 
 	echo "Checking 'go tool vet -all -shadow'..."
-	fmtpkgs=$(echo $FMT | xargs dirname | sort | uniq | sed '/\./d')
+	fmtpkgs=$(for a in $FMT; do dirname "$a"; done | sort | uniq | grep -v "\\.")
 	vetRes=$(go tool vet -all -shadow ${fmtpkgs} 2>&1 | grep -v '/gw/' || true)
 	if [ -n "${vetRes}" ]; then
 		echo -e "govet -all -shadow checking failed:\n${vetRes}"
