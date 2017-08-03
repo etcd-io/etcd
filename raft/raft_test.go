@@ -3209,6 +3209,83 @@ func TestNodeWithSmallerTermCanCompleteElection(t *testing.T) {
 	}
 }
 
+// TestPreVoteWithSplitVote verifies that after split vote, cluster can complete
+// election in next round.
+func TestPreVoteWithSplitVote(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+	n3.becomeFollower(1, None)
+
+	n1.preVote = true
+	n2.preVote = true
+	n3.preVote = true
+
+	nt := newNetwork(n1, n2, n3)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	// simulate leader down. followers start split vote.
+	nt.isolate(1)
+	nt.send([]pb.Message{
+		{From: 2, To: 2, Type: pb.MsgHup},
+		{From: 3, To: 3, Type: pb.MsgHup},
+	}...)
+
+	// check whether the term values are expected
+	// n2.Term == 3
+	// n3.Term == 3
+	sm := nt.peers[2].(*raft)
+	if sm.Term != 3 {
+		t.Errorf("peer 2 term: %d, want %d", sm.Term, 3)
+	}
+	sm = nt.peers[3].(*raft)
+	if sm.Term != 3 {
+		t.Errorf("peer 3 term: %d, want %d", sm.Term, 3)
+	}
+
+	// check state
+	// n2 == candidate
+	// n3 == candidate
+	sm = nt.peers[2].(*raft)
+	if sm.state != StateCandidate {
+		t.Errorf("peer 2 state: %s, want %s", sm.state, StateCandidate)
+	}
+	sm = nt.peers[3].(*raft)
+	if sm.state != StateCandidate {
+		t.Errorf("peer 3 state: %s, want %s", sm.state, StateCandidate)
+	}
+
+	// node 2 election timeout first
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
+
+	// check whether the term values are expected
+	// n2.Term == 4
+	// n3.Term == 4
+	sm = nt.peers[2].(*raft)
+	if sm.Term != 4 {
+		t.Errorf("peer 2 term: %d, want %d", sm.Term, 4)
+	}
+	sm = nt.peers[3].(*raft)
+	if sm.Term != 4 {
+		t.Errorf("peer 3 term: %d, want %d", sm.Term, 4)
+	}
+
+	// check state
+	// n2 == leader
+	// n3 == follower
+	sm = nt.peers[2].(*raft)
+	if sm.state != StateLeader {
+		t.Errorf("peer 2 state: %s, want %s", sm.state, StateLeader)
+	}
+	sm = nt.peers[3].(*raft)
+	if sm.state != StateFollower {
+		t.Errorf("peer 3 state: %s, want %s", sm.state, StateFollower)
+	}
+}
+
 func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
