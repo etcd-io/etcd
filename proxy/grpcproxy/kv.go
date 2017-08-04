@@ -206,6 +206,9 @@ func PutRequestToOp(r *pb.PutRequest) clientv3.Op {
 	if r.IgnoreLease {
 		opts = append(opts, clientv3.WithIgnoreLease())
 	}
+	if r.PrevKv {
+		opts = append(opts, clientv3.WithPrevKV())
+	}
 	return clientv3.OpPut(string(r.Key), string(r.Value), opts...)
 }
 
