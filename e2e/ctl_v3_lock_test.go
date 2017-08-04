@@ -16,35 +16,12 @@ package e2e
 
 import (
 	"os"
-	"runtime"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/pkg/expect"
 )
-
-// debugLockSignal forces SIGQUIT to debug etcdctl elect and lock failures
-var debugLockSignal os.Signal
-
-func init() {
-	// hacks to ignore SIGQUIT debugging for some builds
-	switch {
-	case os.Getenv("COVERDIR") != "":
-		// SIGQUIT interferes with coverage collection
-		debugLockSignal = syscall.SIGTERM
-	case runtime.GOARCH == "ppc64le":
-		// ppc64le's signal handling won't kill processes with SIGQUIT
-		// in the same way as amd64/i386, so processes won't terminate
-		// as expected. Since this debugging code for CI, just ignore
-		// ppc64le.
-		debugLockSignal = syscall.SIGKILL
-	default:
-		// stack dumping OK
-		debugLockSignal = syscall.SIGQUIT
-	}
-}
 
 func TestCtlV3Lock(t *testing.T) {
 	oldenv := os.Getenv("EXPECT_DEBUG")
@@ -55,10 +32,6 @@ func TestCtlV3Lock(t *testing.T) {
 }
 
 func testLock(cx ctlCtx) {
-	// debugging for #6464
-	sig := cx.epc.WithStopSignal(debugLockSignal)
-	defer cx.epc.WithStopSignal(sig)
-
 	name := "a"
 
 	holder, ch, err := ctlV3Lock(cx, name)
@@ -135,7 +108,6 @@ func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, er
 		close(outc)
 		return proc, outc, err
 	}
-	proc.StopSignal = debugLockSignal
 	go func() {
 		s, xerr := proc.ExpectFunc(func(string) bool { return true })
 		if xerr != nil {

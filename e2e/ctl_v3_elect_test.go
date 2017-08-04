@@ -32,10 +32,6 @@ func TestCtlV3Elect(t *testing.T) {
 }
 
 func testElect(cx ctlCtx) {
-	// debugging for #6934
-	sig := cx.epc.WithStopSignal(debugLockSignal)
-	defer cx.epc.WithStopSignal(sig)
-
 	name := "a"
 
 	holder, ch, err := ctlV3Elect(cx, name, "p1")
@@ -112,7 +108,6 @@ func ctlV3Elect(cx ctlCtx, name, proposal string) (*expect.ExpectProcess, <-chan
 		close(outc)
 		return proc, outc, err
 	}
-	proc.StopSignal = debugLockSignal
 	go func() {
 		s, xerr := proc.ExpectFunc(func(string) bool { return true })
 		if xerr != nil {
