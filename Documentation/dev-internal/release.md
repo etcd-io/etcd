@@ -90,6 +90,17 @@ The public key for GPG signing can be found at [CoreOS Application Signing Key](
 - Select whether it is a pre-release.
 - Publish the release!
 
+## Publish docker image to gcr.io
+
+- Push docker image:
+
+```
+gcloud docker -- login -u _json_key -p "$(cat $KEY_PATH)" https://gcr.io
+gcloud docker -- push gcr.io/etcd-development/etcd:latest
+```
+
+- Add `latest` tag to the new image on [gcr.io](https://gcr.io/etcd-development/etcd) if this is a stable release.
+
 ## Publish docker image in Quay.io
 
 - Push docker image:
