@@ -45,7 +45,7 @@ func TestV3PutOverwrite(t *testing.T) {
 
 	kvc := toGRPC(clus.RandClient()).KV
 	key := []byte("foo")
-	reqput := &pb.PutRequest{Key: key, Value: []byte("bar")}
+	reqput := &pb.PutRequest{Key: key, Value: []byte("bar"), PrevKv: true}
 
 	respput, err := kvc.Put(context.TODO(), reqput)
 	if err != nil {
@@ -61,6 +61,9 @@ func TestV3PutOverwrite(t *testing.T) {
 	if respput2.Header.Revision <= respput.Header.Revision {
 		t.Fatalf("expected newer revision on overwrite, got %v <= %v",
 			respput2.Header.Revision, respput.Header.Revision)
+	}
+	if pkv := respput2.PrevKv; pkv == nil || string(pkv.Value) != "bar" {
+		t.Fatalf("expected PrevKv=bar, got response %+v", respput2)
 	}
 
 	reqrange := &pb.RangeRequest{Key: key}
