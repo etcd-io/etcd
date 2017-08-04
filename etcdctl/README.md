@@ -734,11 +734,16 @@ If NOSPACE alarm is present:
 # alarm:NOSPACE
 ```
 
-### DEFRAG
+### DEFRAG [options]
 
-DEFRAG defragments the backend database file for a set of given endpoints. When an etcd member reclaims storage space
-from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting
-the database, the etcd member releases this free space back to the file system.
+DEFRAG defragments the backend database file for a set of given endpoints while etcd is running, or directly defragments an 
+etcd data directory while etcd is not running. When an etcd member reclaims storage space from deleted and compacted keys, the 
+space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member 
+releases this free space back to the file system.
+
+#### Options
+
+- data-dir -- Optional. If present, defragments a data directory not in use by etcd.
 
 #### Output
 
@@ -750,6 +755,15 @@ For each endpoints, prints a message indicating whether the endpoint was success
 ./etcdctl --endpoints=localhost:2379,badendpoint:2379 defrag
 # Finished defragmenting etcd member[localhost:2379]
 # Failed to defragment etcd member[badendpoint:2379] (grpc: timed out trying to connect)
+```
+
+To defragment a data directory directly, use the `--data-dir` flag:
+
+``` bash
+# Defragment while etcd is not running
+./etcdctl defrag --data-dir default.etcd
+# success (exit status 0)
+# Error: cannot open database at default.etcd/member/snap/db
 ```
 
 #### Remarks
