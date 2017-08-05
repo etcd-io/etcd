@@ -53,7 +53,7 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 Run release script in root directory:
 
 ```
-./scripts/release.sh ${VERSION}
+TAG=gcr.io/etcd-development/etcd ./scripts/release.sh ${VERSION}
 ```
 
 It generates all release binaries and images under directory ./release.
@@ -90,13 +90,41 @@ The public key for GPG signing can be found at [CoreOS Application Signing Key](
 - Select whether it is a pre-release.
 - Publish the release!
 
+## Publish docker image in gcr.io
+
+- Push docker image:
+
+```
+gcloud docker -- login -u _json_key -p "$(cat /etc/gcp-key-etcd.json)" https://gcr.io
+
+for TARGET_ARCH in "-arm64" "-ppc64le" ""; do
+  gcloud docker -- push gcr.io/etcd-development/etcd:${VERSION}${TARGET_ARCH}
+done
+```
+
+- Add `latest` tag to the new image on [gcr.io](https://console.cloud.google.com/gcr/images/etcd-development/GLOBAL/etcd?project=etcd-development&authuser=1) if this is a stable release.
+
 ## Publish docker image in Quay.io
+
+- Build docker images with quay.io:
+
+```
+for TARGET_ARCH in "amd64" "arm64" "ppc64le"; do
+  TAG=quay.io/coreos/etcd GOARCH=${TARGET_ARCH} \
+    BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} \
+    BUILDDIR=release \
+    ./scripts/build-docker ${VERSION}
+done
+```
 
 - Push docker image:
 
 ```
 docker login quay.io
-docker push quay.io/coreos/etcd:${VERSION}
+
+for TARGET_ARCH in "-arm64" "-ppc64le" ""; do
+  docker push quay.io/coreos/etcd:${VERSION}${TARGET_ARCH}
+done
 ```
 
 - Add `latest` tag to the new image on [quay.io](https://quay.io/repository/coreos/etcd?tag=latest&tab=tags) if this is a stable release.
