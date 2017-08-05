@@ -832,9 +832,13 @@ echo ${transferee_id}
 
 ## Concurrency commands
 
-### LOCK \<lockname\> [command arg1 arg2 ...]
+### LOCK [options] \<lockname\> [command arg1 arg2 ...]
 
 LOCK acquires a distributed named mutex with a given name. Once the lock is acquired, it will be held until etcdctl is terminated.
+
+#### Options
+
+- ttl - time out in seconds of lock session.
 
 #### Output
 
