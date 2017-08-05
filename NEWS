@@ -1,3 +1,10 @@
+etcd v3.2.5 (2017-08-04)
+- use reverse lookup to match wildcard DNS SAN
+- return non-zero exit code on unhealthy 'endpoint health'
+- fix unreachable /metrics endpoint when '--enable-v2=false'
+- fix grpcproxy to respect 'PrevKv' flag
+- add container registry 'gcr.io/etcd-development/etcd'
+
 etcd v3.2.4 (2017-07-19)
 - do not block on active client stream when stopping server
 - fix gRPC proxy Snapshot RPC error handling
