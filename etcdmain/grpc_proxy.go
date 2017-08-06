@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/leasing"
 	"github.com/coreos/etcd/clientv3/namespace"
 	"github.com/coreos/etcd/clientv3/ordering"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
@@ -70,6 +71,7 @@ var (
 	grpcProxyResolverTTL        int
 
 	grpcProxyNamespace string
+	grpcProxyLeasing   string
 
 	grpcProxyEnablePprof    bool
 	grpcProxyEnableOrdering bool
@@ -124,7 +126,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 
 	// experimental flags
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
-
+	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
 	return &cmd
 }
 
@@ -280,6 +282,10 @@ func newGRPCProxyServer(client *clientv3.Client) *grpc.Server {
 		client.KV = namespace.NewKV(client.KV, grpcProxyNamespace)
 		client.Watcher = namespace.NewWatcher(client.Watcher, grpcProxyNamespace)
 		client.Lease = namespace.NewLease(client.Lease, grpcProxyNamespace)
+	}
+
+	if len(grpcProxyLeasing) > 0 {
+		client.KV, _ = leasing.NewKV(client, grpcProxyLeasing)
 	}
 
 	kvp, _ := grpcproxy.NewKvProxy(client)
