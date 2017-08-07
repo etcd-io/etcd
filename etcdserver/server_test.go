@@ -701,7 +701,8 @@ func TestDoProposal(t *testing.T) {
 		if err != nil {
 			t.Fatalf("#%d: err = %v, want nil", i, err)
 		}
-		wresp := Response{Event: &store.Event{}}
+		// resp.Index is set in Do() based on the raft state; may either be 0 or 1
+		wresp := Response{Event: &store.Event{}, Index: resp.Index}
 		if !reflect.DeepEqual(resp, wresp) {
 			t.Errorf("#%d: resp = %v, want %v", i, resp, wresp)
 		}

@@ -30,6 +30,7 @@ import (
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/api"
 	"github.com/coreos/etcd/etcdserver/api/v2http/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
@@ -87,14 +88,26 @@ func mustNewMethodRequest(t *testing.T, m, p string) *http.Request {
 	}
 }
 
+type fakeServer struct {
+	dummyRaftTimer
+	dummyStats
+}
+
+func (s *fakeServer) Leader() types.ID                    { return types.ID(1) }
+func (s *fakeServer) Alarms() []*etcdserverpb.AlarmMember { return nil }
+func (s *fakeServer) Cluster() api.Cluster                { return nil }
+func (s *fakeServer) ClusterVersion() *semver.Version     { return nil }
+func (s *fakeServer) RaftHandler() http.Handler           { return nil }
+func (s *fakeServer) Do(ctx context.Context, r etcdserverpb.Request) (rr etcdserver.Response, err error) {
+	return
+}
+func (s *fakeServer) ClientCertAuthEnabled() bool { return false }
+
 type serverRecorder struct {
+	fakeServer
 	actions []action
 }
 
-func (s *serverRecorder) Start()           {}
-func (s *serverRecorder) Stop()            {}
-func (s *serverRecorder) Leader() types.ID { return types.ID(1) }
-func (s *serverRecorder) ID() types.ID     { return types.ID(1) }
 func (s *serverRecorder) Do(_ context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
 	s.actions = append(s.actions, action{name: "Do", params: []interface{}{r}})
 	return etcdserver.Response{}, nil
@@ -117,8 +130,6 @@ func (s *serverRecorder) UpdateMember(_ context.Context, m membership.Member) ([
 	return nil, nil
 }
 
-func (s *serverRecorder) ClusterVersion() *semver.Version { return nil }
-
 type action struct {
 	name   string
 	params []interface{}
@@ -138,13 +149,10 @@ func (fr *flushingRecorder) Flush() {
 // resServer implements the etcd.Server interface for testing.
 // It returns the given response from any Do calls, and nil error
 type resServer struct {
+	fakeServer
 	res etcdserver.Response
 }
 
-func (rs *resServer) Start()           {}
-func (rs *resServer) Stop()            {}
-func (rs *resServer) ID() types.ID     { return types.ID(1) }
-func (rs *resServer) Leader() types.ID { return types.ID(1) }
 func (rs *resServer) Do(_ context.Context, _ etcdserverpb.Request) (etcdserver.Response, error) {
 	return rs.res, nil
 }
@@ -158,7 +166,6 @@ func (rs *resServer) RemoveMember(_ context.Context, _ uint64) ([]*membership.Me
 func (rs *resServer) UpdateMember(_ context.Context, _ membership.Member) ([]*membership.Member, error) {
 	return nil, nil
 }
-func (rs *resServer) ClusterVersion() *semver.Version { return nil }
 
 func boolp(b bool) *bool { return &b }
 
@@ -874,7 +881,7 @@ func TestServeMembersUpdate(t *testing.T) {
 func TestServeMembersFail(t *testing.T) {
 	tests := []struct {
 		req    *http.Request
-		server etcdserver.Server
+		server etcdserver.ServerV2
 
 		wcode int
 	}{
@@ -941,7 +948,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				errors.New("Error while adding a member"),
+				err: errors.New("Error while adding a member"),
 			},
 
 			http.StatusInternalServerError,
@@ -955,7 +962,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				membership.ErrIDExists,
+				err: membership.ErrIDExists,
 			},
 
 			http.StatusConflict,
@@ -969,7 +976,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				membership.ErrPeerURLexists,
+				err: membership.ErrPeerURLexists,
 			},
 
 			http.StatusConflict,
@@ -981,7 +988,7 @@ func TestServeMembersFail(t *testing.T) {
 				Method: "DELETE",
 			},
 			&errServer{
-				errors.New("Error while removing member"),
+				err: errors.New("Error while removing member"),
 			},
 
 			http.StatusInternalServerError,
@@ -993,7 +1000,7 @@ func TestServeMembersFail(t *testing.T) {
 				Method: "DELETE",
 			},
 			&errServer{
-				membership.ErrIDRemoved,
+				err: membership.ErrIDRemoved,
 			},
 
 			http.StatusGone,
@@ -1005,7 +1012,7 @@ func TestServeMembersFail(t *testing.T) {
 				Method: "DELETE",
 			},
 			&errServer{
-				membership.ErrIDNotFound,
+				err: membership.ErrIDNotFound,
 			},
 
 			http.StatusNotFound,
@@ -1075,7 +1082,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				errors.New("blah"),
+				err: errors.New("blah"),
 			},
 
 			http.StatusInternalServerError,
@@ -1089,7 +1096,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				membership.ErrPeerURLexists,
+				err: membership.ErrPeerURLexists,
 			},
 
 			http.StatusConflict,
@@ -1103,7 +1110,7 @@ func TestServeMembersFail(t *testing.T) {
 				Header: map[string][]string{"Content-Type": {"application/json"}},
 			},
 			&errServer{
-				membership.ErrIDNotFound,
+				err: membership.ErrIDNotFound,
 			},
 
 			http.StatusNotFound,
@@ -1153,7 +1160,7 @@ func TestServeMembersFail(t *testing.T) {
 func TestWriteEvent(t *testing.T) {
 	// nil event should not panic
 	rec := httptest.NewRecorder()
-	writeKeyEvent(rec, nil, false, dummyRaftTimer{})
+	writeKeyEvent(rec, etcdserver.Response{}, false)
 	h := rec.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
@@ -1199,7 +1206,8 @@ func TestWriteEvent(t *testing.T) {
 
 	for i, tt := range tests {
 		rw := httptest.NewRecorder()
-		writeKeyEvent(rw, tt.ev, tt.noValue, dummyRaftTimer{})
+		resp := etcdserver.Response{Event: tt.ev, Term: 5, Index: 100}
+		writeKeyEvent(rw, resp, tt.noValue)
 		if gct := rw.Header().Get("Content-Type"); gct != "application/json" {
 			t.Errorf("case %d: bad Content-Type: got %q, want application/json", i, gct)
 		}
@@ -1411,7 +1419,7 @@ func TestServeStoreStats(t *testing.T) {
 func TestBadServeKeys(t *testing.T) {
 	testBadCases := []struct {
 		req    *http.Request
-		server etcdserver.Server
+		server etcdserver.ServerV2
 
 		wcode int
 		wbody string
@@ -1451,7 +1459,7 @@ func TestBadServeKeys(t *testing.T) {
 			// etcdserver.Server error
 			mustNewRequest(t, "foo"),
 			&errServer{
-				errors.New("Internal Server Error"),
+				err: errors.New("Internal Server Error"),
 			},
 
 			http.StatusInternalServerError,
@@ -1461,7 +1469,7 @@ func TestBadServeKeys(t *testing.T) {
 			// etcdserver.Server etcd error
 			mustNewRequest(t, "foo"),
 			&errServer{
-				etcdErr.NewError(etcdErr.EcodeKeyNotFound, "/1/pant", 0),
+				err: etcdErr.NewError(etcdErr.EcodeKeyNotFound, "/1/pant", 0),
 			},
 
 			http.StatusNotFound,
@@ -1471,7 +1479,7 @@ func TestBadServeKeys(t *testing.T) {
 			// non-event/watcher response from etcdserver.Server
 			mustNewRequest(t, "foo"),
 			&resServer{
-				etcdserver.Response{},
+				res: etcdserver.Response{},
 			},
 
 			http.StatusInternalServerError,
@@ -1529,7 +1537,7 @@ func TestServeKeysGood(t *testing.T) {
 		},
 	}
 	server := &resServer{
-		etcdserver.Response{
+		res: etcdserver.Response{
 			Event: &store.Event{
 				Action: store.Get,
 				Node:   &store.NodeExtern{},
@@ -1540,7 +1548,6 @@ func TestServeKeysGood(t *testing.T) {
 		h := &keysHandler{
 			timeout: time.Hour,
 			server:  server,
-			timer:   &dummyRaftTimer{},
 			cluster: &fakeCluster{id: 1},
 		}
 		rw := httptest.NewRecorder()
@@ -1597,7 +1604,6 @@ func TestServeKeysEvent(t *testing.T) {
 		timeout: time.Hour,
 		server:  server,
 		cluster: &fakeCluster{id: 1},
-		timer:   &dummyRaftTimer{},
 	}
 
 	for _, tt := range tests {
@@ -1632,7 +1638,7 @@ func TestServeKeysWatch(t *testing.T) {
 		echan: ec,
 	}
 	server := &resServer{
-		etcdserver.Response{
+		res: etcdserver.Response{
 			Watcher: dw,
 		},
 	}
@@ -1640,7 +1646,6 @@ func TestServeKeysWatch(t *testing.T) {
 		timeout: time.Hour,
 		server:  server,
 		cluster: &fakeCluster{id: 1},
-		timer:   &dummyRaftTimer{},
 	}
 	go func() {
 		ec <- &store.Event{
@@ -1764,7 +1769,8 @@ func TestHandleWatch(t *testing.T) {
 		}
 		tt.doToChan(wa.echan)
 
-		handleKeyWatch(tt.getCtx(), rw, wa, false, dummyRaftTimer{})
+		resp := etcdserver.Response{Term: 5, Index: 100, Watcher: wa}
+		handleKeyWatch(tt.getCtx(), rw, resp, false)
 
 		wcode := http.StatusOK
 		wct := "application/json"
@@ -1808,7 +1814,8 @@ func TestHandleWatchStreaming(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
-		handleKeyWatch(ctx, rw, wa, true, dummyRaftTimer{})
+		resp := etcdserver.Response{Watcher: wa}
+		handleKeyWatch(ctx, rw, resp, true)
 		close(done)
 	}()
 

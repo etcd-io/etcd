@@ -43,7 +43,7 @@ const (
 
 // HandleBasic adds handlers to a mux for serving JSON etcd client requests
 // that do not access the v2 store.
-func HandleBasic(mux *http.ServeMux, server *etcdserver.EtcdServer) {
+func HandleBasic(mux *http.ServeMux, server etcdserver.ServerPeer) {
 	mux.HandleFunc(varsPath, serveVars)
 	mux.HandleFunc(configPath+"/local/log", logHandleFunc)
 	HandleMetricsHealth(mux, server)

@@ -96,12 +96,18 @@ func (a *v2apiStore) Head(ctx context.Context, r *pb.Request) (Response, error) 
 	return Response{Event: ev}, nil
 }
 
-// Do interprets r and performs an operation on s.store according to r.Method
+func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
+	resp, err := s.do(ctx, r)
+	resp.Term, resp.Index = s.Term(), s.Index()
+	return resp, err
+}
+
+// do interprets r and performs an operation on s.store according to r.Method
 // and other fields. If r.Method is "POST", "PUT", "DELETE", or a "GET" with
 // Quorum == true, r will be sent through consensus before performing its
 // respective operation. Do will block until an action is performed or there is
 // an error.
-func (s *EtcdServer) Do(ctx context.Context, r pb.Request) (Response, error) {
+func (s *EtcdServer) do(ctx context.Context, r pb.Request) (Response, error) {
 	r.ID = s.reqIDGen.Next()
 	if r.Method == "GET" && r.Quorum {
 		r.Method = "QGET"
