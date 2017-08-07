@@ -15,7 +15,9 @@
 package v3rpc
 
 import (
+	"fmt"
 	"io"
+	"math"
 	"sync"
 	"time"
 
@@ -320,7 +322,6 @@ func (sws *serverWatchStream) sendLoop() {
 					}
 				}
 			}
-
 			wr := &pb.WatchResponse{
 				Header:          sws.newResponseHeader(wresp.Revision),
 				WatchId:         int64(wresp.WatchID),
@@ -336,8 +337,35 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 
 			mvcc.ReportEventReceived(len(evs))
-			if err := sws.gRPCStream.Send(wr); err != nil {
-				return
+			// The grpc package's defaultServerMaxSendMessageSize, defaultServerMaxReceiveMessageSize
+			// and the maxSendMesgSize are set to lower numbers in order to demonstrate
+			// the fragmenting.
+			maxEventsPerMsg := 20
+			watchRespSent := false
+			for !watchRespSent {
+				// There isn't a reasonable way of deciphering the cause of the send error.
+				// One solution that comes to mind is comparing the string error message
+				// to the expected string for a grpc message indicating that the
+				// message size is too large, but this approach would fail if grpc
+				// were to change their error message semantics in the future. The
+				// approach here is to assume that the error is caused by the message
+				// being too large and incrementally increasing the number of fragments
+				// until the maxEventsPerMesg becomes 0 and we are therefore sure
+				// that the error in the send operation was not caused by the message
+				// size.
+				if maxEventsPerMsg == 0 {
+					return
+				}
+				for _, fragment := range FragmentWatchResponse(maxEventsPerMsg, wr) {
+					if err := sws.gRPCStream.Send(fragment); err != nil {
+						fmt.Printf("Was about to size out. Setting max to %d from %d\n %v\n", maxEventsPerMsg/2, maxEventsPerMsg, err)
+						maxEventsPerMsg /= 2
+						watchRespSent = false
+						break
+					}
+					fmt.Printf("etcdserver - watchid: %d, count: %d, frag: %d, events: %v\n", fragment.WatchId, fragment.FragmentCount, fragment.CurrFragment, fragment.Events)
+					watchRespSent = true
+				}
 			}
 
 			sws.mu.Lock()
@@ -386,6 +414,33 @@ func (sws *serverWatchStream) sendLoop() {
 			return
 		}
 	}
+}
+
+func FragmentWatchResponse(maxSendMesgSize int, wr *pb.WatchResponse) []*pb.WatchResponse {
+	var fragmentWrs []*pb.WatchResponse
+	totalFragments := int64(math.Ceil(float64(len(wr.Events)) / float64(maxSendMesgSize)))
+	currFragmentCount := 1
+	for i := 0; i < len(wr.Events); i += maxSendMesgSize {
+		eventRangeEnd := i + maxSendMesgSize
+		if eventRangeEnd > len(wr.Events) {
+			eventRangeEnd = len(wr.Events)
+		}
+		wresp := &pb.WatchResponse{
+			Header:          wr.Header,
+			WatchId:         int64(wr.WatchId),
+			Events:          wr.Events[i:eventRangeEnd],
+			CompactRevision: wr.CompactRevision,
+			FragmentCount:   int64(totalFragments),
+			CurrFragment:    int64(currFragmentCount),
+		}
+		currFragmentCount++
+		fmt.Printf("Apending: total: %d, curr: %d\n", wresp.FragmentCount, wresp.CurrFragment)
+		fragmentWrs = append(fragmentWrs, wresp)
+	}
+	if len(fragmentWrs) == 0 {
+		return []*pb.WatchResponse{wr}
+	}
+	return fragmentWrs
 }
 
 func (sws *serverWatchStream) close() {

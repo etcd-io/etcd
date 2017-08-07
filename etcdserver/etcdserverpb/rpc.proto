@@ -672,6 +672,10 @@ message WatchResponse {
   string cancel_reason = 6;
 
   repeated mvccpb.Event events = 11;
+
+  int64 fragment_count = 7;
+
+  int64 curr_fragment = 8;
 }
 
 message LeaseGrantRequest {

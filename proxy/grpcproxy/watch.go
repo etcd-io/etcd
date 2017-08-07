@@ -15,6 +15,8 @@
 package grpcproxy
 
 import (
+	"fmt"
+	"log"
 	"sync"
 
 	"golang.org/x/net/context"
@@ -212,6 +214,7 @@ func (wps *watchProxyStream) recvLoop() error {
 				filters:  v3rpc.FiltersFromRequest(cr),
 			}
 			if !w.wr.valid() {
+				log.Fatalf("Watcher range is invalid @proxy\n")
 				w.post(&pb.WatchResponse{WatchId: -1, Created: true, Canceled: true})
 				continue
 			}
@@ -234,8 +237,35 @@ func (wps *watchProxyStream) sendLoop() {
 			if !ok {
 				return
 			}
-			if err := wps.stream.Send(wresp); err != nil {
-				return
+			// The grpc package's defaultServerMaxSendMessageSize, defaultServerMaxReceiveMessageSize
+			// and the maxSendMesgSize are set to lower numbers in order to demonstrate
+			// the fragmenting
+			maxEventsPerMsg := 20
+			watchRespSent := false
+			for !watchRespSent {
+				if maxEventsPerMsg == 0 {
+					return
+				}
+				for _, fragment := range v3rpc.FragmentWatchResponse(maxEventsPerMsg, wresp) {
+					if err := wps.stream.Send(fragment); err != nil {
+						// There isn't a reasonable way of deciphering the cause of the send error.
+						// One solution that comes to mind is comparing the string error message
+						// to the expected string for a grpc message indicating that the
+						// message size is too large, but this approach would fail if grpc
+						// were to change their error message semantics in the future. The
+						// approach here is to assume that the error is caused by the message
+						// being too large and incrementally increasing the number of fragments
+						// until the maxEventsPerMesg becomes 0 and we are therefore sure
+						// that the error in the send operation was not caused by the message
+						// size.
+						fmt.Printf("Was about to size out. Setting max to %d from %d\n %v\n", maxEventsPerMsg/2, maxEventsPerMsg, err)
+						maxEventsPerMsg /= 2
+						watchRespSent = false
+						break
+					}
+					fmt.Printf("proxy - watchid: %d, count: %d, frag: %d, events: %v\n", fragment.WatchId, fragment.FragmentCount, fragment.CurrFragment, fragment.Events)
+					watchRespSent = true
+				}
 			}
 		case <-wps.ctx.Done():
 			return

@@ -424,7 +424,7 @@ func (w *watchGrpcStream) run() {
 	}
 
 	cancelSet := make(map[int64]struct{})
-
+	var combinedFragments *pb.WatchResponse
 	for {
 		select {
 		// Watch() requested
@@ -450,11 +450,24 @@ func (w *watchGrpcStream) run() {
 			}
 		// New events from the watch client
 		case pbresp := <-w.respc:
+			fmt.Printf("Clientv3/watcher - watchid: %d, count: %d, frag: %d, events: %v\n", pbresp.WatchId, pbresp.FragmentCount, pbresp.CurrFragment, pbresp.Events)
+			if combinedFragments == nil || (combinedFragments.WatchId != pbresp.WatchId && combinedFragments.CurrFragment+1 != pbresp.CurrFragment) {
+				combinedFragments = pbresp
+			} else {
+				combinedFragments.Events = append(combinedFragments.Events, pbresp.Events...)
+				combinedFragments.CurrFragment = pbresp.CurrFragment
+			}
+			if combinedFragments.FragmentCount != combinedFragments.CurrFragment {
+				fmt.Printf("Waiting for more fragments ...\n")
+				break
+			}
+			fmt.Println("All fragments receieved\n")
 			switch {
 			case pbresp.Created:
 				// response to head of queue creation
 				if ws := w.resuming[0]; ws != nil {
-					w.addSubstream(pbresp, ws)
+					w.addSubstream(combinedFragments, ws)
+					combinedFragments = nil
 					w.dispatchEvent(pbresp)
 					w.resuming[0] = nil
 				}
@@ -470,7 +483,8 @@ func (w *watchGrpcStream) run() {
 				}
 			default:
 				// dispatch to appropriate watch stream
-				if ok := w.dispatchEvent(pbresp); ok {
+				if ok := w.dispatchEvent(combinedFragments); ok {
+					combinedFragments = nil
 					break
 				}
 				// watch response on unexpected watch id; cancel id
