@@ -1296,7 +1296,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 		defer close(sdonec)
 		for i := 0; i < 10 && cctx.Err() == nil; i++ {
 			clus.Members[0].Stop(t)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 			clus.Members[0].Restart(t)
 		}
 	}()
@@ -1317,7 +1317,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	case <-pdonec:
 		cancel()
 		<-sdonec
-	case <-time.After(5 * time.Second):
+	case <-time.After(10 * time.Second):
 		cancel()
 		<-sdonec
 		<-pdonec
