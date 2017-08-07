@@ -79,11 +79,15 @@ export NODE1=192.168.1.21
 Run the latest version of etcd:
 
 ```
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+REGISTRY=gcr.io/etcd-development/etcd
+
 docker run \
   -p 2379:2379 \
   -p 2380:2380 \
   --volume=${DATA_DIR}:/etcd-data \
-  --name etcd quay.io/coreos/etcd:latest \
+  --name etcd ${REGISTRY}:latest \
   /usr/local/bin/etcd \
   --data-dir=/etcd-data --name node1 \
   --initial-advertise-peer-urls http://${NODE1}:2380 --listen-peer-urls http://${NODE1}:2380 \
@@ -100,6 +104,10 @@ etcdctl --endpoints=http://${NODE1}:2379 member list
 ### Running a 3 node etcd cluster
 
 ```
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+REGISTRY=gcr.io/etcd-development/etcd
+
 # For each machine
 ETCD_VERSION=latest
 TOKEN=my-etcd-token
@@ -120,7 +128,7 @@ docker run \
   -p 2379:2379 \
   -p 2380:2380 \
   --volume=${DATA_DIR}:/etcd-data \
-  --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
   /usr/local/bin/etcd \
   --data-dir=/etcd-data --name ${THIS_NAME} \
   --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://${THIS_IP}:2380 \
@@ -135,7 +143,7 @@ docker run \
   -p 2379:2379 \
   -p 2380:2380 \
   --volume=${DATA_DIR}:/etcd-data \
-  --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
   /usr/local/bin/etcd \
   --data-dir=/etcd-data --name ${THIS_NAME} \
   --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://${THIS_IP}:2380 \
@@ -150,7 +158,7 @@ docker run \
   -p 2379:2379 \
   -p 2380:2380 \
   --volume=${DATA_DIR}:/etcd-data \
-  --name etcd quay.io/coreos/etcd:${ETCD_VERSION} \
+  --name etcd ${REGISTRY}:${ETCD_VERSION} \
   /usr/local/bin/etcd \
   --data-dir=/etcd-data --name ${THIS_NAME} \
   --initial-advertise-peer-urls http://${THIS_IP}:2380 --listen-peer-urls http://${THIS_IP}:2380 \
@@ -174,10 +182,16 @@ To provision a 3 node etcd cluster on bare-metal, the examples in the [baremetal
 The etcd release container does not include default root certificates. To use HTTPS with certificates trusted by a root authority (e.g., for discovery), mount a certificate directory into the etcd container:
 
 ```
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+REGISTRY=gcr.io/etcd-development/etcd
+```
+
+```
 rkt run \
   --volume etcd-ssl-certs-bundle,kind=host,source=/etc/ssl/certs/ca-certificates.crt \
   --mount volume=etcd-ssl-certs-bundle,target=/etc/ssl/certs/ca-certificates.crt \
-  quay.io/coreos/etcd:latest -- --name my-name \
+  ${REGISTRY}:latest -- --name my-name \
   --initial-advertise-peer-urls http://localhost:2380 --listen-peer-urls http://localhost:2380 \
   --advertise-client-urls http://localhost:2379 --listen-client-urls http://localhost:2379 \
   --discovery https://discovery.etcd.io/c11fbcdc16972e45253491a24fcf45e1
@@ -188,7 +202,7 @@ docker run \
   -p 2379:2379 \
   -p 2380:2380 \
   --volume=/etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt \
-  quay.io/coreos/etcd:latest \
+  ${REGISTRY}:latest \
   /usr/local/bin/etcd --name my-name \
   --initial-advertise-peer-urls http://localhost:2380 --listen-peer-urls http://localhost:2380 \
   --advertise-client-urls http://localhost:2379 --listen-client-urls http://localhost:2379 \
