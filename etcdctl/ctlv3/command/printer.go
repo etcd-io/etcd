@@ -43,6 +43,7 @@ type printer interface {
 	MemberList(v3.MemberListResponse)
 
 	EndpointStatus([]epStatus)
+	EndpointHashKV([]epHashKV)
 	MoveLeader(leader, target uint64, r v3.MoveLeaderResponse)
 
 	Alarm(v3.AlarmResponse)
@@ -146,6 +147,7 @@ func newPrinterUnsupported(n string) printer {
 }
 
 func (p *printerUnsupported) EndpointStatus([]epStatus) { p.p(nil) }
+func (p *printerUnsupported) EndpointHashKV([]epHashKV) { p.p(nil) }
 func (p *printerUnsupported) DBStatus(dbstatus)         { p.p(nil) }
 
 func (p *printerUnsupported) MoveLeader(leader, target uint64, r v3.MoveLeaderResponse) { p.p(nil) }
@@ -179,6 +181,17 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
 			fmt.Sprint(status.Resp.RaftTerm),
 			fmt.Sprint(status.Resp.RaftIndex),
+		})
+	}
+	return
+}
+
+func makeEndpointHashKVTable(hashList []epHashKV) (hdr []string, rows [][]string) {
+	hdr = []string{"endpoint", "hash"}
+	for _, h := range hashList {
+		rows = append(rows, []string{
+			h.Ep,
+			fmt.Sprint(h.Resp.Hash),
 		})
 	}
 	return

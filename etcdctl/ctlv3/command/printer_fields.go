@@ -146,6 +146,15 @@ func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 	}
 }
 
+func (p *fieldsPrinter) EndpointHashKV(hs []epHashKV) {
+	for _, h := range hs {
+		p.hdr(h.Resp.Header)
+		fmt.Printf("\"Endpoint\" : %q\n", h.Ep)
+		fmt.Println(`"Hash" :`, h.Resp.Hash)
+		fmt.Println()
+	}
+}
+
 func (p *fieldsPrinter) Alarm(r v3.AlarmResponse) {
 	p.hdr(r.Header)
 	for _, a := range r.Alarms {

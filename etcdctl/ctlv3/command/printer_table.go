@@ -44,6 +44,16 @@ func (tp *tablePrinter) EndpointStatus(r []epStatus) {
 	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }
+func (tp *tablePrinter) EndpointHashKV(r []epHashKV) {
+	hdr, rows := makeEndpointHashKVTable(r)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
+	table.Render()
+}
 func (tp *tablePrinter) DBStatus(r dbstatus) {
 	hdr, rows := makeDBStatusTable(r)
 	table := tablewriter.NewWriter(os.Stdout)
