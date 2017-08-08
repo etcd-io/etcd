@@ -47,6 +47,12 @@ $ etcdctl defrag
 Finished defragmenting etcd member[127.0.0.1:2379]
 ```
 
+To defragment an etcd data directory directly, while etcd is not running, use the command:
+
+``` sh
+$ etcdctl defrag --data-dir <path-to-etcd-data-dir>
+```
+
 ## Space quota
 
 The space quota in `etcd` ensures the cluster operates in a reliable fashion. Without a space quota, `etcd` may suffer from poor performance if the keyspace grows excessively large, or it may simply run out of storage space, leading to unpredictable cluster behavior. If the keyspace's backend database for any member exceeds the space quota, `etcd` raises a cluster-wide alarm that puts the cluster into a maintenance mode which only accepts key reads and deletes. Only after freeing enough space in the keyspace and defragmenting the backend database, along with clearing the space quota alarm can the cluster resume normal operation.
