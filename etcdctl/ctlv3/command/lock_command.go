@@ -28,6 +28,8 @@ import (
 	"golang.org/x/net/context"
 )
 
+var lockTTL = 10
+
 // NewLockCommand returns the cobra command for "lock".
 func NewLockCommand() *cobra.Command {
 	c := &cobra.Command{
@@ -35,6 +37,7 @@ func NewLockCommand() *cobra.Command {
 		Short: "Acquires a named lock",
 		Run:   lockCommandFunc,
 	}
+	c.Flags().IntVarP(&lockTTL, "ttl", "", lockTTL, "timeout for session")
 	return c
 }
 
@@ -49,7 +52,7 @@ func lockCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func lockUntilSignal(c *clientv3.Client, lockname string, cmdArgs []string) error {
-	s, err := concurrency.NewSession(c)
+	s, err := concurrency.NewSession(c, concurrency.WithTTL(lockTTL))
 	if err != nil {
 		return err
 	}
