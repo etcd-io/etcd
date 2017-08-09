@@ -299,6 +299,22 @@ func (cfg *Config) Validate() error {
 	if err := checkBindURLs(cfg.ListenMetricsUrls); err != nil {
 		return err
 	}
+	if err := checkHostURLs(cfg.APUrls); err != nil {
+		// TODO: return err in v3.4
+		addrs := make([]string, len(cfg.APUrls))
+		for i := range cfg.APUrls {
+			addrs[i] = cfg.APUrls[i].String()
+		}
+		plog.Warningf("advertise-peer-urls %q is deprecated (%v)", strings.Join(addrs, ","), err)
+	}
+	if err := checkHostURLs(cfg.ACUrls); err != nil {
+		// TODO: return err in v3.4
+		addrs := make([]string, len(cfg.ACUrls))
+		for i := range cfg.ACUrls {
+			addrs[i] = cfg.ACUrls[i].String()
+		}
+		plog.Warningf("advertise-client-urls %q is deprecated (%v)", strings.Join(addrs, ","), err)
+	}
 
 	// Check if conflicting flags are passed.
 	nSet := 0
@@ -480,6 +496,19 @@ func checkBindURLs(urls []url.URL) error {
 		}
 		if net.ParseIP(host) == nil {
 			return fmt.Errorf("expected IP in URL for binding (%s)", url.String())
+		}
+	}
+	return nil
+}
+
+func checkHostURLs(urls []url.URL) error {
+	for _, url := range urls {
+		host, _, err := net.SplitHostPort(url.Host)
+		if err != nil {
+			return err
+		}
+		if host == "" {
+			return fmt.Errorf("unexpected empty host (%s)", url.String())
 		}
 	}
 	return nil
