@@ -1,5 +1,5 @@
-hash: a75247f755ba076f6b7663e6ddc2e7458fc4fd497b4fe691861b2b32afd4bbff
-updated: 2017-07-27T10:45:21.070753552-07:00
+hash: 6b16200008cc5fd50a370c50676225fbc6af0d79bd3ec0fdb94847c55d99a1a7
+updated: 2017-08-10T14:48:42.863537562-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -10,7 +10,7 @@ imports:
 - name: github.com/cockroachdb/cmux
   version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - name: github.com/coreos/bbolt
-  version: ad39960eb40bb33c9bda31bed2eaf4fdda15efe6
+  version: 12923fe56c105bca6efbbcc258cd762b4258333d
 - name: github.com/coreos/go-semver
   version: 8ab6407b697782a06568d4b7f1db25550ec2e4c6
   subpackages:
@@ -96,7 +96,7 @@ imports:
   subpackages:
   - xfs
 - name: github.com/russross/blackfriday
-  version: 067529f716f4c3f5e37c8c95ddd59df1007290ae
+  version: 4048872b16cc0fc2c5fd9eacf0ed2c2fedaa0c8c
 - name: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
@@ -129,7 +129,7 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 9e2f80a6ba7ed4ba13e0cd4b1f094bf916875735
+  version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
   - secure/bidirule
   - transform
@@ -140,7 +140,7 @@ imports:
   subpackages:
   - rate
 - name: google.golang.org/genproto
-  version: b0a3dcfcd1a9bd48e63634bd8802960804cf8315
+  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
