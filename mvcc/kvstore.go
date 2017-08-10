@@ -272,6 +272,7 @@ func (s *store) restore() error {
 	}
 
 	// index keys concurrently as they're loaded in from tx
+	keysGauge.Set(0)
 	rkvc, revc := restoreIntoIndex(s.kvindex)
 	for {
 		keys, vals := tx.UnsafeRange(keyBucketName, min, max, int64(restoreChunkKeys))
