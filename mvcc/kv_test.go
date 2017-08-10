@@ -25,6 +25,9 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 // Functional tests for features implemented in v3 store. It treats v3 store
@@ -612,6 +615,7 @@ func TestKVRestore(t *testing.T) {
 			kv.Put([]byte("foo"), []byte("bar0"), 1)
 			kv.Put([]byte("foo"), []byte("bar1"), 2)
 			kv.Put([]byte("foo"), []byte("bar2"), 3)
+			kv.Put([]byte("foo2"), []byte("bar0"), 1)
 		},
 		func(kv KV) {
 			kv.Put([]byte("foo"), []byte("bar0"), 1)
@@ -633,10 +637,17 @@ func TestKVRestore(t *testing.T) {
 			r, _ := s.Range([]byte("a"), []byte("z"), RangeOptions{Rev: k})
 			kvss = append(kvss, r.KVs)
 		}
+
+		keysBefore := readGaugeInt(&keysGauge)
 		s.Close()
 
 		// ns should recover the the previous state from backend.
 		ns := NewStore(b, &lease.FakeLessor{}, nil)
+
+		if keysRestore := readGaugeInt(&keysGauge); keysBefore != keysRestore {
+			t.Errorf("#%d: got %d key count, expected %d", i, keysRestore, keysBefore)
+		}
+
 		// wait for possible compaction to finish
 		testutil.WaitSchedule()
 		var nkvss [][]mvccpb.KeyValue
@@ -650,6 +661,15 @@ func TestKVRestore(t *testing.T) {
 			t.Errorf("#%d: kvs history = %+v, want %+v", i, nkvss, kvss)
 		}
 	}
+}
+
+func readGaugeInt(g *prometheus.Gauge) int {
+	ch := make(chan prometheus.Metric, 1)
+	keysGauge.Collect(ch)
+	m := <-ch
+	mm := &dto.Metric{}
+	m.Write(mm)
+	return int(mm.GetGauge().GetValue())
 }
 
 func TestKVSnapshot(t *testing.T) {
