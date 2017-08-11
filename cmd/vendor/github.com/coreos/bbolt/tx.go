@@ -169,11 +169,18 @@ func (tx *Tx) Commit() error {
 	// Free the old root bucket.
 	tx.meta.root.root = tx.root.root
 
+	// Free the old freelist because commit writes out a fresh freelist.
+	if tx.meta.freelist != pgidNoFreelist {
+		tx.db.freelist.free(tx.meta.txid, tx.db.page(tx.meta.freelist))
+	}
+
 	if !tx.db.NoFreelistSync {
 		err := tx.commitFreelist()
 		if err != nil {
 			return err
 		}
+	} else {
+		tx.meta.freelist = pgidNoFreelist
 	}
 
 	// Write dirty pages to disk.
@@ -219,11 +226,9 @@ func (tx *Tx) Commit() error {
 }
 
 func (tx *Tx) commitFreelist() error {
-	opgid := tx.meta.pgid
-
-	// Free the freelist and allocate new pages for it. This will overestimate
+	// Allocate new pages for the new free list. This will overestimate
 	// the size of the freelist but not underestimate the size (which would be bad).
-	tx.db.freelist.free(tx.meta.txid, tx.db.page(tx.meta.freelist))
+	opgid := tx.meta.pgid
 	p, err := tx.allocate((tx.db.freelist.size() / tx.db.pageSize) + 1)
 	if err != nil {
 		tx.rollback()
@@ -404,7 +409,7 @@ func (tx *Tx) check(ch chan error) {
 	reachable := make(map[pgid]*page)
 	reachable[0] = tx.page(0) // meta0
 	reachable[1] = tx.page(1) // meta1
-	if !tx.DB().NoFreelistSync {
+	if tx.meta.freelist != pgidNoFreelist {
 		for i := uint32(0); i <= tx.page(tx.meta.freelist).overflow; i++ {
 			reachable[tx.meta.freelist+pgid(i)] = tx.page(tx.meta.freelist)
 		}

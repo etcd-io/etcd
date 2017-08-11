@@ -50,7 +50,7 @@ func TestMetricDbSizeDefrag(t *testing.T) {
 	mc := toGRPC(clus.Client(0)).Maintenance
 
 	// expand the db size
-	numPuts := 10
+	numPuts := 25 // large enough to write more than 1 page
 	putreq := &pb.PutRequest{Key: []byte("k"), Value: make([]byte, 4096)}
 	for i := 0; i < numPuts; i++ {
 		if _, err := kvc.Put(context.TODO(), putreq); err != nil {

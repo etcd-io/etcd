@@ -24,6 +24,8 @@ const version = 2
 // Represents a marker value to indicate that a file is a Bolt DB.
 const magic uint32 = 0xED0CDAED
 
+const pgidNoFreelist pgid = 0xffffffffffffffff
+
 // IgnoreNoSync specifies whether the NoSync field of a DB is ignored when
 // syncing changes to a file.  This is required as some operating systems,
 // such as OpenBSD, do not have a unified buffer cache (UBC) and writes
@@ -239,13 +241,28 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 		return nil, err
 	}
 
-	if db.NoFreelistSync {
-		db.freelist = newFreelist()
+	db.freelist = newFreelist()
+	noFreeList := db.meta().freelist == pgidNoFreelist
+	if noFreeList {
+		// Reconstruct free list by scanning the DB.
 		db.freelist.readIDs(db.freepages())
 	} else {
-		// Read in the freelist.
-		db.freelist = newFreelist()
+		// Read free list from freelist page.
 		db.freelist.read(db.page(db.meta().freelist))
+	}
+	db.stats.FreePageN = len(db.freelist.ids)
+
+	// Flush freelist when transitioning from no sync to sync so
+	// NoFreelistSync unaware boltdb can open the db later.
+	if !db.NoFreelistSync && noFreeList && ((mode & 0222) != 0) {
+		tx, err := db.Begin(true)
+		if tx != nil {
+			err = tx.Commit()
+		}
+		if err != nil {
+			_ = db.close()
+			return nil, err
+		}
 	}
 
 	// Mark the database as opened and return.
@@ -1065,7 +1082,8 @@ func (m *meta) copy(dest *meta) {
 func (m *meta) write(p *page) {
 	if m.root.root >= m.pgid {
 		panic(fmt.Sprintf("root bucket pgid (%d) above high water mark (%d)", m.root.root, m.pgid))
-	} else if m.freelist >= m.pgid {
+	} else if m.freelist >= m.pgid && m.freelist != pgidNoFreelist {
+		// TODO: reject pgidNoFreeList if !NoFreelistSync
 		panic(fmt.Sprintf("freelist pgid (%d) above high water mark (%d)", m.freelist, m.pgid))
 	}
 
