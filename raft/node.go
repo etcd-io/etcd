@@ -237,6 +237,10 @@ type node struct {
 	stop       chan struct{}
 	status     chan chan Status
 
+	// config change proposals which cannot be applied by Raft right now
+	// will be stored in FIFO to be applied eventually
+	confChangeBacklog []pb.Message
+
 	logger Logger
 }
 
@@ -255,6 +259,8 @@ func newNode() node {
 		done:   make(chan struct{}),
 		stop:   make(chan struct{}),
 		status: make(chan chan Status),
+
+		confChangeBacklog: make([]pb.Message, 0),
 	}
 }
 
@@ -316,7 +322,15 @@ func (n *node) run(r *raft) {
 		// Currently it is dropped in Step silently.
 		case m := <-propc:
 			m.From = r.id
-			r.Step(m)
+			if r.pendingConf {
+				n.confChangeBacklog = append(n.confChangeBacklog, m)
+				n.logger.Infof(
+					"Can't handle conf change proposal due to existing pending proposal; moved it to backlog (depth = %d)",
+					len(n.confChangeBacklog),
+				)
+			} else {
+				r.Step(m)
+			}
 		case m := <-n.recvc:
 			// filter out response message from unknown From.
 			if _, ok := r.prs[m.From]; ok || !IsResponseMsg(m.Type) {
@@ -351,6 +365,14 @@ func (n *node) run(r *raft) {
 			case <-n.done:
 			}
 		case <-n.tickc:
+			// If there are some unapplied conf change proposals and Raft is able to handle it,
+			// provide the eldest one message to Raft.
+			if len(n.confChangeBacklog) > 0 && !r.pendingConf {
+				m := n.confChangeBacklog[0]
+				n.confChangeBacklog = n.confChangeBacklog[1:]
+				n.logger.Infof("Handling delayed conf change proposal from backlog (depth = %d)", len(n.confChangeBacklog))
+				r.Step(m)
+			}
 			r.tick()
 		case readyc <- rd:
 			if rd.SoftState != nil {

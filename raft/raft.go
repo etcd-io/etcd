@@ -844,6 +844,7 @@ func stepLeader(r *raft, m pb.Message) {
 		for i, e := range m.Entries {
 			if e.Type == pb.EntryConfChange {
 				if r.pendingConf {
+					// FIXME: should this be refactored as an impossible case?
 					r.logger.Infof("propose conf %s ignored since pending unapplied configuration", e.String())
 					m.Entries[i] = pb.Entry{Type: pb.EntryNormal}
 				}
