@@ -218,8 +218,9 @@ func applyConf(cc raftpb.ConfChange, cl *membership.RaftCluster) {
 	}
 }
 
-func applyRequest(r *pb.Request, applyV2 etcdserver.ApplierV2) {
-	toTTLOptions(r)
+func applyRequest(req *pb.Request, applyV2 etcdserver.ApplierV2) {
+	r := (*etcdserver.RequestV2)(req)
+	r.TTLOptions()
 	switch r.Method {
 	case "POST":
 		applyV2.Post(r)
@@ -234,15 +235,6 @@ func applyRequest(r *pb.Request, applyV2 etcdserver.ApplierV2) {
 	default:
 		panic("unknown command")
 	}
-}
-
-func toTTLOptions(r *pb.Request) store.TTLOptionSet {
-	refresh, _ := pbutil.GetBool(r.Refresh)
-	ttlOptions := store.TTLOptionSet{Refresh: refresh}
-	if r.Expiration != 0 {
-		ttlOptions.ExpireTime = time.Unix(0, r.Expiration)
-	}
-	return ttlOptions
 }
 
 func writeStore(w io.Writer, st store.Store) uint64 {
