@@ -72,6 +72,17 @@ func TestLessorGrant(t *testing.T) {
 		t.Errorf("new lease.id = %x, want != %x", nl.ID, l.ID)
 	}
 
+	lss := []*Lease{gl, nl}
+	leases := le.Leases()
+	for i := range lss {
+		if lss[i].ID != leases[i].ID {
+			t.Fatalf("lease ID expected %d, got %d", lss[i].ID, leases[i].ID)
+		}
+		if lss[i].ttl != leases[i].ttl {
+			t.Fatalf("ttl expected %d, got %d", lss[i].ttl, leases[i].ttl)
+		}
+	}
+
 	be.BatchTx().Lock()
 	_, vs := be.BatchTx().UnsafeRange(leaseBucketName, int64ToBytes(int64(l.ID)), nil, 0)
 	if len(vs) != 1 {

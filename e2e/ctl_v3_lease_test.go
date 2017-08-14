@@ -22,6 +22,7 @@ import (
 )
 
 func TestCtlV3LeaseGrantTimeToLive(t *testing.T) { testCtl(t, leaseTestGrantTimeToLive) }
+func TestCtlV3LeaseGrantLeases(t *testing.T)     { testCtl(t, leaseTestGrantLeasesList) }
 func TestCtlV3LeaseKeepAlive(t *testing.T)       { testCtl(t, leaseTestKeepAlive) }
 func TestCtlV3LeaseRevoke(t *testing.T)          { testCtl(t, leaseTestRevoke) }
 
@@ -48,6 +49,26 @@ func leaseTestGrantTimeToLive(cx ctlCtx) {
 	}
 	if !strings.Contains(line, id) {
 		cx.t.Fatalf("expected leaseID %q, got %q", id, line)
+	}
+}
+
+func leaseTestGrantLeasesList(cx ctlCtx) {
+	id, err := ctlV3LeaseGrant(cx, 10)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+
+	cmdArgs := append(cx.PrefixArgs(), "lease", "list")
+	proc, err := spawnCmd(cmdArgs)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	_, err = proc.Expect(id)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	if err = proc.Close(); err != nil {
+		cx.t.Fatal(err)
 	}
 }
 

@@ -574,6 +574,37 @@ func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
 	}
 }
 
+func TestLeaseLeases(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.RandClient()
+
+	ids := []clientv3.LeaseID{}
+	for i := 0; i < 5; i++ {
+		resp, err := cli.Grant(context.Background(), 10)
+		if err != nil {
+			t.Errorf("failed to create lease %v", err)
+		}
+		ids = append(ids, resp.ID)
+	}
+
+	resp, err := cli.Leases(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Leases) != 5 {
+		t.Fatalf("len(resp.Leases) expected 5, got %d", len(resp.Leases))
+	}
+	for i := range resp.Leases {
+		if ids[i] != resp.Leases[i].ID {
+			t.Fatalf("#%d: lease ID expected %d, got %d", i, ids[i], resp.Leases[i].ID)
+		}
+	}
+}
+
 // TestLeaseRenewLostQuorum ensures keepalives work after losing quorum
 // for a while.
 func TestLeaseRenewLostQuorum(t *testing.T) {

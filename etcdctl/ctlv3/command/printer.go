@@ -36,6 +36,7 @@ type printer interface {
 	Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse)
 	KeepAlive(r v3.LeaseKeepAliveResponse)
 	TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool)
+	Leases(r v3.LeaseLeasesResponse)
 
 	MemberAdd(v3.MemberAddResponse)
 	MemberRemove(id uint64, r v3.MemberRemoveResponse)
@@ -96,6 +97,7 @@ func (p *printerRPC) Grant(r v3.LeaseGrantResponse)                      { p.p(r
 func (p *printerRPC) Revoke(id v3.LeaseID, r v3.LeaseRevokeResponse)     { p.p(r) }
 func (p *printerRPC) KeepAlive(r v3.LeaseKeepAliveResponse)              { p.p(r) }
 func (p *printerRPC) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) { p.p(&r) }
+func (p *printerRPC) Leases(r v3.LeaseLeasesResponse)                    { p.p(&r) }
 
 func (p *printerRPC) MemberAdd(r v3.MemberAddResponse) { p.p((*pb.MemberAddResponse)(&r)) }
 func (p *printerRPC) MemberRemove(id uint64, r v3.MemberRemoveResponse) {

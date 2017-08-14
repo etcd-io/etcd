@@ -234,6 +234,43 @@ func TestV3LeaseExists(t *testing.T) {
 	}
 }
 
+// TestV3LeaseLeases creates leases and confirms list RPC fetches created ones.
+func TestV3LeaseLeases(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	ctx0, cancel0 := context.WithCancel(context.Background())
+	defer cancel0()
+
+	// create leases
+	ids := []int64{}
+	for i := 0; i < 5; i++ {
+		lresp, err := toGRPC(clus.RandClient()).Lease.LeaseGrant(
+			ctx0,
+			&pb.LeaseGrantRequest{TTL: 30})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if lresp.Error != "" {
+			t.Fatal(lresp.Error)
+		}
+		ids = append(ids, lresp.ID)
+	}
+
+	lresp, err := toGRPC(clus.RandClient()).Lease.LeaseLeases(
+		context.Background(),
+		&pb.LeaseLeasesRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range lresp.Leases {
+		if lresp.Leases[i].ID != ids[i] {
+			t.Fatalf("#%d: lease ID expected %d, got %d", i, ids[i], lresp.Leases[i].ID)
+		}
+	}
+}
+
 // TestV3LeaseRenewStress keeps creating lease and renewing it immediately to ensure the renewal goes through.
 // it was oberserved that the immediate lease renewal after granting a lease from follower resulted lease not found.
 // related issue https://github.com/coreos/etcd/issues/6978

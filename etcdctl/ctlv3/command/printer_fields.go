@@ -118,6 +118,13 @@ func (p *fieldsPrinter) TimeToLive(r v3.LeaseTimeToLiveResponse, keys bool) {
 	}
 }
 
+func (p *fieldsPrinter) Leases(r v3.LeaseLeasesResponse) {
+	p.hdr(r.ResponseHeader)
+	for _, item := range r.Leases {
+		fmt.Println(`"ID" :`, item.ID)
+	}
+}
+
 func (p *fieldsPrinter) MemberList(r v3.MemberListResponse) {
 	p.hdr(r.Header)
 	for _, m := range r.Members {

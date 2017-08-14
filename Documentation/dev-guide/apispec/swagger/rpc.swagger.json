@@ -609,6 +609,33 @@
         }
       }
     },
+    "/v3alpha/kv/lease/leases": {
+      "post": {
+        "tags": [
+          "Lease"
+        ],
+        "summary": "LeaseLeases lists all existing leases.",
+        "operationId": "LeaseLeases",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseLeasesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "(empty)",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseLeasesResponse"
+            }
+          }
+        }
+      }
+    },
     "/v3alpha/kv/lease/revoke": {
       "post": {
         "tags": [
@@ -1666,6 +1693,23 @@
         }
       }
     },
+    "etcdserverpbLeaseLeasesRequest": {
+      "type": "object"
+    },
+    "etcdserverpbLeaseLeasesResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "leases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/etcdserverpbLeaseStatus"
+          }
+        }
+      }
+    },
     "etcdserverpbLeaseRevokeRequest": {
       "type": "object",
       "properties": {
@@ -1681,6 +1725,15 @@
       "properties": {
         "header": {
           "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbLeaseStatus": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

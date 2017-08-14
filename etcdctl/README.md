@@ -439,6 +439,26 @@ Prints lease information.
 # {"cluster_id":17186838941855831277,"member_id":4845372305070271874,"revision":3,"raft_term":2,"id":3279279168933706764,"ttl":459,"granted-ttl":500,"keys":["Zm9vMQ==","Zm9vMg=="]}
 ```
 
+### LEASE LIST
+
+LEASE LIST lists all active leases.
+
+RPC: LeaseLeases
+
+#### Output
+
+Prints a message with a list of active leases.
+
+#### Example
+
+```bash
+./etcdctl lease grant 10
+# lease 32695410dcc0ca06 granted with TTL(10s)
+
+./etcdctl lease list
+32695410dcc0ca06
+```
+
 ### LEASE KEEP-ALIVE \<leaseID\>
 
 LEASE KEEP-ALIVE periodically refreshes a lease so it does not expire.
@@ -736,9 +756,9 @@ If NOSPACE alarm is present:
 
 ### DEFRAG [options]
 
-DEFRAG defragments the backend database file for a set of given endpoints while etcd is running, or directly defragments an 
-etcd data directory while etcd is not running. When an etcd member reclaims storage space from deleted and compacted keys, the 
-space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member 
+DEFRAG defragments the backend database file for a set of given endpoints while etcd is running, or directly defragments an
+etcd data directory while etcd is not running. When an etcd member reclaims storage space from deleted and compacted keys, the
+space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member
 releases this free space back to the file system.
 
 #### Options
