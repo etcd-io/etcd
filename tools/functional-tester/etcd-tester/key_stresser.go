@@ -34,9 +34,11 @@ import (
 type keyStresser struct {
 	Endpoint string
 
-	keyLargeSize   int
-	keySize        int
-	keySuffixRange int
+	keyLargeSize      int
+	keySize           int
+	keySuffixRange    int
+	keyTxnSuffixRange int
+	keyTxnOps         int
 
 	N int
 
@@ -76,6 +78,15 @@ func (s *keyStresser) Stress() error {
 		{weight: 0.07, f: newStressRangeInterval(kvc, s.keySuffixRange)},
 		{weight: 0.07, f: newStressDelete(kvc, s.keySuffixRange)},
 		{weight: 0.07, f: newStressDeleteInterval(kvc, s.keySuffixRange)},
+	}
+	if s.keyTxnSuffixRange > 0 {
+		// adjust to make up ±70% of workloads with writes
+		stressEntries[0].weight = 0.24
+		stressEntries[1].weight = 0.24
+		stressEntries = append(stressEntries, stressEntry{
+			weight: 0.24,
+			f:      newStressTxn(kvc, s.keyTxnSuffixRange, s.keyTxnOps),
+		})
 	}
 	s.stressTable = createStressTable(stressEntries)
 
@@ -200,6 +211,79 @@ func newStressPut(kvc pb.KVClient, keySuffixRange, keySize int) stressFunc {
 		}, grpc.FailFast(false))
 		return err, 1
 	}
+}
+
+func newStressTxn(kvc pb.KVClient, keyTxnSuffixRange, txnOps int) stressFunc {
+	keys := make([]string, keyTxnSuffixRange)
+	for i := range keys {
+		keys[i] = fmt.Sprintf("/k%03d", i)
+	}
+	return writeTxn(kvc, keys, txnOps)
+}
+
+func writeTxn(kvc pb.KVClient, keys []string, txnOps int) stressFunc {
+	return func(ctx context.Context) (error, int64) {
+		ks := make(map[string]struct{}, txnOps)
+		for len(ks) != txnOps {
+			ks[keys[rand.Intn(64)]] = struct{}{}
+		}
+		selected := make([]string, 0, txnOps)
+		for k := range ks {
+			selected = append(selected, k)
+		}
+		com, delOp, putOp := getTxnReqs(selected[0], "bar00")
+		txnReq := &pb.TxnRequest{
+			Compare: []*pb.Compare{com},
+			Success: []*pb.RequestOp{delOp},
+			Failure: []*pb.RequestOp{putOp},
+		}
+
+		// add nested txns if any
+		for i := 1; i < txnOps; i++ {
+			k, v := selected[i], fmt.Sprintf("bar%02d", i)
+			com, delOp, putOp = getTxnReqs(k, v)
+			nested := &pb.RequestOp{
+				Request: &pb.RequestOp_RequestTxn{
+					RequestTxn: &pb.TxnRequest{
+						Compare: []*pb.Compare{com},
+						Success: []*pb.RequestOp{delOp},
+						Failure: []*pb.RequestOp{putOp},
+					},
+				},
+			}
+			txnReq.Success = append(txnReq.Success, nested)
+			txnReq.Failure = append(txnReq.Failure, nested)
+		}
+
+		_, err := kvc.Txn(ctx, txnReq, grpc.FailFast(false))
+		return err, int64(txnOps)
+	}
+}
+
+func getTxnReqs(key, val string) (com *pb.Compare, delOp *pb.RequestOp, putOp *pb.RequestOp) {
+	// if key exists (version > 0)
+	com = &pb.Compare{
+		Key:         []byte(key),
+		Target:      pb.Compare_VERSION,
+		Result:      pb.Compare_GREATER,
+		TargetUnion: &pb.Compare_Version{Version: 0},
+	}
+	delOp = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &pb.DeleteRangeRequest{
+				Key: []byte(key),
+			},
+		},
+	}
+	putOp = &pb.RequestOp{
+		Request: &pb.RequestOp_RequestPut{
+			RequestPut: &pb.PutRequest{
+				Key:   []byte(key),
+				Value: []byte(val),
+			},
+		},
+	}
+	return com, delOp, putOp
 }
 
 func newStressRange(kvc pb.KVClient, keySuffixRange int) stressFunc {

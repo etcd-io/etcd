@@ -113,9 +113,11 @@ func (cs *compositeStresser) Checker() Checker {
 }
 
 type stressConfig struct {
-	keyLargeSize   int
-	keySize        int
-	keySuffixRange int
+	keyLargeSize      int
+	keySize           int
+	keySuffixRange    int
+	keyTxnSuffixRange int
+	keyTxnOps         int
 
 	numLeases    int
 	keysPerLease int
@@ -142,12 +144,14 @@ func NewStresser(s string, sc *stressConfig, m *member) Stresser {
 		// TODO: Too intensive stressers can panic etcd member with
 		// 'out of memory' error. Put rate limits in server side.
 		return &keyStresser{
-			Endpoint:       m.grpcAddr(),
-			keyLargeSize:   sc.keyLargeSize,
-			keySize:        sc.keySize,
-			keySuffixRange: sc.keySuffixRange,
-			N:              100,
-			rateLimiter:    sc.rateLimiter,
+			Endpoint:          m.grpcAddr(),
+			keyLargeSize:      sc.keyLargeSize,
+			keySize:           sc.keySize,
+			keySuffixRange:    sc.keySuffixRange,
+			keyTxnSuffixRange: sc.keyTxnSuffixRange,
+			keyTxnOps:         sc.keyTxnOps,
+			N:                 100,
+			rateLimiter:       sc.rateLimiter,
 		}
 	case "v2keys":
 		return &v2Stresser{

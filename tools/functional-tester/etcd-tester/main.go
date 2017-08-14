@@ -47,6 +47,8 @@ func main() {
 	stressKeyLargeSize := flag.Uint("stress-key-large-size", 32*1024+1, "the size of each large key written into etcd.")
 	stressKeySize := flag.Uint("stress-key-size", 100, "the size of each small key written into etcd.")
 	stressKeySuffixRange := flag.Uint("stress-key-count", 250000, "the count of key range written into etcd.")
+	stressKeyTxnSuffixRange := flag.Uint("stress-key-txn-count", 100, "the count of key range written into etcd txn (max 100).")
+	stressKeyTxnOps := flag.Uint("stress-key-txn-ops", 1, "number of operations per a transaction (max 64).")
 	limit := flag.Int("limit", -1, "the limit of rounds to run failure set (-1 to run without limits).")
 	exitOnFailure := flag.Bool("exit-on-failure", false, "exit tester on first failure")
 	stressQPS := flag.Int("stress-qps", 10000, "maximum number of stresser requests per second.")
@@ -120,14 +122,22 @@ func main() {
 	}
 
 	scfg := stressConfig{
-		rateLimiter:    rate.NewLimiter(rate.Limit(*stressQPS), *stressQPS),
-		keyLargeSize:   int(*stressKeyLargeSize),
-		keySize:        int(*stressKeySize),
-		keySuffixRange: int(*stressKeySuffixRange),
-		numLeases:      10,
-		keysPerLease:   10,
+		rateLimiter:       rate.NewLimiter(rate.Limit(*stressQPS), *stressQPS),
+		keyLargeSize:      int(*stressKeyLargeSize),
+		keySize:           int(*stressKeySize),
+		keySuffixRange:    int(*stressKeySuffixRange),
+		keyTxnSuffixRange: int(*stressKeyTxnSuffixRange),
+		keyTxnOps:         int(*stressKeyTxnOps),
+		numLeases:         10,
+		keysPerLease:      10,
 
 		etcdRunnerPath: *etcdRunnerPath,
+	}
+	if scfg.keyTxnSuffixRange > 100 {
+		plog.Fatalf("stress-key-txn-count is maximum 100, got %d", scfg.keyTxnSuffixRange)
+	}
+	if scfg.keyTxnOps > 64 {
+		plog.Fatalf("stress-key-txn-ops is maximum 64, got %d", scfg.keyTxnOps)
 	}
 
 	t := &tester{
