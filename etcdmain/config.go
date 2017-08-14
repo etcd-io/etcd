@@ -158,6 +158,7 @@ func newConfig() *config {
 
 	fs.BoolVar(&cfg.StrictReconfigCheck, "strict-reconfig-check", cfg.StrictReconfigCheck, "Reject reconfiguration requests that would cause quorum loss.")
 	fs.BoolVar(&cfg.EnableV2, "enable-v2", true, "Accept etcd V2 client requests.")
+	fs.StringVar(&cfg.ExperimentalEnableV2V3, "experimental-enable-v2v3", cfg.ExperimentalEnableV2V3, "v3 prefix for serving emulated v2 state.")
 
 	// proxy
 	fs.Var(cfg.proxy, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(cfg.proxy.Values, ", ")))
