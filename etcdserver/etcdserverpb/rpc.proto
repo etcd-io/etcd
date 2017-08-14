@@ -112,7 +112,13 @@ service Lease {
     };
   }
 
-  // TODO(xiangli) List all existing Leases?
+  // LeaseLeases lists all existing leases.
+  rpc LeaseLeases(LeaseLeasesRequest) returns (LeaseLeasesResponse) {
+      option (google.api.http) = {
+        post: "/v3alpha/kv/lease/leases"
+        body: "*"
+    };
+  }
 }
 
 service Cluster {
@@ -184,7 +190,7 @@ service Maintenance {
     };
   }
 
-  // HashKV computes the hash of all MVCC keys up to a given revision. 
+  // HashKV computes the hash of all MVCC keys up to a given revision.
   rpc HashKV(HashKVRequest) returns (HashKVResponse) {
       option (google.api.http) = {
         post: "/v3alpha/maintenance/hash"
@@ -755,6 +761,19 @@ message LeaseTimeToLiveResponse {
   int64 grantedTTL = 4;
   // Keys is the list of keys attached to this lease.
   repeated bytes keys = 5;
+}
+
+message LeaseLeasesRequest {
+}
+
+message LeaseStatus {
+  int64 ID = 1;
+  // TODO: int64 TTL = 2;
+}
+
+message LeaseLeasesResponse {
+  ResponseHeader header = 1;
+  repeated LeaseStatus leases = 2;
 }
 
 message Member {
