@@ -49,6 +49,9 @@
 		LeaseKeepAliveResponse
 		LeaseTimeToLiveRequest
 		LeaseTimeToLiveResponse
+		LeaseLeasesRequest
+		LeaseStatus
+		LeaseLeasesResponse
 		Member
 		MemberAddRequest
 		MemberAddResponse
