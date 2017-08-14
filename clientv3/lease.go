@@ -60,6 +60,18 @@ type LeaseTimeToLiveResponse struct {
 	Keys [][]byte `json:"keys"`
 }
 
+// LeaseStatus represents a lease status.
+type LeaseStatus struct {
+	ID LeaseID `json:"id"`
+	// TODO: TTL int64
+}
+
+// LeaseLeasesResponse is used to convert the protobuf lease list response.
+type LeaseLeasesResponse struct {
+	*pb.ResponseHeader
+	Leases []LeaseStatus `json:"leases"`
+}
+
 const (
 	// defaultTTL is the assumed lease TTL used for the first keepalive
 	// deadline before the actual TTL is known to the client.
@@ -97,6 +109,9 @@ type Lease interface {
 
 	// TimeToLive retrieves the lease information of the given lease ID.
 	TimeToLive(ctx context.Context, id LeaseID, opts ...LeaseOption) (*LeaseTimeToLiveResponse, error)
+
+	// Leases retrieves all leases.
+	Leases(ctx context.Context) (*LeaseLeasesResponse, error)
 
 	// KeepAlive keeps the given lease alive forever.
 	KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error)
@@ -212,6 +227,22 @@ func (l *lessor) TimeToLive(ctx context.Context, id LeaseID, opts ...LeaseOption
 				Keys:           resp.Keys,
 			}
 			return gresp, nil
+		}
+		if isHaltErr(ctx, err) {
+			return nil, toErr(ctx, err)
+		}
+	}
+}
+
+func (l *lessor) Leases(ctx context.Context) (*LeaseLeasesResponse, error) {
+	for {
+		resp, err := l.remote.LeaseLeases(ctx, &pb.LeaseLeasesRequest{}, grpc.FailFast(false))
+		if err == nil {
+			leases := make([]LeaseStatus, len(resp.Leases))
+			for i := range resp.Leases {
+				leases[i] = LeaseStatus{ID: LeaseID(resp.Leases[i].ID)}
+			}
+			return &LeaseLeasesResponse{ResponseHeader: resp.GetHeader(), Leases: leases}, nil
 		}
 		if isHaltErr(ctx, err) {
 			return nil, toErr(ctx, err)
