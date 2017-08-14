@@ -113,6 +113,22 @@ func (lp *leaseProxy) LeaseTimeToLive(ctx context.Context, rr *pb.LeaseTimeToLiv
 	return rp, err
 }
 
+func (lp *leaseProxy) LeaseLeases(ctx context.Context, rr *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
+	r, err := lp.lessor.Leases(ctx)
+	if err != nil {
+		return nil, err
+	}
+	leases := make([]*pb.LeaseStatus, len(r.Leases))
+	for i := range r.Leases {
+		leases[i] = &pb.LeaseStatus{ID: int64(r.Leases[i].ID)}
+	}
+	rp := &pb.LeaseLeasesResponse{
+		Header: r.ResponseHeader,
+		Leases: leases,
+	}
+	return rp, err
+}
+
 func (lp *leaseProxy) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) error {
 	lp.mu.Lock()
 	select {

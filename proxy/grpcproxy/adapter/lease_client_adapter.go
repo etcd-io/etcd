@@ -48,6 +48,10 @@ func (c *ls2lc) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTimeToLiveReque
 	return c.leaseServer.LeaseTimeToLive(ctx, in)
 }
 
+func (c *ls2lc) LeaseLeases(ctx context.Context, in *pb.LeaseLeasesRequest, opts ...grpc.CallOption) (*pb.LeaseLeasesResponse, error) {
+	return c.leaseServer.LeaseLeases(ctx, in)
+}
+
 // ls2lcClientStream implements Lease_LeaseKeepAliveClient
 type ls2lcClientStream struct{ chanClientStream }
 
