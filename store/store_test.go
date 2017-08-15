@@ -16,6 +16,7 @@ package store_test
 
 import (
 	"testing"
+	"time"
 
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/pkg/testutil"
@@ -551,12 +552,15 @@ func TestStoreWatchCreate(t *testing.T) {
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
 	eidx = 1
-	e := nbselect(c)
+	e := timeoutSelect(t, c)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
-	e = nbselect(c)
-	testutil.AssertNil(t, e)
+	select {
+	case e = <-w.EventChan():
+		testutil.AssertNil(t, e)
+	case <-time.After(100 * time.Millisecond):
+	}
 }
 
 // Ensure that the store can watch for recursive key creation.
@@ -564,11 +568,12 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
 	var eidx uint64 = 0
-	w, _ := s.Watch("/foo", true, false, 0)
+	w, err := s.Watch("/foo", true, false, 0)
+	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 1
 	s.Create("/foo/bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
 	testutil.AssertEqual(t, e.Node.Key, "/foo/bar")
@@ -584,7 +589,7 @@ func TestStoreWatchUpdate(t *testing.T) {
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
 	s.Update("/foo", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "update")
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
@@ -596,11 +601,12 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	defer s.Close()
 	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	w, _ := s.Watch("/foo", true, false, 0)
+	w, err := s.Watch("/foo", true, false, 0)
+	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
 	s.Update("/foo/bar", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "update")
 	testutil.AssertEqual(t, e.Node.Key, "/foo/bar")
@@ -616,7 +622,7 @@ func TestStoreWatchDelete(t *testing.T) {
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
 	s.Delete("/foo", false, false)
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "delete")
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
@@ -628,11 +634,12 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 	defer s.Close()
 	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	w, _ := s.Watch("/foo", true, false, 0)
+	w, err := s.Watch("/foo", true, false, 0)
+	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
 	s.Delete("/foo/bar", false, false)
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "delete")
 	testutil.AssertEqual(t, e.Node.Key, "/foo/bar")
@@ -648,7 +655,7 @@ func TestStoreWatchCompareAndSwap(t *testing.T) {
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
 	s.CompareAndSwap("/foo", "bar", 0, "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "compareAndSwap")
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
@@ -664,7 +671,7 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
 	eidx = 2
 	s.CompareAndSwap("/foo/bar", "baz", 0, "bat", store.TTLOptionSet{ExpireTime: store.Permanent})
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "compareAndSwap")
 	testutil.AssertEqual(t, e.Node.Key, "/foo/bar")
@@ -678,23 +685,29 @@ func TestStoreWatchStream(t *testing.T) {
 	w, _ := s.Watch("/foo", false, true, 0)
 	// first modification
 	s.Create("/foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
 	testutil.AssertEqual(t, *e.Node.Value, "bar")
-	e = nbselect(w.EventChan())
-	testutil.AssertNil(t, e)
+	select {
+	case e = <-w.EventChan():
+		testutil.AssertNil(t, e)
+	case <-time.After(100 * time.Millisecond):
+	}
 	// second modification
 	eidx = 2
 	s.Update("/foo", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
-	e = nbselect(w.EventChan())
+	e = timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "update")
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
 	testutil.AssertEqual(t, *e.Node.Value, "baz")
-	e = nbselect(w.EventChan())
-	testutil.AssertNil(t, e)
+	select {
+	case e = <-w.EventChan():
+		testutil.AssertNil(t, e)
+	case <-time.After(100 * time.Millisecond):
+	}
 }
 
 // Ensure that the store can watch for hidden keys as long as it's an exact path match.
@@ -704,12 +717,15 @@ func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
 	var eidx uint64 = 1
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Create("/_foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
 	testutil.AssertEqual(t, e.Node.Key, "/_foo")
-	e = nbselect(w.EventChan())
-	testutil.AssertNil(t, e)
+	select {
+	case e = <-w.EventChan():
+		testutil.AssertNil(t, e)
+	case <-time.After(100 * time.Millisecond):
+	}
 }
 
 // Ensure that the store doesn't see hidden key creates without an exact path match in recursive mode.
@@ -722,11 +738,17 @@ func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 	testutil.AssertNil(t, e)
 	w, _ = s.Watch("/foo", true, false, 0)
 	s.Create("/foo/_baz", true, "", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e = nbselect(w.EventChan())
-	testutil.AssertNil(t, e)
+	select {
+	case e = <-w.EventChan():
+		testutil.AssertNil(t, e)
+	case <-time.After(100 * time.Millisecond):
+	}
 	s.Create("/foo/_baz/quux", false, "quux", false, store.TTLOptionSet{ExpireTime: store.Permanent})
-	e = nbselect(w.EventChan())
-	testutil.AssertNil(t, e)
+	select {
+	case e = <-w.EventChan():
+		testutil.AssertNil(t, e)
+	case <-time.After(100 * time.Millisecond):
+	}
 }
 
 // Ensure that the store doesn't see hidden key updates.
@@ -736,7 +758,7 @@ func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 	s.Create("/_foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Update("/_foo", "baz", store.TTLOptionSet{ExpireTime: store.Permanent})
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.Action, "update")
 	testutil.AssertEqual(t, e.Node.Key, "/_foo")
 	e = nbselect(w.EventChan())
@@ -762,7 +784,7 @@ func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 	s.Create("/_foo", false, "bar", false, store.TTLOptionSet{ExpireTime: store.Permanent})
 	w, _ := s.Watch("/_foo", false, false, 0)
 	s.Delete("/_foo", false, false)
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "delete")
 	testutil.AssertEqual(t, e.Node.Key, "/_foo")
@@ -789,7 +811,7 @@ func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 	w, _ := s.Watch("/_foo/bar", true, false, 0)
 	s.Create("/_foo/bar/baz", false, "baz", false, store.TTLOptionSet{ExpireTime: store.Permanent})
 
-	e := nbselect(w.EventChan())
+	e := timeoutSelect(t, w.EventChan())
 	testutil.AssertNotNil(t, e)
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 	testutil.AssertEqual(t, e.Action, "create")
@@ -824,6 +846,17 @@ func nbselect(c <-chan *store.Event) *store.Event {
 	case e := <-c:
 		return e
 	default:
+		return nil
+	}
+}
+
+// Performs a non-blocking select on an event channel.
+func timeoutSelect(t *testing.T, c <-chan *store.Event) *store.Event {
+	select {
+	case e := <-c:
+		return e
+	case <-time.After(time.Second):
+		t.Errorf("timed out waiting on event")
 		return nil
 	}
 }
