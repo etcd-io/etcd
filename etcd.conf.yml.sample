@@ -35,7 +35,7 @@ max-snapshots: 5
 max-wals: 5
 
 # Comma-separated white list of origins for CORS (cross-origin resource sharing).
-cors: 
+cors:
 
 # List of this member's peer URLs to advertise to the rest of the cluster.
 # The URLs needed to be a comma-separated list.
@@ -46,16 +46,16 @@ initial-advertise-peer-urls: http://localhost:2380
 advertise-client-urls: http://localhost:2379
 
 # Discovery URL used to bootstrap the cluster.
-discovery: 
+discovery:
 
 # Valid values include 'exit', 'proxy'
 discovery-fallback: 'proxy'
 
 # HTTP proxy to use for traffic to discovery service.
-discovery-proxy: 
+discovery-proxy:
 
 # DNS domain used to bootstrap initial cluster.
-discovery-srv: 
+discovery-srv:
 
 # Initial cluster configuration for bootstrapping.
 initial-cluster:
@@ -71,6 +71,9 @@ strict-reconfig-check: false
 
 # Accept etcd V2 client requests
 enable-v2: true
+
+# Enable runtime profiling data via HTTP server
+enable-pprof: true
 
 # Valid values include 'on', 'readonly', 'off'
 proxy: 'off'
@@ -90,40 +93,40 @@ proxy-write-timeout: 5000
 # Time (in milliseconds) for a read to timeout.
 proxy-read-timeout: 0
 
-client-transport-security: 
+client-transport-security:
   # DEPRECATED: Path to the client server TLS CA file.
-  ca-file: 
+  ca-file:
 
   # Path to the client server TLS cert file.
-  cert-file: 
+  cert-file:
 
   # Path to the client server TLS key file.
-  key-file: 
+  key-file:
 
   # Enable client cert authentication.
   client-cert-auth: false
 
   # Path to the client server TLS trusted CA key file.
-  trusted-ca-file: 
+  trusted-ca-file:
 
   # Client TLS using generated certificates
   auto-tls: false
 
-peer-transport-security: 
+peer-transport-security:
   # DEPRECATED: Path to the peer server TLS CA file.
   ca-file:
 
   # Path to the peer server TLS cert file.
-  cert-file: 
+  cert-file:
 
   # Path to the peer server TLS key file.
-  key-file: 
+  key-file:
 
   # Enable peer client cert authentication.
   client-cert-auth: false
 
   # Path to the peer server TLS trusted CA key file.
-  trusted-ca-file: 
+  trusted-ca-file:
 
   # Peer TLS using generated certificates.
   auto-tls: false
@@ -132,7 +135,7 @@ peer-transport-security:
 debug: false
 
 # Specify a particular log level for each etcd package (eg: 'etcdmain=CRITICAL,etcdserver=DEBUG'.
-log-package-levels: 
+log-package-levels:
 
 # Force to create a new one member cluster.
 force-new-cluster: false
