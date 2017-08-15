@@ -115,7 +115,7 @@ type Config struct {
 
 	Debug                 bool   `json:"debug"`
 	LogPkgLevels          string `json:"log-package-levels"`
-	EnablePprof           bool
+	EnablePprof           bool   `json:"enable-pprof"`
 	Metrics               string `json:"metrics"`
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
