@@ -134,13 +134,13 @@ etcd:
   initial_cluster_state:       new
   client_cert_auth:            true
   trusted_ca_file:             /etc/ssl/certs/etcd-root-ca.pem
-  cert-file:                   /etc/ssl/certs/s1.pem
-  key-file:                    /etc/ssl/certs/s1-key.pem
-  peer-client-cert-auth:       true
-  peer-trusted-ca-file:        /etc/ssl/certs/etcd-root-ca.pem
-  peer-cert-file:              /etc/ssl/certs/s1.pem
-  peer-key-file:               /etc/ssl/certs/s1-key.pem
-  auto-compaction-retention:   1
+  cert_file:                   /etc/ssl/certs/s1.pem
+  key_file:                    /etc/ssl/certs/s1-key.pem
+  peer_client_cert_auth:       true
+  peer_trusted_ca_file:        /etc/ssl/certs/etcd-root-ca.pem
+  peer_cert_file:              /etc/ssl/certs/s1.pem
+  peer_key_file:               /etc/ssl/certs/s1-key.pem
+  auto_compaction_retention:   1
 ```
 
 ```
