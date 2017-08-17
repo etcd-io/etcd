@@ -84,3 +84,32 @@ func TestEtcdMultiPeer(t *testing.T) {
 		}
 	}
 }
+
+// TestEtcdUnixPeers checks that etcd will boot with unix socket peers.
+func TestEtcdUnixPeers(t *testing.T) {
+	d, err := ioutil.TempDir("", "e1.etcd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(d)
+	proc, err := spawnCmd(
+		[]string{
+			binDir + "/etcd",
+			"--data-dir", d,
+			"--name", "e1",
+			"--listen-peer-urls", "unix://etcd.unix:1",
+			"--initial-advertise-peer-urls", "unix://etcd.unix:1",
+			"--initial-cluster", "e1=unix://etcd.unix:1",
+		},
+	)
+	defer os.Remove("etcd.unix:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = waitReadyExpectProc(proc, etcdServerReadyLines); err != nil {
+		t.Fatal(err)
+	}
+	if err = proc.Stop(); err != nil {
+		t.Fatal(err)
+	}
+}
