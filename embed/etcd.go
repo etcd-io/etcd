@@ -154,16 +154,16 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	// configure peer handlers after rafthttp.Transport started
 	ph := etcdhttp.NewPeerHandler(e.Server)
-	for i := range e.Peers {
+	for _, p := range e.Peers {
 		srv := &http.Server{
 			Handler:     ph,
 			ReadTimeout: 5 * time.Minute,
 			ErrorLog:    defaultLog.New(ioutil.Discard, "", 0), // do not log user error
 		}
-		e.Peers[i].serve = func() error {
-			return srv.Serve(e.Peers[i].Listener)
-		}
-		e.Peers[i].close = func(ctx context.Context) error {
+
+		l := p.Listener
+		p.serve = func() error { return srv.Serve(l) }
+		p.close = func(ctx context.Context) error {
 			// gracefully shutdown http.Server
 			// close open listeners, idle connections
 			// until context cancel or time-out
