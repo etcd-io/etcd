@@ -376,6 +376,10 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 
 	client.balancer = newSimpleBalancer(cfg.Endpoints)
+	client.balancer.mu.Lock()
+	client.balancer.keepAlive = cfg.DialKeepAliveTime > 0
+	client.balancer.mu.Unlock()
+
 	// use Endpoints[0] so that for https:// without any tls config given, then
 	// grpc will assume the ServerName is in the endpoint.
 	conn, err := client.dial(cfg.Endpoints[0], grpc.WithBalancer(client.balancer))
