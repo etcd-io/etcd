@@ -15,7 +15,13 @@
 package e2e
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
+
+	"github.com/coreos/etcd/pkg/expect"
 )
 
 const exampleConfigFile = "../etcd.conf.yml.sample"
@@ -30,5 +36,51 @@ func TestEtcdExampleConfig(t *testing.T) {
 	}
 	if err = proc.Stop(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestEtcdMultiPeer(t *testing.T) {
+	peers, tmpdirs := make([]string, 3), make([]string, 3)
+	for i := range peers {
+		peers[i] = fmt.Sprintf("e%d=http://127.0.0.1:%d", i, etcdProcessBasePort+i)
+		d, err := ioutil.TempDir("", fmt.Sprintf("e%d.etcd", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tmpdirs[i] = d
+	}
+	ic := strings.Join(peers, ",")
+
+	procs := make([]*expect.ExpectProcess, len(peers))
+	defer func() {
+		for i := range procs {
+			if procs[i] != nil {
+				procs[i].Stop()
+			}
+			os.RemoveAll(tmpdirs[i])
+		}
+	}()
+	for i := range procs {
+		args := []string{
+			binDir + "/etcd",
+			"--name", fmt.Sprintf("e%d", i),
+			"--listen-client-urls", "http://0.0.0.0:0",
+			"--data-dir", tmpdirs[i],
+			"--advertise-client-urls", "http://0.0.0.0:0",
+			"--listen-peer-urls", fmt.Sprintf("http://127.0.0.1:%d,http://127.0.0.1:%d", etcdProcessBasePort+i, etcdProcessBasePort+len(peers)+i),
+			"--initial-advertise-peer-urls", fmt.Sprintf("http://127.0.0.1:%d", etcdProcessBasePort+i),
+			"--initial-cluster", ic,
+		}
+		p, err := spawnCmd(args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		procs[i] = p
+	}
+
+	for _, p := range procs {
+		if err := waitReadyExpectProc(p, false); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
