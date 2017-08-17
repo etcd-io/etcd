@@ -54,7 +54,7 @@ Administrators who need to create reliable and scalable key-value stores for the
 
 ### Maintenance and troubleshooting
 
- - [Frequently asked questions][faq]
+ - [Frequently asked questions][common questions]
  - [Monitoring][monitoring]
  - [Maintenance][maintenance]
  - [Failure modes][failures]
