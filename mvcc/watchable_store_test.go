@@ -294,6 +294,39 @@ func TestWatchFutureRev(t *testing.T) {
 	}
 }
 
+func TestWatchRestore(t *testing.T) {
+	b, tmpPath := backend.NewDefaultTmpBackend()
+	s := newWatchableStore(b, &lease.FakeLessor{}, nil)
+	defer cleanup(s, b, tmpPath)
+
+	testKey := []byte("foo")
+	testValue := []byte("bar")
+	rev := s.Put(testKey, testValue, lease.NoLease)
+
+	newBackend, newPath := backend.NewDefaultTmpBackend()
+	newStore := newWatchableStore(newBackend, &lease.FakeLessor{}, nil)
+	defer cleanup(newStore, newBackend, newPath)
+
+	w := newStore.NewWatchStream()
+	w.Watch(testKey, nil, rev-1)
+
+	newStore.Restore(b)
+	select {
+	case resp := <-w.Chan():
+		if resp.Revision != rev {
+			t.Fatalf("rev = %d, want %d", resp.Revision, rev)
+		}
+		if len(resp.Events) != 1 {
+			t.Fatalf("failed to get events from the response")
+		}
+		if resp.Events[0].Kv.ModRevision != rev {
+			t.Fatalf("kv.rev = %d, want %d", resp.Events[0].Kv.ModRevision, rev)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("failed to receive event in 1 second.")
+	}
+}
+
 // TestWatchBatchUnsynced tests batching on unsynced watchers
 func TestWatchBatchUnsynced(t *testing.T) {
 	b, tmpPath := backend.NewDefaultTmpBackend()
