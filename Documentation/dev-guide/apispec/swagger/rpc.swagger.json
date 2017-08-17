@@ -1163,7 +1163,8 @@
       "default": "NONE",
       "enum": [
         "NONE",
-        "NOSPACE"
+        "NOSPACE",
+        "CORRUPT"
       ]
     },
     "etcdserverpbAuthDisableRequest": {
