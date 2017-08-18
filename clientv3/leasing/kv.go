@@ -16,6 +16,7 @@ package leasing
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
@@ -33,8 +34,10 @@ type leasingKV struct {
 	kv     v3.KV
 	pfx    string
 	leases leaseCache
+
 	ctx    context.Context
 	cancel context.CancelFunc
+	wg     sync.WaitGroup
 
 	sessionOpts []concurrency.SessionOption
 	session     *concurrency.Session
@@ -49,9 +52,9 @@ func init() {
 }
 
 // NewKV wraps a KV instance so that all requests are wired through a leasing protocol.
-func NewKV(cl *v3.Client, pfx string, opts ...concurrency.SessionOption) (v3.KV, error) {
+func NewKV(cl *v3.Client, pfx string, opts ...concurrency.SessionOption) (v3.KV, func(), error) {
 	cctx, cancel := context.WithCancel(cl.Ctx())
-	lkv := leasingKV{
+	lkv := &leasingKV{
 		cl:          cl,
 		kv:          cl.KV,
 		pfx:         pfx,
@@ -61,9 +64,21 @@ func NewKV(cl *v3.Client, pfx string, opts ...concurrency.SessionOption) (v3.KV,
 		sessionOpts: opts,
 		sessionc:    make(chan struct{}),
 	}
-	go lkv.monitorSession()
-	go lkv.leases.clearOldRevokes(cctx)
-	return &lkv, lkv.waitSession(cctx)
+	lkv.wg.Add(2)
+	go func() {
+		defer lkv.wg.Done()
+		lkv.monitorSession()
+	}()
+	go func() {
+		defer lkv.wg.Done()
+		lkv.leases.clearOldRevokes(cctx)
+	}()
+	return lkv, lkv.Close, lkv.waitSession(cctx)
+}
+
+func (lkv *leasingKV) Close() {
+	lkv.cancel()
+	lkv.wg.Wait()
 }
 
 func (lkv *leasingKV) Get(ctx context.Context, key string, opts ...v3.OpOption) (*v3.GetResponse, error) {
@@ -301,7 +316,11 @@ func (lkv *leasingKV) get(ctx context.Context, op v3.Op) (*v3.GetResponse, error
 	getResp.Header = resp.Header
 	if resp.Succeeded {
 		getResp = lkv.leases.Add(key, getResp, op)
-		go lkv.monitorLease(ctx, key, resp.Header.Revision)
+		lkv.wg.Add(1)
+		go func() {
+			defer lkv.wg.Done()
+			lkv.monitorLease(ctx, key, resp.Header.Revision)
+		}()
 	}
 	return getResp, nil
 }
