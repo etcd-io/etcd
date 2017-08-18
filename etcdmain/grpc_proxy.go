@@ -285,7 +285,7 @@ func newGRPCProxyServer(client *clientv3.Client) *grpc.Server {
 	}
 
 	if len(grpcProxyLeasing) > 0 {
-		client.KV, _ = leasing.NewKV(client, grpcProxyLeasing)
+		client.KV, _, _ = leasing.NewKV(client, grpcProxyLeasing)
 	}
 
 	kvp, _ := grpcproxy.NewKvProxy(client)
