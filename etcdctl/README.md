@@ -115,6 +115,8 @@ RPC: Range
 
 #### Examples
 
+First, populate etcd with some keys:
+
 ```bash
 ./etcdctl put foo bar
 # OK
@@ -124,9 +126,33 @@ RPC: Range
 # OK
 ./etcdctl put foo3 bar3
 # OK
+```
+
+Get the key named `foo`:
+
+```bash
 ./etcdctl get foo
 # foo
 # bar
+```
+
+Get all keys:
+
+```bash
+./etcdctl get --from-key ''
+# foo
+# bar
+# foo1
+# bar1
+# foo2
+# foo2
+# foo3
+# bar3
+```
+
+Get all keys with names greater than or equal to `foo1`:
+
+```bash
 ./etcdctl get --from-key foo1
 # foo1
 # bar1
@@ -134,6 +160,11 @@ RPC: Range
 # bar2
 # foo3
 # bar3
+```
+
+Get keys with names greater than or equal to `foo1` and less than `foo3`:
+
+```bash
 ./etcdctl get foo1 foo3
 # foo1
 # bar1
