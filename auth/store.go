@@ -1098,7 +1098,7 @@ func (as *authStore) WithRoot(ctx context.Context) context.Context {
 		"token": token,
 	}
 	tokenMD := metadata.New(mdMap)
-	return metadata.NewContext(ctx, tokenMD)
+	return metadata.NewOutgoingContext(ctx, tokenMD)
 }
 
 func (as *authStore) HasRole(user, role string) bool {
