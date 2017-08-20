@@ -1,5 +1,5 @@
-hash: 6b16200008cc5fd50a370c50676225fbc6af0d79bd3ec0fdb94847c55d99a1a7
-updated: 2017-08-10T14:48:42.863537562-07:00
+hash: cb6ec5f6ddc889073b7f3667a6c8d0ea4df28e4b81d3e8888aca4a01476b8d6d
+updated: 2017-08-19T18:37:17.884672072-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -100,7 +100,7 @@ imports:
 - name: github.com/spf13/cobra
   version: 1c44ec8d3f1552cac48999f9306da23c4d8a288b
 - name: github.com/spf13/pflag
-  version: 08b1a584251b5b62f458943640fc8ebd4d50aaa5
+  version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
