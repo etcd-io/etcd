@@ -31,7 +31,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cockroachdb/cmux"
+	"github.com/soheilhy/cmux"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 

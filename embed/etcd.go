@@ -38,7 +38,7 @@ import (
 	"github.com/coreos/etcd/rafthttp"
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/cockroachdb/cmux"
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 )
 
