@@ -24,6 +24,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/embed"
 	"github.com/coreos/etcd/pkg/flags"
@@ -143,6 +144,9 @@ func newConfig() *config {
 	fs.Int64Var(&cfg.QuotaBackendBytes, "quota-backend-bytes", cfg.QuotaBackendBytes, "Raise alarms when backend size exceeds the given quota. 0 means use the default quota.")
 	fs.UintVar(&cfg.MaxTxnOps, "max-txn-ops", cfg.MaxTxnOps, "Maximum number of operations permitted in a transaction.")
 	fs.UintVar(&cfg.MaxRequestBytes, "max-request-bytes", cfg.MaxRequestBytes, "Maximum client request size in bytes the server will accept.")
+	fs.DurationVar(&cfg.GRPCKeepAliveMinTime, "grpc-keepalive-min-time", cfg.Config.GRPCKeepAliveMinTime, "Minimum interval duration that a client should wait before pinging server.")
+	fs.DurationVar(&cfg.GRPCKeepAliveInterval, "grpc-keepalive-interval", time.Duration(0), "Frequency duration of server-to-client ping to check if a connection is alive.")
+	fs.DurationVar(&cfg.GRPCKeepAliveTimeout, "grpc-keepalive-timeout", time.Duration(0), "Additional duration of wait before closing a non-responsive connection.")
 
 	// clustering
 	fs.Var(flags.NewURLsValue(embed.DefaultInitialAdvertisePeerURLs), "initial-advertise-peer-urls", "List of this member's peer URLs to advertise to the rest of the cluster.")
