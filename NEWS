@@ -1,3 +1,9 @@
+etcd v3.2.6 (2017-08-21)
+- fix watch restore from snapshot
+- fix etcd_debugging_mvcc_keys_total inconsistency
+- fix multiple URLs for '--listen-peer-urls' flag
+- add 'enable-pprof' to etcd configuration file format
+
 etcd v3.2.5 (2017-08-04)
 - use reverse lookup to match wildcard DNS SAN
 - return non-zero exit code on unhealthy 'endpoint health'
