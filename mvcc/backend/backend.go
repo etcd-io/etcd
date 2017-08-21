@@ -139,8 +139,11 @@ func newBackend(bcfg BackendConfig) *backend {
 		batchInterval: bcfg.BatchInterval,
 		batchLimit:    bcfg.BatchLimit,
 
-		readTx: &readTx{buf: txReadBuffer{
-			txBuffer: txBuffer{make(map[string]*bucketBuffer)}},
+		readTx: &readTx{
+			buf: txReadBuffer{
+				txBuffer: txBuffer{make(map[string]*bucketBuffer)},
+			},
+			buckets: make(map[string]*bolt.Bucket),
 		},
 
 		stopc: make(chan struct{}),
@@ -339,7 +342,7 @@ func (b *backend) defrag() error {
 		plog.Fatalf("cannot begin tx (%s)", err)
 	}
 
-	b.readTx.buf.reset()
+	b.readTx.reset()
 	b.readTx.tx = b.unsafeBegin(false)
 	atomic.StoreInt64(&b.size, b.readTx.tx.Size())
 
