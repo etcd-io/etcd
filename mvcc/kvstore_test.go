@@ -741,6 +741,11 @@ type fakeIndex struct {
 	indexCompactRespc     chan map[revision]struct{}
 }
 
+func (i *fakeIndex) Revisions(key, end []byte, atRev int64) []revision {
+	_, rev := i.Range(key, end, atRev)
+	return rev
+}
+
 func (i *fakeIndex) Get(key []byte, atRev int64) (rev, created revision, ver int64, err error) {
 	i.Recorder.Record(testutil.Action{Name: "get", Params: []interface{}{key, atRev}})
 	r := <-i.indexGetRespc
