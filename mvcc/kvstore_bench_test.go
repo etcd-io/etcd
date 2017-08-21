@@ -45,6 +45,25 @@ func BenchmarkStorePut(b *testing.B) {
 	}
 }
 
+func BenchmarkStoreRangeOneKey(b *testing.B) {
+	var i fakeConsistentIndex
+	be, tmpPath := backend.NewDefaultTmpBackend()
+	s := NewStore(be, &lease.FakeLessor{}, &i)
+	defer cleanup(s, be, tmpPath)
+
+	// 64 byte key/val
+	key, val := createBytesSlice(64, 1), createBytesSlice(64, 1)
+	s.Put(key[0], val[0], lease.NoLease)
+	// Force into boltdb tx instead of backend read tx.
+	s.Commit()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.Range(key[0], nil, RangeOptions{})
+	}
+}
+
 func BenchmarkConsistentIndex(b *testing.B) {
 	fci := fakeConsistentIndex(10)
 	be, tmpPath := backend.NewDefaultTmpBackend()
