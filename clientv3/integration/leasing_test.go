@@ -190,6 +190,34 @@ func TestLeasingPutInvalidatExisting(t *testing.T) {
 	}
 }
 
+// TestLeasingGetLease checks that keys with TTLs are not leased.
+func TestLeasingGetNoLeaseTTL(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
+	testutil.AssertNil(t, err)
+	defer closeLKV()
+
+	lresp, err := clus.Client(0).Grant(context.TODO(), 60)
+	testutil.AssertNil(t, err)
+
+	_, err = clus.Client(0).Put(context.TODO(), "k", "v", clientv3.WithLease(lresp.ID))
+	testutil.AssertNil(t, err)
+
+	gresp, err := lkv.Get(context.TODO(), "k")
+	testutil.AssertNil(t, err)
+	testutil.AssertEqual(t, len(gresp.Kvs), 1)
+
+	clus.Members[0].Stop(t)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	_, err = lkv.Get(ctx, "k")
+	cancel()
+	testutil.AssertEqual(t, err, ctx.Err())
+}
+
 // TestLeasingGetSerializable checks the leasing KV can make serialized requests
 // when the etcd cluster is partitioned.
 func TestLeasingGetSerializable(t *testing.T) {

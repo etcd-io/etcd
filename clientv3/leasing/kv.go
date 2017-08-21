@@ -22,6 +22,7 @@ import (
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
+	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 
 	"golang.org/x/net/context"
@@ -261,8 +262,10 @@ func (lkv *leasingKV) acquire(ctx context.Context, key string, op v3.Op) (*v3.Tx
 		if err := lkv.waitSession(ctx); err != nil {
 			return nil, err
 		}
+		lcmp := v3.Cmp{Key: []byte(key), Target: pb.Compare_LEASE}
 		resp, err := lkv.kv.Txn(ctx).If(
-			v3.Compare(v3.CreateRevision(lkv.pfx+key), "=", 0)).
+			v3.Compare(v3.CreateRevision(lkv.pfx+key), "=", 0),
+			v3.Compare(lcmp, "=", 0)).
 			Then(
 				op,
 				v3.OpPut(lkv.pfx+key, "", v3.WithLease(lkv.leaseID()))).
@@ -274,7 +277,7 @@ func (lkv *leasingKV) acquire(ctx context.Context, key string, op v3.Op) (*v3.Tx
 			if !resp.Succeeded {
 				kvs := resp.Responses[1].GetResponseRange().Kvs
 				// if txn failed since already owner, lease is acquired
-				resp.Succeeded = v3.LeaseID(kvs[0].Lease) == lkv.leaseID()
+				resp.Succeeded = len(kvs) > 0 && v3.LeaseID(kvs[0].Lease) == lkv.leaseID()
 			}
 			return resp, nil
 		}
