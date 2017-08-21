@@ -24,6 +24,7 @@ import (
 type index interface {
 	Get(key []byte, atRev int64) (rev, created revision, ver int64, err error)
 	Range(key, end []byte, atRev int64) ([][]byte, []revision)
+	Revisions(key, end []byte, atRev int64) []revision
 	Put(key []byte, rev revision)
 	Tombstone(key []byte, rev revision) error
 	RangeSince(key, end []byte, rev int64) []revision
@@ -82,6 +83,18 @@ func (ti *treeIndex) keyIndex(keyi *keyIndex) *keyIndex {
 		return item.(*keyIndex)
 	}
 	return nil
+}
+
+func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision) {
+	if end == nil {
+		rev, _, _, err := ti.Get(key, atRev)
+		if err != nil {
+			return nil
+		}
+		return []revision{rev}
+	}
+	_, rev := ti.Range(key, end, atRev)
+	return rev
 }
 
 func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []revision) {
