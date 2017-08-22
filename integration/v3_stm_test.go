@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -22,7 +23,7 @@ import (
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	"golang.org/x/net/context"
+	"github.com/coreos/etcd/pkg/testutil"
 )
 
 // TestSTMConflict tests that conflicts are retried.
@@ -251,5 +252,38 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 	}
 	if string(resp.Kvs[0].Value) != "bar2" {
 		t.Fatalf("bad value. got %+v, expected 'bar2' value", resp)
+	}
+}
+
+func TestSTMSerializableSnapshotPut(t *testing.T) {
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	cli := clus.Client(0)
+	// key with lower create/mod revision than keys being updated
+	_, err := cli.Put(context.TODO(), "a", "0")
+	testutil.AssertNil(t, err)
+
+	tries := 0
+	applyf := func(stm concurrency.STM) error {
+		if tries > 2 {
+			return fmt.Errorf("too many retries")
+		}
+		tries++
+		stm.Get("a")
+		stm.Put("b", "1")
+		return nil
+	}
+
+	iso := concurrency.WithIsolation(concurrency.SerializableSnapshot)
+	_, err = concurrency.NewSTM(cli, applyf, iso)
+	testutil.AssertNil(t, err)
+	_, err = concurrency.NewSTM(cli, applyf, iso)
+	testutil.AssertNil(t, err)
+
+	resp, err := cli.Get(context.TODO(), "b")
+	testutil.AssertNil(t, err)
+	if resp.Kvs[0].Version != 2 {
+		t.Fatalf("bad version. got %+v, expected version 2", resp)
 	}
 }
