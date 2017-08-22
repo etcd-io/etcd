@@ -852,6 +852,7 @@ message MoveLeaderResponse {
 enum AlarmType {
 	NONE = 0; // default, used to query if any alarm is active
 	NOSPACE = 1; // space quota is exhausted
+	CORRUPT = 2; // kv store corruption detected
 }
 
 message AlarmRequest {

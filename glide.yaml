@@ -1,4 +1,6 @@
 package: github.com/coreos/etcd
+ignore:
+- google.golang.org/appengine
 import:
 - package: github.com/bgentry/speakeasy
   version: v0.1.0
@@ -128,5 +130,5 @@ import:
   - unicode/norm
 - package: github.com/russross/blackfriday
   version: 4048872b16cc0fc2c5fd9eacf0ed2c2fedaa0c8c
-ignore:
-  - google.golang.org/appengine
+- package: github.com/soheilhy/cmux
+  version: v0.1.3

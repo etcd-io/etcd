@@ -46,6 +46,7 @@ var toGRPCErrorMap = map[error]error{
 	etcdserver.ErrTimeoutDueToConnectionLost: rpctypes.ErrGRPCTimeoutDueToConnectionLost,
 	etcdserver.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
 	etcdserver.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
+	etcdserver.ErrCorrupt:                    rpctypes.ErrGRPCCorrupt,
 
 	lease.ErrLeaseNotFound: rpctypes.ErrGRPCLeaseNotFound,
 	lease.ErrLeaseExists:   rpctypes.ErrGRPCLeaseExist,

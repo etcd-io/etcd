@@ -35,6 +35,7 @@ var (
 	ErrTooManyRequests            = errors.New("etcdserver: too many requests")
 	ErrUnhealthy                  = errors.New("etcdserver: unhealthy cluster")
 	ErrKeyNotFound                = errors.New("etcdserver: key not found")
+	ErrCorrupt                    = errors.New("etcdserver: corrupt cluster")
 )
 
 type DiscoveryError struct {

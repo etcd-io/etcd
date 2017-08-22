@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/cors"
@@ -140,6 +141,10 @@ type Config struct {
 	// auth
 
 	AuthToken string `json:"auth-token"`
+
+	// Experimental flags
+
+	ExperimentalCorruptCheckTime time.Duration `json:"experimental-corrupt-check-time"`
 }
 
 // configYAML holds the config suitable for yaml parsing

@@ -27,15 +27,6 @@
 		]
 	},
 	{
-		"project": "github.com/cockroachdb/cmux",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/coreos/bbolt",
 		"licenses": [
 			{
@@ -261,6 +252,15 @@
 			{
 				"type": "BSD 2-clause \"Simplified\" License",
 				"confidence": 0.9626168224299065
+			}
+		]
+	},
+	{
+		"project": "github.com/soheilhy/cmux",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
