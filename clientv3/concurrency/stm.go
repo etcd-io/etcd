@@ -193,11 +193,12 @@ func (rs readSet) add(keys []string, txnresp *v3.TxnResponse) {
 	}
 }
 
+// first returns the store revision from the first fetch
 func (rs readSet) first() int64 {
 	ret := int64(math.MaxInt64 - 1)
 	for _, resp := range rs {
-		if len(resp.Kvs) > 0 && resp.Kvs[0].ModRevision < ret {
-			ret = resp.Kvs[0].ModRevision
+		if rev := resp.Header.Revision; rev < ret {
+			ret = rev
 		}
 	}
 	return ret
