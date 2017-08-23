@@ -15,6 +15,8 @@
 package integration
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -117,4 +119,42 @@ func authSetupRoot(t *testing.T, auth pb.AuthClient) {
 	if _, err := auth.AuthEnable(context.TODO(), &pb.AuthEnableRequest{}); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestV3AuthOldRevConcurrent(t *testing.T) {
+	defer testutil.AfterTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	authSetupRoot(t, toGRPC(clus.Client(0)).Auth)
+
+	c, cerr := clientv3.New(clientv3.Config{
+		Endpoints:   clus.Client(0).Endpoints(),
+		DialTimeout: 5 * time.Second,
+		Username:    "root",
+		Password:    "123",
+	})
+	testutil.AssertNil(t, cerr)
+	defer c.Close()
+
+	var wg sync.WaitGroup
+	f := func(i int) {
+		defer wg.Done()
+		role, user := fmt.Sprintf("test-role-%d", i), fmt.Sprintf("test-user-%d", i)
+		_, err := c.RoleAdd(context.TODO(), role)
+		testutil.AssertNil(t, err)
+		_, err = c.RoleGrantPermission(context.TODO(), role, "", clientv3.GetPrefixRangeEnd(""), clientv3.PermissionType(clientv3.PermReadWrite))
+		testutil.AssertNil(t, err)
+		_, err = c.UserAdd(context.TODO(), user, "123")
+		testutil.AssertNil(t, err)
+		_, err = c.Put(context.TODO(), "a", "b")
+		testutil.AssertNil(t, err)
+	}
+	// needs concurrency to trigger
+	numRoles := 2
+	wg.Add(numRoles)
+	for i := 0; i < numRoles; i++ {
+		go f(i)
+	}
+	wg.Wait()
 }
