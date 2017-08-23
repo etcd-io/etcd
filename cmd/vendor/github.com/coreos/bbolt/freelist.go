@@ -245,7 +245,7 @@ func (f *freelist) read(p *page) {
 	if count == 0 {
 		f.ids = nil
 	} else {
-		ids := ((*[maxAllocSize]pgid)(unsafe.Pointer(&p.ptr)))[idx:idx+count]
+		ids := ((*[maxAllocSize]pgid)(unsafe.Pointer(&p.ptr)))[idx : idx+count]
 		f.ids = make([]pgid, len(ids))
 		copy(f.ids, ids)
 

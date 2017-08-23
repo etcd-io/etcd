@@ -126,10 +126,7 @@ func (tx *Tx) DeleteBucket(name []byte) error {
 // the error is returned to the caller.
 func (tx *Tx) ForEach(fn func(name []byte, b *Bucket) error) error {
 	return tx.root.ForEach(func(k, v []byte) error {
-		if err := fn(k, tx.root.Bucket(k)); err != nil {
-			return err
-		}
-		return nil
+		return fn(k, tx.root.Bucket(k))
 	})
 }
 

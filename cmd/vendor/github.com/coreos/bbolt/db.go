@@ -7,9 +7,7 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"runtime/debug"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -193,12 +191,18 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 	// The database file is locked using the shared lock (more than one process may
 	// hold a lock at the same time) otherwise (options.ReadOnly is set).
 	if err := flock(db, mode, !db.readOnly, options.Timeout); err != nil {
+		db.lockfile = nil // make 'unused' happy. TODO: rework locks
 		_ = db.close()
 		return nil, err
 	}
 
 	// Default values for test hooks
 	db.ops.writeAt = db.file.WriteAt
+
+	if db.pageSize = options.PageSize; db.pageSize == 0 {
+		// Set the default page size to the OS page size.
+		db.pageSize = defaultPageSize
+	}
 
 	// Initialize the database if it doesn't exist.
 	if info, err := db.file.Stat(); err != nil {
@@ -211,20 +215,21 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 	} else {
 		// Read the first meta page to determine the page size.
 		var buf [0x1000]byte
-		if _, err := db.file.ReadAt(buf[:], 0); err == nil {
-			m := db.pageInBuffer(buf[:], 0).meta()
-			if err := m.validate(); err != nil {
-				// If we can't read the page size, we can assume it's the same
-				// as the OS -- since that's how the page size was chosen in the
-				// first place.
-				//
-				// If the first page is invalid and this OS uses a different
-				// page size than what the database was created with then we
-				// are out of luck and cannot access the database.
-				db.pageSize = os.Getpagesize()
-			} else {
+		// If we can't read the page size, but can read a page, assume
+		// it's the same as the OS or one given -- since that's how the
+		// page size was chosen in the first place.
+		//
+		// If the first page is invalid and this OS uses a different
+		// page size than what the database was created with then we
+		// are out of luck and cannot access the database.
+		//
+		// TODO: scan for next page
+		if bw, err := db.file.ReadAt(buf[:], 0); err == nil && bw == len(buf) {
+			if m := db.pageInBuffer(buf[:], 0).meta(); m.validate() == nil {
 				db.pageSize = int(m.pageSize)
 			}
+		} else {
+			return nil, ErrInvalid
 		}
 	}
 
@@ -241,6 +246,10 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 		return nil, err
 	}
 
+	if db.readOnly {
+		return db, nil
+	}
+
 	db.freelist = newFreelist()
 	noFreeList := db.meta().freelist == pgidNoFreelist
 	if noFreeList {
@@ -254,7 +263,7 @@ func Open(path string, mode os.FileMode, options *Options) (*DB, error) {
 
 	// Flush freelist when transitioning from no sync to sync so
 	// NoFreelistSync unaware boltdb can open the db later.
-	if !db.NoFreelistSync && noFreeList && ((mode & 0222) != 0) {
+	if !db.NoFreelistSync && noFreeList {
 		tx, err := db.Begin(true)
 		if tx != nil {
 			err = tx.Commit()
@@ -370,9 +379,6 @@ func (db *DB) mmapSize(size int) (int, error) {
 
 // init creates a new database file and initializes its meta pages.
 func (db *DB) init() error {
-	// Set the page size to the OS page size.
-	db.pageSize = os.Getpagesize()
-
 	// Create two meta pages on a buffer.
 	buf := make([]byte, db.pageSize*4)
 	for i := 0; i < 2; i++ {
@@ -999,6 +1005,9 @@ type Options struct {
 	// If initialMmapSize is smaller than the previous database size,
 	// it takes no effect.
 	InitialMmapSize int
+
+	// PageSize overrides the default OS page size.
+	PageSize int
 }
 
 // DefaultOptions represent the options used if nil options are passed into Open().
@@ -1038,10 +1047,6 @@ func (s *Stats) Sub(other *Stats) Stats {
 	diff.TxN = s.TxN - other.TxN
 	diff.TxStats = s.TxStats.Sub(&other.TxStats)
 	return diff
-}
-
-func (s *Stats) add(other *Stats) {
-	s.TxStats.add(&other.TxStats)
 }
 
 type Info struct {
@@ -1109,12 +1114,4 @@ func _assert(condition bool, msg string, v ...interface{}) {
 	if !condition {
 		panic(fmt.Sprintf("assertion failed: "+msg, v...))
 	}
-}
-
-func warn(v ...interface{})              { fmt.Fprintln(os.Stderr, v...) }
-func warnf(msg string, v ...interface{}) { fmt.Fprintf(os.Stderr, msg+"\n", v...) }
-
-func printstack() {
-	stack := strings.Join(strings.Split(string(debug.Stack()), "\n")[2:], "\n")
-	fmt.Fprintln(os.Stderr, stack)
 }
