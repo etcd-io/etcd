@@ -22,6 +22,20 @@ func NewStringsFlag(valids ...string) *StringsFlag {
 	return &StringsFlag{Values: valids}
 }
 
+func NewStringsFlagWithDefaultValue(defaultVal string, valids ...string) *StringsFlag {
+	valid := false
+	for val := range valids {
+		if val == defaultVal {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		plog.Panicf("unexpected error setting StringsFlag default value: %v is not in valids %v", valids)
+	}
+	return &StringsFlag{Values: valids, val: defaultVal}
+}
+
 // StringsFlag implements the flag.Value interface.
 type StringsFlag struct {
 	Values []string
