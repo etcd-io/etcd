@@ -18,22 +18,11 @@ import "errors"
 
 // NewStringsFlag creates a new string flag for which any one of the given
 // strings is a valid value, and any other value is an error.
+//
+// valids[0] will be default value. Caller must be sure len(valids)!=0 or
+// it will panic.
 func NewStringsFlag(valids ...string) *StringsFlag {
-	return &StringsFlag{Values: valids}
-}
-
-func NewStringsFlagWithDefaultValue(defaultVal string, valids ...string) *StringsFlag {
-	valid := false
-	for val := range valids {
-		if val == defaultVal {
-			valid = true
-			break
-		}
-	}
-	if !valid {
-		plog.Panicf("unexpected error setting StringsFlag default value: %v is not in valids %v", valids)
-	}
-	return &StringsFlag{Values: valids, val: defaultVal}
+	return &StringsFlag{Values: valids, val: valids[0]}
 }
 
 // StringsFlag implements the flag.Value interface.

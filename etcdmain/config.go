@@ -105,18 +105,15 @@ func newConfig() *config {
 	}
 	cfg.configFlags = configFlags{
 		FlagSet: flag.NewFlagSet("etcd", flag.ContinueOnError),
-		clusterState: flags.NewStringsFlagWithDefaultValue(
-			embed.ClusterStateFlagNew,
+		clusterState: flags.NewStringsFlag(
 			embed.ClusterStateFlagNew,
 			embed.ClusterStateFlagExisting,
 		),
-		fallback: flags.NewStringsFlagWithDefaultValue(
+		fallback: flags.NewStringsFlag(
 			fallbackFlagProxy,
 			fallbackFlagExit,
-			fallbackFlagProxy,
 		),
-		proxy: flags.NewStringsFlagWithDefaultValue(
-			proxyFlagOff,
+		proxy: flags.NewStringsFlag(
 			proxyFlagOff,
 			proxyFlagReadonly,
 			proxyFlagOn,
