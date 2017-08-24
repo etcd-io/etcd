@@ -1,4 +1,4 @@
-FROM golang:1.8.3-stretch
+FROM golang:1.9-stretch
 LABEL Description="Image for etcd DNS testing"
 RUN apt update -y
 RUN go get github.com/mattn/goreman

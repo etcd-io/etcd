@@ -4,7 +4,7 @@ go_import_path: github.com/coreos/etcd
 sudo: false
 
 go:
-  - 1.8.3
+  - 1.9
   - tip
 
 notifications:
@@ -56,6 +56,7 @@ before_install:
  - go get -v -u honnef.co/go/tools/cmd/unused
  - go get -v -u honnef.co/go/tools/cmd/staticcheck
  - ./scripts/install-marker.sh amd64
+ - export GOROOT=$(go env GOROOT)
 
 # disable godep restore override
 install:
