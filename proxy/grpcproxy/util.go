@@ -32,6 +32,14 @@ func getAuthTokenFromClient(ctx context.Context) string {
 	return ""
 }
 
+func withClientAuthToken(ctx context.Context, ctxWithToken context.Context) context.Context {
+	token := getAuthTokenFromClient(ctxWithToken)
+	if token != "" {
+		ctx = context.WithValue(ctx, "token", token)
+	}
+	return ctx
+}
+
 type proxyTokenCredential struct {
 	token string
 }

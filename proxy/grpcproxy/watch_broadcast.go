@@ -58,11 +58,7 @@ func newWatchBroadcast(wp *watchProxy, w *watcher, update func(*watchBroadcast))
 			clientv3.WithCreatedNotify(),
 		}
 
-		// Forward a token from client to server.
-		token := getAuthTokenFromClient(w.wps.stream.Context())
-		if token != "" {
-			cctx = context.WithValue(cctx, "token", token)
-		}
+		cctx = withClientAuthToken(cctx, w.wps.stream.Context())
 
 		wch := wp.cw.Watch(cctx, w.wr.key, opts...)
 
