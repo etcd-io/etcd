@@ -110,8 +110,8 @@ func newConfig() *config {
 			embed.ClusterStateFlagExisting,
 		),
 		fallback: flags.NewStringsFlag(
-			fallbackFlagExit,
 			fallbackFlagProxy,
+			fallbackFlagExit,
 		),
 		proxy: flags.NewStringsFlag(
 			proxyFlagOff,
@@ -149,28 +149,19 @@ func newConfig() *config {
 	fs.Var(flags.NewURLsValue(embed.DefaultAdvertiseClientURLs), "advertise-client-urls", "List of this member's client URLs to advertise to the public.")
 	fs.StringVar(&cfg.Durl, "discovery", cfg.Durl, "Discovery URL used to bootstrap the cluster.")
 	fs.Var(cfg.fallback, "discovery-fallback", fmt.Sprintf("Valid values include %s", strings.Join(cfg.fallback.Values, ", ")))
-	if err := cfg.fallback.Set(fallbackFlagProxy); err != nil {
-		// Should never happen.
-		plog.Panicf("unexpected error setting up discovery-fallback flag: %v", err)
-	}
+
 	fs.StringVar(&cfg.Dproxy, "discovery-proxy", cfg.Dproxy, "HTTP proxy to use for traffic to discovery service.")
 	fs.StringVar(&cfg.DNSCluster, "discovery-srv", cfg.DNSCluster, "DNS domain used to bootstrap initial cluster.")
 	fs.StringVar(&cfg.InitialCluster, "initial-cluster", cfg.InitialCluster, "Initial cluster configuration for bootstrapping.")
 	fs.StringVar(&cfg.InitialClusterToken, "initial-cluster-token", cfg.InitialClusterToken, "Initial cluster token for the etcd cluster during bootstrap.")
 	fs.Var(cfg.clusterState, "initial-cluster-state", "Initial cluster state ('new' or 'existing').")
-	if err := cfg.clusterState.Set(embed.ClusterStateFlagNew); err != nil {
-		// Should never happen.
-		plog.Panicf("unexpected error setting up clusterStateFlag: %v", err)
-	}
+
 	fs.BoolVar(&cfg.StrictReconfigCheck, "strict-reconfig-check", cfg.StrictReconfigCheck, "Reject reconfiguration requests that would cause quorum loss.")
 	fs.BoolVar(&cfg.EnableV2, "enable-v2", true, "Accept etcd V2 client requests.")
 
 	// proxy
 	fs.Var(cfg.proxy, "proxy", fmt.Sprintf("Valid values include %s", strings.Join(cfg.proxy.Values, ", ")))
-	if err := cfg.proxy.Set(proxyFlagOff); err != nil {
-		// Should never happen.
-		plog.Panicf("unexpected error setting up proxyFlag: %v", err)
-	}
+
 	fs.UintVar(&cfg.ProxyFailureWaitMs, "proxy-failure-wait", cfg.ProxyFailureWaitMs, "Time (in milliseconds) an endpoint will be held in a failed state.")
 	fs.UintVar(&cfg.ProxyRefreshIntervalMs, "proxy-refresh-interval", cfg.ProxyRefreshIntervalMs, "Time (in milliseconds) of the endpoints refresh interval.")
 	fs.UintVar(&cfg.ProxyDialTimeoutMs, "proxy-dial-timeout", cfg.ProxyDialTimeoutMs, "Time (in milliseconds) for a dial to timeout.")
