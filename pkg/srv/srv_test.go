@@ -86,7 +86,14 @@ func TestSRVGetCluster(t *testing.T) {
 
 			"dnsClusterTest=https://1.example.com:2480,0=https://2.example.com:2480,1=https://3.example.com:2480",
 		},
-		// invalid
+		// reject if apurls are TLS but SRV is only http
+		{
+			nil,
+			srvAll,
+			[]string{"https://10.0.0.1:2480"},
+
+			"0=http://2.example.com:2480,1=http://3.example.com:2480",
+		},
 	}
 
 	resolveTCPAddr = func(network, addr string) (*net.TCPAddr, error) {
