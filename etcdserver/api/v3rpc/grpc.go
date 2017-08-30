@@ -41,7 +41,8 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config) *grpc.Server {
 	}
 	opts = append(opts, grpc.UnaryInterceptor(newUnaryInterceptor(s)))
 	opts = append(opts, grpc.StreamInterceptor(newStreamInterceptor(s)))
-	opts = append(opts, grpc.MaxMsgSize(int(s.Cfg.MaxRequestBytes+grpcOverheadBytes)))
+	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytes+grpcOverheadBytes)))
+	opts = append(opts, grpc.MaxSendMsgSize(int(s.Cfg.MaxResponseBytes+grpcOverheadBytes)))
 	grpcServer := grpc.NewServer(opts...)
 
 	pb.RegisterKVServer(grpcServer, NewQuotaKVServer(s))

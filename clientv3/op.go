@@ -73,6 +73,15 @@ type Op struct {
 	cmps    []Cmp
 	thenOps []Op
 	elseOps []Op
+
+	// fragmentResponse allows watch clients to toggle whether to send
+	// watch responses that are too large to send over a rpc stream in fragments.
+	// Sending in fragments is an opt-in feature in order to preserve compatibility
+	// with older clients that can not handle responses being split into fragments.
+	fragmentResponse bool
+	// combineFragments indicates whether watch clients should combine
+	// fragments or relay the watch response in fragmented form.
+	combineFragments bool
 }
 
 // accesors / mutators
@@ -414,6 +423,22 @@ func WithCreatedNotify() OpOption {
 		op.createdNotify = true
 	}
 }
+
+// WithFragmentedResponse makes the watch server send watch responses
+// that are too large to send over the rpc stream in fragments.
+// The fragmenting feature is an opt-in feature in order to maintain
+// compatibility with older versions of clients.
+func WithFragmentedResponse() OpOption {
+	return func(op *Op) { op.fragmentResponse = true }
+}
+
+// WithFragments allows watch clients to passively relay their receieved
+// fragmented watch responses.
+// This option is handy for the watch client's belonging to watch proxies,
+// because these watch clients can be set to passively send along fragments
+// rather than reassembling and then fragmenting them such that they can be
+// sent to the user's watch client.
+func WithFragments() OpOption { return func(op *Op) { op.combineFragments = true } }
 
 // WithFilterPut discards PUT events from the watcher.
 func WithFilterPut() OpOption {

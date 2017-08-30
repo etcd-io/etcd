@@ -15,9 +15,7 @@
 package v3rpc
 
 import (
-	"fmt"
 	"io"
-	"math"
 	"sync"
 	"time"
 
@@ -99,8 +97,9 @@ type serverWatchStream struct {
 	// progress tracks the watchID that stream might need to send
 	// progress to.
 	// TODO: combine progress and prevKV into a single struct?
-	progress map[mvcc.WatchID]bool
-	prevKV   map[mvcc.WatchID]bool
+	progress              map[mvcc.WatchID]bool
+	prevKV                map[mvcc.WatchID]bool
+	fragmentWatchResponse map[mvcc.WatchID]bool
 
 	// closec indicates the stream is closed.
 	closec chan struct{}
@@ -122,10 +121,11 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 		gRPCStream:  stream,
 		watchStream: ws.watchable.NewWatchStream(),
 		// chan for sending control response like watcher created and canceled.
-		ctrlStream: make(chan *pb.WatchResponse, ctrlStreamBufLen),
-		progress:   make(map[mvcc.WatchID]bool),
-		prevKV:     make(map[mvcc.WatchID]bool),
-		closec:     make(chan struct{}),
+		ctrlStream:            make(chan *pb.WatchResponse, ctrlStreamBufLen),
+		progress:              make(map[mvcc.WatchID]bool),
+		prevKV:                make(map[mvcc.WatchID]bool),
+		fragmentWatchResponse: make(map[mvcc.WatchID]bool),
+		closec:                make(chan struct{}),
 
 		ag: ws.ag,
 	}
@@ -238,11 +238,14 @@ func (sws *serverWatchStream) recvLoop() error {
 				}
 				sws.mu.Unlock()
 			}
+			sws.fragmentWatchResponse[id] = creq.FragmentResponse
+
 			wr := &pb.WatchResponse{
-				Header:   sws.newResponseHeader(wsrev),
-				WatchId:  int64(id),
-				Created:  true,
-				Canceled: id == -1,
+				Header:        sws.newResponseHeader(wsrev),
+				WatchId:       int64(id),
+				Created:       true,
+				Canceled:      id == -1,
+				MoreFragments: false,
 			}
 			select {
 			case sws.ctrlStream <- wr:
@@ -337,35 +340,37 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 
 			mvcc.ReportEventReceived(len(evs))
-			// The grpc package's defaultServerMaxSendMessageSize, defaultServerMaxReceiveMessageSize
-			// and the maxSendMesgSize are set to lower numbers in order to demonstrate
-			// the fragmenting.
-			maxEventsPerMsg := 20
-			watchRespSent := false
-			for !watchRespSent {
-				// There isn't a reasonable way of deciphering the cause of the send error.
-				// One solution that comes to mind is comparing the string error message
-				// to the expected string for a grpc message indicating that the
-				// message size is too large, but this approach would fail if grpc
-				// were to change their error message semantics in the future. The
-				// approach here is to assume that the error is caused by the message
-				// being too large and incrementally increasing the number of fragments
-				// until the maxEventsPerMesg becomes 0 and we are therefore sure
-				// that the error in the send operation was not caused by the message
-				// size.
-				if maxEventsPerMsg == 0 {
+			if !sws.fragmentWatchResponse[wresp.WatchID] {
+				if err := sws.gRPCStream.Send(wr); err != nil {
 					return
 				}
-				for _, fragment := range FragmentWatchResponse(maxEventsPerMsg, wr) {
+				continue
+			}
+			var sendFragments func(maxEventsPerMsg int, wr *pb.WatchResponse) error
+			sendFragments = func(maxEventsPerMsg int, wr *pb.WatchResponse) error {
+				for _, fragment := range fragmentWatchResponse(maxEventsPerMsg, wr) {
 					if err := sws.gRPCStream.Send(fragment); err != nil {
-						fmt.Printf("Was about to size out. Setting max to %d from %d\n %v\n", maxEventsPerMsg/2, maxEventsPerMsg, err)
-						maxEventsPerMsg /= 2
-						watchRespSent = false
-						break
+						// maxEventsPerMsg should never reach zero. If maxEventsPerMsg is
+						// about to approach zero, the size of the watch response is probably
+						// not causing the send operation to fail.
+						if maxEventsPerMsg/2 == 0 {
+							return err
+						}
+						// further fragment the fragment which caused the send operation
+						// to fail.
+						err = sendFragments(maxEventsPerMsg/2, fragment)
+						if err != nil {
+							return err
+						}
+						continue
 					}
-					fmt.Printf("etcdserver - watchid: %d, count: %d, frag: %d, events: %v\n", fragment.WatchId, fragment.FragmentCount, fragment.CurrFragment, fragment.Events)
-					watchRespSent = true
 				}
+				return nil
+			}
+			// Start with trying to send all of the events in the watch response.
+			err := sendFragments(len(wr.Events), wr)
+			if err != nil {
+				return
 			}
 
 			sws.mu.Lock()
@@ -416,10 +421,8 @@ func (sws *serverWatchStream) sendLoop() {
 	}
 }
 
-func FragmentWatchResponse(maxSendMesgSize int, wr *pb.WatchResponse) []*pb.WatchResponse {
+func fragmentWatchResponse(maxSendMesgSize int, wr *pb.WatchResponse) []*pb.WatchResponse {
 	var fragmentWrs []*pb.WatchResponse
-	totalFragments := int64(math.Ceil(float64(len(wr.Events)) / float64(maxSendMesgSize)))
-	currFragmentCount := 1
 	for i := 0; i < len(wr.Events); i += maxSendMesgSize {
 		eventRangeEnd := i + maxSendMesgSize
 		if eventRangeEnd > len(wr.Events) {
@@ -430,15 +433,19 @@ func FragmentWatchResponse(maxSendMesgSize int, wr *pb.WatchResponse) []*pb.Watc
 			WatchId:         int64(wr.WatchId),
 			Events:          wr.Events[i:eventRangeEnd],
 			CompactRevision: wr.CompactRevision,
-			FragmentCount:   int64(totalFragments),
-			CurrFragment:    int64(currFragmentCount),
+			MoreFragments:   true,
 		}
-		currFragmentCount++
-		fmt.Printf("Apending: total: %d, curr: %d\n", wresp.FragmentCount, wresp.CurrFragment)
 		fragmentWrs = append(fragmentWrs, wresp)
 	}
 	if len(fragmentWrs) == 0 {
 		return []*pb.WatchResponse{wr}
+	}
+	// Since fragmentWatchResponse might be called in order to further fragment
+	// an existing fragment, we want to make sure to only set MoreFragments of the
+	// last fragment to false only if fragmentWatchResponse with a watch response
+	// parameter that itself has MoreFragments set to false.
+	if !wr.MoreFragments {
+		fragmentWrs[len(fragmentWrs)-1].MoreFragments = false
 	}
 	return fragmentWrs
 }

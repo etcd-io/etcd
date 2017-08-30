@@ -57,6 +57,11 @@ func newWatchBroadcast(wp *watchProxy, w *watcher, update func(*watchBroadcast))
 			clientv3.WithRev(wb.nextrev),
 			clientv3.WithPrevKV(),
 			clientv3.WithCreatedNotify(),
+			clientv3.WithFragments(),
+		}
+
+		if w.fragmentResponse {
+			opts = append(opts, clientv3.WithFragmentedResponse())
 		}
 
 		wch := wp.cw.Watch(cctx, w.wr.key, opts...)

@@ -34,10 +34,11 @@ func (wr *watchRange) valid() bool {
 type watcher struct {
 	// user configuration
 
-	wr       watchRange
-	filters  []mvcc.FilterFunc
-	progress bool
-	prevKV   bool
+	wr               watchRange
+	filters          []mvcc.FilterFunc
+	progress         bool
+	prevKV           bool
+	fragmentResponse bool
 
 	// id is the id returned to the client on its watch stream.
 	id int64
@@ -97,7 +98,7 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		events = append(events, ev)
 	}
 
-	if lastRev >= w.nextrev {
+	if lastRev >= w.nextrev && !wr.MoreFragments {
 		w.nextrev = lastRev + 1
 	}
 
@@ -113,6 +114,7 @@ func (w *watcher) send(wr clientv3.WatchResponse) {
 		CompactRevision: wr.CompactRevision,
 		WatchId:         w.id,
 		Events:          events,
+		MoreFragments:   wr.MoreFragments,
 	})
 }
 

@@ -60,6 +60,9 @@ type ServerConfig struct {
 	// MaxRequestBytes is the maximum request size to send over raft.
 	MaxRequestBytes uint
 
+	// MaxResponseBytes is the maximum response size to send over raft.
+	MaxResponseBytes uint
+
 	StrictReconfigCheck bool
 
 	// ClientCertAuthEnabled is true when cert has been signed by the client CA.

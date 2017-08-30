@@ -97,6 +97,7 @@ type ClusterConfig struct {
 	QuotaBackendBytes int64
 	MaxTxnOps         uint
 	MaxRequestBytes   uint
+	MaxResponseBytes  uint
 }
 
 type cluster struct {
@@ -230,6 +231,7 @@ func (c *cluster) mustNewMember(t *testing.T) *member {
 			quotaBackendBytes: c.cfg.QuotaBackendBytes,
 			maxTxnOps:         c.cfg.MaxTxnOps,
 			maxRequestBytes:   c.cfg.MaxRequestBytes,
+			maxResponseBytes:  c.cfg.MaxResponseBytes,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -498,6 +500,7 @@ type memberConfig struct {
 	quotaBackendBytes int64
 	maxTxnOps         uint
 	maxRequestBytes   uint
+	maxResponseBytes  uint
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -552,6 +555,10 @@ func mustNewMember(t *testing.T, mcfg memberConfig) *member {
 	m.MaxRequestBytes = mcfg.maxRequestBytes
 	if m.MaxRequestBytes == 0 {
 		m.MaxRequestBytes = embed.DefaultMaxRequestBytes
+	}
+	m.MaxResponseBytes = mcfg.maxResponseBytes
+	if m.MaxResponseBytes == 0 {
+		m.MaxResponseBytes = embed.DefaultMaxRequestBytes
 	}
 	m.AuthToken = "simple" // for the purpose of integration testing, simple token is enough
 	return m

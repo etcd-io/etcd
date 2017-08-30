@@ -37,11 +37,12 @@ const (
 	ClusterStateFlagNew      = "new"
 	ClusterStateFlagExisting = "existing"
 
-	DefaultName            = "default"
-	DefaultMaxSnapshots    = 5
-	DefaultMaxWALs         = 5
-	DefaultMaxTxnOps       = uint(128)
-	DefaultMaxRequestBytes = 1.5 * 1024 * 1024
+	DefaultName             = "default"
+	DefaultMaxSnapshots     = 5
+	DefaultMaxWALs          = 5
+	DefaultMaxTxnOps        = uint(128)
+	DefaultMaxRequestBytes  = 1.5 * 1024 * 1024
+	DefaultMaxResponseBytes = 1.5 * 1024 * 1024
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"

@@ -68,6 +68,10 @@ type WatchResponse struct {
 
 	// cancelReason is a reason of canceling watch
 	cancelReason string
+
+	// MoreFragments indicates that more fragments composing one large
+	// watch fragment are expected.
+	MoreFragments bool
 }
 
 // IsCreate returns true if the event tells that the key is newly created.
@@ -145,6 +149,10 @@ type watchGrpcStream struct {
 	resumec chan struct{}
 	// closeErr is the error that closed the watch stream
 	closeErr error
+
+	// combineFragments indicates whether watch clients should combine
+	// fragments or relay the watch response in fragmented form.
+	combineFragments bool
 }
 
 // watchRequest is issued by the subscriber to start a new watcher
@@ -157,6 +165,9 @@ type watchRequest struct {
 	createdNotify bool
 	// progressNotify is for progress updates
 	progressNotify bool
+	// fragmentResponse allows watch clients to toggle whether to send
+	// watch responses that are too large to send over a rpc stream in fragments.
+	fragmentResponse bool
 	// filters is the list of events to filter out
 	filters []pb.WatchCreateRequest_FilterType
 	// get the previous key-value pair before the event happens
@@ -241,15 +252,16 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 	}
 
 	wr := &watchRequest{
-		ctx:            ctx,
-		createdNotify:  ow.createdNotify,
-		key:            string(ow.key),
-		end:            string(ow.end),
-		rev:            ow.rev,
-		progressNotify: ow.progressNotify,
-		filters:        filters,
-		prevKV:         ow.prevKV,
-		retc:           make(chan chan WatchResponse, 1),
+		ctx:              ctx,
+		createdNotify:    ow.createdNotify,
+		key:              string(ow.key),
+		end:              string(ow.end),
+		rev:              ow.rev,
+		progressNotify:   ow.progressNotify,
+		fragmentResponse: ow.fragmentResponse,
+		filters:          filters,
+		prevKV:           ow.prevKV,
+		retc:             make(chan chan WatchResponse, 1),
 	}
 
 	ok := false
@@ -267,6 +279,7 @@ func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) Watch
 	wgs := w.streams[ctxKey]
 	if wgs == nil {
 		wgs = w.newWatcherGrpcStream(ctx)
+		wgs.combineFragments = ow.combineFragments
 		w.streams[ctxKey] = wgs
 	}
 	donec := wgs.donec
@@ -424,7 +437,7 @@ func (w *watchGrpcStream) run() {
 	}
 
 	cancelSet := make(map[int64]struct{})
-	var combinedFragments *pb.WatchResponse
+	var fragmentsToSend *pb.WatchResponse
 	for {
 		select {
 		// Watch() requested
@@ -450,25 +463,26 @@ func (w *watchGrpcStream) run() {
 			}
 		// New events from the watch client
 		case pbresp := <-w.respc:
-			fmt.Printf("Clientv3/watcher - watchid: %d, count: %d, frag: %d, events: %v\n", pbresp.WatchId, pbresp.FragmentCount, pbresp.CurrFragment, pbresp.Events)
-			if combinedFragments == nil || (combinedFragments.WatchId != pbresp.WatchId && combinedFragments.CurrFragment+1 != pbresp.CurrFragment) {
-				combinedFragments = pbresp
+			if w.combineFragments {
+				fragmentsToSend = pbresp
 			} else {
-				combinedFragments.Events = append(combinedFragments.Events, pbresp.Events...)
-				combinedFragments.CurrFragment = pbresp.CurrFragment
+				if fragmentsToSend == nil || fragmentsToSend.WatchId != pbresp.WatchId {
+					fragmentsToSend = pbresp
+				} else {
+					fragmentsToSend.Events = append(fragmentsToSend.Events, pbresp.Events...)
+					fragmentsToSend.MoreFragments = pbresp.MoreFragments
+				}
+				if fragmentsToSend.MoreFragments {
+					break
+				}
 			}
-			if combinedFragments.FragmentCount != combinedFragments.CurrFragment {
-				fmt.Printf("Waiting for more fragments ...\n")
-				break
-			}
-			fmt.Println("All fragments receieved\n")
 			switch {
 			case pbresp.Created:
 				// response to head of queue creation
 				if ws := w.resuming[0]; ws != nil {
-					w.addSubstream(combinedFragments, ws)
-					combinedFragments = nil
-					w.dispatchEvent(pbresp)
+					w.addSubstream(fragmentsToSend, ws)
+					w.dispatchEvent(fragmentsToSend)
+					fragmentsToSend = nil
 					w.resuming[0] = nil
 				}
 				if ws := w.nextResume(); ws != nil {
@@ -483,8 +497,8 @@ func (w *watchGrpcStream) run() {
 				}
 			default:
 				// dispatch to appropriate watch stream
-				if ok := w.dispatchEvent(combinedFragments); ok {
-					combinedFragments = nil
+				if ok := w.dispatchEvent(fragmentsToSend); ok {
+					fragmentsToSend = nil
 					break
 				}
 				// watch response on unexpected watch id; cancel id
@@ -551,6 +565,7 @@ func (w *watchGrpcStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
 		Created:         pbresp.Created,
 		Canceled:        pbresp.Canceled,
 		cancelReason:    pbresp.CancelReason,
+		MoreFragments:   pbresp.MoreFragments,
 	}
 	ws, ok := w.substreams[pbresp.WatchId]
 	if !ok {
@@ -798,12 +813,13 @@ func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error)
 // toPB converts an internal watch request structure to its protobuf messagefunc (wr *watchRequest)
 func (wr *watchRequest) toPB() *pb.WatchRequest {
 	req := &pb.WatchCreateRequest{
-		StartRevision:  wr.rev,
-		Key:            []byte(wr.key),
-		RangeEnd:       []byte(wr.end),
-		ProgressNotify: wr.progressNotify,
-		Filters:        wr.filters,
-		PrevKv:         wr.prevKV,
+		StartRevision:    wr.rev,
+		Key:              []byte(wr.key),
+		RangeEnd:         []byte(wr.end),
+		ProgressNotify:   wr.progressNotify,
+		FragmentResponse: wr.fragmentResponse,
+		Filters:          wr.filters,
+		PrevKv:           wr.prevKV,
 	}
 	cr := &pb.WatchRequest_CreateRequest{CreateRequest: req}
 	return &pb.WatchRequest{RequestUnion: cr}

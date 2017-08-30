@@ -17,28 +17,22 @@ package integration
 import (
 	"context"
 	"fmt"
-	"log"
+	"strconv"
 	"testing"
-	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/integration"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/etcd/proxy/grpcproxy"
-	"github.com/etcd/proxy/grpcproxy/adapter"
+	"github.com/coreos/etcd/proxy/grpcproxy"
+	"github.com/coreos/etcd/proxy/grpcproxy/adapter"
 )
 
-// TestFragmentationStopsAfterServerFailure tests the edge case where either
-// the server of watch proxy fails to send a message due to errors not related to
-// the fragment size, such as a member failure. In that case,
-// the server or watch proxy should continue to reduce the message size (a default
-// action choosen because there is no way of telling whether the error caused
-// by the send operation is message size related or caused by some other issue)
-// until the message size becomes zero and thus we are certain that the message
-// size is not the issue causing the send operation to fail.
-func TestFragmentationStopsAfterServerFailure(t *testing.T) {
+func TestResponseWithoutFragmenting(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	// MaxResponseBytes will overflow to 1000 once the grpcOverheadBytes,
+	// which have a value of 512 * 1024, are added to MaxResponseBytes.
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, MaxResponseBytes: ^uint(0) - (512*1024 - 1 - 1000)})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
@@ -56,30 +50,56 @@ func TestFragmentationStopsAfterServerFailure(t *testing.T) {
 		t.Error(err)
 	}
 
+	// Create and register watch proxy.
+	wp, _ := grpcproxy.NewWatchProxy(clus.Client(0))
+	wc := adapter.WatchServerToWatchClient(wp)
+	w := clientv3.NewWatchFromWatchClient(wc)
+
 	kv := clus.Client(0)
-	for i := 0; i < 25; i++ {
+	for i := 0; i < 10; i++ {
 		_, err = kv.Put(context.TODO(), fmt.Sprintf("foo%d", i), "bar", clientv3.WithLease(firstLease.ID))
 		if err != nil {
 			t.Error(err)
 		}
 	}
 
-	kv.Watch(context.TODO(), "foo", clientv3.WithRange("z"))
+	// Does not include the clientv3.WithFragmentedResponse option.
+	wChannel := w.Watch(context.TODO(), "foo", clientv3.WithRange("z"))
 	_, err = clus.Client(0).Revoke(context.Background(), firstLease.ID)
 	if err != nil {
 		t.Error(err)
 	}
-	clus.Members[0].Stop(t)
-	time.Sleep(10 * time.Second)
-	log.Fatal("Printed the log")
+
+	r, ok := <-wChannel
+	if !ok {
+		t.Error()
+	}
+	keyDigitSum := 0
+	responseSum := 0
+	if len(r.Events) != 10 {
+		t.Errorf("Expected 10 events, got %d\n", len(r.Events))
+	}
+	for i := 0; i < 10; i++ {
+		if r.Events[i].Type != mvccpb.DELETE {
+			t.Errorf("Expected DELETE event, got %d", r.Events[i].Type)
+		}
+		keyDigitSum += i
+		digit, err := strconv.Atoi((string(r.Events[i].Kv.Key)[3:]))
+		if err != nil {
+			t.Error("Failed to convert %s to int", (string(r.Events[i].Kv.Key)[3:]))
+		}
+		responseSum += digit
+	}
+	if keyDigitSum != responseSum {
+		t.Errorf("Expected digits of keys received in the response to sum to %d, but got %d\n", keyDigitSum, responseSum)
+	}
 }
 
-// TestFragmentingWithOverlappingWatchers tests that events are fragmented
-// on the server and watch proxy and pieced back together on the client-side
-// properly.
-func TestFragmentingWithOverlappingWatchers(t *testing.T) {
+func TestFragmenting(t *testing.T) {
 	defer testutil.AfterTest(t)
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	// MaxResponseBytes will overflow to 1000 once the grpcOverheadBytes,
+	// which have a value of 512 * 1024, are added to MaxResponseBytes.
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, MaxResponseBytes: ^uint(0) - (512*1024 - 1 - 1000)})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
@@ -93,10 +113,6 @@ func TestFragmentingWithOverlappingWatchers(t *testing.T) {
 
 	cli.SetEndpoints(clus.Members[0].GRPCAddr())
 	firstLease, err := clus.Client(0).Grant(context.Background(), 10000)
-	if err != nil {
-		t.Error(err)
-	}
-	secondLease, err := clus.Client(0).Grant(context.Background(), 10000)
 	if err != nil {
 		t.Error(err)
 	}
@@ -107,31 +123,39 @@ func TestFragmentingWithOverlappingWatchers(t *testing.T) {
 	w := clientv3.NewWatchFromWatchClient(wc)
 
 	kv := clus.Client(0)
-	for i := 0; i < 25; i++ {
+	for i := 0; i < 100; i++ {
 		_, err = kv.Put(context.TODO(), fmt.Sprintf("foo%d", i), "bar", clientv3.WithLease(firstLease.ID))
 		if err != nil {
 			t.Error(err)
 		}
-		_, err = kv.Put(context.TODO(), fmt.Sprintf("buzz%d", i), "fizz", clientv3.WithLease(secondLease.ID))
-		if err != nil {
-			t.Error(err)
-		}
 	}
-
-	w.Watch(context.TODO(), "foo", clientv3.WithRange("z"))
-	w.Watch(context.TODO(), "buzz", clientv3.WithRange("z	"))
-
+	wChannel := w.Watch(context.TODO(), "foo", clientv3.WithRange("z"), clientv3.WithFragmentedResponse())
 	_, err = clus.Client(0).Revoke(context.Background(), firstLease.ID)
 	if err != nil {
 		t.Error(err)
 	}
-	_, err = clus.Client(0).Revoke(context.Background(), secondLease.ID)
-	if err != nil {
-		t.Error(err)
+
+	r, ok := <-wChannel
+	if !ok {
+		t.Error()
 	}
-
-	// Wait for the revokation process to finish
-	time.Sleep(10 * time.Second)
-	log.Fatal("Printed the log")
-
+	keyDigitSum := 0
+	responseSum := 0
+	if len(r.Events) != 100 {
+		t.Errorf("Expected 100 events, got %d\n", len(r.Events))
+	}
+	for i := 0; i < 100; i++ {
+		if r.Events[i].Type != mvccpb.DELETE {
+			t.Errorf("Expected DELETE event, got %d", r.Events[i].Type)
+		}
+		keyDigitSum += i
+		digit, err := strconv.Atoi((string(r.Events[i].Kv.Key)[3:]))
+		if err != nil {
+			t.Error("Failed to convert %s to int", (string(r.Events[i].Kv.Key)[3:]))
+		}
+		responseSum += digit
+	}
+	if keyDigitSum != responseSum {
+		t.Errorf("Expected digits of keys received in the response to sum to %d, but got %d\n", keyDigitSum, responseSum)
+	}
 }

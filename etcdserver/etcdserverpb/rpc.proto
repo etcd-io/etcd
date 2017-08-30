@@ -639,6 +639,10 @@ message WatchCreateRequest {
   // If prev_kv is set, created watcher gets the previous KV before the event happens.
   // If the previous KV is already compacted, nothing will be returned.
   bool prev_kv = 6;
+
+  // sendInFragments allows watch clients to toggle whether to send
+  // watch responses that are too large to send over a rpc stream in fragments.
+  bool fragment_response = 7;
 }
 
 message WatchCancelRequest {
@@ -673,9 +677,7 @@ message WatchResponse {
 
   repeated mvccpb.Event events = 11;
 
-  int64 fragment_count = 7;
-
-  int64 curr_fragment = 8;
+  bool more_fragments = 7;
 }
 
 message LeaseGrantRequest {
