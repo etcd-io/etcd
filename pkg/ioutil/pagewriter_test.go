@@ -15,6 +15,7 @@
 package ioutil
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 )
@@ -111,6 +112,27 @@ func TestPageWriterOffset(t *testing.T) {
 	}
 }
 
+// TestPageWriterFlushErrorOnWrite tests if page writer could return written size and error
+// correctly when flushing fails on write.
+func TestPageWriterFlushErrorOnWrite(t *testing.T) {
+	defaultBufferBytes = 1024
+	pageBytes := 64
+	pageWriterBufLen := defaultBufferBytes + pageBytes
+	buf := make([]byte, pageWriterBufLen)
+	hw := &halfPageWriter{pageBytes: pageBytes, t: t}
+	w := NewPageWriter(hw, pageBytes, 0)
+
+	// trigger flush to halfPageWriter on write
+	n, err := w.Write(buf)
+	if err == nil {
+		t.Fatalf("err not occurred, expected err when writing halfPageWriter")
+	}
+
+	if n != pageWriterBufLen/2 {
+		t.Fatalf("wrote %d bytes, expected %d", n, pageWriterBufLen/2)
+	}
+}
+
 // checkPageWriter implements an io.Writer that fails a test on unaligned writes.
 type checkPageWriter struct {
 	pageBytes  int
@@ -126,4 +148,20 @@ func (cw *checkPageWriter) Write(p []byte) (int, error) {
 	cw.writes++
 	cw.writeBytes += len(p)
 	return len(p), nil
+}
+
+// halfPageWriter implements an io.Writer that fails a test on unaligned writes
+// and writes half of the page every time.
+type halfPageWriter struct {
+	pageBytes int
+	t         *testing.T
+}
+
+func (hw *halfPageWriter) Write(p []byte) (int, error) {
+	if len(p)%hw.pageBytes != 0 {
+		hw.t.Fatalf("got write len(p) = %d, expected len(p) == k*hw.pageBytes", len(p))
+	}
+	// Acquire half of the page.
+	p = p[len(p)/2:]
+	return len(p), fmt.Errorf("ioutil: short write")
 }
