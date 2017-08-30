@@ -76,7 +76,7 @@ func (pw *PageWriter) Write(p []byte) (n int, err error) {
 		}
 	}
 	// buffer contents are now page-aligned; clear out
-	if err = pw.Flush(); err != nil {
+	if n, err = pw.flush(); err != nil {
 		return n, err
 	}
 	// directly write all complete pages without copying
@@ -96,11 +96,16 @@ func (pw *PageWriter) Write(p []byte) (n int, err error) {
 }
 
 func (pw *PageWriter) Flush() error {
-	if pw.bufferedBytes == 0 {
-		return nil
-	}
-	_, err := pw.w.Write(pw.buf[:pw.bufferedBytes])
-	pw.pageOffset = (pw.pageOffset + pw.bufferedBytes) % pw.pageBytes
-	pw.bufferedBytes = 0
+	_, err := pw.flush()
 	return err
+}
+
+func (pw *PageWriter) flush() (int, error) {
+	if pw.bufferedBytes == 0 {
+		return 0, nil
+	}
+	n, err := pw.w.Write(pw.buf[:pw.bufferedBytes])
+	pw.pageOffset = (pw.pageOffset + n) % pw.pageBytes
+	pw.bufferedBytes -= n
+	return n, err
 }
