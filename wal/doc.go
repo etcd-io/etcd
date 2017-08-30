@@ -38,8 +38,9 @@ Each WAL file is a stream of WAL records. A WAL record is a length field and a w
 protobuf. The record protobuf contains a CRC, a type, and a data payload. The length field is a
 64-bit packed structure holding the length of the remaining logical record data in its lower
 56 bits and its physical padding in the first three bits of the most significant byte. Each
-record is 8-byte aligned so that the length field is never torn. The CRC contains the CRC32
-value of all record protobufs preceding the current record.
+record is 8-byte aligned, which is the multiple times of the minimum sector size 512, so that the
+length field is never torn. The CRC contains the CRC32 value of all record protobufs preceding
+the current record.
 
 WAL files are placed inside of the directory in the following format:
 $seq-$index.wal
