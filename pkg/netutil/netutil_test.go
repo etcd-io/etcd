@@ -179,6 +179,21 @@ func TestURLsEqual(t *testing.T) {
 			expect: true,
 		},
 		{
+			a:      []url.URL{{Scheme: "http", Host: "example.com:2379"}},
+			b:      []url.URL{{Scheme: "https", Host: "10.0.10.1:2379"}},
+			expect: false,
+		},
+		{
+			a:      []url.URL{{Scheme: "https", Host: "example.com:2379"}},
+			b:      []url.URL{{Scheme: "http", Host: "10.0.10.1:2379"}},
+			expect: false,
+		},
+		{
+			a:      []url.URL{{Scheme: "unix", Host: "abc:2379"}},
+			b:      []url.URL{{Scheme: "unix", Host: "abc:2379"}},
+			expect: true,
+		},
+		{
 			a:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			b:      []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}, {Scheme: "http", Host: "127.0.0.1:2380"}},
 			expect: true,
