@@ -50,22 +50,21 @@ const (
 )
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
-func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http.Handler {
+func NewClientHandler(server etcdserver.ServerPeer, timeout time.Duration) http.Handler {
 	mux := http.NewServeMux()
 	etcdhttp.HandleBasic(mux, server)
 	handleV2(mux, server, timeout)
 	return requestLogger(mux)
 }
 
-func handleV2(mux *http.ServeMux, server *etcdserver.EtcdServer, timeout time.Duration) {
+func handleV2(mux *http.ServeMux, server etcdserver.ServerV2, timeout time.Duration) {
 	sec := auth.NewStore(server, timeout)
 	kh := &keysHandler{
 		sec:                   sec,
 		server:                server,
 		cluster:               server.Cluster(),
-		timer:                 server,
 		timeout:               timeout,
-		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
+		clientCertAuthEnabled: server.ClientCertAuthEnabled(),
 	}
 
 	sh := &statsHandler{
@@ -78,7 +77,7 @@ func handleV2(mux *http.ServeMux, server *etcdserver.EtcdServer, timeout time.Du
 		cluster: server.Cluster(),
 		timeout: timeout,
 		clock:   clockwork.NewRealClock(),
-		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
+		clientCertAuthEnabled: server.ClientCertAuthEnabled(),
 	}
 
 	mah := &machinesHandler{cluster: server.Cluster()}
@@ -86,7 +85,7 @@ func handleV2(mux *http.ServeMux, server *etcdserver.EtcdServer, timeout time.Du
 	sech := &authHandler{
 		sec:                   sec,
 		cluster:               server.Cluster(),
-		clientCertAuthEnabled: server.Cfg.ClientCertAuthEnabled,
+		clientCertAuthEnabled: server.ClientCertAuthEnabled(),
 	}
 	mux.HandleFunc("/", http.NotFound)
 	mux.Handle(keysPrefix, kh)
@@ -102,9 +101,8 @@ func handleV2(mux *http.ServeMux, server *etcdserver.EtcdServer, timeout time.Du
 
 type keysHandler struct {
 	sec                   auth.Store
-	server                etcdserver.Server
+	server                etcdserver.ServerV2
 	cluster               api.Cluster
-	timer                 etcdserver.RaftTimer
 	timeout               time.Duration
 	clientCertAuthEnabled bool
 }
@@ -142,7 +140,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case resp.Event != nil:
-		if err := writeKeyEvent(w, resp.Event, noValueOnSuccess, h.timer); err != nil {
+		if err := writeKeyEvent(w, resp, noValueOnSuccess); err != nil {
 			// Should never be reached
 			plog.Errorf("error writing event (%v)", err)
 		}
@@ -150,7 +148,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case resp.Watcher != nil:
 		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
 		defer cancel()
-		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
+		handleKeyWatch(ctx, w, resp, rr.Stream)
 	default:
 		writeKeyError(w, errors.New("received response with no Event/Watcher!"))
 	}
@@ -170,7 +168,7 @@ func (h *machinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 type membersHandler struct {
 	sec                   auth.Store
-	server                etcdserver.Server
+	server                etcdserver.ServerV2
 	cluster               api.Cluster
 	timeout               time.Duration
 	clock                 clockwork.Clock
@@ -503,14 +501,15 @@ func parseKeyRequest(r *http.Request, clock clockwork.Clock) (etcdserverpb.Reque
 // writeKeyEvent trims the prefix of key path in a single Event under
 // StoreKeysPrefix, serializes it and writes the resulting JSON to the given
 // ResponseWriter, along with the appropriate headers.
-func writeKeyEvent(w http.ResponseWriter, ev *store.Event, noValueOnSuccess bool, rt etcdserver.RaftTimer) error {
+func writeKeyEvent(w http.ResponseWriter, resp etcdserver.Response, noValueOnSuccess bool) error {
+	ev := resp.Event
 	if ev == nil {
 		return errors.New("cannot write empty Event!")
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Etcd-Index", fmt.Sprint(ev.EtcdIndex))
-	w.Header().Set("X-Raft-Index", fmt.Sprint(rt.Index()))
-	w.Header().Set("X-Raft-Term", fmt.Sprint(rt.Term()))
+	w.Header().Set("X-Raft-Index", fmt.Sprint(resp.Index))
+	w.Header().Set("X-Raft-Term", fmt.Sprint(resp.Term))
 
 	if ev.IsCreated() {
 		w.WriteHeader(http.StatusCreated)
@@ -552,7 +551,8 @@ func writeKeyError(w http.ResponseWriter, err error) {
 	}
 }
 
-func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {
+func handleKeyWatch(ctx context.Context, w http.ResponseWriter, resp etcdserver.Response, stream bool) {
+	wa := resp.Watcher
 	defer wa.Remove()
 	ech := wa.EventChan()
 	var nch <-chan bool
@@ -562,8 +562,8 @@ func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Etcd-Index", fmt.Sprint(wa.StartIndex()))
-	w.Header().Set("X-Raft-Index", fmt.Sprint(rt.Index()))
-	w.Header().Set("X-Raft-Term", fmt.Sprint(rt.Term()))
+	w.Header().Set("X-Raft-Index", fmt.Sprint(resp.Index))
+	w.Header().Set("X-Raft-Term", fmt.Sprint(resp.Term))
 	w.WriteHeader(http.StatusOK)
 
 	// Ensure headers are flushed early, in case of long polling

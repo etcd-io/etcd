@@ -46,8 +46,7 @@ type LeaderTransferrer interface {
 }
 
 type RaftStatusGetter interface {
-	Index() uint64
-	Term() uint64
+	etcdserver.RaftTimer
 	ID() types.ID
 	Leader() types.ID
 }

@@ -38,6 +38,7 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/lease"
+	"github.com/coreos/etcd/lease/leasehttp"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/fileutil"
@@ -108,29 +109,33 @@ func init() {
 }
 
 type Response struct {
+	Term    uint64
+	Index   uint64
 	Event   *store.Event
 	Watcher store.Watcher
-	err     error
+	Err     error
 }
 
-type Server interface {
-	// Start performs any initialization of the Server necessary for it to
-	// begin serving requests. It must be called before Do or Process.
-	// Start must be non-blocking; any long-running server functionality
-	// should be implemented in goroutines.
-	Start()
-	// Stop terminates the Server and performs any necessary finalization.
-	// Do and Process cannot be called after Stop has been invoked.
-	Stop()
-	// ID returns the ID of the Server.
+type ServerV2 interface {
+	Server
+	// Do takes a V2 request and attempts to fulfill it, returning a Response.
+	Do(ctx context.Context, r pb.Request) (Response, error)
+	stats.Stats
+	ClientCertAuthEnabled() bool
+}
+
+type ServerV3 interface {
+	Server
 	ID() types.ID
+	RaftTimer
+}
+
+func (s *EtcdServer) ClientCertAuthEnabled() bool { return s.Cfg.ClientCertAuthEnabled }
+
+type Server interface {
 	// Leader returns the ID of the leader Server.
 	Leader() types.ID
-	// Do takes a request and attempts to fulfill it, returning a Response.
-	Do(ctx context.Context, r pb.Request) (Response, error)
-	// Process takes a raft message and applies it to the server's raft state
-	// machine, respecting any timeout of the given context.
-	Process(ctx context.Context, m raftpb.Message) error
+
 	// AddMember attempts to add a member into the cluster. It will return
 	// ErrIDRemoved if member ID is removed from the cluster, or return
 	// ErrIDExists if member ID exists in the cluster.
@@ -139,7 +144,6 @@ type Server interface {
 	// return ErrIDRemoved if member ID is removed from the cluster, or return
 	// ErrIDNotFound if member ID is not in the cluster.
 	RemoveMember(ctx context.Context, id uint64) ([]*membership.Member, error)
-
 	// UpdateMember attempts to update an existing member in the cluster. It will
 	// return ErrIDNotFound if the member ID does not exist.
 	UpdateMember(ctx context.Context, updateMemb membership.Member) ([]*membership.Member, error)
@@ -159,6 +163,8 @@ type Server interface {
 	// the leader is etcd 2.0. etcd 2.0 leader will not update clusterVersion since
 	// this feature is introduced post 2.0.
 	ClusterVersion() *semver.Version
+	Cluster() api.Cluster
+	Alarms() []*pb.AlarmMember
 }
 
 // EtcdServer is the production implementation of the Server interface
@@ -514,9 +520,10 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	return srv, nil
 }
 
-// Start prepares and starts server in a new goroutine. It is no longer safe to
-// modify a server's fields after it has been sent to Start.
-// It also starts a goroutine to publish its server information.
+// Start performs any initialization of the Server necessary for it to
+// begin serving requests. It must be called before Do or Process.
+// Start must be non-blocking; any long-running server functionality
+// should be implemented in goroutines.
 func (s *EtcdServer) Start() {
 	s.start()
 	s.goAttach(func() { s.publish(s.Cfg.ReqTimeout()) })
@@ -576,14 +583,27 @@ func (s *EtcdServer) purgeFile() {
 
 func (s *EtcdServer) ID() types.ID { return s.id }
 
-func (s *EtcdServer) Cluster() *membership.RaftCluster { return s.cluster }
-
-func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
-
-func (s *EtcdServer) Lessor() lease.Lessor { return s.lessor }
+func (s *EtcdServer) Cluster() api.Cluster { return s.cluster }
 
 func (s *EtcdServer) ApplyWait() <-chan struct{} { return s.applyWait.Wait(s.getCommittedIndex()) }
 
+type ServerPeer interface {
+	ServerV2
+	RaftHandler() http.Handler
+	LeaseHandler() http.Handler
+}
+
+func (s *EtcdServer) LeaseHandler() http.Handler {
+	if s.lessor == nil {
+		return nil
+	}
+	return leasehttp.NewHandler(s.lessor, s.ApplyWait)
+}
+
+func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
+
+// Process takes a raft message and applies it to the server's raft state
+// machine, respecting any timeout of the given context.
 func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 	if s.cluster.IsIDRemoved(types.ID(m.From)) {
 		plog.Warningf("reject message from removed member %s", types.ID(m.From).String())
@@ -992,6 +1012,8 @@ func (s *EtcdServer) HardStop() {
 // Stop should be called after a Start(s), otherwise it will block forever.
 // When stopping leader, Stop transfers its leadership to one of its peers
 // before stopping the server.
+// Stop terminates the Server and performs any necessary finalization.
+// Do and Process cannot be called after Stop has been invoked.
 func (s *EtcdServer) Stop() {
 	if err := s.TransferLeadership(); err != nil {
 		plog.Warningf("%s failed to transfer leadership (%v)", s.ID(), err)
@@ -1322,12 +1344,13 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	var raftReq pb.InternalRaftRequest
 	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
 		var r pb.Request
-		pbutil.MustUnmarshal(&r, e.Data)
-		s.w.Trigger(r.ID, s.applyV2Request(&r))
+		rp := &r
+		pbutil.MustUnmarshal(rp, e.Data)
+		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp)))
 		return
 	}
 	if raftReq.V2 != nil {
-		req := raftReq.V2
+		req := (*RequestV2)(raftReq.V2)
 		s.w.Trigger(req.ID, s.applyV2Request(req))
 		return
 	}

@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2017 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package api
+package v2v3
 
 import (
 	"github.com/coreos/etcd/etcdserver/membership"
@@ -21,18 +21,11 @@ import (
 	"github.com/coreos/go-semver/semver"
 )
 
-// Cluster is an interface representing a collection of members in one etcd cluster.
-type Cluster interface {
-	// ID returns the cluster ID
-	ID() types.ID
-	// ClientURLs returns an aggregate set of all URLs on which this
-	// cluster is listening for client requests
-	ClientURLs() []string
-	// Members returns a slice of members sorted by their ID
-	Members() []*membership.Member
-	// Member retrieves a particular member based on ID, or nil if the
-	// member does not exist in the cluster
-	Member(id types.ID) *membership.Member
-	// Version is the cluster-wide minimum major.minor version.
-	Version() *semver.Version
+func (s *v2v3Server) ID() types.ID {
+	// TODO: use an actual member ID
+	return types.ID(0xe7cd2f00d)
 }
+func (s *v2v3Server) ClientURLs() []string                  { panic("STUB") }
+func (s *v2v3Server) Members() []*membership.Member         { panic("STUB") }
+func (s *v2v3Server) Member(id types.ID) *membership.Member { panic("STUB") }
+func (s *v2v3Server) Version() *semver.Version              { panic("STUB") }

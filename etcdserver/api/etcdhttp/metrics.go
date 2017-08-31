@@ -33,7 +33,7 @@ const (
 )
 
 // HandleMetricsHealth registers metrics and health handlers.
-func HandleMetricsHealth(mux *http.ServeMux, srv *etcdserver.EtcdServer) {
+func HandleMetricsHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
 	mux.Handle(pathMetrics, prometheus.Handler())
 	mux.Handle(PathHealth, NewHealthHandler(func() Health { return checkHealth(srv) }))
 }
@@ -44,7 +44,7 @@ func HandlePrometheus(mux *http.ServeMux) {
 }
 
 // HandleHealth registers health handler on '/health'.
-func HandleHealth(mux *http.ServeMux, srv *etcdserver.EtcdServer) {
+func HandleHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
 	mux.Handle(PathHealth, NewHealthHandler(func() Health { return checkHealth(srv) }))
 }
 
@@ -74,7 +74,7 @@ type Health struct {
 	Errors []string `json:"errors,omitempty"`
 }
 
-func checkHealth(srv *etcdserver.EtcdServer) Health {
+func checkHealth(srv etcdserver.ServerV2) Health {
 	h := Health{Health: false}
 
 	as := srv.Alarms()

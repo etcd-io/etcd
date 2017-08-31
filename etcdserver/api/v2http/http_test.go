@@ -48,19 +48,15 @@ func (c *fakeCluster) Members() []*membership.Member {
 	return []*membership.Member(ms)
 }
 func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[uint64(id)] }
-func (c *fakeCluster) IsIDRemoved(id types.ID) bool          { return false }
 func (c *fakeCluster) Version() *semver.Version              { return nil }
 
 // errServer implements the etcd.Server interface for testing.
 // It returns the given error from any Do/Process/AddMember/RemoveMember calls.
 type errServer struct {
 	err error
+	fakeServer
 }
 
-func (fs *errServer) Start()           {}
-func (fs *errServer) Stop()            {}
-func (fs *errServer) ID() types.ID     { return types.ID(1) }
-func (fs *errServer) Leader() types.ID { return types.ID(1) }
 func (fs *errServer) Do(ctx context.Context, r etcdserverpb.Request) (etcdserver.Response, error) {
 	return etcdserver.Response{}, fs.err
 }
@@ -76,8 +72,6 @@ func (fs *errServer) RemoveMember(ctx context.Context, id uint64) ([]*membership
 func (fs *errServer) UpdateMember(ctx context.Context, m membership.Member) ([]*membership.Member, error) {
 	return nil, fs.err
 }
-
-func (fs *errServer) ClusterVersion() *semver.Version { return nil }
 
 func TestWriteError(t *testing.T) {
 	// nil error should not panic

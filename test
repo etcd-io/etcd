@@ -87,10 +87,15 @@ function unit_pass {
 function integration_pass {
 	echo "Running integration tests..."
 	go test -timeout 15m -v -cpu 1,2,4 $@ ${REPO_PATH}/integration
+	integration_extra $@
+}
+
+function integration_extra {
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/client/integration
-	go test -timeout 10m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
+	go test -timeout 15m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
 	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
 	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
+	go test -timeout 5m -v ${RACE} -tags v2v3 $@ ${REPO_PATH}/store
 }
 
 function functional_pass {
@@ -162,6 +167,9 @@ function cov_pass {
 		go test $GOCOVFLAGS -run=Test -coverprofile "$COVERDIR/${tf}.coverprofile"  ${REPO_PATH}/$t || failed="$failed $t"
 	done
 
+	# v2v3 tests
+	go test -tags v2v3 $GOCOVFLAGS -coverprofile "$COVERDIR/store-v2v3.coverprofile" ${REPO_PATH}/clientv3/integration || failed="$failed store-v2v3"
+
 	# proxy tests
 	go test -tags cluster_proxy $GOCOVFLAGS -coverprofile "$COVERDIR/proxy_integration.coverprofile" ${REPO_PATH}/integration || failed="$failed proxy-integration"
 	go test -tags cluster_proxy $GOCOVFLAGS -coverprofile "$COVERDIR/proxy_clientv3.coverprofile" ${REPO_PATH}/clientv3/integration || failed="$failed proxy-clientv3/integration"
@@ -211,10 +219,7 @@ function integration_e2e_pass {
 	intpid="$!"
 	wait $e2epid
 	wait $intpid
-	go test -timeout 1m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/client/integration
-	go test -timeout 20m -v ${RACE} -cpu 1,2,4 $@ ${REPO_PATH}/clientv3/integration
-	go test -timeout 1m -v -cpu 1,2,4 $@ ${REPO_PATH}/contrib/raftexample
-	go test -timeout 1m -v ${RACE} -cpu 1,2,4 -run=Example $@ ${TEST}
+	integration_extra $@
 }
 
 function grpcproxy_pass {

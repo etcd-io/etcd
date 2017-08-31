@@ -47,7 +47,6 @@ func (c *fakeCluster) Members() []*membership.Member {
 	return []*membership.Member(ms)
 }
 func (c *fakeCluster) Member(id types.ID) *membership.Member { return c.members[uint64(id)] }
-func (c *fakeCluster) IsIDRemoved(id types.ID) bool          { return false }
 func (c *fakeCluster) Version() *semver.Version              { return nil }
 
 // TestNewPeerHandlerOnRaftPrefix tests that NewPeerHandler returns a handler that

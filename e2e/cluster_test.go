@@ -212,6 +212,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 			"--data-dir", dataDirPath,
 			"--snapshot-count", fmt.Sprintf("%d", cfg.snapCount),
 		}
+		args = addV2Args(args)
 		if cfg.forceNewCluster {
 			args = append(args, "--force-new-cluster")
 		}
