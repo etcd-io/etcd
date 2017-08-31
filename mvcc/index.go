@@ -85,6 +85,21 @@ func (ti *treeIndex) keyIndex(keyi *keyIndex) *keyIndex {
 	return nil
 }
 
+func (ti *treeIndex) visit(key, end []byte, f func(ki *keyIndex)) {
+	keyi, endi := &keyIndex{key: key}, &keyIndex{key: end}
+
+	ti.RLock()
+	defer ti.RUnlock()
+
+	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
+		if len(endi.key) > 0 && !item.Less(endi) {
+			return false
+		}
+		f(item.(*keyIndex))
+		return true
+	})
+}
+
 func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision) {
 	if end == nil {
 		rev, _, _, err := ti.Get(key, atRev)
@@ -93,8 +108,12 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64) (revs []revision) {
 		}
 		return []revision{rev}
 	}
-	_, rev := ti.Range(key, end, atRev)
-	return rev
+	ti.visit(key, end, func(ki *keyIndex) {
+		if rev, _, _, err := ki.get(atRev); err == nil {
+			revs = append(revs, rev)
+		}
+	})
+	return revs
 }
 
 func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []revision) {
@@ -105,27 +124,12 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 		}
 		return [][]byte{key}, []revision{rev}
 	}
-
-	keyi := &keyIndex{key: key}
-	endi := &keyIndex{key: end}
-
-	ti.RLock()
-	defer ti.RUnlock()
-
-	ti.tree.AscendGreaterOrEqual(keyi, func(item btree.Item) bool {
-		if len(endi.key) > 0 && !item.Less(endi) {
-			return false
+	ti.visit(key, end, func(ki *keyIndex) {
+		if rev, _, _, err := ki.get(atRev); err == nil {
+			revs = append(revs, rev)
+			keys = append(keys, ki.key)
 		}
-		curKeyi := item.(*keyIndex)
-		rev, _, _, err := curKeyi.get(atRev)
-		if err != nil {
-			return true
-		}
-		revs = append(revs, rev)
-		keys = append(keys, curKeyi.key)
-		return true
 	})
-
 	return keys, revs
 }
 
