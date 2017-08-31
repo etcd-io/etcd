@@ -343,14 +343,15 @@ func (w *watcher) closeStream(wgs *watchGrpcStream) {
 	w.mu.Unlock()
 }
 
-func (w *watchGrpcStream) addSubstream(resp *pb.WatchResponse, ws *watcherStream) {
+func (w *watchGrpcStream) addSubstream(resp *pb.WatchResponse, ws *watcherStream) bool {
 	if resp.WatchId == -1 {
 		// failed; no channel
 		close(ws.recvc)
-		return
+		return false
 	}
 	ws.id = resp.WatchId
 	w.substreams[ws.id] = ws
+	return true
 }
 
 func (w *watchGrpcStream) sendCloseSubstream(ws *watcherStream, resp *WatchResponse) {
@@ -454,7 +455,10 @@ func (w *watchGrpcStream) run() {
 			case pbresp.Created:
 				// response to head of queue creation
 				if ws := w.resuming[0]; ws != nil {
-					w.addSubstream(pbresp, ws)
+					if !w.addSubstream(pbresp, ws) {
+						closing[ws] = struct{}{}
+						break
+					}
 					w.dispatchEvent(pbresp)
 					w.resuming[0] = nil
 				}
