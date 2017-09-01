@@ -554,6 +554,13 @@ func TestReleaseLockTo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// release nothing if no files
+	err = w.ReleaseLockTo(10)
+	if err != nil {
+		t.Errorf("err = %v, want nil", err)
+	}
+
 	// make 10 separate files
 	for i := 0; i < 10; i++ {
 		es := []raftpb.Entry{{Index: uint64(i)}}
