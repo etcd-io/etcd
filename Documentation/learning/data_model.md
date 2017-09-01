@@ -10,7 +10,7 @@ The store’s logical view is a flat binary key space. The key space has a lexic
 
 The key space maintains multiple revisions. Each atomic mutative operation (e.g., a transaction operation may contain multiple operations) creates a new revision on the key space. All data held by previous revisions remains unchanged. Old versions of key can still be accessed through previous revisions. Likewise, revisions are indexed as well; ranging over revisions with watchers is efficient. If the store is compacted to save space, revisions before the compact revision will be removed.
 
-A key’s lifetime spans a generation, denoted by its version. Each key may have one or multiple generations. Creating a key increments the version of that key, starting at 1 if the key never existed. Deleting a key generates a key tombstone, concluding the key’s current generation by resetting its version. Each modification of a key creates a new generation of the key and increases its version. Once a compaction happens, any version ended before the given revision will be removed and values set before the compaction revision except the latest one will be removed.
+A key’s lifetime spans a generation, denoted by its version. Each key may have one or multiple generations. Creating a key increments the version of that key, starting at 1 if the key never existed. Deleting a key generates a key tombstone, concluding the key’s current generation by resetting its version. Each modification of a key increments its version. Once a compaction happens, any version ended before the given revision will be removed and values set before the compaction revision except the latest one will be removed.
 
 ### Physical view
 
