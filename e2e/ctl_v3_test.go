@@ -123,7 +123,6 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	}
 	ret.applyOpts(opts)
 
-	os.Setenv("ETCDCTL_API", "3")
 	mustEtcdctl(t)
 	if !ret.quorum {
 		ret.cfg = *configStandalone(ret.cfg)
@@ -140,7 +139,6 @@ func testCtl(t *testing.T, testFunc func(ctlCtx), opts ...ctlOption) {
 	ret.epc = epc
 
 	defer func() {
-		os.Unsetenv("ETCDCTL_API")
 		if ret.envMap != nil {
 			for k := range ret.envMap {
 				os.Unsetenv(k)
@@ -192,7 +190,7 @@ func (cx *ctlCtx) prefixArgs(eps []string) []string {
 
 	useEnv := cx.envMap != nil
 
-	cmdArgs := []string{ctlBinPath}
+	cmdArgs := []string{ctlBinPath + "3"}
 	for k, v := range fmap {
 		if useEnv {
 			ek := flags.FlagToEnv("ETCDCTL", k)
