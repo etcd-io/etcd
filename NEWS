@@ -1,3 +1,8 @@
+etcd v3.2.7 (2017-09-01)
+- fix server-side auth so concurrent auth operations do not return old revision error
+- fix concurrency/stm Put with serializable snapshot
+  - use store revision from first fetch to resolve write conflicts instead of modified revision
+
 etcd v3.2.6 (2017-08-21)
 - fix watch restore from snapshot
 - fix etcd_debugging_mvcc_keys_total inconsistency
