@@ -303,10 +303,11 @@ func (c *cluster) removeMember(t *testing.T, id uint64) error {
 	cc := MustNewHTTPClient(t, c.URLs(), c.cfg.ClientTLS)
 	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	if err := ma.Remove(ctx, types.ID(id).String()); err != nil {
+	err := ma.Remove(ctx, types.ID(id).String())
+	cancel()
+	if err != nil {
 		return err
 	}
-	cancel()
 	newMembers := make([]*member, 0)
 	for _, m := range c.Members {
 		if uint64(m.s.ID()) != id {
