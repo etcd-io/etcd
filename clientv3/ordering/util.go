@@ -36,11 +36,12 @@ func NewOrderViolationSwitchEndpointClosure(c clientv3.Client) OrderViolationFun
 		mu.Lock()
 		defer mu.Unlock()
 		eps := c.Endpoints()
-		// force client to connect to the specificied endpoint by limiting to a single endpoint
+		// force client to connect to given endpoint by limiting to a single endpoint
 		c.SetEndpoints(eps[violationCount%len(eps)])
-		time.Sleep(1 * time.Second) // give enough time for operation
-		// set available endpoints back to all endpoints in order to enure
-		// that the client has access to all the endpoints.
+		// give enough time for operation
+		time.Sleep(1 * time.Second)
+		// set available endpoints back to all endpoints in to ensure
+		// the client has access to all the endpoints.
 		c.SetEndpoints(eps...)
 		violationCount++
 		return nil

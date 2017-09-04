@@ -33,7 +33,7 @@ func ExampleKeyExists_put() {
 	kvc := clientv3.NewKV(cli)
 
 	// perform a put only if key is missing
-	// It is useful to do the check (transactionally) to avoid overwriting
+	// It is useful to do the check atomically to avoid overwriting
 	// the existing key which would generate potentially unwanted events,
 	// unless of course you wanted to do an overwrite no matter what.
 	_, err = kvc.Txn(context.Background()).

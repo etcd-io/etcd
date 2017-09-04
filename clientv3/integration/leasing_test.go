@@ -157,7 +157,7 @@ func TestLeasingPutInvalidateNew(t *testing.T) {
 }
 
 // TestLeasingPutInvalidateExisting checks the leasing KV updates its cache on a Put to an existing key.
-func TestLeasingPutInvalidatExisting(t *testing.T) {
+func TestLeasingPutInvalidateExisting(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
@@ -190,7 +190,7 @@ func TestLeasingPutInvalidatExisting(t *testing.T) {
 	}
 }
 
-// TestLeasingGetLease checks that keys with TTLs are not leased.
+// TestLeasingGetNoLeaseTTL checks a key with a TTL is not leased.
 func TestLeasingGetNoLeaseTTL(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
@@ -259,7 +259,7 @@ func TestLeasingGetSerializable(t *testing.T) {
 	}
 }
 
-// TestLeasingPrevKey checks the cache respects the PrevKV flag on puts.
+// TestLeasingPrevKey checks the cache respects WithPrevKV on puts.
 func TestLeasingPrevKey(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
@@ -272,11 +272,10 @@ func TestLeasingPrevKey(t *testing.T) {
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
 		t.Fatal(err)
 	}
-	// fetch without prevkv to acquire leasing key
+	// acquire leasing key
 	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
 		t.Fatal(err)
 	}
-	// fetch prevkv via put
 	resp, err := lkv.Put(context.TODO(), "k", "def", clientv3.WithPrevKV())
 	if err != nil {
 		t.Fatal(err)
@@ -889,7 +888,7 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 	}
 }
 
-// TestLeasingTxnRandIfThen randomly leases keys two separate clients, then
+// TestLeasingTxnRandIfThenOrElse randomly leases keys two separate clients, then
 // issues a random If/{Then,Else} transaction on those keys to one client.
 func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -1286,7 +1285,7 @@ func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
 	}
 }
 
-// TestLeasingReconnectRevoke checks that revocation works if
+// TestLeasingReconnectOwnerRevoke checks that revocation works if
 // disconnected when trying to submit revoke txn.
 func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -1312,7 +1311,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 
 	cctx, cancel := context.WithCancel(context.TODO())
 	sdonec, pdonec := make(chan struct{}), make(chan struct{})
-	// make lkv1 connection choppy so txns fail
+	// make lkv1 connection choppy so Txn fails
 	go func() {
 		defer close(sdonec)
 		for i := 0; i < 10 && cctx.Err() == nil; i++ {
@@ -1346,7 +1345,7 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	}
 }
 
-// TestLeasingReconnectRevokeCompaction checks that revocation works if
+// TestLeasingReconnectOwnerRevokeCompact checks that revocation works if
 // disconnected and the watch is compacted.
 func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -1551,7 +1550,7 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	wgGetters.Wait()
 }
 
-// TestLeasingReconnectTxn checks that txns are resilient to disconnects.
+// TestLeasingReconnectTxn checks that Txn is resilient to disconnects.
 func TestLeasingReconnectTxn(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})

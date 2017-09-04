@@ -333,6 +333,12 @@ function fmt_pass {
 			echo -e "goword checking failed:\n${gowordRes}"
 			exit 255
 		fi
+		# check some spelling
+		gowordRes=$(goword -ignore-file=.words clientv3/{*,*/*}.go 2>&1 | grep spell | sort)
+		if [ ! -z "$gowordRes" ]; then
+			echo -e "goword checking failed:\n${gowordRes}"
+			exit 255
+		fi
 	else
 		echo "Skipping goword..."
 	fi

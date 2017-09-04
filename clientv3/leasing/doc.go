@@ -12,34 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package leasing is a clientv3 wrapper that provides the client exclusive write access to a key by acquiring a lease and be lineraizably
-// served locally. This leasing layer can either directly wrap the etcd client or
-// it can be exposed through the etcd grace proxy server, granting multiple clients write access.
+// Package leasing serves linearizable reads from a local cache by acquiring
+// exclusive write access to keys through a client-side leasing protocol. This
+// leasing layer can either directly wrap the etcd client or it can be exposed
+// through the etcd grpc proxy server, granting multiple clients write access.
 //
-// First, create a leasing client interface:
+// First, create a leasing KV from a clientv3.Client 'cli':
 //
-// 		leasingCli,error = leasing.NewKV(cli.KV, "leasing-prefix")
-// 		if error != nil {
-//				//handle error
-// 		}
+//     lkv, err := leasing.NewKV(cli, "leasing-prefix")
+//     if err != nil {
+//         // handle error
+//     }
 //
-// The first range request acquires the lease by adding the leasing key ("leasing-prefix"/key) on the server and stores the key locally.
-// Further linearized read requests using 'cli.leasing' will be served locally as long as the lease exists:
-// 		cli.Put(context.TODO(), "abc", "123")
+// A range request for a key "abc" tries to acquire a leasing key so it can cache the range's
+// key locally. On the server, the leasing key is stored to "leasing-prefix/abc":
 //
-// Lease Acquisition:
-//		leasingCli.Get(context.TODO(), "abc")
+//     resp, err := lkv.Get(context.TODO(), "abc")
 //
-// Local reads:
-//		resp,_ := leasingCli.Get(context.TODO(), "abc")
-//		fmt.Printf("%s\n", resp.Kvs[0].Value)
-//		//Output: 123 (served locally)
+// Future linearized read requests using 'lkv' will be served locally for the lease's lifetime:
 //
-// Lease Revocation:
-// If a client writes to the key owned by the leasing client,then the leasing client gives up its lease allowing the client to modify the key.
-//		cli.Put(context.TODO(), "abc", "456")
-//		resp, _ = leasingCli.Get("abc")
-//		fmt.Printf("%s\n", resp.Kvs[0].Value)
-//		// Output: 456  (fetched from server)
+//     resp, err = lkv.Get(context.TODO(), "abc")
+//
+// If another leasing client writes to a leased key, then the owner relinquishes its exclusive
+// access, permitting the writer to modify the key:
+//
+//     lkv2, err := leasing.NewKV(cli, "leasing-prefix")
+//     if err != nil {
+//         // handle error
+//     }
+//     lkv2.Put(context.TODO(), "abc", "456")
+//     resp, err = lkv.Get("abc")
 //
 package leasing

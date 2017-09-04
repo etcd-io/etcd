@@ -55,7 +55,7 @@ func TestDialTLSExpired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// expect remote errors 'tls: bad certificate'
+	// expect remote errors "tls: bad certificate"
 	_, err = clientv3.New(clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: 3 * time.Second,
@@ -72,7 +72,7 @@ func TestDialTLSNoConfig(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, ClientTLS: &testTLSInfo})
 	defer clus.Terminate(t)
-	// expect 'signed by unknown authority'
+	// expect "signed by unknown authority"
 	_, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: time.Second,
@@ -82,7 +82,8 @@ func TestDialTLSNoConfig(t *testing.T) {
 	}
 }
 
-// TestDialSetEndpoints ensures SetEndpoints can replace unavailable endpoints with available ones.
+// TestDialSetEndpointsBeforeFail ensures SetEndpoints can replace unavailable
+// endpoints with available ones.
 func TestDialSetEndpointsBeforeFail(t *testing.T) {
 	testDialSetEndpoints(t, true)
 }
@@ -190,7 +191,7 @@ func TestDialForeignEndpoint(t *testing.T) {
 	}
 }
 
-// TestSetEndpointAndPut checks that a Put following a SetEndpoint
+// TestSetEndpointAndPut checks that a Put following a SetEndpoints
 // to a working endpoint will always succeed.
 func TestSetEndpointAndPut(t *testing.T) {
 	defer testutil.AfterTest(t)

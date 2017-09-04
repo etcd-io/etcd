@@ -135,7 +135,7 @@ type watchGrpcStream struct {
 	respc chan *pb.WatchResponse
 	// donec closes to broadcast shutdown
 	donec chan struct{}
-	// errc transmits errors from grpc Recv to the watch stream reconn logic
+	// errc transmits errors from grpc Recv to the watch stream reconnect logic
 	errc chan error
 	// closingc gets the watcherStream of closing watchers
 	closingc chan *watcherStream
@@ -434,7 +434,7 @@ func (w *watchGrpcStream) run() {
 				initReq: *wreq,
 				id:      -1,
 				outc:    outc,
-				// unbufffered so resumes won't cause repeat events
+				// unbuffered so resumes won't cause repeat events
 				recvc: make(chan *WatchResponse),
 			}
 
@@ -486,7 +486,7 @@ func (w *watchGrpcStream) run() {
 				req := &pb.WatchRequest{RequestUnion: cr}
 				wc.Send(req)
 			}
-		// watch client failed to recv; spawn another if possible
+		// watch client failed on Recv; spawn another if possible
 		case err := <-w.errc:
 			if isHaltErr(w.ctx, err) || toErr(w.ctx, err) == v3rpc.ErrNoLeader {
 				closeErr = err
@@ -748,7 +748,7 @@ func (w *watchGrpcStream) waitCancelSubstreams(stopc <-chan struct{}) <-chan str
 	return donec
 }
 
-// joinSubstream waits for all substream goroutines to complete
+// joinSubstreams waits for all substream goroutines to complete.
 func (w *watchGrpcStream) joinSubstreams() {
 	for _, ws := range w.substreams {
 		<-ws.donec
@@ -760,7 +760,7 @@ func (w *watchGrpcStream) joinSubstreams() {
 	}
 }
 
-// openWatchClient retries opening a watchclient until retryConnection fails
+// openWatchClient retries opening a watch client until success or halt.
 func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error) {
 	for {
 		select {
@@ -781,7 +781,7 @@ func (w *watchGrpcStream) openWatchClient() (ws pb.Watch_WatchClient, err error)
 	return ws, nil
 }
 
-// toPB converts an internal watch request structure to its protobuf messagefunc (wr *watchRequest)
+// toPB converts an internal watch request structure to its protobuf WatchRequest structure.
 func (wr *watchRequest) toPB() *pb.WatchRequest {
 	req := &pb.WatchCreateRequest{
 		StartRevision:  wr.rev,

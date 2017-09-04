@@ -62,7 +62,7 @@ func TestUserErrorAuth(t *testing.T) {
 	authapi := clus.RandClient()
 	authSetupRoot(t, authapi.Auth)
 
-	// un-authenticated client
+	// unauthenticated client
 	if _, err := authapi.UserAdd(context.TODO(), "foo", "bar"); err != rpctypes.ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrUserNotFound, err)
 	}

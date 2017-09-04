@@ -60,7 +60,7 @@ func ExampleSTM_apply() {
 		xfer := fromInt / 2
 		fromInt, toInt = fromInt-xfer, toInt+xfer
 
-		// writeback
+		// write back
 		stm.Put(fromK, fmt.Sprintf("%d", fromInt))
 		stm.Put(toK, fmt.Sprintf("%d", toInt))
 		return nil

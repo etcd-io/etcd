@@ -285,7 +285,7 @@ func (lc *leaseCache) evalOps(ops []v3.Op) ([]*v3pb.ResponseOp, bool) {
 	resps := make([]*v3pb.ResponseOp, len(ops))
 	for i, op := range ops {
 		if !op.IsGet() || isBadOp(op) {
-			// TODO: support read-only txns
+			// TODO: support read-only Txn
 			return nil, false
 		}
 		lk := lc.entries[string(op.KeyBytes())]

@@ -44,7 +44,7 @@ func TestDialCancel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// connect to ipv4 blackhole so dial blocks
+	// connect to ipv4 black hole so dial blocks
 	c.SetEndpoints("http://254.0.0.1:12345")
 
 	// issue Get to force redial attempts
@@ -96,7 +96,7 @@ func TestDialTimeout(t *testing.T) {
 	for i, cfg := range testCfgs {
 		donec := make(chan error)
 		go func() {
-			// without timeout, dial continues forever on ipv4 blackhole
+			// without timeout, dial continues forever on ipv4 black hole
 			c, err := New(cfg)
 			if c != nil || err == nil {
 				t.Errorf("#%d: new client should fail", i)

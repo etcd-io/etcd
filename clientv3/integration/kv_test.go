@@ -824,8 +824,8 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	}
 }
 
-// TestKVGetOneEndpointDown ensures a client can connect and get if one endpoint is down
-func TestKVPutOneEndpointDown(t *testing.T) {
+// TestKVGetOneEndpointDown ensures a client can connect and get if one endpoint is down.
+func TestKVGetOneEndpointDown(t *testing.T) {
 	defer testutil.AfterTest(t)
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
