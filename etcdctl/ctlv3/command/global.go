@@ -17,6 +17,7 @@ package command
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -27,6 +28,7 @@ import (
 	"github.com/bgentry/speakeasy"
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/pkg/srv"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/spf13/cobra"
 )
@@ -36,6 +38,7 @@ import (
 type GlobalFlags struct {
 	Insecure           bool
 	InsecureSkipVerify bool
+	InsecureDiscovery  bool
 	Endpoints          []string
 	DialTimeout        time.Duration
 	CommandTimeOut     time.Duration
@@ -51,9 +54,10 @@ type GlobalFlags struct {
 }
 
 type secureCfg struct {
-	cert   string
-	key    string
-	cacert string
+	cert       string
+	key        string
+	cacert     string
+	serverName string
 
 	insecureTransport  bool
 	insecureSkipVerify bool
@@ -62,6 +66,11 @@ type secureCfg struct {
 type authCfg struct {
 	username string
 	password string
+}
+
+type discoveryCfg struct {
+	domain   string
+	insecure bool
 }
 
 var display printer = &simplePrinter{}
@@ -91,7 +100,7 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 		clientv3.SetLogger(log.New(os.Stderr, "grpc: ", 0))
 	}
 
-	endpoints, err := cmd.Flags().GetStringSlice("endpoints")
+	endpoints, err := endpointsFromCmd(cmd)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -134,6 +143,11 @@ func newClientCfg(endpoints []string, dialTimeout time.Duration, scfg *secureCfg
 
 	if scfg.cacert != "" {
 		tlsinfo.CAFile = scfg.cacert
+		cfgtls = &tlsinfo
+	}
+
+	if scfg.serverName != "" {
+		tlsinfo.ServerName = scfg.serverName
 		cfgtls = &tlsinfo
 	}
 
@@ -192,11 +206,17 @@ func secureCfgFromCmd(cmd *cobra.Command) *secureCfg {
 	cert, key, cacert := keyAndCertFromCmd(cmd)
 	insecureTr := insecureTransportFromCmd(cmd)
 	skipVerify := insecureSkipVerifyFromCmd(cmd)
+	discoveryCfg := discoveryCfgFromCmd(cmd)
+
+	if discoveryCfg.insecure {
+		discoveryCfg.domain = ""
+	}
 
 	return &secureCfg{
-		cert:   cert,
-		key:    key,
-		cacert: cacert,
+		cert:       cert,
+		key:        key,
+		cacert:     cacert,
+		serverName: discoveryCfg.domain,
 
 		insecureTransport:  insecureTr,
 		insecureSkipVerify: skipVerify,
@@ -267,4 +287,67 @@ func authCfgFromCmd(cmd *cobra.Command) *authCfg {
 	}
 
 	return &cfg
+}
+
+func insecureDiscoveryFromCmd(cmd *cobra.Command) bool {
+	discovery, err := cmd.Flags().GetBool("insecure-discovery")
+	if err != nil {
+		ExitWithError(ExitError, err)
+	}
+	return discovery
+}
+
+func discoverySrvFromCmd(cmd *cobra.Command) string {
+	domainStr, err := cmd.Flags().GetString("discovery-srv")
+	if err != nil {
+		ExitWithError(ExitBadArgs, err)
+	}
+	return domainStr
+}
+
+func discoveryCfgFromCmd(cmd *cobra.Command) *discoveryCfg {
+	return &discoveryCfg{
+		domain:   discoverySrvFromCmd(cmd),
+		insecure: insecureDiscoveryFromCmd(cmd),
+	}
+}
+
+func endpointsFromCmd(cmd *cobra.Command) ([]string, error) {
+	eps, err := endpointsFromFlagValue(cmd)
+	if err != nil {
+		return nil, err
+	}
+	// If domain discovery returns no endpoints, check endpoints flag
+	if len(eps) == 0 {
+		eps, err = cmd.Flags().GetStringSlice("endpoints")
+	}
+	return eps, err
+}
+
+func endpointsFromFlagValue(cmd *cobra.Command) ([]string, error) {
+	discoveryCfg := discoveryCfgFromCmd(cmd)
+
+	// If we still don't have domain discovery, return nothing
+	if discoveryCfg.domain == "" {
+		return []string{}, nil
+	}
+
+	srvs, err := srv.GetClient("etcd-client", discoveryCfg.domain)
+	if err != nil {
+		return nil, err
+	}
+	eps := srvs.Endpoints
+	if discoveryCfg.insecure {
+		return eps, err
+	}
+	// strip insecure connections
+	ret := []string{}
+	for _, ep := range eps {
+		if strings.HasPrefix("http://", ep) {
+			fmt.Fprintf(os.Stderr, "ignoring discovered insecure endpoint %q\n", ep)
+			continue
+		}
+		ret = append(ret, ep)
+	}
+	return ret, err
 }
