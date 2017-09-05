@@ -23,7 +23,6 @@ import (
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/pkg/testutil"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 func TestDialCancel(t *testing.T) {
@@ -117,8 +116,8 @@ func TestDialTimeout(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Errorf("#%d: failed to timeout dial on time", i)
 		case err := <-donec:
-			if err != grpc.ErrClientConnTimeout {
-				t.Errorf("#%d: unexpected error %v, want %v", i, err, grpc.ErrClientConnTimeout)
+			if err != context.DeadlineExceeded {
+				t.Errorf("#%d: unexpected error %v, want %v", i, err, context.DeadlineExceeded)
 			}
 		}
 	}
