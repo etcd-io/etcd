@@ -1361,6 +1361,10 @@ func TestRecvMsgVote(t *testing.T) {
 	testRecvMsgVote(t, pb.MsgVote)
 }
 
+func TestRecvMsgPreVote(t *testing.T) {
+	testRecvMsgVote(t, pb.MsgPreVote)
+}
+
 func testRecvMsgVote(t *testing.T, msgType pb.MessageType) {
 	tests := []struct {
 		state          StateType
