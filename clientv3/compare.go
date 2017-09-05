@@ -84,6 +84,12 @@ func ModRevision(key string) Cmp {
 	return Cmp{Key: []byte(key), Target: pb.Compare_MOD}
 }
 
+// LeaseValue compares a key's LeaseID to a value of your choosing. The empty
+// LeaseID is 0, otherwise known as `NoLease`.
+func LeaseValue(key string) Cmp {
+	return Cmp{Key: []byte(key), Target: pb.Compare_LEASE}
+}
+
 // KeyBytes returns the byte slice holding with the comparison key.
 func (cmp *Cmp) KeyBytes() []byte { return cmp.Key }
 
