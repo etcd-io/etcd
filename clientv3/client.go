@@ -320,7 +320,7 @@ func (c *Client) dial(endpoint string, dopts ...grpc.DialOption) (*grpc.ClientCo
 		if err != nil {
 			if toErr(ctx, err) != rpctypes.ErrAuthNotEnabled {
 				if err == ctx.Err() && ctx.Err() != c.ctx.Err() {
-					err = grpc.ErrClientConnTimeout
+					err = context.DeadlineExceeded
 				}
 				return nil, err
 			}
@@ -397,7 +397,7 @@ func newClient(cfg *Config) (*Client, error) {
 		case <-waitc:
 		}
 		if !hasConn {
-			err := grpc.ErrClientConnTimeout
+			err := context.DeadlineExceeded
 			select {
 			case err = <-client.dialerrc:
 			default:
