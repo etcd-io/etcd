@@ -27,7 +27,6 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -62,8 +61,8 @@ func TestDialTLSExpired(t *testing.T) {
 		DialTimeout: 3 * time.Second,
 		TLS:         tls,
 	})
-	if err != grpc.ErrClientConnTimeout {
-		t.Fatalf("expected %v, got %v", grpc.ErrClientConnTimeout, err)
+	if err != context.DeadlineExceeded {
+		t.Fatalf("expected %v, got %v", context.DeadlineExceeded, err)
 	}
 }
 
@@ -78,8 +77,8 @@ func TestDialTLSNoConfig(t *testing.T) {
 		Endpoints:   []string{clus.Members[0].GRPCAddr()},
 		DialTimeout: time.Second,
 	})
-	if err != grpc.ErrClientConnTimeout {
-		t.Fatalf("expected %v, got %v", grpc.ErrClientConnTimeout, err)
+	if err != context.DeadlineExceeded {
+		t.Fatalf("expected %v, got %v", context.DeadlineExceeded, err)
 	}
 }
 
