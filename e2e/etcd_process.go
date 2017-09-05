@@ -23,7 +23,11 @@ import (
 	"github.com/coreos/etcd/pkg/fileutil"
 )
 
-var etcdServerReadyLines = []string{"enabled capabilities for version", "published"}
+var (
+	etcdServerReadyLines = []string{"enabled capabilities for version", "published"}
+	binPath              string
+	ctlBinPath           string
+)
 
 // etcdProcess is a process that serves etcd requests.
 type etcdProcess interface {

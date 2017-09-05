@@ -16,10 +16,18 @@
 
 package e2e
 
-import "github.com/coreos/etcd/pkg/expect"
+import (
+	"os"
+
+	"github.com/coreos/etcd/pkg/expect"
+)
 
 const noOutputLineCount = 0 // regular binaries emit no extra lines
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
+	if args[0] == ctlBinPath+"3" {
+		env := append(os.Environ(), "ETCDCTL_API=3")
+		return expect.NewExpectWithEnv(ctlBinPath, args[1:], env)
+	}
 	return expect.NewExpect(args[0], args[1:]...)
 }

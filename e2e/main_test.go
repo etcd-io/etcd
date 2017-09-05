@@ -17,8 +17,6 @@ var (
 	binDir  string
 	certDir string
 
-	binPath        string
-	ctlBinPath     string
 	certPath       string
 	privateKeyPath string
 	caPath         string
