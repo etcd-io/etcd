@@ -44,13 +44,14 @@ addons:
     sources:
     - debian-sid
     packages:
-    - libpcap-dev
     - libaspell-dev
     - libhunspell-dev
+    - hunspell-en-us
+    - aspell-en
     - shellcheck
 
 before_install:
- - go get -v -u github.com/chzchzchz/goword
+ - go get -v -u -tags spell github.com/chzchzchz/goword
  - go get -v -u github.com/coreos/license-bill-of-materials
  - go get -v -u honnef.co/go/tools/cmd/gosimple
  - go get -v -u honnef.co/go/tools/cmd/unused
