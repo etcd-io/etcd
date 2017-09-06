@@ -478,17 +478,16 @@ func (le *lessor) runLoop() {
 	for {
 		var ls []*Lease
 
+		// rate limit
+		revokeLimit := leaseRevokeRate / 2
+
 		le.mu.Lock()
 		if le.isPrimary() {
-			ls = le.findExpiredLeases()
+			ls = le.findExpiredLeases(revokeLimit)
 		}
 		le.mu.Unlock()
 
 		if len(ls) != 0 {
-			// rate limit
-			if len(ls) > leaseRevokeRate/2 {
-				ls = ls[:leaseRevokeRate/2]
-			}
 			select {
 			case <-le.stopC:
 				return
@@ -508,9 +507,9 @@ func (le *lessor) runLoop() {
 	}
 }
 
-// findExpiredLeases loops all the leases in the leaseMap and returns the expired
-// leases that needed to be revoked.
-func (le *lessor) findExpiredLeases() []*Lease {
+// findExpiredLeases loops leases in the leaseMap until reaching expired limit
+// and returns the expired leases that needed to be revoked.
+func (le *lessor) findExpiredLeases(limit int) []*Lease {
 	leases := make([]*Lease, 0, 16)
 
 	for _, l := range le.leaseMap {
@@ -518,6 +517,11 @@ func (le *lessor) findExpiredLeases() []*Lease {
 		// make up committing latency.
 		if l.expired() {
 			leases = append(leases, l)
+
+			// reach expired limit
+			if len(leases) == limit {
+				break
+			}
 		}
 	}
 
@@ -649,9 +653,9 @@ func (fl *FakeLessor) Demote() {}
 
 func (fl *FakeLessor) Renew(id LeaseID) (int64, error) { return 10, nil }
 
-func (le *FakeLessor) Lookup(id LeaseID) *Lease { return nil }
+func (fl *FakeLessor) Lookup(id LeaseID) *Lease { return nil }
 
-func (le *FakeLessor) Leases() []*Lease { return nil }
+func (fl *FakeLessor) Leases() []*Lease { return nil }
 
 func (fl *FakeLessor) ExpiredLeasesC() <-chan []*Lease { return nil }
 
