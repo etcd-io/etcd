@@ -290,6 +290,7 @@ func (ls *leaseStresser) keepLeaseAlive(leaseID int64) {
 			cancel()
 			ctx, cancel = context.WithCancel(ls.ctx)
 			stream, err = ls.lc.LeaseKeepAlive(ctx)
+			cancel()
 			continue
 		}
 		err = stream.Send(&pb.LeaseKeepAliveRequest{ID: leaseID})

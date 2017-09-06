@@ -213,6 +213,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 		for !keyDeleted {
 			wr, ok := <-wch
 			if !ok {
+				cancel()
 				return
 			}
 			for _, ev := range wr.Events {
@@ -225,6 +226,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 				select {
 				case ch <- *resp:
 				case <-cctx.Done():
+					cancel()
 					return
 				}
 			}

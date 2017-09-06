@@ -143,8 +143,10 @@ func (c *Client) autoSync() {
 		case <-c.ctx.Done():
 			return
 		case <-time.After(c.cfg.AutoSyncInterval):
-			ctx, _ := context.WithTimeout(c.ctx, 5*time.Second)
-			if err := c.Sync(ctx); err != nil && err != c.ctx.Err() {
+			ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
+			err := c.Sync(ctx)
+			cancel()
+			if err != nil && err != c.ctx.Err() {
 				logger.Println("Auto sync endpoints failed:", err)
 			}
 		}
@@ -429,7 +431,7 @@ func (c *Client) checkVersion() (err error) {
 	errc := make(chan error, len(c.cfg.Endpoints))
 	ctx, cancel := context.WithCancel(c.ctx)
 	if c.cfg.DialTimeout > 0 {
-		ctx, _ = context.WithTimeout(ctx, c.cfg.DialTimeout)
+		ctx, cancel = context.WithTimeout(ctx, c.cfg.DialTimeout)
 	}
 	wg.Add(len(c.cfg.Endpoints))
 	for _, ep := range c.cfg.Endpoints {
