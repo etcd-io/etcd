@@ -15,11 +15,11 @@
 package clientv3
 
 import (
+	"context"
 	"net/url"
 	"strings"
 	"sync"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 )

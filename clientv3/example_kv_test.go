@@ -15,12 +15,12 @@
 package clientv3_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-	"golang.org/x/net/context"
 )
 
 func ExampleKV_put() {

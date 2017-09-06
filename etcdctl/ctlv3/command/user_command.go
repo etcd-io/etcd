@@ -15,12 +15,12 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/bgentry/speakeasy"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (

@@ -15,10 +15,9 @@
 package clientv3_test
 
 import (
+	"context"
 	"fmt"
 	"log"
-
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/clientv3"
 )

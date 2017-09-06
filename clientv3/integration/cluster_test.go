@@ -15,13 +15,13 @@
 package integration
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/pkg/types"
-	"golang.org/x/net/context"
 )
 
 func TestMemberList(t *testing.T) {

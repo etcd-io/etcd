@@ -15,12 +15,12 @@
 package client_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sort"
 
 	"github.com/coreos/etcd/client"
-	"golang.org/x/net/context"
 )
 
 func ExampleKeysAPI_directory() {

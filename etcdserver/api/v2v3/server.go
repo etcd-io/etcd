@@ -15,6 +15,7 @@
 package v2v3
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 
 	"github.com/coreos/go-semver/semver"
-	"golang.org/x/net/context" // TODO: replace with context in go1.9
 )
 
 type fakeStats struct{}

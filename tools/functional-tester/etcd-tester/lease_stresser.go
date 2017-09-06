@@ -15,16 +15,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"sync"
 	"sync/atomic"
-
 	"time"
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"golang.org/x/net/context"
+
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )

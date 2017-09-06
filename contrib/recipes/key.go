@@ -15,13 +15,13 @@
 package recipe
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/clientv3/concurrency"
-	"golang.org/x/net/context"
 )
 
 // RemoteKV is a key/revision pair created by the client and stored on etcd

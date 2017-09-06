@@ -15,6 +15,7 @@
 package v3rpc
 
 import (
+	"context"
 	"time"
 
 	"github.com/coreos/etcd/etcdserver"
@@ -23,7 +24,6 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/types"
-	"golang.org/x/net/context"
 )
 
 type ClusterServer struct {

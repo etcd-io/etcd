@@ -15,11 +15,10 @@
 package v3rpc
 
 import (
+	"context"
 	"io"
 	"sync"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/auth"
 	"github.com/coreos/etcd/etcdserver"

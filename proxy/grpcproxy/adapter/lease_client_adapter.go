@@ -15,9 +15,10 @@
 package adapter
 
 import (
-	"golang.org/x/net/context"
+	"context"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
 	"google.golang.org/grpc"
 )
 

@@ -15,11 +15,11 @@
 package etcdserver
 
 import (
+	"context"
 	"time"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/store"
-	"golang.org/x/net/context"
 )
 
 type RequestV2 pb.Request

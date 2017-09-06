@@ -15,16 +15,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
-
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/tools/functional-tester/etcd-agent/client"
+
 	"google.golang.org/grpc"
 )
 

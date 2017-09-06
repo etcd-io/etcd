@@ -15,13 +15,13 @@
 package integration
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	lockpb "github.com/coreos/etcd/etcdserver/api/v3lock/v3lockpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	"golang.org/x/net/context"
 )
 
 // TestV3LockLockWaiter tests that a client will wait for a lock, then acquire it

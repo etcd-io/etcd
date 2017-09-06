@@ -16,6 +16,7 @@ package v2http
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -38,9 +39,9 @@ import (
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+
 	"github.com/coreos/go-semver/semver"
 	"github.com/jonboulle/clockwork"
-	"golang.org/x/net/context"
 )
 
 func mustMarshalEvent(t *testing.T, ev *store.Event) string {

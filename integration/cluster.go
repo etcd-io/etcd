@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -30,10 +31,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/soheilhy/cmux"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/clientv3"
@@ -52,7 +49,10 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
+
 	"github.com/coreos/pkg/capnslog"
+	"github.com/soheilhy/cmux"
+	"google.golang.org/grpc"
 )
 
 const (

@@ -15,6 +15,7 @@
 package command
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
@@ -27,7 +28,6 @@ import (
 	"reflect"
 	"strings"
 
-	bolt "github.com/coreos/bbolt"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/membership"
@@ -42,8 +42,9 @@ import (
 	"github.com/coreos/etcd/store"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
+
+	bolt "github.com/coreos/bbolt"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 const (

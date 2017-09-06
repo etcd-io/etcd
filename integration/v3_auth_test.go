@@ -15,12 +15,11 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/auth/authpb"
 	"github.com/coreos/etcd/clientv3"

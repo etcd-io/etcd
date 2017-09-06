@@ -15,6 +15,7 @@
 package v2http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,8 +38,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/stats"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/store"
+
 	"github.com/jonboulle/clockwork"
-	"golang.org/x/net/context"
 )
 
 const (

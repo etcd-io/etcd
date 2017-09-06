@@ -15,6 +15,7 @@
 package clientv3
 
 import (
+	"context"
 	"errors"
 	"net"
 	"sync"
@@ -24,7 +25,6 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

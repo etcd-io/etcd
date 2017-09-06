@@ -15,6 +15,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -22,8 +23,8 @@ import (
 	"os/signal"
 
 	"github.com/coreos/etcd/client"
+
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 )
 
 // NewExecWatchCommand returns the CLI command for "exec-watch".

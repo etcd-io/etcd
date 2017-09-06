@@ -16,10 +16,9 @@ package etcdserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"time"
-
-	"github.com/gogo/protobuf/proto"
 
 	"github.com/coreos/etcd/auth"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -29,7 +28,7 @@ import (
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/raft"
 
-	"golang.org/x/net/context"
+	"github.com/gogo/protobuf/proto"
 )
 
 const (

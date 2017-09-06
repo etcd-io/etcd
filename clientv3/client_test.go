@@ -15,6 +15,7 @@
 package clientv3
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/pkg/testutil"
-	"golang.org/x/net/context"
 )
 
 func TestDialCancel(t *testing.T) {

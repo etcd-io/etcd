@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"math/rand"
 	"sync"
 	"testing"
@@ -25,7 +26,6 @@ import (
 	"github.com/coreos/etcd/contrib/recipes"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	"golang.org/x/net/context"
 )
 
 func TestMutexSingleNode(t *testing.T) {

@@ -15,13 +15,13 @@
 package compactor
 
 import (
+	"context"
 	"sync"
-
-	"github.com/jonboulle/clockwork"
-	"golang.org/x/net/context"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
+
+	"github.com/jonboulle/clockwork"
 )
 
 // Revision compacts the log by purging revisions older than

@@ -15,10 +15,10 @@
 package ordering
 
 import (
+	"context"
 	"sync"
 
 	"github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 )
 
 // kvOrdering ensures that serialized requests do not return

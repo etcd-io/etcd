@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"context"
 	"io/ioutil"
 	defaultLog "log"
 	"net"
@@ -36,7 +37,6 @@ import (
 
 	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/soheilhy/cmux"
-	"golang.org/x/net/context"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

@@ -15,6 +15,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,8 +30,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/version"
-
-	"golang.org/x/net/context"
 )
 
 var (

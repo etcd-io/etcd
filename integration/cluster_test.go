@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -27,9 +28,8 @@ import (
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/etcdserver"
 	"github.com/coreos/etcd/pkg/testutil"
-	"github.com/coreos/pkg/capnslog"
 
-	"golang.org/x/net/context"
+	"github.com/coreos/pkg/capnslog"
 )
 
 func init() {
