@@ -455,6 +455,7 @@ func (w *WAL) cut() error {
 		return err
 	}
 
+	// reopen newTail with its new path so calls to Name() match the wal filename format
 	newTail.Close()
 
 	if newTail, err = fileutil.LockFile(fpath, os.O_WRONLY, fileutil.PrivateFileMode); err != nil {
@@ -502,6 +503,10 @@ func (w *WAL) ReleaseLockTo(index uint64) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
+	if len(w.locks) == 0 {
+		return nil
+	}
+
 	var smaller int
 	found := false
 
@@ -519,7 +524,7 @@ func (w *WAL) ReleaseLockTo(index uint64) error {
 
 	// if no lock index is greater than the release index, we can
 	// release lock up to the last one(excluding).
-	if !found && len(w.locks) != 0 {
+	if !found {
 		smaller = len(w.locks) - 1
 	}
 
