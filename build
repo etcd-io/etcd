@@ -4,7 +4,7 @@
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/etcd"
 
-GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
+GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
 if [ ! -z "$FAILPOINTS" ]; then
 	GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
@@ -14,10 +14,9 @@ GO_LDFLAGS="$GO_LDFLAGS -X ${REPO_PATH}/cmd/vendor/${REPO_PATH}/version.GitSHA=$
 
 # enable/disable failpoints
 toggle_failpoints() {
-	FAILPKGS="etcdserver/ mvcc/backend/"
 	mode="$1"
 	if which gofail >/dev/null 2>&1; then
-		gofail "$mode" $FAILPKGS
+		gofail "$mode" etcdserver/ mvcc/backend/
 	elif [ "$mode" != "disable" ]; then
 		echo "FAILPOINTS set but gofail not found"
 		exit 1
@@ -34,9 +33,12 @@ etcd_build() {
 	out="bin"
 	if [ -n "${BINDIR}" ]; then out="${BINDIR}"; fi
 	toggle_failpoints_default
-	# Static compilation is useful when etcd is run in a container
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "$GO_LDFLAGS" -o ${out}/etcd ${REPO_PATH}/cmd/etcd || return
-	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "$GO_LDFLAGS" -o ${out}/etcdctl ${REPO_PATH}/cmd/etcdctl || return
+	# Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
+
+	# shellcheck disable=SC2086
+	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "$GO_LDFLAGS" -o "${out}/etcd" ${REPO_PATH}/cmd/etcd || return
+	# shellcheck disable=SC2086
+	CGO_ENABLED=0 go build $GO_BUILD_FLAGS -installsuffix cgo -ldflags "$GO_LDFLAGS" -o "${out}/etcdctl" ${REPO_PATH}/cmd/etcdctl || return
 }
 
 etcd_setup_gopath() {
@@ -49,9 +51,9 @@ etcd_setup_gopath() {
 		GOPATH=":$GOPATH"
 	fi
 	export GOPATH=${etcdGOPATH}$GOPATH
-	rm -rf ${etcdGOPATH}/src
-	mkdir -p ${etcdGOPATH}
-	ln -s ${CDIR}/cmd/vendor ${etcdGOPATH}/src
+	rm -rf "${etcdGOPATH}/src"
+	mkdir -p "${etcdGOPATH}"
+	ln -s "${CDIR}/cmd/vendor" "${etcdGOPATH}/src"
 }
 
 toggle_failpoints_default

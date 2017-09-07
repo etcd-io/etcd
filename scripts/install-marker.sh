@@ -15,7 +15,7 @@ if [ ${ARCH} == "darwin" ]; then
 fi
 
 echo "Installing marker"
-curl -L ${MARKER_URL} -o ${GOPATH}/bin/marker
-chmod 755 ${GOPATH}/bin/marker
+curl -L "${MARKER_URL}" -o "${GOPATH}"/bin/marker
+chmod 755 "${GOPATH}"/bin/marker
 
-${GOPATH}/bin/marker --version
+"${GOPATH}"/bin/marker --version
