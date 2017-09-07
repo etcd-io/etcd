@@ -175,3 +175,14 @@ func setPeerURLsHeader(req *http.Request, urls types.URLs) {
 	}
 	req.Header.Set("X-PeerURLs", strings.Join(peerURLs, ","))
 }
+
+// addRemoteFromRequest add remote according to request header
+func addRemoteFromRequest(tr Transporter, r *http.Request) bool {
+	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err == nil {
+		if urls := r.Header.Get("X-PeerURLs"); urls != "" {
+			tr.AddRemote(from, strings.Split(urls, ","))
+			return true
+		}
+	}
+	return false
+}
