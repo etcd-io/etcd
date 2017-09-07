@@ -20,22 +20,18 @@ import (
 	"math"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/coreos/etcd/lease/leasepb"
 	"github.com/coreos/etcd/mvcc/backend"
-	"github.com/coreos/etcd/pkg/monotime"
 )
 
-const (
-	// NoLease is a special LeaseID representing the absence of a lease.
-	NoLease = LeaseID(0)
-
-	forever = monotime.Time(math.MaxInt64)
-)
+// NoLease is a special LeaseID representing the absence of a lease.
+const NoLease = LeaseID(0)
 
 var (
+	forever = time.Time{}
+
 	leaseBucketName = []byte("lease")
 
 	// maximum number of leases to revoke per second; configurable for tests
@@ -564,8 +560,10 @@ func (le *lessor) initAndRecover() {
 type Lease struct {
 	ID  LeaseID
 	ttl int64 // time to live in seconds
-	// expiry is time when lease should expire; must be 64-bit aligned.
-	expiry monotime.Time
+	// expiryMu protects concurrent accesses to expiry
+	expiryMu sync.RWMutex
+	// expiry is time when lease should expire. no expiration when expiry.IsZero() is true
+	expiry time.Time
 
 	// mu protects concurrent accesses to itemSet
 	mu      sync.RWMutex
@@ -598,12 +596,18 @@ func (l *Lease) TTL() int64 {
 
 // refresh refreshes the expiry of the lease.
 func (l *Lease) refresh(extend time.Duration) {
-	t := monotime.Now().Add(extend + time.Duration(l.ttl)*time.Second)
-	atomic.StoreUint64((*uint64)(&l.expiry), uint64(t))
+	newExpiry := time.Now().Add(extend + time.Duration(l.ttl)*time.Second)
+	l.expiryMu.Lock()
+	defer l.expiryMu.Unlock()
+	l.expiry = newExpiry
 }
 
 // forever sets the expiry of lease to be forever.
-func (l *Lease) forever() { atomic.StoreUint64((*uint64)(&l.expiry), uint64(forever)) }
+func (l *Lease) forever() {
+	l.expiryMu.Lock()
+	defer l.expiryMu.Unlock()
+	l.expiry = forever
+}
 
 // Keys returns all the keys attached to the lease.
 func (l *Lease) Keys() []string {
@@ -618,8 +622,12 @@ func (l *Lease) Keys() []string {
 
 // Remaining returns the remaining time of the lease.
 func (l *Lease) Remaining() time.Duration {
-	t := monotime.Time(atomic.LoadUint64((*uint64)(&l.expiry)))
-	return time.Duration(t - monotime.Now())
+	l.expiryMu.RLock()
+	defer l.expiryMu.RUnlock()
+	if l.expiry.IsZero() {
+		return time.Duration(math.MaxInt64)
+	}
+	return l.expiry.Sub(time.Now())
 }
 
 type LeaseItem struct {
