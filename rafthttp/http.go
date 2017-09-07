@@ -91,7 +91,7 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err != nil {
+	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err == nil {
 		if urls := r.Header.Get("X-PeerURLs"); urls != "" {
 			h.tr.AddRemote(from, strings.Split(urls, ","))
 		}
@@ -176,7 +176,7 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err != nil {
+	if from, err := types.IDFromString(r.Header.Get("X-Server-From")); err == nil {
 		if urls := r.Header.Get("X-PeerURLs"); urls != "" {
 			h.tr.AddRemote(from, strings.Split(urls, ","))
 		}
