@@ -41,10 +41,10 @@ type simpleBalancer struct {
 	readyc    chan struct{}
 	readyOnce sync.Once
 
-	// mu protects upEps, pinAddr, and connectingAddr
+	// mu protects all fields below.
 	mu sync.RWMutex
 
-	// upc closes when upEps transitions from empty to non-zero or the balancer closes.
+	// upc closes when pinAddr transitions from empty to non-empty or the balancer closes.
 	upc chan struct{}
 
 	// downc closes when grpc calls down() on pinAddr
@@ -65,7 +65,7 @@ type simpleBalancer struct {
 	host2ep map[string]string
 
 	// pinAddr is the currently pinned address; set to the empty string on
-	// intialization and shutdown.
+	// initialization and shutdown.
 	pinAddr string
 
 	closed bool
@@ -234,8 +234,8 @@ func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	defer b.mu.Unlock()
 
 	// gRPC might call Up after it called Close. We add this check
-	// to "fix" it up at application layer. Or our simplerBalancer
-	// might panic since b.upc is closed.
+	// to "fix" it up at application layer. Otherwise, will panic
+	// if b.upc is already closed.
 	if b.closed {
 		return func(err error) {}
 	}
@@ -327,8 +327,8 @@ func (b *simpleBalancer) Close() error {
 
 	// In the case of following scenario:
 	//	1. upc is not closed; no pinned address
-	// 	2. client issues an rpc, calling invoke(), which calls Get(), enters for loop, blocks
-	// 	3. clientconn.Close() calls balancer.Close(); closed = true
+	// 	2. client issues an RPC, calling invoke(), which calls Get(), enters for loop, blocks
+	// 	3. client.conn.Close() calls balancer.Close(); closed = true
 	// 	4. for loop in Get() never exits since ctx is the context passed in by the client and may not be canceled
 	// we must close upc so Get() exits from blocking on upc
 	select {

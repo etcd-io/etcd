@@ -30,7 +30,7 @@ type (
 	LeaseID             int64
 )
 
-// LeaseGrantResponse is used to convert the protobuf grant response.
+// LeaseGrantResponse wraps the protobuf message LeaseGrantResponse.
 type LeaseGrantResponse struct {
 	*pb.ResponseHeader
 	ID    LeaseID
@@ -38,14 +38,14 @@ type LeaseGrantResponse struct {
 	Error string
 }
 
-// LeaseKeepAliveResponse is used to convert the protobuf keepalive response.
+// LeaseKeepAliveResponse wraps the protobuf message LeaseKeepAliveResponse.
 type LeaseKeepAliveResponse struct {
 	*pb.ResponseHeader
 	ID  LeaseID
 	TTL int64
 }
 
-// LeaseTimeToLiveResponse is used to convert the protobuf lease timetolive response.
+// LeaseTimeToLiveResponse wraps the protobuf message LeaseTimeToLiveResponse.
 type LeaseTimeToLiveResponse struct {
 	*pb.ResponseHeader
 	ID LeaseID `json:"id"`
@@ -66,7 +66,7 @@ type LeaseStatus struct {
 	// TODO: TTL int64
 }
 
-// LeaseLeasesResponse is used to convert the protobuf lease list response.
+// LeaseLeasesResponse wraps the protobuf message LeaseLeasesResponse.
 type LeaseLeasesResponse struct {
 	*pb.ResponseHeader
 	Leases []LeaseStatus `json:"leases"`
@@ -116,7 +116,7 @@ type Lease interface {
 	// KeepAlive keeps the given lease alive forever.
 	KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error)
 
-	// KeepAliveOnce renews the lease once. In most of the cases, Keepalive
+	// KeepAliveOnce renews the lease once. In most of the cases, KeepAlive
 	// should be used instead of KeepAliveOnce.
 	KeepAliveOnce(ctx context.Context, id LeaseID) (*LeaseKeepAliveResponse, error)
 
@@ -345,7 +345,7 @@ func (l *lessor) keepAliveCtxCloser(id LeaseID, ctx context.Context, donec <-cha
 	}
 }
 
-// closeRequireLeader scans all keep alives for ctxs that have require leader
+// closeRequireLeader scans keepAlives for ctxs that have require leader
 // and closes the associated channels.
 func (l *lessor) closeRequireLeader() {
 	l.mu.Lock()
@@ -457,7 +457,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 	}
 }
 
-// resetRecv opens a new lease stream and starts sending LeaseKeepAliveRequests
+// resetRecv opens a new lease stream and starts sending keep alive requests.
 func (l *lessor) resetRecv() (pb.Lease_LeaseKeepAliveClient, error) {
 	sctx, cancel := context.WithCancel(l.stopCtx)
 	stream, err := l.remote.LeaseKeepAlive(sctx, grpc.FailFast(false))
@@ -536,7 +536,7 @@ func (l *lessor) deadlineLoop() {
 	}
 }
 
-// sendKeepAliveLoop sends LeaseKeepAliveRequests for the lifetime of a lease stream
+// sendKeepAliveLoop sends keep alive requests for the lifetime of the given stream.
 func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 	for {
 		var tosend []LeaseID

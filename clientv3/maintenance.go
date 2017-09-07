@@ -39,7 +39,7 @@ type Maintenance interface {
 	// AlarmDisarm disarms a given alarm.
 	AlarmDisarm(ctx context.Context, m *AlarmMember) (*AlarmResponse, error)
 
-	// Defragment defragments storage backend of the etcd member with given endpoint.
+	// Defragment releases wasted space from internal fragmentation on a given etcd member.
 	// Defragment is only needed when deleting a large number of keys and want to reclaim
 	// the resources.
 	// Defragment is an expensive operation. User should avoid defragmenting multiple members
@@ -56,7 +56,7 @@ type Maintenance interface {
 	// is non-zero, the hash is computed on all keys at or below the given revision.
 	HashKV(ctx context.Context, endpoint string, rev int64) (*HashKVResponse, error)
 
-	// Snapshot provides a reader for a snapshot of a backend.
+	// Snapshot provides a reader for a point-in-time snapshot of etcd.
 	Snapshot(ctx context.Context) (io.ReadCloser, error)
 
 	// MoveLeader requests current leader to transfer its leadership to the transferee.

@@ -233,7 +233,7 @@ type leaseCh struct {
 	ch  <-chan *clientv3.LeaseKeepAliveResponse
 }
 
-// TestLeaseKeepAliveNotFound ensures a revoked lease won't stop other keep alives
+// TestLeaseKeepAliveNotFound ensures a revoked lease won't halt other leases.
 func TestLeaseKeepAliveNotFound(t *testing.T) {
 	defer testutil.AfterTest(t)
 
@@ -288,9 +288,7 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 		_, err := cli.Grant(context.TODO(), 5)
 		if err != nil && err != grpc.ErrClientConnClosing && err != context.Canceled {
 			// grpc.ErrClientConnClosing if grpc-go balancer calls 'Get' after client.Close.
-			// context.Canceled if grpc-go balancer calls 'Get' with inflight client.Close,
-			// soon transportMonitor selects on ClientTransport.Error() and resetTransport(false)
-			// that cancels the context and closes the transport.
+			// context.Canceled if grpc-go balancer calls 'Get' with an inflight client.Close.
 			t.Fatalf("expected %v or %v, got %v", grpc.ErrClientConnClosing, context.Canceled, err)
 		}
 	}()
@@ -364,7 +362,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 	}
 }
 
-// TestLeaseKeepAliveCloseAfterDisconnectExpire ensures the keep alive channel is closed
+// TestLeaseKeepAliveCloseAfterDisconnectRevoke ensures the keep alive channel is closed
 // following a disconnection, lease revoke, then reconnect.
 func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
 	defer testutil.AfterTest(t)
@@ -399,7 +397,7 @@ func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
 
 	clus.Members[0].Restart(t)
 
-	// some keep-alives may still be buffered; drain until close
+	// some responses may still be buffered; drain until close
 	timer := time.After(time.Duration(kresp.TTL) * time.Second)
 	for kresp != nil {
 		select {
@@ -555,8 +553,7 @@ func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
 	}
 
 	lresp, err := cli.TimeToLive(context.Background(), resp.ID)
-	// TimeToLive() doesn't return LeaseNotFound error
-	// but return a response with TTL to be -1
+	// TimeToLive() should return a response with TTL=-1.
 	if err != nil {
 		t.Fatalf("expected err to be nil")
 	}
@@ -677,8 +674,8 @@ func TestLeaseKeepAliveLoopExit(t *testing.T) {
 	}
 }
 
-// TestV3LeaseFailureOverlap issues Grant and Keepalive requests to a cluster
-// before, during, and after quorum loss to confirm Grant/Keepalive tolerates
+// TestV3LeaseFailureOverlap issues Grant and KeepAlive requests to a cluster
+// before, during, and after quorum loss to confirm Grant/KeepAlive tolerates
 // transient cluster failure.
 func TestV3LeaseFailureOverlap(t *testing.T) {
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})

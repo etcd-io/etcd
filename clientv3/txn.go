@@ -24,7 +24,7 @@ import (
 
 // Txn is the interface that wraps mini-transactions.
 //
-//	 Tx.If(
+//	 Txn(context.TODO()).If(
 //	  Compare(Value(k1), ">", v1),
 //	  Compare(Version(k1), "=", 2)
 //	 ).Then(

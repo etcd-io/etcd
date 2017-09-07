@@ -83,7 +83,7 @@ func TestGRPCResolver(t *testing.T) {
 	}
 }
 
-// TestGRPCResolverMultiInit ensures the resolver will initialize
+// TestGRPCResolverMulti ensures the resolver will initialize
 // correctly with multiple hosts and correctly receive multiple
 // updates in a single revision.
 func TestGRPCResolverMulti(t *testing.T) {
