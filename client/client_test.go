@@ -16,6 +16,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -304,7 +305,9 @@ func TestHTTPClusterClientDo(t *testing.T) {
 	fakeErr := errors.New("fake!")
 	fakeURL := url.URL{}
 	tests := []struct {
-		client     *httpClusterClient
+		client *httpClusterClient
+		ctx    context.Context
+
 		wantCode   int
 		wantErr    error
 		wantPinned int
@@ -395,10 +398,30 @@ func TestHTTPClusterClientDo(t *testing.T) {
 			wantCode:   http.StatusTeapot,
 			wantPinned: 1,
 		},
+
+		// 500-level errors cause one shot Do to fallthrough to next endpoint
+		{
+			client: &httpClusterClient{
+				endpoints: []url.URL{fakeURL, fakeURL},
+				clientFactory: newStaticHTTPClientFactory(
+					[]staticHTTPResponse{
+						{resp: http.Response{StatusCode: http.StatusBadGateway}},
+						{resp: http.Response{StatusCode: http.StatusTeapot}},
+					},
+				),
+				rand: rand.New(rand.NewSource(0)),
+			},
+			ctx:        context.WithValue(context.Background(), &oneShotCtxValue, &oneShotCtxValue),
+			wantErr:    fmt.Errorf("client: etcd member  returns server error [Bad Gateway]"),
+			wantPinned: 1,
+		},
 	}
 
 	for i, tt := range tests {
-		resp, _, err := tt.client.Do(context.Background(), nil)
+		if tt.ctx == nil {
+			tt.ctx = context.Background()
+		}
+		resp, _, err := tt.client.Do(tt.ctx, nil)
 		if !reflect.DeepEqual(tt.wantErr, err) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue
@@ -407,11 +430,9 @@ func TestHTTPClusterClientDo(t *testing.T) {
 		if resp == nil {
 			if tt.wantCode != 0 {
 				t.Errorf("#%d: resp is nil, want=%d", i, tt.wantCode)
+				continue
 			}
-			continue
-		}
-
-		if resp.StatusCode != tt.wantCode {
+		} else if resp.StatusCode != tt.wantCode {
 			t.Errorf("#%d: resp code=%d, want=%d", i, resp.StatusCode, tt.wantCode)
 			continue
 		}
