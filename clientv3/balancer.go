@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -32,8 +33,6 @@ var ErrNoAddrAvilable = grpc.Errorf(codes.Unavailable, "there is no address avai
 // simpleBalancer does the bare minimum to expose multiple eps
 // to the grpc reconnection code path
 type simpleBalancer struct {
-	// addrs are the client's endpoints for grpc
-	addrs []grpc.Address
 	// notifyCh notifies grpc of the set of addresses for connecting
 	notifyCh chan []grpc.Address
 
@@ -41,8 +40,11 @@ type simpleBalancer struct {
 	readyc    chan struct{}
 	readyOnce sync.Once
 
-	// mu protects upEps, pinAddr, and connectingAddr
+	// mu protects addrs, upEps, pinAddr, and connectingAddr
 	mu sync.RWMutex
+
+	// addrs are the client's endpoints for grpc,
+	addrs *addrConns
 
 	// upc closes when upEps transitions from empty to non-zero or the balancer closes.
 	upc chan struct{}
@@ -71,11 +73,15 @@ type simpleBalancer struct {
 	closed bool
 }
 
-func newSimpleBalancer(eps []string) *simpleBalancer {
+func newSimpleBalancer(eps []string, dialTimeout time.Duration) *simpleBalancer {
 	notifyCh := make(chan []grpc.Address, 1)
-	addrs := make([]grpc.Address, len(eps))
+	addrs := &addrConns{
+		all:    make(map[string]grpc.Address),
+		failed: make(map[string]addrConn),
+	}
 	for i := range eps {
-		addrs[i].Addr = getHost(eps[i])
+		addr := grpc.Address{Addr: getHost(eps[i])}
+		addrs.all[addr.Addr] = addr
 	}
 	sb := &simpleBalancer{
 		addrs:        addrs,
@@ -90,6 +96,7 @@ func newSimpleBalancer(eps []string) *simpleBalancer {
 	}
 	close(sb.downc)
 	go sb.updateNotifyLoop()
+	go sb.updateAddrConns(dialTimeout)
 	return sb
 }
 
@@ -136,16 +143,23 @@ func (b *simpleBalancer) updateAddrs(eps []string) {
 
 	b.host2ep = np
 
-	addrs := make([]grpc.Address, 0, len(eps))
+	addrs := &addrConns{
+		all:    make(map[string]grpc.Address),
+		failed: make(map[string]addrConn),
+	}
 	for i := range eps {
-		addrs = append(addrs, grpc.Address{Addr: getHost(eps[i])})
+		addr := grpc.Address{Addr: getHost(eps[i])}
+		if v, ok := b.addrs.failed[addr.Addr]; ok {
+			addrs.failed[addr.Addr] = addrConn{addr: addr, failed: v.failed}
+		}
+		addrs.all[addr.Addr] = addr
 	}
 	b.addrs = addrs
 
 	// updating notifyCh can trigger new connections,
 	// only update addrs if all connections are down
 	// or addrs does not include pinAddr.
-	update := !hasAddr(addrs, b.pinAddr)
+	update := !addrs.hasAddr(b.pinAddr)
 	b.mu.Unlock()
 
 	if update {
@@ -156,13 +170,69 @@ func (b *simpleBalancer) updateAddrs(eps []string) {
 	}
 }
 
-func hasAddr(addrs []grpc.Address, targetAddr string) bool {
-	for _, addr := range addrs {
-		if targetAddr == addr.Addr {
-			return true
+type addrConn struct {
+	addr   grpc.Address
+	failed time.Time
+}
+
+type addrConns struct {
+	all    map[string]grpc.Address
+	failed map[string]addrConn
+}
+
+func (ac *addrConns) hasAddr(addr string) bool {
+	_, ok := ac.all[addr]
+	return ok
+}
+
+func (ac *addrConns) fail(addr string) {
+	ad, ok := ac.all[addr]
+	if !ok { // endpoints were changed
+		return
+	}
+	ac.failed[addr] = addrConn{addr: ad, failed: time.Now()}
+}
+
+func (ac *addrConns) shouldPin(addr string) bool {
+	if len(ac.all) == 1 { // only endpoint available
+		return true
+	}
+	if len(ac.all) == len(ac.failed) { // all failed
+		cur, _ := ac.failed[addr]
+		for k, ad := range ac.failed {
+			if k == addr {
+				continue
+			}
+			// better alternative (failed ahead)
+			if ad.failed.Before(cur.failed) {
+				return false
+			}
+		}
+		// if no better alternatives, keep retrying
+		return true
+	}
+	_, ok := ac.failed[addr]
+	return !ok
+}
+
+func (b *simpleBalancer) updateAddrConns(d time.Duration) {
+	if d < 3*time.Second {
+		d = 3 * time.Second
+	}
+	for {
+		select {
+		case <-time.After(d):
+			b.mu.Lock()
+			for k, v := range b.addrs.failed {
+				if time.Since(v.failed) >= d {
+					delete(b.addrs.failed, k)
+				}
+			}
+			b.mu.Unlock()
+		case <-b.stopc:
+			return
 		}
 	}
-	return false
 }
 
 func (b *simpleBalancer) updateNotifyLoop() {
@@ -221,7 +291,17 @@ func (b *simpleBalancer) updateNotifyLoop() {
 
 func (b *simpleBalancer) notifyAddrs() {
 	b.mu.RLock()
-	addrs := b.addrs
+	n := len(b.addrs.all)
+	check := n > 1 && n != len(b.addrs.failed)
+	addrs := make([]grpc.Address, 0, n)
+	for ac, addr := range b.addrs.all {
+		if check {
+			if _, ok := b.addrs.failed[ac]; ok {
+				continue
+			}
+		}
+		addrs = append(addrs, addr)
+	}
 	b.mu.RUnlock()
 	select {
 	case b.notifyCh <- addrs:
@@ -229,6 +309,13 @@ func (b *simpleBalancer) notifyAddrs() {
 	}
 }
 
+// Up is part of the balancer interface, simpleBalancer implements the interface.
+// Balancer notifies a set of endpoints and pin whichever endpoint gRPC
+// Balancer.Up first and close other endpoints. Client could get stuck
+// retrying blackholed endpoints, because gRPC just marks network I/O
+// errors as transient, retrying until success; it takes several seconds
+// to find healthy one in next tries. To avoid wasting retries, gray-list
+// unhealthy endpoints on notifyAddrs, unlisting them after dial timeouts.
 func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -241,10 +328,14 @@ func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	}
 	// gRPC might call Up on a stale address.
 	// Prevent updating pinAddr with a stale address.
-	if !hasAddr(b.addrs, addr.Addr) {
+	if !b.addrs.hasAddr(addr.Addr) {
 		return func(err error) {}
 	}
 	if b.pinAddr != "" {
+		return func(err error) {}
+	}
+	// avoid pinning gray-listed addresses
+	if !b.addrs.shouldPin(addr.Addr) {
 		return func(err error) {}
 	}
 	// notify waiting Get()s and pin first connected address
@@ -255,8 +346,12 @@ func (b *simpleBalancer) Up(addr grpc.Address) func(error) {
 	b.readyOnce.Do(func() { close(b.readyc) })
 	return func(err error) {
 		b.mu.Lock()
+		if err.Error() == "grpc: failed with network I/O error" ||
+			err.Error() == "grpc: the connection is drained" {
+			b.addrs.fail(addr.Addr)
+		}
 		b.upc = make(chan struct{})
-		close(b.downc)
+		close(b.downc) // trigger notifyAddrs
 		b.pinAddr = ""
 		b.mu.Unlock()
 	}

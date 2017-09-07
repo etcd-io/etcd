@@ -93,6 +93,24 @@ type Config struct {
 	MaxTxnOps         uint  `json:"max-txn-ops"`
 	MaxRequestBytes   uint  `json:"max-request-bytes"`
 
+	// gRPC server options
+
+	// GRPCKeepAliveMinTime is the minimum interval that a client should
+	// wait before pinging server.
+	// When client pings "too fast", server sends goaway and closes the
+	// connection (errors: too_many_pings, http2.ErrCodeEnhanceYourCalm).
+	// When too slow, nothing happens.
+	// Server expects client pings only when there is any active streams
+	// by setting 'PermitWithoutStream' false.
+	GRPCKeepAliveMinTime time.Duration `json:"grpc-keepalive-min-time"`
+	// GRPCKeepAliveInterval is the frequency of server-to-client ping
+	// to check if a connection is alive. Close a non-responsive connection
+	// after an additional duration of Timeout.
+	GRPCKeepAliveInterval time.Duration `json:"grpc-keepalive-interval"`
+	// GRPCKeepAliveTimeout is the additional duration of wait
+	// before closing a non-responsive connection.
+	GRPCKeepAliveTimeout time.Duration `json:"grpc-keepalive-timeout"`
+
 	// clustering
 
 	APUrls, ACUrls      []url.URL
@@ -181,25 +199,26 @@ func NewConfig() *Config {
 	lcurl, _ := url.Parse(DefaultListenClientURLs)
 	acurl, _ := url.Parse(DefaultAdvertiseClientURLs)
 	cfg := &Config{
-		CorsInfo:            &cors.CORSInfo{},
-		MaxSnapFiles:        DefaultMaxSnapshots,
-		MaxWalFiles:         DefaultMaxWALs,
-		Name:                DefaultName,
-		SnapCount:           etcdserver.DefaultSnapCount,
-		MaxTxnOps:           DefaultMaxTxnOps,
-		MaxRequestBytes:     DefaultMaxRequestBytes,
-		TickMs:              100,
-		ElectionMs:          1000,
-		LPUrls:              []url.URL{*lpurl},
-		LCUrls:              []url.URL{*lcurl},
-		APUrls:              []url.URL{*apurl},
-		ACUrls:              []url.URL{*acurl},
-		ClusterState:        ClusterStateFlagNew,
-		InitialClusterToken: "etcd-cluster",
-		StrictReconfigCheck: true,
-		Metrics:             "basic",
-		EnableV2:            true,
-		AuthToken:           "simple",
+		CorsInfo:             &cors.CORSInfo{},
+		MaxSnapFiles:         DefaultMaxSnapshots,
+		MaxWalFiles:          DefaultMaxWALs,
+		Name:                 DefaultName,
+		SnapCount:            etcdserver.DefaultSnapCount,
+		MaxTxnOps:            DefaultMaxTxnOps,
+		MaxRequestBytes:      DefaultMaxRequestBytes,
+		GRPCKeepAliveMinTime: 5 * time.Second,
+		TickMs:               100,
+		ElectionMs:           1000,
+		LPUrls:               []url.URL{*lpurl},
+		LCUrls:               []url.URL{*lcurl},
+		APUrls:               []url.URL{*apurl},
+		ACUrls:               []url.URL{*acurl},
+		ClusterState:         ClusterStateFlagNew,
+		InitialClusterToken:  "etcd-cluster",
+		StrictReconfigCheck:  true,
+		Metrics:              "basic",
+		EnableV2:             true,
+		AuthToken:            "simple",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
