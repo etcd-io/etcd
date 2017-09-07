@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 )
@@ -55,6 +56,8 @@ type Client struct {
 	cfg      Config
 	creds    *credentials.TransportCredentials
 	balancer *simpleBalancer
+	mu       sync.Mutex
+	host2ep  map[string]string
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -116,7 +119,16 @@ func (c *Client) Endpoints() (eps []string) {
 // SetEndpoints updates client's endpoints.
 func (c *Client) SetEndpoints(eps ...string) {
 	c.cfg.Endpoints = eps
+	c.mu.Lock()
+	c.host2ep = getHost2ep(eps)
+	c.mu.Unlock()
 	c.balancer.updateAddrs(eps)
+}
+
+func (c *Client) getEndpoint(host string) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.host2ep[host]
 }
 
 // Sync synchronizes client's endpoints with the known endpoints from the etcd membership.
@@ -226,7 +238,7 @@ func (c *Client) dialSetupOpts(endpoint string, dopts ...grpc.DialOption) (opts 
 	opts = append(opts, dopts...)
 
 	f := func(host string, t time.Duration) (net.Conn, error) {
-		proto, host, _ := parseEndpoint(c.balancer.getEndpoint(host))
+		proto, host, _ := parseEndpoint(c.getEndpoint(host))
 		if host == "" && endpoint != "" {
 			// dialing an endpoint not in the balancer; use
 			// endpoint passed into dial
@@ -374,7 +386,28 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 	}
 
-	client.balancer = newSimpleBalancer(cfg.Endpoints)
+	client.host2ep = getHost2ep(cfg.Endpoints)
+	healthCheck := func(ep string) (bool, error) {
+		conn, err := client.dial(ep)
+		if err != nil {
+			return false, err
+		}
+		defer conn.Close()
+		cli := healthpb.NewHealthClient(conn)
+		cctx, ccancel := context.WithTimeout(context.Background(), time.Second)
+		resp, err := cli.Check(cctx, &healthpb.HealthCheckRequest{})
+		ccancel()
+		if err != nil {
+			if grpc.Code(err) == codes.Unimplemented &&
+				grpc.ErrorDesc(err) == "unknown service grpc.health.v1.Health" {
+				return true, nil // etcd v3.3<
+			}
+			return false, err
+		}
+		return resp.Status == healthpb.HealthCheckResponse_SERVING, nil
+	}
+	client.balancer = newSimpleBalancer(cfg.Endpoints, cfg.DialTimeout, healthCheck)
+
 	// use Endpoints[0] so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
 	conn, err := client.dial(cfg.Endpoints[0], grpc.WithBalancer(client.balancer))
