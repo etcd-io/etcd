@@ -627,7 +627,7 @@ func (l *Lease) Remaining() time.Duration {
 	if l.expiry.IsZero() {
 		return time.Duration(math.MaxInt64)
 	}
-	return l.expiry.Sub(time.Now())
+	return time.Until(l.expiry)
 }
 
 type LeaseItem struct {
