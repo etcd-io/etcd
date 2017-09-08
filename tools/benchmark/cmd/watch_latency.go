@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -24,7 +25,6 @@ import (
 	"github.com/coreos/etcd/pkg/report"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
 	"gopkg.in/cheggaaa/pb.v1"
 )
@@ -33,8 +33,8 @@ import (
 var watchLatencyCmd = &cobra.Command{
 	Use:   "watch-latency",
 	Short: "Benchmark watch latency",
-	Long: `Benchmarks the latency for watches by measuring 
-	the latency between writing to a key and receiving the 
+	Long: `Benchmarks the latency for watches by measuring
+	the latency between writing to a key and receiving the
 	associated watch response.`,
 	Run: watchLatencyFunc,
 }

@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"log"
@@ -23,7 +24,6 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/report"
-	"golang.org/x/net/context"
 )
 
 var (
