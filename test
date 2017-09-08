@@ -38,13 +38,13 @@ IGNORE_PKGS="(cmd/|etcdserverpb|rafttest|gopath.proto|v3lockpb|v3electionpb)"
 INTEGRATION_PKGS="(integration|e2e|contrib|functional-tester)"
 
 # all github.com/coreos/etcd/whatever pkgs that are not auto-generated / tools
-PKGS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | egrep -v "(tools/|contrib/|e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo)
+PKGS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -vE "(tools/|contrib/|e2e|pb)" | sed "s|\.|${REPO_PATH}|g" | xargs echo)
 # pkg1,pkg2,pkg3
 PKGS_COMMA=${PKGS// /,}
 
-TEST_PKGS=$(find . -name \*_test.go | while read -r a; do dirname "$a"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g")
-FORMATTABLE=$(find . -name \*.go | while read -r a; do echo "$(dirname "$a")/*.go"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | sed "s|\./||g")
-TESTABLE_AND_FORMATTABLE=$(echo "$TEST_PKGS" | egrep -v "$INTEGRATION_PKGS")
+TEST_PKGS=$(find . -name \*_test.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | sed "s|\./||g")
+FORMATTABLE=$(find . -name \*.go | while read -r a; do echo "$(dirname "$a")/*.go"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | sed "s|\./||g")
+TESTABLE_AND_FORMATTABLE=$(echo "$TEST_PKGS" | grep -vE "$INTEGRATION_PKGS")
 
 # check if user provided PKG override
 if [ -z "${USERPKG}" ]; then
@@ -68,7 +68,7 @@ TEST=($TEST)
 
 # TODO: 'client' pkg fails with gosimple from generated files
 # TODO: 'rafttest' is failing with unused
-STATIC_ANALYSIS_PATHS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | egrep -v "$IGNORE_PKGS" | grep -v 'client')
+STATIC_ANALYSIS_PATHS=$(find . -name \*.go | while read -r a; do dirname "$a"; done | sort | uniq | grep -vE "$IGNORE_PKGS" | grep -v 'client')
 STATIC_ANALYSIS_PATHS=($STATIC_ANALYSIS_PATHS)
 
 if [ -z "$GOARCH" ]; then
@@ -163,7 +163,7 @@ function cov_pass {
 	GOCOVFLAGS="-covermode=set -coverpkg ${PKGS_COMMA} -v -timeout 15m"
 	GOCOVFLAGS=($GOCOVFLGS)
 	failed=""
-	for t in $(echo "${TEST_PKGS}" | egrep -v "(e2e|functional-tester)"); do
+	for t in $(echo "${TEST_PKGS}" | grep -vE "(e2e|functional-tester)"); do
 		tf=$(echo "$t" | tr / _)
 		# cache package compilation data for faster repeated builds
 		go test "${GOCOVFLAGS[@]}" -i "${REPO_PATH}/$t" || true
@@ -325,7 +325,7 @@ function fmt_pass {
 		gofiles=$(find "${FMT[@]}" -iname '*.go' 2>/dev/null)
 		gofiles_all=($gofiles)
 		# ignore tests and protobuf files
-		gofiles=$(echo "${gofiles_all[@]}" | sort | uniq | sed "s/ /\n/g" | egrep -v "(\\_test.go|\\.pb\\.go)")
+		gofiles=$(echo "${gofiles_all[@]}" | sort | uniq | sed "s/ /\n/g" | grep -vE "(\\_test.go|\\.pb\\.go)")
 		gofiles=($gofiles)
 		# only check for broken exported godocs
 		gowordRes=$(goword -use-spell=false "${gofiles[@]}" | grep godoc-export | sort)
@@ -349,7 +349,7 @@ function fmt_pass {
 		if [ -n "${gosimpleResult}" ]; then
 			# TODO: resolve these after go1.8 migration
 			SIMPLE_CHECK_MASK="S(1024)"
-			if echo "${gosimpleResult}" | egrep -v "$SIMPLE_CHECK_MASK"; then
+			if echo "${gosimpleResult}" | grep -vE "$SIMPLE_CHECK_MASK"; then
 				echo -e "gosimple checking failed:\n${gosimpleResult}"
 				exit 255
 			else
@@ -378,7 +378,7 @@ function fmt_pass {
 			# TODO: resolve these after go1.8 migration
 			# See https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck
 			STATIC_CHECK_MASK="SA(1012|1019|2002)"
-			if echo "${staticcheckResult}" | egrep -v "$STATIC_CHECK_MASK"; then
+			if echo "${staticcheckResult}" | grep -vE "$STATIC_CHECK_MASK"; then
 				echo -e "staticcheck checking failed:\n${staticcheckResult}"
 				exit 255
 			else
