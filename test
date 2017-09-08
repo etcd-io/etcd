@@ -301,7 +301,7 @@ function fmt_pass {
 
 	echo "Checking documentation style..."
 	# eschew you
-	yous=$(find . -name \*.md -exec egrep --color "[Yy]ou[r]?[ '.,;]" {} + | grep -v /v2/ || true)
+	yous=$(find . -name \*.md -exec grep -E --color "[Yy]ou[r]?[ '.,;]" {} + | grep -v /v2/ || true)
 	if [ ! -z "$yous" ]; then
 		echo -e "found 'you' in documentation:\n${yous}"
 		exit 255
@@ -347,14 +347,8 @@ function fmt_pass {
 		echo "Checking gosimple..."
 		gosimpleResult=$(gosimple "${STATIC_ANALYSIS_PATHS[@]}" 2>&1 || true)
 		if [ -n "${gosimpleResult}" ]; then
-			# TODO: resolve these after go1.8 migration
-			SIMPLE_CHECK_MASK="S(1024)"
-			if echo "${gosimpleResult}" | grep -vE "$SIMPLE_CHECK_MASK"; then
-				echo -e "gosimple checking failed:\n${gosimpleResult}"
-				exit 255
-			else
-				echo -e "gosimple warning:\n${gosimpleResult}"
-			fi
+			echo -e "gosimple checking failed:\n${gosimpleResult}"
+			exit 255
 		fi
 	else
 		echo "Skipping gosimple..."
@@ -447,7 +441,7 @@ function dep_pass {
 	# don't pull in etcdserver package
 	pushd clientv3 >/dev/null
 	badpkg="(etcdserver$|mvcc$|backend$|grpc-gateway)"
-	deps=$(go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | egrep "${badpkg}" || echo "")
+	deps=$(go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | grep -E "${badpkg}" || echo "")
 	popd >/dev/null
 	if [ ! -z "$deps" ]; then
 		echo -e "clientv3 has masked dependencies:\n${deps}"
