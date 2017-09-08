@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -31,6 +30,7 @@ import (
 	"github.com/coreos/etcd/pkg/srv"
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/grpclog"
 )
 
 // GlobalFlags are flags that defined globally
@@ -97,7 +97,7 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 		ExitWithError(ExitError, derr)
 	}
 	if debug {
-		clientv3.SetLogger(log.New(os.Stderr, "grpc: ", 0))
+		clientv3.SetLogger(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 	}
 
 	endpoints, err := endpointsFromCmd(cmd)
