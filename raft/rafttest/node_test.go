@@ -15,11 +15,11 @@
 package rafttest
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/raft"
-	"golang.org/x/net/context"
 )
 
 func TestBasicProgress(t *testing.T) {

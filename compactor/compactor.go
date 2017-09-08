@@ -15,13 +15,13 @@
 package compactor
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/coreos/pkg/capnslog"
-	"golang.org/x/net/context"
-
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
+	"github.com/coreos/pkg/capnslog"
 )
 
 var (

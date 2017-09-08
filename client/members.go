@@ -16,13 +16,12 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"path"
-
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/pkg/types"
 )

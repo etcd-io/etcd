@@ -15,11 +15,11 @@
 package naming
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	etcd "github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

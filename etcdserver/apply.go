@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"bytes"
+	"context"
 	"sort"
 	"time"
 
@@ -24,8 +25,8 @@ import (
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/types"
+
 	"github.com/gogo/protobuf/proto"
-	"golang.org/x/net/context"
 )
 
 const (

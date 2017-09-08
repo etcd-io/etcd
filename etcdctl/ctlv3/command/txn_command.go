@@ -16,6 +16,7 @@ package command
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -23,8 +24,8 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
+
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (

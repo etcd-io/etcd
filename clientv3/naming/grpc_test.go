@@ -15,16 +15,16 @@
 package naming
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"testing"
 
-	"golang.org/x/net/context"
-	"google.golang.org/grpc/naming"
-
 	etcd "github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
+
+	"google.golang.org/grpc/naming"
 )
 
 func TestGRPCResolver(t *testing.T) {

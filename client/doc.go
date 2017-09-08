@@ -19,9 +19,9 @@ Create a Config and exchange it for a Client:
 
 	import (
 		"net/http"
+		"context"
 
 		"github.com/coreos/etcd/client"
-		"golang.org/x/net/context"
 	)
 
 	cfg := client.Config{

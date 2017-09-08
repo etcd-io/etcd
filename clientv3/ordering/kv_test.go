@@ -16,6 +16,7 @@ package ordering
 
 import (
 	"context"
+	gContext "context"
 	"errors"
 	"sync"
 	"testing"
@@ -25,7 +26,6 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/integration"
 	"github.com/coreos/etcd/pkg/testutil"
-	gContext "golang.org/x/net/context"
 )
 
 func TestDetectKvOrderViolation(t *testing.T) {

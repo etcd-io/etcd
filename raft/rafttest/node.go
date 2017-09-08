@@ -15,13 +15,13 @@
 package rafttest
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
-	"golang.org/x/net/context"
 )
 
 type node struct {

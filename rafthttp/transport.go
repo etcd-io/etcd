@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
@@ -26,9 +27,9 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
+
 	"github.com/coreos/pkg/capnslog"
 	"github.com/xiang90/probing"
-	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
 )
 

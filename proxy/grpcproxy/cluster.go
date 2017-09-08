@@ -15,6 +15,7 @@
 package grpcproxy
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -23,7 +24,6 @@ import (
 	"github.com/coreos/etcd/clientv3/naming"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 
-	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 	gnaming "google.golang.org/grpc/naming"

@@ -15,14 +15,13 @@
 package grpcproxy
 
 import (
+	"context"
 	"net/http"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/etcdserver/api/etcdhttp"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
-
-	"golang.org/x/net/context"
 )
 
 // HandleHealth registers health handler on '/health'.

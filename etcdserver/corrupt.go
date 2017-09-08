@@ -15,14 +15,13 @@
 package etcdserver
 
 import (
+	"context"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/pkg/types"
-
-	"golang.org/x/net/context"
 )
 
 func (s *EtcdServer) monitorKVHash() {

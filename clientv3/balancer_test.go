@@ -15,6 +15,7 @@
 package clientv3
 
 import (
+	"context"
 	"errors"
 	"net"
 	"sync"
@@ -24,7 +25,6 @@ import (
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -84,8 +84,9 @@ func TestBalancerGetBlocking(t *testing.T) {
 	}
 	blockingOpts := grpc.BalancerGetOptions{BlockingWait: true}
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Millisecond*100)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	_, _, err := sb.Get(ctx, blockingOpts)
+	cancel()
 	if err != context.DeadlineExceeded {
 		t.Errorf("Get() with no up endpoints should timeout, got %v", err)
 	}
@@ -124,8 +125,9 @@ func TestBalancerGetBlocking(t *testing.T) {
 		t.Errorf("closing the only connection should triggered balancer to send the all endpoints via Notify chan so that we can establish a connection")
 	}
 	down2(errors.New("error"))
-	ctx, _ = context.WithTimeout(context.Background(), time.Millisecond*100)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Millisecond*100)
 	_, _, err = sb.Get(ctx, blockingOpts)
+	cancel()
 	if err != context.DeadlineExceeded {
 		t.Errorf("Get() with no up endpoints should timeout, got %v", err)
 	}

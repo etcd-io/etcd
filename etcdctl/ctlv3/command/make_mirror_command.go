@@ -15,6 +15,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -25,8 +26,8 @@ import (
 	"github.com/coreos/etcd/clientv3/mirror"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/mvcc/mvccpb"
+
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (

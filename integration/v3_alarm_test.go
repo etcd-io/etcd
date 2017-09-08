@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sync"
@@ -26,7 +27,6 @@ import (
 	"github.com/coreos/etcd/mvcc"
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/testutil"
-	"golang.org/x/net/context"
 )
 
 // TestV3StorageQuotaApply tests the V3 server respects quotas during apply

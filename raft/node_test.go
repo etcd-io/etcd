@@ -16,13 +16,13 @@ package raft
 
 import (
 	"bytes"
+	"context"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/pkg/testutil"
 	"github.com/coreos/etcd/raft/raftpb"
-	"golang.org/x/net/context"
 )
 
 // TestNodeStep ensures that node.Step sends msgProp to propc chan

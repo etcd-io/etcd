@@ -15,6 +15,7 @@
 package leasehttp
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -24,8 +25,6 @@ import (
 
 	"github.com/coreos/etcd/lease"
 	"github.com/coreos/etcd/mvcc/backend"
-
-	"golang.org/x/net/context"
 )
 
 func TestRenewHTTP(t *testing.T) {

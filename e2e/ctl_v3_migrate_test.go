@@ -15,12 +15,11 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/pkg/testutil"

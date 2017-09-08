@@ -15,6 +15,7 @@
 package clientv3_test
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -26,7 +27,6 @@ import (
 
 	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

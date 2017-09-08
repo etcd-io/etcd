@@ -15,13 +15,13 @@
 package e2e
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 )
 
 func TestCtlV3Alarm(t *testing.T) {

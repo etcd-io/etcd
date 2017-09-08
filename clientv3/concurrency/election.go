@@ -15,13 +15,13 @@
 package concurrency
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	v3 "github.com/coreos/etcd/clientv3"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/mvcc/mvccpb"
-	"golang.org/x/net/context"
 )
 
 var (
@@ -213,6 +213,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 		for !keyDeleted {
 			wr, ok := <-wch
 			if !ok {
+				cancel()
 				return
 			}
 			for _, ev := range wr.Events {
@@ -225,6 +226,7 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 				select {
 				case ch <- *resp:
 				case <-cctx.Done():
+					cancel()
 					return
 				}
 			}

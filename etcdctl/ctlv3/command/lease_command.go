@@ -15,12 +15,13 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
 	v3 "github.com/coreos/etcd/clientv3"
+
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 // NewLeaseCommand returns the cobra command for "lease".

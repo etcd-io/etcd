@@ -15,11 +15,11 @@
 package clientv3_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 
 	"github.com/coreos/etcd/clientv3"
-	"golang.org/x/net/context"
 )
 
 func ExampleCluster_memberList() {

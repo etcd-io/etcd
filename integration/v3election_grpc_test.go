@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -22,7 +23,6 @@ import (
 	epb "github.com/coreos/etcd/etcdserver/api/v3election/v3electionpb"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
-	"golang.org/x/net/context"
 )
 
 // TestV3ElectionCampaign checks that Campaign will not give

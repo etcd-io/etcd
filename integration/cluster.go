@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
@@ -30,10 +31,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/soheilhy/cmux"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
 	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/clientv3"
@@ -52,7 +49,10 @@ import (
 	"github.com/coreos/etcd/pkg/transport"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/rafthttp"
+
 	"github.com/coreos/pkg/capnslog"
+	"github.com/soheilhy/cmux"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -277,10 +277,11 @@ func (c *cluster) addMemberByURL(t *testing.T, clientURL, peerURL string) error 
 	cc := MustNewHTTPClient(t, []string{clientURL}, c.cfg.ClientTLS)
 	ma := client.NewMembersAPI(cc)
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	if _, err := ma.Add(ctx, peerURL); err != nil {
+	_, err := ma.Add(ctx, peerURL)
+	cancel()
+	if err != nil {
 		return err
 	}
-	cancel()
 
 	// wait for the add node entry applied in the cluster
 	members := append(c.HTTPMembers(), client.Member{PeerURLs: []string{peerURL}, ClientURLs: []string{}})

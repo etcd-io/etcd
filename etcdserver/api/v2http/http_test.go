@@ -15,6 +15,7 @@
 package v2http
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -27,8 +28,8 @@ import (
 	"github.com/coreos/etcd/etcdserver/membership"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
+
 	"github.com/coreos/go-semver/semver"
-	"golang.org/x/net/context"
 )
 
 type fakeCluster struct {

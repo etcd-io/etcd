@@ -15,10 +15,10 @@
 package clientv3
 
 import (
+	"context"
 	"crypto/tls"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 

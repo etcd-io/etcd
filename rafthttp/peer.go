@@ -15,6 +15,7 @@
 package rafthttp
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
-	"golang.org/x/net/context"
+
 	"golang.org/x/time/rate"
 )
 

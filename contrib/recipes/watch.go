@@ -15,9 +15,10 @@
 package recipe
 
 import (
+	"context"
+
 	"github.com/coreos/etcd/clientv3"
 	"github.com/coreos/etcd/mvcc/mvccpb"
-	"golang.org/x/net/context"
 )
 
 // WaitEvents waits on a key until it observes the given events and returns the final one.

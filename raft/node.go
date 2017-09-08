@@ -15,10 +15,10 @@
 package raft
 
 import (
+	"context"
 	"errors"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
-	"golang.org/x/net/context"
 )
 
 type SnapshotStatus int

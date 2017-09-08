@@ -15,6 +15,7 @@
 package v3rpc
 
 import (
+	"context"
 	"crypto/sha256"
 	"io"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/coreos/etcd/mvcc/backend"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/version"
-	"golang.org/x/net/context"
 )
 
 type KVGetter interface {
