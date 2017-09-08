@@ -24,6 +24,8 @@ import (
 
 	"github.com/coreos/etcd/lease/leasepb"
 	"github.com/coreos/etcd/mvcc/backend"
+
+	"github.com/jonboulle/clockwork"
 )
 
 // NoLease is a special LeaseID representing the absence of a lease.
@@ -110,9 +112,10 @@ type Lessor interface {
 }
 
 // lessor implements Lessor interface.
-// TODO: use clockwork for testability.
 type lessor struct {
 	mu sync.Mutex
+
+	clock clockwork.Clock
 
 	// demotec is set when the lessor is the primary.
 	// demotec will be closed if the lessor is demoted.
@@ -153,6 +156,7 @@ func NewLessor(b backend.Backend, minLeaseTTL int64) Lessor {
 
 func newLessor(b backend.Backend, minLeaseTTL int64) *lessor {
 	l := &lessor{
+		clock:       clockwork.NewRealClock(),
 		leaseMap:    make(map[LeaseID]*Lease),
 		itemMap:     make(map[LeaseItem]LeaseID),
 		b:           b,
@@ -202,6 +206,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	// with longer TTL to reduce renew load.
 	l := &Lease{
 		ID:      id,
+		clock:   le.clock,
 		ttl:     ttl,
 		itemSet: make(map[LeaseItem]struct{}),
 		revokec: make(chan struct{}),
@@ -543,8 +548,9 @@ func (le *lessor) initAndRecover() {
 			lpb.TTL = le.minLeaseTTL
 		}
 		le.leaseMap[ID] = &Lease{
-			ID:  ID,
-			ttl: lpb.TTL,
+			ID:    ID,
+			clock: le.clock,
+			ttl:   lpb.TTL,
 			// itemSet will be filled in when recover key-value pairs
 			// set expiry to forever, refresh when promoted
 			itemSet: make(map[LeaseItem]struct{}),
@@ -558,7 +564,10 @@ func (le *lessor) initAndRecover() {
 }
 
 type Lease struct {
-	ID  LeaseID
+	ID LeaseID
+
+	clock clockwork.Clock // clock held by lessor
+
 	ttl int64 // time to live in seconds
 	// expiryMu protects concurrent accesses to expiry
 	expiryMu sync.RWMutex
@@ -596,7 +605,7 @@ func (l *Lease) TTL() int64 {
 
 // refresh refreshes the expiry of the lease.
 func (l *Lease) refresh(extend time.Duration) {
-	newExpiry := time.Now().Add(extend + time.Duration(l.ttl)*time.Second)
+	newExpiry := l.clock.Now().Add(extend + time.Duration(l.ttl)*time.Second)
 	l.expiryMu.Lock()
 	defer l.expiryMu.Unlock()
 	l.expiry = newExpiry
@@ -627,7 +636,7 @@ func (l *Lease) Remaining() time.Duration {
 	if l.expiry.IsZero() {
 		return time.Duration(math.MaxInt64)
 	}
-	return time.Until(l.expiry)
+	return l.expiry.Sub(l.clock.Now())
 }
 
 type LeaseItem struct {
