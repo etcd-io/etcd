@@ -106,7 +106,7 @@ func (s *keyStresser) run(ctx context.Context) {
 			continue
 		}
 
-		switch grpc.ErrorDesc(err) {
+		switch rpctypes.ErrorDesc(err) {
 		case context.DeadlineExceeded.Error():
 			// This retries when request is triggered at the same time as
 			// leader failure. When we terminate the leader, the request to

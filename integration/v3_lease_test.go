@@ -25,7 +25,6 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -560,7 +559,7 @@ func TestV3LeaseRequireLeader(t *testing.T) {
 		if err == nil {
 			t.Fatalf("got response %+v, expected error", resp)
 		}
-		if grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+		if rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
 			t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
 		}
 	}()

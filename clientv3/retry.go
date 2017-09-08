@@ -22,6 +22,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type rpcFunc func(ctx context.Context) error
@@ -35,12 +36,16 @@ func isReadStopError(err error) bool {
 		return true
 	}
 	// only retry if unavailable
-	return grpc.Code(err) != codes.Unavailable
+	ev, _ := status.FromError(err)
+	return ev.Code() != codes.Unavailable
 }
 
 func isWriteStopError(err error) bool {
-	return grpc.Code(err) != codes.Unavailable ||
-		grpc.ErrorDesc(err) != "there is no address available"
+	ev, _ := status.FromError(err)
+	if ev.Code() != codes.Unavailable {
+		return true
+	}
+	return rpctypes.ErrorDesc(err) != "there is no address available"
 }
 
 func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRpcFunc {

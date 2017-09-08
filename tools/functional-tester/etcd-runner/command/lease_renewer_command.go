@@ -24,8 +24,8 @@ import (
 	"github.com/coreos/etcd/clientv3"
 
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -68,7 +68,8 @@ func runLeaseRenewerFunc(cmd *cobra.Command, args []string) {
 
 		for {
 			lk, err = c.Lease.KeepAliveOnce(ctx, l.ID)
-			if grpc.Code(err) == codes.NotFound {
+			ev, _ := status.FromError(err)
+			if ev.Code() == codes.NotFound {
 				if time.Since(expire) < 0 {
 					log.Fatalf("bad renew! exceeded: %v", time.Since(expire))
 					for {
