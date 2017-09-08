@@ -447,7 +447,7 @@ function dep_pass {
 	# don't pull in etcdserver package
 	pushd clientv3 >/dev/null
 	badpkg="(etcdserver$|mvcc$|backend$|grpc-gateway)"
-	deps=$(go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | egrep "${badpkg}" || echo "")
+	deps=$(go list -f '{{ .Deps }}'  | sed 's/ /\n/g' | grep -E "${badpkg}" || echo "")
 	popd >/dev/null
 	if [ ! -z "$deps" ]; then
 		echo -e "clientv3 has masked dependencies:\n${deps}"
