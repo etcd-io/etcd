@@ -771,7 +771,7 @@ func TestLeasingTxnOwnerIf(t *testing.T) {
 			t.Fatal(terr)
 		}
 		if tresp.Succeeded != tt.wSucceeded {
-			t.Errorf("#%d: expected succeded %v, got %v", i, tt.wSucceeded, tresp.Succeeded)
+			t.Errorf("#%d: expected succeeded %v, got %v", i, tt.wSucceeded, tresp.Succeeded)
 		}
 		if len(tresp.Responses) != tt.wResponses {
 			t.Errorf("#%d: expected %d responses, got %d", i, tt.wResponses, len(tresp.Responses))

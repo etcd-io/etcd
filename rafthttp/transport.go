@@ -142,7 +142,7 @@ func (t *Transport) Start() error {
 	t.peers = make(map[types.ID]Peer)
 	t.prober = probing.NewProber(t.pipelineRt)
 
-	// If client didn't provide dial retry frequence, use the default
+	// If client didn't provide dial retry frequency, use the default
 	// (100ms backoff between attempts to create a new stream),
 	// so it doesn't bring too much overhead when retry.
 	if t.DialRetryFrequency == 0 {
