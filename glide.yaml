@@ -6,14 +6,12 @@ import:
   version: v0.1.0
 - package: github.com/coreos/bbolt
   version: v1.3.1-coreos.1
-- package: github.com/cockroachdb/cmux
-  version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - package: github.com/coreos/go-semver
   version: v0.2.0
   subpackages:
   - semver
 - package: github.com/coreos/go-systemd
-  version: v14
+  version: v15
   subpackages:
   - daemon
   - journal
