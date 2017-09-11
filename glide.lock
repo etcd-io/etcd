@@ -1,5 +1,5 @@
-hash: 680fead4df2e814f315fb1111c187f500faf7d9573295e331876a46aa126f8f7
-updated: 2017-09-06T14:59:05.315378166-07:00
+hash: f12c87d509e99534547e948533b8e8a88043c2261c0be08f155a26cd920b5fd4
+updated: 2017-09-11T14:52:48.727295105-07:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -7,8 +7,6 @@ imports:
   - quantile
 - name: github.com/bgentry/speakeasy
   version: 4aabc24848ce5fd31929f7d1e4ea74d3709c14cd
-- name: github.com/cockroachdb/cmux
-  version: 112f0506e7743d64a6eb8fedbcff13d9979bbf92
 - name: github.com/coreos/bbolt
   version: e1c92081e510bb6b2bbfc93e7e6bd0b6dabd3e12
 - name: github.com/coreos/go-semver
@@ -16,7 +14,7 @@ imports:
   subpackages:
   - semver
 - name: github.com/coreos/go-systemd
-  version: 48702e0da86bd25e76cfef347e2adeb434a0d0a6
+  version: d2196463941895ee908e13531a23a39feb9e1243
   subpackages:
   - daemon
   - journal
