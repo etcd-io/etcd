@@ -51,11 +51,19 @@ func isWriteStopError(err error) bool {
 func (c *Client) newRetryWrapper(isStop retryStopErrFunc) retryRpcFunc {
 	return func(rpcCtx context.Context, f rpcFunc) error {
 		for {
-			if err := f(rpcCtx); err == nil || isStop(err) {
+			err := f(rpcCtx)
+			if err == nil {
+				return nil
+			}
+			notify := c.balancer.ConnectNotify()
+			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
+				c.balancer.next()
+			}
+			if isStop(err) {
 				return err
 			}
 			select {
-			case <-c.balancer.ConnectNotify():
+			case <-notify:
 			case <-rpcCtx.Done():
 				return rpcCtx.Err()
 			case <-c.ctx.Done():
