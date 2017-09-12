@@ -221,16 +221,16 @@ func compactIndex(rev int64, available map[revision]struct{}, emptyki *[]*keyInd
 	}
 }
 
-func (a *treeIndex) Equal(bi index) bool {
+func (ti *treeIndex) Equal(bi index) bool {
 	b := bi.(*treeIndex)
 
-	if a.tree.Len() != b.tree.Len() {
+	if ti.tree.Len() != b.tree.Len() {
 		return false
 	}
 
 	equal := true
 
-	a.tree.Ascend(func(item btree.Item) bool {
+	ti.tree.Ascend(func(item btree.Item) bool {
 		aki := item.(*keyIndex)
 		bki := b.tree.Get(item).(*keyIndex)
 		if !aki.equal(bki) {

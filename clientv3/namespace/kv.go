@@ -180,8 +180,8 @@ func (kv *kvPrefix) unprefixTxnResponse(resp *clientv3.TxnResponse) {
 	}
 }
 
-func (p *kvPrefix) prefixInterval(key, end []byte) (pfxKey []byte, pfxEnd []byte) {
-	return prefixInterval(p.pfx, key, end)
+func (kv *kvPrefix) prefixInterval(key, end []byte) (pfxKey []byte, pfxEnd []byte) {
+	return prefixInterval(kv.pfx, key, end)
 }
 
 func (kv *kvPrefix) prefixCmps(cs []clientv3.Cmp) []clientv3.Cmp {
