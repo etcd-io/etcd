@@ -17,6 +17,7 @@ package v3rpc
 import (
 	"crypto/tls"
 	"math"
+	"os"
 
 	"github.com/coreos/etcd/etcdserver"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
@@ -35,7 +36,7 @@ const (
 )
 
 func init() {
-	grpclog.SetLogger(plog)
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 }
 
 func Server(s *etcdserver.EtcdServer, tls *tls.Config) *grpc.Server {
