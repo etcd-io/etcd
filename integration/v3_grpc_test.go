@@ -1778,7 +1778,7 @@ func TestGRPCRequireLeader(t *testing.T) {
 	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
-	if _, err := toGRPC(client).KV.Put(ctx, reqput); grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+	if _, err := toGRPC(client).KV.Put(ctx, reqput); rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
 	}
 }
@@ -1809,7 +1809,7 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 
 	// existing stream should be rejected
 	_, err = wStream.Recv()
-	if grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+	if rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
 	}
 
@@ -1819,7 +1819,7 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 		t.Fatalf("wAPI.Watch error: %v", err)
 	}
 	_, err = wStream.Recv()
-	if grpc.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
+	if rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
 	}
 

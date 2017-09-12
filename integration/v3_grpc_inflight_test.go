@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/pkg/testutil"
 
@@ -79,8 +80,10 @@ func TestV3KVInflightRangeRequests(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			_, err := kvc.Range(ctx, &pb.RangeRequest{Key: []byte("foo"), Serializable: true}, grpc.FailFast(false))
-			if err != nil && grpc.ErrorDesc(err) != context.Canceled.Error() {
-				t.Fatalf("inflight request should be canceld with %v, got %v", context.Canceled, err)
+			if err != nil {
+				if err != nil && rpctypes.ErrorDesc(err) != context.Canceled.Error() {
+					t.Fatalf("inflight request should be canceld with %v, got %v", context.Canceled, err)
+				}
 			}
 		}()
 	}
