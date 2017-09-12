@@ -49,6 +49,10 @@ func TestLessorGrant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not grant lease 1 (%v)", err)
 	}
+	if l.ttl != minLeaseTTL {
+		t.Fatalf("ttl = %v, expect minLeaseTTL %v", l.ttl, minLeaseTTL)
+	}
+
 	gl := le.Lookup(l.ID)
 
 	if !reflect.DeepEqual(gl, l) {
