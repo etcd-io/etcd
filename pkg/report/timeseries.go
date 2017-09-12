@@ -118,20 +118,20 @@ func (sp *secondPoints) getTimeSeries() TimeSeries {
 	return tslice
 }
 
-func (ts TimeSeries) String() string {
+func (t TimeSeries) String() string {
 	buf := new(bytes.Buffer)
 	wr := csv.NewWriter(buf)
 	if err := wr.Write([]string{"UNIX-SECOND", "MIN-LATENCY-MS", "AVG-LATENCY-MS", "MAX-LATENCY-MS", "AVG-THROUGHPUT"}); err != nil {
 		log.Fatal(err)
 	}
 	rows := [][]string{}
-	for i := range ts {
+	for i := range t {
 		row := []string{
-			fmt.Sprintf("%d", ts[i].Timestamp),
-			ts[i].MinLatency.String(),
-			ts[i].AvgLatency.String(),
-			ts[i].MaxLatency.String(),
-			fmt.Sprintf("%d", ts[i].ThroughPut),
+			fmt.Sprintf("%d", t[i].Timestamp),
+			t[i].MinLatency.String(),
+			t[i].AvgLatency.String(),
+			t[i].MaxLatency.String(),
+			fmt.Sprintf("%d", t[i].ThroughPut),
 		}
 		rows = append(rows, row)
 	}

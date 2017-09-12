@@ -397,6 +397,19 @@ function fmt_pass {
 		exit 255
 	fi
 
+	echo "Checking receiver names..."
+	recvs=$(grep 'func ([^*]' {*,*/*,*/*/*}.go  | grep -Ev "(generated|pb/)" | tr  ':' ' ' |  \
+		awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\.]*go//g" |  sort  | uniq  | \
+		grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ')
+	if [ -n "${recvs}" ]; then
+		recvs=($recvs)
+		for recv in "${recvs[@]}"; do
+			echo "Mismatched receiver for $recv..."
+			grep "$recv" "${FMT[@]}" | grep 'func ('
+		done
+		exit 255
+	fi
+
 	echo "Checking commit titles..."
 	git log --oneline "$(git merge-base HEAD master)"...HEAD | while read -r l; do
 		commitMsg=$(echo "$l" | cut -f2- -d' ')
