@@ -242,4 +242,4 @@ func (e *Election) Key() string { return e.leaderKey }
 func (e *Election) Rev() int64 { return e.leaderRev }
 
 // Header is the response header from the last successful election proposal.
-func (m *Election) Header() *pb.ResponseHeader { return m.hdr }
+func (e *Election) Header() *pb.ResponseHeader { return e.hdr }
