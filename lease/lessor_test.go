@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/mvcc/backend"
+
+	"github.com/jonboulle/clockwork"
 )
 
 const (
@@ -355,11 +357,16 @@ func TestLessorExpire(t *testing.T) {
 	le := newLessor(be, testMinTTL)
 	defer le.Stop()
 
+	fc := clockwork.NewFakeClock()
+	le.clock = fc
+
 	le.Promote(1 * time.Second)
 	l, err := le.Grant(1, testMinTTL)
 	if err != nil {
 		t.Fatalf("failed to create lease: %v", err)
 	}
+
+	fc.Advance(1 * time.Second)
 
 	select {
 	case el := <-le.ExpiredLeasesC():
@@ -407,11 +414,16 @@ func TestLessorExpireAndDemote(t *testing.T) {
 	le := newLessor(be, testMinTTL)
 	defer le.Stop()
 
+	fc := clockwork.NewFakeClock()
+	le.clock = fc
+
 	le.Promote(1 * time.Second)
 	l, err := le.Grant(1, testMinTTL)
 	if err != nil {
 		t.Fatalf("failed to create lease: %v", err)
 	}
+
+	fc.Advance(1 * time.Second)
 
 	select {
 	case el := <-le.ExpiredLeasesC():
