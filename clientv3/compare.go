@@ -61,7 +61,7 @@ func Compare(cmp Cmp, result string, v interface{}) Cmp {
 	case pb.Compare_MOD:
 		cmp.TargetUnion = &pb.Compare_ModRevision{ModRevision: mustInt64(v)}
 	case pb.Compare_LEASE:
-		cmp.TargetUnion = &pb.Compare_Lease{Lease: mustInt64(v)}
+		cmp.TargetUnion = &pb.Compare_Lease{Lease: mustInt64orLeaseID(v)}
 	default:
 		panic("Unknown compare type")
 	}
@@ -119,6 +119,7 @@ func (cmp Cmp) WithPrefix() Cmp {
 	return cmp
 }
 
+// mustInt64 panics if val isn't an int or int64. It returns an int64 otherwise.
 func mustInt64(val interface{}) int64 {
 	if v, ok := val.(int64); ok {
 		return v
@@ -127,4 +128,13 @@ func mustInt64(val interface{}) int64 {
 		return int64(v)
 	}
 	panic("bad value")
+}
+
+// mustInt64orLeaseID panics if val isn't a LeaseID, int or int64. It returns an
+// int64 otherwise.
+func mustInt64orLeaseID(val interface{}) int64 {
+	if v, ok := val.(LeaseID); ok {
+		return int64(v)
+	}
+	return mustInt64(val)
 }
