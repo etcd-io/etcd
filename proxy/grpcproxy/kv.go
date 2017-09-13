@@ -189,7 +189,9 @@ func RangeRequestToOp(r *pb.RangeRequest) clientv3.Op {
 	if r.CountOnly {
 		opts = append(opts, clientv3.WithCountOnly())
 	}
-
+	if r.KeysOnly {
+		opts = append(opts, clientv3.WithKeysOnly())
+	}
 	if r.Serializable {
 		opts = append(opts, clientv3.WithSerializable())
 	}
