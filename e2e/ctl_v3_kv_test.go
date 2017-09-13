@@ -198,21 +198,15 @@ func getRevTest(cx ctlCtx) {
 }
 
 func getKeysOnlyTest(cx ctlCtx) {
-	var (
-		kvs = []kv{{"key1", "val1"}}
-	)
-	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatalf("getKeysOnlyTest #%d: ctlV3Put error (%v)", i, err)
-		}
+	if err := ctlV3Put(cx, "key", "val", ""); err != nil {
+		cx.t.Fatal(err)
 	}
-
-	cmdArgs := append(cx.PrefixArgs(), "get")
-	cmdArgs = append(cmdArgs, []string{"--prefix", "--keys-only", "key"}...)
-
-	err := spawnWithExpects(cmdArgs, []string{"key1", ""}...)
-	if err != nil {
-		cx.t.Fatalf("getKeysOnlyTest : error (%v)", err)
+	cmdArgs := append(cx.PrefixArgs(), []string{"get", "--keys-only", "key"}...)
+	if err := spawnWithExpect(cmdArgs, "key"); err != nil {
+		cx.t.Fatal(err)
+	}
+	if err := spawnWithExpects(cmdArgs, "val"); err == nil {
+		cx.t.Fatalf("got value but passed --keys-only")
 	}
 }
 
