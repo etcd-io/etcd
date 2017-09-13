@@ -170,11 +170,8 @@ func roleGrantPermissionCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, err)
 	}
 
-	rangeEnd, rerr := rangeEndFromPermFlags(args[2:])
-	if rerr != nil {
-		ExitWithError(ExitBadArgs, rerr)
-	}
-	resp, err := mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], args[2], rangeEnd, perm)
+	key, rangeEnd := permRange(args[2:])
+	resp, err := mustClientFromCmd(cmd).Auth.RoleGrantPermission(context.TODO(), args[0], key, rangeEnd, perm)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
@@ -188,15 +185,39 @@ func roleRevokePermissionCommandFunc(cmd *cobra.Command, args []string) {
 		ExitWithError(ExitBadArgs, fmt.Errorf("role revoke-permission command requires role name and key [endkey] as its argument."))
 	}
 
-	rangeEnd, rerr := rangeEndFromPermFlags(args[1:])
-	if rerr != nil {
-		ExitWithError(ExitBadArgs, rerr)
-	}
-	resp, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], args[1], rangeEnd)
+	key, rangeEnd := permRange(args[1:])
+	resp, err := mustClientFromCmd(cmd).Auth.RoleRevokePermission(context.TODO(), args[0], key, rangeEnd)
 	if err != nil {
 		ExitWithError(ExitError, err)
 	}
 	display.RoleRevokePermission(args[0], args[1], rangeEnd, *resp)
+}
+
+func permRange(args []string) (string, string) {
+	key := args[0]
+	var rangeEnd string
+	if len(key) == 0 {
+		if rolePermPrefix && rolePermFromKey {
+			ExitWithError(ExitBadArgs, fmt.Errorf("--from-key and --prefix flags are mutually exclusive"))
+		}
+
+		// Range permission is expressed as adt.BytesAffineInterval,
+		// so the empty prefix which should be matched with every key must be like this ["\x00", <end>).
+		key = "\x00"
+		if rolePermPrefix || rolePermFromKey {
+			// For the both cases of prefix and from-key, a permission with an empty key
+			// should allow access to the entire key space.
+			// 0x00 will be treated as open ended in server side.
+			rangeEnd = "\x00"
+		}
+	} else {
+		var err error
+		rangeEnd, err = rangeEndFromPermFlags(args[0:])
+		if err != nil {
+			ExitWithError(ExitBadArgs, err)
+		}
+	}
+	return key, rangeEnd
 }
 
 func rangeEndFromPermFlags(args []string) (string, error) {

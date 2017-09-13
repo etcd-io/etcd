@@ -32,7 +32,7 @@ func TestCtlV3AuthRoleUpdate(t *testing.T)          { testCtl(t, authRoleUpdateT
 func TestCtlV3AuthUserDeleteDuringOps(t *testing.T) { testCtl(t, authUserDeleteDuringOpsTest) }
 func TestCtlV3AuthRoleRevokeDuringOps(t *testing.T) { testCtl(t, authRoleRevokeDuringOpsTest) }
 func TestCtlV3AuthTxn(t *testing.T)                 { testCtl(t, authTestTxn) }
-func TestCtlV3AuthPerfixPerm(t *testing.T)          { testCtl(t, authTestPrefixPerm) }
+func TestCtlV3AuthPrefixPerm(t *testing.T)          { testCtl(t, authTestPrefixPerm) }
 func TestCtlV3AuthMemberAdd(t *testing.T)           { testCtl(t, authTestMemberAdd) }
 func TestCtlV3AuthMemberRemove(t *testing.T) {
 	testCtl(t, authTestMemberRemove, withQuorum(), withNoStrictReconfig())
@@ -469,6 +469,21 @@ func authTestPrefixPerm(cx ctlCtx) {
 	if err := ctlV3PutFailPerm(cx, clientv3.GetPrefixRangeEnd(prefix), "baz"); err != nil {
 		cx.t.Fatal(err)
 	}
+
+	// grant the entire keys to test-user
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "", "", true}); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	prefix2 := "/prefix2/"
+	cx.user, cx.pass = "test-user", "pass"
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("%s%d", prefix2, i)
+		if err := ctlV3Put(cx, key, "val", ""); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
 }
 
 func authTestMemberAdd(cx ctlCtx) {
@@ -668,6 +683,36 @@ func authTestFromKeyPerm(cx ctlCtx) {
 	}
 
 	// try the revoked open ended permission
+	cx.user, cx.pass = "test-user", "pass"
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("z%d", i)
+		if err := ctlV3PutFailPerm(cx, key, "val"); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+
+	// grant the entire keys
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "", "\x00", false}); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// try keys, of course it must be allowed because test-role has a permission of the entire keys
+	cx.user, cx.pass = "test-user", "pass"
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("z%d", i)
+		if err := ctlV3Put(cx, key, "val", ""); err != nil {
+			cx.t.Fatal(err)
+		}
+	}
+
+	// revoke the entire keys
+	cx.user, cx.pass = "root", "root"
+	if err := ctlV3RoleRevokePermission(cx, "test-role", "", "", true); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	// try the revoked entire key permission
 	cx.user, cx.pass = "test-user", "pass"
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("z%d", i)
