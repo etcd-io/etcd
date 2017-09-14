@@ -15,7 +15,6 @@
 package etcdmain
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -191,13 +190,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		Handler: httpmux,
 	}
 
-	var httpl net.Listener
-	if cfg.TLS != nil {
-		srvhttp.TLSConfig = cfg.TLS
-		httpl = tls.NewListener(m.Match(cmux.Any()), cfg.TLS)
-	} else {
-		httpl = m.Match(cmux.HTTP1())
-	}
+	httpl := m.Match(cmux.HTTP1())
 	go func() { errc <- srvhttp.Serve(httpl) }()
 
 	go func() { errc <- m.Serve() }()
