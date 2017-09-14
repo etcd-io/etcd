@@ -1755,6 +1755,13 @@ func TestFreeStuckCandidateWithCheckQuorum(t *testing.T) {
 	if c.Term != a.Term {
 		t.Errorf("term = %d, want %d", c.Term, a.Term)
 	}
+
+	// Vote again, should become leader this time
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+
+	if c.state != StateLeader {
+		t.Errorf("peer 3 state: %s, want %s", c.state, StateLeader)
+	}
 }
 
 func TestNonPromotableVoterWithCheckQuorum(t *testing.T) {
