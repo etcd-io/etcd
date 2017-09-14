@@ -190,8 +190,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 		Handler: httpmux,
 	}
 
-	var httpl net.Listener
-	httpl = m.Match(cmux.HTTP1())
+	httpl := m.Match(cmux.HTTP1())
 	go func() { errc <- srvhttp.Serve(httpl) }()
 
 	go func() { errc <- m.Serve() }()
