@@ -1909,30 +1909,6 @@ func TestReadOnlyOptionLease(t *testing.T) {
 	}
 }
 
-func TestReadOnlyOptionLeaseWithoutCheckQuorum(t *testing.T) {
-	a := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	b := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	c := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
-	a.readOnly.option = ReadOnlyLeaseBased
-	b.readOnly.option = ReadOnlyLeaseBased
-	c.readOnly.option = ReadOnlyLeaseBased
-
-	nt := newNetwork(a, b, c)
-	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
-
-	ctx := []byte("ctx1")
-	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgReadIndex, Entries: []pb.Entry{{Data: ctx}}})
-
-	rs := b.readStates[0]
-	if rs.Index != None {
-		t.Errorf("readIndex = %d, want %d", rs.Index, None)
-	}
-
-	if !bytes.Equal(rs.RequestCtx, ctx) {
-		t.Errorf("requestCtx = %v, want %v", rs.RequestCtx, ctx)
-	}
-}
-
 // TestReadOnlyForNewLeader ensures that a leader only accepts MsgReadIndex message
 // when it commits at least one log entry at it term.
 func TestReadOnlyForNewLeader(t *testing.T) {
