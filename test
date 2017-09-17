@@ -161,7 +161,7 @@ function cov_pass {
 
 	# run code coverage for unit and integration tests
 	GOCOVFLAGS="-covermode=set -coverpkg ${PKGS_COMMA} -v -timeout 15m"
-	GOCOVFLAGS=($GOCOVFLGS)
+	GOCOVFLAGS=($GOCOVFLAGS)
 	failed=""
 	for t in $(echo "${TEST_PKGS}" | grep -vE "(e2e|functional-tester)"); do
 		tf=$(echo "$t" | tr / _)
