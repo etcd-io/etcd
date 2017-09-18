@@ -112,9 +112,9 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyDataDir, "data-dir", "default.proxy", "Data directory for persistent data")
 
 	// client TLS for connecting to server
-	cmd.Flags().StringVar(&grpcProxyCert, "cert", "", "identify secure connections with etcd servers using this TLS certificate file")
-	cmd.Flags().StringVar(&grpcProxyKey, "key", "", "identify secure connections with etcd servers using this TLS key file")
-	cmd.Flags().StringVar(&grpcProxyCA, "cacert", "", "verify certificates of TLS-enabled secure etcd servers using this CA bundle")
+	cmd.Flags().StringVar(&grpcProxyCert, "client-cert-file", "", "identify secure connections with etcd servers using this TLS certificate file")
+	cmd.Flags().StringVar(&grpcProxyKey, "client-key-file", "", "identify secure connections with etcd servers using this TLS key file")
+	cmd.Flags().StringVar(&grpcProxyCA, "client-ca-file", "", "verify certificates of TLS-enabled secure etcd servers using this CA bundle")
 	cmd.Flags().BoolVar(&grpcProxyInsecureSkipTLSVerify, "insecure-skip-tls-verify", false, "skip authentication of etcd server TLS certificates")
 
 	// client TLS for connecting to proxy
