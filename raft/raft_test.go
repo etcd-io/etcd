@@ -3273,6 +3273,60 @@ func TestPreVoteWithSplitVote(t *testing.T) {
 	}
 }
 
+// TestPreVoteWithSameTerm verifies that pre-vote will not be granted if the pre-vote
+// request has the same term as the leader node.
+func TestPreVoteWithSameTerm(t *testing.T) {
+	n1 := newTestRaft(1, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n2 := newTestRaft(2, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+	n3 := newTestRaft(3, []uint64{1, 2, 3}, 10, 1, NewMemoryStorage())
+
+	n1.becomeFollower(1, None)
+	n2.becomeFollower(1, None)
+	n3.becomeFollower(1, None)
+
+	n1.preVote = true
+	n2.preVote = true
+	n3.preVote = true
+
+	nt := newNetwork(n1, n2, n3)
+	nt.send(pb.Message{From: 1, To: 1, Type: pb.MsgHup})
+
+	// isolate node 3 with 1 and 2
+	// elect 2 as new leader to increase term to 3
+	nt.isolate(3)
+	nt.send(pb.Message{From: 2, To: 2, Type: pb.MsgHup})
+
+	// verify node 1 has term 3, node 2 has term 3.
+	sm := nt.peers[1].(*raft)
+	if sm.Term != 3 {
+		t.Errorf("peer 1 term: %d, want %d", sm.Term, 3)
+	}
+	sm = nt.peers[2].(*raft)
+	if sm.Term != 3 {
+		t.Errorf("peer 2 term: %d, want %d", sm.Term, 3)
+	}
+
+	nt.recover()
+	// node 3, which has term 2, timeouts out for election.
+	// we expect it not to distrupt leader 2 since it has a lower term(term:2) than the
+	// current leader(term:3), although its per-vote has the same term as leader 2.
+	nt.send(pb.Message{From: 3, To: 3, Type: pb.MsgHup})
+
+	// check whether the term values are expected
+	// n3.Term == 3
+	sm = nt.peers[3].(*raft)
+	if sm.Term != 3 {
+		t.Errorf("peer 3 term: %d, want %d", sm.Term, 3)
+	}
+
+	// check state
+	// n3 == follower
+	sm = nt.peers[3].(*raft)
+	if sm.state != StateFollower {
+		t.Errorf("peer 3 state: %s, want %s", sm.state, StateFollower)
+	}
+}
+
 func entsWithConfig(configFunc func(*Config), terms ...uint64) *raft {
 	storage := NewMemoryStorage()
 	for i, term := range terms {
