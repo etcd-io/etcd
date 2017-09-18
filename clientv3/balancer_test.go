@@ -133,6 +133,66 @@ func TestBalancerGetBlocking(t *testing.T) {
 	}
 }
 
+// TestHealthBalancerGraylist checks one endpoint is tried after the other
+// due to gray listing.
+func TestHealthBalancerGraylist(t *testing.T) {
+	var wg sync.WaitGroup
+	// Use 3 endpoints so gray list doesn't fallback to all connections
+	// after failing on 2 endpoints.
+	lns, eps := make([]net.Listener, 3), make([]string, 3)
+	wg.Add(3)
+	connc := make(chan string, 2)
+	for i := range eps {
+		ln, err := net.Listen("tcp", ":0")
+		testutil.AssertNil(t, err)
+		lns[i], eps[i] = ln, ln.Addr().String()
+		go func() {
+			defer wg.Done()
+			for {
+				conn, err := ln.Accept()
+				if err != nil {
+					return
+				}
+				_, err = conn.Read(make([]byte, 512))
+				conn.Close()
+				if err == nil {
+					select {
+					case connc <- ln.Addr().String():
+						// sleep some so balancer catches up
+						// before attempted next reconnect.
+						time.Sleep(50 * time.Millisecond)
+					default:
+					}
+				}
+			}
+		}()
+	}
+
+	sb := newSimpleBalancer(eps)
+	tf := func(s string) (bool, error) { return false, nil }
+	hb := newHealthBalancer(sb, 5*time.Second, tf)
+
+	conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(hb))
+	testutil.AssertNil(t, err)
+	defer conn.Close()
+
+	kvc := pb.NewKVClient(conn)
+	<-hb.ready()
+
+	kvc.Range(context.TODO(), &pb.RangeRequest{})
+	ep1 := <-connc
+	kvc.Range(context.TODO(), &pb.RangeRequest{})
+	ep2 := <-connc
+	for _, ln := range lns {
+		ln.Close()
+	}
+	wg.Wait()
+
+	if ep1 == ep2 {
+		t.Fatalf("expected %q != %q", ep1, ep2)
+	}
+}
+
 // TestBalancerDoNotBlockOnClose ensures that balancer and grpc don't deadlock each other
 // due to rapid open/close conn. The deadlock causes balancer.Close() to block forever.
 // See issue: https://github.com/coreos/etcd/issues/7283 for more detail.
