@@ -33,7 +33,7 @@ var (
 )
 
 func TestBalancerGetUnblocking(t *testing.T) {
-	sb := newSimpleBalancer(endpoints)
+	sb := newSimpleBalancer(endpoints, 0, nil)
 	defer sb.Close()
 	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
@@ -77,7 +77,7 @@ func TestBalancerGetUnblocking(t *testing.T) {
 }
 
 func TestBalancerGetBlocking(t *testing.T) {
-	sb := newSimpleBalancer(endpoints)
+	sb := newSimpleBalancer(endpoints, 0, nil)
 	defer sb.Close()
 	if addrs := <-sb.Notify(); len(addrs) != len(endpoints) {
 		t.Errorf("Initialize newSimpleBalancer should have triggered Notify() chan, but it didn't")
@@ -143,7 +143,7 @@ func TestBalancerDoNotBlockOnClose(t *testing.T) {
 	defer kcl.close()
 
 	for i := 0; i < 5; i++ {
-		sb := newSimpleBalancer(kcl.endpoints())
+		sb := newSimpleBalancer(kcl.endpoints(), 0, nil)
 		conn, err := grpc.Dial("", grpc.WithInsecure(), grpc.WithBalancer(sb))
 		if err != nil {
 			t.Fatal(err)
