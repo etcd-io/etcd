@@ -184,11 +184,10 @@ The etcd release container does not include default root certificates. To use HT
 ```
 REGISTRY=quay.io/coreos/etcd
 # available from v3.2.5
-REGISTRY=gcr.io/etcd-development/etcd
-```
+REGISTRY=docker://gcr.io/etcd-development/etcd
 
-```
 rkt run \
+  --insecure-options=image \
   --volume etcd-ssl-certs-bundle,kind=host,source=/etc/ssl/certs/ca-certificates.crt \
   --mount volume=etcd-ssl-certs-bundle,target=/etc/ssl/certs/ca-certificates.crt \
   ${REGISTRY}:latest -- --name my-name \
@@ -198,6 +197,10 @@ rkt run \
 ```
 
 ```
+REGISTRY=quay.io/coreos/etcd
+# available from v3.2.5
+REGISTRY=gcr.io/etcd-development/etcd
+
 docker run \
   -p 2379:2379 \
   -p 2380:2380 \
