@@ -23,10 +23,10 @@ The default values can be overridden on the command line:
 
 ```sh
 # Command line arguments:
-$ etcd --heartbeat-interval=100 --election-timeout=500
+$ etcd --heartbeat-interval=100 --election-timeout=1000
 
 # Environment variables:
-$ ETCD_HEARTBEAT_INTERVAL=100 ETCD_ELECTION_TIMEOUT=500 etcd
+$ ETCD_HEARTBEAT_INTERVAL=100 ETCD_ELECTION_TIMEOUT=1000 etcd
 ```
 
 The values are specified in milliseconds.
