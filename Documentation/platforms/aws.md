@@ -6,7 +6,7 @@ This guide assumes operational knowledge of Amazon Web Services (AWS), specifica
 
 As a critical building block for distributed systems it is crucial to perform adequate capacity planning in order to support the intended cluster workload. As a highly available and strongly consistent data store increasing the number of nodes in an etcd cluster will generally affect performance adversely. This makes sense intuitively, as more nodes means more members for the leader to coordinate state across. The most direct way to increase throughput and decrease latency of an etcd cluster is allocate more disk I/O, network I/O, CPU, and memory to cluster members. In the event it is impossible to temporarily divert incoming requests to the cluster, scaling the EC2 instances which comprise the etcd cluster members one at a time may improve performance. It is, however, best to avoid bottlenecks through capacity planning.
 
-The etcd team has produced a [hardware recommendation guide]( ../op-guide/hardware.md) which is very useful for “ballparking” how many nodes and what instance type are necessary for a cluster.
+The etcd team has produced a [hardware recommendation guide](../op-guide/hardware.md) which is very useful for “ballparking” how many nodes and what instance type are necessary for a cluster.
 
 AWS provides a service for creating groups of EC2 instances which are dynamically sized to match load on the instances. Using an Auto Scaling Group ([ASG](http://docs.aws.amazon.com/autoscaling/latest/userguide/AutoScalingGroup.html)) to dynamically scale an etcd cluster is not recommended for several reasons including:
 
