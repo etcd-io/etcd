@@ -68,7 +68,7 @@ import:
 - package: github.com/spf13/pflag
   version: v1.0.0
 - package: github.com/ugorji/go
-  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
+  version: 54210f4e076c57f351166f0ed60e67d3fca57a36
   subpackages:
   - codec
 - package: github.com/urfave/cli

@@ -313,21 +313,21 @@ type encFnInfo struct {
 }
 
 func (f *encFnInfo) builtin(rv reflect.Value) {
-	f.e.e.EncodeBuiltin(f.ti.rtid, rv.Interface())
+	f.e.e.EncodeBuiltin(f.ti.rtid, rv2i(rv))
 }
 
 func (f *encFnInfo) raw(rv reflect.Value) {
-	f.e.raw(rv.Interface().(Raw))
+	f.e.raw(rv2i(rv).(Raw))
 }
 
 func (f *encFnInfo) rawExt(rv reflect.Value) {
-	// rev := rv.Interface().(RawExt)
+	// rev := rv2i(rv).(RawExt)
 	// f.e.e.EncodeRawExt(&rev, f.e)
 	var re *RawExt
 	if rv.CanAddr() {
-		re = rv.Addr().Interface().(*RawExt)
+		re = rv2i(rv.Addr()).(*RawExt)
 	} else {
-		rev := rv.Interface().(RawExt)
+		rev := rv2i(rv).(RawExt)
 		re = &rev
 	}
 	f.e.e.EncodeRawExt(re, f.e)
@@ -338,21 +338,21 @@ func (f *encFnInfo) ext(rv reflect.Value) {
 	if k := rv.Kind(); (k == reflect.Struct || k == reflect.Array) && rv.CanAddr() {
 		rv = rv.Addr()
 	}
-	f.e.e.EncodeExt(rv.Interface(), f.xfTag, f.xfFn, f.e)
+	f.e.e.EncodeExt(rv2i(rv), f.xfTag, f.xfFn, f.e)
 }
 
 func (f *encFnInfo) getValueForMarshalInterface(rv reflect.Value, indir int8) (v interface{}, proceed bool) {
 	if indir == 0 {
-		v = rv.Interface()
+		v = rv2i(rv)
 	} else if indir == -1 {
 		// If a non-pointer was passed to Encode(), then that value is not addressable.
 		// Take addr if addressable, else copy value to an addressable value.
 		if rv.CanAddr() {
-			v = rv.Addr().Interface()
+			v = rv2i(rv.Addr())
 		} else {
 			rv2 := reflect.New(rv.Type())
 			rv2.Elem().Set(rv)
-			v = rv2.Interface()
+			v = rv2i(rv2)
 			// fmt.Printf("rv.Type: %v, rv2.Type: %v, v: %v\n", rv.Type(), rv2.Type(), v)
 		}
 	} else {
@@ -363,7 +363,7 @@ func (f *encFnInfo) getValueForMarshalInterface(rv reflect.Value, indir int8) (v
 			}
 			rv = rv.Elem()
 		}
-		v = rv.Interface()
+		v = rv2i(rv)
 	}
 	return v, true
 }
@@ -383,7 +383,7 @@ func (f *encFnInfo) binaryMarshal(rv reflect.Value) {
 
 func (f *encFnInfo) textMarshal(rv reflect.Value) {
 	if v, proceed := f.getValueForMarshalInterface(rv, f.ti.tmIndir); proceed {
-		// debugf(">>>> encoding.TextMarshaler: %T", rv.Interface())
+		// debugf(">>>> encoding.TextMarshaler: %T", rv2i(rv))
 		bs, fnerr := v.(encoding.TextMarshaler).MarshalText()
 		f.e.marshal(bs, fnerr, false, c_UTF8)
 	}
@@ -476,10 +476,10 @@ func (f *encFnInfo) kSlice(rv reflect.Value) {
 			bs := e.b[:0]
 			// do not use range, so that the number of elements encoded
 			// does not change, and encoding does not hang waiting on someone to close chan.
-			// for b := range rv.Interface().(<-chan byte) {
+			// for b := range rv2i(rv).(<-chan byte) {
 			// 	bs = append(bs, b)
 			// }
-			ch := rv.Interface().(<-chan byte)
+			ch := rv2i(rv).(<-chan byte)
 			for i := 0; i < l; i++ {
 				bs = append(bs, <-ch)
 			}
@@ -507,7 +507,7 @@ func (f *encFnInfo) kSlice(rv reflect.Value) {
 		// a concrete type and kInterface will bomb.
 		var fn *encFn
 		if rtelem.Kind() != reflect.Interface {
-			rtelemid := reflect.ValueOf(rtelem).Pointer()
+			rtelemid := rt2id(rtelem)
 			fn = e.getEncFn(rtelemid, rtelem, true, true)
 		}
 		// TODO: Consider perf implication of encoding odd index values as symbols if type is string
@@ -680,7 +680,7 @@ func (f *encFnInfo) kMap(rv reflect.Value) {
 	ti := f.ti
 	rtkey := ti.rt.Key()
 	rtval := ti.rt.Elem()
-	rtkeyid := reflect.ValueOf(rtkey).Pointer()
+	rtkeyid := rt2id(rtkey)
 	// keyTypeIsString := f.ti.rt.Key().Kind() == reflect.String
 	var keyTypeIsString = rtkeyid == stringTypId
 	if keyTypeIsString {
@@ -690,7 +690,7 @@ func (f *encFnInfo) kMap(rv reflect.Value) {
 			rtkey = rtkey.Elem()
 		}
 		if rtkey.Kind() != reflect.Interface {
-			rtkeyid = reflect.ValueOf(rtkey).Pointer()
+			rtkeyid = rt2id(rtkey)
 			keyFn = e.getEncFn(rtkeyid, rtkey, true, true)
 		}
 	}
@@ -698,7 +698,7 @@ func (f *encFnInfo) kMap(rv reflect.Value) {
 		rtval = rtval.Elem()
 	}
 	if rtval.Kind() != reflect.Interface {
-		rtvalid := reflect.ValueOf(rtval).Pointer()
+		rtvalid := rt2id(rtval)
 		valFn = e.getEncFn(rtvalid, rtval, true, true)
 	}
 	mks := rv.MapKeys()
@@ -1027,6 +1027,8 @@ func (e *Encoder) ResetBytes(out *[]byte) {
 // However, struct values may encode as arrays. This happens when:
 //    - StructToArray Encode option is set, OR
 //    - the tag on the _struct field sets the "toarray" option
+// Note that omitempty is ignored when encoding struct values as arrays,
+// as an entry must be encoded for each field, to maintain its position.
 //
 // Values with types that implement MapBySlice are encoded as stream maps.
 //
@@ -1053,8 +1055,7 @@ func (e *Encoder) ResetBytes(out *[]byte) {
 //      }
 //
 //      type MyStruct struct {
-//          _struct bool    `codec:",omitempty,toarray"`   //set omitempty for every field
-//                                                         //and encode struct as an array
+//          _struct bool    `codec:",toarray"`   //encode struct as an array
 //      }
 //
 // The mode of encoding is based on the type of the value. When a value is seen:
@@ -1215,7 +1216,7 @@ func (e *Encoder) doEncodeValue(rv reflect.Value, fn *encFn, sptr uintptr,
 	}
 	if fn == nil {
 		rt := rv.Type()
-		rtid := reflect.ValueOf(rt).Pointer()
+		rtid := rt2id(rt)
 		// fn = e.getEncFn(rtid, rt, true, true)
 		fn = e.getEncFn(rtid, rt, checkFastpath, checkCodecSelfer)
 	}
@@ -1239,7 +1240,7 @@ func (e *Encoder) encodeValue(rv reflect.Value, fn *encFn) {
 }
 
 func (e *Encoder) getEncFn(rtid uintptr, rt reflect.Type, checkFastpath, checkCodecSelfer bool) (fn *encFn) {
-	// rtid := reflect.ValueOf(rt).Pointer()
+	// rtid := rt2id(rt)
 	var ok bool
 	if useMapForCodecCache {
 		fn, ok = e.f[rtid]
@@ -1309,7 +1310,7 @@ func (e *Encoder) getEncFn(rtid uintptr, rt reflect.Type, checkFastpath, checkCo
 				} else {
 					rtu = reflect.SliceOf(rt.Elem())
 				}
-				rtuid := reflect.ValueOf(rtu).Pointer()
+				rtuid := rt2id(rtu)
 				if idx := fastpathAV.index(rtuid); idx != -1 {
 					xfnf := fastpathAV[idx].encfn
 					xrt := fastpathAV[idx].rt

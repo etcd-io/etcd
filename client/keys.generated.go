@@ -37,10 +37,10 @@ var (
 type codecSelfer1819 struct{}
 
 func init() {
-	if codec1978.GenVersion != 5 {
+	if codec1978.GenVersion != 6 {
 		_, file, _, _ := runtime.Caller(0)
 		err := fmt.Errorf("codecgen version mismatch: current: %v, need %v. Re-generate file: %v",
-			5, codec1978.GenVersion, file)
+			6, codec1978.GenVersion, file)
 		panic(err)
 	}
 	if false { // reference the types, but skip this branch at build/run time
@@ -189,7 +189,7 @@ func (x *Response) codecDecodeSelfFromMap(l int, d *codec1978.Decoder) {
 			}
 		}
 		z.DecSendContainerState(codecSelfer_containerMapKey1819)
-		yys3Slc = r.DecodeBytes(yys3Slc, true, true)
+		yys3Slc = r.DecodeStringAsBytes()
 		yys3 := string(yys3Slc)
 		z.DecSendContainerState(codecSelfer_containerMapValue1819)
 		switch yys3 {
@@ -601,7 +601,7 @@ func (x *Node) codecDecodeSelfFromMap(l int, d *codec1978.Decoder) {
 			}
 		}
 		z.DecSendContainerState(codecSelfer_containerMapKey1819)
-		yys3Slc = r.DecodeBytes(yys3Slc, true, true)
+		yys3Slc = r.DecodeStringAsBytes()
 		yys3 := string(yys3Slc)
 		z.DecSendContainerState(codecSelfer_containerMapValue1819)
 		switch yys3 {
@@ -982,79 +982,45 @@ func (x codecSelfer1819) decNodes(v *Nodes, d *codec1978.Decoder) {
 			yyv1 = yyv1[:0]
 			yyc1 = true
 		}
-	} else if yyl1 > 0 {
-		var yyrr1, yyrl1 int
-		var yyrt1 bool
-		_, _ = yyrl1, yyrt1
-		yyrr1 = yyl1 // len(yyv1)
-		if yyl1 > cap(yyv1) {
-
-			yyrg1 := len(yyv1) > 0
-			yyv21 := yyv1
-			yyrl1, yyrt1 = z.DecInferLen(yyl1, z.DecBasicHandle().MaxInitLen, 8)
-			if yyrt1 {
+	} else {
+		yyhl1 := yyl1 > 0
+		var yyrl1 int
+		if yyhl1 {
+			if yyl1 > cap(yyv1) {
+				yyrl1 = z.DecInferLen(yyl1, z.DecBasicHandle().MaxInitLen, 8)
 				if yyrl1 <= cap(yyv1) {
 					yyv1 = yyv1[:yyrl1]
 				} else {
 					yyv1 = make([]*Node, yyrl1)
 				}
-			} else {
-				yyv1 = make([]*Node, yyrl1)
-			}
-			yyc1 = true
-			yyrr1 = len(yyv1)
-			if yyrg1 {
-				copy(yyv1, yyv21)
-			}
-		} else if yyl1 != len(yyv1) {
-			yyv1 = yyv1[:yyl1]
-			yyc1 = true
-		}
-		yyj1 := 0
-		for ; yyj1 < yyrr1; yyj1++ {
-			yyh1.ElemContainerState(yyj1)
-			if r.TryDecodeAsNil() {
-				if yyv1[yyj1] != nil {
-					*yyv1[yyj1] = Node{}
-				}
-			} else {
-				if yyv1[yyj1] == nil {
-					yyv1[yyj1] = new(Node)
-				}
-				yyw2 := yyv1[yyj1]
-				yyw2.CodecDecodeSelf(d)
-			}
-
-		}
-		if yyrt1 {
-			for ; yyj1 < yyl1; yyj1++ {
-				yyv1 = append(yyv1, nil)
-				yyh1.ElemContainerState(yyj1)
-				if r.TryDecodeAsNil() {
-					if yyv1[yyj1] != nil {
-						*yyv1[yyj1] = Node{}
-					}
-				} else {
-					if yyv1[yyj1] == nil {
-						yyv1[yyj1] = new(Node)
-					}
-					yyw3 := yyv1[yyj1]
-					yyw3.CodecDecodeSelf(d)
-				}
-
-			}
-		}
-
-	} else {
-		yyj1 := 0
-		for ; !r.CheckBreak(); yyj1++ {
-
-			if yyj1 >= len(yyv1) {
-				yyv1 = append(yyv1, nil) // var yyz1 *Node
+				yyc1 = true
+			} else if yyl1 != len(yyv1) {
+				yyv1 = yyv1[:yyl1]
 				yyc1 = true
 			}
+		}
+		yyj1 := 0
+		for ; (yyhl1 && yyj1 < yyl1) || !(yyhl1 || r.CheckBreak()); yyj1++ {
+			if yyj1 == 0 && len(yyv1) == 0 {
+				if yyhl1 {
+					yyrl1 = z.DecInferLen(yyl1, z.DecBasicHandle().MaxInitLen, 8)
+				} else {
+					yyrl1 = 8
+				}
+				yyv1 = make([]*Node, yyrl1)
+				yyc1 = true
+			}
+			// if indefinite, etc, then expand the slice if necessary
+			var yydb1 bool
+			if yyj1 >= len(yyv1) {
+				yyv1 = append(yyv1, nil)
+				yyc1 = true
+
+			}
 			yyh1.ElemContainerState(yyj1)
-			if yyj1 < len(yyv1) {
+			if yydb1 {
+				z.DecSwallow()
+			} else {
 				if r.TryDecodeAsNil() {
 					if yyv1[yyj1] != nil {
 						*yyv1[yyj1] = Node{}
@@ -1063,20 +1029,17 @@ func (x codecSelfer1819) decNodes(v *Nodes, d *codec1978.Decoder) {
 					if yyv1[yyj1] == nil {
 						yyv1[yyj1] = new(Node)
 					}
-					yyw4 := yyv1[yyj1]
-					yyw4.CodecDecodeSelf(d)
+					yyw2 := yyv1[yyj1]
+					yyw2.CodecDecodeSelf(d)
 				}
 
-			} else {
-				z.DecSwallow()
 			}
-
 		}
 		if yyj1 < len(yyv1) {
 			yyv1 = yyv1[:yyj1]
 			yyc1 = true
 		} else if yyj1 == 0 && yyv1 == nil {
-			yyv1 = []*Node{}
+			yyv1 = make([]*Node, 0)
 			yyc1 = true
 		}
 	}
@@ -1084,4 +1047,5 @@ func (x codecSelfer1819) decNodes(v *Nodes, d *codec1978.Decoder) {
 	if yyc1 {
 		*v = yyv1
 	}
+
 }
